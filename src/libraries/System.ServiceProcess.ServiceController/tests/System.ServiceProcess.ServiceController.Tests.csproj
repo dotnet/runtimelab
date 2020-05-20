@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>$(NetCoreAppCurrent)-Windows_NT;$(NetFrameworkCurrent)-Windows_NT</TargetFrameworks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="ServiceBaseTests.cs" />
+    <Compile Include="TestServiceProvider.cs" />
+    <Compile Include="SafeServiceControllerTests.cs" />
+    <Compile Include="ServiceControllerTests.cs" />
+    <Compile Include="ServiceProcessDescriptionAttributeTests.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include=".\System.ServiceProcess.ServiceController.TestService\System.ServiceProcess.ServiceController.TestService.csproj" />
+  </ItemGroup>
+</Project>

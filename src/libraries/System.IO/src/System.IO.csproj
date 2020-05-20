@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>System.IO</AssemblyName>
+    <IsPartialFacadeAssembly>true</IsPartialFacadeAssembly>
+    <TargetFrameworks>$(NetCoreAppCurrent)</TargetFrameworks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.Runtime" />
+    <Reference Include="System.Runtime.Extensions" />
+  </ItemGroup>
+</Project>

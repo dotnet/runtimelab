@@ -1,0 +1,63 @@
+parameters:
+  buildConfig: ''
+  archType: ''
+  osGroup: ''
+  osSubgroup: ''
+  container: ''
+  crossrootfsDir: ''
+  timeoutInMinutes: ''
+  stagedBuild: false
+  variables: {}
+  pool: ''
+  condition: true
+
+### Format job
+jobs:
+- template: xplat-pipeline-job.yml
+  parameters:
+    buildConfig: ${{ parameters.buildConfig }}
+    archType: ${{ parameters.archType }}
+    osGroup: ${{ parameters.osGroup }}
+    osSubgroup: ${{ parameters.osSubgroup }}
+    container: ${{ parameters.container }}
+    crossrootfsDir: ${{ parameters.crossrootfsDir }}
+    stagedBuild: ${{ parameters.stagedBuild }}
+    timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+    name: ${{ format('format_{0}{1}_{2}', parameters.osGroup, parameters.osSubgroup, parameters.archType) }}
+    displayName: ${{ format('Formatting {0}{1} {2}', parameters.osGroup, parameters.osSubgroup, parameters.archType) }}
+    helixType: 'format'
+    ${{ if eq(parameters.osGroup, 'Windows_NT') }}:
+      pool: 
+        vmImage: 'windows-2019'
+    ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
+      pool: ${{ parameters.pool }}
+    variables: ${{ parameters.variables }}
+    condition: ${{ parameters.condition }}
+    steps:
+    - task: UseDotNet@2
+      # This should match what jitutils YML uses to build.
+      displayName: 'Install .NET SDK'
+      inputs:
+        packageType: 'sdk'
+        version: '3.x'
+        includePreviewVersions: true
+        installationPath: $(Agent.ToolsDirectory)/dotnet
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.x' 
+        addToPath: true 
+        architecture: 'x64'
+      condition: ${{ eq(parameters.osGroup, 'Windows_NT') }}
+    - task: PythonScript@0
+      displayName: Run tests/scripts/format.py
+      inputs:
+        scriptSource: 'filePath'
+        scriptPath: $(coreClrRepoRoot)/tests/scripts/format.py
+        arguments: '-c $(coreClrRepoRoot) -o $(osGroup) -a $(archType)'
+    - task: PublishBuildArtifacts@1
+      displayName: Publish format.patch
+      inputs:
+        PathtoPublish: '$(coreClrRepoRoot)/format.patch'
+        ArtifactName: format.$(osGroup).$(archType).patch
+      continueOnError: true
+      condition: failed()

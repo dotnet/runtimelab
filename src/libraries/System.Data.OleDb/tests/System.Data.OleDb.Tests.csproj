@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>$(NetCoreAppCurrent)-Windows_NT;$(NetFrameworkCurrent)-Windows_NT</TargetFrameworks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Helpers.cs" />
+    <Compile Include="OleDbTestBase.cs" />
+    <Compile Include="OleDbCommandBuilderTests.cs" />
+    <Compile Include="OleDbCommandTests.cs" />
+    <Compile Include="OleDbConnectionTests.cs" />
+    <Compile Include="OleDbDataAdapterTests.cs" />
+    <Compile Include="OleDbDataReaderTests.cs" />
+    <Compile Include="OleDbParameterTests.cs" />
+  </ItemGroup>
+</Project>

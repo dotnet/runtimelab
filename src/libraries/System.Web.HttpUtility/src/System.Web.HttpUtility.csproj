@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+    <TargetFrameworks>$(NetCoreAppCurrent)</TargetFrameworks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="System\Web\HttpUtility.cs" />
+    <Compile Include="System\Web\Util\HttpEncoder.cs" />
+    <Compile Include="System\Web\Util\HttpEncoderUtility.cs" />
+    <Compile Include="System\Web\Util\UriUtil.cs" />
+    <Compile Include="System\Web\Util\Utf16StringValidator.cs" />
+    <Compile Include="$(CommonPath)System\HexConverter.cs"
+             Link="Common\System\HexConverter.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System.Collections.Specialized" />
+    <Reference Include="System.Memory" />
+    <Reference Include="System.Runtime" />
+    <Reference Include="System.Runtime.Extensions" />
+  </ItemGroup>
+</Project>

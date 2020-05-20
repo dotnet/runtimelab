@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>System.Dynamic.Runtime</AssemblyName>
+    <RootNamespace>System.Dynamic.Runtime</RootNamespace>
+    <IsPartialFacadeAssembly>true</IsPartialFacadeAssembly>
+    <TargetFrameworks>$(NetCoreAppCurrent)</TargetFrameworks>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.Linq.Expressions" />
+    <Reference Include="System.Runtime" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,39 @@
+trigger: none
+
+pr: none
+
+schedules:
+- cron: "0 2 * * 0,1"
+  displayName: Sat and Sun at 6:00 PM (UTC-8:00)
+  branches:
+    include:
+    - master
+  always: true
+
+jobs:
+#
+# Checkout repository
+#
+- template: /eng/pipelines/common/checkout-job.yml
+
+- template: /eng/pipelines/common/platform-matrix.yml
+  parameters:
+    jobTemplate: /eng/pipelines/common/build-coreclr-and-libraries-job.yml
+    buildConfig: checked
+    platformGroup: gcstress
+    jobParameters:
+      testGroup: r2r-extra
+
+- template: /eng/pipelines/common/platform-matrix.yml
+  parameters:
+    jobTemplate: /eng/pipelines/coreclr/templates/test-job.yml
+    buildConfig: checked
+    platformGroup: gcstress # r2r-extra testGroup runs gcstress15 scenario
+    helixQueueGroup: ci
+    helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
+    managedOsxBuild: false
+    jobParameters:
+      testGroup: r2r-extra
+      readyToRun: true
+      displayNameArgs: R2R
+      liveLibrariesBuildConfig: Release

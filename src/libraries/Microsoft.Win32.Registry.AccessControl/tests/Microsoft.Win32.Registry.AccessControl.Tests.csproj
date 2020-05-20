@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>$(NetCoreAppCurrent)-Windows_NT;$(NetFrameworkCurrent)-Windows_NT</TargetFrameworks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="RegistryAclExtensionsTests.cs" />
+  </ItemGroup>
+</Project>

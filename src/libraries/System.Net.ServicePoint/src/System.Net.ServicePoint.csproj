@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <NoWarn>$(NoWarn);CA5364</NoWarn>
+    <TargetFrameworks>$(NetCoreAppCurrent)</TargetFrameworks>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(IsPartialFacadeAssembly)' != 'true'">
+    <Compile Include="System\Net\BindIPEndPoint.cs" />
+    <Compile Include="System\Net\ServicePoint.cs" />
+    <Compile Include="System\Net\ServicePointManager.cs" />
+    <Compile Include="System\Net\SecurityProtocolType.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System.Collections.Concurrent" />
+    <Reference Include="System.Net.Primitives" />
+    <Reference Include="System.Net.Security" />
+    <Reference Include="System.Runtime" />
+    <Reference Include="System.Runtime.Extensions" />
+    <Reference Include="System.Security.Cryptography.X509Certificates" />
+  </ItemGroup>
+</Project>

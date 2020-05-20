@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>System.Runtime.Extensions</AssemblyName>
+    <OutputType>Library</OutputType>
+    <IsPartialFacadeAssembly>true</IsPartialFacadeAssembly>
+    <TargetFrameworks>$(NetCoreAppCurrent)-Windows_NT;$(NetCoreAppCurrent)-Unix</TargetFrameworks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\System.Private.Uri\src\System.Private.Uri.csproj" />
+    <ProjectReference Include="..\..\System.Runtime\src\System.Runtime.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <ReferenceFromRuntime Include="System.Private.CoreLib" />
+  </ItemGroup>
+</Project>

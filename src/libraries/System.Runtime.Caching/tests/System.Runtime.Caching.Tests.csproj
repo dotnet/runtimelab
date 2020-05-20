@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>$(NetCoreAppCurrent);$(NetFrameworkCurrent)</TargetFrameworks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="AdditionalCacheTests\AdditionalCacheTests.cs" />
+    <Compile Include="Common\PokerChangeMonitor.cs" />
+    <Compile Include="Common\PokerMemoryCache.cs" />
+    <Compile Include="Common\PokerObjectCache.cs" />
+    <Compile Include="Common\TestNotificationSystem.cs" />
+    <Compile Include="System.Runtime.Caching\HostFileChangeMonitorTest.cs" />
+    <Compile Include="System.Runtime.Caching\ObjectCacheTest.cs" />
+    <Compile Include="System.Runtime.Caching\MemoryCacheTest.cs" />
+  </ItemGroup>
+</Project>

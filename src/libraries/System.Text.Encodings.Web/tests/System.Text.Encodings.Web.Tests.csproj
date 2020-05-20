@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TargetFrameworks>$(NetCoreAppCurrent);$(NetFrameworkCurrent)</TargetFrameworks>
+    <UnicodeUcdVersion>13.0</UnicodeUcdVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <CodeAnalysisDependentAssemblyPaths Condition=" '$(VS100COMNTOOLS)' != '' " Include="$(VS100COMNTOOLS)..\IDE\PrivateAssemblies">
+      <Visible>False</Visible>
+    </CodeAnalysisDependentAssemblyPaths>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\src\System\Text\Internal\AllowedCharactersBitmap.cs" />
+    <Compile Include="..\src\System\Text\Unicode\UnicodeHelpers.cs" />
+    <Compile Include="..\src\System\Text\Unicode\UnicodeHelpers.generated.cs" />
+    <Compile Include="AllowedCharsBitmapTests.cs" />
+    <Compile Include="TextEncoderTests.cs" />
+    <Compile Include="ConfigurableScalarTextEncoder.cs" />
+    <Compile Include="ScalarTestEncoder.cs" />
+    <Compile Include="EncoderCommon.cs" />
+    <Compile Include="EncoderCommonTests.cs" />
+    <Compile Include="EncoderExtensionsTests.cs" />
+    <Compile Include="Extensions.cs" />
+    <Compile Include="HtmlEncoderTests.cs" />
+    <Compile Include="IHtmlEncoder.cs" />
+    <Compile Include="IJavaScriptStringEncoder.cs" />
+    <Compile Include="IUrlEncoder.cs" />
+    <Compile Include="JavaScriptStringEncoderTests.cs" />
+    <Compile Include="JavaScriptStringEncoderTests.Relaxed.cs" />
+    <Compile Include="PerformanceTests.cs" />
+    <Compile Include="TemporaryEncoderAdapters.cs" />
+    <Compile Include="TemporaryEncoderExtensions.cs" />
+    <Compile Include="TemporaryInternalTypes.cs" />
+    <Compile Include="TextEncoderSettingsTests.cs" />
+    <Compile Include="UnicodeEncoderBase.cs" />
+    <Compile Include="UnicodeEncoderBaseTests.cs" />
+    <Compile Include="UnicodeHelpersTests.cs" />
+    <Compile Include="UnicodeRangesTests.cs" />
+    <Compile Include="UnicodeRangesTests.generated.cs" />
+    <Compile Include="UnicodeRangeTests.cs" />
+    <Compile Include="UrlEncoderTests.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Private.Runtime.UnicodeData" Version="$(SystemPrivateRuntimeUnicodeDataVersion)" ExcludeAssets="contentFiles" GeneratePathProperty="true" />
+    <EmbeddedResource Include="$(PkgSystem_Private_Runtime_UnicodeData)\contentFiles\any\any\$(UnicodeUcdVersion).0\ucd\UnicodeData.txt">
+      <Link>CharUnicodeInfo\UnicodeData.$(UnicodeUcdVersion).txt</Link>
+      <LogicalName>UnicodeData.txt</LogicalName>
+    </EmbeddedResource>
+    <Compile Include="$(CoreLibSharedDir)System\Text\UnicodeDebug.cs"
+             Link="System\Text\UnicodeDebug.cs" />
+    <Compile Include="$(CoreLibSharedDir)System\Text\UnicodeUtility.cs"
+             Link="System\Text\UnicodeUtility.cs" />
+    <Compile Include="$(CommonPath)System\HexConverter.cs"
+             Link="Common\System\HexConverter.cs" />
+  </ItemGroup>
+</Project>

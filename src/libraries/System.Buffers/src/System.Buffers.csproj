@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <IsPartialFacadeAssembly>true</IsPartialFacadeAssembly>
+    <ExcludeResourcesImport>true</ExcludeResourcesImport>
+    <TargetFrameworks>$(NetCoreAppCurrent)-Windows_NT;$(NetCoreAppCurrent)-Unix</TargetFrameworks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ReferenceFromRuntime Include="System.Private.CoreLib" />
+  </ItemGroup>
+</Project>

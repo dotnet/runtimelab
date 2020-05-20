@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="InvalidParamIndex.cs" />
+  </ItemGroup>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove(Interop.settings.targets))" />
+</Project>

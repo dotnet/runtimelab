@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>System.Diagnostics.Tests</RootNamespace>
+    <IgnoreArchitectureMismatches>true</IgnoreArchitectureMismatches>
+    <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
+    <TargetFrameworks>$(NetCoreAppCurrent)</TargetFrameworks>
+    <TestRuntime>true</TestRuntime>
+  </PropertyGroup>
+  <ItemGroup>
+    <DefaultReferenceExclusions Include="System.Diagnostics.Debug" />
+    <DefaultReferenceExclusions Include="System.Runtime.Extensions" />
+    <ReferenceFromRuntime Include="System.Private.CoreLib" />
+    <ReferenceFromRuntime Include="System.Runtime" />
+    <ReferenceFromRuntime Include="System.Threading" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="DebugTests.cs" />
+    <Compile Include="DebugTestsNoListeners.cs" />
+    <Compile Include="DebugTestsUsingListeners.cs" />
+    <Compile Include="DebuggerBrowsableAttributeTests.cs" />
+    <Compile Include="DebuggerDisplayAttributeTests.cs" />
+    <Compile Include="DebuggerTests.cs" />
+    <Compile Include="DebuggerTypeProxyAttributeTests.cs" />
+    <Compile Include="DebuggerVisualizerAttributeTests.cs" />
+    <Compile Include="EmptyAttributeTests.cs" />
+    <Compile Include="XunitAssemblyAttributes.cs" />
+  </ItemGroup>
+</Project>
