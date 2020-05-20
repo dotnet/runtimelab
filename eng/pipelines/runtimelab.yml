@@ -65,7 +65,7 @@ jobs:
     jobParameters:
       testGroup: innerloop
       nameSuffix: Runtime_Debug
-      buildArgs: -c debug -runtimeConfiguration release
+      buildArgs: -s clr+libs+installer -c debug -runtimeConfiguration release
 
 #
 # Build with Release config and Release runtimeConfiguration
@@ -80,4 +80,4 @@ jobs:
     jobParameters:
       testGroup: innerloop
       nameSuffix: Runtime_Release
-      buildArgs: -c release -runtimeConfiguration release
+      buildArgs: -s clr+libs+installer -c release -runtimeConfiguration release
