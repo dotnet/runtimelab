@@ -51,3 +51,33 @@ jobs:
 # Checkout repository
 #
 - template: /eng/pipelines/common/checkout-job.yml
+
+#
+# Build with Debug config and Release runtimeConfiguration
+#
+- template: /eng/pipelines/common/platform-matrix.yml
+  parameters:
+    jobTemplate: /eng/pipelines/common/global-build-job.yml
+    buildConfig: release
+    platforms:
+    - Linux_x64
+    - Windows_NT_x64
+    jobParameters:
+      testGroup: innerloop
+      nameSuffix: Runtime_Debug
+      buildArgs: -c debug -runtimeConfiguration release
+
+#
+# Build with Release config and Release runtimeConfiguration
+#
+- template: /eng/pipelines/common/platform-matrix.yml
+  parameters:
+    jobTemplate: /eng/pipelines/common/global-build-job.yml
+    buildConfig: debug
+    platforms:
+    - Linux_x64
+    - Windows_NT_x64
+    jobParameters:
+      testGroup: innerloop
+      nameSuffix: Runtime_Release
+      buildArgs: -c release -runtimeConfiguration release
