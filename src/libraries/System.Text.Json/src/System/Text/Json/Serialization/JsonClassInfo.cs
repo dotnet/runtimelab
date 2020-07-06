@@ -26,7 +26,7 @@ namespace System.Text.Json
 
         public JsonPropertyInfo? DataExtensionProperty { get; private set; }
 
-        // If enumerable, the JsonClassInfo for the element type.
+        // If an enumerable, the JsonClassInfo for the element type.
         private JsonClassInfo? _elementClassInfo;
 
         /// <summary>
