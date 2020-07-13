@@ -8,6 +8,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Diagnostics;
 
 namespace System.Text.Json.CodeGenerator
 {
@@ -16,9 +17,11 @@ namespace System.Text.Json.CodeGenerator
     [Generator]
     public class JsonSerializerSourceGenerator : ISourceGenerator
     {
+        public List<Type> foundTypes = new List<Type>();
+
         public void Execute(SourceGeneratorContext context)
         {
-            // Foreach type found, call code generator.
+            // Temporary boilerplate code.
             StringBuilder sourceBuilder = new StringBuilder(@"
 using System;
 namespace HelloWorldGenerated
@@ -33,7 +36,6 @@ namespace HelloWorldGenerated
             if (!(context.SyntaxReceiver is JsonSerializableSyntaxReceiver receiver))
                 return;
 
-            List<Type> foundTypes = new List<Type>();
             MetadataLoadContext mlc = new MetadataLoadContext(context.Compilation);
 
             SemanticModel semanticModel;
@@ -44,26 +46,27 @@ namespace HelloWorldGenerated
                 // Possibly could be optimized.
                 semanticModel = context.Compilation.GetSemanticModel(tds.SyntaxTree);
                 namedTypeSymbol = (INamedTypeSymbol)semanticModel.GetDeclaredSymbol(tds);
+                //Type internalFound = new TypeWrapper(namedTypeSymbol, mlc);
                 foundTypes.Add(new TypeWrapper(namedTypeSymbol, mlc));
             }
-            
+
             foreach (IdentifierNameSyntax ins in receiver.ExternalClassTypeNode)
             {
                 // Possibly could be optimized.
                 semanticModel = context.Compilation.GetSemanticModel(ins.SyntaxTree);
                 typeSymbol = context.Compilation.GetSemanticModel(ins.SyntaxTree).GetTypeInfo(ins).ConvertedType;
 
-                Type tempGenerateType = new TypeWrapper(typeSymbol, mlc);
+                //Type tempGenerateType = new TypeWrapper(typeSymbol, mlc);
 
-                sourceBuilder.Append($@"Console.WriteLine(@"" - PRINTING TYPESYMBOL EXTERNAL");
-                foreach (char c in tempGenerateType.FullName)
-                {
-                    if (c != '"' && c != '\'')
-                        sourceBuilder.Append($@"{c}");
-                }
+                //sourceBuilder.Append($@"Console.WriteLine(@"" - PRINTING TYPESYMBOL EXTERNAL");
+                //foreach (char c in tempGenerateType.FullName)
+                //{
+                //    if (c != '"' && c != '\'')
+                //        sourceBuilder.Append($@"{c}");
+                //}
 
-                sourceBuilder.AppendLine($@""");");
-                foundTypes.Add(tempGenerateType);
+                //sourceBuilder.AppendLine($@""");");
+                foundTypes.Add(new TypeWrapper(typeSymbol, mlc));
             }
 
 
@@ -80,21 +83,21 @@ namespace HelloWorldGenerated
             context.RegisterForSyntaxNotifications(() => new JsonSerializableSyntaxReceiver());
         }
 
-        // Temporary function for now that reads all types. Should search types with attribute JsonSerializable.
-        internal class JsonSerializableSyntaxReceiver : ISyntaxReceiver
+        public class JsonSerializableSyntaxReceiver : ISyntaxReceiver
         {
             public List<IdentifierNameSyntax> ExternalClassTypeNode = new List<IdentifierNameSyntax>();
             public List<TypeDeclarationSyntax> InternalClassTypeNode = new List<TypeDeclarationSyntax>();
 
             public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
             {
-                // Get all the type decl in all syntax tree.
+                // Temporary rudimentary classfinder.
                 if (syntaxNode is AttributeSyntax attribute && attribute.Name.ToString() == "JsonSerializable")
                 {
                     if (attribute.Parent.Parent is ClassDeclarationSyntax cds)
                     {
                         if (cds.ToString().Contains("typeof"))
                         {
+                            //ExternalProof.Add(((IdentifierNameSyntax)cds.DescendantNodes().Where(node => node is IdentifierNameSyntax).ToList()[1]).ToString());
                             IdentifierNameSyntax ins = (IdentifierNameSyntax)cds.DescendantNodes().Where(node => node is IdentifierNameSyntax).ToList()[1];
                             ExternalClassTypeNode.Add(ins);
                         }

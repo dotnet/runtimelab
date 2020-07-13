@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
@@ -19,6 +19,18 @@
 
   <ItemGroup>
     <Compile Include="JsonSerializerSourceGenerator.cs" />
+    <Compile Include="ReflectionUtils\AssemblyWrapper.cs" />
+    <Compile Include="ReflectionUtils\FieldInfoWrapper.cs" />
+    <Compile Include="ReflectionUtils\ConstructorInfoWrapper.cs" />
+    <Compile Include="ReflectionUtils\CustomAttributeDataWrapper.cs" />
+    <Compile Include="ReflectionUtils\MemberInfoWrapper.cs" />
+    <Compile Include="ReflectionUtils\MetadataLoadContext.cs" />
+    <Compile Include="ReflectionUtils\MethodInfoWrapper.cs" />
+    <Compile Include="ReflectionUtils\ParameterInfoWrapper.cs" />
+    <Compile Include="ReflectionUtils\PropertyInfoWrapper.cs" />
+    <Compile Include="ReflectionUtils\ReflectionExtensions.cs" />
+    <Compile Include="ReflectionUtils\RoslynExtensions.cs" />
+    <Compile Include="ReflectionUtils\TypeWrapper.cs" />
   </ItemGroup>
 
 </Project>

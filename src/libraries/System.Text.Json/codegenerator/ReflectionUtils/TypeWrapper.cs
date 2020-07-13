@@ -110,7 +110,16 @@ namespace System.Reflection
 
         public override FieldInfo[] GetFields(BindingFlags bindingAttr)
         {
-            throw new NotImplementedException();
+            var fields = new List<FieldInfo>();
+            foreach (var item in _typeSymbol.GetMembers())
+            {
+                // Associated Symbol checks the field is not a backingfield.
+                if (item is IFieldSymbol field && field.AssociatedSymbol == null)
+                {
+                    fields.Add(new FieldInfoWrapper(field, _metadataLoadContext));
+                }
+            }
+            return fields.ToArray();
         }
 
         public override Type GetInterface(string name, bool ignoreCase)
