@@ -1,6 +1,5 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
 
 #nullable enable
 using System;
@@ -103,7 +102,7 @@ namespace System.Xml.Schema
         internal const int TF_gYearMonth = 1 << HC_ST_gYearMonth;
         internal const int TF_string = 1 << HC_ST_string;
 
-        private XmlSchema? _rootSchema = null; //(XmlSchema) xsc[TargetNamespace];
+        private XmlSchema? _rootSchema; //(XmlSchema) xsc[TargetNamespace];
         private XmlSchemaSet? _schemaSet;
         private XmlReader? _xtr;
         private readonly NameTable _nametable;
@@ -1040,6 +1039,8 @@ namespace System.Xml.Schema
         /// <param name="ct">complex type with Sequence or Choice Particle</param>
         /// <param name="lastUsedSeqItem">ordinal number in the sequence to indicate current sequence position</param>
         /// <param name="bParticleChanged">This indicates to the caller if Sequence was changed to Choice</param>
+        /// <param name="parentSchema">The parent schema.</param>
+        /// <param name="setMaxoccurs">Whether set max occurs.</param>
         internal XmlSchemaElement FindMatchingElement(bool bCreatingNewType, XmlReader xtr, XmlSchemaComplexType ct, ref int lastUsedSeqItem, ref bool bParticleChanged, XmlSchema? parentSchema, bool setMaxoccurs)
         {
             if (xtr.NamespaceURI == XmlSchema.Namespace)

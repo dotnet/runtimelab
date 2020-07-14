@@ -1,8 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
 
-using System;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -17,7 +15,7 @@ namespace Microsoft.Extensions.Http.Logging
 {
     public class RedactedLogValueIntegrationTest
     {
-        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsThreadingSupported))]
+        [Fact]
         public async Task RedactHeaderValueWithHeaderList_ValueIsRedactedBeforeLogging()
         {
             // Arrange
@@ -95,7 +93,7 @@ Y-Non-Sensitive: innocuous value
 ", message.Message);
         }
 
-        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsThreadingSupported))]
+        [Fact]
         public async Task RedactHeaderValueWithPredicate_ValueIsRedactedBeforeLogging()
         {
             // Arrange

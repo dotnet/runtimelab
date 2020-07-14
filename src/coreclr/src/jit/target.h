@@ -1,15 +1,15 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
 
 /*****************************************************************************/
 #ifndef TARGET_H_
 #define TARGET_H_
 
-#if defined(TARGET_UNIX)
-#define FEATURE_VARARG 0
-#else
+// Native Varargs are not supported on Unix (all architectures) and Windows ARM
+#if defined(TARGET_WINDOWS) && !defined(TARGET_ARM)
 #define FEATURE_VARARG 1
+#else
+#define FEATURE_VARARG 0
 #endif
 
 /*****************************************************************************/
