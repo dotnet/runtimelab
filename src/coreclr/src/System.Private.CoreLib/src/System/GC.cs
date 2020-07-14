@@ -1,6 +1,5 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
 
 /*============================================================
 **
@@ -56,8 +55,13 @@ namespace System
         [MethodImpl(MethodImplOptions.InternalCall)]
         private static extern void GetMemoryInfo(GCMemoryInfoData data, int kind);
 
+        /// <summary>Gets garbage collection memory information.</summary>
+        /// <returns>An object that contains information about the garbage collector's memory usage.</returns>
         public static GCMemoryInfo GetGCMemoryInfo() => GetGCMemoryInfo(GCKind.Any);
 
+        /// <summary>Gets garbage collection memory information.</summary>
+        /// <param name="kind">The kind of collection for which to retrieve memory information.</param>
+        /// <returns>An object that contains information about the garbage collector's memory usage.</returns>
         public static GCMemoryInfo GetGCMemoryInfo(GCKind kind)
         {
             if ((kind < GCKind.Any) || (kind > GCKind.Background))

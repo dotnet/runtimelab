@@ -1,6 +1,5 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
 // ECallList.H
 //
 // This file contains definitions of FCall entrypoints
@@ -418,12 +417,6 @@ FCFuncEnd()
 FCFuncStart(gCompatibilitySwitchFuncs)
     FCFuncElement("GetValueInternalCall", CompatibilitySwitch::GetValue)
 FCFuncEnd()
-
-#ifdef FEATURE_APPX
-FCFuncStart(gApplicationModelFuncs)
-    QCFuncElement("IsAppXProcess", AppDomainNative::IsAppXProcess)
-FCFuncEnd()
-#endif
 
 FCFuncStart(gMdUtf8String)
     QCFuncElement("EqualsCaseInsensitive", MdUtf8String::EqualsCaseInsensitive)
@@ -959,7 +952,6 @@ FCFuncStart(gMngdRefCustomMarshalerFuncs)
 FCFuncEnd()
 
 FCFuncStart(gStubHelperFuncs)
-    FCFuncElement("IsQCall", StubHelpers::IsQCall)
     FCFuncElement("InitDeclaringType", StubHelpers::InitDeclaringType)
     FCIntrinsic("GetNDirectTarget", StubHelpers::GetNDirectTarget, CORINFO_INTRINSIC_StubHelpers_GetNDirectTarget)
     FCFuncElement("GetDelegateTarget", StubHelpers::GetDelegateTarget)
@@ -1132,9 +1124,6 @@ FCFuncEnd()
 // Note these have to remain sorted by name:namespace pair (Assert will wack you if you don't)
 // The sorting is case-sensitive
 
-#ifdef FEATURE_APPX
-FCClassElement("ApplicationModel", "System", gApplicationModelFuncs)
-#endif
 FCClassElement("ArgIterator", "System", gVarArgFuncs)
 FCClassElement("Array", "System", gArrayFuncs)
 FCClassElement("Assembly", "System.Reflection", gAssemblyFuncs)

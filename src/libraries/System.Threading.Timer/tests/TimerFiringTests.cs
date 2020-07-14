@@ -1,6 +1,5 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
 
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -88,7 +87,7 @@ namespace System.Threading.Tests
             }
         }
 
-        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsThreadingSupported))]
+        [Fact]
         public void Timer_FiresOnlyOnce_OnDueTime_With_InfinitePeriod()
         {
             int count = 0;
@@ -138,7 +137,7 @@ namespace System.Threading.Tests
             GC.KeepAlive(t);
         }
 
-        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsThreadingSupported))]
+        [Fact]
         public void Timer_CanBeDisposedMultipleTimes()
         {
             // There's nothing to validate besides that we don't throw an exception, so rely on xunit

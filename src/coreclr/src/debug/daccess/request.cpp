@@ -1,6 +1,5 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
 //*****************************************************************************
 // File: request.cpp
 //
@@ -4695,6 +4694,32 @@ HRESULT ClrDataAccess::GetFinalizationFillPointersSvr(CLRDATA_ADDRESS heapAddr, 
 #else
         hr = E_NOTIMPL;
 #endif
+
+    SOSDacLeave();
+    return hr;
+}
+
+HRESULT ClrDataAccess::GetAssemblyLoadContext(CLRDATA_ADDRESS methodTable, CLRDATA_ADDRESS* assemblyLoadContext)
+{
+    if (methodTable == 0 || assemblyLoadContext == NULL)
+        return E_INVALIDARG;
+
+    SOSDacEnter();
+    PTR_MethodTable pMT = PTR_MethodTable(CLRDATA_ADDRESS_TO_TADDR(methodTable));
+    PTR_Module pModule = pMT->GetModule();
+
+    PTR_PEFile pPEFile = pModule->GetFile();
+    PTR_AssemblyLoadContext pAssemblyLoadContext = pPEFile->GetAssemblyLoadContext();
+
+    INT_PTR managedAssemblyLoadContextHandle = pAssemblyLoadContext->GetManagedAssemblyLoadContext();
+
+    TADDR managedAssemblyLoadContextAddr = 0;
+    if (managedAssemblyLoadContextHandle != 0)
+    {
+        DacReadAll(managedAssemblyLoadContextHandle,&managedAssemblyLoadContextAddr,sizeof(TADDR),true);
+    }
+
+    *assemblyLoadContext = TO_CDADDR(managedAssemblyLoadContextAddr);
 
     SOSDacLeave();
     return hr;
