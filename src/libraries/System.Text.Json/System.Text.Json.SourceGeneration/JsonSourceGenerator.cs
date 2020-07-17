@@ -10,10 +10,12 @@ using System.Linq;
 using System.Reflection;
 using System.Diagnostics;
 
-namespace System.Text.Json.CodeGenerator
+namespace System.Text.Json.SourceGeneration
 {
-    // Base JsonSerializerSourceGenerator. This class will invoke CodeGenerator within Execute
-    // to generate wanted output code for JsonSerializers.
+    /// <summary>
+    /// Base JsonSerializerSourceGenerator. This class will invoke CodeGenerator within Execute
+    /// to generate wanted output code for JsonSerializers.
+    /// </summary>
     [Generator]
     public class JsonSerializerSourceGenerator : ISourceGenerator
     {

@@ -16,7 +16,7 @@ using System.IO;
 using NuGet.Frameworks;
 using Xunit.Sdk;
 
-namespace System.Text.Json.CodeGenerator.UnitTests
+namespace System.Text.Json.SourceGeneration.UnitTests
 {
     public class GeneratorTests
     {

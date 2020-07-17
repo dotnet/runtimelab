@@ -4,14 +4,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis" Version="$(MicrosoftCodeAnalysisVersion)" PrivateAssets="all" />
-
-    <ProjectReference Include="..\codegenerator\codegenerator.csproj" />
-    <ProjectReference Include="..\src\System.Text.Json.csproj" />
+    <ProjectReference Include="..\System.Text.Json.SourceGeneration\System.Text.Json.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="JsonSerializerSourceGeneratorTests.cs" />
+    <Compile Include="JsonSourceGeneratorTests.cs" />
   </ItemGroup>
 
   <Target Name="FixIncrementalCoreCompileWithAnalyzers" BeforeTargets="CoreCompile">
@@ -19,5 +16,4 @@
       <CustomAdditionalCompileInputs Include="@(Analyzer)" />
     </ItemGroup>
   </Target>
-
 </Project>
