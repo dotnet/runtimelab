@@ -45,20 +45,15 @@ namespace HelloWorldGenerated
             ITypeSymbol typeSymbol;
             foreach (TypeDeclarationSyntax tds in receiver.InternalClassTypeNode)
             {
-                // Possibly could be optimized.
                 semanticModel = context.Compilation.GetSemanticModel(tds.SyntaxTree);
                 namedTypeSymbol = (INamedTypeSymbol)semanticModel.GetDeclaredSymbol(tds);
-                //Type internalFound = new TypeWrapper(namedTypeSymbol, mlc);
                 foundTypes.Add(new TypeWrapper(namedTypeSymbol, mlc));
             }
 
             foreach (IdentifierNameSyntax ins in receiver.ExternalClassTypeNode)
             {
-                // Possibly could be optimized.
                 semanticModel = context.Compilation.GetSemanticModel(ins.SyntaxTree);
                 typeSymbol = context.Compilation.GetSemanticModel(ins.SyntaxTree).GetTypeInfo(ins).ConvertedType;
-
-                //Type tempGenerateType = new TypeWrapper(typeSymbol, mlc);
 
                 //sourceBuilder.Append($@"Console.WriteLine(@"" - PRINTING TYPESYMBOL EXTERNAL");
                 //foreach (char c in tempGenerateType.FullName)
@@ -92,35 +87,58 @@ namespace HelloWorldGenerated
 
             public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
             {
-                // Temporary rudimentary classfinder.
-                if (syntaxNode is AttributeSyntax attribute && attribute.Name.ToString() == "JsonSerializable")
+                // Look for classes or structs for JsonSerializable Attribute.
+                if (syntaxNode is ClassDeclarationSyntax || syntaxNode is StructDeclarationSyntax)
                 {
-                    if (attribute.Parent.Parent is ClassDeclarationSyntax cds)
+                    // Find JsonSerializable Attributes.
+                    IEnumerable<AttributeSyntax> serializableAttributes = syntaxNode.DescendantNodes().Where(node => (node is AttributeSyntax && node.ToString() == "JsonSerializable")).Cast<AttributeSyntax>();
+                    if (serializableAttributes.Count() > 0)
                     {
-                        if (cds.ToString().Contains("typeof"))
+                        foreach (AttributeSyntax attributeNode in serializableAttributes)
                         {
-                            //ExternalProof.Add(((IdentifierNameSyntax)cds.DescendantNodes().Where(node => node is IdentifierNameSyntax).ToList()[1]).ToString());
-                            IdentifierNameSyntax ins = (IdentifierNameSyntax)cds.DescendantNodes().Where(node => node is IdentifierNameSyntax).ToList()[1];
-                            ExternalClassTypeNode.Add(ins);
-                        }
-                        else
-                        {
-                            InternalClassTypeNode.Add(cds);
-                        }
-                    }
-                    if (attribute.Parent.Parent is StructDeclarationSyntax sds)
-                    {
-                        if (sds.ToString().Contains("typeof"))
-                        {
-                            IdentifierNameSyntax ins = (IdentifierNameSyntax)sds.DescendantNodes().Where(node => node is IdentifierNameSyntax).ToList()[1];
-                            ExternalClassTypeNode.Add(ins);
-                        }
-                        else
-                        {
-                            InternalClassTypeNode.Add(sds);
+                            // Check if the attribute is being passed a type.
+                            if (attributeNode.DescendantNodes().Where(node => node is TypeOfExpressionSyntax).Count() > 0)
+                            {
+                                // Get JsonSerializable attribute arguments.
+                                AttributeArgumentSyntax attributeArgumentNode = (AttributeArgumentSyntax)attributeNode.DescendantNodes().Where(node => node is AttributeArgumentSyntax).Single();
+                                // Get external class token from arguments.
+                                IdentifierNameSyntax externalTypeNode = (IdentifierNameSyntax)attributeArgumentNode.DescendantNodes().Where(node => node is IdentifierNameSyntax).Single();
+                                ExternalClassTypeNode.Add(externalTypeNode);
+                            }
+                            else
+                            {
+                                InternalClassTypeNode.Add((TypeDeclarationSyntax)syntaxNode);
+                            }
                         }
                     }
                 }
+                //if (syntaxNode is AttributeSyntax attribute && attribute.Name.ToString() == "JsonSerializable")
+                //{
+                //    if (attribute.Parent.Parent is ClassDeclarationSyntax cds)
+                //    {
+                //        if (cds.ToString().Contains("typeof"))
+                //        {
+                //            IdentifierNameSyntax ins = (IdentifierNameSyntax)cds.DescendantNodes().Where(node => node is IdentifierNameSyntax).ToList()[1];
+                //            ExternalClassTypeNode.Add(ins);
+                //        }
+                //        else
+                //        {
+                //            InternalClassTypeNode.Add(cds);
+                //        }
+                //    }
+                //    if (attribute.Parent.Parent is StructDeclarationSyntax sds)
+                //    {
+                //        if (sds.ToString().Contains("typeof"))
+                //        {
+                //            IdentifierNameSyntax ins = (IdentifierNameSyntax)sds.DescendantNodes().Where(node => node is IdentifierNameSyntax).ToList()[1];
+                //            ExternalClassTypeNode.Add(ins);
+                //        }
+                //        else
+                //        {
+                //            InternalClassTypeNode.Add(sds);
+                //        }
+                //    }
+                //}
             }
         }
     }

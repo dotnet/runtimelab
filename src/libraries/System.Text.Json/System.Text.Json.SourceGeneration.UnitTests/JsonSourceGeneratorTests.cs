@@ -13,8 +13,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Linq;
 using System.IO;
-using NuGet.Frameworks;
-using Xunit.Sdk;
 
 namespace System.Text.Json.SourceGeneration.UnitTests
 {
