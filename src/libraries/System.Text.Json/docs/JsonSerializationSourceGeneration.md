@@ -197,7 +197,7 @@ public class JsonSerializerContext : IDisposable
 
     // Generated JsonClassInfos.
     public JsonClassInfo<ExampleLogin> ExampleLoginClassInfo { get; }
-    public JsonClassInfo<SerializerForExternalClassInfo> SerializerForExternalClassInfo { get; }
+    public JsonClassInfo<ExampleExternal> ExampleExternalClassInfo { get; }
 }
 ```
 
