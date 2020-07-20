@@ -81,6 +81,8 @@ jobs:
       testGroup: innerloop
       buildArgs: -s clr+libs+libs.tests+installer -c $(_BuildConfig) /p:ArchiveTests=true
       extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+      extraStepsParameters:
+        uploadTests: true
 
 #
 # Build with Release allConfigurations to produce packages
@@ -94,7 +96,7 @@ jobs:
     jobParameters:
       testGroup: innerloop
       nameSuffix: All_Configurations
-      buildArgs: -s clr.corelib+libs -c $(_BuildConfig) -allConfigurations
+      buildArgs: -s libs -c $(_BuildConfig) -allConfigurations
 
 #
 # CoreCLR Test builds using live libraries release build

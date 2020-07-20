@@ -96,12 +96,6 @@ jobs:
           - template: /eng/pipelines/libraries/prepare-publish-for-tests.yml
             parameters:
               isOfficialBuild: ${{ parameters.isOfficialBuild }}
-          
-          - task: CopyFiles@2
-            displayName: Prepare docs folder to publish
-            inputs:
-              sourceFolder: $(Build.SourcesDirectory)/artifacts/bin/docs
-              targetFolder: $(Build.ArtifactStagingDirectory)/artifacts/bin/docs
 
           - template: /eng/pipelines/common/upload-artifact-step.yml
             parameters:
