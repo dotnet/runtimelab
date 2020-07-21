@@ -2,7 +2,6 @@
 # executing libraries tests as well as shared framework assets
 parameters:
   isOfficialBuild: ''
-  skipDocsPublish: false
 
 steps:
   - ${{ if ne(parameters.isOfficialBuild, true) }}:
@@ -30,12 +29,11 @@ steps:
       sourceFolder: $(Build.SourcesDirectory)/artifacts/bin/ref/microsoft.netcore.app
       targetFolder: $(Build.ArtifactStagingDirectory)/artifacts/bin/ref/microsoft.netcore.app
 
-  - ${{ if ne(parameters.skipDocsPublish, true) }}:
-    - task: CopyFiles@2
-      displayName: Prepare docs folder to publish
-      inputs:
-        sourceFolder: $(Build.SourcesDirectory)/artifacts/bin/docs
-        targetFolder: $(Build.ArtifactStagingDirectory)/artifacts/bin/docs
+  - task: CopyFiles@2
+    displayName: Prepare docs folder to publish
+    inputs:
+      sourceFolder: $(Build.SourcesDirectory)/artifacts/bin/docs
+      targetFolder: $(Build.ArtifactStagingDirectory)/artifacts/bin/docs
 
   - task: CopyFiles@2
     displayName: Prepare shared framework runtime folder to publish
