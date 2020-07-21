@@ -61,7 +61,7 @@ namespace HelloWorldGenerated
     {{
         public {entry.Key}ClassInfo() {{ }}
 
-        public string testMethod()
+        public string TestMethod()
         {{
             return ""{entry.Key}"";
         }}
@@ -101,10 +101,13 @@ namespace HelloWorldGenerated
                             if (attributeNode.DescendantNodes().Where(node => node is TypeOfExpressionSyntax).Any())
                             {
                                 // Get JsonSerializable attribute arguments.
-                                AttributeArgumentSyntax attributeArgumentNode = (AttributeArgumentSyntax)attributeNode.DescendantNodes().Where(node => node is AttributeArgumentSyntax).Single();
+                                AttributeArgumentSyntax attributeArgumentNode = (AttributeArgumentSyntax)attributeNode.DescendantNodes().Where(node => node is AttributeArgumentSyntax).SingleOrDefault();
                                 // Get external class token from arguments.
-                                IdentifierNameSyntax externalTypeNode = (IdentifierNameSyntax)attributeArgumentNode.DescendantNodes().Where(node => node is IdentifierNameSyntax).Single();
-                                ExternalClassTypeDict[((TypeDeclarationSyntax)syntaxNode).Identifier.Text] = externalTypeNode;
+                                IdentifierNameSyntax externalTypeNode = (IdentifierNameSyntax)attributeArgumentNode?.DescendantNodes().Where(node => node is IdentifierNameSyntax).SingleOrDefault();
+                                if (externalTypeNode != null)
+                                {
+                                    ExternalClassTypeDict[((TypeDeclarationSyntax)syntaxNode).Identifier.Text] = externalTypeNode;
+                                }
                             }
                             else
                             {

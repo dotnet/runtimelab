@@ -26,8 +26,8 @@ namespace System.Text.Json.SourceGeneration.Tests
             var internalTypeTest = new HelloWorldGenerated.SampleInternalTestClassInfo();
             var externalTypeTest = new HelloWorldGenerated.SampleExternalTestClassInfo();
 
-            Assert.Equal("SampleInternalTest", internalTypeTest.testMethod());
-            Assert.Equal("SampleExternalTest", externalTypeTest.testMethod());
+            Assert.Equal("SampleInternalTest", internalTypeTest.TestMethod());
+            Assert.Equal("SampleExternalTest", externalTypeTest.TestMethod());
         }
     }
 }

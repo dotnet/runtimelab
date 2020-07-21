@@ -4,9 +4,12 @@
 
 using System.Collections.Immutable;
 using System.Text.Json.Serialization;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Xunit;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Linq;
 using System.IO;
@@ -100,6 +103,121 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             string[] expectedMethodNames = { "get_PublicPropertyInt", "set_PublicPropertyInt", "get_PublicPropertyString", "set_PublicPropertyString", "MyMethod", "MySecondMethod" };
             string[] receivedMethodNames = generator.foundTypes["MyType"].GetMethods().Select(method => method.Name).ToArray();
             Assert.Equal(expectedMethodNames, receivedMethodNames);
+        }
+
+        [Fact]
+        public void TypeDiscoveryPrimitiveTemporaryPOCO()
+        {
+            SyntaxTree tree = CSharpSyntaxTree.ParseText(@"
+            using System;
+            using System.Text.Json.Serialization;
+            using System.Text.Json;
+            using System.Collections.Generic;
+
+              namespace HelloWorld
+              {
+                [JsonSerializable]
+                public class MyType {
+                    public int PublicPropertyInt { get; set; }
+                    public string PublicPropertyString { get; set; }
+                    private int PrivatePropertyInt { get; set; }
+                    private string PrivatePropertyString { get; set; }
+
+                    public double PublicDouble;
+                    public char PublicChar;
+                    private double PrivateDouble;
+                    private char PrivateChar;
+
+                    public void MyMethod() { }
+                    public void MySecondMethod() { }
+                }
+
+                [JsonSerializable(typeof(JsonConverterAttribute))]
+                public class NotMyType { }
+
+              }");
+
+            // Bypass System.Runtime error.
+            Assembly systemRuntimeAssembly = Assembly.Load("System.Runtime, Version=5.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a");
+            string systemRuntimeAssemblyPath = systemRuntimeAssembly.Location;
+
+            CSharpCompilationOptions options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
+            MetadataReference[] references = new MetadataReference[] {
+                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(JsonSerializableAttribute).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(JsonSerializerOptions).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(Type).Assembly.Location),
+                MetadataReference.CreateFromFile(systemRuntimeAssemblyPath),
+            };
+
+            Compilation compilation = CSharpCompilation.Create(
+                "TestAssembly",
+                syntaxTrees: new[] { tree },
+                references: references,
+                options: options
+            );
+
+            //// Emit the image of the referenced assembly.
+            byte[] image = null;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                var emitResult = compilation.Emit(ms);
+                if (!emitResult.Success)
+                {
+                    throw new InvalidOperationException();
+                }
+                image = ms.ToArray();
+            }
+
+            JsonSerializerSourceGenerator generator = new JsonSerializerSourceGenerator();
+
+            GeneratorDriver driver = new CSharpGeneratorDriver(
+                new CSharpParseOptions(kind: SourceCodeKind.Regular, documentationMode: DocumentationMode.Parse),
+                ImmutableArray.Create<ISourceGenerator>(generator),
+                ImmutableArray<AdditionalText>.Empty
+                );
+
+            driver.RunFullGeneration(compilation, out _, out _);
+
+            // Check base functionality of found types.
+            Assert.Equal(2, generator.foundTypes.Count);
+
+            // Check for MyType.
+            Assert.Equal("HelloWorld.MyType", generator.foundTypes["MyType"].FullName);
+
+            // Check for received properties in created type.
+            string[] expectedPropertyNamesMyType = { "PublicPropertyInt", "PublicPropertyString", "PrivatePropertyInt", "PrivatePropertyString" };
+            string[] receivedPropertyNamesMyType = generator.foundTypes["MyType"].GetProperties().Select(property => property.Name).ToArray();
+            Assert.Equal(expectedPropertyNamesMyType, receivedPropertyNamesMyType);
+
+            // Check for fields in created type.
+            string[] expectedFieldNamesMyType = { "PublicDouble", "PublicChar", "PrivateDouble", "PrivateChar" };
+            string[] receivedFieldNamesMyType = generator.foundTypes["MyType"].GetFields().Select(field => field.Name).ToArray();
+            Assert.Equal(expectedFieldNamesMyType, receivedFieldNamesMyType);
+
+            // Check for methods in created type.
+            string[] expectedMethodNamesMyType = { "get_PublicPropertyInt", "set_PublicPropertyInt", "get_PublicPropertyString", "set_PublicPropertyString", "MyMethod", "MySecondMethod" };
+            string[] receivedMethodNamesMyType = generator.foundTypes["MyType"].GetMethods().Select(method => method.Name).ToArray();
+            Assert.Equal(expectedMethodNamesMyType, receivedMethodNamesMyType);
+
+            // Check for NotMyType.
+            Assert.Equal("System.Text.Json.Serialization.JsonConverterAttribute", generator.foundTypes["NotMyType"].FullName);
+
+            // Check for received properties in created type.
+            string[] expectedPropertyNamesNotMyType = { "ConverterType" };
+            string[] receivedPropertyNamesNotMyType = generator.foundTypes["NotMyType"].GetProperties().Select(property => property.Name).ToArray();
+            Assert.Equal(expectedPropertyNamesNotMyType, receivedPropertyNamesNotMyType);
+
+            // Check for fields in created type.
+            string[] expectedFieldNamesNotMyType = { };
+            string[] receivedFieldNamesNotMyType = generator.foundTypes["NotMyType"].GetFields().Select(field => field.Name).ToArray();
+            Assert.Equal(expectedFieldNamesNotMyType, receivedFieldNamesNotMyType);
+
+            // Check for methods in created type.
+            string[] expectedMethodNamesNotMyType = { "get_ConverterType", "CreateConverter" };
+            string[] receivedMethodNamesNotMyType = generator.foundTypes["NotMyType"].GetMethods().Select(method => method.Name).ToArray();
+            Assert.Equal(expectedMethodNamesNotMyType, receivedMethodNamesNotMyType);
         }
     }
 }
