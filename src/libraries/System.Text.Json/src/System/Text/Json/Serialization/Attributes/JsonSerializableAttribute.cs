@@ -5,10 +5,12 @@
 namespace System.Text.Json.Serialization
 {
     /// <summary>
-    /// When placed on a type, will source generate de/serialization for the specified type and it's descendants.
+    /// When placed on a type and the System.Text.Json.SourceGeneration generator is enabled, the generator will
+    /// attempt to generate source code to help optimize the start-up and throughput performance when serializing and
+    /// deserializing instances of the specified type and types in its object graph.
     /// </summary>
     /// <remarks>
-    /// Must take into account that type discovery using this attribute is at compile time using Source Generators.
+    /// Must take into account that type discovery using this attribute is at compile time.
     /// </remarks>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false)]
     public sealed class JsonSerializableAttribute : JsonAttribute

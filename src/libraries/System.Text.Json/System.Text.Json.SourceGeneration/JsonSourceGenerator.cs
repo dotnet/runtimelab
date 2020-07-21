@@ -2,12 +2,12 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Text;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 
 namespace System.Text.Json.SourceGeneration
 {
@@ -25,27 +25,31 @@ namespace System.Text.Json.SourceGeneration
             if (!(context.SyntaxReceiver is JsonSerializableSyntaxReceiver receiver))
                 return;
 
-            MetadataLoadContext mlc = new MetadataLoadContext(context.Compilation);
+            MetadataLoadContext metadataLoadContext = new MetadataLoadContext(context.Compilation);
 
-            SemanticModel semanticModel;
             INamedTypeSymbol namedTypeSymbol;
             ITypeSymbol typeSymbol;
+            IdentifierNameSyntax identifierNameNode;
+            SemanticModel semanticModel;
+            Type convertedType;
+            TypeDeclarationSyntax typeDeclarationNode;
 
             // Map type name to type objects.
             foreach (KeyValuePair<string, TypeDeclarationSyntax> entry in receiver.InternalClassTypeDict)
             {
-                TypeDeclarationSyntax tds = entry.Value;
-                semanticModel = context.Compilation.GetSemanticModel(tds.SyntaxTree);
-                namedTypeSymbol = (INamedTypeSymbol)semanticModel.GetDeclaredSymbol(tds);
-                Type convertedType = new TypeWrapper(namedTypeSymbol, mlc);
+                typeDeclarationNode = entry.Value;
+                semanticModel = context.Compilation.GetSemanticModel(typeDeclarationNode.SyntaxTree);
+                namedTypeSymbol = (INamedTypeSymbol)semanticModel.GetDeclaredSymbol(typeDeclarationNode);
+                convertedType = new TypeWrapper(namedTypeSymbol, metadataLoadContext);
                 foundTypes[entry.Key] = convertedType;
             }
+
             foreach (KeyValuePair<string, IdentifierNameSyntax> entry in receiver.ExternalClassTypeDict)
             {
-                IdentifierNameSyntax ins = entry.Value;
-                semanticModel = context.Compilation.GetSemanticModel(ins.SyntaxTree);
-                typeSymbol = context.Compilation.GetSemanticModel(ins.SyntaxTree).GetTypeInfo(ins).ConvertedType;
-                Type convertedType = new TypeWrapper(typeSymbol, mlc);
+                identifierNameNode = entry.Value;
+                semanticModel = context.Compilation.GetSemanticModel(identifierNameNode.SyntaxTree);
+                typeSymbol = context.Compilation.GetSemanticModel(identifierNameNode.SyntaxTree).GetTypeInfo(identifierNameNode).ConvertedType;
+                convertedType = new TypeWrapper(typeSymbol, metadataLoadContext);
                 foundTypes[entry.Key] = convertedType;
             }
 
@@ -87,13 +91,14 @@ namespace HelloWorldGenerated
                 if (syntaxNode is ClassDeclarationSyntax || syntaxNode is StructDeclarationSyntax)
                 {
                     // Find JsonSerializable Attributes.
-                    IEnumerable <AttributeSyntax> serializableAttributes = Enumerable.Empty<AttributeSyntax>();
+                    IEnumerable<AttributeSyntax>? serializableAttributes = null;
                     AttributeListSyntax attributeList = ((TypeDeclarationSyntax)syntaxNode).AttributeLists.SingleOrDefault();
                     if (attributeList != null)
                     {
                         serializableAttributes = attributeList.Attributes.Where(node => (node is AttributeSyntax attr && attr.Name.ToString() == "JsonSerializable")).Cast<AttributeSyntax>();
                     }
-                    if (serializableAttributes.Any())
+
+                    if (serializableAttributes?.Any() ?? false)
                     {
                         foreach (AttributeSyntax attributeNode in serializableAttributes)
                         {
