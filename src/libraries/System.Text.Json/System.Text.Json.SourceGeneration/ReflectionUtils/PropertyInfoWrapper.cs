@@ -56,7 +56,7 @@ namespace System.Reflection
         public override ParameterInfo[] GetIndexParameters()
         {
             var parameters = new List<ParameterInfo>();
-            foreach (var p in _property.Parameters)
+            foreach (IParameterSymbol p in _property.Parameters)
             {
                 parameters.Add(new ParameterInfoWrapper(p, _metadataLoadContext));
             }

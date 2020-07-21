@@ -38,7 +38,7 @@ namespace System.Reflection
         public override IList<CustomAttributeData> GetCustomAttributesData()
         {
             var attributes = new List<CustomAttributeData>();
-            foreach (var a in _method.GetAttributes())
+            foreach (AttributeData a in _method.GetAttributes())
             {
                 attributes.Add(new CustomAttributeDataWrapper(a, _metadataLoadContext));
             }
@@ -63,7 +63,7 @@ namespace System.Reflection
         public override Type[] GetGenericArguments()
         {
             var typeArguments = new List<Type>();
-            foreach (var t in _method.TypeArguments)
+            foreach (ITypeSymbol t in _method.TypeArguments)
             {
                 typeArguments.Add(t.AsType(_metadataLoadContext));
             }
@@ -78,7 +78,7 @@ namespace System.Reflection
         public override ParameterInfo[] GetParameters()
         {
             var parameters = new List<ParameterInfo>();
-            foreach (var p in _method.Parameters)
+            foreach (IParameterSymbol p in _method.Parameters)
             {
                 parameters.Add(new ParameterInfoWrapper(p, _metadataLoadContext));
             }

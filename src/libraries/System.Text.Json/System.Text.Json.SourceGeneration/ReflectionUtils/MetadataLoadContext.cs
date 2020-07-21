@@ -37,7 +37,7 @@ namespace System.Reflection
 
         public Type Resolve(Type type)
         {
-            var asmName = type.Assembly.GetName().Name;
+            string asmName = type.Assembly.GetName().Name;
 
             IAssemblySymbol assemblySymbol;
 

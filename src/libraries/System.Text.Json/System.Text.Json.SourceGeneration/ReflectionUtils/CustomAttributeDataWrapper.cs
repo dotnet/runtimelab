@@ -13,14 +13,14 @@ namespace System.Reflection
         public CustomAttributeDataWrapper(AttributeData a, MetadataLoadContext metadataLoadContext)
         {
             var namedArguments = new List<CustomAttributeNamedArgument>();
-            foreach (var na in a.NamedArguments)
+            foreach (KeyValuePair<string, TypedConstant> na in a.NamedArguments)
             {
                 var member = a.AttributeClass!.GetMembers(na.Key).First();
                 namedArguments.Add(new CustomAttributeNamedArgument(new MemberInfoWrapper(member, metadataLoadContext), na.Value.Value));
             }
 
             var constructorArguments = new List<CustomAttributeTypedArgument>();
-            foreach (var ca in a.ConstructorArguments)
+            foreach (TypedConstant ca in a.ConstructorArguments)
             {
                 constructorArguments.Add(new CustomAttributeTypedArgument(ca.Type.AsType(metadataLoadContext), ca.Value));
             }

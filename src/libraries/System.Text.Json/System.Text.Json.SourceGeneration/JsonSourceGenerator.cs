@@ -98,7 +98,7 @@ namespace HelloWorldGenerated
                         serializableAttributes = attributeList.Attributes.Where(node => (node is AttributeSyntax attr && attr.Name.ToString() == "JsonSerializable")).Cast<AttributeSyntax>();
                     }
 
-                    if (serializableAttributes?.Any() ?? false)
+                    if (serializableAttributes?.Any() == true)
                     {
                         foreach (AttributeSyntax attributeNode in serializableAttributes)
                         {

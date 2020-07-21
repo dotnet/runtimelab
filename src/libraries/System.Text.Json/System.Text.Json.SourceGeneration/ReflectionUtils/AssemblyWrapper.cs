@@ -31,14 +31,14 @@ namespace System.Reflection
             stack.Push(Symbol.GlobalNamespace);
             while (stack.Count > 0)
             {
-                var current = stack.Pop();
+                INamespaceSymbol current = stack.Pop();
 
-                foreach (var type in current.GetTypeMembers())
+                foreach (INamedTypeSymbol type in current.GetTypeMembers())
                 {
                     types.Add(type.AsType(_metadataLoadContext));
                 }
 
-                foreach (var ns in current.GetNamespaceMembers())
+                foreach (INamespaceSymbol ns in current.GetNamespaceMembers())
                 {
                     stack.Push(ns);
                 }

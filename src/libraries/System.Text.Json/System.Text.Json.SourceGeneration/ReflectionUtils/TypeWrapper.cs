@@ -50,7 +50,7 @@ namespace System.Reflection
         public override Type[] GetGenericArguments()
         {
             var args = new List<Type>();
-            foreach (var item in NamedTypeSymbol.TypeArguments)
+            foreach (ITypeSymbol item in NamedTypeSymbol.TypeArguments)
             {
                 args.Add(item.AsType(_metadataLoadContext));
             }
@@ -65,7 +65,7 @@ namespace System.Reflection
         public override IList<CustomAttributeData> GetCustomAttributesData()
         {
             var attributes = new List<CustomAttributeData>();
-            foreach (var a in _typeSymbol.GetAttributes())
+            foreach (AttributeData a in _typeSymbol.GetAttributes())
             {
                 attributes.Add(new CustomAttributeDataWrapper(a, _metadataLoadContext));
             }
@@ -75,7 +75,7 @@ namespace System.Reflection
         public override ConstructorInfo[] GetConstructors(BindingFlags bindingAttr)
         {
             var ctors = new List<ConstructorInfo>();
-            foreach (var c in NamedTypeSymbol.Constructors)
+            foreach (IMethodSymbol c in NamedTypeSymbol.Constructors)
             {
                 ctors.Add(new ConstructorInfoWrapper(c, _metadataLoadContext));
             }
@@ -115,7 +115,7 @@ namespace System.Reflection
         public override FieldInfo[] GetFields(BindingFlags bindingAttr)
         {
             var fields = new List<FieldInfo>();
-            foreach (var item in _typeSymbol.GetMembers())
+            foreach (ISymbol item in _typeSymbol.GetMembers())
             {
                 // Associated Symbol checks the field is not a backingfield.
                 if (item is IFieldSymbol field && field.AssociatedSymbol == null)
@@ -134,7 +134,7 @@ namespace System.Reflection
         public override Type[] GetInterfaces()
         {
             var interfaces = new List<Type>();
-            foreach (var i in _typeSymbol.Interfaces)
+            foreach (INamedTypeSymbol i in _typeSymbol.Interfaces)
             {
                 interfaces.Add(i.AsType(_metadataLoadContext));
             }
@@ -149,7 +149,7 @@ namespace System.Reflection
         public override MethodInfo[] GetMethods(BindingFlags bindingAttr)
         {
             var methods = new List<MethodInfo>();
-            foreach (var m in _typeSymbol.GetMembers())
+            foreach (ISymbol m in _typeSymbol.GetMembers())
             {
                 // TODO: Efficiency
                 if (m is IMethodSymbol method && !NamedTypeSymbol.Constructors.Contains(method))
@@ -172,7 +172,7 @@ namespace System.Reflection
         public override Type[] GetNestedTypes(BindingFlags bindingAttr)
         {
             var nestedTypes = new List<Type>();
-            foreach (var type in _typeSymbol.GetTypeMembers())
+            foreach (INamedTypeSymbol type in _typeSymbol.GetTypeMembers())
             {
                 nestedTypes.Add(type.AsType(_metadataLoadContext));
             }
@@ -182,7 +182,7 @@ namespace System.Reflection
         public override PropertyInfo[] GetProperties(BindingFlags bindingAttr)
         {
             var properties = new List<PropertyInfo>();
-            foreach (var item in _typeSymbol.GetMembers())
+            foreach (ISymbol item in _typeSymbol.GetMembers())
             {
                 if (item is IPropertySymbol property)
                 {

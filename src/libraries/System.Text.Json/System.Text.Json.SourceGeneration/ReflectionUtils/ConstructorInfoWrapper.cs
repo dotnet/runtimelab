@@ -34,7 +34,7 @@ namespace System.Reflection
         public override Type[] GetGenericArguments()
         {
             var typeArguments = new List<Type>();
-            foreach (var t in _ctor.TypeArguments)
+            foreach (ITypeSymbol t in _ctor.TypeArguments)
             {
                 typeArguments.Add(t.AsType(_metadataLoadContext));
             }
@@ -44,7 +44,7 @@ namespace System.Reflection
         public override IList<CustomAttributeData> GetCustomAttributesData()
         {
             var attributes = new List<CustomAttributeData>();
-            foreach (var a in _ctor.GetAttributes())
+            foreach (AttributeData a in _ctor.GetAttributes())
             {
                 attributes.Add(new CustomAttributeDataWrapper(a, _metadataLoadContext));
             }
@@ -69,7 +69,7 @@ namespace System.Reflection
         public override ParameterInfo[] GetParameters()
         {
             var parameters = new List<ParameterInfo>();
-            foreach (var p in _ctor.Parameters)
+            foreach (IParameterSymbol p in _ctor.Parameters)
             {
                 parameters.Add(new ParameterInfoWrapper(p, _metadataLoadContext));
             }

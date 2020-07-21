@@ -24,7 +24,7 @@ namespace System.Reflection
         public override IList<CustomAttributeData> GetCustomAttributesData()
         {
             var attributes = new List<CustomAttributeData>();
-            foreach (var a in _parameter.GetAttributes())
+            foreach (AttributeData a in _parameter.GetAttributes())
             {
                 attributes.Add(new CustomAttributeDataWrapper(a, _metadataLoadContext));
             }
