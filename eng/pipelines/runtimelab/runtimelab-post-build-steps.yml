@@ -3,7 +3,7 @@ parameters:
   archType: ''
   osGroup: ''
   osSubgroup: ''
-  uploadTests: ''
+  uploadTests: false
 
 steps:
   # Build coreclr native test output
@@ -12,6 +12,8 @@ steps:
 
   # Copy all build output into artifacts staging directory
   - template: /eng/pipelines/libraries/prepare-publish-for-tests.yml
+    parameters:
+      skipDocsPublish: true
 
   # Zip CoreCLR Build Output
   - template: /eng/pipelines/common/upload-artifact-step.yml
@@ -25,7 +27,7 @@ steps:
       displayName: 'CoreCLR product build'
 
   # Zip Test Build
-  - ${{ if eq(parameters.uploadTests, 'true') }}:
+  - ${{ if eq(parameters.uploadTests, true) }}:
     - template: /eng/pipelines/common/upload-artifact-step.yml
       parameters:
         rootFolder: $(Build.SourcesDirectory)/artifacts/helix
