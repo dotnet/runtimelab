@@ -154,11 +154,7 @@ namespace System.Reflection
                 // TODO: Efficiency
                 if (m is IMethodSymbol method && !NamedTypeSymbol.Constructors.Contains(method))
                 {
-                    if ((bindingAttr & BindingFlags.Public) == BindingFlags.Public &&
-                        (m.DeclaredAccessibility & Accessibility.Public) == Accessibility.Public)
-                    {
-                        methods.Add(method.AsMethodInfo(_metadataLoadContext));
-                    }
+                    methods.Add(method.AsMethodInfo(_metadataLoadContext));
                 }
             }
             return methods.ToArray();

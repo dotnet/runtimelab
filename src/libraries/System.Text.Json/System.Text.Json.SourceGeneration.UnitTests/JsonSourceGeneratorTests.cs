@@ -62,7 +62,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             Assert.Equal(expectedFieldNames, receivedFieldNames);
 
             // Check for methods in created type.
-            string[] expectedMethodNames = { "get_PublicPropertyInt", "set_PublicPropertyInt", "get_PublicPropertyString", "set_PublicPropertyString", "MyMethod", "MySecondMethod" };
+            string[] expectedMethodNames = { "get_PublicPropertyInt", "set_PublicPropertyInt", "get_PublicPropertyString", "set_PublicPropertyString", "get_PrivatePropertyInt", "set_PrivatePropertyInt", "get_PrivatePropertyString", "set_PrivatePropertyString", "MyMethod", "MySecondMethod" };
             string[] receivedMethodNames = generator.foundTypes["MyType"].GetMethods().Select(method => method.Name).ToArray();
             Assert.Equal(expectedMethodNames, receivedMethodNames);
         }
@@ -120,7 +120,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             Assert.Equal(expectedFieldNamesMyType, receivedFieldNamesMyType);
 
             // Check for methods in created type.
-            string[] expectedMethodNamesMyType = { "get_PublicPropertyInt", "set_PublicPropertyInt", "get_PublicPropertyString", "set_PublicPropertyString", "MyMethod", "MySecondMethod" };
+            string[] expectedMethodNamesMyType = { "get_PublicPropertyInt", "set_PublicPropertyInt", "get_PublicPropertyString", "set_PublicPropertyString", "get_PrivatePropertyInt", "set_PrivatePropertyInt", "get_PrivatePropertyString", "set_PrivatePropertyString", "MyMethod", "MySecondMethod" };
             string[] receivedMethodNamesMyType = generator.foundTypes["MyType"].GetMethods().Select(method => method.Name).ToArray();
             Assert.Equal(expectedMethodNamesMyType, receivedMethodNamesMyType);
 

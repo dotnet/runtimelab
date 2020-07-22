@@ -54,10 +54,52 @@ namespace System.Text.Json.SourceGeneration
             }
 
             // Create sources for all found types.
+            StringBuilder member = new StringBuilder();
+            string foundMethods, foundFields, foundProperties, foundCtorParams, foundCtors;
+
             foreach (KeyValuePair<string, Type> entry in foundTypes)
             {
+                foreach(MethodInfo method in entry.Value.GetMethods())
+                {
+                    member.Append(@$"""{method.Name}"", "); 
+                }
+                foundMethods = member.ToString();
+                member.Clear();
+
+                foreach(FieldInfo field in entry.Value.GetFields())
+                {
+                    member.Append(@$"{{""{field.Name}"", ""{field.FieldType.Name}""}}, "); 
+                }
+                foundFields = member.ToString();
+                member.Clear();
+
+                foreach(PropertyInfo property in entry.Value.GetProperties())
+                {
+                    member.Append(@$"{{""{property.Name}"", ""{property.PropertyType.Name}""}}, "); 
+                }
+                foundProperties = member.ToString();
+                member.Clear();
+
+                foreach(ConstructorInfo ctor in entry.Value.GetConstructors())
+                {
+                    foreach(ParameterInfo param in ctor.GetParameters())
+                    {
+                        member.Append(@$"{{""{param.Name}"", ""{param.ParameterType.Name}""}}, "); 
+                    }
+                }
+                foundCtorParams = member.ToString();
+                member.Clear();
+
+                foreach(ConstructorInfo ctor in entry.Value.GetConstructors())
+                {
+                    member.Append($@"""{ctor.Name}"", ");
+                }
+                foundCtors = member.ToString();
+                member.Clear();
+
                 context.AddSource($"{entry.Key}ClassInfo", SourceText.From($@"
 using System;
+using System.Collections.Generic;
 
 namespace HelloWorldGenerated
 {{
@@ -65,10 +107,36 @@ namespace HelloWorldGenerated
     {{
         public {entry.Key}ClassInfo() {{ }}
 
-        public string TestMethod()
+        private List<string> ClassCtors = new List<string>()
+        {{ {foundCtors} }};
+        private Dictionary<string, string> ClassCtorParams = new Dictionary<string, string>()
+        {{ {foundCtorParams} }};
+        private List<string> ClassMethods = new List<string>()
+        {{ {foundMethods} }};
+        private Dictionary<string, string> ClassFields = new Dictionary<string, string>()
+        {{ {foundFields} }};
+        private Dictionary<string, string> ClassProperties = new Dictionary<string, string>()
+        {{ {foundProperties} }};
+
+        public string GetClassName()
         {{
-            return ""{entry.Key}"";
+            return ""{entry.Key}ClassInfo"";
         }}
+
+        public List<string> Ctors
+        {{ get {{ return ClassCtors; }} }}
+
+        public Dictionary<string, string> CtorParams
+        {{ get {{ return ClassCtorParams; }} }}
+
+        public List<string> Methods 
+        {{ get {{ return ClassMethods; }} }}
+
+        public Dictionary<string, string> Fields
+        {{ get {{ return ClassFields; }} }}
+
+        public Dictionary<string, string> Properties
+        {{ get {{ return ClassProperties; }} }}
     }}
 }}
 ", Encoding.UTF8));
