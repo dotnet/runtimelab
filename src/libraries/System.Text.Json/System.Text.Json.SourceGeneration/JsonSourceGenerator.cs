@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using Microsoft.CodeAnalysis;
@@ -22,8 +23,7 @@ namespace System.Text.Json.SourceGeneration
 
         public void Execute(SourceGeneratorContext context)
         {
-            if (!(context.SyntaxReceiver is JsonSerializableSyntaxReceiver receiver))
-                return;
+            JsonSerializableSyntaxReceiver receiver = (JsonSerializableSyntaxReceiver)context.SyntaxReceiver;
 
             MetadataLoadContext metadataLoadContext = new MetadataLoadContext(context.Compilation);
 
@@ -100,24 +100,22 @@ namespace HelloWorldGenerated
 
                     if (serializableAttributes?.Any() == true)
                     {
-                        foreach (AttributeSyntax attributeNode in serializableAttributes)
+                        // JsonSerializableAttribute has AllowMultiple as False, should only have 1 attribute.
+                        Debug.Assert(serializableAttributes.Count() == 1);
+                        AttributeSyntax attributeNode = serializableAttributes.First();
+
+                        // Check if the attribute is being passed a type.
+                        if (attributeNode.DescendantNodes().Where(node => node is TypeOfExpressionSyntax).Any())
                         {
-                            // Check if the attribute is being passed a type.
-                            if (attributeNode.DescendantNodes().Where(node => node is TypeOfExpressionSyntax).Any())
-                            {
-                                // Get JsonSerializable attribute arguments.
-                                AttributeArgumentSyntax attributeArgumentNode = (AttributeArgumentSyntax)attributeNode.DescendantNodes().Where(node => node is AttributeArgumentSyntax).SingleOrDefault();
-                                // Get external class token from arguments.
-                                IdentifierNameSyntax externalTypeNode = (IdentifierNameSyntax)attributeArgumentNode?.DescendantNodes().Where(node => node is IdentifierNameSyntax).SingleOrDefault();
-                                if (externalTypeNode != null)
-                                {
-                                    ExternalClassTypeDict[((TypeDeclarationSyntax)syntaxNode).Identifier.Text] = externalTypeNode;
-                                }
-                            }
-                            else
-                            {
-                                InternalClassTypeDict[((TypeDeclarationSyntax)syntaxNode).Identifier.Text] = ((TypeDeclarationSyntax)syntaxNode);
-                            }
+                            // Get JsonSerializable attribute arguments.
+                            AttributeArgumentSyntax attributeArgumentNode = (AttributeArgumentSyntax)attributeNode.DescendantNodes().Where(node => node is AttributeArgumentSyntax).SingleOrDefault();
+                            // Get external class token from arguments.
+                            IdentifierNameSyntax externalTypeNode = (IdentifierNameSyntax)attributeArgumentNode?.DescendantNodes().Where(node => node is IdentifierNameSyntax).SingleOrDefault();
+                            ExternalClassTypeDict[((TypeDeclarationSyntax)syntaxNode).Identifier.Text] = externalTypeNode;
+                        }
+                        else
+                        {
+                            InternalClassTypeDict[((TypeDeclarationSyntax)syntaxNode).Identifier.Text] = ((TypeDeclarationSyntax)syntaxNode);
                         }
                     }
                 }

@@ -2,17 +2,14 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
+using System.Reflection;
 using System.Text.Json.Serialization;
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Diagnostics;
 using Xunit;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Linq;
-using System.IO;
 
 namespace System.Text.Json.SourceGeneration.UnitTests
 {
@@ -21,7 +18,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
         [Fact]
         public void TypeDiscoveryPrimitivePOCO()
         {
-            SyntaxTree tree = CSharpSyntaxTree.ParseText(@"
+            string source = @"
             using System;
             using System.Text.Json.Serialization;
 
@@ -42,48 +39,13 @@ namespace System.Text.Json.SourceGeneration.UnitTests
                     public void MyMethod() { }
                     public void MySecondMethod() { }
                 }
-              }");
+              }";
 
-            // Bypass System.Runtime error.
-            Assembly systemRuntimeAssembly = Assembly.Load("System.Runtime, Version=5.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a");
-            string systemRuntimeAssemblyPath = systemRuntimeAssembly.Location;
-
-            CSharpCompilationOptions options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
-            MetadataReference[] references = new MetadataReference[] {
-                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(JsonSerializableAttribute).Assembly.Location),
-                MetadataReference.CreateFromFile(systemRuntimeAssemblyPath),
-            };
-
-            Compilation compilation = CSharpCompilation.Create(
-                "TestAssembly",
-                syntaxTrees: new[] { tree },
-                references: references,
-                options: options
-            );
-
-            //// Emit the image of the referenced assembly.
-            byte[] image = null;
-            using (MemoryStream ms = new MemoryStream())
-            {
-                var emitResult = compilation.Emit(ms);
-                if (!emitResult.Success)
-                {
-                    throw new InvalidOperationException();
-                }
-                image = ms.ToArray();
-            }
+            Compilation compilation = CreateCompilation(source);
 
             JsonSerializerSourceGenerator generator = new JsonSerializerSourceGenerator();
 
-            GeneratorDriver driver = new CSharpGeneratorDriver(
-                new CSharpParseOptions(kind: SourceCodeKind.Regular, documentationMode: DocumentationMode.Parse),
-                ImmutableArray.Create<ISourceGenerator>(generator),
-                ImmutableArray<AdditionalText>.Empty
-                );
-
-            driver.RunFullGeneration(compilation, out _, out _);
+            Compilation outCompilation = RunGenerators(compilation, out var generatorDiags, generator);
 
             // Check base functionality of found types.
             Assert.Equal(1, generator.foundTypes.Count);
@@ -108,11 +70,9 @@ namespace System.Text.Json.SourceGeneration.UnitTests
         [Fact]
         public void TypeDiscoveryPrimitiveTemporaryPOCO()
         {
-            SyntaxTree tree = CSharpSyntaxTree.ParseText(@"
+            string source = @"
             using System;
             using System.Text.Json.Serialization;
-            using System.Text.Json;
-            using System.Collections.Generic;
 
               namespace HelloWorld
               {
@@ -135,50 +95,13 @@ namespace System.Text.Json.SourceGeneration.UnitTests
                 [JsonSerializable(typeof(JsonConverterAttribute))]
                 public class NotMyType { }
 
-              }");
+              }";
 
-            // Bypass System.Runtime error.
-            Assembly systemRuntimeAssembly = Assembly.Load("System.Runtime, Version=5.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a");
-            string systemRuntimeAssemblyPath = systemRuntimeAssembly.Location;
-
-            CSharpCompilationOptions options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
-            MetadataReference[] references = new MetadataReference[] {
-                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(JsonSerializableAttribute).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(JsonSerializerOptions).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(Type).Assembly.Location),
-                MetadataReference.CreateFromFile(systemRuntimeAssemblyPath),
-            };
-
-            Compilation compilation = CSharpCompilation.Create(
-                "TestAssembly",
-                syntaxTrees: new[] { tree },
-                references: references,
-                options: options
-            );
-
-            //// Emit the image of the referenced assembly.
-            byte[] image = null;
-            using (MemoryStream ms = new MemoryStream())
-            {
-                var emitResult = compilation.Emit(ms);
-                if (!emitResult.Success)
-                {
-                    throw new InvalidOperationException();
-                }
-                image = ms.ToArray();
-            }
+            Compilation compilation = CreateCompilation(source);
 
             JsonSerializerSourceGenerator generator = new JsonSerializerSourceGenerator();
 
-            GeneratorDriver driver = new CSharpGeneratorDriver(
-                new CSharpParseOptions(kind: SourceCodeKind.Regular, documentationMode: DocumentationMode.Parse),
-                ImmutableArray.Create<ISourceGenerator>(generator),
-                ImmutableArray<AdditionalText>.Empty
-                );
-
-            driver.RunFullGeneration(compilation, out _, out _);
+            Compilation outCompilation = RunGenerators(compilation, out var generatorDiags, generator);
 
             // Check base functionality of found types.
             Assert.Equal(2, generator.foundTypes.Count);
@@ -218,6 +141,42 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             string[] expectedMethodNamesNotMyType = { "get_ConverterType", "CreateConverter" };
             string[] receivedMethodNamesNotMyType = generator.foundTypes["NotMyType"].GetMethods().Select(method => method.Name).ToArray();
             Assert.Equal(expectedMethodNamesNotMyType, receivedMethodNamesNotMyType);
+        }
+
+        private Compilation CreateCompilation(string source)
+        {
+            // Bypass System.Runtime error.
+            Assembly systemRuntimeAssembly = Assembly.Load("System.Runtime, Version=5.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a");
+            string systemRuntimeAssemblyPath = systemRuntimeAssembly.Location;
+
+            MetadataReference[] references = new MetadataReference[] {
+                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(JsonSerializableAttribute).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(JsonSerializerOptions).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(Type).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(KeyValuePair).Assembly.Location),
+                MetadataReference.CreateFromFile(systemRuntimeAssemblyPath),
+            };
+
+            return CSharpCompilation.Create(
+                "TestAssembly",
+                syntaxTrees: new[] { CSharpSyntaxTree.ParseText(source) },
+                references: references,
+                options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+            );
+        }
+
+        private GeneratorDriver CreateDriver(Compilation compilation, params ISourceGenerator[] generators)
+            => new CSharpGeneratorDriver(
+                 new CSharpParseOptions(kind: SourceCodeKind.Regular, documentationMode: DocumentationMode.Parse),
+                ImmutableArray.Create(generators),
+                ImmutableArray<AdditionalText>.Empty);
+
+        private Compilation RunGenerators(Compilation compilation, out ImmutableArray<Diagnostic> diagnostics, params ISourceGenerator[] generators)
+        {
+            CreateDriver(compilation, generators).RunFullGeneration(compilation, out Compilation outCompilation, out diagnostics);
+            return outCompilation;
         }
     }
 }
