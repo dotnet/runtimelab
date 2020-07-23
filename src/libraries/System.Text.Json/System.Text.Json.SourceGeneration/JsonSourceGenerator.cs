@@ -35,7 +35,7 @@ namespace System.Text.Json.SourceGeneration
             TypeDeclarationSyntax typeDeclarationNode;
 
             // Map type name to type objects.
-            foreach (KeyValuePair<string, TypeDeclarationSyntax> entry in receiver.InternalClassTypeDict)
+            foreach (KeyValuePair<string, TypeDeclarationSyntax> entry in receiver.InternalClassTypes)
             {
                 typeDeclarationNode = entry.Value;
                 semanticModel = context.Compilation.GetSemanticModel(typeDeclarationNode.SyntaxTree);
@@ -44,7 +44,7 @@ namespace System.Text.Json.SourceGeneration
                 foundTypes[entry.Key] = convertedType;
             }
 
-            foreach (KeyValuePair<string, IdentifierNameSyntax> entry in receiver.ExternalClassTypeDict)
+            foreach (KeyValuePair<string, IdentifierNameSyntax> entry in receiver.ExternalClassTypes)
             {
                 identifierNameNode = entry.Value;
                 semanticModel = context.Compilation.GetSemanticModel(identifierNameNode.SyntaxTree);
@@ -150,8 +150,8 @@ namespace HelloWorldGenerated
 
         public class JsonSerializableSyntaxReceiver : ISyntaxReceiver
         {
-            public Dictionary<string, IdentifierNameSyntax> ExternalClassTypeDict = new Dictionary<string, IdentifierNameSyntax>();
-            public Dictionary<string, TypeDeclarationSyntax> InternalClassTypeDict = new Dictionary<string, TypeDeclarationSyntax>();
+            public List<KeyValuePair<string, IdentifierNameSyntax>> ExternalClassTypes = new List<KeyValuePair<string, IdentifierNameSyntax>>();
+            public List<KeyValuePair<string, TypeDeclarationSyntax>> InternalClassTypes = new List<KeyValuePair<string, TypeDeclarationSyntax>>();
 
             public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
             {
@@ -179,11 +179,11 @@ namespace HelloWorldGenerated
                             AttributeArgumentSyntax attributeArgumentNode = (AttributeArgumentSyntax)attributeNode.DescendantNodes().Where(node => node is AttributeArgumentSyntax).SingleOrDefault();
                             // Get external class token from arguments.
                             IdentifierNameSyntax externalTypeNode = (IdentifierNameSyntax)attributeArgumentNode?.DescendantNodes().Where(node => node is IdentifierNameSyntax).SingleOrDefault();
-                            ExternalClassTypeDict[((TypeDeclarationSyntax)syntaxNode).Identifier.Text] = externalTypeNode;
+                            ExternalClassTypes.Add(new KeyValuePair<string, IdentifierNameSyntax>(((TypeDeclarationSyntax)syntaxNode).Identifier.Text, externalTypeNode));
                         }
                         else
                         {
-                            InternalClassTypeDict[((TypeDeclarationSyntax)syntaxNode).Identifier.Text] = ((TypeDeclarationSyntax)syntaxNode);
+                            InternalClassTypes.Add(new KeyValuePair<string, TypeDeclarationSyntax>(((TypeDeclarationSyntax)syntaxNode).Identifier.Text, (TypeDeclarationSyntax)syntaxNode));
                         }
                     }
                 }
