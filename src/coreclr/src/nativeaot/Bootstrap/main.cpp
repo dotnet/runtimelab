@@ -145,9 +145,7 @@ static int InitializeRuntime()
     if (!RhInitialize())
         return -1;
 
-#if defined(HOST_WASM)
-    RhpEnableConservativeStackReporting();
-#endif
+    // RhpEnableConservativeStackReporting();
 
     void * osModule = PalGetModuleHandleFromPointer((void*)&CORERT_ENTRYPOINT);
 
@@ -161,10 +159,7 @@ static int InitializeRuntime()
         return -1;
     }
 
-#if defined(HOST_WASM)
-    InitializeModules(nullptr, (void**)RtRHeaderWrapper(), 1, (void **)&c_classlibFunctions, _countof(c_classlibFunctions));
-#else    InitializeModules(osModule, __modules_a, (int)((__modules_z - __modules_a)), (void **)&c_classlibFunctions, _countof(c_classlibFunctions));
-#endif
+    InitializeModules(osModule, __modules_a, (int)((__modules_z - __modules_a)), (void **)&c_classlibFunctions, _countof(c_classlibFunctions));
 
 #ifdef CORERT_DLL
     // Run startup method immediately for a native library
