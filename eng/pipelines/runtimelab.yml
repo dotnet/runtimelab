@@ -63,6 +63,7 @@ jobs:
     - Linux_x64
     - Windows_NT_x64
     jobParameters:
+      timeoutInMinutes: 90
       testGroup: innerloop
       buildArgs: -s clr+libs+installer -c debug -runtimeConfiguration Checked
       extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
@@ -78,6 +79,7 @@ jobs:
     - Linux_x64
     - Windows_NT_x64
     jobParameters:
+      timeoutInMinutes: 90
       testGroup: innerloop
       buildArgs: -s clr+libs+libs.tests+installer -c $(_BuildConfig) /p:ArchiveTests=true
       extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
