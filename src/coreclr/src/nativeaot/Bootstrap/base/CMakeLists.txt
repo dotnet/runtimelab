@@ -2,7 +2,6 @@ project(bootstrapper)
 
 set(SOURCES
     ../main.cpp
-    ../common.cpp
 )
 
 add_library(bootstrapper STATIC ${SOURCES})
