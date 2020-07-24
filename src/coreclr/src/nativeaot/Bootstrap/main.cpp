@@ -1,15 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#include "common.h"
-
-#include "sal.h"
-#include "gcenv.structs.h"
-#include "gcenv.base.h"
-
+#include <stdint.h>
 #include <stdlib.h>
-
-#ifndef CPPCODEGEN
 
 //
 // This is the mechanism whereby multiple linked modules contribute their global data for initialization at
@@ -101,243 +94,10 @@ static char& __unbox_z = __stop___unbox;
 
 #endif // _MSC_VER
 
-#endif // !CPPCODEGEN
-
-// Do not warn that extern C methods throw exceptions. This is temporary
-// as long as we have unimplemented/throwing APIs in this file.
-#pragma warning(disable:4297)
-
-#ifdef CPPCODEGEN
-
-extern "C" Object * RhNewObject(MethodTable * pMT);
-extern "C" Object * RhNewArray(MethodTable * pMT, int32_t elements);
-extern "C" void * RhTypeCast_IsInstanceOf(MethodTable * pMT, void* pObject);
-extern "C" void * RhTypeCast_CheckCast(MethodTable * pMT, void* pObject);
-extern "C" void RhpStelemRef(void * pArray, int index, void * pObj);
-extern "C" void * RhpLdelemaRef(void * pArray, int index, MethodTable * pMT);
-extern "C" __NORETURN void RhpThrowEx(void * pEx);
-extern "C" void RhDebugBreak();
-
-extern "C" Object * __allocate_object(MethodTable * pMT)
-{
-    return RhNewObject(pMT);
-}
-
-extern "C" Object * __allocate_array(size_t elements, MethodTable * pMT)
-{
-    return RhNewArray(pMT, (int32_t)elements); // TODO: type mismatch
-}
-
-extern "C" Object * __castclass(MethodTable * pTargetMT, void* obj)
-{
-    return (Object *)RhTypeCast_CheckCast(pTargetMT, obj);
-}
-
-extern "C" Object * __isinst(MethodTable * pTargetMT, void* obj)
-{
-    return (Object *)RhTypeCast_IsInstanceOf(pTargetMT, obj);
-}
-
-extern "C" void __stelem_ref(void * pArray, unsigned idx, void * obj)
-{
-    RhpStelemRef(pArray, idx, obj);
-}
-
-extern "C" void* __ldelema_ref(void * pArray, unsigned idx, MethodTable * type)
-{
-    return RhpLdelemaRef(pArray, idx, type);
-}
-
-extern "C" void __throw_exception(void * pEx)
-{
-    RhpThrowEx(pEx);
-}
-
-extern "C" void __debug_break()
-{
-    RhDebugBreak();
-}
-
-void __range_check_fail()
-{
-    throw "ThrowRangeOverflowException";
-}
-
-extern "C" void RhpReversePInvoke2(ReversePInvokeFrame* pRevFrame);
-extern "C" void RhpReversePInvokeReturn2(ReversePInvokeFrame* pRevFrame);
-
-void __reverse_pinvoke(ReversePInvokeFrame* pRevFrame)
-{
-    RhpReversePInvoke2(pRevFrame);
-}
-
-void __reverse_pinvoke_return(ReversePInvokeFrame* pRevFrame)
-{
-    RhpReversePInvokeReturn2(pRevFrame);
-}
-
-extern "C" void RhpPInvoke2(PInvokeTransitionFrame* pFrame);
-extern "C" void RhpPInvokeReturn2(PInvokeTransitionFrame* pFrame);
-
-void __pinvoke(PInvokeTransitionFrame* pFrame)
-{
-    RhpPInvoke2(pFrame);
-}
-
-void __pinvoke_return(PInvokeTransitionFrame* pFrame)
-{
-    RhpPInvokeReturn2(pFrame);
-}
-
-namespace System_Private_CoreLib { namespace System { 
-
-    class Object {
-    public:
-        MethodTable * get_EEType() { return *(MethodTable **)this; }
-    };
-
-    class Array : public Object {
-    public:
-        int32_t GetArrayLength() {
-            return *(int32_t *)((void **)this + 1);
-        }
-        void * GetArrayData() {
-            return (void **)this + 2;
-        }
-    };
-
-    class String : public Object { public:
-        static MethodTable * __getMethodTable();
-    };
-
-    class String__Array : public Object { public:
-        static MethodTable * __getMethodTable();
-    };
-
-    class EETypePtr { public:
-        intptr_t m_value;
-    };
-
-}; };
-
-Object * __load_string_literal(const char * string)
-{
-    // TODO: Cache/intern string literals
-    // TODO: Unicode string literals
-
-    size_t len = strlen(string);
-
-    Object * pString = RhNewArray(System_Private_CoreLib::System::String::__getMethodTable(), (int32_t)len);
-
-    uint16_t * p = (uint16_t *)((char*)pString + sizeof(intptr_t) + sizeof(int32_t));
-    for (size_t i = 0; i < len; i++)
-        p[i] = string[i];
-    return pString;
-}
-
-#if defined(HOST_WASM)
-// Exception wrapper type that allows us to differentiate managed and native exceptions
-class ManagedExceptionWrapper : exception
-{
-public:
-    ManagedExceptionWrapper(void* pManagedException)
-    {
-        m_pManagedException = pManagedException;
-    }
-
-public:
-    void* m_pManagedException;
-};
-#endif
-
-extern "C" void RhpThrowEx(void * pEx)
-{
-#if defined(HOST_WASM)
-    throw ManagedExceptionWrapper(pEx);
-#else 
-    throw "RhpThrowEx";
-#endif
-}
-
-extern "C" void RhpThrowHwEx()
-{
-    throw "RhpThrowHwEx";
-}
-
-#if defined(HOST_WASM)
-// returns the Leave target
-extern "C" uint32_t LlvmCatchFunclet(void* pHandlerIP, void* pvRegDisplay); 
-extern "C" uint32_t RhpCallCatchFunclet(void * exceptionObj, void* pHandlerIP, void* pvRegDisplay, void *exInfo)
-{
-    return LlvmCatchFunclet(pHandlerIP, pvRegDisplay);
-}
-
-extern "C" uint32_t LlvmFilterFunclet(void* pHandlerIP, void* pvRegDisplay);
-extern "C" uint32_t RhpCallFilterFunclet(void* exceptionObj, void * pHandlerIP, void* shadowStack)
-{
-    return LlvmFilterFunclet(pHandlerIP, shadowStack);
-}
-#else 
-extern "C" uint32_t RhpCallCatchFunclet(void *, void*, void*, void*)
-{
-    throw "RhpCallCatchFunclet";
-}
-extern "C" void* RhpCallFilterFunclet(void*, void*, void*)
-{
-    throw "RhpCallFilterFunclet";
-}
-#endif
-
-#if defined(HOST_WASM)
-extern "C" void LlvmFinallyFunclet(void *finallyHandler, void *shadowStack);
-extern "C" void RhpCallFinallyFunclet(void *finallyHandler, void *shadowStack)
-{
-    LlvmFinallyFunclet(finallyHandler, shadowStack);
-}
-#else 
-extern "C" void RhpCallFinallyFunclet(void *, void*)
-{
-    throw "RhpCallFinallyFunclet";
-}
-#endif
-
-extern "C" void RhpUniversalTransition()
-{
-    throw "RhpUniversalTransition";
-}
-extern "C" void RhpUniversalTransition_DebugStepTailCall()
-{
-    throw "RhpUniversalTransition_DebugStepTailCall";
-}
-extern "C" void ConstrainedCallSupport_GetStubs(void*, void*)
-{
-    throw "ConstrainedCallSupport_GetStubs";
-}
-
-extern "C" void* RtRHeaderWrapper();
-#endif // CPPCODEGEN
-
-// This works around System.Private.Interop's references to Interop.Native.
-// This won't be needed once we stop dragging in S.P.Interop for basic p/invoke support.
-extern "C" void CCWAddRef()
-{
-    throw "CCWAddRef";
-}
-
-extern "C" void __fail_fast()
-{
-    // TODO: FailFast
-    printf("Call to an unimplemented runtime method; execution cannot continue.\n");
-    printf("Method: __fail_fast\n");
-    exit(-1);
-}
-
 extern "C" bool RhInitialize();
 extern "C" void RhpEnableConservativeStackReporting();
 extern "C" void RhpShutdown();
 extern "C" void RhSetRuntimeInitializationCallback(int (*fPtr)());
-
-#ifndef CPPCODEGEN
 
 extern "C" bool RhRegisterOSModule(void * pModule,
     void * pvManagedCodeStartRange, uint32_t cbManagedCodeRange,
@@ -345,8 +105,6 @@ extern "C" bool RhRegisterOSModule(void * pModule,
     void ** pClasslibFunctions, uint32_t nClasslibFunctions);
 
 extern "C" void* PalGetModuleHandleFromPointer(void* pointer);
-
-#endif // !CPPCODEGEN
 
 extern "C" void GetRuntimeException();
 extern "C" void FailFast();
@@ -387,11 +145,8 @@ static int InitializeRuntime()
     if (!RhInitialize())
         return -1;
 
-#if defined(CPPCODEGEN) || defined(HOST_WASM)
-    RhpEnableConservativeStackReporting();
-#endif // CPPCODEGEN
+    // RhpEnableConservativeStackReporting();
 
-#ifndef CPPCODEGEN
     void * osModule = PalGetModuleHandleFromPointer((void*)&CORERT_ENTRYPOINT);
 
     // TODO: pass struct with parameters instead of the large signature of RhRegisterOSModule
@@ -403,15 +158,8 @@ static int InitializeRuntime()
     {
         return -1;
     }
-#endif // !CPPCODEGEN
 
-#ifndef CPPCODEGEN
     InitializeModules(osModule, __modules_a, (int)((__modules_z - __modules_a)), (void **)&c_classlibFunctions, _countof(c_classlibFunctions));
-#elif defined HOST_WASM
-    InitializeModules(nullptr, (void**)RtRHeaderWrapper(), 1, (void **)&c_classlibFunctions, _countof(c_classlibFunctions));
-#else // !CPPCODEGEN
-    InitializeModules(nullptr, (void**)RtRHeaderWrapper(), 2, (void **)&c_classlibFunctions, _countof(c_classlibFunctions));
-#endif // !CPPCODEGEN
 
 #ifdef CORERT_DLL
     // Run startup method immediately for a native library
@@ -432,21 +180,8 @@ int main(int argc, char* argv[])
     if (initval != 0)
         return initval;
 
-    int retval;
-#ifdef CPPCODEGEN
-    try
-#endif
-    {
-        retval = __managed__Main(argc, argv);
-    }
-#ifdef CPPCODEGEN
-    catch (const char* &e)
-    {
-        printf("Call to an unimplemented runtime method; execution cannot continue.\n");
-        printf("Method: %s\n", e);
-        retval = -1;
-    }
-#endif
+    int retval = __managed__Main(argc, argv);
+
     RhpShutdown();
 
     return retval;

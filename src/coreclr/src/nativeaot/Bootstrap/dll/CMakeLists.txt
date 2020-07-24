@@ -4,7 +4,6 @@ add_definitions(-DCORERT_DLL)
 
 set(SOURCES
     ../main.cpp
-    ../common.cpp
 )
 
 add_library(bootstrapperdll STATIC ${SOURCES})
