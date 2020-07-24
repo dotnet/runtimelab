@@ -20,7 +20,6 @@ endif (MSVC)
 # Set commonly used directory names
 set(CLR_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(VM_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/vm)
-set(GC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/gc)
 set(GENERATED_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/src/inc)
 set(GENERATED_EVENTING_DIR ${CMAKE_CURRENT_BINARY_DIR}/Eventing)
 set(VERSION_FILE_PATH "${CMAKE_BINARY_DIR}/version.c")
@@ -100,14 +99,14 @@ if(CLR_CMAKE_HOST_WIN32)
   add_compile_options(/Zl) # omit default library name in .OBJ
 endif(CLR_CMAKE_HOST_WIN32)
 
+add_subdirectory(src/nativeaot)
+
 #--------------------------------
 # Definition directives
 #  - all clr specific compile definitions should be included in this file
 #  - all clr specific feature variable should also be added in this file
 #----------------------------------
 include(clrdefinitions.cmake)
-
-add_subdirectory(src/nativeaot)
 
 #-------------------------------------
 # Include directory directives

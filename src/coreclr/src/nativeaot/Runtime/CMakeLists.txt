@@ -1,3 +1,5 @@
+set(GC_DIR ../../gc)
+
 set(COMMON_RUNTIME_SOURCES
     allocheap.cpp
     rhassert.cpp
@@ -40,24 +42,24 @@ set(COMMON_RUNTIME_SOURCES
     UniversalTransitionHelpers.cpp
     yieldprocessornormalized.cpp
 
-    ../gc/gceventstatus.cpp
-    ../gc/gcload.cpp
-    ../gc/gcconfig.cpp
-    ../gc/gchandletable.cpp
-    ../gc/gccommon.cpp
-    ../gc/gceewks.cpp
-    ../gc/gcwks.cpp
-    ../gc/gcscan.cpp
-    ../gc/handletable.cpp
-    ../gc/handletablecache.cpp
-    ../gc/handletablecore.cpp
-    ../gc/handletablescan.cpp
-    ../gc/objecthandle.cpp
+    ${GC_DIR}/gceventstatus.cpp
+    ${GC_DIR}/gcload.cpp
+    ${GC_DIR}/gcconfig.cpp
+    ${GC_DIR}/gchandletable.cpp
+    ${GC_DIR}/gccommon.cpp
+    ${GC_DIR}/gceewks.cpp
+    ${GC_DIR}/gcwks.cpp
+    ${GC_DIR}/gcscan.cpp
+    ${GC_DIR}/handletable.cpp
+    ${GC_DIR}/handletablecache.cpp
+    ${GC_DIR}/handletablecore.cpp
+    ${GC_DIR}/handletablescan.cpp
+    ${GC_DIR}/objecthandle.cpp
 )
 
 set(SERVER_GC_SOURCES
-    ../gc/gceesvr.cpp
-    ../gc/gcsvr.cpp
+    ${GC_DIR}/gceesvr.cpp
+    ${GC_DIR}/gcsvr.cpp
 )
 
 set(FULL_RUNTIME_SOURCES
@@ -73,42 +75,46 @@ set(PORTABLE_RUNTIME_SOURCES
 
 include_directories(inc)
 
+include_directories(.)
+include_directories(${GC_DIR})
+include_directories(${GC_DIR}/env)
+
 if (WIN32)
   set(GC_HEADERS
-    ../gc/env/common.h
-    ../gc/env/etmdummy.h
-    ../gc/env/gcenv.base.h
-    ../gc/env/gcenv.ee.h
-    ../gc/env/gcenv.h
-    ../gc/env/gcenv.interlocked.h
-    ../gc/env/gcenv.interlocked.inl
-    ../gc/env/gcenv.object.h
-    ../gc/env/gcenv.os.h
-    ../gc/env/gcenv.structs.h
-    ../gc/env/gcenv.sync.h
-    ../gc/env/gcenv.windows.inl
-    ../gc/env/volatile.h
-    ../gc/gc.h
-    ../gc/gcconfig.h
-    ../gc/gcdesc.h
-    ../gc/gcenv.ee.standalone.inl
-    ../gc/gcenv.inl
-    ../gc/gcevent_serializers.h
-    ../gc/gcevents.h
-    ../gc/gceventstatus.h
-    ../gc/gchandletableimpl.h
-    ../gc/gcimpl.h
-    ../gc/gcinterface.dac.h
-    ../gc/gcinterface.ee.h
-    ../gc/gcinterface.h
-    ../gc/gcpriv.h
-    ../gc/gcrecord.h
-    ../gc/gcscan.h
-    ../gc/handletable.h
-    ../gc/handletable.inl
-    ../gc/handletablepriv.h
-    ../gc/objecthandle.h
-    ../gc/softwarewritewatch.h)
+    ${GC_DIR}/env/common.h
+    ${GC_DIR}/env/etmdummy.h
+    ${GC_DIR}/env/gcenv.base.h
+    ${GC_DIR}/env/gcenv.ee.h
+    ${GC_DIR}/env/gcenv.h
+    ${GC_DIR}/env/gcenv.interlocked.h
+    ${GC_DIR}/env/gcenv.interlocked.inl
+    ${GC_DIR}/env/gcenv.object.h
+    ${GC_DIR}/env/gcenv.os.h
+    ${GC_DIR}/env/gcenv.structs.h
+    ${GC_DIR}/env/gcenv.sync.h
+    ${GC_DIR}/env/gcenv.windows.inl
+    ${GC_DIR}/env/volatile.h
+    ${GC_DIR}/gc.h
+    ${GC_DIR}/gcconfig.h
+    ${GC_DIR}/gcdesc.h
+    ${GC_DIR}/gcenv.ee.standalone.inl
+    ${GC_DIR}/gcenv.inl
+    ${GC_DIR}/gcevent_serializers.h
+    ${GC_DIR}/gcevents.h
+    ${GC_DIR}/gceventstatus.h
+    ${GC_DIR}/gchandletableimpl.h
+    ${GC_DIR}/gcimpl.h
+    ${GC_DIR}/gcinterface.dac.h
+    ${GC_DIR}/gcinterface.ee.h
+    ${GC_DIR}/gcinterface.h
+    ${GC_DIR}/gcpriv.h
+    ${GC_DIR}/gcrecord.h
+    ${GC_DIR}/gcscan.h
+    ${GC_DIR}/handletable.h
+    ${GC_DIR}/handletable.inl
+    ${GC_DIR}/handletablepriv.h
+    ${GC_DIR}/objecthandle.h
+    ${GC_DIR}/softwarewritewatch.h)
 endif(WIN32)
 
 if(WIN32)
@@ -118,7 +124,7 @@ if(WIN32)
   list(APPEND COMMON_RUNTIME_SOURCES
     windows/PalRedhawkCommon.cpp
     windows/PalRedhawkMinWin.cpp
-    ../gc/windows/gcenv.windows.cpp
+    ${GC_DIR}/windows/gcenv.windows.cpp
     eventtrace.cpp
     rheventtrace.cpp
   )
@@ -147,7 +153,7 @@ else()
   include(CheckIncludeFiles)
   include(CheckLibraryExists)
   
-  include(../gc/unix/configure.cmake)
+  include(${GC_DIR}/unix/configure.cmake)
   
   if(NOT CLR_CMAKE_PLATFORM_ARCH_WASM)
     include_directories(../libunwind/include)
@@ -166,9 +172,9 @@ else()
 
   list(APPEND COMMON_RUNTIME_SOURCES
     unix/PalRedhawkUnix.cpp
-    ../gc/unix/gcenv.unix.cpp
-    ../gc/unix/events.cpp
-    ../gc/unix/cgroup.cpp
+    ${GC_DIR}/unix/gcenv.unix.cpp
+    ${GC_DIR}/unix/events.cpp
+    ${GC_DIR}/unix/cgroup.cpp
   )
 
   list(APPEND FULL_RUNTIME_SOURCES
@@ -223,7 +229,6 @@ list(APPEND RUNTIME_SOURCES_ARCH_ASM
 convert_to_absolute_path(ARCH_SOURCES_DIR ${ARCH_SOURCES_DIR})
 include_directories(${ARCH_SOURCES_DIR})
 
-add_definitions(-DFEATURE_BACKGROUND_GC)
 add_definitions(-DFEATURE_BASICFREEZE)
 add_definitions(-DFEATURE_CONSERVATIVE_GC)
 add_definitions(-DFEATURE_CUSTOM_IMPORTS)
@@ -238,33 +243,11 @@ add_definitions(-DFEATURE_EMBEDDED_CONFIG)
 
 if(WIN32)
   # There is a problem with undefined symbol g_pConfig, windows don't care since it is in template method, but clang does 
-  add_definitions(-DSTRESS_HEAP)
+  # add_definitions(-DSTRESS_HEAP) yup there is a problem with undefined symbol when this is set
   add_definitions(-DFEATURE_ETW)
   add_definitions(-DFEATURE_EVENT_TRACE)
-  add_compile_options(/GS)
-  add_compile_options(/W1)
-  add_compile_options(/Zc:wchar_t)
-  add_compile_options($<$<CONFIG:Debug>:/Zi>)
-  add_compile_options($<$<CONFIG:Debug>:/Od>)
-  add_compile_options(/Zc:inline)
-  add_compile_options(/fp:precise)
-  add_compile_options(/EHsc)
 else()
   add_definitions(-DNO_UI_ASSERT)
-
-  add_compile_options(-Wno-format)
-  add_compile_options(-Wno-ignored-attributes)
-  add_compile_options(-Wno-self-assign)
-  add_compile_options(-Wno-tautological-undefined-compare)
-  add_compile_options(-Wno-undefined-inline)
-  add_compile_options(-Wno-unknown-pragmas)
-  add_compile_options(-Wno-unused-function)
-  add_compile_options(-Wno-unused-private-field)
-  add_compile_options(-Wno-unused-value)
-  add_compile_options(-Wno-unused-variable)
-
-  add_compile_options(-Qunused-arguments)
-
   include(unix/configure.cmake)
   include_directories(${CMAKE_CURRENT_BINARY_DIR})
 endif()
