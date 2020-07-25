@@ -1,6 +1,6 @@
 # .NET Runtime Lab
 
-This repo is for experimentation and exploring new ideas that may or may not make it into the main [dotnet/runtime](https://github.com/dotnet/runtime) repo.
+This repo is for experimentation and exploring new ideas that may or may not make it into the main [dotnet/runtime](https://github.com/dotnet/runtime) repo. [Encouraging .NET Runtime Experiments](https://github.com/dotnet/runtime/issues/35609) describes reasons that motivated creating this repository.
 
 ## Active Experimental Projects
 
