@@ -64,16 +64,6 @@ struct GCInfoToken
         Info = info;
         Version = 2;
     }
-
-    inline bool IsReversePInvokeFrameAvailable()
-    {
-        return true;
-    }
-
-    inline bool IsReturnKindAvailable()
-    {
-        return true;
-    }
 };
 
 #else // FEATURE_REDHAWK

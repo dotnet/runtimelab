@@ -1809,7 +1809,7 @@ void GcInfoDecoder::ReportStackSlotToGC(
     GCINFODECODER_CONTRACT;
 
     OBJECTREF* pObjRef = GetStackSlot(spOffset, spBase, pRD);
-    _ASSERTE( IS_ALIGNED( pObjRef, sizeof( Object* ) ) );
+    _ASSERTE(IS_ALIGNED(pObjRef, sizeof(OBJECTREF*)));
 
 #ifdef _DEBUG
     LOG((LF_GCROOTS, LL_INFO1000, /* Part One */
