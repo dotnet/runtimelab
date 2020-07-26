@@ -43,6 +43,10 @@ typedef void *              HINSTANCE;
 typedef void *              LPSECURITY_ATTRIBUTES;
 typedef void *              LPOVERLAPPED;
 
+#ifdef TARGET_UNIX
+#define __stdcall
+#endif
+
 #ifndef __GCENV_BASE_INCLUDED__
 #define CALLBACK            __stdcall
 #define WINAPI              __stdcall

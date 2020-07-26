@@ -14,7 +14,6 @@ endif (CLR_CMAKE_HOST_WIN32)
 
 if(MSVC)
   add_compile_options(/EHa) # enable C++ EH (w/ SEH exceptions)
-  set(CMAKE_CXX_STANDARD_LIBRARIES "") # do not link against standard win32 libs i.e. kernel32, uuid, user32, etc.
 endif (MSVC)
 
 # Set commonly used directory names
