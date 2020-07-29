@@ -33,18 +33,21 @@ namespace Microsoft.Interop
 
         public IEnumerable<Diagnostic> Diagnostics { get; private set; }
 
+        /// <summary>
+        /// Flags used to indicate members on GeneratedDllImport attribute.
+        /// </summary>
         [Flags]
         public enum DllImportMember
         {
-            None,
-            BestFitMapping,
-            CallingConvention,
-            CharSet,
-            EntryPoint,
-            ExactSpelling,
-            PreserveSig,
-            SetLastError,
-            ThrowOnUnmappableChar,
+            None = 0,
+            BestFitMapping = 1 << 0,
+            CallingConvention = 1 << 1,
+            CharSet = 1 << 2,
+            EntryPoint = 1 << 3,
+            ExactSpelling = 1 << 4,
+            PreserveSig = 1 << 5,
+            SetLastError = 1 << 6,
+            ThrowOnUnmappableChar = 1 << 7,
         }
 
         /// <summary>
