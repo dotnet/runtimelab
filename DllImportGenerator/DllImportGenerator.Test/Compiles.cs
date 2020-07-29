@@ -17,6 +17,7 @@ namespace DllImportGenerator.Test
             yield return new[] { CodeSnippets.AllDllImportNamedArguments };
             yield return new[] { CodeSnippets.BasicParametersAndModifiers };
             yield return new[] { CodeSnippets.DefaultParameters };
+            yield return new[] { CodeSnippets.UseCSharpFeaturesForConstants };
         }
 
         [Theory]

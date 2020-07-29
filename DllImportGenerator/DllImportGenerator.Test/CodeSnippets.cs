@@ -176,6 +176,30 @@ partial class Test
 ";
 
         /// <summary>
+        /// Declaration using various methods to compute constants in C#.
+        /// </summary>
+        public static readonly string UseCSharpFeaturesForConstants = @"
+using System.Runtime.InteropServices;
+partial class Test
+{
+    private const bool IsTrue = true;
+    private const bool IsFalse = false;
+    private const string EntryPointName = nameof(Test) + nameof(IsFalse);
+
+    [GeneratedDllImport(nameof(Test),
+        BestFitMapping = 0 != 1,
+        CallingConvention = (CallingConvention)1,
+        CharSet = (CharSet)2,
+        EntryPoint = EntryPointName,
+        ExactSpelling = IsTrue,
+        PreserveSig = IsFalse,
+        SetLastError = !IsFalse,
+        ThrowOnUnmappableChar = !IsTrue)]
+    public static partial void Method();
+}
+";
+
+        /// <summary>
         /// Declaration with basic parameters.
         /// </summary>
         public static readonly string BasicParametersAndModifiers = @"
