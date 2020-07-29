@@ -14,6 +14,7 @@ namespace DllImportGenerator.Test
             yield return new[] { CodeSnippets.NestedNamespace };
             yield return new[] { CodeSnippets.NestedTypes };
             yield return new[] { CodeSnippets.UserDefinedEntryPoint };
+            yield return new[] { CodeSnippets.AllDllImportNamedArguments };
             yield return new[] { CodeSnippets.BasicParametersAndModifiers };
             yield return new[] { CodeSnippets.DefaultParameters };
         }

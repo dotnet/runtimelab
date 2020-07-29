@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
@@ -33,7 +33,53 @@ namespace Microsoft.Interop
 
         public IEnumerable<Diagnostic> Diagnostics { get; private set; }
 
-        public static DllImportStub Create(IMethodSymbol method, CancellationToken token = default)
+        [Flags]
+        public enum DllImportMember
+        {
+            None,
+            BestFitMapping,
+            CallingConvention,
+            CharSet,
+            EntryPoint,
+            ExactSpelling,
+            PreserveSig,
+            SetLastError,
+            ThrowOnUnmappableChar,
+        }
+
+        /// <summary>
+        /// DllImport attribute data
+        /// </summary>
+        /// <remarks>
+        /// The names of these members map directly to those on the
+        /// DllImportAttribute and should not be changed.
+        /// </remarks>
+        public class DllImportAttributeData
+        {
+            public string ModuleName { get; set; }
+
+            /// <summary>
+            /// Value set by the user on the original declaration.
+            /// </summary>
+            public DllImportMember IsUserDefined = DllImportMember.None;
+
+            // Default values for the below fields are based on the
+            // documented semanatics of DllImportAttribute:
+            //   - https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.dllimportattribute
+            public bool BestFitMapping { get; set; } = true;
+            public CallingConvention CallingConvention { get; set; } = CallingConvention.Winapi;
+            public CharSet CharSet { get; set; } = CharSet.Ansi;
+            public string EntryPoint { get; set; } = null;
+            public bool ExactSpelling { get; set; } = false; // VB has different and unusual default behavior here.
+            public bool PreserveSig { get; set; } = true;
+            public bool SetLastError { get; set; } = false;
+            public bool ThrowOnUnmappableChar { get; set; } = false;
+        }
+
+        public static DllImportStub Create(
+            IMethodSymbol method,
+            DllImportAttributeData dllImportData,
+            CancellationToken token = default)
         {
             // Cancel early if requested
             token.ThrowIfCancellationRequested();

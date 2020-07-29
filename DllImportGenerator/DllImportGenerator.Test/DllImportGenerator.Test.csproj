@@ -26,6 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\DllImportGeneratorAttribute\DllImportGeneratorAttribute.csproj" />
     <ProjectReference Include="..\DllImportGenerator\DllImportGenerator.csproj" />
   </ItemGroup>
 
