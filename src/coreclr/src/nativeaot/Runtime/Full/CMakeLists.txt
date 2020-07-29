@@ -3,6 +3,9 @@ project(Runtime)
 # Full version of the runtime is required by the JIT CodeGen.
 # The low-level helpers can be implemented in assembly code.
 
+# Include auto-generated files on include path
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+
 add_definitions(-DFEATURE_RX_THUNKS)
 
 add_library(Runtime STATIC ${COMMON_RUNTIME_SOURCES} ${FULL_RUNTIME_SOURCES} ${RUNTIME_SOURCES_ARCH_ASM})
