@@ -48,7 +48,7 @@ namespace Microsoft.Interop
                 var methodSymbolInfo = sm.GetDeclaredSymbol(methodSyntax, context.CancellationToken);
 
                 // Process the attributes on the method.
-                DllImportStub.DllImportAttributeData dllImportData;
+                DllImportStub.GeneratedDllImportData dllImportData;
                 AttributeSyntax dllImportAttr = this.ProcessAttributes(methodSymbolInfo, context.CancellationToken, out dllImportData);
                 Debug.Assert(!(dllImportAttr is null) && !(dllImportData is null));
 
@@ -182,9 +182,9 @@ $@"{ currentIndent}}}
         private AttributeSyntax ProcessAttributes(
             IMethodSymbol method,
             CancellationToken cancelToken,
-            out DllImportStub.DllImportAttributeData dllImportData)
+            out DllImportStub.GeneratedDllImportData dllImportData)
         {
-            dllImportData = new DllImportStub.DllImportAttributeData();
+            dllImportData = new DllImportStub.GeneratedDllImportData();
 
             // Process all attributes
             foreach (AttributeData attrData in method.GetAttributes())
@@ -228,42 +228,42 @@ $@"{ currentIndent}}}
                         default:
                             Debug.Fail($"An unknown member was found on {GeneratedDllImport}");
                             continue;
-                        case nameof(DllImportStub.DllImportAttributeData.BestFitMapping):
+                        case nameof(DllImportStub.GeneratedDllImportData.BestFitMapping):
                             dllImportData.BestFitMapping = (bool)namedArg.Value.Value;
                             expSyntaxMaybe = CreateBoolExpressionSyntax(dllImportData.BestFitMapping);
                             dllImportData.IsUserDefined |= DllImportStub.DllImportMember.BestFitMapping;
                             break;
-                        case nameof(DllImportStub.DllImportAttributeData.CallingConvention):
+                        case nameof(DllImportStub.GeneratedDllImportData.CallingConvention):
                             dllImportData.CallingConvention = (CallingConvention)namedArg.Value.Value;
                             expSyntaxMaybe = CreateEnumExpressionSyntax(dllImportData.CallingConvention);
                             dllImportData.IsUserDefined |= DllImportStub.DllImportMember.CallingConvention;
                             break;
-                        case nameof(DllImportStub.DllImportAttributeData.CharSet):
+                        case nameof(DllImportStub.GeneratedDllImportData.CharSet):
                             dllImportData.CharSet = (CharSet)namedArg.Value.Value;
                             expSyntaxMaybe = CreateEnumExpressionSyntax(dllImportData.CharSet);
                             dllImportData.IsUserDefined |= DllImportStub.DllImportMember.CharSet;
                             break;
-                        case nameof(DllImportStub.DllImportAttributeData.EntryPoint):
+                        case nameof(DllImportStub.GeneratedDllImportData.EntryPoint):
                             dllImportData.EntryPoint = (string)namedArg.Value.Value;
                             expSyntaxMaybe = CreateStringExpressionSyntax(dllImportData.EntryPoint);
                             dllImportData.IsUserDefined |= DllImportStub.DllImportMember.EntryPoint;
                             break;
-                        case nameof(DllImportStub.DllImportAttributeData.ExactSpelling):
+                        case nameof(DllImportStub.GeneratedDllImportData.ExactSpelling):
                             dllImportData.ExactSpelling = (bool)namedArg.Value.Value;
                             expSyntaxMaybe = CreateBoolExpressionSyntax(dllImportData.ExactSpelling);
                             dllImportData.IsUserDefined |= DllImportStub.DllImportMember.ExactSpelling;
                             break;
-                        case nameof(DllImportStub.DllImportAttributeData.PreserveSig):
+                        case nameof(DllImportStub.GeneratedDllImportData.PreserveSig):
                             dllImportData.PreserveSig = (bool)namedArg.Value.Value;
                             expSyntaxMaybe = CreateBoolExpressionSyntax(dllImportData.PreserveSig);
                             dllImportData.IsUserDefined |= DllImportStub.DllImportMember.PreserveSig;
                             break;
-                        case nameof(DllImportStub.DllImportAttributeData.SetLastError):
+                        case nameof(DllImportStub.GeneratedDllImportData.SetLastError):
                             dllImportData.SetLastError = (bool)namedArg.Value.Value;
                             expSyntaxMaybe = CreateBoolExpressionSyntax(dllImportData.SetLastError);
                             dllImportData.IsUserDefined |= DllImportStub.DllImportMember.SetLastError;
                             break;
-                        case nameof(DllImportStub.DllImportAttributeData.ThrowOnUnmappableChar):
+                        case nameof(DllImportStub.GeneratedDllImportData.ThrowOnUnmappableChar):
                             dllImportData.ThrowOnUnmappableChar = (bool)namedArg.Value.Value;
                             expSyntaxMaybe = CreateBoolExpressionSyntax(dllImportData.ThrowOnUnmappableChar);
                             dllImportData.IsUserDefined |= DllImportStub.DllImportMember.ThrowOnUnmappableChar;

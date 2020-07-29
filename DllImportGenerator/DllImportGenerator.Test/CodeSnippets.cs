@@ -228,6 +228,19 @@ partial class Test
 ";
 
         /// <summary>
+        /// Apply MarshalAsAttribute to parameters and return types.
+        /// </summary>
+        public static readonly string MarshalAsAttributeOnTypes = @"
+using System.Runtime.InteropServices;
+partial class Test
+{
+    [GeneratedDllImport(""DoesNotExist"")]
+    [return: MarshalAs(UnmanagedType.LPWStr)]
+    public static partial string Method([MarshalAs(UnmanagedType.LPStr)]string t);
+}
+";
+
+        /// <summary>
         /// Declaration with user defined attributes with prefixed name.
         /// </summary>
         public static readonly string UserDefinedPrefixedAttributes = @"

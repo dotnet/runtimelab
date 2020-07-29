@@ -11,6 +11,9 @@ namespace Microsoft.Interop
 {
     internal class DllImportStub
     {
+        private PInvokeTypeInfo returnTypeInfo;
+        private IEnumerable<PInvokeTypeInfo> paramsTypeInfo;
+
         private DllImportStub()
         {
         }
@@ -19,17 +22,35 @@ namespace Microsoft.Interop
 
         public IEnumerable<string> StubContainingTypesDecl { get; private set; }
 
-        public string StubReturnType { get; private set; }
+        public string StubReturnType { get => this.returnTypeInfo.StubType; }
 
-        public IEnumerable<(string Type, string Name, RefKind refKind)> StubParameters { get; private set; }
+        public IEnumerable<(string Type, string Name, RefKind refKind)> StubParameters
+        {
+            get
+            {
+                foreach (var typeinfo in paramsTypeInfo)
+                {
+                    yield return (typeinfo.StubType, typeinfo.Identifier, typeinfo.RefKind);
+                }
+            }
+        }
 
         public IEnumerable<string> StubCode { get; private set; }
 
-        public string DllImportReturnType { get; private set; }
+        public string DllImportReturnType { get => this.returnTypeInfo.DllImportType; }
 
         public string DllImportMethodName { get; private set; }
 
-        public IEnumerable<(string Type, string Name, RefKind refKind)> DllImportParameters { get; private set; }
+        public IEnumerable<(string Type, string Name, RefKind refKind)> DllImportParameters
+        {
+            get
+            {
+                foreach (var typeinfo in paramsTypeInfo)
+                {
+                    yield return (typeinfo.DllImportType, typeinfo.Identifier, typeinfo.RefKind);
+                }
+            }
+        }
 
         public IEnumerable<Diagnostic> Diagnostics { get; private set; }
 
@@ -51,13 +72,13 @@ namespace Microsoft.Interop
         }
 
         /// <summary>
-        /// DllImport attribute data
+        /// GeneratedDllImportAttribute data
         /// </summary>
         /// <remarks>
         /// The names of these members map directly to those on the
         /// DllImportAttribute and should not be changed.
         /// </remarks>
-        public class DllImportAttributeData
+        public class GeneratedDllImportData
         {
             public string ModuleName { get; set; }
 
@@ -81,7 +102,7 @@ namespace Microsoft.Interop
 
         public static DllImportStub Create(
             IMethodSymbol method,
-            DllImportAttributeData dllImportData,
+            GeneratedDllImportData dllImportData,
             CancellationToken token = default)
         {
             // Cancel early if requested
@@ -124,13 +145,13 @@ namespace Microsoft.Interop
             stubContainingTypes.Reverse();
 
             // Determine parameter types
-            var stubParams = new List<(string Type, string Name, RefKind RefKind)>();
-            var dllImportParams = new List<(string Type, string Name, RefKind RefKind)>();
-            foreach (var namePair in method.Parameters)
+            var paramsTypeInfo = new List<PInvokeTypeInfo>();
+            foreach (var paramSymbol in method.Parameters)
             {
-                stubParams.Add((ComputeTypeForStub(namePair.Type, namePair.RefKind), namePair.Name, namePair.RefKind));
-                dllImportParams.Add((ComputeTypeForDllImport(namePair.Type, namePair.RefKind), namePair.Name, namePair.RefKind));
+                paramsTypeInfo.Add(ComputePInvokeTypeInfo(paramSymbol.Type, paramSymbol.GetAttributes(), paramSymbol.RefKind));
             }
+
+            var retTypeInfo = ComputePInvokeTypeInfo(method.ReturnType, method.GetReturnTypeAttributes());
 
             string dllImportName = method.Name + "__PInvoke__";
 
@@ -138,21 +159,19 @@ namespace Microsoft.Interop
             var dispatchCall = new StringBuilder($"throw new System.{nameof(NotSupportedException)}();");
 #else
             // Forward call to generated P/Invoke
-            var returnMaybe = method.ReturnType.SpecialType == SpecialType.System_Void
-                ? string.Empty
-                : "return ";
+            var returnMaybe = method.ReturnsVoid ? string.Empty : "return ";
 
             var dispatchCall = new StringBuilder($"{returnMaybe}{dllImportName}");
-            if (!dllImportParams.Any())
+            if (!paramsTypeInfo.Any())
             {
                 dispatchCall.Append("();");
             }
             else
             {
                 char delim = '(';
-                foreach (var param in dllImportParams)
+                foreach (var param in paramsTypeInfo)
                 {
-                    dispatchCall.Append($"{delim}{RefKindToString(param.RefKind)}{param.Name}");
+                    dispatchCall.Append($"{delim}{RefKindToString(param.RefKind)}{param.Identifier}");
                     delim = ',';
                 }
                 dispatchCall.Append(");");
@@ -161,14 +180,12 @@ namespace Microsoft.Interop
 
             return new DllImportStub()
             {
+                returnTypeInfo = retTypeInfo,
+                paramsTypeInfo = paramsTypeInfo,
                 StubTypeNamespace = stubTypeNamespace,
                 StubContainingTypesDecl = stubContainingTypes,
-                StubReturnType = ComputeTypeForStub(method.ReturnType),
-                StubParameters = stubParams,
                 StubCode = new[] { dispatchCall.ToString() },
-                DllImportReturnType = ComputeTypeForDllImport(method.ReturnType),
                 DllImportMethodName = dllImportName,
-                DllImportParameters = dllImportParams,
                 Diagnostics = Enumerable.Empty<Diagnostic>(),
             };
         }
@@ -182,6 +199,29 @@ namespace Microsoft.Interop
                 RefKind.Out => "out ",
                 RefKind.None => string.Empty,
                 _ => throw new NotImplementedException("Support for some RefKind"),
+            };
+        }
+
+        private static PInvokeTypeInfo ComputePInvokeTypeInfo(ITypeSymbol type, IEnumerable<AttributeData> attributes, RefKind refKind = RefKind.None)
+        {
+            // Look at attributes on the type.
+            AttributeData marshalAsData = null;
+            foreach (var attrData in attributes)
+            {
+                if (nameof(MarshalAsAttribute).Equals(attrData.AttributeClass.Name))
+                {
+                    marshalAsData = attrData;
+                    break;
+                }
+            }
+
+            return new PInvokeTypeInfo()
+            {
+                Identifier = type.Name,
+                StubType = ComputeTypeForStub(type, refKind),
+                DllImportType = ComputeTypeForDllImport(type, refKind),
+                RefKind = refKind,
+                MarshalAsData = marshalAsData,
             };
         }
 
