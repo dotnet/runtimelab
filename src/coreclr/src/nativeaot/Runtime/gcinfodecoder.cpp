@@ -3,4 +3,4 @@
 
 #define _common_h_
 
-#include "../../../vm/gcinfodecoder.cpp"
+#include "../../vm/gcinfodecoder.cpp"
