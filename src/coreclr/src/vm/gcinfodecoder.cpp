@@ -1364,7 +1364,7 @@ OBJECTREF* GcInfoDecoder::GetRegisterSlot(
     return (OBJECTREF*)*(ppRax + regNum);
 }
 
-#ifdef TARGET_UNIX
+#if defined(TARGET_UNIX) && !defined(FEATURE_REDHAWK)
 OBJECTREF* GcInfoDecoder::GetCapturedRegister(
     int             regNum,
     PREGDISPLAY     pRD
@@ -1380,7 +1380,7 @@ OBJECTREF* GcInfoDecoder::GetCapturedRegister(
 
     return (OBJECTREF*)(pRax + regNum);
 }
-#endif // TARGET_UNIX
+#endif // TARGET_UNIX && !FEATURE_REDHAWK
 
 bool GcInfoDecoder::IsScratchRegister(int regNum,  PREGDISPLAY pRD)
 {
@@ -1434,7 +1434,7 @@ void GcInfoDecoder::ReportRegisterToGC(  // AMD64
     LOG((LF_GCROOTS, LL_INFO1000, "Reporting " FMT_REG, regNum ));
 
     OBJECTREF* pObjRef = GetRegisterSlot( regNum, pRD );
-#if defined(TARGET_UNIX) && !defined(SOS_TARGET_AMD64)
+#if defined(TARGET_UNIX) && !defined(FEATURE_REDHAWK) && !defined(SOS_TARGET_AMD64)
     // On PAL, we don't always have the context pointers available due to
     // a limitation of an unwinding library. In such case, the context
     // pointers for some nonvolatile registers are NULL.
@@ -1454,7 +1454,7 @@ void GcInfoDecoder::ReportRegisterToGC(  // AMD64
 
         gcFlags |= GC_CALL_PINNED;
     }
-#endif // TARGET_UNIX && !SOS_TARGET_AMD64
+#endif // TARGET_UNIX && FEATURE_REDHAWK && !SOS_TARGET_AMD64
 
 #ifdef _DEBUG
     if(IsScratchRegister(regNum, pRD))

@@ -2407,11 +2407,9 @@ extern "C" {
      in the negated form __notnull or the possibly null form __maybenull.
     */
 
-#ifndef PAL_STDCPP_COMPAT
     #define __null                  _Null_impl_
     #define __notnull               _Notnull_impl_
     #define __maybenull             _Maybenull_impl_
-#endif // !PAL_STDCPP_COMPAT
 
     /*
      __readonly l
@@ -2600,10 +2598,11 @@ extern "C" {
 
 
 #else // ][
-#ifndef PAL_STDCPP_COMPAT
+#if 0 // Collides with clang intrinsics
     #define __null
     #define __notnull
-#endif // !PAL_STDCPP_COMPAT
+    #define __deref
+#endif
     #define __maybenull
     #define __readonly
     #define __notreadonly
@@ -2617,7 +2616,6 @@ extern "C" {
     #define __writableTo(size)
     #define __elem_writableTo(size)
     #define __byte_writableTo(size)
-    #define __deref
     #define __pre
     #define __post
     #define __precond(expr)

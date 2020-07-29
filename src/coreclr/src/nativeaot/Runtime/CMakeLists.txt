@@ -252,6 +252,18 @@ else()
   include_directories(${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
+if (CLR_CMAKE_TARGET_UNIX)
+
+  if (CLR_CMAKE_TARGET_ARCH_AMD64)
+    add_definitions(-DUNIX_AMD64_ABI)
+  elseif (CLR_CMAKE_TARGET_ARCH_ARM)
+    add_definitions(-DUNIX_ARM_ABI)
+  elseif (CLR_CMAKE_TARGET_ARCH_I386)
+    add_definitions(-DUNIX_X86_ABI)
+  endif()
+
+endif(CLR_CMAKE_TARGET_UNIX)
+
 set(RUNTIME_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 list(APPEND COMMON_RUNTIME_SOURCES ${GC_HEADERS})

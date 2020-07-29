@@ -15,6 +15,7 @@
 #include "TargetPtrs.h"
 #include "eetype.h"
 #include "ObjectLayout.h"
+#include "eetype.inl"
 
 #ifndef DACCESS_COMPILE
 void Object::InitEEType(EEType * pEEType)

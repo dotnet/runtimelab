@@ -15,7 +15,7 @@
 #include "CommonMacros.inl"
 
 #define GCINFODECODER_NO_EE
-#include "coreclr/gcinfodecoder.cpp"
+#include "gcinfodecoder.cpp"
 
 #include "UnixContext.h"
 
@@ -444,9 +444,9 @@ PTR_VOID UnixNativeCodeManager::GetAssociatedData(PTR_VOID ControlPC)
     return dac_cast<PTR_VOID>(p + *dac_cast<PTR_Int32>(p));
 }
 
-extern "C" bool __stdcall RegisterCodeManager(ICodeManager * pCodeManager, PTR_VOID pvStartRange, UInt32 cbRange);
-extern "C" void __stdcall UnregisterCodeManager(ICodeManager * pCodeManager);
-extern "C" bool __stdcall RegisterUnboxingStubs(PTR_VOID pvStartRange, UInt32 cbRange);
+extern "C" bool RegisterCodeManager(ICodeManager * pCodeManager, PTR_VOID pvStartRange, UInt32 cbRange);
+extern "C" void UnregisterCodeManager(ICodeManager * pCodeManager);
+extern "C" bool RegisterUnboxingStubs(PTR_VOID pvStartRange, UInt32 cbRange);
 
 extern "C"
 bool RhRegisterOSModule(void * pModule,

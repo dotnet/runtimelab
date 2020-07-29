@@ -31,6 +31,7 @@
 #include "threadstore.h"
 #include "threadstore.inl"
 #include "RestrictedCallouts.h"
+#include "eetype.inl"
 
 // The head of the chains of GC callouts, one per callout type.
 RestrictedCallouts::GcRestrictedCallout * RestrictedCallouts::s_rgGcRestrictedCallouts[GCRC_Count] = { 0 };

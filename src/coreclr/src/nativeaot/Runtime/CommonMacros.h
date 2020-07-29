@@ -7,10 +7,17 @@
 #include "rhassert.h"
 
 #define EXTERN_C extern "C"
+
+#if defined(HOST_X86) && !defined(HOST_UNIX)
 #define FASTCALL __fastcall
 #define STDCALL __stdcall
+#else
+#define FASTCALL
+#define STDCALL
+#endif
+
 #define REDHAWK_API
-#define REDHAWK_CALLCONV __fastcall
+#define REDHAWK_CALLCONV FASTCALL
 
 #ifdef _MSC_VER
 
@@ -164,7 +171,7 @@ inline bool IS_ALIGNED(T* val, UIntNative alignment);
 // Define an unmanaged function called from managed code that needs to execute in co-operative GC mode. (There
 // should be very few of these, most such functions will be simply p/invoked).
 //
-#define COOP_PINVOKE_HELPER(_rettype, _method, _args) EXTERN_C REDHAWK_API _rettype __fastcall _method _args
+#define COOP_PINVOKE_HELPER(_rettype, _method, _args) EXTERN_C REDHAWK_API _rettype REDHAWK_CALLCONV _method _args
 #ifdef HOST_X86
 // We have helpers that act like memcpy and memset from the CRT, so they need to be __cdecl.
 #define COOP_PINVOKE_CDECL_HELPER(_rettype, _method, _args) EXTERN_C REDHAWK_API _rettype __cdecl _method _args
