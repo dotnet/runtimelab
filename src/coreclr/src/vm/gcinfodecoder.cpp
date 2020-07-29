@@ -1454,7 +1454,7 @@ void GcInfoDecoder::ReportRegisterToGC(  // AMD64
 
         gcFlags |= GC_CALL_PINNED;
     }
-#endif // TARGET_UNIX && FEATURE_REDHAWK && !SOS_TARGET_AMD64
+#endif // TARGET_UNIX && !FEATURE_REDHAWK && !SOS_TARGET_AMD64
 
 #ifdef _DEBUG
     if(IsScratchRegister(regNum, pRD))
