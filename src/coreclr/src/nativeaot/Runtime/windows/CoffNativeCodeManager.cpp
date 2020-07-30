@@ -17,7 +17,7 @@
 #include "CommonMacros.inl"
 
 #define GCINFODECODER_NO_EE
-#include "coreclr/gcinfodecoder.cpp"
+#include "gcinfodecoder.cpp"
 
 #define UBF_FUNC_KIND_MASK      0x03
 #define UBF_FUNC_KIND_ROOT      0x00

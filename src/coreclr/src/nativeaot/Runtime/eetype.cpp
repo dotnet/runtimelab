@@ -11,6 +11,7 @@
 #include "PalRedhawk.h"
 
 #include "CommonMacros.inl"
+#include "eetype.inl"
 
 #pragma warning(disable:4127) // C4127: conditional expression is constant
 

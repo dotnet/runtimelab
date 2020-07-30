@@ -99,6 +99,10 @@ if(CLR_CMAKE_HOST_WIN32)
   add_compile_options(/Zl) # omit default library name in .OBJ
 endif(CLR_CMAKE_HOST_WIN32)
 
+if(NOT CLR_CROSS_COMPONENTS_BUILD)
+  add_subdirectory(src/nativeaot)
+endif(NOT CLR_CROSS_COMPONENTS_BUILD)
+
 #--------------------------------
 # Definition directives
 #  - all clr specific compile definitions should be included in this file

@@ -15,6 +15,7 @@
 #include "eetype.h"
 #include "ObjectLayout.h"
 #include "varint.h"
+#include "eetype.inl"
 
 // Reads the field type from the current byte of the stream and indicates whether this represents the last
 // field.

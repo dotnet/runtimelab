@@ -32,6 +32,7 @@
 #include "TypeManager.h"
 #include "RuntimeInstance.h"
 #include "eetype.inl"
+#include "CommonMacros.inl"
 
 #include "CachedInterfaceDispatch.h"
 

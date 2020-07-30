@@ -93,7 +93,7 @@ _LIBUNWIND_HIDDEN int __unw_set_reg(unw_cursor_t *cursor, unw_regnum_t regNum,
                                     unw_word_t value, unw_word_t *pos) {
   _LIBUNWIND_TRACE_API("__unw_set_reg(cursor=%p, regNum=%d, value=0x%" PRIxPTR
                        ")",
-                       static_cast<void *>(cursor), regNum, (long long)value);
+                       static_cast<void *>(cursor), regNum, (unsigned long)value);
   typedef LocalAddressSpace::pint_t pint_t;
   AbstractUnwindCursor *co = (AbstractUnwindCursor *)cursor;
   if (co->validReg(regNum)) {

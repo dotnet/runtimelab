@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 #include <stdint.h>
-#include <stdlib.h>
 
 //
 // This is the mechanism whereby multiple linked modules contribute their global data for initialization at
@@ -125,6 +124,10 @@ static const pfn c_classlibFunctions[] = {
     nullptr, // &DebugFuncEvalHelper,
     nullptr, // &DebugFuncEvalAbortHelper,
 };
+
+#ifndef _countof
+#define _countof(_array) (sizeof(_array)/sizeof(_array[0]))
+#endif
 
 extern "C" void InitializeModules(void* osModule, void ** modules, int count, void ** pClasslibFunctions, int nClasslibFunctions);
 

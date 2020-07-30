@@ -162,7 +162,7 @@ struct PAL_LIMITED_CONTEXT
 void RuntimeThreadShutdown(void* thread);
 
 #ifdef TARGET_UNIX
-typedef void (__fastcall * ThreadExitCallback)();
+typedef void (*ThreadExitCallback)();
 
 extern ThreadExitCallback g_threadExitCallback;
 
