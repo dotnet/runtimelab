@@ -231,12 +231,45 @@ partial class Test
         /// Apply MarshalAsAttribute to parameters and return types.
         /// </summary>
         public static readonly string MarshalAsAttributeOnTypes = @"
+using System;
 using System.Runtime.InteropServices;
+namespace NS
+{
+    class MyCustomMarshaler : ICustomMarshaler
+    {
+        static ICustomMarshaler GetInstance(string pstrCookie)
+            => new MyCustomMarshaler();
+
+        public void CleanUpManagedData(object ManagedObj)
+            => throw new NotImplementedException();
+
+        public void CleanUpNativeData(IntPtr pNativeData)
+            => throw new NotImplementedException();
+
+        public int GetNativeDataSize()
+            => throw new NotImplementedException();
+
+        public IntPtr MarshalManagedToNative(object ManagedObj)
+            => throw new NotImplementedException();
+
+        public object MarshalNativeToManaged(IntPtr pNativeData)
+            => throw new NotImplementedException();
+    }
+}
+
 partial class Test
 {
     [GeneratedDllImport(""DoesNotExist"")]
     [return: MarshalAs(UnmanagedType.LPWStr)]
-    public static partial string Method([MarshalAs(UnmanagedType.LPStr)]string t);
+    public static partial string Method1([MarshalAs(UnmanagedType.LPStr)]string t);
+
+    [GeneratedDllImport(""DoesNotExist"")]
+    [return: MarshalAs(UnmanagedType.LPWStr)]
+    public static partial string Method2([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(NS.MyCustomMarshaler), MarshalCookie=""COOKIE1"")]string t);
+
+    [GeneratedDllImport(""DoesNotExist"")]
+    [return: MarshalAs(UnmanagedType.LPWStr)]
+    public static partial string Method3([MarshalAs(UnmanagedType.CustomMarshaler, MarshalType = ""NS.MyCustomMarshaler"", MarshalCookie=""COOKIE2"")]string t);
 }
 ";
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -11,8 +12,8 @@ namespace Microsoft.Interop
 {
     internal class DllImportStub
     {
-        private PInvokeTypeInfo returnTypeInfo;
-        private IEnumerable<PInvokeTypeInfo> paramsTypeInfo;
+        private TypePositionInfo returnTypeInfo;
+        private IEnumerable<TypePositionInfo> paramsTypeInfo;
 
         private DllImportStub()
         {
@@ -22,32 +23,38 @@ namespace Microsoft.Interop
 
         public IEnumerable<string> StubContainingTypesDecl { get; private set; }
 
-        public string StubReturnType { get => this.returnTypeInfo.StubType; }
+        public string StubReturnType { get => this.returnTypeInfo.ManagedTypeDecl; }
 
-        public IEnumerable<(string Type, string Name, RefKind refKind)> StubParameters
+        public IEnumerable<(string Type, string Name)> StubParameters
         {
             get
             {
                 foreach (var typeinfo in paramsTypeInfo)
                 {
-                    yield return (typeinfo.StubType, typeinfo.Identifier, typeinfo.RefKind);
+                    //if (typeinfo.ManagedIndex != TypePositionInfo.UnsetIndex)
+                    {
+                        yield return (typeinfo.ManagedTypeDecl, typeinfo.InstanceIdentifier);
+                    }
                 }
             }
         }
 
         public IEnumerable<string> StubCode { get; private set; }
 
-        public string DllImportReturnType { get => this.returnTypeInfo.DllImportType; }
+        public string DllImportReturnType { get => this.returnTypeInfo.UnmanagedTypeDecl; }
 
         public string DllImportMethodName { get; private set; }
 
-        public IEnumerable<(string Type, string Name, RefKind refKind)> DllImportParameters
+        public IEnumerable<(string Type, string Name)> DllImportParameters
         {
             get
             {
                 foreach (var typeinfo in paramsTypeInfo)
                 {
-                    yield return (typeinfo.DllImportType, typeinfo.Identifier, typeinfo.RefKind);
+                    //if (typeinfo.UnmanagedIndex != TypePositionInfo.UnsetIndex)
+                    {
+                        yield return (typeinfo.UnmanagedTypeDecl, typeinfo.InstanceIdentifier);
+                    }
                 }
             }
         }
@@ -145,13 +152,13 @@ namespace Microsoft.Interop
             stubContainingTypes.Reverse();
 
             // Determine parameter types
-            var paramsTypeInfo = new List<PInvokeTypeInfo>();
+            var paramsTypeInfo = new List<TypePositionInfo>();
             foreach (var paramSymbol in method.Parameters)
             {
-                paramsTypeInfo.Add(ComputePInvokeTypeInfo(paramSymbol.Type, paramSymbol.GetAttributes(), paramSymbol.RefKind));
+                paramsTypeInfo.Add(TypePositionInfo.CreateForParameter(paramSymbol));
             }
 
-            var retTypeInfo = ComputePInvokeTypeInfo(method.ReturnType, method.GetReturnTypeAttributes());
+            var retTypeInfo = TypePositionInfo.CreateForType(method.ReturnType, method.GetReturnTypeAttributes());
 
             string dllImportName = method.Name + "__PInvoke__";
 
@@ -171,7 +178,7 @@ namespace Microsoft.Interop
                 char delim = '(';
                 foreach (var param in paramsTypeInfo)
                 {
-                    dispatchCall.Append($"{delim}{RefKindToString(param.RefKind)}{param.Identifier}");
+                    dispatchCall.Append($"{delim}{param.RefKindDecl}{param.InstanceIdentifier}");
                     delim = ',';
                 }
                 dispatchCall.Append(");");
@@ -188,110 +195,6 @@ namespace Microsoft.Interop
                 DllImportMethodName = dllImportName,
                 Diagnostics = Enumerable.Empty<Diagnostic>(),
             };
-        }
-
-        private static string RefKindToString(RefKind refKind)
-        {
-            return refKind switch
-            {
-                RefKind.In => "in ",
-                RefKind.Ref => "ref ",
-                RefKind.Out => "out ",
-                RefKind.None => string.Empty,
-                _ => throw new NotImplementedException("Support for some RefKind"),
-            };
-        }
-
-        private static PInvokeTypeInfo ComputePInvokeTypeInfo(ITypeSymbol type, IEnumerable<AttributeData> attributes, RefKind refKind = RefKind.None)
-        {
-            // Look at attributes on the type.
-            AttributeData marshalAsData = null;
-            foreach (var attrData in attributes)
-            {
-                if (nameof(MarshalAsAttribute).Equals(attrData.AttributeClass.Name))
-                {
-                    marshalAsData = attrData;
-                    break;
-                }
-            }
-
-            return new PInvokeTypeInfo()
-            {
-                Identifier = type.Name,
-                StubType = ComputeTypeForStub(type, refKind),
-                DllImportType = ComputeTypeForDllImport(type, refKind),
-                RefKind = refKind,
-                MarshalAsData = marshalAsData,
-            };
-        }
-
-        private static string ComputeTypeForStub(ITypeSymbol type, RefKind refKind = RefKind.None)
-        {
-            var typeAsString = type.SpecialType switch
-            {
-                SpecialType.System_Void => "void",
-                SpecialType.System_SByte => "sbyte",
-                SpecialType.System_Byte => "byte",
-                SpecialType.System_Int16 => "short",
-                SpecialType.System_UInt16 => "ushort",
-                SpecialType.System_Int32 => "int",
-                SpecialType.System_UInt32 => "uint",
-                SpecialType.System_Int64 => "long",
-                SpecialType.System_UInt64 => "ulong",
-                SpecialType.System_Single => "float",
-                SpecialType.System_Double => "double",
-                SpecialType.System_String => "string",
-                SpecialType.System_IntPtr => "System.IntPtr",
-                SpecialType.System_UIntPtr => "System.UIntPtr",
-                _ => null,
-            };
-
-            var typePrefix = string.Empty;
-            if (typeAsString is null)
-            {
-                // Determine the namespace
-                if (!(type.ContainingNamespace is null)
-                    && !type.ContainingNamespace.IsGlobalNamespace)
-                {
-                    typePrefix = $"{type.ContainingNamespace}{Type.Delimiter}";
-                }
-
-                typeAsString = type.ToString();
-            }
-
-            string refKindAsString = RefKindToString(refKind);
-            return $"{refKindAsString}{typePrefix}{typeAsString}";
-        }
-
-        private static string ComputeTypeForDllImport(ITypeSymbol type, RefKind refKind = RefKind.None)
-        {
-#if GENERATE_FORWARDER
-            return ComputeTypeForStub(type, refKind);
-#else
-            if (!type.IsUnmanagedType)
-            {
-                return "void*";
-            }
-
-            return type.SpecialType switch
-            {
-                SpecialType.System_Void => "void",
-                SpecialType.System_SByte => "sbyte",
-                SpecialType.System_Byte => "byte",
-                SpecialType.System_Int16 => "short",
-                SpecialType.System_UInt16 => "ushort",
-                SpecialType.System_Int32 => "int",
-                SpecialType.System_UInt32 => "uint",
-                SpecialType.System_Int64 => "long",
-                SpecialType.System_UInt64 => "ulong",
-                SpecialType.System_Single => "float",
-                SpecialType.System_Double => "double",
-                SpecialType.System_String => "char*", // [TODO] Consider encoding here
-                SpecialType.System_IntPtr => "void*",
-                SpecialType.System_UIntPtr => "void*",
-                _ => "void*",
-            };
-#endif
         }
     }
 }
