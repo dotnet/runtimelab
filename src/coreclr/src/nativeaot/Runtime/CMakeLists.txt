@@ -241,9 +241,10 @@ add_definitions(-DFEATURE_CACHED_INTERFACE_DISPATCH)
 add_definitions(-D_LIB)
 add_definitions(-DFEATURE_EMBEDDED_CONFIG)
 
+# there is a problem with undefined symbols when this is set
+# add_definitions(-DSTRESS_HEAP)
+
 if(WIN32)
-  # There is a problem with undefined symbol g_pConfig, windows don't care since it is in template method, but clang does 
-  # add_definitions(-DSTRESS_HEAP) yup there is a problem with undefined symbol when this is set
   add_definitions(-DFEATURE_ETW)
   add_definitions(-DFEATURE_EVENT_TRACE)
 else()
