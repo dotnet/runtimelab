@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>ilc</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <NoWarn>8002,NU1701</NoWarn>
+    <Platforms>x64;x86</Platforms>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendTargetFrameworkToOutputPath Condition="'$(BuildingInsideVisualStudio)' == 'true'">true</AppendTargetFrameworkToOutputPath>
+    <OutputPath>$(BinDir)/ilc</OutputPath>
+    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    <RuntimeIdentifiers>linux-x64;linux-musl-x64;win-x64</RuntimeIdentifiers>
+    <Configurations>Debug;Release;Checked</Configurations>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ILCompiler.DependencyAnalysisFramework\ILCompiler.DependencyAnalysisFramework.csproj" />
+    <ProjectReference Include="..\ILCompiler.MetadataTransform\ILCompiler.MetadataTransform.csproj" />
+    <ProjectReference Include="..\ILCompiler.RyuJit\ILCompiler.RyuJit.csproj" />
+    <ProjectReference Include="..\ILCompiler.TypeSystem\ILCompiler.TypeSystem.csproj" />
+    <ProjectReference Include="..\ILCompiler.Compiler\ILCompiler.Compiler.csproj" />
+    <ProjectReference Include="..\..\System.CommandLine\System.CommandLine.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\Common\CommandLine\CommandLineException.cs">
+      <Link>CommandLine\CommandLineException.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Common\CommandLine\CommandLineHelpers.cs">
+      <Link>CommandLine\CommandLineHelpers.cs</Link>
+    </Compile>
+  </ItemGroup>
+</Project>

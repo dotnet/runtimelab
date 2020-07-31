@@ -42,6 +42,7 @@ namespace Internal.JitInterface
         private Dictionary<uint, string> _parameterIndexToNameMap;
         private TypeDesc[] _variableToTypeDesc;
         private readonly UnboxingMethodDescFactory _unboxingThunkFactory = new UnboxingMethodDescFactory();
+        private bool _isFallbackBodyCompilation;
 
         public CorInfoImpl(RyuJitCompilation compilation)
             : this()
@@ -57,6 +58,10 @@ namespace Internal.JitInterface
         public void CompileMethod(MethodCodeNode methodCodeNodeNeedingCode, MethodIL methodIL = null)
         {
             _methodCodeNode = methodCodeNodeNeedingCode;
+            _isFallbackBodyCompilation = methodIL != null;
+
+            if (methodIL == null)
+                methodIL = _compilation.GetMethodIL(MethodBeingCompiled);
 
             try
             {
@@ -1750,6 +1755,12 @@ namespace Internal.JitInterface
 
         private void reportInliningDecision(CORINFO_METHOD_STRUCT_* inlinerHnd, CORINFO_METHOD_STRUCT_* inlineeHnd, CorInfoInline inlineResult, byte* reason)
         {
+        }
+
+        private int* getAddrOfCaptureThreadGlobal(ref void* ppIndirection)
+        {
+            ppIndirection = null;
+            return null;
         }
 
         private void getFieldInfo(ref CORINFO_RESOLVED_TOKEN pResolvedToken, CORINFO_METHOD_STRUCT_* callerHandle, CORINFO_ACCESS_FLAGS flags, CORINFO_FIELD_INFO* pResult)
