@@ -26,8 +26,6 @@ namespace ILCompiler
         private Dictionary<string, string> _referenceFilePaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         private string _outputFilePath;
-        private bool _isCppCodegen;
-        private bool _isWasmCodegen;
         private bool _isVerbose;
 
         private string _dgmlLogFileName;
@@ -159,8 +157,6 @@ namespace ILCompiler
                 syntax.DefineOption("Os", ref optimizeSpace, "Enable optimizations, favor code space");
                 syntax.DefineOption("Ot", ref optimizeTime, "Enable optimizations, favor code speed");
                 syntax.DefineOption("g", ref _enableDebugInfo, "Emit debugging information");
-                syntax.DefineOption("cpp", ref _isCppCodegen, "Compile for C++ code-generation");
-                syntax.DefineOption("wasm", ref _isWasmCodegen, "Compile for WebAssembly code-generation");
                 syntax.DefineOption("nativelib", ref _nativeLib, "Compile as static or shared library");
                 syntax.DefineOption("exportsfile", ref _exportsFile, "File to write exported method definitions");
                 syntax.DefineOption("dgmllog", ref _dgmlLogFileName, "Save result of dependency analysis as DGML");
@@ -286,11 +282,6 @@ namespace ILCompiler
                     _targetArchitecture = TargetArchitecture.ARM;
                 else if (_targetArchitectureStr.Equals("arm64", StringComparison.OrdinalIgnoreCase))
                     _targetArchitecture = TargetArchitecture.ARM64;
-                else if (_targetArchitectureStr.Equals("wasm", StringComparison.OrdinalIgnoreCase))
-                {
-                    _targetArchitecture = TargetArchitecture.Wasm32;
-                    _isWasmCodegen = true;
-                }
                 else
                     throw new CommandLineException("Target architecture is not supported");
             }
@@ -305,9 +296,6 @@ namespace ILCompiler
                 else
                     throw new CommandLineException("Target OS is not supported");
             }
-
-            if (_isWasmCodegen)
-                _targetArchitecture = TargetArchitecture.Wasm32;
 
             InstructionSetSupportBuilder instructionSetSupportBuilder = new InstructionSetSupportBuilder(_targetArchitecture);
 
@@ -423,8 +411,8 @@ namespace ILCompiler
 
             SharedGenericsMode genericsMode = SharedGenericsMode.CanonicalReferenceTypes;
 
-            var simdVectorLength = (_isCppCodegen || _isWasmCodegen) ? SimdVectorLength.None : instructionSetSupport.GetVectorTSimdVector();
-            var targetAbi = _isCppCodegen ? TargetAbi.CppCodegen : TargetAbi.CoreRT;
+            var simdVectorLength = instructionSetSupport.GetVectorTSimdVector();
+            var targetAbi = TargetAbi.CoreRT;
             var targetDetails = new TargetDetails(_targetArchitecture, _targetOS, targetAbi, simdVectorLength);
             CompilerTypeSystemContext typeSystemContext = 
                 new CompilerTypeSystemContext(targetDetails, genericsMode, supportsReflection ? DelegateFeature.All : 0);
@@ -556,22 +544,12 @@ namespace ILCompiler
             // Compile
             //
 
-            CompilationBuilder builder;
-            if (_isWasmCodegen)
-                builder = new WebAssemblyCodegenCompilationBuilder(typeSystemContext, compilationGroup);
-            else if (_isCppCodegen)
-                builder = new CppCodegenCompilationBuilder(typeSystemContext, compilationGroup);
-            else
-                builder = new RyuJitCompilationBuilder(typeSystemContext, compilationGroup);
+            CompilationBuilder builder = new RyuJitCompilationBuilder(typeSystemContext, compilationGroup);
 
             string compilationUnitPrefix = _multiFile ? System.IO.Path.GetFileNameWithoutExtension(_outputFilePath) : "";
             builder.UseCompilationUnitPrefix(compilationUnitPrefix);
 
-            PInvokeILEmitterConfiguration pinvokePolicy;
-            if (!_isCppCodegen && !_isWasmCodegen)
-                pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target);
-            else
-                pinvokePolicy = new DirectPInvokePolicy();
+            PInvokeILEmitterConfiguration pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target);
 
             RemovedFeature removedFeatures = 0;
             foreach (string feature in _removedFeatures)
@@ -642,18 +620,17 @@ namespace ILCompiler
             InteropStubManager interopStubManager = new UsageBasedInteropStubManager(interopStateManager, pinvokePolicy);
 
             // Unless explicitly opted in at the command line, we enable scanner for retail builds by default.
-            // We don't do this for CppCodegen and Wasm, because those codegens are behind.
             // We also don't do this for multifile because scanner doesn't simulate inlining (this would be
             // fixable by using a CompilationGroup for the scanner that has a bigger worldview, but
             // let's cross that bridge when we get there).
             bool useScanner = _useScanner ||
-                (_optimizationMode != OptimizationMode.None && !_isCppCodegen && !_isWasmCodegen && !_multiFile);
+                (_optimizationMode != OptimizationMode.None && !_multiFile);
 
             useScanner &= !_noScanner;
 
             // Enable static data preinitialization in optimized builds.
             bool preinitStatics = _preinitStatics ||
-                (_optimizationMode != OptimizationMode.None && !_isCppCodegen && !_multiFile);
+                (_optimizationMode != OptimizationMode.None && !_multiFile);
             preinitStatics &= !_noPreinitStatics;
 
             var preinitManager = new PreinitializationManager(typeSystemContext, compilationGroup, ilProvider, preinitStatics);
