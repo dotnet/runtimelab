@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DllImportGenerator.Test", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Demo", "Demo\Demo.csproj", "{E478EE77-E072-4A42-B453-EBFDA7728717}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DllImportGeneratorAttribute", "DllImportGeneratorAttribute\DllImportGeneratorAttribute.csproj", "{9C1C161E-0C03-4666-B051-CEE420C22A29}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ancillary.Interop", "Ancillary.Interop\Ancillary.Interop.csproj", "{E59F0B6A-1137-4179-A91D-33464A775DEB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,10 +29,10 @@ Global
 		{E478EE77-E072-4A42-B453-EBFDA7728717}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E478EE77-E072-4A42-B453-EBFDA7728717}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E478EE77-E072-4A42-B453-EBFDA7728717}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9C1C161E-0C03-4666-B051-CEE420C22A29}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9C1C161E-0C03-4666-B051-CEE420C22A29}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9C1C161E-0C03-4666-B051-CEE420C22A29}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9C1C161E-0C03-4666-B051-CEE420C22A29}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E59F0B6A-1137-4179-A91D-33464A775DEB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E59F0B6A-1137-4179-A91D-33464A775DEB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E59F0B6A-1137-4179-A91D-33464A775DEB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E59F0B6A-1137-4179-A91D-33464A775DEB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
