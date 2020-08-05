@@ -8,6 +8,21 @@ using Xunit;
 
 namespace System.Text.Json.SourceGeneration.Tests
 {
+
+    [JsonSerializable]
+    public class Location
+    {
+        public int Id { get; set; }
+        public string Address1 { get; set; }
+        public string Address2 { get; set; }
+        public string City { get; set; }
+        public string State { get; set; }
+        public string PostalCode { get; set; }
+        public string Name { get; set; }
+        public string PhoneNumber { get; set; }
+        public string Country { get; set; }
+    }
+
     public class JsonSerializerSourceGeneratorTests
     {
         [JsonSerializable]
@@ -50,6 +65,7 @@ namespace System.Text.Json.SourceGeneration.Tests
         {
             var internalTypeTest = new HelloWorldGenerated.SampleInternalTestClassInfo();
             var externalTypeTest = new HelloWorldGenerated.SampleExternalTestClassInfo();
+            var locationTypeTest = new HelloWorldGenerated.LocationClassInfo();
 
             // Check base class names.
             Assert.Equal("SampleInternalTestClassInfo", internalTypeTest.GetClassName());
@@ -60,10 +76,10 @@ namespace System.Text.Json.SourceGeneration.Tests
             Assert.Equal(2, externalTypeTest.Ctors.Count);
 
             // Ctor params along with its types are visible.
-            Dictionary<string, string> expectedCtorParamsInternal = new Dictionary<string, string> { { "c", "Char"}, { "s", "String" }, { "i", "Int32" } };
+            Dictionary<string, string> expectedCtorParamsInternal = new Dictionary<string, string> { { "c", "Char" }, { "s", "String" }, { "i", "Int32" } };
             Assert.Equal(expectedCtorParamsInternal, internalTypeTest.CtorParams);
 
-            Dictionary<string, string> expectedCtorParamsExternal = new Dictionary<string, string> { { "converterType", "Type"} };
+            Dictionary<string, string> expectedCtorParamsExternal = new Dictionary<string, string> { { "converterType", "Type" } };
             Assert.Equal(expectedCtorParamsExternal, externalTypeTest.CtorParams);
 
             // Public and private methods are visible.
@@ -84,7 +100,7 @@ namespace System.Text.Json.SourceGeneration.Tests
             Dictionary<string, string> expectedPropertiesInternal = new Dictionary<string, string> { { "PublicIntPropertyPublic", "Int32" }, { "PublicIntPropertyPrivateSet", "Int32" }, { "PublicIntPropertyPrivateGet", "Int32" } };
             Assert.Equal(expectedPropertiesInternal, internalTypeTest.Properties);
 
-            Dictionary<string, string> expectedPropertiesExternal = new Dictionary<string, string> { { "ConverterType", "Type"} };
+            Dictionary<string, string> expectedPropertiesExternal = new Dictionary<string, string> { { "ConverterType", "Type" } };
             Assert.Equal(expectedPropertiesExternal, externalTypeTest.Properties);
         }
     }

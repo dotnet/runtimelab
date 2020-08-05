@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 
 namespace System.Text.Json.SourceGeneration
@@ -57,8 +58,13 @@ namespace System.Text.Json.SourceGeneration
             StringBuilder member = new StringBuilder();
             string foundMethods, foundFields, foundProperties, foundCtorParams, foundCtors;
 
+            JsonSourceGeneratorHelper codegen = new JsonSourceGeneratorHelper("MyNamespace", ref context);
             foreach (KeyValuePair<string, Type> entry in foundTypes)
             {
+                // Run codegen for each root type.
+                codegen.GenerateClassInfo(entry.Key, entry.Value);
+
+                // For basic e2e testing.
                 foreach(MethodInfo method in entry.Value.GetMethods())
                 {
                     member.Append(@$"""{method.Name}"", "); 

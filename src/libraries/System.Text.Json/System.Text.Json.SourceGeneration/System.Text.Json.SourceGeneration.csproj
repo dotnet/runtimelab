@@ -18,6 +18,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="JsonSourceGenerator.cs" />
+    <Compile Include="JsonSourceGeneratorHelper.cs" />
+    <Compile Include="JsonSerializableSyntaxReceiver.cs" />
     <Compile Include="ReflectionUtils\AssemblyWrapper.cs" />
     <Compile Include="ReflectionUtils\FieldInfoWrapper.cs" />
     <Compile Include="ReflectionUtils\ConstructorInfoWrapper.cs" />
@@ -30,8 +33,6 @@
     <Compile Include="ReflectionUtils\ReflectionExtensions.cs" />
     <Compile Include="ReflectionUtils\RoslynExtensions.cs" />
     <Compile Include="ReflectionUtils\TypeWrapper.cs" />
-    <Compile Include="JsonSourceGenerator.cs" />
-    <Compile Include="JsonSerializableSyntaxReceiver.cs" />
   </ItemGroup>
 
 </Project>
