@@ -787,7 +787,7 @@ public:
 
     virtual DWORD GetFuncletStartOffsets(const METHODTOKEN& MethodToken, DWORD* pStartFuncletOffsets, DWORD dwLength) = 0;
 
-    BOOL IsFunclet(EECodeInfo * pCodeInfo);
+    virtual BOOL IsFunclet(EECodeInfo * pCodeInfo);
     virtual BOOL IsFilterFunclet(EECodeInfo * pCodeInfo);
 #endif // FEATURE_EH_FUNCLETS
 
@@ -1559,6 +1559,7 @@ public:
 
     virtual TADDR                   GetFuncletStartAddress(EECodeInfo * pCodeInfo);
     virtual DWORD                   GetFuncletStartOffsets(const METHODTOKEN& MethodToken, DWORD* pStartFuncletOffsets, DWORD dwLength);
+    virtual BOOL                    IsFunclet(EECodeInfo * pCodeInfo);
     virtual BOOL                    IsFilterFunclet(EECodeInfo * pCodeInfo);
 #endif // FEATURE_EH_FUNCLETS
 

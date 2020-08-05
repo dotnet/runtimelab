@@ -5830,7 +5830,7 @@ GCInfoToken ReadyToRunJitManager::GetGCInfoToken(const METHODTOKEN& MethodToken)
     SIZE_T nUnwindDataSize;
     PTR_VOID pUnwindData = GetUnwindDataBlob(baseAddress, pRuntimeFunction, &nUnwindDataSize);
 
-    // GCInfo immediatelly follows unwind data
+    // GCInfo immediately follows unwind data
     PTR_BYTE gcInfo = dac_cast<PTR_BYTE>(pUnwindData) + nUnwindDataSize;
     UINT32 gcInfoVersion = JitTokenToGCInfoVersion(MethodToken);
 
@@ -6073,8 +6073,6 @@ BOOL ReadyToRunJitManager::JitCodeToMethodInfo(RangeSection * pRangeSection,
         SUPPORTS_DAC;
     } CONTRACTL_END;
 
-    // READYTORUN: FUTURE: Hot-cold spliting
-
     // If the address is in a thunk, return NULL.
     if (GetStubCodeBlockKind(pRangeSection, currentPC) != STUB_CODE_BLOCK_UNKNOWN)
     {
@@ -6113,6 +6111,19 @@ BOOL ReadyToRunJitManager::JitCodeToMethodInfo(RangeSection * pRangeSection,
     // Save the raw entry
     PTR_RUNTIME_FUNCTION RawFunctionEntry = pRuntimeFunctions + MethodIndex;
 
+    // If the MethodIndex happen to be the cold code block, turn it into the associated hot code block
+    for (DWORD i = 0; i < pInfo->m_nScratch; i++)
+    {
+        if ((ULONG)MethodIndex == pInfo->m_pScratch[i])
+        {
+            if (i % 2 == 0)
+            {
+                MethodIndex = pInfo->m_pScratch[i + 1];
+                break;
+            }
+        }
+    }
+
     MethodDesc *pMethodDesc;
     while ((pMethodDesc = pInfo->GetMethodDescForEntryPoint(ImageBase + RUNTIME_FUNCTION__BeginAddress(pRuntimeFunctions + MethodIndex))) == NULL)
         MethodIndex--;
@@ -6132,6 +6143,8 @@ BOOL ReadyToRunJitManager::JitCodeToMethodInfo(RangeSection * pRangeSection,
 
     if (pCodeInfo)
     {
+        // Should EECodeInfo::GetRelOffset() respect hot-cold splitting?
+        // Certain debugger code path assume this respects hot-cold splitting, but others might not.
         pCodeInfo->m_relOffset = (DWORD)
             (RelativePc - RUNTIME_FUNCTION__BeginAddress(FunctionEntry));
 
@@ -6171,8 +6184,6 @@ TADDR ReadyToRunJitManager::GetFuncletStartAddress(EECodeInfo * pCodeInfo)
 {
     LIMITED_METHOD_DAC_CONTRACT;
 
-    // READYTORUN: FUTURE: Hot-cold spliting
-
     return IJitManager::GetFuncletStartAddress(pCodeInfo);
 }
 
@@ -6194,9 +6205,62 @@ DWORD ReadyToRunJitManager::GetFuncletStartOffsets(const METHODTOKEN& MethodToke
         pFirstFuncletFunctionEntry, moduleBase,
         &nFunclets, pStartFuncletOffsets, dwLength);
 
-    // READYTORUN: FUTURE: Hot/cold splitting
+    // Technically, the cold code is not a funclet, but it looks like the debugger wants it
+    if (regionInfo.coldSize > 0)
+    {
+        ReadyToRunInfo * pInfo = JitTokenToReadyToRunInfo(MethodToken);
+        PTR_RUNTIME_FUNCTION pRuntimeFunctions = pInfo->m_pRuntimeFunctions;
+        int i = 0;
+        while (true)
+        {
+            pFirstFuncletFunctionEntry = pRuntimeFunctions + i;
+            if (regionInfo.coldStartAddress == moduleBase + RUNTIME_FUNCTION__BeginAddress(pFirstFuncletFunctionEntry))
+            {
+                break;
+            }
+            i++;
+        }
+
+        GetFuncletStartOffsetsHelper(regionInfo.coldStartAddress, regionInfo.coldSize, 0,
+            pFirstFuncletFunctionEntry, moduleBase,
+            &nFunclets, pStartFuncletOffsets, dwLength);
+    }
 
     return nFunclets;
+}
+
+BOOL ReadyToRunJitManager::IsFunclet(EECodeInfo* pCodeInfo)
+{
+    CONTRACTL {
+        NOTHROW;
+        GC_NOTRIGGER;
+        HOST_NOCALLS;
+        SUPPORTS_DAC;
+    } CONTRACTL_END;
+
+    ReadyToRunInfo * pInfo = JitTokenToReadyToRunInfo(pCodeInfo->GetMethodToken());
+
+    COUNT_T nRuntimeFunctions = pInfo->m_nRuntimeFunctions;
+    PTR_RUNTIME_FUNCTION pRuntimeFunctions = pInfo->m_pRuntimeFunctions;
+
+    ULONG methodIndex = (ULONG)(pCodeInfo->GetFunctionEntry() - pRuntimeFunctions);
+
+    // If it is either the main hot-code or the cold code, then it is not a funclet
+    for (DWORD i = 0; i < pInfo->m_nScratch; i++)
+    {
+        if (methodIndex == pInfo->m_pScratch[i])
+        {
+            return FALSE;
+        }
+    }
+
+    // It could be a funclet, or it could be a function that is not split
+    // so fall back to existing logic
+
+    TADDR funcletStartAddress = GetFuncletStartAddress(pCodeInfo);
+    TADDR methodStartAddress = pCodeInfo->GetStartAddress();
+
+    return (funcletStartAddress != methodStartAddress);
 }
 
 BOOL ReadyToRunJitManager::IsFilterFunclet(EECodeInfo * pCodeInfo)
@@ -6250,12 +6314,32 @@ void ReadyToRunJitManager::JitTokenToMethodRegionInfo(const METHODTOKEN& MethodT
         PRECONDITION(methodRegionInfo != NULL);
     } CONTRACTL_END;
 
-    // READYTORUN: FUTURE: Hot-cold spliting
-
     methodRegionInfo->hotStartAddress  = JitTokenToStartAddress(MethodToken);
     methodRegionInfo->hotSize          = GetCodeManager()->GetFunctionSize(GetGCInfoToken(MethodToken));
     methodRegionInfo->coldStartAddress = 0;
     methodRegionInfo->coldSize         = 0;
+
+    ReadyToRunInfo * pInfo = JitTokenToReadyToRunInfo(MethodToken);
+    COUNT_T nRuntimeFunctions = pInfo->m_nRuntimeFunctions;
+    PTR_RUNTIME_FUNCTION pRuntimeFunctions = pInfo->m_pRuntimeFunctions;
+
+    PTR_RUNTIME_FUNCTION pRuntimeFunction = dac_cast<PTR_RUNTIME_FUNCTION>(MethodToken.m_pCodeHeader);
+
+    ULONG methodIndex = (ULONG)(pRuntimeFunction - pRuntimeFunctions);
+
+    for (DWORD i = 0; i < pInfo->m_nScratch; i++)
+    {
+        if (methodIndex == pInfo->m_pScratch[i])
+        {
+            _ASSERTE((i % 2) == 1);
+            ULONG coldMethodIndex = pInfo->m_pScratch[i - 1];
+            PTR_RUNTIME_FUNCTION pColdRuntimeFunction = pRuntimeFunctions + coldMethodIndex;
+            methodRegionInfo->coldStartAddress = JitTokenToModuleBase(MethodToken) + RUNTIME_FUNCTION__BeginAddress(pColdRuntimeFunction);
+            methodRegionInfo->coldSize = RUNTIME_FUNCTION__EndAddress(pColdRuntimeFunction, 0) - RUNTIME_FUNCTION__BeginAddress(pColdRuntimeFunction);
+            methodRegionInfo->hotSize -= methodRegionInfo->coldSize;
+            break;
+        }
+    }
 }
 
 #ifdef DACCESS_COMPILE

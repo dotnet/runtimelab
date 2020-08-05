@@ -1154,7 +1154,11 @@ void DebugStackTrace::GetStackFramesFromException(OBJECTREF * e,
 
                 if (cur.ip)
                 {
-                    dwNativeOffset = (DWORD)(cur.ip - (UINT_PTR)pMD->GetNativeCode());
+                    EECodeInfo codeInfo(cur.ip);
+                    // As of now, EECodeInfo::GetRelOffset does not account for the gap
+                    // between hot and cold code, so it is still wrong to get the IL offset
+                    // using this value as the native offset.
+                    dwNativeOffset = codeInfo.GetRelOffset();
                 }
                 else
                 {

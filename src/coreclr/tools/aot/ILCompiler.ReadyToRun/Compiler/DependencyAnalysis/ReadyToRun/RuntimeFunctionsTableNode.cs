@@ -60,6 +60,7 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
         public override ObjectData GetData(NodeFactory factory, bool relocsOnly = false)
         {
             // This node does not trigger generation of other nodes.
+            // TODO: Make this generate the generation of the Scratch node
             if (relocsOnly)
                 return new ObjectData(Array.Empty<byte>(), Array.Empty<Relocation>(), 1, new ISymbolDefinitionNode[] { this });
 
@@ -72,6 +73,7 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
             // Add the symbol representing this object node
             runtimeFunctionsBuilder.AddSymbol(this);
 
+            uint runtimeFunctionIndex = 0;
             foreach (MethodWithGCInfo method in _methodNodes)
             {
                 int[] funcletOffsets = method.GCInfoNode.CalculateFuncletOffsets(factory);
@@ -94,8 +96,41 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
                         runtimeFunctionsBuilder.EmitReloc(method, RelocType.IMAGE_REL_BASED_ADDR32NB, delta: frameInfo.EndOffset);
                     }
                     runtimeFunctionsBuilder.EmitReloc(factory.RuntimeFunctionsGCInfo.StartSymbol, RelocType.IMAGE_REL_BASED_ADDR32NB, funcletOffsets[frameIndex]);
+                    runtimeFunctionIndex++;
                 }
             }
+
+            List<uint> mapping = new List<uint>();
+#if READYTORUN
+            // Emitting a RuntimeFunction entry for cold code
+            foreach (MethodWithGCInfo method in _methodNodes)
+            {
+                MethodColdCodeNode methodColdCodeNode = method.GetColdCodeNode();
+                if (methodColdCodeNode != null)
+                {
+                    int[] funcletOffsets = method.GCInfoNode.CalculateFuncletOffsets(factory);
+                    // TODO: Avoid code duplication
+                    // StartOffset of the runtime function
+                    int codeDelta = 0;
+                    if (Target.Architecture == TargetArchitecture.ARM)
+                    {
+                        // THUMB_CODE
+                        codeDelta = 1;
+                    }
+                    runtimeFunctionsBuilder.EmitReloc(methodColdCodeNode, RelocType.IMAGE_REL_BASED_ADDR32NB, delta: codeDelta);
+                    if (!relocsOnly && Target.Architecture == TargetArchitecture.X64)
+                    {
+                        // On Amd64, the 2nd word contains the EndOffset of the runtime function
+                        runtimeFunctionsBuilder.EmitReloc(methodColdCodeNode, RelocType.IMAGE_REL_BASED_ADDR32NB, delta: methodColdCodeNode.GetColdCodeSize());
+                    }
+                    runtimeFunctionsBuilder.EmitReloc(factory.RuntimeFunctionsGCInfo.StartSymbol, RelocType.IMAGE_REL_BASED_ADDR32NB, funcletOffsets[funcletOffsets.Length - 1]);
+                    mapping.Add(runtimeFunctionIndex);
+                    mapping.Add((uint)_insertedMethodNodes[method]);
+                    runtimeFunctionIndex++;
+                }
+            }
+#endif
+            _nodeFactory.Scratch.mapping = mapping.ToArray();
 
             // Emit sentinel entry
             runtimeFunctionsBuilder.EmitUInt(~0u);

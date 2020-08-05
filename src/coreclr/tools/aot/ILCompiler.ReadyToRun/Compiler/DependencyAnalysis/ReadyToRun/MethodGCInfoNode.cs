@@ -39,7 +39,12 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
 
         public int[] CalculateFuncletOffsets(NodeFactory factory)
         {
-            int[] offsets = new int[_methodNode.FrameInfos.Length];
+            int coldCodeUnwindInfoCount = 0;
+            if (_methodNode.GetColdCodeNode() != null)
+            {
+                coldCodeUnwindInfoCount = 1;
+            }
+            int[] offsets = new int[_methodNode.FrameInfos.Length + coldCodeUnwindInfoCount];
             if (!factory.RuntimeFunctionsGCInfo.Deduplicator.TryGetValue(this, out var deduplicatedResult))
             {
                 throw new Exception("Did not properly initialize deduplicator");
@@ -59,6 +64,10 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
                     offset += deduplicatedResult._methodNode.GCInfo.Length;
                     offset += (-offset & 3); // 4-alignment after GC info in 1st funclet
                 }
+            }
+            if (coldCodeUnwindInfoCount == 1)
+            {
+                offsets[_methodNode.FrameInfos.Length] = offset;
             }
             return offsets;
         }
@@ -164,6 +173,22 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
                     yield return new GCInfoComponent(_methodNode.GCInfo);
                 }
             }
+#if READYTORUN
+            if (_methodNode.GetColdCodeNode() != null)
+            {
+                byte[] header = new byte[4];
+                int i = 0;
+                header[i++] = 1 + (4 << 3); // Version = 1, UNW_FLAG_CHAININFO
+                header[i++] = 0; // SizeOfProlog = 0
+                header[i++] = 0; // CountOfCode = 0
+                header[i++] = 0; // Frame = 0
+                yield return new GCInfoComponent(header);
+                yield return new GCInfoComponent(_methodNode, 0);
+                yield return new GCInfoComponent(_methodNode, _methodNode.Size);
+                // TODO: Is this correct? 
+                yield return new GCInfoComponent(factory.RuntimeFunctionsGCInfo.StartSymbol, this.OffsetFromBeginningOfArray);
+            }
+#endif
         }
 
         class MethodGCInfoNodeDeduplicatingComparer : IEqualityComparer<MethodGCInfoNode>

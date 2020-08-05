@@ -83,6 +83,7 @@ enum class ReadyToRunSectionType : uint32_t
     OwnerCompositeExecutable    = 116, // Added in V4.1
     PgoInstrumentationData      = 117, // Added in V5.2
     ManifestAssemblyMvids       = 118, // Added in V5.3
+    Scratch                     = 119, // This is meant to be a scratch area just for prototyping
 
     // If you add a new section consider whether it is a breaking or non-breaking change.
     // Usually it is non-breaking, but if it is preferable to have older runtimes fail

@@ -61,6 +61,9 @@ class ReadyToRunInfo
     PTR_RUNTIME_FUNCTION            m_pRuntimeFunctions;
     DWORD                           m_nRuntimeFunctions;
 
+    PTR_ULONG                       m_pScratch;
+    DWORD                           m_nScratch;
+
     PTR_IMAGE_DATA_DIRECTORY        m_pSectionDelayLoadMethodCallThunks;
 
     PTR_READYTORUN_IMPORT_SECTION   m_pImportSections;
