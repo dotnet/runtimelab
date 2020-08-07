@@ -18,12 +18,6 @@ using Internal.IntrinsicSupport;
 using EEType = Internal.Runtime.EEType;
 using EETypeElementType = Internal.Runtime.EETypeElementType;
 
-#if TARGET_64BIT
-using nuint = System.UInt64;
-#else
-using nuint = System.UInt32;
-#endif
-
 namespace System
 {
     // Note that we make a T[] (single-dimensional w/ zero as the lower bound) implement both 

@@ -973,7 +973,7 @@ namespace System.Runtime
             }
         }
 
-        [UnmanagedCallersOnly(EntryPoint = "RhpFailFastForPInvokeExceptionPreemp", CallingConvention = CallingConvention.Cdecl)]
+        [UnmanagedCallersOnly(EntryPoint = "RhpFailFastForPInvokeExceptionPreemp", CallConvs = new Type[] { typeof(CallConvCdecl) })]
         public static void RhpFailFastForPInvokeExceptionPreemp(IntPtr PInvokeCallsiteReturnAddr, void* pExceptionRecord, void* pContextRecord)
         {
             FailFastViaClasslib(RhFailFastReason.PN_UnhandledExceptionFromPInvoke, null, PInvokeCallsiteReturnAddr);

@@ -9,7 +9,7 @@ namespace System
     {
         private static Exception GetCLSIDFromProgID(string progID, out Guid clsid)
         {
-            int hr = Interop.mincore.CLSIDFromProgID(progID, out clsid);
+            int hr = Interop.Ole32.CLSIDFromProgID(progID, out clsid);
             if (hr < 0)
                 return RuntimeAugments.Callbacks.GetExceptionForHR(hr);
             return null;

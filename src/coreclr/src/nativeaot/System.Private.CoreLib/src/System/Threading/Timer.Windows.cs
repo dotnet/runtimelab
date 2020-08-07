@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
@@ -20,7 +21,7 @@ namespace System.Threading
             _id = id;
         }
 
-        [UnmanagedCallersOnly(CallingConvention = CallingConvention.StdCall)]
+        [UnmanagedCallersOnly(CallConvs = new Type[] { typeof(CallConvStdcall) })]
         private static void TimerCallback(IntPtr instance, IntPtr context, IntPtr timer)
         {
             int id = (int)context;
@@ -34,16 +35,16 @@ namespace System.Threading
         {
             if (_nativeTimer == IntPtr.Zero)
             {
-                IntPtr nativeCallback = AddrofIntrinsics.AddrOf<Interop.mincore.TimerCallback>(TimerCallback);
+                IntPtr nativeCallback = AddrofIntrinsics.AddrOf<Interop.Kernel32.TimerCallback>(TimerCallback);
 
-                _nativeTimer = Interop.mincore.CreateThreadpoolTimer(nativeCallback, (IntPtr)_id, IntPtr.Zero);
+                _nativeTimer = Interop.Kernel32.CreateThreadpoolTimer(nativeCallback, (IntPtr)_id, IntPtr.Zero);
                 if (_nativeTimer == IntPtr.Zero)
                     throw new OutOfMemoryException();
             }
 
             // Negative time indicates the amount of time to wait relative to the current time, in 100 nanosecond units
             long dueTime = -10000 * (long)actualDuration;
-            Interop.mincore.SetThreadpoolTimer(_nativeTimer, &dueTime, 0, 0);
+            Interop.Kernel32.SetThreadpoolTimer(_nativeTimer, &dueTime, 0, 0);
 
             return true;
         }

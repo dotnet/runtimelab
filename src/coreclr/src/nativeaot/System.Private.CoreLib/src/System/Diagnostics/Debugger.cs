@@ -13,7 +13,7 @@ namespace System.Diagnostics
         {
 #if TARGET_WINDOWS
             // IsAttached is always true when IsDebuggerPresent is true, so no need to check for it
-            if (Interop.mincore.IsDebuggerPresent())
+            if (Interop.Kernel32.IsDebuggerPresent())
                 Debug.DebugBreak();
 #else
             // UNIXTODO: Implement Debugger.Break

@@ -20,7 +20,7 @@ namespace Microsoft.Win32.SafeHandles
 
         protected override bool ReleaseHandle()
         {
-            Interop.mincore.CloseThreadpoolIo(handle);
+            Interop.Kernel32.CloseThreadpoolIo(handle);
             return true;
         }
     }

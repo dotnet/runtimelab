@@ -3,6 +3,7 @@
 
 using System;
 using System.Runtime;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 using Debug = Internal.Runtime.CompilerHelpers.StartupDebug;
@@ -27,7 +28,7 @@ namespace Internal.Runtime.CompilerHelpers
         /// </summary>
         private static int s_moduleCount;
 
-        [UnmanagedCallersOnly(EntryPoint = "InitializeModules", CallingConvention = CallingConvention.Cdecl)]
+        [UnmanagedCallersOnly(EntryPoint = "InitializeModules", CallConvs = new Type[] { typeof(CallConvCdecl) })]
         internal static unsafe void InitializeModules(IntPtr osModule, IntPtr* pModuleHeaders, int count, IntPtr* pClasslibFunctions, int nClasslibFunctions)
         {
             RuntimeImports.RhpRegisterOsModule(osModule);

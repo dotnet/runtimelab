@@ -34,12 +34,12 @@ namespace System.Runtime.InteropServices
 
         public static void SaveLastWin32Error()
         {
-            s_lastWin32Error = Interop.mincore.GetLastError();
+            s_lastWin32Error = Interop.Kernel32.GetLastError();
         }
 
         public static void ClearLastWin32Error()
         {
-            Interop.mincore.SetLastError(0);
+            Interop.Kernel32.SetLastError(0);
         }
 
         public static unsafe IntPtr MemAlloc(IntPtr cb)
@@ -62,20 +62,20 @@ namespace System.Runtime.InteropServices
 
         public static IntPtr CoTaskMemAlloc(UIntPtr bytes)
         {
-            return Interop.mincore.CoTaskMemAlloc(bytes);
+            return Interop.Ole32.CoTaskMemAlloc(bytes);
         }
 
         public static void CoTaskMemFree(IntPtr allocatedMemory)
         {
             if (IsNotWin32Atom(allocatedMemory))
             {
-                Interop.mincore.CoTaskMemFree(allocatedMemory);
+                Interop.Ole32.CoTaskMemFree(allocatedMemory);
             }
         }
 
-        public static IntPtr CoTaskMemReAlloc(IntPtr pv, IntPtr cb)
+        public static IntPtr CoTaskMemReAlloc(IntPtr pv, UIntPtr cb)
         {
-            return Interop.mincore.CoTaskMemRealloc(pv, cb);
+            return Interop.Ole32.CoTaskMemRealloc(pv, cb);
         }
 
         internal static IntPtr AllocBSTR(int length)

@@ -78,9 +78,9 @@ namespace System.Runtime.InteropServices
             Interop.MemFree(allocatedMemory);
         }
 
-        public static unsafe IntPtr CoTaskMemReAlloc(IntPtr pv, IntPtr cb)
+        public static unsafe IntPtr CoTaskMemReAlloc(IntPtr pv, UIntPtr cb)
         {
-            return Interop.MemReAlloc(pv, new UIntPtr((void*)cb));
+            return Interop.MemReAlloc(pv, cb);
         }
 
         // In CoreRT on Unix, there is not yet a BSTR implementation. On Windows, we would use SysAllocStringLen from OleAut32.dll.

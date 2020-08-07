@@ -119,7 +119,7 @@ namespace System.Runtime.InteropServices
         private static IntPtr LoadLibraryHelper(string libraryName, int flags, ref LoadLibErrorTracker errorTracker)
         {
 #if TARGET_WINDOWS
-            IntPtr ret = Interop.mincore.LoadLibraryEx(libraryName, IntPtr.Zero, flags);
+            IntPtr ret = Interop.Kernel32.LoadLibraryEx(libraryName, IntPtr.Zero, flags);
             if (ret != IntPtr.Zero)
             {
                 return ret;
@@ -161,7 +161,7 @@ namespace System.Runtime.InteropServices
             Debug.Assert(handle != IntPtr.Zero);
 
 #if !TARGET_UNIX
-            bool result = Interop.mincore.FreeLibrary(handle);
+            bool result = Interop.Kernel32.FreeLibrary(handle);
             if (!result)
                 throw new InvalidOperationException();
 #else
@@ -177,7 +177,7 @@ namespace System.Runtime.InteropServices
             Encoding.UTF8.GetBytes(symbolName, symbolBytes);
             fixed (byte* pSymbolBytes = symbolBytes)
             {
-                ret = Interop.mincore.GetProcAddress(handle, pSymbolBytes);
+                ret = Interop.Kernel32.GetProcAddress(handle, pSymbolBytes);
             }
 #else
             ret = Interop.Sys.GetProcAddress(handle, symbolName);

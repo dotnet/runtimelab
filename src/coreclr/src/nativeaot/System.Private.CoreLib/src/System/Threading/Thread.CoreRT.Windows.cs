@@ -4,6 +4,7 @@
 using Microsoft.Win32.SafeHandles;
 using System.Diagnostics;
 using System.Runtime;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace System.Threading
@@ -230,7 +231,7 @@ namespace System.Threading
         /// <summary>
         /// This is an entry point for managed threads created by application
         /// </summary>
-        [UnmanagedCallersOnly(CallingConvention = CallingConvention.StdCall)]
+        [UnmanagedCallersOnly(CallConvs = new Type[] { typeof(CallConvStdcall) })]
         private static uint ThreadEntryPoint(IntPtr parameter)
         {
             StartThread(parameter);
@@ -480,6 +481,6 @@ namespace System.Threading
         }
 
         // TODO: Use GetCurrentProcessorNumberEx for NUMA
-        private static int ComputeCurrentProcessorId() => (int)Interop.mincore.GetCurrentProcessorNumber();
+        private static int ComputeCurrentProcessorId() => (int)Interop.Kernel32.GetCurrentProcessorNumber();
     }
 }

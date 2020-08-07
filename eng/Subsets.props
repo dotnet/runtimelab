@@ -133,6 +133,10 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)runtime.proj" Category="clr" />
   </ItemGroup>
 
+  <ItemGroup Condition="$(_subset.Contains('+clr.corelib+'))">
+    <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.CoreLib\System.Private.CoreLib.csproj" Category="clr" />
+  </ItemGroup>
+
   <ItemGroup Condition="$(_subset.Contains('+linuxdac+')) and $([MSBuild]::IsOsPlatform(Windows)) and '$(TargetArchitecture)' != 'x86'">
     <ProjectToBuild Include="$(CoreClrProjectRoot)runtime.proj" AdditionalProperties="%(AdditionalProperties);CrossDac=linux" Category="clr" />
   </ItemGroup>
