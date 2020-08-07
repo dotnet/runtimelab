@@ -31,9 +31,6 @@ namespace ILCompiler
             {
                 // Force link time symbol resolution for PInvokes used on CoreLib startup path
 
-                if (importModule.StartsWith("api-ms-win-"))
-                    return true;
-
                 if (importModule == "BCrypt.dll")
                 {
                     if (methodName == "BCryptGenRandom")
@@ -49,7 +46,13 @@ namespace ILCompiler
                         methodName == "CreateEventW" ||
                         methodName == "CreateEventExW" ||
                         methodName == "SetEvent" ||
-                        methodName == "ResetEvent")
+                        methodName == "ResetEvent" ||
+                        methodName == "GetProcessHeap" ||
+                        methodName == "HeapAlloc" ||
+                        methodName == "LoadLibraryExW" ||
+                        methodName == "GetProcAddress" ||
+                        methodName == "SetLastError" ||
+                        methodName == "GetLastError")
                     {
                         return true;
                     }

@@ -106,6 +106,10 @@ namespace ILCompiler
                     return false;
 
                 // The various SR types used in Resource Manager always get metadata
+                if (type.Name == "Strings" && type.Namespace.Contains("Resources"))
+                    return false;
+
+                // TODO: this can be deleted once we're fully migrated from the CoreRT repo
                 if (type.Name == "SR")
                     return false;
 
