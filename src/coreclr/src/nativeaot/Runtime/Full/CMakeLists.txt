@@ -18,7 +18,7 @@ target_compile_definitions(Runtime.ServerGC PRIVATE -DFEATURE_SVR_GC)
 # Get the current list of definitions
 get_compile_definitions(DEFINITIONS)
 
-set(ASM_OFFSETS_CSPP ${RUNTIME_DIR}/../../Runtime.Base/src/AsmOffsets.cspp)
+set(ASM_OFFSETS_CSPP ${RUNTIME_DIR}/../Runtime.Base/src/AsmOffsets.cspp)
 
 if(WIN32)
     set(COMPILER_LANGUAGE "")
@@ -30,12 +30,12 @@ else()
     set(ASM_OFFSETS_CPP ${RUNTIME_DIR}/unix/AsmOffsets.cpp)
 endif()
 
-#add_custom_command(
-#    # The AsmOffsets.cs is consumed later by the managed build
-#    TARGET Runtime
-#    COMMAND ${CMAKE_CXX_COMPILER} ${COMPILER_LANGUAGE} ${DEFINITIONS} ${PREPROCESSOR_FLAGS} -I"${ARCH_SOURCES_DIR}" "${ASM_OFFSETS_CSPP}" >"${CMAKE_CURRENT_BINARY_DIR}/AsmOffsets.cs"
-#    DEPENDS "${RUNTIME_DIR}/AsmOffsets.cpp" "${RUNTIME_DIR}/AsmOffsets.h"
-#)
+add_custom_command(
+    # The AsmOffsets.cs is consumed later by the managed build
+    TARGET Runtime
+    COMMAND ${CMAKE_CXX_COMPILER} ${COMPILER_LANGUAGE} ${DEFINITIONS} ${PREPROCESSOR_FLAGS} -I"${ARCH_SOURCES_DIR}" "${ASM_OFFSETS_CSPP}" >"${CMAKE_CURRENT_BINARY_DIR}/AsmOffsets.cs"
+    DEPENDS "${RUNTIME_DIR}/AsmOffsets.cpp" "${RUNTIME_DIR}/AsmOffsets.h"
+)
 
 add_custom_command(
     COMMAND ${CMAKE_CXX_COMPILER} ${DEFINITIONS} ${PREPROCESSOR_FLAGS} -I"${RUNTIME_DIR}" -I"${ARCH_SOURCES_DIR}" "${ASM_OFFSETS_CPP}" >"${CMAKE_CURRENT_BINARY_DIR}/AsmOffsets.inc"
