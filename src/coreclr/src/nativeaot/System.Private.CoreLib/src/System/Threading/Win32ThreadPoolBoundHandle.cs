@@ -3,6 +3,7 @@
 
 using Microsoft.Win32.SafeHandles;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.IO;
@@ -38,7 +39,7 @@ namespace System.Threading
                 throw new ArgumentException(SR.Argument_InvalidHandle, nameof(handle));
 
             IntPtr callback = AddrofIntrinsics.AddrOf<Interop.NativeIoCompletionCallback>(OnNativeIOCompleted);
-            SafeThreadPoolIOHandle threadPoolHandle = Interop.mincore.CreateThreadpoolIo(handle, callback, IntPtr.Zero, IntPtr.Zero);
+            SafeThreadPoolIOHandle threadPoolHandle = Interop.Kernel32.CreateThreadpoolIo(handle, callback, IntPtr.Zero, IntPtr.Zero);
             if (threadPoolHandle.IsInvalid)
             {
                 int errorCode = Marshal.GetLastWin32Error();
@@ -66,7 +67,7 @@ namespace System.Threading
                 Win32ThreadPoolNativeOverlapped* overlapped = Win32ThreadPoolNativeOverlapped.Allocate(callback, state, pinData, preAllocated: null);
                 overlapped->Data._boundHandle = this;
 
-                Interop.mincore.StartThreadpoolIo(_threadPoolHandle);
+                Interop.Kernel32.StartThreadpoolIo(_threadPoolHandle);
 
                 return Win32ThreadPoolNativeOverlapped.ToNativeOverlapped(overlapped);
             }
@@ -96,7 +97,7 @@ namespace System.Threading
 
                 data._boundHandle = this;
 
-                Interop.mincore.StartThreadpoolIo(_threadPoolHandle);
+                Interop.Kernel32.StartThreadpoolIo(_threadPoolHandle);
 
                 return Win32ThreadPoolNativeOverlapped.ToNativeOverlapped(preAllocated._overlapped);
             }
@@ -121,7 +122,7 @@ namespace System.Threading
 
             if (!data._completed)
             {
-                Interop.mincore.CancelThreadpoolIo(_threadPoolHandle);
+                Interop.Kernel32.CancelThreadpoolIo(_threadPoolHandle);
                 Release();
             }
 
@@ -159,7 +160,7 @@ namespace System.Threading
             return data;
         }
 
-        [UnmanagedCallersOnly(CallingConvention = CallingConvention.StdCall)]
+        [UnmanagedCallersOnly(CallConvs = new Type[] { typeof(CallConvStdcall) })]
         private static unsafe void OnNativeIOCompleted(IntPtr instance, IntPtr context, IntPtr overlappedPtr, uint ioResult, UIntPtr numberOfBytesTransferred, IntPtr ioPtr)
         {
             var wrapper = ThreadPoolCallbackWrapper.Enter();

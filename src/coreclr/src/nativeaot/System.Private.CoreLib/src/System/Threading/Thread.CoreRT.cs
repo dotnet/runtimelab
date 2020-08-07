@@ -12,6 +12,8 @@ namespace System.Threading
 {
     public sealed partial class Thread
     {
+        internal const bool IsThreadStartSupported = true;
+
         // Extra bits used in _threadState
         private const ThreadState ThreadPoolThread = (ThreadState)0x1000;
 

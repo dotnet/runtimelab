@@ -9,12 +9,6 @@ using System.Text;
 using Internal.Runtime.Augments;
 using Internal.Runtime.CompilerServices;
 
-#if TARGET_64BIT
-using nuint = System.UInt64;
-#else
-using nuint = System.UInt32;
-#endif
-
 namespace System
 {
     // For System.Private.Reflection.Core's sake
@@ -373,7 +367,7 @@ namespace System.Runtime.InteropServices
 
         public static IntPtr ReAllocCoTaskMem(IntPtr pv, int cb)
         {
-            return PInvokeMarshal.CoTaskMemReAlloc(pv, (IntPtr)cb);
+            return PInvokeMarshal.CoTaskMemReAlloc(pv, (UIntPtr)cb);
         }
 
         public static IntPtr ReAllocHGlobal(IntPtr pv, IntPtr cb)

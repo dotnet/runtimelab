@@ -21,13 +21,13 @@ namespace System
             StringBuilder buffer = new StringBuilder(Interop.Kernel32.MAX_PATH);
             while (true)
             {
-                int size = Interop.mincore.GetModuleFileName(IntPtr.Zero, buffer, buffer.Capacity);
+                int size = Interop.Kernel32.GetModuleFileName(IntPtr.Zero, buffer, buffer.Capacity);
                 if (size == 0)
                 {
                     throw Win32Marshal.GetExceptionForWin32Error(Marshal.GetLastWin32Error());
                 }
 
-                if (Marshal.GetLastWin32Error() == Interop.mincore.ERROR_INSUFFICIENT_BUFFER)
+                if (Marshal.GetLastWin32Error() == Interop.Errors.ERROR_INSUFFICIENT_BUFFER)
                 {
                     // Enlarge the buffer and try again.
                     buffer.EnsureCapacity(buffer.Capacity * 2);

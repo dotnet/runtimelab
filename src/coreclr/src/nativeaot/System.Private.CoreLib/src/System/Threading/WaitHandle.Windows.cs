@@ -52,7 +52,7 @@ namespace System.Threading
 
             if (result == Interop.Kernel32.WAIT_FAILED)
             {
-                int errorCode = Interop.mincore.GetLastError();
+                int errorCode = Interop.Kernel32.GetLastError();
                 if (waitAll && errorCode == Interop.Errors.ERROR_INVALID_PARAMETER)
                 {
                     // Check for duplicate handles. This is a brute force O(n^2) search, which is intended since the typical
@@ -91,7 +91,7 @@ namespace System.Threading
 
             if (ret == Interop.Kernel32.WAIT_FAILED)
             {
-                ThrowWaitFailedException(Interop.mincore.GetLastError());
+                ThrowWaitFailedException(Interop.Kernel32.GetLastError());
             }
 
             return ret;

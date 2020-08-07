@@ -4,12 +4,7 @@
 using System.Diagnostics;
 using System.Runtime;
 using System.Runtime.CompilerServices;
-
-#if TARGET_64BIT
-using nuint = System.UInt64;
-#else
-using nuint = System.UInt32;
-#endif
+using Internal.Runtime.CompilerServices;
 
 namespace System
 {
@@ -38,5 +33,28 @@ namespace System
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static unsafe void __Memmove(byte* dest, byte* src, nuint len) =>
             RuntimeImports.memmove(dest, src, len);
+
+        // This method has different signature for x64 and other platforms and is done for performance reasons.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal unsafe static void Memmove<T>(ref T destination, ref T source, nuint elementCount)
+        {
+            if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+            {
+                // Blittable memmove
+
+                RuntimeImports.memmove(
+                    (byte*)Unsafe.AsPointer(ref destination),
+                    (byte*)Unsafe.AsPointer(ref source),
+                    elementCount * (nuint)Unsafe.SizeOf<T>());
+            }
+            else
+            {
+                // Non-blittable memmove
+                RuntimeImports.RhBulkMoveWithWriteBarrier(
+                    ref Unsafe.As<T, byte>(ref destination),
+                    ref Unsafe.As<T, byte>(ref source),
+                    elementCount * (nuint)Unsafe.SizeOf<T>());
+            }
+        }
     }
 }

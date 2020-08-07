@@ -261,6 +261,7 @@ namespace System
         #endregion
 
         #region Public Static Methods
+#if !CORERT
         public static string? GetName<TEnum>(TEnum value) where TEnum : struct, Enum
             => GetName(typeof(TEnum), value);
 
@@ -341,6 +342,7 @@ namespace System
 
             return enumType.IsEnumDefined(value);
         }
+#endif
 
         public static object Parse(Type enumType, string value) =>
             Parse(enumType, value, ignoreCase: false);
@@ -1223,6 +1225,7 @@ namespace System
 
         #endregion
 
+#if !CORERT
         private static RuntimeType ValidateRuntimeType(Type enumType)
         {
             if (enumType == null)
@@ -1233,5 +1236,6 @@ namespace System
                 throw new ArgumentException(SR.Arg_MustBeType, nameof(enumType));
             return rtType;
         }
+#endif
     }
 }

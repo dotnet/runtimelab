@@ -295,7 +295,7 @@ namespace System.Threading
             {
                 for (int i = 0; i < waitHandles.Length; ++i)
                 {
-                    Debug.Assert(waitHandles[i] != null);
+                    Debug.Assert(waitHandles[i] != IntPtr.Zero);
                     WaitableObject waitableObject = HandleManager.FromHandle(waitHandles[i]);
                     if (waitForAll)
                     {

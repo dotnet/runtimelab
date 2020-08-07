@@ -12,7 +12,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Numerics;
 using System.Runtime.InteropServices;
-#if (CORECLR || MONO) && TARGET_WINDOWS
+#if !ES_BUILD_STANDALONE && TARGET_WINDOWS
 using Internal.Win32;
 #endif
 #if ES_BUILD_AGAINST_DOTNET_V35

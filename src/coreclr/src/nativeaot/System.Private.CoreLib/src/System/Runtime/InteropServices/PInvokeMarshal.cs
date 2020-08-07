@@ -11,12 +11,6 @@ using Internal.Runtime.Augments;
 using Internal.Runtime.CompilerHelpers;
 using Internal.Runtime.CompilerServices;
 
-#if TARGET_64BIT
-using nuint = System.UInt64;
-#else
-using nuint = System.UInt32;
-#endif
-
 namespace System.Runtime.InteropServices
 {
     /// <summary>
@@ -145,8 +139,8 @@ namespace System.Runtime.InteropServices
             if ((uint)startIndex + (uint)length > (uint)destination.Length)
                 throw new ArgumentOutOfRangeException(nameof(startIndex), SR.Arg_CopyOutOfRange);
 
-            nuint bytesToCopy = (nuint)length * destination.ElementSize;
-            nuint startOffset = (nuint)startIndex * destination.ElementSize;
+            nuint bytesToCopy = (nuint)length * (nuint)destination.ElementSize;
+            nuint startOffset = (nuint)startIndex * (nuint)destination.ElementSize;
 
             fixed (byte* pDestination = &destination.GetRawArrayData())
             {
@@ -170,8 +164,8 @@ namespace System.Runtime.InteropServices
             if ((uint)startIndex + (uint)length > (uint)source.Length)
                 throw new ArgumentOutOfRangeException(nameof(startIndex), SR.Arg_CopyOutOfRange);
 
-            nuint bytesToCopy = (nuint)length * source.ElementSize;
-            nuint startOffset = (nuint)startIndex * source.ElementSize;
+            nuint bytesToCopy = (nuint)length * (nuint)source.ElementSize;
+            nuint startOffset = (nuint)startIndex * (nuint)source.ElementSize;
 
             fixed (byte* pSource = &source.GetRawArrayData())
             {
@@ -298,7 +292,7 @@ namespace System.Runtime.InteropServices
                     {
                         // free the GCHandle
                         GCHandle handle = ((ThunkContextData*)ContextData)->Handle;
-                        if (handle != null)
+                        if (handle.IsAllocated)
                         {
                             handle.Free();
                         }
@@ -397,7 +391,7 @@ namespace System.Runtime.InteropServices
             // look up later
             //
             IntPtr pContext = RuntimeImports.GetCurrentInteropThunkContext();
-            Debug.Assert(pContext != null);
+            Debug.Assert(pContext != IntPtr.Zero);
 
             IntPtr fnPtr;
             unsafe
@@ -405,7 +399,7 @@ namespace System.Runtime.InteropServices
                 // Pull out function pointer for open static delegate
                 fnPtr = ((ThunkContextData*)pContext)->FunctionPtr;
             }
-            Debug.Assert(fnPtr != null);
+            Debug.Assert(fnPtr != IntPtr.Zero);
 
             return fnPtr;
         }
@@ -422,7 +416,7 @@ namespace System.Runtime.InteropServices
             //
             IntPtr pContext = RuntimeImports.GetCurrentInteropThunkContext();
 
-            Debug.Assert(pContext != null);
+            Debug.Assert(pContext != IntPtr.Zero);
 
             GCHandle handle;
             unsafe

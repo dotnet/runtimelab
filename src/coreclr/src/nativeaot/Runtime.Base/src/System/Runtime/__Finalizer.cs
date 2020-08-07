@@ -16,7 +16,7 @@ namespace System.Runtime
     // We choose this name to avoid clashing with any future public class with the name Finalizer. 
     internal static class __Finalizer
     {
-        [UnmanagedCallersOnly(EntryPoint = "ProcessFinalizers", CallingConvention = CallingConvention.Cdecl)]
+        [UnmanagedCallersOnly(EntryPoint = "ProcessFinalizers", CallConvs = new Type[] { typeof(CallConvCdecl) })]
         public static void ProcessFinalizers()
         {
 #if INPLACE_RUNTIME

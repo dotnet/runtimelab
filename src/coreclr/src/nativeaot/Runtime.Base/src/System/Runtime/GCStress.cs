@@ -39,7 +39,7 @@ namespace System.Runtime
 #endif // FEATURE_GC_STRESS
         }
 
-        [UnmanagedCallersOnly(EntryPoint = "RhGcStress_Initialize2", CallingConvention = CallingConvention.Cdecl)]
+        [UnmanagedCallersOnly(EntryPoint = "RhGcStress_Initialize2", CallConvs = new Type[] { typeof(CallConvCdecl) })]
         internal static void Initialize2()
         {
             Initialize();

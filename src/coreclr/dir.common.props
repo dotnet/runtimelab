@@ -29,8 +29,10 @@
   <!-- Common properties -->
   <PropertyGroup>
     <ProjectDir>$(MSBuildThisFileDirectory)</ProjectDir>
+    <IsNativeAotProject Condition="$(MSBuildProjectDirectory.Contains('nativeaot'))">true</IsNativeAotProject>
 
-    <BaseIntermediateOutputPath>$(RepoRoot)artifacts\obj\coreclr\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <BaseIntermediateOutputPath Condition="'$(IsNativeAotProject)' != 'true'">$(RepoRoot)artifacts\obj\coreclr\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <BaseIntermediateOutputPath Condition="'$(IsNativeAotProject)' == 'true'">$(RepoRoot)artifacts\obj\coreclr\nativeaot\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
 
     <SourceDir>$(ProjectDir)src\</SourceDir>
     <BinDir>$(ArtifactsDir)bin\coreclr\$(PlatformConfigPathPart)\</BinDir>

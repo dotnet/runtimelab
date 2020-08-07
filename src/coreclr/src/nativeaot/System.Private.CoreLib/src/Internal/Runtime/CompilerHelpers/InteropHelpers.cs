@@ -12,15 +12,6 @@ using System.Threading;
 
 using Internal.Runtime.Augments;
 
-#pragma warning disable SA1121 // explicitly using type aliases instead of built-in types
-#if TARGET_64BIT
-using nint = System.Int64;
-using nuint = System.UInt64;
-#else
-using nint = System.Int32;
-using nuint = System.UInt32;
-#endif
-
 namespace Internal.Runtime.CompilerHelpers
 {
     /// <summary>
@@ -257,7 +248,7 @@ namespace Internal.Runtime.CompilerHelpers
         internal static unsafe void FreeLibrary(IntPtr hModule)
         {
 #if !TARGET_UNIX
-            Interop.mincore.FreeLibrary(hModule);
+            Interop.Kernel32.FreeLibrary(hModule);
 #else
             Interop.Sys.FreeLibrary(hModule);
 #endif
@@ -329,14 +320,14 @@ namespace Internal.Runtime.CompilerHelpers
             if (charSetMangling == 0)
             {
                 // Look for the user-provided entry point name only
-                pTarget = Interop.mincore.GetProcAddress(hModule, methodName);
+                pTarget = Interop.Kernel32.GetProcAddress(hModule, methodName);
             }
             else
             if (charSetMangling == CharSet.Ansi)
             {
                 // For ANSI, look for the user-provided entry point name first.
                 // If that does not exist, try the charset suffix.
-                pTarget = Interop.mincore.GetProcAddress(hModule, methodName);
+                pTarget = Interop.Kernel32.GetProcAddress(hModule, methodName);
                 if (pTarget == IntPtr.Zero)
                     pTarget = GetProcAddressWithSuffix(hModule, methodName, (byte)'A');
             }
@@ -346,7 +337,7 @@ namespace Internal.Runtime.CompilerHelpers
                 // The 'W' API takes precedence over the undecorated one.
                 pTarget = GetProcAddressWithSuffix(hModule, methodName, (byte)'W');
                 if (pTarget == IntPtr.Zero)
-                    pTarget = Interop.mincore.GetProcAddress(hModule, methodName);
+                    pTarget = Interop.Kernel32.GetProcAddress(hModule, methodName);
             }
 #else
             pTarget = Interop.Sys.GetProcAddress(hModule, methodName);
@@ -377,7 +368,7 @@ namespace Internal.Runtime.CompilerHelpers
 
             probedMethodName[nameLength] = suffix;
 
-            return Interop.mincore.GetProcAddress(hModule, probedMethodName);
+            return Interop.Kernel32.GetProcAddress(hModule, probedMethodName);
         }
 #endif
 

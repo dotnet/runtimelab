@@ -11,6 +11,6 @@ namespace System
     {
         internal static int CurrentNativeThreadId => unchecked((int)Interop.Kernel32.GetCurrentThreadId());
 
-        public static long TickCount64 => (long)Interop.mincore.GetTickCount64();
+        public static long TickCount64 => (long)Interop.Kernel32.GetTickCount64();
     }
 }

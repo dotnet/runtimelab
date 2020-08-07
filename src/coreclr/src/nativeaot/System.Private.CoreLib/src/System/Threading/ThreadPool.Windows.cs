@@ -43,8 +43,8 @@ namespace System.Threading
             // Allocate _gcHandle and _tpWait as the last step and make sure they are never leaked
             _gcHandle = GCHandle.Alloc(this);
 
-            _tpWait = Interop.mincore.CreateThreadpoolWait(
-                AddrofIntrinsics.AddrOf<Interop.mincore.WaitCallback>(RegisteredWaitCallback), (IntPtr)_gcHandle, IntPtr.Zero);
+            _tpWait = Interop.Kernel32.CreateThreadpoolWait(
+                AddrofIntrinsics.AddrOf<Interop.Kernel32.WaitCallback>(RegisteredWaitCallback), (IntPtr)_gcHandle, IntPtr.Zero);
 
             if (_tpWait == IntPtr.Zero)
             {
@@ -53,7 +53,7 @@ namespace System.Threading
             }
         }
 
-        [UnmanagedCallersOnly(CallingConvention = CallingConvention.StdCall)]
+        [UnmanagedCallersOnly(CallConvs = new Type[] { typeof(CallConvStdcall) })]
         internal static void RegisteredWaitCallback(IntPtr instance, IntPtr context, IntPtr wait, uint waitResult)
         {
             var wrapper = ThreadPoolCallbackWrapper.Enter();
@@ -120,7 +120,7 @@ namespace System.Threading
             }
 
             // We can use DangerousGetHandle because of DangerousAddRef in the constructor
-            Interop.mincore.SetThreadpoolWait(_tpWait, _waitHandle.DangerousGetHandle(), (IntPtr)pTimeout);
+            Interop.Kernel32.SetThreadpoolWait(_tpWait, _waitHandle.DangerousGetHandle(), (IntPtr)pTimeout);
         }
 
         public bool Unregister(WaitHandle waitObject)
@@ -134,7 +134,7 @@ namespace System.Threading
                     _unregistering = true;
 
                     // Cease queueing more callbacks
-                    Interop.mincore.SetThreadpoolWait(_tpWait, IntPtr.Zero, IntPtr.Zero);
+                    Interop.Kernel32.SetThreadpoolWait(_tpWait, IntPtr.Zero, IntPtr.Zero);
 
                     // Should we wait for callbacks synchronously? Note that we treat the zero handle as the asynchronous case.
                     SafeWaitHandle safeWaitHandle = waitObject?.SafeWaitHandle;
@@ -161,10 +161,10 @@ namespace System.Threading
             Debug.Assert(_unregistering);
 
             // Wait for outstanding wait callbacks to complete
-            Interop.mincore.WaitForThreadpoolWaitCallbacks(_tpWait, false);
+            Interop.Kernel32.WaitForThreadpoolWaitCallbacks(_tpWait, false);
 
             // Now it is safe to dispose resources
-            Interop.mincore.CloseThreadpoolWait(_tpWait);
+            Interop.Kernel32.CloseThreadpoolWait(_tpWait);
             _tpWait = IntPtr.Zero;
 
             if (_gcHandle.IsAllocated)
@@ -211,7 +211,7 @@ namespace System.Threading
                         if (_tpWait != IntPtr.Zero)
                         {
                             // There must be no in-flight callbacks; just dispose resources
-                            Interop.mincore.CloseThreadpoolWait(_tpWait);
+                            Interop.Kernel32.CloseThreadpoolWait(_tpWait);
                             _tpWait = IntPtr.Zero;
                         }
 
@@ -232,6 +232,8 @@ namespace System.Threading
 
     public static partial class ThreadPool
     {
+        internal const bool EnableWorkerTracking = false;
+
         // Time in ms for which ThreadPoolWorkQueue.Dispatch keeps executing work items before returning to the OS
         private const uint DispatchQuantum = 30;
 
@@ -327,7 +329,7 @@ namespace System.Threading
             return true;
         }
 
-        [UnmanagedCallersOnly(CallingConvention = CallingConvention.StdCall)]
+        [UnmanagedCallersOnly(CallConvs = new Type[] { typeof(CallConvStdcall) })]
         private static void DispatchCallback(IntPtr instance, IntPtr context, IntPtr work)
         {
             var wrapper = ThreadPoolCallbackWrapper.Enter();
@@ -344,17 +346,17 @@ namespace System.Threading
         {
             if (s_work == IntPtr.Zero)
             {
-                IntPtr nativeCallback = AddrofIntrinsics.AddrOf<Interop.mincore.WorkCallback>(DispatchCallback);
+                IntPtr nativeCallback = AddrofIntrinsics.AddrOf<Interop.Kernel32.WorkCallback>(DispatchCallback);
 
-                IntPtr work = Interop.mincore.CreateThreadpoolWork(nativeCallback, IntPtr.Zero, IntPtr.Zero);
+                IntPtr work = Interop.Kernel32.CreateThreadpoolWork(nativeCallback, IntPtr.Zero, IntPtr.Zero);
                 if (work == IntPtr.Zero)
                     throw new OutOfMemoryException();
 
                 if (Interlocked.CompareExchange(ref s_work, work, IntPtr.Zero) != IntPtr.Zero)
-                    Interop.mincore.CloseThreadpoolWork(work);
+                    Interop.Kernel32.CloseThreadpoolWork(work);
             }
 
-            Interop.mincore.SubmitThreadpoolWork(s_work);
+            Interop.Kernel32.SubmitThreadpoolWork(s_work);
         }
 
         private static RegisteredWaitHandle RegisterWaitForSingleObject(

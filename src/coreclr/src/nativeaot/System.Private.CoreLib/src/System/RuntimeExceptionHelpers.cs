@@ -255,7 +255,7 @@ namespace System
                 errorCode = (uint)reason + 0x1000; // Add something to avoid common low level exit codes
             }
 
-            Interop.mincore.RaiseFailFastException(errorCode, pExAddress, pExContext);
+            Interop.Kernel32.RaiseFailFastException(errorCode, pExAddress, pExContext);
 #else
             Interop.Sys.Abort();
 #endif

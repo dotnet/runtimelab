@@ -27,12 +27,6 @@ using System.Threading;
 using Internal.Runtime.CompilerHelpers;
 using Internal.Runtime.CompilerServices;
 
-#if TARGET_64BIT
-using nuint = System.UInt64;
-#else
-using nuint = System.UInt32;
-#endif
-
 namespace Internal.Runtime.Augments
 {
     using BinderBundle = System.Reflection.BinderBundle;
@@ -181,7 +175,7 @@ namespace Internal.Runtime.Augments
                 throw new IndexOutOfRangeException();
 
             ref byte start = ref Unsafe.As<RawArrayData>(array).Data;
-            return ref Unsafe.Add(ref start, (IntPtr)((nuint)index * array.ElementSize));
+            return ref Unsafe.Add(ref start, (IntPtr)(nint)((nuint)index * array.ElementSize));
         }
 
         public static IntPtr GetAllocateObjectHelperForType(RuntimeTypeHandle type)
