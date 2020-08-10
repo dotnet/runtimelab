@@ -19,34 +19,63 @@ We've been working around another problem for a while in the runtime-integrated 
 
 I propose an opt-in design where the owner of a struct has to explicitly opt-in to usage for interop. This enables our team to add special support as desired for various types such as `Span<T>` while also avoiding the private reflection and limited type information issues mentioned above.
 
-This design would use three attributes:
+This design would use these attributes:
 
 ```csharp
 
+[AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class)]
 public class GeneratedMarshallingAttribute : Attribute {}
 
+[AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class)]
 public class BlittableTypeAttribute : Attribute {}
 
-public class NativeStructMarshallingAttribute : Attribute
+[AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class)]
+public class NativeMarshallingAttribute : Attribute
 {
-     public NativeStructMarshallingAttribute(Type nativeStructType, string managedToNativeMarshalMethod, string nativeToManagedMarshalMethod, string nativeFreeMethod) {}
+     public NativeMarshallingAttribute(Type nativeType) {}
+}
+
+[AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field)]
+public class MarshalUsingAttribute : Attribute
+{
+     public MarshalUsingAttribute(Type nativeType) {}
 }
 
 ```
+
+The `NativeMarshallingAttribute` and `MarshalUsingAttribute` attributes would require that the provided native type `TNative` is a blittable `struct` and has three methods with the following names and shapes (with the managed type named TManaged):
+
+```csharp
+struct TNative
+{
+     public TNative(TManaged managed)
+     {}
+
+     public TManaged ToManaged() {}
+
+     public void FreeNative() {}
+}
+```
+
+> :question: Does this API surface and shape work for all marshalling scenarios we plan on supporting? It may have issues with the current "layout class" by-value `[Out]` parameter marshalling where the runtime updates a `class` typed object in place. We already recommend against using classes for interop for performance reasons and a struct value passed via `ref` or `out` with the same members would cover this scenario.
+
+If the native type `TNative` also has a public `Value` property, then the value of the `Value` property will be passed to native code instead of the `TNative` value itself. As a result, the type `TNative` will be allowed to be non-blittable and the type of the `Value` property will be required to be blittable.
+
+> :question: Should we support opting into marshalling via pinning by detecting a `GetPinnableReference` method with a blittable ref return type as an optional addition to the support of `NativeMarshallingAttribute` and `MarshalUsingAttribute`?
 
 There are 2 usage mechanisms of these attributes.
 
 - Usage 1, Source-generated interop:
 
-The user can apply the `GeneratedMarshallingAttribute` to their structure `S`. The source generator will determine if the type is blittable. If it is blittable, the source generator will generate a partial definition and apply the `BlittableTypeAttribute` to the struct type `S`. Otherwise, it will generate a blittable representation of the struct and apply the `NativeStructMarshallingAttribute` and point it to the blittable representation, a method that marshals the managed value to the native value, a method that marshals a value of the native struct to a managed value, and a method that frees any native resources that were allocated for the native value. The blittable representation can either be generated as a separate top-level type or as a nested type on `S`.
+The user can apply the `GeneratedMarshallingAttribute` to their structure `S`. The source generator will determine if the type is blittable. If it is blittable, the source generator will generate a partial definition and apply the `BlittableTypeAttribute` to the struct type `S`. Otherwise, it will generate a blittable representation of the struct with the aformentioned requried shape and apply the `NativeMarshallingAttribute` and point it to the blittable representation. The blittable representation can either be generated as a separate top-level type or as a nested type on `S`.
 
 - Usage 2, Manual interop:
 
-The user may want to manually mark their types as marshalable in this system due to specific restrictions in their code base around marshaling specific types that the source generator does not account for. We could also use this internally to support custom types in source instead of in the code generator. In this scenario, the user would apply either the `BlittableTypeAttribute` or the `NativeStructMarshallingAttribute` attribute to their struct type. An analyzer would validate that the struct is blittable if the `BlittableTypeAttribute` is applied or validate that the native struct type is blittable and that the methods provided in the attribute have the correct signatures when the `NativeStructMarshallingAttribute` is applied.
+The user may want to manually mark their types as marshalable in this system due to specific restrictions in their code base around marshaling specific types that the source generator does not account for. We could also use this internally to support custom types in source instead of in the code generator. In this scenario, the user would apply either the `BlittableTypeAttribute` or the `NativeMarshallingAttribute` attribute to their struct type. An analyzer would validate that the struct is blittable if the `BlittableTypeAttribute` is applied or validate that the native struct type is blittable and has marshalling methods of the required shape when the `NativeMarshallingAttribute` is applied.
 
-The P/Invoke source generator (as well as the struct source generator when nested struct types are used) would use the `BlittableTypeAttribute` and `NativeStructMarshallingAttribute` to determine how to marshal a value type parameter or field instead of looking at the fields of the struct directly.
+The P/Invoke source generator (as well as the struct source generator when nested struct types are used) would use the `BlittableTypeAttribute` and `NativeMarshallingAttribute` to determine how to marshal a value type parameter or field instead of looking at the fields of the struct directly.
 
-The largest problem of this design is the switch to an opt-in model for structure types. We could augment this design by providing a fallback to the built-in struct marshaling system via an attribute (either `MarshalAsAttribute` or another one) if we believe providing an explicit escape hatch is needed.
+If a structure type does not have either the `BlittableTypeAttribute` or the `NativeMarshallingAttribute` applied at the type definition, the user can supply a `MarshalUsingAttribute` at the marshalling location (field, parameter, or return value) with a native type matching the same requirements as `NativeMarshallingAttribute`'s native type.
 
 #### Why do we need `BlittableTypeAttribute`?
 
@@ -114,14 +143,83 @@ public struct Bar
 }
 ```
 
-This time, we produce an error since Foo is not blittable. We need to either apply the `GeneratedMarshalling` attribute (to generate marshalling code) or the `NativeStructMarshalling` attribute (so provide manually written marshalling code) to Foo. This is also why we require each type used in interop to have either a `[BlittableType]` attribute or a `[NativeStructMarshalling]` attribute; we can't validate the shape of a type not defined in the current assembly because its shape may be different between its reference assembly and the runtime type.
+This time, we produce an error since Foo is not blittable. We need to either apply the `GeneratedMarshalling` attribute (to generate marshalling code) or the `NativeMarshallingAttribute` attribute (so provide manually written marshalling code) to Foo. This is also why we require each type used in interop to have either a `[BlittableType]` attribute or a `[NativeMarshallingAttribute]` attribute; we can't validate the shape of a type not defined in the current assembly because its shape may be different between its reference assembly and the runtime type.
 
-Now there's another question: Why we can't just say that a type with `[GeneratedMarshalling]` and not `[NativeStructMarshalling]` has been considered blittable?
+Now there's another question: Why we can't just say that a type with `[GeneratedMarshalling]` and not `[NativeMarshallingAttribute]` has been considered blittable?
 
 We don't want to require usage of `[GeneratedMarshalling]` to mark that a type is blittable because then there is no way to enforce that the type is blittable. If we require usage of `[GeneratedMarshalling]`, then we will automatically generate marshalling code if the type is not blittable. By also having the `[BlittableType]` attribute, we enable users to mark types that they want to ensure are blittable and an analyzer will validate the blittability.
 
 Basically, the design of this feature is as follows:
 
-At build time, the user can apply either `[GeneratedMarshallling]`, `[BlittableType]`, or `[NativeStructMarshalling]`. If they apply `[GeneratedMarshalling]`, then the source generator will run and generate marshalling code as needed and apply either `[BlittableType]` or `[NativeStructMarshalling]`. If the user manually applies `[BlittableType]` or `[NativeStructMarshalling]` instead of `[GeneratedMarshalling]`, then an analyzer validates that the type is blittable (for `[BlitttableType]`) or that the marshalling methods and types have the required shapes (for `[NativeStructMarshalling]`).
+At build time, the user can apply either `[GeneratedMarshallling]`, `[BlittableType]`, or `[NativeMarshallingAttribute]`. If they apply `[GeneratedMarshalling]`, then the source generator will run and generate marshalling code as needed and apply either `[BlittableType]` or `[NativeMarshallingAttribute]`. If the user manually applies `[BlittableType]` or `[NativeMarshallingAttribute]` instead of `[GeneratedMarshalling]`, then an analyzer validates that the type is blittable (for `[BlitttableType]`) or that the marshalling methods and types have the required shapes (for `[NativeMarshallingAttribute]`).
 
-When the source generator (either Struct, P/Invoke, Reverse P/Invoke, etc.) encounters a struct type, it will look for either the `[BlittableType]` or the `[NativeStructMarshalling]` attributes to determine how to marshal the structure. If neither of these attributes are applied, then the struct cannot be passed by value.
+When the source generator (either Struct, P/Invoke, Reverse P/Invoke, etc.) encounters a struct type, it will look for either the `[BlittableType]` or the `[NativeMarshallingAttribute]` attributes to determine how to marshal the structure. If neither of these attributes are applied, then the struct cannot be passed by value.
+
+
+If someone actively disables the analyzer or writes their types in IL, then they have stepped out of the supported scenarios and marshalling code generated for their types may be inaccurate.
+
+#### Special case: Transparent Structures
+
+There has been discussion about Transparent Structures, structure types that are treated as their underlying types when passed to native code. The support for a `Value` property on a generated marshalling type supports the transparent struct support. For example, we could support strongly typed `HRESULT` returns with this model as shown below:
+
+```csharp
+[NativeMarshalling(typeof(HRESULT))]
+struct HResult
+{
+     public HResult(int result)
+     {
+          Result = result;
+     }
+     public readonly int Result;
+}
+
+struct HRESULT
+{
+     public HRESULT(HResult hr)
+     {
+          Value = hr;
+     }
+
+     public HResult ToManaged() => new HResult(Value);
+     public void FreeNative() {}
+     public int Value { get; }
+}
+```
+
+In this case, the underlying native type would actually be an `int`, but the user could use the strongly-typed `HResult` type as the public surface area.
+
+> :question: Should we support transparent structures on manually annotated blittable types? If we do, we should do so in an opt-in manner to make it possible to have a `Value` property on the blittable type.
+
+#### Special case: ComWrappers marshalling with Transparent Structures
+
+Building on this Transparent Structures support, we can also support ComWrappers marshalling with this proposal via the manually-decorated types approach:
+
+```csharp
+[NativeMarshalling(typeof(ComWrappersMarshaler<Foo, FooComWrappers>))]
+class Foo
+{}
+
+struct ComWrappersMarshaler<TClass, TComWrappers>
+     where TComWrappers : ComWrappers, new()
+{
+     private static readonly TComWrappers ComWrappers = new TComWrappers();
+
+     private IntPtr nativeObj;
+
+     public ComWrappersMarshaler(TClass obj)
+     {
+          nativeObj = ComWrappers.GetOrCreateComInterfaceForObject(obj, CreateComInterfaceFlags.None);
+     }
+
+     public IntPtr Value => nativeObj;
+
+     public TClass ToManaged() => (TClass)ComWrappers.GetOrCreateObjectForComInstance(nativeObj, CreateObjectFlags.None);
+
+     public unsafe void FreeNative()
+     {
+          ((delegate* unmanaged[Stdcall]<IntPtr, uint>)((*(void***)nativeObj)[2 /* Release */]))(nativeObj);
+     }
+}
+```
+
+This ComWrappers-based marshaller works with all `ComWrappers`-derived types that have a parameterless constructor and correctly passes down a native integer (not a structure) to native code to match the expected ABI.
