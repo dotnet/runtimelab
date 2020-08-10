@@ -182,7 +182,7 @@ struct HRESULT
 
      public HResult ToManaged() => new HResult(Value);
      public void FreeNative() {}
-     public int Value { get; }
+     public int Value { get; set; }
 }
 ```
 
@@ -211,7 +211,7 @@ struct ComWrappersMarshaler<TClass, TComWrappers>
           nativeObj = ComWrappers.GetOrCreateComInterfaceForObject(obj, CreateComInterfaceFlags.None);
      }
 
-     public IntPtr Value => nativeObj;
+     public IntPtr Value { get => nativeObj; set => nativeObj = value; }
 
      public TClass ToManaged() => (TClass)ComWrappers.GetOrCreateObjectForComInstance(nativeObj, CreateObjectFlags.None);
 
