@@ -81,7 +81,7 @@ partial struct TNative
 }
 ```
 
-When these members are both present, the source generator will call the two-parameter constructor with a stack-allocated buffer of `StackBufferSize` bytes when a stack-allocated buffer is usable. As this buffer is guaranteed to be stack allocated and not on the GC heap, it is save to use `Unsafe.AsPointer` to get a pointer to the stack buffer to pass to native code. As a stack-allocated buffer is not usable in all scenarios, for example Reverse P/Invoke and struct marshalling, a one-parameter constructor must also be provided for usage in those scenarios. This may also be provided by providing a two-parameter constructor with a default value for the second parameter.
+When these members are both present, the source generator will call the two-parameter constructor with a stack-allocated buffer of `StackBufferSize` bytes when a stack-allocated buffer is usable. As this buffer is guaranteed to be stack allocated and not on the GC heap, it is safe to use `Unsafe.AsPointer` to get a pointer to the stack buffer to pass to native code. As a stack-allocated buffer is not usable in all scenarios, for example Reverse P/Invoke and struct marshalling, a one-parameter constructor must also be provided for usage in those scenarios. This may also be provided by providing a two-parameter constructor with a default value for the second parameter.
 
 ### Usage
 
