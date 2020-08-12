@@ -19,7 +19,7 @@ namespace System.Text.Json.SourceGeneration
     [Generator]
     public class JsonSerializerSourceGenerator : ISourceGenerator
     {
-        public Dictionary<string, Type> foundTypes = new Dictionary<string, Type>();
+        public Dictionary<string, Type> FoundTypes = new Dictionary<string, Type>();
 
         public void Execute(SourceGeneratorContext context)
         {
@@ -59,12 +59,12 @@ namespace System.Text.Json.SourceGeneration
 
                         // Get non-user owned typeSymbol from IdentifierNameSyntax and add to found types.
                         INamedTypeSymbol externalTypeSymbol = model.GetTypeInfo(externalTypeNode).ConvertedType as INamedTypeSymbol;
-                        foundTypes[typeDeclarationNode.Identifier.Text] = new TypeWrapper(externalTypeSymbol, metadataLoadContext);
+                        FoundTypes[typeDeclarationNode.Identifier.Text] = new TypeWrapper(externalTypeSymbol, metadataLoadContext);
                     }
                     else
                     {
                         // Add user owned type into found types.
-                        foundTypes[typeDeclarationNode.Identifier.Text] = new TypeWrapper(typeSymbol, metadataLoadContext);
+                        FoundTypes[typeDeclarationNode.Identifier.Text] = new TypeWrapper(typeSymbol, metadataLoadContext);
                     }
                 }
             }
@@ -75,7 +75,7 @@ namespace System.Text.Json.SourceGeneration
 
             JsonSourceGeneratorHelper codegen = new JsonSourceGeneratorHelper("MyNamespace");
 
-            foreach (KeyValuePair<string, Type> entry in foundTypes)
+            foreach (KeyValuePair<string, Type> entry in FoundTypes)
             {
 
                 codegen.GenerateClassInfoDFS(entry.Key, entry.Value);
@@ -87,23 +87,23 @@ namespace System.Text.Json.SourceGeneration
                 foundMethods = member.ToString();
                 member.Clear();
 
-                foreach(FieldInfo field in entry.Value.GetFields())
+                foreach (FieldInfo field in entry.Value.GetFields())
                 {
                     member.Append(@$"{{""{field.Name}"", ""{field.FieldType.Name}""}}, "); 
                 }
                 foundFields = member.ToString();
                 member.Clear();
 
-                foreach(PropertyInfo property in entry.Value.GetProperties())
+                foreach (PropertyInfo property in entry.Value.GetProperties())
                 {
                     member.Append(@$"{{""{property.Name}"", ""{property.PropertyType.Name}""}}, "); 
                 }
                 foundProperties = member.ToString();
                 member.Clear();
 
-                foreach(ConstructorInfo ctor in entry.Value.GetConstructors())
+                foreach (ConstructorInfo ctor in entry.Value.GetConstructors())
                 {
-                    foreach(ParameterInfo param in ctor.GetParameters())
+                    foreach (ParameterInfo param in ctor.GetParameters())
                     {
                         member.Append(@$"{{""{param.Name}"", ""{param.ParameterType.Name}""}}, "); 
                     }
@@ -111,7 +111,7 @@ namespace System.Text.Json.SourceGeneration
                 foundCtorParams = member.ToString();
                 member.Clear();
 
-                foreach(ConstructorInfo ctor in entry.Value.GetConstructors())
+                foreach (ConstructorInfo ctor in entry.Value.GetConstructors())
                 {
                     member.Append($@"""{ctor.Name}"", ");
                 }

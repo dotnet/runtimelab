@@ -4,7 +4,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json.Serialization;
+using System.Text.Json;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -150,6 +150,17 @@ namespace System.Text.Json.SourceGeneration.Tests
 
             //Dictionary<string, string> expectedPropertiesExternal = new Dictionary<string, string> { { "ConverterType", "Type"} };
             //Assert.Equal(expectedPropertiesExternal, externalTypeTest.Properties);
+        }
+
+        [Fact]
+        public static void RoundTrip()
+        {
+            Location expected = Create();
+
+            string json = JsonSerializer.Serialize(expected, JsonContext.Default.Location);
+            Location obj = JsonSerializer.Deserialize(json, JsonContext.Default.Location);
+
+            Verify(expected, obj);
         }
     }
 }
