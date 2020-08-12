@@ -58,7 +58,7 @@ namespace System.Text.Json.SourceGeneration
                         IdentifierNameSyntax externalTypeNode = (IdentifierNameSyntax)attributeArgumentNode?.DescendantNodes().Where(node => node is IdentifierNameSyntax).SingleOrDefault();
 
                         // Get non-user owned typeSymbol from IdentifierNameSyntax and add to found types.
-                        ITypeSymbol externalTypeSymbol = model.GetTypeInfo(externalTypeNode).ConvertedType;
+                        INamedTypeSymbol externalTypeSymbol = model.GetTypeInfo(externalTypeNode).ConvertedType as INamedTypeSymbol;
                         foundTypes[typeDeclarationNode.Identifier.Text] = new TypeWrapper(externalTypeSymbol, metadataLoadContext);
                     }
                     else
@@ -73,9 +73,14 @@ namespace System.Text.Json.SourceGeneration
             StringBuilder member = new StringBuilder();
             string foundMethods, foundFields, foundProperties, foundCtorParams, foundCtors;
 
+            JsonSourceGeneratorHelper codegen = new JsonSourceGeneratorHelper("MyNamespace");
+
             foreach (KeyValuePair<string, Type> entry in foundTypes)
             {
-                foreach(MethodInfo method in entry.Value.GetMethods())
+
+                codegen.GenerateClassInfoDFS(entry.Key, entry.Value);
+
+                foreach (MethodInfo method in entry.Value.GetMethods())
                 {
                     member.Append(@$"""{method.Name}"", "); 
                 }
@@ -133,6 +138,8 @@ namespace HelloWorldGenerated
         private Dictionary<string, string> ClassProperties = new Dictionary<string, string>()
         {{ {foundProperties} }};
 
+        public string s = @""{(codegen._types.ContainsKey(entry.Value)? codegen._types[entry.Value].Replace("\"", " "): "nothing")}"";
+
         public string GetClassName()
         {{
             return ""{entry.Key}ClassInfo"";
@@ -155,6 +162,12 @@ namespace HelloWorldGenerated
     }}
 }}
 ", Encoding.UTF8));
+            }
+
+            // For each diagnostic, report to the user.
+            foreach (Diagnostic diagnostic in codegen.Diagnostics)
+            {
+                context.ReportDiagnostic(diagnostic);
             }
         }
 

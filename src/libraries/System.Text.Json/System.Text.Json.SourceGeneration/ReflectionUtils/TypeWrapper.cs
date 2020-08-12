@@ -292,5 +292,51 @@ namespace System.Reflection
             }
             return base.Equals(o);
         }
+
+        // Extension methods.
+        public bool IsIEnumerable()
+        {
+            foreach (Type @interface in GetInterfaces())
+            {
+                if (@interface.IsGenericType)
+                {
+                    if (@interface.IsGenericType && (@interface.GetGenericTypeDefinition().Equals(typeof(IEnumerable<>))))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        public bool IsList()
+        {
+            foreach (Type @interface in GetInterfaces())
+            {
+                if (@interface.IsGenericType)
+                {
+                    if (@interface.IsGenericType && (@interface.GetGenericTypeDefinition().Equals(typeof(IList<>))))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        public bool IsDictionary()
+        {
+            foreach (Type @interface in GetInterfaces())
+            {
+                if (@interface.IsGenericType)
+                {
+                    if (@interface.IsGenericType && (@interface.GetGenericTypeDefinition().Equals(typeof(IDictionary<,>))))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
     }
 }

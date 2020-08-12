@@ -31,6 +31,7 @@
     <Compile Include="ReflectionUtils\RoslynExtensions.cs" />
     <Compile Include="ReflectionUtils\TypeWrapper.cs" />
     <Compile Include="JsonSourceGenerator.cs" />
+    <Compile Include="JsonSourceGeneratorHelper.cs" />
     <Compile Include="JsonSerializableSyntaxReceiver.cs" />
   </ItemGroup>
 
