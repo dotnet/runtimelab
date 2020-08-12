@@ -13,7 +13,7 @@ These types pose an interesting problem for a number of reasons listed below. Wi
 - Private reflection
   - Even when we do have information about all of the fields, we can't emit code that references them if they are private, so we would have to emit unsafe code and calculate offsets manually to support marshaling them.
   
-## Possible Solution A - Opt-In Structure Interop
+## Opt-in Interop
 
 We've been working around another problem for a while in the runtime-integrated interop design: The user can use any type that is non-auto layout and has fields that can be marshaled in interop. This has lead to various issues where types that were not intended for interop usage became usable and then we couldn't update their behavior to be special-cased since users may have been relying on the generic behavior (`Span<T>`, `Vector<T>` come to mind).
 
@@ -43,33 +43,55 @@ public class MarshalUsingAttribute : Attribute
 
 ```
 
-The `NativeMarshallingAttribute` and `MarshalUsingAttribute` attributes would require that the provided native type `TNative` is a blittable `struct` and has three methods with the following names and shapes (with the managed type named TManaged):
+The `NativeMarshallingAttribute` and `MarshalUsingAttribute` attributes would require that the provided native type `TNative` is a blittable `struct` and has a subset of three methods with the following names and shapes (with the managed type named TManaged):
 
 ```csharp
-struct TNative
+partial struct TNative
 {
-     public TNative(TManaged managed)
-     {}
-
+     public TNative(TManaged managed) {}
      public TManaged ToManaged() {}
 
      public void FreeNative() {}
 }
 ```
 
+The analyzer will report an error if neither the construtor nor the ToManaged method is defined. When one of those two methods is missing, the direction of marshalling (managed to native/native to managed) that relies on the missing method is considered unsupported for the corresponding managed type. The FreeNative method is only required when there are resources that need to be released.
+
+
 > :question: Does this API surface and shape work for all marshalling scenarios we plan on supporting? It may have issues with the current "layout class" by-value `[Out]` parameter marshalling where the runtime updates a `class` typed object in place. We already recommend against using classes for interop for performance reasons and a struct value passed via `ref` or `out` with the same members would cover this scenario.
 
-If the native type `TNative` also has a public `Value` property, then the value of the `Value` property will be passed to native code instead of the `TNative` value itself. As a result, the type `TNative` will be allowed to be non-blittable and the type of the `Value` property will be required to be blittable.
+If the native type `TNative` also has a public `Value` property, then the value of the `Value` property will be passed to native code instead of the `TNative` value itself. As a result, the type `TNative` will be allowed to be non-blittable and the type of the `Value` property will be required to be blittable. If the `Value` property is settable, then when marshalling in the native-to-managed direction, a default value of `TNative` will have its `Value` property set to the native value. If `Value` does not have a setter, then marshalling from native to managed is not supported.
 
-> :question: Should we support opting into marshalling via pinning by detecting a `GetPinnableReference` method with a blittable ref return type as an optional addition to the support of `NativeMarshallingAttribute` and `MarshalUsingAttribute`?
+### Performance features
+
+#### Pinning
+
+Since C# 7.3 added a feature to enable custom pinning logic for user types, we should also add support for custom pinning logic. If the user provides a `GetPinnableReference` method that matches the requirements to be used in a `fixed` statement and the pointed-to type is blittable, then we will support using pinning to marshal the managed value when possible. The analyzer should issue a warning when the pointed-to type would not match the final native type, accounting for the `Value` property on the native type. Since `MarshalUsingAttribute` is applied at usage time instead of at type authoring time, we will not enable the pinning feature since the implementation of `GetPinnableReference` unless the pointed-to return type matches the native type.
+
+#### Stackalloc
+
+Custom marshalers of collection-like types or custom string encodings (such as UTF-32) may want to use stack space for extra storage for additional performance when possible. If the `TNative` type provides additional members with the following signatures, then it will opt in to using a stack-allocated buffer:
+
+```csharp
+partial struct TNative
+{
+     public TNative(TManaged managed, Span<byte> stackSpace) {}
+
+     public static const int StackBufferSize = /* */;
+}
+```
+
+When these members are both present, the source generator will call the two-parameter constructor with a stack-allocated buffer of `StackBufferSize` bytes when a stack-allocated buffer is usable. As this buffer is guaranteed to be stack allocated and not on the GC heap, it is save to use `Unsafe.AsPointer` to get a pointer to the stack buffer to pass to native code. As a stack-allocated buffer is not usable in all scenarios, for example Reverse P/Invoke and struct marshalling, a one-parameter constructor must also be provided for usage in those scenarios. This may also be provided by providing a two-parameter constructor with a default value for the second parameter.
+
+### Usage
 
 There are 2 usage mechanisms of these attributes.
 
-- Usage 1, Source-generated interop:
+#### Usage 1, Source-generated interop
 
 The user can apply the `GeneratedMarshallingAttribute` to their structure `S`. The source generator will determine if the type is blittable. If it is blittable, the source generator will generate a partial definition and apply the `BlittableTypeAttribute` to the struct type `S`. Otherwise, it will generate a blittable representation of the struct with the aformentioned requried shape and apply the `NativeMarshallingAttribute` and point it to the blittable representation. The blittable representation can either be generated as a separate top-level type or as a nested type on `S`.
 
-- Usage 2, Manual interop:
+#### Usage 2, Manual interop
 
 The user may want to manually mark their types as marshalable in this system due to specific restrictions in their code base around marshaling specific types that the source generator does not account for. We could also use this internally to support custom types in source instead of in the code generator. In this scenario, the user would apply either the `BlittableTypeAttribute` or the `NativeMarshallingAttribute` attribute to their struct type. An analyzer would validate that the struct is blittable if the `BlittableTypeAttribute` is applied or validate that the native struct type is blittable and has marshalling methods of the required shape when the `NativeMarshallingAttribute` is applied.
 
@@ -77,7 +99,7 @@ The P/Invoke source generator (as well as the struct source generator when neste
 
 If a structure type does not have either the `BlittableTypeAttribute` or the `NativeMarshallingAttribute` applied at the type definition, the user can supply a `MarshalUsingAttribute` at the marshalling location (field, parameter, or return value) with a native type matching the same requirements as `NativeMarshallingAttribute`'s native type.
 
-#### Why do we need `BlittableTypeAttribute`?
+### Why do we need `BlittableTypeAttribute`?
 
 Based on the design above, it seems that we wouldn't need `BlittableTypeAttribute`. However, due to the ref assembly issue above in combination with the desire to enable manual interop, we need to provide a way for users to signal that a given type should be blittable and that the source generator should not generate marshalling code.
 
@@ -158,7 +180,7 @@ When the source generator (either Struct, P/Invoke, Reverse P/Invoke, etc.) enco
 
 If someone actively disables the analyzer or writes their types in IL, then they have stepped out of the supported scenarios and marshalling code generated for their types may be inaccurate.
 
-#### Special case: Transparent Structures
+### Special case: Transparent Structures
 
 There has been discussion about Transparent Structures, structure types that are treated as their underlying types when passed to native code. The support for a `Value` property on a generated marshalling type supports the transparent struct support. For example, we could support strongly typed `HRESULT` returns with this model as shown below:
 
