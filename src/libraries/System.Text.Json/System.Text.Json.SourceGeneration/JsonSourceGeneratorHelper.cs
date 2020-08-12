@@ -16,6 +16,7 @@ namespace System.Text.Json.SourceGeneration
         {
             typeof(bool),
             typeof(int),
+            typeof(double),
             typeof(long),
             typeof(string),
             typeof(char),
@@ -50,16 +51,16 @@ namespace System.Text.Json.SourceGeneration
             _initiatingTypeClass ??=
                 new DiagnosticDescriptor(
                     "JsonSourceGeneration",
-                    "[GENERATING] Initiating type class generation",
-                    "[GENERATING] Generating type class {1} for root type {0}",
+                    "Initiating type class generation",
+                    "Generating type class {1} for root type {0}",
                     "category",
-                    DiagnosticSeverity.Warning,
+                    DiagnosticSeverity.Info,
                     isEnabledByDefault: true);
             _failedToGenerateTypeClass ??=
                 new DiagnosticDescriptor(
                     "JsonSourceGeneration",
-                    "[FAILED] Failed to generate typeclass",
-                    "[FAILED] {0} could not be source generated due to failure in sourcegenerating nested type {1}.",
+                    "Failed to generate typeclass",
+                    "Failed in sourcegenerating nested type {1} for root type {0}.",
                     "category",
                     DiagnosticSeverity.Warning,
                     isEnabledByDefault: true,
@@ -67,12 +68,11 @@ namespace System.Text.Json.SourceGeneration
             _failedToAddNewTypesFromMembers ??=
                 new DiagnosticDescriptor(
                     "JsonSourceGeneration",
-                    "[FAILED] Failed to add new types from current type",
-                    "[FAILED] Failed to iterate fields and properties for current type {1} for root type {0}",
+                    "Failed to add new types from current type",
+                    "Failed to iterate fields and properties for current type {1} for root type {0}",
                     "category",
                     DiagnosticSeverity.Warning,
-                    isEnabledByDefault: true,
-                    description: "Error message: {2}");
+                    isEnabledByDefault: true);
         }
 
         // Base source generation context partial class.
@@ -80,8 +80,6 @@ namespace System.Text.Json.SourceGeneration
         {
             return @$"
 using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Converters;
-using System.Text.Json.Serialization.Metadata;
 
 namespace {_generationNamespace}
 {{
@@ -105,10 +103,10 @@ namespace {_generationNamespace}
             ";
         }
 
-        // Returns a Tuple<isSuccessful, isCyclic>.
-        private Tuple<bool, bool> DFS(HashSet<Type> seenTypes, Stack<Type> typeStack, string className, Type type)
+        // Generates metadata for type and returns a Tuple<isSuccessful, isCyclic>.
+        private Tuple<bool, bool> GenerateClassInfo(Type root, HashSet<Type> seenTypes, Stack<Type> typeStack, string className, Type type)
         {
-            _diagnostics.Add(Diagnostic.Create(_initiatingTypeClass, Location.None, new string[] { "idk", className }));
+            _diagnostics.Add(Diagnostic.Create(_initiatingTypeClass, Location.None, new string[] { root.Name, className }));
 
             // Add current type to generated types.
             seenTypes.Add(type);
@@ -127,24 +125,25 @@ namespace {_generationNamespace}
             foreach (FieldInfo field in fields)
             {
                 handlingType = GetTypeToGenerate(field.FieldType);
-                RecursivelyGenerate(handlingType, seenTypes, typeStack, ref isSuccessful, ref isCyclic);
+                GenerateForMembers(root, handlingType, seenTypes, typeStack, ref isSuccessful, ref isCyclic);
             }
 
             foreach (PropertyInfo property in properties)
             {
                 handlingType = GetTypeToGenerate(property.PropertyType);
-                RecursivelyGenerate(handlingType, seenTypes, typeStack, ref isSuccessful, ref isCyclic);
+                GenerateForMembers(root, handlingType, seenTypes, typeStack, ref isSuccessful, ref isCyclic);
             }
 
             // Try to generate current type info now that fields and property types have been resolved.
-            isSuccessful &= InitializeContextClass(className, source);
+            isSuccessful &= AddImportsToTypeClass(type, properties, fields, source);
+            isSuccessful &= InitializeContextClass(type, className, source);
             isSuccessful &= InitializeTypeClass(className, source);
-            isSuccessful &= TypeInfoGetterSetter(className, source);
+            isSuccessful &= TypeInfoGetterSetter(type, source);
             isSuccessful &= InitializeTypeInfoProperties(properties, source);
-            isSuccessful &= GenerateTypeInfoConstructor(className, properties, fields, source);
-            isSuccessful &= GenerateCreateObject(className, source);
-            isSuccessful &= GenerateSerialize(className, properties, source);
-            isSuccessful &= GenerateDeserialize(className, properties, source);
+            isSuccessful &= GenerateTypeInfoConstructor(type, className, properties, fields, source);
+            isSuccessful &= GenerateCreateObject(type, source);
+            isSuccessful &= GenerateSerialize(type, properties, source);
+            isSuccessful &= GenerateDeserialize(type, properties, source);
             isSuccessful &= FinalizeTypeAndContextClasses(source);
 
             if (isSuccessful)
@@ -167,7 +166,7 @@ namespace {_generationNamespace}
                     }
                 }
 
-                _diagnostics.Add(Diagnostic.Create(_failedToGenerateTypeClass, Location.None, new string[] { "idk", className }));
+                _diagnostics.Add(Diagnostic.Create(_failedToGenerateTypeClass, Location.None, new string[] { root.Name, className }));
 
                 // If not successful remove it from found types hashset and add to failed types list.
                 seenTypes.Remove(type);
@@ -175,33 +174,37 @@ namespace {_generationNamespace}
             }
 
             return new Tuple<bool, bool>(isSuccessful, isCyclic);
+        }
 
-            // Call recursive type generation if unseen type and check for success and cycles.
-            void RecursivelyGenerate(Type type, HashSet<Type> seenTypes, Stack<Type> typeStack, ref bool isSuccessful, ref bool isCyclic)
+        // Call recursive type generation if unseen type and check for success and cycles.
+        void GenerateForMembers(Type root, Type currentType, HashSet<Type> seenTypes, Stack<Type> typeStack, ref bool isSuccessful, ref bool isCyclic)
+        {
+            // If a field/property type has already been seen, it means that the type is cyclic.
+            if (seenTypes.Contains(currentType))
             {
-                //_diagnostics.Add(Diagnostic.Create(trying, Location.None, new string[] { "idk", type.FullName }));
-                // If a field/property type has already been seen, it means that the type is cyclic.
-                if (seenTypes.Contains(type))
-                {
-                    isCyclic = true;
-                }
+                isCyclic = true;
+            }
 
-                // If new type, recurse.
-                if (IsNewType(type, seenTypes))
+            // If new type, recurse.
+            if (IsNewType(currentType, seenTypes))
+            {
+                (bool wasSuccessful, bool wasCyclic) = GenerateClassInfo(root, seenTypes, typeStack, currentType.Name, currentType);
+                isSuccessful &= wasSuccessful;
+                isCyclic |= wasCyclic;
+
+                if (!wasSuccessful)
                 {
-                    (bool wasSuccessful, bool wasCyclic) = DFS(seenTypes, typeStack, type.Name, type);
-                    isSuccessful &= wasSuccessful;
-                    isCyclic |= wasCyclic;
+                    _diagnostics.Add(Diagnostic.Create(_failedToAddNewTypesFromMembers, Location.None, new string[] { root.Name, currentType.Name }));
                 }
             }
         }
 
         // Returns name of types traversed that can be looked up in the dictionary.
-        public List<Type> GenerateClassInfoDFS(string className, Type rootType)
+        public List<Type> GenerateClassInfo(string className, Type rootType)
         {
             Stack<Type> typeStack = new Stack<Type>();
             HashSet<Type> foundTypes = new HashSet<Type>();
-            DFS(foundTypes, typeStack, className, rootType);
+            GenerateClassInfo(rootType, foundTypes, typeStack, className, rootType);
             return foundTypes.ToList();
         }
 
@@ -224,20 +227,68 @@ namespace {_generationNamespace}
             !foundTypes.Contains(type) &&
             !s_simpleTypes.Contains(type));
 
+        private bool AddImportsToTypeClass(Type type, PropertyInfo[] properties, FieldInfo[] fields, StringBuilder source)
+        {
+            HashSet<string> imports = new HashSet<string>();
+
+            // Add base imports.
+            imports.Add("System");
+            imports.Add("System.Text.Json");
+            imports.Add("System.Text.Json.Serialization");
+            imports.Add("System.Text.Json.Serialization.Metadata");
+
+            // Add imports to root type.
+            if (type is TypeWrapper typeWrapper)
+            {
+                imports.Add(typeWrapper.GetFullNamespace());
+            }
+
+            Type handlingType;
+            foreach (PropertyInfo property in properties)
+            {
+                handlingType = GetTypeToGenerate(property.PropertyType);
+                if (property.PropertyType is TypeWrapper baseType)
+                {
+                    imports.Add(baseType.GetFullNamespace());
+                }
+                if (!handlingType.Equals(property.PropertyType) && handlingType is TypeWrapper genericType)
+                {
+                    imports.Add(genericType.GetFullNamespace());
+                }
+            }
+            foreach (FieldInfo field in fields)
+            {
+                handlingType = GetTypeToGenerate(field.FieldType);
+                if (field.FieldType is TypeWrapper baseType)
+                {
+                    imports.Add(baseType.GetFullNamespace());
+                }
+                if (!handlingType.Equals(field.FieldType) && handlingType is TypeWrapper genericType)
+                {
+                    imports.Add(genericType.GetFullNamespace());
+                }
+            }
+
+            foreach (string import in imports)
+            {
+                source.Append($@"
+using {import};");
+            }
+
+            return true;
+        }
+
         // Includes necessary imports, namespace decl and initializes class.
-        private bool InitializeContextClass(string className, StringBuilder source) {
+        private bool InitializeContextClass(Type type, string className, StringBuilder source)
+        {
             source.Append($@"
-using System;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
 
 namespace {_generationNamespace}
 {{
     public partial class JsonContext : JsonSerializerContext
     {{
         private {className}TypeInfo _{className};
-        public JsonTypeInfo<{className}> {className} 
+        public JsonTypeInfo<{type.Name}> {className} 
         {{
             get
             {{
@@ -263,23 +314,24 @@ namespace {_generationNamespace}
             return true;
         }
 
-        private bool TypeInfoGetterSetter(string className, StringBuilder source) {
+        private bool TypeInfoGetterSetter(Type type, StringBuilder source)
+        {
             source.Append($@"
-            public JsonTypeInfo<{className}> TypeInfo {{ get; private set; }}
+            public JsonTypeInfo<{type.Name}> TypeInfo {{ get; private set; }}
             ");
 
             return true;
         }
 
-        private bool InitializeTypeInfoProperties(PropertyInfo[] properties, StringBuilder source) {
+        private bool InitializeTypeInfoProperties(PropertyInfo[] properties, StringBuilder source)
+        {
             Type genericType;
             string typeName;
             string propertyName;
 
             foreach (PropertyInfo property in properties)
             {
-                // Verify if the type is generated.
-                //if (_failedTypes.Contains(property.PropertyType) || !)
+                // todo: Verify if the type has already failed in sourcegeneration.
 
                 // Find type and property name to use for property definition.
                 typeName = property.PropertyType.Name;
@@ -315,12 +367,12 @@ namespace {_generationNamespace}
             return true;
         }
 
-        private bool GenerateTypeInfoConstructor(string className, PropertyInfo[] properties, FieldInfo[] fields, StringBuilder source)
+        private bool GenerateTypeInfoConstructor(Type root, string className, PropertyInfo[] properties, FieldInfo[] fields, StringBuilder source)
         {
             source.Append($@"
             public {className}TypeInfo(JsonContext context)
             {{
-                var typeInfo = new JsonObjectInfo<{className}>(CreateObjectFunc, SerializeFunc, DeserializeFunc, context.GetOptions());
+                var typeInfo = new JsonObjectInfo<{root.Name}>(CreateObjectFunc, SerializeFunc, DeserializeFunc, context.GetOptions());
             ");
 
             Type genericType;
@@ -330,17 +382,18 @@ namespace {_generationNamespace}
                 // Default classtype for values.
                 typeClassInfoCall = $"context.{property.PropertyType.Name}";
 
-                if (property.PropertyType is TypeWrapper type)
+                if (property.PropertyType is TypeWrapper typeWrapper)
                 {
                     // Check if IEnumerable.
-                    if (type.IsIEnumerable())
+                    if (typeWrapper.IsIEnumerable())
                     {
-                        genericType = GetTypeToGenerate(type);
-                        if (type.IsList())
+                        genericType = GetTypeToGenerate(typeWrapper);
+
+                        if (typeWrapper.IsList())
                         {
-                            typeClassInfoCall = $"KnownCollectionTypeInfos<{genericType.Name}>.GetList(context.{genericType.Name}TypeInfo, context)";
+                            typeClassInfoCall = $"KnownCollectionTypeInfos<{genericType.Name}>.GetList(context.{genericType.Name}, context)";
                         }
-                        else if (type.IsDictionary())
+                        else if (typeWrapper.IsDictionary())
                         {
                             // todo: Add support and get generic arguments and add them to typeName.
                             return false;
@@ -354,9 +407,9 @@ namespace {_generationNamespace}
                 }
 
                 source.Append($@"
-                _property_{property.Name} = typeInfo.AddProperty(nameof(MyNamespace.{className}.{property.Name}),
-                    (obj) => {{ return (({className})obj).{property.Name}; }},
-                    (obj, value) => {{ (({className})obj).{property.Name} = value; }},
+                _property_{property.Name} = typeInfo.AddProperty(nameof({((TypeWrapper)root).GetFullNamespace()}.{root.Name}.{property.Name}),
+                    (obj) => {{ return (({root.Name})obj).{property.Name}; }},
+                    (obj, value) => {{ (({root.Name})obj).{property.Name} = value; }},
                     {typeClassInfoCall});
                 ");
             }
@@ -371,19 +424,19 @@ namespace {_generationNamespace}
             return true;
         }
 
-        private bool GenerateCreateObject(string className, StringBuilder source)
+        private bool GenerateCreateObject(Type type, StringBuilder source)
         {
             source.Append($@"
             private object CreateObjectFunc()
             {{
-                return new {className}();
+                return new {type.Name}();
             }}
             ");
 
             return true;
         }
 
-        private bool GenerateSerialize(string className, PropertyInfo[] properties, StringBuilder source)
+        private bool GenerateSerialize(Type type, PropertyInfo[] properties, StringBuilder source)
         {
             // Start function.
             source.Append($@"
@@ -392,7 +445,7 @@ namespace {_generationNamespace}
 
             // Create base object.
             source.Append($@"
-                {className} obj = ({className})value;
+                {type.Name} obj = ({type.Name})value;
             ");
 
             foreach (PropertyInfo property in properties)
@@ -409,10 +462,11 @@ namespace {_generationNamespace}
             return true;
         }
 
-        private bool GenerateDeserialize(string className, PropertyInfo[] properties, StringBuilder source) {
+        private bool GenerateDeserialize(Type type, PropertyInfo[] properties, StringBuilder source)
+        {
             // Start deserialize function.
             source.Append($@"
-            private {className} DeserializeFunc(ref Utf8JsonReader reader, ref ReadStack readStack, JsonSerializerOptions options)
+            private {type.Name} DeserializeFunc(ref Utf8JsonReader reader, ref ReadStack readStack, JsonSerializerOptions options)
             {{
             ");
 
@@ -427,7 +481,7 @@ namespace {_generationNamespace}
             // Start loop to read properties.
             source.Append($@"
                 ReadOnlySpan<byte> propertyName;
-                {className} obj = new {className}();
+                {type.Name} obj = new {type.Name}();
 
                 while(ReadPropertyName(ref reader))
                 {{
@@ -446,11 +500,19 @@ namespace {_generationNamespace}
             }
 
             // Base condition for unhandled properties.
-            source.Append($@"
+            if (properties.Length > 0)
+            {
+                source.Append($@"
                     else
                     {{
                         reader.Read();
                     }}");
+            }
+            else
+            {
+                source.Append($@"
+                    reader.Read();");
+            }
 
             // Finish property reading loops.
             source.Append($@"

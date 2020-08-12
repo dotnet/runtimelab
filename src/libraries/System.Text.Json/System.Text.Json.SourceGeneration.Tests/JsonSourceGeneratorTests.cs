@@ -2,165 +2,226 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using MyNamespace;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
+using System.Text.Json.Serialization;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace System.Text.Json.SourceGeneration.Tests
 {
+    [JsonSerializable]
+    public class Location
+    {
+        public int Id { get; set; }
+        public string Address1 { get; set; }
+        public string Address2 { get; set; }
+        public string City { get; set; }
+        public string State { get; set; }
+        public string PostalCode { get; set; }
+        public string Name { get; set; }
+        public string PhoneNumber { get; set; }
+        public string Country { get; set; }
+    }
+
+    [JsonSerializable]
+    public class ActiveOrUpcomingEvent
+    {
+        public int Id { get; set; }
+        public string ImageUrl { get; set; }
+        public string Name { get; set; }
+        public string CampaignName { get; set; }
+        public string CampaignManagedOrganizerName { get; set; }
+        public string Description { get; set; }
+        public DateTimeOffset StartDate { get; set; }
+        public DateTimeOffset EndDate { get; set; }
+    }
+
+    [JsonSerializable]
+    public class CampaignSummaryViewModel
+    {
+        public int Id { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public string ImageUrl { get; set; }
+        public string OrganizationName { get; set; }
+        public string Headline { get; set; }
+    }
+
+    [JsonSerializable]
+    public class IndexViewModel
+    {
+        public List<ActiveOrUpcomingEvent> ActiveOrUpcomingEvents { get; set; }
+        public CampaignSummaryViewModel FeaturedCampaign { get; set; }
+        public bool IsNewAccount { get; set; }
+        public bool HasFeaturedCampaign => FeaturedCampaign != null;
+    }
+
     public class JsonSerializerSourceGeneratorTests
     {
-
-        private readonly ITestOutputHelper _testOutputHelper;
-
-        public JsonSerializerSourceGeneratorTests(ITestOutputHelper testOutputHelper)
-        {
-            _testOutputHelper = testOutputHelper;
-        }
-
-        [JsonSerializable]
-        public class SampleInternalTest
-        {
-            public char PublicCharField;
-            private string PrivateStringField;
-            public int PublicIntPropertyPublic { get; set; }
-            public int PublicIntPropertyPrivateSet { get; private set; }
-            public int PublicIntPropertyPrivateGet { private get; set; }
-
-            public SampleInternalTest()
-            {
-                PublicCharField = 'a';
-                PrivateStringField = "privateStringField";
-            }
-
-            public SampleInternalTest(char c, string s)
-            {
-                PublicCharField = c;
-                PrivateStringField = s;
-            }
-
-            private SampleInternalTest(int i)
-            {
-                PublicIntPropertyPublic = i;
-            }
-
-            private void UseFields()
-            {
-                string use = PublicCharField.ToString() + PrivateStringField;
-            }
-        }
-
-        [JsonSerializable(typeof(JsonConverterAttribute))]
-        public class SampleExternalTest { }
-
-        [JsonSerializable]
-        public class Location
-        {
-            public int Id { get; set; }
-            public string Address1 { get; set; }
-            public string Address2 { get; set; }
-            public string City { get; set; }
-            public string State { get; set; }
-            public string PostalCode { get; set; }
-            public string Name { get; set; }
-            public string PhoneNumber { get; set; }
-            public string Country { get; set; }
-        }
-
-        [JsonSerializable]
-        public class ActiveOrUpcomingEvent
-        {
-            public int Id { get; set; }
-            public string ImageUrl { get; set; }
-            public string Name { get; set; }
-            public string CampaignName { get; set; }
-            public string CampaignManagedOrganizerName { get; set; }
-            public string Description { get; set; }
-            public DateTimeOffset StartDate { get; set; }
-            public DateTimeOffset EndDate { get; set; }
-        }
-
-        [JsonSerializable]
-        public class CampaignSummaryViewModel
-        {
-            public int Id { get; set; }
-            public string Title { get; set; }
-            public string Description { get; set; }
-            public string ImageUrl { get; set; }
-            public string OrganizationName { get; set; }
-            public string Headline { get; set; }
-        }
-
-        [JsonSerializable]
-        public class IndexViewModel
-        {
-            public List<ActiveOrUpcomingEvent> ActiveOrUpcomingEvents { get; set; }
-            public CampaignSummaryViewModel FeaturedCampaign { get; set; }
-            public bool IsNewAccount { get; set; }
-            public bool HasFeaturedCampaign => FeaturedCampaign != null;
-        }
-
         [Fact]
-        public void TestGeneratedCode()
+        public static void RoundTripLocation()
         {
-            _testOutputHelper.WriteLine("Testing");
-            var internalTypeTest = new HelloWorldGenerated.SampleInternalTestClassInfo();
-            var locationTypeTest = new HelloWorldGenerated.LocationClassInfo();
-            var campaignSummaryViewModelTypeTest = new HelloWorldGenerated.CampaignSummaryViewModelClassInfo();
-            var activeOrUpcomingEventTypeTest = new HelloWorldGenerated.ActiveOrUpcomingEventClassInfo();
-            var indexViewModelTypeTest = new HelloWorldGenerated.IndexViewModelClassInfo();
-            _testOutputHelper.WriteLine(campaignSummaryViewModelTypeTest.s);
-            _testOutputHelper.WriteLine(activeOrUpcomingEventTypeTest.s);
-            _testOutputHelper.WriteLine(indexViewModelTypeTest.s);
-
-            //// Check base class names.
-            //Assert.Equal("SampleInternalTestClassInfo", internalTypeTest.GetClassName());
-            //Assert.Equal("SampleExternalTestClassInfo", externalTypeTest.GetClassName());
-
-            //// Public and private Ctors are visible.
-            //Assert.Equal(3, internalTypeTest.Ctors.Count);
-            //Assert.Equal(2, externalTypeTest.Ctors.Count);
-
-            //// Ctor params along with its types are visible.
-            //Dictionary<string, string> expectedCtorParamsInternal = new Dictionary<string, string> { { "c", "Char"}, { "s", "String" }, { "i", "Int32" } };
-            //Assert.Equal(expectedCtorParamsInternal, internalTypeTest.CtorParams);
-
-            //Dictionary<string, string> expectedCtorParamsExternal = new Dictionary<string, string> { { "converterType", "Type"} };
-            //Assert.Equal(expectedCtorParamsExternal, externalTypeTest.CtorParams);
-
-            //// Public and private methods are visible.
-            //List<string> expectedMethodsInternal = new List<string> { "get_PublicIntPropertyPrivateGet", "get_PublicIntPropertyPrivateSet", "get_PublicIntPropertyPublic", "set_PublicIntPropertyPrivateGet", "set_PublicIntPropertyPrivateSet", "set_PublicIntPropertyPublic", "UseFields" };
-            //Assert.Equal(expectedMethodsInternal, internalTypeTest.Methods.OrderBy(s => s).ToList());
-
-            //List<string> expectedMethodsExternal = new List<string> { "CreateConverter", "get_ConverterType" };
-            //Assert.Equal(expectedMethodsExternal, externalTypeTest.Methods.OrderBy(s => s).ToList());
-
-            //// Public and private fields are visible.
-            //Dictionary<string, string> expectedFieldsInternal = new Dictionary<string, string> { { "PublicCharField", "Char" }, { "PrivateStringField", "String" } };
-            //Assert.Equal(expectedFieldsInternal, internalTypeTest.Fields);
-
-            //Dictionary<string, string> expectedFieldsExternal = new Dictionary<string, string> { };
-            //Assert.Equal(expectedFieldsExternal, externalTypeTest.Fields);
-
-            //// Public properties are visible.
-            //Dictionary<string, string> expectedPropertiesInternal = new Dictionary<string, string> { { "PublicIntPropertyPublic", "Int32" }, { "PublicIntPropertyPrivateSet", "Int32" }, { "PublicIntPropertyPrivateGet", "Int32" } };
-            //Assert.Equal(expectedPropertiesInternal, internalTypeTest.Properties);
-
-            //Dictionary<string, string> expectedPropertiesExternal = new Dictionary<string, string> { { "ConverterType", "Type"} };
-            //Assert.Equal(expectedPropertiesExternal, externalTypeTest.Properties);
-        }
-
-        [Fact]
-        public static void RoundTrip()
-        {
-            Location expected = Create();
+            Location expected = CreateLocation();
 
             string json = JsonSerializer.Serialize(expected, JsonContext.Default.Location);
             Location obj = JsonSerializer.Deserialize(json, JsonContext.Default.Location);
 
-            Verify(expected, obj);
+            VerifyLocation(expected, obj);
+        }
+
+        [Fact]
+        public static void RoundTripIndexViewModel()
+        {
+            IndexViewModel expected = CreateIndexViewModel();
+
+            string json = JsonSerializer.Serialize(expected, JsonContext.Default.IndexViewModel);
+            IndexViewModel obj = JsonSerializer.Deserialize(json, JsonContext.Default.IndexViewModel);
+
+            VerifyIndexViewModel(expected, obj);
+        }
+
+        [Fact]
+        public static void RoundTripCampaignSummaryViewModel()
+        {
+            CampaignSummaryViewModel expected = CreateCampaignSummaryViewModel();
+
+            string json = JsonSerializer.Serialize(expected, JsonContext.Default.CampaignSummaryViewModel);
+            CampaignSummaryViewModel obj = JsonSerializer.Deserialize(json, JsonContext.Default.CampaignSummaryViewModel);
+
+            VerifyCampaignSummaryViewModel(expected, obj);
+        }
+
+        [Fact]
+        public static void RoundTripActiveOrUpcomingEvent()
+        {
+            ActiveOrUpcomingEvent expected = CreateActiveOrUpcomingEvent();
+
+            string json = JsonSerializer.Serialize(expected, JsonContext.Default.ActiveOrUpcomingEvent);
+            ActiveOrUpcomingEvent obj = JsonSerializer.Deserialize(json, JsonContext.Default.ActiveOrUpcomingEvent);
+
+            VerifyActiveOrUpcomingEvent(expected, obj);
+        }
+
+        internal static Location CreateLocation()
+        {
+            return new Location
+            {
+                Id = 1234,
+                Address1 = "The Street Name",
+                Address2 = "20/11",
+                City = "The City",
+                State = "The State",
+                PostalCode = "abc-12",
+                Name = "Nonexisting",
+                PhoneNumber = "+0 11 222 333 44",
+                Country = "The Greatest"
+            };
+        }
+
+        internal static void VerifyLocation(Location expected, Location obj)
+        {
+            Assert.Equal(expected.Address1, obj.Address1);
+            Assert.Equal(expected.Address2, obj.Address2);
+            Assert.Equal(expected.City, obj.City);
+            Assert.Equal(expected.State, obj.State);
+            Assert.Equal(expected.PostalCode, obj.PostalCode);
+            Assert.Equal(expected.Name, obj.Name);
+            Assert.Equal(expected.PhoneNumber, obj.PhoneNumber);
+            Assert.Equal(expected.Country, obj.Country);
+        }
+
+        internal static ActiveOrUpcomingEvent CreateActiveOrUpcomingEvent()
+        {
+            return new ActiveOrUpcomingEvent
+            {
+                Id = 10,
+                CampaignManagedOrganizerName = "Name FamiltyName",
+                CampaignName = "The very new campaing",
+                Description = "The .NET Foundation works with Microsoft and the broader industry to increase the exposure of open source projects in the .NET community and the .NET Foundation. The .NET Foundation provides access to these resources to projects and looks to promote the activities of our communities.",
+                EndDate = DateTime.UtcNow.AddYears(1),
+                Name = "Just a name",
+                ImageUrl = "https://www.dotnetfoundation.org/theme/img/carousel/foundation-diagram-content.png",
+                StartDate = DateTime.UtcNow
+            };
+        }
+
+        internal static void VerifyActiveOrUpcomingEvent(ActiveOrUpcomingEvent expected, ActiveOrUpcomingEvent obj)
+        {
+            Assert.Equal(expected.CampaignManagedOrganizerName, obj.CampaignManagedOrganizerName);
+            Assert.Equal(expected.CampaignName, obj.CampaignName);
+            Assert.Equal(expected.Description, obj.Description);
+            Assert.Equal(expected.EndDate, obj.EndDate);
+            Assert.Equal(expected.Id, obj.Id);
+            Assert.Equal(expected.ImageUrl, obj.ImageUrl);
+            Assert.Equal(expected.Name, obj.Name);
+            Assert.Equal(expected.StartDate, obj.StartDate);
+        }
+
+        internal static CampaignSummaryViewModel CreateCampaignSummaryViewModel()
+        {
+            return new CampaignSummaryViewModel
+            {
+                Description = "Very nice campaing",
+                Headline = "The Headline",
+                Id = 234235,
+                OrganizationName = "The Company XYZ",
+                ImageUrl = "https://www.dotnetfoundation.org/theme/img/carousel/foundation-diagram-content.png",
+                Title = "Promoting Open Source"
+            };
+        }
+
+        internal static void VerifyCampaignSummaryViewModel(CampaignSummaryViewModel expected, CampaignSummaryViewModel obj)
+        {
+            Assert.Equal(expected.Description, obj.Description);
+            Assert.Equal(expected.Headline, obj.Headline);
+            Assert.Equal(expected.Id, obj.Id);
+            Assert.Equal(expected.ImageUrl, obj.ImageUrl);
+            Assert.Equal(expected.OrganizationName, obj.OrganizationName);
+            Assert.Equal(expected.Title, obj.Title);
+        }
+
+        internal static IndexViewModel CreateIndexViewModel()
+        {
+            return new IndexViewModel
+            {
+                IsNewAccount = false,
+                FeaturedCampaign = new CampaignSummaryViewModel
+                {
+                    Description = "Very nice campaing",
+                    Headline = "The Headline",
+                    Id = 234235,
+                    OrganizationName = "The Company XYZ",
+                    ImageUrl = "https://www.dotnetfoundation.org/theme/img/carousel/foundation-diagram-content.png",
+                    Title = "Promoting Open Source"
+                },
+                ActiveOrUpcomingEvents = Enumerable.Repeat(
+                    new ActiveOrUpcomingEvent
+                    {
+                        Id = 10,
+                        CampaignManagedOrganizerName = "Name FamiltyName",
+                        CampaignName = "The very new campaing",
+                        Description = "The .NET Foundation works with Microsoft and the broader industry to increase the exposure of open source projects in the .NET community and the .NET Foundation. The .NET Foundation provides access to these resources to projects and looks to promote the activities of our communities.",
+                        EndDate = DateTime.UtcNow.AddYears(1),
+                        Name = "Just a name",
+                        ImageUrl = "https://www.dotnetfoundation.org/theme/img/carousel/foundation-diagram-content.png",
+                        StartDate = DateTime.UtcNow
+                    },
+                    count: 20).ToList()
+            };
+        }
+
+        internal static void VerifyIndexViewModel(IndexViewModel expected, IndexViewModel obj)
+        {
+            Assert.Equal(expected.ActiveOrUpcomingEvents.Count, obj.ActiveOrUpcomingEvents.Count);
+            for (int i = 0; i < expected.ActiveOrUpcomingEvents.Count; i++)
+            {
+                VerifyActiveOrUpcomingEvent(expected.ActiveOrUpcomingEvents[i], obj.ActiveOrUpcomingEvents[i]);
+            }
+
+            VerifyCampaignSummaryViewModel(expected.FeaturedCampaign, obj.FeaturedCampaign);
+            Assert.Equal(expected.HasFeaturedCampaign, obj.HasFeaturedCampaign);
+            Assert.Equal(expected.IsNewAccount, obj.IsNewAccount);
         }
     }
 }

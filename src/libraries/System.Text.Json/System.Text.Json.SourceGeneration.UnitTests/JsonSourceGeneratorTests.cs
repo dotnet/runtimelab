@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Xunit;
@@ -51,8 +52,8 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             Compilation newCompilation = CompilationHelper.RunGenerators(compilation, out ImmutableArray<Diagnostic> generatorDiags, generator);
 
             // Make sure compilation was successful.
-            Assert.Empty(generatorDiags);
-            Assert.Empty(newCompilation.GetDiagnostics());
+            Assert.Empty(generatorDiags.Where(diag => diag.Severity == DiagnosticSeverity.Error));
+            Assert.Empty(newCompilation.GetDiagnostics().Where(diag => diag.Severity == DiagnosticSeverity.Error));
 
             // Check base functionality of found types.
             Assert.Equal(1, generator.FoundTypes.Count);
@@ -60,17 +61,50 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             Assert.Equal("HelloWorld.MyType", myType.FullName);
 
             // Check for received fields, properties and methods in created type.
-            string[] expectedPropertyNames = { "PrivatePropertyInt", "PrivatePropertyString", "PublicPropertyInt", "PublicPropertyString",};
-            string[] expectedFieldNames = { "PrivateChar", "PrivateDouble", "PublicChar", "PublicDouble" };
+            string[] expectedPropertyNames = { "PublicPropertyInt", "PublicPropertyString",};
+            string[] expectedFieldNames = { "PublicChar", "PublicDouble" };
             string[] expectedMethodNames = { "get_PrivatePropertyInt", "get_PrivatePropertyString", "get_PublicPropertyInt", "get_PublicPropertyString", "MyMethod", "MySecondMethod", "set_PrivatePropertyInt", "set_PrivatePropertyString", "set_PublicPropertyInt", "set_PublicPropertyString", "UsePrivates" };
             CheckFieldsPropertiesMethods("MyType", ref generator, expectedFieldNames, expectedPropertyNames, expectedMethodNames);
         }
 
         [Fact]
-        public void TypeDiscoveryPrimitiveTemporaryPOCO()
+        public void TypeDiscoveryPrimitiveExternalPOCO()
         {
+            string referencedSource = @"
+            namespace ReferencedAssembly
+            {
+                public class Location
+                {
+                    public int Id { get; set; }
+                    public string Address1 { get; set; }
+                    public string Address2 { get; set; }
+                    public string City { get; set; }
+                    public string State { get; set; }
+                    public string PostalCode { get; set; }
+                    public string Name { get; set; }
+                    public string PhoneNumber { get; set; }
+                    public string Country { get; set; }
+                }
+            }";
+
+            // Compile the referenced assembly first.
+            Compilation referencedCompilation = CompilationHelper.CreateCompilation(referencedSource);
+
+            // Emit the image of the referenced assembly.
+            byte[] referencedImage;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                var emitResult = referencedCompilation.Emit(ms);
+                if (!emitResult.Success)
+                {
+                    throw new InvalidOperationException();
+                }
+                referencedImage = ms.ToArray();
+            }
+
             string source = @"
             using System.Text.Json.Serialization;
+            using ReferencedAssembly;
 
               namespace HelloWorld
               {
@@ -97,19 +131,21 @@ namespace System.Text.Json.SourceGeneration.UnitTests
                     }
                 }
 
-                [JsonSerializable(typeof(JsonConverterAttribute))]
+                [JsonSerializable(typeof(Location))]
                 public class NotMyType { }
               }";
 
-            Compilation compilation = CompilationHelper.CreateCompilation(source);
+            MetadataReference[] additionalReferences = { MetadataReference.CreateFromImage(referencedImage) };
+
+            Compilation compilation = CompilationHelper.CreateCompilation(source, additionalReferences);
 
             JsonSerializerSourceGenerator generator = new JsonSerializerSourceGenerator();
 
             Compilation newCompilation = CompilationHelper.RunGenerators(compilation, out ImmutableArray<Diagnostic> generatorDiags, generator);
 
             // Make sure compilation was successful.
-            Assert.Empty(generatorDiags);
-            Assert.Empty(newCompilation.GetDiagnostics());
+            Assert.Empty(generatorDiags.Where(diag => diag.Severity == DiagnosticSeverity.Error));
+            Assert.Empty(newCompilation.GetDiagnostics().Where(diag => diag.Severity == DiagnosticSeverity.Error));
 
             // Check base functionality of found types.
             Assert.Equal(2, generator.FoundTypes.Count);
@@ -120,26 +156,60 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             Assert.Equal("HelloWorld.MyType", myType.FullName);
 
             // Check for received fields, properties and methods for MyType.
-            string[] expectedFieldNamesMyType = { "PrivateChar", "PrivateDouble", "PublicChar", "PublicDouble" };
-            string[] expectedPropertyNamesMyType = { "PrivatePropertyInt", "PrivatePropertyString", "PublicPropertyInt", "PublicPropertyString" };
+            string[] expectedFieldNamesMyType = { "PublicChar", "PublicDouble" };
+            string[] expectedPropertyNamesMyType = { "PublicPropertyInt", "PublicPropertyString" };
             string[] expectedMethodNamesMyType = { "get_PrivatePropertyInt", "get_PrivatePropertyString", "get_PublicPropertyInt", "get_PublicPropertyString", "MyMethod", "MySecondMethod", "set_PrivatePropertyInt", "set_PrivatePropertyString", "set_PublicPropertyInt", "set_PublicPropertyString", "UsePrivates" };
             CheckFieldsPropertiesMethods("MyType", ref generator, expectedFieldNamesMyType, expectedPropertyNamesMyType, expectedMethodNamesMyType);
 
             // Check for NotMyType.
-            Assert.Equal("System.Text.Json.Serialization.JsonConverterAttribute", generator.FoundTypes["NotMyType"].FullName);
+            Assert.Equal("ReferencedAssembly.Location", generator.FoundTypes["NotMyType"].FullName);
 
             // Check for received fields, properties and methods for NotMyType.
             string[] expectedFieldNamesNotMyType = { };
-            string[] expectedPropertyNamesNotMyType = { "ConverterType" };
-            string[] expectedMethodNamesNotMyType = { "CreateConverter", "get_ConverterType" };
+            string[] expectedPropertyNamesNotMyType = { "Address1", "Address2", "City", "Country", "Id", "Name", "PhoneNumber", "PostalCode", "State" };
+            string[] expectedMethodNamesNotMyType = { "get_Address1", "get_Address2", "get_City", "get_Country", "get_Id", "get_Name", "get_PhoneNumber", "get_PostalCode", "get_State",
+                                                      "set_Address1", "set_Address2", "set_City", "set_Country", "set_Id", "set_Name", "set_PhoneNumber", "set_PostalCode", "set_State" };
             CheckFieldsPropertiesMethods("NotMyType", ref generator, expectedFieldNamesNotMyType, expectedPropertyNamesNotMyType, expectedMethodNamesNotMyType);
         }
 
         [Fact]
         public void TypeDiscoveryWithRenamedAttribute()
         {
+            string referencedSource = @"
+            namespace ReferencedAssembly
+            {
+                public class Location
+                {
+                    public int Id { get; set; }
+                    public string Address1 { get; set; }
+                    public string Address2 { get; set; }
+                    public string City { get; set; }
+                    public string State { get; set; }
+                    public string PostalCode { get; set; }
+                    public string Name { get; set; }
+                    public string PhoneNumber { get; set; }
+                    public string Country { get; set; }
+                }
+            }";
+
+            // Compile the referenced assembly first.
+            Compilation referencedCompilation = CompilationHelper.CreateCompilation(referencedSource);
+
+            // Emit the image of the referenced assembly.
+            byte[] referencedImage;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                var emitResult = referencedCompilation.Emit(ms);
+                if (!emitResult.Success)
+                {
+                    throw new InvalidOperationException();
+                }
+                referencedImage = ms.ToArray();
+            }
+
             string source = @"
             using System.Text.Json.Serialization;
+            using ReferencedAssembly;
             using @JsonSerializable = System.ObsoleteAttribute;
             using AliasedAttribute = System.Text.Json.Serialization.JsonSerializableAttribute;
 
@@ -168,7 +238,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
                     }
                 }
 
-                [AliasedAttribute(typeof(JsonConverterAttribute))]
+                [AliasedAttribute(typeof(Location))]
                 public class NotMyType { }
 
                 [@JsonSerializable(""Testing"", true)]
@@ -176,15 +246,17 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
               }";
 
-            Compilation compilation = CompilationHelper.CreateCompilation(source);
+            MetadataReference[] additionalReferences = { MetadataReference.CreateFromImage(referencedImage) };
+
+            Compilation compilation = CompilationHelper.CreateCompilation(source, additionalReferences);
 
             JsonSerializerSourceGenerator generator = new JsonSerializerSourceGenerator();
 
             Compilation newCompilation = CompilationHelper.RunGenerators(compilation, out var generatorDiags, generator);
 
             // Make sure compilation was successful.
-            Assert.Empty(generatorDiags);
-            Assert.Empty(newCompilation.GetDiagnostics());
+            Assert.Empty(generatorDiags.Where(diag => diag.Severity == DiagnosticSeverity.Error));
+            Assert.Empty(newCompilation.GetDiagnostics().Where(diag => diag.Severity == DiagnosticSeverity.Error));
 
             // Check base functionality of found types.
             Assert.Equal(2, generator.FoundTypes.Count);
@@ -193,18 +265,19 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             Assert.Equal("HelloWorld.MyType", generator.FoundTypes["MyType"].FullName);
 
             // Check for received fields, properties and methods for MyType.
-            string[] expectedFieldNamesMyType = { "PrivateChar", "PrivateDouble", "PublicChar", "PublicDouble" };
-            string[] expectedPropertyNamesMyType = { "PrivatePropertyInt", "PrivatePropertyString", "PublicPropertyInt", "PublicPropertyString" };
+            string[] expectedFieldNamesMyType = { "PublicChar", "PublicDouble" };
+            string[] expectedPropertyNamesMyType = { "PublicPropertyInt", "PublicPropertyString" };
             string[] expectedMethodNamesMyType = { "get_PrivatePropertyInt", "get_PrivatePropertyString", "get_PublicPropertyInt", "get_PublicPropertyString", "MyMethod", "MySecondMethod", "set_PrivatePropertyInt", "set_PrivatePropertyString", "set_PublicPropertyInt", "set_PublicPropertyString", "UsePrivates" };
             CheckFieldsPropertiesMethods("MyType", ref generator, expectedFieldNamesMyType, expectedPropertyNamesMyType, expectedMethodNamesMyType);
 
             // Check for NotMyType.
-            Assert.Equal("System.Text.Json.Serialization.JsonConverterAttribute", generator.FoundTypes["NotMyType"].FullName);
+            Assert.Equal("ReferencedAssembly.Location", generator.FoundTypes["NotMyType"].FullName);
 
             // Check for received fields, properties and methods for NotMyType.
             string[] expectedFieldNamesNotMyType = { };
-            string[] expectedPropertyNamesNotMyType = { "ConverterType" };
-            string[] expectedMethodNamesNotMyType = { "CreateConverter", "get_ConverterType" };
+            string[] expectedPropertyNamesNotMyType = { "Address1", "Address2", "City", "Country", "Id", "Name", "PhoneNumber", "PostalCode", "State" };
+            string[] expectedMethodNamesNotMyType = { "get_Address1", "get_Address2", "get_City", "get_Country", "get_Id", "get_Name", "get_PhoneNumber", "get_PostalCode", "get_State",
+                                                      "set_Address1", "set_Address2", "set_City", "set_Country", "set_Id", "set_Name", "set_PhoneNumber", "set_PostalCode", "set_State" };
             CheckFieldsPropertiesMethods("NotMyType", ref generator, expectedFieldNamesNotMyType, expectedPropertyNamesNotMyType, expectedMethodNamesNotMyType );
         }
 
@@ -217,6 +290,6 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             Assert.Equal(expectedFields, receivedFields);
             Assert.Equal(expectedProperties, receivedProperties);
             Assert.Equal(expectedMethods, receivedMethods);
-        }
+        } 
     }
 }

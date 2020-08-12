@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using Microsoft.CodeAnalysis;
 
 namespace System.Reflection
@@ -118,9 +119,12 @@ namespace System.Reflection
             foreach (ISymbol item in _typeSymbol.GetMembers())
             {
                 // Associated Symbol checks the field is not a backingfield.
-                if (item is IFieldSymbol field && field.AssociatedSymbol == null)
+                if (item is IFieldSymbol field && field.AssociatedSymbol == null && !field.IsReadOnly)
                 {
-                    fields.Add(new FieldInfoWrapper(field, _metadataLoadContext));
+                    if ((item.DeclaredAccessibility & Accessibility.Public) == Accessibility.Public)
+                    {
+                        fields.Add(new FieldInfoWrapper(field, _metadataLoadContext));
+                    }
                 }
             }
             return fields.ToArray();
@@ -185,9 +189,12 @@ namespace System.Reflection
             var properties = new List<PropertyInfo>();
             foreach (ISymbol item in _typeSymbol.GetMembers())
             {
-                if (item is IPropertySymbol property)
+                if (item is IPropertySymbol property && !property.IsReadOnly)
                 {
-                    properties.Add(new PropertyWrapper(property, _metadataLoadContext));
+                    if ((item.DeclaredAccessibility & Accessibility.Public) == Accessibility.Public)
+                    {
+                        properties.Add(new PropertyWrapper(property, _metadataLoadContext));
+                    }
                 }
             }
             return properties.ToArray();
@@ -342,6 +349,30 @@ namespace System.Reflection
                 }
             }
             return false;
+        }
+
+        public string GetFullNamespace()
+        {
+            INamespaceSymbol root = _typeSymbol.ContainingNamespace;
+            if (root == null)
+                return "";
+
+            StringBuilder fullNamespace = new StringBuilder();
+            GetFullNamespace(root);
+            return fullNamespace.ToString();
+
+            void GetFullNamespace(INamespaceSymbol current)
+            {
+                if (current.IsGlobalNamespace || current.ContainingNamespace.IsGlobalNamespace)
+                {
+                    fullNamespace.Append(current.Name);
+                    return;
+                }
+
+                GetFullNamespace(current.ContainingNamespace);
+
+                fullNamespace.Append("."+current.Name);
+            }
         }
     }
 }

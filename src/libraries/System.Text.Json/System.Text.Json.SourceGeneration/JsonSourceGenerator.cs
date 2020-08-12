@@ -74,11 +74,11 @@ namespace System.Text.Json.SourceGeneration
             string foundMethods, foundFields, foundProperties, foundCtorParams, foundCtors;
 
             JsonSourceGeneratorHelper codegen = new JsonSourceGeneratorHelper("MyNamespace");
+            context.AddSource("BaseClassInfo.g.cs", SourceText.From(codegen.GenerateHelperContextInfo(), Encoding.UTF8));
 
             foreach (KeyValuePair<string, Type> entry in FoundTypes)
             {
-
-                codegen.GenerateClassInfoDFS(entry.Key, entry.Value);
+                codegen.GenerateClassInfo(entry.Key, entry.Value);
 
                 foreach (MethodInfo method in entry.Value.GetMethods())
                 {
@@ -162,6 +162,12 @@ namespace HelloWorldGenerated
     }}
 }}
 ", Encoding.UTF8));
+            }
+
+            // Generate sources for each type.
+            foreach (KeyValuePair<Type, string> entry in codegen._types)
+            {
+                context.AddSource($"{entry.Key.Name}ClassInfo.g.cs", SourceText.From(entry.Value, Encoding.UTF8));
             }
 
             // For each diagnostic, report to the user.

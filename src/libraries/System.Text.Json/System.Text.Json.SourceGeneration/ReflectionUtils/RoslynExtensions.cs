@@ -14,6 +14,7 @@ namespace System.Reflection
             { "Boolean", typeof(bool) },
             { "Int32", typeof(int) },
             { "Int64", typeof(long) },
+            { "Double", typeof(double) },
             { "Char", typeof(char) },
             { "String", typeof(string) },
             { "DateTime", typeof(DateTime) },
