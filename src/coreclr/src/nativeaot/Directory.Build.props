@@ -101,4 +101,13 @@
     <SignAssembly>true</SignAssembly>
     <StrongNameKeyId>SilverlightPlatform</StrongNameKeyId>
   </PropertyGroup>
+
+  <!--
+    Helper Paths
+  -->
+  <PropertyGroup>
+    <CommonPath>$([MSBuild]::NormalizeDirectory('$(LibrariesProjectRoot)', 'Common', 'src'))</CommonPath>
+    <AotCommonPath>$(MSBuildThisFileDirectory)Common\src\</AotCommonPath>
+    <CompilerCommonPath>$(MSBuildThisFileDirectory)..\tools\Common\</CompilerCommonPath>
+  </PropertyGroup>
 </Project>
