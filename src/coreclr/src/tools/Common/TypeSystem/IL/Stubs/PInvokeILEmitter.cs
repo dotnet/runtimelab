@@ -96,6 +96,8 @@ namespace Internal.IL.Stubs
                 }
                 TypeDesc parameterType = (i == 0) ? methodSig.ReturnType : methodSig[i - 1];  //first item is the return type
                 marshallers[i] = Marshaller.CreateMarshaller(parameterType,
+                                                    parameterIndex,
+                                                    methodSig.GetEmbeddedSignatureData(),
                                                     MarshallerType.Argument,
                                                     parameterMetadata.MarshalAsDescriptor,
                                                     direction,

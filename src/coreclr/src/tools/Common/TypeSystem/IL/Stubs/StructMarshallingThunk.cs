@@ -160,6 +160,8 @@ namespace Internal.IL.Stubs
                 }
 
                 marshallers[index] = Marshaller.CreateMarshaller(field.FieldType,
+                                                                    null,   /* parameterIndex */
+                                                                    null,   /* customModifierData */
                                                                     MarshallerType.Field,
                                                                     field.GetMarshalAsDescriptor(),
                                                                     (ThunkType == StructMarshallingThunkType.NativeToManaged) ? MarshalDirection.Reverse : MarshalDirection.Forward,

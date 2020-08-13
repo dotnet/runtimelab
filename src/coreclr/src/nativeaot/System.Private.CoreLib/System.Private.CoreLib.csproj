@@ -225,6 +225,7 @@
     <Compile Include="src\System\Runtime\InteropServices\MemoryMarshal.CoreRT.cs" />
     <Compile Include="src\System\Runtime\InteropServices\SafeHandle.CoreRT.cs" />
     <Compile Include="src\System\Runtime\InteropServices\UnsafeGCHandle.cs" />
+    <Compile Include="src\System\Runtime\Intrinsics\X86\X86Base.CoreRT.cs" Condition="'$(SupportsX86Intrinsics)' == 'true'" />
     <Compile Include="src\System\Runtime\Loader\AssemblyLoadContext.CoreRT.cs" />
     <Compile Include="src\System\String.CoreRT.cs" />
     <Compile Include="src\System\String.Intern.cs" />

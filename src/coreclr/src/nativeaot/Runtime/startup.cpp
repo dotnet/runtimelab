@@ -176,80 +176,70 @@ enum XArchIntrinsicConstants
 bool DetectCPUFeatures()
 {
 #if defined(HOST_X86) || defined(HOST_AMD64)
-    
-    unsigned char buffer[16];
 
-#ifdef HOST_AMD64
-    // AMD has a "fast" mode for fxsave/fxrstor, which omits the saving of xmm registers.  The OS will enable this mode
-    // if it is supported.  So if we continue to use fxsave/fxrstor, we must manually save/restore the xmm registers.
-    // fxsr_opt is bit 25 of EDX
-    getextcpuid(0, 0x80000001, buffer);
-    if ((buffer[15] & 0x02) != 0)
-        g_fHasFastFxsave = true;
-#endif
+    int cpuidInfo[4];
 
-    uint32_t maxCpuId = getcpuid(0, buffer);
+    const int EAX = 0;
+    const int EBX = 1;
+    const int ECX = 2;
+    const int EDX = 3;
+
+    __cpuid(cpuidInfo, 0x00000000);
+    uint32_t maxCpuId = static_cast<uint32_t>(cpuidInfo[EAX]);
 
     if (maxCpuId >= 1)
     {
-        // getcpuid executes cpuid with eax set to its first argument, and ecx cleared.
-        // It returns the resulting eax in buffer[0-3], ebx in buffer[4-7], ecx in buffer[8-11],
-        // and edx in buffer[12-15].
+        __cpuid(cpuidInfo, 0x00000001);
 
-        (void)getcpuid(1, buffer);
-
-        // If SSE/SSE2 is not enabled, there is no point in checking the rest.
-        //   SSE  is bit 25 of EDX   (buffer[15] & 0x02)
-        //   SSE2 is bit 26 of EDX   (buffer[15] & 0x04)
-        if ((buffer[15] & 0x06) == 0x06)                                    // SSE & SSE2
+        if (((cpuidInfo[EDX] & (1 << 25)) != 0) && ((cpuidInfo[EDX] & (1 << 26)) != 0))                     // SSE & SSE2
         {
-            if ((buffer[11] & 0x02) != 0)                                   // AESNI
+            if ((cpuidInfo[ECX] & (1 << 25)) != 0)                                                          // AESNI
             {
                 g_cpuFeatures |= XArchIntrinsicConstants_Aes;
             }
 
-            if ((buffer[8] & 0x02) != 0)                                    // PCLMULQDQ
+            if ((cpuidInfo[ECX] & (1 << 1)) != 0)                                                           // PCLMULQDQ
             {
                 g_cpuFeatures |= XArchIntrinsicConstants_Pclmulqdq;
             }
 
-            if ((buffer[8] & 0x01) != 0)                                    // SSE3
+            if ((cpuidInfo[ECX] & (1 << 0)) != 0)                                                           // SSE3
             {
                 g_cpuFeatures |= XArchIntrinsicConstants_Sse3;
 
-                if ((buffer[9] & 0x02) != 0)                                // SSSE3
+                if ((cpuidInfo[ECX] & (1 << 9)) != 0)                                                       // SSSE3
                 {
                     g_cpuFeatures |= XArchIntrinsicConstants_Ssse3;
 
-                    if ((buffer[10] & 0x08) != 0)                           // SSE4.1
+                    if ((cpuidInfo[ECX] & (1 << 19)) != 0)                                                  // SSE4.1
                     {
                         g_cpuFeatures |= XArchIntrinsicConstants_Sse41;
 
-                        if ((buffer[10] & 0x10) != 0)                       // SSE4.2
+                        if ((cpuidInfo[ECX] & (1 << 20)) != 0)                                              // SSE4.2
                         {
                             g_cpuFeatures |= XArchIntrinsicConstants_Sse42;
 
-                            if ((buffer[10] & 0x80) != 0)                   // POPCNT
+                            if ((cpuidInfo[ECX] & (1 << 23)) != 0)                                          // POPCNT
                             {
                                 g_cpuFeatures |= XArchIntrinsicConstants_Popcnt;
                             }
 
-                            if ((buffer[11] & 0x18) == 0x18)                // AVX & OSXSAVE
+                            if (((cpuidInfo[ECX] & (1 << 27)) != 0) && ((cpuidInfo[ECX] & (1 << 28)) != 0)) // OSXSAVE & AVX
                             {
                                 if (PalIsAvxEnabled() && (xmmYmmStateSupport() == 1))
                                 {
                                     g_cpuFeatures |= XArchIntrinsicConstants_Avx;
 
-                                    if ((buffer[9] & 0x10) != 0)            // FMA
+                                    if ((cpuidInfo[ECX] & (1 << 12)) != 0)                                  // FMA
                                     {
                                         g_cpuFeatures |= XArchIntrinsicConstants_Fma;
                                     }
 
                                     if (maxCpuId >= 0x07)
                                     {
-                                        (void)getextcpuid(0, 0x07, buffer);
+                                        __cpuidex(cpuidInfo, 0x00000007, 0x00000000);
 
-                                        if ((buffer[4] & 0x20) != 0)        // AVX2
+                                        if ((cpuidInfo[EBX] & (1 << 5)) != 0)                               // AVX2
                                         {
                                             g_cpuFeatures |= XArchIntrinsicConstants_Avx2;
                                         }
@@ -264,34 +254,39 @@ bool DetectCPUFeatures()
 
         if (maxCpuId >= 0x07)
         {
-            (void)getextcpuid(0, 0x07, buffer);
+            __cpuidex(cpuidInfo, 0x00000007, 0x00000000);
 
-            if ((buffer[4] & 0x08) != 0)            // BMI1
+            if ((cpuidInfo[EBX] & (1 << 3)) != 0)                                                           // BMI1
             {
                 g_cpuFeatures |= XArchIntrinsicConstants_Bmi1;
             }
 
-            if ((buffer[5] & 0x01) != 0)            // BMI2
+            if ((cpuidInfo[EBX] & (1 << 8)) != 0)                                                           // BMI2
             {
                 g_cpuFeatures |= XArchIntrinsicConstants_Bmi2;
             }
         }
     }
 
-    uint32_t maxCpuIdEx = getcpuid(0x80000000, buffer);
-    
+    __cpuid(cpuidInfo, 0x80000000);
+    uint32_t maxCpuIdEx = static_cast<uint32_t>(cpuidInfo[EAX]);
+
     if (maxCpuIdEx >= 0x80000001)
     {
-        // getcpuid executes cpuid with eax set to its first argument, and ecx cleared.
-        // It returns the resulting eax in buffer[0-3], ebx in buffer[4-7], ecx in buffer[8-11],
-        // and edx in buffer[12-15].
+        __cpuid(cpuidInfo, 0x80000001);
 
-        (void)getcpuid(0x80000001, buffer);
-
-        if ((buffer[8] & 0x20) != 0)            // LZCNT
+        if ((cpuidInfo[ECX] & (1 << 5)) != 0)                                                               // LZCNT
         {
             g_cpuFeatures |= XArchIntrinsicConstants_Lzcnt;
         }
+
+#ifdef HOST_AMD64
+        // AMD has a "fast" mode for fxsave/fxrstor, which omits the saving of xmm registers.  The OS will enable this mode
+        // if it is supported.  So if we continue to use fxsave/fxrstor, we must manually save/restore the xmm registers.
+        // fxsr_opt is bit 25 of EDX
+        if ((cpuidInfo[EDX] & (1 << 25)) != 0)
+            g_fHasFastFxsave = true;
+#endif
     }
 
     if ((g_cpuFeatures & g_requiredCpuFeatures) != g_requiredCpuFeatures)

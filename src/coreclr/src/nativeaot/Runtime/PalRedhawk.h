@@ -850,10 +850,19 @@ REDHAWK_PALIMPORT Int32 __cdecl _stricmp(const char *string1, const char *string
 #endif
 
 #if defined(HOST_X86) || defined(HOST_AMD64)
-REDHAWK_PALIMPORT uint32_t REDHAWK_PALAPI getcpuid(uint32_t arg1, unsigned char result[16]);
-REDHAWK_PALIMPORT uint32_t REDHAWK_PALAPI getextcpuid(uint32_t arg1, uint32_t arg2, unsigned char result[16]);
+
+#ifdef TARGET_UNIX
+// MSVC directly defines intrinsics for __cpuid and __cpuidex matching the below signatures
+// We define matching signatures for use on Unix platforms.
+REDHAWK_PALIMPORT void __cpuid(int cpuInfo[4], int function_id);
+REDHAWK_PALIMPORT void __cpuidex(int cpuInfo[4], int function_id, int subFunction_id);
+#else
+#include <intrin.h>
+#endif
+
 REDHAWK_PALIMPORT uint32_t REDHAWK_PALAPI xmmYmmStateSupport();
 REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalIsAvxEnabled();
+
 #endif // defined(HOST_X86) || defined(HOST_AMD64)
 
 #include "PalRedhawkInline.h"
