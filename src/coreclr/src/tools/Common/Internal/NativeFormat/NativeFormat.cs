@@ -85,7 +85,7 @@ namespace Internal.NativeFormat
         AllocateObject              = 0x09,
         DefaultConstructor          = 0x0a,
         ThreadStaticIndex           = 0x0b,
-        // unused                   = 0x0c
+        // unused                   = 0x0c,
         Method                      = 0x0d,
         IsInst                      = 0x0e,
         CastClass                   = 0x0f,
