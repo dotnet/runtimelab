@@ -139,6 +139,7 @@
   <ItemGroup Condition="$(_subset.Contains('+clr.corelib+'))">
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.CoreLib\System.Private.CoreLib.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.Reflection.Metadata\System.Private.Reflection.Metadata.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.TypeLoader\src\System.Private.TypeLoader.csproj" Category="clr" />
   </ItemGroup>
 
   <ItemGroup Condition="$(_subset.Contains('+linuxdac+')) and $([MSBuild]::IsOsPlatform(Windows)) and '$(TargetArchitecture)' != 'x86'">
