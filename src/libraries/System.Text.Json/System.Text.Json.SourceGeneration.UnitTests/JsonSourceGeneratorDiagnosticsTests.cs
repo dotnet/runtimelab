@@ -52,9 +52,9 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             // Expected info logs.
             string[] expectedInfoDiagnostics = new string[] {
-                "Generated type class IndexViewModel for root type IndexViewModel",
                 "Generated type class ActiveOrUpcomingEvent for root type IndexViewModel",
                 "Generated type class CampaignSummaryViewModel for root type IndexViewModel",
+                "Generated type class IndexViewModel for root type IndexViewModel",
             };
 
             CheckDiagnosticMessages(generatorDiags, DiagnosticSeverity.Info, expectedInfoDiagnostics);
@@ -101,10 +101,10 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             CompilationHelper.RunGenerators(compilation, out var generatorDiags, generator);
 
-            string[] expectedInfoDiagnostics = new string[] { "Generated type class IndexViewModel for root type IndexViewModel" };
+            // Expected warning logs.
             string[] expectedWarningDiagnostics = new string[] { "Failed in sourcegenerating nested type Dictionary`2 for root type IndexViewModel" };
 
-            CheckDiagnosticMessages(generatorDiags, DiagnosticSeverity.Info, expectedInfoDiagnostics);
+            CheckDiagnosticMessages(generatorDiags, DiagnosticSeverity.Info, new string[] { });
             CheckDiagnosticMessages(generatorDiags, DiagnosticSeverity.Warning, expectedWarningDiagnostics);
             CheckDiagnosticMessages(generatorDiags, DiagnosticSeverity.Error, new string[] { });
         }

@@ -115,8 +115,6 @@ namespace {_generationNamespace}
         // Generates metadata for type and returns a Tuple<isSuccessful, isCyclic>.
         private Tuple<bool, bool> GenerateClassInfo(Type root, HashSet<Type> seenTypes, Stack<Type> typeStack, string className, Type type)
         {
-            Diagnostics.Add(Diagnostic.Create(_generatedTypeClass, Location.None, new string[] { root.Name, className }));
-
             // Add current type to generated types.
             seenTypes.Add(type);
             // Add current type to stack.
@@ -170,6 +168,8 @@ namespace {_generationNamespace}
 
             if (isSuccessful)
             {
+                Diagnostics.Add(Diagnostic.Create(_generatedTypeClass, Location.None, new string[] { root.Name, className }));
+
                 // Add generated typeinfo for current traversal.
                 Types.Add(type, source.ToString());
             }
