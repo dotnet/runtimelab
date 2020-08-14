@@ -37,9 +37,10 @@ namespace System.Text.Json.SourceGeneration
         public List<Diagnostic> Diagnostics { get; }
 
         // Diagnostic descriptors for user.
-        private DiagnosticDescriptor _initiatingTypeClass;
+        private DiagnosticDescriptor _generatedTypeClass;
         private DiagnosticDescriptor _failedToGenerateTypeClass;
         private DiagnosticDescriptor _failedToAddNewTypesFromMembers;
+        private DiagnosticDescriptor _notSupported;
 
         public JsonSourceGeneratorHelper()
         {
@@ -48,11 +49,11 @@ namespace System.Text.Json.SourceGeneration
             Diagnostics = new List<Diagnostic>();
 
             // Initiate diagnostic descriptors.
-            _initiatingTypeClass ??=
+            _generatedTypeClass ??=
                 new DiagnosticDescriptor(
                     "JsonSourceGeneration",
-                    "Initiating type class generation",
-                    "Generating type class {1} for root type {0}",
+                    "Generated type class generation",
+                    "Generated type class {1} for root type {0}",
                     "category",
                     DiagnosticSeverity.Info,
                     isEnabledByDefault: true);
@@ -70,6 +71,14 @@ namespace System.Text.Json.SourceGeneration
                     "JsonSourceGeneration",
                     "Failed to add new types from current type",
                     "Failed to iterate fields and properties for current type {1} for root type {0}",
+                    "category",
+                    DiagnosticSeverity.Warning,
+                    isEnabledByDefault: true);
+            _notSupported ??=
+                new DiagnosticDescriptor(
+                    "JsonSourceGeneration",
+                    "Current type is not supported",
+                    "Failed in sourcegenerating nested type {1} for root type {0}",
                     "category",
                     DiagnosticSeverity.Warning,
                     isEnabledByDefault: true);
@@ -106,7 +115,7 @@ namespace {_generationNamespace}
         // Generates metadata for type and returns a Tuple<isSuccessful, isCyclic>.
         private Tuple<bool, bool> GenerateClassInfo(Type root, HashSet<Type> seenTypes, Stack<Type> typeStack, string className, Type type)
         {
-            Diagnostics.Add(Diagnostic.Create(_initiatingTypeClass, Location.None, new string[] { root.Name, className }));
+            Diagnostics.Add(Diagnostic.Create(_generatedTypeClass, Location.None, new string[] { root.Name, className }));
 
             // Add current type to generated types.
             seenTypes.Add(type);
@@ -118,20 +127,33 @@ namespace {_generationNamespace}
             bool isCyclic = false;
 
             // Try to recursively generate necessary field and property types.
-            Type handlingType;
             FieldInfo[] fields = type.GetFields();
             PropertyInfo[] properties = type.GetProperties();
 
             foreach (FieldInfo field in fields)
             {
-                handlingType = GetTypeToGenerate(field.FieldType);
-                GenerateForMembers(root, handlingType, seenTypes, typeStack, ref isSuccessful, ref isCyclic);
+                if (!IsSupportedType(field.FieldType))
+                {
+                    Diagnostics.Add(Diagnostic.Create(_notSupported, Location.None, new string[] { root.Name, field.FieldType.Name }));
+                    return new Tuple<bool, bool>(false, false);
+                }
+                foreach (Type handlingType in GetTypesToGenerate(field.FieldType))
+                {
+                    GenerateForMembers(root, handlingType, seenTypes, typeStack, ref isSuccessful, ref isCyclic);
+                }
             }
 
             foreach (PropertyInfo property in properties)
             {
-                handlingType = GetTypeToGenerate(property.PropertyType);
-                GenerateForMembers(root, handlingType, seenTypes, typeStack, ref isSuccessful, ref isCyclic);
+                if (!IsSupportedType(property.PropertyType))
+                {
+                    Diagnostics.Add(Diagnostic.Create(_notSupported, Location.None, new string[] { root.Name, property.PropertyType.Name }));
+                    return new Tuple<bool, bool>(false, false);
+                }
+                foreach (Type handlingType in GetTypesToGenerate(property.PropertyType))
+                {
+                    GenerateForMembers(root, handlingType, seenTypes, typeStack, ref isSuccessful, ref isCyclic);
+                }
             }
 
             // Try to generate current type info now that fields and property types have been resolved.
@@ -199,6 +221,24 @@ namespace {_generationNamespace}
             }
         }
 
+        // Check if current type is supported to be iterated over.
+        private bool IsSupportedType(Type type)
+        {
+            if (type is TypeWrapper typeWrapper)
+            {
+                if (typeWrapper.IsIEnumerable())
+                {
+                    // todo: Add more support to collections.
+                    if (!typeWrapper.IsList())
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
         // Returns name of types traversed that can be looked up in the dictionary.
         public List<Type> GenerateClassInfo(string className, Type rootType)
         {
@@ -208,18 +248,18 @@ namespace {_generationNamespace}
             return foundTypes.ToList();
         }
 
-        private Type GetTypeToGenerate(Type type)
+        private Type[] GetTypesToGenerate(Type type)
         {
             if (type.IsArray)
             {
-                return type.GetElementType();
+                return new Type[] { type.GetElementType() };
             }
             if (type.IsGenericType)
             {
-                return type.GetGenericArguments()[0];
+                return type.GetGenericArguments();
             }
 
-            return type;
+            return new Type[] { type };
         }
 
         private bool IsNewType(Type type, HashSet<Type> foundTypes) => (
@@ -243,29 +283,32 @@ namespace {_generationNamespace}
                 imports.Add(typeWrapper.GetFullNamespace());
             }
 
-            Type handlingType;
             foreach (PropertyInfo property in properties)
             {
-                handlingType = GetTypeToGenerate(property.PropertyType);
-                if (property.PropertyType is TypeWrapper baseType)
+                foreach (Type handlingType in GetTypesToGenerate(property.PropertyType))
                 {
-                    imports.Add(baseType.GetFullNamespace());
-                }
-                if (!handlingType.Equals(property.PropertyType) && handlingType is TypeWrapper genericType)
-                {
-                    imports.Add(genericType.GetFullNamespace());
+                    if (property.PropertyType is TypeWrapper baseType)
+                    {
+                        imports.Add(baseType.GetFullNamespace());
+                    }
+                    if (!handlingType.Equals(property.PropertyType) && handlingType is TypeWrapper genericType)
+                    {
+                        imports.Add(genericType.GetFullNamespace());
+                    }
                 }
             }
             foreach (FieldInfo field in fields)
             {
-                handlingType = GetTypeToGenerate(field.FieldType);
-                if (field.FieldType is TypeWrapper baseType)
+                foreach (Type handlingType in GetTypesToGenerate(field.FieldType))
                 {
-                    imports.Add(baseType.GetFullNamespace());
-                }
-                if (!handlingType.Equals(field.FieldType) && handlingType is TypeWrapper genericType)
-                {
-                    imports.Add(genericType.GetFullNamespace());
+                    if (field.FieldType is TypeWrapper baseType)
+                    {
+                        imports.Add(baseType.GetFullNamespace());
+                    }
+                    if (!handlingType.Equals(field.FieldType) && handlingType is TypeWrapper genericType)
+                    {
+                        imports.Add(genericType.GetFullNamespace());
+                    }
                 }
             }
 
@@ -341,7 +384,7 @@ namespace {_generationNamespace}
                     // Check if IEnumerable.
                     if (type.IsIEnumerable())
                     {
-                        genericType = GetTypeToGenerate(type);
+                        genericType = GetTypesToGenerate(type).First();
                         if (type.IsList())
                         {
                             typeName = $"List<{genericType.Name}>";
@@ -382,7 +425,7 @@ namespace {_generationNamespace}
                     // Check if IEnumerable.
                     if (typeWrapper.IsIEnumerable())
                     {
-                        genericType = GetTypeToGenerate(typeWrapper);
+                        genericType = GetTypesToGenerate(typeWrapper).First();
 
                         if (typeWrapper.IsList())
                         {

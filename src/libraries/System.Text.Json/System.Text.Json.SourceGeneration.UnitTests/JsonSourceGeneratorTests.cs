@@ -3,8 +3,6 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Collections.Immutable;
-using System.DirectoryServices;
-using System.IO;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Xunit;
@@ -72,7 +70,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
         public void TypeDiscoveryPrimitiveExternalPOCO()
         {
             // Compile the referenced assembly first.
-            Compilation referencedCompilation = CreateReferencedLocationCompilation();
+            Compilation referencedCompilation = CompilationHelper.CreateReferencedLocationCompilation();
 
             // Emit the image of the referenced assembly.
             byte[] referencedImage = CompilationHelper.CreateAssemblyImage(referencedCompilation);
@@ -151,7 +149,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
         public void TypeDiscoveryWithRenamedAttribute()
         {
             // Compile the referenced assembly first.
-            Compilation referencedCompilation = CreateReferencedLocationCompilation();
+            Compilation referencedCompilation = CompilationHelper.CreateReferencedLocationCompilation();
 
             // Emit the image of the referenced assembly.
             byte[] referencedImage = CompilationHelper.CreateAssemblyImage(referencedCompilation);
@@ -228,28 +226,6 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             string[] expectedMethodNamesNotMyType = { "get_Address1", "get_Address2", "get_City", "get_Country", "get_Id", "get_Name", "get_PhoneNumber", "get_PostalCode", "get_State",
                                                       "set_Address1", "set_Address2", "set_City", "set_Country", "set_Id", "set_Name", "set_PhoneNumber", "set_PostalCode", "set_State" };
             CheckFieldsPropertiesMethods("NotMyType", ref generator, expectedFieldNamesNotMyType, expectedPropertyNamesNotMyType, expectedMethodNamesNotMyType );
-        }
-
-        private Compilation CreateReferencedLocationCompilation()
-        {
-            string _locationSource = @"
-            namespace ReferencedAssembly
-            {
-                public class Location
-                {
-                    public int Id { get; set; }
-                    public string Address1 { get; set; }
-                    public string Address2 { get; set; }
-                    public string City { get; set; }
-                    public string State { get; set; }
-                    public string PostalCode { get; set; }
-                    public string Name { get; set; }
-                    public string PhoneNumber { get; set; }
-                    public string Country { get; set; }
-                }
-            }";
-            
-            return CompilationHelper.CreateCompilation(_locationSource);
         }
 
         private void CheckCompilationDiagnosticsErrors(ImmutableArray<Diagnostic> diagnostics)
