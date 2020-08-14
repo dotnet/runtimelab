@@ -112,8 +112,8 @@ namespace {_generationNamespace}
             ";
         }
 
-        // Generates metadata for type and returns a Tuple<isSuccessful, isCyclic>.
-        private Tuple<bool, bool> GenerateClassInfo(Type root, HashSet<Type> seenTypes, Stack<Type> typeStack, string className, Type type)
+        // Generates metadata for type and returns if it was successful.
+        private bool GenerateClassInfo(Type root, HashSet<Type> seenTypes, Stack<Type> typeStack, string className, Type type)
         {
             // Add current type to generated types.
             seenTypes.Add(type);
@@ -122,7 +122,6 @@ namespace {_generationNamespace}
 
             StringBuilder source = new StringBuilder();
             bool isSuccessful = true;
-            bool isCyclic = false;
 
             // Try to recursively generate necessary field and property types.
             FieldInfo[] fields = type.GetFields();
@@ -133,11 +132,11 @@ namespace {_generationNamespace}
                 if (!IsSupportedType(field.FieldType))
                 {
                     Diagnostics.Add(Diagnostic.Create(_notSupported, Location.None, new string[] { root.Name, field.FieldType.Name }));
-                    return new Tuple<bool, bool>(false, false);
+                    return false;
                 }
                 foreach (Type handlingType in GetTypesToGenerate(field.FieldType))
                 {
-                    GenerateForMembers(root, handlingType, seenTypes, typeStack, ref isSuccessful, ref isCyclic);
+                    GenerateForMembers(root, handlingType, seenTypes, typeStack, ref isSuccessful);
                 }
             }
 
@@ -146,11 +145,11 @@ namespace {_generationNamespace}
                 if (!IsSupportedType(property.PropertyType))
                 {
                     Diagnostics.Add(Diagnostic.Create(_notSupported, Location.None, new string[] { root.Name, property.PropertyType.Name }));
-                    return new Tuple<bool, bool>(false, false);
+                    return false;
                 }
                 foreach (Type handlingType in GetTypesToGenerate(property.PropertyType))
                 {
-                    GenerateForMembers(root, handlingType, seenTypes, typeStack, ref isSuccessful, ref isCyclic);
+                    GenerateForMembers(root, handlingType, seenTypes, typeStack, ref isSuccessful);
                 }
             }
 
@@ -175,19 +174,6 @@ namespace {_generationNamespace}
             }
             else
             {
-                // Get rid of all its descendants that got generated if this type is cyclic.
-                // If not cyclic, then we conserve and cache already-generated metadata.
-                if (isCyclic)
-                {
-                    Type descendantType;
-                    while(typeStack.Any() && typeStack.Peek() != type)
-                    {
-                        descendantType = typeStack.Pop();
-                        seenTypes.Remove(descendantType);
-                        _failedTypes.Add(descendantType);
-                    }
-                }
-
                 Diagnostics.Add(Diagnostic.Create(_failedToGenerateTypeClass, Location.None, new string[] { root.Name, className }));
 
                 // If not successful remove it from found types hashset and add to failed types list.
@@ -195,24 +181,17 @@ namespace {_generationNamespace}
                 _failedTypes.Add(type);
             }
 
-            return new Tuple<bool, bool>(isSuccessful, isCyclic);
+            return isSuccessful;
         }
 
         // Call recursive type generation if unseen type and check for success and cycles.
-        void GenerateForMembers(Type root, Type currentType, HashSet<Type> seenTypes, Stack<Type> typeStack, ref bool isSuccessful, ref bool isCyclic)
+        void GenerateForMembers(Type root, Type currentType, HashSet<Type> seenTypes, Stack<Type> typeStack, ref bool isSuccessful)
         {
-            // If a field/property type has already been seen, it means that the type is cyclic.
-            if (seenTypes.Contains(currentType))
-            {
-                isCyclic = true;
-            }
-
             // If new type, recurse.
             if (IsNewType(currentType, seenTypes))
             {
-                (bool wasSuccessful, bool wasCyclic) = GenerateClassInfo(root, seenTypes, typeStack, currentType.Name, currentType);
+                bool wasSuccessful = GenerateClassInfo(root, seenTypes, typeStack, currentType.Name, currentType);
                 isSuccessful &= wasSuccessful;
-                isCyclic |= wasCyclic;
 
                 if (!wasSuccessful)
                 {
