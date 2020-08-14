@@ -144,6 +144,7 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.Reflection.Core\src\System.Private.Reflection.Core.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.Reflection.Execution\src\System.Private.Reflection.Execution.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.DisabledReflection\src\System.Private.DisabledReflection.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.StackTraceGenerator\src\System.Private.StackTraceGenerator.csproj" Category="clr" />
   </ItemGroup>
 
   <ItemGroup Condition="$(_subset.Contains('+linuxdac+')) and $([MSBuild]::IsOsPlatform(Windows)) and '$(TargetArchitecture)' != 'x86'">
