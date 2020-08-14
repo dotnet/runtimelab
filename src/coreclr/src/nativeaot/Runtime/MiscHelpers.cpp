@@ -539,3 +539,10 @@ COOP_PINVOKE_HELPER(Int32, RhGetProcessCpuCount, ())
 {
     return PalGetProcessCpuCount();
 }
+
+#if defined(TARGET_X86) || defined(TARGET_AMD64)
+EXTERN_C REDHAWK_API void __cdecl RhCpuIdEx(int* cpuInfo, int functionId, int subFunctionId)
+{
+    __cpuidex(cpuInfo, functionId, subFunctionId);
+}
+#endif

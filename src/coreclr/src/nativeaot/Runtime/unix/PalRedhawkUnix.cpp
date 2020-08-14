@@ -1271,63 +1271,27 @@ extern "C" UInt64 PalGetCurrentThreadIdForLogging()
 }
 
 #if defined(HOST_X86) || defined(HOST_AMD64)
-REDHAWK_PALEXPORT uint32_t REDHAWK_PALAPI getcpuid(uint32_t arg, unsigned char result[16])
+
+REDHAWK_PALEXPORT void __cpuid(int cpuInfo[4], int function_id)
 {
-    DWORD eax;
-#if defined(HOST_X86)
-    __asm("  xor %%ecx, %%ecx\n" \
-          "  cpuid\n" \
-          "  mov %%eax, 0(%[result])\n" \
-          "  mov %%ebx, 4(%[result])\n" \
-          "  mov %%ecx, 8(%[result])\n" \
-          "  mov %%edx, 12(%[result])\n" \
-          : "=a"(eax) /*output in eax*/\
-          : "a"(arg), [result]"r"(result) /*inputs - arg in eax, result in any register*/\
-          : "ebx", "ecx", "edx", "memory" /* registers that are clobbered, *result is clobbered */
+    // Based on the Clang implementation provided in cpuid.h:
+    // https://github.com/llvm/llvm-project/blob/master/clang/lib/Headers/cpuid.h
+
+    __asm("  cpuid\n" \
+        : "=a"(cpuInfo[0]), "=b"(cpuInfo[1]), "=c"(cpuInfo[2]), "=d"(cpuInfo[3]) \
+        : "0"(function_id)
         );
-#endif // defined(HOST_X86)
-#if defined(HOST_AMD64)
-    __asm("  xor %%ecx, %%ecx\n" \
-          "  cpuid\n" \
-          "  mov %%eax, 0(%[result])\n" \
-          "  mov %%ebx, 4(%[result])\n" \
-          "  mov %%ecx, 8(%[result])\n" \
-          "  mov %%edx, 12(%[result])\n" \
-          : "=a"(eax) /*output in eax*/\
-          : "a"(arg), [result]"r"(result) /*inputs - arg in eax, result in any register*/\
-          : "rbx", "ecx", "edx", "memory" /* registers that are clobbered, *result is clobbered */
-        );
-#endif // defined(HOST_AMD64)
-    return eax;
 }
 
-REDHAWK_PALEXPORT uint32_t REDHAWK_PALAPI getextcpuid(uint32_t arg1, uint32_t arg2, unsigned char result[16])
+REDHAWK_PALEXPORT void __cpuidex(int cpuInfo[4], int function_id, int subFunction_id)
 {
-    DWORD eax;
-#if defined(HOST_X86)
-    DWORD ecx;
+    // Based on the Clang implementation provided in cpuid.h:
+    // https://github.com/llvm/llvm-project/blob/master/clang/lib/Headers/cpuid.h
+
     __asm("  cpuid\n" \
-          "  mov %%eax, 0(%[result])\n" \
-          "  mov %%ebx, 4(%[result])\n" \
-          "  mov %%ecx, 8(%[result])\n" \
-          "  mov %%edx, 12(%[result])\n" \
-          : "=a"(eax), "=c"(ecx) /*output in eax, ecx is rewritten*/\
-          : "c"(arg1), "a"(arg2), [result]"r"(result) /*inputs - arg1 in ecx, arg2 in eax, result in any register*/\
-          : "ebx", "edx", "memory" /* registers that are clobbered, *result is clobbered */
+        : "=a"(cpuInfo[0]), "=b"(cpuInfo[1]), "=c"(cpuInfo[2]), "=d"(cpuInfo[3]) \
+        : "0"(function_id), "2"(subFunction_id)
         );
-#endif // defined(HOST_X86)
-#if defined(HOST_AMD64)
-    __asm("  cpuid\n" \
-          "  mov %%eax, 0(%[result])\n" \
-          "  mov %%ebx, 4(%[result])\n" \
-          "  mov %%ecx, 8(%[result])\n" \
-          "  mov %%edx, 12(%[result])\n" \
-          : "=a"(eax) /*output in eax*/\
-          : "c"(arg1), "a"(arg2), [result]"r"(result) /*inputs - arg1 in ecx, arg2 in eax, result in any register*/\
-          : "rbx", "edx", "memory" /* registers that are clobbered, *result is clobbered */
-        );
-#endif // defined(HOST_AMD64)
-    return eax;
 }
 
 REDHAWK_PALEXPORT uint32_t REDHAWK_PALAPI xmmYmmStateSupport()

@@ -190,7 +190,7 @@ namespace ILCompiler
             return base.GetMethodIL(method);
         }
 
-        public bool IsHardwareInstrinsicWithRuntimeDeterminedSupport(MethodDesc method)
+        public bool IsHardwareIntrinsicWithRuntimeDeterminedSupport(MethodDesc method)
         {
             string intrinsicId = InstructionSetSupport.GetHardwareIntrinsicId(TypeSystemContext.Target.Architecture, method.OwningType);
             if (!string.IsNullOrEmpty(intrinsicId))

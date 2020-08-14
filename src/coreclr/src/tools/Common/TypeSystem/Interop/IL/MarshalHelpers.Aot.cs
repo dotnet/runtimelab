@@ -52,6 +52,8 @@ namespace Internal.TypeSystem.Interop
         {
             MarshallerKind elementMarshallerKind;
             MarshallerKind marshallerKind = MarshalHelpers.GetMarshallerKind(type,
+                                                null,   /* parameterIndex */
+                                                null,   /* customModifierData */
                                                 marshalAs,
                                                 isReturn,
                                                 isAnsi,
@@ -69,6 +71,8 @@ namespace Internal.TypeSystem.Interop
         {
             MarshallerKind elementMarshallerKind;
             MarshallerKind marshallerKind = MarshalHelpers.GetMarshallerKind(type,
+                                                null,   /* parameterIndex */
+                                                null,   /* customModifierData */
                                                 marshalAs,
                                                 false,  /*  isReturn */
                                                 isAnsi, /*    isAnsi */
