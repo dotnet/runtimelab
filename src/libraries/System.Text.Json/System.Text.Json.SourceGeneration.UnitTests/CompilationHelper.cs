@@ -4,6 +4,7 @@
 
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Reflection;
 using System.Text.Json.Serialization;
 using Microsoft.CodeAnalysis;
@@ -56,6 +57,17 @@ namespace System.Text.Json.SourceGeneration.UnitTests
         {
             CreateDriver(compilation, generators).RunFullGeneration(compilation, out Compilation outCompilation, out diagnostics);
             return outCompilation;
+        }
+
+        public static byte[] CreateAssemblyImage(Compilation compilation)
+        {
+            MemoryStream ms = new MemoryStream();
+            var emitResult = compilation.Emit(ms);
+            if (!emitResult.Success)
+            {
+                throw new InvalidOperationException();
+            }
+            return ms.ToArray();
         }
     }
 }

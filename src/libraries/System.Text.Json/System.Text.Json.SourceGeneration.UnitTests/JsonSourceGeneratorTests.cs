@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Collections.Immutable;
+using System.DirectoryServices;
 using System.IO;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -52,8 +53,8 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             Compilation newCompilation = CompilationHelper.RunGenerators(compilation, out ImmutableArray<Diagnostic> generatorDiags, generator);
 
             // Make sure compilation was successful.
-            Assert.Empty(generatorDiags.Where(diag => diag.Severity == DiagnosticSeverity.Error));
-            Assert.Empty(newCompilation.GetDiagnostics().Where(diag => diag.Severity == DiagnosticSeverity.Error));
+            CheckCompilationDiagnosticsErrors(generatorDiags);
+            CheckCompilationDiagnosticsErrors(newCompilation.GetDiagnostics());
 
             // Check base functionality of found types.
             Assert.Equal(1, generator.FoundTypes.Count);
@@ -70,37 +71,11 @@ namespace System.Text.Json.SourceGeneration.UnitTests
         [Fact]
         public void TypeDiscoveryPrimitiveExternalPOCO()
         {
-            string referencedSource = @"
-            namespace ReferencedAssembly
-            {
-                public class Location
-                {
-                    public int Id { get; set; }
-                    public string Address1 { get; set; }
-                    public string Address2 { get; set; }
-                    public string City { get; set; }
-                    public string State { get; set; }
-                    public string PostalCode { get; set; }
-                    public string Name { get; set; }
-                    public string PhoneNumber { get; set; }
-                    public string Country { get; set; }
-                }
-            }";
-
             // Compile the referenced assembly first.
-            Compilation referencedCompilation = CompilationHelper.CreateCompilation(referencedSource);
+            Compilation referencedCompilation = CreateReferencedLocationCompilation();
 
             // Emit the image of the referenced assembly.
-            byte[] referencedImage;
-            using (MemoryStream ms = new MemoryStream())
-            {
-                var emitResult = referencedCompilation.Emit(ms);
-                if (!emitResult.Success)
-                {
-                    throw new InvalidOperationException();
-                }
-                referencedImage = ms.ToArray();
-            }
+            byte[] referencedImage = CompilationHelper.CreateAssemblyImage(referencedCompilation);
 
             string source = @"
             using System.Text.Json.Serialization;
@@ -144,8 +119,8 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             Compilation newCompilation = CompilationHelper.RunGenerators(compilation, out ImmutableArray<Diagnostic> generatorDiags, generator);
 
             // Make sure compilation was successful.
-            Assert.Empty(generatorDiags.Where(diag => diag.Severity == DiagnosticSeverity.Error));
-            Assert.Empty(newCompilation.GetDiagnostics().Where(diag => diag.Severity == DiagnosticSeverity.Error));
+            CheckCompilationDiagnosticsErrors(generatorDiags);
+            CheckCompilationDiagnosticsErrors(newCompilation.GetDiagnostics());
 
             // Check base functionality of found types.
             Assert.Equal(2, generator.FoundTypes.Count);
@@ -175,37 +150,11 @@ namespace System.Text.Json.SourceGeneration.UnitTests
         [Fact]
         public void TypeDiscoveryWithRenamedAttribute()
         {
-            string referencedSource = @"
-            namespace ReferencedAssembly
-            {
-                public class Location
-                {
-                    public int Id { get; set; }
-                    public string Address1 { get; set; }
-                    public string Address2 { get; set; }
-                    public string City { get; set; }
-                    public string State { get; set; }
-                    public string PostalCode { get; set; }
-                    public string Name { get; set; }
-                    public string PhoneNumber { get; set; }
-                    public string Country { get; set; }
-                }
-            }";
-
             // Compile the referenced assembly first.
-            Compilation referencedCompilation = CompilationHelper.CreateCompilation(referencedSource);
+            Compilation referencedCompilation = CreateReferencedLocationCompilation();
 
             // Emit the image of the referenced assembly.
-            byte[] referencedImage;
-            using (MemoryStream ms = new MemoryStream())
-            {
-                var emitResult = referencedCompilation.Emit(ms);
-                if (!emitResult.Success)
-                {
-                    throw new InvalidOperationException();
-                }
-                referencedImage = ms.ToArray();
-            }
+            byte[] referencedImage = CompilationHelper.CreateAssemblyImage(referencedCompilation);
 
             string source = @"
             using System.Text.Json.Serialization;
@@ -255,8 +204,8 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             Compilation newCompilation = CompilationHelper.RunGenerators(compilation, out var generatorDiags, generator);
 
             // Make sure compilation was successful.
-            Assert.Empty(generatorDiags.Where(diag => diag.Severity == DiagnosticSeverity.Error));
-            Assert.Empty(newCompilation.GetDiagnostics().Where(diag => diag.Severity == DiagnosticSeverity.Error));
+            CheckCompilationDiagnosticsErrors(generatorDiags);
+            CheckCompilationDiagnosticsErrors(newCompilation.GetDiagnostics());
 
             // Check base functionality of found types.
             Assert.Equal(2, generator.FoundTypes.Count);
@@ -281,6 +230,33 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             CheckFieldsPropertiesMethods("NotMyType", ref generator, expectedFieldNamesNotMyType, expectedPropertyNamesNotMyType, expectedMethodNamesNotMyType );
         }
 
+        private Compilation CreateReferencedLocationCompilation()
+        {
+            string _locationSource = @"
+            namespace ReferencedAssembly
+            {
+                public class Location
+                {
+                    public int Id { get; set; }
+                    public string Address1 { get; set; }
+                    public string Address2 { get; set; }
+                    public string City { get; set; }
+                    public string State { get; set; }
+                    public string PostalCode { get; set; }
+                    public string Name { get; set; }
+                    public string PhoneNumber { get; set; }
+                    public string Country { get; set; }
+                }
+            }";
+            
+            return CompilationHelper.CreateCompilation(_locationSource);
+        }
+
+        private void CheckCompilationDiagnosticsErrors(ImmutableArray<Diagnostic> diagnostics)
+        {
+            Assert.Empty(diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
+        }
+
         private void CheckFieldsPropertiesMethods(string typeName, ref JsonSerializerSourceGenerator generator, string[] expectedFields, string[] expectedProperties, string[] expectedMethods)
         {
             string[] receivedFields = generator.FoundTypes[typeName].GetFields().Select(field => field.Name).OrderBy(s => s).ToArray();
@@ -290,6 +266,6 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             Assert.Equal(expectedFields, receivedFields);
             Assert.Equal(expectedProperties, receivedProperties);
             Assert.Equal(expectedMethods, receivedMethods);
-        } 
+        }
     }
 }

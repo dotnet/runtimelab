@@ -25,27 +25,27 @@ namespace System.Text.Json.SourceGeneration
         };
 
         // Generation namespace for source generation code.
-        private string _generationNamespace;
+        const string _generationNamespace = "CodeGenNamespace";
 
         // Full assembly type name for key and a generated-source for value.
-        public Dictionary<Type, string> _types = new Dictionary<Type, string>();
+        public Dictionary<Type, string> Types { get; }
 
         // Contains name of types that failed to be generated.
         private HashSet<Type> _failedTypes = new HashSet<Type>();
-        public List<Type> FailedTypes { get { return _failedTypes.ToList(); } }
 
         // Contains list of diagnostics for the code generator.
-        private List<Diagnostic> _diagnostics = new List<Diagnostic>();
-        public List<Diagnostic> Diagnostics { get { return _diagnostics; } }
+        public List<Diagnostic> Diagnostics { get; }
 
         // Diagnostic descriptors for user.
         private DiagnosticDescriptor _initiatingTypeClass;
         private DiagnosticDescriptor _failedToGenerateTypeClass;
         private DiagnosticDescriptor _failedToAddNewTypesFromMembers;
 
-        public JsonSourceGeneratorHelper(string generationNamespace)
+        public JsonSourceGeneratorHelper()
         {
-            _generationNamespace = generationNamespace;
+            // Initiate auto properties.
+            Types = new Dictionary<Type, string>();
+            Diagnostics = new List<Diagnostic>();
 
             // Initiate diagnostic descriptors.
             _initiatingTypeClass ??=
@@ -106,7 +106,7 @@ namespace {_generationNamespace}
         // Generates metadata for type and returns a Tuple<isSuccessful, isCyclic>.
         private Tuple<bool, bool> GenerateClassInfo(Type root, HashSet<Type> seenTypes, Stack<Type> typeStack, string className, Type type)
         {
-            _diagnostics.Add(Diagnostic.Create(_initiatingTypeClass, Location.None, new string[] { root.Name, className }));
+            Diagnostics.Add(Diagnostic.Create(_initiatingTypeClass, Location.None, new string[] { root.Name, className }));
 
             // Add current type to generated types.
             seenTypes.Add(type);
@@ -149,7 +149,7 @@ namespace {_generationNamespace}
             if (isSuccessful)
             {
                 // Add generated typeinfo for current traversal.
-                _types.Add(type, source.ToString());
+                Types.Add(type, source.ToString());
             }
             else
             {
@@ -166,7 +166,7 @@ namespace {_generationNamespace}
                     }
                 }
 
-                _diagnostics.Add(Diagnostic.Create(_failedToGenerateTypeClass, Location.None, new string[] { root.Name, className }));
+                Diagnostics.Add(Diagnostic.Create(_failedToGenerateTypeClass, Location.None, new string[] { root.Name, className }));
 
                 // If not successful remove it from found types hashset and add to failed types list.
                 seenTypes.Remove(type);
@@ -194,7 +194,7 @@ namespace {_generationNamespace}
 
                 if (!wasSuccessful)
                 {
-                    _diagnostics.Add(Diagnostic.Create(_failedToAddNewTypesFromMembers, Location.None, new string[] { root.Name, currentType.Name }));
+                    Diagnostics.Add(Diagnostic.Create(_failedToAddNewTypesFromMembers, Location.None, new string[] { root.Name, currentType.Name }));
                 }
             }
         }
@@ -223,7 +223,7 @@ namespace {_generationNamespace}
         }
 
         private bool IsNewType(Type type, HashSet<Type> foundTypes) => (
-            !_types.ContainsKey(type) &&
+            !Types.ContainsKey(type) &&
             !foundTypes.Contains(type) &&
             !s_simpleTypes.Contains(type));
 
@@ -346,11 +346,6 @@ namespace {_generationNamespace}
                         {
                             typeName = $"List<{genericType.Name}>";
                         }
-                        else if (type.IsDictionary())
-                        {
-                            // todo: Add support and get generic arguments and add them to typeName.
-                            return false;
-                        }
                         else
                         {
                             // todo: Add support for rest of the IEnumerables.
@@ -392,11 +387,6 @@ namespace {_generationNamespace}
                         if (typeWrapper.IsList())
                         {
                             typeClassInfoCall = $"KnownCollectionTypeInfos<{genericType.Name}>.GetList(context.{genericType.Name}, context)";
-                        }
-                        else if (typeWrapper.IsDictionary())
-                        {
-                            // todo: Add support and get generic arguments and add them to typeName.
-                            return false;
                         }
                         else
                         {
