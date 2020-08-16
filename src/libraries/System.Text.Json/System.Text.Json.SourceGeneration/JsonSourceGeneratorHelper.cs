@@ -113,12 +113,10 @@ namespace {_generationNamespace}
         }
 
         // Generates metadata for type and returns if it was successful.
-        private bool GenerateClassInfo(Type root, HashSet<Type> seenTypes, Stack<Type> typeStack, string className, Type type)
+        private bool GenerateClassInfo(Type root, HashSet<Type> seenTypes, string className, Type type)
         {
             // Add current type to generated types.
             seenTypes.Add(type);
-            // Add current type to stack.
-            typeStack.Push(type);
 
             StringBuilder source = new StringBuilder();
             bool isSuccessful = true;
@@ -136,7 +134,7 @@ namespace {_generationNamespace}
                 }
                 foreach (Type handlingType in GetTypesToGenerate(field.FieldType))
                 {
-                    GenerateForMembers(root, handlingType, seenTypes, typeStack, ref isSuccessful);
+                    GenerateForMembers(root, handlingType, seenTypes, ref isSuccessful);
                 }
             }
 
@@ -149,7 +147,7 @@ namespace {_generationNamespace}
                 }
                 foreach (Type handlingType in GetTypesToGenerate(property.PropertyType))
                 {
-                    GenerateForMembers(root, handlingType, seenTypes, typeStack, ref isSuccessful);
+                    GenerateForMembers(root, handlingType, seenTypes, ref isSuccessful);
                 }
             }
 
@@ -185,12 +183,12 @@ namespace {_generationNamespace}
         }
 
         // Call recursive type generation if unseen type and check for success and cycles.
-        void GenerateForMembers(Type root, Type currentType, HashSet<Type> seenTypes, Stack<Type> typeStack, ref bool isSuccessful)
+        void GenerateForMembers(Type root, Type currentType, HashSet<Type> seenTypes, ref bool isSuccessful)
         {
             // If new type, recurse.
             if (IsNewType(currentType, seenTypes))
             {
-                bool wasSuccessful = GenerateClassInfo(root, seenTypes, typeStack, currentType.Name, currentType);
+                bool wasSuccessful = GenerateClassInfo(root, seenTypes, currentType.Name, currentType);
                 isSuccessful &= wasSuccessful;
 
                 if (!wasSuccessful)
@@ -221,9 +219,8 @@ namespace {_generationNamespace}
         // Returns name of types traversed that can be looked up in the dictionary.
         public List<Type> GenerateClassInfo(string className, Type rootType)
         {
-            Stack<Type> typeStack = new Stack<Type>();
             HashSet<Type> foundTypes = new HashSet<Type>();
-            GenerateClassInfo(rootType, foundTypes, typeStack, className, rootType);
+            GenerateClassInfo(rootType, foundTypes, className, rootType);
             return foundTypes.ToList();
         }
 
