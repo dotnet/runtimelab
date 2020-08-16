@@ -203,7 +203,6 @@ struct HRESULT
      }
 
      public HResult ToManaged() => new HResult(Value);
-     public void FreeNative() {}
      public int Value { get; set; }
 }
 ```
