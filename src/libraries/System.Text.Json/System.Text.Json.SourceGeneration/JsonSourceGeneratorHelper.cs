@@ -203,10 +203,10 @@ namespace {_generationNamespace}
         {
             if (type is TypeWrapper typeWrapper)
             {
-                if (typeWrapper.IsIEnumerable())
+                if (typeWrapper.IsIEnumerable)
                 {
                     // todo: Add more support to collections.
-                    if (!typeWrapper.IsList())
+                    if (!typeWrapper.IsIList)
                     {
                         return false;
                     }
@@ -256,7 +256,7 @@ namespace {_generationNamespace}
             // Add imports to root type.
             if (type is TypeWrapper typeWrapper)
             {
-                imports.Add(typeWrapper.GetFullNamespace());
+                imports.Add(typeWrapper.FullNamespace);
             }
 
             foreach (PropertyInfo property in properties)
@@ -265,11 +265,11 @@ namespace {_generationNamespace}
                 {
                     if (property.PropertyType is TypeWrapper baseType)
                     {
-                        imports.Add(baseType.GetFullNamespace());
+                        imports.Add(baseType.FullNamespace);
                     }
                     if (!handlingType.Equals(property.PropertyType) && handlingType is TypeWrapper genericType)
                     {
-                        imports.Add(genericType.GetFullNamespace());
+                        imports.Add(genericType.FullNamespace);
                     }
                 }
             }
@@ -279,11 +279,11 @@ namespace {_generationNamespace}
                 {
                     if (field.FieldType is TypeWrapper baseType)
                     {
-                        imports.Add(baseType.GetFullNamespace());
+                        imports.Add(baseType.FullNamespace);
                     }
                     if (!handlingType.Equals(field.FieldType) && handlingType is TypeWrapper genericType)
                     {
-                        imports.Add(genericType.GetFullNamespace());
+                        imports.Add(genericType.FullNamespace);
                     }
                 }
             }
@@ -358,10 +358,10 @@ namespace {_generationNamespace}
                 if (property.PropertyType is TypeWrapper type)
                 {
                     // Check if IEnumerable.
-                    if (type.IsIEnumerable())
+                    if (type.IsIEnumerable)
                     {
                         genericType = GetTypesToGenerate(type).First();
-                        if (type.IsList())
+                        if (type.IsIList)
                         {
                             typeName = $"List<{genericType.Name}>";
                         }
@@ -399,11 +399,11 @@ namespace {_generationNamespace}
                 if (property.PropertyType is TypeWrapper typeWrapper)
                 {
                     // Check if IEnumerable.
-                    if (typeWrapper.IsIEnumerable())
+                    if (typeWrapper.IsIEnumerable)
                     {
                         genericType = GetTypesToGenerate(typeWrapper).First();
 
-                        if (typeWrapper.IsList())
+                        if (typeWrapper.IsIList)
                         {
                             typeClassInfoCall = $"KnownCollectionTypeInfos<{genericType.Name}>.GetList(context.{genericType.Name}, context)";
                         }
@@ -416,7 +416,7 @@ namespace {_generationNamespace}
                 }
 
                 source.Append($@"
-                _property_{property.Name} = typeInfo.AddProperty(nameof({((TypeWrapper)root).GetFullNamespace()}.{root.Name}.{property.Name}),
+                _property_{property.Name} = typeInfo.AddProperty(nameof({((TypeWrapper)root).FullNamespace}.{root.Name}.{property.Name}),
                     (obj) => {{ return (({root.Name})obj).{property.Name}; }},
                     (obj, value) => {{ (({root.Name})obj).{property.Name} = value; }},
                     {typeClassInfoCall});

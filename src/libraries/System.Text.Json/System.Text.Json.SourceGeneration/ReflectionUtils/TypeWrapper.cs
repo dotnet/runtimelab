@@ -48,6 +48,58 @@ namespace System.Reflection
 
         public override bool IsGenericTypeDefinition => base.IsGenericTypeDefinition;
 
+        private string _fullNamespace;
+        public string FullNamespace
+        {
+            get
+            {
+                if (_fullNamespace == null)
+                {
+                    _fullNamespace = GetFullNamespace();
+                }
+                return _fullNamespace;
+            }
+        }
+
+        private bool? _isIEnumerable;
+        public bool IsIEnumerable
+        {
+            get
+            {
+                if (!_isIEnumerable.HasValue)
+                {
+                    _isIEnumerable = ImplementsIEnumerable();
+                }
+                return _isIEnumerable.Value;
+            }
+        }
+
+        private bool? _isIDictionary;
+        public bool IsIDictionary
+        {
+            get
+            {
+                if (!_isIDictionary.HasValue)
+                {
+                    _isIDictionary = ImplementsIDictionary(); 
+                }
+                return _isIDictionary.Value;
+            }
+        }
+
+        private bool? _isIList;
+        public bool IsIList
+        {
+            get
+            {
+                if (!_isIList.HasValue)
+                {
+                    _isIList = ImplementsIList();
+                }
+                return _isIList.Value;
+            }
+        }
+
         public override Type[] GetGenericArguments()
         {
             var args = new List<Type>();
@@ -306,13 +358,13 @@ namespace System.Reflection
         }
 
         // Extension methods.
-        public bool IsIEnumerable()
+        private bool ImplementsIEnumerable()
         {
-            foreach (Type @interface in GetInterfaces())
+            foreach (Type type in GetInterfaces())
             {
-                if (@interface.IsGenericType)
+                if (type.IsGenericType)
                 {
-                    if (@interface.IsGenericType && (@interface.GetGenericTypeDefinition().Equals(typeof(IEnumerable<>))))
+                    if (type.IsGenericType && (type.GetGenericTypeDefinition().Equals(typeof(IEnumerable<>))))
                     {
                         return true;
                     }
@@ -321,13 +373,13 @@ namespace System.Reflection
             return false;
         }
 
-        public bool IsList()
+        private bool ImplementsIList()
         {
-            foreach (Type @interface in GetInterfaces())
+            foreach (Type type in GetInterfaces())
             {
-                if (@interface.IsGenericType)
+                if (type.IsGenericType)
                 {
-                    if (@interface.IsGenericType && (@interface.GetGenericTypeDefinition().Equals(typeof(IList<>))))
+                    if (type.IsGenericType && (type.GetGenericTypeDefinition().Equals(typeof(IList<>))))
                     {
                         return true;
                     }
@@ -336,13 +388,13 @@ namespace System.Reflection
             return false;
         }
 
-        public bool IsDictionary()
+        private bool ImplementsIDictionary()
         {
-            foreach (Type @interface in GetInterfaces())
+            foreach (Type type in GetInterfaces())
             {
-                if (@interface.IsGenericType)
+                if (type.IsGenericType)
                 {
-                    if (@interface.IsGenericType && (@interface.GetGenericTypeDefinition().Equals(typeof(IDictionary<,>))))
+                    if (type.IsGenericType && (type.GetGenericTypeDefinition().Equals(typeof(IDictionary<,>))))
                     {
                         return true;
                     }
@@ -351,11 +403,13 @@ namespace System.Reflection
             return false;
         }
 
-        public string GetFullNamespace()
+        private string GetFullNamespace()
         {
             INamespaceSymbol root = _typeSymbol.ContainingNamespace;
             if (root == null)
+            {
                 return "";
+            }
 
             StringBuilder fullNamespace = new StringBuilder();
             GetFullNamespace(root);
