@@ -5,22 +5,12 @@
 // Exposes features of the Garbage Collector to managed code.
 //
 
-using System;
-using System.Threading;
-using System.Runtime;
-using System.Runtime.InteropServices;
-using System.Runtime.CompilerServices;
 using System.Diagnostics;
-using System.Security;
-using Internal.Runtime.Augments;
+using System.Runtime;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Threading;
 using Internal.Runtime.CompilerServices;
-using Internal.Runtime;
-
-#if TARGET_64BIT
-using nuint = System.UInt64;
-#else
-using nuint = System.UInt32;
-#endif
 
 namespace System
 {

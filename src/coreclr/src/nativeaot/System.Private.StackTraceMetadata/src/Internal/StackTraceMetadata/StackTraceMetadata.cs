@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Runtime;
 
 using Internal.Metadata.NativeFormat;
 using Internal.Runtime;
@@ -12,14 +11,6 @@ using Internal.Runtime.TypeLoader;
 using Internal.TypeSystem;
 
 using ReflectionExecution = Internal.Reflection.Execution.ReflectionExecution;
-
-#if TARGET_64BIT
-using nint = System.Int64;
-using nuint = System.UInt64;
-#else
-using nint = System.Int32;
-using nuint = System.UInt32;
-#endif
 
 namespace Internal.StackTraceMetadata
 {
@@ -49,10 +40,10 @@ namespace Internal.StackTraceMetadata
         /// <summary>
         /// Locate the containing module for a method and try to resolve its name based on start address.
         /// </summary>
-        public static string GetMethodNameFromStartAddressIfAvailable(IntPtr methodStartAddress)
+        public static unsafe string GetMethodNameFromStartAddressIfAvailable(IntPtr methodStartAddress)
         {
             IntPtr moduleStartAddress = RuntimeAugments.GetOSModuleFromPointer(methodStartAddress);
-            int rva = (int)((nuint)methodStartAddress - (nuint)moduleStartAddress);
+            int rva = (int)((byte*)methodStartAddress - (byte*)moduleStartAddress);
             foreach (TypeManagerHandle handle in ModuleList.Enumerate())
             {
                 if (handle.OsModuleBase == moduleStartAddress)
@@ -219,8 +210,8 @@ namespace Internal.StackTraceMetadata
                 for (int entryIndex = 0; entryIndex < entryCount; entryIndex++)
                 {
                     int* pRelPtr32 = &rvaToTokenMap[2 * entryIndex + 0];
-                    IntPtr pointer = (IntPtr)((byte*)pRelPtr32 + *pRelPtr32);
-                    int methodRva = (int)((nuint)pointer - (nuint)handle.OsModuleBase);
+                    byte* pointer = (byte*)pRelPtr32 + *pRelPtr32;
+                    int methodRva = (int)(pointer - (byte*)handle.OsModuleBase);
                     int token = rvaToTokenMap[2 * entryIndex + 1];
                     _methodRvaToTokenMap[methodRva] = token;
                 }
