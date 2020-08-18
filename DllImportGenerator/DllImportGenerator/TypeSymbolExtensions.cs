@@ -1,0 +1,86 @@
+using Microsoft.CodeAnalysis;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Runtime.InteropServices;
+
+namespace Microsoft.Interop
+{
+    static class TypeSymbolExtensions
+    {
+        public static bool HasOnlyBlittableFields(this ITypeSymbol type)
+        {
+            if (!type.IsUnmanagedType || !type.IsValueType)
+            {
+                return false;
+            }
+
+            foreach (var field in type.GetTypeMembers().OfType<IFieldSymbol>())
+            {
+                bool? fieldBlittable = field switch
+                {
+                    { IsStatic : true } => null,
+                    { Type : { IsValueType : false }} => false,
+                    { Type : { SpecialType : SpecialType.System_Boolean}
+                          or { SpecialType : SpecialType.System_Char}} => false,
+                    { Type : { SpecialType : SpecialType.System_SByte }
+                          or { SpecialType : SpecialType.System_Byte }
+                          or { SpecialType : SpecialType.System_Int16 }
+                          or { SpecialType : SpecialType.System_UInt16 }
+                          or { SpecialType : SpecialType.System_Int32 }
+                          or { SpecialType : SpecialType.System_UInt32 }
+                          or { SpecialType : SpecialType.System_Int64 }
+                          or { SpecialType : SpecialType.System_UInt64 }
+                          or { SpecialType : SpecialType.System_Single }
+                          or { SpecialType : SpecialType.System_Double }
+                          or { SpecialType : SpecialType.System_IntPtr }
+                          or { SpecialType : SpecialType.System_UIntPtr }} => true,
+                    // A recursive struct type isn't blittable.
+                    // It's also illegal in C#, but I believe that source generators run
+                    // before that is detected, so we check here to avoid a stack overflow.
+                    // [TODO]: Handle mutual recursion.
+                    _ => field.Type != type && IsConsideredBlittable(field.Type)
+                };
+
+                if (fieldBlittable is false)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+        
+        public static bool IsConsideredBlittable(this ITypeSymbol type)
+        {
+            bool hasNativeMarshallingAttribute = false;
+            bool hasGeneratedMarshallingAttribute = false;
+            // [TODO]: Match attributes on full name or symbol, not just on type name.
+            foreach (var attr in type.GetAttributes())
+            {
+                if (attr.AttributeClass.Name == "BlittableTypeAttribute")
+                {
+                    return true;
+                }
+                else if (attr.AttributeClass.Name == "GeneratedMarshallingAttribute")
+                {
+                    hasGeneratedMarshallingAttribute = true;
+                }
+                else if (attr.AttributeClass.Name == "NativeMarshallingAttribute")
+                {
+                    hasNativeMarshallingAttribute = true;
+                }
+            }
+
+            if (hasGeneratedMarshallingAttribute && !hasNativeMarshallingAttribute)
+            {
+                // The struct type has generated marshalling via a source generator.
+                // We can't guarantee that we can see the results of the struct source generator,
+                // so we re-calculate if the type is blittable here.
+                return type.HasOnlyBlittableFields();
+            }
+            return false;
+        }
+    }
+}
