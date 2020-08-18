@@ -46,7 +46,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             Compilation compilation = CompilationHelper.CreateCompilation(source, additionalReferences);
 
-            JsonSerializerSourceGenerator generator = new JsonSerializerSourceGenerator();
+            JsonSourceGenerator generator = new JsonSourceGenerator();
 
             CompilationHelper.RunGenerators(compilation, out var generatorDiags, generator);
 
@@ -97,7 +97,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             Compilation compilation = CompilationHelper.CreateCompilation(source, additionalReferences);
 
-            JsonSerializerSourceGenerator generator = new JsonSerializerSourceGenerator();
+            JsonSourceGenerator generator = new JsonSourceGenerator();
 
             CompilationHelper.RunGenerators(compilation, out var generatorDiags, generator);
 

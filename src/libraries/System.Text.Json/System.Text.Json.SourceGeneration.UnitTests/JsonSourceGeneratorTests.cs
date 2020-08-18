@@ -46,7 +46,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             Compilation compilation = CompilationHelper.CreateCompilation(source);
 
-            JsonSerializerSourceGenerator generator = new JsonSerializerSourceGenerator();
+            JsonSourceGenerator generator = new JsonSourceGenerator();
 
             Compilation newCompilation = CompilationHelper.RunGenerators(compilation, out ImmutableArray<Diagnostic> generatorDiags, generator);
 
@@ -112,7 +112,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             Compilation compilation = CompilationHelper.CreateCompilation(source, additionalReferences);
 
-            JsonSerializerSourceGenerator generator = new JsonSerializerSourceGenerator();
+            JsonSourceGenerator generator = new JsonSourceGenerator();
 
             Compilation newCompilation = CompilationHelper.RunGenerators(compilation, out ImmutableArray<Diagnostic> generatorDiags, generator);
 
@@ -197,7 +197,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             Compilation compilation = CompilationHelper.CreateCompilation(source, additionalReferences);
 
-            JsonSerializerSourceGenerator generator = new JsonSerializerSourceGenerator();
+            JsonSourceGenerator generator = new JsonSourceGenerator();
 
             Compilation newCompilation = CompilationHelper.RunGenerators(compilation, out var generatorDiags, generator);
 
@@ -233,7 +233,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             Assert.Empty(diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
         }
 
-        private void CheckFieldsPropertiesMethods(string typeName, ref JsonSerializerSourceGenerator generator, string[] expectedFields, string[] expectedProperties, string[] expectedMethods)
+        private void CheckFieldsPropertiesMethods(string typeName, ref JsonSourceGenerator generator, string[] expectedFields, string[] expectedProperties, string[] expectedMethods)
         {
             string[] receivedFields = generator.FoundTypes[typeName].GetFields().Select(field => field.Name).OrderBy(s => s).ToArray();
             string[] receivedProperties = generator.FoundTypes[typeName].GetProperties().Select(property => property.Name).OrderBy(s => s).ToArray();

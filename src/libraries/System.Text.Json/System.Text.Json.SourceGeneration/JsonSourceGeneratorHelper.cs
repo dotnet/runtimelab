@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 
 namespace System.Text.Json.SourceGeneration
 {
-    internal sealed class JsonSourceGeneratorHelper
+    internal sealed partial class JsonSourceGeneratorHelper
     {
         // Simple handled types with typeinfo.
         private static readonly HashSet<Type> s_simpleTypes = new HashSet<Type>
@@ -25,63 +25,25 @@ namespace System.Text.Json.SourceGeneration
         };
 
         // Generation namespace for source generation code.
-        const string _generationNamespace = "CodeGenNamespace";
+        const string GenerationNamespace = "JsonCodeGeneration";
 
-        // Full assembly type name for key and a generated-source for value.
+        // Type for key and a generated-source for value.
         public Dictionary<Type, string> Types { get; }
 
-        // Contains name of types that failed to be generated.
+        // Contains types that failed to be generated.
         private HashSet<Type> _failedTypes = new HashSet<Type>();
 
         // Contains list of diagnostics for the code generator.
         public List<Diagnostic> Diagnostics { get; }
 
-        // Diagnostic descriptors for user.
-        private DiagnosticDescriptor _generatedTypeClass;
-        private DiagnosticDescriptor _failedToGenerateTypeClass;
-        private DiagnosticDescriptor _failedToAddNewTypesFromMembers;
-        private DiagnosticDescriptor _notSupported;
-
         public JsonSourceGeneratorHelper()
         {
-            // Initiate auto properties.
+            // Initialize auto properties.
             Types = new Dictionary<Type, string>();
             Diagnostics = new List<Diagnostic>();
 
             // Initiate diagnostic descriptors.
-            _generatedTypeClass ??=
-                new DiagnosticDescriptor(
-                    "JsonSourceGeneration",
-                    "Generated type class generation",
-                    "Generated type class {1} for root type {0}",
-                    "category",
-                    DiagnosticSeverity.Info,
-                    isEnabledByDefault: true);
-            _failedToGenerateTypeClass ??=
-                new DiagnosticDescriptor(
-                    "JsonSourceGeneration",
-                    "Failed to generate typeclass",
-                    "Failed in sourcegenerating nested type {1} for root type {0}.",
-                    "category",
-                    DiagnosticSeverity.Warning,
-                    isEnabledByDefault: true,
-                    description: "Error message: {2}");
-            _failedToAddNewTypesFromMembers ??=
-                new DiagnosticDescriptor(
-                    "JsonSourceGeneration",
-                    "Failed to add new types from current type",
-                    "Failed to iterate fields and properties for current type {1} for root type {0}",
-                    "category",
-                    DiagnosticSeverity.Warning,
-                    isEnabledByDefault: true);
-            _notSupported ??=
-                new DiagnosticDescriptor(
-                    "JsonSourceGeneration",
-                    "Current type is not supported",
-                    "Failed in sourcegenerating nested type {1} for root type {0}",
-                    "category",
-                    DiagnosticSeverity.Warning,
-                    isEnabledByDefault: true);
+            InitializeDiagnosticDescriptors();
         }
 
         // Base source generation context partial class.
@@ -90,21 +52,21 @@ namespace System.Text.Json.SourceGeneration
             return @$"
 using System.Text.Json.Serialization;
 
-namespace {_generationNamespace}
+namespace {GenerationNamespace}
 {{
     public partial class JsonContext : JsonSerializerContext
     {{
-        private static JsonContext _sDefault;
-        public static JsonContext Default
+        private static JsonContext s_instance;
+        public static JsonContext Instance
         {{
             get
             {{
-                if (_sDefault == null)
+                if (s_instance == null)
                 {{
-                    _sDefault = new JsonContext();
+                    s_instance = new JsonContext();
                 }}
 
-                return _sDefault;
+                return s_instance;
             }}
         }}
     }}
@@ -113,28 +75,28 @@ namespace {_generationNamespace}
         }
 
         // Generates metadata for type and returns if it was successful.
-        private bool GenerateClassInfo(Type root, HashSet<Type> seenTypes, string className, Type type)
+        private bool GenerateClassInfo(Type rootType, Type currentType, HashSet<Type> seenTypes, string className)
         {
             // Add current type to generated types.
-            seenTypes.Add(type);
+            seenTypes.Add(currentType);
 
             StringBuilder source = new StringBuilder();
             bool isSuccessful = true;
 
             // Try to recursively generate necessary field and property types.
-            FieldInfo[] fields = type.GetFields();
-            PropertyInfo[] properties = type.GetProperties();
+            FieldInfo[] fields = currentType.GetFields();
+            PropertyInfo[] properties = currentType.GetProperties();
 
             foreach (FieldInfo field in fields)
             {
                 if (!IsSupportedType(field.FieldType))
                 {
-                    Diagnostics.Add(Diagnostic.Create(_notSupported, Location.None, new string[] { root.Name, field.FieldType.Name }));
+                    Diagnostics.Add(Diagnostic.Create(_notSupported, Location.None, new string[] { rootType.Name, field.FieldType.Name }));
                     return false;
                 }
                 foreach (Type handlingType in GetTypesToGenerate(field.FieldType))
                 {
-                    GenerateForMembers(root, handlingType, seenTypes, ref isSuccessful);
+                    GenerateForMembers(rootType, handlingType, seenTypes, ref isSuccessful);
                 }
             }
 
@@ -142,58 +104,58 @@ namespace {_generationNamespace}
             {
                 if (!IsSupportedType(property.PropertyType))
                 {
-                    Diagnostics.Add(Diagnostic.Create(_notSupported, Location.None, new string[] { root.Name, property.PropertyType.Name }));
+                    Diagnostics.Add(Diagnostic.Create(_notSupported, Location.None, new string[] { rootType.Name, property.PropertyType.Name }));
                     return false;
                 }
                 foreach (Type handlingType in GetTypesToGenerate(property.PropertyType))
                 {
-                    GenerateForMembers(root, handlingType, seenTypes, ref isSuccessful);
+                    GenerateForMembers(rootType, handlingType, seenTypes, ref isSuccessful);
                 }
             }
 
             // Try to generate current type info now that fields and property types have been resolved.
-            isSuccessful &= AddImportsToTypeClass(type, properties, fields, source);
-            isSuccessful &= InitializeContextClass(type, className, source);
+            isSuccessful &= AddImportsToTypeClass(currentType, properties, fields, source);
+            isSuccessful &= InitializeContextClass(currentType, className, source);
             isSuccessful &= InitializeTypeClass(className, source);
-            isSuccessful &= TypeInfoGetterSetter(type, source);
+            isSuccessful &= TypeInfoGetterSetter(currentType, source);
             isSuccessful &= InitializeTypeInfoProperties(properties, source);
-            isSuccessful &= GenerateTypeInfoConstructor(type, className, properties, fields, source);
-            isSuccessful &= GenerateCreateObject(type, source);
-            isSuccessful &= GenerateSerialize(type, properties, source);
-            isSuccessful &= GenerateDeserialize(type, properties, source);
+            isSuccessful &= GenerateTypeInfoConstructor(currentType, className, properties, fields, source);
+            isSuccessful &= GenerateCreateObject(currentType, source);
+            isSuccessful &= GenerateSerialize(currentType, properties, source);
+            isSuccessful &= GenerateDeserialize(currentType, properties, source);
             isSuccessful &= FinalizeTypeAndContextClasses(source);
 
             if (isSuccessful)
             {
-                Diagnostics.Add(Diagnostic.Create(_generatedTypeClass, Location.None, new string[] { root.Name, className }));
+                Diagnostics.Add(Diagnostic.Create(_generatedTypeClass, Location.None, new string[] { rootType.Name, className }));
 
                 // Add generated typeinfo for current traversal.
-                Types.Add(type, source.ToString());
+                Types.Add(currentType, source.ToString());
             }
             else
             {
-                Diagnostics.Add(Diagnostic.Create(_failedToGenerateTypeClass, Location.None, new string[] { root.Name, className }));
+                Diagnostics.Add(Diagnostic.Create(_failedToGenerateTypeClass, Location.None, new string[] { rootType.Name, className }));
 
                 // If not successful remove it from found types hashset and add to failed types list.
-                seenTypes.Remove(type);
-                _failedTypes.Add(type);
+                seenTypes.Remove(currentType);
+                _failedTypes.Add(currentType);
             }
 
             return isSuccessful;
         }
 
         // Call recursive type generation if unseen type and check for success and cycles.
-        void GenerateForMembers(Type root, Type currentType, HashSet<Type> seenTypes, ref bool isSuccessful)
+        void GenerateForMembers(Type rootType, Type currentType, HashSet<Type> seenTypes, ref bool isSuccessful)
         {
             // If new type, recurse.
             if (IsNewType(currentType, seenTypes))
             {
-                bool wasSuccessful = GenerateClassInfo(root, seenTypes, currentType.Name, currentType);
+                bool wasSuccessful = GenerateClassInfo(rootType, currentType, seenTypes, currentType.Name);
                 isSuccessful &= wasSuccessful;
 
                 if (!wasSuccessful)
                 {
-                    Diagnostics.Add(Diagnostic.Create(_failedToAddNewTypesFromMembers, Location.None, new string[] { root.Name, currentType.Name }));
+                    Diagnostics.Add(Diagnostic.Create(_failedToAddNewTypesFromMembers, Location.None, new string[] { rootType.Name, currentType.Name }));
                 }
             }
         }
@@ -217,11 +179,10 @@ namespace {_generationNamespace}
         }
 
         // Returns name of types traversed that can be looked up in the dictionary.
-        public List<Type> GenerateClassInfo(string className, Type rootType)
+        public void GenerateClassInfo(string className, Type type)
         {
             HashSet<Type> foundTypes = new HashSet<Type>();
-            GenerateClassInfo(rootType, foundTypes, className, rootType);
-            return foundTypes.ToList();
+            GenerateClassInfo(rootType: type, currentType: type, foundTypes, className);
         }
 
         private Type[] GetTypesToGenerate(Type type)
@@ -302,7 +263,7 @@ using {import};");
         {
             source.Append($@"
 
-namespace {_generationNamespace}
+namespace {GenerationNamespace}
 {{
     public partial class JsonContext : JsonSerializerContext
     {{
