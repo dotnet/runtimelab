@@ -1,4 +1,6 @@
 <Project>
+  <Import Condition="'$(IsFrameworkPackage)' == 'true'" Project="frameworkPackage.targets" />
+
   <Import Project="..\Directory.Build.targets" />
 
   <Target Name="ApplyBaselineToStaticDependencies"

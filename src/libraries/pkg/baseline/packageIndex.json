@@ -2885,7 +2885,9 @@
       }
     },
     "System.Formats.Asn1": {
-      "InboxOn": {},
+      "InboxOn": {
+        "net5.0": "5.0.0.0"
+      },
       "AssemblyVersionInPackageVersion": {
         "5.0.0.0": "5.0.0"
       }
@@ -3722,6 +3724,11 @@
         "xamarinwatchos10": "Any"
       }
     },
+    "System.Net.Connections": {
+      "InboxOn": {
+        "net5.0": "5.0.0.0"
+      }
+    },
     "System.Net.Http": {
       "StableVersions": [
         "2.0.20126",
@@ -3770,7 +3777,9 @@
       }
     },
     "System.Net.Http.Json": {
-      "InboxOn": {},
+      "InboxOn": {
+        "net5.0": "5.0.0.0"
+      },
       "AssemblyVersionInPackageVersion": {
         "5.0.0.0": "5.0.0"
       }
@@ -4013,7 +4022,7 @@
     },
     "System.Net.Quic": {
       "InboxOn": {
-        "netcoreapp3.0": "4.2.1.0"
+
       }
     },
     "System.Net.Requests": {
@@ -5126,9 +5135,7 @@
       }
     },
     "System.Private.Runtime.InteropServices.JavaScript": {
-      "InboxOn": {
-        "net5.0": "5.0.0.0"
-      }
+      "InboxOn": { }
     },
     "System.Runtime.InteropServices.RuntimeInformation": {
       "StableVersions": [
@@ -5162,8 +5169,6 @@
       ],
       "BaselineVersion": "5.0.0",
       "InboxOn": {
-        "netcoreapp2.0": "4.0.3.0",
-        "net5.0": "5.0.0.0",
         "net45": "4.0.0.0",
         "portable45-net45+win8+wpa81": "4.0.0.0",
         "portable46-net451+win81+wpa81": "4.0.0.0",
