@@ -17,7 +17,7 @@ namespace System.Text.Json.SourceGeneration
     /// to generate wanted output code for JsonSerializers.
     /// </summary>
     [Generator]
-    public partial class JsonSourceGenerator : ISourceGenerator
+    public class JsonSourceGenerator : ISourceGenerator
     {
         public Dictionary<string, Type> FoundTypes = new Dictionary<string, Type>();
 

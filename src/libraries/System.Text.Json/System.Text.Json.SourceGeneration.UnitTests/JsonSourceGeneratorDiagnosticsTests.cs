@@ -111,7 +111,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
         private void CheckDiagnosticMessages(ImmutableArray<Diagnostic> diagnostics, DiagnosticSeverity level, string[] expectedMessages)
         {
-            Assert.Equal(expectedMessages, diagnostics.Where(diagnostic => diagnostic.Severity == level ).Select(diagnostic => diagnostic.GetMessage()));
+            Assert.Equal(expectedMessages, diagnostics.Where(diagnostic => diagnostic.Severity == level ).Select(diagnostic => diagnostic.GetMessage()).ToArray());
         }
     }
 }

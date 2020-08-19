@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <Compile Include="ReflectionUtils\AssemblyWrapper.cs" />
+    <Compile Include="ReflectionUtils\TypeExtensions.cs" />
     <Compile Include="ReflectionUtils\FieldInfoWrapper.cs" />
     <Compile Include="ReflectionUtils\ConstructorInfoWrapper.cs" />
     <Compile Include="ReflectionUtils\CustomAttributeDataWrapper.cs" />

@@ -48,57 +48,7 @@ namespace System.Reflection
 
         public override bool IsGenericTypeDefinition => base.IsGenericTypeDefinition;
 
-        private string _fullNamespace;
-        public string FullNamespace
-        {
-            get
-            {
-                if (_fullNamespace == null)
-                {
-                    _fullNamespace = GetFullNamespace();
-                }
-                return _fullNamespace;
-            }
-        }
-
-        private bool? _isIEnumerable;
-        public bool IsIEnumerable
-        {
-            get
-            {
-                if (!_isIEnumerable.HasValue)
-                {
-                    _isIEnumerable = ImplementsIEnumerable();
-                }
-                return _isIEnumerable.Value;
-            }
-        }
-
-        private bool? _isIDictionary;
-        public bool IsIDictionary
-        {
-            get
-            {
-                if (!_isIDictionary.HasValue)
-                {
-                    _isIDictionary = ImplementsIDictionary(); 
-                }
-                return _isIDictionary.Value;
-            }
-        }
-
-        private bool? _isIList;
-        public bool IsIList
-        {
-            get
-            {
-                if (!_isIList.HasValue)
-                {
-                    _isIList = ImplementsIList();
-                }
-                return _isIList.Value;
-            }
-        }
+        public INamespaceSymbol GetNamespaceSymbol => _typeSymbol.ContainingNamespace;
 
         public override Type[] GetGenericArguments()
         {
@@ -355,78 +305,6 @@ namespace System.Reflection
                 return _typeSymbol.Equals(tww._typeSymbol, SymbolEqualityComparer.Default);
             }
             return base.Equals(o);
-        }
-
-        // Extension methods.
-        private bool ImplementsIEnumerable()
-        {
-            foreach (Type type in GetInterfaces())
-            {
-                if (type.IsGenericType)
-                {
-                    if (type.IsGenericType && (type.GetGenericTypeDefinition().Equals(typeof(IEnumerable<>))))
-                    {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        private bool ImplementsIList()
-        {
-            foreach (Type type in GetInterfaces())
-            {
-                if (type.IsGenericType)
-                {
-                    if (type.IsGenericType && (type.GetGenericTypeDefinition().Equals(typeof(IList<>))))
-                    {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        private bool ImplementsIDictionary()
-        {
-            foreach (Type type in GetInterfaces())
-            {
-                if (type.IsGenericType)
-                {
-                    if (type.IsGenericType && (type.GetGenericTypeDefinition().Equals(typeof(IDictionary<,>))))
-                    {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        private string GetFullNamespace()
-        {
-            INamespaceSymbol root = _typeSymbol.ContainingNamespace;
-            if (root == null)
-            {
-                return "";
-            }
-
-            StringBuilder fullNamespace = new StringBuilder();
-            GetFullNamespace(root);
-            return fullNamespace.ToString();
-
-            void GetFullNamespace(INamespaceSymbol current)
-            {
-                if (current.IsGlobalNamespace || current.ContainingNamespace.IsGlobalNamespace)
-                {
-                    fullNamespace.Append(current.Name);
-                    return;
-                }
-
-                GetFullNamespace(current.ContainingNamespace);
-
-                fullNamespace.Append("."+current.Name);
-            }
         }
     }
 }
