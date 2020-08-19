@@ -58,11 +58,11 @@ namespace System.Text.Json.SourceGeneration
 
             public bool IsSuccessful; 
 
-            public GenerationClassFrame(Type rootType, Type currentType, string className)
+            public GenerationClassFrame(Type rootType, Type currentType)
             {
                 RootType = rootType;
                 CurrentType = currentType;
-                ClassName = className;
+                ClassName = currentType.GetCompilableUniqueName();
                 Source = new StringBuilder();
                 Properties = CurrentType.GetProperties();
                 Fields = CurrentType.GetFields();
@@ -168,7 +168,7 @@ namespace {GenerationNamespace}
             // If new type, recurse.
             if (IsNewType(newType, seenTypes))
             {
-                bool isMemberSuccessful = GenerateClassInfo(new GenerationClassFrame(currentFrame.RootType, newType, newType.Name), seenTypes);
+                bool isMemberSuccessful = GenerateClassInfo(new GenerationClassFrame(currentFrame.RootType, newType), seenTypes);
                 currentFrame.IsSuccessful &= isMemberSuccessful;
 
                 if (!isMemberSuccessful)
@@ -194,10 +194,10 @@ namespace {GenerationNamespace}
         }
 
         // Returns name of types traversed that can be looked up in the dictionary.
-        public void GenerateClassInfo(string className, Type type)
+        public void GenerateClassInfo(Type type)
         {
             HashSet<Type> foundTypes = new HashSet<Type>();
-            GenerateClassInfo(new GenerationClassFrame(rootType: type, currentType: type, className), foundTypes);
+            GenerateClassInfo(new GenerationClassFrame(rootType: type, currentType: type), foundTypes);
         }
 
         private Type[] GetTypesToGenerate(Type type)
@@ -266,7 +266,7 @@ namespace {GenerationNamespace}
     public partial class JsonContext : JsonSerializerContext
     {{
         private {currentFrame.ClassName}TypeInfo _{currentFrame.ClassName};
-        public JsonTypeInfo<{currentFrame.CurrentType.Name}> {currentFrame.ClassName} 
+        public JsonTypeInfo<{currentFrame.CurrentType.FullName}> {currentFrame.ClassName}
         {{
             get
             {{
@@ -291,7 +291,7 @@ namespace {GenerationNamespace}
         private void TypeInfoGetterSetter(GenerationClassFrame currentFrame)
         {
             currentFrame.Source.Append($@"
-            public JsonTypeInfo<{currentFrame.CurrentType.Name}> TypeInfo {{ get; private set; }}
+            public JsonTypeInfo<{currentFrame.CurrentType.FullName}> TypeInfo {{ get; private set; }}
             ");
         }
 
@@ -307,7 +307,7 @@ namespace {GenerationNamespace}
                 // Find type and property name to use for property definition.
                 propertyType = property.PropertyType;
                 propertyName = property.Name;
-                typeName = propertyType.Name;
+                typeName = propertyType.FullName;
 
                 // Check if IEnumerable.
                 if (propertyType.IsIEnumerable())
@@ -315,7 +315,7 @@ namespace {GenerationNamespace}
                     genericType = GetTypesToGenerate(propertyType).First();
                     if (propertyType.IsIList())
                     {
-                        typeName = $"List<{genericType.Name}>";
+                        typeName = $"List<{genericType.FullName}>";
                     }
                     else
                     {
@@ -334,12 +334,12 @@ namespace {GenerationNamespace}
 
         private bool GenerateTypeInfoConstructor(GenerationClassFrame currentFrame)
         {
-            Type rootType = currentFrame.RootType;
+            Type currentType = currentFrame.CurrentType;
 
             currentFrame.Source.Append($@"
             public {currentFrame.ClassName}TypeInfo(JsonContext context)
             {{
-                var typeInfo = new JsonObjectInfo<{rootType.Name}>(CreateObjectFunc, SerializeFunc, DeserializeFunc, context.GetOptions());
+                var typeInfo = new JsonObjectInfo<{currentType.FullName}>(CreateObjectFunc, SerializeFunc, DeserializeFunc, context.GetOptions());
             ");
 
             Type propertyType;
@@ -349,7 +349,7 @@ namespace {GenerationNamespace}
             {
                 propertyType = property.PropertyType;
                 // Default classtype for values.
-                typeClassInfoCall = $"context.{propertyType.Name}";
+                typeClassInfoCall = $"context.{propertyType.GetCompilableUniqueName()}";
 
                 // Check if IEnumerable.
                 if (propertyType.IsIEnumerable())
@@ -358,7 +358,7 @@ namespace {GenerationNamespace}
 
                     if (propertyType.IsIList())
                     {
-                        typeClassInfoCall = $"KnownCollectionTypeInfos<{genericType.Name}>.GetList(context.{genericType.Name}, context)";
+                        typeClassInfoCall = $"KnownCollectionTypeInfos<{genericType.FullName}>.GetList(context.{genericType.GetCompilableUniqueName()}, context)";
                     }
                     else
                     {
@@ -368,9 +368,9 @@ namespace {GenerationNamespace}
                 }
 
                 currentFrame.Source.Append($@"
-                _property_{property.Name} = typeInfo.AddProperty(nameof({rootType.GetFullNamespace()}.{rootType.Name}.{property.Name}),
-                    (obj) => {{ return (({rootType.Name})obj).{property.Name}; }},
-                    (obj, value) => {{ (({rootType.Name})obj).{property.Name} = value; }},
+                _property_{property.Name} = typeInfo.AddProperty(nameof({currentType.FullName}.{property.Name}),
+                    (obj) => {{ return (({currentType.FullName})obj).{property.Name}; }},
+                    (obj, value) => {{ (({currentType.FullName})obj).{property.Name} = value; }},
                     {typeClassInfoCall});
                 ");
             }
@@ -390,7 +390,7 @@ namespace {GenerationNamespace}
             currentFrame.Source.Append($@"
             private object CreateObjectFunc()
             {{
-                return new {currentFrame.CurrentType.Name}();
+                return new {currentFrame.CurrentType.FullName}();
             }}
             ");
         }
@@ -404,7 +404,7 @@ namespace {GenerationNamespace}
 
             // Create base object.
             currentFrame.Source.Append($@"
-                {currentFrame.CurrentType.Name} obj = ({currentFrame.CurrentType.Name})value;
+                {currentFrame.CurrentType.FullName} obj = ({currentFrame.CurrentType.FullName})value;
             ");
 
             foreach (PropertyInfo property in currentFrame.Properties)
@@ -423,7 +423,7 @@ namespace {GenerationNamespace}
         {
             // Start deserialize function.
             currentFrame.Source.Append($@"
-            private {currentFrame.CurrentType.Name} DeserializeFunc(ref Utf8JsonReader reader, ref ReadStack readStack, JsonSerializerOptions options)
+            private {currentFrame.CurrentType.FullName} DeserializeFunc(ref Utf8JsonReader reader, ref ReadStack readStack, JsonSerializerOptions options)
             {{
             ");
 
@@ -438,7 +438,7 @@ namespace {GenerationNamespace}
             // Start loop to read properties.
             currentFrame.Source.Append($@"
                 ReadOnlySpan<byte> propertyName;
-                {currentFrame.CurrentType.Name} obj = new {currentFrame.CurrentType.Name}();
+                {currentFrame.CurrentType.FullName} obj = new {currentFrame.CurrentType.FullName}();
 
                 while(ReadPropertyName(ref reader))
                 {{

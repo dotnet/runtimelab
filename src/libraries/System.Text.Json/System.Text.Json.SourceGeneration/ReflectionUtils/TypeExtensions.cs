@@ -87,5 +87,15 @@ namespace System.Reflection
             }
             return type.Namespace;
         }
+
+        public static string GetCompilableUniqueName(this Type type)
+        {
+            if (type is TypeWrapper typeWrapper)
+            {
+                return string.Join("", $"{type.Assembly.FullName}.{type.Name}".Split('.', '`'));
+            }
+
+            return type.Name;
+        }
     }
 }

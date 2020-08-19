@@ -64,19 +64,19 @@ namespace System.Text.Json.SourceGeneration.Tests
         {
             Location expected = CreateLocation();
 
-            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.Location);
-            Location obj = JsonSerializer.Deserialize(json, JsonContext.Instance.Location);
+            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.SystemTextJsonSourceGenerationTestsLocation);
+            Location obj = JsonSerializer.Deserialize(json, JsonContext.Instance.SystemTextJsonSourceGenerationTestsLocation);
 
             VerifyLocation(expected, obj);
         }
 
         [Fact]
-        public static void RoundTripIndexViewModel()
+        public void RoundTripIndexViewModel()
         {
             IndexViewModel expected = CreateIndexViewModel();
 
-            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.IndexViewModel);
-            IndexViewModel obj = JsonSerializer.Deserialize(json, JsonContext.Instance.IndexViewModel);
+            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.SystemTextJsonSourceGenerationTestsIndexViewModel);
+            IndexViewModel obj = JsonSerializer.Deserialize(json, JsonContext.Instance.SystemTextJsonSourceGenerationTestsIndexViewModel);
 
             VerifyIndexViewModel(expected, obj);
         }
@@ -86,8 +86,8 @@ namespace System.Text.Json.SourceGeneration.Tests
         {
             CampaignSummaryViewModel expected = CreateCampaignSummaryViewModel();
 
-            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.CampaignSummaryViewModel);
-            CampaignSummaryViewModel obj = JsonSerializer.Deserialize(json, JsonContext.Instance.CampaignSummaryViewModel);
+            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.SystemTextJsonSourceGenerationTestsCampaignSummaryViewModel);
+            CampaignSummaryViewModel obj = JsonSerializer.Deserialize(json, JsonContext.Instance.SystemTextJsonSourceGenerationTestsCampaignSummaryViewModel);
 
             VerifyCampaignSummaryViewModel(expected, obj);
         }
@@ -97,8 +97,8 @@ namespace System.Text.Json.SourceGeneration.Tests
         {
             ActiveOrUpcomingEvent expected = CreateActiveOrUpcomingEvent();
 
-            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.ActiveOrUpcomingEvent);
-            ActiveOrUpcomingEvent obj = JsonSerializer.Deserialize(json, JsonContext.Instance.ActiveOrUpcomingEvent);
+            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.SystemTextJsonSourceGenerationTestsActiveOrUpcomingEvent);
+            ActiveOrUpcomingEvent obj = JsonSerializer.Deserialize(json, JsonContext.Instance.SystemTextJsonSourceGenerationTestsActiveOrUpcomingEvent);
 
             VerifyActiveOrUpcomingEvent(expected, obj);
         }

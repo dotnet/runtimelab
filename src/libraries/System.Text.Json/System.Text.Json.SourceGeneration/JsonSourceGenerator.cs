@@ -71,13 +71,13 @@ namespace System.Text.Json.SourceGeneration
 
             JsonSourceGeneratorHelper codegen = new JsonSourceGeneratorHelper();
 
-            // Add base default source.
+            // Add base default instance source.
             context.AddSource("BaseClassInfo.g.cs", SourceText.From(codegen.GenerateHelperContextInfo(), Encoding.UTF8));
 
             // Run type discovery generation for each root type.
             foreach (KeyValuePair<string, Type> entry in FoundTypes)
             {
-                codegen.GenerateClassInfo(entry.Key, entry.Value);
+                codegen.GenerateClassInfo(entry.Value);
             }
 
             // Generate sources for each type.
