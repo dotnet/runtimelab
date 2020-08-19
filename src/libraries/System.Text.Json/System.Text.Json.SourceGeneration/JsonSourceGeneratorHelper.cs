@@ -46,7 +46,7 @@ namespace System.Text.Json.SourceGeneration
             InitializeDiagnosticDescriptors();
         }
 
-        public class GenerationClassFrame
+        public struct GenerationClassFrame
         {
             public Type RootType;
             public Type CurrentType;
