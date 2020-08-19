@@ -22,25 +22,12 @@ namespace Microsoft.Interop
                 {
                     { IsStatic : true } => null,
                     { Type : { IsValueType : false }} => false,
-                    { Type : { SpecialType : SpecialType.System_Boolean}
-                          or { SpecialType : SpecialType.System_Char}} => false,
-                    { Type : { SpecialType : SpecialType.System_SByte }
-                          or { SpecialType : SpecialType.System_Byte }
-                          or { SpecialType : SpecialType.System_Int16 }
-                          or { SpecialType : SpecialType.System_UInt16 }
-                          or { SpecialType : SpecialType.System_Int32 }
-                          or { SpecialType : SpecialType.System_UInt32 }
-                          or { SpecialType : SpecialType.System_Int64 }
-                          or { SpecialType : SpecialType.System_UInt64 }
-                          or { SpecialType : SpecialType.System_Single }
-                          or { SpecialType : SpecialType.System_Double }
-                          or { SpecialType : SpecialType.System_IntPtr }
-                          or { SpecialType : SpecialType.System_UIntPtr }} => true,
+                    not { Type : { SpecialType : SpecialType.None }} => IsSpecialTypeBlittable(field.Type.SpecialType),
                     // A recursive struct type isn't blittable.
                     // It's also illegal in C#, but I believe that source generators run
                     // before that is detected, so we check here to avoid a stack overflow.
                     // [TODO]: Handle mutual recursion.
-                    _ => field.Type != type && IsConsideredBlittable(field.Type)
+                    _ => !SymbolEqualityComparer.Default.Equals(field.Type, type) && IsConsideredBlittable(field.Type)
                 };
 
                 if (fieldBlittable is false)
@@ -51,9 +38,31 @@ namespace Microsoft.Interop
 
             return true;
         }
+
+        private static bool IsSpecialTypeBlittable(SpecialType specialType)
+         => specialType switch 
+         {
+            SpecialType.System_SByte
+            or SpecialType.System_Byte
+            or SpecialType.System_Int16
+            or SpecialType.System_UInt16
+            or SpecialType.System_Int32
+            or SpecialType.System_UInt32
+            or SpecialType.System_Int64
+            or SpecialType.System_UInt64
+            or SpecialType.System_Single
+            or SpecialType.System_Double
+            or SpecialType.System_IntPtr
+            or SpecialType.System_UIntPtr => true,
+            _ => false
+         };
         
         public static bool IsConsideredBlittable(this ITypeSymbol type)
         {
+            if (type.SpecialType != SpecialType.None)
+            {
+                return IsSpecialTypeBlittable(type.SpecialType);
+            }
             bool hasNativeMarshallingAttribute = false;
             bool hasGeneratedMarshallingAttribute = false;
             // [TODO]: Match attributes on full name or symbol, not just on type name.
