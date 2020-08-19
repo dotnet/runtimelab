@@ -16,7 +16,7 @@ namespace Microsoft.Interop
                 return false;
             }
 
-            foreach (var field in type.GetTypeMembers().OfType<IFieldSymbol>())
+            foreach (var field in type.GetMembers().OfType<IFieldSymbol>())
             {
                 bool? fieldBlittable = field switch
                 {
