@@ -355,9 +355,6 @@
     <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.GetLastError.cs">
       <Link>Interop\Windows\Kernel32\Interop.GetLastError.cs</Link>
     </Compile>
-    <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.GetSystemDirectory.cs">
-      <Link>Interop\Windows\Kernel32\Interop.GetSystemDirectory.cs</Link>
-    </Compile>
   </ItemGroup>
   <ItemGroup Condition="'$(TargetsUnix)'=='true'">
     <Compile Include="src\Microsoft\Win32\SafeHandles\SafeWaitHandle.Unix.cs" />
