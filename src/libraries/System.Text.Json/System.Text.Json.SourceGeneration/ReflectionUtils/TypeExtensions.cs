@@ -12,6 +12,10 @@ namespace System.Reflection
     {
         public static bool IsIList(this Type type)
         {
+            if (type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(IList<>)))
+            {
+                return true;
+            }
             if (type is TypeWrapper typeWrapper)
             {
                 foreach (Type t in typeWrapper.GetInterfaces())
@@ -28,6 +32,10 @@ namespace System.Reflection
 
         public static bool IsIEnumerable(this Type type)
         {
+            if (type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(IEnumerable<>)))
+            {
+                return true;
+            }
             if (type is TypeWrapper typeWrapper)
             {
                 foreach (Type t in typeWrapper.GetInterfaces())
@@ -44,6 +52,10 @@ namespace System.Reflection
 
         public static bool IsIDictionary(this Type type)
         {
+            if (type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(IDictionary<,>)))
+            {
+                return true;
+            }
             if (type is TypeWrapper typeWrapper)
             {
                 foreach (Type t in typeWrapper.GetInterfaces())
