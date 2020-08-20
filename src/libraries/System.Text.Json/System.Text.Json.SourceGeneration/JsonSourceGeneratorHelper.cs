@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis;
 
 namespace System.Text.Json.SourceGeneration
 {
-    internal sealed class JsonSourceGeneratorHelper
+    internal sealed partial class JsonSourceGeneratorHelper
     {
         // Simple handled types with typeinfo.
         private static readonly HashSet<Type> s_simpleTypes = new HashSet<Type>
@@ -25,63 +25,49 @@ namespace System.Text.Json.SourceGeneration
         };
 
         // Generation namespace for source generation code.
-        const string _generationNamespace = "CodeGenNamespace";
+        const string GenerationNamespace = "JsonCodeGeneration";
 
-        // Full assembly type name for key and a generated-source for value.
+        // Type for key and a generated-source for value.
         public Dictionary<Type, string> Types { get; }
 
-        // Contains name of types that failed to be generated.
+        // Contains types that failed to be generated.
         private HashSet<Type> _failedTypes = new HashSet<Type>();
 
         // Contains list of diagnostics for the code generator.
         public List<Diagnostic> Diagnostics { get; }
 
-        // Diagnostic descriptors for user.
-        private DiagnosticDescriptor _generatedTypeClass;
-        private DiagnosticDescriptor _failedToGenerateTypeClass;
-        private DiagnosticDescriptor _failedToAddNewTypesFromMembers;
-        private DiagnosticDescriptor _notSupported;
-
         public JsonSourceGeneratorHelper()
         {
-            // Initiate auto properties.
+            // Initialize auto properties.
             Types = new Dictionary<Type, string>();
             Diagnostics = new List<Diagnostic>();
 
             // Initiate diagnostic descriptors.
-            _generatedTypeClass ??=
-                new DiagnosticDescriptor(
-                    "JsonSourceGeneration",
-                    "Generated type class generation",
-                    "Generated type class {1} for root type {0}",
-                    "category",
-                    DiagnosticSeverity.Info,
-                    isEnabledByDefault: true);
-            _failedToGenerateTypeClass ??=
-                new DiagnosticDescriptor(
-                    "JsonSourceGeneration",
-                    "Failed to generate typeclass",
-                    "Failed in sourcegenerating nested type {1} for root type {0}.",
-                    "category",
-                    DiagnosticSeverity.Warning,
-                    isEnabledByDefault: true,
-                    description: "Error message: {2}");
-            _failedToAddNewTypesFromMembers ??=
-                new DiagnosticDescriptor(
-                    "JsonSourceGeneration",
-                    "Failed to add new types from current type",
-                    "Failed to iterate fields and properties for current type {1} for root type {0}",
-                    "category",
-                    DiagnosticSeverity.Warning,
-                    isEnabledByDefault: true);
-            _notSupported ??=
-                new DiagnosticDescriptor(
-                    "JsonSourceGeneration",
-                    "Current type is not supported",
-                    "Failed in sourcegenerating nested type {1} for root type {0}",
-                    "category",
-                    DiagnosticSeverity.Warning,
-                    isEnabledByDefault: true);
+            InitializeDiagnosticDescriptors();
+        }
+
+        public struct GenerationClassFrame
+        {
+            public Type RootType;
+            public Type CurrentType;
+            public string ClassName;
+            public StringBuilder Source;
+
+            public PropertyInfo[] Properties;
+            public FieldInfo[] Fields;
+
+            public bool IsSuccessful; 
+
+            public GenerationClassFrame(Type rootType, Type currentType)
+            {
+                RootType = rootType;
+                CurrentType = currentType;
+                ClassName = currentType.GetCompilableUniqueName();
+                Source = new StringBuilder();
+                Properties = CurrentType.GetProperties();
+                Fields = CurrentType.GetFields();
+                IsSuccessful = true;
+            }
         }
 
         // Base source generation context partial class.
@@ -90,21 +76,21 @@ namespace System.Text.Json.SourceGeneration
             return @$"
 using System.Text.Json.Serialization;
 
-namespace {_generationNamespace}
+namespace {GenerationNamespace}
 {{
     public partial class JsonContext : JsonSerializerContext
     {{
-        private static JsonContext _sDefault;
-        public static JsonContext Default
+        private static JsonContext s_instance;
+        public static JsonContext Instance
         {{
             get
             {{
-                if (_sDefault == null)
+                if (s_instance == null)
                 {{
-                    _sDefault = new JsonContext();
+                    s_instance = new JsonContext();
                 }}
 
-                return _sDefault;
+                return s_instance;
             }}
         }}
     }}
@@ -113,103 +99,94 @@ namespace {_generationNamespace}
         }
 
         // Generates metadata for type and returns if it was successful.
-        private bool GenerateClassInfo(Type root, HashSet<Type> seenTypes, string className, Type type)
+        private bool GenerateClassInfo(GenerationClassFrame currentFrame, HashSet<Type> seenTypes)
         {
             // Add current type to generated types.
-            seenTypes.Add(type);
-
-            StringBuilder source = new StringBuilder();
-            bool isSuccessful = true;
+            seenTypes.Add(currentFrame.CurrentType);
 
             // Try to recursively generate necessary field and property types.
-            FieldInfo[] fields = type.GetFields();
-            PropertyInfo[] properties = type.GetProperties();
-
-            foreach (FieldInfo field in fields)
+            foreach (FieldInfo field in currentFrame.Fields)
             {
                 if (!IsSupportedType(field.FieldType))
                 {
-                    Diagnostics.Add(Diagnostic.Create(_notSupported, Location.None, new string[] { root.Name, field.FieldType.Name }));
+                    Diagnostics.Add(Diagnostic.Create(_notSupported, Location.None, new string[] { currentFrame.RootType.Name, field.FieldType.Name }));
                     return false;
                 }
                 foreach (Type handlingType in GetTypesToGenerate(field.FieldType))
                 {
-                    GenerateForMembers(root, handlingType, seenTypes, ref isSuccessful);
+                    GenerateForMembers(currentFrame, handlingType, seenTypes);
                 }
             }
 
-            foreach (PropertyInfo property in properties)
+            foreach (PropertyInfo property in currentFrame.Properties)
             {
                 if (!IsSupportedType(property.PropertyType))
                 {
-                    Diagnostics.Add(Diagnostic.Create(_notSupported, Location.None, new string[] { root.Name, property.PropertyType.Name }));
+                    Diagnostics.Add(Diagnostic.Create(_notSupported, Location.None, new string[] { currentFrame.RootType.Name, property.PropertyType.Name }));
                     return false;
                 }
                 foreach (Type handlingType in GetTypesToGenerate(property.PropertyType))
                 {
-                    GenerateForMembers(root, handlingType, seenTypes, ref isSuccessful);
+                    GenerateForMembers(currentFrame, handlingType, seenTypes);
                 }
             }
 
             // Try to generate current type info now that fields and property types have been resolved.
-            isSuccessful &= AddImportsToTypeClass(type, properties, fields, source);
-            isSuccessful &= InitializeContextClass(type, className, source);
-            isSuccessful &= InitializeTypeClass(className, source);
-            isSuccessful &= TypeInfoGetterSetter(type, source);
-            isSuccessful &= InitializeTypeInfoProperties(properties, source);
-            isSuccessful &= GenerateTypeInfoConstructor(type, className, properties, fields, source);
-            isSuccessful &= GenerateCreateObject(type, source);
-            isSuccessful &= GenerateSerialize(type, properties, source);
-            isSuccessful &= GenerateDeserialize(type, properties, source);
-            isSuccessful &= FinalizeTypeAndContextClasses(source);
+            AddImportsToTypeClass(currentFrame);
+            InitializeContextClass(currentFrame);
+            InitializeTypeClass(currentFrame);
+            TypeInfoGetterSetter(currentFrame);
+            currentFrame.IsSuccessful &= InitializeTypeInfoProperties(currentFrame);
+            currentFrame.IsSuccessful &= GenerateTypeInfoConstructor(currentFrame);
+            GenerateCreateObject(currentFrame);
+            GenerateSerialize(currentFrame);
+            GenerateDeserialize(currentFrame);
+            FinalizeTypeAndContextClasses(currentFrame);
 
-            if (isSuccessful)
+            if (currentFrame.IsSuccessful)
             {
-                Diagnostics.Add(Diagnostic.Create(_generatedTypeClass, Location.None, new string[] { root.Name, className }));
+                Diagnostics.Add(Diagnostic.Create(_generatedTypeClass, Location.None, new string[] { currentFrame.RootType.Name, currentFrame.ClassName }));
 
                 // Add generated typeinfo for current traversal.
-                Types.Add(type, source.ToString());
+                Types.Add(currentFrame.CurrentType, currentFrame.Source.ToString());
             }
             else
             {
-                Diagnostics.Add(Diagnostic.Create(_failedToGenerateTypeClass, Location.None, new string[] { root.Name, className }));
+                Diagnostics.Add(Diagnostic.Create(_failedToGenerateTypeClass, Location.None, new string[] { currentFrame.RootType.Name, currentFrame.ClassName }));
 
                 // If not successful remove it from found types hashset and add to failed types list.
-                seenTypes.Remove(type);
-                _failedTypes.Add(type);
+                seenTypes.Remove(currentFrame.CurrentType);
+                _failedTypes.Add(currentFrame.CurrentType);
             }
 
-            return isSuccessful;
+            return currentFrame.IsSuccessful;
         }
 
         // Call recursive type generation if unseen type and check for success and cycles.
-        void GenerateForMembers(Type root, Type currentType, HashSet<Type> seenTypes, ref bool isSuccessful)
+        void GenerateForMembers(GenerationClassFrame currentFrame, Type newType, HashSet<Type> seenTypes)
         {
             // If new type, recurse.
-            if (IsNewType(currentType, seenTypes))
+            if (IsNewType(newType, seenTypes))
             {
-                bool wasSuccessful = GenerateClassInfo(root, seenTypes, currentType.Name, currentType);
-                isSuccessful &= wasSuccessful;
+                bool isMemberSuccessful = GenerateClassInfo(new GenerationClassFrame(currentFrame.RootType, newType), seenTypes);
+                currentFrame.IsSuccessful &= isMemberSuccessful;
 
-                if (!wasSuccessful)
+                if (!isMemberSuccessful)
                 {
-                    Diagnostics.Add(Diagnostic.Create(_failedToAddNewTypesFromMembers, Location.None, new string[] { root.Name, currentType.Name }));
+                    Diagnostics.Add(Diagnostic.Create(_failedToAddNewTypesFromMembers, Location.None, new string[] { currentFrame.RootType.Name, currentFrame.CurrentType.Name }));
                 }
             }
         }
 
         // Check if current type is supported to be iterated over.
-        private bool IsSupportedType(Type type)
+        private static bool IsSupportedType(Type type)
         {
-            if (type is TypeWrapper typeWrapper)
+            if (type.IsIEnumerable())
             {
-                if (typeWrapper.IsIEnumerable)
+                // todo: Add more support to collections.
+                if (!type.IsIList())
                 {
-                    // todo: Add more support to collections.
-                    if (!typeWrapper.IsIList)
-                    {
-                        return false;
-                    }
+                    return false;
                 }
             }
 
@@ -217,11 +194,10 @@ namespace {_generationNamespace}
         }
 
         // Returns name of types traversed that can be looked up in the dictionary.
-        public List<Type> GenerateClassInfo(string className, Type rootType)
+        public void GenerateClassInfo(Type type)
         {
             HashSet<Type> foundTypes = new HashSet<Type>();
-            GenerateClassInfo(rootType, foundTypes, className, rootType);
-            return foundTypes.ToList();
+            GenerateClassInfo(new GenerationClassFrame(rootType: type, currentType: type), foundTypes);
         }
 
         private Type[] GetTypesToGenerate(Type type)
@@ -243,7 +219,7 @@ namespace {_generationNamespace}
             !foundTypes.Contains(type) &&
             !s_simpleTypes.Contains(type));
 
-        private bool AddImportsToTypeClass(Type type, PropertyInfo[] properties, FieldInfo[] fields, StringBuilder source)
+        private void AddImportsToTypeClass(GenerationClassFrame currentFrame)
         {
             HashSet<string> imports = new HashSet<string>();
 
@@ -254,126 +230,101 @@ namespace {_generationNamespace}
             imports.Add("System.Text.Json.Serialization.Metadata");
 
             // Add imports to root type.
-            if (type is TypeWrapper typeWrapper)
-            {
-                imports.Add(typeWrapper.FullNamespace);
-            }
+            imports.Add(currentFrame.CurrentType.GetFullNamespace());
 
-            foreach (PropertyInfo property in properties)
+            foreach (PropertyInfo property in currentFrame.Properties)
             {
                 foreach (Type handlingType in GetTypesToGenerate(property.PropertyType))
                 {
-                    if (property.PropertyType is TypeWrapper baseType)
-                    {
-                        imports.Add(baseType.FullNamespace);
-                    }
-                    if (!handlingType.Equals(property.PropertyType) && handlingType is TypeWrapper genericType)
-                    {
-                        imports.Add(genericType.FullNamespace);
-                    }
+                    imports.Add(property.PropertyType.GetFullNamespace());
+                    imports.Add(handlingType.GetFullNamespace());
                 }
             }
-            foreach (FieldInfo field in fields)
+            foreach (FieldInfo field in currentFrame.Fields)
             {
                 foreach (Type handlingType in GetTypesToGenerate(field.FieldType))
                 {
-                    if (field.FieldType is TypeWrapper baseType)
-                    {
-                        imports.Add(baseType.FullNamespace);
-                    }
-                    if (!handlingType.Equals(field.FieldType) && handlingType is TypeWrapper genericType)
-                    {
-                        imports.Add(genericType.FullNamespace);
-                    }
+                    imports.Add(field.FieldType.GetFullNamespace());
+                    imports.Add(handlingType.GetFullNamespace());
                 }
             }
 
             foreach (string import in imports)
             {
-                source.Append($@"
+                currentFrame.Source.Append($@"
 using {import};");
             }
-
-            return true;
         }
 
         // Includes necessary imports, namespace decl and initializes class.
-        private bool InitializeContextClass(Type type, string className, StringBuilder source)
+        private void InitializeContextClass(GenerationClassFrame currentFrame)
         {
-            source.Append($@"
+            currentFrame.Source.Append($@"
 
-namespace {_generationNamespace}
+namespace {GenerationNamespace}
 {{
     public partial class JsonContext : JsonSerializerContext
     {{
-        private {className}TypeInfo _{className};
-        public JsonTypeInfo<{type.Name}> {className} 
+        private {currentFrame.ClassName}TypeInfo _{currentFrame.ClassName};
+        public JsonTypeInfo<{currentFrame.CurrentType.FullName}> {currentFrame.ClassName}
         {{
             get
             {{
-                if (_{className} == null)
+                if (_{currentFrame.ClassName} == null)
                 {{
-                    _{className} = new {className}TypeInfo(this);
+                    _{currentFrame.ClassName} = new {currentFrame.ClassName}TypeInfo(this);
                 }}
 
-                return _{className}.TypeInfo;
+                return _{currentFrame.ClassName}.TypeInfo;
             }}
         }}
         ");
-
-            return true;
         }
 
-        private bool InitializeTypeClass(string className, StringBuilder source) {
-            source.Append($@"
-        private class {className}TypeInfo 
+        private void InitializeTypeClass(GenerationClassFrame currentFrame) {
+            currentFrame.Source.Append($@"
+        private class {currentFrame.ClassName}TypeInfo 
         {{
         ");
-
-            return true;
         }
 
-        private bool TypeInfoGetterSetter(Type type, StringBuilder source)
+        private void TypeInfoGetterSetter(GenerationClassFrame currentFrame)
         {
-            source.Append($@"
-            public JsonTypeInfo<{type.Name}> TypeInfo {{ get; private set; }}
+            currentFrame.Source.Append($@"
+            public JsonTypeInfo<{currentFrame.CurrentType.FullName}> TypeInfo {{ get; private set; }}
             ");
-
-            return true;
         }
 
-        private bool InitializeTypeInfoProperties(PropertyInfo[] properties, StringBuilder source)
+        private bool InitializeTypeInfoProperties(GenerationClassFrame currentFrame)
         {
+            Type propertyType;
             Type genericType;
             string typeName;
             string propertyName;
 
-            foreach (PropertyInfo property in properties)
+            foreach (PropertyInfo property in currentFrame.Properties)
             {
-                // todo: Verify if the type has already failed in sourcegeneration.
-
                 // Find type and property name to use for property definition.
-                typeName = property.PropertyType.Name;
+                propertyType = property.PropertyType;
                 propertyName = property.Name;
-                if (property.PropertyType is TypeWrapper type)
+                typeName = propertyType.FullName;
+
+                // Check if IEnumerable.
+                if (propertyType.IsIEnumerable())
                 {
-                    // Check if IEnumerable.
-                    if (type.IsIEnumerable)
+                    genericType = GetTypesToGenerate(propertyType).First();
+                    if (propertyType.IsIList())
                     {
-                        genericType = GetTypesToGenerate(type).First();
-                        if (type.IsIList)
-                        {
-                            typeName = $"List<{genericType.Name}>";
-                        }
-                        else
-                        {
-                            // todo: Add support for rest of the IEnumerables.
-                            return false;
-                        }
+                        typeName = $"List<{genericType.FullName}>";
+                    }
+                    else
+                    {
+                        // todo: Add support for rest of the IEnumerables.
+                        return false;
                     }
                 }
 
-                source.Append($@"
+                currentFrame.Source.Append($@"
             private JsonPropertyInfo<{typeName}> _property_{propertyName};
                 ");
             }
@@ -381,50 +332,51 @@ namespace {_generationNamespace}
             return true;
         }
 
-        private bool GenerateTypeInfoConstructor(Type root, string className, PropertyInfo[] properties, FieldInfo[] fields, StringBuilder source)
+        private bool GenerateTypeInfoConstructor(GenerationClassFrame currentFrame)
         {
-            source.Append($@"
-            public {className}TypeInfo(JsonContext context)
+            Type currentType = currentFrame.CurrentType;
+
+            currentFrame.Source.Append($@"
+            public {currentFrame.ClassName}TypeInfo(JsonContext context)
             {{
-                var typeInfo = new JsonObjectInfo<{root.Name}>(CreateObjectFunc, SerializeFunc, DeserializeFunc, context.GetOptions());
+                var typeInfo = new JsonObjectInfo<{currentType.FullName}>(CreateObjectFunc, SerializeFunc, DeserializeFunc, context.GetOptions());
             ");
 
+            Type propertyType;
             Type genericType;
             string typeClassInfoCall;
-            foreach (PropertyInfo property in properties)
+            foreach (PropertyInfo property in currentFrame.Properties)
             {
+                propertyType = property.PropertyType;
                 // Default classtype for values.
-                typeClassInfoCall = $"context.{property.PropertyType.Name}";
+                typeClassInfoCall = $"context.{propertyType.GetCompilableUniqueName()}";
 
-                if (property.PropertyType is TypeWrapper typeWrapper)
+                // Check if IEnumerable.
+                if (propertyType.IsIEnumerable())
                 {
-                    // Check if IEnumerable.
-                    if (typeWrapper.IsIEnumerable)
-                    {
-                        genericType = GetTypesToGenerate(typeWrapper).First();
+                    genericType = GetTypesToGenerate(propertyType).First();
 
-                        if (typeWrapper.IsIList)
-                        {
-                            typeClassInfoCall = $"KnownCollectionTypeInfos<{genericType.Name}>.GetList(context.{genericType.Name}, context)";
-                        }
-                        else
-                        {
-                            // todo: Add support for rest of the IEnumerables.
-                            return false;
-                        }
+                    if (propertyType.IsIList())
+                    {
+                        typeClassInfoCall = $"KnownCollectionTypeInfos<{genericType.FullName}>.GetList(context.{genericType.GetCompilableUniqueName()}, context)";
+                    }
+                    else
+                    {
+                        // todo: Add support for rest of the IEnumerables.
+                        return false;
                     }
                 }
 
-                source.Append($@"
-                _property_{property.Name} = typeInfo.AddProperty(nameof({((TypeWrapper)root).FullNamespace}.{root.Name}.{property.Name}),
-                    (obj) => {{ return (({root.Name})obj).{property.Name}; }},
-                    (obj, value) => {{ (({root.Name})obj).{property.Name} = value; }},
+                currentFrame.Source.Append($@"
+                _property_{property.Name} = typeInfo.AddProperty(nameof({currentType.FullName}.{property.Name}),
+                    (obj) => {{ return (({currentType.FullName})obj).{property.Name}; }},
+                    (obj, value) => {{ (({currentType.FullName})obj).{property.Name} = value; }},
                     {typeClassInfoCall});
                 ");
             }
 
             // Finalize constructor.
-            source.Append($@"
+            currentFrame.Source.Append($@"
                 typeInfo.CompleteInitialization();
                 TypeInfo = typeInfo;
             }}
@@ -433,54 +385,50 @@ namespace {_generationNamespace}
             return true;
         }
 
-        private bool GenerateCreateObject(Type type, StringBuilder source)
+        private void GenerateCreateObject(GenerationClassFrame currentFrame)
         {
-            source.Append($@"
+            currentFrame.Source.Append($@"
             private object CreateObjectFunc()
             {{
-                return new {type.Name}();
+                return new {currentFrame.CurrentType.FullName}();
             }}
             ");
-
-            return true;
         }
 
-        private bool GenerateSerialize(Type type, PropertyInfo[] properties, StringBuilder source)
+        private void GenerateSerialize(GenerationClassFrame currentFrame)
         {
             // Start function.
-            source.Append($@"
+            currentFrame.Source.Append($@"
             private void SerializeFunc(Utf8JsonWriter writer, object value, ref WriteStack writeStack, JsonSerializerOptions options)
             {{");
 
             // Create base object.
-            source.Append($@"
-                {type.Name} obj = ({type.Name})value;
+            currentFrame.Source.Append($@"
+                {currentFrame.CurrentType.FullName} obj = ({currentFrame.CurrentType.FullName})value;
             ");
 
-            foreach (PropertyInfo property in properties)
+            foreach (PropertyInfo property in currentFrame.Properties)
             {
-                source.Append($@"
+                currentFrame.Source.Append($@"
                 _property_{property.Name}.WriteValue(obj.{property.Name}, ref writeStack, writer);");
             }
 
             // End function.
-            source.Append($@"
+            currentFrame.Source.Append($@"
             }}
             ");
-
-            return true;
         }
 
-        private bool GenerateDeserialize(Type type, PropertyInfo[] properties, StringBuilder source)
+        private void GenerateDeserialize(GenerationClassFrame currentFrame)
         {
             // Start deserialize function.
-            source.Append($@"
-            private {type.Name} DeserializeFunc(ref Utf8JsonReader reader, ref ReadStack readStack, JsonSerializerOptions options)
+            currentFrame.Source.Append($@"
+            private {currentFrame.CurrentType.FullName} DeserializeFunc(ref Utf8JsonReader reader, ref ReadStack readStack, JsonSerializerOptions options)
             {{
             ");
 
             // Create helper function to check for property name.
-            source.Append($@"
+            currentFrame.Source.Append($@"
                 bool ReadPropertyName(ref Utf8JsonReader reader)
                 {{
                     return reader.Read() && reader.TokenType == JsonTokenType.PropertyName;
@@ -488,9 +436,9 @@ namespace {_generationNamespace}
             ");
 
             // Start loop to read properties.
-            source.Append($@"
+            currentFrame.Source.Append($@"
                 ReadOnlySpan<byte> propertyName;
-                {type.Name} obj = new {type.Name}();
+                {currentFrame.CurrentType.FullName} obj = new {currentFrame.CurrentType.FullName}();
 
                 while(ReadPropertyName(ref reader))
                 {{
@@ -498,9 +446,9 @@ namespace {_generationNamespace}
             ");
 
             // Read and set each property.
-            foreach ((PropertyInfo property, int i) in properties.Select((p, i) => (p, i)))
+            foreach ((PropertyInfo property, int i) in currentFrame.Properties.Select((p, i) => (p, i)))
             {
-                source.Append($@"
+                currentFrame.Source.Append($@"
                     {((i == 0) ? "" : "else ")}if (propertyName.SequenceEqual(_property_{property.Name}.NameAsUtf8Bytes))
                     {{
                         reader.Read();
@@ -509,9 +457,9 @@ namespace {_generationNamespace}
             }
 
             // Base condition for unhandled properties.
-            if (properties.Length > 0)
+            if (currentFrame.Properties.Length > 0)
             {
-                source.Append($@"
+                currentFrame.Source.Append($@"
                     else
                     {{
                         reader.Read();
@@ -519,17 +467,17 @@ namespace {_generationNamespace}
             }
             else
             {
-                source.Append($@"
+                currentFrame.Source.Append($@"
                     reader.Read();");
             }
 
             // Finish property reading loops.
-            source.Append($@"
+            currentFrame.Source.Append($@"
                 }}
             ");
 
             // Verify the final received token and return object.
-            source.Append($@"
+            currentFrame.Source.Append($@"
                 if (reader.TokenType != JsonTokenType.EndObject)
                 {{
                     throw new JsonException(""todo"");
@@ -538,22 +486,18 @@ namespace {_generationNamespace}
             ");
 
             // End deserialize function.
-            source.Append($@"
+            currentFrame.Source.Append($@"
             }}
             ");
-
-            return true;
         }
 
-        private bool FinalizeTypeAndContextClasses(StringBuilder source)
+        private void FinalizeTypeAndContextClasses(GenerationClassFrame currentFrame)
         {
-            source.Append($@"
+            currentFrame.Source.Append($@"
         }} // End of typeinfo class.
     }} // End of context class.
 }} // End of namespace.
             ");
-
-            return true;
         }
     }
 }

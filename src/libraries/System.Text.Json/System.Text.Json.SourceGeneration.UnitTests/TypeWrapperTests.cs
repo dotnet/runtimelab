@@ -62,7 +62,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             // Compilation using the referenced image should fail if out MetadataLoadContext does not handle.
             Compilation compilation = CompilationHelper.CreateCompilation(source, additionalReferences);
 
-            JsonSerializerSourceGenerator generator = new JsonSerializerSourceGenerator();
+            JsonSourceGenerator generator = new JsonSourceGenerator();
 
             Compilation newCompilation = CompilationHelper.RunGenerators(compilation, out ImmutableArray<Diagnostic> generatorDiags, generator);
 
@@ -114,7 +114,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             Compilation compilation = CompilationHelper.CreateCompilation(source);
 
-            JsonSerializerSourceGenerator generator = new JsonSerializerSourceGenerator();
+            JsonSourceGenerator generator = new JsonSourceGenerator();
 
             Compilation outCompilation = CompilationHelper.RunGenerators(compilation, out ImmutableArray<Diagnostic> generatorDiags, generator);
 

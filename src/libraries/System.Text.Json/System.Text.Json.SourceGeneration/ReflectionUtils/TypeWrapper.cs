@@ -28,7 +28,7 @@ namespace System.Reflection
 
         public override Type BaseType => _typeSymbol.BaseType!.AsType(_metadataLoadContext);
 
-        public override string FullName => Namespace == null ? Name : Namespace + "." + Name;
+        public override string FullName => Namespace == null ? Name : this.GetFullNamespace() + "." + Name;
 
         public override Guid GUID => Guid.Empty;
 
@@ -48,57 +48,7 @@ namespace System.Reflection
 
         public override bool IsGenericTypeDefinition => base.IsGenericTypeDefinition;
 
-        private string _fullNamespace;
-        public string FullNamespace
-        {
-            get
-            {
-                if (_fullNamespace == null)
-                {
-                    _fullNamespace = GetFullNamespace();
-                }
-                return _fullNamespace;
-            }
-        }
-
-        private bool? _isIEnumerable;
-        public bool IsIEnumerable
-        {
-            get
-            {
-                if (!_isIEnumerable.HasValue)
-                {
-                    _isIEnumerable = ImplementsIEnumerable();
-                }
-                return _isIEnumerable.Value;
-            }
-        }
-
-        private bool? _isIDictionary;
-        public bool IsIDictionary
-        {
-            get
-            {
-                if (!_isIDictionary.HasValue)
-                {
-                    _isIDictionary = ImplementsIDictionary(); 
-                }
-                return _isIDictionary.Value;
-            }
-        }
-
-        private bool? _isIList;
-        public bool IsIList
-        {
-            get
-            {
-                if (!_isIList.HasValue)
-                {
-                    _isIList = ImplementsIList();
-                }
-                return _isIList.Value;
-            }
-        }
+        public INamespaceSymbol GetNamespaceSymbol => _typeSymbol.ContainingNamespace;
 
         public override Type[] GetGenericArguments()
         {

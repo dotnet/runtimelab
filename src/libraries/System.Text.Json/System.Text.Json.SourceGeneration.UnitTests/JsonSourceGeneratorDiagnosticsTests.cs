@@ -2,11 +2,11 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace System.Text.Json.SourceGeneration.UnitTests
 {
@@ -46,15 +46,15 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             Compilation compilation = CompilationHelper.CreateCompilation(source, additionalReferences);
 
-            JsonSerializerSourceGenerator generator = new JsonSerializerSourceGenerator();
+            JsonSourceGenerator generator = new JsonSourceGenerator();
 
             CompilationHelper.RunGenerators(compilation, out var generatorDiags, generator);
 
             // Expected info logs.
             string[] expectedInfoDiagnostics = new string[] {
-                "Generated type class ActiveOrUpcomingEvent for root type IndexViewModel",
-                "Generated type class CampaignSummaryViewModel for root type IndexViewModel",
-                "Generated type class IndexViewModel for root type IndexViewModel",
+                "Generated type class TestAssemblyActiveOrUpcomingEvent for root type IndexViewModel",
+                "Generated type class TestAssemblyCampaignSummaryViewModel for root type IndexViewModel",
+                "Generated type class TestAssemblyIndexViewModel for root type IndexViewModel",
             };
 
             CheckDiagnosticMessages(generatorDiags, DiagnosticSeverity.Info, expectedInfoDiagnostics);
@@ -97,7 +97,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             Compilation compilation = CompilationHelper.CreateCompilation(source, additionalReferences);
 
-            JsonSerializerSourceGenerator generator = new JsonSerializerSourceGenerator();
+            JsonSourceGenerator generator = new JsonSourceGenerator();
 
             CompilationHelper.RunGenerators(compilation, out var generatorDiags, generator);
 
@@ -111,7 +111,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
         private void CheckDiagnosticMessages(ImmutableArray<Diagnostic> diagnostics, DiagnosticSeverity level, string[] expectedMessages)
         {
-            Assert.Equal(expectedMessages, diagnostics.Where(diagnostic => diagnostic.Severity == level ).Select(diagnostic => diagnostic.GetMessage()));
+            Assert.Equal(expectedMessages, diagnostics.Where(diagnostic => diagnostic.Severity == level ).Select(diagnostic => diagnostic.GetMessage()).ToArray());
         }
     }
 }

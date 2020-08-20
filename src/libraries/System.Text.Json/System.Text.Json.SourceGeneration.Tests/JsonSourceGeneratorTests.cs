@@ -5,7 +5,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
-using CodeGenNamespace;
+using JsonCodeGeneration;
 using Xunit;
 
 namespace System.Text.Json.SourceGeneration.Tests
@@ -64,8 +64,8 @@ namespace System.Text.Json.SourceGeneration.Tests
         {
             Location expected = CreateLocation();
 
-            string json = JsonSerializer.Serialize(expected, JsonContext.Default.Location);
-            Location obj = JsonSerializer.Deserialize(json, JsonContext.Default.Location);
+            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.SystemTextJsonSourceGenerationTestsLocation);
+            Location obj = JsonSerializer.Deserialize(json, JsonContext.Instance.SystemTextJsonSourceGenerationTestsLocation);
 
             VerifyLocation(expected, obj);
         }
@@ -75,8 +75,8 @@ namespace System.Text.Json.SourceGeneration.Tests
         {
             IndexViewModel expected = CreateIndexViewModel();
 
-            string json = JsonSerializer.Serialize(expected, JsonContext.Default.IndexViewModel);
-            IndexViewModel obj = JsonSerializer.Deserialize(json, JsonContext.Default.IndexViewModel);
+            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.SystemTextJsonSourceGenerationTestsIndexViewModel);
+            IndexViewModel obj = JsonSerializer.Deserialize(json, JsonContext.Instance.SystemTextJsonSourceGenerationTestsIndexViewModel);
 
             VerifyIndexViewModel(expected, obj);
         }
@@ -86,8 +86,8 @@ namespace System.Text.Json.SourceGeneration.Tests
         {
             CampaignSummaryViewModel expected = CreateCampaignSummaryViewModel();
 
-            string json = JsonSerializer.Serialize(expected, JsonContext.Default.CampaignSummaryViewModel);
-            CampaignSummaryViewModel obj = JsonSerializer.Deserialize(json, JsonContext.Default.CampaignSummaryViewModel);
+            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.SystemTextJsonSourceGenerationTestsCampaignSummaryViewModel);
+            CampaignSummaryViewModel obj = JsonSerializer.Deserialize(json, JsonContext.Instance.SystemTextJsonSourceGenerationTestsCampaignSummaryViewModel);
 
             VerifyCampaignSummaryViewModel(expected, obj);
         }
@@ -97,8 +97,8 @@ namespace System.Text.Json.SourceGeneration.Tests
         {
             ActiveOrUpcomingEvent expected = CreateActiveOrUpcomingEvent();
 
-            string json = JsonSerializer.Serialize(expected, JsonContext.Default.ActiveOrUpcomingEvent);
-            ActiveOrUpcomingEvent obj = JsonSerializer.Deserialize(json, JsonContext.Default.ActiveOrUpcomingEvent);
+            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.SystemTextJsonSourceGenerationTestsActiveOrUpcomingEvent);
+            ActiveOrUpcomingEvent obj = JsonSerializer.Deserialize(json, JsonContext.Instance.SystemTextJsonSourceGenerationTestsActiveOrUpcomingEvent);
 
             VerifyActiveOrUpcomingEvent(expected, obj);
         }
