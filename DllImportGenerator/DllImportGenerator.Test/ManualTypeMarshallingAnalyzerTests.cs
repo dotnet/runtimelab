@@ -326,7 +326,7 @@ struct Native
         }
 
         [Fact]
-        public async Task ClassNativeTypeWithBlittableValuePropertyDoesNotReportDiagnostic()
+        public async Task ClassNativeTypeWithValuePropertyReportsDiagnostic()
         {
             string source = @"
 using System;
@@ -352,7 +352,8 @@ class Native
     public IntPtr Value { get => IntPtr.Zero; set {} }
 }";
 
-            await VerifyCS.VerifyAnalyzerAsync(source);
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic(NativeTypeMustHaveRequiredShapeRule).WithSpan(11, 1, 23, 2).WithArguments("Native", "S"));
         }
 
         [Fact]

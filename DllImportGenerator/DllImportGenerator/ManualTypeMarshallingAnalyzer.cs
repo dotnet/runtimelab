@@ -79,7 +79,7 @@ namespace Microsoft.Interop
             new DiagnosticDescriptor(
                 "INTEROPGEN007",
                 "NativeTypeMustHaveRequiredShape",
-                "The native type '{0}' have a constructor that takes one parameter of type '{1}' or a parameterless instance method named 'ToManaged' that returns '{1}'.",
+                "The native type '{0}' must be a value type and have a constructor that takes one parameter of type '{1}' or a parameterless instance method named 'ToManaged' that returns '{1}'.",
                 Category,
                 DiagnosticSeverity.Error,
                 isEnabledByDefault: true,
@@ -230,6 +230,12 @@ namespace Microsoft.Interop
 
             ITypeSymbol nativeType = (ITypeSymbol)nativeMarshalerAttributeData.ConstructorArguments[0].Value!;
             
+            if (!nativeType.IsValueType)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustHaveRequiredShapeRule, GetSyntaxReferenceForDiagnostic(nativeType).GetSyntax().GetLocation(), nativeType.ToDisplayString(), type.ToDisplayString()));
+                return;
+            }
+
             if (nativeType is not INamedTypeSymbol marshalerType)
             {
                 context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustHaveRequiredShapeRule, nativeMarshalerAttributeData.ApplicationSyntaxReference!.GetSyntax().GetLocation(), nativeType.ToDisplayString(), type.ToDisplayString()));
