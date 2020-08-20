@@ -17,11 +17,6 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <!-- Restore source for the ObjectWriter package -->
-    <RestoreSources>$(RestoreSources);https://dotnetfeed.blob.core.windows.net/dotnet-core/index.json</RestoreSources>
-  </PropertyGroup>
-
-  <PropertyGroup>
     <ObjectWriterVersion>1.0.0-alpha-28820-01</ObjectWriterVersion>
     <CoreDisToolsVersion>1.0.1-prerelease-00005</CoreDisToolsVersion>
 
