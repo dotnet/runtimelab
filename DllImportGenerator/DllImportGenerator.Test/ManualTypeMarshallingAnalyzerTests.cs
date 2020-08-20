@@ -632,5 +632,142 @@ struct Native
             await VerifyCS.VerifyAnalyzerAsync(source,
                 VerifyCS.Diagnostic(ValuePropertyMustHaveSetterRule).WithSpan(15, 5, 15, 40).WithArguments("Native"));
         }
+        
+        [Fact]
+        public async Task BlittableNativeTypeOnMarshalUsingParameterDoesNotReportDiagnostic()
+        {
+            string source = @"
+using System;
+using System.Runtime.InteropServices;
+
+struct S
+{
+    public string s;
+}
+
+[BlittableType]
+struct Native
+{
+    private IntPtr value;
+
+    public Native(S s)
+    {
+        value = IntPtr.Zero;
+    }
+
+    public S ToManaged() => new S();
+}
+
+
+static class Test
+{
+    static void Foo([MarshalUsing(typeof(Native))] S s)
+    {}
+}
+";
+            await VerifyCS.VerifyAnalyzerAsync(source);
+        }
+
+        [Fact]
+        public async Task NonBlittableNativeTypeOnMarshalUsingParameterReportsDiagnostic()
+        {
+            string source = @"
+using System;
+using System.Runtime.InteropServices;
+
+struct S
+{
+    public string s;
+}
+
+struct Native
+{
+    private string value;
+
+    public Native(S s) : this()
+    {
+    }
+
+    public S ToManaged() => new S();
+}
+
+
+static class Test
+{
+    static void Foo([MarshalUsing(typeof(Native))] S s)
+    {}
+}
+";
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic(NativeTypeMustBeBlittableRule).WithSpan(10, 1, 19, 2).WithArguments("Native", "S"));
+        }
+
+        [Fact]
+        public async Task NonBlittableNativeTypeOnMarshalUsingReturnReportsDiagnostic()
+        {
+            string source = @"
+using System;
+using System.Runtime.InteropServices;
+
+struct S
+{
+    public string s;
+}
+
+struct Native
+{
+    private string value;
+
+    public Native(S s) : this()
+    {
+    }
+
+    public S ToManaged() => new S();
+}
+
+
+static class Test
+{
+    [return: MarshalUsing(typeof(Native))]
+    static S Foo() => new S();
+}
+";
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic(NativeTypeMustBeBlittableRule).WithSpan(10, 1, 19, 2).WithArguments("Native", "S"));
+        }
+
+        [Fact]
+        public async Task NonBlittableNativeTypeOnMarshalUsingFieldReportsDiagnostic()
+        {
+            string source = @"
+using System;
+using System.Runtime.InteropServices;
+
+struct S
+{
+    public string s;
+}
+
+struct Native
+{
+    private string value;
+
+    public Native(S s) : this()
+    {
+    }
+
+    public S ToManaged() => new S();
+}
+
+
+struct Test
+{
+    [MarshalUsing(typeof(Native))]
+    S s;
+}
+";
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic(NativeTypeMustBeBlittableRule).WithSpan(10, 1, 19, 2).WithArguments("Native", "S"));
+        }
     }
 }

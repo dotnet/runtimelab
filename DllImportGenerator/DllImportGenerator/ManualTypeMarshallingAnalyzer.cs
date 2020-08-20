@@ -185,14 +185,7 @@ namespace Microsoft.Interop
             }
             else if (nativeMarshallingAttributeData is not null)
             {
-                if (nativeMarshallingAttributeData.ConstructorArguments[0].IsNull)
-                {
-                    context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustBeNonNullRule, nativeMarshallingAttributeData.ApplicationSyntaxReference!.GetSyntax().GetLocation(), type.ToDisplayString()));
-                }
-                else
-                {
-                    AnalyzeNativeMarshalerType(context, type, nativeMarshallingAttributeData, validateGetPinnableReference: true, validateAllScenarioSupport: true);
-                }
+                AnalyzeNativeMarshalerType(context, type, nativeMarshallingAttributeData, validateGetPinnableReference: true, validateAllScenarioSupport: true);
             }
         }
         
@@ -217,7 +210,7 @@ namespace Microsoft.Interop
         {
             var method = (IMethodSymbol)context.Symbol;
             var marshalUsingAttribute = context.Compilation.GetTypeByMetadataName("System.Runtime.InteropServices.MarshalUsingAttribute");
-            AttributeData? attrData = method.ReturnType.GetAttributes().FirstOrDefault(attr => SymbolEqualityComparer.Default.Equals(marshalUsingAttribute, attr.AttributeClass));
+            AttributeData? attrData = method.GetReturnTypeAttributes().FirstOrDefault(attr => SymbolEqualityComparer.Default.Equals(marshalUsingAttribute, attr.AttributeClass));
             if (attrData is not null)
             {
                 AnalyzeNativeMarshalerType(context, method.ReturnType, attrData, false, false);
@@ -226,6 +219,12 @@ namespace Microsoft.Interop
 
         private void AnalyzeNativeMarshalerType(SymbolAnalysisContext context, ITypeSymbol type, AttributeData nativeMarshalerAttributeData, bool validateGetPinnableReference, bool validateAllScenarioSupport)
         {
+                if (nativeMarshalerAttributeData.ConstructorArguments[0].IsNull)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustBeNonNullRule, nativeMarshalerAttributeData.ApplicationSyntaxReference!.GetSyntax().GetLocation(), type.ToDisplayString()));
+                    return;
+                }
+
             INamedTypeSymbol spanOfByte = context.Compilation.GetTypeByMetadataName("System.Span`1")!.Construct(context.Compilation.GetSpecialType(SpecialType.System_Byte));
 
             ITypeSymbol nativeType = (ITypeSymbol)nativeMarshalerAttributeData.ConstructorArguments[0].Value!;
