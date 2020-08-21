@@ -35,17 +35,6 @@
 // 
 
 using System.Diagnostics;
-using Internal.Runtime;
-
-// Convenient typecasting for IntPtr to use with arithmetic operations
-#if TARGET_64BIT
-using nint = System.Int64;
-using nuint = System.UInt64;
-#else
-using nint = System.Int32;
-using nuint = System.UInt32;
-#endif
-
 
 namespace System.Runtime
 {
@@ -111,7 +100,7 @@ namespace System.Runtime
                 IntPtr thunkDataBlock = InternalCalls.RhpGetThunkDataBlockAddress(thunkStubsBlock);
 
                 // Address of the first thunk data cell should be at the begining of the thunks data block (page-aligned)
-                Debug.Assert(((nuint)thunkDataBlock % Constants.PageSize) == 0);
+                Debug.Assert(((nuint)(nint)thunkDataBlock % Constants.PageSize) == 0);
 
                 // Update the last pointer value in the thunks data section with the value of the common stub address
                 *(IntPtr*)(thunkDataBlock + (int)(Constants.PageSize - IntPtr.Size)) = commonStubAddress;
@@ -167,7 +156,7 @@ namespace System.Runtime
                 IntPtr thunkDataBlock = InternalCalls.RhpGetThunkDataBlockAddress(thunkStubsBlock);
 
                 // Address of the first thunk data cell should be at the begining of the thunks data block (page-aligned)
-                Debug.Assert(((nuint)thunkDataBlock % Constants.PageSize) == 0);
+                Debug.Assert(((nuint)(nint)thunkDataBlock % Constants.PageSize) == 0);
 
                 // Update the last pointer value in the thunks data section with the value of the common stub address
                 *(IntPtr*)(thunkDataBlock + (int)(Constants.PageSize - IntPtr.Size)) = _commonStubAddress;
@@ -226,7 +215,7 @@ namespace System.Runtime
             *((IntPtr*)(nextAvailableThunkPtr + IntPtr.Size)) = IntPtr.Zero;
 #endif
 
-            int thunkIndex = (int)(((nuint)nextAvailableThunkPtr) - ((nuint)nextAvailableThunkPtr & ~Constants.PageSizeMask));
+            int thunkIndex = (int)(((nuint)(nint)nextAvailableThunkPtr) - ((nuint)(nint)nextAvailableThunkPtr & ~Constants.PageSizeMask));
             Debug.Assert((thunkIndex % Constants.ThunkDataSize) == 0);
             thunkIndex = thunkIndex / Constants.ThunkDataSize;
 
@@ -262,14 +251,14 @@ namespace System.Runtime
 
         private bool IsThunkInHeap(IntPtr thunkAddress)
         {
-            nuint thunkAddressValue = (nuint)ClearThumbBit(thunkAddress);
+            nuint thunkAddressValue = (nuint)(nint)ClearThumbBit(thunkAddress);
 
             AllocatedBlock currentBlock = _allocatedBlocks;
 
             while (currentBlock != null)
             {
-                if (thunkAddressValue >= (nuint)currentBlock._blockBaseAddress &&
-                    thunkAddressValue < (nuint)currentBlock._blockBaseAddress + (nuint)(Constants.NumThunksPerBlock * Constants.ThunkCodeSize))
+                if (thunkAddressValue >= (nuint)(nint)currentBlock._blockBaseAddress &&
+                    thunkAddressValue < (nuint)(nint)currentBlock._blockBaseAddress + (nuint)(Constants.NumThunksPerBlock * Constants.ThunkCodeSize))
                 {
                     return true;
                 }
@@ -282,7 +271,7 @@ namespace System.Runtime
 
         private IntPtr TryGetThunkDataAddress(IntPtr thunkAddress)
         {
-            nuint thunkAddressValue = (nuint)ClearThumbBit(thunkAddress);
+            nuint thunkAddressValue = (nuint)(nint)ClearThumbBit(thunkAddress);
 
             // Compute the base address of the thunk's mapping
             nuint currentThunksBlockAddress = thunkAddressValue & ~Constants.PageSizeMask;

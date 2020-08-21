@@ -23,22 +23,15 @@
     <AddAdditionalExplicitAssemblyReferences>false</AddAdditionalExplicitAssemblyReferences>
     <!-- These prevent the default MsBuild targets from referencing System.dll and mscorlib.dll -->
     <ExcludeMscorlibFacade>true</ExcludeMscorlibFacade>
-    <NoStdLib>true</NoStdLib>
-    <NoCompilerStandardLib>true</NoCompilerStandardLib>
-    <SubsystemVersion>6.00</SubsystemVersion>
     <RuntimeMetadataVersion>v4.0.30319</RuntimeMetadataVersion>
-    <Utf8Output>true</Utf8Output>
-    <HighEntropyVA>true</HighEntropyVA>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <NoWarn>$(NoWarn),0419,0649,CA2249,CA1830</NoWarn>
 
     <!-- Disable nullability-related warnings -->
     <NoWarn>$(NoWarn);CS8600;CS8601;CS8602;CS8603;CS8604;CS8605;CS8606;CS8608;CS8609;CS8610;CS8611;CS8612;CS8614;CS8615;CS8617;CS8618;CS8620;CS8622;CS8625;CS8626;CS8631;CS8632;CS8634;CS8653;CS8765;CS8764;CS8767;CS8619</NoWarn>
 
-    <!-- XMLDoc - we should just fix -->
-    <NoWarn>$(NoWarn);CS1570;CS1572;CS1573;CS1574;CS1587;CS1734</NoWarn>
+    <!-- we should just fix -->
+    <NoWarn>$(NoWarn);CS1570;CS1572;CS1573;CS1574;CS1587;CS1734;CA1018;CA1805;CA1810;CA1821;CA1823;CA1825;CA1834;CA1838;CA2208</NoWarn>
 
     <!-- Arrays as attribute arguments is not CLS-compliant -->
     <NoWarn>$(NoWarn);CS3016</NoWarn>
@@ -48,10 +41,6 @@
 
     <DisableImplicitConfigurationDefines>true</DisableImplicitConfigurationDefines>
 
-    <!-- We don't use any of MSBuild's resolution logic for resolving the framework, so just set these two properties to any folder that exists to skip
-         the GenerateReferenceAssemblyPaths task (not target) and to prevent it from outputting a warning (MSB3644). -->
-    <_TargetFrameworkDirectories>$(MSBuildThisFileDirectory)/Documentation</_TargetFrameworkDirectories>
-    <_FullFrameworkReferenceAssemblyPaths>$(MSBuildThisFileDirectory)/Documentation</_FullFrameworkReferenceAssemblyPaths>
     <SkipCommonResourcesIncludes>true</SkipCommonResourcesIncludes>
     <DocumentationFile>$(OutputPath)$(MSBuildProjectName).xml</DocumentationFile>
     <EnableAnalyzers>false</EnableAnalyzers>

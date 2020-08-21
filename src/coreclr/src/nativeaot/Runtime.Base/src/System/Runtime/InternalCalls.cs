@@ -10,12 +10,6 @@ using System.Runtime.CompilerServices;
 
 using Internal.Runtime;
 
-#if TARGET_64BIT
-using nuint = System.UInt64;
-#else
-using nuint = System.UInt32;
-#endif
-
 namespace System.Runtime
 {
     internal enum DispatchCellType
