@@ -13,6 +13,7 @@ namespace System.Text.Json.SourceGeneration
         private DiagnosticDescriptor _failedToGenerateTypeClass;
         private DiagnosticDescriptor _failedToAddNewTypesFromMembers;
         private DiagnosticDescriptor _notSupported;
+        private DiagnosticDescriptor _typeNameClash;
 
         private void InitializeDiagnosticDescriptors()
         {
@@ -46,6 +47,14 @@ namespace System.Text.Json.SourceGeneration
                     "JsonSourceGeneration",
                     "Current type is not supported",
                     "Failed in sourcegenerating nested type {1} for root type {0}",
+                    "category",
+                    DiagnosticSeverity.Warning,
+                    isEnabledByDefault: true);
+            _typeNameClash =
+                new DiagnosticDescriptor(
+                    "JsonSourceGeneration",
+                    "Current type name clashes with another source generated type",
+                    "Changed name type {0} to {1}. To use please call `JsonContext.Instance.{1}`",
                     "category",
                     DiagnosticSeverity.Warning,
                     isEnabledByDefault: true);
