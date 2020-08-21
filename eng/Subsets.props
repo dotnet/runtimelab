@@ -54,6 +54,12 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <!-- We always build the NativeAOT variant out of the NativeAOT branch -->
+    <!-- In the future, this can be exposed as a runtimeVariant, same as Mono's LLVMJIT or LLVMAOT-->
+    <ClrNativeAot>true</ClrNativeAot>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <DefaultCoreClrSubsets>clr.runtime+linuxdac+clr.corelib+clr.nativecorelib+clr.tools+clr.packages</DefaultCoreClrSubsets>
 
     <DefaultMonoSubsets Condition="'$(MonoEnableLLVM)' == 'true' and '$(MonoLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
@@ -63,6 +69,7 @@
 
     <DefaultInstallerSubsets>corehost+installer.managed+installer.depprojs+installer.pkgprojs+bundles+installers+installer.tests</DefaultInstallerSubsets>
     <DefaultInstallerSubsets Condition="'$(RuntimeFlavor)' == 'Mono'">installer.pkgprojs</DefaultInstallerSubsets>
+    <DefaultInstallerSubsets Condition="'$(ClrNativeAot)' == 'true'">installer.pkgprojs</DefaultInstallerSubsets>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -147,6 +154,7 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.StackTraceGenerator\src\System.Private.StackTraceGenerator.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.StackTraceMetadata\src\System.Private.StackTraceMetadata.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\Test.CoreLib\src\Test.CoreLib.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" />
   </ItemGroup>
 
   <ItemGroup Condition="$(_subset.Contains('+linuxdac+')) and $([MSBuild]::IsOsPlatform(Windows)) and '$(TargetArchitecture)' != 'x86'">

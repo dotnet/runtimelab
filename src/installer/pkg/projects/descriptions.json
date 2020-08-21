@@ -10,6 +10,11 @@
        "CommonTypes": [ ]
     },
     {
+        "Name": "Microsoft.DotNet.ILCompiler",
+        "Description": "Provides a native AOT compiler and runtime for .NET",
+        "CommonTypes": [ ]
+    },
+    {
         "Name": "Microsoft.NETCore.DotNetHostPolicy",
         "Description": "Provides a CoreCLR hosting policy implementation -- configuration settings, assembly paths and assembly servicing",
         "CommonTypes": [ ]

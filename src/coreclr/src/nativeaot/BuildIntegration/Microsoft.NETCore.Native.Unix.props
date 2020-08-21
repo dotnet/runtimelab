@@ -55,7 +55,6 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <ItemGroup>
       <NativeLibrary Include="$(IlcPath)/sdk/libSystem.Private.CoreLib.Native$(NativeLibraryExtension)" />
-      <NativeLibrary Condition="$(NativeCodeGen) == ''" Include="$(IlcPath)/sdk/libSystem.Private.TypeLoader.Native$(NativeLibraryExtension)" />
       <NativeLibrary Include="$(IlcPath)/framework/libSystem.Native$(NativeLibraryExtension)" />
       <NativeLibrary Include="$(IlcPath)/framework/libSystem.Globalization.Native$(NativeLibraryExtension)" />
       <NativeLibrary Include="$(IlcPath)/framework/libSystem.IO.Compression.Native$(NativeLibraryExtension)" />
