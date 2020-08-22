@@ -23,7 +23,7 @@ namespace Internal.TypeSystem
 {
     public abstract partial class TypeSystemContext
     {
-        internal TemplateLocator TemplateLookup { get; } = new TemplateLocator();
+        internal TemplateLocator TemplateLookup => new TemplateLocator();
 
         internal class RuntimeTypeHandleToParameterTypeRuntimeTypeHandleHashtable : LockFreeReaderHashtableOfPointers<RuntimeTypeHandle, RuntimeTypeHandle>
         {

@@ -68,7 +68,7 @@ namespace Internal.Runtime.CompilerServices
         }
 
 
-        private static uint s_genericFunctionPointerNextIndex = 0;
+        private static uint s_genericFunctionPointerNextIndex;
         private const uint c_genericDictionaryChunkSize = 1024;
         private static LowLevelList<IntPtr> s_genericFunctionPointerCollection = new LowLevelList<IntPtr>();
         private static LowLevelDictionary<GenericMethodDescriptorInfo, uint> s_genericFunctionPointerDictionary = new LowLevelDictionary<GenericMethodDescriptorInfo, uint>();

@@ -399,8 +399,8 @@ namespace System.Reflection.Runtime.PropertyInfos
             return defaultValue;
         }
 
-        private volatile MethodInvoker _lazyGetterInvoker = null;
-        private volatile MethodInvoker _lazySetterInvoker = null;
+        private volatile MethodInvoker _lazyGetterInvoker;
+        private volatile MethodInvoker _lazySetterInvoker;
 
         private volatile RuntimeNamedMethodInfo _lazyGetter;
         private volatile RuntimeNamedMethodInfo _lazySetter;

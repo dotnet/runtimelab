@@ -367,7 +367,7 @@ namespace System.Reflection.Runtime.MethodInfos
 
         internal IntPtr LdFtnResult => MethodInvoker.LdFtnResult;
 
-        private volatile MethodInvoker _lazyMethodInvoker = null;
+        private volatile MethodInvoker _lazyMethodInvoker;
 
         /// <summary>
         /// Common CreateDelegate worker. NOTE: If the method signature is not compatible, this method returns null rather than throwing an ArgumentException.

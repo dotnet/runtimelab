@@ -16,7 +16,7 @@ namespace Internal.Runtime.TypeLoader
         /// attach a debugger to the process and set s_pauseHash to the hash code early in process
         /// execution
         /// </summary>
-        internal static int s_pauseHash = 0;
+        internal static int s_pauseHash;
 
         [Conditional("TYPE_LOADER_TRACE")]
         public static void WriteLine(string message)

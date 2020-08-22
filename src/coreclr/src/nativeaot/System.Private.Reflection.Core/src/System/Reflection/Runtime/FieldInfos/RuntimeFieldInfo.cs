@@ -295,9 +295,9 @@ namespace System.Reflection.Runtime.FieldInfos
         protected readonly RuntimeTypeInfo _contextTypeInfo;
         protected readonly RuntimeTypeInfo _reflectedType;
 
-        private volatile FieldAccessor _lazyFieldAccessor = null;
+        private volatile FieldAccessor _lazyFieldAccessor;
 
-        private volatile Type _lazyFieldType = null;
+        private volatile Type _lazyFieldType;
 
         private String _debugName;
     }

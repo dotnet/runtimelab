@@ -190,6 +190,6 @@ namespace System.Reflection.Runtime.MethodInfos
 
         protected abstract MethodInvoker UncachedMethodInvoker { get; }
 
-        private volatile MethodInvoker _lazyMethodInvoker = null;
+        private volatile MethodInvoker _lazyMethodInvoker;
     }
 }

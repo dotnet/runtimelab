@@ -24,7 +24,7 @@ namespace Internal.Runtime.TypeLoader
         private Lock _threadStaticsLock = new Lock();
 
         // Counter to keep track of generated offsets for TLS cells of dynamic types;
-        private int _maxTlsCells = 0;
+        private int _maxTlsCells;
         private LowLevelDictionary<RuntimeTypeHandle, uint> _dynamicGenericsThreadStatics = new LowLevelDictionary<RuntimeTypeHandle, uint>();
         private LowLevelDictionary<uint, int> _dynamicGenericsThreadStaticSizes = new LowLevelDictionary<uint, int>();
 

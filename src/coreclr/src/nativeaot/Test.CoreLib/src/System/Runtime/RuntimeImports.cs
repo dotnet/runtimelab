@@ -86,7 +86,6 @@ namespace System.Runtime
             => RhNewArray(pEEType.ToPointer(), length);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        [ManuallyManaged(GcPollPolicy.Never)]
         [RuntimeImport(RuntimeLibrary, "RhpFallbackFailFast")]
         internal extern static unsafe void RhpFallbackFailFast();
 

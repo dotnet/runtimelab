@@ -548,7 +548,7 @@ namespace System
 
         private static long[] s_addPressure = new long[] { 0, 0, 0, 0 };
         private static long[] s_removePressure = new long[] { 0, 0, 0, 0 };
-        private static uint s_iteration = 0;
+        private static uint s_iteration;
 
         /// <summary>
         /// Resets the pressure accounting after a gen2 GC has occured.

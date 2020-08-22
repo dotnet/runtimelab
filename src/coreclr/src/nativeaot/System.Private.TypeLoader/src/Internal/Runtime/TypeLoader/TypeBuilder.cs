@@ -92,7 +92,7 @@ namespace Internal.Runtime.TypeLoader
 
         private LowLevelList<InstantiatedMethod> _methodsThatNeedDictionaries = new LowLevelList<InstantiatedMethod>();
 
-        private LowLevelList<TypeDesc> _typesThatNeedPreparation = null;
+        private LowLevelList<TypeDesc> _typesThatNeedPreparation;
 
         private Object _epoch = new Object();
 
