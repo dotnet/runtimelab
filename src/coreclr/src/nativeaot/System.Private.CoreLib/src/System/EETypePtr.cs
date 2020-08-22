@@ -171,9 +171,7 @@ namespace System
             }
         }
 
-        /// <summary>
-        /// Warning! UNLIKE the similarly named Reflection api, this method also returns "true" for Enums.
-        /// </summary>
+        // Warning! UNLIKE the similarly named Reflection api, this method also returns "true" for Enums.
         internal bool IsPrimitive
         {
             get
@@ -182,10 +180,8 @@ namespace System
             }
         }
 
-        /// <summary>
-        /// WARNING: Never call unless the EEType came from an instanced object. Nested enums can be open generics (typeof(Outer<>).NestedEnum) 
-        /// and this helper has undefined behavior when passed such as a enum.
-        /// </summary>
+        // WARNING: Never call unless the EEType came from an instanced object. Nested enums can be open generics (typeof(Outer<>).NestedEnum) 
+        // and this helper has undefined behavior when passed such as a enum.
         internal bool IsEnum
         {
             get
@@ -201,9 +197,7 @@ namespace System
             }
         }
 
-        /// <summary>
-        /// Gets a value indicating whether this is a generic type definition (an uninstantiated generic type).
-        /// </summary>
+        // Gets a value indicating whether this is a generic type definition (an uninstantiated generic type).
         internal bool IsGenericTypeDefinition
         {
             get
@@ -212,9 +206,7 @@ namespace System
             }
         }
 
-        /// <summary>
-        /// Gets a value indicating whether this is an instantiated generic type.
-        /// </summary>
+        // Gets a value indicating whether this is an instantiated generic type.
         internal bool IsGeneric
         {
             get

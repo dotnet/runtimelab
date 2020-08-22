@@ -88,10 +88,10 @@ namespace System.Threading
                 return;
             }
 
-            /// <see cref="Thread.Sleep(int)"/> is interruptible. The current operation may not allow thread interrupt
-            /// (for instance, <see cref="LowLevelLock.Acquire"/> as part of <see cref="EventWaitHandle.Set"/>). Use the
-            /// uninterruptible version of Sleep(0). Not doing <see cref="Thread.Yield"/>, it does not seem to have any
-            /// benefit over Sleep(0).
+            // <see cref="Thread.Sleep(int)"/> is interruptible. The current operation may not allow thread interrupt
+            // (for instance, <see cref="LowLevelLock.Acquire"/> as part of <see cref="EventWaitHandle.Set"/>). Use the
+            // uninterruptible version of Sleep(0). Not doing <see cref="Thread.Yield"/>, it does not seem to have any
+            // benefit over Sleep(0).
             Thread.UninterruptibleSleep0();
 
             // Don't want to Sleep(1) in this spin wait:

@@ -81,7 +81,7 @@ namespace Internal.StackTraceMetadata
         /// <summary>
         /// Emit a given method signature to a specified string builder.
         /// </summary>
-        /// <param name="methodToken">Method reference or instantiation token</param>
+        /// <param name="methodHandle">Method reference or instantiation token</param>
         private void EmitMethodName(Handle methodHandle)
         {
             switch (methodHandle.HandleType)
@@ -418,7 +418,7 @@ namespace Internal.StackTraceMetadata
         /// <summary>
         /// Emit a string (represented by a serialized ConstantStringValue) to the output string builder.
         /// </summary>
-        /// <param name="stringToken">Constant string value token (offset within stack trace native metadata)</param>
+        /// <param name="stringHandle">Constant string value token (offset within stack trace native metadata)</param>
         private void EmitString(ConstantStringValueHandle stringHandle)
         {
             _outputBuilder.Append(_metadataReader.GetConstantStringValue(stringHandle).Value);

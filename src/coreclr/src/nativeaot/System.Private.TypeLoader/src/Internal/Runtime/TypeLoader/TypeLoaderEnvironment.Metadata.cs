@@ -174,6 +174,7 @@ namespace Internal.Runtime.TypeLoader
         /// <param name="metadataReader">Metadata reader for module containing the type reference</param>
         /// <param name="typeRefHandle">TypeRef handle to look up</param>
         /// <param name="runtimeTypeHandle">Resolved EEType for the type reference</param>
+        /// <param name="searchAllModules">Search all modules</param>
         public static unsafe bool TryGetNamedTypeForTypeReference(MetadataReader metadataReader, TypeReferenceHandle typeRefHandle, out RuntimeTypeHandle runtimeTypeHandle, bool searchAllModules = false)
         {
             int hashCode = typeRefHandle.ComputeHashCode(metadataReader);
@@ -614,7 +615,7 @@ namespace Internal.Runtime.TypeLoader
         /// <summary>
         /// Attempt to locate the default type constructor in a given module.
         /// </summary>
-        /// <param name="module">Module to search for the constructor</param>
+        /// <param name="mappingTableModule">Module to search for the constructor</param>
         /// <param name="canonHelper">Canonically equivalent entry locator representing the type</param>
         /// <returns>Function pointer representing the constructor, IntPtr.Zero when not found</returns>
         internal unsafe IntPtr TryGetDefaultConstructorForType_Inner(NativeFormatModuleInfo mappingTableModule, ref CanonicallyEquivalentEntryLocator canonHelper)
@@ -670,7 +671,6 @@ namespace Internal.Runtime.TypeLoader
         }
 
         /// <summary>
-        /// <summary>
         /// Try to resolve a member reference in all registered binary modules containing metadata.
         /// </summary>
         /// <param name="metadataReader">Metadata reader for the member reference</param>
@@ -678,7 +678,7 @@ namespace Internal.Runtime.TypeLoader
         /// <param name="resolvedMetadataReader">Metadata reader for the resolved reference</param>
         /// <param name="resolvedContainingTypeHandle">Resolved runtime handle to the containing type</param>
         /// <param name="resolvedMemberHandle">Resolved handle to the referenced member</param>
-        /// <returns>true when the lookup was successful; false when not</return>
+        /// <returns>true when the lookup was successful; false when not</returns>
         public static bool TryResolveMemberReference(
             MetadataReader metadataReader,
             MemberReferenceHandle memberReferenceHandle,
@@ -892,7 +892,7 @@ namespace Internal.Runtime.TypeLoader
         /// <summary>
         /// Given a virtual logical slot and its open defining type, get information necessary to acquire the associated metadata from the mapping tables.
         /// </summary>
-        /// <param name="moduleHandle">Module to look in</param>
+        /// <param name="module">Module to look in</param>
         /// <param name="declaringType">Declaring type that is known to define the slot</param>
         /// <param name="logicalSlot">The logical slot that the method goes in. For this method, the logical 
         /// slot is defined as the nth virtual method defined in order on the type (including base types). 
@@ -961,7 +961,6 @@ namespace Internal.Runtime.TypeLoader
         /// <summary>
         /// Try to look up method invoke info for given canon.
         /// </summary>
-        /// <param name="metadataReader">Metadata reader for the declaring type</param>
         /// <param name="declaringTypeHandle">Declaring type for the method</param>
         /// <param name="methodHandle">Method handle</param>
         /// <param name="genericMethodTypeArgumentHandles">Handles of generic argument types</param>
@@ -1185,7 +1184,6 @@ namespace Internal.Runtime.TypeLoader
         /// <summary>
         /// Look up method entry point based on native format metadata information.
         /// </summary>
-        /// <param name="metadataReader">Metadata reader for the declaring type</param>
         /// <param name="declaringTypeHandle">Declaring type for the method</param>
         /// <param name="methodHandle">Method handle</param>
         /// <param name="genericMethodTypeArgumentHandles">Handles of generic argument types</param>

@@ -197,7 +197,6 @@ namespace Internal.Runtime.CompilerHelpers
         /// * The buffer to the UNICODE wide char array must be allocated by the caller.
         /// </remarks>
         /// <param name="pNative">Pointer to the ANSI byte array. Could NOT be null.</param>
-        /// <param name="lenInBytes">Maximum buffer size.</param>
         /// <param name="managedArray">Wide char array that has already been allocated.</param>
         public static unsafe void AnsiCharArrayToWideCharArray(byte* pNative, char[] managedArray)
         {
@@ -207,7 +206,9 @@ namespace Internal.Runtime.CompilerHelpers
         /// <summary>
         /// Convert a single UNICODE wide char to a single ANSI byte.
         /// </summary>
-        /// <param name="managedArray">single UNICODE wide char value</param>
+        /// <param name="managedValue">single UNICODE wide char value</param>
+        /// <param name="bestFit">Enable best-fit mapping behavior</param>
+        /// <param name="throwOnUnmappableChar">Throw an exception on an unmappable Unicode character</param>
         public static unsafe byte WideCharToAnsiChar(char managedValue, bool bestFit, bool throwOnUnmappableChar)
         {
             return PInvokeMarshal.WideCharToAnsiChar(managedValue, bestFit, throwOnUnmappableChar);

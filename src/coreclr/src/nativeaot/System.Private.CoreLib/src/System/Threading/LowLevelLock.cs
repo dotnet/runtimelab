@@ -165,8 +165,8 @@ namespace System.Threading
 
             _monitor.Acquire();
 
-            /// Register this thread as a waiter by incrementing the waiter count. Incrementing the waiter count and waiting on
-            /// the monitor need to appear atomic to <see cref="SignalWaiter"/> so that its signal won't be lost.
+            // Register this thread as a waiter by incrementing the waiter count. Incrementing the waiter count and waiting on
+            // the monitor need to appear atomic to <see cref="SignalWaiter"/> so that its signal won't be lost.
             int state = Interlocked.Add(ref _state, WaiterCountIncrement);
 
             // Wait on the monitor until signaled, repeatedly until the lock can be acquired by this thread
@@ -182,7 +182,7 @@ namespace System.Threading
 
                 _monitor.Wait();
 
-                /// Indicate to <see cref="SignalWaiter"/> that the signaled thread has woken up
+                // Indicate to <see cref="SignalWaiter"/> that the signaled thread has woken up
                 _isAnyWaitingThreadSignaled = false;
 
                 state = _state;
@@ -215,13 +215,13 @@ namespace System.Threading
             // the waiter count before signaling.
             _monitor.Acquire();
 
-            /// Keep track of whether a thread has been signaled but has not yet been released from the wait.
-            /// <see cref="_isAnyWaitingThreadSignaled"/> is set to false when a signaled thread wakes up. Since threads can
-            /// preempt waiting threads and acquire the lock (see <see cref="TryAcquire"/>), it allows for example, one thread
-            /// to acquire and release the lock multiple times while there are multiple waiting threads. In such a case, we
-            /// don't want that thread to signal a waiter every time it releases the lock, as that will cause unnecessary
-            /// context switches with more and more signaled threads waking up, finding that the lock is still locked, and going
-            /// right back into a wait state. So, signal only one waiting thread at a time.
+            // Keep track of whether a thread has been signaled but has not yet been released from the wait.
+            // <see cref="_isAnyWaitingThreadSignaled"/> is set to false when a signaled thread wakes up. Since threads can
+            // preempt waiting threads and acquire the lock (see <see cref="TryAcquire"/>), it allows for example, one thread
+            // to acquire and release the lock multiple times while there are multiple waiting threads. In such a case, we
+            // don't want that thread to signal a waiter every time it releases the lock, as that will cause unnecessary
+            // context switches with more and more signaled threads waking up, finding that the lock is still locked, and going
+            // right back into a wait state. So, signal only one waiting thread at a time.
             if ((uint)_state >= WaiterCountIncrement && !_isAnyWaitingThreadSignaled)
             {
                 _isAnyWaitingThreadSignaled = true;

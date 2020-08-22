@@ -9,7 +9,6 @@ using System.Runtime.InteropServices;
 
 namespace System.Threading
 {
-    using Interop = global::Interop; /// due to the existence of <see cref="Internal.Interop"/>
     using OSThreadPriority = Interop.Kernel32.ThreadPriority;
 
     public sealed partial class Thread

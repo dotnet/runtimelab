@@ -47,7 +47,7 @@ namespace Internal.Runtime.TypeLoader
         /// <summary>
         /// Initialize ExternalReferencesTable using the NativeReferences metadata blob on a given module.
         /// </summary>
-        /// <param name="moduleHandle">Module handle is used to locate the NativeReferences blob</param>
+        /// <param name="module">Module handle is used to locate the NativeReferences blob</param>
         /// <returns>true when the NativeReferences blob was found in the given module, false when not</returns>
         public bool InitializeNativeReferences(NativeFormatModuleInfo module)
         {
@@ -57,7 +57,7 @@ namespace Internal.Runtime.TypeLoader
         /// <summary>
         /// Initialize ExternalReferencesTable using the NativeStatics metadata blob on a given module.
         /// </summary>
-        /// <param name="moduleHandle">Module handle is used to locate the NativeStatics blob</param>
+        /// <param name="module">Module handle is used to locate the NativeStatics blob</param>
         /// <returns>true when the NativeStatics blob was found in the given module, false when not</returns>
         public bool InitializeNativeStatics(NativeFormatModuleInfo module)
         {
@@ -67,7 +67,7 @@ namespace Internal.Runtime.TypeLoader
         /// <summary>
         /// Initialize ExternalReferencesTable using the CommonFixupsTable metadata blob on a given module.
         /// </summary>
-        /// <param name="moduleHandle">Module handle is used to locate the CommonFixupsTable blob</param>
+        /// <param name="module">Module handle is used to locate the CommonFixupsTable blob</param>
         /// <returns>true when the CommonFixupsTable blob was found in the given module, false when not</returns>
         public bool InitializeCommonFixupsTable(NativeFormatModuleInfo module)
         {

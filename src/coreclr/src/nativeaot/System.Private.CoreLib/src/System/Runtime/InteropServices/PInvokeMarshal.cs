@@ -605,6 +605,9 @@ namespace System.Runtime.InteropServices
         /// </remarks>
         /// <param name="managedArray">UNICODE wide char array</param>
         /// <param name="pNative">Allocated buffer where the ansi characters must be placed. Could NOT be null. Buffer size must fit char[].Length.</param>
+        /// <param name="expectedCharCount">Minimum expected length of managedArray</param>
+        /// <param name="bestFit">Enable best-fit mapping behavior</param>
+        /// <param name="throwOnUnmappableChar">Throw an exception on an unmappable Unicode character</param>
         public static unsafe void ByValWideCharArrayToAnsiCharArray(char[] managedArray, byte* pNative, int expectedCharCount,
             bool bestFit, bool throwOnUnmappableChar)
         {
@@ -671,7 +674,6 @@ namespace System.Runtime.InteropServices
         /// * The buffer to the UNICODE wide char array must be allocated by the caller.
         /// </remarks>
         /// <param name="pNative">Pointer to the ANSI byte array. Could NOT be null.</param>
-        /// <param name="lenInBytes">Maximum buffer size.</param>
         /// <param name="managedArray">Wide char array that has already been allocated.</param>
         public static unsafe void AnsiCharArrayToWideCharArray(byte* pNative, char[] managedArray)
         {
@@ -698,7 +700,9 @@ namespace System.Runtime.InteropServices
         /// <summary>
         /// Convert a single UNICODE wide char to a single ANSI byte.
         /// </summary>
-        /// <param name="managedArray">single UNICODE wide char value</param>
+        /// <param name="managedValue">single UNICODE wide char value</param>
+        /// <param name="bestFit">Enable best-fit mapping behavior</param>
+        /// <param name="throwOnUnmappableChar">Throw an exception on an unmappable Unicode character</param>
         public static unsafe byte WideCharToAnsiChar(char managedValue, bool bestFit, bool throwOnUnmappableChar)
         {
             // @TODO - we really shouldn't allocate one-byte arrays and then destroy it
@@ -726,6 +730,10 @@ namespace System.Runtime.InteropServices
         /// it could allocate single byte per character, instead of SystemMaxDBCSCharSize per char, and it can skip calling WideCharToMultiByte for ASCII string</remarks>
         /// <param name="str">Unicode string.</param>
         /// <param name="pNative"> Allocated buffer where the ansi string must be placed. Could NOT be null. Buffer size must fit str.Length.</param>
+        /// <param name="charCount">Number of characters to copy</param>
+        /// <param name="bestFit">Enable best-fit mapping behavior</param>
+        /// <param name="truncate">Truncate string to fit charCount</param>
+        /// <param name="throwOnUnmappableChar">Throw an exception on an unmappable Unicode character</param>
         public static unsafe void StringToByValAnsiString(string str, byte* pNative, int charCount, bool bestFit, bool throwOnUnmappableChar, bool truncate = true)
         {
             if (pNative == null)

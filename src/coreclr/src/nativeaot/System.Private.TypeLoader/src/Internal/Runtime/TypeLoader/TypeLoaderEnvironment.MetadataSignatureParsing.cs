@@ -161,7 +161,7 @@ namespace Internal.Runtime.TypeLoader
         /// Look up module containing given nativesignature and return the appropriate native parser.
         /// </summary>
         /// <param name="signature">Signature to look up</param>
-        /// <returns>Native parser for the signature</param>
+        /// <returns>Native parser for the signature</returns>
         internal static NativeParser GetNativeParserForSignature(RuntimeSignature signature)
         {
             Debug.Assert(signature.IsNativeLayoutSignature);

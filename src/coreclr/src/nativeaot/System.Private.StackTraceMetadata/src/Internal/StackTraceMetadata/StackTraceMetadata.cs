@@ -198,11 +198,12 @@ namespace Internal.StackTraceMetadata
                     PopulateRvaToTokenMap(handle, (int *)rvaToTokenMapBlob, rvaToTokenMapEntryCount);
                 }
             }
-            
+
             /// <summary>
             /// Construct the dictionary mapping method RVAs to stack trace metadata tokens
             /// within a single binary module.
             /// </summary>
+            /// <param name="handle">Module to use to construct the mapping</param>
             /// <param name="rvaToTokenMap">List of RVA - token pairs</param>
             /// <param name="entryCount">Number of the RVA - token pairs in the list</param>
             private unsafe void PopulateRvaToTokenMap(TypeManagerHandle handle, int *rvaToTokenMap, int entryCount)

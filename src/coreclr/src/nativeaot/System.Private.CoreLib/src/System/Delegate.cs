@@ -107,7 +107,7 @@ namespace System
         ///   This value indicates if the returned pointer is an open resolver structure.
         /// </param>
         /// <param name="isInterpreterEntrypoint"> 
-        ///   Delegate points to an object array thunk (the delegate wraps a Func<object[], object> delegate). This
+        ///   Delegate points to an object array thunk (the delegate wraps a Func&lt;object[], object&gt; delegate). This
         ///   is typically a delegate pointing to the LINQ expression interpreter.
         /// </param>
         /// <returns></returns>

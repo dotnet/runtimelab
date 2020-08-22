@@ -22,10 +22,11 @@ namespace System.Threading
             /// </summary>
             private readonly LowLevelMonitor _waitMonitor;
 
-            ////////////////////////////////////////////////////////////////
+
+            /// <summary>
             /// Thread wait state. The following members indicate the waiting state of the thread, and convery information from
             /// a signaler to the waiter. They are synchronized with <see cref="_waitMonitor"/>.
-
+            /// </summary>
             private WaitSignalState _waitSignalState;
 
             /// <summary>
@@ -34,10 +35,10 @@ namespace System.Threading
             /// </summary>
             private int _waitedObjectIndexThatSatisfiedWait;
 
-            ////////////////////////////////////////////////////////////////
+            /// <summary>
             /// Information about the current wait, including the type of wait, the <see cref="WaitableObject"/>s involved in
             /// the wait, etc. They are synchronized with <see cref="s_lock"/>.
-
+            /// </summary>
             private bool _isWaitForAll;
 
             /// <summary>
@@ -111,8 +112,8 @@ namespace System.Threading
             }
 
             /// <summary>
-            /// Callers must ensure to clear the array after use. Once <see cref="RegisterWait(int, bool)"/> is called (followed
-            /// by a call to <see cref="Wait(int, bool, out int)"/>, the array will be cleared automatically.
+            /// Callers must ensure to clear the array after use. Once <see cref="RegisterWait(int, bool, bool)"/> is called (followed
+            /// by a call to <see cref="Wait(int, bool, bool)"/>, the array will be cleared automatically.
             /// </summary>
             public WaitableObject[] GetWaitedObjectArray(int requiredCapacity)
             {
@@ -156,7 +157,7 @@ namespace System.Threading
             }
 
             /// <summary>
-            /// The caller is expected to populate <see cref="WaitedObjects"/> and pass in the number of objects filled
+            /// The caller is expected to populate <see cref="GetWaitedObjectArray"/> and pass in the number of objects filled
             /// </summary>
             public void RegisterWait(int waitedCount, bool prioritize, bool isWaitForAll)
             {
@@ -287,9 +288,9 @@ namespace System.Threading
 
                 _thread.SetWaitSleepJoinState();
 
-                /// <see cref="_waitMonitor"/> must be acquired before <see cref="s_lock"/> is released, to ensure that there is
-                /// no gap during which a waited object may be signaled to satisfy the wait but the thread may not yet be in a
-                /// wait state to accept the signal
+                // <see cref="_waitMonitor"/> must be acquired before <see cref="s_lock"/> is released, to ensure that there is
+                // no gap during which a waited object may be signaled to satisfy the wait but the thread may not yet be in a
+                // wait state to accept the signal
                 _waitMonitor.Acquire();
                 if (!isSleep)
                 {
@@ -358,9 +359,9 @@ namespace System.Threading
                     _thread.ClearWaitSleepJoinState();
                 }
 
-                /// Timeout. It's ok to read <see cref="_waitedCount"/> without acquiring <see cref="s_lock"/> here, because it
-                /// is initially set by this thread, and another thread cannot unregister this thread's wait without first
-                /// signaling this thread, in which case this thread wouldn't be timing out.
+                // Timeout. It's ok to read <see cref="_waitedCount"/> without acquiring <see cref="s_lock"/> here, because it
+                // is initially set by this thread, and another thread cannot unregister this thread's wait without first
+                // signaling this thread, in which case this thread wouldn't be timing out.
                 Debug.Assert(isSleep == (_waitedCount == 0));
                 if (!isSleep)
                 {
