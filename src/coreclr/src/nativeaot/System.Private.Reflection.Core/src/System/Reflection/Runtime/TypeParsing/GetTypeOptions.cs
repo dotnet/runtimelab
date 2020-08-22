@@ -20,10 +20,10 @@ namespace System.Reflection.Runtime.TypeParsing
     /// return null. Throw for all other errors. The name will be for a top-level named type only. No nested types. No constructed types.
     /// </summary>
     /// 
-    /// </remarks>
+    /// <remarks>
     /// This delegate "should" take an "ignoreCase" parameter too, but pragmatically, every resolver we create is a closure for other reasons so
     /// it's more convenient to let "ignoreCase" be just another variable that's captured in that closure.
-    /// <remarks>
+    /// </remarks>
     internal delegate Type CoreTypeResolver(Assembly containingAssemblyIfAny, string name);
 
     // 

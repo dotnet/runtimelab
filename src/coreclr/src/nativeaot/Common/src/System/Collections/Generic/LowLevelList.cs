@@ -27,13 +27,11 @@ namespace System.Collections.Generic
     // of the internal array. As elements are added to a List, the capacity
     // of the List is automatically increased as required by reallocating the
     // internal array.
-    // 
-    /// <summary>
-    /// LowLevelList with no interface implementation to minimize both code and data size
-    /// Data size is smaller because there will be minimal virtual function table.
-    /// Code size is smaller because only functions called will be in the binary.
-    /// Use LowLevelListWithIList<T> for IList support
-    /// </summary>
+    //
+    // LowLevelList with no interface implementation minimizes both code and data size.
+    // Data size is smaller because there will be minimal virtual function table.
+    // Code size is smaller because only functions called will be in the binary.
+    // Use LowLevelListWithIList<T> for IList support
     [DebuggerDisplay("Count = {Count}")]
 #if TYPE_LOADER_IMPLEMENTATION
     [System.Runtime.CompilerServices.ForceDictionaryLookups]
@@ -463,9 +461,7 @@ namespace System.Collections.Generic
     }
 
 #if !TYPE_LOADER_IMPLEMENTATION
-    /// <summary>
-    /// LowLevelList<T> with full IList<T> implementation
-    /// </summary>
+    // LowLevelList<T> with full IList<T> implementation
     internal sealed class LowLevelListWithIList<T> : LowLevelList<T>, IList<T>
     {
         public LowLevelListWithIList()

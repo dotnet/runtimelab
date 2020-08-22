@@ -96,14 +96,13 @@ namespace Internal.Reflection.Execution
 
         /// <summary>
         /// Return the metadata handle for a TypeDef if the pay-for-policy enabled this type as browsable. This is used to obtain name and other information for types
-        /// obtained via typeof() or Object.GetType(). This can include generic types (Foo<>) (not to be confused with generic instances of Foo<>).
+        /// obtained via typeof() or Object.GetType(). This can include generic types (not to be confused with generic instances).
         ///
         /// Preconditions:
         ///    runtimeTypeHandle is a typedef (not a constructed type such as an array or generic instance.)
         /// </summary>
         /// <param name="runtimeTypeHandle">Runtime handle of the type in question</param>
-        /// <param name="metadataReader">Metadata reader located for the type</param>
-        /// <param name="typeDefHandle">TypeDef handle for the type</param>
+        /// <param name="qTypeDefinition">TypeDef handle for the type</param>
         public unsafe sealed override bool TryGetMetadataForNamedType(RuntimeTypeHandle runtimeTypeHandle, out QTypeDefinition qTypeDefinition)
         {
             Debug.Assert(!RuntimeAugments.IsGenericType(runtimeTypeHandle));
@@ -162,8 +161,7 @@ namespace Internal.Reflection.Execution
         /// Note: Although this method has a "bool" return value like the other mapping table accessors, the Project N pay-for-play design 
         /// guarantees that any type enabled for metadata also has a RuntimeTypeHandle underneath.
         /// </summary>
-        /// <param name="metadataReader">Metadata reader for module containing the type</param>
-        /// <param name="typeDefHandle">TypeDef handle for the type to look up</param>
+        /// <param name="qTypeDefinition">TypeDef handle for the type to look up</param>
         /// <param name="runtimeTypeHandle">Runtime type handle (EEType) for the given type</param>
         public unsafe sealed override bool TryGetNamedTypeForMetadata(QTypeDefinition qTypeDefinition, out RuntimeTypeHandle runtimeTypeHandle)
         {
@@ -558,10 +556,10 @@ namespace Internal.Reflection.Execution
         /// Try to look up method invoke info in metadata for all registered modules, construct
         /// the calling convention converter as appropriate and fill in MethodInvokeInfo.
         /// </summary>
-        /// <param name="metadataReader">Metadata reader for the declaring type</param>
         /// <param name="declaringTypeHandle">Runtime handle of declaring type for the method</param>
         /// <param name="methodHandle">Handle of method to look up</param>
         /// <param name="genericMethodTypeArgumentHandles">Runtime handles of generic method arguments</param>
+        /// <param name="methodInfo">MethodInfo of method to look up</param>
         /// <param name="methodSignatureComparer">Helper structure used for comparing signatures</param>
         /// <param name="canonFormKind">Requested canon form</param>
         /// <returns>Constructed method invoke info, null on failure</returns>
@@ -1593,35 +1591,34 @@ namespace Internal.Reflection.Execution
                 Debug.Assert(handles != null && types != null);
             }
 
-            /// <summary>
-            /// IF THESE SEMANTICS EVER CHANGE UPDATE THE LOGIC WHICH DEFINES THIS BEHAVIOR IN 
-            /// THE DYNAMIC TYPE LOADER AS WELL AS THE COMPILER. 
-            ///
-            /// Parameter's are considered to have type layout dependent on their generic instantiation
-            /// if the type of the parameter in its signature is a type variable, or if the type is a generic 
-            /// structure which meets 2 characteristics:
-            /// 1. Structure size/layout is affected by the size/layout of one or more of its generic parameters
-            /// 2. One or more of the generic parameters is a type variable, or a generic structure which also recursively
-            ///    would satisfy constraint 2. (Note, that in the recursion case, whether or not the structure is affected
-            ///    by the size/layout of its generic parameters is not investigated.)
-            ///    
-            /// Examples parameter types, and behavior.
-            /// 
-            /// T -> true
-            /// List<T> -> false
-            /// StructNotDependentOnArgsForSize<T> -> false
-            /// GenStructDependencyOnArgsForSize<T> -> true
-            /// StructNotDependentOnArgsForSize<GenStructDependencyOnArgsForSize<T>> -> true
-            /// StructNotDependentOnArgsForSize<GenStructDependencyOnArgsForSize<List<T>>>> -> false
-            /// 
-            /// Example non-parameter type behavior
-            /// T -> true
-            /// List<T> -> false
-            /// StructNotDependentOnArgsForSize<T> -> *true*
-            /// GenStructDependencyOnArgsForSize<T> -> true
-            /// StructNotDependentOnArgsForSize<GenStructDependencyOnArgsForSize<T>> -> true
-            /// StructNotDependentOnArgsForSize<GenStructDependencyOnArgsForSize<List<T>>>> -> false
-            /// </summary>
+            // IF THESE SEMANTICS EVER CHANGE UPDATE THE LOGIC WHICH DEFINES THIS BEHAVIOR IN 
+            // THE DYNAMIC TYPE LOADER AS WELL AS THE COMPILER. 
+            //
+            // Parameter's are considered to have type layout dependent on their generic instantiation
+            // if the type of the parameter in its signature is a type variable, or if the type is a generic 
+            // structure which meets 2 characteristics:
+            // 1. Structure size/layout is affected by the size/layout of one or more of its generic parameters
+            // 2. One or more of the generic parameters is a type variable, or a generic structure which also recursively
+            //    would satisfy constraint 2. (Note, that in the recursion case, whether or not the structure is affected
+            //    by the size/layout of its generic parameters is not investigated.)
+            //    
+            // Examples parameter types, and behavior.
+            // 
+            // T -> true
+            // List<T> -> false
+            // StructNotDependentOnArgsForSize<T> -> false
+            // GenStructDependencyOnArgsForSize<T> -> true
+            // StructNotDependentOnArgsForSize<GenStructDependencyOnArgsForSize<T>> -> true
+            // StructNotDependentOnArgsForSize<GenStructDependencyOnArgsForSize<List<T>>>> -> false
+            // 
+            // Example non-parameter type behavior
+            // T -> true
+            // List<T> -> false
+            // StructNotDependentOnArgsForSize<T> -> *true*
+            // GenStructDependencyOnArgsForSize<T> -> true
+            // StructNotDependentOnArgsForSize<GenStructDependencyOnArgsForSize<T>> -> true
+            // StructNotDependentOnArgsForSize<GenStructDependencyOnArgsForSize<List<T>>>> -> false
+            //
             private bool TypeSignatureHasVarsNeedingCallingConventionConverter(Handle typeHandle, Type type, bool isTopLevelParameterType)
             {
                 if (typeHandle.HandleType == HandleType.TypeSpecification)

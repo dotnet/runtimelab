@@ -48,6 +48,7 @@ namespace Internal.Runtime.TypeLoader
         /// Initialize module info and construct per-module metadata reader.
         /// </summary>
         /// <param name="moduleHandle">Handle (address) of module to initialize</param>
+        /// <param name="moduleType">Module type</param>
         internal ModuleInfo(TypeManagerHandle moduleHandle, ModuleType moduleType)
         {
             Handle = moduleHandle;
@@ -93,6 +94,9 @@ namespace Internal.Runtime.TypeLoader
         /// Initialize module info and construct per-module metadata reader.
         /// </summary>
         /// <param name="moduleHandle">Handle (address) of module to initialize</param>
+        /// <param name="moduleType">Module type</param>
+        /// <param name="pBlob">Module blob start address</param>
+        /// <param name="cbBlob">Module blob length</param>
         internal NativeFormatModuleInfo(TypeManagerHandle moduleHandle, ModuleType moduleType, IntPtr pBlob, int cbBlob) : base (moduleHandle, moduleType)
         {
             MetadataReader = new MetadataReader((IntPtr)pBlob, (int)cbBlob);
@@ -640,7 +644,7 @@ namespace Internal.Runtime.TypeLoader
         /// The module registration happens under a global lock so that the module registration
         /// callbacks are never called concurrently.
         /// </summary>
-        /// <param name="moduleRegistrationCallback">Method to call whenever a new module is registered</param>
+        /// <param name="newModuleRegistrationCallback">Method to call whenever a new module is registered</param>
         public static void AddModuleRegistrationCallback(Action<ModuleInfo> newModuleRegistrationCallback)
         {
             // Accumulate callbacks to be notified upon module registration
@@ -760,6 +764,7 @@ namespace Internal.Runtime.TypeLoader
         /// gets initialized.
         /// </summary>
         /// <param name="moduleHandle">Handle of module to look up</param>
+        /// <param name="moduleInfo">Found module info</param>
         public bool TryGetModuleInfoByHandle(TypeManagerHandle moduleHandle, out ModuleInfo moduleInfo)
         {
             ModuleMap moduleMap = _loadedModuleMap;
@@ -796,7 +801,7 @@ namespace Internal.Runtime.TypeLoader
         /// <summary>
         /// Given dynamic module handle, locate the moduleinfo
         /// </summary>
-        /// <param name="moduleHandle">Handle of module to look up</param>
+        /// <param name="dynamicModuleHandle">Handle of module to look up</param>
         /// <returns>fails if not found</returns>
         public unsafe ModuleInfo GetModuleInfoForDynamicModule(IntPtr dynamicModuleHandle)
         {

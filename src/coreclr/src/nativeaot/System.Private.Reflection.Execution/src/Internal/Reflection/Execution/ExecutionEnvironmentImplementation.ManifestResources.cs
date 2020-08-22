@@ -179,7 +179,7 @@ namespace Internal.Reflection.Execution
         /// inside the resource data blob
         ///
         /// The dictionary's key is a Fusion-style assembly name.
-        /// The dictionary's value is a list of <resourcename,index> tuples.
+        /// The dictionary's value is a list of (resourcename,index) tuples.
         /// </summary>
         private static volatile LowLevelDictionary<String, LowLevelList<ResourceInfo>> s_extractedResourceDictionary;
 

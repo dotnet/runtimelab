@@ -37,6 +37,7 @@ namespace Internal.Runtime.TypeLoader
         /// <param name="method">Native metadata method description object</param>
         /// <param name="methodAddress">Resolved method address</param>
         /// <param name="unboxingStubAddress">Resolved unboxing stub address</param>
+        /// <param name="foundAddressType">Output - The type of method address match found. A canonical address may require extra parameters to call.</param>
         /// <returns>true when the resolution succeeded, false when not</returns>
         public static bool TryGetMethodAddressFromMethodDesc(
             MethodDesc method,
@@ -67,6 +68,7 @@ namespace Internal.Runtime.TypeLoader
         /// <param name="method">Native metadata method description object</param>
         /// <param name="methodAddress">Resolved method address</param>
         /// <param name="unboxingStubAddress">Resolved unboxing stub address</param>
+        /// <param name="foundAddressType">Output - The type of method address match found. A canonical address may require extra parameters to call.</param>
         /// <returns>true when the resolution succeeded, false when not</returns>
         private static bool TryGetMethodAddressFromTypeSystemMethodViaInvokeMap(
             MethodDesc method,

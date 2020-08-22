@@ -7,11 +7,9 @@ using Microsoft.Win32.SafeHandles;
 
 namespace System.Threading
 {
-    /// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /// // Wait subsystem
+    /// # Wait subsystem
     /// 
-    /// ////////////////////////////////////////////////////////////////
-    /// // Types
+    /// ## Types
     /// 
     /// <see cref="WaitSubsystem"/>
     ///   - Static API surface for dealing with synchronization objects that support multi-wait, and to put a thread into a wait
@@ -31,10 +29,6 @@ namespace System.Threading
     ///   - Provides functionality to allocate a handle associated with a <see cref="WaitableObject"/>, to retrieve the object
     ///     from a handle, and to delete a handle.
     /// 
-    /// <see cref="WaitHandleArray{T}"/>
-    ///   - Used to precreate an array that will be used for storing information about a multi-wait operation, and dynamically
-    ///     resize up to the maximum capacity <see cref="WaitHandle.MaxWaitHandles"/> as needed
-    /// 
     /// <see cref="LowLevelLock"/> and <see cref="LowLevelMonitor"/>
     ///   - These are "low level" in the sense they don't depend on this wait subsystem, and any waits done are not
     ///     interruptible
@@ -45,8 +39,7 @@ namespace System.Threading
     ///     thread's wait state and for waiting. <see cref="LowLevelLock"/> also uses an instance of
     ///     <see cref="LowLevelMonitor"/> for waiting.
     /// 
-    /// ////////////////////////////////////////////////////////////////
-    /// // Design goals
+    /// ## Design goals
     /// 
     /// Behave similarly to wait operations on Windows
     ///   - The design is similar to the one used by CoreCLR's PAL, but much simpler due to there being no need for supporting
@@ -120,8 +113,6 @@ namespace System.Threading
     ///   - Since <see cref="s_lock"/> provides mutual exclusion for the states of all <see cref="WaitableObject"/>s in the
     ///     process, any operation that does not involve waiting or releasing a wait can occur with minimal p/invokes
     /// 
-    /// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
     [EagerStaticClassConstruction] // the wait subsystem is used during lazy class construction
     internal static partial class WaitSubsystem
     {
@@ -164,9 +155,9 @@ namespace System.Threading
                 return safeWaitHandle;
             }
 
-            /// Acquire the mutex. A thread's <see cref="ThreadWaitInfo"/> has a reference to all <see cref="Mutex"/>es locked
-            /// by the thread. See <see cref="ThreadWaitInfo.LockedMutexesHead"/>. So, acquire the lock only after all
-            /// possibilities for exceptions have been exhausted.
+            // Acquire the mutex. A thread's <see cref="ThreadWaitInfo"/> has a reference to all <see cref="Mutex"/>es locked
+            // by the thread. See <see cref="ThreadWaitInfo.LockedMutexesHead"/>. So, acquire the lock only after all
+            // possibilities for exceptions have been exhausted.
             ThreadWaitInfo waitInfo = Thread.CurrentThread.WaitInfo;
             bool acquiredLock = waitableObject.Wait(waitInfo, timeoutMilliseconds: 0, interruptible: false, prioritize: false) == 0;
             Debug.Assert(acquiredLock);
@@ -299,10 +290,10 @@ namespace System.Threading
                     WaitableObject waitableObject = HandleManager.FromHandle(waitHandles[i]);
                     if (waitForAll)
                     {
-                        /// Check if this is a duplicate, as wait-for-all does not support duplicates. Including the parent
-                        /// loop, this becomes a brute force O(n^2) search, which is intended since the typical array length is
-                        /// short enough that this would actually be faster than other alternatives. Also, the worst case is not
-                        /// so bad considering that the array length is limited by <see cref="WaitHandle.MaxWaitHandles"/>.
+                        // Check if this is a duplicate, as wait-for-all does not support duplicates. Including the parent
+                        // loop, this becomes a brute force O(n^2) search, which is intended since the typical array length is
+                        // short enough that this would actually be faster than other alternatives. Also, the worst case is not
+                        // so bad considering that the array length is limited by <see cref="WaitHandle.MaxWaitHandles"/>.
                         for (int j = 0; j < i; ++j)
                         {
                             if (waitableObject == waitableObjects[j])

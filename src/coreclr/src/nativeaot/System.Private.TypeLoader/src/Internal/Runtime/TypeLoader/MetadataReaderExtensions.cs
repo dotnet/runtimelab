@@ -19,7 +19,7 @@ namespace System.Reflection.Runtime.General
         /// Convert raw token to a typed metadata handle.
         /// </summary>
         /// <param name="token">Token - raw integral handle representation</param>
-        /// <returns>Token converted to handle</param>
+        /// <returns>Token converted to handle</returns>
         public static unsafe Handle AsHandle(this int token)
         {
             return *(Handle*)&token;
@@ -29,7 +29,7 @@ namespace System.Reflection.Runtime.General
         /// Convert raw token to a typed metadata handle.
         /// </summary>
         /// <param name="token">Token - raw integral handle representation</param>
-        /// <returns>Token converted to handle</param>
+        /// <returns>Token converted to handle</returns>
         public static unsafe Handle AsHandle(this uint token)
         {
             return *(Handle*)&token;

@@ -105,10 +105,10 @@ namespace System.Threading
             Signal_ReleaseCore();
         }
 
-        /// The following methods typical in a monitor are omitted since they are currently not necessary for the way in which
-        /// this class is used:
-        ///   - TryAcquire
-        ///   - Signal (use <see cref="Signal_Release"/> instead)
-        ///   - SignalAll
+        // The following methods typical in a monitor are omitted since they are currently not necessary for the way in which
+        // this class is used:
+        //   - TryAcquire
+        //   - Signal (use <see cref="Signal_Release"/> instead)
+        //   - SignalAll
     }
 }

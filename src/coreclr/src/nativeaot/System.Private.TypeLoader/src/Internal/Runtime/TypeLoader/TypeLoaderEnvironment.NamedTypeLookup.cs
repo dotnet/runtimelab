@@ -189,14 +189,13 @@ namespace Internal.Runtime.TypeLoader
 
         /// <summary>
         /// Return the metadata handle for a TypeDef if the pay-for-policy enabled this type as browsable. This is used to obtain name and other information for types
-        /// obtained via typeof() or Object.GetType(). This can include generic types (Foo<>) (not to be confused with generic instances of Foo<>).
+        /// obtained via typeof() or Object.GetType(). This can include generic types (not to be confused with generic instances).
         ///
         /// Preconditions:
         ///    runtimeTypeHandle is a typedef (not a constructed type such as an array or generic instance.)
         /// </summary>
         /// <param name="runtimeTypeHandle">Runtime handle of the type in question</param>
-        /// <param name="metadataReader">Metadata reader located for the type</param>
-        /// <param name="typeDefHandle">TypeDef handle for the type</param>
+        /// <param name="qTypeDefinition">TypeDef handle for the type</param>
         public unsafe bool TryGetMetadataForNamedType(RuntimeTypeHandle runtimeTypeHandle, out QTypeDefinition qTypeDefinition)
         {
             NamedTypeLookupResult result = _runtimeTypeHandleToMetadataHashtable.GetOrCreateValue(runtimeTypeHandle);
@@ -247,8 +246,7 @@ namespace Internal.Runtime.TypeLoader
         /// Note: Although this method has a "bool" return value like the other mapping table accessors, the Project N pay-for-play design 
         /// guarantees that any type enabled for metadata also has a RuntimeTypeHandle underneath.
         /// </summary>
-        /// <param name="metadataReader">Metadata reader for module containing the type</param>
-        /// <param name="typeDefHandle">TypeDef handle for the type to look up</param>
+        /// <param name="qTypeDefinition">TypeDef handle for the type to look up</param>
         /// <param name="runtimeTypeHandle">Runtime type handle (EEType) for the given type</param>
         public unsafe bool TryGetNamedTypeForMetadata(QTypeDefinition qTypeDefinition, out RuntimeTypeHandle runtimeTypeHandle)
         {
