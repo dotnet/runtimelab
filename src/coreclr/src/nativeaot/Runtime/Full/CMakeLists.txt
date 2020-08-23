@@ -53,6 +53,7 @@ add_custom_target(
 
 # The AsmOffsets.inc will be built as a dependency of the Runtime
 add_dependencies(Runtime AsmOffsets)
+add_dependencies(Runtime.ServerGC AsmOffsets)
 
 # Extract the definitions for the ASM code. Since there is a bug in the cmake that prevents us from
 # using the generator expressions, we split the definitions into lists based on the configuration.
