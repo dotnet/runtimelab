@@ -382,7 +382,7 @@ namespace System
         /// <summary>
         /// Counter for exception ID assignment
         /// </summary>
-        private static int s_currentExceptionId = 0;
+        private static int s_currentExceptionId;
 
         /// <summary>
         /// This method will call the runtime to gather the Exception objects from every exception dispatch in

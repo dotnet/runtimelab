@@ -52,7 +52,7 @@ namespace System.Diagnostics
         /// desired events are actually reported to the debugger.
         /// Constant representing the default category
         /// </summary>
-        public static readonly string DefaultCategory = null;
+        public static readonly string DefaultCategory;
 
         /// <summary>
         /// Posts a message for the attached debugger.  If there is no

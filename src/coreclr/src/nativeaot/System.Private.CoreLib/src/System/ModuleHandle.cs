@@ -7,7 +7,7 @@ namespace System
 {
     public struct ModuleHandle
     {
-        public static readonly ModuleHandle EmptyHandle = default(ModuleHandle);
+        public static readonly ModuleHandle EmptyHandle;
 
         private Module _ptr;
 

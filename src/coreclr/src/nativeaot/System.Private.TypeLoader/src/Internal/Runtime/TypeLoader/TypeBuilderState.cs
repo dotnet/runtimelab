@@ -95,7 +95,7 @@ namespace Internal.Runtime.TypeLoader
         // NOTE: For correctness, this value must be recomputed every time the context is recycled. This requires flushing the TypeBuilderState
         // from each type that has one if context is recycled.
         //
-        public bool AttemptedAndFailedToRetrieveTypeHandle = false;
+        public bool AttemptedAndFailedToRetrieveTypeHandle;
 
         public bool NeedsTypeHandle;
         public bool HasBeenPrepared;
@@ -139,9 +139,9 @@ namespace Internal.Runtime.TypeLoader
             }
         }
 
-        private bool _nativeLayoutComputed = false;
-        private bool _templateTypeLoaderNativeLayout = false;
-        private bool _readyToRunNativeLayout = false;
+        private bool _nativeLayoutComputed;
+        private bool _templateTypeLoaderNativeLayout;
+        private bool _readyToRunNativeLayout;
 
         private NativeLayoutInfo _nativeLayoutInfo;
         private NativeLayoutInfo _r2rnativeLayoutInfo;

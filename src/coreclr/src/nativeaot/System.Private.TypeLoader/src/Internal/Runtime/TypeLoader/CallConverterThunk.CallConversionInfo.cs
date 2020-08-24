@@ -30,7 +30,7 @@ namespace Internal.Runtime.TypeLoader
     {
         private CallConversionInfo() { }
 
-        private static int s_callConvertersCount = 0;
+        private static int s_callConvertersCount;
         private static volatile CallConversionInfo[] s_callConverters = new CallConversionInfo[512];
 
         private static Lock s_callConvertersCacheLock = new Lock();

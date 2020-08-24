@@ -487,7 +487,7 @@ namespace Internal.Runtime.TypeLoader
         // This method is called whenever a new thunk is allocated, to capture the thunk's code address
         // in the serialized stream.
         // This information is used by the debugger to detect thunk frames on the callstack.
-        private static bool s_tailCallThunkSizeRegistered = false;
+        private static bool s_tailCallThunkSizeRegistered;
         public static void RegisterTailCallThunk(IntPtr thunk)
         {
             NativePrimitiveEncoder encoder = new NativePrimitiveEncoder();

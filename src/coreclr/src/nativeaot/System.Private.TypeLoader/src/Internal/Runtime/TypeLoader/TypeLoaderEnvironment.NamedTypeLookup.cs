@@ -33,7 +33,7 @@ namespace Internal.Runtime.TypeLoader
             public volatile int VersionNumber;
         }
 
-        private volatile int _namedTypeLookupLiveVersion = 0;
+        private volatile int _namedTypeLookupLiveVersion;
 
         private NamedTypeRuntimeTypeHandleToMetadataHashtable _runtimeTypeHandleToMetadataHashtable = new NamedTypeRuntimeTypeHandleToMetadataHashtable();
 

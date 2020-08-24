@@ -98,7 +98,7 @@ namespace System.Threading
         /// <summary>
         /// The head of the list of freed entries linked using the Next property.
         /// </summary>
-        private static int s_freeEntryList = 0;
+        private static int s_freeEntryList;
 
         /// <summary>
         /// The index of the lowest never used entry.  We skip the 0th entry and start with 1.
