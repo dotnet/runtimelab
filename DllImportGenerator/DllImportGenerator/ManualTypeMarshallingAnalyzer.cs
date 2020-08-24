@@ -38,7 +38,7 @@ namespace Microsoft.Interop
         public readonly static DiagnosticDescriptor NativeTypeMustBeNonNullRule =
             new DiagnosticDescriptor(
                 "INTEROPGEN003",
-                "NativeTypeMustBeBlittable",
+                "NativeTypeMustBeNonNull",
                 "The native type for the type '{0}' is null.",
                 Category,
                 DiagnosticSeverity.Error,
