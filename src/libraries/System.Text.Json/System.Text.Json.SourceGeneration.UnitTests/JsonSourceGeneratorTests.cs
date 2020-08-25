@@ -229,6 +229,20 @@ namespace System.Text.Json.SourceGeneration.UnitTests
         }
 
         [Fact]
+        public void NameClashCompilation()
+        {
+            Compilation compilation = CompilationHelper.CreateRepeatedLocationsCompilation();
+
+            JsonSourceGenerator generator = new JsonSourceGenerator();
+
+            Compilation newCompilation = CompilationHelper.RunGenerators(compilation, out var generatorDiags, generator);
+
+            // Make sure compilation was successful.
+            CheckCompilationDiagnosticsErrors(generatorDiags);
+            CheckCompilationDiagnosticsErrors(newCompilation.GetDiagnostics());
+        }
+
+        [Fact]
         public void CollectionDictionarySourceGeneration()
         {
             // Compile the referenced assembly first.
@@ -262,20 +276,6 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             MetadataReference[] additionalReferences = { MetadataReference.CreateFromImage(referencedImage) };
 
             Compilation compilation = CompilationHelper.CreateCompilation(source, additionalReferences);
-
-            JsonSourceGenerator generator = new JsonSourceGenerator();
-
-            Compilation newCompilation = CompilationHelper.RunGenerators(compilation, out var generatorDiags, generator);
-
-            // Make sure compilation was successful.
-            CheckCompilationDiagnosticsErrors(generatorDiags);
-            CheckCompilationDiagnosticsErrors(newCompilation.GetDiagnostics());
-        }
-
-        [Fact]
-        public void NameClashCompilation()
-        {
-            Compilation compilation = CompilationHelper.CreateRepeatedLocationsCompilation();
 
             JsonSourceGenerator generator = new JsonSourceGenerator();
 

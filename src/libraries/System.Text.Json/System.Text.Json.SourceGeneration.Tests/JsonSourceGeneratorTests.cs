@@ -152,7 +152,7 @@ namespace System.Text.Json.SourceGeneration.Tests
         }
 
         [Fact]
-        public void RoundTripTypeNameClash()
+        public static void RoundTripTypeNameClash()
         {
             RepeatedTypes.Location expected = CreateRepeatedLocation();
 
