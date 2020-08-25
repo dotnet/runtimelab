@@ -13,7 +13,6 @@ namespace Microsoft.Interop
     public class ManualTypeMarshallingAnalyzer : DiagnosticAnalyzer
     {
         private const string Category = "Interoperability";
-
         public readonly static DiagnosticDescriptor BlittableTypeMustBeBlittableRule =
             new DiagnosticDescriptor(
                 "INTEROPGEN001",
@@ -148,11 +147,11 @@ namespace Microsoft.Interop
 
         private void PrepareForAnalysis(CompilationStartAnalysisContext context)
         {
-            var generatedMarshallingAttribute = context.Compilation.GetTypeByMetadataName("System.Runtime.InteropServices.GeneratedMarshallingAttribute");
-            var blittableTypeAttribute = context.Compilation.GetTypeByMetadataName("System.Runtime.InteropServices.BlittableTypeAttribute");
-            var nativeMarshallingAttribute = context.Compilation.GetTypeByMetadataName("System.Runtime.InteropServices.NativeMarshallingAttribute");
-            var marshalUsingAttribute = context.Compilation.GetTypeByMetadataName("System.Runtime.InteropServices.MarshalUsingAttribute");
-            var spanOfByte = context.Compilation.GetTypeByMetadataName("System.Span`1")!.Construct(context.Compilation.GetSpecialType(SpecialType.System_Byte));
+            var generatedMarshallingAttribute = context.Compilation.GetTypeByMetadataName(TypeNames.GeneratedMarshallingAttribute);
+            var blittableTypeAttribute = context.Compilation.GetTypeByMetadataName(TypeNames.BlittableTypeAttribute);
+            var nativeMarshallingAttribute = context.Compilation.GetTypeByMetadataName(TypeNames.NativeMarshallingAttribute);
+            var marshalUsingAttribute = context.Compilation.GetTypeByMetadataName(TypeNames.MarshalUsingAttribute);
+            var spanOfByte = context.Compilation.GetTypeByMetadataName(TypeNames.System_Span)!.Construct(context.Compilation.GetSpecialType(SpecialType.System_Byte));
 
             if (generatedMarshallingAttribute is not null &&
                 blittableTypeAttribute is not null &&

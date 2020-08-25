@@ -118,28 +118,28 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="BlittableTypeMustBeBlittableDescription" xml:space="preserve">
-    <value>A type marked with BlittableTypeAttribute must be blittable.</value>
+    <value>A type marked with 'BlittableTypeAttribute' must be blittable.</value>
   </data>
   <data name="BlittableTypeMustBeBlittableMessage" xml:space="preserve">
-    <value>Type '{0}' is marked with BlittableTypeAttribute but is not blittable.</value>
+    <value>Type '{0}' is marked with 'BlittableTypeAttribute' but is not blittable.</value>
   </data>
   <data name="CannotHaveMultipleMarshallingAttributesDescription" xml:space="preserve">
-    <value>The BlittableTypeAttribute and NativeMarshallingAttributes are mutually exclusive.</value>
+    <value>The 'BlittableTypeAttribute' and 'NativeMarshallingAttributes' are mutually exclusive.</value>
   </data>
   <data name="CannotHaveMultipleMarshallingAttributesMessage" xml:space="preserve">
-    <value>Type '{0}' is marked with BlittableTypeAttribute and NativeMarshallingAttribute. A type can only have one of these two attributes.</value>
+    <value>Type '{0}' is marked with 'BlittableTypeAttribute' and 'NativeMarshallingAttribute'. A type can only have one of these two attributes.</value>
   </data>
   <data name="GetPinnableReferenceReturnTypeBlittableDescription" xml:space="preserve">
-    <value>The return type of GetPinnableReference (after accounting for ref) must be blittable.</value>
+    <value>The return type of 'GetPinnableReference' (after accounting for 'ref') must be blittable.</value>
   </data>
   <data name="GetPinnableReferenceReturnTypeBlittableMessage" xml:space="preserve">
-    <value>The dereferenced type of the return type of the GetPinnableReference method must be blittable.</value>
+    <value>The dereferenced type of the return type of the 'GetPinnableReference' method must be blittable.</value>
   </data>
   <data name="GetPinnableReferenceShouldSupportAllocatingMarshallingFallbackDescription" xml:space="preserve">
     <value>A type that supports marshalling from managed to native by pinning should also support marshalling from managed to native where pinning is impossible.</value>
   </data>
   <data name="GetPinnableReferenceShouldSupportAllocatingMarshallingFallbackMessage" xml:space="preserve">
-    <value>Type '{0}' has a GetPinnableReference method but its native type does not support marshalling in scenarios where pinning is impossible.</value>
+    <value>Type '{0}' has a 'GetPinnableReference' method but its native type does not support marshalling in scenarios where pinning is impossible.</value>
   </data>
   <data name="NativeTypeMustBeBlittableDescription" xml:space="preserve">
     <value>A native type for a given type must be blittable.</value>
@@ -154,10 +154,10 @@
     <value>The native type for the type '{0}' is null.</value>
   </data>
   <data name="NativeTypeMustBePointerSizedDescription" xml:space="preserve">
-    <value>The native type must be pointer sized so we can cast the pinned result of GetPinnableReference to the native type.</value>
+    <value>The native type must be pointer sized so we can cast the pinned result of 'GetPinnableReference' to the native type.</value>
   </data>
   <data name="NativeTypeMustBePointerSizedMessage" xml:space="preserve">
-    <value>The native type '{0}' must be pointer sized because the managed type '{1}' has a GetPinnableReference method.</value>
+    <value>The native type '{0}' must be pointer sized because the managed type '{1}' has a 'GetPinnableReference" method.</value>
   </data>
   <data name="NativeTypeMustHaveRequiredShapeDescription" xml:space="preserve">
     <value>The native type must have at least one of the two marshalling methods to enable marshalling the managed type.</value>
@@ -172,13 +172,13 @@
     <value>Native type '{0}' has a stack-allocating constructor does not support marshalling in scenarios where stack allocation is impossible.</value>
   </data>
   <data name="ValuePropertyMustHaveGetterDescription" xml:space="preserve">
-    <value>The native type's Value property must have a getter to support marshalling from managed to native.</value>
+    <value>The native type's 'Value' property must have a getter to support marshalling from managed to native.</value>
   </data>
   <data name="ValuePropertyMustHaveGetterMessage" xml:space="preserve">
     <value>The 'Value' property on the native type '{0}' must have a getter.</value>
   </data>
   <data name="ValuePropertyMustHaveSetterDescription" xml:space="preserve">
-    <value>The native type's Value property must have a setter to support marshalling from native to managed.</value>
+    <value>The native type's 'Value' property must have a setter to support marshalling from native to managed.</value>
   </data>
   <data name="ValuePropertyMustHaveSetterMessage" xml:space="preserve">
     <value>The 'Value' property on the native type '{0}' must have a setter.</value>
