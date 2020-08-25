@@ -25,13 +25,6 @@ namespace System.Text.Json.Serialization.Metadata
         /// </summary>
         public static JsonTypeInfo<Dictionary<TKey, TValue>> GetDictionary(JsonClassInfo elementInfo, JsonSerializerContext context)
         {
-            // todo: support obtaining existing converter
-            //if (context._options.HasCustomConverters)
-            //{
-            //JsonConverter<T[]> converter = (JsonConverter<T[]>)context._options.GetConverter(typeof(T[]));
-            //return new JsonCollectionTypeInfo<T[]>(CreateList, converter, elementInfo, context._options);
-            //}
-
             if (s_dictionaryOfTKeyTValue == null)
             {
                 s_dictionaryOfTKeyTValue = new JsonCollectionTypeInfo<Dictionary<TKey, TValue>>(CreateDictionary, new DictionaryOfTKeyTValueConverter<Dictionary<TKey, TValue>, TKey, TValue>(), elementInfo, context._options);
