@@ -895,5 +895,67 @@ struct S<T> where T : unmanaged
             await VerifyCS.VerifyAnalyzerAsync(source,
                 VerifyCS.Diagnostic(BlittableTypeMustBeBlittableRule).WithSpan(4, 2, 4, 15).WithArguments("S<T>"));
         }
+
+        [Fact]
+        public async Task ValueTypeContainingPointerBlittableType_DoesNotReportDiagnostic()
+        {
+            var source = @"
+using System.Runtime.InteropServices;
+
+[BlittableType]
+unsafe struct S
+{
+    private int* ptr;
+}";
+            await VerifyCS.VerifyAnalyzerAsync(source);
+        }
+
+        [Fact]
+        public async Task ValueTypeContainingPointerToNonBlittableType_ReportsDiagnostic()
+        {
+            var source = @"
+using System.Runtime.InteropServices;
+
+[BlittableType]
+unsafe struct S
+{
+    private bool* ptr;
+}";
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic(BlittableTypeMustBeBlittableRule).WithSpan(4, 2, 4, 15).WithArguments("S"));
+        }
+
+        [Fact]
+        public async Task BlittableValueTypeContainingPointerToSelf_DoesNotReportDiagnostic()
+        {
+
+            var source = @"
+using System.Runtime.InteropServices;
+
+[BlittableType]
+unsafe struct S
+{
+    private int fld;
+    private S* ptr;
+}";
+            await VerifyCS.VerifyAnalyzerAsync(source);
+        }
+
+        [Fact]
+        public async Task NonBlittableValueTypeContainingPointerToSelf_ReportsDiagnostic()
+        {
+
+            var source = @"
+using System.Runtime.InteropServices;
+
+[BlittableType]
+unsafe struct S
+{
+    private bool fld;
+    private S* ptr;
+}";
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic(BlittableTypeMustBeBlittableRule).WithSpan(4, 2, 4, 15).WithArguments("S"));
+        }
     }
 }
