@@ -75,7 +75,7 @@ namespace System.Text.Json.SourceGeneration.Tests
         public int Low { get; set; }
     }
 
-    public class JsonSerializerSourceGeneratorTests
+    public static class JsonSerializerSourceGeneratorTests
     {
         [Fact]
         public static void RoundTripLocation()
@@ -122,7 +122,7 @@ namespace System.Text.Json.SourceGeneration.Tests
         }
 
         [Fact]
-        public void RoundTripCollectionsDictionary()
+        public static void RoundTripCollectionsDictionary()
         {
             WeatherForecastWithPOCOs expected = CreateWeatherForecastWithPOCOs();
 

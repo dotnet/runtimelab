@@ -23,13 +23,6 @@ namespace System.Text.Json.Serialization
             {
                 if (_boolean == null)
                 {
-                    // todo: support obtaining existing converter
-                    //if (_options.HasCustomConverters)
-                    //{
-                        //JsonConverter<bool> converter = (JsonConverter<bool>)_options.GetConverter(typeof(bool));
-                        //_boolean = new JsonValueInfo<bool>(converter, _options);
-                    //}
-                    //else
                     {
                         if (s_boolean == null)
                         {
@@ -55,13 +48,6 @@ namespace System.Text.Json.Serialization
             {
                 if (_dateTimeOffset == null)
                 {
-                    // todo: support obtaining existing converter
-                    //if (_options.HasCustomConverters)
-                    //{
-                        //JsonConverter<DateTimeOffset> converter = (JsonConverter<DateTimeOffset>)_options.GetConverter(typeof(DateTimeOffset));
-                        //_dateTimeOffset = new JsonValueInfo<DateTimeOffset>(converter, _options);
-                    //}
-                    //else
                     {
                         if (s_dateTimeOffset == null)
                         {
@@ -87,13 +73,6 @@ namespace System.Text.Json.Serialization
             {
                 if (_dateTime == null)
                 {
-                    // todo: support obtaining existing converter
-                    //if (_options.HasCustomConverters)
-                    //{
-                    //JsonConverter<DateTime> converter = (JsonConverter<DateTime>)_options.GetConverter(typeof(DateTime));
-                    //_dateTime = new JsonValueInfo<DateTime>(converter, _options);
-                    //}
-                    //else
                     {
                         if (s_dateTime == null)
                         {
@@ -119,13 +98,6 @@ namespace System.Text.Json.Serialization
             {
                 if (_int32 == null)
                 {
-                    // todo: support obtaining existing converter
-                    //if (_options.HasCustomConverters)
-                    //{
-                        //JsonConverter<int> converter = (JsonConverter<int>)_options.GetConverter(typeof(int));
-                        //_int32 = new JsonValueInfo<int>(converter, _options);
-                    //}
-                    //else
                     {
                         if (s_int32 == null)
                         {
@@ -151,13 +123,6 @@ namespace System.Text.Json.Serialization
             {
                 if (_int64 == null)
                 {
-                    // todo: support obtaining existing converter
-                    //if (_options.HasCustomConverters)
-                    //{
-                    //JsonConverter<long> converter = (JsonConverter<long>)_options.GetConverter(typeof(long));
-                    //_int64 = new JsonValueInfo<long>(converter, _options);
-                    //}
-                    //else
                     {
                         if (s_int64 == null)
                         {
@@ -183,13 +148,6 @@ namespace System.Text.Json.Serialization
             {
                 if (_single == null)
                 {
-                    // todo: support obtaining existing converter
-                    //if (_options.HasCustomConverters)
-                    //{
-                    //JsonConverter<float> converter = (JsonConverter<float>)_options.GetConverter(typeof(float));
-                    //_single = new JsonValueInfo<float>(converter, _options);
-                    //}
-                    //else
                     {
                         if (s_single == null)
                         {
@@ -215,13 +173,6 @@ namespace System.Text.Json.Serialization
             {
                 if (_double == null)
                 {
-                    // todo: support obtaining existing converter
-                    //if (_options.HasCustomConverters)
-                    //{
-                    //JsonConverter<double> converter = (JsonConverter<double>)_options.GetConverter(typeof(double));
-                    //_double = new JsonValueInfo<double>(converter, _options);
-                    //}
-                    //else
                     {
                         if (s_double == null)
                         {
@@ -247,13 +198,6 @@ namespace System.Text.Json.Serialization
             {
                 if (_char == null)
                 {
-                    // todo: support obtaining existing converter
-                    //if (_options.HasCustomConverters)
-                    //{
-                    //JsonConverter<char> converter = (JsonConverter<char>)_options.GetConverter(typeof(char));
-                    //_char = new JsonValueInfo<char>(converter, _options);
-                    //}
-                    //else
                     {
                         if (s_char == null)
                         {
@@ -279,13 +223,6 @@ namespace System.Text.Json.Serialization
             {
                 if (_string == null)
                 {
-                    // todo: support obtaining existing converter
-                    //if (_options.HasCustomConverters)
-                    //{
-                        //JsonConverter<string> converter = (JsonConverter<string>)_options.GetConverter(typeof(string));
-                        //_string = new JsonValueInfo<string>(converter, _options);
-                    //}
-                    //else
                     {
                         if (s_string == null)
                         {
