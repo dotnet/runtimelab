@@ -23,6 +23,7 @@ namespace Microsoft.Interop
                     { IsStatic : true } => null,
                     { Type : { IsValueType : false }} => false,
                     { Type : IPointerTypeSymbol ptr } => IsConsideredBlittable(ptr.PointedAtType),
+                    { Type : IFunctionPointerTypeSymbol } => true,
                     not { Type : { SpecialType : SpecialType.None }} => IsSpecialTypeBlittable(field.Type.SpecialType),
                     // A recursive struct type isn't blittable.
                     // It's also illegal in C#, but I believe that source generators run

@@ -944,7 +944,6 @@ unsafe struct S
         [Fact]
         public async Task NonBlittableValueTypeContainingPointerToSelf_ReportsDiagnostic()
         {
-
             var source = @"
 using System.Runtime.InteropServices;
 
@@ -956,6 +955,20 @@ unsafe struct S
 }";
             await VerifyCS.VerifyAnalyzerAsync(source,
                 VerifyCS.Diagnostic(BlittableTypeMustBeBlittableRule).WithSpan(4, 2, 4, 15).WithArguments("S"));
+        }
+
+        [Fact]
+        public async Task BlittableTypeContainingFunctionPointer_DoesNotReportDiagnostic()
+        {
+            var source = @"
+using System.Runtime.InteropServices;
+
+[BlittableType]
+unsafe struct S
+{
+    private delegate*<int> ptr;
+}";
+            await VerifyCS.VerifyAnalyzerAsync(source);
         }
     }
 }
