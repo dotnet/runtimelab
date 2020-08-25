@@ -74,7 +74,6 @@ namespace System.Text.Json.SourceGeneration.Tests
         public bool HasFeaturedCampaign => FeaturedCampaign != null;
     }
 
-    // Sample classes taken from https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-how-to.
     [JsonSerializable]
     public class WeatherForecastWithPOCOs
     {
@@ -93,7 +92,7 @@ namespace System.Text.Json.SourceGeneration.Tests
         public int Low { get; set; }
     }
 
-    public class JsonSerializerSourceGeneratorTests
+    public static class JsonSerializerSourceGeneratorTests
     {
         [Fact]
         public static void RoundTripLocation()
@@ -142,7 +141,7 @@ namespace System.Text.Json.SourceGeneration.Tests
         }
 
         [Fact]
-        public void RoundTripCollectionsDictionary()
+        public static void RoundTripCollectionsDictionary()
         {
             WeatherForecastWithPOCOs expected = CreateWeatherForecastWithPOCOs();
 

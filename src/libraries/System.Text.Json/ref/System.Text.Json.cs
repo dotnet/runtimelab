@@ -689,8 +689,6 @@ namespace System.Text.Json.Serialization.Metadata
     public static partial class KnownCollectionTypeInfos<T>
     {
         public static System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.List<T>> GetList(System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.Serialization.JsonSerializerContext context) { throw null; }
-        public static System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.Queue<T>> GetQueue(System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.Serialization.JsonSerializerContext context) { throw null; }
-        public static System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.Stack<T>> GetStack(System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.Serialization.JsonSerializerContext context) { throw null; }
         public static System.Text.Json.Serialization.Metadata.JsonTypeInfo<T[]> GetArray(System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.Serialization.JsonSerializerContext context) { throw null; }
         public static System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.IEnumerable<T>> GetIEnumerable(System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.Serialization.JsonSerializerContext context) { throw null; }
     }
