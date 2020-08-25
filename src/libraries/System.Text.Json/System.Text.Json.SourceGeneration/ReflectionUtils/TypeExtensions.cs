@@ -12,7 +12,7 @@ namespace System.Reflection
     {
         public static bool IsIList(this Type type)
         {
-            if (type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(IList<>)))
+            if (type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(List<>)))
             {
                 return true;
             }
@@ -23,7 +23,7 @@ namespace System.Reflection
                     if (t.IsGenericType && (t.GetGenericTypeDefinition().Equals(typeof(IList<>))))
                     {
                         return true;
-                    }    
+                    }
                 }
                 return false;
             }
@@ -52,7 +52,7 @@ namespace System.Reflection
 
         public static bool IsIDictionary(this Type type)
         {
-            if (type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(IDictionary<,>)))
+            if (type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(Dictionary<,>)))
             {
                 return true;
             }
@@ -63,11 +63,11 @@ namespace System.Reflection
                     if (t.IsGenericType && (t.GetGenericTypeDefinition().Equals(typeof(IDictionary<,>))))
                     {
                         return true;
-                    }    
+                    }
                 }
                 return false;
             }
-            return type.IsAssignableFrom(typeof(IDictionary<,>));
+            return type.IsAssignableFrom(typeof(Dictionary<,>));
         }
 
         public static string GetFullNamespace(this Type type)

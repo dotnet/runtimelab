@@ -57,7 +57,6 @@ namespace System.Text.Json.SourceGeneration.Tests
         public bool HasFeaturedCampaign => FeaturedCampaign != null;
     }
 
-    // Sample classes taken from https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-how-to.
     [JsonSerializable]
     public class WeatherForecastWithPOCOs
     {
