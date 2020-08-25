@@ -5,6 +5,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 
+#nullable enable
+
 namespace Microsoft.Interop
 {
     static class TypeSymbolExtensions
@@ -70,6 +72,10 @@ namespace Microsoft.Interop
             // [TODO]: Match attributes on full name or symbol, not just on type name.
             foreach (var attr in type.GetAttributes())
             {
+                if (attr.AttributeClass is null)
+                {
+                    continue;
+                }
                 if (attr.AttributeClass.Name == "BlittableTypeAttribute")
                 {
                     return true;
