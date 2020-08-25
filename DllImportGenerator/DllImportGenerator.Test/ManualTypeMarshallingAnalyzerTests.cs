@@ -9,7 +9,7 @@ namespace DllImportGenerator.Test
 {
     public class ManualTypeMarshallingAnalyzerTests
     {
-        public static IEnumerable<object[]> NonBlittableTypeMarkedBlittable_ReportsDiagnosticTestData {
+        public static IEnumerable<object[]> NonBlittableTypeMarkedBlittable_ReportsDiagnostic_TestData {
             get
             {
                 yield return new object[]
@@ -52,7 +52,7 @@ struct S
             }
         }
 
-        [MemberData(nameof(NonBlittableTypeMarkedBlittable_ReportsDiagnosticTestData))]
+        [MemberData(nameof(NonBlittableTypeMarkedBlittable_ReportsDiagnostic_TestData))]
         [Theory]
         public async Task NonBlittableTypeMarkedBlittable_ReportsDiagnostic(string source)
         {
@@ -780,6 +780,120 @@ struct Test
 ";
             await VerifyCS.VerifyAnalyzerAsync(source,
                 VerifyCS.Diagnostic(NativeTypeMustBeBlittableRule).WithSpan(10, 1, 19, 2).WithArguments("Native", "S"));
+        }
+
+        
+        [Fact]
+        public async Task GenericNativeTypeWithValueTypeValueProperty_DoesNotReportDiagnostic()
+        {
+            string source = @"
+using System.Runtime.InteropServices;
+
+[NativeMarshalling(typeof(Native<S>))]
+struct S
+{
+    public string s;
+}
+
+struct Native<T>
+    where T : new()
+{
+    public Native(T s)
+    {
+        Value = 0;
+    }
+
+    public T ToManaged() => new T();
+
+    public int Value { get; set; }
+}";
+            await VerifyCS.VerifyAnalyzerAsync(source);
+        }
+
+        [Fact]
+        public async Task GenericNativeTypeWithGenericMemberInstantiatedWithBlittable_DoesNotReportDiagnostic()
+        {
+            
+            string source = @"
+using System.Runtime.InteropServices;
+
+[NativeMarshalling(typeof(Native<int>))]
+struct S
+{
+    public string s;
+}
+
+struct Native<T>
+    where T : new()
+{
+    public Native(S s)
+    {
+        Value = new T();
+    }
+
+    public S ToManaged() => new S();
+
+    public T Value { get; set; }
+}";
+            await VerifyCS.VerifyAnalyzerAsync(source);
+        }
+        
+        public static IEnumerable<object[]> GenericTypeWithGenericFieldMarkedBlittable_ReportsDiagnostic_TestData {
+            get
+            {
+                yield return new object[]
+                {
+                    @"
+using System.Runtime.InteropServices;
+
+[BlittableType]
+struct S<T>
+{
+    public T t;
+}"
+                };
+                yield return new object[]
+                {
+                    @"
+using System.Runtime.InteropServices;
+
+[BlittableType]
+struct S<T> where T : class
+{
+    public T t;
+}"
+                };
+                yield return new object[]
+                {
+                   @"
+using System.Runtime.InteropServices;
+
+[BlittableType]
+struct S<T> where T : struct
+{
+    public T t;
+}"
+                };
+                yield return new object[]
+                {
+                   @"
+using System.Runtime.InteropServices;
+
+[BlittableType]
+struct S<T> where T : unmanaged
+{
+    public T t;
+}"
+                };
+            }
+        }
+        
+        [MemberData(nameof(GenericTypeWithGenericFieldMarkedBlittable_ReportsDiagnostic_TestData))]
+        [Theory]
+        public async Task GenericTypeWithGenericFieldMarkedBlittable_ReportsDiagnostic(string source)
+        {
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic(BlittableTypeMustBeBlittableRule).WithSpan(4, 2, 4, 15).WithArguments("S<T>"));
         }
     }
 }
