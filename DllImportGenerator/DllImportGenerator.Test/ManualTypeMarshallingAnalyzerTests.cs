@@ -26,6 +26,18 @@ struct S
                 };
                 yield return new object[]
                 {
+                    @"
+using System.Runtime.InteropServices;
+
+[BlittableType]
+struct S
+{
+    public char field;
+}
+"
+                };
+                yield return new object[]
+                {
                     
 @"
 using System.Runtime.InteropServices;
