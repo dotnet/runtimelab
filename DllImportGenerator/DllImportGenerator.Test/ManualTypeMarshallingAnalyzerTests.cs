@@ -9,7 +9,7 @@ namespace DllImportGenerator.Test
 {
     public class ManualTypeMarshallingAnalyzerTests
     {
-        public static IEnumerable<object[]> NonBlittableTypeMarkedBlittableReportsDiagnosticTestData {
+        public static IEnumerable<object[]> NonBlittableTypeMarkedBlittable_ReportsDiagnosticTestData {
             get
             {
                 yield return new object[]
@@ -40,9 +40,9 @@ struct S
             }
         }
 
-        [MemberData(nameof(NonBlittableTypeMarkedBlittableReportsDiagnosticTestData))]
+        [MemberData(nameof(NonBlittableTypeMarkedBlittable_ReportsDiagnosticTestData))]
         [Theory]
-        public async Task NonBlittableTypeMarkedBlittableReportsDiagnostic(string source)
+        public async Task NonBlittableTypeMarkedBlittable_ReportsDiagnostic(string source)
         {
             var diagnostic = VerifyCS.Diagnostic(BlittableTypeMustBeBlittableRule).WithSpan(4, 2, 4, 15).WithArguments("S");
             await VerifyCS.VerifyAnalyzerAsync(source, diagnostic);
@@ -110,7 +110,7 @@ struct T
         }
 
         [Fact]
-        public async Task NonUnmanagedTypeMarkedBlittableReportsDiagnosticOnStructType()
+        public async Task NonUnmanagedTypeMarkedBlittable_ReportsDiagnosticOnStructType()
         {
             string source = @"
 using System.Runtime.InteropServices;
@@ -133,7 +133,7 @@ struct T
         }
 
         [Fact]
-        public async Task BlittableTypeWithNonBlittableStaticFieldDoesNotReportDiagnostic()
+        public async Task BlittableTypeWithNonBlittableStaticField_DoesNotReportDiagnostic()
         {
             string source = @"
 using System.Runtime.InteropServices;
@@ -149,7 +149,7 @@ struct S
         }
 
         [Fact]
-        public async Task NullNativeTypeReportsDiagnostic()
+        public async Task NullNativeType_ReportsDiagnostic()
         {
             string source = @"
 using System.Runtime.InteropServices;
@@ -165,7 +165,7 @@ struct S
         }
 
         [Fact]
-        public async Task NonNamedNativeTypeReportsDiagnostic()
+        public async Task NonNamedNativeType_ReportsDiagnostic()
         {
             string source = @"
 using System.Runtime.InteropServices;
@@ -181,7 +181,7 @@ struct S
         }
 
         [Fact]
-        public async Task NonBlittableNativeTypeReportsDiagnostic()
+        public async Task NonBlittableNativeType_ReportsDiagnostic()
         {
             string source = @"
 using System.Runtime.InteropServices;
@@ -208,7 +208,7 @@ struct Native
         }
 
         [Fact]
-        public async Task ClassNativeTypeReportsDiagnostic()
+        public async Task ClassNativeType_ReportsDiagnostic()
         {
             string source = @"
 using System;
@@ -235,7 +235,7 @@ class Native
         }
 
         [Fact]
-        public async Task BlittableNativeTypeDoesNotReportDiagnostic()
+        public async Task BlittableNativeType_DoesNotReportDiagnostic()
         {
             string source = @"
 using System;
@@ -264,7 +264,7 @@ struct Native
         }
 
         [Fact]
-        public async Task BlittableNativeWithNonBlittableValuePropertyReportsDiagnostic()
+        public async Task BlittableNativeWithNonBlittableValueProperty_ReportsDiagnostic()
         {
             string source = @"
 using System;
@@ -296,7 +296,7 @@ struct Native
         }
 
         [Fact]
-        public async Task NonBlittableNativeTypeWithBlittableValuePropertyDoesNotReportDiagnostic()
+        public async Task NonBlittableNativeTypeWithBlittableValueProperty_DoesNotReportDiagnostic()
         {
             string source = @"
 using System;
@@ -326,7 +326,7 @@ struct Native
         }
 
         [Fact]
-        public async Task ClassNativeTypeWithValuePropertyReportsDiagnostic()
+        public async Task ClassNativeTypeWithValueProperty_ReportsDiagnostic()
         {
             string source = @"
 using System;
@@ -357,7 +357,7 @@ class Native
         }
 
         [Fact]
-        public async Task NonBlittableGetPinnableReferenceReturnTypeReportsDiagnostic()
+        public async Task NonBlittableGetPinnableReferenceReturnType_ReportsDiagnostic()
         {
             string source = @"
 using System;
@@ -391,7 +391,7 @@ unsafe struct Native
 
         
         [Fact]
-        public async Task BlittableGetPinnableReferenceReturnTypeDoesNotReportDiagnostic()
+        public async Task BlittableGetPinnableReferenceReturnType_DoesNotReportDiagnostic()
         {
             string source = @"
 using System;
@@ -423,7 +423,7 @@ unsafe struct Native
         }
         
         [Fact]
-        public async Task TypeWithGetPinnableReferenceNonPointerReturnTypeReportsDiagnostic()
+        public async Task TypeWithGetPinnableReferenceNonPointerReturnType_ReportsDiagnostic()
         {
             string source = @"
 using System;
@@ -456,7 +456,7 @@ unsafe struct Native
         }
 
         [Fact]
-        public async Task BlittableValueTypeWithNoFieldsDoesNotReportDiagnostic()
+        public async Task BlittableValueTypeWithNoFields_DoesNotReportDiagnostic()
         {
             string source = @"
 using System;
@@ -471,7 +471,7 @@ struct S
         }
 
         [Fact]
-        public async Task NativeTypeWithNoMarshallingMethodsReportsDiagnostic()
+        public async Task NativeTypeWithNoMarshallingMethods_ReportsDiagnostic()
         {
             string source = @"
 using System;
@@ -493,7 +493,7 @@ struct Native
         }
 
         [Fact]
-        public async Task NativeTypeWithOnlyConstructorDoesNotReportDiagnostic()
+        public async Task NativeTypeWithOnlyConstructor_DoesNotReportDiagnostic()
         {
             string source = @"
 using System;
@@ -515,7 +515,7 @@ struct Native
         }
 
         [Fact]
-        public async Task NativeTypeWithOnlyToManagedMethodDoesNotReportDiagnostic()
+        public async Task NativeTypeWithOnlyToManagedMethod_DoesNotReportDiagnostic()
         {
             string source = @"
 using System;
@@ -537,7 +537,7 @@ struct Native
         }
         
         [Fact]
-        public async Task NativeTypeWithOnlyStackallocConstructorReportsDiagnostic()
+        public async Task NativeTypeWithOnlyStackallocConstructor_ReportsDiagnostic()
         {
             string source = @"
 using System;
@@ -560,7 +560,7 @@ struct Native
         }
 
         [Fact]
-        public async Task TypeWithOnlyNativeStackallocConstructorAndGetPinnableReferenceReportsDiagnostics()
+        public async Task TypeWithOnlyNativeStackallocConstructorAndGetPinnableReference_ReportsDiagnostics()
         {
             string source = @"
 using System;
@@ -586,7 +586,7 @@ struct Native
         }
 
         [Fact]
-        public async Task NativeTypeWithConstructorAndSetOnlyValuePropertyReportsDiagnostic()
+        public async Task NativeTypeWithConstructorAndSetOnlyValueProperty_ReportsDiagnostic()
         {
             string source = @"
 using System;
@@ -610,7 +610,7 @@ struct Native
         }
 
         [Fact]
-        public async Task NativeTypeWithToManagedAndGetOnlyValuePropertyReportsDiagnostic()
+        public async Task NativeTypeWithToManagedAndGetOnlyValueProperty_ReportsDiagnostic()
         {
             string source = @"
 using System;
@@ -634,7 +634,7 @@ struct Native
         }
         
         [Fact]
-        public async Task BlittableNativeTypeOnMarshalUsingParameterDoesNotReportDiagnostic()
+        public async Task BlittableNativeTypeOnMarshalUsingParameter_DoesNotReportDiagnostic()
         {
             string source = @"
 using System;
@@ -669,7 +669,7 @@ static class Test
         }
 
         [Fact]
-        public async Task NonBlittableNativeTypeOnMarshalUsingParameterReportsDiagnostic()
+        public async Task NonBlittableNativeTypeOnMarshalUsingParameter_ReportsDiagnostic()
         {
             string source = @"
 using System;
@@ -703,7 +703,7 @@ static class Test
         }
 
         [Fact]
-        public async Task NonBlittableNativeTypeOnMarshalUsingReturnReportsDiagnostic()
+        public async Task NonBlittableNativeTypeOnMarshalUsingReturn_ReportsDiagnostic()
         {
             string source = @"
 using System;
@@ -737,7 +737,7 @@ static class Test
         }
 
         [Fact]
-        public async Task NonBlittableNativeTypeOnMarshalUsingFieldReportsDiagnostic()
+        public async Task NonBlittableNativeTypeOnMarshalUsingField_ReportsDiagnostic()
         {
             string source = @"
 using System;
