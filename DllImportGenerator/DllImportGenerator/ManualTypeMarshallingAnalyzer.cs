@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Immutable;
 using System.Linq;
+using DllImportGenerator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
@@ -11,119 +12,118 @@ namespace Microsoft.Interop
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class ManualTypeMarshallingAnalyzer : DiagnosticAnalyzer
     {
-        private const string DiagnosticIdPrefix = "INTEROPGEN";
         private const string Category = "Interoperability";
 
         public readonly static DiagnosticDescriptor BlittableTypeMustBeBlittableRule =
             new DiagnosticDescriptor(
                 "INTEROPGEN001",
                 "BlittableTypeMustBeBlittable",
-                "Type '{0}' is marked with BlittableTypeAttribute but is not blittable.",
+                new LocalizableResourceString(nameof(Resources.BlittableTypeMustBeBlittableMessage), Resources.ResourceManager, typeof(Resources)),
                 Category,
                 DiagnosticSeverity.Error,
                 isEnabledByDefault: true,
-                description: "A type marked with BlittableTypeAttribute must be blittable.");
+                description: new LocalizableResourceString(nameof(Resources.BlittableTypeMustBeBlittableDescription), Resources.ResourceManager, typeof(Resources)));
 
         public readonly static DiagnosticDescriptor CannotHaveMultipleMarshallingAttributesRule =
             new DiagnosticDescriptor(
                 "INTEROPGEN002",
                 "CannotHaveMultipleMarshallingAttributes",
-                "Type '{0}' is marked with BlittableTypeAttribute and NativeMarshallingAttribute. A type can only have one of these two attributes.",
+                new LocalizableResourceString(nameof(Resources.CannotHaveMultipleMarshallingAttributesMessage), Resources.ResourceManager, typeof(Resources)),
                 Category,
                 DiagnosticSeverity.Error,
                 isEnabledByDefault: true,
-                description: "The BlittableTypeAttribute and NativeMarshallingAttributes are mutually exclusive.");
+                description: new LocalizableResourceString(nameof(Resources.CannotHaveMultipleMarshallingAttributesDescription), Resources.ResourceManager, typeof(Resources)));
 
                 
         public readonly static DiagnosticDescriptor NativeTypeMustBeNonNullRule =
             new DiagnosticDescriptor(
                 "INTEROPGEN003",
                 "NativeTypeMustBeNonNull",
-                "The native type for the type '{0}' is null.",
+                new LocalizableResourceString(nameof(Resources.NativeTypeMustBeNonNullMessage), Resources.ResourceManager, typeof(Resources)),
                 Category,
                 DiagnosticSeverity.Error,
                 isEnabledByDefault: true,
-                description: "A native type for a given type must be non-null.");
+                description: new LocalizableResourceString(nameof(Resources.NativeTypeMustBeNonNullDescription), Resources.ResourceManager, typeof(Resources)));
 
         public readonly static DiagnosticDescriptor NativeTypeMustBeBlittableRule =
             new DiagnosticDescriptor(
                 "INTEROPGEN004",
                 "NativeTypeMustBeBlittable",
-                "The native type '{0}' for the type '{1}' is not blittable.",
+                new LocalizableResourceString(nameof(Resources.NativeTypeMustBeBlittableMessage), Resources.ResourceManager, typeof(Resources)),
                 Category,
                 DiagnosticSeverity.Error,
                 isEnabledByDefault: true,
-                description: "A native type for a given type must be blittable.");
+                description: new LocalizableResourceString(nameof(Resources.BlittableTypeMustBeBlittableDescription), Resources.ResourceManager, typeof(Resources)));
 
         public readonly static DiagnosticDescriptor GetPinnableReferenceReturnTypeBlittableRule =
             new DiagnosticDescriptor(
                 "INTEROPGEN005",
                 "GetPinnableReferenceReturnTypeBlittable",
-                "The dereferenced type of the return type of the GetPinnableReference method must be blittable.",
+                new LocalizableResourceString(nameof(Resources.GetPinnableReferenceReturnTypeBlittableMessage), Resources.ResourceManager, typeof(Resources)),
                 Category,
                 DiagnosticSeverity.Error,
                 isEnabledByDefault: true,
-                description: "The return type of GetPinnableReference (after accounting for ref) must be blittable.");
+                description: new LocalizableResourceString(nameof(Resources.GetPinnableReferenceReturnTypeBlittableDescription), Resources.ResourceManager, typeof(Resources)));
     
         public readonly static DiagnosticDescriptor NativeTypeMustBePointerSizedRule =
             new DiagnosticDescriptor(
                 "INTEROPGEN006",
                 "NativeTypeMustBePointerSized",
-                "The native type '{0}' must be pointer sized because the managed type '{1}' has a GetPinnableReference method.",
+                new LocalizableResourceString(nameof(Resources.NativeTypeMustBePointerSizedMessage), Resources.ResourceManager, typeof(Resources)),
                 Category,
                 DiagnosticSeverity.Error,
                 isEnabledByDefault: true,
-                description: "The native type must be pointer sized so we can cast the pinned result of GetPinnableReference to the native type.");
+                description: new LocalizableResourceString(nameof(Resources.NativeTypeMustBePointerSizedDescription), Resources.ResourceManager, typeof(Resources)));
 
         public readonly static DiagnosticDescriptor NativeTypeMustHaveRequiredShapeRule =
             new DiagnosticDescriptor(
                 "INTEROPGEN007",
                 "NativeTypeMustHaveRequiredShape",
-                "The native type '{0}' must be a value type and have a constructor that takes one parameter of type '{1}' or a parameterless instance method named 'ToManaged' that returns '{1}'.",
+                new LocalizableResourceString(nameof(Resources.NativeTypeMustHaveRequiredShapeMessage), Resources.ResourceManager, typeof(Resources)),
                 Category,
                 DiagnosticSeverity.Error,
                 isEnabledByDefault: true,
-                description: "The native type must have at least one of the two marshalling methods to enable marshalling the managed type.");
+                description: new LocalizableResourceString(nameof(Resources.NativeTypeMustHaveRequiredShapeDescription), Resources.ResourceManager, typeof(Resources)));
 
         public readonly static DiagnosticDescriptor ValuePropertyMustHaveSetterRule =
             new DiagnosticDescriptor(
                 "INTEROPGEN008",
                 "ValuePropertyMustHaveSetter",
-                "The 'Value' property on the native type '{0}' must have a setter.",
+                new LocalizableResourceString(nameof(Resources.ValuePropertyMustHaveSetterMessage), Resources.ResourceManager, typeof(Resources)),
                 Category,
                 DiagnosticSeverity.Error,
                 isEnabledByDefault: true,
-                description: "The native type's Value property must have a setter to support marshalling from native to managed.");
+                description: new LocalizableResourceString(nameof(Resources.ValuePropertyMustHaveSetterDescription), Resources.ResourceManager, typeof(Resources)));
 
         public readonly static DiagnosticDescriptor ValuePropertyMustHaveGetterRule =
             new DiagnosticDescriptor(
                 "INTEROPGEN009",
                 "ValuePropertyMustHaveGetter",
-                "The 'Value' property on the native type '{0}' must have a getter.",
+                new LocalizableResourceString(nameof(Resources.ValuePropertyMustHaveGetterMessage), Resources.ResourceManager, typeof(Resources)),
                 Category,
                 DiagnosticSeverity.Error,
                 isEnabledByDefault: true,
-                description: "The native type's Value property must have a getter to support marshalling from managed to native.");
+                description: new LocalizableResourceString(nameof(Resources.ValuePropertyMustHaveGetterDescription), Resources.ResourceManager, typeof(Resources)));
 
         public readonly static DiagnosticDescriptor GetPinnableReferenceShouldSupportAllocatingMarshallingFallbackRule =
             new DiagnosticDescriptor(
                 "INTEROPGEN010",
                 "GetPinnableReferenceShouldSupportAllocatingMarshallingFallback",
-                "Type '{0}' has a GetPinnableReference method but its native type does not support marshalling in scenarios where pinning is impossible.",
+                new LocalizableResourceString(nameof(Resources.GetPinnableReferenceShouldSupportAllocatingMarshallingFallbackMessage), Resources.ResourceManager, typeof(Resources)),
                 Category,
                 DiagnosticSeverity.Warning,
                 isEnabledByDefault: true,
-                description: "A type that supports marshalling from managed to native by pinning should also support marshalling from managed to native where pinning is impossible.");
+                description: new LocalizableResourceString(nameof(Resources.GetPinnableReferenceShouldSupportAllocatingMarshallingFallbackDescription), Resources.ResourceManager, typeof(Resources)));
 
         public readonly static DiagnosticDescriptor StackallocMarshallingShouldSupportAllocatingMarshallingFallbackRule =
             new DiagnosticDescriptor(
                 "INTEROPGEN011",
                 "StackallocMarshallingShouldSupportAllocatingMarshallingFallback",
-                "Native type '{0}' has a stack-allocating constructor does not support marshalling in scenarios where stack allocation is impossible.",
+                new LocalizableResourceString(nameof(Resources.StackallocMarshallingShouldSupportAllocatingMarshallingFallbackMessage), Resources.ResourceManager, typeof(Resources)),
                 Category,
                 DiagnosticSeverity.Warning,
                 isEnabledByDefault: true,
-                description: "A type that supports marshalling from managed to native by stack allocation should also support marshalling from managed to native where stack allocation is impossible.");
+                description: new LocalizableResourceString(nameof(Resources.StackallocMarshallingShouldSupportAllocatingMarshallingFallbackDescription), Resources.ResourceManager, typeof(Resources)));
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => 
             ImmutableArray.Create(
