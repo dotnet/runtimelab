@@ -25,6 +25,7 @@ namespace System.Text.Json.SourceGeneration
                     "category",
                     DiagnosticSeverity.Info,
                     isEnabledByDefault: true);
+
             _failedToGenerateTypeClass =
                 new DiagnosticDescriptor(
                     "JsonSourceGeneration",
@@ -34,6 +35,7 @@ namespace System.Text.Json.SourceGeneration
                     DiagnosticSeverity.Warning,
                     isEnabledByDefault: true,
                     description: "Error message: {2}");
+
             _failedToAddNewTypesFromMembers =
                 new DiagnosticDescriptor(
                     "JsonSourceGeneration",
@@ -42,6 +44,7 @@ namespace System.Text.Json.SourceGeneration
                     "category",
                     DiagnosticSeverity.Warning,
                     isEnabledByDefault: true);
+
             _notSupported =
                 new DiagnosticDescriptor(
                     "JsonSourceGeneration",
@@ -50,6 +53,7 @@ namespace System.Text.Json.SourceGeneration
                     "category",
                     DiagnosticSeverity.Warning,
                     isEnabledByDefault: true);
+
             _typeNameClash =
                 new DiagnosticDescriptor(
                     "JsonSourceGeneration",
