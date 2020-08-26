@@ -157,9 +157,11 @@
     <Compile Include="src\System\Reflection\FieldInfo.CoreRT.cs" />
     <Compile Include="src\System\Reflection\LegacyCustomAttributeApis.cs" />
     <Compile Include="src\System\Reflection\MethodBase.CoreRT.cs" />
+    <Compile Include="src\System\Reflection\Metadata\AssemblyExtensions.cs" />
     <Compile Include="src\System\Runtime\InteropServices\CriticalHandle.CoreRT.cs" />
     <Compile Include="src\System\Activator.CoreRT.cs" />
     <Compile Include="src\System\AppContext.CoreRT.cs" />
+    <Compile Include="src\System\ArgIterator.cs" />
     <Compile Include="src\System\Buffer.CoreRT.cs" />
     <Compile Include="src\System\Collections\Generic\ArraySortHelper.CoreRT.cs" />
     <Compile Include="src\System\Collections\Generic\Comparer.CoreRT.cs" />

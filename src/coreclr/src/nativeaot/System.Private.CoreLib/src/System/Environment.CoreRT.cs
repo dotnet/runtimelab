@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics.Contracts;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Internal.DeveloperExperience;
@@ -21,6 +22,7 @@ namespace System
             set => s_latchedExitCode = value;
         }
 
+        [DoesNotReturn]
         public static void Exit(int exitCode)
         {
             s_latchedExitCode = exitCode;
@@ -32,9 +34,11 @@ namespace System
         // Note: The CLR's Watson bucketization code looks at the caller of the FCALL method
         // to assign blame for crashes.  Don't mess with this, such as by making it call 
         // another managed helper method, unless you consult with some CLR Watson experts.
+        [DoesNotReturn]
         public static void FailFast(string message) =>
             RuntimeExceptionHelpers.FailFast(message);
 
+        [DoesNotReturn]
         public static void FailFast(string message, Exception exception) =>
             RuntimeExceptionHelpers.FailFast(message, exception);
 

@@ -17,4 +17,21 @@ MembersMustExist : Member 'public System.Runtime.Serialization.DeserializationTo
 MembersMustExist : Member 'public void System.Runtime.Serialization.SerializationInfo.ThrowIfDeserializationInProgress()' does not exist in the reference but it does exist in the implementation.
 MembersMustExist : Member 'public void System.Runtime.Serialization.SerializationInfo.ThrowIfDeserializationInProgress(System.String, System.Int32)' does not exist in the reference but it does exist in the implementation.
 MembersMustExist : Member 'public void System.Runtime.Serialization.SerializationInfo.UpdateValue(System.String, System.Object, System.Type)' does not exist in the reference but it does exist in the implementation.
+CannotRemoveAttribute : Attribute 'System.Diagnostics.DebuggerGuidedStepThroughAttribute' exists on 'System.Activator.CreateInstance<T>()' in the implementation but not the reference.
+CannotRemoveAttribute : Attribute 'System.Diagnostics.DebuggerGuidedStepThroughAttribute' exists on 'System.Delegate.DynamicInvoke(System.Object[])' in the implementation but not the reference.
+CannotRemoveAttribute : Attribute 'System.Diagnostics.DebuggerGuidedStepThroughAttribute' exists on 'System.Delegate.DynamicInvokeImpl(System.Object[])' in the implementation but not the reference.
+MembersMustExist : Member 'public void System.ModuleHandle..ctor(System.Reflection.Module)' does not exist in the reference but it does exist in the implementation.
+CannotRemoveBaseTypeOrInterface : Type 'System.RuntimeTypeHandle' does not implement interface 'System.IEquatable<System.RuntimeTypeHandle>' in the reference but it does in the implementation.
+CannotRemoveAttribute : Attribute 'System.Runtime.CompilerServices.EagerStaticClassConstructionAttribute' exists on 'System.String' in the implementation but not the reference.
+MembersMustExist : Member 'public System.String System.String System.Type.DefaultTypeNameWhenMissingMetadata' does not exist in the reference but it does exist in the implementation.
+MembersMustExist : Member 'public System.String System.Type.FormatTypeNameForReflection()' does not exist in the reference but it does exist in the implementation.
+MembersMustExist : Member 'public System.String System.Type.InternalGetNameIfAvailable(System.Type)' does not exist in the reference but it does exist in the implementation.
+MembersMustExist : Member 'public System.String System.Type.InternalNameIfAvailable.get()' does not exist in the reference but it does exist in the implementation.
+MembersMustExist : Member 'public System.Boolean System.Type.IsRuntimeImplemented()' does not exist in the reference but it does exist in the implementation.
+MembersMustExist : Member 'public System.Boolean System.TypedReference.IsNull.get()' does not exist in the reference but it does exist in the implementation.
+MembersMustExist : Member 'public System.Boolean System.Reflection.Assembly.IsRuntimeImplemented()' does not exist in the reference but it does exist in the implementation.
+MembersMustExist : Member 'public System.Reflection.AssemblyName System.Reflection.AssemblyName.GetFileInformationCore(System.String)' does not exist in the reference but it does exist in the implementation.
+MembersMustExist : Member 'public System.Reflection.ParameterInfo[] System.Reflection.MethodBase.GetParametersNoCopy()' does not exist in the reference but it does exist in the implementation.
+MembersMustExist : Member 'public System.Reflection.MethodBase System.Reflection.MethodBase.MetadataDefinitionMethod.get()' does not exist in the reference but it does exist in the implementation.
+MembersMustExist : Member 'public System.Int32 System.Reflection.MethodInfo.GenericParameterCount.get()' does not exist in the reference but it does exist in the implementation.
 Total Issues: 18
