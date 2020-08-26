@@ -181,7 +181,6 @@
     <Compile Include="src\System\Diagnostics\DebuggerGuidedStepThroughAttribute.cs" />
     <Compile Include="src\System\Diagnostics\DebugAnnotations.cs" />
     <Compile Include="src\System\Diagnostics\StackFrame.CoreRT.cs" />
-    <Compile Include="src\System\Diagnostics\StackFrameExtensions.cs" />
     <Compile Include="src\System\Diagnostics\StackTrace.CoreRT.cs" />
     <Compile Include="src\System\Enum.CoreRT.cs" />
     <Compile Include="src\System\Environment.CoreRT.cs" />
