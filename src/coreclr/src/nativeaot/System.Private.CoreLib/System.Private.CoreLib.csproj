@@ -182,6 +182,7 @@
     <Compile Include="src\System\Diagnostics\StackFrame.CoreRT.cs" />
     <Compile Include="src\System\Diagnostics\StackFrameExtensions.cs" />
     <Compile Include="src\System\Diagnostics\StackTrace.CoreRT.cs" />
+    <Compile Include="src\System\Diagnostics\StackTrace.CoreRT.Wasm.cs" Condition="'$(Platform)'=='wasm'"/>
     <Compile Include="src\System\Enum.CoreRT.cs" />
     <Compile Include="src\System\Environment.CoreRT.cs" />
     <Compile Include="src\System\GC.cs" />
