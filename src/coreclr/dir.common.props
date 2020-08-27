@@ -23,7 +23,7 @@
 
     <Platform Condition="'$(Platform)' == ''">$(TargetArchitecture)</Platform>
 
-    <PlatformConfigPathPart>$(TargetOS).$(TargetArchitecture).$(Configuration)</PlatformConfigPathPart>
+    <PlatformConfigPathPart>$(TargetOS).$(TargetArchitecture).$(CoreCLRConfiguration)</PlatformConfigPathPart>
   </PropertyGroup>
 
   <!-- Common properties -->
