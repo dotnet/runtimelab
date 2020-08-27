@@ -9,14 +9,13 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <DefineConstants>SYSTEM_PRIVATE_CORELIB;$(DefineConstants)</DefineConstants>
+    <DefineConstants>SYSTEM_PRIVATE_CORELIB;FEATURE_MANAGED_ETW_CHANNELS;FEATURE_MANAGED_ETW;$(DefineConstants)</DefineConstants>
     <TargetsCoreRT>true</TargetsCoreRT>
     <UseSyncTable>true</UseSyncTable>
   </PropertyGroup>
 
   <PropertyGroup>
     <DefineConstants Condition="'$(UseSyncTable)' == 'true'">FEATURE_SYNCTABLE;$(DefineConstants)</DefineConstants>
-    <DefineConstants Condition="'$(TargetsWindows)'=='true'">FEATURE_MANAGED_ETW_CHANNELS;FEATURE_MANAGED_ETW;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
   <PropertyGroup>
     <FeatureCominterop>false</FeatureCominterop>
