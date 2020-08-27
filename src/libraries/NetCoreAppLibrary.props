@@ -146,6 +146,7 @@
       System.Xml.XPath;
       System.Xml.XPath.XDocument;
     </NetCoreAppLibrary>
+    <NetCoreAppLibrary Condition="'$(ClrNativeAOT)' == 'true'">$(NetCoreAppLibrary)System.Private.DeveloperExperience.Console;</NetCoreAppLibrary>
     <NetCoreAppLibraryNoReference>
       Microsoft.Win32.Registry;
       System.IO.FileSystem.AccessControl;
