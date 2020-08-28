@@ -56,7 +56,7 @@ namespace System
         AllocationExceeded = 3
     }
 
-    internal struct GCGenerationInfo
+    public readonly struct GCGenerationInfo
     {
         public long SizeBeforeBytes { get; }
         public long FragmentationBeforeBytes { get; }
@@ -96,35 +96,51 @@ namespace System
         internal ReadOnlySpan<TimeSpan> PauseDurationsAsSpan => MemoryMarshal.CreateReadOnlySpan<TimeSpan>(ref _pauseDuration0, 2);
     }
 
+    /// <summary>Provides a set of APIs that can be used to retrieve garbage collection information.</summary>
+    /// <remarks>
+    /// A GC is identified by its Index. which starts from 1 and increases with each GC (see more explanation
+    /// of it in the Index prooperty).
+    /// If you are asking for a GC that does not exist, eg, you called the GC.GetGCMemoryInfo API
+    /// before a GC happened, or you are asking for a GC of GCKind.FullBlocking and no full blocking
+    /// GCs have happened, you will get all 0's in the info, including the Index. So you can use Index 0
+    /// to detect that no GCs, or no GCs of the kind you specified have happened.
+    /// </remarks>
     public readonly struct GCMemoryInfo
     {
-        /// <summary>
-        /// High memory load threshold when the last GC occured
-        /// </summary>
-        public long HighMemoryLoadThresholdBytes { get; }
+        private readonly GCMemoryInfoData _data;
+
+        internal GCMemoryInfo(GCMemoryInfoData data)
+        {
+            _data = data;
+        }
 
         /// <summary>
-        /// Memory load when the last GC ocurred
+        /// High memory load threshold when this GC occured
         /// </summary>
-        public long MemoryLoadBytes { get; }
+        public long HighMemoryLoadThresholdBytes => _data._highMemoryLoadThresholdBytes;
 
         /// <summary>
-        /// Total available memory for the GC to use when the last GC ocurred.
+        /// Memory load when this GC ocurred
+        /// </summary>
+        public long MemoryLoadBytes => _data._memoryLoadBytes;
+
+        /// <summary>
+        /// Total available memory for the GC to use when this GC ocurred.
         ///
         /// If the environment variable COMPlus_GCHeapHardLimit is set,
         /// or "Server.GC.HeapHardLimit" is in runtimeconfig.json, this will come from that.
         /// If the program is run in a container, this will be an implementation-defined fraction of the container's size.
-        /// Else, this is the physical memory on the machine that was available for the GC to use when the last GC occurred.
+        /// Else, this is the physical memory on the machine that was available for the GC to use when this GC occurred.
         /// </summary>
-        public long TotalAvailableMemoryBytes { get; }
+        public long TotalAvailableMemoryBytes => _data._totalAvailableMemoryBytes;
 
         /// <summary>
-        /// The total heap size when the last GC ocurred
+        /// The total heap size when this GC ocurred
         /// </summary>
-        public long HeapSizeBytes { get; }
+        public long HeapSizeBytes => _data._heapSizeBytes;
 
         /// <summary>
-        /// The total fragmentation when the last GC ocurred
+        /// The total fragmentation when this GC ocurred
         ///
         /// Let's take the example below:
         ///  | OBJ_A |     OBJ_B     | OBJ_C |   OBJ_D   | OBJ_E |
@@ -135,20 +151,65 @@ namespace System
         /// The memory between OBJ_A and OBJ_D marked `F` is considered part of the FragmentedBytes, and will be used to allocate new objects. The memory after OBJ_D will not be
         /// considered part of the FragmentedBytes, and will also be used to allocate new objects
         /// </summary>
-        public long FragmentedBytes { get; }
+        public long FragmentedBytes => _data._fragmentedBytes;
 
-        internal GCMemoryInfo(long highMemoryLoadThresholdBytes,
-                                long memoryLoadBytes,
-                                long totalAvailableMemoryBytes,
-                                long heapSizeBytes,
-                                long fragmentedBytes)
-        {
-            HighMemoryLoadThresholdBytes = highMemoryLoadThresholdBytes;
-            MemoryLoadBytes = memoryLoadBytes;
-            TotalAvailableMemoryBytes = totalAvailableMemoryBytes;
-            HeapSizeBytes = heapSizeBytes;
-            FragmentedBytes = fragmentedBytes;
-        }
+        /// <summary>
+        /// The index of this GC. GC indices start with 1 and get increased at the beginning of a GC.
+        /// Since the info is updated at the end of a GC, this means you can get the info for a BGC
+        /// with a smaller index than a foreground GC finished earlier.
+        /// </summary>
+        public long Index => _data._index;
+
+        /// <summary>
+        /// The generation this GC collected. Collecting a generation means all its younger generation(s)
+        /// are also collected.
+        /// </summary>
+        public int Generation => _data._generation;
+
+        /// <summary>
+        /// Is this a compacting GC or not.
+        /// </summary>
+        public bool Compacted => _data._compacted;
+
+        /// <summary>
+        /// Is this a concurrent GC (BGC) or not.
+        /// </summary>
+        public bool Concurrent => _data._concurrent;
+
+        /// <summary>
+        /// Total committed bytes of the managed heap.
+        /// </summary>
+        public long TotalCommittedBytes => _data._totalCommittedBytes;
+
+        /// <summary>
+        /// Promoted bytes for this GC.
+        /// </summary>
+        public long PromotedBytes => _data._promotedBytes;
+
+        /// <summary>
+        /// Number of pinned objects this GC observed.
+        /// </summary>
+        public long PinnedObjectsCount => _data._pinnedObjectsCount;
+
+        /// <summary>
+        /// Number of objects ready for finalization this GC observed.
+        /// </summary>
+        public long FinalizationPendingCount => _data._finalizationPendingCount;
+
+        /// <summary>
+        /// Pause durations. For blocking GCs there's only 1 pause; for BGC there are 2.
+        /// </summary>
+        public ReadOnlySpan<TimeSpan> PauseDurations => _data.PauseDurationsAsSpan;
+
+        /// <summary>
+        /// This is the % pause time in GC so far. If it's 1.2%, this number is 1.2.
+        /// </summary>
+        public double PauseTimePercentage => (double)_data._pauseTimePercentage / 100.0;
+
+        /// <summary>
+        /// Generation info for all generations.
+        /// </summary>
+        public ReadOnlySpan<GCGenerationInfo> GenerationInfo => _data.GenerationInfoAsSpan;
     }
 
     // TODO: deduplicate with shared CoreLib
@@ -748,15 +809,27 @@ namespace System
             return precise ? RuntimeImports.RhGetTotalAllocatedBytesPrecise() : RuntimeImports.RhGetTotalAllocatedBytes();
         }
 
-        public static GCMemoryInfo GetGCMemoryInfo()
-        {
-            RuntimeImports.RhGetMemoryInfo(out GCMemoryInfoData data, GCKind.Any);
+        /// <summary>Gets garbage collection memory information.</summary>
+        /// <returns>An object that contains information about the garbage collector's memory usage.</returns>
+        public static GCMemoryInfo GetGCMemoryInfo() => GetGCMemoryInfo(GCKind.Any);
 
-            return new GCMemoryInfo(highMemoryLoadThresholdBytes: data._highMemoryLoadThresholdBytes,
-                                    memoryLoadBytes: data._memoryLoadBytes,
-                                    totalAvailableMemoryBytes: data._totalAvailableMemoryBytes,
-                                    heapSizeBytes: data._heapSizeBytes,
-                                    fragmentedBytes: data._fragmentedBytes);
+        /// <summary>Gets garbage collection memory information.</summary>
+        /// <param name="kind">The kind of collection for which to retrieve memory information.</param>
+        /// <returns>An object that contains information about the garbage collector's memory usage.</returns>
+        public static GCMemoryInfo GetGCMemoryInfo(GCKind kind)
+        {
+            if ((kind < GCKind.Any) || (kind > GCKind.Background))
+            {
+                throw new ArgumentOutOfRangeException(nameof(kind),
+                                      SR.Format(
+                                          SR.ArgumentOutOfRange_Bounds_Lower_Upper,
+                                          GCKind.Any,
+                                          GCKind.Background));
+            }
+
+            RuntimeImports.RhGetMemoryInfo(out GCMemoryInfoData data, kind);
+
+            return new GCMemoryInfo(data);
         }
 
         internal static ulong GetSegmentSize()

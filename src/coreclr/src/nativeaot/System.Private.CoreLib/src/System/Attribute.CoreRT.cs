@@ -61,8 +61,7 @@ namespace System
         //
         // This non-contract method is known to the IL transformer. See comments around _ILT_ReadFields() for more detail.
         //
-        [CLSCompliant(false)]
-        protected virtual int _ILT_GetNumFields()
+        private protected virtual int _ILT_GetNumFields()
         {
             return 0;
         }
@@ -78,8 +77,7 @@ namespace System
         // base class to get any inherited fields. To simplify the IL generation, the generated method only writes the results into a specified
         // offset inside a caller-supplied array. Attribute.ReadFields() calls _ILT_GetNumFields() to figure out how large an array is needed.
         //
-        [CLSCompliant(false)]
-        protected virtual void _ILT_ReadFields(object[] destination, int offset)
+        private protected virtual void _ILT_ReadFields(object[] destination, int offset)
         {
         }
 

@@ -257,7 +257,7 @@ namespace System.Threading
             }
         }
 
-        public bool TrySetApartmentStateUnchecked(ApartmentState state)
+        private bool TrySetApartmentStateUnchecked(ApartmentState state)
         {
             if (this != CurrentThread)
             {

@@ -98,7 +98,7 @@ jobs:
     jobParameters:
       testGroup: innerloop
       nameSuffix: All_Configurations
-      buildArgs: -s libs -c $(_BuildConfig) -allConfigurations
+      buildArgs: -s clr.runtime+libs -c $(_BuildConfig) -allConfigurations
 
 #
 # CoreCLR Test builds using live libraries release build

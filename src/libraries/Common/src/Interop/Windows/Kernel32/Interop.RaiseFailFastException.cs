@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 internal partial class Interop
@@ -31,6 +32,7 @@ internal partial class Interop
         //
         // Wrapper for calling RaiseFailFastException
         //
+        [DoesNotReturn]
         internal static unsafe void RaiseFailFastException(uint faultCode, IntPtr pExAddress, IntPtr pExContext)
         {
             EXCEPTION_RECORD exceptionRecord;
@@ -48,6 +50,7 @@ internal partial class Interop
         }
 
         [DllImport(Libraries.Kernel32, EntryPoint = "RaiseFailFastException")]
+        [DoesNotReturn]
         private extern static unsafe void RaiseFailFastException(
             EXCEPTION_RECORD* pExceptionRecord,
             IntPtr pContextRecord,

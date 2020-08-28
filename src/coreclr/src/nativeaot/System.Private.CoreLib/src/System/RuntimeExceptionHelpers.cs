@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -150,11 +151,13 @@ namespace System
         }
 
 
+        [DoesNotReturn]
         public static void FailFast(string message)
         {
             FailFast(message, null, RhFailFastReason.Unknown, IntPtr.Zero, IntPtr.Zero);
         }
 
+        [DoesNotReturn]
         public static unsafe void FailFast(string message, Exception exception)
         {
             FailFast(message, exception, RhFailFastReason.Unknown, IntPtr.Zero, IntPtr.Zero);
@@ -220,6 +223,7 @@ namespace System
             }
         }
 
+        [DoesNotReturn]
         internal static void FailFast(string message, Exception exception, RhFailFastReason reason, IntPtr pExAddress, IntPtr pExContext)
         {
             // If this a recursive call to FailFast, avoid all unnecessary and complex activity the second time around to avoid the recursion 
