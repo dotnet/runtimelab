@@ -56,7 +56,7 @@
   <PropertyGroup>
     <!-- We always build the NativeAOT variant out of the NativeAOT branch -->
     <!-- In the future, this can be exposed as a runtimeVariant, same as Mono's LLVMJIT or LLVMAOT-->
-    <ClrNativeAot>true</ClrNativeAot>
+    <ClrNativeAot Condition="'$(BuildAllConfigurations)' != 'true'">true</ClrNativeAot>
   </PropertyGroup>
 
   <PropertyGroup>
