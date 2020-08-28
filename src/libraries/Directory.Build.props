@@ -21,6 +21,11 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <!-- Disable nullability-related warnings -->
+    <NoWarn>$(NoWarn);CS8600;CS8601;CS8602;CS8603;CS8604;CS8605;CS8606;CS8608;CS8609;CS8610;CS8611;CS8612;CS8614;CS8615;CS8617;CS8618;CS8620;CS8621;CS8622;CS8625;CS8626;CS8631;CS8632;CS8634;CS8653;CS8765;CS8764;CS8767;CS8619</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <RuntimeOS Condition="'$(RuntimeOS)' == '' and '$(HostRuntimeIdentifier)' != ''">$(HostRuntimeIdentifier.Remove($(HostRuntimeIdentifier.LastIndexOf('-'))))</RuntimeOS>
   </PropertyGroup>
 
@@ -90,6 +95,7 @@
     <ProjectExclusions Include="$(CommonTestPath)System\Net\Prerequisites\**\*.csproj" />
     <!-- TODO: Reenable when mono supports utf8string. -->
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)\System.Utf8String.Experimental\**\*.csproj" Condition="'$(RuntimeFlavor)' == 'Mono'" />
+    <ProjectExclusions Include="$(MSBuildThisFileDirectory)\System.Utf8String.Experimental\**\*.csproj" Condition="'$(ClrNativeAOT)' == 'true'" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -246,6 +252,7 @@
     <!-- System.Private.CoreLib -->
     <CoreLibProject Condition="'$(RuntimeFlavor)' == 'CoreCLR'">$([MSBuild]::NormalizePath('$(CoreClrProjectRoot)', 'src', 'System.Private.CoreLib', 'System.Private.CoreLib.csproj'))</CoreLibProject>
     <CoreLibProject Condition="'$(RuntimeFlavor)' == 'Mono'">$([MSBuild]::NormalizePath('$(MonoProjectRoot)', 'netcore', 'System.Private.CoreLib', 'System.Private.CoreLib.csproj'))</CoreLibProject>
+    <CoreLibProject Condition="'$(ClrNativeAot)' == 'true'">$([MSBuild]::NormalizePath('$(CoreClrProjectRoot)', 'src', 'nativeaot', 'System.Private.CoreLib', 'System.Private.CoreLib.csproj'))</CoreLibProject>
 
     <!-- Helix properties -->
     <OSPlatformConfig>$(TargetOS).$(Platform).$(Configuration)</OSPlatformConfig>

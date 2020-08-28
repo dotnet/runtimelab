@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -62,17 +63,23 @@ namespace System
         }
 
         [Intrinsic]
+        [RequiresUnreferencedCode("The type might be removed")]
         public static Type GetType(string typeName) => GetType(typeName, throwOnError: false, ignoreCase: false);
         [Intrinsic]
+        [RequiresUnreferencedCode("The type might be removed")]
         public static Type GetType(string typeName, bool throwOnError) => GetType(typeName, throwOnError: throwOnError, ignoreCase: false);
         [Intrinsic]
+        [RequiresUnreferencedCode("The type might be removed")]
         public static Type GetType(string typeName, bool throwOnError, bool ignoreCase) => GetType(typeName, null, null, throwOnError: throwOnError, ignoreCase: ignoreCase);
 
         [Intrinsic]
+        [RequiresUnreferencedCode("The type might be removed")]
         public static Type GetType(string typeName, Func<AssemblyName, Assembly> assemblyResolver, Func<Assembly, string, bool, Type> typeResolver) => GetType(typeName, assemblyResolver, typeResolver, throwOnError: false, ignoreCase: false);
         [Intrinsic]
+        [RequiresUnreferencedCode("The type might be removed")]
         public static Type GetType(string typeName, Func<AssemblyName, Assembly> assemblyResolver, Func<Assembly, string, bool, Type> typeResolver, bool throwOnError) => GetType(typeName, assemblyResolver, typeResolver, throwOnError: throwOnError, ignoreCase: false);
         [Intrinsic]
+        [RequiresUnreferencedCode("The type might be removed")]
         public static Type GetType(string typeName, Func<AssemblyName, Assembly> assemblyResolver, Func<Assembly, string, bool, Type> typeResolver, bool throwOnError, bool ignoreCase) => RuntimeAugments.Callbacks.GetType(typeName, assemblyResolver, typeResolver, throwOnError: throwOnError, ignoreCase: ignoreCase, defaultAssembly: null);
 
         public static Type GetTypeFromCLSID(Guid clsid, string server, bool throwOnError) => ReflectionAugments.ReflectionCoreCallbacks.GetTypeFromCLSID(clsid, server, throwOnError);

@@ -4,6 +4,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -144,6 +145,7 @@ namespace System
             }
         }
 
+        [DoesNotReturn]
         private static void ExitRaw() => Interop.Sys.Exit(s_latchedExitCode);
 
         public static long TickCount64 => (long)Interop.Sys.GetTickCount64();

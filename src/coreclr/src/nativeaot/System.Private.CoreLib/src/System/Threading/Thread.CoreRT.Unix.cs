@@ -127,7 +127,7 @@ namespace System.Threading
             return ApartmentState.Unknown;
         }
 
-        public bool TrySetApartmentStateUnchecked(ApartmentState state)
+        private bool TrySetApartmentStateUnchecked(ApartmentState state)
         {
             return state == GetApartmentState();
         }

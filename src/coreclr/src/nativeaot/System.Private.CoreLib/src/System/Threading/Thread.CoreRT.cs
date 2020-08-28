@@ -52,11 +52,11 @@ namespace System.Threading
             _managedThreadId = new ManagedThreadId();
         }
 
-        public void Create(ThreadStart start) => SetStartHelper(start, 0);
-        public void Create(ThreadStart start, int maxStackSize) => SetStartHelper(start, maxStackSize);
+        private void Create(ThreadStart start) => SetStartHelper(start, 0);
+        private void Create(ThreadStart start, int maxStackSize) => SetStartHelper(start, maxStackSize);
 
-        public void Create(ParameterizedThreadStart start) => SetStartHelper(start, 0);
-        public void Create(ParameterizedThreadStart start, int maxStackSize) => SetStartHelper(start, maxStackSize);
+        private void Create(ParameterizedThreadStart start) => SetStartHelper(start, 0);
+        private void Create(ParameterizedThreadStart start, int maxStackSize) => SetStartHelper(start, maxStackSize);
 
         internal static ulong CurrentOSThreadId
         {

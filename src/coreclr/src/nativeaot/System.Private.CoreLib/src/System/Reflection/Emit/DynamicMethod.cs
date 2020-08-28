@@ -140,6 +140,16 @@ namespace System.Reflection.Emit
             return default;
         }
 
+        public ParameterBuilder DefineParameter(int position, ParameterAttributes attributes, string parameterName)
+        {
+            return default;
+        }
+
+        public DynamicILInfo GetDynamicILInfo()
+        {
+            return default;
+        }
+
         public override MethodInfo GetBaseDefinition()
         {
             return default;
