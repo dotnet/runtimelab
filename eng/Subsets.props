@@ -54,6 +54,12 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <!-- We always build the NativeAOT variant out of the NativeAOT branch -->
+    <!-- In the future, this can be exposed as a runtimeVariant, same as Mono's LLVMJIT or LLVMAOT-->
+    <ClrNativeAot Condition="'$(BuildAllConfigurations)' != 'true'">true</ClrNativeAot>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <DefaultCoreClrSubsets>clr.runtime+linuxdac+clr.corelib+clr.nativecorelib+clr.tools+clr.packages</DefaultCoreClrSubsets>
 
     <DefaultMonoSubsets Condition="'$(MonoEnableLLVM)' == 'true' and '$(MonoLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>

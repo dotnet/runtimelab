@@ -24,6 +24,14 @@ namespace System
             return ReflectionAugments.ReflectionCoreCallbacks.GetEnumInfo(enumType);
         }
 
+        public static bool IsDefined<TEnum>(TEnum value) where TEnum : struct, Enum
+        {
+            ulong[] ulValues = GetEnumInfo(typeof(TEnum)).Values;
+            ulong ulValue = Enum.ToUInt64(value);
+
+            return Array.BinarySearch(ulValues, ulValue) >= 0;
+        }
+
         private static Type ValidateRuntimeType(Type enumType)
         {
             if (enumType == null)

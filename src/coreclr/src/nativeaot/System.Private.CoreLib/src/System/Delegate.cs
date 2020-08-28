@@ -8,6 +8,7 @@ using System.Runtime.Serialization;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using Internal.Reflection.Augments;
 using Internal.Runtime.Augments;
 using Internal.Runtime.CompilerServices;
@@ -44,29 +45,29 @@ namespace System
 
         // New Delegate Implementation
 
-        protected internal object m_firstParameter;
-        protected internal object m_helperObject;
+        internal object m_firstParameter;
+        internal object m_helperObject;
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2111:PointersShouldNotBeVisible")]
-        protected internal IntPtr m_extraFunctionPointerOrData;
+        internal IntPtr m_extraFunctionPointerOrData;
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2111:PointersShouldNotBeVisible")]
-        protected internal IntPtr m_functionPointer;
+        internal IntPtr m_functionPointer;
 
         [ThreadStatic]
-        protected static string s_DefaultValueString;
+        private static string s_DefaultValueString;
 
         // WARNING: These constants are also declared in System.Private.TypeLoader\Internal\Runtime\TypeLoader\CallConverterThunk.cs
         // Do not change their values without updating the values in the calling convention converter component
-        protected const int MulticastThunk = 0;
-        protected const int ClosedStaticThunk = 1;
-        protected const int OpenStaticThunk = 2;
-        protected const int ClosedInstanceThunkOverGenericMethod = 3; // This may not exist
-        protected const int DelegateInvokeThunk = 4;
-        protected const int OpenInstanceThunk = 5;        // This may not exist
-        protected const int ObjectArrayThunk = 6;         // This may not exist
+        private protected const int MulticastThunk = 0;
+        private protected const int ClosedStaticThunk = 1;
+        private protected const int OpenStaticThunk = 2;
+        private protected const int ClosedInstanceThunkOverGenericMethod = 3; // This may not exist
+        private protected const int DelegateInvokeThunk = 4;
+        private protected const int OpenInstanceThunk = 5;        // This may not exist
+        private protected const int ObjectArrayThunk = 6;         // This may not exist
 
         //
         // If the thunk does not exist, the function will return IntPtr.Zero.
-        protected virtual IntPtr GetThunk(int whichThunk)
+        private protected virtual IntPtr GetThunk(int whichThunk)
         {
 #if PROJECTN
             // The GetThunk function should be overriden on all delegate types, except for universal
@@ -87,7 +88,7 @@ namespace System
         //
         // If there is a default value string, the overridden function should set the 
         // s_DefaultValueString field and return true.
-        protected virtual bool LoadDefaultValueString() { return false; }
+        private protected virtual bool LoadDefaultValueString() { return false; }
 
         /// <summary>
         /// Used by various parts of the runtime as a replacement for Delegate.Method
@@ -147,7 +148,7 @@ namespace System
         }
 
         // This function is known to the IL Transformer.
-        protected void InitializeClosedInstance(object firstParameter, IntPtr functionPointer)
+        private void InitializeClosedInstance(object firstParameter, IntPtr functionPointer)
         {
             if (firstParameter == null)
                 throw new ArgumentException(SR.Arg_DlgtNullInst);
@@ -157,7 +158,7 @@ namespace System
         }
 
         // This function is known to the IL Transformer.
-        protected void InitializeClosedInstanceSlow(object firstParameter, IntPtr functionPointer)
+        private void InitializeClosedInstanceSlow(object firstParameter, IntPtr functionPointer)
         {
             // This method is like InitializeClosedInstance, but it handles ALL cases. In particular, it handles generic method with fun function pointers.
 
@@ -179,7 +180,7 @@ namespace System
         }
 
         // This function is known to the compiler.
-        protected void InitializeClosedInstanceWithGVMResolution(object firstParameter, RuntimeMethodHandle tokenOfGenericVirtualMethod)
+        private void InitializeClosedInstanceWithGVMResolution(object firstParameter, RuntimeMethodHandle tokenOfGenericVirtualMethod)
         {
             if (firstParameter == null)
                 throw new ArgumentException(SR.Arg_DlgtNullInst);
@@ -235,7 +236,7 @@ namespace System
         }
 
         // This function is known to the compiler backend.
-        protected void InitializeClosedStaticThunk(object firstParameter, IntPtr functionPointer, IntPtr functionPointerThunk)
+        private void InitializeClosedStaticThunk(object firstParameter, IntPtr functionPointer, IntPtr functionPointerThunk)
         {
             m_extraFunctionPointerOrData = functionPointer;
             m_helperObject = firstParameter;
@@ -244,7 +245,7 @@ namespace System
         }
 
         // This function is known to the compiler backend.
-        protected void InitializeOpenStaticThunk(object firstParameter, IntPtr functionPointer, IntPtr functionPointerThunk)
+        private void InitializeOpenStaticThunk(object firstParameter, IntPtr functionPointer, IntPtr functionPointerThunk)
         {
             // This sort of delegate is invoked by calling the thunk function pointer with the arguments to the delegate + a reference to the delegate object itself.
             m_firstParameter = this;
@@ -252,7 +253,7 @@ namespace System
             m_extraFunctionPointerOrData = functionPointer;
         }
 
-        protected void InitializeOpenInstanceThunkDynamic(IntPtr functionPointer, IntPtr functionPointerThunk)
+        private void InitializeOpenInstanceThunkDynamic(IntPtr functionPointer, IntPtr functionPointerThunk)
         {
             // This sort of delegate is invoked by calling the thunk function pointer with the arguments to the delegate + a reference to the delegate object itself.
             m_firstParameter = this;
@@ -270,7 +271,7 @@ namespace System
         // This function is only ever called by the open instance method thunk, and in that case,
         // m_extraFunctionPointerOrData always points to an OpenMethodResolver
         [MethodImpl(MethodImplOptions.NoInlining)]
-        protected IntPtr GetActualTargetFunctionPointer(object thisObject)
+        private IntPtr GetActualTargetFunctionPointer(object thisObject)
         {
             return OpenMethodResolver.ResolveMethod(m_extraFunctionPointerOrData, thisObject);
         }
@@ -649,9 +650,11 @@ namespace System
         public static Delegate CreateDelegate(Type type, MethodInfo method, bool throwOnBindFailure) => ReflectionAugments.ReflectionCoreCallbacks.CreateDelegate(type, method, throwOnBindFailure);
 
         // V1 api: Creates closed delegates to instance methods only, relaxed signature checking disallowed.
+        [RequiresUnreferencedCode("The target method might be removed")]
         public static Delegate CreateDelegate(Type type, object target, string method, bool ignoreCase, bool throwOnBindFailure) => ReflectionAugments.ReflectionCoreCallbacks.CreateDelegate(type, target, method, ignoreCase, throwOnBindFailure);
 
         // V1 api: Creates open delegates to static methods only, relaxed signature checking disallowed.
+        [RequiresUnreferencedCode("The target method might be removed")]
         public static Delegate CreateDelegate(Type type, Type target, string method, bool ignoreCase, bool throwOnBindFailure) => ReflectionAugments.ReflectionCoreCallbacks.CreateDelegate(type, target, method, ignoreCase, throwOnBindFailure);
 
         internal bool IsOpenStatic

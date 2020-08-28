@@ -258,6 +258,25 @@ namespace System.Runtime.CompilerServices
         {
         }
 
+        /// <summary>
+        /// Allocate memory that is associated with the <paramref name="type"/> and
+        /// will be freed if and when the <see cref="System.Type"/> is unloaded.
+        /// </summary>
+        /// <param name="type">Type associated with the allocated memory.</param>
+        /// <param name="size">Amount of memory in bytes to allocate.</param>
+        /// <returns>The allocated memory</returns>
+        public static IntPtr AllocateTypeAssociatedMemory(Type type, int size)
+        {
+            if (!type.IsRuntimeImplemented())
+                throw new ArgumentException(SR.Arg_MustBeType, nameof(type));
+
+            if (size < 0)
+                throw new ArgumentOutOfRangeException(nameof(size));
+
+            // We don't support unloading; the memory will never be freed.
+            return Marshal.AllocCoTaskMem(size);
+        }
+
         public static void PrepareDelegate(Delegate d)
         {
             if (d == null)
