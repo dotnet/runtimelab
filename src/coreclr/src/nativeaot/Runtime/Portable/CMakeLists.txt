@@ -29,8 +29,8 @@ add_custom_command(
 )
 
 # Install the static Runtime library
-install (TARGETS PortableRuntime DESTINATION sdk)
+install (TARGETS PortableRuntime DESTINATION aotsdk)
 
 if(WIN32)
-    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/PortableRuntime.dir/$<CONFIG>/PortableRuntime.pdb DESTINATION sdk)
+    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/PortableRuntime.dir/$<CONFIG>/PortableRuntime.pdb DESTINATION aotsdk)
 endif()

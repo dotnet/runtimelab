@@ -69,6 +69,7 @@
 
     <DefaultInstallerSubsets>corehost+installer.managed+installer.depprojs+installer.pkgprojs+bundles+installers+installer.tests</DefaultInstallerSubsets>
     <DefaultInstallerSubsets Condition="'$(RuntimeFlavor)' == 'Mono'">installer.pkgprojs</DefaultInstallerSubsets>
+    <DefaultInstallerSubsets Condition="'$(ClrNativeAot)' == 'true'">installer.pkgprojs</DefaultInstallerSubsets>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -153,6 +154,7 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.StackTraceGenerator\src\System.Private.StackTraceGenerator.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.StackTraceMetadata\src\System.Private.StackTraceMetadata.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\Test.CoreLib\src\Test.CoreLib.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" />
   </ItemGroup>
 
   <ItemGroup Condition="$(_subset.Contains('+linuxdac+')) and $([MSBuild]::IsOsPlatform(Windows)) and '$(TargetArchitecture)' != 'x86'">

@@ -9,7 +9,7 @@ set(SOURCES
 add_library(bootstrapperdll STATIC ${SOURCES})
 
 # Install the static bootstrapperdll library
-install (TARGETS bootstrapperdll DESTINATION sdk)
+install (TARGETS bootstrapperdll DESTINATION aotsdk)
 if(WIN32)
-    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/bootstrapperdll.dir/$<CONFIG>/bootstrapperdll.pdb DESTINATION sdk)
+    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/bootstrapperdll.dir/$<CONFIG>/bootstrapperdll.pdb DESTINATION aotsdk)
 endif()

@@ -77,8 +77,8 @@ foreach(CONFIG IN LISTS CMAKE_CONFIGURATION_TYPES)
 endforeach()
 
 # Install the static Runtime library
-install (TARGETS Runtime Runtime.ServerGC DESTINATION sdk)
+install (TARGETS Runtime Runtime.ServerGC DESTINATION aotsdk)
 if(WIN32)
-    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/Runtime.dir/$<CONFIG>/Runtime.pdb DESTINATION sdk)
-    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/Runtime.ServerGC.dir/$<CONFIG>/Runtime.ServerGC.pdb DESTINATION sdk)
+    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/Runtime.dir/$<CONFIG>/Runtime.pdb DESTINATION aotsdk)
+    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/Runtime.ServerGC.dir/$<CONFIG>/Runtime.ServerGC.pdb DESTINATION aotsdk)
 endif()

@@ -127,6 +127,7 @@
     <DisableCrossgen Condition="'$(RuntimeFlavor)' == 'Mono'">true</DisableCrossgen>
     <!-- Disable cross-gen on FreeBSD, NetBSD, illumos and Solaris for now. This can be revisited when we have full support. -->
     <DisableCrossgen Condition="'$(TargetOS)'=='FreeBSD' Or '$(TargetOS)'=='NetBSD' Or '$(TargetOS)'=='illumos' Or '$(TargetOS)'=='Solaris'">true</DisableCrossgen>
+    <DisableCrossgen Condition="'$(ClrNativeAot)' == 'true'">true</DisableCrossgen>
     <OutputVersionBadge>$(AssetOutputPath)sharedfx_$(OutputRid)_$(Configuration)_version_badge.svg</OutputVersionBadge>
   </PropertyGroup>
 

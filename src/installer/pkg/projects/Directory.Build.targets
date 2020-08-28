@@ -20,7 +20,7 @@
     opt out.
   -->
   <Target Name="MonoSkipBuildProps"
-          Condition="'$(SkipBuildOnRuntimePackOnlyOS)' == 'true' and '$(RuntimeFlavor)' == 'Mono'"
+          Condition="'$(SkipBuildOnRuntimePackOnlyOS)' == 'true' and ('$(RuntimeFlavor)' == 'Mono' or '$(ClrNativeAot)' == 'true')"
           BeforeTargets="GetSkipBuildProps">
     <PropertyGroup>
       <SkipBuild>true</SkipBuild>

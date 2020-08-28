@@ -1,0 +1,51 @@
+<Project>
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <PropertyGroup>
+    <BuildRuntimePackages>true</BuildRuntimePackages>
+  </PropertyGroup>
+
+  <Target Name="GetIlcCompilerFiles"
+          DependsOnTargets="ConvertItems"
+          BeforeTargets="GetPackageFiles">
+    <ItemGroup>
+      <RuntimeFile Include="@(File->HasMetadata('TargetPath'))" Exclude="$(PackageIconFullPath)" />
+      <File Remove="@(RuntimeFile)" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <IlcCompilerFile Include="$(CoreCLRILCompilerDir)*" />
+      <IlcBuildTaskFile Include="$(CoreCLRILCompilerDir)netstandard\*" />
+      <FrameworkFile Include="@(RuntimeFile)" Condition="'%(RuntimeFile.TargetPath)' == 'runtimes/$(PackageRID)/lib/$(NetCoreAppCurrent)'" />
+      <AotSdkFile Include="$(CoreCLRAotSdkDir)*" />
+      <BuildIntegrationFile Include="$(CoreCLRBuildIntegrationDir)*" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <File Include="@(IlcCompilerFile)">
+        <TargetPath>tools</TargetPath>
+      </File>
+      <File Include="@(IlcBuildTaskFile)">
+        <TargetPath>tools/netstandard</TargetPath>
+      </File>
+      <File Include="@(FrameworkFile)">
+        <TargetPath>framework</TargetPath>
+      </File>
+      <File Include="@(AotSdkFile)">
+        <TargetPath>sdk</TargetPath>
+      </File>
+      <File Include="@(BuildIntegrationFile)">
+        <TargetPath>build</TargetPath>
+      </File>
+      <File Include="$(CoreCLRArtifactsPath)\$(LibraryFilePrefix)clrjit$(LibraryFileExtension)">
+        <TargetPath>tools\$(LibraryFilePrefix)clrjitilc$(LibraryFileExtension)</TargetPath>
+      </File>
+      <File Include="$(CoreCLRArtifactsPath)\$(LibraryFilePrefix)jitinterface$(LibraryFileExtension)">
+        <TargetPath>tools</TargetPath>
+      </File>
+    </ItemGroup>
+
+  </Target>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+</Project>
