@@ -1,6 +1,5 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
 
 #include "pal_threading.h"
 
@@ -120,6 +119,39 @@ void SystemNative_LowLevelMonitor_Wait(LowLevelMonitor* monitor)
     SetIsLocked(monitor, true);
 }
 
+int32_t SystemNative_LowLevelMonitor_TimedWait(LowLevelMonitor *monitor, int32_t timeoutMilliseconds);
+{
+    assert(timeoutMilliseconds >= -1);
+
+    if (timeoutMilliseconds < 0)
+    {
+        SystemNative_LowLevelMonitor_Wait(timeoutMilliseconds);
+        return true;
+    }
+
+    SetIsLocked(monitor, false);
+
+    int error;
+
+    // Calculate the time at which a timeout should occur, and wait. Older versions of OSX don't support clock_gettime with
+    // CLOCK_MONOTONIC, so we instead compute the relative timeout duration, and use a relative variant of the timed wait.
+    timespec timeoutTimeSpec;
+#if HAVE_MACH_ABSOLUTE_TIME
+    MillisecondsToTimeSpec(timeoutMilliseconds, &timeoutTimeSpec);
+    error = pthread_cond_timedwait_relative_np(&m_condition, &m_mutex, &timeoutTimeSpec);
+#else
+    error = clock_gettime(CLOCK_MONOTONIC, &timeoutTimeSpec);
+    assert(error == 0);
+    AddMillisecondsToTimeSpec(timeoutMilliseconds, &timeoutTimeSpec);
+    error = pthread_cond_timedwait(&m_condition, &m_mutex, &timeoutTimeSpec);
+#endif
+    assert(error == 0 || error == ETIMEDOUT);
+
+    SetIsLocked(monitor, true);
+
+    return error == 0;
+}
+
 void SystemNative_LowLevelMonitor_Signal_Release(LowLevelMonitor* monitor)
 {
     assert(monitor != NULL);
@@ -135,4 +167,43 @@ void SystemNative_LowLevelMonitor_Signal_Release(LowLevelMonitor* monitor)
     assert(error == 0);
 
     (void)error; // unused in release build
+}
+
+int32_t SystemNative_RuntimeThread_CreateThread(size_t stackSize, void *(*startAddress)(void*), void *parameter)
+{
+    bool result = false;
+    pthread_attr_t attrs;
+
+    int error = pthread_attr_init(&attrs);
+    if (error != 0)
+    {
+        // Do not call pthread_attr_destroy
+        return false;
+    }
+
+    error = pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
+    assert(error == 0);
+
+    if (stackSize > 0)
+    {
+        if (stackSize < PTHREAD_STACK_MIN)
+        {
+            stackSize = PTHREAD_STACK_MIN;
+        }
+
+        error = pthread_attr_setstacksize(&attrs, stackSize);
+        if (error != 0) goto CreateThreadExit;
+    }
+
+    pthread_t threadId;
+    error = pthread_create(&threadId, &attrs, startAddress, parameter);
+    if (error != 0) goto CreateThreadExit;
+
+    result = true;
+
+CreateThreadExit:
+    error = pthread_attr_destroy(&attrs);
+    assert(error == 0);
+
+    return result;
 }

@@ -3,6 +3,16 @@
 
 #include "pal_errno.h"
 
+extern "C" int32_t CoreLibNative_GetErrNo()
+{
+    return errno;
+}
+
+extern "C" void CoreLibNative_ClearErrNo()
+{
+    errno = 0;
+}
+
 int32_t SystemNative_ConvertErrorPlatformToPal(int32_t platformErrno)
 {
     return ConvertErrorPlatformToPal(platformErrno);
