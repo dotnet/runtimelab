@@ -8,7 +8,7 @@ internal static partial class Interop
 {
     internal unsafe partial class Sys
     {
-        [DllImport(Interop.Libraries.CoreLibNative, EntryPoint = "CoreLibNative_GetTickCount64")]
+        [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_GetTickCount64")]
         internal static extern ulong GetTickCount64();
     }
 }

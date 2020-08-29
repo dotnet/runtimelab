@@ -9,7 +9,7 @@
 #include <gnu/lib-names.h>
 #endif
 
-extern "C" void* CoreLibNative_LoadLibrary(const char* filename)
+void* SystemNative_LoadLibrary(const char* filename)
 {
     // Check whether we have been requested to load 'libc'. If that's the case, then:
     // * For Linux, use the full name of the library that is defined in <gnu/lib-names.h> by the
@@ -36,7 +36,7 @@ extern "C" void* CoreLibNative_LoadLibrary(const char* filename)
     return dlopen(filename, RTLD_LAZY);
 }
 
-extern "C" void* CoreLibNative_GetProcAddress(void* handle, const char* symbol)
+void* SystemNative_GetProcAddress(void* handle, const char* symbol)
 {
     // We're not trying to disambiguate between "symbol was not found" and "symbol found, but
     // the value is null". .NET does not define a behavior for DllImports of null entrypoints,
@@ -44,7 +44,7 @@ extern "C" void* CoreLibNative_GetProcAddress(void* handle, const char* symbol)
     return dlsym(handle, symbol);
 }
 
-extern "C" void CoreLibNative_FreeLibrary(void* handle)
+void SystemNative_FreeLibrary(void* handle)
 {
     dlclose(handle);
 }

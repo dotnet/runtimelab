@@ -4,22 +4,22 @@
 #include "pal_memory.h"
 #include <string.h>
 
-extern "C" void * CoreLibNative_MemAlloc(size_t size)
+void * SystemNative_MemAlloc(size_t size)
 {
     return malloc(size);
 }
 
-extern "C" void * CoreLibNative_MemAllocWithZeroInitialize(size_t size)
+void * SystemNative_MemAllocWithZeroInitialize(size_t size)
 {
     return calloc(size, 1);
 }
 
-extern "C" void * CoreLibNative_MemReAlloc(void *ptr, size_t size)
+void * SystemNative_MemReAlloc(void *ptr, size_t size)
 {
     return realloc(ptr, size);
 }
 
-extern "C" void CoreLibNative_MemFree(void *ptr)
+void SystemNative_MemFree(void *ptr)
 {
     free(ptr);
 }

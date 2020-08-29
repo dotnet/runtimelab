@@ -14,12 +14,12 @@
 #endif
 
 
-extern "C" char* CoreLibNative_GetEnv(const char* variable)
+char* SystemNative_GetEnv(const char* variable)
 {
     return getenv(variable);
 }
 
-extern "C" int32_t CoreLibNative_SchedGetCpu()
+int32_t SystemNative_SchedGetCpu()
 {
 #if HAVE_SCHED_GETCPU
     return sched_getcpu();
@@ -28,17 +28,17 @@ extern "C" int32_t CoreLibNative_SchedGetCpu()
 #endif
 }
 
-extern "C" void CoreLibNative_Exit(int32_t exitCode)
+void SystemNative_Exit(int32_t exitCode)
 {
     exit(exitCode);
 }
 
-extern "C" void CoreLibNative_Abort()
+void SystemNative_Abort()
 {
     abort();
 }
 
-extern "C" char** CoreLibNative_GetEnviron()
+char** SystemNative_GetEnviron()
 {
     char** sysEnviron;
 

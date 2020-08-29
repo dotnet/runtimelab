@@ -8,10 +8,10 @@ internal static partial class Interop
 {
     internal unsafe partial class Sys
     {
-        [DllImport(Interop.Libraries.CoreLibNative, EntryPoint = "CoreLibNative_MemAlloc")]
+        [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_MemAlloc")]
         internal static extern IntPtr MemAlloc(UIntPtr sizeInBytes);
 
-        [DllImport(Interop.Libraries.CoreLibNative, EntryPoint = "CoreLibNative_MemFree")]
+        [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_MemFree")]
         internal static extern void MemFree(IntPtr ptr);
     }
 

@@ -126,7 +126,7 @@ mach_timebase_info_data_t *InitializeTimebaseInfo()
 // to return monotonically increasing counts and avoid being affected by changes
 // to the system clock (either due to drift or due to explicit changes to system
 // time).
-extern "C" uint64_t CoreLibNative_GetTickCount64()
+uint64_t SystemNative_GetTickCount64()
 {
     uint64_t retval = 0;
 

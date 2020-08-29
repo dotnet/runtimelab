@@ -3,12 +3,12 @@
 
 #include "pal_errno.h"
 
-extern "C" int32_t CoreLibNative_GetErrNo()
+int32_t SystemNative_GetErrNo()
 {
     return errno;
 }
 
-extern "C" void CoreLibNative_ClearErrNo()
+void SystemNative_ClearErrNo()
 {
     errno = 0;
 }

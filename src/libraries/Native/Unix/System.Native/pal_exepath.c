@@ -17,7 +17,7 @@
 // Get full path to the executable for the current process resolving symbolic links.
 // On success, the function returns the size of the buffer required to hold the result.
 // In case of an error, the function returns -1.
-extern "C" int32_t CoreLibNative_GetExecutableAbsolutePath(char* buffer, int32_t bufferSize)
+int32_t SystemNative_GetExecutableAbsolutePath(char* buffer, int32_t bufferSize)
 {
     char* resolvedPath = nullptr;
     int32_t requiredBufferSize;

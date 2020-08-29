@@ -2,15 +2,16 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 internal static partial class Interop
 {
     internal unsafe partial class Sys
     {
-        [DoesNotReturn]
-        [DllImport(Interop.Libraries.CoreLibNative, EntryPoint = "CoreLibNative_Abort")]
-        internal static extern void Abort();
+        [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_GetErrNo")]
+        internal static extern int GetErrNo();
+
+        [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_ClearErrNo")]
+        internal static extern void ClearErrNo();
     }
 }

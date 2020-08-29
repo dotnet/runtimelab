@@ -8,7 +8,7 @@ internal static partial class Interop
 {
     internal unsafe partial class Sys
     {
-        [DllImport(Interop.Libraries.CoreLibNative, EntryPoint = "CoreLibNative_GetEnv")]
-        internal static extern unsafe IntPtr GetEnv(string name);
+        [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_GetEnviron")]
+        internal static extern unsafe IntPtr GetEnviron();
     }
 }

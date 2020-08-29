@@ -8,10 +8,10 @@ internal static partial class Interop
 {
     internal unsafe partial class Sys
     {
-        [DllImport(Interop.Libraries.CoreLibNative, EntryPoint = "CoreLibNative_MemAllocWithZeroInitialize")]
+        [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_MemAllocWithZeroInitialize")]
         internal static extern IntPtr MemAllocWithZeroInitialize(UIntPtr sizeInBytes);
 
-        [DllImport(Interop.Libraries.CoreLibNative, EntryPoint = "CoreLibNative_MemSet")]
+        [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_MemSet")]
         internal static extern IntPtr MemSet(IntPtr ptr, int c, UIntPtr newSize);
     }
 
