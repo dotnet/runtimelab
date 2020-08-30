@@ -1,10 +1,12 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#include "pal_common.h"
+#include "pal_exepath.h"
+#include "pal_utilities.h"
 
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #if defined(__APPLE__)
 #include <mach-o/dyld.h>
@@ -19,11 +21,11 @@
 // In case of an error, the function returns -1.
 int32_t SystemNative_GetExecutableAbsolutePath(char* buffer, int32_t bufferSize)
 {
-    char* resolvedPath = nullptr;
+    char* resolvedPath = NULL;
     int32_t requiredBufferSize;
     int32_t result;
 
-    assert(buffer != nullptr);
+    assert(buffer != NULL);
     assert(bufferSize >= 0);
 
 #if defined(__APPLE__)
@@ -38,7 +40,7 @@ int32_t SystemNative_GetExecutableAbsolutePath(char* buffer, int32_t bufferSize)
     else if (result == 0)
     {
         // Resolve symbolic links. Note: realpath will allocate a buffer to hold the result.
-        resolvedPath = realpath(buffer, nullptr);
+        resolvedPath = realpath(buffer, NULL);
     }
     else
     {
@@ -46,15 +48,15 @@ int32_t SystemNative_GetExecutableAbsolutePath(char* buffer, int32_t bufferSize)
     }
 #elif __linux__
     // Resolve symbolic links. Note: realpath will allocate a buffer to hold the result.
-    resolvedPath = realpath(symlinkEntrypointExecutable, nullptr);
+    resolvedPath = realpath(symlinkEntrypointExecutable, NULL);
 #endif
 
-    if (resolvedPath != nullptr)
+    if (resolvedPath != NULL)
     {
-        requiredBufferSize = strlen(resolvedPath) + 1;
+        requiredBufferSize = SizeTToInt32(strlen(resolvedPath) + 1);
         if (requiredBufferSize <= bufferSize)
         {
-            strncpy(buffer, resolvedPath, requiredBufferSize);
+            strncpy(buffer, resolvedPath, (size_t)requiredBufferSize);
         }
 
         result = requiredBufferSize;

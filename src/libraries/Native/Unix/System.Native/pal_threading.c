@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+#include "pal_config.h"
 #include "pal_threading.h"
 
 #include <limits.h>
@@ -8,6 +9,8 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <time.h>
 
 #include <pthread.h>
 
@@ -119,13 +122,13 @@ void SystemNative_LowLevelMonitor_Wait(LowLevelMonitor* monitor)
     SetIsLocked(monitor, true);
 }
 
-int32_t SystemNative_LowLevelMonitor_TimedWait(LowLevelMonitor *monitor, int32_t timeoutMilliseconds);
+int32_t SystemNative_LowLevelMonitor_TimedWait(LowLevelMonitor *monitor, int32_t timeoutMilliseconds)
 {
     assert(timeoutMilliseconds >= -1);
 
     if (timeoutMilliseconds < 0)
     {
-        SystemNative_LowLevelMonitor_Wait(timeoutMilliseconds);
+        SystemNative_LowLevelMonitor_Wait(monitor);
         return true;
     }
 
@@ -135,15 +138,18 @@ int32_t SystemNative_LowLevelMonitor_TimedWait(LowLevelMonitor *monitor, int32_t
 
     // Calculate the time at which a timeout should occur, and wait. Older versions of OSX don't support clock_gettime with
     // CLOCK_MONOTONIC, so we instead compute the relative timeout duration, and use a relative variant of the timed wait.
-    timespec timeoutTimeSpec;
+    struct timespec timeoutTimeSpec;
 #if HAVE_MACH_ABSOLUTE_TIME
-    MillisecondsToTimeSpec(timeoutMilliseconds, &timeoutTimeSpec);
-    error = pthread_cond_timedwait_relative_np(&m_condition, &m_mutex, &timeoutTimeSpec);
+    timeoutMilliseconds.tv_sec = timeoutMilliseconds / 1000;
+    timeoutMilliseconds.tv_nsec = (timeoutMilliseconds % 1000) * 1000 * 1000;
+    error = pthread_cond_timedwait_relative_np(&monitor->Condition, &monitor->Mutex, &timeoutTimeSpec);
 #else
     error = clock_gettime(CLOCK_MONOTONIC, &timeoutTimeSpec);
     assert(error == 0);
-    AddMillisecondsToTimeSpec(timeoutMilliseconds, &timeoutTimeSpec);
-    error = pthread_cond_timedwait(&m_condition, &m_mutex, &timeoutTimeSpec);
+    uint64_t nanoseconds = (uint64_t)timeoutMilliseconds * 1000 * 1000 + (uint64_t)timeoutTimeSpec.tv_nsec;
+    timeoutTimeSpec.tv_sec += nanoseconds / (1000 * 1000 * 1000);
+    timeoutTimeSpec.tv_nsec = nanoseconds % (1000 * 1000 * 1000);
+    error = pthread_cond_timedwait(&monitor->Condition, &monitor->Mutex, &timeoutTimeSpec);
 #endif
     assert(error == 0 || error == ETIMEDOUT);
 
@@ -169,7 +175,7 @@ void SystemNative_LowLevelMonitor_Signal_Release(LowLevelMonitor* monitor)
     (void)error; // unused in release build
 }
 
-int32_t SystemNative_RuntimeThread_CreateThread(size_t stackSize, void *(*startAddress)(void*), void *parameter)
+int32_t SystemNative_RuntimeThread_CreateThread(uintptr_t stackSize, void *(*startAddress)(void*), void *parameter)
 {
     bool result = false;
     pthread_attr_t attrs;
