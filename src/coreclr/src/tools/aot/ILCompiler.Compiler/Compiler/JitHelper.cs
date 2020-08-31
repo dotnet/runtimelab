@@ -36,7 +36,7 @@ namespace ILCompiler
                     methodDesc = context.GetHelperEntryPoint("ThrowHelpers", "ThrowIndexOutOfRangeException");
                     break;
                 case ReadyToRunHelper.FailFast:
-                    mangledName = "__fail_fast"; // TODO: Report stack buffer overrun
+                    mangledName = "RhpFallbackFailFast"; // TODO: Report stack buffer overrun
                     break;
                 case ReadyToRunHelper.ThrowNullRef:
                     methodDesc = context.GetHelperEntryPoint("ThrowHelpers", "ThrowNullReferenceException");

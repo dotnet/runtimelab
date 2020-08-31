@@ -144,6 +144,7 @@ namespace Internal.Runtime.TypeLoader
             }
         }
 
+#if FEATURE_UNIVERSAL_GENERICS
         /// <summary>
         /// Used for non-generic Direct Call Constrained Methods
         /// </summary>
@@ -236,6 +237,7 @@ namespace Internal.Runtime.TypeLoader
                 return ConstrainedCallSupport.GenericConstrainedCallDesc.Get(builder.GetRuntimeTypeHandle(ConstraintType), rmh);
             }
         }
+#endif
 
         private class StaticDataCell : GenericDictionaryCell
         {
@@ -1162,6 +1164,7 @@ namespace Internal.Runtime.TypeLoader
             return type;
         }
 
+#if FEATURE_UNIVERSAL_GENERICS
         private static int ComputeConstrainedMethodSlot(MethodDesc constrainedMethod)
         {
             if (constrainedMethod.OwningType.IsInterface)
@@ -1190,6 +1193,7 @@ namespace Internal.Runtime.TypeLoader
             Environment.FailFast("unable to construct constrained method slot from constrained method");
             return -1;
         }
+#endif
 
         internal static GenericDictionaryCell CreateMethodCell(MethodDesc method, bool exactCallableAddressNeeded)
         {
@@ -1721,6 +1725,7 @@ namespace Internal.Runtime.TypeLoader
                     }
                     break;
 
+#if FEATURE_UNIVERSAL_GENERICS
                 case FixupSignatureKind.NonGenericDirectConstrainedMethod:
                     {
                         var constraintType = nativeLayoutInfoLoadContext.GetType(ref parser);
@@ -1773,6 +1778,7 @@ namespace Internal.Runtime.TypeLoader
                         };
                     }
                     break;
+#endif
 
                 case FixupSignatureKind.IsInst:
                 case FixupSignatureKind.CastClass:
