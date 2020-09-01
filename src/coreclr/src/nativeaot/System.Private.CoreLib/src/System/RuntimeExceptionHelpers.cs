@@ -236,7 +236,7 @@ namespace System
                 string output = (exception != null) ?
                     "Unhandled Exception: " + exception.ToString()
                     : message;
-                DeveloperExperience.WriteStackTraceLine(output);
+                DeveloperExperience.WriteLine(output);
 
                 GenerateExceptionInformationForDump(exception, IntPtr.Zero);
             }

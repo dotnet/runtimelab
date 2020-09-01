@@ -33,7 +33,7 @@ namespace Internal.DeveloperExperience
             return disableMetadata;
         }
 
-        internal static void WriteStackTraceLine(string s)
+        internal static void WriteLine(string s)
         {
             Action<string> writeLineMethod = AppContext.GetData("System.Runtime.ExceptionServices.WriteStackTraceString") as Action<string>;
             if (writeLineMethod != null)
