@@ -4,7 +4,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Internal\DeveloperExperience\DeveloperExperienceConsole.cs" />
     <Compile Include="Internal\Runtime\CompilerHelpers\LibraryInitializer.cs" />
   </ItemGroup>
 

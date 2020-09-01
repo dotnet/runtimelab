@@ -25,9 +25,6 @@ namespace Internal.DeveloperExperience
         /// constitutes technically a regression because these two resolution methods today cannot
         /// provide file name and line number information; PDB-based tooling can easily do that
         /// based on the RVA information.
-        ///
-        /// Note: a related switch 'Diagnostics.DisableDiaStackTraceResolution' controls whether
-        /// runtime may try to use DIA for PDB-based stack frame resolution.
         /// </summary>
         private static bool IsMetadataStackTraceResolutionDisabled()
         {
@@ -36,10 +33,17 @@ namespace Internal.DeveloperExperience
             return disableMetadata;
         }
 
-        public virtual void WriteLine(string s)
+        internal static void WriteStackTraceLine(string s)
         {
-            Debug.WriteLine(s);
-            return;
+            Action<string> writeLineMethod = AppContext.GetData("System.Runtime.ExceptionServices.WriteStackTraceString") as Action<string>;
+            if (writeLineMethod != null)
+            {
+                writeLineMethod(s);
+            }
+            else
+            {
+                Debug.WriteLine(s);
+            }
         }
 
         public virtual string CreateStackTraceString(IntPtr ip, bool includeFileInfo)

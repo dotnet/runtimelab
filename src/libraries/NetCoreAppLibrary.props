@@ -78,6 +78,7 @@
       System.Numerics.Vectors;
       System.ObjectModel;
       System.Private.DataContractSerialization;
+      System.Private.DeveloperExperience.Console;
       System.Private.Runtime.InteropServices.JavaScript;
       System.Private.Uri;
       System.Private.Xml;
@@ -146,7 +147,6 @@
       System.Xml.XPath;
       System.Xml.XPath.XDocument;
     </NetCoreAppLibrary>
-    <NetCoreAppLibrary Condition="'$(ClrNativeAOT)' == 'true'">$(NetCoreAppLibrary)System.Private.DeveloperExperience.Console;</NetCoreAppLibrary>
     <NetCoreAppLibraryNoReference>
       Microsoft.Win32.Registry;
       System.IO.FileSystem.AccessControl;

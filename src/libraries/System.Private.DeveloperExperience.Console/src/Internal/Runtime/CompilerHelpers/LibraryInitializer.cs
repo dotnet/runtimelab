@@ -3,15 +3,19 @@
 
 using System;
 
-using Internal.DeveloperExperience;
-
 namespace Internal.Runtime.CompilerHelpers
 {
     public class LibraryInitializer
     {
         public static void InitializeLibrary()
         {
-            DeveloperExperienceConsole.SetAsDefault();
+            // Used by Native AOT CoreLib to write stack traces to console when an unhandled exception happens.
+            // The usual approach (use reflection out of CoreLib to access things CoreLib can't statically reference)
+            // is not low level enough for the purposes of stack trace printing.
+            AppContext.SetData("System.Runtime.ExceptionServices.WriteStackTraceString", new Action<string>(
+                // We create a lambda on purpose to prevent fetching Error here: InitializeLibrary is called
+                // as part of the startup path and  we don't want it to do too much work.
+                (s) => Console.Error.WriteLine(s)));
         }
     }
 }
