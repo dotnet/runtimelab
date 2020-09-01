@@ -154,7 +154,7 @@
     <value>The native type for the type '{0}' is null.</value>
   </data>
   <data name="NativeTypeMustBePointerSizedDescription" xml:space="preserve">
-    <value>The native type must be pointer sized so we can cast the pinned result of 'GetPinnableReference' to the native type.</value>
+    <value>The native type must be pointer sized so the pinned result of 'GetPinnableReference' can be cast to the native type.</value>
   </data>
   <data name="NativeTypeMustBePointerSizedMessage" xml:space="preserve">
     <value>The native type '{0}' must be pointer sized because the managed type '{1}' has a 'GetPinnableReference' method.</value>

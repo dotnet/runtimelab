@@ -296,11 +296,13 @@ namespace Microsoft.Interop
                                                     .OfType<IMethodSymbol>()
                                                     .Any(m => m.Parameters.IsEmpty && !m.ReturnsByRef && !m.ReturnsByRefReadonly && SymbolEqualityComparer.Default.Equals(m.ReturnType, type) && !m.IsStatic);
 
+                // Validate that the native type has at least one marshalling method (either managed to native or native to managed)
                 if (!hasConstructor && !hasStackallocConstructor && !hasToManaged)
                 {
                     context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustHaveRequiredShapeRule, GetSyntaxReferenceForDiagnostic(marshalerType).GetSyntax().GetLocation(), marshalerType.ToDisplayString(), type.ToDisplayString()));
                 }
 
+                // Validate that this type can support marshalling when stackalloc is not usable.
                 if (validateAllScenarioSupport && hasStackallocConstructor && !hasConstructor)
                 {
                     context.ReportDiagnostic(Diagnostic.Create(StackallocMarshallingShouldSupportAllocatingMarshallingFallbackRule, GetSyntaxReferenceForDiagnostic(marshalerType).GetSyntax().GetLocation(), marshalerType.ToDisplayString()));
@@ -311,6 +313,10 @@ namespace Microsoft.Interop
                 {
                     nativeType = valueProperty.Type;
 
+                    // Validate that we don't have partial implementations.
+                    // We error if either of the conditions below are partially met but not fully met:
+                    //  - a constructor and a Value property getter
+                    //  - a ToManaged method and a Value property setter
                     if ((hasConstructor || hasStackallocConstructor) && valueProperty.GetMethod is null)
                     {
                         context.ReportDiagnostic(Diagnostic.Create(ValuePropertyMustHaveGetterRule, GetSyntaxReferenceForDiagnostic(valueProperty).GetSyntax().GetLocation(), marshalerType.ToDisplayString()));
@@ -320,6 +326,7 @@ namespace Microsoft.Interop
                         context.ReportDiagnostic(Diagnostic.Create(ValuePropertyMustHaveSetterRule, GetSyntaxReferenceForDiagnostic(valueProperty).GetSyntax().GetLocation(), marshalerType.ToDisplayString()));
                     }
                 }
+                
                 if (!nativeType.IsConsideredBlittable())
                 {
                     context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustBeBlittableRule,
@@ -339,13 +346,12 @@ namespace Microsoft.Interop
                     {
                         context.ReportDiagnostic(Diagnostic.Create(GetPinnableReferenceReturnTypeBlittableRule, getPinnableReferenceMethod.DeclaringSyntaxReferences[0].GetSyntax().GetLocation()));
                     }
-                    if (valueProperty is null or
-                        not
-                    {
-                        Type: IPointerTypeSymbol _
-                            or { SpecialType: SpecialType.System_IntPtr }
-                            or { SpecialType: SpecialType.System_UIntPtr }
-                    })
+                    // Validate that the Value property is a pointer-sized primitive type.
+                    if (valueProperty is null ||
+                        valueProperty.Type is not (
+                            IPointerTypeSymbol _ or
+                            { SpecialType: SpecialType.System_IntPtr } or
+                            { SpecialType: SpecialType.System_UIntPtr }))
                     {
                         context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustBePointerSizedRule,
                             valueProperty is not null
@@ -355,6 +361,7 @@ namespace Microsoft.Interop
                             type.ToDisplayString()));
                     }
 
+                    // Validate that our marshaler supports scenarios where GetPinnableReference cannot be used.
                     if (validateAllScenarioSupport && (!hasConstructor || valueProperty is { GetMethod: null }))
                     {
                         context.ReportDiagnostic(Diagnostic.Create(GetPinnableReferenceShouldSupportAllocatingMarshallingFallbackRule, nativeMarshalerAttributeData.ApplicationSyntaxReference!.GetSyntax().GetLocation(), type.ToDisplayString()));
