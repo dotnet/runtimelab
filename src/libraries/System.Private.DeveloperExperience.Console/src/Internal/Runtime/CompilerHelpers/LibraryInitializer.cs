@@ -15,7 +15,7 @@ namespace Internal.Runtime.CompilerHelpers
             AppContext.SetData("System.Runtime.ExceptionServices.WriteStackTraceString", new Action<string>(
                 // We create a lambda on purpose to prevent fetching Error here: InitializeLibrary is called
                 // as part of the startup path and  we don't want it to do too much work.
-                (s) => Console.Error.WriteLine(s)));
+                (s) => System.Console.Error.WriteLine(s)));
         }
     }
 }
