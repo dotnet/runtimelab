@@ -62,6 +62,8 @@
   <PropertyGroup>
     <DefaultCoreClrSubsets>clr.runtime+linuxdac+clr.corelib+clr.nativecorelib+clr.tools+clr.packages</DefaultCoreClrSubsets>
 
+    <DefaultNativeAotSubsets>clr.runtime+nativeaot.tools+nativeaot.libs</DefaultNativeAotSubsets>
+
     <DefaultMonoSubsets Condition="'$(MonoEnableLLVM)' == 'true' and '$(MonoLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
     <DefaultMonoSubsets>$(DefaultMonoSubsets)mono.runtime+mono.corelib+mono.packages</DefaultMonoSubsets>
 
@@ -73,7 +75,8 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <_subset>$(_subset.Replace('+clr+', '+$(DefaultCoreClrSubsets)+'))</_subset>
+    <_subset>$(_subset.Replace('+clr+', '+$(DefaultCoreClrSubsets)+$(DefaultNativeAotSubsets)+'))</_subset>
+    <_subset>$(_subset.Replace('+nativeaot+', '+$(DefaultNativeAotSubsets)+'))</_subset>
     <_subset>$(_subset.Replace('+mono+', '+$(DefaultMonoSubsets)+'))</_subset>
     <_subset>$(_subset.Replace('+libs+', '+$(DefaultLibrariesSubsets)+'))</_subset>
     <_subset>$(_subset.Replace('+installer+', '+$(DefaultInstallerSubsets)+'))</_subset>
@@ -84,6 +87,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- CoreClr Native AOT -->
+    <SubsetName Include="NativeAot" Description="The CoreCLR native AOT runtime, libraries, and tools." />
+    <SubsetName Include="NativeAot.Libs" Description="The CoreCLR native AOT CoreLib and other low level class libraries." />
+    <SubsetName Include="NativeAot.Tools" Description="The CoreCLR native AOT compiler." />
+
     <!-- CoreClr -->
     <SubsetName Include="Clr" Description="The CoreCLR runtime, LinuxDac, CoreLib (+ native), tools and packages." />
     <SubsetName Include="Clr.Runtime" Description="The CoreCLR .NET runtime." />
@@ -143,7 +151,7 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)runtime.proj" Category="clr" />
   </ItemGroup>
 
-  <ItemGroup Condition="$(_subset.Contains('+clr.corelib+'))">
+  <ItemGroup Condition="$(_subset.Contains('+nativeaot.libs+'))">
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.CoreLib\System.Private.CoreLib.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.Reflection.Metadata\System.Private.Reflection.Metadata.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.TypeLoader\src\System.Private.TypeLoader.csproj" Category="clr" />
@@ -176,11 +184,14 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\tools\runincontext\runincontext.csproj;
                              $(CoreClrProjectRoot)src\tools\r2rdump\R2RDump.csproj;
                              $(CoreClrProjectRoot)src\tools\dotnet-pgo\dotnet-pgo.csproj;
-                             $(CoreClrProjectRoot)src\tools\aot\ILCompiler.Build.Tasks\ILCompiler.Build.Tasks.csproj;
                              $(CoreClrProjectRoot)src\tools\r2rtest\R2RTest.csproj" Category="clr" BuildInParallel="true" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\tools\aot\crossgen2\crossgen2.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)src\tools\aot\ILCompiler\ILCompiler.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\tools\aot\ILCompiler.TypeSystem.ReadyToRun.Tests\ILCompiler.TypeSystem.ReadyToRun.Tests.csproj" Test="true" Category="clr" Condition="'$(__DistroRid)' != 'linux-musl-x64'"/>
+  </ItemGroup>
+
+  <ItemGroup Condition="$(_subset.Contains('+nativeaot.tools+'))">
+    <ProjectToBuild Include="$(CoreClrProjectRoot)src\tools\aot\ILCompiler.Build.Tasks\ILCompiler.Build.Tasks.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)src\tools\aot\ILCompiler\ILCompiler.csproj" Category="clr" />
   </ItemGroup>
 
   <ItemGroup Condition="$(_subset.Contains('+clr.packages+'))">
