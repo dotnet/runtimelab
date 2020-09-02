@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -11,7 +12,7 @@ namespace Microsoft.Interop
 {
     static class TypeSymbolExtensions
     {
-        public static bool HasOnlyBlittableFields(this ITypeSymbol type)
+        public static bool HasOnlyBlittableFields(this ITypeSymbol type, params int[] conditionalGenericTypeParameters)
         {
             if (!type.IsUnmanagedType || !type.IsValueType)
             {
@@ -69,6 +70,7 @@ namespace Microsoft.Interop
             }
             bool hasNativeMarshallingAttribute = false;
             bool hasGeneratedMarshallingAttribute = false;
+            ImmutableArray<TypedConstant> conditionalBlittableIndices = default;
             // [TODO]: Match attributes on full name or symbol, not just on type name.
             foreach (var attr in type.GetAttributes())
             {
@@ -88,6 +90,24 @@ namespace Microsoft.Interop
                 {
                     hasNativeMarshallingAttribute = true;
                 }
+                else if (attr.AttributeClass.Name == "BlittableTypeIfGenericParametersBlittableAttribute")
+                {
+                    conditionalBlittableIndices = attr.ConstructorArguments[0].Values;
+                }
+            }
+
+            if (!conditionalBlittableIndices.IsDefaultOrEmpty &&
+                type is INamedTypeSymbol {TypeArguments: ImmutableArray<ITypeSymbol> typeArguments})
+            {
+                foreach (var idx in conditionalBlittableIndices)
+                {
+                    var idxValue = (int)idx.Value!;
+                    if (idxValue < typeArguments.Length && !typeArguments[idxValue].IsConsideredBlittable())
+                    {
+                        return false;
+                    }
+                }
+                return true;
             }
 
             if (hasGeneratedMarshallingAttribute && !hasNativeMarshallingAttribute)

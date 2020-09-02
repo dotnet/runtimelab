@@ -970,5 +970,96 @@ unsafe struct S
 }";
             await VerifyCS.VerifyAnalyzerAsync(source);
         }
+
+        [Fact]
+        public async Task BlittableGenericTypeInBlittableType_DoesNotReportDiagnostic()
+        {
+            
+            var source = @"
+using System.Runtime.InteropServices;
+
+[BlittableTypeIfGenericParametersBlittable(0)]
+struct G<T>
+{
+    T fld;
+}
+
+[BlittableType]
+unsafe struct S
+{
+    private G<int> field;
+}";
+            await VerifyCS.VerifyAnalyzerAsync(source);
+        }
+
+        [Fact]
+        public async Task NonBlittableGenericTypeInBlittableType_ReportsDiagnostic()
+        {
+            
+            var source = @"
+using System.Runtime.InteropServices;
+
+[BlittableTypeIfGenericParametersBlittable(0)]
+struct G<T>
+{
+    T fld;
+}
+
+[BlittableType]
+unsafe struct S
+{
+    private G<string> field;
+}";
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic(BlittableTypeMustBeBlittableRule).WithSpan(10, 2, 10, 15).WithArguments("S"));
+        }
+        
+        [Fact]
+        public async Task ConditionallyBlittableGenericTypeWithOutOfRangeTypeParameterIndex_ReportsDiagnostic()
+        {
+            
+            var source = @"
+using System.Runtime.InteropServices;
+
+[BlittableTypeIfGenericParametersBlittable(0, 1)]
+struct G<T>
+{
+    T fld;
+}";
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic());
+        }
+        
+        [Fact]
+        public async Task ConditionallyBlittableGenericTypeWithExtraTypeParameterIndex_ReportsDiagnostic()
+        {
+            
+            var source = @"
+using System.Runtime.InteropServices;
+
+[BlittableTypeIfGenericParametersBlittable(0, 1)]
+struct G<T, U>
+{
+    T fld;
+}";
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic());
+        }
+
+        [Fact]
+        public async Task ConditionallyBlittableGenericTypeConditionalTypeParameterReferenceType_ReportsDiagnostic()
+        {
+            
+            var source = @"
+using System.Runtime.InteropServices;
+
+[BlittableTypeIfGenericParametersBlittable(0)]
+struct G<T> where T : class
+{
+    T fld;
+}";
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic());
+        }
     }
 }
