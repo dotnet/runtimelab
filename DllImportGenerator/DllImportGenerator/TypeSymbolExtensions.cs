@@ -12,22 +12,19 @@ namespace Microsoft.Interop
 {
     static class TypeSymbolExtensions
     {
-        public static bool HasOnlyBlittableFields(this ITypeSymbol type, params int[] conditionalGenericTypeParameters)
+        public static bool HasOnlyBlittableFields(this INamedTypeSymbol type, params ITypeParameterSymbol[] conditionalGenericTypeParameters)
         {
-            if (!type.IsUnmanagedType || !type.IsValueType)
-            {
-                return false;
-            }
-
             foreach (var field in type.GetMembers().OfType<IFieldSymbol>())
             {
                 bool? fieldBlittable = field switch
                 {
                     { IsStatic : true } => null,
-                    { Type : { IsValueType : false }} => false,
+                    { Type : { IsReferenceType : true }} => false,
                     { Type : IPointerTypeSymbol ptr } => IsConsideredBlittable(ptr.PointedAtType),
                     { Type : IFunctionPointerTypeSymbol } => true,
                     not { Type : { SpecialType : SpecialType.None }} => IsSpecialTypeBlittable(field.Type.SpecialType),
+                    { Type : ITypeParameterSymbol t } => conditionalGenericTypeParameters.Contains(t),
+                    { Type : { IsValueType : false }} => false,
                     // A recursive struct type isn't blittable.
                     // It's also illegal in C#, but I believe that source generators run
                     // before that is detected, so we check here to avoid a stack overflow.
@@ -68,6 +65,12 @@ namespace Microsoft.Interop
             {
                 return IsSpecialTypeBlittable(type.SpecialType);
             }
+            
+            if (!type.IsValueType || type.IsReferenceType)
+            {
+                return false;
+            }
+
             bool hasNativeMarshallingAttribute = false;
             bool hasGeneratedMarshallingAttribute = false;
             ImmutableArray<TypedConstant> conditionalBlittableIndices = default;
@@ -115,9 +118,22 @@ namespace Microsoft.Interop
                 // The struct type has generated marshalling via a source generator.
                 // We can't guarantee that we can see the results of the struct source generator,
                 // so we re-calculate if the type is blittable here.
-                return type.HasOnlyBlittableFields();
+                return ((INamedTypeSymbol)type).HasOnlyBlittableFields();
             }
             return false;
+        }
+
+        public static bool IsAutoLayout(this INamedTypeSymbol type, ITypeSymbol structLayoutAttributeType)
+        {
+            bool defaultAuto = type.IsReferenceType;
+            foreach (var attr in type.GetAttributes())
+            {
+                if (SymbolEqualityComparer.Default.Equals(structLayoutAttributeType, attr.AttributeClass))
+                {
+                    return (LayoutKind)(int)attr.ConstructorArguments[0].Value! == LayoutKind.Auto;
+                }
+            }
+            return defaultAuto;
         }
     }
 }

@@ -41,6 +41,12 @@ public class MarshalUsingAttribute : Attribute
      public MarshalUsingAttribute(Type nativeType) {}
 }
 
+[AttributeUsage(AttributeTargets.Struct)]
+public class BlittableTypeIfGenericParametersBlittableAttribute : Attribute
+{
+     public BlittableTypeIfGenericParametersBlittableAttribute(params int[] genericParameterIndices) {}
+}
+
 ```
 
 The `NativeMarshallingAttribute` and `MarshalUsingAttribute` attributes would require that the provided native type `TNative` is a blittable `struct` and has a subset of three methods with the following names and shapes (with the managed type named TManaged):
@@ -82,6 +88,10 @@ partial struct TNative
 ```
 
 When these members are both present, the source generator will call the two-parameter constructor with a stack-allocated buffer of `StackBufferSize` bytes when a stack-allocated buffer is usable. As this buffer is guaranteed to be stack allocated and not on the GC heap, it is safe to use `Unsafe.AsPointer` to get a pointer to the stack buffer to pass to native code. As a stack-allocated buffer is not usable in all scenarios, for example Reverse P/Invoke and struct marshalling, a one-parameter constructor must also be provided for usage in those scenarios. This may also be provided by providing a two-parameter constructor with a default value for the second parameter.
+
+### Generics support
+
+The `BlittableTypeIfGenericParametersBlittableAttribute` attribute supports marshalling value types that have blittable fields. In .NET 5.0, we added support to the built-in interop for marshalling generic types as long as they are blittable. The `BlittableTypeIfGenericParametersBlittableAttribute` attribute allows users to specify "when the n-th, m-th, etc. type arguments (0-based indexing) are blittable, then the generic type is blittable".
 
 ### Usage
 

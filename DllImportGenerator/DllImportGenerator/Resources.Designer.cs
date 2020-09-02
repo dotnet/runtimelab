@@ -61,6 +61,24 @@ namespace DllImportGenerator {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The &apos;BlittableTypeIfGenericParametersBlittableAttribute&apos; attribute is only valid on a generic type..
+        /// </summary>
+        internal static string BlittableTypeIfGenericParametersBlittableInvalidTargetDescription {
+            get {
+                return ResourceManager.GetString("BlittableTypeIfGenericParametersBlittableInvalidTargetDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The &apos;BlittableTypeIfGenericParametersBlittableAttribute&apos; attribute is only valid on a generic type..
+        /// </summary>
+        internal static string BlittableTypeIfGenericParametersBlittableInvalidTargetMessage {
+            get {
+                return ResourceManager.GetString("BlittableTypeIfGenericParametersBlittableInvalidTargetMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to A type marked with &apos;BlittableTypeAttribute&apos; must be blittable..
         /// </summary>
         internal static string BlittableTypeMustBeBlittableDescription {
@@ -79,7 +97,7 @@ namespace DllImportGenerator {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The &apos;BlittableTypeAttribute&apos; and &apos;NativeMarshallingAttributes&apos; are mutually exclusive..
+        ///   Looks up a localized string similar to The &apos;BlittableTypeAttribute&apos;, &apos;BlittableTypeIfGenericParametersBlittableAttribute&apos;, and &apos;NativeMarshallingAttribute&apos; attributes are mutually exclusive..
         /// </summary>
         internal static string CannotHaveMultipleMarshallingAttributesDescription {
             get {
@@ -93,6 +111,42 @@ namespace DllImportGenerator {
         internal static string CannotHaveMultipleMarshallingAttributesMessage {
             get {
                 return ResourceManager.GetString("CannotHaveMultipleMarshallingAttributesMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A type marked with &apos;BlittableTypeIfGenericParametersBlittableAttribute&apos; must have non-Auto layout and only have blittable fields or fields with types of the generic parameters that can be conditionally blittable..
+        /// </summary>
+        internal static string ConditionallyBlittableGenericTypeMustBeConditionallyBlittableDescription {
+            get {
+                return ResourceManager.GetString("ConditionallyBlittableGenericTypeMustBeConditionallyBlittableDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Type &apos;{0}&apos; is marked with &apos;BlittableTypeIfGenericParametersBlittableAttribute&apos; but either has Auto layout, has non-blittable fields, or has fields of generic type that are not marked as conditionally blittable..
+        /// </summary>
+        internal static string ConditionallyBlittableGenericTypeMustBeConditionallyBlittableMessage {
+            get {
+                return ResourceManager.GetString("ConditionallyBlittableGenericTypeMustBeConditionallyBlittableMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to An index provided to the &apos;BlittableTypeIfGenericParametersBlittableAttribute&apos; constructor must be greater than or equal to zero and less than the number of generic parameters on the type..
+        /// </summary>
+        internal static string GenericTypeIndexMustBeInRangeDescription {
+            get {
+                return ResourceManager.GetString("GenericTypeIndexMustBeInRangeDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The values provided to &apos;BlittableTypeIfGenericParametersBlittableAttribute&apos; on &apos;{0}&apos; must be in the range of [{1}, {2})..
+        /// </summary>
+        internal static string GenericTypeIndexMustBeInRangeMessage {
+            get {
+                return ResourceManager.GetString("GenericTypeIndexMustBeInRangeMessage", resourceCulture);
             }
         }
         
@@ -169,7 +223,7 @@ namespace DllImportGenerator {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The native type must be pointer sized so we can cast the pinned result of &apos;GetPinnableReference&apos; to the native type..
+        ///   Looks up a localized string similar to The native type must be pointer sized so the pinned result of &apos;GetPinnableReference&apos; can be cast to the native type..
         /// </summary>
         internal static string NativeTypeMustBePointerSizedDescription {
             get {
@@ -178,7 +232,7 @@ namespace DllImportGenerator {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The native type &apos;{0}&apos; must be pointer sized because the managed type &apos;{1}&apos; has a &apos;GetPinnableReference&quot; method..
+        ///   Looks up a localized string similar to The native type &apos;{0}&apos; must be pointer sized because the managed type &apos;{1}&apos; has a &apos;GetPinnableReference&apos; method..
         /// </summary>
         internal static string NativeTypeMustBePointerSizedMessage {
             get {
@@ -201,6 +255,24 @@ namespace DllImportGenerator {
         internal static string NativeTypeMustHaveRequiredShapeMessage {
             get {
                 return ResourceManager.GetString("NativeTypeMustHaveRequiredShapeMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A type parameter that is always a reference type can never be blittable..
+        /// </summary>
+        internal static string ReferenceTypeParameterCanNeverBeBlittableDescription {
+            get {
+                return ResourceManager.GetString("ReferenceTypeParameterCanNeverBeBlittableDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The type parameter &apos;{0}&apos; is marked as conditionally blittable but it is always a reference type..
+        /// </summary>
+        internal static string ReferenceTypeParameterCanNeverBeBlittableMessage {
+            get {
+                return ResourceManager.GetString("ReferenceTypeParameterCanNeverBeBlittableMessage", resourceCulture);
             }
         }
         

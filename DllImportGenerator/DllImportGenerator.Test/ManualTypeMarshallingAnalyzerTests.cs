@@ -140,7 +140,6 @@ struct T
 }
 ";
             await VerifyCS.VerifyAnalyzerAsync(source,
-                VerifyCS.Diagnostic(BlittableTypeMustBeBlittableRule).WithSpan(4, 2, 4, 15).WithArguments("S"),
                 VerifyCS.Diagnostic(BlittableTypeMustBeBlittableRule).WithSpan(10, 2, 10, 15).WithArguments("T"));
         }
 
@@ -243,7 +242,7 @@ class Native
     public S ToManaged() => new S();
 }";
             await VerifyCS.VerifyAnalyzerAsync(source,
-                VerifyCS.Diagnostic(NativeTypeMustBeBlittableRule).WithSpan(11, 1, 20, 2).WithArguments("Native", "S"));
+                VerifyCS.Diagnostic(NativeTypeMustHaveRequiredShapeRule).WithSpan(11, 1, 20, 2).WithArguments("Native", "S"));
         }
 
         [Fact]
@@ -1013,6 +1012,22 @@ unsafe struct S
             await VerifyCS.VerifyAnalyzerAsync(source,
                 VerifyCS.Diagnostic(BlittableTypeMustBeBlittableRule).WithSpan(10, 2, 10, 15).WithArguments("S"));
         }
+
+        [Fact]
+        public async Task BlittableTypeIfGenericParametersBlittableOnNonGenericType_ReportsDiagnostic()
+        {
+            
+            var source = @"
+using System.Runtime.InteropServices;
+
+[BlittableTypeIfGenericParametersBlittable]
+struct G
+{
+    int fld;
+}";
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic(BlittableTypeIfGenericParametersBlittableInvalidTargetRule).WithSpan(4, 2, 4, 43).WithArguments("G"));
+        }
         
         [Fact]
         public async Task ConditionallyBlittableGenericTypeWithOutOfRangeTypeParameterIndex_ReportsDiagnostic()
@@ -1027,23 +1042,24 @@ struct G<T>
     T fld;
 }";
             await VerifyCS.VerifyAnalyzerAsync(source,
-                VerifyCS.Diagnostic());
+                VerifyCS.Diagnostic(GenericTypeIndexMustBeInRangeRule).WithSpan(4, 2, 4, 49));
         }
         
         [Fact]
-        public async Task ConditionallyBlittableGenericTypeWithExtraTypeParameterIndex_ReportsDiagnostic()
+        public async Task ConditionallyBlittableGenericTypeWithNonConditionallyBlittableGenericParameter_ReportsDiagnostic()
         {
             
             var source = @"
 using System.Runtime.InteropServices;
 
-[BlittableTypeIfGenericParametersBlittable(0, 1)]
+[BlittableTypeIfGenericParametersBlittable(0)]
 struct G<T, U>
 {
     T fld;
+    U fld2;
 }";
             await VerifyCS.VerifyAnalyzerAsync(source,
-                VerifyCS.Diagnostic());
+                VerifyCS.Diagnostic(ConditionallyBlittableTypeMustBeConditionallyBlittableRule).WithSpan(4, 2, 4, 46).WithArguments("G<T, U>"));
         }
 
         [Fact]
@@ -1059,7 +1075,8 @@ struct G<T> where T : class
     T fld;
 }";
             await VerifyCS.VerifyAnalyzerAsync(source,
-                VerifyCS.Diagnostic());
+                VerifyCS.Diagnostic(ReferenceTypeParameterCanNeverBeBlittableRule).WithSpan(5, 10, 5, 11).WithArguments("T"),
+                VerifyCS.Diagnostic(ConditionallyBlittableTypeMustBeConditionallyBlittableRule).WithSpan(4, 2, 4, 46).WithArguments("G<T>"));
         }
     }
 }
