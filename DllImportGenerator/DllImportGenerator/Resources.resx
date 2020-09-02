@@ -196,15 +196,9 @@
     <value>The type parameter '{0}' is marked as conditionally blittable but it is always a reference type.</value>
   </data>
   <data name="BlittableTypeIfGenericParametersBlittableInvalidTargetDescription" xml:space="preserve">
-    <value>The 'BlittableTypeIfGenericParametersBlittableAttribute' attribute is only valid on a generic type.</value>
+    <value>The 'BlittableTypeIfGenericParametersBlittableAttribute' attribute is only valid on a generic type or a type nested in a generic type.</value>
   </data>
   <data name="BlittableTypeIfGenericParametersBlittableInvalidTargetMessage" xml:space="preserve">
-    <value>The 'BlittableTypeIfGenericParametersBlittableAttribute' attribute is only valid on a generic type.</value>
-  </data>
-  <data name="GenericTypeIndexMustBeInRangeDescription" xml:space="preserve">
-    <value>An index provided to the 'BlittableTypeIfGenericParametersBlittableAttribute' constructor must be greater than or equal to zero and less than the number of generic parameters on the type.</value>
-  </data>
-  <data name="GenericTypeIndexMustBeInRangeMessage" xml:space="preserve">
-    <value>The values provided to 'BlittableTypeIfGenericParametersBlittableAttribute' on '{0}' must be in the range of [{1}, {2}).</value>
+    <value>The 'BlittableTypeIfGenericParametersBlittableAttribute' attribute is only valid on a generic type or a type nested in a generic type.</value>
   </data>
 </root>

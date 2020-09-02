@@ -44,9 +44,14 @@ public class MarshalUsingAttribute : Attribute
 [AttributeUsage(AttributeTargets.Struct)]
 public class BlittableTypeIfGenericParametersBlittableAttribute : Attribute
 {
-     public BlittableTypeIfGenericParametersBlittableAttribute(params int[] genericParameterIndices) {}
+     public BlittableTypeIfGenericParametersBlittableAttribute() {}
 }
 
+[AttributeUsage(AttributeTargets.GenericParameter)]
+public class ContributesToBlittabilityAttribute : Attribute
+{
+     public ContributesToBlittabilityAttribute() {}
+}
 ```
 
 The `NativeMarshallingAttribute` and `MarshalUsingAttribute` attributes would require that the provided native type `TNative` is a blittable `struct` and has a subset of three methods with the following names and shapes (with the managed type named TManaged):
@@ -91,7 +96,9 @@ When these members are both present, the source generator will call the two-para
 
 ### Generics support
 
-The `BlittableTypeIfGenericParametersBlittableAttribute` attribute supports marshalling value types that have blittable fields. In .NET 5.0, we added support to the built-in interop for marshalling generic types as long as they are blittable. The `BlittableTypeIfGenericParametersBlittableAttribute` attribute allows users to specify "when the n-th, m-th, etc. type arguments (0-based indexing) are blittable, then the generic type is blittable".
+The `BlittableTypeIfGenericParametersBlittableAttribute` attribute supports marshalling value types that have blittable fields. In .NET 5.0, we added support to the built-in interop for marshalling generic types as long as they are blittable. The `BlittableTypeIfGenericParametersBlittableAttribute` attribute allows users to specify that a given type is blittable only when some of the generic arguments are blittable. The specific generic parameters that need to be instantiated with blittable types are marked with the `ContributesToBlittabilityAttribute`.
+
+`ContributesToBlittabilityAttribute` is introduced because some generic parameters may not contribute to the blittability of the type. If the generic type is not used in any instance fields, then it doesn't contribute to the blittability of the containing type.
 
 ### Usage
 

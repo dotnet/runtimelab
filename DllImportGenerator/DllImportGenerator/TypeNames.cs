@@ -16,6 +16,8 @@ namespace DllImportGenerator
 
         public const string BlittableTypeIfGenericParametersBlittableAttribute = "System.Runtime.InteropServices.BlittableTypeIfGenericParametersBlittableAttribute";
 
+        public const string ContributesToBlittabilityAttribute = "System.Runtime.InteropServices.ContributesToBlittabilityAttribute";
+
         public const string System_Span = "System.Span`1";
     }
 }

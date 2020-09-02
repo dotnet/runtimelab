@@ -12,7 +12,7 @@ namespace Microsoft.Interop
 {
     static class TypeSymbolExtensions
     {
-        public static bool HasOnlyBlittableFields(this INamedTypeSymbol type, params ITypeParameterSymbol[] conditionalGenericTypeParameters)
+        public static bool HasOnlyBlittableFields(this INamedTypeSymbol type)
         {
             foreach (var field in type.GetMembers().OfType<IFieldSymbol>())
             {
@@ -23,7 +23,7 @@ namespace Microsoft.Interop
                     { Type : IPointerTypeSymbol ptr } => IsConsideredBlittable(ptr.PointedAtType),
                     { Type : IFunctionPointerTypeSymbol } => true,
                     not { Type : { SpecialType : SpecialType.None }} => IsSpecialTypeBlittable(field.Type.SpecialType),
-                    { Type : ITypeParameterSymbol t } => conditionalGenericTypeParameters.Contains(t),
+                    { Type : ITypeParameterSymbol t } => GenericParameterContributesToBlittability(t),
                     { Type : { IsValueType : false }} => false,
                     // A recursive struct type isn't blittable.
                     // It's also illegal in C#, but I believe that source generators run
@@ -39,6 +39,18 @@ namespace Microsoft.Interop
             }
 
             return true;
+        }
+
+        private static bool GenericParameterContributesToBlittability(ITypeParameterSymbol typeParameter)
+        {
+            foreach (var attr in typeParameter.GetAttributes())
+            {
+                if (attr.AttributeClass?.Name == "ContributesToBlittabilityAttribute")
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private static bool IsSpecialTypeBlittable(SpecialType specialType)
@@ -65,6 +77,11 @@ namespace Microsoft.Interop
             {
                 return IsSpecialTypeBlittable(type.SpecialType);
             }
+
+            if (type is ITypeParameterSymbol typeParam && GenericParameterContributesToBlittability(typeParam))
+            {
+                return true;
+            }
             
             if (!type.IsValueType || type.IsReferenceType)
             {
@@ -73,7 +90,7 @@ namespace Microsoft.Interop
 
             bool hasNativeMarshallingAttribute = false;
             bool hasGeneratedMarshallingAttribute = false;
-            ImmutableArray<TypedConstant> conditionalBlittableIndices = default;
+            bool hasConditionallyBlittableAttribute = default;
             // [TODO]: Match attributes on full name or symbol, not just on type name.
             foreach (var attr in type.GetAttributes())
             {
@@ -95,19 +112,25 @@ namespace Microsoft.Interop
                 }
                 else if (attr.AttributeClass.Name == "BlittableTypeIfGenericParametersBlittableAttribute")
                 {
-                    conditionalBlittableIndices = attr.ConstructorArguments[0].Values;
+                    hasConditionallyBlittableAttribute = true;
                 }
             }
 
-            if (!conditionalBlittableIndices.IsDefaultOrEmpty &&
-                type is INamedTypeSymbol {TypeArguments: ImmutableArray<ITypeSymbol> typeArguments})
-            {
-                foreach (var idx in conditionalBlittableIndices)
+            if (hasConditionallyBlittableAttribute &&
+                type is INamedTypeSymbol
                 {
-                    var idxValue = (int)idx.Value!;
-                    if (idxValue < typeArguments.Length && !typeArguments[idxValue].IsConsideredBlittable())
+                    TypeArguments: ImmutableArray<ITypeSymbol> typeArguments,
+                    TypeParameters: ImmutableArray<ITypeParameterSymbol> typeParameters
+                })
+            {
+                for (int i = 0; i < typeArguments.Length; i++)
+                {
+                    if (GenericParameterContributesToBlittability(typeParameters[i]))
                     {
-                        return false;
+                        if (!typeArguments[i].IsConsideredBlittable())
+                        {
+                            return false;
+                        }
                     }
                 }
                 return true;

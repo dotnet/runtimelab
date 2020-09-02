@@ -15,12 +15,17 @@ namespace System.Runtime.InteropServices
     [AttributeUsage(AttributeTargets.Struct)]
     public class BlittableTypeIfGenericParametersBlittableAttribute : Attribute
     {
-        public BlittableTypeIfGenericParametersBlittableAttribute(params int[] genericParameterIndices)
+        public BlittableTypeIfGenericParametersBlittableAttribute()
         {
-            GenericParameterIndices = genericParameterIndices;
         }
+    }
 
-        public int[] GenericParameterIndices { get; }
+    [AttributeUsage(AttributeTargets.GenericParameter)]
+    public class ContributesToBlittabilityAttribute : Attribute
+    {
+        public ContributesToBlittabilityAttribute()
+        {
+        }
     }
 
     [AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class)]
