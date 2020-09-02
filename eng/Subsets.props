@@ -151,7 +151,6 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.Reflection.Core\src\System.Private.Reflection.Core.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.Reflection.Execution\src\System.Private.Reflection.Execution.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.DisabledReflection\src\System.Private.DisabledReflection.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.StackTraceGenerator\src\System.Private.StackTraceGenerator.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.StackTraceMetadata\src\System.Private.StackTraceMetadata.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\Test.CoreLib\src\Test.CoreLib.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" />
