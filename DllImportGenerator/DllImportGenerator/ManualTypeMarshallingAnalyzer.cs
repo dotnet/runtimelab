@@ -165,7 +165,7 @@ namespace Microsoft.Interop
                     nativeMarshallingAttribute,
                     marshalUsingAttribute,
                     spanOfByte,
-                    context.Compilation.GetTypeByMetadataName("System.Runtime.InteropServices.StructLayoutAttribute")!);
+                    context.Compilation.GetTypeByMetadataName(TypeNames.System_Runtime_InteropServices_StructLayoutAttribute)!);
                 context.RegisterSymbolAction(context => perCompilationAnalyzer.AnalyzeTypeDefinition(context), SymbolKind.NamedType);
                 context.RegisterSymbolAction(context => perCompilationAnalyzer.AnalyzeElement(context), SymbolKind.Parameter, SymbolKind.Field);
                 context.RegisterSymbolAction(context => perCompilationAnalyzer.AnalyzeReturnType(context), SymbolKind.Method);

@@ -43,18 +43,6 @@ namespace Microsoft.Interop
             return true;
         }
 
-        private static bool GenericParameterContributesToBlittability(ITypeParameterSymbol typeParameter)
-        {
-            foreach (var attr in typeParameter.GetAttributes())
-            {
-                if (attr.AttributeClass?.Name == "ContributesToBlittabilityAttribute")
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
         private static bool IsSpecialTypeBlittable(SpecialType specialType)
          => specialType switch 
          {
@@ -87,7 +75,6 @@ namespace Microsoft.Interop
 
             bool hasNativeMarshallingAttribute = false;
             bool hasGeneratedMarshallingAttribute = false;
-            bool hasConditionallyBlittableAttribute = default;
             // [TODO]: Match attributes on full name or symbol, not just on type name.
             foreach (var attr in type.GetAttributes())
             {
@@ -116,30 +103,6 @@ namespace Microsoft.Interop
                 {
                     hasNativeMarshallingAttribute = true;
                 }
-                else if (attr.AttributeClass.Name == "BlittableTypeIfGenericParametersBlittableAttribute")
-                {
-                    hasConditionallyBlittableAttribute = true;
-                }
-            }
-
-            if (hasConditionallyBlittableAttribute &&
-                type is INamedTypeSymbol
-                {
-                    TypeArguments: ImmutableArray<ITypeSymbol> typeArguments,
-                    TypeParameters: ImmutableArray<ITypeParameterSymbol> typeParameters
-                })
-            {
-                for (int i = 0; i < typeArguments.Length; i++)
-                {
-                    if (GenericParameterContributesToBlittability(typeParameters[i]))
-                    {
-                        if (!typeArguments[i].IsConsideredBlittable())
-                        {
-                            return false;
-                        }
-                    }
-                }
-                return true;
             }
 
             if (hasGeneratedMarshallingAttribute && !hasNativeMarshallingAttribute)
