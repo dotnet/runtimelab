@@ -25,7 +25,7 @@ namespace Microsoft.Interop
                     not { Type : { SpecialType : SpecialType.None }} => IsSpecialTypeBlittable(field.Type.SpecialType),
                     // Assume that type parameters that can be blittable are blittable.
                     // We'll re-evaluate blittability for generic fields of generic types at instantation time.
-                    { Type : ITypeParameterSymbol { IsReferenceType: false } t } => true,
+                    { Type : ITypeParameterSymbol } => true,
                     { Type : { IsValueType : false }} => false,
                     // A recursive struct type isn't blittable.
                     // It's also illegal in C#, but I believe that source generators run
