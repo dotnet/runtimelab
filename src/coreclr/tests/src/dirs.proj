@@ -23,9 +23,9 @@
     </ItemGroup>
 
     <ItemGroup>
-      <AllProjects Include="$(TestRoot)**\*.csproj" Exclude="@(DisabledProjects)" />
-      <AllProjects Include="$(TestRoot)**\*.fsproj" Exclude="@(DisabledProjects)" />
-      <AllProjects Include="$(TestRoot)**\*.ilproj" Exclude="@(DisabledProjects)" />
+      <AllProjects Include="$(TestRoot)nativeaot\**\*.csproj" Exclude="@(DisabledProjects)" />
+      <AllProjects Include="$(TestRoot)nativeaot\**\*.fsproj" Exclude="@(DisabledProjects)" />
+      <AllProjects Include="$(TestRoot)nativeaot\**\*.ilproj" Exclude="@(DisabledProjects)" />
     </ItemGroup>
 
     <!-- All the test projects are partitioned into the test groups as defined below.

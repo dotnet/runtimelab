@@ -86,6 +86,14 @@
           TargetDir="%(RunTimeArtifactsIncludeFolders.Identity)" />
     </ItemGroup>
 
+    <ItemGroup>
+      <RunTimeDependencyCopyLocal Include="$(CoreCLRArtifactsPath)ilc/**/*" TargetDir="nativeaot/tools/" />
+      <RunTimeDependencyCopyLocal Include="$(CoreCLRArtifactsPath)aotsdk/**/*" TargetDir="nativeaot/sdk/" />
+      <RunTimeDependencyCopyLocal Include="$(CoreCLRArtifactsPath)build/**/*" TargetDir="nativeaot/build/" />
+      <RunTimeDependencyCopyLocal Include="$(TargetingPackPath)/*" TargetDir="nativeaot/framework/" />
+      <RunTimeDependencyCopyLocal Include="@(RuntimeCopyLocalItems)" TargetDir="nativeaot/framework/" />
+    </ItemGroup>
+
     <Copy
       SourceFiles="@(RunTimeDependencyCopyLocal)"
       DestinationFiles="@(RunTimeDependencyCopyLocal -> '$(CORE_ROOT)/%(TargetDir)%(RecursiveDir)%(Filename)%(Extension)')"
