@@ -1,12 +1,13 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for more information.
 
 using System;
 using System.Runtime.InteropServices;
 
-internal partial class Interop
+internal static unsafe partial class Interop
 {
-    internal partial class Kernel32
+    internal static partial class Kernel32
     {
         [StructLayout(LayoutKind.Sequential)]
         internal struct CRITICAL_SECTION
@@ -19,16 +20,16 @@ internal partial class Interop
             private UIntPtr SpinCount;
         }
 
-        [DllImport(Libraries.Kernel32)]
-        internal static extern void InitializeCriticalSection(out CRITICAL_SECTION lpCriticalSection);
+        [DllImport(Libraries.Kernel32, ExactSpelling = true)]
+        internal static extern void InitializeCriticalSection(CRITICAL_SECTION* lpCriticalSection);
 
-        [DllImport(Libraries.Kernel32)]
-        internal static extern void EnterCriticalSection(ref CRITICAL_SECTION lpCriticalSection);
+        [DllImport(Libraries.Kernel32, ExactSpelling = true)]
+        internal static extern void EnterCriticalSection(CRITICAL_SECTION* lpCriticalSection);
 
-        [DllImport(Libraries.Kernel32)]
-        internal static extern void LeaveCriticalSection(ref CRITICAL_SECTION lpCriticalSection);
+        [DllImport(Libraries.Kernel32, ExactSpelling = true)]
+        internal static extern void LeaveCriticalSection(CRITICAL_SECTION* lpCriticalSection);
 
-        [DllImport(Libraries.Kernel32)]
-        internal static extern void DeleteCriticalSection(ref CRITICAL_SECTION lpCriticalSection);
+        [DllImport(Libraries.Kernel32, ExactSpelling = true)]
+        internal static extern void DeleteCriticalSection(CRITICAL_SECTION* lpCriticalSection);
     }
 }

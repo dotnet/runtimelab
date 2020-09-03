@@ -36,7 +36,7 @@ namespace System.Threading
 
         private LowLevelSpinWaiter _spinWaiter;
         private readonly Func<bool> _spinWaitTryAcquireCallback;
-        private readonly LowLevelMonitor _monitor;
+        private LowLevelMonitor _monitor;
 
         public LowLevelLock()
         {
@@ -46,7 +46,7 @@ namespace System.Threading
 
             _spinWaiter = new LowLevelSpinWaiter();
             _spinWaitTryAcquireCallback = SpinWaitTryAcquireCallback;
-            _monitor = new LowLevelMonitor();
+            _monitor.Initialize();
         }
 
         ~LowLevelLock()
@@ -58,10 +58,7 @@ namespace System.Threading
         {
             VerifyIsNotLockedByAnyThread();
 
-            if (_monitor != null)
-            {
-                _monitor.Dispose();
-            }
+            _monitor.Dispose();
 
             GC.SuppressFinalize(this);
         }

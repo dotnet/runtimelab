@@ -239,7 +239,6 @@
     <Compile Include="src\System\Threading\Interlocked.cs" />
     <Compile Include="src\System\Threading\LockHolder.cs" />
     <Compile Include="src\System\Threading\LowLevelLock.cs" />
-    <Compile Include="src\System\Threading\LowLevelMonitor.cs" />
     <Compile Include="src\System\Threading\LowLevelSpinWaiter.cs" />
     <Compile Include="src\System\Threading\Monitor.cs" />
     <Compile Include="src\System\Threading\ObjectHeader.cs" Condition="'$(UseSyncTable)' == 'true'" />
@@ -278,12 +277,6 @@
     <Compile Include="src\Microsoft\Win32\SafeHandles\SafeThreadPoolIOHandle.cs" />
     <Compile Include="src\System\AppContext.Windows.CoreRT.cs" />
     <Compile Include="src\System\Runtime\InteropServices\PInvokeMarshal.Windows.cs" />
-    <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.CriticalSection.cs">
-      <Link>Interop\Windows\Kernel32\Interop.CriticalSection.cs</Link>
-    </Compile>
-    <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.ConditionVariable.cs">
-      <Link>Interop\Windows\Kernel32\Interop.ConditionVariable.cs</Link>
-    </Compile>
     <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.GetModuleFileName.cs">
       <Link>Interop\Windows\Kernel32\Interop.GetModuleFileName.cs</Link>
     </Compile>
@@ -341,7 +334,6 @@
     <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.DynamicLoad.cs">
       <Link>Interop\Windows\Kernel32\Interop.DynamicLoad.cs</Link>
     </Compile>
-    <Compile Include="src\System\Threading\LowLevelMonitor.Windows.cs" />
     <Compile Include="src\System\Threading\Thread.CoreRT.Windows.cs" />
     <Compile Include="src\System\Threading\ThreadPool.Windows.cs" Condition="'$(FeaturePortableThreadPool)' != 'true'" />
     <Compile Include="src\System\Threading\WaitHandle.Windows.cs" />
@@ -364,7 +356,6 @@
     <Compile Include="src\System\Runtime\InteropServices\PInvokeMarshal.Unix.cs" />
     <Compile Include="src\System\Threading\EventWaitHandle.Unix.cs" />
     <Compile Include="src\System\Threading\LowLevelLifoSemaphore.Unix.cs" />
-    <Compile Include="src\System\Threading\LowLevelMonitor.Unix.cs" />
     <Compile Include="src\System\Threading\Mutex.Unix.cs" />
     <Compile Include="src\System\Threading\PreAllocatedOverlapped.PlatformNotSupported.cs" />
     <Compile Include="src\System\Threading\Semaphore.Unix.cs" />
