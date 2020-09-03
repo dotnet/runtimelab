@@ -20,7 +20,7 @@ namespace System.Threading
             /// <summary>
             /// The monitor the thread would wait upon when the wait needs to be interruptible
             /// </summary>
-            private readonly LowLevelMonitor _waitMonitor;
+            private LowLevelMonitor _waitMonitor;
 
 
             /// <summary>
@@ -91,13 +91,18 @@ namespace System.Threading
                 Debug.Assert(thread != null);
 
                 _thread = thread;
-                _waitMonitor = new LowLevelMonitor();
+                _waitMonitor.Initialize();
                 _waitSignalState = WaitSignalState.NotWaiting;
                 _waitedObjectIndexThatSatisfiedWait = -1;
 
                 // Preallocate to make waiting for single handle fault-free
                 _waitedObjects = new WaitableObject[1];
                 _waitedListNodes = new WaitedListNode[1] { new WaitedListNode(this, 0) };
+            }
+
+            ~ThreadWaitInfo()
+            {
+                _waitMonitor.Dispose();
             }
 
             public Thread Thread => _thread;
