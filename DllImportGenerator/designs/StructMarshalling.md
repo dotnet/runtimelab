@@ -183,7 +183,7 @@ If someone actively disables the analyzer or writes their types in IL, then they
 
 Because the Roslyn compiler needs to be able to validate that there are not recursive struct definitions, reference assemblies have to contain a field of a type parameter type in the reference assembly if they do in the runtime assembly. As a result, we can inspect private generic fields reliably.
 
-To, to enable blittable generics support in this struct marshalling model, we extend `[BlittableType]` as follows:
+To enable blittable generics support in this struct marshalling model, we extend `[BlittableType]` as follows:
 
 - In a generic type definition, we consider all type parameters that can be value types as blittable for the purposes of validating that `[BlittableType]` is only applied to blittable types.
 - When the source generator discovers a generic type marked with `[BlittableType]` it will look through the fields on the type and validate that they are blittable. 
