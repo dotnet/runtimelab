@@ -79,7 +79,7 @@ namespace DllImportGenerator {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The &apos;BlittableTypeAttribute&apos;, &apos;BlittableTypeIfGenericParametersBlittableAttribute&apos;, and &apos;NativeMarshallingAttribute&apos; attributes are mutually exclusive..
+        ///   Looks up a localized string similar to The &apos;BlittableTypeAttribute&apos; and &apos;NativeMarshallingAttribute&apos; attributes are mutually exclusive..
         /// </summary>
         internal static string CannotHaveMultipleMarshallingAttributesDescription {
             get {
