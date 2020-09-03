@@ -27,6 +27,7 @@
         PublishTestResults=$(_PublishTestResults);
         RunCrossGen=$(_RunCrossGen);
         RunCrossGen2=$(_RunCrossGen2);
+        RunNativeAot=$(_RunNativeAot);
         CompositeBuildMode=$(_CompositeBuildMode);
         LongRunningGCTests=$(_LongRunningGCTests);
         GcSimulatorTests=$(_GcSimulatorTests);
@@ -219,6 +220,7 @@
     <HelixConfiguration Condition=" '$(Scenario)' != 'normal' ">$(Configuration)-$(Scenario)</HelixConfiguration>
     <RunCrossGen Condition=" '$(RunCrossGen)' != 'true' ">false</RunCrossGen>
     <RunCrossGen2 Condition=" '$(RunCrossGen2)' != 'true' ">false</RunCrossGen2>
+    <RunNativeAot Condition=" '$(RunNativeAot)' != 'true' ">false</RunNativeAot>
     <LongRunningGCTests Condition=" '$(LongRunningGCTests)' != 'true' ">false</LongRunningGCTests>
     <GcSimulatorTests Condition=" '$(GcSimulatorTests)' != 'true' ">false</GcSimulatorTests>
     <TestRunNamePrefix Condition="'$(RuntimeFlavorDisplayName)' != ''">$(RuntimeFlavorDisplayName) </TestRunNamePrefix> 
