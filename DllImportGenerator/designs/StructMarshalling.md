@@ -40,18 +40,6 @@ public class MarshalUsingAttribute : Attribute
 {
      public MarshalUsingAttribute(Type nativeType) {}
 }
-
-[AttributeUsage(AttributeTargets.Struct)]
-public class BlittableTypeIfGenericParametersBlittableAttribute : Attribute
-{
-     public BlittableTypeIfGenericParametersBlittableAttribute() {}
-}
-
-[AttributeUsage(AttributeTargets.GenericParameter)]
-public class ContributesToBlittabilityAttribute : Attribute
-{
-     public ContributesToBlittabilityAttribute() {}
-}
 ```
 
 The `NativeMarshallingAttribute` and `MarshalUsingAttribute` attributes would require that the provided native type `TNative` is a blittable `struct` and has a subset of three methods with the following names and shapes (with the managed type named TManaged):
@@ -93,12 +81,6 @@ partial struct TNative
 ```
 
 When these members are both present, the source generator will call the two-parameter constructor with a stack-allocated buffer of `StackBufferSize` bytes when a stack-allocated buffer is usable. As this buffer is guaranteed to be stack allocated and not on the GC heap, it is safe to use `Unsafe.AsPointer` to get a pointer to the stack buffer to pass to native code. As a stack-allocated buffer is not usable in all scenarios, for example Reverse P/Invoke and struct marshalling, a one-parameter constructor must also be provided for usage in those scenarios. This may also be provided by providing a two-parameter constructor with a default value for the second parameter.
-
-### Generics support
-
-The `BlittableTypeIfGenericParametersBlittableAttribute` attribute supports marshalling value types that have blittable fields. In .NET 5.0, we added support to the built-in interop for marshalling generic types as long as they are blittable. The `BlittableTypeIfGenericParametersBlittableAttribute` attribute allows users to specify that a given type is blittable only when some of the generic arguments are blittable. The specific generic parameters that need to be instantiated with blittable types are marked with the `ContributesToBlittabilityAttribute`.
-
-`ContributesToBlittabilityAttribute` is introduced because some generic parameters may not contribute to the blittability of the type. If the generic type is not used in any instance fields, then it doesn't contribute to the blittability of the containing type.
 
 ### Usage
 
@@ -196,6 +178,17 @@ When the source generator (either Struct, P/Invoke, Reverse P/Invoke, etc.) enco
 
 
 If someone actively disables the analyzer or writes their types in IL, then they have stepped out of the supported scenarios and marshalling code generated for their types may be inaccurate.
+
+#### Exception: Generics
+
+Because the Roslyn compiler needs to be able to validate that there are not recursive struct definitions, reference assemblies have to contain a field of a type parameter type in the reference assembly if they do in the runtime assembly. As a result, we can inspect private generic fields reliably.
+
+To, to enable blittable generics support in this struct marshalling model, we extend `[BlittableType]` as follows:
+
+- In a generic type definition, we consider all type parameters that can be value types as blittable for the purposes of validating that `[BlittableType]` is only applied to blittable types.
+- When the source generator discovers a generic type marked with `[BlittableType]` it will look through the fields on the type and validate that they are blittable. 
+
+Since all fields typed with non-parameterized types are validated to be blittable at type definition time, we know that they are all blittable at type usage time. So, we only need to validate that the generic fields are instantiated with blittable types.
 
 ### Special case: Transparent Structures
 

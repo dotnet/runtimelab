@@ -23,7 +23,9 @@ namespace Microsoft.Interop
                     { Type : IPointerTypeSymbol ptr } => IsConsideredBlittable(ptr.PointedAtType),
                     { Type : IFunctionPointerTypeSymbol } => true,
                     not { Type : { SpecialType : SpecialType.None }} => IsSpecialTypeBlittable(field.Type.SpecialType),
-                    { Type : ITypeParameterSymbol t } => GenericParameterContributesToBlittability(t),
+                    // Assume that type parameters that can be blittable are blittable.
+                    // We'll re-evaluate blittability for generic fields of generic types at instantation time.
+                    { Type : ITypeParameterSymbol { IsReferenceType: false } t } => true,
                     { Type : { IsValueType : false }} => false,
                     // A recursive struct type isn't blittable.
                     // It's also illegal in C#, but I believe that source generators run
@@ -77,11 +79,6 @@ namespace Microsoft.Interop
             {
                 return IsSpecialTypeBlittable(type.SpecialType);
             }
-
-            if (type is ITypeParameterSymbol typeParam && GenericParameterContributesToBlittability(typeParam))
-            {
-                return true;
-            }
             
             if (!type.IsValueType || type.IsReferenceType)
             {
@@ -100,6 +97,15 @@ namespace Microsoft.Interop
                 }
                 if (attr.AttributeClass.Name == "BlittableTypeAttribute")
                 {
+                    if (type is INamedTypeSymbol { IsGenericType: true } generic)
+                    {
+                        // If the type is generic, we inspect the fields again
+                        // to determine blittability of this instantiation
+                        // since we are guaranteed that if a type has generic fields,
+                        // they will be present in the contract assembly to ensure
+                        // that recursive structs can be identified at build time.
+                        return generic.HasOnlyBlittableFields();
+                    }
                     return true;
                 }
                 else if (attr.AttributeClass.Name == "GeneratedMarshallingAttribute")

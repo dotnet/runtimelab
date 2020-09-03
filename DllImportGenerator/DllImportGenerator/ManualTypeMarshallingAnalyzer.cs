@@ -124,36 +124,6 @@ namespace Microsoft.Interop
                 isEnabledByDefault: true,
                 description: new LocalizableResourceString(nameof(Resources.StackallocMarshallingShouldSupportAllocatingMarshallingFallbackDescription), Resources.ResourceManager, typeof(Resources)));
 
-        public readonly static DiagnosticDescriptor ConditionallyBlittableTypeMustBeConditionallyBlittableRule =
-            new DiagnosticDescriptor(
-                "INTEROPGEN012",
-                "ConditionallyBlittableTypeMustBeConditionallyBlittable",
-                new LocalizableResourceString(nameof(Resources.ConditionallyBlittableGenericTypeMustBeConditionallyBlittableMessage), Resources.ResourceManager, typeof(Resources)),
-                Category,
-                DiagnosticSeverity.Error,
-                isEnabledByDefault: true,
-                description: new LocalizableResourceString(nameof(Resources.ConditionallyBlittableGenericTypeMustBeConditionallyBlittableDescription), Resources.ResourceManager, typeof(Resources)));
-
-        public readonly static DiagnosticDescriptor ReferenceTypeParameterCanNeverBeBlittableRule =
-            new DiagnosticDescriptor(
-                "INTEROPGEN013",
-                "ReferenceTypeParameterCanNeverBeBlittable",
-                new LocalizableResourceString(nameof(Resources.ReferenceTypeParameterCanNeverBeBlittableMessage), Resources.ResourceManager, typeof(Resources)),
-                Category,
-                DiagnosticSeverity.Error,
-                isEnabledByDefault: true,
-                description: new LocalizableResourceString(nameof(Resources.ReferenceTypeParameterCanNeverBeBlittableDescription), Resources.ResourceManager, typeof(Resources)));
-
-        public readonly static DiagnosticDescriptor BlittableTypeIfGenericParametersBlittableInvalidTargetRule =
-            new DiagnosticDescriptor(
-                "INTEROPGEN014",
-                "BlittableTypeIfGenericParametersBlittableInvalidTarget",
-                new LocalizableResourceString(nameof(Resources.BlittableTypeIfGenericParametersBlittableInvalidTargetMessage), Resources.ResourceManager, typeof(Resources)),
-                Category,
-                DiagnosticSeverity.Error,
-                isEnabledByDefault: true,
-                description: new LocalizableResourceString(nameof(Resources.BlittableTypeIfGenericParametersBlittableInvalidTargetDescription), Resources.ResourceManager, typeof(Resources)));
-
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => 
             ImmutableArray.Create(
                 BlittableTypeMustBeBlittableRule,
@@ -166,10 +136,7 @@ namespace Microsoft.Interop
                 ValuePropertyMustHaveSetterRule,
                 ValuePropertyMustHaveGetterRule,
                 GetPinnableReferenceShouldSupportAllocatingMarshallingFallbackRule,
-                StackallocMarshallingShouldSupportAllocatingMarshallingFallbackRule,
-                ConditionallyBlittableTypeMustBeConditionallyBlittableRule,
-                ReferenceTypeParameterCanNeverBeBlittableRule,
-                BlittableTypeIfGenericParametersBlittableInvalidTargetRule);
+                StackallocMarshallingShouldSupportAllocatingMarshallingFallbackRule);
 
         public override void Initialize(AnalysisContext context)
         {
@@ -184,16 +151,12 @@ namespace Microsoft.Interop
             var blittableTypeAttribute = context.Compilation.GetTypeByMetadataName(TypeNames.BlittableTypeAttribute);
             var nativeMarshallingAttribute = context.Compilation.GetTypeByMetadataName(TypeNames.NativeMarshallingAttribute);
             var marshalUsingAttribute = context.Compilation.GetTypeByMetadataName(TypeNames.MarshalUsingAttribute);
-            var blittableTypeIfGenericParametersBlittableAttribute = context.Compilation.GetTypeByMetadataName(TypeNames.BlittableTypeIfGenericParametersBlittableAttribute);
-            var contributesToBlittabilityAttribute = context.Compilation.GetTypeByMetadataName(TypeNames.ContributesToBlittabilityAttribute);
             var spanOfByte = context.Compilation.GetTypeByMetadataName(TypeNames.System_Span)!.Construct(context.Compilation.GetSpecialType(SpecialType.System_Byte));
 
             if (generatedMarshallingAttribute is not null &&
                 blittableTypeAttribute is not null &&
                 nativeMarshallingAttribute is not null &&
                 marshalUsingAttribute is not null &&
-                blittableTypeIfGenericParametersBlittableAttribute is not null &&
-                contributesToBlittabilityAttribute is not null &&
                 spanOfByte is not null)
             {
                 var perCompilationAnalyzer = new PerCompilationAnalyzer(
@@ -201,8 +164,6 @@ namespace Microsoft.Interop
                     blittableTypeAttribute,
                     nativeMarshallingAttribute,
                     marshalUsingAttribute,
-                    blittableTypeIfGenericParametersBlittableAttribute,
-                    contributesToBlittabilityAttribute,
                     spanOfByte,
                     context.Compilation.GetTypeByMetadataName("System.Runtime.InteropServices.StructLayoutAttribute")!);
                 context.RegisterSymbolAction(context => perCompilationAnalyzer.AnalyzeTypeDefinition(context), SymbolKind.NamedType);
@@ -217,8 +178,6 @@ namespace Microsoft.Interop
             private readonly INamedTypeSymbol BlittableTypeAttribute;
             private readonly INamedTypeSymbol NativeMarshallingAttribute;
             private readonly INamedTypeSymbol MarshalUsingAttribute;
-            private readonly INamedTypeSymbol BlittableTypeIfGenericParametersBlittableAttribute;
-            private readonly INamedTypeSymbol ContributesToBlittabilityAttribute;
             private readonly INamedTypeSymbol SpanOfByte;
             private readonly INamedTypeSymbol StructLayoutAttribute;
 
@@ -226,8 +185,6 @@ namespace Microsoft.Interop
                                           INamedTypeSymbol blittableTypeAttribute,
                                           INamedTypeSymbol nativeMarshallingAttribute,
                                           INamedTypeSymbol marshalUsingAttribute,
-                                          INamedTypeSymbol blittableTypeIfGenericParametersBlittableAttribute,
-                                          INamedTypeSymbol contributesToBlittabilityAttribute,
                                           INamedTypeSymbol spanOfByte,
                                           INamedTypeSymbol structLayoutAttribute)
             {
@@ -235,8 +192,6 @@ namespace Microsoft.Interop
                 BlittableTypeAttribute = blittableTypeAttribute;
                 NativeMarshallingAttribute = nativeMarshallingAttribute;
                 MarshalUsingAttribute = marshalUsingAttribute;
-                BlittableTypeIfGenericParametersBlittableAttribute = blittableTypeIfGenericParametersBlittableAttribute;
-                ContributesToBlittabilityAttribute = contributesToBlittabilityAttribute;
                 SpanOfByte = spanOfByte;
                 StructLayoutAttribute = structLayoutAttribute;
             }
@@ -245,17 +200,8 @@ namespace Microsoft.Interop
             {
                 INamedTypeSymbol type = (INamedTypeSymbol)context.Symbol;
 
-                if (type.IsGenericType)
-                {
-                    foreach (var param in type.TypeParameters)
-                    {
-                        AnalyzeTypeParameter(param, context);
-                    }
-                }
-
                 AttributeData? blittableTypeAttributeData = null;
                 AttributeData? nativeMarshallingAttributeData = null;
-                AttributeData? blittableGenericTypeAttributeData = null;
                 foreach (var attr in type.GetAttributes())
                 {
                     if (SymbolEqualityComparer.Default.Equals(attr.AttributeClass, GeneratedMarshallingAttribute))
@@ -272,19 +218,11 @@ namespace Microsoft.Interop
                     {
                         nativeMarshallingAttributeData = attr;
                     }
-                    else if (SymbolEqualityComparer.Default.Equals(attr.AttributeClass, BlittableTypeIfGenericParametersBlittableAttribute))
-                    {
-                        blittableGenericTypeAttributeData = attr;
-                    }
                 }
 
-                if (HasMultipleMarshallingAttributes(blittableTypeAttributeData, nativeMarshallingAttributeData, blittableGenericTypeAttributeData))
+                if (HasMultipleMarshallingAttributes(blittableTypeAttributeData, nativeMarshallingAttributeData))
                 {
-                    context.ReportDiagnostic(Diagnostic.Create(CannotHaveMultipleMarshallingAttributesRule, (blittableGenericTypeAttributeData ?? nativeMarshallingAttributeData)!.ApplicationSyntaxReference!.GetSyntax().GetLocation(), type.ToDisplayString()));
-                }
-                else if (blittableGenericTypeAttributeData is not null)
-                {
-                    AnalyzeConditionallyBlittableGeneric(context, type, blittableGenericTypeAttributeData);
+                    context.ReportDiagnostic(Diagnostic.Create(CannotHaveMultipleMarshallingAttributesRule, nativeMarshallingAttributeData!.ApplicationSyntaxReference!.GetSyntax().GetLocation(), type.ToDisplayString()));
                 }
                 else if (blittableTypeAttributeData is not null && (!type.HasOnlyBlittableFields() || type.IsAutoLayout(StructLayoutAttribute)))
                 {
@@ -296,14 +234,13 @@ namespace Microsoft.Interop
                 }
             }
 
-            private bool HasMultipleMarshallingAttributes(AttributeData? blittableTypeAttributeData, AttributeData? nativeMarshallingAttributeData, AttributeData? blittableGenericTypeAttributeData)
+            private bool HasMultipleMarshallingAttributes(AttributeData? blittableTypeAttributeData, AttributeData? nativeMarshallingAttributeData)
             {
-                return (blittableTypeAttributeData, nativeMarshallingAttributeData, blittableGenericTypeAttributeData)  switch
+                return (blittableTypeAttributeData, nativeMarshallingAttributeData) switch
                 {
-                    (null, null, null) => false,
-                    (not null, null, null) => false,
-                    (null, not null, null) => false,
-                    (null, null, not null) => false,
+                    (null, null) => false,
+                    (not null, null) => false,
+                    (null, not null) => false,
                     _ => true
                 };
             }
@@ -331,37 +268,6 @@ namespace Microsoft.Interop
                 if (attrData is not null)
                 {
                     AnalyzeNativeMarshalerType(context, method.ReturnType, attrData, false, false);
-                }
-            }
-            
-            private void AnalyzeConditionallyBlittableGeneric(SymbolAnalysisContext context, INamedTypeSymbol type, AttributeData blittableGenericTypeAttributeData)
-            {
-                // The [BlittableTypeIfGenericParametersBlittable] attribute can only be on a generic type
-                // or a type contained within a generic type.
-                if (!type.IsGenericType)
-                {
-                    var typeToCheck = type;
-                    bool foundGenericType = false;
-                    while (typeToCheck.ContainingType is not null)
-                    {
-                        if (typeToCheck.ContainingType.IsGenericType)
-                        {
-                            foundGenericType = true;
-                            break;
-                        }
-                        typeToCheck = typeToCheck.ContainingType;
-                    }
-                    if (!foundGenericType)
-                    {
-                        context.ReportDiagnostic(Diagnostic.Create(BlittableTypeIfGenericParametersBlittableInvalidTargetRule, blittableGenericTypeAttributeData.ApplicationSyntaxReference!.GetSyntax().GetLocation()));
-                    }
-                    return;
-                }
-
-                // Report error that generic type is still not blittable if the given type arguments are blittable.
-                if (!type.HasOnlyBlittableFields() || type.IsAutoLayout(StructLayoutAttribute))
-                {
-                    context.ReportDiagnostic(Diagnostic.Create(ConditionallyBlittableTypeMustBeConditionallyBlittableRule, blittableGenericTypeAttributeData.ApplicationSyntaxReference!.GetSyntax().GetLocation(), type.ToDisplayString()));
                 }
             }
 
@@ -491,20 +397,6 @@ namespace Microsoft.Interop
                     else
                     {
                         return targetSymbol.DeclaringSyntaxReferences[0];
-                    }
-                }
-            }
-
-            internal void AnalyzeTypeParameter(ITypeParameterSymbol typeParameter, SymbolAnalysisContext context)
-            {
-                if (typeParameter.IsReferenceType)
-                {
-                    foreach (var attr in typeParameter.GetAttributes())
-                    {
-                        if (SymbolEqualityComparer.Default.Equals(ContributesToBlittabilityAttribute, attr.AttributeClass))
-                        {
-                            context.ReportDiagnostic(Diagnostic.Create(ReferenceTypeParameterCanNeverBeBlittableRule, attr.ApplicationSyntaxReference!.GetSyntax().GetLocation(), typeParameter.ToDisplayString()));
-                        }
                     }
                 }
             }

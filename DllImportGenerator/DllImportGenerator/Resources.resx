@@ -183,22 +183,4 @@
   <data name="ValuePropertyMustHaveSetterMessage" xml:space="preserve">
     <value>The 'Value' property on the native type '{0}' must have a setter.</value>
   </data>
-  <data name="ConditionallyBlittableGenericTypeMustBeConditionallyBlittableDescription" xml:space="preserve">
-    <value>A type marked with 'BlittableTypeIfGenericParametersBlittableAttribute' must have non-Auto layout and only have blittable fields or fields with types of the generic parameters that can be conditionally blittable.</value>
-  </data>
-  <data name="ConditionallyBlittableGenericTypeMustBeConditionallyBlittableMessage" xml:space="preserve">
-    <value>Type '{0}' is marked with 'BlittableTypeIfGenericParametersBlittableAttribute' but either has Auto layout, has non-blittable fields, or has fields of generic type that are not marked as conditionally blittable.</value>
-  </data>
-  <data name="ReferenceTypeParameterCanNeverBeBlittableDescription" xml:space="preserve">
-    <value>A type parameter that is always a reference type can never be blittable.</value>
-  </data>
-  <data name="ReferenceTypeParameterCanNeverBeBlittableMessage" xml:space="preserve">
-    <value>The type parameter '{0}' is marked as conditionally blittable but it is always a reference type.</value>
-  </data>
-  <data name="BlittableTypeIfGenericParametersBlittableInvalidTargetDescription" xml:space="preserve">
-    <value>The 'BlittableTypeIfGenericParametersBlittableAttribute' attribute is only valid on a generic type or a type nested in a generic type.</value>
-  </data>
-  <data name="BlittableTypeIfGenericParametersBlittableInvalidTargetMessage" xml:space="preserve">
-    <value>The 'BlittableTypeIfGenericParametersBlittableAttribute' attribute is only valid on a generic type or a type nested in a generic type.</value>
-  </data>
 </root>
