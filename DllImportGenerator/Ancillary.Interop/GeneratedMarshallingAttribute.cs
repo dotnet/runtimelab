@@ -11,22 +11,6 @@ namespace System.Runtime.InteropServices
     public class BlittableTypeAttribute : Attribute
     {
     }
-    
-    [AttributeUsage(AttributeTargets.Struct)]
-    public class BlittableTypeIfGenericParametersBlittableAttribute : Attribute
-    {
-        public BlittableTypeIfGenericParametersBlittableAttribute()
-        {
-        }
-    }
-
-    [AttributeUsage(AttributeTargets.GenericParameter)]
-    public class ContributesToBlittabilityAttribute : Attribute
-    {
-        public ContributesToBlittabilityAttribute()
-        {
-        }
-    }
 
     [AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class)]
     public class NativeMarshallingAttribute : Attribute
