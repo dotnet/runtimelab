@@ -117,7 +117,6 @@ namespace Microsoft.Interop
 
         public static bool IsAutoLayout(this INamedTypeSymbol type, ITypeSymbol structLayoutAttributeType)
         {
-            bool defaultAuto = type.IsReferenceType;
             foreach (var attr in type.GetAttributes())
             {
                 if (SymbolEqualityComparer.Default.Equals(structLayoutAttributeType, attr.AttributeClass))
@@ -125,7 +124,7 @@ namespace Microsoft.Interop
                     return (LayoutKind)(int)attr.ConstructorArguments[0].Value! == LayoutKind.Auto;
                 }
             }
-            return defaultAuto;
+            return type.IsReferenceType;
         }
     }
 }
