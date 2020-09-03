@@ -12,7 +12,7 @@ namespace Microsoft.Interop
 {
     static class TypeSymbolExtensions
     {
-        public static bool HasOnlyBlittableFields(this INamedTypeSymbol type)
+        public static bool HasOnlyBlittableFields(this ITypeSymbol type)
         {
             foreach (var field in type.GetMembers().OfType<IFieldSymbol>())
             {
@@ -110,7 +110,7 @@ namespace Microsoft.Interop
                 // The struct type has generated marshalling via a source generator.
                 // We can't guarantee that we can see the results of the struct source generator,
                 // so we re-calculate if the type is blittable here.
-                return ((INamedTypeSymbol)type).HasOnlyBlittableFields();
+                return type.HasOnlyBlittableFields();
             }
             return false;
         }
