@@ -222,7 +222,7 @@ namespace Microsoft.Interop
 
                 if (HasMultipleMarshallingAttributes(blittableTypeAttributeData, nativeMarshallingAttributeData))
                 {
-                    context.ReportDiagnostic(Diagnostic.Create(CannotHaveMultipleMarshallingAttributesRule, nativeMarshallingAttributeData!.ApplicationSyntaxReference!.GetSyntax().GetLocation(), type.ToDisplayString()));
+                    context.ReportDiagnostic(Diagnostic.Create(CannotHaveMultipleMarshallingAttributesRule, blittableTypeAttributeData!.ApplicationSyntaxReference!.GetSyntax().GetLocation(), type.ToDisplayString()));
                 }
                 else if (blittableTypeAttributeData is not null && (!type.HasOnlyBlittableFields() || type.IsAutoLayout(StructLayoutAttribute)))
                 {
