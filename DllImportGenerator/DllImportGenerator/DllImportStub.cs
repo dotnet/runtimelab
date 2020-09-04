@@ -24,7 +24,7 @@ namespace Microsoft.Interop
 
         public string StubTypeNamespace { get; private set; }
 
-        public IEnumerable<string> StubContainingTypesDecl { get; private set; }
+        public IEnumerable<TypeDeclarationSyntax> StubContainingTypes { get; private set; }
 
         public TypeSyntax StubReturnType { get => this.returnTypeInfo.ManagedType; }
 
@@ -113,32 +113,33 @@ namespace Microsoft.Interop
             }
 
             // Determine type
-            var stubContainingTypes = new List<string>();
+            var containingTypes = new List<TypeDeclarationSyntax>();
             INamedTypeSymbol currType = method.ContainingType;
             while (!(currType is null))
             {
                 var visibility = currType.DeclaredAccessibility switch
                 {
-                    Accessibility.Public => "public",
-                    Accessibility.Private => "private",
-                    Accessibility.Protected => "protected",
-                    Accessibility.Internal => "internal",
+                    Accessibility.Public => SyntaxKind.PublicKeyword,
+                    Accessibility.Private => SyntaxKind.PrivateKeyword,
+                    Accessibility.Protected => SyntaxKind.ProtectedKeyword,
+                    Accessibility.Internal => SyntaxKind.InternalKeyword,
                     _ => throw new NotSupportedException(), // [TODO] Proper error message
                 };
 
-                var typeKeyword = currType.TypeKind switch
+                TypeDeclarationSyntax typeDecl = currType.TypeKind switch
                 {
-                    TypeKind.Class => "class",
-                    TypeKind.Struct => "struct",
+                    TypeKind.Class => ClassDeclaration(currType.Name),
+                    TypeKind.Struct => StructDeclaration(currType.Name),
                     _ => throw new NotSupportedException(), // [TODO] Proper error message
                 };
 
-                stubContainingTypes.Add($"{visibility} partial {typeKeyword} {currType.Name}");
+                typeDecl = typeDecl.AddModifiers(
+                    Token(visibility),
+                    Token(SyntaxKind.PartialKeyword));
+                containingTypes.Add(typeDecl);
+
                 currType = currType.ContainingType;
             }
-
-            // Flip the order to that of how to declare the types
-            stubContainingTypes.Reverse();
 
             // Determine parameter types
             var paramsTypeInfo = new List<TypePositionInfo>();
@@ -158,7 +159,7 @@ namespace Microsoft.Interop
                 returnTypeInfo = retTypeInfo,
                 paramsTypeInfo = paramsTypeInfo,
                 StubTypeNamespace = stubTypeNamespace,
-                StubContainingTypesDecl = stubContainingTypes,
+                StubContainingTypes = containingTypes,
                 StubCode = Block(UnsafeStatement(Block(syntax.StubCode))),
                 DllImportDeclaration = syntax.DllImport,
                 Diagnostics = Enumerable.Empty<Diagnostic>(),

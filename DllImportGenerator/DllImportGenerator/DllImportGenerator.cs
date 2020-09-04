@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -80,54 +81,36 @@ namespace Microsoft.Interop
             DllImportStub stub,
             AttributeSyntax dllImportAttr)
         {
-            const string SingleDepth = "    ";
-            var currentIndent = string.Empty;
-
-            // Declare namespace
-            if (!(stub.StubTypeNamespace is null))
-            {
-                builder.AppendLine($@"namespace {stub.StubTypeNamespace}
-{{");
-                currentIndent += SingleDepth;
-            }
-
-            // Print type declarations
-            var typeIndentStack = new Stack<string>();
-            foreach (var typeDecl in stub.StubContainingTypesDecl)
-            {
-                builder.AppendLine($@"{currentIndent}{typeDecl}
-{currentIndent}{{");
-
-                typeIndentStack.Push(currentIndent);
-                currentIndent += SingleDepth;
-            }
-
-            // Insert stub function
+            // Create stub function
             var stubMethod = MethodDeclaration(stub.StubReturnType, userDeclaredMethod.Identifier)
                 .WithModifiers(userDeclaredMethod.Modifiers)
                 .WithParameterList(ParameterList(SeparatedList(stub.StubParameters)))
-                .WithBody(stub.StubCode)
-                .NormalizeWhitespace();
-
-            builder.AppendLine(stubMethod.ToString());
+                .WithBody(stub.StubCode);
 
             // Create the DllImport declaration.
-            builder.AppendLine(
-$@"
-{currentIndent}[{dllImportAttr}]
-{currentIndent}{stub.DllImportDeclaration.NormalizeWhitespace()}");
+            var dllImport = stub.DllImportDeclaration.AddAttributeLists(
+                AttributeList(
+                    SingletonSeparatedList<AttributeSyntax>(dllImportAttr)));
 
-            // Print closing type declarations
-            while (typeIndentStack.Count > 0)
+            // Add stub function and DllImport declaration to the containing types
+            MemberDeclarationSyntax containingType = stub.StubContainingTypes.First()
+                .AddMembers(stubMethod, dllImport );
+            foreach (var typeDecl in stub.StubContainingTypes.Skip(1))
             {
-                builder.AppendLine($@"{typeIndentStack.Pop()}}}");
+                containingType = typeDecl.WithMembers(
+                    SingletonList<MemberDeclarationSyntax>(containingType));
             }
 
-            // Close namespace
+            MemberDeclarationSyntax toPrint = containingType;
+
+            // Add types to the containing namespace
             if (!(stub.StubTypeNamespace is null))
             {
-                builder.AppendLine("}");
+                toPrint = NamespaceDeclaration(IdentifierName(stub.StubTypeNamespace))
+                    .AddMembers(toPrint);
             }
+
+            builder.AppendLine(toPrint.NormalizeWhitespace().ToString());
         }
 
         private static bool IsGeneratedDllImportAttribute(AttributeSyntax attrSyntaxMaybe)
