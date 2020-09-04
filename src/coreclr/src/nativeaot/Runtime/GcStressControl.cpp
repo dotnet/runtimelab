@@ -73,7 +73,7 @@ private:
             if (g_pRhConfig->GetGcStressSeed())
                 s_lGcStressRNGSeed = g_pRhConfig->GetGcStressSeed();
             else
-                s_lGcStressRNGSeed = PalGetTickCount();
+                s_lGcStressRNGSeed = (UInt32)PalGetTickCount64();
 
             if (g_pRhConfig->GetGcStressFreqDenom())
                 s_lGcStressFreqDenom = g_pRhConfig->GetGcStressFreqDenom();
