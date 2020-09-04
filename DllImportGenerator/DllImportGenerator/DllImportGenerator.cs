@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
 {
@@ -101,49 +102,20 @@ namespace Microsoft.Interop
                 currentIndent += SingleDepth;
             }
 
-            // Begin declare function
-            builder.Append(
-$@"{currentIndent}{userDeclaredMethod.Modifiers} {stub.StubReturnType} {userDeclaredMethod.Identifier}(");
+            // Insert stub function
+            var stubMethod = MethodDeclaration(stub.StubReturnType, userDeclaredMethod.Identifier)
+                .WithModifiers(userDeclaredMethod.Modifiers)
+                .WithParameterList(ParameterList(SeparatedList(stub.StubParameters)))
+                .WithBody(stub.StubCode)
+                .NormalizeWhitespace();
 
-            char delim = ' ';
-            foreach (var param in stub.StubParameters)
-            {
-                builder.Append($"{delim}{param.Type} {param.Name}");
-                delim = ',';
-            }
-
-            // End declare function
-            builder.AppendLine(
-$@")
-{currentIndent}{{");
-
-            // Insert lines into function
-            foreach (var line in stub.StubCode)
-            {
-                builder.AppendLine($@"{currentIndent}{SingleDepth}{line}");
-            }
-
-            builder.AppendLine(
-$@"{ currentIndent}}}
-
-{currentIndent}[{dllImportAttr}]");
+            builder.AppendLine(stubMethod.ToString());
 
             // Create the DllImport declaration.
-            builder.Append($"{currentIndent}extern private static {stub.DllImportReturnType} {stub.DllImportMethodName}");
-            if (!stub.DllImportParameters.Any())
-            {
-                builder.AppendLine("();");
-            }
-            else
-            {
-                delim = '(';
-                foreach (var paramPair in stub.DllImportParameters)
-                {
-                    builder.Append($"{delim}{paramPair.Type} {paramPair.Name}");
-                    delim = ',';
-                }
-                builder.AppendLine(");");
-            }
+            builder.AppendLine(
+$@"
+{currentIndent}[{dllImportAttr}]
+{currentIndent}{stub.DllImportDeclaration.NormalizeWhitespace()}");
 
             // Print closing type declarations
             while (typeIndentStack.Count > 0)

@@ -38,14 +38,14 @@ namespace DllImportGenerator.Test
         /// <param name="source">Source to compile</param>
         /// <param name="outputKind">Output type</param>
         /// <returns>The resulting compilation</returns>
-        public static async Task<Compilation> CreateCompilation(string source, OutputKind outputKind = OutputKind.DynamicallyLinkedLibrary)
+        public static async Task<Compilation> CreateCompilation(string source, OutputKind outputKind = OutputKind.DynamicallyLinkedLibrary, bool allowUnsafe = true)
         {
             var (mdRefs, ancillary) = GetReferenceAssemblies();
-            
+
             return CSharpCompilation.Create("compilation",
                 new[] { CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.Preview)) },
                 (await mdRefs.ResolveAsync(LanguageNames.CSharp, CancellationToken.None)).Add(ancillary),
-                new CSharpCompilationOptions(outputKind));
+                new CSharpCompilationOptions(outputKind, allowUnsafe: allowUnsafe));
         }
 
         public static (ReferenceAssemblies, MetadataReference) GetReferenceAssemblies()
