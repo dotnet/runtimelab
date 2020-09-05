@@ -38,14 +38,14 @@ namespace Microsoft.Interop
             this.UnmanagedLCIDConversionArgIndex = UnsetIndex;
         }
 
-        public ITypeSymbol TypeSymbol { get; private set; }
         public string InstanceIdentifier { get; private set; }
+        public ITypeSymbol ManagedType { get; private set; }
+        public ITypeSymbol NativeType { get; private set; }
 
         public RefKind RefKind { get; private set; }
         public SyntaxKind RefKindSyntax { get; private set; }
+        
         public bool IsByRef => RefKind == RefKind.Ref || RefKind == RefKind.Out;
-
-        public TypeSyntax ManagedType { get; private set; }
         public bool IsReturnType { get; private set; }
 
         public bool IsManagedReturnPosition { get => this.ManagedIndex == ReturnIndex; }
@@ -57,35 +57,37 @@ namespace Microsoft.Interop
 
         public MarshalAsInfo MarshalAsInfo { get; private set; }
 
-        public static TypePositionInfo CreateForParameter(IParameterSymbol paramSymbol)
+        public static TypePositionInfo CreateForParameter(IParameterSymbol paramSymbol, Compilation compilation)
         {
             var typeInfo = new TypePositionInfo()
             {
-                TypeSymbol = paramSymbol.Type,
+                ManagedType = paramSymbol.Type,
                 InstanceIdentifier = paramSymbol.Name,
-                ManagedType = SyntaxFactory.ParseTypeName(paramSymbol.Type.ToString(), 0, true),
                 RefKind = paramSymbol.RefKind,
                 RefKindSyntax = RefKindToSyntax(paramSymbol.RefKind)
             };
 
             UpdateWithAttributeData(paramSymbol.GetAttributes(), ref typeInfo);
 
+            typeInfo.NativeType = ComputeNativeType(typeInfo.ManagedType, typeInfo.RefKind, typeInfo.MarshalAsInfo, compilation);
+
             return typeInfo;
         }
 
-        public static TypePositionInfo CreateForType(ITypeSymbol type, IEnumerable<AttributeData> attributes)
+        public static TypePositionInfo CreateForType(ITypeSymbol type, IEnumerable<AttributeData> attributes, Compilation compilation)
         {
             var typeInfo = new TypePositionInfo()
             {
-                TypeSymbol = type,
+                ManagedType = type,
                 InstanceIdentifier = string.Empty,
-                ManagedType = SyntaxFactory.ParseTypeName(type.ToString(), 0, true),
                 RefKind = RefKind.None,
                 RefKindSyntax = SyntaxKind.None,
                 IsReturnType = true
             };
 
             UpdateWithAttributeData(attributes, ref typeInfo);
+
+            typeInfo.NativeType = ComputeNativeType(typeInfo.ManagedType, typeInfo.RefKind, typeInfo.MarshalAsInfo, compilation);
 
             return typeInfo;
         }
@@ -150,6 +152,54 @@ namespace Microsoft.Interop
                 }
 
                 return info;
+            }
+        }
+
+        private static ITypeSymbol ComputeNativeType(ITypeSymbol managedType, RefKind refKind, MarshalAsInfo marshalAsInfo, Compilation compilation)
+        {
+            if (!managedType.IsUnmanagedType)
+            {
+                return compilation.CreatePointerTypeSymbol(
+                    compilation.GetSpecialType(SpecialType.System_Void));
+            }
+
+            switch (managedType.SpecialType)
+            {
+                case SpecialType.System_SByte:
+                case SpecialType.System_Byte:
+                case SpecialType.System_Int16:
+                case SpecialType.System_UInt16:
+                case SpecialType.System_Int32:
+                case SpecialType.System_UInt32:
+                case SpecialType.System_Int64:
+                case SpecialType.System_UInt64:
+                case SpecialType.System_Single:
+                case SpecialType.System_Double:
+                case SpecialType.System_Void:
+                    return managedType;
+                case SpecialType.System_Boolean:
+                    var specialType = SpecialType.System_Byte;
+                    if (marshalAsInfo != null)
+                    {
+                        specialType = marshalAsInfo.UnmanagedType switch
+                        {
+                            UnmanagedType.Bool => SpecialType.System_Int32,
+                            UnmanagedType.U1 => SpecialType.System_Byte,
+                            UnmanagedType.I1 => SpecialType.System_SByte,
+                            UnmanagedType.VariantBool => SpecialType.System_Int16,
+                            _ => SpecialType.System_Byte
+                        };
+                    }
+
+                    return compilation.GetSpecialType(specialType);
+                case SpecialType.System_Char:
+                    // [TODO] Handle CharSet
+                    return compilation.GetSpecialType(SpecialType.System_UInt16);
+                case SpecialType.System_IntPtr:
+                case SpecialType.System_UIntPtr:
+                default:
+                    return compilation.CreatePointerTypeSymbol(
+                        compilation.GetSpecialType(SpecialType.System_Void));
             }
         }
 

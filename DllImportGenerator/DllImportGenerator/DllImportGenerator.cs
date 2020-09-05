@@ -55,7 +55,7 @@ namespace Microsoft.Interop
                 Debug.Assert(!(dllImportAttr is null) && !(dllImportData is null));
 
                 // Create the stub.
-                var dllImportStub = DllImportStub.Create(methodSymbolInfo, dllImportData, context.CancellationToken);
+                var dllImportStub = DllImportStub.Create(methodSymbolInfo, dllImportData, context.Compilation, context.CancellationToken);
 
                 // Report any diagnostics from the stub generation step.
                 foreach (var diag in dllImportStub.Diagnostics)

@@ -10,7 +10,7 @@ namespace Microsoft.Interop
     {
         public TypeSyntax AsNativeType(TypePositionInfo info)
         {
-            return ParseTypeName(info.TypeSymbol.ToString(), 0, true);
+            return info.ManagedType.AsTypeSyntax();
         }
 
         public ArgumentSyntax AsArgument(TypePositionInfo info)
@@ -23,7 +23,7 @@ namespace Microsoft.Interop
         {
             return Parameter(Identifier(info.InstanceIdentifier))
                 .WithModifiers(TokenList(Token(info.RefKindSyntax)))
-                .WithType(info.ManagedType);
+                .WithType(info.ManagedType.AsTypeSyntax());
         }
 
         public IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context)

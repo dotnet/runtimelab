@@ -1,46 +1,206 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
 {
-    public enum GenerationStage
-    {
-        Setup,
-        Marshal,
-        Pin,
-        Invoke,
-        Unmarshal,
-        Cleanup
-    }
-
     class StubCodeContext
     {
-        public IList<Diagnostic> Diagnostics { get; } = new List<Diagnostic>();
-
-        public GenerationStage CurrentStage => stage;
-
-        private GenerationStage stage;
-        internal void SetStage(GenerationStage stage)
+        public enum Stage
         {
-            this.stage = stage;
+            Setup,
+            Marshal,
+            Pin,
+            Invoke,
+            Unmarshal,
+            Cleanup
         }
 
-        public StubCodeContext(GenerationStage stage)
+        public Stage CurrentStage { get; private set; }
+
+        // Identifier for managed return value
+        public string ReturnIdentifier => returnIdentifier;
+
+        // Same as the managed identifier by default
+        public string ReturnNativeIdentifier { get; private set; } = returnIdentifier;
+
+        private const string returnIdentifier = "__retVal";
+        private const string generatedNativeIdentifierSuffix = "_gen_native";
+
+        private StubCodeContext(Stage stage)
         {
-            this.stage = stage;
+            CurrentStage = stage;
         }
 
         public string GenerateReturnNativeIdentifier()
         {
-            ReturnNativeIdentifier = $"{ReturnIdentifier}{GeneratedNativeIdentifierSuffix}";
+            Debug.Assert(CurrentStage == Stage.Setup);
+
+            // Update the native identifier for the return value
+            ReturnNativeIdentifier = $"{ReturnIdentifier}{generatedNativeIdentifierSuffix}";
             return ReturnNativeIdentifier;
         }
 
-        public const string GeneratedNativeIdentifierSuffix = "_gen_native";
+        public (string managed, string native) GetIdentifiers(TypePositionInfo info)
+        {
+            string managedIdentifier = info.IsReturnType
+                ? ReturnIdentifier
+                : info.InstanceIdentifier;
 
-        private const string returnIdentifier = "__retVal";
-        public string ReturnIdentifier => returnIdentifier;
-        public string ReturnNativeIdentifier { get; private set; } = returnIdentifier;
+            string nativeIdentifier = info.IsReturnType
+                ? ReturnNativeIdentifier
+                : ToNativeIdentifer(info.InstanceIdentifier);
+
+            return (managedIdentifier, nativeIdentifier);
+        }
+
+        public static string ToNativeIdentifer(string managedIdentifier)
+        {
+            return $"__{managedIdentifier}{generatedNativeIdentifierSuffix}";
+        }
+
+        public static (BlockSyntax Code, MethodDeclarationSyntax DllImport) GenerateSyntax(
+            string dllImportName,
+            IEnumerable<TypePositionInfo> paramsTypeInfo,
+            TypePositionInfo retTypeInfo)
+        {
+            bool returnsVoid = retTypeInfo.ManagedType.SpecialType == SpecialType.System_Void;
+            var paramMarshallers = paramsTypeInfo.Select(p => GetMarshalInfo(p)).ToList();
+            var retMarshaller = GetMarshalInfo(retTypeInfo);
+
+            var context = new StubCodeContext(Stage.Setup);
+            var statements = new List<StatementSyntax>();
+
+            foreach (var marshaller in paramMarshallers)
+            {
+                TypePositionInfo info = marshaller.TypeInfo;
+                if (info.RefKind != RefKind.Out)
+                    continue;
+
+                // Assign out params to default
+                statements.Add(ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        IdentifierName(info.InstanceIdentifier),
+                        LiteralExpression(
+                            SyntaxKind.DefaultLiteralExpression,
+                            Token(SyntaxKind.DefaultKeyword)))));
+            }
+
+            if (!returnsVoid)
+            {
+                // Declare variable for return value
+                statements.Add(LocalDeclarationStatement(
+                    VariableDeclaration(
+                        retMarshaller.TypeInfo.ManagedType.AsTypeSyntax(),
+                        SingletonSeparatedList(
+                            VariableDeclarator(context.ReturnIdentifier)))));
+            }
+
+            var stages = new Stage[]
+            {
+                Stage.Setup,
+                Stage.Marshal,
+                Stage.Pin,
+                Stage.Invoke,
+                Stage.Unmarshal,
+                Stage.Cleanup
+            };
+
+            var invoke = InvocationExpression(IdentifierName(dllImportName));
+            foreach (var stage in stages)
+            {
+                int initialCount = statements.Count;
+                context.CurrentStage = stage;
+
+                if (!returnsVoid && (stage == Stage.Setup || stage == Stage.Unmarshal))
+                {
+                    var retStatements = retMarshaller.Generator.Generate(retMarshaller.TypeInfo, context);
+                    statements.AddRange(retStatements);
+                }
+
+                foreach (var marshaller in paramMarshallers)
+                {
+                    if (stage == Stage.Invoke)
+                    {
+                        // Get arguments for invocation
+                        ArgumentSyntax argSyntax = marshaller.Generator.AsArgument(marshaller.TypeInfo);
+                        invoke = invoke.AddArgumentListArguments(argSyntax);
+                    }
+                    else
+                    {
+                        // [TODO] Handle pinnig / fixed statements
+                        var generatedStatements = marshaller.Generator.Generate(marshaller.TypeInfo, context);
+                        statements.AddRange(generatedStatements);
+                    }
+                }
+
+                if (stage == Stage.Invoke)
+                {
+                    // Assign to return value if necessary
+                    if (returnsVoid)
+                    {
+                        statements.Add(ExpressionStatement(invoke));
+                    }
+                    else
+                    {
+                        statements.Add(ExpressionStatement(
+                            AssignmentExpression(
+                                SyntaxKind.SimpleAssignmentExpression,
+                                IdentifierName(context.ReturnNativeIdentifier),
+                                invoke)));
+                    }
+                }
+
+                if (statements.Count > initialCount)
+                {
+                    // Comment separating each stage
+                    var newLeadingTrivia = TriviaList(
+                        Comment($"//"),
+                        Comment($"// {stage}"),
+                        Comment($"//"));
+                    var firstStatementInStage = statements[initialCount];
+                    newLeadingTrivia = newLeadingTrivia.AddRange(firstStatementInStage.GetLeadingTrivia());
+                    statements[initialCount] = firstStatementInStage.WithLeadingTrivia(newLeadingTrivia);
+                }
+            }
+
+            // Return
+            if (!returnsVoid)
+                statements.Add(ReturnStatement(IdentifierName(context.ReturnIdentifier)));
+
+            // Define P/Invoke declaration
+            var dllImport = MethodDeclaration(retMarshaller.Generator.AsNativeType(retMarshaller.TypeInfo), dllImportName)
+                .AddModifiers(
+                    Token(SyntaxKind.ExternKeyword),
+                    Token(SyntaxKind.PrivateKeyword),
+                    Token(SyntaxKind.StaticKeyword),
+                    Token(SyntaxKind.UnsafeKeyword))
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+            foreach (var marshaller in paramMarshallers)
+            {
+                ParameterSyntax paramSyntax = marshaller.Generator.AsParameter(marshaller.TypeInfo);
+                dllImport = dllImport.AddParameterListParameters(paramSyntax);
+            }
+
+            // Wrap all statements in an unsafe block
+            return (Block(UnsafeStatement(Block(statements))), dllImport);
+        }
+
+        private static (TypePositionInfo TypeInfo, IMarshallingGenerator Generator) GetMarshalInfo(TypePositionInfo info)
+        {
+            IMarshallingGenerator generator;
+            if (!MarshallingGenerators.TryCreate(info, out generator))
+            {
+                // [TODO] Report warning
+            }
+
+            return (info, generator);
+        }
     }
 }

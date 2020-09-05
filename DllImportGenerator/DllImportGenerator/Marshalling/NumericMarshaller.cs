@@ -1,0 +1,79 @@
+﻿using System.Collections.Generic;
+
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+
+namespace Microsoft.Interop
+{
+    class NumericMarshaller : IMarshallingGenerator
+    {
+        public TypeSyntax AsNativeType(TypePositionInfo info)
+        {
+            return info.NativeType.AsTypeSyntax();
+        }
+
+        public ArgumentSyntax AsArgument(TypePositionInfo info)
+        {
+            if (info.IsByRef)
+            {
+                string identifier = StubCodeContext.ToNativeIdentifer(info.InstanceIdentifier);
+                return Argument(
+                    PrefixUnaryExpression(
+                        SyntaxKind.AddressOfExpression,
+                        IdentifierName(identifier)));
+            }
+
+            return Argument(IdentifierName(info.InstanceIdentifier));
+        }
+
+        public ParameterSyntax AsParameter(TypePositionInfo info)
+        {
+            var type = info.IsByRef
+                ? PointerType(info.NativeType.AsTypeSyntax())
+                : info.NativeType.AsTypeSyntax();
+            return Parameter(Identifier(info.InstanceIdentifier))
+                .WithType(type);
+        }
+
+        public IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context)
+        {
+            if (!info.IsByRef)
+                yield break;
+
+            (string managedIdentifier, string nativeIdentifier) = context.GetIdentifiers(info);
+            switch (context.CurrentStage)
+            {
+                case StubCodeContext.Stage.Setup:
+                    yield return LocalDeclarationStatement(
+                        VariableDeclaration(
+                            info.NativeType.AsTypeSyntax(),
+                            SingletonSeparatedList(
+                                VariableDeclarator(nativeIdentifier))));
+                    break;
+                case StubCodeContext.Stage.Marshal:
+                    if (info.RefKind == RefKind.Ref)
+                    {
+                        yield return ExpressionStatement(
+                            AssignmentExpression(
+                                SyntaxKind.SimpleAssignmentExpression,
+                                IdentifierName(nativeIdentifier),
+                                IdentifierName(managedIdentifier)));
+                    }
+
+                    break;
+                case StubCodeContext.Stage.Unmarshal:
+                    yield return ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            IdentifierName(managedIdentifier),
+                            IdentifierName(nativeIdentifier)));
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+}

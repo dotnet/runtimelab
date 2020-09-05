@@ -26,8 +26,8 @@ namespace Microsoft.Interop
 
         public IEnumerable<TypeDeclarationSyntax> StubContainingTypes { get; private set; }
 
-        public TypeSyntax StubReturnType { get => this.returnTypeInfo.ManagedType; }
-
+        public TypeSyntax StubReturnType { get => this.returnTypeInfo.ManagedType.AsTypeSyntax(); }
+ 
         public IEnumerable<ParameterSyntax> StubParameters
         {
             get
@@ -37,7 +37,7 @@ namespace Microsoft.Interop
                     //if (typeinfo.ManagedIndex != TypePositionInfo.UnsetIndex)
                     {
                         yield return Parameter(Identifier(typeinfo.InstanceIdentifier))
-                            .WithType(typeinfo.ManagedType)
+                            .WithType(typeinfo.ManagedType.AsTypeSyntax())
                             .WithModifiers(TokenList(Token(typeinfo.RefKindSyntax)));
                     }
                 }
@@ -99,6 +99,7 @@ namespace Microsoft.Interop
         public static DllImportStub Create(
             IMethodSymbol method,
             GeneratedDllImportData dllImportData,
+            Compilation compilation,
             CancellationToken token = default)
         {
             // Cancel early if requested
@@ -112,7 +113,7 @@ namespace Microsoft.Interop
                 stubTypeNamespace = method.ContainingNamespace.ToString();
             }
 
-            // Determine type
+            // Determine containing type(s)
             var containingTypes = new List<TypeDeclarationSyntax>();
             INamedTypeSymbol currType = method.ContainingType;
             while (!(currType is null))
@@ -141,18 +142,18 @@ namespace Microsoft.Interop
                 currType = currType.ContainingType;
             }
 
-            // Determine parameter types
+            // Determine parameter and return types
             var paramsTypeInfo = new List<TypePositionInfo>();
-            foreach (var paramSymbol in method.Parameters)
+            foreach (var param in method.Parameters)
             {
-                paramsTypeInfo.Add(TypePositionInfo.CreateForParameter(paramSymbol));
+                paramsTypeInfo.Add(TypePositionInfo.CreateForParameter(param, compilation));
             }
 
-            var retTypeInfo = TypePositionInfo.CreateForType(method.ReturnType, method.GetReturnTypeAttributes());
+            var retTypeInfo = TypePositionInfo.CreateForType(method.ReturnType, method.GetReturnTypeAttributes(), compilation);
 
+            // Generate stub code
             string dllImportName = method.Name + "__PInvoke__";
-
-            var syntax = GenerateSyntax(dllImportName, paramsTypeInfo, retTypeInfo);
+            var (code, dllImport) = StubCodeContext.GenerateSyntax(dllImportName, paramsTypeInfo, retTypeInfo);
 
             return new DllImportStub()
             {
@@ -160,124 +161,10 @@ namespace Microsoft.Interop
                 paramsTypeInfo = paramsTypeInfo,
                 StubTypeNamespace = stubTypeNamespace,
                 StubContainingTypes = containingTypes,
-                StubCode = Block(UnsafeStatement(Block(syntax.StubCode))),
-                DllImportDeclaration = syntax.DllImport,
+                StubCode = code,
+                DllImportDeclaration = dllImport,
                 Diagnostics = Enumerable.Empty<Diagnostic>(),
             };
-        }
-
-        private static (TypePositionInfo TypeInfo, IMarshallingGenerator Generator) GetMarshalInfo(TypePositionInfo typeInfo)
-        {
-            IMarshallingGenerator generator;
-            if (!MarshallingGenerator.TryCreate(typeInfo, out generator))
-                throw new NotSupportedException();
-
-            return (typeInfo, generator);
-        }
-
-        private static (IEnumerable<StatementSyntax> StubCode, MethodDeclarationSyntax DllImport) GenerateSyntax(string dllImportName, IEnumerable<TypePositionInfo> paramsTypeInfo, TypePositionInfo retTypeInfo)
-        {
-            bool returnsVoid = retTypeInfo.TypeSymbol.SpecialType == SpecialType.System_Void;
-            var paramMarshallers = paramsTypeInfo.Select(p => GetMarshalInfo(p));
-            var retMarshaller = GetMarshalInfo(retTypeInfo);
-
-            var context = new StubCodeContext(GenerationStage.Setup);
-            var statements = new List<StatementSyntax>();
-
-            if (!returnsVoid)
-            {
-                // Declare variable for return value
-                statements.Add(LocalDeclarationStatement(
-                    VariableDeclaration(
-                        retMarshaller.TypeInfo.ManagedType,
-                        SingletonSeparatedList(
-                            VariableDeclarator(context.ReturnIdentifier)))));
-            }
-
-            var stages = new GenerationStage[]
-            {
-                GenerationStage.Setup,
-                GenerationStage.Marshal,
-                GenerationStage.Pin,
-                GenerationStage.Invoke,
-                GenerationStage.Unmarshal,
-                GenerationStage.Cleanup
-            };
-
-            var invoke = InvocationExpression(IdentifierName(dllImportName));
-            foreach (var stage in stages)
-            {
-                int initialCount = statements.Count;
-                context.SetStage(stage);
-                if (!returnsVoid && (stage == GenerationStage.Setup || stage == GenerationStage.Unmarshal))
-                {
-                    var retStatements = retMarshaller.Generator.Generate(retMarshaller.TypeInfo, context);
-                    statements.AddRange(retStatements);
-                }
-
-                foreach (var marshaller in paramMarshallers)
-                {
-                    if (stage == GenerationStage.Invoke)
-                    {
-                        ArgumentSyntax argSyntax = marshaller.Generator.AsArgument(marshaller.TypeInfo);
-                        invoke = invoke.AddArgumentListArguments(argSyntax);
-                    }
-                    else
-                    {
-                        var generatedStatements = marshaller.Generator.Generate(marshaller.TypeInfo, context);
-                        statements.AddRange(generatedStatements);
-                    }
-                }
-
-                if (stage == GenerationStage.Invoke)
-                {
-                    if (returnsVoid)
-                    {
-                        statements.Add(ExpressionStatement(invoke));
-                    }
-                    else
-                    {
-                        statements.Add(ExpressionStatement(
-                            AssignmentExpression(
-                                SyntaxKind.SimpleAssignmentExpression,
-                                IdentifierName(context.ReturnNativeIdentifier),
-                                invoke)));
-                    }
-                }
-
-                if (statements.Count > initialCount)
-                {
-                    var newLeadingTrivia = TriviaList(
-                        Comment($"//"),
-                        Comment($"// {stage}"),
-                        Comment($"//"));
-                    var firstStatementInStage = statements[initialCount];
-                    newLeadingTrivia = newLeadingTrivia.AddRange(firstStatementInStage.GetLeadingTrivia());
-                    statements[initialCount] = firstStatementInStage.WithLeadingTrivia(newLeadingTrivia);
-                }
-            }
-
-            if (!returnsVoid)
-            {
-                statements.Add(ReturnStatement(IdentifierName(context.ReturnIdentifier)));
-            }
-
-            var returnNativeType = retMarshaller.Generator.AsNativeType(retMarshaller.TypeInfo);
-            var dllImport = MethodDeclaration(returnNativeType, dllImportName)
-                .WithModifiers(
-                    TokenList(
-                        Token(SyntaxKind.ExternKeyword),
-                        Token(SyntaxKind.PrivateKeyword),
-                        Token(SyntaxKind.StaticKeyword),
-                        Token(SyntaxKind.UnsafeKeyword)))
-                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
-            foreach (var marshaller in paramMarshallers)
-            {
-                ParameterSyntax paramSyntax = marshaller.Generator.AsParameter(marshaller.TypeInfo);
-                dllImport = dllImport.AddParameterListParameters(paramSyntax);
-            }
-
-            return (statements, dllImport);
         }
     }
 }
