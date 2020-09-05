@@ -45,30 +45,6 @@ WARNING:   When setting properties based on their current state (for example:
     <PropertyGroup>
       <NativeAotBatchScript Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(NativeAotTest)' != 'false'">
         <![CDATA[
-
-echo DOTNET INFO
-call !__TestDotNetCmd! --info
-
-echo WHERE
-where dotnet
-echo DOTNET ON PATH
-dotnet --info
-
-set _VSWHERE="!ProgramFiles(x86)!\Microsoft Visual Studio\Installer\vswhere.exe"
-if exist !_VSWHERE! (
-  echo FOUND VSWHERE
-  for /f "usebackq tokens=*" %%i in (`!_VSWHERE! -latest -prerelease -property installationPath`) do set _VSCOMNTOOLS=%%i\Common7\Tools
-)
-
-echo VS TOOLS PATH: "!_VSCOMNTOOLS!"
-call "!_VSCOMNTOOLS!\VsDevCmd.bat"
-
-call "!VSINSTALLDIR!\VC\Auxiliary\Build\vcvarsall.bat" x64
-set LIB
-where link
-link kernel32.lib
-
-
 if defined RunNativeAot (
     set __Command=!_DebuggerFullPath!
     REM Tests run locally need __TestDotNetCmd (set by runtest.py) or a compatible 5.0 dotnet runtime in the path
