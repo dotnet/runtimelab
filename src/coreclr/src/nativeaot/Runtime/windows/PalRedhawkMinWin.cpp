@@ -380,14 +380,6 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalStartFinalizerThread(_In_ BackgroundCal
     return PalStartBackgroundWork(callback, pCallbackContext, TRUE) != NULL;
 }
 
-REDHAWK_PALEXPORT UInt32 REDHAWK_PALAPI PalGetTickCount()
-{
-#pragma warning(push)
-#pragma warning(disable: 28159) // Consider GetTickCount64 instead
-    return GetTickCount();
-#pragma warning(pop)
-}
-
 REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalEventEnabled(REGHANDLE regHandle, _In_ const EVENT_DESCRIPTOR* eventDescriptor)
 {
     return !!EventEnabled(regHandle, eventDescriptor);

@@ -10,7 +10,7 @@ internal static partial class Interop
     {
         internal delegate IntPtr ThreadProc(IntPtr parameter);
 
-        [DllImport(Libraries.CoreLibNative, EntryPoint = "CoreLibNative_RuntimeThread_CreateThread")]
+        [DllImport(Libraries.SystemNative, EntryPoint = "SystemNative_RuntimeThread_CreateThread")]
         internal static extern bool RuntimeThread_CreateThread(IntPtr stackSize, IntPtr startAddress, IntPtr parameter);
     }
 }

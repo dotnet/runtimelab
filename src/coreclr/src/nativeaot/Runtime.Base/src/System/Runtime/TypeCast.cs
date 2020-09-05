@@ -963,7 +963,7 @@ namespace System.Runtime
             //
             private static Entry[] s_cache = new Entry[InitialCacheSize];   // Initialize the cache eagerly to avoid null checks.
             private static UnsafeGCHandle s_previousCache;
-            private static long s_tickCountOfLastOverflow = InternalCalls.PalGetTickCount64();
+            private static ulong s_tickCountOfLastOverflow = InternalCalls.PalGetTickCount64();
             private static int s_entries;
             private static bool s_roundRobinFlushing;
 
@@ -1161,7 +1161,7 @@ namespace System.Runtime
                 s_entries = 0;
 
                 // See how long it has been since the last time the cache was overflowing
-                long tickCount = InternalCalls.PalGetTickCount64();
+                ulong tickCount = InternalCalls.PalGetTickCount64();
                 int tickCountSinceLastOverflow = (int)(tickCount - s_tickCountOfLastOverflow);
                 s_tickCountOfLastOverflow = tickCount;
 

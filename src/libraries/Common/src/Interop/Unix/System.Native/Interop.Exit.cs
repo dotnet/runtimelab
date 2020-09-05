@@ -2,13 +2,15 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 internal static partial class Interop
 {
     internal unsafe partial class Sys
     {
-        [DllImport(Interop.Libraries.CoreLibNative, EntryPoint = "CoreLibNative_GetEnv")]
-        internal static extern unsafe IntPtr GetEnv(string name);
+        [DoesNotReturn]
+        [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_Exit")]
+        internal static extern void Exit(int exitCode);
     }
 }
