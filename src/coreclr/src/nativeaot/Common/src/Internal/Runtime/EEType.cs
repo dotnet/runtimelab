@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -1558,7 +1559,7 @@ namespace Internal.Runtime
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal struct DynamicModule
+    internal unsafe struct DynamicModule
     {
         // Size field used to indicate the number of bytes of this structure that are defined in Runtime Known ways
         // This is used to drive versioning of this field
@@ -1566,10 +1567,10 @@ namespace Internal.Runtime
 
         // Pointer to interface dispatch resolver that works off of a type/slot pair
         // This is a function pointer with the following signature IntPtr()(IntPtr targetType, IntPtr interfaceType, ushort slot)
-        private IntPtr _dynamicTypeSlotDispatchResolve;
+        private delegate*<IntPtr, IntPtr, ushort, IntPtr> _dynamicTypeSlotDispatchResolve;
 
         // Starting address for the the binary module corresponding to this dynamic module.
-        private IntPtr _getRuntimeException;
+        private delegate*<ExceptionIDs, Exception> _getRuntimeException;
 
 #if TYPE_LOADER_IMPLEMENTATION
         public int CbSize
@@ -1585,20 +1586,17 @@ namespace Internal.Runtime
         }
 #endif
 
-        public IntPtr DynamicTypeSlotDispatchResolve
+        public delegate*<IntPtr, IntPtr, ushort, IntPtr> DynamicTypeSlotDispatchResolve
         {
             get
             {
-                unsafe
+                if (_cbSize >= sizeof(IntPtr) * 2)
                 {
-                    if (_cbSize >= sizeof(IntPtr) * 2)
-                    {
-                        return _dynamicTypeSlotDispatchResolve;
-                    }
-                    else
-                    {
-                        return IntPtr.Zero;
-                    }
+                    return _dynamicTypeSlotDispatchResolve;
+                }
+                else
+                {
+                    return null;
                 }
             }
 #if TYPE_LOADER_IMPLEMENTATION
@@ -1609,20 +1607,17 @@ namespace Internal.Runtime
 #endif
         }
 
-        public IntPtr GetRuntimeException
+        public delegate*<ExceptionIDs, Exception> GetRuntimeException
         {
             get
             {
-                unsafe
+                if (_cbSize >= sizeof(IntPtr) * 3)
                 {
-                    if (_cbSize >= sizeof(IntPtr) * 3)
-                    {
-                        return _getRuntimeException;
-                    }
-                    else
-                    {
-                        return IntPtr.Zero;
-                    }
+                    return _getRuntimeException;
+                }
+                else
+                {
+                    return null;
                 }
             }
 #if TYPE_LOADER_IMPLEMENTATION

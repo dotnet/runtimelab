@@ -84,17 +84,11 @@ namespace System.Runtime.InteropServices
             {
                 if (structureTypeHandle.IsValueType())
                 {
-                    CalliIntrinsics.Call(
-                        unmarshalStub,
-                        ref *(byte*)ptr,
-                        ref structure.GetRawData());
+                    ((delegate*<ref byte, ref byte, void>)unmarshalStub)(ref *(byte*)ptr, ref structure.GetRawData());
                 }
                 else
                 {
-                    CalliIntrinsics.Call(
-                        unmarshalStub,
-                        ref *(byte*)ptr,
-                        structure);
+                    ((delegate*<ref byte, object, void>)unmarshalStub)(ref *(byte*)ptr, structure);
                 }
             }
             else
@@ -139,9 +133,7 @@ namespace System.Runtime.InteropServices
             // DestroyStructureStub == IntPtr.Zero means its fields don't need to be destroyed
             if (destroyStructureStub != IntPtr.Zero)
             {
-                CalliIntrinsics.Call(
-                    destroyStructureStub,
-                    ref *(byte*)ptr);
+                ((delegate*<ref byte, void>)destroyStructureStub)(ref *(byte*)ptr);
             }
         }
 
@@ -182,15 +174,11 @@ namespace System.Runtime.InteropServices
             {
                 if (structureTypeHandle.IsValueType())
                 {
-                    CalliIntrinsics.Call(marshalStub,
-                        ref structure.GetRawData(),
-                        ref *(byte*)ptr);
+                    ((delegate*<ref byte, ref byte, void>)marshalStub)(ref structure.GetRawData(), ref *(byte*)ptr);
                 }
                 else
                 {
-                    CalliIntrinsics.Call(marshalStub,
-                        structure,
-                        ref *(byte*)ptr);
+                    ((delegate*<object, ref byte, void>)marshalStub)(structure, ref *(byte*)ptr);
                 }
             }
             else
@@ -389,27 +377,6 @@ namespace System.Runtime.InteropServices
             {
                 DestroyStructure(nativeBytes, structType);
                 FreeCoTaskMem(nativeBytes);
-            }
-        }
-
-        [McgIntrinsics]
-        internal static unsafe partial class CalliIntrinsics
-        {
-            internal static void Call(IntPtr pfn, ref byte arg0, ref byte arg1)
-            {
-                throw new NotSupportedException();
-            }
-            internal static void Call(IntPtr pfn, object arg0, ref byte arg1)
-            {
-                throw new NotSupportedException();
-            }
-            internal static void Call(IntPtr pfn, ref byte arg0, object arg1)
-            {
-                throw new NotSupportedException();
-            }
-            internal static void Call(IntPtr pfn, ref byte arg0)
-            {
-                throw new NotSupportedException();
             }
         }
     }

@@ -7,7 +7,6 @@ using System.Runtime.InteropServices;
 
 namespace System.Runtime.CompilerServices
 {
-    [McgIntrinsics]
     internal static class ClassConstructorRunner
     {
         private static unsafe object CheckStaticClassConstructionReturnGCStaticBase(ref StaticClassConstructionContext context, object gcStaticBase)
@@ -67,9 +66,7 @@ namespace System.Runtime.CompilerServices
                     // threads trying to do the same thing will spin waiting for us to transition the state to
                     // 1.
 
-                    // Call the cctor code directly from the address in the context. The <int> here says the
-                    // cctor returns an int because the calli transform used doesn't handle the void case yet.
-                    Call<int>(context.cctorMethodAddress);
+                    ((delegate*<void>)context.cctorMethodAddress)();
 
                     // Insert a memory barrier here to order any writes executed as part of static class
                     // construction above with respect to the initialized flag update we're about to make
@@ -86,14 +83,6 @@ namespace System.Runtime.CompilerServices
                 // If we get here some other thread changed the initialization state to a non-zero value
                 // before we could. Loop at try again.
             }
-        }
-
-        // Intrinsic to call the cctor given a pointer to the code (this method's body is ignored and replaced
-        // with a calli during compilation). The transform doesn't handle non-generic versions yet (i.e.
-        // functions that are void).
-        private static T Call<T>(System.IntPtr pfn)
-        {
-            return default(T);
         }
     }
 }

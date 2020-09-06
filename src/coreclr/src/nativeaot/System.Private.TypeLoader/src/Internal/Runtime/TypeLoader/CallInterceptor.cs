@@ -155,10 +155,9 @@ namespace Internal.Runtime.CallInterceptor
             public LocalVariableSetFunc<T> Callback;
         }
 
-        private unsafe delegate void SetupArbitraryLocalVariableSet_InnerDel<T>(IntPtr* localData, ref T context, ref SetupLocalVariableSetInfo<T> localVarSetInfo);
-        private static unsafe void SetupArbitraryLocalVariableSet_Inner<T>(IntPtr* localData, ref T context, ref SetupLocalVariableSetInfo<T> localVarSetInfo)
+        private static unsafe void SetupArbitraryLocalVariableSet_Inner<T>(void* localData, ref T context, ref SetupLocalVariableSetInfo<T> localVarSetInfo)
         {
-            LocalVariableSet localVars = new LocalVariableSet(localData, localVarSetInfo.Types);
+            LocalVariableSet localVars = new LocalVariableSet((IntPtr*)localData, localVarSetInfo.Types);
             DefaultInitializeLocalVariableSet(ref localVars);
             localVarSetInfo.Callback(ref context, ref localVars);
         }
@@ -173,9 +172,11 @@ namespace Internal.Runtime.CallInterceptor
             localVarSetInfo.Callback = callback;
             localVarSetInfo.Types = types;
 
+            delegate*<void*, ref T, ref SetupLocalVariableSetInfo<T>, void> pfn = &SetupArbitraryLocalVariableSet_Inner;
+
             RuntimeAugments.RunFunctionWithConservativelyReportedBuffer(
                 ComputeNecessaryMemoryForStackLocalVariableSet(types),
-                Intrinsics.AddrOf<SetupArbitraryLocalVariableSet_InnerDel<T>>(SetupArbitraryLocalVariableSet_Inner<T>),
+                pfn,
                 ref param,
                 ref localVarSetInfo);
         }
@@ -854,7 +855,6 @@ namespace Internal.Runtime.CallInterceptor
             }
         }
 
-        private unsafe delegate void SetupBlockDelegate(void* pBuffer, ref CallConversionInterpreterLocals locals);
         private static unsafe void SetupLocalsBlock1(void* pBuffer, ref CallConversionInterpreterLocals locals)
         {
 #if CCCONVERTER_TRACE
@@ -907,17 +907,17 @@ namespace Internal.Runtime.CallInterceptor
                     case CallConversionOperation.OpCode.ALLOC_X_LOCALBLOCK_BYTES_FOR_BLOCK_Y:
                         if (op.Y == 1)
                         {
-                            RuntimeAugments.RunFunctionWithConservativelyReportedBuffer(op.X, Intrinsics.AddrOf<SetupBlockDelegate>(SetupLocalsBlock1), ref locals);
+                            RuntimeAugments.RunFunctionWithConservativelyReportedBuffer(op.X, &SetupLocalsBlock1, ref locals);
                         }
                         else
                         {
                             Debug.Assert(op.Y == 2);
-                            RuntimeAugments.RunFunctionWithConservativelyReportedBuffer(op.X, Intrinsics.AddrOf<SetupBlockDelegate>(SetupLocalsBlock2), ref locals);
+                            RuntimeAugments.RunFunctionWithConservativelyReportedBuffer(op.X, &SetupLocalsBlock2, ref locals);
                         }
                         break;
 
                     case CallConversionOperation.OpCode.ALLOC_X_TRANSITIONBLOCK_BYTES:
-                        RuntimeAugments.RunFunctionWithConservativelyReportedBuffer(op.X, Intrinsics.AddrOf<SetupBlockDelegate>(SetupTransitionBlock), ref locals);
+                        RuntimeAugments.RunFunctionWithConservativelyReportedBuffer(op.X, &SetupTransitionBlock, ref locals);
                         break;
 
                     case CallConversionOperation.OpCode.CALL_INTERCEPTOR:

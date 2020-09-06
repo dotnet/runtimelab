@@ -125,7 +125,7 @@ namespace Internal.Runtime.TypeLoader
                                                , out ReturnFloatingPointReturn4Thunk, out ReturnFloatingPointReturn8Thunk
 #endif
                                                 );
-            s_commonStubData.ManagedCallConverterThunk = Intrinsics.AddrOf<Func<IntPtr, IntPtr, IntPtr>>(CallConversionThunk);
+            s_commonStubData.ManagedCallConverterThunk = (IntPtr)(delegate*<IntPtr, IntPtr, IntPtr>)&CallConversionThunk;
             s_commonStubData.UniversalThunk = RuntimeAugments.GetUniversalTransitionThunk();
 #if TARGET_ARM
             fixed (CallingConventionConverter_CommonCallingStub_PointerData* commonStubData = &s_commonStubData)
@@ -479,8 +479,6 @@ namespace Internal.Runtime.TypeLoader
         private static int s_numConversionsExecuted = 0;
 #endif
 
-        private unsafe delegate void InvokeTargetDel(void* allocatedbuffer, ref CallConversionParameters conversionParams);
-
         [DebuggerGuidedStepThroughAttribute]
         private static unsafe IntPtr CallConversionThunk(IntPtr callerTransitionBlockParam, IntPtr callConversionId)
         {
@@ -507,9 +505,8 @@ namespace Internal.Runtime.TypeLoader
                     // Note that SizeOfFrameArgumentArray does overflow checks with sufficient margin to prevent overflows here
                     int nStackBytes = conversionParams._calleeArgs.SizeOfFrameArgumentArray();
                     int dwAllocaSize = TransitionBlock.GetNegSpaceSize() + sizeof(TransitionBlock) + nStackBytes;
-                    IntPtr invokeTargetPtr = Intrinsics.AddrOf((InvokeTargetDel)InvokeTarget);
 
-                    RuntimeAugments.RunFunctionWithConservativelyReportedBuffer(dwAllocaSize, invokeTargetPtr, ref conversionParams);
+                    RuntimeAugments.RunFunctionWithConservativelyReportedBuffer(dwAllocaSize, &InvokeTarget, ref conversionParams);
                     System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
                 }
 
@@ -529,14 +526,13 @@ namespace Internal.Runtime.TypeLoader
             // Note that SizeOfFrameArgumentArray does overflow checks with sufficient margin to prevent overflows here
             int nStackBytes = conversionParams._calleeArgs.SizeOfFrameArgumentArray();
             int dwAllocaSize = TransitionBlock.GetNegSpaceSize() + sizeof(TransitionBlock) + nStackBytes;
-            IntPtr invokeTargetPtr = Intrinsics.AddrOf((InvokeTargetDel)InvokeTarget);
 
             for (int i = 0; i < conversionParams.MulticastDelegateCallCount; i++)
             {
                 conversionParams.PrepareNextMulticastDelegateCall(i);
                 conversionParams._copyReturnValue = (i == (conversionParams.MulticastDelegateCallCount - 1));
 
-                RuntimeAugments.RunFunctionWithConservativelyReportedBuffer(dwAllocaSize, invokeTargetPtr, ref conversionParams);
+                RuntimeAugments.RunFunctionWithConservativelyReportedBuffer(dwAllocaSize, &InvokeTarget, ref conversionParams);
                 System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
             }
 

@@ -386,7 +386,7 @@ namespace Internal.Runtime.TypeLoader
             if (rtth.ToEETypePtr()->DynamicModule == null)
                 return true;
 
-            return rtth.ToEETypePtr()->DynamicModule->DynamicTypeSlotDispatchResolve == IntPtr.Zero;
+            return rtth.ToEETypePtr()->DynamicModule->DynamicTypeSlotDispatchResolve == null;
 #else
             return true;
 #endif

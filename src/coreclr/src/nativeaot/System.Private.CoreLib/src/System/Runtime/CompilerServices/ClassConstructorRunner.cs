@@ -85,7 +85,7 @@ namespace System.Runtime.CompilerServices
                             {
                                 NoisyLog("Calling cctor, cctor={0}, thread={1}", pfnCctor, currentManagedThreadId);
 
-                                Call(pfnCctor);
+                                ((delegate*<void>)pfnCctor)();
 
                                 // Insert a memory barrier here to order any writes executed as part of static class
                                 // construction above with respect to the initialized flag update we're about to make
@@ -470,6 +470,9 @@ namespace System.Runtime.CompilerServices
             private static BlockingRecord[] s_blockingRecords;
             private static int s_nextBlockingRecordIndex;
         }
+
+        private static int CurrentManagedThreadId => ManagedThreadId.Current;
+        private const int ManagedThreadIdNone = ManagedThreadId.IdNone;
 
         private static Lock s_cctorGlobalLock;
 

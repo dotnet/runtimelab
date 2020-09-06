@@ -257,7 +257,6 @@
     <Compile Include="src\System\Runtime\RuntimeExportAttribute.cs" />
     <Compile Include="src\System\Runtime\RuntimeImportAttribute.cs" />
     <Compile Include="src\System\Runtime\CompilerServices\ClassConstructorRunner.cs" />
-    <Compile Include="src\System\Runtime\CompilerServices\ClassConstructorRunner.NonPortable.cs" />
     <Compile Include="src\System\Runtime\CompilerServices\RuntimeHelpers.CoreRT.cs" />
     <Compile Include="src\System\WeakReference.CoreRT.cs" />
     <Compile Include="src\System\WeakReference.T.CoreRT.cs" />
@@ -398,9 +397,6 @@
     <Compile Include="$(AotCommonPath)\System\Runtime\CompilerServices\__BlockReflectionAttribute.cs">
       <Link>System\Runtime\CompilerServices\__BlockReflectionAttribute.cs</Link>
     </Compile>
-    <Compile Include="$(AotCommonPath)\System\Runtime\InteropServices\McgIntrinsicsAttribute.cs">
-      <Link>System\Runtime\InteropServices\McgIntrinsicsAttribute.cs</Link>
-    </Compile>
     <Compile Include="$(CommonPath)\System\NotImplemented.cs">
       <Link>System\NotImplemented.cs</Link>
     </Compile>
@@ -448,9 +444,6 @@
     </Compile>
     <Compile Include="..\Runtime.Base\src\System\Runtime\__Finalizer.cs">
       <Link>Runtime.Base\src\System\Runtime\__Finalizer.cs</Link>
-    </Compile>
-    <Compile Include="..\Runtime.Base\src\System\Runtime\CalliIntrinsics.cs">
-      <Link>Runtime.Base\src\System\Runtime\CalliIntrinsics.cs</Link>
     </Compile>
     <Compile Include="..\Runtime.Base\src\System\Runtime\EEType.Runtime.cs">
       <Link>Runtime.Base\src\System\Runtime\EEType.Runtime.cs</Link>

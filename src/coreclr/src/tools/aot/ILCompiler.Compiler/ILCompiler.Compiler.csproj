@@ -415,14 +415,8 @@
     <Compile Include="..\..\Common\TypeSystem\IL\ILProvider.cs">
       <Link>IL\ILProvider.cs</Link>
     </Compile>
-    <Compile Include="..\..\Common\TypeSystem\IL\Stubs\AddrOfIntrinsic.cs">
-      <Link>IL\Stubs\AddrOfIntrinsic.cs</Link>
-    </Compile>
     <Compile Include="..\..\Common\TypeSystem\IL\Stubs\ArrayMethodILEmitter.cs">
       <Link>IL\Stubs\ArrayMethodILEmitter.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Common\TypeSystem\IL\Stubs\CalliIntrinsic.cs">
-      <Link>IL\Stubs\CalliIntrinsic.cs</Link>
     </Compile>
     <Compile Include="..\..\Common\TypeSystem\IL\Stubs\UnsafeIntrinsics.cs">
       <Link>IL\Stubs\UnsafeIntrinsics.cs</Link>
