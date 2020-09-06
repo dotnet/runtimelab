@@ -433,9 +433,6 @@
     <Compile Include="$(AotCommonPath)\System\Runtime\InteropServices\McgIntrinsicsAttribute.cs">
       <Link>System\Runtime\InteropServices\McgIntrinsicsAttribute.cs</Link>
     </Compile>
-    <Compile Include="$(AotCommonPath)\System\Runtime\InteropServices\McgGeneratedNativeCallCodeAttribute.cs">
-      <Link>System\Runtime\InteropServices\McgGeneratedNativeCallCodeAttribute.cs</Link>
-    </Compile>
     <Compile Include="$(CommonPath)\System\NotImplemented.cs">
       <Link>System\NotImplemented.cs</Link>
     </Compile>
