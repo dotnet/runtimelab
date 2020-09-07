@@ -1,7 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
 
+#include "pal_config.h"
 #include "pal_threading.h"
 
 #include <limits.h>
@@ -9,6 +9,8 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <time.h>
 
 #include <pthread.h>
 
@@ -120,6 +122,42 @@ void SystemNative_LowLevelMonitor_Wait(LowLevelMonitor* monitor)
     SetIsLocked(monitor, true);
 }
 
+int32_t SystemNative_LowLevelMonitor_TimedWait(LowLevelMonitor *monitor, int32_t timeoutMilliseconds)
+{
+    assert(timeoutMilliseconds >= -1);
+
+    if (timeoutMilliseconds < 0)
+    {
+        SystemNative_LowLevelMonitor_Wait(monitor);
+        return true;
+    }
+
+    SetIsLocked(monitor, false);
+
+    int error;
+
+    // Calculate the time at which a timeout should occur, and wait. Older versions of OSX don't support clock_gettime with
+    // CLOCK_MONOTONIC, so we instead compute the relative timeout duration, and use a relative variant of the timed wait.
+    struct timespec timeoutTimeSpec;
+#if HAVE_MACH_ABSOLUTE_TIME
+    timeoutMilliseconds.tv_sec = timeoutMilliseconds / 1000;
+    timeoutMilliseconds.tv_nsec = (timeoutMilliseconds % 1000) * 1000 * 1000;
+    error = pthread_cond_timedwait_relative_np(&monitor->Condition, &monitor->Mutex, &timeoutTimeSpec);
+#else
+    error = clock_gettime(CLOCK_MONOTONIC, &timeoutTimeSpec);
+    assert(error == 0);
+    uint64_t nanoseconds = (uint64_t)timeoutMilliseconds * 1000 * 1000 + (uint64_t)timeoutTimeSpec.tv_nsec;
+    timeoutTimeSpec.tv_sec += nanoseconds / (1000 * 1000 * 1000);
+    timeoutTimeSpec.tv_nsec = nanoseconds % (1000 * 1000 * 1000);
+    error = pthread_cond_timedwait(&monitor->Condition, &monitor->Mutex, &timeoutTimeSpec);
+#endif
+    assert(error == 0 || error == ETIMEDOUT);
+
+    SetIsLocked(monitor, true);
+
+    return error == 0;
+}
+
 void SystemNative_LowLevelMonitor_Signal_Release(LowLevelMonitor* monitor)
 {
     assert(monitor != NULL);
@@ -135,4 +173,43 @@ void SystemNative_LowLevelMonitor_Signal_Release(LowLevelMonitor* monitor)
     assert(error == 0);
 
     (void)error; // unused in release build
+}
+
+int32_t SystemNative_RuntimeThread_CreateThread(uintptr_t stackSize, void *(*startAddress)(void*), void *parameter)
+{
+    bool result = false;
+    pthread_attr_t attrs;
+
+    int error = pthread_attr_init(&attrs);
+    if (error != 0)
+    {
+        // Do not call pthread_attr_destroy
+        return false;
+    }
+
+    error = pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
+    assert(error == 0);
+
+    if (stackSize > 0)
+    {
+        if (stackSize < PTHREAD_STACK_MIN)
+        {
+            stackSize = PTHREAD_STACK_MIN;
+        }
+
+        error = pthread_attr_setstacksize(&attrs, stackSize);
+        if (error != 0) goto CreateThreadExit;
+    }
+
+    pthread_t threadId;
+    error = pthread_create(&threadId, &attrs, startAddress, parameter);
+    if (error != 0) goto CreateThreadExit;
+
+    result = true;
+
+CreateThreadExit:
+    error = pthread_attr_destroy(&attrs);
+    assert(error == 0);
+
+    return result;
 }

@@ -3,6 +3,16 @@
 
 #include "pal_errno.h"
 
+int32_t SystemNative_GetErrNo()
+{
+    return errno;
+}
+
+void SystemNative_ClearErrNo()
+{
+    errno = 0;
+}
+
 int32_t SystemNative_ConvertErrorPlatformToPal(int32_t platformErrno)
 {
     return ConvertErrorPlatformToPal(platformErrno);

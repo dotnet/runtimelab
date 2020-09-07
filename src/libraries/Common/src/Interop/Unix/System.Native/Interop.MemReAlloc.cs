@@ -8,7 +8,7 @@ internal static partial class Interop
 {
     internal unsafe partial class Sys
     {
-        [DllImport(Interop.Libraries.CoreLibNative, EntryPoint = "CoreLibNative_MemReAlloc")]
+        [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_MemReAlloc")]
         internal static extern IntPtr MemReAlloc(IntPtr ptr, UIntPtr newSize);
     }
 

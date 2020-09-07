@@ -25,6 +25,10 @@ namespace System.Runtime
     {
         private const string RuntimeLibrary = "[MRT]";
 
+        [DllImport(RuntimeLibrary, ExactSpelling = true, CallingConvention = CallingConvention.Cdecl)]
+        [SuppressGCTransition]
+        internal static extern ulong PalGetTickCount64();
+
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpSendCustomEventToDebugger")]
         internal static extern void RhpSendCustomEventToDebugger(IntPtr payload, int length);

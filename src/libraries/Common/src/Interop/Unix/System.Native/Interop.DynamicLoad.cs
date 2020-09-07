@@ -8,16 +8,16 @@ internal static partial class Interop
 {
     internal unsafe partial class Sys
     {
-        [DllImport(Interop.Libraries.CoreLibNative, EntryPoint = "CoreLibNative_LoadLibrary")]
+        [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_LoadLibrary")]
         internal static extern IntPtr LoadLibrary(string filename);
 
-        [DllImport(Interop.Libraries.CoreLibNative, EntryPoint = "CoreLibNative_GetProcAddress")]
+        [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_GetProcAddress")]
         internal static extern IntPtr GetProcAddress(IntPtr handle, byte* symbol);
 
-        [DllImport(Interop.Libraries.CoreLibNative, EntryPoint = "CoreLibNative_GetProcAddress")]
+        [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_GetProcAddress")]
         internal static extern IntPtr GetProcAddress(IntPtr handle, string symbol);
 
-        [DllImport(Interop.Libraries.CoreLibNative, EntryPoint = "CoreLibNative_FreeLibrary")]
+        [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_FreeLibrary")]
         internal static extern void FreeLibrary(IntPtr handle);
     }
 }

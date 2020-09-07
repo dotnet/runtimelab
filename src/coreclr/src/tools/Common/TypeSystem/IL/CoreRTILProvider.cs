@@ -274,10 +274,7 @@ namespace Internal.IL
                         return result;
                 }
 
-                // TODO: Remove: Workaround for missing ClearInitLocals transforms in CoreRT CoreLib
-                bool clearInitLocals = ecmaMethod.Module == ecmaMethod.Context.SystemModule;
-
-                MethodIL methodIL = EcmaMethodIL.Create(ecmaMethod, clearInitLocals);
+                MethodIL methodIL = EcmaMethodIL.Create(ecmaMethod);
                 if (methodIL != null)
                     return methodIL;
 

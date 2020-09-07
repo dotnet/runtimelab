@@ -696,11 +696,6 @@ REDHAWK_PALEXPORT UInt64 REDHAWK_PALAPI PalGetTickCount64()
     return retval;
 }
 
-REDHAWK_PALEXPORT UInt32 REDHAWK_PALAPI PalGetTickCount()
-{
-    return (UInt32)PalGetTickCount64();
-}
-
 REDHAWK_PALEXPORT HANDLE REDHAWK_PALAPI PalGetModuleHandleFromPointer(_In_ void* pointer)
 {
     HANDLE moduleHandle = NULL;
