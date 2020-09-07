@@ -60,8 +60,10 @@ if defined RunNativeAot (
     call !__Command!
 
     if errorlevel 1 (
-        set TestExitCode=!ERRORLEVEL!
-        exit /b !TestExitCode!
+        ECHO END COMPILATION - FAILED
+        ECHO FAILED
+        rem TODO: Why doesn't "exit /b" end with failure? Crossgen uses that above, but it results in success here!?
+        exit 1
     )
 
     set ExePath=native\$(MSBuildProjectName)
