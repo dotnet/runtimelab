@@ -54,76 +54,6 @@ namespace System.Runtime.InteropServices
             return e.HResult;
         }
 
-        public static unsafe IntPtr AllocHGlobal(IntPtr cb)
-        {
-            return MemAlloc(cb);
-        }
-
-        public static unsafe IntPtr AllocHGlobal(int cb)
-        {
-            return AllocHGlobal((IntPtr)cb);
-        }
-
-        public static void FreeHGlobal(IntPtr hglobal)
-        {
-            MemFree(hglobal);
-        }
-
-        public static unsafe IntPtr AllocCoTaskMem(int cb)
-        {
-            IntPtr allocatedMemory = CoTaskMemAlloc(new UIntPtr(unchecked((uint)cb)));
-            if (allocatedMemory == IntPtr.Zero)
-            {
-                throw new OutOfMemoryException();
-            }
-            return allocatedMemory;
-        }
-
-        public static void FreeCoTaskMem(IntPtr ptr)
-        {
-            CoTaskMemFree(ptr);
-        }
-
-        public static IntPtr SecureStringToGlobalAllocAnsi(SecureString s)
-        {
-            if (s == null)
-            {
-                throw new ArgumentNullException(nameof(s));
-            }
-
-            return s.MarshalToString(globalAlloc: true, unicode: false);
-        }
-
-        public static IntPtr SecureStringToGlobalAllocUnicode(SecureString s)
-        {
-            if (s == null)
-            {
-                throw new ArgumentNullException(nameof(s));
-            }
-
-            return s.MarshalToString(globalAlloc: true, unicode: true); ;
-        }
-
-        public static IntPtr SecureStringToCoTaskMemAnsi(SecureString s)
-        {
-            if (s == null)
-            {
-                throw new ArgumentNullException(nameof(s));
-            }
-
-            return s.MarshalToString(globalAlloc: false, unicode: false);
-        }
-
-        public static IntPtr SecureStringToCoTaskMemUnicode(SecureString s)
-        {
-            if (s == null)
-            {
-                throw new ArgumentNullException(nameof(s));
-            }
-
-            return s.MarshalToString(globalAlloc: false, unicode: true);
-        }
-
         public static unsafe void CopyToManaged(IntPtr source, Array destination, int startIndex, int length)
         {
             if (source == IntPtr.Zero)
@@ -268,7 +198,7 @@ namespace System.Runtime.InteropServices
                     // Allocate unmanaged memory for GCHandle of delegate and function pointer of open static delegate
                     // We will store this pointer on the context slot of thunk data
                     //
-                    ContextData = AllocHGlobal(2 * IntPtr.Size);
+                    ContextData = Marshal.AllocHGlobal(2 * IntPtr.Size);
                     unsafe
                     {
                         ThunkContextData* thunkData = (ThunkContextData*)ContextData;
@@ -298,7 +228,7 @@ namespace System.Runtime.InteropServices
                         }
 
                         // Free the allocated context data memory
-                        FreeHGlobal(ContextData);
+                        Marshal.FreeHGlobal(ContextData);
                     }
                 }
             }
@@ -448,32 +378,6 @@ namespace System.Runtime.InteropServices
         #endregion
 
         #region String marshalling
-        public static unsafe string PtrToStringUni(IntPtr ptr, int len)
-        {
-            if (ptr == IntPtr.Zero)
-                throw new ArgumentNullException(nameof(ptr));
-            if (len < 0)
-                throw new ArgumentException(nameof(len));
-
-            return new string((char*)ptr, 0, len);
-        }
-
-        public static unsafe string PtrToStringUni(IntPtr ptr)
-        {
-            if (IntPtr.Zero == ptr)
-            {
-                return null;
-            }
-            else if (IsWin32Atom(ptr))
-            {
-                return null;
-            }
-            else
-            {
-                return new string((char*)ptr);
-            }
-        }
-
         public static unsafe void StringBuilderToUnicodeString(System.Text.StringBuilder stringBuilder, ushort* destination)
         {
             stringBuilder.UnsafeCopyTo((char*)destination);
@@ -708,7 +612,7 @@ namespace System.Runtime.InteropServices
             // @TODO - we really shouldn't allocate one-byte arrays and then destroy it
             byte* nativeArray = StringToAnsiString(&managedValue, 1, null, /*terminateWithNull=*/false, bestFit, throwOnUnmappableChar);
             byte native = (*nativeArray);
-            CoTaskMemFree(new IntPtr(nativeArray));
+            Marshal.FreeCoTaskMem(new IntPtr(nativeArray));
             return native;
         }
 
@@ -838,7 +742,7 @@ namespace System.Runtime.InteropServices
 
             if (pNative == null)
             {
-                pNative = (byte*)CoTaskMemAlloc((System.UIntPtr)(length + 1));
+                pNative = (byte*)Marshal.AllocCoTaskMem(checked(length + 1));
             }
             if (allAscii) // ASCII conversion
             {

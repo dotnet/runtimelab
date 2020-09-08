@@ -99,8 +99,7 @@ namespace Internal.Runtime.CompilerServices
                         System.Diagnostics.Debug.Assert(newSubChunkIndex == 0);
 
                         // New generic descriptors are allocated on the native heap and not tracked in the GC.
-                        UIntPtr allocationSize = new UIntPtr((uint)(c_genericDictionaryChunkSize * sizeof(RuntimeGeneratedGenericMethodDescriptor)));
-                        IntPtr pNewMem = Interop.MemAlloc(allocationSize);
+                        IntPtr pNewMem = Marshal.AllocHGlobal((int)(c_genericDictionaryChunkSize * sizeof(RuntimeGeneratedGenericMethodDescriptor)));
                         s_genericFunctionPointerCollection.Add(pNewMem);
                     }
 
