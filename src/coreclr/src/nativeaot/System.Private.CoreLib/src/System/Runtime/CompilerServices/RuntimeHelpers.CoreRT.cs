@@ -274,7 +274,7 @@ namespace System.Runtime.CompilerServices
                 throw new ArgumentOutOfRangeException(nameof(size));
 
             // We don't support unloading; the memory will never be freed.
-            return Marshal.AllocCoTaskMem(size);
+            return Marshal.AllocHGlobal(size);
         }
 
         public static void PrepareDelegate(Delegate d)

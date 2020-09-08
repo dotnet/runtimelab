@@ -12,26 +12,6 @@ namespace System.Runtime.InteropServices
     /// </summary>
     public partial class PInvokeMarshal
     {
-        private const long HIWORDMASK = unchecked((long)0xffffffffffff0000L);
-
-        // Win32 has the concept of Atoms, where a pointer can either be a pointer
-        // or an int.  If it's less than 64K, this is guaranteed to NOT be a
-        // pointer since the bottom 64K bytes are reserved in a process' page table.
-        // We should be careful about deallocating this stuff.  Extracted to
-        // a function to avoid C# problems with lack of support for IntPtr.
-        // We have 2 of these methods for slightly different semantics for NULL.
-        private static bool IsWin32Atom(IntPtr ptr)
-        {
-            long lPtr = (long)ptr;
-            return 0 == (lPtr & HIWORDMASK);
-        }
-
-        private static bool IsNotWin32Atom(IntPtr ptr)
-        {
-            long lPtr = (long)ptr;
-            return 0 != (lPtr & HIWORDMASK);
-        }
-
         public static void SaveLastWin32Error()
         {
             s_lastWin32Error = Interop.Kernel32.GetLastError();
@@ -40,55 +20,6 @@ namespace System.Runtime.InteropServices
         public static void ClearLastWin32Error()
         {
             Interop.Kernel32.SetLastError(0);
-        }
-
-        public static unsafe IntPtr MemAlloc(IntPtr cb)
-        {
-            return Interop.MemAlloc((UIntPtr)(void*)cb);
-        }
-
-        public static void MemFree(IntPtr hglobal)
-        {
-            if (IsNotWin32Atom(hglobal))
-            {
-                Interop.MemFree(hglobal);
-            }
-        }
-
-        public static unsafe IntPtr MemReAlloc(IntPtr pv, IntPtr cb)
-        {
-            return Interop.MemReAlloc(pv, new UIntPtr((void*)cb));
-        }
-
-        public static IntPtr CoTaskMemAlloc(UIntPtr bytes)
-        {
-            return Interop.Ole32.CoTaskMemAlloc(bytes);
-        }
-
-        public static void CoTaskMemFree(IntPtr allocatedMemory)
-        {
-            if (IsNotWin32Atom(allocatedMemory))
-            {
-                Interop.Ole32.CoTaskMemFree(allocatedMemory);
-            }
-        }
-
-        public static IntPtr CoTaskMemReAlloc(IntPtr pv, UIntPtr cb)
-        {
-            return Interop.Ole32.CoTaskMemRealloc(pv, cb);
-        }
-
-        internal static IntPtr AllocBSTR(int length)
-        {
-            IntPtr bstr = Interop.OleAut32.SysAllocStringLen(null, length);
-            if (bstr == IntPtr.Zero)
-                throw new OutOfMemoryException();
-            return bstr;
-        }
-
-        internal static void FreeBSTR(IntPtr ptr)
-        {
-            Interop.OleAut32.SysFreeString(ptr);
         }
 
         #region String marshalling
@@ -157,19 +88,6 @@ namespace System.Runtime.InteropServices
         unsafe public static int GetCharCount(byte* multiByteStr, int multiByteLen)
         {
             return Interop.Kernel32.MultiByteToWideChar(Interop.Kernel32.CP_ACP, 0, multiByteStr, multiByteLen, default(char*), 0);
-        }
-
-        public static unsafe int GetSystemMaxDBCSCharSize()
-        {
-            Interop.Kernel32.CPINFO cpInfo;
-            if (Interop.Kernel32.GetCPInfo(Interop.Kernel32.CP_ACP, &cpInfo) != 0)
-            {
-                return cpInfo.MaxCharSize;
-            }
-            else
-            {
-                return 2;
-            }
         }
         #endregion
     }

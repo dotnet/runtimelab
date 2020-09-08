@@ -124,12 +124,12 @@ namespace Internal.Runtime.TypeLoader
 
         public static IntPtr AllocateMemory(int cbBytes)
         {
-            return PInvokeMarshal.MemAlloc(new IntPtr(cbBytes));
+            return Marshal.AllocHGlobal(new IntPtr(cbBytes));
         }
 
         public static void FreeMemory(IntPtr memoryPtrToFree)
         {
-            PInvokeMarshal.MemFree(memoryPtrToFree);
+            Marshal.FreeHGlobal(memoryPtrToFree);
         }
     }
 
