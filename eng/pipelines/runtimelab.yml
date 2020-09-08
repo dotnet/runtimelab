@@ -65,7 +65,7 @@ jobs:
     jobParameters:
       timeoutInMinutes: 90
       testGroup: innerloop
-      buildArgs: -s nativeaot+libs+installer -c debug -runtimeConfiguration Checked
+      buildArgs: -s nativeaot+libs+installer -lc release -rc checked
       extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
 
 #
