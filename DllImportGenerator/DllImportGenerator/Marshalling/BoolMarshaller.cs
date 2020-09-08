@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -53,16 +53,20 @@ namespace Microsoft.Interop
                     break;
                 case StubCodeContext.Stage.Marshal:
                     // <nativeIdentifier> = (<nativeType>)(<managedIdentifier> ? 1 : 0);
-                    yield return ExpressionStatement(
-                        AssignmentExpression(
-                            SyntaxKind.SimpleAssignmentExpression,
-                            IdentifierName(nativeIdentifier),
-                            CastExpression(
-                                info.NativeType.AsTypeSyntax(),
-                                ParenthesizedExpression(
-                                    ConditionalExpression(IdentifierName(managedIdentifier),
-                                        LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)),
-                                        LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)))))));
+                    if (info.RefKind != RefKind.Out)
+                    {
+                        yield return ExpressionStatement(
+                            AssignmentExpression(
+                                SyntaxKind.SimpleAssignmentExpression,
+                                IdentifierName(nativeIdentifier),
+                                CastExpression(
+                                    info.NativeType.AsTypeSyntax(),
+                                    ParenthesizedExpression(
+                                        ConditionalExpression(IdentifierName(managedIdentifier),
+                                            LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)),
+                                            LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)))))));
+                    }
+
                     break;
                 case StubCodeContext.Stage.Unmarshal:
                     if (info.IsReturnType || info.IsByRef)

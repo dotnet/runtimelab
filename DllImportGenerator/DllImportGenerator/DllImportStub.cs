@@ -27,7 +27,7 @@ namespace Microsoft.Interop
         public IEnumerable<TypeDeclarationSyntax> StubContainingTypes { get; private set; }
 
         public TypeSyntax StubReturnType { get => this.returnTypeInfo.ManagedType.AsTypeSyntax(); }
- 
+
         public IEnumerable<ParameterSyntax> StubParameters
         {
             get

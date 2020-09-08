@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 using Microsoft.CodeAnalysis;
@@ -23,10 +23,15 @@ namespace Microsoft.Interop
 
         public Stage CurrentStage { get; private set; }
 
-        // Identifier for managed return value
+        /// <summary>
+        /// Identifier for managed return value
+        /// </summary>
         public string ReturnIdentifier => returnIdentifier;
 
-        // Same as the managed identifier by default
+        /// <summary>
+        /// Identifier for native return value
+        /// </summary>
+        /// <remarks>Same as the managed identifier by default</remarks>
         public string ReturnNativeIdentifier { get; private set; } = returnIdentifier;
 
         private const string returnIdentifier = "__retVal";
@@ -37,15 +42,25 @@ namespace Microsoft.Interop
             CurrentStage = stage;
         }
 
+        /// <summary>
+        /// Generate an identifier for the native return value and update the context with the new value
+        /// </summary>
+        /// <returns>Identifier for the native return value</returns>
         public string GenerateReturnNativeIdentifier()
         {
-            Debug.Assert(CurrentStage == Stage.Setup);
+            if (CurrentStage != Stage.Setup)
+                throw new InvalidOperationException();
 
             // Update the native identifier for the return value
             ReturnNativeIdentifier = $"{ReturnIdentifier}{generatedNativeIdentifierSuffix}";
             return ReturnNativeIdentifier;
         }
 
+        /// <summary>
+        /// Get managed and native instance identifiers for the <paramref name="info"/>
+        /// </summary>
+        /// <param name="info">Object for which to get identifiers</param>
+        /// <returns>Managed and native identifiers</returns>
         public (string managed, string native) GetIdentifiers(TypePositionInfo info)
         {
             string managedIdentifier = info.IsReturnType
@@ -69,7 +84,6 @@ namespace Microsoft.Interop
             IEnumerable<TypePositionInfo> paramsTypeInfo,
             TypePositionInfo retTypeInfo)
         {
-            bool returnsVoid = retTypeInfo.ManagedType.SpecialType == SpecialType.System_Void;
             var paramMarshallers = paramsTypeInfo.Select(p => GetMarshalInfo(p)).ToList();
             var retMarshaller = GetMarshalInfo(retTypeInfo);
 
@@ -92,6 +106,7 @@ namespace Microsoft.Interop
                             Token(SyntaxKind.DefaultKeyword)))));
             }
 
+            bool returnsVoid = retTypeInfo.ManagedType.SpecialType == SpecialType.System_Void;
             if (!returnsVoid)
             {
                 // Declare variable for return value
@@ -113,6 +128,7 @@ namespace Microsoft.Interop
             };
 
             var invoke = InvocationExpression(IdentifierName(dllImportName));
+            var fixedStatements = new List<FixedStatementSyntax>();
             foreach (var stage in stages)
             {
                 int initialCount = statements.Count;
@@ -120,10 +136,12 @@ namespace Microsoft.Interop
 
                 if (!returnsVoid && (stage == Stage.Setup || stage == Stage.Unmarshal))
                 {
+                    // Handle setup and unmarshalling for return
                     var retStatements = retMarshaller.Generator.Generate(retMarshaller.TypeInfo, context);
                     statements.AddRange(retStatements);
                 }
 
+                // Generate code for each parameter for the current stage
                 foreach (var marshaller in paramMarshallers)
                 {
                     if (stage == Stage.Invoke)
@@ -134,27 +152,55 @@ namespace Microsoft.Interop
                     }
                     else
                     {
-                        // [TODO] Handle pinnig / fixed statements
                         var generatedStatements = marshaller.Generator.Generate(marshaller.TypeInfo, context);
-                        statements.AddRange(generatedStatements);
+                        if (stage == Stage.Pin)
+                        {
+                            // Collect all the fixed statements. These will be used in the Invoke stage.
+                            foreach (var statement in generatedStatements)
+                            {
+                                if (statement is not FixedStatementSyntax fixedStatement)
+                                    continue;
+
+                                fixedStatements.Add(fixedStatement);
+                            }
+                        }
+                        else
+                        {
+                            statements.AddRange(generatedStatements);
+                        }
                     }
                 }
 
                 if (stage == Stage.Invoke)
                 {
+                    StatementSyntax invokeStatement;
+
                     // Assign to return value if necessary
                     if (returnsVoid)
                     {
-                        statements.Add(ExpressionStatement(invoke));
+                        invokeStatement = ExpressionStatement(invoke);
                     }
                     else
                     {
-                        statements.Add(ExpressionStatement(
+                        invokeStatement = ExpressionStatement(
                             AssignmentExpression(
                                 SyntaxKind.SimpleAssignmentExpression,
                                 IdentifierName(context.ReturnNativeIdentifier),
-                                invoke)));
+                                invoke));
                     }
+
+                    // Nest invocation in fixed statements
+                    if (fixedStatements.Any())
+                    {
+                        fixedStatements.Reverse();
+                        invokeStatement = fixedStatements.First().WithStatement(Block(invokeStatement));
+                        foreach (var fixedStatement in fixedStatements.Skip(1))
+                        {
+                            invokeStatement = fixedStatement.WithStatement(Block(invokeStatement));
+                        }
+                    }
+
+                    statements.Add(invokeStatement);
                 }
 
                 if (statements.Count > initialCount)
@@ -174,6 +220,9 @@ namespace Microsoft.Interop
             if (!returnsVoid)
                 statements.Add(ReturnStatement(IdentifierName(context.ReturnIdentifier)));
 
+            // Wrap all statements in an unsafe block
+            var codeBlock = Block(UnsafeStatement(Block(statements)));
+
             // Define P/Invoke declaration
             var dllImport = MethodDeclaration(retMarshaller.Generator.AsNativeType(retMarshaller.TypeInfo), dllImportName)
                 .AddModifiers(
@@ -188,8 +237,7 @@ namespace Microsoft.Interop
                 dllImport = dllImport.AddParameterListParameters(paramSyntax);
             }
 
-            // Wrap all statements in an unsafe block
-            return (Block(UnsafeStatement(Block(statements))), dllImport);
+            return (codeBlock, dllImport);
         }
 
         private static (TypePositionInfo TypeInfo, IMarshallingGenerator Generator) GetMarshalInfo(TypePositionInfo info)

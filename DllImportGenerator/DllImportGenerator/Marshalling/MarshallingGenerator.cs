@@ -5,12 +5,44 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Microsoft.Interop
 {
+    /// <summary>
+    /// Interface for generation of marshalling code for P/Invoke stubs
+    /// </summary>
     interface IMarshallingGenerator
     {
+        /// <summary>
+        /// Get the native type syntax for <paramref name="info"/>
+        /// </summary>
+        /// <param name="info">Object to marshal</param>
+        /// <returns>Type syntax for the native type representing <paramref name="info"/></returns>
         TypeSyntax AsNativeType(TypePositionInfo info);
+
+        /// <summary>
+        /// Get the <paramref name="info"/> as an argument to be passed to the P/Invoke
+        /// </summary>
+        /// <param name="info">Object to marshal</param>
+        /// <returns>Argument syntax for <paramref name="info"/></returns>
         ArgumentSyntax AsArgument(TypePositionInfo info);
+
+        /// <summary>
+        /// Get the <paramref name="info"/> as a parameter of the P/Invoke declaration
+        /// </summary>
+        /// <param name="info">Object to marshal</param>
+        /// <returns>Parameter syntax for <paramref name="info"/></returns>
         ParameterSyntax AsParameter(TypePositionInfo info);
 
+        /// <summary>
+        /// Generate code for marshalling
+        /// </summary>
+        /// <param name="info">Object to marshal</param>
+        /// <param name="context">Code generation context</param>
+        /// <returns>List of statements to be added to the P/Invoke stub</returns>
+        /// <remarks>
+        /// The generator should return the appropriate statements based on the
+        /// <see cref="StubCodeContext.CurrentStage" /> of <paramref name="context"/>.
+        /// For <see cref="StubCodeContext.Stage.Pin"/>, any statements not of type
+        /// <see cref="FixedStatementSyntax"/> will be ignored.
+        /// </remarks>
         IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context);
     }
 
