@@ -98,7 +98,7 @@ if defined RunNativeAot (
     <IlcCompileInput Include="%24(MSBuildProjectDirectory)\*.dll" Exclude="%24(MSBuildProjectDirectory)\$(MSBuildProjectName).dll" />
   </ItemGroup>
 
-  <!-- Since tests are already compiled, override Compile target to prevent CSC running -->
+  <!-- We don't do anything in the Compile step since the test is already compiled to IL - the AOT compiler hooks up after this -->
   <Target Name="Compile" />
 
   <Import Project="%24(IlcPath)\build\Microsoft.NETCore.Native.targets" />

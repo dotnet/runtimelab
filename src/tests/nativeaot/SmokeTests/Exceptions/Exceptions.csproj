@@ -6,6 +6,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Delegates.cs" />
+    <Compile Include="Exceptions.cs" />
   </ItemGroup>
 </Project>
