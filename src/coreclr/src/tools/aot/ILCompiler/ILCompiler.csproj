@@ -54,14 +54,14 @@
       <Pack>false</Pack>
     </Content>
 
-    <Content Include="$(BinDir)\jitinterface$(LibraryNameExtension)">
+    <Content Include="$(BinDir)\$(LibraryNamePrefix)jitinterface$(LibraryNameExtension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
     </Content>
 
-    <Content Include="$(BinDir)\clrjit$(LibraryNameExtension)">
-      <Link>clrjitilc$(LibraryNameExtension)</Link>
+    <Content Include="$(BinDir)\$(LibraryNamePrefix)clrjit$(LibraryNameExtension)">
+      <Link>$(LibraryNamePrefix)clrjitilc$(LibraryNameExtension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
