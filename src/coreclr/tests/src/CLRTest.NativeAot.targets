@@ -34,7 +34,7 @@ WARNING:   When setting properties based on their current state (for example:
     <PropertyGroup>
       <NativeAotBashScript Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(NativeAotTest)' != 'false'">
         <![CDATA[
-if [ ! -z ${RunCrossGen2+x} ]%3B then
+if [ ! -z ${RunNativeAot+x} ]%3B then
     __Command=$_DebuggerFullPath
     # Tests run locally need __TestDotNetCmd (set by runtest.py) or a compatible 5.0 dotnet runtime in the path
     if [ ! -z ${__TestDotNetCmd+x} ] %3B then
