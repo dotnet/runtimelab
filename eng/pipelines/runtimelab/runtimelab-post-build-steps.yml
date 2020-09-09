@@ -5,18 +5,14 @@ parameters:
   osSubgroup: ''
   uploadTests: false
 
-variables:
-  - ${{ if eq(parameters.osGroup, 'Windows_NT') }}:
-    - name: scriptParamPrefix
-      value: ''
-  - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
-    - name: scriptParamPrefix
-      value: '--'
-
 steps:
   # Build coreclr native test output
   - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) skipstressdependencies $(buildConfigUpper) ${{ parameters.archType }}
     displayName: Build tests
 
-  - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) $(scriptParamPrefix)runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
-    displayName: Run tests
+  - ${{ if eq(parameters.osGroup, 'Windows_NT') }}:
+    - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
+      displayName: Run tests
+  - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
+    - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
+      displayName: Run tests
