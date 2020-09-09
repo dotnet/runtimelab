@@ -242,36 +242,6 @@ namespace System.Runtime.InteropServices
             return (o == null) || o.EETypePtr.MightBeBlittable();
         }
 
-        public static IntPtr AllocHGlobal(IntPtr cb)
-        {
-            return PInvokeMarshal.AllocHGlobal(cb);
-        }
-
-        public static void FreeHGlobal(IntPtr hglobal)
-        {
-            PInvokeMarshal.FreeHGlobal(hglobal);
-        }
-
-        internal static IntPtr AllocBSTR(int length)
-        {
-            return PInvokeMarshal.AllocBSTR(length);
-        }
-
-        public static void FreeBSTR(IntPtr ptr)
-        {
-            PInvokeMarshal.FreeBSTR(ptr);
-        }
-
-        public static unsafe IntPtr AllocCoTaskMem(int cb)
-        {
-            return PInvokeMarshal.AllocCoTaskMem(cb);
-        }
-
-        public static void FreeCoTaskMem(IntPtr ptr)
-        {
-            PInvokeMarshal.FreeCoTaskMem(ptr);
-        }
-
         public static int GetExceptionCode()
         {
             // Obsolete
@@ -281,16 +251,6 @@ namespace System.Runtime.InteropServices
         public static IntPtr GetExceptionPointers()
         {
             throw new PlatformNotSupportedException();
-        }
-
-        public static string PtrToStringBSTR(IntPtr ptr)
-        {
-            if (ptr == IntPtr.Zero)
-            {
-                throw new ArgumentNullException(nameof(ptr));
-            }
-
-            return PtrToStringUni(ptr, (int)(SysStringByteLen(ptr) / sizeof(char)));
         }
 
         public static byte ReadByte(object ptr, int ofs)
@@ -363,36 +323,6 @@ namespace System.Runtime.InteropServices
                 DestroyStructure(nativeBytes, structType);
                 FreeCoTaskMem(nativeBytes);
             }
-        }
-
-        public static IntPtr ReAllocCoTaskMem(IntPtr pv, int cb)
-        {
-            return PInvokeMarshal.CoTaskMemReAlloc(pv, (UIntPtr)cb);
-        }
-
-        public static IntPtr ReAllocHGlobal(IntPtr pv, IntPtr cb)
-        {
-            return PInvokeMarshal.MemReAlloc(pv, cb);
-        }
-
-        public static unsafe IntPtr StringToBSTR(string s)
-        {
-            if (s == null)
-                return IntPtr.Zero;
-
-            // Overflow checking
-            if (s.Length + 1 < s.Length)
-                throw new ArgumentOutOfRangeException(nameof(s));
-
-#if TARGET_WINDOWS
-            IntPtr bstr = Interop.OleAut32.SysAllocStringLen(s, s.Length);
-            if (bstr == IntPtr.Zero)
-                throw new OutOfMemoryException();
-
-            return bstr;
-#else
-            throw new PlatformNotSupportedException();
-#endif
         }
 
         public static void WriteByte(object ptr, int ofs, byte val)

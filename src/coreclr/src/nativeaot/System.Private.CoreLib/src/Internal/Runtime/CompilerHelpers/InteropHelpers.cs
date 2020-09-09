@@ -36,11 +36,11 @@ namespace Internal.Runtime.CompilerHelpers
 
             fixed (char* charsPtr = str)
             {
-                int length = Encoding.UTF8.GetByteCount(str) + 1;
-                byte* bytesPtr = (byte*)PInvokeMarshal.CoTaskMemAlloc((System.UIntPtr)length);
+                int length = Encoding.UTF8.GetByteCount(str);
+                byte* bytesPtr = (byte*)Marshal.AllocCoTaskMem(checked(length + 1));
                 int bytes = Encoding.UTF8.GetBytes(charsPtr, str.Length, bytesPtr, length);
-                Debug.Assert(bytes + 1 == length);
-                bytesPtr[length - 1] = 0;
+                Debug.Assert(bytes == length);
+                bytesPtr[length] = 0;
                 return bytesPtr;
             }
         }
@@ -112,7 +112,7 @@ namespace Internal.Runtime.CompilerHelpers
 
             int stringLength = str.Length;
 
-            char* buffer = (char*)PInvokeMarshal.CoTaskMemAlloc((nuint)(sizeof(char) * (stringLength + 1))).ToPointer();
+            char* buffer = (char*)Marshal.AllocCoTaskMem(sizeof(char) * (stringLength + 1));
 
             fixed (char* pStr = str)
             {
@@ -129,7 +129,7 @@ namespace Internal.Runtime.CompilerHelpers
             {
                 return null;
             }
-            return (byte *)CoTaskMemAllocAndZeroMemory((nuint)checked((sb.Capacity + 2) * PInvokeMarshal.GetSystemMaxDBCSCharSize()));
+            return (byte *)CoTaskMemAllocAndZeroMemory(checked((sb.Capacity + 2) * Marshal.SystemMaxDBCSCharSize));
         }
 
         public static unsafe char* AllocMemoryForUnicodeStringBuilder(StringBuilder sb)
@@ -138,7 +138,7 @@ namespace Internal.Runtime.CompilerHelpers
             {
                 return null;
             }
-            return (char *)CoTaskMemAllocAndZeroMemory((nuint)(checked((sb.Capacity + 2) * 2)));
+            return (char *)CoTaskMemAllocAndZeroMemory(checked((sb.Capacity + 2) * 2));
         }
 
         public static unsafe byte* AllocMemoryForAnsiCharArray(char[] chArray)
@@ -147,7 +147,7 @@ namespace Internal.Runtime.CompilerHelpers
             {
                 return null;
             }
-            return (byte*)CoTaskMemAllocAndZeroMemory((nuint)(checked((chArray.Length + 2) * PInvokeMarshal.GetSystemMaxDBCSCharSize())));
+            return (byte*)CoTaskMemAllocAndZeroMemory(checked((chArray.Length + 2) * Marshal.SystemMaxDBCSCharSize));
         }
 
         public static unsafe void AnsiStringToStringBuilder(byte* newBuffer, System.Text.StringBuilder stringBuilder)
@@ -373,20 +373,20 @@ namespace Internal.Runtime.CompilerHelpers
         }
 #endif
 
-        internal unsafe static void* CoTaskMemAllocAndZeroMemory(nuint size)
+        internal unsafe static void* CoTaskMemAllocAndZeroMemory(int size)
         {
-            byte* ptr = (byte*)PInvokeMarshal.CoTaskMemAlloc(size);
+            byte* ptr = (byte*)Marshal.AllocCoTaskMem(size);
 
-            // PInvokeMarshal.CoTaskMemAlloc will throw OOMException if out of memory
+            // Marshal.AllocCoTaskMem will throw OOMException if out of memory
             Debug.Assert(ptr != null);
 
-            Buffer.ZeroMemory(ptr, size);
+            Buffer.ZeroMemory(ptr, (uint)size);
             return ptr;
         }
 
         internal unsafe static void CoTaskMemFree(void* p)
         {
-            PInvokeMarshal.CoTaskMemFree((IntPtr)p);
+            Marshal.FreeCoTaskMem((IntPtr)p);
         }
 
         /// <summary>

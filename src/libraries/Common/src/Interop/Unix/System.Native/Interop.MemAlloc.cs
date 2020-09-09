@@ -9,24 +9,12 @@ internal static partial class Interop
     internal unsafe partial class Sys
     {
         [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_MemAlloc")]
-        internal static extern IntPtr MemAlloc(UIntPtr sizeInBytes);
+        internal static extern IntPtr MemAlloc(nuint sizeInBytes);
+
+        [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_MemReAlloc")]
+        internal static extern IntPtr MemReAlloc(IntPtr ptr, nuint newSize);
 
         [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_MemFree")]
         internal static extern void MemFree(IntPtr ptr);
-    }
-
-    internal static IntPtr MemAlloc(UIntPtr sizeInBytes)
-    {
-        IntPtr allocatedMemory = Interop.Sys.MemAlloc(sizeInBytes);
-        if (allocatedMemory == IntPtr.Zero)
-        {
-            throw new OutOfMemoryException();
-        }
-        return allocatedMemory;
-    }
-
-    internal static void MemFree(IntPtr allocatedMemory)
-    {
-        Interop.Sys.MemFree(allocatedMemory);
     }
 }

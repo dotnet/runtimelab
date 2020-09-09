@@ -286,20 +286,11 @@
     <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.SetLastError.cs">
       <Link>Interop\Windows\Kernel32\Interop.SetLastError.cs</Link>
     </Compile>
-    <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.MemAllocFree.cs">
-      <Link>Interop\Windows\Kernel32\Interop.MemAllocFree.cs</Link>
-    </Compile>
-    <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.MemReAlloc.cs">
-      <Link>Interop\Windows\Kernel32\Interop.MemReAlloc.cs</Link>
-    </Compile>
     <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.IsDebuggerPresent.cs">
       <Link>Interop\Windows\Kernel32\Interop.IsDebuggerPresent.cs</Link>
     </Compile>
     <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.RaiseFailFastException.cs">
       <Link>Interop\Windows\Kernel32\Interop.RaiseFailFastException.cs</Link>
-    </Compile>
-    <Compile Include="$(CommonPath)\Interop\Windows\Ole32\Interop.CoTaskMemAlloc.cs">
-      <Link>Interop\Windows\Ole32\Interop.CoTaskMemAlloc.cs</Link>
     </Compile>
     <Compile Include="$(CommonPath)\Interop\Windows\Ole32\Interop.CoInitializeEx.cs">
       <Link>Interop\Windows\Ole32\Interop.CoInitializeEx.cs</Link>
@@ -376,12 +367,6 @@
     </Compile>
     <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.GetExecutableAbsolutePath.cs">
       <Link>Interop\Unix\System.Native\Interop.GetExecutableAbsolutePath.cs</Link>
-    </Compile>
-    <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.MemAllocFree.cs">
-      <Link>Interop\Unix\System.Native\Interop.MemAllocFree.cs</Link>
-    </Compile>
-    <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.MemReAlloc.cs">
-      <Link>Interop\Unix\System.Native\Interop.MemReAlloc.cs</Link>
     </Compile>
     <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.SchedGetCpu.cs">
       <Link>Interop\Unix\System.Native\Interop.SchedGetCpu.cs</Link>
