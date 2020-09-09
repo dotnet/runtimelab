@@ -119,7 +119,7 @@ include_directories("../../artifacts/obj/coreclr")
 
 if(FEATURE_STANDALONE_GC)
   add_definitions(-DFEATURE_STANDALONE_GC)
-  add_subdirectory(src/gc)
+  #add_subdirectory(src/gc)
 endif(FEATURE_STANDALONE_GC)
 
 if (CLR_CMAKE_HOST_UNIX)
