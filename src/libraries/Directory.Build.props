@@ -98,7 +98,6 @@
     <!-- TODO: Reenable when mono supports utf8string. -->
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)\System.Utf8String.Experimental\**\*.csproj" Condition="'$(RuntimeFlavor)' == 'Mono'" />
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)\System.Utf8String.Experimental\**\*.csproj" Condition="'$(ClrNativeAOT)' == 'true'" />
-    <ProjectExclusions Include="$(MSBuildThisFileDirectory)\Microsoft.Extensions*\**\*.csproj" Condition="'$(ClrNativeAOT)' == 'true'" />
   </ItemGroup>
 
   <PropertyGroup>

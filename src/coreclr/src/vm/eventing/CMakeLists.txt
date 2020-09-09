@@ -34,7 +34,7 @@ set_source_files_properties(${EventingHeaders} PROPERTIES GENERATED TRUE)
 
 add_dependencies(eventing_headers eventprovider)
 
-#add_subdirectory(eventpipe)
+add_subdirectory(eventpipe)
 
 if(CLR_CMAKE_HOST_WIN32)
   add_subdirectory(EtwProvider)
