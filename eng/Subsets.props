@@ -62,7 +62,7 @@
   <PropertyGroup>
     <DefaultCoreClrSubsets>clr.runtime+clr.jit+clr.alljits+linuxdac+clr.corelib+clr.nativecorelib+clr.tools+clr.packages</DefaultCoreClrSubsets>
 
-    <DefaultNativeAotSubsets>clr.runtime+clr.jit+nativeaot.tools+nativeaot.libs</DefaultNativeAotSubsets>
+    <DefaultNativeAotSubsets>clr.jit+nativeaot.tools+nativeaot.libs</DefaultNativeAotSubsets>
 
     <DefaultMonoSubsets Condition="'$(MonoEnableLLVM)' == 'true' and '$(MonoLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
     <DefaultMonoSubsets Condition="'$(TargetOS)' == 'Browser'">$(DefaultMonoSubsets)mono.wasmruntime+</DefaultMonoSubsets>

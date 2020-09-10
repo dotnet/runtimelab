@@ -6,12 +6,14 @@ using System.Diagnostics;
 using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace System.Threading
 {
     //
     // Windows-specific implementation of ThreadPool
     //
+    [UnsupportedOSPlatform("browser")]
     public sealed class RegisteredWaitHandle : MarshalByRefObject
     {
         private readonly Lock _lock;
