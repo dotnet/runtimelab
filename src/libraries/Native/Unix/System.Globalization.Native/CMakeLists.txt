@@ -84,7 +84,13 @@ add_library(System.Globalization.Native_obj
     ${NATIVEGLOBALIZATION_SOURCES}
 )
 
+add_library(System.Globalization.Native_static
+    STATIC
+    ${NATIVEGLOBALIZATION_SOURCES}
+)
+
 set_target_properties(System.Globalization.Native_obj PROPERTIES OUTPUT_NAME System.Globalization.Native  CLEAN_DIRECT_OUTPUT 1)
+set_target_properties(System.Globalization.Native_static PROPERTIES OUTPUT_NAME System.Globalization.Native  CLEAN_DIRECT_OUTPUT 1)
 
 add_library(System.Globalization.Native-static INTERFACE)
 target_sources(System.Globalization.Native-static INTERFACE $<TARGET_OBJECTS:System.Globalization.Native_obj>)
@@ -100,3 +106,5 @@ if(NOT CLR_CMAKE_TARGET_OSX AND NOT CLR_CMAKE_TARGET_IOS AND NOT CLR_CMAKE_TARGE
         )
     endif()
 endif()
+
+install (TARGETS System.Globalization.Native_static DESTINATION .)

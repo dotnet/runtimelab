@@ -74,7 +74,7 @@ namespace ILCompiler
             {
                 // Account for System.Private.CoreLib.Native / System.Globalization.Native / System.Native / etc
                 // TODO: Remove "System." prefix - temporary workaround for https://github.com/dotnet/corert/issues/8241
-                return importModule.StartsWith("libSystem.") || importModule.StartsWith("System.");
+                return importModule.StartsWith("libSystem.") || importModule.StartsWith("System.") || importModule == "QCall";
             }
         }
     }
