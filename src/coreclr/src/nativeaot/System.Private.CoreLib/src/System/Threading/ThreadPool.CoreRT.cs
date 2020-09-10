@@ -13,6 +13,7 @@
 #pragma warning disable 0420
 
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace System.Threading
 {
@@ -43,6 +44,7 @@ namespace System.Threading
             throw new PlatformNotSupportedException(SR.Arg_PlatformNotSupported); // Replaced by ThreadPoolBoundHandle.BindHandle
         }
 
+        [SupportedOSPlatform("windows")]
         public static bool BindHandle(SafeHandle osHandle)
         {
             throw new PlatformNotSupportedException(SR.Arg_PlatformNotSupported); // Replaced by ThreadPoolBoundHandle.BindHandle

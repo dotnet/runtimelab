@@ -52,7 +52,8 @@ namespace ILCompiler
                         methodName == "LoadLibraryExW" ||
                         methodName == "GetProcAddress" ||
                         methodName == "SetLastError" ||
-                        methodName == "GetLastError")
+                        methodName == "GetLastError" ||
+                        methodName == "LocalAlloc")
                     {
                         return true;
                     }
