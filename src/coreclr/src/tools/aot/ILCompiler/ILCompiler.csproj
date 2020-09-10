@@ -54,7 +54,7 @@
       <Pack>false</Pack>
     </Content>
 
-    <Content Include="$(BinDir)\$(LibraryNamePrefix)jitinterface$(LibraryNameExtension)">
+    <Content Include="$(BinDir)\$(LibraryNamePrefix)jitinterface_$(TargetArchitecture)$(LibraryNameExtension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
