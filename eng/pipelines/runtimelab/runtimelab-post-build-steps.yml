@@ -13,6 +13,6 @@ steps:
   - ${{ if eq(parameters.osGroup, 'Windows_NT') }}:
     - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
       displayName: Run tests
-  - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
-    - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
-      displayName: Run tests
+  #- ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
+  #  - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
+  #    displayName: Run tests
