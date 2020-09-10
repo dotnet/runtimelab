@@ -9,5 +9,12 @@ if(MSVC)
                                     # and CFG is enabled in the linker
 endif (MSVC)
 
+if(CLR_CMAKE_HOST_UNIX)
+  if(CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_I386)
+    # Allow 16 byte compare-exchange
+    add_compile_options(-mcx16)
+  endif(CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_I386)
+endif (CLR_CMAKE_HOST_UNIX)
+
 add_subdirectory(Bootstrap)
 add_subdirectory(Runtime)
