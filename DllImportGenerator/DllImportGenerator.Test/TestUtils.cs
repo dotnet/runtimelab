@@ -37,6 +37,7 @@ namespace DllImportGenerator.Test
         /// </summary>
         /// <param name="source">Source to compile</param>
         /// <param name="outputKind">Output type</param>
+        /// <param name="allowUnsafe">Whether or not use of the unsafe keyword should be allowed</param>
         /// <returns>The resulting compilation</returns>
         public static async Task<Compilation> CreateCompilation(string source, OutputKind outputKind = OutputKind.DynamicallyLinkedLibrary, bool allowUnsafe = true)
         {

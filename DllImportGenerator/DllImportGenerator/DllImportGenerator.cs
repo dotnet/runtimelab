@@ -92,9 +92,14 @@ namespace Microsoft.Interop
                 AttributeList(
                     SingletonSeparatedList<AttributeSyntax>(dllImportAttr)));
 
-            // Add stub function and DllImport declaration to the containing types
+            // Stub should have at least one containing type
+            Debug.Assert(stub.StubContainingTypes.Any());
+
+            // Add stub function and DllImport declaration to the first (innermost) containing
             MemberDeclarationSyntax containingType = stub.StubContainingTypes.First()
-                .AddMembers(stubMethod, dllImport );
+                .AddMembers(stubMethod, dllImport);
+
+            // Add type to the remaining containing types (skipping the first which was handled above)
             foreach (var typeDecl in stub.StubContainingTypes.Skip(1))
             {
                 containingType = typeDecl.WithMembers(
@@ -103,7 +108,7 @@ namespace Microsoft.Interop
 
             MemberDeclarationSyntax toPrint = containingType;
 
-            // Add types to the containing namespace
+            // Add type to the containing namespace
             if (!(stub.StubTypeNamespace is null))
             {
                 toPrint = NamespaceDeclaration(IdentifierName(stub.StubTypeNamespace))

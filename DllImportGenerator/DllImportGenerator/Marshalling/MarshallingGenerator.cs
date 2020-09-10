@@ -8,7 +8,7 @@ namespace Microsoft.Interop
     /// <summary>
     /// Interface for generation of marshalling code for P/Invoke stubs
     /// </summary>
-    interface IMarshallingGenerator
+    internal interface IMarshallingGenerator
     {
         /// <summary>
         /// Get the native type syntax for <paramref name="info"/>
@@ -46,7 +46,7 @@ namespace Microsoft.Interop
         IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context);
     }
 
-    class MarshallingGenerators
+    internal class MarshallingGenerators
     {
         public static readonly BoolMarshaller Bool = new BoolMarshaller();
         public static readonly Forwarder Forwarder = new Forwarder();
@@ -54,6 +54,10 @@ namespace Microsoft.Interop
 
         public static bool TryCreate(TypePositionInfo info, out IMarshallingGenerator generator)
         {
+#if GENERATE_FORWARDER
+            generator = MarshallingGenerators.Forwarder;
+            return true;
+#else
             switch (info.ManagedType.SpecialType)
             {
                 case SpecialType.System_SByte:
@@ -76,6 +80,7 @@ namespace Microsoft.Interop
                     generator = MarshallingGenerators.Forwarder;
                     return false;
             }
+#endif
         }
     }
 }

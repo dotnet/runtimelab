@@ -11,13 +11,43 @@ namespace Microsoft.Interop
 {
     class StubCodeContext
     {
+        /// <summary>
+        /// Code generation stage
+        /// </summary>
         public enum Stage
         {
+            /// <summary>
+            /// Perform any setup required
+            /// </summary>
             Setup,
+
+            /// <summary>
+            /// Convert managed data to native data
+            /// </summary>
             Marshal,
+
+            /// <summary>
+            /// Pin data in preparation for calling the generated P/Invoke
+            /// </summary>
             Pin,
+
+            /// <summary>
+            /// Call the generated P/Invoke
+            /// </summary>
+            /// <remarks>
+            /// <see cref="IMarshallingGenerator.AsArgument(TypePositionInfo)"/> should provide the
+            /// argument to pass to the P/Invoke
+            /// </remarks>
             Invoke,
+
+            /// <summary>
+            /// Convert native data to managed data
+            /// </summary>
             Unmarshal,
+
+            /// <summary>
+            /// Perform any cleanup required
+            /// </summary>
             Cleanup
         }
 

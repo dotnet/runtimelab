@@ -7,7 +7,7 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
 {
-    class NumericMarshaller : IMarshallingGenerator
+    internal class NumericMarshaller : IMarshallingGenerator
     {
         public TypeSyntax AsNativeType(TypePositionInfo info)
         {
