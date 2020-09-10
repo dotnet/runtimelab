@@ -55,6 +55,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <ItemGroup>
       <NativeLibrary Include="$(IlcPath)/framework/libSystem.Native$(NativeLibraryExtension)" />
+      <NativeLibrary Include="$(IlcPath)/framework/libSystem.Globalization.Native$(NativeLibraryExtension)" />
       <NativeLibrary Include="$(IlcPath)/framework/libSystem.IO.Compression.Native$(NativeLibraryExtension)" />
       <NativeLibrary Include="$(IlcPath)/framework/libSystem.Net.Security.Native$(NativeLibraryExtension)" />
       <NativeLibrary Include="$(IlcPath)/framework/libSystem.Security.Cryptography.Native.Apple$(NativeLibraryExtension)" Condition="'$(TargetOS)' == 'OSX'"/>
