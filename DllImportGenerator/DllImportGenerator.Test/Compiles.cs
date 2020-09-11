@@ -55,6 +55,37 @@ namespace DllImportGenerator.Test
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<bool>(UnmanagedType.VariantBool) };
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<bool>(UnmanagedType.I1) };
             yield return new[] { CodeSnippets.EnumParameters };
+            yield return new[] { CodeSnippets.PreserveSigFalseVoidReturn };
+            yield return new[] { CodeSnippets.PreserveSigFalse<byte>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<sbyte>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<short>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<ushort>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<int>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<uint>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<long>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<ulong>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<float>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<double>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<bool>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<char>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<string>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<IntPtr>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<UIntPtr>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<byte[]>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<sbyte[]>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<short[]>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<ushort[]>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<int[]>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<uint[]>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<long[]>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<ulong[]>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<float[]>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<double[]>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<bool[]>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<char[]>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<string[]>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<IntPtr[]>() };
+            yield return new[] { CodeSnippets.PreserveSigFalse<UIntPtr[]>() };
         }
 
         [Theory]

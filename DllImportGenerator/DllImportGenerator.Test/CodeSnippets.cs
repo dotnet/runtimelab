@@ -338,5 +338,32 @@ partial class Test
         ref MyEnum pRef,
         out MyEnum pOut);
 }}";
+
+        /// <summary>
+        /// Declaration with PreserveSig = false.
+        /// </summary>
+        public static string PreserveSigFalse(string typeName) => @$"
+using System.Runtime.InteropServices;
+partial class Test
+{{
+    [GeneratedDllImport(""DoesNotExist"", PreserveSig = false)]
+    public static partial {typeName} Method1();
+
+    [GeneratedDllImport(""DoesNotExist"", PreserveSig = false)]
+    public static partial {typeName} Method2({typeName} p);
+}}";
+
+        public static string PreserveSigFalse<T>() => PreserveSigFalse(typeof(T).ToString());
+
+        /// <summary>
+        /// Declaration with PreserveSig = false and void return.
+        /// </summary>
+        public static readonly string PreserveSigFalseVoidReturn = @$"
+using System.Runtime.InteropServices;
+partial class Test
+{{
+    [GeneratedDllImport(""DoesNotExist"", PreserveSig = false)]
+    public static partial void Method();
+}}";
     }
 }
