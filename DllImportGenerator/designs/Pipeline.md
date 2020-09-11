@@ -11,7 +11,9 @@ The pipeline uses the Roslyn [Syntax APIs](https://docs.microsoft.com/dotnet/api
 
 ## Symbol and metadata processing
 
-The generator processes the method's `GeneratedDllImportAttribute` data, the method's parameter and return types, and the metadata on them ([`LCIDConversionAttribute`](https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.lcidconversionattribute), [`MarshalAsAttribute`](https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.marshalasattribute), [struct marshalling attributes](StructMarshalling.md)). This information is used to determine the corresponding native type for each managed parameter/return and how they will be marshalled.
+The generator processes the method's `GeneratedDllImportAttribute` data, the method's parameter and return types, and the metadata on them (e.g. [`LCIDConversionAttribute`](https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.lcidconversionattribute), [`MarshalAsAttribute`](https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.marshalasattribute), [struct marshalling attributes](StructMarshalling.md)). This information is used to determine the corresponding native type for each managed parameter/return type and how they will be marshalled.
+
+A [`TypePositionInfo`](../DllImportGenerator/TypePositionInfo.cs) is created for each type that needs to be marshalled. This includes any implicit parameter/return types that are required for the P/Invoke, but not part of the managed method signature; for example, a method with `PreserveSig=false` requires an HRESULT return type and potentially an out parameter matching the managed method's return type.
 
 ## Marshalling generators
 
@@ -27,20 +29,20 @@ Generation of the stub code happens in stages. The marshalling generator for eac
 
 1. `Setup`: initialization that happens before marshalling any data
     - If the method has a non-void return, call `Generate` on the marshalling generator for the return
-    - Call `Generate` on the marshalling generator for every paramater
+    - Call `Generate` on the marshalling generator for every parameter
 1. `Marshal`: conversion of managed to native data
-    - Call `Generate` on the marshalling generator for every paramater
+    - Call `Generate` on the marshalling generator for every parameter
 1. `Pin`: data pinning in preparation for calling the generated P/Invoke
-    - Call `Generate` on the marshalling generator for every paramater
+    - Call `Generate` on the marshalling generator for every parameter
     - Ignore any statements that are not `fixed` statements
 1. `Invoke`: call to the generated P/Invoke
-    - Call `AsArgument` on the marshalling generator for every paramater
+    - Call `AsArgument` on the marshalling generator for every parameter
     - Create invocation statement that calls the generated P/Invoke
 1. `Unmarshal`: conversion of native to managed data
     - If the method has a non-void return, call `Generate` on the marshalling generator for the return
-    - Call `Generate` on the marshalling generator for every paramater
+    - Call `Generate` on the marshalling generator for every parameter
 1. `Cleanup`: free any allocated resources
-    - Call `Generate` on the marshalling generator for every paramater
+    - Call `Generate` on the marshalling generator for every parameter
 
 ### P/Invoke
 
