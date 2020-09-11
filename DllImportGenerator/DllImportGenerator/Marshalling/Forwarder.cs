@@ -13,17 +13,17 @@ namespace Microsoft.Interop
             return info.ManagedType.AsTypeSyntax();
         }
 
-        public ArgumentSyntax AsArgument(TypePositionInfo info)
-        {
-            return Argument(IdentifierName(info.InstanceIdentifier))
-                .WithRefKindKeyword(Token(info.RefKindSyntax));
-        }
-
         public ParameterSyntax AsParameter(TypePositionInfo info)
         {
             return Parameter(Identifier(info.InstanceIdentifier))
                 .WithModifiers(TokenList(Token(info.RefKindSyntax)))
                 .WithType(info.ManagedType.AsTypeSyntax());
+        }
+
+        public ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context)
+        {
+            return Argument(IdentifierName(info.InstanceIdentifier))
+                .WithRefKindKeyword(Token(info.RefKindSyntax));
         }
 
         public IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context)

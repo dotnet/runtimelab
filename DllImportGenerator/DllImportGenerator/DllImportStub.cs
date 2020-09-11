@@ -34,7 +34,8 @@ namespace Microsoft.Interop
             {
                 foreach (var typeinfo in paramsTypeInfo)
                 {
-                    //if (typeinfo.ManagedIndex != TypePositionInfo.UnsetIndex)
+                    if (typeinfo.ManagedIndex != TypePositionInfo.UnsetIndex
+                        && typeinfo.ManagedIndex != TypePositionInfo.ReturnIndex)
                     {
                         yield return Parameter(Identifier(typeinfo.InstanceIdentifier))
                             .WithType(typeinfo.ManagedType.AsTypeSyntax())
@@ -144,16 +145,35 @@ namespace Microsoft.Interop
 
             // Determine parameter and return types
             var paramsTypeInfo = new List<TypePositionInfo>();
-            foreach (var param in method.Parameters)
+            for (int i = 0; i < method.Parameters.Length; i++)
             {
-                paramsTypeInfo.Add(TypePositionInfo.CreateForParameter(param, compilation));
+                var param = method.Parameters[i];
+                var typeInfo = TypePositionInfo.CreateForParameter(param, compilation);
+                typeInfo.ManagedIndex = i;
+                typeInfo.NativeIndex = paramsTypeInfo.Count;
+                paramsTypeInfo.Add(typeInfo);
             }
 
-            var retTypeInfo = TypePositionInfo.CreateForType(method.ReturnType, method.GetReturnTypeAttributes(), compilation);
+            TypePositionInfo retTypeInfo = TypePositionInfo.CreateForType(method.ReturnType, method.GetReturnTypeAttributes(), compilation);
+            retTypeInfo.ManagedIndex = TypePositionInfo.ReturnIndex;
+            retTypeInfo.NativeIndex = TypePositionInfo.ReturnIndex;
+            if (!dllImportData.PreserveSig)
+            {
+                // [TODO] Create type info for native HRESULT return
+                // retTypeInfo = ...
+
+                // [TODO] Create type info for native out param
+                // if (!method.ReturnsVoid)
+                // {
+                //     TypePositionInfo nativeOutInfo = ...;
+                //     nativeOutInfo.ManagedIndex = TypePositionInfo.ReturnIndex;
+                //     nativeOutInfo.NativeIndex = paramsTypeInfo.Count;
+                //     paramsTypeInfo.Add(nativeOutInfo);
+                // }
+            }
 
             // Generate stub code
-            string dllImportName = method.Name + "__PInvoke__";
-            var (code, dllImport) = StubCodeContext.GenerateSyntax(dllImportName, paramsTypeInfo, retTypeInfo);
+            var (code, dllImport) = StubCodeContext.GenerateSyntax(method, paramsTypeInfo, retTypeInfo);
 
             return new DllImportStub()
             {

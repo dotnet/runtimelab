@@ -13,9 +13,18 @@ namespace Microsoft.Interop
             return info.NativeType.AsTypeSyntax();
         }
 
-        public ArgumentSyntax AsArgument(TypePositionInfo info)
+        public ParameterSyntax AsParameter(TypePositionInfo info)
         {
-            string identifier = StubCodeContext.ToNativeIdentifer(info.InstanceIdentifier);
+            var type = info.IsByRef
+                ? PointerType(info.NativeType.AsTypeSyntax())
+                : info.NativeType.AsTypeSyntax();
+            return Parameter(Identifier(info.InstanceIdentifier))
+                .WithType(type);
+        }
+
+        public ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context)
+        {
+            string identifier = context.GetIdentifiers(info).native;
             if (info.IsByRef)
             {
                 return Argument(
@@ -27,22 +36,13 @@ namespace Microsoft.Interop
             return Argument(IdentifierName(identifier));
         }
 
-        public ParameterSyntax AsParameter(TypePositionInfo info)
-        {
-            var type = info.IsByRef
-                ? PointerType(info.NativeType.AsTypeSyntax())
-                : info.NativeType.AsTypeSyntax();
-            return Parameter(Identifier(info.InstanceIdentifier))
-                .WithType(type);
-        }
-
         public IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context)
         {
             (string managedIdentifier, string nativeIdentifier) = context.GetIdentifiers(info);
             switch (context.CurrentStage)
             {
                 case StubCodeContext.Stage.Setup:
-                    if (info.IsReturnType)
+                    if (info.IsManagedReturnPosition)
                         nativeIdentifier = context.GenerateReturnNativeIdentifier();
 
                     yield return LocalDeclarationStatement(
@@ -69,7 +69,7 @@ namespace Microsoft.Interop
 
                     break;
                 case StubCodeContext.Stage.Unmarshal:
-                    if (info.IsReturnType || info.IsByRef)
+                    if (info.IsManagedReturnPosition || info.IsByRef)
                     {
                         // <managedIdentifier> = <nativeIdentifier> != 0;
                         yield return ExpressionStatement(

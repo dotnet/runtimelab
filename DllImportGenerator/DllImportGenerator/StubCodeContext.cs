@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 using Microsoft.CodeAnalysis;
@@ -56,15 +57,15 @@ namespace Microsoft.Interop
         /// <summary>
         /// Identifier for managed return value
         /// </summary>
-        public string ReturnIdentifier => returnIdentifier;
+        public const string ReturnIdentifier = "__retVal";
 
         /// <summary>
         /// Identifier for native return value
         /// </summary>
         /// <remarks>Same as the managed identifier by default</remarks>
-        public string ReturnNativeIdentifier { get; private set; } = returnIdentifier;
+        public string ReturnNativeIdentifier { get; private set; } = ReturnIdentifier;
 
-        private const string returnIdentifier = "__retVal";
+        private const string InvokeReturnIdentifier = "__invokeRetVal";
         private const string generatedNativeIdentifierSuffix = "_gen_native";
 
         private StubCodeContext(Stage stage)
@@ -93,27 +94,40 @@ namespace Microsoft.Interop
         /// <returns>Managed and native identifiers</returns>
         public (string managed, string native) GetIdentifiers(TypePositionInfo info)
         {
-            string managedIdentifier = info.IsReturnType
-                ? ReturnIdentifier
-                : info.InstanceIdentifier;
+            string managedIdentifier;
+            string nativeIdentifier;
+            if (info.IsManagedReturnPosition && !info.IsNativeReturnPosition)
+            {
+                managedIdentifier = ReturnIdentifier;
+                nativeIdentifier = ReturnNativeIdentifier;
+            }
+            else if (!info.IsManagedReturnPosition && info.IsNativeReturnPosition)
+            {
+                managedIdentifier = InvokeReturnIdentifier;
+                nativeIdentifier = InvokeReturnIdentifier;
+            }
+            else
+            {
+                managedIdentifier = info.IsManagedReturnPosition
+                    ? ReturnIdentifier
+                    : info.InstanceIdentifier;
 
-            string nativeIdentifier = info.IsReturnType
-                ? ReturnNativeIdentifier
-                : ToNativeIdentifer(info.InstanceIdentifier);
+                nativeIdentifier = info.IsNativeReturnPosition
+                    ? ReturnNativeIdentifier
+                    : $"__{info.InstanceIdentifier}{generatedNativeIdentifierSuffix}";
+            }
 
             return (managedIdentifier, nativeIdentifier);
         }
 
-        public static string ToNativeIdentifer(string managedIdentifier)
-        {
-            return $"__{managedIdentifier}{generatedNativeIdentifierSuffix}";
-        }
-
         public static (BlockSyntax Code, MethodDeclarationSyntax DllImport) GenerateSyntax(
-            string dllImportName,
+            IMethodSymbol stubMethod,
             IEnumerable<TypePositionInfo> paramsTypeInfo,
             TypePositionInfo retTypeInfo)
         {
+            Debug.Assert(retTypeInfo.IsNativeReturnPosition);
+
+            string dllImportName = stubMethod.Name + "__PInvoke__";
             var paramMarshallers = paramsTypeInfo.Select(p => GetMarshalInfo(p)).ToList();
             var retMarshaller = GetMarshalInfo(retTypeInfo);
 
@@ -123,7 +137,7 @@ namespace Microsoft.Interop
             foreach (var marshaller in paramMarshallers)
             {
                 TypePositionInfo info = marshaller.TypeInfo;
-                if (info.RefKind != RefKind.Out)
+                if (info.RefKind != RefKind.Out || info.IsManagedReturnPosition)
                     continue;
 
                 // Assign out params to default
@@ -136,15 +150,31 @@ namespace Microsoft.Interop
                             Token(SyntaxKind.DefaultKeyword)))));
             }
 
-            bool returnsVoid = retTypeInfo.ManagedType.SpecialType == SpecialType.System_Void;
-            if (!returnsVoid)
+            bool invokeReturnsVoid = retTypeInfo.ManagedType.SpecialType == SpecialType.System_Void;
+            bool stubReturnsVoid = stubMethod.ReturnsVoid;
+
+            // Stub return is not the same as invoke return
+            if (!stubReturnsVoid && !retTypeInfo.IsManagedReturnPosition)
             {
-                // Declare variable for return value
+                Debug.Assert(paramsTypeInfo.Any() && paramsTypeInfo.Last().IsManagedReturnPosition);
+
+                // Declare variable for stub return value
+                TypePositionInfo info = paramsTypeInfo.Last();
                 statements.Add(LocalDeclarationStatement(
                     VariableDeclaration(
-                        retMarshaller.TypeInfo.ManagedType.AsTypeSyntax(),
+                        info.ManagedType.AsTypeSyntax(),
                         SingletonSeparatedList(
-                            VariableDeclarator(context.ReturnIdentifier)))));
+                            VariableDeclarator(context.GetIdentifiers(info).managed)))));
+            }
+
+            if (!invokeReturnsVoid)
+            {
+                // Declare variable for invoke return value
+                statements.Add(LocalDeclarationStatement(
+                    VariableDeclaration(
+                        retTypeInfo.ManagedType.AsTypeSyntax(),
+                        SingletonSeparatedList(
+                            VariableDeclarator(context.GetIdentifiers(retTypeInfo).managed)))));
             }
 
             var stages = new Stage[]
@@ -164,7 +194,7 @@ namespace Microsoft.Interop
                 int initialCount = statements.Count;
                 context.CurrentStage = stage;
 
-                if (!returnsVoid && (stage == Stage.Setup || stage == Stage.Unmarshal))
+                if (!invokeReturnsVoid && (stage == Stage.Setup || stage == Stage.Unmarshal))
                 {
                     // Handle setup and unmarshalling for return
                     var retStatements = retMarshaller.Generator.Generate(retMarshaller.TypeInfo, context);
@@ -177,7 +207,7 @@ namespace Microsoft.Interop
                     if (stage == Stage.Invoke)
                     {
                         // Get arguments for invocation
-                        ArgumentSyntax argSyntax = marshaller.Generator.AsArgument(marshaller.TypeInfo);
+                        ArgumentSyntax argSyntax = marshaller.Generator.AsArgument(marshaller.TypeInfo, context);
                         invoke = invoke.AddArgumentListArguments(argSyntax);
                     }
                     else
@@ -206,7 +236,7 @@ namespace Microsoft.Interop
                     StatementSyntax invokeStatement;
 
                     // Assign to return value if necessary
-                    if (returnsVoid)
+                    if (invokeReturnsVoid)
                     {
                         invokeStatement = ExpressionStatement(invoke);
                     }
@@ -215,7 +245,7 @@ namespace Microsoft.Interop
                         invokeStatement = ExpressionStatement(
                             AssignmentExpression(
                                 SyntaxKind.SimpleAssignmentExpression,
-                                IdentifierName(context.ReturnNativeIdentifier),
+                                IdentifierName(context.GetIdentifiers(retMarshaller.TypeInfo).native),
                                 invoke));
                     }
 
@@ -247,8 +277,8 @@ namespace Microsoft.Interop
             }
 
             // Return
-            if (!returnsVoid)
-                statements.Add(ReturnStatement(IdentifierName(context.ReturnIdentifier)));
+            if (!stubReturnsVoid)
+                statements.Add(ReturnStatement(IdentifierName(ReturnIdentifier)));
 
             // Wrap all statements in an unsafe block
             var codeBlock = Block(UnsafeStatement(Block(statements)));

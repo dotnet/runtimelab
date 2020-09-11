@@ -18,18 +18,19 @@ namespace Microsoft.Interop
         TypeSyntax AsNativeType(TypePositionInfo info);
 
         /// <summary>
-        /// Get the <paramref name="info"/> as an argument to be passed to the P/Invoke
-        /// </summary>
-        /// <param name="info">Object to marshal</param>
-        /// <returns>Argument syntax for <paramref name="info"/></returns>
-        ArgumentSyntax AsArgument(TypePositionInfo info);
-
-        /// <summary>
         /// Get the <paramref name="info"/> as a parameter of the P/Invoke declaration
         /// </summary>
         /// <param name="info">Object to marshal</param>
         /// <returns>Parameter syntax for <paramref name="info"/></returns>
         ParameterSyntax AsParameter(TypePositionInfo info);
+
+        /// <summary>
+        /// Get the <paramref name="info"/> as an argument to be passed to the P/Invoke
+        /// </summary>
+        /// <param name="info">Object to marshal</param>
+        /// <param name="context">Code generation context</param>
+        /// <returns>Argument syntax for <paramref name="info"/></returns>
+        ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context);
 
         /// <summary>
         /// Generate code for marshalling
@@ -58,6 +59,12 @@ namespace Microsoft.Interop
             generator = MarshallingGenerators.Forwarder;
             return true;
 #else
+            if (info.IsNativeReturnPosition && !info.IsManagedReturnPosition)
+            {
+                // [TODO] Use marshaller for native HRESULT return / exception throwing
+                // Debug.Assert(info.ManagedType.SpecialType == SpecialType.System_Int32)
+            }
+
             switch (info.ManagedType.SpecialType)
             {
                 case SpecialType.System_SByte:

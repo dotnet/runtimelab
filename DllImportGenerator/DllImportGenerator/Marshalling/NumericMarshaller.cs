@@ -14,20 +14,6 @@ namespace Microsoft.Interop
             return info.NativeType.AsTypeSyntax();
         }
 
-        public ArgumentSyntax AsArgument(TypePositionInfo info)
-        {
-            if (info.IsByRef)
-            {
-                string identifier = StubCodeContext.ToNativeIdentifer(info.InstanceIdentifier);
-                return Argument(
-                    PrefixUnaryExpression(
-                        SyntaxKind.AddressOfExpression,
-                        IdentifierName(identifier)));
-            }
-
-            return Argument(IdentifierName(info.InstanceIdentifier));
-        }
-
         public ParameterSyntax AsParameter(TypePositionInfo info)
         {
             var type = info.IsByRef
@@ -37,9 +23,22 @@ namespace Microsoft.Interop
                 .WithType(type);
         }
 
+        public ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context)
+        {
+            if (info.IsByRef)
+            {
+                return Argument(
+                    PrefixUnaryExpression(
+                        SyntaxKind.AddressOfExpression,
+                        IdentifierName(context.GetIdentifiers(info).native)));
+            }
+
+            return Argument(IdentifierName(info.InstanceIdentifier));
+        }
+
         public IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context)
         {
-            if (!info.IsByRef)
+            if (!info.IsByRef || info.IsManagedReturnPosition)
                 yield break;
 
             (string managedIdentifier, string nativeIdentifier) = context.GetIdentifiers(info);

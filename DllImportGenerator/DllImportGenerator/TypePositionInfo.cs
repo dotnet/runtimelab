@@ -34,7 +34,7 @@ namespace Microsoft.Interop
         private TypePositionInfo()
         {
             this.ManagedIndex = UnsetIndex;
-            this.UnmanagedIndex = UnsetIndex;
+            this.NativeIndex = UnsetIndex;
             this.UnmanagedLCIDConversionArgIndex = UnsetIndex;
         }
 
@@ -46,13 +46,12 @@ namespace Microsoft.Interop
         public SyntaxKind RefKindSyntax { get; private set; }
         
         public bool IsByRef => RefKind == RefKind.Ref || RefKind == RefKind.Out;
-        public bool IsReturnType { get; private set; }
 
         public bool IsManagedReturnPosition { get => this.ManagedIndex == ReturnIndex; }
-        public bool IsUnmanagedReturnPosition { get => this.UnmanagedIndex == ReturnIndex; }
+        public bool IsNativeReturnPosition { get => this.NativeIndex == ReturnIndex; }
 
         public int ManagedIndex { get; set; }
-        public int UnmanagedIndex { get; set; }
+        public int NativeIndex { get; set; }
         public int UnmanagedLCIDConversionArgIndex { get; private set; }
 
         public MarshalAsInfo MarshalAsInfo { get; private set; }
@@ -82,7 +81,6 @@ namespace Microsoft.Interop
                 InstanceIdentifier = string.Empty,
                 RefKind = RefKind.None,
                 RefKindSyntax = SyntaxKind.None,
-                IsReturnType = true
             };
 
             UpdateWithAttributeData(attributes, ref typeInfo);

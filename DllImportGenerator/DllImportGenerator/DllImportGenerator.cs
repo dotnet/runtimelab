@@ -88,6 +88,7 @@ namespace Microsoft.Interop
                 .WithBody(stub.StubCode);
 
             // Create the DllImport declaration.
+            // [TODO] Don't include PreserveSig=false once that is handled by the generated stub
             var dllImport = stub.DllImportDeclaration.AddAttributeLists(
                 AttributeList(
                     SingletonSeparatedList<AttributeSyntax>(dllImportAttr)));
