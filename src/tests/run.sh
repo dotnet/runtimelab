@@ -23,6 +23,7 @@ function print_usage {
     echo '  --crossgen                       : Precompiles the framework managed assemblies'
     echo '  --runcrossgentests               : Runs the ready to run tests' 
     echo '  --runcrossgen2tests              : Runs the ready to run tests compiled with Crossgen2' 
+    echo '  --runnativeaottests              : Runs the ready to run tests compiled with Native AOT' 
     echo '  --jitstress=<n>                  : Runs the tests with COMPlus_JitStress=n'
     echo '  --jitstressregs=<n>              : Runs the tests with COMPlus_JitStressRegs=n'
     echo '  --jitminopts                     : Runs the tests with COMPlus_JITMinOpts=1'
@@ -242,6 +243,9 @@ do
         --runcrossgen2tests)
             export RunCrossGen2=1
             ;;
+        --runnativeaottests)
+            export RunNativeAot=1
+            ;;
         --sequential)
             runSequential=1
             ;;
@@ -394,6 +398,10 @@ fi
 
 if [ ! -z "$RunCrossGen2" ]; then
     runtestPyArguments+=("--run_crossgen2_tests")
+fi
+
+if [ ! -z "$RunNativeAot" ]; then
+    runtestPyArguments+=("--run_nativeaot_tests")
 fi
 
 if (($doCrossgen!=0)); then

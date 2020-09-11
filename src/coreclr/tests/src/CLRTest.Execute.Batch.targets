@@ -297,6 +297,9 @@ IF NOT "%CLRCustomTestLauncher%"=="" (
 ) ELSE (
   set LAUNCHER=%_DebuggerFullPath% $(_CLRTestRunFile)
 )
+IF NOT "%RunNativeAot%"=="" (
+  set LAUNCHER=%_DebuggerFullPath%
+)
 
 $(BatchIlrtTestLaunchCmds)
 

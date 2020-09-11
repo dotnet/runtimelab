@@ -17,12 +17,16 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <LibraryNamePrefix>lib</LibraryNamePrefix>
+    <LibraryNamePrefix Condition="$([MSBuild]::IsOsPlatform('WINDOWS'))"></LibraryNamePrefix>
+    <LibraryNameExtension Condition="$([MSBuild]::IsOsPlatform('WINDOWS'))">.dll</LibraryNameExtension>
+    <LibraryNameExtension Condition="$([MSBuild]::IsOsPlatform('LINUX'))">.so</LibraryNameExtension>
+    <LibraryNameExtension Condition="$([MSBuild]::IsOsPlatform('OSX'))">.dylib</LibraryNameExtension>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <ObjectWriterVersion>1.0.0-alpha-28820-01</ObjectWriterVersion>
     <CoreDisToolsVersion>1.0.1-prerelease-00005</CoreDisToolsVersion>
-
-    <ObjWriterLibrary Condition="'$(TargetsWindows)' == 'true'">objwriter.dll</ObjWriterLibrary>
-    <ObjWriterLibrary Condition="'$(TargetsOSX)' == 'true'">libobjwriter.dylib</ObjWriterLibrary>
-    <ObjWriterLibrary Condition="'$(ObjWriterLibrary)' == ''">libobjwriter.so</ObjWriterLibrary>
 
     <!-- CoreDisTools are used in debugging visualizers. The package only exists on Windows -->
     <IncludeCoreDisTools Condition="'$(TargetsWindows)' == 'true' and '$(Configuration)' != 'Release'">true</IncludeCoreDisTools>
@@ -38,13 +42,26 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="$(NuGetPackageRoot)\runtime.$(DefaultAppHostRuntimeIdentifier).microsoft.dotnet.objectwriter\$(ObjectWriterVersion)\runtimes\$(DefaultAppHostRuntimeIdentifier)\native\$(ObjWriterLibrary)">
+    <Content Include="$(NuGetPackageRoot)\runtime.$(DefaultAppHostRuntimeIdentifier).microsoft.dotnet.objectwriter\$(ObjectWriterVersion)\runtimes\$(DefaultAppHostRuntimeIdentifier)\native\$(LibraryNamePrefix)objwriter$(LibraryNameExtension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
     </Content>
 
     <Content Include="$(NuGetPackageRoot)\runtime.$(DefaultAppHostRuntimeIdentifier).microsoft.netcore.coredistools\$(CoreDisToolsVersion)\runtimes\$(DefaultAppHostRuntimeIdentifier)\native\coredistools.dll" Condition="'$(IncludeCoreDisTools)' == 'true'">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+      <Pack>false</Pack>
+    </Content>
+
+    <Content Include="$(BinDir)\$(LibraryNamePrefix)jitinterface_$(TargetArchitecture)$(LibraryNameExtension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+      <Pack>false</Pack>
+    </Content>
+
+    <Content Include="$(BinDir)\$(LibraryNamePrefix)clrjit$(LibraryNameExtension)">
+      <Link>$(LibraryNamePrefix)clrjitilc$(LibraryNameExtension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>

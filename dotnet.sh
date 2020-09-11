@@ -23,5 +23,10 @@ source $scriptroot/eng/common/tools.sh
 InitializeDotNetCli true # Install
 __dotnetDir=${_InitializeDotNetCli}
 
+# Temporarily make this dotnet more permanent
+# We need this for Native AOT CI testing until ilc becomes a selfcontained app.
+export DOTNET_ROLL_FORWARD=Major
+export DOTNET_ROOT=${__dotnetDir}
+
 dotnetPath=${__dotnetDir}/dotnet
 ${dotnetPath} "$@"

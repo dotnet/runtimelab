@@ -71,6 +71,7 @@ if /i "%1" == "ilasmroundtrip"                          (set __IlasmRoundTrip=1&
 if /i "%1" == "printlastresultsonly"                    (set __PrintLastResultsOnly=1&shift&goto Arg_Loop)
 if /i "%1" == "runcrossgentests"                        (set RunCrossGen=true&shift&goto Arg_Loop)
 if /i "%1" == "runcrossgen2tests"                       (set RunCrossGen2=true&shift&goto Arg_Loop)
+if /i "%1" == "runnativeaottests"                       (set RunNativeAot=true&shift&goto Arg_Loop)
 REM This test feature is currently intentionally undocumented
 if /i "%1" == "runlargeversionbubblecrossgentests"      (set RunCrossGen=true&set CrossgenLargeVersionBubble=true&shift&goto Arg_Loop)
 if /i "%1" == "runlargeversionbubblecrossgen2tests"     (set RunCrossGen2=true&set CrossgenLargeVersionBubble=true&shift&goto Arg_Loop)
@@ -154,6 +155,10 @@ if defined RunCrossGen (
 
 if defined RunCrossGen2 (
     set __RuntestPyArgs=%__RuntestPyArgs% --run_crossgen2_tests
+)
+
+if defined RunNativeAot (
+    set __RuntestPyArgs=%__RuntestPyArgs% --run_nativeaot_tests
 )
 
 if defined __DoCrossgen (

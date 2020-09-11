@@ -47,13 +47,12 @@ namespace ILCompiler
                         methodName == "CreateEventExW" ||
                         methodName == "SetEvent" ||
                         methodName == "ResetEvent" ||
-                        methodName == "GetProcessHeap" ||
-                        methodName == "HeapAlloc" ||
                         methodName == "LoadLibraryExW" ||
                         methodName == "GetProcAddress" ||
                         methodName == "SetLastError" ||
                         methodName == "GetLastError" ||
-                        methodName == "LocalAlloc")
+                        methodName == "LocalAlloc" ||
+                        methodName == "LocalFree")
                     {
                         return true;
                     }

@@ -282,6 +282,10 @@ then
 else
     LAUNCHER="$_DebuggerFullPath $(_CLRTestRunFile)"
 fi
+if [ ! -z "$RunNativeAot" ]
+then
+    LAUNCHER="$_DebuggerFullPath"
+fi
 
 $(BashIlrtTestLaunchCmds)
 
