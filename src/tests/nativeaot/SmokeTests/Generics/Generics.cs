@@ -30,6 +30,7 @@ class Program
         TestSimpleGVMScenarios.Run();
         TestGvmDelegates.Run();
         TestGvmDependencies.Run();
+        TestGvmLookups.Run();
         TestInterfaceVTableTracking.Run();
         TestClassVTableTracking.Run();
         TestReflectionInvoke.Run();
@@ -1548,6 +1549,95 @@ class Program
                 Foo x = new Bar();
                 x.Frob<Atom>();
             }
+        }
+    }
+
+    class TestGvmLookups
+    {
+        class Gen<T> { }
+        class Atom1 { }
+        class Atom2 { }
+
+        class GenericBase<T>
+        {
+            public virtual (Type, Type) GenericMethod<U>() => (typeof(GenericBase<T>), typeof(U));
+        }
+
+        class NonGenericDerivedWithGenericBase : GenericBase<Atom1>
+        {
+            public override (Type, Type) GenericMethod<U>() => (typeof(NonGenericDerivedWithGenericBase), typeof(U));
+        }
+
+        class GenericDerivedWithGenericBase<T> : GenericBase<T>
+        {
+            public override (Type, Type) GenericMethod<U>() => (typeof(GenericDerivedWithGenericBase<T>), typeof(U));
+        }
+
+        class NonGenericBase
+        {
+            public virtual (Type, Type) GenericMethod<U>() => (typeof(NonGenericBase), typeof(U));
+        }
+
+        class GenericDerivedWithNonGenericBase<T> : NonGenericBase
+        {
+            public override (Type, Type) GenericMethod<U>() => (typeof(GenericDerivedWithNonGenericBase<T>), typeof(U));
+        }
+
+        static void TestInContext<T>()
+        {
+            {
+                (var t1, var t2) = new GenericBase<T>().GenericMethod<Gen<T>>();
+                if (t1 != typeof(GenericBase<T>) || t2 != typeof(Gen<T>))
+                    throw new Exception();
+            }
+
+            {
+                (var t1, var t2) = new GenericBase<T>().GenericMethod<Atom2>();
+                if (t1 != typeof(GenericBase<T>) || t2 != typeof(Atom2))
+                    throw new Exception();
+            }
+
+            {
+                (var t1, var t2) = new NonGenericDerivedWithGenericBase().GenericMethod<Gen<T>>();
+                if (t1 != typeof(NonGenericDerivedWithGenericBase) || t2 != typeof(Gen<T>))
+                    throw new Exception();
+            }
+
+            {
+                (var t1, var t2) = new NonGenericDerivedWithGenericBase().GenericMethod<Atom2>();
+                if (t1 != typeof(NonGenericDerivedWithGenericBase) || t2 != typeof(Atom2))
+                    throw new Exception();
+            }
+
+            {
+                (var t1, var t2) = new GenericDerivedWithGenericBase<T>().GenericMethod<Gen<T>>();
+                if (t1 != typeof(GenericDerivedWithGenericBase<T>) || t2 != typeof(Gen<T>))
+                    throw new Exception();
+            }
+
+            {
+                (var t1, var t2) = new GenericDerivedWithGenericBase<T>().GenericMethod<Atom2>();
+                if (t1 != typeof(GenericDerivedWithGenericBase<T>) || t2 != typeof(Atom2))
+                    throw new Exception();
+            }
+
+            {
+                (var t1, var t2) = new GenericDerivedWithNonGenericBase<T>().GenericMethod<Gen<T>>();
+                if (t1 != typeof(GenericDerivedWithNonGenericBase<T>) || t2 != typeof(Gen<T>))
+                    throw new Exception();
+            }
+
+            {
+                (var t1, var t2) = new GenericDerivedWithNonGenericBase<T>().GenericMethod<Atom2>();
+                if (t1 != typeof(GenericDerivedWithNonGenericBase<T>) || t2 != typeof(Atom2))
+                    throw new Exception();
+            }
+        }
+
+        public static void Run()
+        {
+            TestInContext<object>();
+            TestInContext<int>();
         }
     }
 
