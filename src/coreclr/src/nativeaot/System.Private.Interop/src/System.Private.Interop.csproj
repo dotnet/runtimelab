@@ -40,5 +40,6 @@
     <Compile Include="$(CommonPath)\System\SR.cs">
       <Link>SR.cs</Link>
     </Compile>
+    <Compile Include="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System\SR.cs" />
   </ItemGroup>
 </Project>
