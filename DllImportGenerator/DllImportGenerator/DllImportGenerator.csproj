@@ -6,7 +6,7 @@
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <DefineConstants>GENERATE_FORWARDER</DefineConstants>
+    <!-- <DefineConstants>GENERATE_FORWARDER</DefineConstants> -->
     <LangVersion>Preview</LangVersion>
   </PropertyGroup>
 

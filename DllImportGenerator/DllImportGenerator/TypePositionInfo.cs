@@ -7,20 +7,6 @@ using System.Runtime.InteropServices;
 namespace Microsoft.Interop
 {
     /// <summary>
-    /// Collected MarshalAsAttribute info.
-    /// </summary>
-    internal sealed class MarshalAsInfo
-    {
-        public UnmanagedType UnmanagedType { get; set; }
-        public string CustomMarshallerTypeName { get; set; }
-        public string CustomMarshallerCookie { get; set; }
-
-        public UnmanagedType UnmanagedArraySubType { get; set; }
-        public int ArraySizeConst { get; set; }
-        public short ArraySizeParamIndex { get; set; }
-    }
-
-    /// <summary>
     /// Positional type information involved in unmanaged/managed scenarios.
     /// </summary>
     internal sealed class TypePositionInfo
@@ -50,65 +36,71 @@ namespace Microsoft.Interop
         public int UnmanagedIndex { get; set; }
         public int UnmanagedLCIDConversionArgIndex { get; private set; }
 
-        public MarshalAsInfo MarshalAsInfo { get; private set; }
+        public MarshallingAttributeInfo MarshallingAttributeInfo { get; private set; }
 
-        public static TypePositionInfo CreateForParameter(IParameterSymbol paramSymbol)
+        public static TypePositionInfo CreateForParameter(IParameterSymbol paramSymbol, SemanticModel model)
         {
+            var marshallingInfo = GetMarshallingAttributeInfo(paramSymbol.GetAttributes());
             var typeInfo = new TypePositionInfo()
             {
                 TypeSymbol = paramSymbol.Type,
                 InstanceIdentifier = paramSymbol.Name,
                 ManagedTypeDecl = ComputeTypeForManaged(paramSymbol.Type, paramSymbol.RefKind),
-                UnmanagedTypeDecl = ComputeTypeForUnmanaged(paramSymbol.Type, paramSymbol.RefKind),
-                RefKind = paramSymbol.RefKind
+                UnmanagedTypeDecl = ComputeTypeForUnmanaged(paramSymbol.Type, paramSymbol.RefKind, marshallingInfo, model),
+                RefKind = paramSymbol.RefKind,
+                MarshallingAttributeInfo = marshallingInfo
             };
 
-            UpdateWithAttributeData(paramSymbol.GetAttributes(), ref typeInfo);
+            typeInfo.MarshallingAttributeInfo = GetMarshallingAttributeInfo(paramSymbol.GetAttributes());
 
             return typeInfo;
         }
 
-        public static TypePositionInfo CreateForType(ITypeSymbol type, IEnumerable<AttributeData> attributes)
+        public static TypePositionInfo CreateForType(ITypeSymbol type, IEnumerable<AttributeData> attributes, SemanticModel model)
         {
+            var marshallingInfo = GetMarshallingAttributeInfo(attributes);
             var typeInfo = new TypePositionInfo()
             {
                 TypeSymbol = type,
                 InstanceIdentifier = string.Empty,
                 ManagedTypeDecl = ComputeTypeForManaged(type, RefKind.None),
-                UnmanagedTypeDecl = ComputeTypeForUnmanaged(type, RefKind.None),
-                RefKind = RefKind.None
+                UnmanagedTypeDecl = ComputeTypeForUnmanaged(type, RefKind.None, marshallingInfo, model),
+                RefKind = RefKind.None,
+                MarshallingAttributeInfo = marshallingInfo
             };
-
-            UpdateWithAttributeData(attributes, ref typeInfo);
 
             return typeInfo;
         }
 
-        private static void UpdateWithAttributeData(IEnumerable<AttributeData> attributes, ref TypePositionInfo typeInfo)
+#nullable enable
+        private static MarshallingAttributeInfo? GetMarshallingAttributeInfo(IEnumerable<AttributeData> attributes)
         {
+            MarshallingAttributeInfo? marshallingInfo = null;
             // Look at attributes on the type.
             foreach (var attrData in attributes)
             {
-                string attributeName = attrData.AttributeClass.Name;
+                string attributeName = attrData.AttributeClass!.Name;
 
                 if (nameof(MarshalAsAttribute).Equals(attributeName))
                 {
+                    if (marshallingInfo is not null)
+                    {
+                        // TODO: diagnostic
+                    }
                     // https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.marshalasattribute
-                    typeInfo.MarshalAsInfo = CreateMarshalAsInfo(attrData);
-                }
-                else if (nameof(LCIDConversionAttribute).Equals(attributeName))
-                {
-                    // https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.lcidconversionattribute
-                    typeInfo.UnmanagedLCIDConversionArgIndex = (int)attrData.ConstructorArguments[0].Value;
+                    marshallingInfo = CreateMarshalAsInfo(attrData);
                 }
             }
 
+            return null;
+
             static MarshalAsInfo CreateMarshalAsInfo(AttributeData attrData)
             {
-                var info = new MarshalAsInfo
-                {
-                    UnmanagedType = (UnmanagedType)attrData.ConstructorArguments[0].Value
-                };
+                string? customMarshallerTypeName = null;
+                string? customMarshallerCookie = null;
+                UnmanagedType unmanagedArraySubType = 0;
+                int arraySizeConst = 0;
+                short arraySizeParamIndex = 0;
 
                 // All other data on attribute is defined as NamedArguments.
                 foreach (var namedArg in attrData.NamedArguments)
@@ -126,97 +118,96 @@ namespace Microsoft.Interop
                         case nameof(MarshalAsAttribute.MarshalTypeRef):
                         case nameof(MarshalAsAttribute.MarshalType):
                             // Call ToString() to handle INamedTypeSymbol as well.
-                            info.CustomMarshallerTypeName = namedArg.Value.Value.ToString();
+                            customMarshallerTypeName = namedArg.Value.Value!.ToString();
                             break;
                         case nameof(MarshalAsAttribute.MarshalCookie):
-                            info.CustomMarshallerCookie = (string)namedArg.Value.Value;
+                            customMarshallerCookie = (string)namedArg.Value.Value!;
                             break;
                         case nameof(MarshalAsAttribute.ArraySubType):
-                            info.UnmanagedArraySubType = (UnmanagedType)namedArg.Value.Value;
+                            unmanagedArraySubType = (UnmanagedType)namedArg.Value.Value!;
                             break;
                         case nameof(MarshalAsAttribute.SizeConst):
-                            info.ArraySizeConst = (int)namedArg.Value.Value;
+                            arraySizeConst = (int)namedArg.Value.Value!;
                             break;
                         case nameof(MarshalAsAttribute.SizeParamIndex):
-                            info.ArraySizeParamIndex = (short)namedArg.Value.Value;
+                            arraySizeParamIndex = (short)namedArg.Value.Value!;
                             break;
                     }
-                }
 
-                return info;
+                }
+                
+                return new MarshalAsInfo(
+                    UnmanagedType: (UnmanagedType)attrData.ConstructorArguments[0].Value!,
+                    CustomMarshallerTypeName: customMarshallerTypeName,
+                    CustomMarshallerCookie: customMarshallerCookie,
+                    UnmanagedArraySubType: unmanagedArraySubType,
+                    ArraySizeConst: arraySizeConst,
+                    ArraySizeParamIndex: arraySizeParamIndex
+                );
             }
         }
+#nullable restore
 
         private static string ComputeTypeForManaged(ITypeSymbol type, RefKind refKind)
         {
-            var typeAsString = type.SpecialType switch
-            {
-                SpecialType.System_Void => "void",
-                SpecialType.System_Boolean => "bool",
-                SpecialType.System_Char => "char",
-                SpecialType.System_SByte => "sbyte",
-                SpecialType.System_Byte => "byte",
-                SpecialType.System_Int16 => "short",
-                SpecialType.System_UInt16 => "ushort",
-                SpecialType.System_Int32 => "int",
-                SpecialType.System_UInt32 => "uint",
-                SpecialType.System_Int64 => "long",
-                SpecialType.System_UInt64 => "ulong",
-                SpecialType.System_Single => "float",
-                SpecialType.System_Double => "double",
-                SpecialType.System_String => "string",
-                SpecialType.System_IntPtr => "System.IntPtr",
-                SpecialType.System_UIntPtr => "System.UIntPtr",
-                _ => null,
-            };
-
-            var typePrefix = string.Empty;
-            if (typeAsString is null)
-            {
-                // Determine the namespace
-                if (!(type.ContainingNamespace is null)
-                    && !type.ContainingNamespace.IsGlobalNamespace)
-                {
-                    typePrefix = $"{type.ContainingNamespace}{Type.Delimiter}";
-                }
-
-                typeAsString = type.ToString();
-            }
-
-            string refKindAsString = RefKindToString(refKind);
-            return $"{refKindAsString}{typePrefix}{typeAsString}";
+            return $"{RefKindToString(refKind)}{type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}";
         }
 
-        private static string ComputeTypeForUnmanaged(ITypeSymbol type, RefKind refKind)
+        private static string ComputeTypeForUnmanaged(ITypeSymbol type, RefKind refKind, MarshallingAttributeInfo attrInfo, SemanticModel model)
         {
 #if GENERATE_FORWARDER
             return ComputeTypeForManaged(type, refKind);
 #else
-            if (!type.IsUnmanagedType)
-            {
-                return "void*";
-            }
+#nullable enable
+            // TODO: Handle CharSet
 
-            return type.SpecialType switch
+            string? unmanagedTypeName = (type, attrInfo) switch
             {
-                SpecialType.System_Void => "void",
-                SpecialType.System_Boolean => "byte", // [TODO] Determine marshalling default C++ bool or Windows' BOOL
-                SpecialType.System_Char => "ushort", // CLR character width (UTF-16)
-                SpecialType.System_SByte => "sbyte",
-                SpecialType.System_Byte => "byte",
-                SpecialType.System_Int16 => "short",
-                SpecialType.System_UInt16 => "ushort",
-                SpecialType.System_Int32 => "int",
-                SpecialType.System_UInt32 => "uint",
-                SpecialType.System_Int64 => "long",
-                SpecialType.System_UInt64 => "ulong",
-                SpecialType.System_Single => "float",
-                SpecialType.System_Double => "double",
-                SpecialType.System_String => "char*", // [TODO] Consider encoding here
-                SpecialType.System_IntPtr => "void*",
-                SpecialType.System_UIntPtr => "void*",
-                _ => "void*",
+                // New marshalling attributes
+                (_, BlittableTypeAttributeInfo _) => type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                (_, NativeMarshallingAttributeInfo { ValuePropertyType : null, NativeMarshallingType : {} nativeType}) => nativeType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                (_, NativeMarshallingAttributeInfo { ValuePropertyType : {} nativeType }) => nativeType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                (_, GeneratedNativeMarshallingAttributeInfo { NativeMarshallingFullyQualifiedTypeName: string name }) => name,
+                // Primitive types and string default marshalling
+                ({ SpecialType: SpecialType.None } or ({ IsValueType : false } and not { SpecialType : SpecialType.System_String }), _) => null,
+                ({ SpecialType: SpecialType.System_Boolean }, null or MarshalAsInfo { UnmanagedType: 0 }) => "byte", // [TODO] Determine marshalling default C++ bool or Windows' BOOL
+                ({ SpecialType: SpecialType.System_Char }, null or MarshalAsInfo { UnmanagedType: 0 }) => "ushort", // [TODO] Determine based on charset.
+                ({ SpecialType: SpecialType.System_String }, null or MarshalAsInfo { UnmanagedType: 0 }) => "ushort*", // [TODO] Determine based on charset.
+                ({ SpecialType: SpecialType.System_Void }, null) => "void",
+                ({ SpecialType: SpecialType.System_SByte }, null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.I1 }) => "sbyte",
+                ({ SpecialType: SpecialType.System_Byte }, null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.U1 }) => "byte",
+                ({ SpecialType: SpecialType.System_Int16 }, null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.I2 }) => "short",
+                ({ SpecialType: SpecialType.System_UInt16 }, null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.U2 }) => "ushort",
+                ({ SpecialType: SpecialType.System_Int32 }, null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.I4 }) => "int",
+                ({ SpecialType: SpecialType.System_UInt32 }, null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.U4 }) => "uint",
+                ({ SpecialType: SpecialType.System_Int64 }, null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.I8 }) => "long",
+                ({ SpecialType: SpecialType.System_UInt64 }, null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.U8 }) => "ulong",
+                ({ SpecialType: SpecialType.System_IntPtr }, null or MarshalAsInfo { UnmanagedType: 0 }) => "nint",
+                ({ SpecialType: SpecialType.System_UIntPtr }, null or MarshalAsInfo { UnmanagedType: 0 }) => "nuint",
+                ({ SpecialType: SpecialType.System_Single }, null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.R4 }) => "float",
+                ({ SpecialType: SpecialType.System_Double }, null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.R8 }) => "double",
+                (IPointerTypeSymbol ptr, null or MarshalAsInfo { UnmanagedType: 0 }) => ptr.PointedAtType.IsConsideredBlittable() ? ptr.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) : null,
+                (IFunctionPointerTypeSymbol ptr, null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.FunctionPtr }) => ptr.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                // Delegate marshalling
+                (INamedTypeSymbol _, null) => model.Compilation.ClassifyCommonConversion(type, model.Compilation.GetSpecialType(SpecialType.System_Delegate)).IsImplicit ? "global::System.IntPtr" : null,
+                // Bool custom marshalling
+                ({ SpecialType: SpecialType.System_Boolean }, MarshalAsInfo { UnmanagedType: UnmanagedType.I1 or UnmanagedType.U1 }) => "byte",
+                ({ SpecialType: SpecialType.System_Boolean }, MarshalAsInfo { UnmanagedType: UnmanagedType.VariantBool }) => "short",
+                ({ SpecialType: SpecialType.System_Boolean }, MarshalAsInfo { UnmanagedType: UnmanagedType.I4 or UnmanagedType.U4 }) => "int",
+                ({ SpecialType: SpecialType.System_String }, MarshalAsInfo { UnmanagedType: UnmanagedType.LPStr }) => "byte*",
+                ({ SpecialType: SpecialType.System_String }, MarshalAsInfo { UnmanagedType: UnmanagedType.LPWStr }) => "ushort*",
+                ({ SpecialType: SpecialType.System_String }, MarshalAsInfo { UnmanagedType: UnmanagedType.LPTStr }) => "byte*", // [TODO] Determine based on charset.
+                ({ SpecialType: SpecialType.System_String }, MarshalAsInfo { UnmanagedType: UnmanagedType.ByValTStr, ArraySizeConst: > 0 } info ) => $"fixed byte[{info.ArraySizeConst}]", // [TODO] Determine based on charset. Fix generation to support fixed size buffers.
+                ({ SpecialType: SpecialType.System_String }, MarshalAsInfo { UnmanagedType: (UnmanagedType)48 /* UnmanagedType.LPUTF8Str */ }) => "byte*",
+                // Array marshalling
+                (IArrayTypeSymbol { IsSZArray: true, ElementType: {} elementType }, null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.LPArray, UnmanagedArraySubType: 0 }) => elementType.IsConsideredBlittable() ? "global::System.IntPtr" : null,
+                (IArrayTypeSymbol { IsSZArray: true, ElementType: {} elementType }, MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.LPArray, UnmanagedArraySubType: {} unmanagedType }) => ComputeTypeForUnmanaged(elementType, RefKind.None, new MarshalAsInfo(unmanagedType, null, null, 0, 0, 0), model) is not null ? "global::System.IntPtr" : null,
+                // TODO: Support custom MarshalAs for ByVal arrays, other custom MarshalAs types.
+                _ => null
             };
+
+            return unmanagedTypeName;
+#nullable restore
 #endif
         }
 
