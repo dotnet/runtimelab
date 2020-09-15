@@ -85,18 +85,3 @@ jobs:
       extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
       extraStepsParameters:
         uploadTests: true
-
-#
-# Build with Release allConfigurations to produce packages
-#
-- template: /eng/pipelines/common/platform-matrix.yml
-  parameters:
-    jobTemplate: /eng/pipelines/common/global-build-job.yml
-    buildConfig: release
-    platforms:
-    - Windows_NT_x64
-    jobParameters:
-      testGroup: innerloop
-      nameSuffix: All_Configurations
-      buildArgs: -s clr.runtime+libs -c $(_BuildConfig) -allConfigurations
-
