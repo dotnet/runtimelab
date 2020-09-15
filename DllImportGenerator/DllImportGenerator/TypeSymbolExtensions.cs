@@ -132,7 +132,7 @@ namespace Microsoft.Interop
 
         public static TypeSyntax AsTypeSyntax(this ITypeSymbol type)
         {
-            return SyntaxFactory.IdentifierName(type.ToDisplayString());
+            return SyntaxFactory.ParseTypeName(type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
         }
     }
 }
