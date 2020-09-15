@@ -11,14 +11,14 @@ namespace Microsoft.Interop
     {
         public TypeSyntax AsNativeType(TypePositionInfo info)
         {
-            return info.NativeType.AsTypeSyntax();
+            return info.ManagedType.AsTypeSyntax();
         }
 
         public ParameterSyntax AsParameter(TypePositionInfo info)
         {
             var type = info.IsByRef
-                ? PointerType(info.NativeType.AsTypeSyntax())
-                : info.NativeType.AsTypeSyntax();
+                ? PointerType(AsNativeType(info))
+                : AsNativeType(info);
             return Parameter(Identifier(info.InstanceIdentifier))
                 .WithType(type);
         }
@@ -47,7 +47,7 @@ namespace Microsoft.Interop
                 case StubCodeContext.Stage.Setup:
                     yield return LocalDeclarationStatement(
                         VariableDeclaration(
-                            info.NativeType.AsTypeSyntax(),
+                            AsNativeType(info),
                             SingletonSeparatedList(
                                 VariableDeclarator(nativeIdentifier))));
                     break;

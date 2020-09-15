@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System.Runtime.InteropServices;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -10,14 +12,27 @@ namespace Microsoft.Interop
     {
         public TypeSyntax AsNativeType(TypePositionInfo info)
         {
-            return info.NativeType.AsTypeSyntax();
+            var syntax = SyntaxKind.ByteKeyword;
+            if (info.MarshalAsInfo != null)
+            {
+                syntax = info.MarshalAsInfo.UnmanagedType switch
+                {
+                    UnmanagedType.Bool => SyntaxKind.IntKeyword,
+                    UnmanagedType.U1 => SyntaxKind.ByteKeyword,
+                    UnmanagedType.I1 => SyntaxKind.SByteKeyword,
+                    UnmanagedType.VariantBool => SyntaxKind.ShortKeyword,
+                    _ => SyntaxKind.ByteKeyword
+                };
+            }
+
+            return PredefinedType(Token(syntax));
         }
 
         public ParameterSyntax AsParameter(TypePositionInfo info)
         {
             var type = info.IsByRef
-                ? PointerType(info.NativeType.AsTypeSyntax())
-                : info.NativeType.AsTypeSyntax();
+                ? PointerType(AsNativeType(info))
+                : AsNativeType(info);
             return Parameter(Identifier(info.InstanceIdentifier))
                 .WithType(type);
         }
@@ -47,7 +62,7 @@ namespace Microsoft.Interop
 
                     yield return LocalDeclarationStatement(
                         VariableDeclaration(
-                            info.NativeType.AsTypeSyntax(),
+                            AsNativeType(info),
                             SingletonSeparatedList(VariableDeclarator(nativeIdentifier))));
 
                     break;
@@ -60,7 +75,7 @@ namespace Microsoft.Interop
                                 SyntaxKind.SimpleAssignmentExpression,
                                 IdentifierName(nativeIdentifier),
                                 CastExpression(
-                                    info.NativeType.AsTypeSyntax(),
+                                    AsNativeType(info),
                                     ParenthesizedExpression(
                                         ConditionalExpression(IdentifierName(managedIdentifier),
                                             LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)),
