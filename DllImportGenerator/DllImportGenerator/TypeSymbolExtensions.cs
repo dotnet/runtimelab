@@ -132,7 +132,10 @@ namespace Microsoft.Interop
 
         public static TypeSyntax AsTypeSyntax(this ITypeSymbol type)
         {
-            return SyntaxFactory.ParseTypeName(type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+            // [TODO] Use ParseTypeName overload with default values for offset and consumeFullText after switching
+            //        to Roslyn package that has the change from CSharpParseOptions -> ParseOptions in that overload
+            // return SyntaxFactory.ParseTypeName(type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+            return SyntaxFactory.ParseTypeName(type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat), offset: 0, consumeFullText: true);
         }
     }
 }
