@@ -111,7 +111,7 @@ if defined RunNativeAot (
     <OutputType>Exe</OutputType>
     <OutputPath>%24(MSBuildProjectDirectory)\</OutputPath>
     <IntermediateOutputPath>%24(MSBuildProjectDirectory)\</IntermediateOutputPath>
-    <Optimize Condition="'%24(Configuration)' == 'Release'">true</Optimize>
+    <Optimize Condition="'$(Configuration)' == 'Release'">true</Optimize>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
 
