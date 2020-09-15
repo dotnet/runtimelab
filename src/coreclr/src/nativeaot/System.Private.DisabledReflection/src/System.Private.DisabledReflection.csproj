@@ -18,6 +18,7 @@
     <Compile Include="$(CommonPath)\System\SR.cs">
       <Link>System\SR.cs</Link>
     </Compile>
+    <Compile Include="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System\SR.cs" />
     <Compile Include="Internal\Reflection\ReflectionCoreCallbacksImplementation.cs" />
     <Compile Include="Internal\Reflection\ReflectionExecutionDomainCallbacksImplementation.cs" />
     <Compile Include="Internal\Reflection\RuntimeAssembly.cs" />

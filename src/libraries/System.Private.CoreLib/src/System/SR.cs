@@ -67,11 +67,6 @@ namespace System
                         return key;
                     }
                     _infinitelyRecursingCount++;
-
-                    // Note: our infrastructure for reporting this exception will again cause resource lookup.
-                    // This is the most direct way of dealing with that problem.
-                    string message = $"Infinite recursion during resource lookup within {System.CoreLib.Name}.  This may be a bug in {System.CoreLib.Name}, or potentially in certain extensibility points such as assembly resolve events or CultureInfo names.  Resource name: {key}";
-                    Environment.FailFast(message);
                 }
 
                 _currentlyLoading ??= new List<string>();
