@@ -15,4 +15,5 @@ TypesMustExist : Type 'System.Linq.Expressions.Interpreter.LightLambda' does not
 TypesMustExist : Type 'System.Runtime.CompilerServices.CallSiteOps' does not exist in the reference but it does exist in the implementation.
 TypesMustExist : Type 'System.Runtime.CompilerServices.Closure' does not exist in the reference but it does exist in the implementation.
 TypesMustExist : Type 'System.Runtime.CompilerServices.RuntimeOps' does not exist in the reference but it does exist in the implementation.
-Total Issues: 16
+TypesMustExist : Type 'System.Linq.Expressions.ExpressionCreator<TDelegate>' does not exist in the reference but it does exist in the implementation.
+Total Issues: 17
