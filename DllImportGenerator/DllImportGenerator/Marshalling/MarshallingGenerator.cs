@@ -117,7 +117,7 @@ namespace Microsoft.Interop
                     generator = null;
                     return true;
                 default:
-                    generator = null;
+                    generator = Forwarder;
                     return false;
             }
 #endif
