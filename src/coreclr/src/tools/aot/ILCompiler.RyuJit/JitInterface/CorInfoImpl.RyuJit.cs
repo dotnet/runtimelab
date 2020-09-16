@@ -1315,65 +1315,7 @@ namespace Internal.JitInterface
                 pResult->codePointerOrStubLookup.constLookup.accessType = InfoAccessType.IAT_VALUE;
                 pResult->nullInstanceCheck = true;
 
-                MethodDesc slotNormalizedMethod = targetMethod;
-                if (!targetMethod.IsNewSlot)
-                {
-                    // If the method called is not newslot, we need to normalize to the slot defining method.
-                    slotNormalizedMethod = _compilation.TypeSystemContext.GetInstantiatedMethod(
-                        MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(targetMethod.GetMethodDefinition()),
-                        targetMethod.Instantiation);
-                }
-
-                object targetOfLookup = GetRuntimeDeterminedObjectForToken(ref pResolvedToken);
-
-                if (targetMethod != slotNormalizedMethod)
-                {
-                    // Since the slot normalization logic modified what method we're looking at, we need to compute the new target of lookup.
-                    //
-                    // If we could use virtual method resolution logic with runtime determined methods, we wouldn't need what we're going
-                    // to do below.
-                    MethodDesc runtimeDeterminedSlotNormalizedMethod;
-                    if (!slotNormalizedMethod.OwningType.IsCanonicalSubtype(CanonicalFormKind.Any))
-                    {
-                        // If the owning type is not generic, we can use it as-is, potentially only replacing the runtime-determined
-                        // method instantiation part.
-                        runtimeDeterminedSlotNormalizedMethod = slotNormalizedMethod.GetMethodDefinition();
-                    }
-                    else
-                    {
-                        // If we need a runtime lookup but a normalization to the slot defining method happened above, we need to compute
-                        // the runtime lookup in terms of the base type that introduced the slot.
-                        //
-                        // To do that, we walk the base hierarchy of the runtime determined thing, looking for a type definition that matches
-                        // the slot-normalized virtual method. We then find the method on that type.
-                        TypeDesc runtimeDeterminedOwningType = ((MethodDesc)targetOfLookup).OwningType;
-
-                        Debug.Assert(!runtimeDeterminedOwningType.IsInterface);
-
-                        while (!slotNormalizedMethod.OwningType.HasSameTypeDefinition(runtimeDeterminedOwningType))
-                        {
-                            TypeDesc runtimeDeterminedBaseTypeDefinition = runtimeDeterminedOwningType.GetTypeDefinition().BaseType;
-                            if (runtimeDeterminedBaseTypeDefinition.HasInstantiation)
-                            {
-                                runtimeDeterminedOwningType = runtimeDeterminedBaseTypeDefinition.InstantiateSignature(runtimeDeterminedOwningType.Instantiation, default);
-                            }
-                            else
-                            {
-                                runtimeDeterminedOwningType = runtimeDeterminedBaseTypeDefinition;
-                            }
-                        }
-
-                        // Now get the method on the newly found type
-                        Debug.Assert(runtimeDeterminedOwningType.HasInstantiation);
-                        runtimeDeterminedSlotNormalizedMethod = _compilation.TypeSystemContext.GetMethodForInstantiatedType(
-                            slotNormalizedMethod.GetTypicalMethodDefinition(),
-                            (InstantiatedType)runtimeDeterminedOwningType);
-                    }
-
-                    targetOfLookup = _compilation.TypeSystemContext.GetInstantiatedMethod(
-                        runtimeDeterminedSlotNormalizedMethod,
-                        ((MethodDesc)targetOfLookup).Instantiation);
-                }
+                MethodDesc targetOfLookup = _compilation.GetTargetOfGenericVirtualMethodCall((MethodDesc)GetRuntimeDeterminedObjectForToken(ref pResolvedToken));
 
                 ComputeLookup(ref pResolvedToken,
                     targetOfLookup,

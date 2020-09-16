@@ -672,13 +672,15 @@ namespace Internal.IL
             {
                 // Generic virtual method call
 
+                MethodDesc methodToLookup = _compilation.GetTargetOfGenericVirtualMethodCall(runtimeDeterminedMethod);
+
                 if (exactContextNeedsRuntimeLookup)
                 {
-                    _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.MethodHandle, runtimeDeterminedMethod), reason);
+                    _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.MethodHandle, methodToLookup), reason);
                 }
                 else
                 {
-                    _dependencies.Add(_factory.RuntimeMethodHandle(runtimeDeterminedMethod), reason);
+                    _dependencies.Add(_factory.RuntimeMethodHandle(methodToLookup), reason);
                 }
 
                 _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.GVMLookupForSlot), reason);
