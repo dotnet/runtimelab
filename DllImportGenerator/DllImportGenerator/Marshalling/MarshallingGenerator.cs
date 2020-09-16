@@ -54,6 +54,7 @@ namespace Microsoft.Interop
         public static readonly VariantBoolMarshaller VariantBool = new VariantBoolMarshaller();
         public static readonly Forwarder Forwarder = new Forwarder();
         public static readonly BlittableMarshaller Blittable = new BlittableMarshaller();
+        public static readonly DelegateMarshaler Delegate = new DelegateMarshaler();
 
         public static bool TryCreate(TypePositionInfo info, out IMarshallingGenerator generator)
         {
@@ -69,45 +70,49 @@ namespace Microsoft.Interop
 
             switch (info)
             {
-                case { ManagedType : { SpecialType: SpecialType.System_SByte }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.I1 }}
-                    or { ManagedType : { SpecialType: SpecialType.System_Byte }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.U1 }}
-                    or { ManagedType : { SpecialType: SpecialType.System_Int16 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.I2 }}
-                    or { ManagedType : { SpecialType: SpecialType.System_UInt16 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.U2 }}
-                    or { ManagedType : { SpecialType: SpecialType.System_Int32 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.I4 }}
-                    or { ManagedType : { SpecialType: SpecialType.System_UInt32 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.U4 }}
-                    or { ManagedType : { SpecialType: SpecialType.System_Int64 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.I8 }}
-                    or { ManagedType : { SpecialType: SpecialType.System_UInt64 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.U8 }}
-                    or { ManagedType : { SpecialType: SpecialType.System_IntPtr }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 }}
-                    or { ManagedType : { SpecialType: SpecialType.System_UIntPtr }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 }}
-                    or { ManagedType : { SpecialType: SpecialType.System_Single }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.R4 }}
-                    or { ManagedType : { SpecialType: SpecialType.System_Double }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.R8 }}:
+                case { ManagedType: { SpecialType: SpecialType.System_SByte }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.I1 } }
+                    or { ManagedType: { SpecialType: SpecialType.System_Byte }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.U1 } }
+                    or { ManagedType: { SpecialType: SpecialType.System_Int16 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.I2 } }
+                    or { ManagedType: { SpecialType: SpecialType.System_UInt16 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.U2 } }
+                    or { ManagedType: { SpecialType: SpecialType.System_Int32 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.I4 } }
+                    or { ManagedType: { SpecialType: SpecialType.System_UInt32 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.U4 } }
+                    or { ManagedType: { SpecialType: SpecialType.System_Int64 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.I8 } }
+                    or { ManagedType: { SpecialType: SpecialType.System_UInt64 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.U8 } }
+                    or { ManagedType: { SpecialType: SpecialType.System_IntPtr }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 } }
+                    or { ManagedType: { SpecialType: SpecialType.System_UIntPtr }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 } }
+                    or { ManagedType: { SpecialType: SpecialType.System_Single }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.R4 } }
+                    or { ManagedType: { SpecialType: SpecialType.System_Double }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.R8 } }:
                     // Blittable primitives with no marshalling info or with a compatible [MarshalAs] attribute.
                     generator = Blittable;
                     return true;
-                
-                case { ManagedType: { SpecialType : SpecialType.System_Boolean }, MarshallingAttributeInfo: null or MarshalAsInfo {UnmanagedType : 0 }}:
+
+                case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 } }:
                     generator = CBool;
                     return true;
-                case { ManagedType: { SpecialType : SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I1 or UnmanagedType.U1 }}:
+                case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I1 or UnmanagedType.U1 } }:
                     generator = CBool;
                     return true;
-                case { ManagedType: { SpecialType : SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I4 or UnmanagedType.U4 }}:
+                case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I4 or UnmanagedType.U4 } }:
                     generator = WinBool;
                     return true;
-                case { ManagedType: { SpecialType : SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.VariantBool }}:
+                case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.VariantBool } }:
                     generator = VariantBool;
                     return true;
 
-                case { MarshallingAttributeInfo : BlittableTypeAttributeInfo _ }:
+                case { ManagedType: { TypeKind: TypeKind.Delegate }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: 0 or UnmanagedType.FunctionPtr } }:
+                    generator = Delegate;
+                    return true;
+
+                case { MarshallingAttributeInfo: BlittableTypeAttributeInfo _ }:
                     generator = Blittable;
                     return true;
 
-                case { MarshallingAttributeInfo : NativeMarshallingAttributeInfo { ValuePropertyType : null, NativeMarshallingType : {} nativeType} }:
+                case { MarshallingAttributeInfo: NativeMarshallingAttributeInfo { ValuePropertyType: null, NativeMarshallingType: { } nativeType } }:
                     // Simple marshalling with new attribute model
                     generator = null;
                     return true;
-                
-                case { MarshallingAttributeInfo: NativeMarshallingAttributeInfo { ValuePropertyType : {} nativeType } }:
+
+                case { MarshallingAttributeInfo: NativeMarshallingAttributeInfo { ValuePropertyType: { } nativeType } }:
                     // Marshalling with Value property (and possibly GetPinnableReference) in new model
                     generator = null;
                     return true;
@@ -116,6 +121,7 @@ namespace Microsoft.Interop
                     // Simple marshalling with new attribute model, only have type name.
                     generator = null;
                     return true;
+
                 default:
                     generator = Forwarder;
                     return false;

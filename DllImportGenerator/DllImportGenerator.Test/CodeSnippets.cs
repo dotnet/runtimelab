@@ -365,5 +365,10 @@ partial class Test
     [GeneratedDllImport(""DoesNotExist"", PreserveSig = false)]
     public static partial void Method();
 }}";
+
+        public static string DelegateParametersAndModifiers = BasicParametersAndModifiers("MyDelegate") + @"
+delegate int MyDelegate(int a);";
+        public static string DelegateMarshalAsParametersAndModifiers = MarshalAsParametersAndModifiers("MyDelegate", UnmanagedType.FunctionPtr) + @"
+delegate int MyDelegate(int a);";
     }
 }
