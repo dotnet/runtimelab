@@ -3,6 +3,7 @@
     <FeatureInterpret>true</FeatureInterpret>
     <TargetFrameworks>$(NetCoreAppCurrent)</TargetFrameworks>
     <Nullable>enable</Nullable>
+    <!-- We diverged from dotnet/runtime here: https://github.com/dotnet/runtimelab/issues/106 -->
     <IsInterpreting>true</IsInterpreting>
     <DefineConstants> $(DefineConstants);FEATURE_DYNAMIC_DELEGATE</DefineConstants>
     <DefineConstants Condition=" '$(IsInterpreting)' != 'true' ">$(DefineConstants);FEATURE_COMPILE</DefineConstants>
