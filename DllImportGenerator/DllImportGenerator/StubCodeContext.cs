@@ -46,6 +46,10 @@ namespace Microsoft.Interop
 
         public Stage CurrentStage { get; protected set; }
 
+        public abstract bool PinningSupported { get; }
+
+        public abstract bool StackSpaceUsable { get; }
+
         /// <summary>
         /// Identifier for managed return value
         /// </summary>

@@ -16,6 +16,10 @@ namespace Microsoft.Interop
             CurrentStage = stage;
         }
 
+        public override bool PinningSupported => true;
+
+        public override bool StackSpaceUsable => true;
+
         public static (BlockSyntax Code, MethodDeclarationSyntax DllImport) GenerateSyntax(
             IMethodSymbol stubMethod,
             IEnumerable<TypePositionInfo> paramsTypeInfo,
