@@ -420,6 +420,73 @@ namespace ILCompiler
             return owningType?.Name != "RawCalliHelper";
         }
 
+        /// <summary>
+        /// Retreives method whose runtime handle is suitable for use with GVMLookupForSlot.
+        /// </summary>
+        public MethodDesc GetTargetOfGenericVirtualMethodCall(MethodDesc calledMethod)
+        {
+            // Should be a generic virtual method
+            Debug.Assert(calledMethod.HasInstantiation && calledMethod.IsVirtual);
+
+            // Needs to be either a concrete method, or a runtime determined form.
+            Debug.Assert(!calledMethod.IsCanonicalMethod(CanonicalFormKind.Specific));
+
+            // If the method defines the slot, we can use that.
+            if (calledMethod.IsNewSlot)
+                return calledMethod;
+
+            MethodDesc targetMethod = calledMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
+
+            // Normalize to the slot defining method
+            MethodDesc slotNormalizedMethod = TypeSystemContext.GetInstantiatedMethod(
+                MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(targetMethod.GetMethodDefinition()),
+                targetMethod.Instantiation);
+
+            // Since the slot normalization logic modified what method we're looking at, we need to compute the new target of lookup.
+            //
+            // If we could use virtual method resolution logic with runtime determined methods, we wouldn't need what we're going
+            // to do below.
+            MethodDesc runtimeDeterminedSlotNormalizedMethod;
+            if (!slotNormalizedMethod.OwningType.IsCanonicalSubtype(CanonicalFormKind.Any))
+            {
+                // If the owning type is not generic, we can use it as-is, potentially only replacing the runtime-determined
+                // method instantiation part.
+                runtimeDeterminedSlotNormalizedMethod = slotNormalizedMethod.GetMethodDefinition();
+            }
+            else
+            {
+                // If we need a runtime lookup but a normalization to the slot defining method happened above, we need to compute
+                // the runtime lookup in terms of the base type that introduced the slot.
+                //
+                // To do that, we walk the base hierarchy of the runtime determined thing, looking for a type definition that matches
+                // the slot-normalized virtual method. We then find the method on that type.
+                TypeDesc runtimeDeterminedOwningType = calledMethod.OwningType;
+
+                Debug.Assert(!runtimeDeterminedOwningType.IsInterface);
+
+                while (!slotNormalizedMethod.OwningType.HasSameTypeDefinition(runtimeDeterminedOwningType))
+                {
+                    TypeDesc runtimeDeterminedBaseTypeDefinition = runtimeDeterminedOwningType.GetTypeDefinition().BaseType;
+                    if (runtimeDeterminedBaseTypeDefinition.HasInstantiation)
+                    {
+                        runtimeDeterminedOwningType = runtimeDeterminedBaseTypeDefinition.InstantiateSignature(runtimeDeterminedOwningType.Instantiation, default);
+                    }
+                    else
+                    {
+                        runtimeDeterminedOwningType = runtimeDeterminedBaseTypeDefinition;
+                    }
+                }
+
+                // Now get the method on the newly found type
+                Debug.Assert(runtimeDeterminedOwningType.HasInstantiation);
+                runtimeDeterminedSlotNormalizedMethod = TypeSystemContext.GetMethodForInstantiatedType(
+                    slotNormalizedMethod.GetTypicalMethodDefinition(),
+                    (InstantiatedType)runtimeDeterminedOwningType);
+            }
+
+            return TypeSystemContext.GetInstantiatedMethod(runtimeDeterminedSlotNormalizedMethod, calledMethod.Instantiation);
+        }
+
         CompilationResults ICompilation.Compile(string outputFile, ObjectDumper dumper)
         {
             if (dumper != null)
