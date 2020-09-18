@@ -54,13 +54,35 @@ LowLevelMonitor* SystemNative_LowLevelMonitor_Create()
         return NULL;
     }
 
+#if HAVE_MACH_ABSOLUTE_TIME
+    // Older versions of OSX don't support CLOCK_MONOTONIC, so we don't use pthread_condattr_setclock. See
+    // Wait(int32_t timeoutMilliseconds).
     error = pthread_cond_init(&monitor->Condition, NULL);
+#else
+    pthread_condattr_t conditionAttributes;
+    error = pthread_condattr_init(&conditionAttributes);
     if (error != 0)
     {
-        error = pthread_mutex_destroy(&monitor->Mutex);
+        goto mutex_destroy;
+    }
+
+    error = pthread_condattr_setclock(&conditionAttributes, CLOCK_MONOTONIC);
+    if (error != 0)
+    {
+        error = pthread_condattr_destroy(&conditionAttributes);
         assert(error == 0);
-        free(monitor);
-        return NULL;
+        goto mutex_destroy;
+    }
+
+    error = pthread_cond_init(&monitor->Condition, &conditionAttributes);
+
+    int condAttrDestroyError = pthread_condattr_destroy(&conditionAttributes);
+    assert(condAttrDestroyError == 0);
+    (void)condAttrDestroyError; // unused in release build
+#endif
+    if (error != 0)
+    {
+        goto mutex_destroy;
     }
 
 #ifdef DEBUG
@@ -68,6 +90,12 @@ LowLevelMonitor* SystemNative_LowLevelMonitor_Create()
 #endif
 
     return monitor;
+
+mutex_destroy:
+    error = pthread_mutex_destroy(&monitor->Mutex);
+    assert(error == 0);
+    free(monitor);
+    return NULL;
 }
 
 void SystemNative_LowLevelMonitor_Destroy(LowLevelMonitor* monitor)
@@ -124,13 +152,7 @@ void SystemNative_LowLevelMonitor_Wait(LowLevelMonitor* monitor)
 
 int32_t SystemNative_LowLevelMonitor_TimedWait(LowLevelMonitor *monitor, int32_t timeoutMilliseconds)
 {
-    assert(timeoutMilliseconds >= -1);
-
-    if (timeoutMilliseconds < 0)
-    {
-        SystemNative_LowLevelMonitor_Wait(monitor);
-        return true;
-    }
+    assert(timeoutMilliseconds >= 0);
 
     SetIsLocked(monitor, false);
 
