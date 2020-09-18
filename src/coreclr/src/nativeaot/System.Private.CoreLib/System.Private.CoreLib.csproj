@@ -319,7 +319,7 @@
     <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.ThreadPool.cs">
       <Link>Interop\Windows\Kernel32\Interop.ThreadPool.cs</Link>
     </Compile>
-    <Compile Include="src\System\Threading\Timer.Windows.cs" />
+    <Compile Include="src\System\Threading\Timer.Windows.cs" Condition="'$(FeaturePortableTimer)' != 'true'" />
     <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.Timer.cs">
       <Link>Interop\Windows\Kernel32\Interop.Timer.cs</Link>
     </Compile>
@@ -329,7 +329,7 @@
     <Compile Include="src\System\Threading\Thread.CoreRT.Windows.cs" />
     <Compile Include="src\System\Threading\ThreadPool.Windows.cs" Condition="'$(FeaturePortableThreadPool)' != 'true'" />
     <Compile Include="src\System\Threading\WaitHandle.Windows.cs" />
-    <Compile Include="src\System\Threading\Win32ThreadPoolBoundHandle.cs" />
+    <Compile Include="src\System\Threading\Win32ThreadPoolBoundHandle.cs" Condition="'$(FeaturePortableThreadPool)' != 'true'" />
     <Compile Include="src\System\Threading\Win32ThreadPoolNativeOverlapped.cs" />
     <Compile Include="src\System\Threading\Win32ThreadPoolNativeOverlapped.ExecutionContextCallbackArgs.cs" />
     <Compile Include="src\System\Threading\Win32ThreadPoolNativeOverlapped.OverlappedData.cs" />
