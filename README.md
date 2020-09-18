@@ -10,7 +10,7 @@ Currently, this repo contains the following experimental projects:
 - [JsonCodeGen](https://github.com/dotnet/runtimelab/tree/feature/JsonCodeGen) - Code generation for JSON.
 - [NativeAOT](https://github.com/dotnet/runtimelab/tree/feature/NativeAOT) - .NET runtime optimized for ahead of time compilation. 
 - [Utf8String](https://github.com/dotnet/runtimelab/tree/feature/Utf8String) - A new UTF-8 String data type in the runtime.
-- [RegexSRM](https://github.com/dotnet/runtimelab/tree/feature/RegexSRM) - Incorporating MSR's Symbolic Regex Matcher (SRM) into System.Text.RegularExpressions
+- [RegexSRM](https://github.com/dotnet/runtimelab/tree/feature/regexsrm) - Incorporating MSR's Symbolic Regex Matcher (SRM) into System.Text.RegularExpressions
 
 You can create your own experiment, learn more [here](CreateAnExperiment.md)!
 
