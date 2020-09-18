@@ -53,6 +53,16 @@ if [ ! -z ${RunNativeAot+x} ]%3B then
       exit 1
     fi
 
+    # In OSX we copy the native component to the directory where the exectuable resides.
+    # However, in Linux dlopen doesn't seem to look for current directory to resolve the dynamic library.
+    # So instead we point LD_LIBRARY_PATH to the directory where the native component is.
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        cp *.dylib  native/ 2>/dev/null
+    fi
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PWD}
+    fi
+
     ExePath=native/$(MSBuildProjectName)
 fi
         ]]>
