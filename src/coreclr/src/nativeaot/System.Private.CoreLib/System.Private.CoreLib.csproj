@@ -50,6 +50,7 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="src\Internal\Console.cs" />
     <Compile Include="src\Internal\Diagnostics\ExceptionExtensions.cs" />
     <Compile Include="src\Internal\Diagnostics\StackTraceHelper.cs" />
     <Compile Include="src\Internal\Runtime\CompilerHelpers\DelegateHelpers.cs" />
@@ -273,6 +274,12 @@
     <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.ExitProcess.cs">
       <Link>Interop\Windows\Kernel32\Interop.ExitProcess.cs</Link>
     </Compile>
+    <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.GetStdHandle.cs">
+      <Link>Interop\Windows\Kernel32\Interop.GetStdHandle.cs</Link>
+    </Compile>
+    <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.HandleTypes.cs">
+      <Link>Interop\Windows\Kernel32\Interop.HandleTypes.cs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup Condition="'$(TargetsWindows)'=='true'">
     <Compile Include="src\Microsoft\Win32\SafeHandles\SafeThreadPoolIOHandle.cs" />
@@ -368,6 +375,9 @@
     </Compile>
     <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.GetExecutableAbsolutePath.cs">
       <Link>Interop\Unix\System.Native\Interop.GetExecutableAbsolutePath.cs</Link>
+    </Compile>
+	<Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.PrintF.cs">
+      <Link>Interop\Unix\System.Native\Interop.PrintF.cs</Link>
     </Compile>
     <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.SchedGetCpu.cs">
       <Link>Interop\Unix\System.Native\Interop.SchedGetCpu.cs</Link>
