@@ -54,6 +54,40 @@
              Link="Common\System\Collections\Generic\ValueListBuilder.cs" />
     <Compile Include="$(CommonPath)System\Text\ValueStringBuilder.cs"
              Link="Common\System\Text\ValueStringBuilder.cs" />
+    <!-- SRM Experiment Implementation -->
+    <Compile Include="System\Text\RegularExpressions\srm\AutomataException.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\Match.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\Regex.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\RegexOptions.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\RegexToAutomatonConverter.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexBuilder.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexNode.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\algebras\BDD.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\algebras\BDDAlgebra.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\algebras\BV.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\algebras\BV64Algebra.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\algebras\BVAlgebra.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\algebras\CharacterEncoding.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\algebras\CharSetSolver.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\algebras\IBooleanAlgebra.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\algebras\ICharAlgebra.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\algebras\IntervalSet.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\algebras\MintermGenerator.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\algebras\RangeConverter.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\matcher\BooleanDecisionTree.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\matcher\DecisionTree.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\matcher\IMatcher.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\matcher\SymbolicRegexMatcher.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\matcher\UTF8Encoding.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\matcher\VectorizedIndexOf.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\printing\RegexCharSetPrinter.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\unicode\IgnoreCaseRelation.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\unicode\IgnoreCaseRelationGenerator.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\unicode\IgnoreCaseTransformer.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\unicode\UnicodeCategoryRanges.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\unicode\UnicodeCategoryRangesGenerator.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\unicode\UnicodeCategoryTheory.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\utils\StringUtility.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.Collections" />
