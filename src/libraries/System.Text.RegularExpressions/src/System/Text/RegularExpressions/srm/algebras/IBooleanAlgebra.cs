@@ -27,24 +27,24 @@ namespace Microsoft.SRM
         S MkAnd(S predicate1, S predicate2);
 
         /// <summary>
-        /// Make a conjunction of all the predicates in the enumeration. 
+        /// Make a conjunction of all the predicates in the enumeration.
         /// Returns True if the enumeration is empty.
         /// </summary>
         S MkAnd(IEnumerable<S> predicates);
 
         /// <summary>
-        /// Make a conjunction of all the predicates. 
+        /// Make a conjunction of all the predicates.
         /// Returns True if the enumeration is empty.
         /// </summary>
         S MkAnd(params S[] predicates);
 
         /// <summary>
-        /// Make a disjunction of predicate1 and predicate2. 
+        /// Make a disjunction of predicate1 and predicate2.
         /// </summary>
         S MkOr(S predicate1, S predicate2);
 
         /// <summary>
-        /// Make a disjunction of all the predicates in the enumeration. 
+        /// Make a disjunction of all the predicates in the enumeration.
         /// Must return False if the enumeration is empty.
         /// </summary>
         S MkOr(IEnumerable<S> predicates);
@@ -77,7 +77,7 @@ namespace Microsoft.SRM
         /// <summary>
         /// Given an array of constraints {c_1, c_2, ..., c_n} where n&gt;=0.
         /// Enumerate all satisfiable Boolean combinations Tuple({b_1, b_2, ..., b_n}, c)
-        /// where c is satisfisable and equivalent to c'_1 &amp; c'_2 &amp; ... &amp; c'_n, 
+        /// where c is satisfisable and equivalent to c'_1 &amp; c'_2 &amp; ... &amp; c'_n,
         /// where c'_i = c_i if b_i = true and c'_i is Not(c_i) otherwise.
         /// If n=0 return Tuple({},True)
         /// </summary>

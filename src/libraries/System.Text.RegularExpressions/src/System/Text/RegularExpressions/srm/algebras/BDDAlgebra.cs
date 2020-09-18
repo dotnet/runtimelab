@@ -12,17 +12,17 @@ namespace Microsoft.SRM
     /// </summary>
     internal abstract class BDDAlgebra : IBooleanAlgebra<BDD>
     {
-        Dictionary<BvSetPair, BDD> orCache = new Dictionary<BvSetPair, BDD>();
-        Dictionary<BvSetPair, BDD> andCache = new Dictionary<BvSetPair, BDD>();
-        Dictionary<BDD, BDD> notCache = new Dictionary<BDD, BDD>();
-        Dictionary<BvSet_Int, BDD> shiftCache = new Dictionary<BvSet_Int, BDD>(); 
-        Dictionary<Tuple<int, Tuple<ulong, ulong>>, BDD> intervalCache = new Dictionary<Tuple<int, Tuple<ulong, ulong>>, BDD>();
-        Dictionary<BDD, ulong> sizeCache = new Dictionary<BDD, ulong>();
+        private Dictionary<BvSetPair, BDD> orCache = new Dictionary<BvSetPair, BDD>();
+        private Dictionary<BvSetPair, BDD> andCache = new Dictionary<BvSetPair, BDD>();
+        private Dictionary<BDD, BDD> notCache = new Dictionary<BDD, BDD>();
+        private Dictionary<BvSet_Int, BDD> shiftCache = new Dictionary<BvSet_Int, BDD>();
+        private Dictionary<Tuple<int, Tuple<ulong, ulong>>, BDD> intervalCache = new Dictionary<Tuple<int, Tuple<ulong, ulong>>, BDD>();
+        private Dictionary<BDD, ulong> sizeCache = new Dictionary<BDD, ulong>();
 
-        BDD _True;
-        BDD _False;
+        private BDD _True;
+        private BDD _False;
 
-        MintermGenerator<BDD> mintermGen;
+        private MintermGenerator<BDD> mintermGen;
 
         /// <summary>
         /// Construct a solver for bitvector sets.
@@ -35,7 +35,7 @@ namespace Microsoft.SRM
         }
 
         //internalize the creation of all charsets so that any two charsets with same bit and children are the same pointers
-        Dictionary<BvSetKey, BDD> bvsetCache = new Dictionary<BvSetKey, BDD>();
+        private Dictionary<BvSetKey, BDD> bvsetCache = new Dictionary<BvSetKey, BDD>();
 
         public BDD MkBvSet(int nr, BDD one, BDD zero)
         {
@@ -65,7 +65,7 @@ namespace Microsoft.SRM
             if (a == b)
                 return a;
 
-            var key = new BvSetPair(a, b); 
+            var key = new BvSetPair(a, b);
             BDD res;
             if (orCache.TryGetValue(key, out res))
                 return res;
@@ -230,8 +230,8 @@ namespace Microsoft.SRM
         #region bit-shift operations
 
         /// <summary>
-        /// Shift all elements k (=1 by default) bits to the right. 
-        /// For example if set denotes {*0000,*1110,*1111} then 
+        /// Shift all elements k (=1 by default) bits to the right.
+        /// For example if set denotes {*0000,*1110,*1111} then
         /// ShiftRight(set) denotes {*000,*111} where * denotes any prefix of 0's or 1's.
         /// </summary>
         public BDD ShiftRight(BDD set, int k = 1)
@@ -244,8 +244,8 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Shift all elements k bits to the left. 
-        /// For example if k=1 and set denotes {*0000,*1111} then 
+        /// Shift all elements k bits to the left.
+        /// For example if k=1 and set denotes {*0000,*1111} then
         /// ShiftLeft(set) denotes {*00000,*00001,*11110,*11111} where * denotes any prefix of 0's or 1's.
         /// </summary>
         public BDD ShiftLeft(BDD set, int k = 1)
@@ -257,7 +257,7 @@ namespace Microsoft.SRM
             return Shift_(set, k);
         }
 
-        BDD Shift_(BDD set, int k)
+        private BDD Shift_(BDD set, int k)
         {
             if (set.IsLeaf || k == 0)
                 return set;
@@ -269,7 +269,7 @@ namespace Microsoft.SRM
                 return res;
 
             int ordinal = set.Ordinal + k;
-           
+
             if (ordinal < 0)
                 res = True;  //if k is negative
             else
@@ -330,7 +330,7 @@ namespace Microsoft.SRM
             return CreateFromInterval1(mask, maxBit, m, n);
         }
 
-        BDD CreateFromInterval1(uint mask, int bit, uint m, uint n)
+        private BDD CreateFromInterval1(uint mask, int bit, uint m, uint n)
         {
             BDD set;
             var pair = new Tuple<ulong, ulong>((ulong)m << 32, (ulong)n);
@@ -342,9 +342,9 @@ namespace Microsoft.SRM
             else
             {
 
-                if (mask == 1) //base case: LSB 
+                if (mask == 1) //base case: LSB
                 {
-                    if (n == 0)  //implies that m==0 
+                    if (n == 0)  //implies that m==0
                         set = MkBvSet(bit, False, True);
                     else if (m == 1) //implies that n==1
                         set = MkBvSet(bit, True, False);
@@ -383,7 +383,7 @@ namespace Microsoft.SRM
             }
         }
 
-        BDD CreateFromInterval1(ulong mask, int bit, ulong m, ulong n)
+        private BDD CreateFromInterval1(ulong mask, int bit, ulong m, ulong n)
         {
             BDD set;
             var pair = new Tuple<ulong, ulong>(m, n);
@@ -395,9 +395,9 @@ namespace Microsoft.SRM
             else
             {
 
-                if (mask == 1) //base case: LSB 
+                if (mask == 1) //base case: LSB
                 {
-                    if (n == 0)  //implies that m==0 
+                    if (n == 0)  //implies that m==0
                         set = MkBvSet(bit, False, True);
                     else if (m == 1) //implies that n==1
                         set = MkBvSet(bit, True, False);
@@ -437,9 +437,9 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Convert the set into an equivalent array of uint ranges. 
+        /// Convert the set into an equivalent array of uint ranges.
         /// Bits above maxBit are ignored.
-        /// The ranges are nonoverlapping and ordered. 
+        /// The ranges are nonoverlapping and ordered.
         /// If limit > 0 and there are more ranges than limit then return null.
         /// </summary>
         public Tuple<uint, uint>[] ToRanges(BDD set, int maxBit, int limit = 0)

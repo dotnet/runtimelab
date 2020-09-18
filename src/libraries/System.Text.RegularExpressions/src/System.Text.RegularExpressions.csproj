@@ -2,7 +2,7 @@
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <TargetFrameworks>$(NetCoreAppCurrent)</TargetFrameworks>
-    <Nullable>enable</Nullable>
+    <Nullable>annotations</Nullable> <!-- TODO: Annotate SRM for nullable reference types and flip this back to enable -->
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="System\Collections\HashtableExtensions.cs" />
@@ -101,5 +101,12 @@
     <Reference Include="System.Reflection.Emit.ILGeneration" />
     <Reference Include="System.Reflection.Emit.Lightweight" />
     <Reference Include="System.Reflection.Primitives" />
+    <!-- References required for SRM -->
+    <Reference Include="System.Runtime.Serialization.Formatters" />
+    <Reference Include="System.Numerics.Vectors" />
+    <Reference Include="System.Collections.Immutable" />
+    <Reference Include="System.IO.FileSystem" />
+    <Reference Include="System.Linq" />
+    <Reference Include="System.Text.Encoding.Extensions" />
   </ItemGroup>
 </Project>

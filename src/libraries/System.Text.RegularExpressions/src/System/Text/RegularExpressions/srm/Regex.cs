@@ -9,13 +9,8 @@ namespace Microsoft.SRM
     [Serializable]
     internal class Regex
     {
-        private static readonly CharSetSolver solver;
-        private static readonly RegexToAutomatonConverter<BDD> converter;
-        static Regex()
-        {
-            solver = new CharSetSolver();
-            converter = new RegexToAutomatonConverter<BDD>(solver);
-        }
+        private static readonly CharSetSolver solver = new CharSetSolver();
+        private static readonly RegexToAutomatonConverter<BDD> converter = new RegexToAutomatonConverter<BDD>(solver);
 
         private IMatcher matcher;
 
@@ -38,7 +33,7 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Returns true iff the input string matches. 
+        /// Returns true iff the input string matches.
         /// <param name="input">given iput string</param>
         /// <param name="startat">start position in the input</param>
         /// <param name="endat">end position in the input, -1 means that the value is unspecified and taken to be input.Length-1</param>
@@ -55,10 +50,10 @@ namespace Microsoft.SRM
         /// <param name="endat">end position in the input, -1 means that the value is unspecified and taken to be input.Length-1</param>
         public List<Match> Matches(string input, int limit = 0, int startat = 0, int endat = -1)
             => matcher.Matches(input, limit, startat, endat);
-        
+
         /// <summary>
         /// Serialize this symbolic regex matcher to the given file.
-        /// If formatter is null then an instance of 
+        /// If formatter is null then an instance of
         /// System.Runtime.Serialization.Formatters.Binary.BinaryFormatter is used.
         /// </summary>
         /// <param name="file">file where the serialization is stored</param>
@@ -72,7 +67,7 @@ namespace Microsoft.SRM
 
         /// <summary>
         /// Serialize this symbolic regex matcher to the given file.
-        /// If formatter is null then an instance of 
+        /// If formatter is null then an instance of
         /// System.Runtime.Serialization.Formatters.Binary.BinaryFormatter is used.
         /// </summary>
         /// <param name="stream">stream where the serialization is stored</param>
@@ -81,12 +76,16 @@ namespace Microsoft.SRM
         {
             if (formatter == null)
                 formatter = new BinaryFormatter();
+#pragma warning disable CS0618 // TODO: Remove use of BinaryFormatter
+#pragma warning disable SYSLIB0011
             formatter.Serialize(stream, this);
+#pragma warning restore SYSLIB0011
+#pragma warning restore CS0618
         }
 
         /// <summary>
-        /// Deserialize the matcher of a symblic regex from the given file using the given formatter. 
-        /// If formatter is null then an instance of 
+        /// Deserialize the matcher of a symblic regex from the given file using the given formatter.
+        /// If formatter is null then an instance of
         /// System.Runtime.Serialization.Formatters.Binary.BinaryFormatter is used.
         /// </summary>
         /// <param name="file">source file of the serialized matcher</param>
@@ -101,8 +100,8 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Deserialize the matcher of a symblic regex from the given stream using the given formatter. 
-        /// If formatter is null then an instance of 
+        /// Deserialize the matcher of a symblic regex from the given stream using the given formatter.
+        /// If formatter is null then an instance of
         /// System.Runtime.Serialization.Formatters.Binary.BinaryFormatter is used.
         /// </summary>
         /// <param name="stream">source stream of the serialized matcher</param>
@@ -112,7 +111,11 @@ namespace Microsoft.SRM
         {
             if (formatter == null)
                 formatter = new BinaryFormatter();
+#pragma warning disable CS0618 // TODO: Remove use of BinaryFormatter
+#pragma warning disable SYSLIB0011
             Regex matcher = (Regex)formatter.Deserialize(stream);
+#pragma warning restore SYSLIB0011
+#pragma warning restore CS0618
             return matcher;
         }
     }

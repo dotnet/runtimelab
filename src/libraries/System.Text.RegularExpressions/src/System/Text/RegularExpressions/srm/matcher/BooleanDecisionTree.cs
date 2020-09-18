@@ -35,7 +35,7 @@ namespace Microsoft.SRM
             var partition = new BDD[] { domain_compl, domain };
             if (precomputeLimit == 0)
             {
-                return new BooleanDecisionTree(new bool[] { }, MkBST(new DecisionTree.PartitionCut(solver, partition), 0, 0xFFFF));
+                return new BooleanDecisionTree(Array.Empty<bool>(), MkBST(new DecisionTree.PartitionCut(solver, partition), 0, 0xFFFF));
             }
 
             bool[] precomp = Precompute(solver, domain, precomputeLimit);
@@ -117,14 +117,14 @@ namespace Microsoft.SRM
             this.bst = DecisionTree.BST.Deserialize(info.GetString("b"));
         }
 
-        string SerializePrecomputed()
+        private string SerializePrecomputed()
         {
             char[] chars = Array.ConvertAll(precomputed, b => (b ? '1' : '0'));
-            var s = new String(chars);
+            var s = new string(chars);
             return s;
         }
 
-        static bool[] DeserializePrecomputed(string s)
+        private static bool[] DeserializePrecomputed(string s)
         {
             var vals = Array.ConvertAll(s.ToCharArray(), c => (c == '1' ? true : false));
             return vals;

@@ -8,9 +8,9 @@ namespace Microsoft.SRM
 {
     internal class IgnoreCaseTransformer
     {
-        BDD IgnoreCaseRel;
-        BDD domain;
-        CharSetSolver solver;
+        private BDD IgnoreCaseRel;
+        private BDD domain;
+        private CharSetSolver solver;
 
         public IgnoreCaseTransformer(CharSetSolver charSetSolver)
         {

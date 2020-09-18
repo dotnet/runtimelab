@@ -9,11 +9,11 @@ namespace Microsoft.SRM
     /// Provides a generic implementation for minterm generation over a given Boolean Algebra.
     /// </summary>
     /// <typeparam name="PRED">type of predicates</typeparam>
-    internal class MintermGenerator<PRED> 
+    internal class MintermGenerator<PRED>
     {
-        IBooleanAlgebra<PRED> ba;
+        private IBooleanAlgebra<PRED> ba;
 
-        bool hashCodesRespectEquivalence;
+        private bool hashCodesRespectEquivalence;
 
         /// <summary>
         /// Constructs a minterm generator for a given Boolean Algebra.
@@ -36,7 +36,7 @@ namespace Microsoft.SRM
         /// <summary>
         /// Given an array of predidates {p_1, p_2, ..., p_n} where n>=0.
         /// Enumerate all satisfiable Boolean combinations Tuple({b_1, b_2, ..., b_n}, p)
-        /// where p is satisfiable and equivalent to p'_1 &amp; p'_2 &amp; ... &amp; p'_n, 
+        /// where p is satisfiable and equivalent to p'_1 &amp; p'_2 &amp; ... &amp; p'_n,
         /// where p'_i = p_i if b_i = true and p'_i is Not(p_i) otherwise.
         /// If n=0 return Tuple({},True).
         /// </summary>
@@ -47,7 +47,7 @@ namespace Microsoft.SRM
         {
             if (preds.Length == 0)
             {
-                yield return new Tuple<bool[], PRED>(new bool[] { }, ba.True);
+                yield return new Tuple<bool[], PRED>(Array.Empty<bool>(), ba.True);
             }
             else
             {
@@ -55,7 +55,7 @@ namespace Microsoft.SRM
 
                 List<PRED> nonequivalentSets = new List<PRED>();
 
-                //work only with nonequivalent sets as distinct elements 
+                //work only with nonequivalent sets as distinct elements
                 var indexLookup = new Dictionary<int, int>();
                 var newIndexMap = new Dictionary<EquivClass, int>();
                 var equivs = new List<List<int>>();
@@ -101,16 +101,16 @@ namespace Microsoft.SRM
             }
         }
 
-        EquivClass CreateEquivalenceClass(bool useEquivalenceChecking, PRED set)
+        private EquivClass CreateEquivalenceClass(bool useEquivalenceChecking, PRED set)
         {
             return new EquivClass(useEquivalenceChecking, this, set);
         }
 
         private class EquivClass
         {
-            PRED set;
-            MintermGenerator<PRED> gen;
-            bool useEquivalenceChecking;
+            private PRED set;
+            private MintermGenerator<PRED> gen;
+            private bool useEquivalenceChecking;
 
             internal EquivClass(bool useEquivalenceChecking, MintermGenerator<PRED> gen, PRED set)
             {
@@ -125,7 +125,7 @@ namespace Microsoft.SRM
                     //cannot rely on equivalent predicates having the same hashcode
                     //so all predicates end up in the same bucket that causes a linear search
                     //with Equals to check equivalence when useEquivalenceChecking=true
-                    return 0; 
+                    return 0;
                 else
                     return set.GetHashCode();
             }
@@ -142,12 +142,12 @@ namespace Microsoft.SRM
 
     internal class PartitonTree<PRED>
     {
-        PartitonTree<PRED> parent;
-        int nr;
+        private PartitonTree<PRED> parent;
+        private int nr;
         internal PRED phi;
-        IBooleanAlgebra<PRED> solver;
-        PartitonTree<PRED> left;   
-        PartitonTree<PRED> right;  //complement
+        private IBooleanAlgebra<PRED> solver;
+        private PartitonTree<PRED> left;
+        private PartitonTree<PRED> right;  //complement
         internal PartitonTree(IBooleanAlgebra<PRED> solver)
         {
             this.solver = solver;
@@ -157,7 +157,7 @@ namespace Microsoft.SRM
             this.left = null;
             this.right = null;
         }
-        PartitonTree(IBooleanAlgebra<PRED> solver, int depth, PartitonTree<PRED> parent, PRED phi, PartitonTree<PRED> left, PartitonTree<PRED> right)
+        private PartitonTree(IBooleanAlgebra<PRED> solver, int depth, PartitonTree<PRED> parent, PRED phi, PartitonTree<PRED> left, PartitonTree<PRED> right)
         {
             this.solver = solver;
             this.parent = parent;
@@ -170,7 +170,7 @@ namespace Microsoft.SRM
         internal void Refine(PRED psi)
         {
 
-            if (left == null && right == null) 
+            if (left == null && right == null)
             {
                 #region leaf
                 var phi_and_psi = solver.MkAnd(phi, psi);

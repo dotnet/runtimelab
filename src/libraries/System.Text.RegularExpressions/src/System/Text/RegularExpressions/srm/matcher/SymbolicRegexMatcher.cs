@@ -85,43 +85,43 @@ namespace Microsoft.SRM
         /// Length of atoms is K.
         /// </summary>
         [NonSerialized]
-        S[] atoms;
+        private S[] atoms;
 
         /// <summary>
         /// Maps each character into a partition id in the range 0..K-1.
         /// </summary>
         [NonSerialized]
-        DecisionTree dt;
+        private DecisionTree dt;
 
         /// <summary>
         /// Used only by IsMatch and if A2 is used.
         /// </summary>
         [NonSerialized]
-        int q0_A2 = 0;
+        private int q0_A2 = 0;
 
         /// <summary>
         /// Initial state of A1 (0 is not used).
         /// </summary>
         [NonSerialized]
-        int q0_A1 = 1;
+        private int q0_A1 = 1;
 
         /// <summary>
         /// Initial state of Ar (0 is not used).
         /// </summary>
         [NonSerialized]
-        int q0_Ar = 2;
+        private int q0_Ar = 2;
 
         /// <summary>
         /// Initial state of A (0 is not used).
         /// </summary>
         [NonSerialized]
-        int q0_A = 3;
+        private int q0_A = 3;
 
         /// <summary>
         /// Next available state id.
         /// </summary>
         [NonSerialized]
-        int nextStateId = 4;
+        private int nextStateId = 4;
 
 #if UNSAFE
         /// <summary>
@@ -141,7 +141,7 @@ namespace Microsoft.SRM
         /// First byte of A_prefixUTF8 in vector
         /// </summary>
         [NonSerialized]
-        Vector<byte> A_prefixUTF8_first_byte;
+        private Vector<byte> A_prefixUTF8_first_byte;
 
         /// <summary>
         /// Original regex.
@@ -149,9 +149,9 @@ namespace Microsoft.SRM
         [NonSerialized]
         internal SymbolicRegexNode<S> A;
         [NonSerialized]
-        bool A_allLoopsAreLazy = false;
+        private bool A_allLoopsAreLazy = false;
         [NonSerialized]
-        bool A_containsLazyLoop = false;
+        private bool A_containsLazyLoop = false;
 
         /// <summary>
         /// The RegexOptions this regex was created with
@@ -192,118 +192,118 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Set of elements that matter as first element of A. 
+        /// Set of elements that matter as first element of A.
         /// </summary>
         internal BooleanDecisionTree A_StartSet;
 
         /// <summary>
         /// predicate over characters that make some progress
         /// </summary>
-        S A_startset;
+        private S A_startset;
 
         /// <summary>
         /// Number of elements in A_StartSet
         /// </summary>
-        int A_StartSet_Size;
+        private int A_StartSet_Size;
 
         /// <summary>
         /// if nonempty then A has that fixed prefix
         /// </summary>
-        string A_prefix;
+        private string A_prefix;
 
         /// <summary>
         /// if nonempty then A has that fixed prefix
         /// </summary>>
         [NonSerialized]
-        byte[] A_prefixUTF8;
+        private byte[] A_prefixUTF8;
 
         /// <summary>
         /// predicate array corresponding to fixed prefix of A
         /// </summary>
-        S[] A_prefix_array;
+        private S[] A_prefix_array;
 
         /// <summary>
         /// if true then the fixed prefix of A is idependent of case
         /// </summary>
         [NonSerialized]
-        bool A_fixedPrefix_ignoreCase;
+        private bool A_fixedPrefix_ignoreCase;
 
         /// <summary>
         /// precomputed state of A1 that is reached after the fixed prefix of A
         /// </summary>
         [NonSerialized]
-        int A1_skipState;
+        private int A1_skipState;
 
         /// <summary>
         /// precomputed regex of A1 that is reached after the fixed prefix of A
         /// </summary>
         [NonSerialized]
-        SymbolicRegexNode<S> A1_skipStateRegex;
+        private SymbolicRegexNode<S> A1_skipStateRegex;
 
         /// <summary>
         /// Reverse(A).
         /// </summary>
         [NonSerialized]
-        SymbolicRegexNode<S> Ar;
+        private SymbolicRegexNode<S> Ar;
 
         /// <summary>
         /// if nonempty then Ar has that fixed prefix of predicates
         /// </summary>
-        S[] Ar_prefix_array;
+        private S[] Ar_prefix_array;
 
-        string Ar_prefix;
+        private string Ar_prefix;
 
         /// <summary>
         /// precomputed state that is reached after the fixed prefix of Ar
         /// </summary>
         [NonSerialized]
-        int Ar_skipState;
+        private int Ar_skipState;
 
         /// <summary>
         /// precomputed regex that is reached after the fixed prefix of Ar
         /// </summary>
         [NonSerialized]
-        SymbolicRegexNode<S> Ar_skipStateRegex;
+        private SymbolicRegexNode<S> Ar_skipStateRegex;
 
         /// <summary>
         /// .*A
         /// </summary>
         [NonSerialized]
-        SymbolicRegexNode<S> A1;
+        private SymbolicRegexNode<S> A1;
 
         /// <summary>
         /// Variant of A1 for matching.
-        /// In A2 anchors have been removed. 
+        /// In A2 anchors have been removed.
         /// Used only by IsMatch and when A contains anchors.
         /// </summary>
         [NonSerialized]
-        SymbolicRegexNode<S> A2 = null;
+        private SymbolicRegexNode<S> A2 = null;
 
         /// <summary>
         /// Initialized to atoms.Length.
         /// </summary>
         [NonSerialized]
-        int K;
+        private int K;
 
         /// <summary>
         /// Maps regexes to state ids
         /// </summary>
         [NonSerialized]
-        Dictionary<SymbolicRegexNode<S>, int> regex2state = new Dictionary<SymbolicRegexNode<S>, int>();
+        private Dictionary<SymbolicRegexNode<S>, int> regex2state = new Dictionary<SymbolicRegexNode<S>, int>();
 
         /// <summary>
         /// Maps states >= StateLimit to regexes.
         /// </summary>
         [NonSerialized]
-        Dictionary<int, SymbolicRegexNode<S>> state2regexExtra = new Dictionary<int, SymbolicRegexNode<S>>();
+        private Dictionary<int, SymbolicRegexNode<S>> state2regexExtra = new Dictionary<int, SymbolicRegexNode<S>>();
 
         /// <summary>
-        /// Maps states 1..(StateLimit-1) to regexes. 
+        /// Maps states 1..(StateLimit-1) to regexes.
         /// State 0 is not used but is reserved for denoting UNDEFINED value.
         /// Length of state2regex is StateLimit. Entry 0 is not used.
         /// </summary>
         [NonSerialized]
-        SymbolicRegexNode<S>[] state2regex;
+        private SymbolicRegexNode<S>[] state2regex;
 
         /// <summary>
         /// Overflow from delta. Transitions with source state over the limit.
@@ -311,7 +311,7 @@ namespace Microsoft.SRM
         /// All defined states are strictly positive, p_i==0 means that q --atoms[i]--> p_i is still undefined.
         /// </summary>
         [NonSerialized]
-        Dictionary<int, int[]> deltaExtra = new Dictionary<int, int[]>();
+        private Dictionary<int, int[]> deltaExtra = new Dictionary<int, int[]>();
 
         /// <summary>
         /// Bound on the maximum nr of states stored in array.
@@ -325,11 +325,11 @@ namespace Microsoft.SRM
 
         /// <summary>
         /// Holds all transitions for states 1..MaxNrOfStates-1.
-        /// each transition q ---atoms[i]---> p is represented by entry p = delta[(q * K) + i]. 
+        /// each transition q ---atoms[i]---> p is represented by entry p = delta[(q * K) + i].
         /// Length of delta is K*StateLimit.
         /// </summary>
         [NonSerialized]
-        int[] delta;
+        private int[] delta;
 
         #region custom serialization
 
@@ -598,7 +598,7 @@ namespace Microsoft.SRM
         /// <param name="input">given input</param>
         /// <param name="q">given start state</param>
         /// <param name="regex">regex of returned state</param>
-        int DeltaPlus(string input, int q, out SymbolicRegexNode<S> regex)
+        private int DeltaPlus(string input, int q, out SymbolicRegexNode<S> regex)
         {
             if (string.IsNullOrEmpty(input))
             {
@@ -664,7 +664,7 @@ namespace Microsoft.SRM
 
         /// <summary>
         /// Compute the target state for source state q and input character c.
-        /// All uses of Delta must be inlined for efficiency. 
+        /// All uses of Delta must be inlined for efficiency.
         /// This is the purpose of the MethodImpl(MethodImplOptions.AggressiveInlining) attribute.
         /// </summary>
         /// <param name="c">input character</param>
@@ -672,7 +672,7 @@ namespace Microsoft.SRM
         /// <param name="regex">target regex</param>
         /// <returns>state id of target regex</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        int Delta(int c, int q, out SymbolicRegexNode<S> regex)
+        private int Delta(int c, int q, out SymbolicRegexNode<S> regex)
         {
             int p;
             #region copy&paste region of the definition of Delta being inlined
@@ -715,7 +715,7 @@ namespace Microsoft.SRM
         /// <summary>
         /// Critical region for threadsafe applications for defining a new transition from q when q is larger that StateLimit
         /// </summary>
-        /// 
+        ///
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void CreateNewTransitionExtra(int q, int atom_id, S atom, int[] q_trans, out int p, out SymbolicRegexNode<S> regex)
         {
@@ -832,7 +832,7 @@ namespace Microsoft.SRM
             //initial start position in the input is i = 0
             int i = startat;
 
-            //after a match is found the match_start_boundary becomes 
+            //after a match is found the match_start_boundary becomes
             //the first position after the last match
             int match_start_boundary = i;
 
@@ -900,7 +900,7 @@ namespace Microsoft.SRM
         /// </summary>
         /// <param name="regex"></param>
         /// <returns></returns>
-        int GetWatchdog(SymbolicRegexNode<S> regex)
+        private int GetWatchdog(SymbolicRegexNode<S> regex)
         {
             if (regex.kind == SymbolicRegexKind.WatchDog)
             {
@@ -920,7 +920,7 @@ namespace Microsoft.SRM
         /// Returns true iff the input string matches A.
         /// <param name="input">input string</param>
         /// <param name="startat">the position to start search in the input string</param>
-        /// <param name="endat">end position in the input, negative value means 
+        /// <param name="endat">end position in the input, negative value means
         /// unspecified and taken to be input.Length-1</param>
         /// </summary>
         public bool IsMatch(string input, int startat = 0, int endat = -1)
@@ -933,7 +933,7 @@ namespace Microsoft.SRM
             if (this.A.containsAnchors)
             {
                 #region original regex contains anchors
-                //TBD prefix optimization may still be important here 
+                //TBD prefix optimization may still be important here
                 //but the prefix needs to be computed based on A, but with start anchors removed or treated specially
                 if (A2 == null)
                 {
@@ -1119,7 +1119,7 @@ namespace Microsoft.SRM
                 if (regex.isNullable)
                 {
                     //accepting state has been reached
-                    //record the position 
+                    //record the position
                     i_end = i;
                 }
                 else if (regex == builder.nothing)
@@ -1175,8 +1175,8 @@ namespace Microsoft.SRM
             int c;
             while (i >= match_start_boundary)
             {
-                //observe that the input is reversed 
-                //so input[k-1] is the first character 
+                //observe that the input is reversed
+                //so input[k-1] is the first character
                 //and input[0] is the last character
                 //TBD: anchors
                 c = input[i];
@@ -1223,8 +1223,8 @@ namespace Microsoft.SRM
                 if (regex.isNullable)
                 {
                     //earliest start point so far
-                    //this must happen at some point 
-                    //or else A1 would not have reached a 
+                    //this must happen at some point
+                    //or else A1 would not have reached a
                     //final state after match_start_boundary
                     last_start = i;
                     //TBD: under some conditions we can break here
@@ -1249,6 +1249,7 @@ namespace Microsoft.SRM
         /// <param name="input">given input string</param>
         /// <param name="i">start position</param>
         /// <param name="i_q0">last position the initial state of A1 was visited</param>
+        /// <param name="watchdog"></param>
         /// <param name="k">input length or bounded input length</param>
         private int FindFinalStatePosition(string input, int k, int i, out int i_q0, out int watchdog)
         {
@@ -1343,6 +1344,7 @@ namespace Microsoft.SRM
         /// <param name="input">given input string</param>
         /// <param name="i">start position</param>
         /// <param name="i_q0">last position the initial state of A1 was visited</param>
+        /// <param name="watchdog"></param>
         /// <param name="k">input length or bounded input length</param>
         private int FindFinalStatePositionOpt(string input, int k, int i, out int i_q0, out int watchdog)
         {
@@ -1357,9 +1359,9 @@ namespace Microsoft.SRM
                 // ++++ the following prefix optimization can be commented out without affecting correctness ++++
                 // but this optimization has a huge perfomance boost when fixed prefix exists .... in the order of 10x
                 //
-                #region prefix optimization 
+                #region prefix optimization
                 //stay in the initial state if the prefix does not match
-                //thus advance the current position to the 
+                //thus advance the current position to the
                 //first position where the prefix does match
                 if (q == q0_A1)
                 {
@@ -1677,7 +1679,7 @@ namespace Microsoft.SRM
                 {
                     SymbolicRegexNode<S> regex = null;
 
-                    #region prefix optimization 
+                    #region prefix optimization
                     //stay in the initial state if the prefix does not match
                     //thus advance the current position to the 
                     //first position where the prefix does match
@@ -1986,7 +1988,7 @@ namespace Microsoft.SRM
         /// <param name="i">the start index in input to search from</param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        int IndexOfStartset(string input, int i)
+        private int IndexOfStartset(string input, int i)
         {
             int k = input.Length;
             while (i < k)
@@ -2008,9 +2010,10 @@ namespace Microsoft.SRM
         /// </summary>
         /// <param name="input">input string to search in</param>
         /// <param name="i">the start index in input to search from</param>
+        /// <param name="surrogate_codepoint"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        int IndexOfStartsetUTF8(byte[] input, int i, ref int surrogate_codepoint)
+        private int IndexOfStartsetUTF8(byte[] input, int i, ref int surrogate_codepoint)
         {
             int k = input.Length;
             int step = 1;
@@ -2052,7 +2055,7 @@ namespace Microsoft.SRM
         /// <param name="i">the search start index in input</param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        int IndexOf(byte[] input, byte[] value, int i)
+        private int IndexOf(byte[] input, byte[] value, int i)
         {
             int n = value.Length;
             int k = (input.Length - n) + 1;
@@ -2079,7 +2082,7 @@ namespace Microsoft.SRM
         /// <param name="i">the search start index in input</param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        int IndexOf(byte[] input, bool[] pred, int i)
+        private int IndexOf(byte[] input, bool[] pred, int i)
         {
             int k = input.Length;
             while (i < k && !pred[input[i]])
@@ -2166,7 +2169,7 @@ namespace Microsoft.SRM
             //initial start position in the input is i = 0
             int i = 0;
 
-            //after a match is found the match_start_boundary becomes 
+            //after a match is found the match_start_boundary becomes
             //the first postion after the last match
             //enforced when inlcude_overlaps == false
             int match_start_boundary = 0;
@@ -2301,7 +2304,7 @@ namespace Microsoft.SRM
                 if (regex.isNullable)
                 {
                     //accepting state has been reached
-                    //record the position 
+                    //record the position
                     i_end = i;
                 }
                 else if (regex == builder.nothing)
@@ -2362,8 +2365,8 @@ namespace Microsoft.SRM
             int codepoint;
             while (i >= match_start_boundary)
             {
-                //observe that the input is reversed 
-                //so input[k-1] is the first character 
+                //observe that the input is reversed
+                //so input[k-1] is the first character
                 //and input[0] is the last character
                 //but encoding is not reversed
                 //TBD: anchors
@@ -2371,7 +2374,7 @@ namespace Microsoft.SRM
                 #region c = current UTF16 character
                 if (surrogate_codepoint == 0)
                 {
-                    //not in the middel of surrogate codepoint 
+                    //not in the middel of surrogate codepoint
                     c = input[i];
                     if (c > 0x7F)
                     {
@@ -2381,7 +2384,7 @@ namespace Microsoft.SRM
                         {
                             //given codepoint = ((H - 0xD800) * 0x400) + (L - 0xDC00) + 0x10000
                             surrogate_codepoint = codepoint;
-                            //compute c = L (going backwards) 
+                            //compute c = L (going backwards)
                             c = (ushort)(((surrogate_codepoint - 0x10000) & 0x3FF) | 0xDC00);
                         }
                         else
@@ -2395,7 +2398,7 @@ namespace Microsoft.SRM
                     //given surrogate_codepoint = ((H - 0xD800) * 0x400) + (L - 0xDC00) + 0x10000
                     //compute c = H (going backwards)
                     c = (ushort)(((surrogate_codepoint - 0x10000) >> 10) | 0xD800);
-                    //reset the surrogate codepoint 
+                    //reset the surrogate codepoint
                     surrogate_codepoint = 0;
                 }
                 #endregion
@@ -2442,8 +2445,8 @@ namespace Microsoft.SRM
                 if (regex.isNullable)
                 {
                     //earliest start point so far
-                    //this must happen at some point 
-                    //or else A1 would not have reached a 
+                    //this must happen at some point
+                    //or else A1 would not have reached a
                     //final state after match_start_boundary
                     last_start = i;
                     //TBD: under some conditions we can break here
@@ -2496,7 +2499,7 @@ namespace Microsoft.SRM
                     {
                         #region prefix optimization when A has a fixed prefix and is case-sensitive
                         //stay in the initial state if the prefix does not match
-                        //thus advance the current position to the 
+                        //thus advance the current position to the
                         //first position where the prefix does match
                         i_q0_A1 = i;
 
@@ -2569,7 +2572,7 @@ namespace Microsoft.SRM
                         {
                             //given codepoint = ((H - 0xD800) * 0x400) + (L - 0xDC00) + 0x10000
                             surrogate_codepoint = codepoint;
-                            //compute c = H 
+                            //compute c = H
                             c = (ushort)(((codepoint - 0x10000) >> 10) | 0xD800);
                             //do not increment i yet because L is pending
                             step = 0;
@@ -2585,7 +2588,7 @@ namespace Microsoft.SRM
                 else
                 {
                     //given surrogate_codepoint = ((H - 0xD800) * 0x400) + (L - 0xDC00) + 0x10000
-                    //compute c = L 
+                    //compute c = L
                     c = (ushort)(((surrogate_codepoint - 0x10000) & 0x3FF) | 0xDC00);
                     //reset the surrogate_codepoint
                     surrogate_codepoint = 0;

@@ -198,7 +198,7 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Serialize BV into a string of hexadecimal numerals, separated by '.', 
+        /// Serialize BV into a string of hexadecimal numerals, separated by '.',
         /// each numeral representing an unsigned 64-bit integer in hexadecimal using lowercase a-f
         /// </summary>
         /// <returns></returns>

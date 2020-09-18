@@ -25,17 +25,17 @@ namespace Microsoft.SRM
             this.value = value;
         }
 
-        public static RegexOptions operator|(RegexOptions left, RegexOptions right)
+        public static RegexOptions operator |(RegexOptions left, RegexOptions right)
         {
             return new RegexOptions(left.value | right.value);
         }
 
-        public static RegexOptions operator^(RegexOptions left, RegexOptions right)
+        public static RegexOptions operator ^(RegexOptions left, RegexOptions right)
         {
             return new RegexOptions(left.value ^ right.value);
         }
 
-        public static RegexOptions operator&(RegexOptions left, RegexOptions right)
+        public static RegexOptions operator &(RegexOptions left, RegexOptions right)
         {
             return new RegexOptions(left.value & right.value);
         }

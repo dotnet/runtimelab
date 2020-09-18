@@ -44,11 +44,11 @@ namespace Microsoft.SRM
                 else
                 {
                     res.Append(StringUtility.EscapeWithNumericSpace((char)range.Item1));
-                    res.Append("-");
+                    res.Append('-');
                     res.Append(StringUtility.EscapeWithNumericSpace((char)range.Item2));
                 }
             }
-            res.Append("]");
+            res.Append(']');
             return res.ToString();
         }
     }

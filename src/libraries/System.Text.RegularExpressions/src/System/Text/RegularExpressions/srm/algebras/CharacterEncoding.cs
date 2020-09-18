@@ -32,7 +32,7 @@ namespace Microsoft.SRM
     }
 
     /// <summary>
-    /// Provides functionality for character encodings. 
+    /// Provides functionality for character encodings.
     /// </summary>
     internal static class CharacterEncodingTool
     {

@@ -25,9 +25,9 @@ namespace Microsoft.SRM
         public static void Generate(string namespacename, string classname, string path)
         {
             if (classname == null)
-                throw new ArgumentNullException("classname");
+                throw new ArgumentNullException(nameof(classname));
             if (path == null)
-                throw new ArgumentNullException("path");
+                throw new ArgumentNullException(nameof(path));
 
             if (path != "" && !path.EndsWith("/"))
                 path = path + "/";
@@ -87,7 +87,7 @@ internal static class " + classname + @"
                 UnicodeCategory cat = char.GetUnicodeCategory(ch);
                 catMap[cat].Add(i);
                 int catCode = (int)cat;
-                //in .NET 3.5 
+                //in .NET 3.5
                 if (bits == 7)
                     if (catCode == 0 || catCode == 1 || catCode == 2 || catCode == 3 || catCode == 4 || catCode == 5 || catCode == 8 || catCode == 18)
                         wordcharacter.Add(i);

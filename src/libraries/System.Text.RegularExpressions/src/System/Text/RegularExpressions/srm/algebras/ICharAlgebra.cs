@@ -14,7 +14,7 @@ namespace Microsoft.SRM
         BitWidth Encoding { get; }
 
         /// <summary>
-        /// Make a constraint describing the set of all characters between a (inclusive) and b (inclusive). 
+        /// Make a constraint describing the set of all characters between a (inclusive) and b (inclusive).
         /// Add both uppercase and lowercase elelements if caseInsensitive is true.
         /// </summary>
         PRED MkRangeConstraint(char lower, char upper, bool caseInsensitive = false);
@@ -54,9 +54,9 @@ namespace Microsoft.SRM
         CharSetSolver CharSetProvider { get; }
 
         /// <summary>
-        /// If named definitions are possible, 
-        /// makes a named definition of pred, as a unary relation symbol, 
-        /// such that, for all x, name(x) holds iff body(x) holds. Returns the 
+        /// If named definitions are possible,
+        /// makes a named definition of pred, as a unary relation symbol,
+        /// such that, for all x, name(x) holds iff body(x) holds. Returns the
         /// atom name(x) that is equivalent to pred(x).
         /// If named definitions are not supported, returns pred.
         /// </summary>
@@ -68,4 +68,3 @@ namespace Microsoft.SRM
         PRED[] GetPartition();
     }
 }
-

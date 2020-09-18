@@ -12,7 +12,7 @@ namespace Microsoft.SRM
     {
         #region Escaping strings
         ///// <summary>
-        ///// 
+        /////
         ///// </summary>
 
         /// <summary>
@@ -107,7 +107,7 @@ namespace Microsoft.SRM
                 return Escape(c);
         }
 
-        static string ToUnicodeRepr(int i)
+        private static string ToUnicodeRepr(int i)
         {
             string s = string.Format("{0:X}", i);
             if (s.Length == 1)
@@ -122,23 +122,23 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Makes an escaped string from a literal string s. 
+        /// Makes an escaped string from a literal string s.
         /// Appends '\"' at the start and end of the encoded string.
         /// </summary>
         public static string Escape(string s)
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append("\"");
+            sb.Append('"');
             foreach (char c in s)
             {
                 sb.Append(Escape(c));
             }
-            sb.Append("\"");
+            sb.Append('"');
             return sb.ToString();
         }
 
         /// <summary>
-        /// Unescapes any escaped characters in in the input string. 
+        /// Unescapes any escaped characters in in the input string.
         /// (Same as System.Text.RegularExpressions.Regex.Unescape)
         /// </summary>
         public static string Unescape(string s)
@@ -161,7 +161,7 @@ namespace Microsoft.SRM
             if (string.IsNullOrEmpty(s))
                 return s;
             var encodedChars = s.Split(',');
-            var deserialized = new String(Array.ConvertAll(encodedChars, x => (char)(int.Parse(x))));
+            var deserialized = new string(Array.ConvertAll(encodedChars, x => (char)(int.Parse(x))));
             return deserialized;
         }
     }

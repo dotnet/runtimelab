@@ -14,7 +14,7 @@ namespace Microsoft.SRM
     internal class CharSetSolver : BDDAlgebra, ICharAlgebra<BDD>
     {
 
-        int _bw;
+        private int _bw;
 
         public BitWidth Encoding
         {
@@ -38,8 +38,8 @@ namespace Microsoft.SRM
             _bw = (int)bits;
         }
 
-        IgnoreCaseTransformer _IgnoreCase = null;
-        IgnoreCaseTransformer IgnoreCase
+        private IgnoreCaseTransformer _IgnoreCase;
+        private IgnoreCaseTransformer IgnoreCase
         {
             get
             {
@@ -49,7 +49,7 @@ namespace Microsoft.SRM
             }
         }
 
-        BDD[] charPredTable = new BDD[1 << 16];
+        private BDD[] charPredTable = new BDD[1 << 16];
 
         /// <summary>
         /// Make a character containing the given character c.
@@ -67,7 +67,7 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Make a CharSet from all the characters in the range from m to n. 
+        /// Make a CharSet from all the characters in the range from m to n.
         /// Returns the empty set if n is less than m
         /// </summary>
         public BDD MkCharSetFromRange(char m, char n)
@@ -125,13 +125,13 @@ namespace Microsoft.SRM
         /// Represent the set as an integer array.
         /// Assumes that the bdd has at most 2^14 nodes and at most 16 variables.
         /// </summary>
-        int[] SerializeCompact2(BDD bdd)
+        private int[] SerializeCompact2(BDD bdd)
         {
             // encode the bdd directly
             //
             // the element at index 0 is the false node
-            // the element at index 1 is the true node 
-            // and entry at index i>1 is node i and has the structure 
+            // the element at index 1 is the true node
+            // and entry at index i>1 is node i and has the structure
             // (ordinal trueNode falseNode)
             // where ordinal uses 4 bits and trueNode and falseNode each use 14 bits
             // Assumes that the bdd has less than 2^14 nodes and at most 16 variables.
@@ -200,7 +200,7 @@ namespace Microsoft.SRM
         /// <summary>
         /// Recreates a BDD from an int array that has been created using SerializeCompact
         /// </summary>
-        BDD DeserializeCompact2(int[] arcs) 
+        private BDD DeserializeCompact2(int[] arcs)
         {
             if (arcs.Length == 1)
                 return False;
@@ -316,7 +316,7 @@ namespace Microsoft.SRM
             return ToRanges(set, _bw - 1, limit);
         }
 
-        IEnumerable<uint> GenerateAllCharactersInOrder(BDD set)
+        private IEnumerable<uint> GenerateAllCharactersInOrder(BDD set)
         {
             var ranges = ToRanges(set);
             foreach (var range in ranges)
@@ -324,7 +324,7 @@ namespace Microsoft.SRM
                     yield return (uint)i;
         }
 
-        IEnumerable<uint> GenerateAllCharactersInReverseOrder(BDD set)
+        private IEnumerable<uint> GenerateAllCharactersInReverseOrder(BDD set)
         {
             var ranges = ToRanges(set);
             for (int j = ranges.Length - 1; j >= 0; j--)
@@ -348,7 +348,7 @@ namespace Microsoft.SRM
                 return GenerateAllCharactersInOrder(set);
         }
 
-        IEnumerable<uint> GenerateNothing()
+        private IEnumerable<uint> GenerateNothing()
         {
             yield break;
         }
@@ -358,7 +358,7 @@ namespace Microsoft.SRM
             return pred;
         }
 
-        #region code generation 
+        #region code generation
 
         public BDD[] GetPartition()
         {

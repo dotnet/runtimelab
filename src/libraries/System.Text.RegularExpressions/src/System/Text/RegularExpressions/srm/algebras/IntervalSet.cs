@@ -11,7 +11,7 @@ namespace Microsoft.SRM
     [Serializable]
     internal class IntervalSet : ISerializable
     {
-        Tuple<uint, uint>[] intervals;
+        private Tuple<uint, uint>[] intervals;
 
         /// <summary>
         /// Create a new interval set
@@ -23,7 +23,7 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Gets the index'th element where index is in [0..Count-1]. 
+        /// Gets the index'th element where index is in [0..Count-1].
         /// Throws IndexOutOfRangeException() if index is out of range.
         /// </summary>
         public uint this[int index]
@@ -43,7 +43,7 @@ namespace Microsoft.SRM
             }
         }
 
-        int count = -1;
+        private int count = -1;
 
         /// <summary>
         /// Number of elements in the set
@@ -185,7 +185,7 @@ namespace Microsoft.SRM
             return s;
         }
 
-        static Tuple<uint, uint>[] Deserialize(string s)
+        private static Tuple<uint, uint>[] Deserialize(string s)
         {
             Func<string, Tuple<uint, uint>> f = pair =>
             {

@@ -34,19 +34,18 @@ namespace Microsoft.SRM
         internal SymbolicRegexKind kind;
         internal int lower = -1;
         internal int upper = -1;
-        internal S set = default(S);
-        internal ImmutableList<S> sequence = null;
+        internal S set;
 
-        internal SymbolicRegexNode<S> left = null;
-        internal SymbolicRegexNode<S> right = null;
-        internal SymbolicRegexNode<S> iteCond = null;
+        internal SymbolicRegexNode<S> left;
+        internal SymbolicRegexNode<S> right;
+        internal SymbolicRegexNode<S> iteCond;
 
-        internal SymbolicRegexSet<S> alts = null;
+        internal SymbolicRegexSet<S> alts;
 
-        internal bool isNullable = false;
-        public bool containsAnchors = false;
+        internal bool isNullable;
+        public bool containsAnchors;
 
-        int hashcode = -1;
+        private int hashcode = -1;
 
         #region serialization
 
@@ -76,12 +75,12 @@ namespace Microsoft.SRM
                     case SymbolicRegexKind.Singleton:
                         {
                             if (node.set.Equals(solver.True))
-                                sb.Append(".");
+                                sb.Append('.');
                             else
                             {
-                                sb.Append("[");
+                                sb.Append('[');
                                 sb.Append(solver.SerializePredicate(node.set));
-                                sb.Append("]");
+                                sb.Append(']');
                             }
                             return;
                         }
@@ -91,12 +90,12 @@ namespace Microsoft.SRM
                                 sb.Append("Z(");
                             else
                                 sb.Append("L(");
-                            sb.Append(node.lower.ToString());
-                            sb.Append(",");
+                            sb.Append(node.lower);
+                            sb.Append(',');
                             sb.Append(node.upper == int.MaxValue ? "*" : node.upper.ToString());
-                            sb.Append(",");
+                            sb.Append(',');
                             Serialize(node.left, sb);
-                            sb.Append(")");
+                            sb.Append(')');
                             return;
                         }
                     case SymbolicRegexKind.Concat:
@@ -106,36 +105,36 @@ namespace Microsoft.SRM
                             var str = string.Join(",", elems_str);
                             sb.Append("S(");
                             sb.Append(str);
-                            sb.Append(")");
+                            sb.Append(')');
                             return;
                         }
                     case SymbolicRegexKind.Epsilon:
                         {
-                            sb.Append("E");
+                            sb.Append('E');
                             return;
                         }
                     case SymbolicRegexKind.Or:
                         {
                             sb.Append("D(");
                             node.alts.Serialize(sb);
-                            sb.Append(")");
+                            sb.Append(')');
                             return;
                         }
                     case SymbolicRegexKind.And:
                         {
                             sb.Append("C(");
                             node.alts.Serialize(sb);
-                            sb.Append(")");
+                            sb.Append(')');
                             return;
                         }
                     case SymbolicRegexKind.EndAnchor:
                         {
-                            sb.Append("$");
+                            sb.Append('$');
                             return;
                         }
                     case SymbolicRegexKind.StartAnchor:
                         {
-                            sb.Append("^");
+                            sb.Append('^');
                             return;
                         }
                     case SymbolicRegexKind.WatchDog:
@@ -147,11 +146,11 @@ namespace Microsoft.SRM
                         {
                             sb.Append("I(");
                             Serialize(node.iteCond, sb);
-                            sb.Append(",");
+                            sb.Append(',');
                             Serialize(node.left, sb);
-                            sb.Append(",");
+                            sb.Append(',');
                             Serialize(node.right, sb);
-                            sb.Append(")");
+                            sb.Append(')');
                             return;
                         }
                 }
@@ -159,7 +158,7 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Converts a concatenation into an array, 
+        /// Converts a concatenation into an array,
         /// returns a non-concatenation in a singleton array.
         /// </summary>
         public SymbolicRegexNode<S>[] ToArray()
@@ -172,8 +171,7 @@ namespace Microsoft.SRM
         /// <summary>
         /// should only be used only if this is a concatenation node
         /// </summary>
-        /// <returns></returns>
-        static void AppendToList(SymbolicRegexNode<S> concat, List<SymbolicRegexNode<S>> list)
+        private static void AppendToList(SymbolicRegexNode<S> concat, List<SymbolicRegexNode<S>> list)
         {
             var node = concat;
             while (node.kind == SymbolicRegexKind.Concat)
@@ -288,7 +286,7 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Number of alternative branches if this is an or-node. 
+        /// Number of alternative branches if this is an or-node.
         /// If this is not an or-node then the value is 1.
         /// </summary>
         public int OrCount
@@ -354,7 +352,7 @@ namespace Microsoft.SRM
         /// <summary>
         /// Returns the number of top-level concatenation nodes.
         /// </summary>
-        int _ConcatCount = -1;
+        private int _ConcatCount = -1;
         public int ConcatCount
         {
             get
@@ -441,7 +439,6 @@ namespace Microsoft.SRM
         /// <param name="set">singelton set</param>
         /// <param name="iteCond">if-then-else condition</param>
         /// <param name="alts">alternatives set of a disjunction</param>
-        /// <param name="seq">sequence of singleton sets</param>
         private SymbolicRegexNode(SymbolicRegexBuilder<S> builder, SymbolicRegexKind kind, SymbolicRegexNode<S> left, SymbolicRegexNode<S> right, int lower, int upper, S set, SymbolicRegexNode<S> iteCond, SymbolicRegexSet<S> alts)
         {
             this.builder = builder;
@@ -721,7 +718,7 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Transform the symbolic regex so that all singletons have been intersected with the given predicate pred. 
+        /// Transform the symbolic regex so that all singletons have been intersected with the given predicate pred.
         /// </summary>
         public SymbolicRegexNode<S> Restrict(S pred)
         {
@@ -775,7 +772,7 @@ namespace Microsoft.SRM
                         var conjuncts = alts.Restrict(pred);
                         return builder.MkAnd(conjuncts);
                     }
-                default: //ITE 
+                default: //ITE
                     {
                         var truecase = this.left.Restrict(pred);
                         var falsecase = this.right.Restrict(pred);
@@ -828,7 +825,7 @@ namespace Microsoft.SRM
                     {
                         return alts.GetFixedLength();
                     }
-                default: 
+                default:
                     {
                         return -1;
                     }
@@ -871,7 +868,7 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Takes the derivative of the symbolic regex wrt elem. 
+        /// Takes the derivative of the symbolic regex wrt elem.
         /// Assumes that elem is either a minterm wrt the predicates of the whole regex or a singleton set.
         /// </summary>
         /// <param name="elem">given element wrt which the derivative is taken</param>
@@ -955,7 +952,7 @@ namespace Microsoft.SRM
         }
 
         [NonSerialized]
-        static int prime = 31;
+        private static int prime = 31;
         public override int GetHashCode()
         {
             if (hashcode == -1)
@@ -1043,7 +1040,7 @@ namespace Microsoft.SRM
         /// <summary>
         /// Collects all predicates that occur in the regex into the given set predicates
         /// </summary>
-        void CollectPredicates_helper(HashSet<S> predicates)
+        private void CollectPredicates_helper(HashSet<S> predicates)
         {
             switch (kind)
             {
@@ -1102,7 +1099,7 @@ namespace Microsoft.SRM
             return minterms;
         }
 
-        IEnumerable<S> EnumerateMinterms(S[] preds)
+        private IEnumerable<S> EnumerateMinterms(S[] preds)
         {
             foreach (var pair in builder.solver.GenerateMinterms(preds))
                 yield return pair.Item2;
@@ -1161,7 +1158,7 @@ namespace Microsoft.SRM
             {
                 case SymbolicRegexKind.EndAnchor:
                 case SymbolicRegexKind.StartAnchor:
-                case SymbolicRegexKind.Singleton: 
+                case SymbolicRegexKind.Singleton:
                 case SymbolicRegexKind.WatchDog:
                 case SymbolicRegexKind.Epsilon:
                     return false;
@@ -1177,7 +1174,7 @@ namespace Microsoft.SRM
             }
         }
 
-        int enabledBoundedLoopCount = -1;
+        private int enabledBoundedLoopCount = -1;
 
         internal int EnabledBoundedLoopCount
         {
@@ -1378,7 +1375,7 @@ namespace Microsoft.SRM
             }
         }
 
-        string GetFixedPrefix_(CharSetSolver css, out bool ignoreCase)
+        private string GetFixedPrefix_(CharSetSolver css, out bool ignoreCase)
         {
             #region compute fixedPrefix
             S[] prefix = GetPrefix();
@@ -1431,7 +1428,7 @@ namespace Microsoft.SRM
                                 break;
                         }
                         List<char> elemsI = new List<char>();
-                        //extract prefix up-to-ignoring-case 
+                        //extract prefix up-to-ignoring-case
                         for (int i = 0; i < bdds1.Length; i++)
                         {
                             if (bdds1[i].IsEmpty)
@@ -1474,7 +1471,7 @@ namespace Microsoft.SRM
             return GetPrefixSequence(ImmutableList<S>.Empty, maxPrefixLength).ToArray();
         }
 
-        ImmutableList<S> GetPrefixSequence(ImmutableList<S> pref, int lengthBound)
+        private ImmutableList<S> GetPrefixSequence(ImmutableList<S> pref, int lengthBound)
         {
             if (lengthBound == 0)
             {
@@ -1518,7 +1515,7 @@ namespace Microsoft.SRM
         }
 
         ///// <summary>
-        ///// If this node starts with a loop other than star or plus then 
+        ///// If this node starts with a loop other than star or plus then
         ///// returns the nonnegative id of the associated counter else returns -1
         ///// </summary>
         //public int CounterId
@@ -1534,15 +1531,15 @@ namespace Microsoft.SRM
         //    }
         //}
 
-        //0 means value is not computed, 
+        //0 means value is not computed,
         //-1 means this is not a sequence of singletons
         //1 means it is a sequence of singletons
-        internal int sequenceOfSingletons_count = 0;
+        internal int sequenceOfSingletons_count;
 
         /// <summary>
         /// true if this node is a lazy loop
         /// </summary>
-        internal bool isLazyLoop = false;
+        internal bool isLazyLoop;
 
         internal bool IsSequenceOfSingletons
         {
@@ -1584,7 +1581,7 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Gets the predicate that covers all elements that make some progress. 
+        /// Gets the predicate that covers all elements that make some progress.
         /// </summary>
         public S GetStartSet(ICharAlgebra<S> algebra)
         {
@@ -1678,8 +1675,8 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Returns true if the match-end of this regex can be determined with a 
-        /// single pass from the start. 
+        /// Returns true if the match-end of this regex can be determined with a
+        /// single pass from the start.
         /// </summary>
         public bool IsSinglePass
         {
@@ -1718,7 +1715,7 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Returns true if there are no loops or if all loops are lazy. 
+        /// Returns true if there are no loops or if all loops are lazy.
         /// </summary>
         public bool CheckIfAllLoopsAreLazy()
         {
@@ -1749,15 +1746,15 @@ namespace Microsoft.SRM
         internal static bool optimizeLoops = true;
         internal SymbolicRegexBuilder<S> builder;
 
-        HashSet<SymbolicRegexNode<S>> set;
+        private HashSet<SymbolicRegexNode<S>> set;
         //if the set kind is disjunction then
         //symbolic regex A{0,k}B is stored as (A,B) -> k
         //symbolic regex A{0,k} is stored as (A,()) -> k
-        Dictionary<Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>, int> loops;
+        private Dictionary<Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>, int> loops;
 
         internal SymbolicRegexSetKind kind;
 
-        int hashCode = 0;
+        private int hashCode;
 
         //#region serialization
         ///// <summary>
@@ -1840,13 +1837,13 @@ namespace Microsoft.SRM
             return new SymbolicRegexSet<S>(builder, SymbolicRegexSetKind.Disjunction);
         }
 
-        static internal SymbolicRegexSet<S> CreateDisjunction(SymbolicRegexBuilder<S> builder, IEnumerable<SymbolicRegexNode<S>> elems)
+        internal static SymbolicRegexSet<S> CreateDisjunction(SymbolicRegexBuilder<S> builder, IEnumerable<SymbolicRegexNode<S>> elems)
         {
             var loops = new Dictionary<Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>, int>();
             var other = new HashSet<SymbolicRegexNode<S>>();
             int watchdog = -1;
             if (optimizeLoops)
-            { 
+            {
                 foreach (var elem in elems)
                 {
                     //keep track of maximal watchdog in the set
@@ -1995,7 +1992,7 @@ namespace Microsoft.SRM
             }
         }
 
-        static internal SymbolicRegexSet<S> CreateConjunction(SymbolicRegexBuilder<S> builder, IEnumerable<SymbolicRegexNode<S>> elems)
+        internal static SymbolicRegexSet<S> CreateConjunction(SymbolicRegexBuilder<S> builder, IEnumerable<SymbolicRegexNode<S>> elems)
         {
             var loops = new Dictionary<Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>, int>();
             var conjuncts = new HashSet<SymbolicRegexNode<S>>();
@@ -2020,7 +2017,7 @@ namespace Microsoft.SRM
                 return new SymbolicRegexSet<S>(builder, SymbolicRegexSetKind.Conjunction, conjuncts, loops);
         }
 
-        IEnumerable<SymbolicRegexNode<S>> RestrictElems(S pred)
+        private IEnumerable<SymbolicRegexNode<S>> RestrictElems(S pred)
         {
             foreach (var elem in this)
                 yield return elem.Restrict(pred);
@@ -2175,7 +2172,7 @@ namespace Microsoft.SRM
             return elems;
         }
 
-        IEnumerable<SymbolicRegexNode<S>> RemoveAnchorsElems(SymbolicRegexBuilder<S> builder, bool isBeg, bool isEnd)
+        private IEnumerable<SymbolicRegexNode<S>> RemoveAnchorsElems(SymbolicRegexBuilder<S> builder, bool isBeg, bool isEnd)
         {
             foreach (var elem in this)
                 yield return elem.ReplaceAnchors(isBeg, isEnd);
@@ -2205,19 +2202,19 @@ namespace Microsoft.SRM
                 return CreateConjunction(builder, MkDerivatives_StartOfLine_OfElems());
         }
 
-        IEnumerable<SymbolicRegexNode<S>> MkDerivativesOfElems(S elem)
+        private IEnumerable<SymbolicRegexNode<S>> MkDerivativesOfElems(S elem)
         {
             foreach (var s in this)
                 yield return s.MkDerivative(elem);
         }
 
-        IEnumerable<SymbolicRegexNode<S>> MkDerivatives_StartOfLine_OfElems()  
+        private IEnumerable<SymbolicRegexNode<S>> MkDerivatives_StartOfLine_OfElems()
         {
             foreach (var s in this)
                 yield return s.builder.MkDerivative_StartOfLine(s);
         }
 
-        IEnumerable<SymbolicRegexNode<T>> TransformElems<T>(SymbolicRegexBuilder<T> builderT, Func<S, T> predicateTransformer)
+        private IEnumerable<SymbolicRegexNode<T>> TransformElems<T>(SymbolicRegexBuilder<T> builderT, Func<S, T> predicateTransformer)
         {
             foreach (var sr in this)
                 yield return builder.Transform(sr, builderT, predicateTransformer);
@@ -2248,7 +2245,7 @@ namespace Microsoft.SRM
                 return CreateConjunction(builder, ReverseElems());
         }
 
-        IEnumerable<SymbolicRegexNode<S>> ReverseElems()
+        private IEnumerable<SymbolicRegexNode<S>> ReverseElems()
         {
             foreach (var elem in this)
                 yield return elem.Reverse();
@@ -2278,7 +2275,7 @@ namespace Microsoft.SRM
                 return CreateConjunction(builder, SimplifyElems());
         }
 
-        IEnumerable<SymbolicRegexNode<S>> SimplifyElems()
+        private IEnumerable<SymbolicRegexNode<S>> SimplifyElems()
         {
             foreach (var elem in this)
                 yield return elem.Simplify();
@@ -2292,7 +2289,7 @@ namespace Microsoft.SRM
                 return CreateConjunction(builder, DecrementBoundedLoopCountElems(makeZero));
         }
 
-        IEnumerable<SymbolicRegexNode<S>> DecrementBoundedLoopCountElems(bool makeZero = false)
+        private IEnumerable<SymbolicRegexNode<S>> DecrementBoundedLoopCountElems(bool makeZero = false)
         {
             foreach (var elem in this)
                 yield return elem.DecrementBoundedLoopCount(makeZero);
@@ -2306,7 +2303,7 @@ namespace Microsoft.SRM
             return false;
         }
 
-        int enabledBoundedLoopCount = -1;
+        private int enabledBoundedLoopCount = -1;
         internal int EnabledBoundedLoopCount
         {
             get
@@ -2377,12 +2374,12 @@ namespace Microsoft.SRM
         /// </summary>
         internal class Enumerator : IEnumerator<SymbolicRegexNode<S>>
         {
-            SymbolicRegexSet<S> set;
-            bool set_next;
-            HashSet<SymbolicRegexNode<S>>.Enumerator set_en;
-            bool loops_next;
-            Dictionary<Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>, int>.Enumerator loops_en;
-            SymbolicRegexNode<S> current;
+            private SymbolicRegexSet<S> set;
+            private bool set_next;
+            private HashSet<SymbolicRegexNode<S>>.Enumerator set_en;
+            private bool loops_next;
+            private Dictionary<Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>, int>.Enumerator loops_en;
+            private SymbolicRegexNode<S> current;
 
             internal Enumerator(SymbolicRegexSet<S> symbolicRegexSet)
             {

@@ -37,22 +37,23 @@ namespace Microsoft.SRM
             return intervalSets;
         }
     }
+
     /// <summary>
     /// Bit vector algebra
     /// </summary>
     [Serializable]
-    public internal BVAlgebra : BVAlgebraBase, ICharAlgebra<BV>, ISerializable
+    internal class BVAlgebra : BVAlgebraBase, ICharAlgebra<BV>, ISerializable
     {
         [NonSerialized]
-        MintermGenerator<BV> mtg;
+        private MintermGenerator<BV> mtg;
         [NonSerialized]
-        BV zero;
+        private BV zero;
         [NonSerialized]
-        BV ones;
+        private BV ones;
         [NonSerialized]
-        ulong[] all0;
+        private ulong[] all0;
         [NonSerialized]
-        ulong[] all1;
+        private ulong[] all1;
         [NonSerialized]
         internal BV[] atoms;
 
@@ -186,7 +187,7 @@ namespace Microsoft.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BV MkDiff(BV predicate1, BV predicate2)
         {
-            return predicate1 & ~predicate2; 
+            return predicate1 & ~predicate2;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

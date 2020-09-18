@@ -1812,6 +1812,22 @@ namespace System.Text.RegularExpressions
             return 1;
         }
 
+        public RegexNode[] ChildrenToArray()
+        {
+            if (Children is null)
+            {
+                return Array.Empty<RegexNode>();
+            }
+
+            if (Children is List<RegexNode> children)
+            {
+                return children.ToArray();
+            }
+
+            Debug.Assert(Children is RegexNode);
+            return new[] { (RegexNode)Children };
+        }
+
 #if DEBUG
         private string TypeName =>
             Type switch

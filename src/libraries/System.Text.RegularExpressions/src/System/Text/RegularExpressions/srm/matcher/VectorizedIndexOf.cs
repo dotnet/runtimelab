@@ -10,9 +10,7 @@ namespace Microsoft.SRM
 {
     internal static class VectorizedIndexOf
     {
-        static int vecUshortSize = Vector<ushort>.Count;
-        static int vecUintSize = Vector<uint>.Count;    
-        static int vecByteSize = Vector<byte>.Count;
+        private static int vecByteSize = Vector<byte>.Count;
 
 #if UNSAFE
 

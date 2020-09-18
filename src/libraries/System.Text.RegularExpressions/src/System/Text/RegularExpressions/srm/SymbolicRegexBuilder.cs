@@ -5,7 +5,7 @@ using System.Runtime.Serialization;
 namespace Microsoft.SRM
 {
     /// <summary>
-    /// Builder of symbolic regexes over S. 
+    /// Builder of symbolic regexes over S.
     /// S is the type of elements of an effective Boolean algebra.
     /// Used to convert .NET regexes to symbolic regexes.
     /// </summary>
@@ -27,10 +27,8 @@ namespace Microsoft.SRM
 
         internal SymbolicRegexSet<S> fullSet;
         internal SymbolicRegexSet<S> emptySet;
-
-        Dictionary<string, SymbolicRegexNode<S>> sequenceCache = new Dictionary<string, SymbolicRegexNode<S>>();
-        Dictionary<S, SymbolicRegexNode<S>> singletonCache = new Dictionary<S, SymbolicRegexNode<S>>();
-        Dictionary<SymbolicRegexNode<S>, SymbolicRegexNode<S>> nodeCache = new Dictionary<SymbolicRegexNode<S>, SymbolicRegexNode<S>>();
+        private Dictionary<S, SymbolicRegexNode<S>> singletonCache = new Dictionary<S, SymbolicRegexNode<S>>();
+        private Dictionary<SymbolicRegexNode<S>, SymbolicRegexNode<S>> nodeCache = new Dictionary<SymbolicRegexNode<S>, SymbolicRegexNode<S>>();
 
         private SymbolicRegexBuilder()
         {
@@ -152,7 +150,7 @@ namespace Microsoft.SRM
                 return SymbolicRegexNode<S>.MkOr(this, regexset);
         }
 
-        SymbolicRegexNode<S> MkOr2(SymbolicRegexNode<S> x, SymbolicRegexNode<S> y)
+        private SymbolicRegexNode<S> MkOr2(SymbolicRegexNode<S> x, SymbolicRegexNode<S> y)
         {
             if (x == this.dotStar || y == this.dotStar)
                 return this.dotStar;
@@ -167,7 +165,7 @@ namespace Microsoft.SRM
             }
         }
 
-        SymbolicRegexNode<S> MkAnd2(SymbolicRegexNode<S> x, SymbolicRegexNode<S> y)
+        private SymbolicRegexNode<S> MkAnd2(SymbolicRegexNode<S> x, SymbolicRegexNode<S> y)
         {
             if (x == this.nothing || y == this.nothing)
                 return this.nothing;
@@ -183,7 +181,7 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Make a conjunction of given regexes, simplify by eliminating any regex that accepts all inputs, 
+        /// Make a conjunction of given regexes, simplify by eliminating any regex that accepts all inputs,
         /// returns the empty regex if the regex accepts nothing
         /// </summary>
         public SymbolicRegexNode<S> MkAnd(SymbolicRegexSet<S> regexset)
@@ -199,7 +197,7 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Make a concatenation of given regexes, if any regex is nothing then return nothing, eliminate 
+        /// Make a concatenation of given regexes, if any regex is nothing then return nothing, eliminate
         /// intermediate epsilons
         /// </summary>
         public SymbolicRegexNode<S> MkConcat(SymbolicRegexNode<S> node1, SymbolicRegexNode<S> node2)
@@ -213,7 +211,7 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Make a concatenation of given regexes, if any regex is nothing then return nothing, eliminate 
+        /// Make a concatenation of given regexes, if any regex is nothing then return nothing, eliminate
         /// intermediate epsilons, if toplevel, add watchdog at the end
         /// </summary>
         public SymbolicRegexNode<S> MkConcat(SymbolicRegexNode<S>[] regexes, bool topLevel)
@@ -341,7 +339,7 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Make an if-then-else regex (?(cond)left|right), 
+        /// Make an if-then-else regex (?(cond)left|right),
         /// or create it as conjuction if right is false
         /// </summary>
         /// <param name="cond">condition</param>
@@ -354,7 +352,7 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Goes over the symbolic regex, removes anchors, adds .* if anchors were not present. 
+        /// Goes over the symbolic regex, removes anchors, adds .* if anchors were not present.
         /// Creates an equivalent regex with implicit start and end anchors.
         /// </summary>
         internal SymbolicRegexNode<S> RemoveAnchors(SymbolicRegexNode<S> sr, bool isBeg, bool isEnd)
@@ -645,7 +643,7 @@ namespace Microsoft.SRM
                             return this.MkAnd(derivs);
                             #endregion
                         }
-                    default: //ITE 
+                    default: //ITE
                         {
                             #region d(a,Ite(A,B,C)) = Ite(d(a,A),d(a,B),d(a,C))
                             var condD = this.MkDerivative(elem, sr.iteCond);
@@ -730,7 +728,7 @@ namespace Microsoft.SRM
                                     return this.nothing;
                             }
                             else
-                            { 
+                            {
                                 int newupper = (sr.upper == int.MaxValue ? int.MaxValue : sr.upper - 1);
                                 int newlower = (sr.lower == 0 ? 0 : sr.lower - 1);
                                 var rest = this.MkLoop(sr.left, sr.isLazyLoop, newlower, newupper);
@@ -753,7 +751,7 @@ namespace Microsoft.SRM
                             return this.MkAnd(derivs);
                             #endregion
                         }
-                    default: //ITE 
+                    default: //ITE
                         {
                             #region d(a,Ite(A,B,C)) = Ite(d(a,A),d(a,B),d(a,C))
                             var condD = this.MkDerivative_StartOfLine(sr.iteCond);
@@ -830,12 +828,12 @@ namespace Microsoft.SRM
                         var or = this.MkOr(alts.ToArray());
                         return or;
                     }
-                default: 
+                default:
                     throw new NotSupportedException("Normalize not supported for " + sr.kind);
             }
         }
 
-        Dictionary<SymbolicRegexNode<S>, int> counterIdMap = new Dictionary<SymbolicRegexNode<S>, int>();
+        private Dictionary<SymbolicRegexNode<S>, int> counterIdMap = new Dictionary<SymbolicRegexNode<S>, int>();
         internal int GetCounterId(SymbolicRegexNode<S> node)
         {
             if (node.kind == SymbolicRegexKind.Loop)
@@ -869,7 +867,7 @@ namespace Microsoft.SRM
 
         //    if (node.kind == SymbolicRegexKind.Loop || node.kind == SymbolicRegexKind.Concat)
         //    {
-        //        //iterate to the leftmost element 
+        //        //iterate to the leftmost element
         //        var first = node;
         //        while (first.kind == SymbolicRegexKind.Concat)
         //            first = first.left;
@@ -890,7 +888,7 @@ namespace Microsoft.SRM
         //        return null;
         //}
 
-        SymbolicRegexNode<S> ToLeftAssocForm(SymbolicRegexNode<S> node)
+        private SymbolicRegexNode<S> ToLeftAssocForm(SymbolicRegexNode<S> node)
         {
             if (node.kind != SymbolicRegexKind.Concat || node.right.kind != SymbolicRegexKind.Concat)
                 return node;
@@ -907,7 +905,7 @@ namespace Microsoft.SRM
             }
         }
 
-            bool IsCountingLoop(SymbolicRegexNode<S> node)
+            private bool IsCountingLoop(SymbolicRegexNode<S> node)
         {
             return !node.IsMaybe && !node.IsStar && !node.IsPlus;
         }
@@ -1097,7 +1095,7 @@ namespace Microsoft.SRM
                         return node;
                         #endregion
                     }
-                case 'S': 
+                case 'S':
                     {
                         #region concatenation
                         int n;
@@ -1170,7 +1168,7 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Deserialize a symbolic regex from its serialized representation 
+        /// Deserialize a symbolic regex from its serialized representation
         /// that was produced by SymbolicRegexNode.Serialize
         /// </summary>
         public SymbolicRegexNode<S> Deserialize(string s)
@@ -1184,7 +1182,7 @@ namespace Microsoft.SRM
             if (s[i] == ')')
             {
                 n = i + 1;
-                return new SymbolicRegexNode<S>[] { };
+                return Array.Empty<SymbolicRegexNode<S>>();
             }
             else
             {

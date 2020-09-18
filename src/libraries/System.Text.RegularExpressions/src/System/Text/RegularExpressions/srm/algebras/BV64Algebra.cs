@@ -12,11 +12,11 @@ namespace Microsoft.SRM
     internal class BV64Algebra : BVAlgebraBase, ICharAlgebra<ulong>, ISerializable
     {
         [NonSerialized]
-        MintermGenerator<ulong> mtg;
+        private MintermGenerator<ulong> mtg;
         [NonSerialized]
-        ulong zero = 0;
+        private ulong zero = 0;
         [NonSerialized]
-        ulong all;
+        private ulong all;
         [NonSerialized]
         internal ulong[] atoms;
 
@@ -76,7 +76,7 @@ namespace Microsoft.SRM
             for (int i=1; i < simplified_partition.Length; i++)
             {
                 int k = f(i);
-                simplified_partition[i] = new IntervalSet(new Tuple<uint, uint>((uint)k,(uint)k));
+                simplified_partition[i] = new IntervalSet(new Tuple<uint, uint>((uint)k, (uint)k));
                 precomp[k] = i;
             }
             var zeroIntervals = new List<Tuple<uint, uint>>();
@@ -93,7 +93,7 @@ namespace Microsoft.SRM
                         zeroIntervals.Add(new Tuple<uint, uint>((uint)lower, (uint)upper));
                         lower = i;
                         upper = i;
-                    }             
+                    }
                 }
             }
             zeroIntervals.Add(new Tuple<uint, uint>((uint)lower, 0xFFFF));
@@ -268,7 +268,7 @@ namespace Microsoft.SRM
 
         }
 
-        string PrettyPrintHelper(ulong bv, bool complement)
+        private string PrettyPrintHelper(ulong bv, bool complement)
         {
             List<IntervalSet> sets = new List<IntervalSet>();
             for (int i = 0; i < atoms.Length; i++)
@@ -326,7 +326,7 @@ namespace Microsoft.SRM
         /// Deserialize
         /// </summary>
         public BV64Algebra(SerializationInfo info, StreamingContext context)
-            : this((DecisionTree)info.GetValue("d", typeof(DecisionTree)), 
+            : this((DecisionTree)info.GetValue("d", typeof(DecisionTree)),
                   DeserializePartition(info.GetString("p")))
         {
         }

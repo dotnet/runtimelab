@@ -10,7 +10,7 @@ namespace Microsoft.SRM
     /// Maps unicode categories to correspoing character predicates.
     /// </summary>
     /// <typeparam name="PRED">predicates</typeparam>
-    public interface IUnicodeCategoryTheory<PRED>
+    internal interface IUnicodeCategoryTheory<PRED>
     {
         /// <summary>
         /// Gets the unicode category condition for unicode category cat, that must be an integer between 0 and 29
@@ -32,10 +32,10 @@ namespace Microsoft.SRM
 
     internal class UnicodeCategoryTheory<PRED> : IUnicodeCategoryTheory<PRED>
     {
-        ICharAlgebra<PRED> solver;
-        PRED[] catConditions = new PRED[30];
-        PRED whiteSpaceCondition = default(PRED);
-        PRED wordLetterCondition = default(PRED);
+        private ICharAlgebra<PRED> solver;
+        private PRED[] catConditions = new PRED[30];
+        private PRED whiteSpaceCondition;
+        private PRED wordLetterCondition;
 
         public string[] UnicodeCategoryStandardAbbreviations
         {
@@ -92,7 +92,7 @@ namespace Microsoft.SRM
             InitializeUnicodeCategoryDefinitions();
         }
 
-        PRED MkRangesConstraint(IEnumerable<int[]> ranges)
+        private PRED MkRangesConstraint(IEnumerable<int[]> ranges)
         {
             PRED res = solver.False;
             foreach (var range in ranges)
@@ -203,7 +203,7 @@ namespace Microsoft.SRM
                                      solver.ConvertFromCharSet(solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeWhitespaceBdd)));
                     }
                 }
-                return whiteSpaceCondition;    
+                return whiteSpaceCondition;
             }
         }
 
@@ -230,7 +230,7 @@ namespace Microsoft.SRM
                                      solver.ConvertFromCharSet(solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeWordCharacterBdd)));
                     }
                 }
-                return wordLetterCondition; 
+                return wordLetterCondition;
             }
         }
 

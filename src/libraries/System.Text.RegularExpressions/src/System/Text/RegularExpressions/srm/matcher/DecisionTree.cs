@@ -44,7 +44,7 @@ namespace Microsoft.SRM
                 return new DecisionTree(new int[(int)precomputeLimit], new BST(0, null, null));
 
             if (precomputeLimit == 0)
-                return new DecisionTree(new int[] { }, MkBST(new PartitionCut(solver, partition), 0, 0xFFFF));
+                return new DecisionTree(Array.Empty<int>(), MkBST(new PartitionCut(solver, partition), 0, 0xFFFF));
 
             int[] precomp = Precompute(solver, partition, precomputeLimit);
             BST bst = null;
@@ -124,14 +124,14 @@ namespace Microsoft.SRM
         /// <summary>
         /// Used in the decision tree to locate minterm ids of nonascii characters
         /// </summary>
-        public internal BST
+        internal class BST
         {
             //[NonSerialized]
-            int node;
+            private int node;
             //[NonSerialized]
-            BST left;
+            private BST left;
             //[NonSerialized]
-            BST right;
+            private BST right;
 
             internal BST Left
             {
@@ -188,7 +188,7 @@ namespace Microsoft.SRM
             }
 
             #region custom serialization
-            void SerializeHelper(StringBuilder sb)
+            private void SerializeHelper(StringBuilder sb)
             {
                 if (IsLeaf)
                 {
@@ -196,13 +196,13 @@ namespace Microsoft.SRM
                 }
                 else
                 {
-                    sb.Append("(");
+                    sb.Append('(');
                     sb.Append(node);
-                    sb.Append(",");
+                    sb.Append(',');
                     left.SerializeHelper(sb);
-                    sb.Append(",");
+                    sb.Append(',');
                     right.SerializeHelper(sb);
-                    sb.Append(")");
+                    sb.Append(')');
                 }
             }
             public string Serialize()
@@ -219,7 +219,7 @@ namespace Microsoft.SRM
                 return bst;
             }
 
-            static BST DeserializeHelper(string s, int i, out int next_i)
+            private static BST DeserializeHelper(string s, int i, out int next_i)
             {
                 switch (s[i])
                 {
@@ -251,8 +251,8 @@ namespace Microsoft.SRM
         /// </summary>
         internal class PartitionCut
         {
-            BDD[] blocks;
-            CharSetSolver solver;
+            private BDD[] blocks;
+            private CharSetSolver solver;
             internal PartitionCut(CharSetSolver solver, BDD[] blocks)
             {
                 this.blocks = blocks;
@@ -310,7 +310,7 @@ namespace Microsoft.SRM
             bst = BST.Deserialize(info.GetString("b"));
         }
 
-        string SerializePrecomputed()
+        private string SerializePrecomputed()
         {
             string s = "";
             for (int i=0; i < precomputed.Length; i++)
@@ -322,7 +322,7 @@ namespace Microsoft.SRM
             return s;
         }
 
-        static int[] DeserializePrecomputed(string s)
+        private static int[] DeserializePrecomputed(string s)
         {
             var vals = Array.ConvertAll(s.Split(','), x => int.Parse(x));
             return vals;
