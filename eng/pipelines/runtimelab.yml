@@ -62,6 +62,7 @@ jobs:
     platforms:
     - Linux_x64
     - Windows_NT_x64
+    - OSX_x64
     jobParameters:
       timeoutInMinutes: 90
       testGroup: innerloop
@@ -78,6 +79,7 @@ jobs:
     platforms:
     - Linux_x64
     - Windows_NT_x64
+    - OSX_x64
     jobParameters:
       timeoutInMinutes: 90
       testGroup: innerloop

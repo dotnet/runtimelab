@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AssemblyName>ilc</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -12,8 +12,9 @@
     <OutputPath>$(BinDir)/ilc</OutputPath>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
     <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
-    <RuntimeIdentifiers>linux-x64;win-x64</RuntimeIdentifiers>
+    <RuntimeIdentifiers>linux-x64;win-x64;osx-x64</RuntimeIdentifiers>
     <Configurations>Debug;Release;Checked</Configurations>
+    <UseAppHost>true</UseAppHost>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -22,6 +23,9 @@
     <LibraryNameExtension Condition="$([MSBuild]::IsOsPlatform('WINDOWS'))">.dll</LibraryNameExtension>
     <LibraryNameExtension Condition="$([MSBuild]::IsOsPlatform('LINUX'))">.so</LibraryNameExtension>
     <LibraryNameExtension Condition="$([MSBuild]::IsOsPlatform('OSX'))">.dylib</LibraryNameExtension>
+    <ILCompilerRuntimeIdentifier Condition="$([MSBuild]::IsOsPlatform('WINDOWS'))">win-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
+    <ILCompilerRuntimeIdentifier Condition="$([MSBuild]::IsOsPlatform('LINUX'))">linux-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
+    <ILCompilerRuntimeIdentifier Condition="$([MSBuild]::IsOsPlatform('OSX'))">osx-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -42,13 +46,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="$(NuGetPackageRoot)\runtime.$(DefaultAppHostRuntimeIdentifier).microsoft.dotnet.objectwriter\$(ObjectWriterVersion)\runtimes\$(DefaultAppHostRuntimeIdentifier)\native\$(LibraryNamePrefix)objwriter$(LibraryNameExtension)">
+    <Content Include="$(NuGetPackageRoot)\runtime.$(ILCompilerRuntimeIdentifier).microsoft.dotnet.objectwriter\$(ObjectWriterVersion)\runtimes\$(ILCompilerRuntimeIdentifier)\native\$(LibraryNamePrefix)objwriter$(LibraryNameExtension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
     </Content>
 
-    <Content Include="$(NuGetPackageRoot)\runtime.$(DefaultAppHostRuntimeIdentifier).microsoft.netcore.coredistools\$(CoreDisToolsVersion)\runtimes\$(DefaultAppHostRuntimeIdentifier)\native\coredistools.dll" Condition="'$(IncludeCoreDisTools)' == 'true'">
+    <Content Include="$(NuGetPackageRoot)\runtime.$(ILCompilerRuntimeIdentifier).microsoft.netcore.coredistools\$(CoreDisToolsVersion)\runtimes\$(ILCompilerRuntimeIdentifier)\native\coredistools.dll" Condition="'$(IncludeCoreDisTools)' == 'true'">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>

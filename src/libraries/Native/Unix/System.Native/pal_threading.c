@@ -162,8 +162,8 @@ int32_t SystemNative_LowLevelMonitor_TimedWait(LowLevelMonitor *monitor, int32_t
     // CLOCK_MONOTONIC, so we instead compute the relative timeout duration, and use a relative variant of the timed wait.
     struct timespec timeoutTimeSpec;
 #if HAVE_MACH_ABSOLUTE_TIME
-    timeoutMilliseconds.tv_sec = timeoutMilliseconds / 1000;
-    timeoutMilliseconds.tv_nsec = (timeoutMilliseconds % 1000) * 1000 * 1000;
+    timeoutTimeSpec.tv_sec = timeoutMilliseconds / 1000;
+    timeoutTimeSpec.tv_nsec = (timeoutMilliseconds % 1000) * 1000 * 1000;
     error = pthread_cond_timedwait_relative_np(&monitor->Condition, &monitor->Mutex, &timeoutTimeSpec);
 #else
     error = clock_gettime(CLOCK_MONOTONIC, &timeoutTimeSpec);
