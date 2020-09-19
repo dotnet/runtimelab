@@ -27,7 +27,7 @@ namespace System.Reflection.Runtime.MethodInfos
     //
     // The runtime's implementation of non-constructor MethodInfo's that represent a method definition.
     //
-    internal sealed partial class RuntimeNamedMethodInfo<TRuntimeMethodCommon> : RuntimeNamedMethodInfo 
+    internal sealed partial class RuntimeNamedMethodInfo<TRuntimeMethodCommon> : RuntimeNamedMethodInfo
         where TRuntimeMethodCommon : IRuntimeMethodCommon<TRuntimeMethodCommon>, IEquatable<TRuntimeMethodCommon>
     {
         //
@@ -288,7 +288,7 @@ namespace System.Reflection.Runtime.MethodInfos
                 RuntimeNamedMethodInfo<TRuntimeMethodCommon> owningMethod = this;
                 if (DeclaringType.IsConstructedGenericType)
                 {
-                    // Desktop compat: Constructed generic types and their generic type definitions share the same Type objects for method generic parameters. 
+                    // Desktop compat: Constructed generic types and their generic type definitions share the same Type objects for method generic parameters.
                     TRuntimeMethodCommon uninstantiatedCommon = _common.RuntimeMethodCommonOfUninstantiatedMethod;
                     owningMethod = RuntimeNamedMethodInfo<TRuntimeMethodCommon>.GetRuntimeNamedMethodInfo(uninstantiatedCommon, uninstantiatedCommon.DeclaringType);
                 }

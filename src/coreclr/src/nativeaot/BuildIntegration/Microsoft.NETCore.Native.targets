@@ -60,7 +60,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <ExportsFileExt Condition="'$(TargetOS)' == 'Windows_NT'">.def</ExportsFileExt>
     <ExportsFileExt Condition="'$(TargetOS)' != 'Windows_NT'">.exports</ExportsFileExt>
-    
+
     <LlvmObject Condition="'$(NativeCodeGen)' == 'wasm'">$(NativeIntermediateOutputPath)$(TargetName)$(LlvmObjectExt)</LlvmObject>
     <NativeObject>$(NativeIntermediateOutputPath)$(TargetName)$(NativeObjectExt)</NativeObject>
     <NativeBinary>$(NativeOutputPath)$(TargetName)$(NativeBinaryExt)</NativeBinary>
@@ -136,7 +136,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcBuildTasksPath>$(RuntimePackagePath)\tools\netstandard\ILCompiler.Build.Tasks.dll</IlcBuildTasksPath>
       <!-- Set defaults for unspecified properties -->
     </PropertyGroup>
-    
+
     <!-- If running from a package these values need to be set again with the resolved IlcPath -->
     <ItemGroup>
       <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll" />
@@ -144,7 +144,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <ItemGroup>
       <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" />
     </ItemGroup>
-    
+
     <ItemGroup>
       <DefaultFrameworkAssemblies Include="@(FrameworkAssemblies)" />
       <DefaultFrameworkAssemblies Include="@(PrivateSdkAssemblies)" />
@@ -160,7 +160,7 @@ The .NET Foundation licenses this file to you under the MIT license.
   </Target>
 
   <!--
-    BuildFrameworkLib is invoked before IlcCompile in multi-module builds to 
+    BuildFrameworkLib is invoked before IlcCompile in multi-module builds to
     produce the shared framework library on demand
   -->
   <Target Name="BuildFrameworkLib" Condition="'$(DisableFrameworkLibGeneration)' != 'true'" DependsOnTargets="$(IlcDynamicBuildPropertyDependencies)">
@@ -178,7 +178,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <MSBuild Projects="@(ProjectToBuild)" BuildInParallel="true" />
   </Target>
 
-  <Target Name="IlcCompile" 
+  <Target Name="IlcCompile"
       Inputs="@(IlcCompileInput);@(RdXmlFile)"
       Outputs="$(NativeIntermediateOutputPath)%(ManagedBinary.Filename)$(IlcOutputFileExt)"
       DependsOnTargets="$(IlcCompileDependsOn)">
@@ -220,7 +220,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
       <!-- Workaround for https://github.com/dotnet/corefx/issues/36723 -->
       <IlcArg Include="--removefeature:SerializationGuard" />
-      
+
       <!-- Comparers don't currently work with reflection disabled. https://github.com/dotnet/corert/pull/7208 -->
       <IlcArg Condition="$(IlcDisableReflection) == 'true'" Include="--removefeature:Comparers" />
     </ItemGroup>
@@ -236,7 +236,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Windows.props" Condition="'$(TargetOS)' == 'Windows_NT'" />
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Unix.props" Condition="'$(TargetOS)' != 'Windows_NT'" />
-  
+
   <Target Name="CppCompile"
       Inputs="$(IlcCompileOutput)"
       Outputs="$(NativeObject)"
@@ -254,7 +254,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <WriteLinesToFile File="$(NativeIntermediateOutputPath)cl.rsp" Lines="@(CompilerArg)" Overwrite="true"  Condition="'$(OS)' == 'Windows_NT'"/>
     <Exec Command="$(CppCompiler) @&quot;$(NativeIntermediateOutputPath)cl.rsp&quot;" Condition="'$(OS)' == 'Windows_NT'" />
   </Target>
-  
+
   <Target Name="MultiFileCopyNative"
       Inputs="@(NativeObjects)"
       Outputs="$(NativeOutputPath)"
@@ -314,11 +314,11 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-Wl,--version-script=$(ExportsFile)" Condition="'$(OS)' != 'Windows_NT' and '$(TargetOS)' != 'OSX' and $(ExportsFile) != ''"/>
       <CustomLinkerArg Condition="Exists('$(_Win32ResFile)')" Include="&quot;$(_Win32ResFile)&quot;" />
       <CustomLinkerArg Include="@(LinkerArg)" />
-    </ItemGroup>    
+    </ItemGroup>
     <ItemGroup Condition="'$(TargetOS)' != 'Windows_NT' and '$(TargetOS)' != 'OSX'">
 		<CustomLinkerArg Include="-Wl,--discard-all" />
 		<CustomLinkerArg Include="-Wl,--gc-sections" />
-	</ItemGroup>	
+	</ItemGroup>
     <ItemGroup>
       <CustomLibArg Include="-crs &quot;$(NativeBinary)&quot;" Condition="'$(OS)' != 'Windows_NT'" />
       <CustomLibArg Include="/OUT:&quot;$(NativeBinary)&quot;" Condition="'$(OS)' == 'Windows_NT'" />
@@ -334,14 +334,14 @@ The .NET Foundation licenses this file to you under the MIT license.
     <Exec Command="$(CppLinker)  @&quot;$(NativeIntermediateOutputPath)link.rsp&quot;" Condition="'$(OS)' == 'Windows_NT' and '$(NativeLib)' != 'Static' and '$(NativeCodeGen)' != 'wasm'" />
     <WriteLinesToFile File="$(NativeIntermediateOutputPath)lib.rsp" Lines="@(CustomLibArg)" Overwrite="true" Condition="'$(OS)' == 'Windows_NT' and '$(NativeLib)' == 'Static'" />
     <Exec Command="$(CppLibCreator)  @&quot;$(NativeIntermediateOutputPath)lib.rsp&quot;" Condition="'$(OS)' == 'Windows_NT' and '$(NativeLib)' == 'Static' and '$(NativeCodeGen)' != 'wasm'" />
-    
+
     <PropertyGroup>
       <EmccArgs>&quot;$(NativeObject)&quot; -o &quot;$(NativeBinary)&quot; -s ALLOW_MEMORY_GROWTH=1 -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s DISABLE_EXCEPTION_CATCHING=0 --emrun </EmccArgs>
       <EmccArgs Condition="'$(Platform)'=='wasm'">$(EmccArgs) &quot;$(IlcPath)/sdk/libPortableRuntime.a&quot; &quot;$(IlcPath)/sdk/libbootstrappercpp.a&quot; &quot;$(IlcPath)/sdk/libSystem.Private.CoreLib.Native.a&quot; $(EmccExtraArgs)</EmccArgs>
       <EmccArgs Condition="'$(Configuration)'=='Release'">$(EmccArgs) -O2 -flto</EmccArgs>
       <EmccArgs Condition="'$(Configuration)'=='Debug'">$(EmccArgs) -g3</EmccArgs>
     </PropertyGroup>
-    
+
     <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc.bat&quot; $(EmccArgs)" Condition="'$(NativeCodeGen)' == 'wasm' and '$(EMSDK)' != '' and '$(OS)' == 'Windows_NT'" />
     <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc&quot; $(EmccArgs)" Condition="'$(NativeCodeGen)' == 'wasm' and '$(EMSDK)' != '' and '$(OS)' != 'Windows_NT'" />
     <Message Text="Emscripten not found, not linking WebAssembly. To enable WebAssembly linking, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"

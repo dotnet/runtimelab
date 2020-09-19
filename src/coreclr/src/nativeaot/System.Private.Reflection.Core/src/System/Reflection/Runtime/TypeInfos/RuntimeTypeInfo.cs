@@ -23,11 +23,11 @@ namespace System.Reflection.Runtime.TypeInfos
     //
     // This base class performs several services:
     //
-    //   - Provides default implementations whenever possible. Some of these 
-    //     return the "common" error result for narrowly applicable properties (such as those 
+    //   - Provides default implementations whenever possible. Some of these
+    //     return the "common" error result for narrowly applicable properties (such as those
     //     that apply only to generic parameters.)
     //
-    //   - Inverts the DeclaredMembers/DeclaredX relationship (DeclaredMembers is auto-implemented, others 
+    //   - Inverts the DeclaredMembers/DeclaredX relationship (DeclaredMembers is auto-implemented, others
     //     are overriden as abstract. This ordering makes more sense when reading from metadata.)
     //
     //   - Overrides many "NotImplemented" members in TypeInfo with abstracts so failure to implement
@@ -325,7 +325,7 @@ namespace System.Reflection.Runtime.TypeInfos
                 if (ReflectionCoreExecution.ExecutionEnvironment.IsAssignableFrom(toTypeHandle, fromTypeHandle))
                     return true;
 
-                // Runtime IsAssignableFrom does not handle casts from generic type definitions: always returns false. For those, we fall through to the 
+                // Runtime IsAssignableFrom does not handle casts from generic type definitions: always returns false. For those, we fall through to the
                 // managed implementation. For everyone else, return "false".
                 //
                 // Runtime IsAssignableFrom does not handle pointer -> UIntPtr cast.
@@ -798,14 +798,14 @@ namespace System.Reflection.Runtime.TypeInfos
         }
 
         //
-        // This internal method implements BaseType without the following desktop quirk: 
+        // This internal method implements BaseType without the following desktop quirk:
         //
-        //     class Foo<X,Y> 
+        //     class Foo<X,Y>
         //       where X:Y
         //       where Y:MyReferenceClass
         //
         // The desktop reports "X"'s base type as "System.Object" rather than "Y", even though it does
-        // report any interfaces that are in MyReferenceClass's interface list. 
+        // report any interfaces that are in MyReferenceClass's interface list.
         //
         // This seriously messes up the implementation of RuntimeTypeInfo.ImplementedInterfaces which assumes
         // that it can recover the transitive interface closure by combining the directly mentioned interfaces and
@@ -814,9 +814,9 @@ namespace System.Reflection.Runtime.TypeInfos
         // To implement this with the least amount of code smell, we'll implement the idealized version of BaseType here
         // and make the special-case adjustment in the public version of BaseType.
         //
-        // If you override this method, there is no need to overrride TypeRefDefOrSpecForBaseType.  
+        // If you override this method, there is no need to overrride TypeRefDefOrSpecForBaseType.
         //
-        // This method is left unsealed so that RuntimeCLSIDTypeInfo can override. 
+        // This method is left unsealed so that RuntimeCLSIDTypeInfo can override.
         //
         internal virtual Type BaseTypeWithoutTheGenericParameterQuirk
         {

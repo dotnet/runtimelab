@@ -63,7 +63,7 @@ namespace System.Reflection.Runtime.MethodInfos
             {
                 pItf = McgMarshal.CoCreateInstanceEx(clsid, server);
 
-                // CoCreateInstanceEx will throw exception if it fails to 
+                // CoCreateInstanceEx will throw exception if it fails to
                 // create an instance.
                 Debug.Assert(pItf != IntPtr.Zero);
 
@@ -93,7 +93,7 @@ namespace System.Reflection.Runtime.MethodInfos
 
         public sealed override string ToString()
         {
-            // A constructor's "return type" is always System.Void and we don't want to allocate a ParameterInfo object to record that revelation. 
+            // A constructor's "return type" is always System.Void and we don't want to allocate a ParameterInfo object to record that revelation.
             // In deference to that, ComputeToString() lets us pass null as a synonym for "void."
             return RuntimeMethodHelpers.ComputeToString(this, Array.Empty<RuntimeTypeInfo>(), RuntimeParameters, returnParameter: null);
         }

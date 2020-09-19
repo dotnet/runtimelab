@@ -28,7 +28,7 @@ alignDone:
     ; compute number of bytes to clear non-temporally
     ; we wish to clear the first 8k or so with rep stos,
     ; anything above that non-temporally
-    
+
     xor     r8,r8
     cmp     rdx,8*1024
     jbe     noNonTempClear

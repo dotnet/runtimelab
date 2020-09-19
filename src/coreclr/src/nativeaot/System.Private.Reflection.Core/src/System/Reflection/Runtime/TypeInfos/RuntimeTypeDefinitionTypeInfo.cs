@@ -10,7 +10,7 @@ namespace System.Reflection.Runtime.TypeInfos
 {
     //
     // TypeInfos that represent non-constructed types (IsTypeDefinition == true)
-    // 
+    //
     internal abstract class RuntimeTypeDefinitionTypeInfo : RuntimeTypeInfo
     {
         public sealed override bool IsTypeDefinition => true;

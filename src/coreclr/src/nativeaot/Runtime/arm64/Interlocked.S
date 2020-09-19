@@ -14,7 +14,7 @@ LEAF_ENTRY RhpLockCmpXchg32, _TEXT
 ALTERNATE_ENTRY RhpLockCmpXchg32AVLocation
 1: // loop
     ldaxr   w0, [x8]        // w0 = *x8
-    cmp     w0, w2 
+    cmp     w0, w2
     bne     2f              // if (w0 != w2) goto exit
     stlxr   w9, w1, [x8]    // if (w0 == w2) { try *x8 = w1 and goto loop if failed or goto exit }
     cbnz    w9, 1b
@@ -35,7 +35,7 @@ LEAF_ENTRY RhpLockCmpXchg64, _TEXT
 ALTERNATE_ENTRY RhpLockCmpXchg64AVLocation
 1: // loop
     ldaxr   x0, [x8]        // x0 = *x8
-    cmp     x0, x2 
+    cmp     x0, x2
     bne     2f              // if (x0 != x2) goto exit
     stlxr   w9, x1, [x8]    // if (x0 == x2) { try *x8 = x1 and goto loop if failed or goto exit }
     cbnz    w9, 1b

@@ -100,7 +100,7 @@ namespace Internal.Runtime.TypeLoader
                 {
                     EcmaModuleInfo ecmaModuleInfo = (EcmaModuleInfo)module;
                     var metadataReader = ecmaModuleInfo.MetadataReader;
-                    var ecmaHandle = (System.Reflection.Metadata.MethodDefinitionHandle)System.Reflection.Metadata.Ecma335.MetadataTokens.Handle(signature.Signature.Token);                
+                    var ecmaHandle = (System.Reflection.Metadata.MethodDefinitionHandle)System.Reflection.Metadata.Ecma335.MetadataTokens.Handle(signature.Signature.Token);
                     var method = metadataReader.GetMethodDefinition(ecmaHandle);
                     var blobHandle = method.Signature;
                     var blobReader = metadataReader.GetBlobReader(blobHandle);
@@ -144,7 +144,7 @@ namespace Internal.Runtime.TypeLoader
             string methodName = parser.GetString();
 
             // Signatures are indirected to through a relative offset so that we don't have to parse them
-            // when not comparing signatures (parsing them requires resolving types and is tremendously 
+            // when not comparing signatures (parsing them requires resolving types and is tremendously
             // expensive).
             NativeParser sigParser = parser.GetParserFromRelativeOffset();
             methodSig = RuntimeSignature.CreateFromNativeLayoutSignature(module, sigParser.Offset);
@@ -173,7 +173,7 @@ namespace Internal.Runtime.TypeLoader
             string methodName = parser.GetString();
 
             // Signatures are indirected to through a relative offset so that we don't have to parse them
-            // when not comparing signatures (parsing them requires resolving types and is tremendously 
+            // when not comparing signatures (parsing them requires resolving types and is tremendously
             // expensive).
             NativeParser sigParser = parser.GetParserFromRelativeOffset();
             methodSig = RuntimeSignature.CreateFromNativeLayoutSignature(moduleHandle, sigParser.Offset);
@@ -211,7 +211,7 @@ namespace Internal.Runtime.TypeLoader
                 {
                     EcmaModuleInfo ecmaModuleInfo = (EcmaModuleInfo)module;
                     var metadataReader = ecmaModuleInfo.MetadataReader;
-                    var ecmaHandle = (System.Reflection.Metadata.MethodDefinitionHandle)System.Reflection.Metadata.Ecma335.MetadataTokens.Handle(methodSig.Token);                
+                    var ecmaHandle = (System.Reflection.Metadata.MethodDefinitionHandle)System.Reflection.Metadata.Ecma335.MetadataTokens.Handle(methodSig.Token);
                     var method = metadataReader.GetMethodDefinition(ecmaHandle);
                     var blobHandle = method.Signature;
                     var blobReader = metadataReader.GetBlobReader(blobHandle);
@@ -246,7 +246,7 @@ namespace Internal.Runtime.TypeLoader
             {
                 EcmaModuleInfo ecmaModuleInfo = (EcmaModuleInfo)module;
                 TypeSystem.Ecma.EcmaModule ecmaModule = context.ResolveEcmaModule(ecmaModuleInfo);
-                var ecmaHandle = System.Reflection.Metadata.Ecma335.MetadataTokens.EntityHandle(signature.Token);                
+                var ecmaHandle = System.Reflection.Metadata.Ecma335.MetadataTokens.EntityHandle(signature.Token);
                 MethodDesc ecmaMethod = ecmaModule.GetMethod(ecmaHandle);
                 return ecmaMethod.Signature;
             }
@@ -287,14 +287,14 @@ namespace Internal.Runtime.TypeLoader
         }
 
         internal bool GetCallingConverterDataFromMethodSignature_NativeLayout_Common(
-            TypeSystemContext context, 
-            RuntimeSignature methodSig, 
-            Instantiation typeInstantiation, 
-            Instantiation methodInstantiation, 
-            out bool hasThis, 
-            out TypeDesc[] parameters, 
-            out bool[] parametersWithGenericDependentLayout, 
-            NativeReader nativeReader, 
+            TypeSystemContext context,
+            RuntimeSignature methodSig,
+            Instantiation typeInstantiation,
+            Instantiation methodInstantiation,
+            out bool hasThis,
+            out TypeDesc[] parameters,
+            out bool[] parametersWithGenericDependentLayout,
+            NativeReader nativeReader,
             ulong[] debuggerPreparedExternalReferences)
         {
             bool isNotDebuggerCall = debuggerPreparedExternalReferences == null ;
@@ -334,7 +334,7 @@ namespace Internal.Runtime.TypeLoader
             // One extra parameter to account for the return type
             for (uint i = 0; i <= parameterCount; i++)
             {
-                // NativeParser is a struct, so it can be copied. 
+                // NativeParser is a struct, so it can be copied.
                 NativeParser parserCopy = parser;
 
                 // Parse the signature twice. The first time to find out the exact type of the signature
@@ -425,27 +425,27 @@ namespace Internal.Runtime.TypeLoader
         }
 
         /// <summary>
-        /// IF THESE SEMANTICS EVER CHANGE UPDATE THE LOGIC WHICH DEFINES THIS BEHAVIOR IN 
-        /// THE DYNAMIC TYPE LOADER AS WELL AS THE COMPILER. 
+        /// IF THESE SEMANTICS EVER CHANGE UPDATE THE LOGIC WHICH DEFINES THIS BEHAVIOR IN
+        /// THE DYNAMIC TYPE LOADER AS WELL AS THE COMPILER.
         /// (There is a version of this in UniversalGenericParameterLayout.cs that must be kept in sync with this.)
-        /// 
+        ///
         /// Parameter's are considered to have type layout dependent on their generic instantiation
-        /// if the type of the parameter in its signature is a type variable, or if the type is a generic 
+        /// if the type of the parameter in its signature is a type variable, or if the type is a generic
         /// structure which meets 2 characteristics:
         /// 1. Structure size/layout is affected by the size/layout of one or more of its generic parameters
         /// 2. One or more of the generic parameters is a type variable, or a generic structure which also recursively
         ///    would satisfy constraint 2. (Note, that in the recursion case, whether or not the structure is affected
         ///    by the size/layout of its generic parameters is not investigated.)
-        ///    
+        ///
         /// Examples parameter types, and behavior.
-        /// 
+        ///
         /// T = true
         /// List[T] = false
         /// StructNotDependentOnArgsForSize[T] = false
         /// GenStructDependencyOnArgsForSize[T] = true
         /// StructNotDependentOnArgsForSize[GenStructDependencyOnArgsForSize[T]] = true
         /// StructNotDependentOnArgsForSize[GenStructDependencyOnArgsForSize[List[T]]]] = false
-        /// 
+        ///
         /// Example non-parameter type behavior
         /// T = true
         /// List[T] = false

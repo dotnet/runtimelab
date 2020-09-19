@@ -50,7 +50,7 @@ LEAF_ENTRY RhCommonStub, _TEXT
 
         ;; Save context data into the ThunkParamSlot thread-local variable
         ;; A pointer to the delegate and function pointer for open static delegate should have been saved in the thunk's context cell during thunk allocation
-        
+
         ;; make some scratch regs
         push    ecx
         push    edx
@@ -67,7 +67,7 @@ LEAF_ENTRY RhCommonStub, _TEXT
         mov     edx, [eax]
         mov     eax, [eax + POINTER_SIZE]                          ;;   eax <- target slot data
         mov     [ecx + OFFSET ThunkParamSlot], edx                 ;;   ThunkParamSlot <- context slot data
-        
+
         ;; restore the regs we used
         pop     edx
         pop     ecx

@@ -60,7 +60,7 @@ struct conversion
 };
 
 template <class T>
-struct conversion<T, T>    
+struct conversion<T, T>
 {
     static const bool exists = true;
     static const bool exists2Way = true;
@@ -68,7 +68,7 @@ struct conversion<T, T>
 };
 
 template <class T>
-struct conversion<void, T>    
+struct conversion<void, T>
 {
     static const bool exists = false;
     static const bool exists2Way = false;
@@ -76,7 +76,7 @@ struct conversion<void, T>
 };
 
 template <class T>
-struct conversion<T, void>    
+struct conversion<T, void>
 {
     static const bool exists = false;
     static const bool exists2Way = false;
@@ -84,7 +84,7 @@ struct conversion<T, void>
 };
 
 template <>
-struct conversion<void, void>    
+struct conversion<void, void>
 {
     static const bool exists = true;
     static const bool exists2Way = true;

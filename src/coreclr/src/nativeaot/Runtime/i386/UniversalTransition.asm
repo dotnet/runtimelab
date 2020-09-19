@@ -20,11 +20,11 @@ ifdef FEATURE_DYNAMIC_CODE
 ;;
 ;; Inputs:
 ;;      ecx, edx, stack space three pops down: arguments as normal
-;;       first register sized fields on the stack is the location of the target code 
+;;       first register sized fields on the stack is the location of the target code
 ;;       the UniversalTransitionThunk will call
 ;;       second register sized field on the stack is the parameter to the target function
 ;;       followed by the return address of the whole method. (This method cannot be called
-;;       via a call instruction, it must be jumped to.) The fake entrypoint is in place to 
+;;       via a call instruction, it must be jumped to.) The fake entrypoint is in place to
 ;;       convince the stack walker this is a normal framed function.
 ;;
 ;;  NOTE! FOR CORRECTNESS THIS FUNCTION REQUIRES THAT ALL NON-LEAF MANAGED FUNCTIONS HAVE
@@ -56,7 +56,7 @@ ifdef FEATURE_DYNAMIC_CODE
 
 UNIVERSAL_TRANSITION macro FunctionName
 
-FASTCALL_FUNC Rhp&FunctionName&_FAKE_ENTRY, 0        
+FASTCALL_FUNC Rhp&FunctionName&_FAKE_ENTRY, 0
         ; Set up an ebp frame
         push        ebp
         mov         ebp, esp
@@ -69,7 +69,7 @@ ALTERNATE_ENTRY Rhp&FunctionName&@0
         ;
         ; Call out to the target, while storing and reporting arguments to the GC.
         ;
-        mov  eax, [ebp-8]    ; Get the address of the callee 
+        mov  eax, [ebp-8]    ; Get the address of the callee
         mov  edx, [ebp-4]    ; Get the extra argument to pass to the callee
         lea  ecx, [ebp-10h]  ; Get pointer to edx value pushed above
         call eax
@@ -89,9 +89,9 @@ ALTERNATE_ENTRY Rhp&FunctionName&@0
 FASTCALL_ENDFUNC
 
         endm
-        
+
         ; To enable proper step-in behavior in the debugger, we need to have two instances
-        ; of the thunk. For the first one, the debugger steps into the call in the function, 
+        ; of the thunk. For the first one, the debugger steps into the call in the function,
         ; for the other, it steps over it.
         UNIVERSAL_TRANSITION UniversalTransition
         UNIVERSAL_TRANSITION UniversalTransition_DebugStepTailCall

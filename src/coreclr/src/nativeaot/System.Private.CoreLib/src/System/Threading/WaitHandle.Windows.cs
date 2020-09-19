@@ -23,7 +23,7 @@ namespace System.Threading
             Debug.Assert(millisecondsTimeout >= -1);
 
             //
-            // In the CLR, we use CoWaitForMultipleHandles to pump messages while waiting in an STA.  In that case, we cannot use WAIT_ALL.  
+            // In the CLR, we use CoWaitForMultipleHandles to pump messages while waiting in an STA.  In that case, we cannot use WAIT_ALL.
             // That's because the wait would only be satisfied if a message arrives while the handles are signalled.
             //
             if (waitAll)

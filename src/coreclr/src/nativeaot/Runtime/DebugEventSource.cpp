@@ -27,7 +27,7 @@ GVAL_IMPL_INIT(UInt32, g_DebuggerEventsFilter, 0);
 
 bool EventEnabled(DebugEventType eventType)
 {
-    return ((int)eventType > 0) && 
+    return ((int)eventType > 0) &&
            ((g_DebuggerEventsFilter & (1 << ((int)eventType-1))) != 0);
 }
 
@@ -116,8 +116,8 @@ void DebugEventSource::SendRawEvent(DebugEventPayload* pPayload)
     // We get to send an array of void* as data with the notification.
     // The debugger can then use ReadProcessMemory to read through this array.
     UInt64 rgData [] = {
-        (UInt64) CLRDBG_EXCEPTION_DATA_CHECKSUM, 
-        (UInt64) GetRuntimeInstance()->GetPalInstance(), 
+        (UInt64) CLRDBG_EXCEPTION_DATA_CHECKSUM,
+        (UInt64) GetRuntimeInstance()->GetPalInstance(),
         (UInt64) pPayload
     };
 
@@ -132,7 +132,7 @@ void DebugEventSource::SendRawEvent(DebugEventPayload* pPayload)
         // On 32 bit platforms we have 6 elements, on 64 bit platforms we have 3 elements
         RaiseException(CLRDBG_NOTIFICATION_EXCEPTION_CODE, dwFlags, 3*sizeof(UInt64)/sizeof(UInt32*), (UInt32*)rgData);
 
-        // If debugger continues "GH" (DBG_CONTINUE), then we land here. 
+        // If debugger continues "GH" (DBG_CONTINUE), then we land here.
         // This is the expected path for a well-behaved ICorDebug debugger.
     }
     __except(1)

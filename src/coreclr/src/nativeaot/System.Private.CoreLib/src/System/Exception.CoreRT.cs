@@ -112,14 +112,14 @@ namespace System
         private string CreateSourceName() => HasBeenThrown ? "<unknown>" : null;
 
         // WARNING: We allow diagnostic tools to directly inspect these three members (_message, _innerException and _HResult)
-        // See https://github.com/dotnet/corert/blob/master/Documentation/design-docs/diagnostics/diagnostics-tools-contract.md for more details. 
-        // Please do not change the type, the name, or the semantic usage of this member without understanding the implication for tools. 
+        // See https://github.com/dotnet/corert/blob/master/Documentation/design-docs/diagnostics/diagnostics-tools-contract.md for more details.
+        // Please do not change the type, the name, or the semantic usage of this member without understanding the implication for tools.
         // Get in touch with the diagnostics team if you have questions.
         internal string _message;
         private IDictionary _data;
         private Exception _innerException;
         private string _helpURL;
-        private string _source;         // Mainly used by VB. 
+        private string _source;         // Mainly used by VB.
         private int _HResult;     // HResult
 
         // To maintain compatibility across runtimes, if this object was deserialized, it will store its stack trace as a string
@@ -152,8 +152,8 @@ namespace System
         }
 
         // WARNING: We allow diagnostic tools to directly inspect these two members (_corDbgStackTrace and _idxFirstFreeStackTraceEntry)
-        // See https://github.com/dotnet/corert/blob/master/Documentation/design-docs/diagnostics/diagnostics-tools-contract.md for more details. 
-        // Please do not change the type, the name, or the semantic usage of this member without understanding the implication for tools. 
+        // See https://github.com/dotnet/corert/blob/master/Documentation/design-docs/diagnostics/diagnostics-tools-contract.md for more details.
+        // Please do not change the type, the name, or the semantic usage of this member without understanding the implication for tools.
         // Get in touch with the diagnostics team if you have questions.
 
         // _corDbgStackTrace: Do not rename: This is for the use of the CorDbg interface. Contains the stack trace as an array of EIP's (ordered from
@@ -170,7 +170,7 @@ namespace System
             else if (isFirstRethrowFrame)
             {
                 // For the first frame after rethrow, we replace the last entry in the stack trace with the IP
-                // of the rethrow.  This is overwriting the IP of where control left the corresponding try 
+                // of the rethrow.  This is overwriting the IP of where control left the corresponding try
                 // region for the catch that is rethrowing.
                 _corDbgStackTrace[_idxFirstFreeStackTraceEntry - 1] = IP;
                 return;
@@ -326,7 +326,7 @@ namespace System
         /// <summary>
         /// This is the binary format for serialized exceptions that get saved into a special buffer that is
         /// known to WER (by way of a runtime API) and will be saved into triage dumps.  This format is known
-        /// to SOS, so any changes must update CurrentSerializationVersion and have corresponding updates to 
+        /// to SOS, so any changes must update CurrentSerializationVersion and have corresponding updates to
         /// SOS.
         /// </summary>
         [StructLayout(LayoutKind.Sequential)]
@@ -340,7 +340,7 @@ namespace System
         internal const int CurrentSerializationSignature = 0x31305845;  // 'EX01'
 
         /// <summary>
-        /// This method performs the serialization of one Exception object into the returned byte[].  
+        /// This method performs the serialization of one Exception object into the returned byte[].
         /// </summary>
         internal unsafe byte[] SerializeForDump()
         {

@@ -42,7 +42,7 @@ namespace Internal.Reflection.Execution.FieldAccessors
             }
             else
             {
-                // We're being asked to read a field from a reference type. There's no boxing to optimize out in that case so just handle it as 
+                // We're being asked to read a field from a reference type. There's no boxing to optimize out in that case so just handle it as
                 // if this was a FieldInfo.GetValue() call.
                 object obj = TypedReference.ToObject(typedReference);
                 return GetField(obj);
@@ -76,7 +76,7 @@ namespace Internal.Reflection.Execution.FieldAccessors
             }
             else
             {
-                // We're being asked to store a field from a reference type. There's no boxing to bypass in that case so just handle it as 
+                // We're being asked to store a field from a reference type. There's no boxing to bypass in that case so just handle it as
                 // if this was a FieldInfo.SetValue() call (but using SetValueDirect's argument coercing semantics)
                 object obj = TypedReference.ToObject(typedReference);
                 if (obj == null)

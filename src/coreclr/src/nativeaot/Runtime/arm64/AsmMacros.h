@@ -60,7 +60,7 @@ PTFF_SAVE_ALL_SCRATCH   equ 0x3FFFF800  ;; NOTE: X0-X18
 PTFF_SAVE_FP            equ 0x40000000
 PTFF_SAVE_LR            equ 0x80000000
 
-;; NOTE: The following flags represent the upper 32 bits of the PInvokeTransitionFrameFlags. 
+;; NOTE: The following flags represent the upper 32 bits of the PInvokeTransitionFrameFlags.
 ;; Since the assembler doesn't support 64 bit constants in any way, we need to define just
 ;; the upper bits here
 PTFF_X0_IS_GCREF_HI     equ 0x00000001 ;; iff PTFF_SAVE_X0 : set->x0 is Object, clear->x0 is scalar
@@ -124,7 +124,7 @@ $name   SETS    "|$symbol|"
 
 ;;-----------------------------------------------------------------------------
 ;; Macro for loading a 64-bit constant by a minimal number of instructions
-;; Since the asssembles doesn't support 64 bit arithmetics in expressions, 
+;; Since the asssembles doesn't support 64 bit arithmetics in expressions,
 ;; the value is passed in as lo, hi pair.
     MACRO
         MOVL64 $Reg, $ConstantLo, $ConstantHi
@@ -166,7 +166,7 @@ $Name
         TEXTAREA
         ROUT
 
-    MEND 
+    MEND
 
 ;; -----------------------------------------------------------------------------
 ;;
@@ -188,7 +188,7 @@ $ReturnAddressName
 ;; -----------------------------------------------------------------------------
 ;;
 ;; Macro to get a pointer to the Thread* object for the currently executing thread
-;; 
+;;
 
 __tls_array     equ 0x58    ;; offsetof(TEB, ThreadLocalStoragePointer)
 

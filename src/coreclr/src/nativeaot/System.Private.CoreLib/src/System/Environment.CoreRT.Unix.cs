@@ -114,7 +114,7 @@ namespace System
             unsafe bool ParseEntry(IntPtr current, out string key, out string value)
             {
                 // Setup
-                key = null; 
+                key = null;
                 value = null;
 
                 // Point to current entry
@@ -128,7 +128,7 @@ namespace System
                 // Parse each byte of the entry until we hit either the separator '=' or '\0'.
                 // This finds the split point for creating key/value strings below.
                 // On some old OS, the environment block can be corrupted.
-                // Some will not have '=', so we need to check for '\0'. 
+                // Some will not have '=', so we need to check for '\0'.
                 byte* splitpoint = entry;
                 while (*splitpoint != '=' && *splitpoint != '\0')
                     splitpoint++;

@@ -23,10 +23,10 @@ public:
     /// Retrieve the global FuncEval parameter buffer size.
     /// </summary>
     /// <remarks>
-    /// During debugging, if a FuncEval is requested, 
-    /// the func eval infrastructure needs to know how much buffer to allocate for the debugger to 
-    /// write the parameter information in. The C# supporting code will call this API to obtain the 
-    /// buffer size. By that time, the value should have been set through the UpdateFuncEvalParameterSize() 
+    /// During debugging, if a FuncEval is requested,
+    /// the func eval infrastructure needs to know how much buffer to allocate for the debugger to
+    /// write the parameter information in. The C# supporting code will call this API to obtain the
+    /// buffer size. By that time, the value should have been set through the UpdateFuncEvalParameterSize()
     /// method on the ISosRedhawk7 interface.
     /// </remarks>
     static UInt32 GetFuncEvalParameterBufferSize();
@@ -35,9 +35,9 @@ public:
     /// Retrieve the global FuncEval mode.
     /// </summary>
     /// <remarks>
-    /// During debugging, if a FuncEval is requested, 
-    /// the func eval infrastructure needs to know what mode to execute the FuncEval request 
-    /// The C# supporting code will call this API to obtain the mode. By that time, the value 
+    /// During debugging, if a FuncEval is requested,
+    /// the func eval infrastructure needs to know what mode to execute the FuncEval request
+    /// The C# supporting code will call this API to obtain the mode. By that time, the value
     /// should have been set through the UpdateFuncEvalMode() method on the ISosRedhawk7 interface.
     /// </remarks>
     static UInt32 GetFuncEvalMode();

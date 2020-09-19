@@ -423,25 +423,25 @@ namespace Internal.Runtime.TypeLoader
         // This function fills a piece of memory in a GC safe way.  It makes the guarantee
         // that it will fill memory in at least pointer sized chunks whenever possible.
         // Unaligned memory at the beginning and remaining bytes at the end are written bytewise.
-        // We must make this guarantee whenever we clear memory in the GC heap that could contain 
-        // object references.  The GC or other user threads can read object references at any time, 
+        // We must make this guarantee whenever we clear memory in the GC heap that could contain
+        // object references.  The GC or other user threads can read object references at any time,
         // clearing them bytewise can result in a read on another thread getting incorrect data.
         unsafe internal static void gcSafeMemzeroPointer(byte* pointer, int size)
         {
             byte* memBytes = pointer;
             byte* endBytes = (pointer + size);
 
-            // handle unaligned bytes at the beginning 
+            // handle unaligned bytes at the beginning
             while (!ArgIterator.IS_ALIGNED(new IntPtr(memBytes), (int)IntPtr.Size) && (memBytes < endBytes))
                 *memBytes++ = (byte)0;
 
-            // now write pointer sized pieces 
+            // now write pointer sized pieces
             long nPtrs = (endBytes - memBytes) / IntPtr.Size;
             IntPtr* memPtr = (IntPtr*)memBytes;
             for (int i = 0; i < nPtrs; i++)
                 *memPtr++ = IntPtr.Zero;
 
-            // handle remaining bytes at the end 
+            // handle remaining bytes at the end
             memBytes = (byte*)memPtr;
             while (memBytes < endBytes)
                 *memBytes++ = (byte)0;
@@ -614,7 +614,7 @@ namespace Internal.Runtime.TypeLoader
                     ofsCallee = conversionParams._calleeArgs.GetNextOffset();
                     ofsCaller = int.MaxValue;
 
-                    // Check to see if we've handled all the arguments that we are to pass to the callee. 
+                    // Check to see if we've handled all the arguments that we are to pass to the callee.
                     if (TransitionBlock.InvalidOffset == ofsCallee)
                     {
                         if (!conversionParams._conversionInfo.IsAnyDynamicInvokerThunk)
@@ -668,7 +668,7 @@ namespace Internal.Runtime.TypeLoader
                         }
                         else if (conversionParams._conversionInfo.IsAnyDynamicInvokerThunk)
                         {
-                            // The caller's ArgIterator for delegate or reflection dynamic invoke thunks has a different (and special) signature than 
+                            // The caller's ArgIterator for delegate or reflection dynamic invoke thunks has a different (and special) signature than
                             // the target method called by the delegate. We do not use it when setting up the callee's transition block.
                             // Input arguments are not read from the caller's transition block, but form the dynamic invoke infrastructure.
                             // Get all arguments info from the callee's ArgIterator instead.
@@ -722,7 +722,7 @@ namespace Internal.Runtime.TypeLoader
                                     // Use wrappers to pass objects byref (Wrappers can handle both null and non-null input byref parameters)
                                     conversionParams._dynamicInvokeByRefObjectArgs = conversionParams._dynamicInvokeByRefObjectArgs ?? new DynamicInvokeByRefArgObjectWrapper[conversionParams._dynamicInvokeParams.Length];
 
-                                    // The wrapper objects need to be pinned while we take the address of the byref'd object, and copy it to the callee 
+                                    // The wrapper objects need to be pinned while we take the address of the byref'd object, and copy it to the callee
                                     // transition block (which is conservatively reported). Once the copy is done, we can safely unpin the wrapper object.
                                     if (pinnedResultObject == IntPtr.Zero)
                                     {
@@ -815,7 +815,7 @@ namespace Internal.Runtime.TypeLoader
                         }
                         else
                         {
-                            // Calling convention adjustment. Used to handle conversion from universal shared generic form to standard 
+                            // Calling convention adjustment. Used to handle conversion from universal shared generic form to standard
                             // calling convention and vice versa
                             if (isCalleeArgPassedByRef)
                             {
@@ -905,8 +905,8 @@ namespace Internal.Runtime.TypeLoader
                     // If there is no return buffer explictly in use, return to a buffer which is conservatively reported
                     // by the universal transition frame.
                     //  OR
-                    // If there IS a return buffer in use, the function doesn't really return anything in the normal 
-                    // return value registers, but CallDescrThunk will always copy a pointer sized chunk into the 
+                    // If there IS a return buffer in use, the function doesn't really return anything in the normal
+                    // return value registers, but CallDescrThunk will always copy a pointer sized chunk into the
                     // ret buf. Make that ok by giving it a valid location to stash bits.
                     callDescrData.pReturnBuffer = (void*)(callerTransitionBlock + TransitionBlock.GetOffsetOfReturnValuesBlock());
                 }
@@ -958,7 +958,7 @@ namespace Internal.Runtime.TypeLoader
 
             bool forceByRefUnused;
             CorElementType returnType;
-            // Note that the caller's ArgIterator for delegate dynamic invoke thunks has a different (and special) signature than 
+            // Note that the caller's ArgIterator for delegate dynamic invoke thunks has a different (and special) signature than
             // the target method called by the delegate. Use the callee's ArgIterator instead to get the return type info
             if (conversionParams._conversionInfo.IsAnyDynamicInvokerThunk)
             {
@@ -1162,7 +1162,7 @@ namespace Internal.Runtime.TypeLoader
 
                 // Handle floating point returns
 
-                // The previous fpReturnSize was the callee fpReturnSize. Now reset to the caller return size to handle 
+                // The previous fpReturnSize was the callee fpReturnSize. Now reset to the caller return size to handle
                 // returning to the caller.
                 fpReturnSize = conversionParams._callerArgs.GetFPReturnSize();
                 if (fpReturnSize != 0)

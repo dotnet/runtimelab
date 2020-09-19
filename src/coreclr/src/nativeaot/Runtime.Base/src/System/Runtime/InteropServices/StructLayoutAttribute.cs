@@ -10,7 +10,7 @@ namespace System.Runtime.InteropServices
         {
         }
 
-        // These fields are expected by C# compiler, 
+        // These fields are expected by C# compiler,
         // so just disable the 'unused' warning
 #pragma warning disable 649
         public LayoutKind Value;

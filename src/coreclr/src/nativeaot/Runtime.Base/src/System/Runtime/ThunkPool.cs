@@ -3,7 +3,7 @@
 
 //
 // This is an implementation of a general purpose thunk pool manager. Each thunk consists of:
-//      1- A thunk stub, typically consisting of a lea + jmp instructions (slightly different 
+//      1- A thunk stub, typically consisting of a lea + jmp instructions (slightly different
 //         on ARM, but semantically equivalent)
 //      2- A thunk common stub: the implementation of the common stub depends on
 //         the usage scenario of the thunk
@@ -12,10 +12,10 @@
 //         the thunk's jump target typically.
 //
 // Without FEATURE_RX_THUNKS, thunks are allocated by mapping a thunks template into memory. The template
-// consists of a number of pairs of sections called thunk blocks (typically 8 pairs per mapping). Each pair 
+// consists of a number of pairs of sections called thunk blocks (typically 8 pairs per mapping). Each pair
 // has 2 page-long sections (4096 bytes):
-//      1- The first section has RX permissions, and contains the thunk stubs (lea's + jmp's), 
-//         and the thunk common stubs. 
+//      1- The first section has RX permissions, and contains the thunk stubs (lea's + jmp's),
+//         and the thunk common stubs.
 //      2- The second section has RW permissions and contains the thunks data (context + target).
 //         The last pointer-sized block in this section is special: it stores the address of
 //         the common stub that each thunk stub will jump to (the jump instruction in each thunk
@@ -24,15 +24,15 @@
 //         to the common stub address passed in by the caller
 //
 // With FEATURE_RX_THUNKS, thunks are created by allocating new virtual memory space, where the first half of
-// that space is filled with thunk stubs, and gets RX permissions, and the second half is for the thunks data, 
+// that space is filled with thunk stubs, and gets RX permissions, and the second half is for the thunks data,
 // and gets RW permissions. The thunk stubs and data blocks are not in groupped in pairs like in ProjectN: all
 // the thunk stubs blocks are groupped at the begining of the allocated virtual memory space, and all the
 // thunk data blocks are groupped in the second half of the virtual space.
 //
 // Available thunks are tracked using a linked list. The first cell in the data block of each thunk is
-// used as the nodes of the linked list. The cell will point to the data block of the next available thunk, 
+// used as the nodes of the linked list. The cell will point to the data block of the next available thunk,
 // if one is available, or point to null. When thunks are freed, they are added to the begining of the list.
-// 
+//
 
 using System.Diagnostics;
 
@@ -291,7 +291,7 @@ namespace System.Runtime
 
         /// <summary>
         /// This method retrieves the two data fields for a thunk.
-        /// Caution: No checks are made to verify that the thunk address is that of a 
+        /// Caution: No checks are made to verify that the thunk address is that of a
         /// valid thunk in use. The caller of this API is responsible for providing a valid
         /// address of a thunk that was not previously freed.
         /// </summary>
@@ -317,7 +317,7 @@ namespace System.Runtime
 
         /// <summary>
         /// This method sets the two data fields for a thunk.
-        /// Caution: No checks are made to verify that the thunk address is that of a 
+        /// Caution: No checks are made to verify that the thunk address is that of a
         /// valid thunk in use. The caller of this API is responsible for providing a valid
         /// address of a thunk that was not previously freed.
         /// </summary>
@@ -368,7 +368,7 @@ namespace System.Runtime
                     // or we are using the managed runtime services fallback, which doesn't provide the
                     // file mapping feature (ex: older version of mrt100.dll, or no mrt100.dll at all).
 
-                    // The only option is for the caller to attempt and recycle unused thunks to be able to 
+                    // The only option is for the caller to attempt and recycle unused thunks to be able to
                     // find some free entries.
 
                     return IntPtr.Zero;

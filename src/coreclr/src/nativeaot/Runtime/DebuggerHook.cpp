@@ -60,8 +60,8 @@ GVAL_IMPL_INIT(UInt32, g_numGcProtectionRequests, 0);
             DebuggerGcProtectionRequest* request = requests + i;
             switch(request->kind)
             {
-            case DebuggerGcProtectionRequestKind::EnsureConservativeReporting: 
-                EnsureConservativeReporting(request); 
+            case DebuggerGcProtectionRequestKind::EnsureConservativeReporting:
+                EnsureConservativeReporting(request);
                 break;
 
             case DebuggerGcProtectionRequestKind::RemoveConservativeReporting:

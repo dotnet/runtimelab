@@ -12,7 +12,7 @@
 // (INVALIDGCVALUE) which disables the check for that location. Since the shadow heap is only validated at GC
 // time and these write barrier operations are atomic wrt to GCs this is sufficient to guarantee that the
 // shadow heap contains only valid copies of real heap values or INVALIDGCVALUE.
-#ifdef WRITE_BARRIER_CHECK  
+#ifdef WRITE_BARRIER_CHECK
 
     .global     $g_GCShadow
     .global     $g_GCShadowEnd
@@ -169,7 +169,7 @@
 
         // The "check" of this checked write barrier - is destReg
         // within the heap? if no, early out.
-        
+
         PREPARE_EXTERNAL_VAR_INDIRECT g_lowest_address, x\trash
         cmp     \destReg, x\trash
         blt     0f
@@ -226,7 +226,7 @@ LEAF_ENTRY RhpAssignRef, _TEXT
 LEAF_END RhpAssignRef, _TEXT
 
 // Interlocked operation helpers where the location is an objectref, thus requiring a GC write barrier upon
-// successful updates. 
+// successful updates.
 
 // WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 // - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at RhpCheckedLockCmpXchgAVLocation
@@ -276,7 +276,7 @@ CmpXchgNoUpdate:
 // WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 // - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen within at RhpCheckedXchgAVLocation
 // - Function "UnwindWriteBarrierToCaller" assumes no registers where pushed and LR contains the return address
- 
+
 // RhpCheckedXchg(Object** destination, Object* value)
 //
 // Interlocked exchange on objectref.
@@ -318,9 +318,9 @@ LEAF_ENTRY RhpAssignRefArm64, _TEXT
     ALTERNATE_ENTRY RhpAssignRefAVLocation
     ALTERNATE_ENTRY RhpAssignRefX1AVLocation
         stlr    x15, [x14]
- 
+
         INSERT_UNCHECKED_WRITE_BARRIER_CORE x14, x15, 12, X14
- 
+
         ret
 LEAF_END RhpAssignRefArm64, _TEXT
 
@@ -340,11 +340,11 @@ LEAF_ENTRY RhpCheckedAssignRefArm64, _TEXT
     ALTERNATE_ENTRY RhpCheckedAssignRefX1AVLocation
 
         stlr    x15, [x14]
-        
+
         INSERT_CHECKED_WRITE_BARRIER_CORE x14, x15, 12, X15
 
         add x14, x14, #8
-        
+
         ret
 LEAF_END RhpCheckedAssignRefArm64, _TEXT
 

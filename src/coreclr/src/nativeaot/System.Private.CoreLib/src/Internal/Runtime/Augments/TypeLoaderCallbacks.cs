@@ -25,7 +25,7 @@ namespace Internal.Runtime.Augments
         public abstract bool TryGetPointerTypeForTargetType(RuntimeTypeHandle pointeeTypeHandle, out RuntimeTypeHandle pointerTypeHandle);
         public abstract bool TryGetArrayTypeForElementType(RuntimeTypeHandle elementTypeHandle, bool isMdArray, int rank, out RuntimeTypeHandle arrayTypeHandle);
         public abstract IntPtr UpdateFloatingDictionary(IntPtr context, IntPtr dictionaryPtr);
-        
+
         /// <summary>
         /// Register a new runtime-allocated code thunk in the diagnostic stream.
         /// </summary>

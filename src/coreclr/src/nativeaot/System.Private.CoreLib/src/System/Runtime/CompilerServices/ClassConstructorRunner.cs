@@ -15,7 +15,7 @@ namespace System.Runtime.CompilerServices
     internal static partial class ClassConstructorRunner
     {
         //==============================================================================================================
-        // Ensures the class constructor for the given type has run. 
+        // Ensures the class constructor for the given type has run.
         //
         // Called by the runtime when it finds a class whose static class constructor has probably not run
         // (probably because it checks in the initialized flag without thread synchronization).
@@ -24,7 +24,7 @@ namespace System.Runtime.CompilerServices
         // The contents are thus fixed (do not require pinning) and the address can be used as a unique
         // identifier for the context.
         //
-        // This guarantee is violated in one specific case: where a class constructor cycle would cause a deadlock. If 
+        // This guarantee is violated in one specific case: where a class constructor cycle would cause a deadlock. If
         // so, per ECMA specs, this method returns without guaranteeing that the .cctor has run.
         //
         // No attempt is made to detect or break deadlocks due to other synchronization mechanisms.
@@ -116,7 +116,7 @@ namespace System.Runtime.CompilerServices
                 }
                 else
                 {
-                    // Cctor cycle resulted in a deadlock. We will break the guarantee and return without running the 
+                    // Cctor cycle resulted in a deadlock. We will break the guarantee and return without running the
                     // .cctor.
                 }
             }
@@ -129,7 +129,7 @@ namespace System.Runtime.CompilerServices
 
         //=========================================================================================================
         // Return value:
-        //   true   - lock acquired. 
+        //   true   - lock acquired.
         //   false  - deadlock detected. Lock not acquired.
         //=========================================================================================================
         private static bool DeadlockAwareAcquire(CctorHandle cctor, IntPtr pfnCctor)
@@ -148,27 +148,27 @@ namespace System.Runtime.CompilerServices
             if (lck.TryAcquire(waitIntervalInMS))
                 return true;
 
-            // We couldn't acquire the lock. See if this .cctor is involved in a cross-thread deadlock.  If so, break 
+            // We couldn't acquire the lock. See if this .cctor is involved in a cross-thread deadlock.  If so, break
             // the deadlock by breaking the guarantee - we'll skip running the .cctor and let the caller take his chances.
             int currentManagedThreadId = CurrentManagedThreadId;
             int unmarkCookie = -1;
             try
             {
-                // We'll spin in a forever-loop of checking for a deadlock state, then waiting a short time, then 
-                // checking for a deadlock state again, and so on. This is because the BlockedRecord info has a built-in 
-                // lag time - threads don't report themselves as blocking until they've been blocked for a non-trivial 
-                // amount of time. 
+                // We'll spin in a forever-loop of checking for a deadlock state, then waiting a short time, then
+                // checking for a deadlock state again, and so on. This is because the BlockedRecord info has a built-in
+                // lag time - threads don't report themselves as blocking until they've been blocked for a non-trivial
+                // amount of time.
                 //
-                // If the threads are deadlocked for any reason other a class constructor cycling, this loop will never 
-                // terminate - this is by design. If the user code inside the class constructors were to 
+                // If the threads are deadlocked for any reason other a class constructor cycling, this loop will never
+                // terminate - this is by design. If the user code inside the class constructors were to
                 // deadlock themselves, then that's a bug in user code.
                 for (;;)
                 {
                     using (LockHolder.Hold(s_cctorGlobalLock))
                     {
-                        // Ask the guy who holds the cctor lock we're trying to acquire who he's waiting for. Keep 
-                        // walking down that chain until we either discover a cycle or reach a non-blocking state. Note 
-                        // that reaching a non-blocking state is not proof that we've avoided a deadlock due to the 
+                        // Ask the guy who holds the cctor lock we're trying to acquire who he's waiting for. Keep
+                        // walking down that chain until we either discover a cycle or reach a non-blocking state. Note
+                        // that reaching a non-blocking state is not proof that we've avoided a deadlock due to the
                         // BlockingRecord reporting lag.
                         CctorHandle cctorWalk = cctor;
                         int chainStepCount = 0;
@@ -185,8 +185,8 @@ namespace System.Runtime.CompilerServices
                                     pfnCctor, currentManagedThreadId);
 
                                 // We are maintaining an invariant that the BlockingRecords never show a cycle because,
-                                // before we add a record, we first check for a cycle.  As a result, once we've said 
-                                // we're waiting, we are committed to waiting and will not need to skip running this 
+                                // before we add a record, we first check for a cycle.  As a result, once we've said
+                                // we're waiting, we are committed to waiting and will not need to skip running this
                                 // .cctor.
                                 Debug.Assert(unmarkCookie == -1);
                                 return false;
@@ -194,15 +194,15 @@ namespace System.Runtime.CompilerServices
 
                             if (holdingThread == ManagedThreadIdNone)
                             {
-                                // No one appears to be holding this cctor lock. Give the current thread some more time 
-                                // to acquire the lock. 
+                                // No one appears to be holding this cctor lock. Give the current thread some more time
+                                // to acquire the lock.
                                 break;
                             }
 
                             cctorWalk = BlockingRecord.GetCctorThatThreadIsBlockedOn(holdingThread);
                             if (cctorWalk.Array == null)
                             {
-                                // The final thread in the chain appears to be blocked on nothing. Give the current 
+                                // The final thread in the chain appears to be blocked on nothing. Give the current
                                 // thread some more time to acquire the lock.
                                 break;
                             }
@@ -212,14 +212,14 @@ namespace System.Runtime.CompilerServices
                         // but never more.
                         Debug.Assert(chainStepCount < Cctor.Count);
 
-                        // We have not discovered a deadlock, so let's register the fact that we're waiting on another 
-                        // thread and continue to wait.  It is important that we only signal that we are blocked after 
-                        // we check for a deadlock because, otherwise, we give all threads involved in the deadlock the 
+                        // We have not discovered a deadlock, so let's register the fact that we're waiting on another
+                        // thread and continue to wait.  It is important that we only signal that we are blocked after
+                        // we check for a deadlock because, otherwise, we give all threads involved in the deadlock the
                         // opportunity to break it themselves and that leads to "ping-ponging" between the cctors
                         // involved in the cycle, allowing intermediate cctor results to be observed.
                         //
                         // The invariant here is that we never 'publish' a BlockingRecord that forms a cycle.  So it is
-                        // important that the look-for-cycle-and-then-publish-wait-status operation be atomic with 
+                        // important that the look-for-cycle-and-then-publish-wait-status operation be atomic with
                         // respect to other updates to the BlockingRecords.
                         if (unmarkCookie == -1)
                         {
@@ -394,17 +394,17 @@ namespace System.Runtime.CompilerServices
         }
 
         //==============================================================================================================
-        // Keeps track of threads that are blocked on a cctor lock (alas, we don't have ThreadLocals here in 
+        // Keeps track of threads that are blocked on a cctor lock (alas, we don't have ThreadLocals here in
         // System.Private.CoreLib so we have to use a side table.)
         //
-        // This is used for cross-thread deadlock detection. 
+        // This is used for cross-thread deadlock detection.
         //
-        // - Data is only entered here if a thread has been blocked past a certain timeout (otherwise, it's certainly 
+        // - Data is only entered here if a thread has been blocked past a certain timeout (otherwise, it's certainly
         //   not participating of a deadlock.)
         // - Reads and writes to _blockingRecord are guarded by _cctorGlobalLock.
-        // - BlockingRecords for individual threads are created on demand. Since this is a rare event, we won't attempt 
+        // - BlockingRecords for individual threads are created on demand. Since this is a rare event, we won't attempt
         //   to recycle them directly (however,
-        //   ManagedThreadId's are themselves recycled pretty quickly - and threads that inherit the managed id also 
+        //   ManagedThreadId's are themselves recycled pretty quickly - and threads that inherit the managed id also
         //   inherit the BlockingRecord.)
         //==============================================================================================================
         private struct BlockingRecord
@@ -473,11 +473,11 @@ namespace System.Runtime.CompilerServices
 
         private static Lock s_cctorGlobalLock;
 
-        // These three  statics are used by ClassConstructorRunner.Cctor but moved out to avoid an unnecessary 
+        // These three  statics are used by ClassConstructorRunner.Cctor but moved out to avoid an unnecessary
         // extra class constructor call.
         //
-        // Because Cctor's are mutable structs, we have to give our callers raw references to the underlying arrays 
-        // for this collection to be usable.  This also means once we place a Cctor in an array, we can't grow or 
+        // Because Cctor's are mutable structs, we have to give our callers raw references to the underlying arrays
+        // for this collection to be usable.  This also means once we place a Cctor in an array, we can't grow or
         // reallocate the array.
         private static Cctor[][] s_cctorArrays;
         private static int s_cctorArraysCount;
@@ -493,7 +493,7 @@ namespace System.Runtime.CompilerServices
         [Conditional("ENABLE_NOISY_CCTOR_LOG")]
         private static void NoisyLog(string format, IntPtr cctorMethod, int threadId)
         {
-            // We cannot utilize any of the typical number formatting code because it triggers globalization code to run 
+            // We cannot utilize any of the typical number formatting code because it triggers globalization code to run
             // and this cctor code is layered below globalization.
 #if DEBUG
             Debug.WriteLine(format, ToHexString(cctorMethod), ToHexString(threadId));
@@ -503,14 +503,14 @@ namespace System.Runtime.CompilerServices
         [Conditional("DEBUG")]
         private static void DebugLog(string format, IntPtr cctorMethod, int threadId)
         {
-            // We cannot utilize any of the typical number formatting code because it triggers globalization code to run 
+            // We cannot utilize any of the typical number formatting code because it triggers globalization code to run
             // and this cctor code is layered below globalization.
 #if DEBUG
             Debug.WriteLine(format, ToHexString(cctorMethod), ToHexString(threadId));
 #endif
         }
 
-        // We cannot utilize any of the typical number formatting code because it triggers globalization code to run 
+        // We cannot utilize any of the typical number formatting code because it triggers globalization code to run
         // and this cctor code is layered below globalization.
 #if DEBUG
         private static string ToHexString(int num)

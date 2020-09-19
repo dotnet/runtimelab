@@ -34,7 +34,7 @@ struct ReadyToRunHeader
 // from each module linked into the final binary. New sections should be added at the bottom
 // of the enum and deprecated sections should not be removed to preserve ID stability.
 //
-// Eventually this will be reconciled with ReadyToRunSectionType from 
+// Eventually this will be reconciled with ReadyToRunSectionType from
 // https://github.com/dotnet/coreclr/blob/master/src/inc/readytorun.h
 //
 enum class ReadyToRunSectionType

@@ -146,7 +146,7 @@ namespace System
 
             // The LoadDefaultValueString() has the following contract
             // If it returns false, the delegate invoke does not have default values.
-            // If it returns true, then the s_DefaultValueString variable is set to 
+            // If it returns true, then the s_DefaultValueString variable is set to
             // describe the default values for this invoke.
             string defaultValueString = null;
             if (LoadDefaultValueString())

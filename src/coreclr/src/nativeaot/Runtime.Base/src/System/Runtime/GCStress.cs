@@ -9,12 +9,12 @@ namespace System.Runtime
     internal class GCStress
     {
         // ProjectX TODO:  delete the RuntimeExport attribute. The RuntimeExport version is
-        // only used in MDIL mode where it's called in the managed bootstrapping code. 
+        // only used in MDIL mode where it's called in the managed bootstrapping code.
         [RuntimeExport("RhGcStress_Initialize")]
         public static void Initialize()
         {
 #if FEATURE_GC_STRESS
-            // This method is called via binder-injected code in a module's DllMain.  The OS guarantees that 
+            // This method is called via binder-injected code in a module's DllMain.  The OS guarantees that
             // only one thread at a time is in any DllMain, so we should be thread-safe as a result.
             if (Initialized)
                 return;
@@ -31,7 +31,7 @@ namespace System.Runtime
                 Tail = Tail.Next;
             }
 
-            // drop the first element 
+            // drop the first element
             Head = Head.Next;
 
             // notify redhawku.dll
@@ -61,7 +61,7 @@ namespace System.Runtime
             // drop the first element
             Head = Head.Next;
 
-            // create and link a new element at the end of the list 
+            // create and link a new element at the end of the list
             Tail.Next = new GCStress();
             Tail = Tail.Next;
         }

@@ -38,7 +38,7 @@
 #endif
 
 // Provides an abstraction over platform specific calling conventions (specifically, the calling convention
-// utilized by the JIT on that platform). The caller enumerates each argument of a signature in turn, and is 
+// utilized by the JIT on that platform). The caller enumerates each argument of a signature in turn, and is
 // provided with information mapping that argument into registers and/or stack locations.
 
 using System;
@@ -69,7 +69,7 @@ namespace Internal.Runtime.CallConverter
             bool usesReturnBuffer;
             uint fpReturnSizeIgnored;
             ArgIterator.ComputeReturnValueTreatment(typeReturnType, thReturnType, methodWithReturnTypeIsVarArg, out usesReturnBuffer, out fpReturnSizeIgnored);
-            
+
             return usesReturnBuffer;
         }
     }
@@ -408,7 +408,7 @@ namespace Internal.Runtime.CallConverter
     // performance critical code.
     //
     // The ARGITERATOR_BASE argument of the template is provider of the parsed
-    // method signature. Typically, the arg iterator works on top of MetaSig. 
+    // method signature. Typically, the arg iterator works on top of MetaSig.
     // Reflection invoke uses alternative implementation to save signature parsing
     // time because of it has the parsed signature available.
     //-----------------------------------------------------------------------
@@ -554,7 +554,7 @@ namespace Internal.Runtime.CallConverter
         }
 #endif
 
-        // Is there a hidden parameter for the return parameter? 
+        // Is there a hidden parameter for the return parameter?
         //
         public bool HasRetBuffArg()
         {
@@ -645,7 +645,7 @@ namespace Internal.Runtime.CallConverter
 
             Debug.Assert(!th.IsNull());
 
-            // This method only works for valuetypes. It includes true value types, 
+            // This method only works for valuetypes. It includes true value types,
             // primitives, enums and TypedReference.
             Debug.Assert(th.IsValueType());
 
@@ -826,7 +826,7 @@ namespace Internal.Runtime.CallConverter
         // Each time this is called, this returns a byte offset of the next
         // argument from the TransitionBlock* pointer. This offset can be positive *or* negative.
         //
-        // Returns TransitionBlock::InvalidOffset once you've hit the end 
+        // Returns TransitionBlock::InvalidOffset once you've hit the end
         // of the list.
         //------------------------------------------------------------
         public unsafe int GetNextOffset()
@@ -839,7 +839,7 @@ namespace Internal.Runtime.CallConverter
                 int numRegistersUsed = 0;
 #if TARGET_X86
                 int initialArgOffset = 0;
-#endif 
+#endif
                 if (this.HasThis())
                     numRegistersUsed++;
 
@@ -1100,7 +1100,7 @@ namespace Internal.Runtime.CallConverter
 
                 case CorElementType.ELEMENT_TYPE_VALUETYPE:
                     {
-                        // Value type case: extract the alignment requirement, note that this has to handle 
+                        // Value type case: extract the alignment requirement, note that this has to handle
                         // the interop "native value types".
                         fRequiresAlign64Bit = _argTypeHandle.RequiresAlign8();
 
@@ -1156,7 +1156,7 @@ namespace Internal.Runtime.CallConverter
                 {
                     if ((_wFPRegs & wAllocMask) == 0)
                     {
-                        // We found one, mark the register or registers as used. 
+                        // We found one, mark the register or registers as used.
                         _wFPRegs |= wAllocMask;
 
                         // Indicate the registers used to the caller and return.
@@ -1191,7 +1191,7 @@ namespace Internal.Runtime.CallConverter
                 if (fRequiresAlign64Bit)
                 {
                     // The argument requires 64-bit alignment. Align either the next general argument register if
-                    // we have any left.  See step C.3 in the algorithm in the ABI spec.       
+                    // we have any left.  See step C.3 in the algorithm in the ABI spec.
                     _idxGenReg = ALIGN_UP(_idxGenReg, 2);
                 }
 
@@ -1222,7 +1222,7 @@ namespace Internal.Runtime.CallConverter
             if (fRequiresAlign64Bit)
             {
                 // The argument requires 64-bit alignment. If it is going to be passed on the stack, align
-                // the next stack slot.  See step C.6 in the algorithm in the ABI spec.  
+                // the next stack slot.  See step C.6 in the algorithm in the ABI spec.
                 _idxStack = ALIGN_UP(_idxStack, 2);
             }
 
@@ -1442,7 +1442,7 @@ namespace Internal.Runtime.CallConverter
 
 #if TARGET_AMD64
                 // All stack arguments take just one stack slot on AMD64 because of arguments bigger
-                // than a stack slot are passed by reference. 
+                // than a stack slot are passed by reference.
                 stackElemSize = ArchitectureConstants.STACK_ELEM_SIZE;
 #else
                 stackElemSize = ArchitectureConstants.StackElemSize(GetArgSize());
@@ -1592,12 +1592,12 @@ namespace Internal.Runtime.CallConverter
 
             if (argOffset == TransitionBlock.StructInRegsOffset)
             {
-                // We always already have argLocDesc for structs passed in registers, we 
+                // We always already have argLocDesc for structs passed in registers, we
                 // compute it in the GetNextOffset for those since it is always needed.
                 Debug.Assert(false);
                 return;
             }
-        
+
             pLoc->Init();
 
             if (TransitionBlock.IsFloatArgumentRegisterOffset(argOffset))
@@ -1674,7 +1674,7 @@ namespace Internal.Runtime.CallConverter
         private uint _fpReturnSize;
 
         //        enum {
-        /*        ITERATION_STARTED               = 0x0001,   
+        /*        ITERATION_STARTED               = 0x0001,
                 SIZE_OF_ARG_STACK_COMPUTED      = 0x0002,
                 RETURN_FLAGS_COMPUTED           = 0x0004,
                 RETURN_HAS_RET_BUFFER           = 0x0008,   // Cached value of HasRetBuffArg
@@ -1791,7 +1791,7 @@ namespace Internal.Runtime.CallConverter
 #if !TARGET_X86
         private unsafe void GetSimpleLoc(int offset, ArgLocDesc* pLoc)
         {
-            //        WRAPPER_NO_CONTRACT; 
+            //        WRAPPER_NO_CONTRACT;
             pLoc->Init();
             pLoc->m_idxGenReg = TransitionBlock.GetArgumentIndexFromOffset(offset);
             pLoc->m_cGenReg = 1;
@@ -1811,7 +1811,7 @@ namespace Internal.Runtime.CallConverter
 
         public static bool IsRetBuffPassedAsFirstArg()
         {
-            //        WRAPPER_NO_CONTRACT; 
+            //        WRAPPER_NO_CONTRACT;
 #if !TARGET_ARM64
             return true;
 #else

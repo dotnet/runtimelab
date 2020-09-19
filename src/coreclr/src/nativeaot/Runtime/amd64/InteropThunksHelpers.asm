@@ -18,7 +18,7 @@ LEAF_END macro Name, Section
     Section ends
 endm
 
-;  - TAILCALL_RAX: ("jmp rax") should be used for tailcalls, this emits an instruction 
+;  - TAILCALL_RAX: ("jmp rax") should be used for tailcalls, this emits an instruction
 ;            sequence which is recognized by the unwinder as a valid epilogue terminator
 TAILJMP_RAX TEXTEQU <DB 048h, 0FFh, 0E0h>
 
@@ -49,7 +49,7 @@ LEAF_ENTRY RhCommonStub, _TEXT
 
         ;; Save context data into the ThunkParamSlot thread-local variable
         ;; A pointer to the delegate and function pointer for open static delegate should have been saved in the thunk's context cell during thunk allocation
-        mov     [rsp + 8], rcx                                     ;; Save rcx in a home scratch location. Pushing the 
+        mov     [rsp + 8], rcx                                     ;; Save rcx in a home scratch location. Pushing the
                                                                    ;; register on the stack will break callstack unwind
         mov     ecx, [_tls_index]
         mov     r11, gs:[_tls_array]

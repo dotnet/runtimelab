@@ -20,7 +20,7 @@ namespace Internal.Reflection.Core
     }
 
     //
-    // Implements the assembly binding policy Reflection domain. This gets called any time the domain needs 
+    // Implements the assembly binding policy Reflection domain. This gets called any time the domain needs
     // to resolve an assembly name.
     //
     // If the binder cannot locate an assembly, it must return null and set "exception" to an exception object.

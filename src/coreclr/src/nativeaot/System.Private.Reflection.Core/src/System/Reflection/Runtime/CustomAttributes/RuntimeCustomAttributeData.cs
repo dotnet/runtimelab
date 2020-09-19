@@ -162,7 +162,7 @@ namespace System.Reflection.Runtime.CustomAttributes
         {
             get
             {
-                // This emulates Object.ToString() for consistency with prior .Net Native implementations. 
+                // This emulates Object.ToString() for consistency with prior .Net Native implementations.
                 return GetType().ToString();
             }
         }

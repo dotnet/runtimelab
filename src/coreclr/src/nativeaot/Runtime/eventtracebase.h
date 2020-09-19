@@ -149,8 +149,8 @@ struct ProfilingScanContext;
 
 #if defined(FEATURE_CORECLR) && !defined(FEATURE_CORESYSTEM)
 // For Silverlight non-CoreSys builds we still use an older toolset,
-// headers/libs, and a different value for WINVER. We use this symbol 
-// to distinguish between whether we built the ETW header files from 
+// headers/libs, and a different value for WINVER. We use this symbol
+// to distinguish between whether we built the ETW header files from
 // the ETW manifest using the -mof command line or not.
 #define WINXP_AND_WIN2K3_BUILD_SUPPORT
 #endif
@@ -239,7 +239,7 @@ extern "C" {
 // has started, one may want to do something useful when that happens (e.g enumerate all the loaded modules
 // in the system). To enable this, we have to implement a callback routine.
 // file:../VM/eventtrace.cpp#EtwCallback is CLR's implementation of the callback.
-// 
+//
 
 #include "daccess.h"
 class Module;
@@ -266,7 +266,7 @@ class Thread;
 namespace ETW
 {
     // Class to wrap the ETW infrastructure logic
-    class CEtwTracer 
+    class CEtwTracer
     {
 #if defined(FEATURE_EVENT_TRACE) && !defined(FEATURE_PAL)
         ULONG RegGuids(LPCGUID ProviderId, PENABLECALLBACK EnableCallback, PVOID CallbackContext, PREGHANDLE RegHandle);
@@ -278,7 +278,7 @@ namespace ETW
         HRESULT Register();
 
         // Unregisters all the Event Tracing providers
-        HRESULT UnRegister();        
+        HRESULT UnRegister();
 #else
         HRESULT Register()
         {
@@ -292,7 +292,7 @@ namespace ETW
     };
 
     class LoaderLog;
-    class MethodLog;   
+    class MethodLog;
     // Class to wrap all the enumeration logic for ETW
     class EnumerationLog
     {
@@ -333,7 +333,7 @@ namespace ETW
                 MethodDCEndILToNativeMap=           0x00020000,
                 JitMethodILToNativeMap=             0x00040000,
                 TypeUnload=                         0x00080000,
-                
+
                 // Helpers
                 ModuleRangeEnabledAny = ModuleRangeLoad | ModuleRangeDCStart | ModuleRangeDCEnd | ModuleRangeLoadPrivate,
                 JitMethodLoadOrDCStartAny = JitMethodLoad | JitMethodDCStart | MethodDCStartILToNativeMap,
@@ -361,7 +361,7 @@ namespace ETW
         // StackWalk available only when !FEATURE_PAL
 #if defined(FEATURE_EVENT_TRACE) && !defined(FEATURE_PAL)
     public:
-        typedef enum _EtwStackWalkStatus 
+        typedef enum _EtwStackWalkStatus
         {
             Completed = 0,
             UnInitialized = 1,
@@ -378,7 +378,7 @@ namespace ETW
         EtwStackWalkStatus GetCurrentThreadsCallStack(UINT32 *frameCount, PVOID **Stack);
 #endif // FEATURE_EVENT_TRACE && !FEATURE_PAL
     };
-    
+
     // Class to wrap all Loader logic for ETW
     class LoaderLog
     {
@@ -423,9 +423,9 @@ namespace ETW
             }RangeFlags;
 
         }LoaderStructs;
-        
+
         static void DomainLoadReal(BaseDomain *pDomain, __in_opt LPWSTR wszFriendlyName=NULL);
-        
+
         static void DomainLoad(BaseDomain *pDomain, __in_opt LPWSTR wszFriendlyName = NULL)
         {
 #ifndef FEATURE_PAL
@@ -613,7 +613,7 @@ namespace ETW
     {
     public:
         typedef union _BinderStructs {
-            typedef  enum _NGENBINDREJECT_REASON { 
+            typedef  enum _NGENBINDREJECT_REASON {
                 NGEN_BIND_START_BIND = 0,
                 NGEN_BIND_NO_INDEX = 1,
                 NGEN_BIND_SYSTEM_ASSEMBLY_NOT_AVAILABLE = 2,
@@ -662,19 +662,19 @@ namespace ETW
                 IsCLSCompliant=0x10
             }ExceptionThrownFlags;
         }ExceptionStructs;
-    };    
+    };
     // Class to wrap all Contention logic for ETW
     class ContentionLog
     {
     public:
-        typedef union _ContentionStructs 
+        typedef union _ContentionStructs
         {
-            typedef  enum _ContentionFlags { 
+            typedef  enum _ContentionFlags {
                 ManagedContention=0,
                 NativeContention=1
             } ContentionFlags;
         } ContentionStructs;
-    };    
+    };
     // Class to wrap all Interop logic for ETW
     class InteropLog
     {
@@ -685,7 +685,7 @@ namespace ETW
     class InfoLog
     {
     public:
-        typedef union _InfoStructs 
+        typedef union _InfoStructs
         {
             typedef enum _StartupMode
             {
@@ -739,7 +739,7 @@ extern ETW::CEtwTracer *  g_pEtwTracer;
 // "mc.exe -MOF" already generates this block for XP-suported builds inside ClrEtwAll.h;
 // on Vista+ builds, mc is run without -MOF, and we still have code that depends on it, so
 // we manually place it here.
-FORCEINLINE 
+FORCEINLINE
 BOOLEAN __stdcall
 McGenEventTracingEnabled(
     __in PMCGEN_TRACE_CONTEXT EnableInfo,
@@ -820,11 +820,11 @@ typedef struct _MCGEN_TRACE_BUFFER {
         EventDataDescCreate(&EventData[4], Stack, sizeof(PVOID) * FrameCount );
 
 #ifdef WINXP_AND_WIN2K3_BUILD_SUPPORT
-        if (!McGenPreVista) 
+        if (!McGenPreVista)
         {
             return PfnEventWrite(RegHandle, Descriptor, ARGUMENT_COUNT_CLRStackWalk, EventData);
-        } 
-        else 
+        }
+        else
         {
             const MCGEN_TRACE_CONTEXT* Context = (const MCGEN_TRACE_CONTEXT*)(ULONG_PTR)RegHandle;
             //
@@ -860,7 +860,7 @@ struct CallStackFrame
 #endif // FEATURE_EVENT_TRACE
 
 #if defined(FEATURE_EVENT_TRACE) && !defined(FEATURE_PAL)
-FORCEINLINE 
+FORCEINLINE
 BOOLEAN __stdcall
 McGenEventProviderEnabled(
     __in PMCGEN_TRACE_CONTEXT Context,
@@ -971,7 +971,7 @@ namespace ETW
 
 //
 // Use this macro to check if a category of events is enabled
-// 
+//
 
 #define ETW_CATEGORY_ENABLED(Context, Level, Keyword) \
     (Context.IsEnabled && McGenEventProviderEnabled(&Context, Level, Keyword))
@@ -1058,7 +1058,7 @@ public:
 public:
     ETWTraceStartup(void (*sFP)(), void (*eFP)()) : startFP (sFP), endFP(eFP) {
           (*startFP)();
-    } 
+    }
     ~ETWTraceStartup() {
           (*endFP)();
     }
@@ -1088,7 +1088,7 @@ public:
 // Use this macro to check if ETW is initialized and the category is enabled
 #define ETW_TRACING_CATEGORY_ENABLED(Context, Level, Keyword) (FALSE)
 
-#endif // FEATURE_EVENT_TRACE  
+#endif // FEATURE_EVENT_TRACE
 
 #endif // FEATURE_REDHAWK
 

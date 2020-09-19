@@ -11,7 +11,7 @@ using System.Diagnostics;
 namespace System
 {
     //
-    // Type doesn't implement IEquatable<Type> which makes it impossible to use a key in our unification tables. 
+    // Type doesn't implement IEquatable<Type> which makes it impossible to use a key in our unification tables.
     // This wrapper is here to compensate for that.
     //
     internal struct TypeUnificationKey : IEquatable<TypeUnificationKey>

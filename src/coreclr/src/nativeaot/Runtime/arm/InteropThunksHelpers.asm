@@ -15,10 +15,10 @@ POINTER_SIZE                        equ 0x04
 ThunkParamSlot % 0x4
 
     TEXTAREA
-    
+
     EXTERN _tls_index
 
-    
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Interop Thunks Helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;;
@@ -38,7 +38,7 @@ ThunkParamSlot % 0x4
         mrc         p15, #0, r3, c13, c0, #2
         ldr         r3, [r3, #__tls_array]
         ldr         r2, [r3, r2, lsl #2]    ;; r2 <- our TLS base
-       
+
         ;; r2  = base address of TLS data
         ;; r12 = address of context cell in thunk's data
 
@@ -46,7 +46,7 @@ ThunkParamSlot % 0x4
         ldr         r1, [r12]
         ldr         r3, =ThunkParamSlot
         str         r1, [r2, r3]            ;; ThunkParamSlot <- context slot data
-        
+
         ;; Now load the target address and jump to it.
         ldr         r12, [r12, #POINTER_SIZE]
         EPILOG_POP  {r0-r3}

@@ -37,7 +37,7 @@ FWD_DECL(Thread)
 FWD_DECL(ThreadStore)
 
 #ifdef FEATURE_RWX_MEMORY
-namespace rh { 
+namespace rh {
     namespace util {
         FWD_DECL(MemRange)
         FWD_DECL(MemAccessMgr)

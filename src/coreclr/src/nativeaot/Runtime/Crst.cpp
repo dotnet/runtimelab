@@ -27,7 +27,7 @@ void CrstStatic::Destroy()
 #endif // !DACCESS_COMPILE
 }
 
-// static 
+// static
 void CrstStatic::Enter(CrstStatic *pCrst)
 {
 #ifndef DACCESS_COMPILE
@@ -40,7 +40,7 @@ void CrstStatic::Enter(CrstStatic *pCrst)
 #endif // !DACCESS_COMPILE
 }
 
-// static 
+// static
 void CrstStatic::Leave(CrstStatic *pCrst)
 {
 #ifndef DACCESS_COMPILE

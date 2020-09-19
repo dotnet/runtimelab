@@ -96,7 +96,7 @@ namespace System
         }
 
         /// <summary>
-        /// This method notifies the System.Private.Interop.dll to update the conditionalweaktable for weakreferenceInstance->target in case the target is __ComObject. This ensures that we have a means to 
+        /// This method notifies the System.Private.Interop.dll to update the conditionalweaktable for weakreferenceInstance->target in case the target is __ComObject. This ensures that we have a means to
         /// go from the managed weak reference to the actual native object even though the managed counterpart might have been collected.
         /// </summary>
         /// <param name="target"></param>

@@ -35,7 +35,7 @@ SIZEOF_OUT_REG_HOMES            equ 20h    ; Callee register spill
 ;       SIZEOF_RETURN_BLOCK
 ;       SIZEOF_FP_REGS
 ;       SIZEOF_OUT_REG_HOMES
-; 
+;
 
 DISTANCE_FROM_CHILDSP_TO_FP_REGS                equ SIZEOF_OUT_REG_HOMES
 
@@ -157,7 +157,7 @@ NESTED_END Rhp&FunctionName, _TEXT
         endm
 
         ; To enable proper step-in behavior in the debugger, we need to have two instances
-        ; of the thunk. For the first one, the debugger steps into the call in the function, 
+        ; of the thunk. For the first one, the debugger steps into the call in the function,
         ; for the other, it steps over it.
         UNIVERSAL_TRANSITION UniversalTransition
         UNIVERSAL_TRANSITION UniversalTransition_DebugStepTailCall

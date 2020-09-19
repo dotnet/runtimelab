@@ -10,7 +10,7 @@ using System.Reflection.Runtime.TypeInfos.NativeFormat;
 using System.Reflection.Runtime.Assemblies;
 using System.Reflection.Runtime.MethodInfos;
 using System.Reflection.Runtime.MethodInfos.NativeFormat;
-#if ECMA_METADATA_SUPPORT            
+#if ECMA_METADATA_SUPPORT
 using System.Reflection.Runtime.TypeInfos.EcmaFormat;
 using System.Reflection.Runtime.MethodInfos.EcmaFormat;
 #endif
@@ -142,7 +142,7 @@ namespace Internal.Reflection.Core.Execution
                     runtimeNamedMethodInfo = RuntimeNamedMethodInfo<NativeFormatMethodCommon>.GetRuntimeNamedMethodInfo(new NativeFormatMethodCommon(nativeFormatMethodHandle, definingTypeInfo, contextTypeInfo), reflectedType);
                 }
             }
-#if ECMA_METADATA_SUPPORT            
+#if ECMA_METADATA_SUPPORT
             else
             {
                 System.Reflection.Metadata.MethodDefinitionHandle ecmaFormatMethodHandle = methodHandle.EcmaFormatHandle;
@@ -195,8 +195,8 @@ namespace Internal.Reflection.Core.Execution
 #if ECMA_METADATA_SUPPORT
                 else
                 {
-                    return System.Reflection.Runtime.TypeInfos.EcmaFormat.EcmaFormatRuntimeNamedTypeInfo.GetRuntimeNamedTypeInfo(qTypeDefinition.EcmaFormatReader, 
-                        qTypeDefinition.EcmaFormatHandle, 
+                    return System.Reflection.Runtime.TypeInfos.EcmaFormat.EcmaFormatRuntimeNamedTypeInfo.GetRuntimeNamedTypeInfo(qTypeDefinition.EcmaFormatReader,
+                        qTypeDefinition.EcmaFormatHandle,
                         typeHandle);
                 }
 #endif
@@ -263,8 +263,8 @@ namespace Internal.Reflection.Core.Execution
             // reflection blocked. By not revealing that reflection blocked types are generic
             // we are making it appear as if implementation detail types exposed to user code
             // are all non-generic, which is theoretically possible, and by doing so
-            // we avoid (in all known circumstances) the very complicated case of representing 
-            // the interfaces, base types, and generic parameter types of reflection blocked 
+            // we avoid (in all known circumstances) the very complicated case of representing
+            // the interfaces, base types, and generic parameter types of reflection blocked
             // generic type definitions.
             if (ExecutionEnvironment.IsReflectionBlocked(genericTypeDefinitionHandle))
             {

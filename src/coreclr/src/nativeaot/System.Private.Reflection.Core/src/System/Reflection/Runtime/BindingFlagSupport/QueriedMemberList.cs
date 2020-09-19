@@ -154,8 +154,8 @@ namespace System.Reflection.Runtime.BindingFlagSupport
 
                 if (type != null && !type.CanBrowseWithoutMissingMetadataExceptions)
                 {
-                    // If we got here, one of the base classes is missing metadata. We don't want to throw a MissingMetadataException now because we may be 
-                    // building a cached result for a caller who passed BindingFlags.DeclaredOnly. So we'll mark the results in a way that 
+                    // If we got here, one of the base classes is missing metadata. We don't want to throw a MissingMetadataException now because we may be
+                    // building a cached result for a caller who passed BindingFlags.DeclaredOnly. So we'll mark the results in a way that
                     // it will throw a MissingMetadataException if a caller attempts to iterate past the declared-only subset.
                     queriedMembers._typeThatBlockedBrowsing = type;
                     queriedMembers._totalCount = queriedMembers._declaredOnlyCount;

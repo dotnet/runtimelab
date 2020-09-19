@@ -97,7 +97,7 @@ namespace Internal.Runtime.CompilerHelpers
                 }
                 s_modules = newModules;
             }
-            
+
             s_modules[s_moduleCount] = newModuleHandle;
             s_moduleCount++;
         }
@@ -110,7 +110,7 @@ namespace Internal.Runtime.CompilerHelpers
             for (int i = 0; i < count; i++)
             {
                 // The null pointers are sentinel values and padding inserted as side-effect of
-                // the section merging. (The global static constructors section used by C++ has 
+                // the section merging. (The global static constructors section used by C++ has
                 // them too.)
                 if (pModuleHeaders[i] != IntPtr.Zero)
                     moduleCount++;
@@ -286,9 +286,9 @@ namespace Internal.Runtime.CompilerHelpers
                     if ((blockAddr & GCStaticRegionConstants.HasPreInitializedData) == GCStaticRegionConstants.HasPreInitializedData)
                     {
                         // The next pointer is preinitialized data blob that contains preinitialized static GC fields,
-                        // which are pointer relocs to GC objects in frozen segment. 
+                        // which are pointer relocs to GC objects in frozen segment.
                         // It actually has all GC fields including non-preinitialized fields and we simply copy over the
-                        // entire blob to this object, overwriting everything. 
+                        // entire blob to this object, overwriting everything.
                         IntPtr pPreInitDataAddr = *(pBlock + 1);
                         RuntimeImports.RhBulkMoveWithWriteBarrier(ref obj.GetRawData(), ref *(byte *)pPreInitDataAddr, obj.GetRawDataSize());
                     }

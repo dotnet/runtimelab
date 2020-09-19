@@ -1,12 +1,12 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-// 
+//
 // On desktop CLR, GC ETW event firing borrows heavily from code in the profiling API,
-// as the GC already called hooks in the profapi to notify it of roots & references. 
+// as the GC already called hooks in the profapi to notify it of roots & references.
 // This file shims up that profapi code the GC expects, though only for the purpose of
 // firing ETW events (not for getting a full profapi up on redhawk).
-// 
+//
 
 #include "common.h"
 
@@ -27,7 +27,7 @@
 //      pObj - Object reference encountered
 ///     ppRoot - Address that references ppObject (can be interior pointer)
 //      pSC - ProfilingScanContext * containing the root kind and GCReferencesData used
-//            by RootReference2 
+//            by RootReference2
 //      dwFlags - Properties of the root as GC_CALL* constants (this function converts
 //                to COR_PRF_GC_ROOT_FLAGS.
 //

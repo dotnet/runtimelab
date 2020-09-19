@@ -76,7 +76,7 @@ TenThunks macro groupIndex
         ;; Each thunk will load the address of its corresponding data (from the page that immediately follows)
         ;; and call a common stub. The address of the common stub is setup by the caller (last dword
         ;; in the thunks data section) depending on the 'kind' of thunks needed (interop, fat function pointers, etc...)
-        
+
         ;; Each data block used by a thunk consists of two dword values:
         ;;      - Context: some value given to the thunk as context (passed in eax). Example for fat-fptrs: context = generic dictionary
         ;;      - Target : target code that the thunk eventually jumps to.
@@ -128,13 +128,13 @@ THUNKS_PAGE_BLOCK macro
         TenThunks 2
         TenThunks 3
         TenThunks 4
-        TenThunks 5 
-        TenThunks 6 
-        TenThunks 7 
-        TenThunks 8 
-        TenThunks 9 
-        TenThunks 10 
-        TenThunks 11 
+        TenThunks 5
+        TenThunks 6
+        TenThunks 7
+        TenThunks 8
+        TenThunks 9
+        TenThunks 10
+        TenThunks 11
 endm
 
 ;;
@@ -142,12 +142,12 @@ endm
 ;; mapped multiple  times in memory, and mapping works on allocation
 ;; granularity boundaries (we don't want to map more than what we need)
 ;;
-;; The easiest way to do so is by having the thunks section at the 
+;; The easiest way to do so is by having the thunks section at the
 ;; first 64K aligned virtual address in the binary. We provide a section
 ;; layout file to the linker to tell it how to layout the thunks sections
 ;; that we care about. (ndp\rh\src\runtime\DLLs\app\mrt100_app_sectionlayout.txt)
 ;;
-;; The PE spec says images cannot have gaps between sections (other 
+;; The PE spec says images cannot have gaps between sections (other
 ;; than what is required by the section alignment value in the header),
 ;; therefore we need a couple of padding data sections (otherwise the
 ;; OS will not load the image).
@@ -242,7 +242,7 @@ FASTCALL_ENDFUNC
 ;;
 FASTCALL_FUNC RhpGetNumThunksPerBlock, 0
         mov     eax, THUNK_POOL_NUM_THUNKS_PER_PAGE
-        ret   
+        ret
 FASTCALL_ENDFUNC
 
 ;;
@@ -250,7 +250,7 @@ FASTCALL_ENDFUNC
 ;;
 FASTCALL_FUNC RhpGetThunkSize, 0
         mov     eax, THUNK_CODESIZE
-        ret   
+        ret
 FASTCALL_ENDFUNC
 
 ;;
@@ -258,7 +258,7 @@ FASTCALL_ENDFUNC
 ;;
 FASTCALL_FUNC RhpGetNumThunkBlocksPerMapping, 0
         mov     eax, 8
-        ret   
+        ret
 FASTCALL_ENDFUNC
 
 ;;
@@ -269,9 +269,9 @@ FASTCALL_FUNC RhpGetThunkBlockSize, 0
         ret
 FASTCALL_ENDFUNC
 
-;; 
+;;
 ;; IntPtr RhpGetThunkDataBlockAddress(IntPtr thunkStubAddress)
-;; 
+;;
 FASTCALL_FUNC RhpGetThunkDataBlockAddress, 4
         mov     eax, ecx
         mov     ecx, PAGE_SIZE - 1
@@ -281,9 +281,9 @@ FASTCALL_FUNC RhpGetThunkDataBlockAddress, 4
         ret
 FASTCALL_ENDFUNC
 
-;; 
+;;
 ;; IntPtr RhpGetThunkStubsBlockAddress(IntPtr thunkDataAddress)
-;; 
+;;
 FASTCALL_FUNC RhpGetThunkStubsBlockAddress, 4
         mov     eax, ecx
         mov     ecx, PAGE_SIZE - 1

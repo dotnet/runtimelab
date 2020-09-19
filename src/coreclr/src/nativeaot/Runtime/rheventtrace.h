@@ -123,7 +123,7 @@ class BulkComLogger
 {
 public:
     // Returns true is gc heap collection is on.
-    static bool ShouldReportComForGCHeapEtw(); 
+    static bool ShouldReportComForGCHeapEtw();
 
     // Write one CCW to the CCW buffer.
     static void WriteCCW(void* CCWGCHandle, void* objectID, void* typeRawValue, void* IUnknown, long comRefCount, long jupiterRefCount, long flags);
@@ -131,9 +131,9 @@ public:
     // Write one RCW to the RCW buffer.
     static void WriteRCW(void* objectID, void* typeRawValue, void* IUnknown, void* VTable, long refCount, long flags);
 
-    // Gets or creates a unique BulkComLogger instance 
+    // Gets or creates a unique BulkComLogger instance
     static BulkComLogger* GetInstance();
-    
+
     // Write the remaining events and deletes the static instance.
     static void FlushComETW();
 

@@ -105,7 +105,7 @@ namespace System.Runtime.InteropServices
             }
 
             return (IntPtr)(-1);
-        }           
+        }
 
         [SupportedOSPlatform("windows")]
         public static IntPtr GetIDispatchForObject(object o)

@@ -14,7 +14,7 @@ namespace System.Runtime.InteropServices
 {
     /// <summary>
     ///     Hooks for System.Private.Interop.dll code to access internal functionality in System.Private.CoreLib.dll.
-    ///     
+    ///
     ///     Methods added to InteropExtensions should also be added to the System.Private.CoreLib.InteropServices contract
     ///     in order to be accessible from System.Private.Interop.dll.
     /// </summary>
@@ -90,7 +90,7 @@ namespace System.Runtime.InteropServices
         }
 
         //
-        // Returns the raw function pointer for a open static delegate - if the function has a jump stub 
+        // Returns the raw function pointer for a open static delegate - if the function has a jump stub
         // it returns the jump target. Therefore the function pointer returned
         // by two delegates may NOT be unique
         //
@@ -208,7 +208,7 @@ namespace System.Runtime.InteropServices
 
         /// <summary>
         /// The type of a RefCounted handle
-        /// A ref-counted handle is a handle that acts as strong if the callback returns true, and acts as 
+        /// A ref-counted handle is a handle that acts as strong if the callback returns true, and acts as
         /// weak handle if the callback returns false, which is perfect for controlling lifetime of a CCW
         /// </summary>
         internal const int RefCountedHandleType = 5;
@@ -326,12 +326,12 @@ namespace System.Runtime.InteropServices
         {
             return RuntimeImports.RhHandleCompareExchangeVariableType(handle, oldType, newType);
         }
-        
+
         public static void SetExceptionErrorCode(Exception exception, int hr)
         {
             exception.HResult = hr;
         }
-        
+
         public static void SetExceptionMessage(Exception exception, string message)
         {
             exception.SetMessage(message);

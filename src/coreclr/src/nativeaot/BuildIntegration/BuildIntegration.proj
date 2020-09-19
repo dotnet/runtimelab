@@ -9,9 +9,9 @@
     <Content Include="*.*" Exclude="$(MSBuildProjectFile)" />
   </ItemGroup>
 
-  <Target Name="Build">  
-    <Copy SourceFiles="@(Content)" DestinationFolder="$(OutputPath)" />  
+  <Target Name="Build">
+    <Copy SourceFiles="@(Content)" DestinationFolder="$(OutputPath)" />
   </Target>
 
-  <Target Name="Restore" />  
+  <Target Name="Restore" />
 </Project>

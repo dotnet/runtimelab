@@ -11,7 +11,7 @@ include asmmacros.inc
 ;;         RDX:  faulting RIP
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 NESTED_ENTRY RhpThrowHwEx, _TEXT
 
@@ -27,7 +27,7 @@ NESTED_ENTRY RhpThrowHwEx, _TEXT
         ;; Align the stack towards zero
         and     rsp, -16
 
-        ;; Push the expected "machine frame" for the unwinder to see.  All that it looks at is the faulting 
+        ;; Push the expected "machine frame" for the unwinder to see.  All that it looks at is the faulting
         ;; RSP and RIP, so we push zero for the others.
         xor     r8, r8
         push    r8              ;; SS
@@ -75,7 +75,7 @@ NESTED_ENTRY RhpThrowHwEx, _TEXT
 
         xor     r8, r8
         mov     [rdx + OFFSETOF__ExInfo__m_exception], r8           ;; init the exception object to null
-        mov     byte ptr [rdx + OFFSETOF__ExInfo__m_passNumber], 1  ;; init to the first pass 
+        mov     byte ptr [rdx + OFFSETOF__ExInfo__m_passNumber], 1  ;; init to the first pass
         mov     dword ptr [rdx + OFFSETOF__ExInfo__m_idxCurClause], 0FFFFFFFFh
         mov     byte ptr [rdx + OFFSETOF__ExInfo__m_kind], 2        ;; ExKind.HardwareFault
 
@@ -106,7 +106,7 @@ NESTED_END RhpThrowHwEx, _TEXT
 ;; INPUT:  RCX:  exception object
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 NESTED_ENTRY RhpThrowEx, _TEXT
 
@@ -118,7 +118,7 @@ NESTED_ENTRY RhpThrowEx, _TEXT
         rsp_offsetof_Context    equ SIZEOF_OutgoingScratch + STACKSIZEOF_ExInfo
 
         lea     rax, [rsp+8]    ;; save the RSP of the throw site
-        mov     rdx, [rsp]      ;; get return address 
+        mov     rdx, [rsp]      ;; get return address
 
         xor     r8, r8
 
@@ -156,7 +156,7 @@ NESTED_ENTRY RhpThrowEx, _TEXT
 
         lea                     rbx, [rsp + rsp_offsetof_Context + SIZEOF__PAL_LIMITED_CONTEXT + 8h]    ;; rbx <- addr of return address
 
-        ;; There is runtime C# code that can tail call to RhpThrowEx using a binder intrinsic.  So the return 
+        ;; There is runtime C# code that can tail call to RhpThrowEx using a binder intrinsic.  So the return
         ;; address could have been hijacked when we were in that C# code and we must remove the hijack and
         ;; reflect the correct return address in our exception context record.  The other throw helpers don't
         ;; need this because they cannot be tail-called from C#.
@@ -167,7 +167,7 @@ NESTED_ENTRY RhpThrowEx, _TEXT
         lea     rdx, [rsp + rsp_offsetof_ExInfo]                    ;; rdx <- ExInfo*
 
         mov     [rdx + OFFSETOF__ExInfo__m_exception], r8           ;; init the exception object to null
-        mov     byte ptr [rdx + OFFSETOF__ExInfo__m_passNumber], 1  ;; init to the first pass 
+        mov     byte ptr [rdx + OFFSETOF__ExInfo__m_passNumber], 1  ;; init to the first pass
         mov     dword ptr [rdx + OFFSETOF__ExInfo__m_idxCurClause], 0FFFFFFFFh
         mov     byte ptr [rdx + OFFSETOF__ExInfo__m_kind], 1        ;; ExKind.Throw
 
@@ -200,7 +200,7 @@ NESTED_END RhpThrowEx, _TEXT
 ;; INPUT:
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 NESTED_ENTRY RhpRethrow, _TEXT
 
@@ -212,7 +212,7 @@ NESTED_ENTRY RhpRethrow, _TEXT
         rsp_offsetof_Context    equ SIZEOF_OutgoingScratch + STACKSIZEOF_ExInfo
 
         lea     rax, [rsp+8]    ;; save the RSP of the throw site
-        mov     rdx, [rsp]      ;; get return address 
+        mov     rdx, [rsp]      ;; get return address
 
         xor     r8, r8
 
@@ -251,7 +251,7 @@ NESTED_ENTRY RhpRethrow, _TEXT
         lea     rdx, [rsp + rsp_offsetof_ExInfo]                    ;; rdx <- ExInfo*
 
         mov     [rdx + OFFSETOF__ExInfo__m_exception], r8           ;; init the exception object to null
-        mov     byte ptr [rdx + OFFSETOF__ExInfo__m_passNumber], 1  ;; init to the first pass 
+        mov     byte ptr [rdx + OFFSETOF__ExInfo__m_passNumber], 1  ;; init to the first pass
         mov     dword ptr [rdx + OFFSETOF__ExInfo__m_idxCurClause], 0FFFFFFFFh
         mov     byte ptr [rdx + OFFSETOF__ExInfo__m_kind], 0        ;; init to a deterministic value (ExKind.None)
 
@@ -295,7 +295,7 @@ FUNCLET_CALL_PROLOGUE macro localsCount, alignStack
     stack_alloc_size = arguments_scratch_area_size + localsCount * 8 + alignStack * 8 + xmm_save_area_size
     rsp_offsetof_arguments = stack_alloc_size + 8*8h + 8h
     rsp_offsetof_locals = arguments_scratch_area_size + xmm_save_area_size
-    
+
     alloc_stack     stack_alloc_size
 
     save_xmm128_postrsp xmm6,  (arguments_scratch_area_size + 0 * 10h)
@@ -349,7 +349,7 @@ endm
 ;;         R9:   ExInfo*
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 NESTED_ENTRY RhpCallCatchFunclet, _TEXT
 
@@ -359,7 +359,7 @@ NESTED_ENTRY RhpCallCatchFunclet, _TEXT
         rsp_offsetof_thread = rsp_offsetof_locals
         rsp_offsetof_resume_ip = rsp_offsetof_locals + 8;
         rsp_offsetof_is_handling_thread_abort = rsp_offsetof_locals + 16;
-      
+
         mov     [rsp + rsp_offsetof_arguments + 0h], rcx            ;; save arguments for later
         mov     [rsp + rsp_offsetof_arguments + 8h], rdx
         mov     [rsp + rsp_offsetof_arguments + 10h], r8
@@ -433,7 +433,7 @@ endif
         mov     r8, [rsp + rsp_offsetof_arguments + 10h]            ;; r8 <- dispatch context
 
 ifdef _DEBUG
-        ;; Call into some C++ code to validate the pop of the ExInfo.  We only do this in debug because we 
+        ;; Call into some C++ code to validate the pop of the ExInfo.  We only do this in debug because we
         ;; have to spill all the preserved registers and then refill them after the call.
         mov     [rsp + rsp_offsetof_resume_ip], rax                                    ;; save resume IP for later
 
@@ -499,7 +499,7 @@ endif
 
         test    [RhpTrapThreads], TrapThreadsFlags_AbortInProgress
         jz      @f
-        
+
         ;; test if the exception handled by the catch was the ThreadAbortException
         cmp     byte ptr [rsp + rsp_offsetof_is_handling_thread_abort], 0
         je      @f
@@ -525,7 +525,7 @@ NESTED_END RhpCallCatchFunclet, _TEXT
 ;;         RDX:  REGDISPLAY*
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 NESTED_ENTRY RhpCallFinallyFunclet, _TEXT
 
@@ -535,7 +535,7 @@ NESTED_ENTRY RhpCallFinallyFunclet, _TEXT
         mov     [rsp + rsp_offsetof_arguments + 8h], rdx
 
         rsp_offsetof_thread = rsp_offsetof_locals
-        
+
         INLINE_GETTHREAD    rax, rbx                                ;; rax <- Thread*, rbx is trashed
         mov     [rsp + rsp_offsetof_thread], rax                    ;; save Thread* for later
 
@@ -652,7 +652,7 @@ NESTED_END RhpCallFinallyFunclet, _TEXT
 ;;         R8:   REGDISPLAY*
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 NESTED_ENTRY RhpCallFilterFunclet, _TEXT
 

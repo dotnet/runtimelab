@@ -13,29 +13,29 @@ THUNK_POOL_NUM_THUNKS_PER_PAGE      equ 0xFA    ;; 250 thunks per page
 PAGE_SIZE                           equ 0x1000  ;; 4K
 POINTER_SIZE                        equ 0x04
 
-    MACRO 
+    MACRO
         NAMED_READONLY_DATA_SECTION $name, $areaAlias
         AREA    $areaAlias,DATA,READONLY
 RO$name % 4
     MEND
-        
-    MACRO 
+
+    MACRO
         NAMED_READWRITE_DATA_SECTION $name, $areaAlias
         AREA    $areaAlias,DATA
 RW$name % 4
     MEND
 
-    MACRO 
+    MACRO
         LOAD_DATA_ADDRESS $groupIndex, $index
         ALIGN       0x10                        ;; make sure we align to 16-byte boundary for CFG table
-        
+
         ;; set r12 to begining of data page : r12 <- pc - (THUNK_CODESIZE * current thunk's index - sizeof(mov+add instructions)) + PAGE_SIZE
         ;; fix offset of the data           : r12 <- r12 + (THUNK_DATASIZE * current thunk's index)
         mov.w     r12, PAGE_SIZE + ($groupIndex * THUNK_DATASIZE * 10 + THUNK_DATASIZE * $index) - (8 + $groupIndex * THUNK_CODESIZE * 10 + THUNK_CODESIZE * $index)
         add.n     r12, r12, pc
     MEND
 
-    MACRO 
+    MACRO
         JUMP_TO_COMMON $groupIndex, $index
         ;; start                                        : r12 points to the current thunks first data cell in the data page
         ;; put r12 into the red zone                    : r12 isn't changed
@@ -47,12 +47,12 @@ RW$name % 4
         bx.n      r12
     MEND
 
-    MACRO 
+    MACRO
         TenThunks $groupIndex
         ;; Each thunk will load the address of its corresponding data (from the page that immediately follows)
         ;; and call a common stub. The address of the common stub is setup by the caller (last dword
         ;; in the thunks data section) depending on the 'kind' of thunks needed (interop, fat function pointers, etc...)
-        
+
         ;; Each data block used by a thunk consists of two dword values:
         ;;      - Context: some value given to the thunk as context (passed in eax). Example for fat-fptrs: context = generic dictionary
         ;;      - Target : target code that the thunk eventually jumps to.
@@ -87,30 +87,30 @@ RW$name % 4
         LOAD_DATA_ADDRESS $groupIndex,9
         JUMP_TO_COMMON    $groupIndex,9
     MEND
-    
-    MACRO 
+
+    MACRO
         THUNKS_PAGE_BLOCK
-        
+
         TenThunks 0
         TenThunks 1
         TenThunks 2
         TenThunks 3
         TenThunks 4
-        TenThunks 5 
-        TenThunks 6 
-        TenThunks 7 
-        TenThunks 8 
-        TenThunks 9 
-        TenThunks 10 
-        TenThunks 11 
-        TenThunks 12 
-        TenThunks 13 
-        TenThunks 14 
-        TenThunks 15 
-        TenThunks 16 
-        TenThunks 17 
-        TenThunks 18 
-        TenThunks 19 
+        TenThunks 5
+        TenThunks 6
+        TenThunks 7
+        TenThunks 8
+        TenThunks 9
+        TenThunks 10
+        TenThunks 11
+        TenThunks 12
+        TenThunks 13
+        TenThunks 14
+        TenThunks 15
+        TenThunks 16
+        TenThunks 17
+        TenThunks 18
+        TenThunks 19
         TenThunks 20
         TenThunks 21
         TenThunks 22
@@ -123,12 +123,12 @@ RW$name % 4
     ;; mapped multiple  times in memory, and mapping works on allocation
     ;; granularity boundaries (we don't want to map more than what we need)
     ;;
-    ;; The easiest way to do so is by having the thunks section at the 
+    ;; The easiest way to do so is by having the thunks section at the
     ;; first 64K aligned virtual address in the binary. We provide a section
     ;; layout file to the linker to tell it how to layout the thunks sections
     ;; that we care about. (ndp\rh\src\runtime\DLLs\app\mrt100_app_sectionlayout.txt)
     ;;
-    ;; The PE spec says images cannot have gaps between sections (other 
+    ;; The PE spec says images cannot have gaps between sections (other
     ;; than what is required by the section alignment value in the header),
     ;; therefore we need a couple of padding data sections (otherwise the
     ;; OS will not load the image).
@@ -203,15 +203,15 @@ RW$name % 4
     LEAF_END ThunkPool7
 
     NAMED_READWRITE_DATA_SECTION ThunkData7, "|.tkd7|"
-    
-    
+
+
     ;;
     ;; IntPtr RhpGetThunksBase()
     ;;
     LEAF_ENTRY RhpGetThunksBase
         ;; Return the address of the first thunk pool to the caller (this is really the base address)
         ldr     r0, =ThunkPool
-        sub     r0, r0, #1    
+        sub     r0, r0, #1
         bx      lr
     LEAF_END RhpGetThunksBase
 
@@ -250,9 +250,9 @@ RW$name % 4
         bx      lr
     LEAF_END RhpGetThunkBlockSize
 
-    ;; 
+    ;;
     ;; IntPtr RhpGetThunkDataBlockAddress(IntPtr thunkStubAddress)
-    ;; 
+    ;;
     LEAF_ENTRY RhpGetThunkDataBlockAddress
         mov     r12, PAGE_SIZE - 1
         bic     r0, r0, r12
@@ -260,9 +260,9 @@ RW$name % 4
         bx      lr
     LEAF_END RhpGetThunkDataBlockAddress
 
-    ;; 
+    ;;
     ;; IntPtr RhpGetThunkStubsBlockAddress(IntPtr thunkDataAddress)
-    ;; 
+    ;;
     LEAF_ENTRY RhpGetThunkStubsBlockAddress
         mov     r12, PAGE_SIZE - 1
         bic     r0, r0, r12

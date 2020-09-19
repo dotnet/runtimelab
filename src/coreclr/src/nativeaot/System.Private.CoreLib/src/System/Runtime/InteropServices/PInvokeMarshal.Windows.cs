@@ -7,7 +7,7 @@ using System.Security;
 namespace System.Runtime.InteropServices
 {
     /// <summary>
-    /// This PInvokeMarshal class should provide full public Marshal 
+    /// This PInvokeMarshal class should provide full public Marshal
     /// implementation for all things related to P/Invoke marshalling
     /// </summary>
     public partial class PInvokeMarshal

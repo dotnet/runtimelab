@@ -18,10 +18,10 @@ class TypeManager
     StaticGcDesc*               m_pThreadStaticsGCInfo;
     UInt8*                      m_pStaticsGCDataSection;
     UInt8*                      m_pThreadStaticsDataSection;
-    UInt32*                     m_pTlsIndex;  // Pointer to TLS index if this module uses thread statics 
+    UInt32*                     m_pTlsIndex;  // Pointer to TLS index if this module uses thread statics
     void**                      m_pClasslibFunctions;
     UInt32                      m_nClasslibFunctions;
-    UInt32*                     m_pLoopHijackFlag; 
+    UInt32*                     m_pLoopHijackFlag;
 
     TypeManager(HANDLE osModule, ReadyToRunHeader * pHeader, void** pClasslibFunctions, UInt32 nClasslibFunctions);
 
@@ -35,7 +35,7 @@ public:
     void SetLoopHijackFlag(UInt32 flag) { if (m_pLoopHijackFlag != nullptr) *m_pLoopHijackFlag = flag; }
 
 private:
-    
+
     struct ModuleInfoRow
     {
         int32_t SectionId;

@@ -33,8 +33,8 @@ enum RegMask
     RBM_RETVAL = RBM_R0,
     RBM_CALLEE_SAVED_REGS = (RBM_R4|RBM_R5|RBM_R6|RBM_R7|RBM_R8|RBM_R9|RBM_R10|RBM_R11|RBM_LR),
     RBM_CALLEE_SAVED_REG_COUNT = 9,
-    // Special case: LR is callee saved, but may not appear as a live GC ref except 
-    // in the leaf frame because calls will trash it.  Therefore, we ALSO consider 
+    // Special case: LR is callee saved, but may not appear as a live GC ref except
+    // in the leaf frame because calls will trash it.  Therefore, we ALSO consider
     // it a scratch register.
     RBM_SCRATCH_REGS = (RBM_R0|RBM_R1|RBM_R2|RBM_R3|RBM_R12|RBM_LR),
     RBM_SCRATCH_REG_COUNT = 6,
@@ -468,7 +468,7 @@ private:
 #ifdef TARGET_X86
     UInt8  x86_argCountLow          : 5; // 3 [0-4]  expressed in pointer-sized units    // @TODO: steal more bits here?
     UInt8  x86_argCountIsLarge      : 1; // 3 [5]    if this bit is set, then the high 8 bits are encoded in x86_argCountHigh
-    UInt8  x86_hasStackChanges      : 1; // 3 [6]    x86-only, !ebpFrame-only, this method has pushes 
+    UInt8  x86_hasStackChanges      : 1; // 3 [6]    x86-only, !ebpFrame-only, this method has pushes
                                          //          and pops in it, and a string follows this header
                                          //          which describes them
     UInt8  hasFrameSize             : 1; // 3 [7]    1: frame size is encoded below, 0: frame size is 0
@@ -478,7 +478,7 @@ private:
     //
     // OPTIONAL FIELDS FOLLOW
     //
-    // The following values are encoded with variable-length integers on disk, but are decoded into these 
+    // The following values are encoded with variable-length integers on disk, but are decoded into these
     // fields in memory.
     //
 
@@ -491,9 +491,9 @@ private:
     // OPTIONAL: only encoded if x64_framePtrOffsetSmall = 11
     //
     // ENCODING NOTE: In the encoding, the variable-sized unsigned will be 7 less than the total number
-    // of 16-byte units that make up the frame pointer offset.  
+    // of 16-byte units that make up the frame pointer offset.
     //
-    // In memory, this value will always be set and will always be the total number of 16-byte units that make 
+    // In memory, this value will always be set and will always be the total number of 16-byte units that make
     // up the frame pointer offset.
     UInt8   x64_framePtrOffset;       // expressed in 16-byte unit
 
@@ -513,7 +513,7 @@ private:
     // NOTE: because we are using pointer-sized units, only 14 bits are required to represent the entire range
     // that can be expressed by a 'ret NNNN' instruction.  Therefore, with 6 in the 'low' field and 8 in the
     // 'high' field, we are not losing any range here.  (Although the need for that full range is debatable.)
-    UInt8   x86_argCountHigh; 
+    UInt8   x86_argCountHigh;
 #elif defined(TARGET_ARM)
     // OPTIONAL: only encoded if arm_areParmOrVfpRegsPushed = 1
     UInt8   arm_parmRegsPushedSet;
@@ -566,7 +566,7 @@ private:
     // OPTIONAL: only encoded if hasFunclets = 1
     //  {numFunclets}           // encoded as variable-length unsigned
     //      {start-funclet0}    // offset from start of previous funclet, encoded as variable-length unsigned
-    //      {start-funclet1}    // 
+    //      {start-funclet1}    //
     //      {start-funclet2}
     //       ...
     //      {sizeof-funclet(N-1)}   // numFunclets == N  (i.e. there are N+1 sizes here)
@@ -576,18 +576,18 @@ private:
     //       ...
     //      {GCInfoHeader-funclet(N-1)}
 
-    // WARNING: 
+    // WARNING:
     // WARNING: Do not add fields to the file-format after the funclet header encodings -- these are decoded
-    // WARNING: recursively and 'in-place' when looking for the info associated with a funclet.  Therefore, 
-    // WARNING: in that case, we cannot easily continue to decode things associated with the main body 
+    // WARNING: recursively and 'in-place' when looking for the info associated with a funclet.  Therefore,
+    // WARNING: in that case, we cannot easily continue to decode things associated with the main body
     // WARNING: GCInfoHeader once we start this recursive decode.
-    // WARNING: 
+    // WARNING:
 
     // -------------------------------------------------------------------------------------------------------
     // END of file-encoding-related-fields
     // -------------------------------------------------------------------------------------------------------
 
-    // The following fields are not encoded in the file format, they are just used as convenience placeholders 
+    // The following fields are not encoded in the file format, they are just used as convenience placeholders
     // for decode state.
     UInt32 funcletOffset; // non-zero indicates that this GCInfoHeader is for a funclet
 
@@ -844,7 +844,7 @@ public:
         reversePinvokeFrameOffset = uEncodedVal;
         ASSERT(reversePinvokeFrameOffset == uEncodedVal);
 #elif defined (TARGET_X86)
-        // Use a positive number because it encodes better and 
+        // Use a positive number because it encodes better and
         // the offset is always negative on x86.
         ASSERT(offsetInBytes < 0);
         reversePinvokeFrameOffset = (-offsetInBytes / POINTER_SIZE);
@@ -967,7 +967,7 @@ public:
     {
         return epilogCount;
     }
-    
+
     bool IsEpilogAtEnd()
     {
         return (epilogAtEnd != 0);
@@ -1014,7 +1014,7 @@ public:
 
         return count * POINTER_SIZE;
     }
-    
+
     int GetParamPointerReg()
     {
         return paramPointerReg;
@@ -1076,7 +1076,7 @@ public:
         int offsetFromSP  = GetFramePointerOffsetFromSP();
 
         int preservedRegsSaveSize = GetPreservedRegsSaveSize();
-        
+
         // we when called from the binder, rbp isn't set to be a preserved reg,
         // when called from the runtime, it is - compensate for this inconsistency
         if (IsRegSaved(CSR_MASK_RBP))
@@ -1105,7 +1105,7 @@ public:
     {
         return RN_EBP;
     }
-    
+
     bool HasSavedXmmRegs()
     {
         return x64_hasSavedXmmRegs != 0;
@@ -1149,7 +1149,7 @@ public:
         offsetInBytes = isNeg ? -offsetInBytes : offsetInBytes;
         return offsetInBytes;
 #elif defined(TARGET_X86)
-        // it's always at "EBP - something", so we encode it as a positive 
+        // it's always at "EBP - something", so we encode it as a positive
         // number and then apply the negative here.
         int unsignedOffset = reversePinvokeFrameOffset * POINTER_SIZE;
         return -unsignedOffset;
@@ -1262,7 +1262,7 @@ public:
         {
             // we encode a bit field where the low 4 bits represent the pushed parameter register
             // set, the next 8 bits are the number of pushed floating point registers, and the highest
-            // bits are the first pushed floating point register plus 1. 
+            // bits are the first pushed floating point register plus 1.
             // The 0 encoding means the first floating point register is 8 as this is the most frequent.
             UInt32 encodedValue = arm_parmRegsPushedSet | (arm_vfpRegPushedCount << 4);
             // usually, the first pushed floating point register is d8
@@ -1306,12 +1306,12 @@ public:
             size += WriteUnsigned(pDest, epilogCount);
         }
 
-        // WARNING: 
+        // WARNING:
         // WARNING: Do not add fields to the file-format after the funclet header encodings -- these are
         // WARNING: decoded recursively and 'in-place' when looking for the info associated with a funclet.
-        // WARNING: Therefore, in that case, we cannot easily continue to decode things associated with the 
+        // WARNING: Therefore, in that case, we cannot easily continue to decode things associated with the
         // WARNING: main body GCInfoHeader once we start this recursive decode.
-        // WARNING: 
+        // WARNING:
         size += EncodeFuncletInfo(pDest);
 
 #ifdef _DEBUG
@@ -1355,11 +1355,11 @@ public:
         memcpy(this, PTR_READ(pbTemp, EC_SizeOfFixedHeader), EC_SizeOfFixedHeader);
 
         PTR_UInt8 pbDecode = pbHeaderEncoding + EC_SizeOfFixedHeader;
-        frameSize = hasFrameSize 
+        frameSize = hasFrameSize
             ? VarInt::ReadUnsigned(pbDecode)
             : 0;
 
-        reversePinvokeFrameOffset = (returnKind == MRK_ReturnsToNative) 
+        reversePinvokeFrameOffset = (returnKind == MRK_ReturnsToNative)
             ? VarInt::ReadUnsigned(pbDecode)
             : 0;
 
@@ -1471,7 +1471,7 @@ public:
                     idxFunclet = (i - 1);
                     offsetFunclet = prevFuncletStart;
                 }
-                prevFuncletStart = offsetThisFunclet; 
+                prevFuncletStart = offsetThisFunclet;
             }
             if ((idxFunclet == -2) && (methodOffset >= prevFuncletStart))
             {
@@ -1512,12 +1512,12 @@ public:
             // -------
         }
 
-        // WARNING: 
+        // WARNING:
         // WARNING: Do not add fields to the file-format after the funclet header encodings -- these are
         // WARNING: decoded recursively and 'in-place' when looking for the info associated with a funclet.
-        // WARNING: Therefore, in that case, we cannot easily continue to decode things associated with the 
+        // WARNING: Therefore, in that case, we cannot easily continue to decode things associated with the
         // WARNING: main body GCInfoHeader once we start this recursive decode.
-        // WARNING: 
+        // WARNING:
 
         if (pcbHeader)
             *pcbHeader = pbDecode - pbHeaderEncoding;

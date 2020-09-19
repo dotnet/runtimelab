@@ -46,7 +46,7 @@ namespace System.Diagnostics
         {
             _ipAddress = ipAddress;
             _needFileInfo = needFileInfo;
-            
+
             if (_ipAddress == StackTraceHelper.SpecialIP.EdiSeparator)
             {
                 _isLastFrameFromForeignExceptionStackTrace = true;
@@ -79,7 +79,7 @@ namespace System.Diagnostics
             IntPtr ipAddress = LocateIpAddressForStackFrame(frameIndex);
             InitializeForIpAddress(ipAddress, needFileInfo);
         }
-        
+
         /// <summary>
         /// Locate IP address corresponding to a given frame. Ignore .NET Native-specific rethrow markers.
         /// </summary>

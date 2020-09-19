@@ -8,7 +8,7 @@ namespace System.Reflection.Runtime.General
 {
     internal static class ToStringUtils
     {
-        // 
+        //
         // This is a port of the desktop CLR's RuntimeType.FormatTypeName() routine. This routine is used by various Reflection ToString() methods
         // to display the name of a type. Do not use for any other purpose as it inherits some pretty quirky desktop behavior.
         //

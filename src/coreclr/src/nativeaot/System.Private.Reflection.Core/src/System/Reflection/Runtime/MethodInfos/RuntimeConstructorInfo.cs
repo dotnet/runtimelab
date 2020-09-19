@@ -91,11 +91,11 @@ namespace System.Reflection.Runtime.MethodInfos
             {
                 //
                 // Project N compat note: On the desktop, ConstructorInfo.Invoke(Object[]) specifically forbids invoking static constructors (and
-                // for us, that check is embedded inside the MethodInvoker property call.) Howver, MethodBase.Invoke(Object, Object[]) allows it. This was 
+                // for us, that check is embedded inside the MethodInvoker property call.) Howver, MethodBase.Invoke(Object, Object[]) allows it. This was
                 // probably an oversight on the desktop. We choose not to support this loophole on Project N for the following reasons:
                 //
                 //  1. The Project N toolchain aggressively replaces static constructors with static initialization data whenever possible.
-                //     So the static constructor may no longer exist. 
+                //     So the static constructor may no longer exist.
                 //
                 //  2. Invoking the static constructor through Reflection is not very useful as it invokes the static constructor whether or not
                 //     it was already run. Since static constructors are specifically one-shot deals, this will almost certainly mess up the
@@ -114,9 +114,9 @@ namespace System.Reflection.Runtime.MethodInfos
 
         public abstract override MethodBase MetadataDefinitionMethod { get; }
 
-        public abstract override int MetadataToken 
-        { 
-            get; 
+        public abstract override int MetadataToken
+        {
+            get;
         }
 
         public sealed override Module Module

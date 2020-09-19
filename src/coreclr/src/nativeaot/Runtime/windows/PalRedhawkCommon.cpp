@@ -92,12 +92,12 @@ REDHAWK_PALEXPORT void REDHAWK_PALAPI PalGetPDBInfo(HANDLE hOsHandle, _Out_ GUID
         return;
 
     // CodeView RSDS debug information -> PDB 7.00
-    struct CV_INFO_PDB70 
+    struct CV_INFO_PDB70
     {
-        DWORD          magic; 
-        GUID           signature;       // unique identifier 
-        DWORD          age;             // an always-incrementing value 
-        _Field_z_ char  path[MAX_PATH];  // zero terminated string with the name of the PDB file 
+        DWORD          magic;
+        GUID           signature;       // unique identifier
+        DWORD          age;             // an always-incrementing value
+        _Field_z_ char  path[MAX_PATH];  // zero terminated string with the name of the PDB file
     };
 
     // Temporary storage for a CV_INFO_PDB70 and its size (which could be less than
@@ -174,11 +174,11 @@ REDHAWK_PALEXPORT void REDHAWK_PALAPI PalGetPDBInfo(HANDLE hOsHandle, _Out_ GUID
         // may be present in the PE file). In some cases, though, cbDebugData will
         // include all MAX_PATH chars even though path gets null-terminated well before
         // the MAX_PATH limit.
-        
+
         // Gotta have at least one byte of the path
         if (cbDebugData < offsetof(CV_INFO_PDB70, path) + sizeof(char))
             return;
-        
+
         // How much space is available for the path?
         size_t cchPathMaxIncludingNullTerminator = (cbDebugData - offsetof(CV_INFO_PDB70, path)) / sizeof(char);
         ASSERT(cchPathMaxIncludingNullTerminator >= 1);   // Guaranteed above
@@ -279,12 +279,12 @@ REDHAWK_PALEXPORT UInt32 REDHAWK_PALAPI PalReadFileContents(_In_z_ const TCHAR* 
 
 
 // Retrieves the entire range of memory dedicated to the calling thread's stack.  This does
-// not get the current dynamic bounds of the stack, which can be significantly smaller than 
+// not get the current dynamic bounds of the stack, which can be significantly smaller than
 // the maximum bounds.
 REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalGetMaximumStackBounds(_Out_ void** ppStackLowOut, _Out_ void** ppStackHighOut)
 {
-    // VirtualQuery on the address of a local variable to get the allocation 
-    // base of the stack.  Then use the StackBase field in the TEB to give 
+    // VirtualQuery on the address of a local variable to get the allocation
+    // base of the stack.  Then use the StackBase field in the TEB to give
     // the highest address of the stack region.
     MEMORY_BASIC_INFORMATION mbi = { 0 };
     SIZE_T cb = VirtualQuery(&mbi, &mbi, sizeof(mbi));
@@ -366,13 +366,13 @@ typedef struct _TEB {
 
 #endif // !defined(_INC_WINDOWS) || defined(APP_LOCAL_RUNTIME)
 
-// retrieves the full path to the specified module, if moduleBase is NULL retreieves the full path to the 
+// retrieves the full path to the specified module, if moduleBase is NULL retreieves the full path to the
 // executable module of the current process.
 //
 // Return value:  number of characters in name string
 //
 //NOTE:  This implementation exists because calling GetModuleFileName is not wack compliant.  if we later decide
-//       that the framework package containing mrt100_app no longer needs to be wack compliant, this should be 
+//       that the framework package containing mrt100_app no longer needs to be wack compliant, this should be
 //       removed and the windows implementation of GetModuleFileName should be substitued on windows.
 REDHAWK_PALEXPORT Int32 PalGetModuleFileName(_Out_ const TCHAR** pModuleNameOut, HANDLE moduleBase)
 {
@@ -384,7 +384,7 @@ REDHAWK_PALEXPORT Int32 PalGetModuleFileName(_Out_ const TCHAR** pModuleNameOut,
     {
         LDR_DATA_TABLE_ENTRY* pEntry = CONTAINING_RECORD(pCurLink, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
 
-        //null moduleBase will result in the first module being returned 
+        //null moduleBase will result in the first module being returned
         //since the module list is ordered this is the executable module of the current process
         if ((pEntry->DllBase == moduleBase) || (moduleBase == NULL))
         {

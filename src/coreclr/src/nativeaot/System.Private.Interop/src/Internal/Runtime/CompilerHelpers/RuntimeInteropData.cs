@@ -37,7 +37,7 @@ namespace Internal.Runtime.CompilerHelpers
             }
 
             // IsBlittable() checks whether the type contains GC references. It is approximate check with false positives.
-            // This fallback path will return incorrect answer for types that do not contain GC references, but that are 
+            // This fallback path will return incorrect answer for types that do not contain GC references, but that are
             // not actually blittable; e.g. for types with bool fields.
             if (structureTypeHandle.IsBlittable() && structureTypeHandle.IsValueType())
             {

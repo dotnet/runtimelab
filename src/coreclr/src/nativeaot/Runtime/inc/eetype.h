@@ -117,7 +117,7 @@ class EEType
 private:
     struct RelatedTypeUnion
     {
-        union 
+        union
         {
             // Kinds.CanonicalEEType
             EEType*     m_pBaseType;
@@ -143,7 +143,7 @@ private:
 
     TgtPTR_Void         m_VTable[];  // make this explicit so the binder gets the right alignment
 
-    // after the m_usNumVtableSlots vtable slots, we have m_usNumInterfaces slots of 
+    // after the m_usNumVtableSlots vtable slots, we have m_usNumInterfaces slots of
     // EEInterfaceInfo, and after that a couple of additional pointers based on whether the type is
     // finalizable (the address of the finalizer code) or has optional fields (pointer to the compacted
     // fields).
@@ -234,7 +234,7 @@ public:
         HasDynamicModuleFlag                = 0x00002000,
 
         // This EEType is for an abstract (but non-interface) type
-        IsAbstractClassFlag                 = 0x00004000,  
+        IsAbstractClassFlag                 = 0x00004000,
 
         // This EEType is for a Byref-like class (TypedReference, Span&lt;T&gt;,...)
         IsByRefLikeFlag                     = 0x00008000,

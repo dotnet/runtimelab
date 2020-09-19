@@ -96,7 +96,7 @@ COOP_PINVOKE_HELPER(UInt32, RhGetLoadedOSModules, (Array * pResultArray))
     ReaderWriterLock::ReadHolder read(&GetRuntimeInstance()->GetTypeManagerLock());
 
     RuntimeInstance::OsModuleList *osModules = GetRuntimeInstance()->GetOsModuleList();
-    
+
     for (RuntimeInstance::OsModuleList::Iterator iter = osModules->Begin(); iter != osModules->End(); iter++)
     {
         if (pResultArray && (cModules < cResultArrayElements))
@@ -431,7 +431,7 @@ COOP_PINVOKE_HELPER(Boolean, RhpArrayCopy, (Array * pSourceArray, Int32 sourceIn
 
 //
 // This function handles all cases of Array.Clear that do not require conversions. It returns false if the operation cannot be performed, leaving
-// the handling of the complex cases or throwing appropriate exception to the higher level framework. It is only allowed to return false for illegal 
+// the handling of the complex cases or throwing appropriate exception to the higher level framework. It is only allowed to return false for illegal
 // calls as the BCL side has fallback for "complex cases" only.
 //
 COOP_PINVOKE_HELPER(Boolean, RhpArrayClear, (Array * pArray, Int32 index, Int32 length))

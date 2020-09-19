@@ -8,14 +8,14 @@ include asmmacros.inc
 ;; RhpGetThread
 ;;
 ;;
-;; INPUT: 
+;; INPUT:
 ;;
 ;; OUTPUT: RAX: Thread pointer
 ;;
 ;; TRASHES: R10
 ;;
 ;; MUST PRESERVE ARGUMENT REGISTERS
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 LEAF_ENTRY RhpGetThread, _TEXT
         ;; rax = GetThread(), TRASHES r10

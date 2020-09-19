@@ -15,7 +15,7 @@
 ;; INPUT: none
 ;;
 ;; TRASHES: none
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         NESTED_ENTRY RhpWaitForSuspend
 
@@ -23,7 +23,7 @@
         PROLOG_VPUSH {d0-d7}       ; Save float argument registers as well since they're volatile
 
         bl          RhpWaitForSuspend2
-        
+
         EPILOG_VPOP {d0-d7}
         EPILOG_POP  {r0-r4,pc}
 
@@ -37,8 +37,8 @@
 ;;
 ;; INPUT: r2: transition frame
 ;;
-;; OUTPUT: 
-;; 
+;; OUTPUT:
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         NESTED_ENTRY RhpWaitForGCNoAbort
 
@@ -69,8 +69,8 @@ Done
 ;;
 ;; INPUT: r2: transition frame
 ;;
-;; OUTPUT: 
-;; 
+;; OUTPUT:
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         NESTED_ENTRY RhpWaitForGC
         PROLOG_PUSH  {r0,lr}
@@ -88,7 +88,7 @@ NoWait
         beq         NoAbort
         EPILOG_POP  {r0,r1}         ; hijack target address as exception PC
         EPILOG_NOP  mov r0, #STATUS_REDHAWK_THREAD_ABORT
-        EPILOG_BRANCH RhpThrowHwEx        
+        EPILOG_BRANCH RhpThrowHwEx
 NoAbort
         EPILOG_POP  {r0,pc}
         NESTED_END RhpWaitForGC
@@ -119,7 +119,7 @@ NoAbort
 
 ThreadAttached
         ;;
-        ;; Check for the correct mode.  This is accessible via various odd things that we cannot completely 
+        ;; Check for the correct mode.  This is accessible via various odd things that we cannot completely
         ;; prevent such as :
         ;;     1) Registering a reverse pinvoke entrypoint as a vectored exception handler
         ;;     2) Performing a managed delegate invoke on a reverse pinvoke delegate.
@@ -127,7 +127,7 @@ ThreadAttached
         ldr         r6, [r5, #OFFSETOF__Thread__m_pTransitionFrame]
         cbz         r6, CheckBadTransition
 
-        ;; Save previous TransitionFrame prior to making the mode transition so that it is always valid 
+        ;; Save previous TransitionFrame prior to making the mode transition so that it is always valid
         ;; whenever we might attempt to hijack this thread.
         str         r6, [r4]
 
@@ -146,7 +146,7 @@ AllDone
 
 
 CheckBadTransition
-        ;; Allow 'bad transitions' in when the TSF_DoNotTriggerGc mode is set.  This allows us to have 
+        ;; Allow 'bad transitions' in when the TSF_DoNotTriggerGc mode is set.  This allows us to have
         ;; [UnmanagedCallersOnly] methods that are called via the "restricted GC callouts" as well as from native,
         ;; which is necessary because the methods are CCW vtable methods on interfaces passed to native.
         ldr         r7, [r5, #OFFSETOF__Thread__m_ThreadStateFlags]
@@ -189,7 +189,7 @@ BadTransition
 ;; INPUT: r4: address of reverse pinvoke frame
 ;;
 ;; TRASHES: none
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         NESTED_ENTRY RhpReversePInvokeAttachOrTrapThread
 

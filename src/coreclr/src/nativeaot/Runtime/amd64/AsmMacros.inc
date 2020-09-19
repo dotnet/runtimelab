@@ -93,7 +93,7 @@ save_xmm128_postrsp macro Reg, Offset
 
         movdqa  Offset[rsp], Reg
         .savexmm128 Reg, Offset
-    
+
         ___STACK_ADJUSTMENT_FORBIDDEN = 1
 
         endm
@@ -149,10 +149,10 @@ Section ends
 LEAF_END_MARKED macro Name, section
         public Name&_End
 Name&_End label qword
-        ; this nop is important to keep the label in 
+        ; this nop is important to keep the label in
         ; the right place in the face of BBT
         nop
-        
+
 Name    endp
 
 Section ends
@@ -292,7 +292,7 @@ DEFAULT_FRAME_SAVE_FLAGS equ PTFF_SAVE_ALL_PRESERVED + PTFF_SAVE_RSP
 ;;
 ;; INVARIANTS
 ;; - The macro assumes it is called from a prolog, prior to a frame pointer being setup.
-;; - All preserved registers remain unchanged from their values in managed code. 
+;; - All preserved registers remain unchanged from their values in managed code.
 ;;
 PUSH_COOP_PINVOKE_FRAME macro trashReg
     lea             trashReg, [rsp +  8h]
@@ -333,7 +333,7 @@ POP_COOP_PINVOKE_FRAME macro
     pop         r10     ; discard caller RSP
 endm
 
-;  - TAILCALL_RAX: ("jmp rax") should be used for tailcalls, this emits an instruction 
+;  - TAILCALL_RAX: ("jmp rax") should be used for tailcalls, this emits an instruction
 ;            sequence which is recognized by the unwinder as a valid epilogue terminator
 TAILJMP_RAX TEXTEQU <DB 048h, 0FFh, 0E0h>
 

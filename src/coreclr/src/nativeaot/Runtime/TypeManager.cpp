@@ -143,7 +143,7 @@ void TypeManager::EnumStaticGCRefs(void * pfnCallback, void * pvCallbackData)
 {
     // Regular statics.
     EnumStaticGCRefsBlock(pfnCallback, pvCallbackData, m_pStaticsGCInfo);
-    
+
     // Thread local statics.
     if (m_pThreadStaticsGCInfo != NULL)
     {
@@ -152,7 +152,7 @@ void TypeManager::EnumStaticGCRefs(void * pfnCallback, void * pvCallbackData)
             // To calculate the address of the data for each thread's TLS fields we need two values:
             //  1) The TLS slot index allocated for this module by the OS loader. We keep a pointer to this
             //     value in the module header.
-            //  2) The offset into the TLS block at which managed data begins. 
+            //  2) The offset into the TLS block at which managed data begins.
             EnumThreadStaticGCRefsBlock(pfnCallback, pvCallbackData, m_pThreadStaticsGCInfo,
                 dac_cast<UInt8*>(pThread->GetThreadLocalStorage(*m_pTlsIndex, 0)));
         }

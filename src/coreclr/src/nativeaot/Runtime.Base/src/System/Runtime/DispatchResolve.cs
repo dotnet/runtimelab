@@ -83,7 +83,7 @@ namespace System.Runtime
                 // result in interesting behavior such as a derived type only overriding one particular instantiation
                 // and funneling all the dispatches to it, but its the algorithm.
 
-                bool fDoVariantLookup = false; // do not check variance for first scan of dispatch map 
+                bool fDoVariantLookup = false; // do not check variance for first scan of dispatch map
 
                 fRes = FindImplSlotInSimpleMap(
                     pTgtType, pItfType, itfSlotNumber, pImplSlotNumber, fDoVariantLookup);

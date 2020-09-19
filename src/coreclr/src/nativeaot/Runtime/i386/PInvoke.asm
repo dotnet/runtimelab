@@ -19,7 +19,7 @@ extern RhpReversePInvokeBadTransition : proc
 ;; INPUT: none
 ;;
 ;; TRASHES: none
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 _RhpWaitForSuspend proc public
         push        ebp
@@ -29,7 +29,7 @@ _RhpWaitForSuspend proc public
         push        edx
 
         call        RhpWaitForSuspend2
-        
+
         pop         edx
         pop         ecx
         pop         eax
@@ -45,8 +45,8 @@ _RhpWaitForSuspend endp
 ;;
 ;; INPUT: ECX: transition frame
 ;;
-;; OUTPUT: 
-;; 
+;; OUTPUT:
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 _RhpWaitForGCNoAbort proc public
         push        ebp
@@ -83,8 +83,8 @@ EXTERN RhpThrowHwEx : PROC
 ;;
 ;; INPUT: ECX: transition frame
 ;;
-;; OUTPUT: 
-;; 
+;; OUTPUT:
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 _RhpWaitForGC proc public
         push        ebp
@@ -129,7 +129,7 @@ FASTCALL_FUNC RhpReversePInvoke, 0
         ;; edx = GetThread(), TRASHES ecx
         INLINE_GETTHREAD edx, ecx
         mov         [eax + 4], edx          ; save thread pointer for RhpReversePInvokeReturn
-        
+
         ; edx = thread
         ; eax = prev save slot
         ; ecx = scratch
@@ -139,7 +139,7 @@ FASTCALL_FUNC RhpReversePInvoke, 0
 
 ThreadAttached:
         ;;
-        ;; Check for the correct mode.  This is accessible via various odd things that we cannot completely 
+        ;; Check for the correct mode.  This is accessible via various odd things that we cannot completely
         ;; prevent such as :
         ;;     1) Registering a reverse pinvoke entrypoint as a vectored exception handler
         ;;     2) Performing a managed delegate invoke on a reverse pinvoke delegate.
@@ -147,7 +147,7 @@ ThreadAttached:
         cmp         dword ptr [edx + OFFSETOF__Thread__m_pTransitionFrame], 0
         je          CheckBadTransition
 
-        ; Save previous TransitionFrame prior to making the mode transition so that it is always valid 
+        ; Save previous TransitionFrame prior to making the mode transition so that it is always valid
         ; whenever we might attempt to hijack this thread.
         mov         ecx, [edx + OFFSETOF__Thread__m_pTransitionFrame]
         mov         [eax], ecx
@@ -161,9 +161,9 @@ AllDone:
         pop         edx         ; restore arg reg
         pop         ecx         ; restore arg reg
         ret
-        
+
 CheckBadTransition:
-        ;; Allow 'bad transitions' in when the TSF_DoNotTriggerGc mode is set.  This allows us to have 
+        ;; Allow 'bad transitions' in when the TSF_DoNotTriggerGc mode is set.  This allows us to have
         ;; [UnmanagedCallersOnly] methods that are called via the "restricted GC callouts" as well as from native,
         ;; which is necessary because the methods are CCW vtable methods on interfaces passed to native.
         test        dword ptr [edx + OFFSETOF__Thread__m_ThreadStateFlags], TSF_DoNotTriggerGc

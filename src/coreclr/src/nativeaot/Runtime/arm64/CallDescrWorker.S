@@ -30,7 +30,7 @@
         // of slots we must pad with another. This simplifies to "if the low bit of numStackSlots is set,
         // extend the stack another eight bytes".
         ldr     x0, [x19, #OFFSETOF__CallDescrData__pSrc]
-        add     x0, x0, x1, lsl #3               // pSrcEnd=pSrc+8*numStackSlots 
+        add     x0, x0, x1, lsl #3               // pSrcEnd=pSrc+8*numStackSlots
         ands    x2, x1, #1
         beq     Lstackloop
 
@@ -41,7 +41,7 @@
         ldr     x4, [x0,#-8]!
         str     x4, [sp,#-16]!
         subs    x1, x1, #1
-        beq     Ldonestack   
+        beq     Ldonestack
 Lstackloop:
         ldp     x2, x4, [x0,#-16]!
         stp     x2, x4, [sp,#-16]!
@@ -50,7 +50,7 @@ Lstackloop:
 Ldonestack:
 
         // If FP arguments are supplied in registers (x9 != NULL) then initialize all of them from the pointer
-        // given in x9. 
+        // given in x9.
         ldr     x9, [x19, #OFFSETOF__CallDescrData__pFloatArgumentRegisters]
         cbz     x9, LNoFloatingPoint
         ldp     d0, d1, [x9]
@@ -125,7 +125,7 @@ LIntReturn:
 LReturnDone:
 
 #ifdef _DEBUG
-        // Trash the floating point registers to ensure that the HFA return values 
+        // Trash the floating point registers to ensure that the HFA return values
         // won't survive by accident
         ldp     d0, d1, [sp]
         ldp     d2, d3, [sp, #16]

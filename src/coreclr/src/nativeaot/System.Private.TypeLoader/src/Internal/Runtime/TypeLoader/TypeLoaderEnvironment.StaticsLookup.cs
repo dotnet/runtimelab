@@ -54,7 +54,7 @@ namespace Internal.Runtime.TypeLoader
                     else
                     {
                         // If the type does not have a Cctor context, search for the field on the type in the field map which has the lowest offset,
-                        // yet has the the correct type of storage. 
+                        // yet has the the correct type of storage.
                         IntPtr staticAddress;
                         if (TryGetStaticFieldBaseFromFieldAccessMap(runtimeTypeHandle, FieldAccessStaticDataKind.NonGC, out staticAddress))
                         {
@@ -71,7 +71,7 @@ namespace Internal.Runtime.TypeLoader
                 return nonGcStaticsAddress;
             }
 
-            // The indirected helper function can be used to find all dynamic types not found via 
+            // The indirected helper function can be used to find all dynamic types not found via
             // TryGetStaticsInfoForNamedType as well as generics
             IntPtr ptrToStaticFieldData = TryGetNonGcStaticFieldData(runtimeTypeHandle);
             if (ptrToStaticFieldData == IntPtr.Zero)
@@ -139,7 +139,7 @@ namespace Internal.Runtime.TypeLoader
                 if (!typeAsEEType->IsDynamicType && !typeAsEEType->IsGeneric)
                 {
                     //search for the field on the type in the field map which has the lowest offset,
-                    // yet has the the correct type of storage. 
+                    // yet has the the correct type of storage.
                     IntPtr staticAddress;
                     if (TryGetStaticFieldBaseFromFieldAccessMap(runtimeTypeHandle, FieldAccessStaticDataKind.GC, out staticAddress))
                     {
@@ -159,7 +159,7 @@ namespace Internal.Runtime.TypeLoader
                 return gcStaticsAddress;
             }
 
-            // The indirected helper function can be used to find all dynamic types not found via 
+            // The indirected helper function can be used to find all dynamic types not found via
             // TryGetStaticsInfoForNamedType as well as generics
             IntPtr ptrToStaticFieldData = TryGetGcStaticFieldData(runtimeTypeHandle);
             if (ptrToStaticFieldData == IntPtr.Zero)

@@ -17,7 +17,7 @@ namespace Internal.Runtime.CompilerServices
     // 2) Use the ToIntPtr() method to get the interned instance of this type. This will permanently allocate
     //    a block of memory that can be used to represent a virtual method resolution. This memory is interned
     //    so that repeated allocation of the same resolver will not leak.
-    // 3) Use the ResolveMethod function to do the virtual lookup. This function takes advantage of 
+    // 3) Use the ResolveMethod function to do the virtual lookup. This function takes advantage of
     //    a lockless cache so the resolution is very fast for repeated lookups.
     [ReflectionBlocked]
     public struct OpenMethodResolver : IEquatable<OpenMethodResolver>

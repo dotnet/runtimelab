@@ -90,7 +90,7 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalHasCapability(PalCapability capability)
     return (g_dwPALCapabilities & (DWORD)capability) == (DWORD)capability;
 }
 
-// Attach thread to PAL. 
+// Attach thread to PAL.
 // It can be called multiple times for the same thread.
 // It fails fast if a different thread was already registered with the current fiber
 // or if the thread was already registered with a different fiber.
@@ -125,7 +125,7 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalDetachThread(void* thread)
 
     if (threadFromCurrentFiber == NULL)
     {
-        // we've seen this thread, but not this fiber.  It must be a "foreign" fiber that was 
+        // we've seen this thread, but not this fiber.  It must be a "foreign" fiber that was
         // borrowing this thread.
         return false;
     }
@@ -181,9 +181,9 @@ REDHAWK_PALEXPORT UInt32_BOOL REDHAWK_PALAPI PalFreeThunksFromTemplate(_In_ void
 {
 #ifdef XBOX_ONE
     return TRUE;
-#else 
+#else
     return UnmapViewOfFile(pBaseAddress);
-#endif    
+#endif
 }
 #endif // !USE_PORTABLE_HELPERS && !FEATURE_RX_THUNKS
 
@@ -386,15 +386,15 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalEventEnabled(REGHANDLE regHandle, _In_ 
 }
 
 REDHAWK_PALEXPORT HANDLE REDHAWK_PALAPI PalCreateFileW(
-    _In_z_ LPCWSTR pFileName, 
-    uint32_t desiredAccess, 
-    uint32_t shareMode, 
-    _In_opt_ void* pSecurityAttributes, 
-    uint32_t creationDisposition, 
-    uint32_t flagsAndAttributes, 
+    _In_z_ LPCWSTR pFileName,
+    uint32_t desiredAccess,
+    uint32_t shareMode,
+    _In_opt_ void* pSecurityAttributes,
+    uint32_t creationDisposition,
+    uint32_t flagsAndAttributes,
     HANDLE hTemplateFile)
 {
-    return CreateFileW(pFileName, desiredAccess, shareMode, (LPSECURITY_ATTRIBUTES)pSecurityAttributes, 
+    return CreateFileW(pFileName, desiredAccess, shareMode, (LPSECURITY_ATTRIBUTES)pSecurityAttributes,
                        creationDisposition, flagsAndAttributes, hTemplateFile);
 }
 
@@ -500,7 +500,7 @@ REDHAWK_PALIMPORT void REDHAWK_PALAPI PAL_GetCpuCapabilityFlags(int* flags)
     *flags |= ARM64IntrinsicConstants_ArmBase_Arm64;
     *flags |= ARM64IntrinsicConstants_AdvSimd;
     *flags |= ARM64IntrinsicConstants_AdvSimd_Arm64;
-    
+
     if (IsProcessorFeaturePresent(PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE))
     {
         *flags |= ARM64IntrinsicConstants_Aes;

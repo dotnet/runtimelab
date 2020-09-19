@@ -24,63 +24,63 @@
 // -----------------------------------------------------------------------------------------------------------
 //
 // CLR wrapper around events. This version directly uses Win32 events (there's no support for host
-// interception). 
+// interception).
 //
 
-bool CLREventStatic::CreateManualEventNoThrow(bool bInitialState) 
-{ 
-    m_hEvent = PalCreateEventW(NULL, TRUE, bInitialState, NULL); 
+bool CLREventStatic::CreateManualEventNoThrow(bool bInitialState)
+{
+    m_hEvent = PalCreateEventW(NULL, TRUE, bInitialState, NULL);
     m_fInitialized = true;
     return IsValid();
 }
 
 bool CLREventStatic::CreateAutoEventNoThrow(bool bInitialState)
-{ 
-    m_hEvent = PalCreateEventW(NULL, FALSE, bInitialState, NULL); 
+{
+    m_hEvent = PalCreateEventW(NULL, FALSE, bInitialState, NULL);
     m_fInitialized = true;
     return IsValid();
 }
 
 bool CLREventStatic::CreateOSManualEventNoThrow(bool bInitialState)
-{ 
-    m_hEvent = PalCreateEventW(NULL, TRUE, bInitialState, NULL); 
+{
+    m_hEvent = PalCreateEventW(NULL, TRUE, bInitialState, NULL);
     m_fInitialized = true;
     return IsValid();
 }
 
 bool CLREventStatic::CreateOSAutoEventNoThrow(bool bInitialState)
-{ 
-    m_hEvent = PalCreateEventW(NULL, FALSE, bInitialState, NULL); 
+{
+    m_hEvent = PalCreateEventW(NULL, FALSE, bInitialState, NULL);
     m_fInitialized = true;
     return IsValid();
 }
 
-void CLREventStatic::CloseEvent() 
-{ 
+void CLREventStatic::CloseEvent()
+{
     if (m_fInitialized && m_hEvent != INVALID_HANDLE_VALUE)
-    { 
+    {
         PalCloseHandle(m_hEvent);
         m_hEvent = INVALID_HANDLE_VALUE;
     }
 }
 
-bool CLREventStatic::IsValid() const 
-{ 
-    return m_fInitialized && m_hEvent != INVALID_HANDLE_VALUE; 
+bool CLREventStatic::IsValid() const
+{
+    return m_fInitialized && m_hEvent != INVALID_HANDLE_VALUE;
 }
 
-bool CLREventStatic::Set() 
-{ 
+bool CLREventStatic::Set()
+{
     if (!m_fInitialized)
         return false;
-    return PalSetEvent(m_hEvent); 
+    return PalSetEvent(m_hEvent);
 }
 
-bool CLREventStatic::Reset() 
-{ 
+bool CLREventStatic::Reset()
+{
     if (!m_fInitialized)
         return false;
-    return PalResetEvent(m_hEvent); 
+    return PalResetEvent(m_hEvent);
 }
 
 uint32_t CLREventStatic::Wait(uint32_t dwMilliseconds, bool bAlertable, bool bAllowReentrantWait)
@@ -101,7 +101,7 @@ uint32_t CLREventStatic::Wait(uint32_t dwMilliseconds, bool bAlertable, bool bAl
             }
         }
 
-        result = PalCompatibleWaitAny(bAlertable, dwMilliseconds, 1, &m_hEvent, bAllowReentrantWait); 
+        result = PalCompatibleWaitAny(bAlertable, dwMilliseconds, 1, &m_hEvent, bAllowReentrantWait);
 
         if (disablePreemptive)
         {

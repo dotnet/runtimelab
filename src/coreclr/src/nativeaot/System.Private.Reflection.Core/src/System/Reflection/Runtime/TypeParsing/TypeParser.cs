@@ -9,7 +9,7 @@ using System.Reflection.Runtime.Assemblies;
 namespace System.Reflection.Runtime.TypeParsing
 {
     //
-    // Parser for type names passed to GetType() apis. 
+    // Parser for type names passed to GetType() apis.
     //
     internal sealed class TypeParser
     {
@@ -163,7 +163,7 @@ namespace System.Reflection.Runtime.TypeParsing
 
         //
         // Foo or Foo+Inner
-        // 
+        //
         private NamedTypeName ParseNamedTypeName()
         {
             NamedTypeName namedType = ParseNamespaceTypeName();
@@ -178,7 +178,7 @@ namespace System.Reflection.Runtime.TypeParsing
 
         //
         // Non-nested named type.
-        // 
+        //
         private NamespaceTypeName ParseNamespaceTypeName()
         {
             String fullName = _lexer.GetNextIdentifier();

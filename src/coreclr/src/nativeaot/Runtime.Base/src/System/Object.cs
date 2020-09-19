@@ -38,7 +38,7 @@ namespace System
         {
             get
             {
-                // NOTE:  if managed code can be run when the GC has objects marked, then this method is 
+                // NOTE:  if managed code can be run when the GC has objects marked, then this method is
                 //        unsafe.  But, generically, we don't expect managed code such as this to be allowed
                 //        to run while the GC is running.
                 return m_pEEType;
@@ -61,7 +61,7 @@ namespace System
 
         /// <summary>
         /// Return beginning of all data (excluding ObjHeader and EEType*) within this object.
-        /// Note that for strings/arrays this would include the Length as well. 
+        /// Note that for strings/arrays this would include the Length as well.
         /// </summary>
         internal ref byte GetRawData()
         {

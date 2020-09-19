@@ -127,7 +127,7 @@ namespace Internal.Runtime.TypeLoader
 
         // Cache the NativeReader in each module to avoid looking up the NativeLayoutInfo blob each
         // time we call GetNativeLayoutInfoReader(). The dictionary is a thread static variable to ensure
-        // thread safety. Using ThreadStatic instead of a lock is ok as long as the NativeReader class is 
+        // thread safety. Using ThreadStatic instead of a lock is ok as long as the NativeReader class is
         // small enough in size (which is the case today).
         [ThreadStatic]
         private static LowLevelDictionary<TypeManagerHandle, NativeReader> t_moduleNativeReaders;
@@ -178,7 +178,7 @@ namespace Internal.Runtime.TypeLoader
                 }
                 catch
                 {
-                    // Catch and rethrow any exceptions instead of using finally block. Otherwise, filters that are run during 
+                    // Catch and rethrow any exceptions instead of using finally block. Otherwise, filters that are run during
                     // the first pass of exception unwind may hit the re-entrancy fail fast above.
 
                     // TODO: Convert this to filter for better diagnostics once we switch to Roslyn
@@ -548,7 +548,7 @@ namespace Internal.Runtime.TypeLoader
                 }
                 catch
                 {
-                    // Catch and rethrow any exceptions instead of using finally block. Otherwise, filters that are run during 
+                    // Catch and rethrow any exceptions instead of using finally block. Otherwise, filters that are run during
                     // the first pass of exception unwind may hit the re-entrancy fail fast above.
 
                     // TODO: Convert this to filter for better diagnostics once we switch to Roslyn

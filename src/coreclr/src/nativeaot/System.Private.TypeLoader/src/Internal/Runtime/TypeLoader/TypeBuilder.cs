@@ -536,7 +536,7 @@ namespace Internal.Runtime.TypeLoader
             int gcDataSize = 0;
             int threadDataSize = 0;
             bool staticSizesMeaningful = (type is DefType) // Is type permitted to have static fields
-                                    && !isTemplateUniversalCanon; // Non-universal templates always specify their statics sizes 
+                                    && !isTemplateUniversalCanon; // Non-universal templates always specify their statics sizes
                                                                   // if the size can be greater than 0
 
             int baseTypeSize = 0;
@@ -663,7 +663,7 @@ namespace Internal.Runtime.TypeLoader
             if (isTemplateUniversalCanon && type.CanShareNormalGenericCode())
             {
                 // Even in the GENERICS_FORCE_USG stress mode today, codegen will generate calls to normal-canonical target methods whenever possible.
-                // Given that we use universal template types to build the dynamic EETypes, these dynamic types will end up with NULL dictionary 
+                // Given that we use universal template types to build the dynamic EETypes, these dynamic types will end up with NULL dictionary
                 // entries, causing the normal-canonical code sharing to fail.
                 // To fix this problem, we will load the generic dictionary from the non-universal template type, and build a generic dictionary out of
                 // it for the dynamic type, and store that dictionary pointer in the dynamic EEType's structure.
@@ -749,18 +749,18 @@ namespace Internal.Runtime.TypeLoader
                     // the same vtable layout as non-shared generics, meaning no dictionary pointer in the vtable.
                     // We use universal canonical template types to build such types. Universal canonical types have 'NULL'
                     // dictionary pointers in their vtables, so we'll start copying the vtable entries right after that
-                    // dictionary slot (dictionaries are accessed/used at runtime in a different way, not through the vtable 
+                    // dictionary slot (dictionaries are accessed/used at runtime in a different way, not through the vtable
                     // dictionary pointer for such types).
                     currentVtableIndex++;
                 }
                 else if (currentType.CanShareNormalGenericCode())
                 {
                     // In the case of a normal canonical type in their base class hierarchy,
-                    // we need to keep track of its dictionary slot in the vtable mapping, and try to 
+                    // we need to keep track of its dictionary slot in the vtable mapping, and try to
                     // copy its value values directly from its template type vtable.
                     // Two possible cases:
                     //      1)  The template type is a normal canonical type. In this case, the dictionary value
-                    //          in the vtable slot of the template is NULL, but that's ok because this case is 
+                    //          in the vtable slot of the template is NULL, but that's ok because this case is
                     //          correctly handled anyways by the FinishBaseTypeAndDictionaries() API.
                     //      2)  The template type is NOT a canonical type. In this case, the dictionary value
                     //          in the vtable slot of the template is not null, and we keep track of it in the
@@ -792,7 +792,7 @@ namespace Internal.Runtime.TypeLoader
                         // the same vtable layout as non-shared generics, meaning no dictionary pointer in the vtable.
                         // We use universal canonical template types to build such types. Universal canonical types have 'NULL'
                         // dictionary pointers in their vtables, so we'll start copying the vtable entries right after that
-                        // dictionary slot (dictionaries are accessed/used at runtime in a different way, not through the vtable 
+                        // dictionary slot (dictionaries are accessed/used at runtime in a different way, not through the vtable
                         // dictionary pointer for such types).
                         currentVtableIndex++;
                     }
@@ -912,7 +912,7 @@ namespace Internal.Runtime.TypeLoader
                 int startIndex = offset / IntPtr.Size;
 
                 // These routines represent the GC layout after the EEType pointer
-                // in an object, but the LowLevelList<bool> bitfield logically contains 
+                // in an object, but the LowLevelList<bool> bitfield logically contains
                 // the EETypepointer if it is describing a reference type. So, skip the
                 // first value.
                 int itemsToSkip = _isReferenceTypeGCLayout ? 1 : 0;
@@ -940,7 +940,7 @@ namespace Internal.Runtime.TypeLoader
         {
             NativeParser nonUniversalTypeInfoParser = GetNativeLayoutInfoParser(type, ref tempNonUniversalState.NativeLayoutInfo);
             NativeLayoutInfoLoadContext context = tempNonUniversalState.NativeLayoutInfo.LoadContext;
-            
+
             uint beginOffset = nonUniversalTypeInfoParser.Offset;
             uint? staticGCDescId = nonUniversalTypeInfoParser.GetUnsignedForBagElementKind(BagElementKind.GcStaticDesc);
 
@@ -1247,7 +1247,7 @@ namespace Internal.Runtime.TypeLoader
                 return;
             }
 
-            // If we reach here, classConstructorFunctionPointer points at a canonical method, that needs to be converted into 
+            // If we reach here, classConstructorFunctionPointer points at a canonical method, that needs to be converted into
             // a fat function pointer so that the calli in the ClassConstructorRunner will work properly
             Debug.Assert(canonicalClassConstructorFunctionPointer != IntPtr.Zero);
 
@@ -1266,7 +1266,7 @@ namespace Internal.Runtime.TypeLoader
             {
                 RuntimeTypeHandle baseTypeHandle = GetRuntimeTypeHandle(baseType);
 
-                // If the basetype is currently being created by the TypeBuilder, we need to get its dictionary pointer from the 
+                // If the basetype is currently being created by the TypeBuilder, we need to get its dictionary pointer from the
                 // TypeBuilder state (at this point, the dictionary has not yet been set on the baseTypeHandle). If
                 // the basetype is not a dynamic type, or has previously been dynamically allocated in the past, the TypeBuilder
                 // state will have a null dictionary pointer, in which case we need to read it directly from the basetype's vtable
@@ -1542,7 +1542,7 @@ namespace Internal.Runtime.TypeLoader
             var szArrayCache = TypeSystemContext.GetArrayTypesCache(false, -1);
             szArrayCache.Reserve(szArrayCache.Count + newArrayTypesCount);
 
-            // 
+            //
             if (mdArrayNewTypesCount != null)
             {
                 for (int i = 0; i < mdArrayNewTypesCount.Length; i++)
@@ -1665,7 +1665,7 @@ namespace Internal.Runtime.TypeLoader
 
         //
         // This method is used by the lazy generic lookup. It resolves the signature of the runtime artifact in the given instantiation context.
-        // 
+        //
         private unsafe IntPtr BuildGenericLookupTarget(TypeSystemContext typeSystemContext, IntPtr context, IntPtr signature, out IntPtr auxResult)
         {
             TypeLoaderLogger.WriteLine("BuildGenericLookupTarget for " + context.LowLevelToString() + "/" + signature.LowLevelToString());
@@ -1850,7 +1850,7 @@ namespace Internal.Runtime.TypeLoader
 
         //
         // This method is used to build the floating portion of a generic dictionary.
-        // 
+        //
         private unsafe IntPtr BuildFloatingDictionary(TypeSystemContext typeSystemContext, IntPtr context, bool isTypeContext, IntPtr fixedDictionary, out bool isNewlyAllocatedDictionary)
         {
             isNewlyAllocatedDictionary = true;
@@ -1884,11 +1884,11 @@ namespace Internal.Runtime.TypeLoader
 
                 DefType declaringType = (DefType)typeSystemContext.ResolveRuntimeTypeHandle(declaringTypeHandle);
                 InstantiatedMethod methodContext = (InstantiatedMethod)typeSystemContext.ResolveGenericMethodInstantiation(
-                    false, 
-                    declaringType, 
-                    nameAndSignature, 
-                    typeSystemContext.ResolveRuntimeTypeHandles(genericMethodArgHandles), 
-                    IntPtr.Zero, 
+                    false,
+                    declaringType,
+                    nameAndSignature,
+                    typeSystemContext.ResolveRuntimeTypeHandles(genericMethodArgHandles),
+                    IntPtr.Zero,
                     false);
 
                 TypeLoaderLogger.WriteLine("Building floating dictionary layout for method " + methodContext.ToString() + "...");
@@ -2221,7 +2221,7 @@ namespace Internal.Runtime.TypeLoader
 
         //
         // This method is used to build the floating portion of a generic dictionary.
-        // 
+        //
         internal static IntPtr TryBuildFloatingDictionary(IntPtr context, bool isTypeContext, IntPtr fixedDictionary, out bool isNewlyAllocatedDictionary)
         {
             isNewlyAllocatedDictionary = true;

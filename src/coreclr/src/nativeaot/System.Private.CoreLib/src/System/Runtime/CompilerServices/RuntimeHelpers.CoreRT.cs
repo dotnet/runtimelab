@@ -322,7 +322,7 @@ namespace System.Runtime.CompilerServices
                 return GetUninitializedObject(Type.GetTypeFromEETypePtr(eeTypePtr.NullableType));
             }
 
-            // Triggering the .cctor here is slightly different than desktop/CoreCLR, which 
+            // Triggering the .cctor here is slightly different than desktop/CoreCLR, which
             // decide based on BeforeFieldInit, but we don't want to include BeforeFieldInit
             // in EEType just for this API to behave slightly differently.
             RunClassConstructor(type.TypeHandle);

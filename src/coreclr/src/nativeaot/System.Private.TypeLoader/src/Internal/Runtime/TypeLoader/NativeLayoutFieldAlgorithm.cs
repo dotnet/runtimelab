@@ -293,7 +293,7 @@ namespace Internal.Runtime.TypeLoader
         }
 
         /// <summary>
-        /// While computing layout, we don't generally compute the full field information. This function is used to 
+        /// While computing layout, we don't generally compute the full field information. This function is used to
         /// gate how much of field layout to run
         /// </summary>
         /// <param name="fieldStorage">the conceptual location of the field</param>
@@ -387,9 +387,9 @@ namespace Internal.Runtime.TypeLoader
             if ((position[(int)NativeFormat.FieldStorage.Instance] == LayoutInt.Zero) && type.IsValueType)
                 position[(int)NativeFormat.FieldStorage.Instance] = LayoutInt.One;
 
-            Debug.Assert(alignRequired == new LayoutInt(1) || 
-                         alignRequired == new LayoutInt(2) || 
-                         alignRequired == new LayoutInt(4) || 
+            Debug.Assert(alignRequired == new LayoutInt(1) ||
+                         alignRequired == new LayoutInt(2) ||
+                         alignRequired == new LayoutInt(4) ||
                          alignRequired == new LayoutInt(8));
 
             position[InstanceAlignmentEntry] = alignRequired;
@@ -507,7 +507,7 @@ namespace Internal.Runtime.TypeLoader
 
             // Note that we check the total size, but do not perform any checks on number of fields:
             // - Type of fields can be HA valuetype itself
-            // - Managed C++ HFA valuetypes have just one <alignment member> of type float to signal that 
+            // - Managed C++ HFA valuetypes have just one <alignment member> of type float to signal that
             //   the valuetype is HFA and explicitly specified size
             int maxSize = haElementSize * type.Context.Target.MaxHomogeneousAggregateElementCount;
             if (type.InstanceFieldSize.AsInt > maxSize)

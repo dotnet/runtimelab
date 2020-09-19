@@ -62,7 +62,7 @@ inline GCRefKind ExtractReg1ReturnKind(GCRefKind returnKind)
 #endif // TARGET_ARM64
 
 //
-// MethodInfo is placeholder type used to allocate space for MethodInfo. Maximum size 
+// MethodInfo is placeholder type used to allocate space for MethodInfo. Maximum size
 // of the actual method should be less or equal to the placeholder size.
 // It avoids memory allocation during stackwalk.
 //
@@ -119,7 +119,7 @@ enum class AssociatedDataFlags : unsigned char
 class ICodeManager
 {
 public:
-    virtual bool FindMethodInfo(PTR_VOID        ControlPC, 
+    virtual bool FindMethodInfo(PTR_VOID        ControlPC,
                                 MethodInfo *    pMethodInfoOut) = 0;
 
     virtual bool IsFunclet(MethodInfo * pMethodInfo) = 0;
@@ -127,7 +127,7 @@ public:
     virtual PTR_VOID GetFramePointer(MethodInfo *   pMethodInfo,
                                      REGDISPLAY *   pRegisterSet) = 0;
 
-    virtual void EnumGcRefs(MethodInfo *    pMethodInfo, 
+    virtual void EnumGcRefs(MethodInfo *    pMethodInfo,
                             PTR_VOID        safePointAddress,
                             REGDISPLAY *    pRegisterSet,
                             GCEnumContext * hCallback) = 0;

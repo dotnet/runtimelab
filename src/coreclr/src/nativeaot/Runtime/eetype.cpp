@@ -32,7 +32,7 @@ bool EEType::Validate(bool assertOnFail /* default: true */)
     size_t minObjSize = get_BaseSize();
     if (get_ComponentSize() != 0)
     {
-        // If it is an array, we will align the size to the nearest pointer alignment, even if there are 
+        // If it is an array, we will align the size to the nearest pointer alignment, even if there are
         // zero elements.  Our strings take advantage of this.
         minObjSize = (size_t)ALIGN_UP(minObjSize, sizeof(TADDR));
     }

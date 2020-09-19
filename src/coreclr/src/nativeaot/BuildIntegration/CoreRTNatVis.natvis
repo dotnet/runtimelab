@@ -2,7 +2,7 @@
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
     <Type Name="String">
         <DisplayString>{&amp;(_firstChar),su}</DisplayString>
-        <StringView>&amp;(_firstChar),su</StringView> 
+        <StringView>&amp;(_firstChar),su</StringView>
     </Type>
     <Type Name="__Array&lt;*&gt;">
         <DisplayString>{{count = {_numComponents}}}</DisplayString>

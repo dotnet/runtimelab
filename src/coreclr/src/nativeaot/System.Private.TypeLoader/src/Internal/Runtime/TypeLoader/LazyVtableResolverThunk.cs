@@ -35,7 +35,7 @@ namespace Internal.Runtime.TypeLoader
         private extern static unsafe IntPtr VTableResolver_GetCommonCallingStub();
 
         /// <summary>
-        /// Build initial array of vtable thunks. These thunks are the ones directly embedded in 
+        /// Build initial array of vtable thunks. These thunks are the ones directly embedded in
         /// the typeloader codebase instead of being dynamically generated out of the thunk pool.
         /// </summary>
         private static IntPtr[] InitialThunks()
@@ -129,7 +129,7 @@ namespace Internal.Runtime.TypeLoader
         public static IntPtr GetFinalizerThunk()
         {
             // Here we take advantage of the detail that the calling convention abi for a static function
-            // that returns no values, and takes a single object parameter matches that of a 
+            // that returns no values, and takes a single object parameter matches that of a
             // instance function that takes no parameters
             return Intrinsics.AddrOf(new Action<object>(FinalizeThunk));
         }
@@ -140,8 +140,8 @@ namespace Internal.Runtime.TypeLoader
         }
 
         /// <summary>
-        /// This function is called from the lazy vtable resolver thunks via the UniversalTransitionThunk to compute 
-        /// the correct resolution of a virtual dispatch. 
+        /// This function is called from the lazy vtable resolver thunks via the UniversalTransitionThunk to compute
+        /// the correct resolution of a virtual dispatch.
         /// </summary>
         /// <param name="callerTransitionBlockParam">pointer to the arguments of the called function</param>
         /// <param name="eeTypePointerOffsetAsIntPtr">eeTypePointerOffsetAsIntPtr is the offset from the start of the EEType to the vtable slot</param>
@@ -195,7 +195,7 @@ namespace Internal.Runtime.TypeLoader
             // Call the finalizer directly. No need to play tricks with tail calling, as this is rare enough, it shouldn't happen much
 
             // Here we take advantage of the detail that the calling convention abi for a static function
-            // that returns no values, and takes a single object parameter matches that of a 
+            // that returns no values, and takes a single object parameter matches that of a
             // instance function that takes no parameters
             Intrinsics.Call(fnPtrFinalizer, obj);
         }
@@ -361,8 +361,8 @@ namespace Internal.Runtime.TypeLoader
             //  3. The definingType is pregenerated, but we cannot go from the slot index to metadata via the runtime mapping tables. There is
             //      only 1 pointer in the vtable of the most derived pregenerated type that has the same value. That's the valuable pointer.
             //  4. The definingType is pregenerated, but we cannot go from the slot index to metadata via the runtime mapping tables. There are
-            //      multiple pointers in the vtable of the most derived pregenerated types which have this same value. 
-            //         - Take that pointer value, and attempt to resolve back to a method from the implementation. If that succeeds, then 
+            //      multiple pointers in the vtable of the most derived pregenerated types which have this same value.
+            //         - Take that pointer value, and attempt to resolve back to a method from the implementation. If that succeeds, then
             //           treat that as the correct vtable slot. Otherwise, return that function pointer. (This is a very rare scenario.)
             MethodDesc slotDefiningMethod = null;
             if (!IsPregeneratedOrTemplateTypeLoaded(definingType))
@@ -475,7 +475,7 @@ namespace Internal.Runtime.TypeLoader
                 return false;
             }
 
-            // TryGetMethodMethodNameAndSigFromVTableSlotForPregeneratedOrTemplateType is expected to only return methodNameAndSig with NativeLayoutSignatures in them. 
+            // TryGetMethodMethodNameAndSigFromVTableSlotForPregeneratedOrTemplateType is expected to only return methodNameAndSig with NativeLayoutSignatures in them.
             // If we start hitting the more general case, we can improve this algorithm.
             Debug.Assert(methodNameAndSig.Signature.IsNativeLayoutSignature);
 

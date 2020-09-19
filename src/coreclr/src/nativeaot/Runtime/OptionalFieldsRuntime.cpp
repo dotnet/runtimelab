@@ -45,7 +45,7 @@ UInt32 OptionalFields::DecodeFieldValue(PTR_UInt8 * ppFields)
 }
 
 /*static*/ UInt32 OptionalFields::GetInlineField(OptionalFieldTag eTag, UInt32 uiDefaultValue)
-{       
+{
     // Point at start of encoding stream.
     PTR_UInt8 pFields = dac_cast<PTR_UInt8>(this);
 

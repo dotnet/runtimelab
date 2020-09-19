@@ -10,7 +10,7 @@ using System.Collections.Generic;
 namespace System.Collections.Generic
 {
     //
-    // Helper class to store reusable empty arrays. We cannot use the public Array.GetEmpty<T>() in the type loader because of 
+    // Helper class to store reusable empty arrays. We cannot use the public Array.GetEmpty<T>() in the type loader because of
     // recursive dictionary lookups.
     //
     [System.Runtime.CompilerServices.ForceDictionaryLookups]

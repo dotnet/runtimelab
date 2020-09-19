@@ -11,7 +11,7 @@ using Internal.Reflection.Core;
 
 namespace System.Reflection.Runtime.ParameterInfos
 {
-    // 
+    //
     // Abstract base for all ParameterInfo objects exposed by runtime MethodBase objects
     // (including the ReturnParameter.)
     //

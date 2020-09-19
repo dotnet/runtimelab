@@ -39,7 +39,7 @@ namespace System.Diagnostics
         }
 
 #pragma warning disable 649  // Suppress compiler warning about _isDebuggerAttached never being assigned to.
-        // _isDebuggerAttached: Do not remove: This field is known to the debugger and modified directly by the debugger. 
+        // _isDebuggerAttached: Do not remove: This field is known to the debugger and modified directly by the debugger.
         private static bool _isDebuggerAttached;
 #pragma warning restore 649
 

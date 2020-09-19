@@ -9,7 +9,7 @@ LEAF_ENTRY RhpFltRemRev, _TEXT
 
         movss       dword ptr [rsp + 10h], xmm1     ; divisor
         movss       dword ptr [rsp +  8h], xmm0     ; dividend
-        
+
         fld         dword ptr [rsp + 10h]           ; divisor
         fld         dword ptr [rsp +  8h]           ; dividend
 
@@ -35,7 +35,7 @@ LEAF_ENTRY RhpDblRemRev, _TEXT
 
         movsd       qword ptr [rsp + 10h], xmm1     ; divisor
         movsd       qword ptr [rsp +  8h], xmm0     ; dividend
-        
+
         fld         qword ptr [rsp + 10h]           ; divisor
         fld         qword ptr [rsp +  8h]           ; dividend
 

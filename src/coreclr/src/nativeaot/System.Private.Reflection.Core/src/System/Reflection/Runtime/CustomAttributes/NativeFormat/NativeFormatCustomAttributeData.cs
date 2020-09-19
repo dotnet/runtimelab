@@ -116,7 +116,7 @@ namespace System.Reflection.Runtime.CustomAttributes.NativeFormat
                         delegate ()
                         {
                             // If we got here, the custom attribute blob lacked type information (this is actually the typical case.) We must fallback to
-                            // parsing the constructor's signature to get the type info. 
+                            // parsing the constructor's signature to get the type info.
                             if (lazyCtorTypeHandles == null)
                             {
                                 HandleCollection parameterTypeSignatureHandles;

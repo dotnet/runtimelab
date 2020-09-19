@@ -14,7 +14,7 @@ namespace System.Runtime
     //
     //                                    **** WARNING ****
     //
-    // A large portion of the logic present in this file is duplicated 
+    // A large portion of the logic present in this file is duplicated
     // in src\System.Private.Reflection.Execution\Internal\Reflection\Execution\TypeLoader\TypeCast.cs
     // (for dynamic type builder). If you make changes here make sure they are reflected there.
     //
@@ -30,13 +30,13 @@ namespace System.Runtime
             Normal = 0,
 
             /// <summary>
-            /// Assume the source type is boxed so that value types and enums are compatible with Object, ValueType 
+            /// Assume the source type is boxed so that value types and enums are compatible with Object, ValueType
             /// and Enum (if applicable)
             /// </summary>
             BoxedSource = 1,
 
             /// <summary>
-            /// Allow identically sized integral types and enums to be considered equivalent (currently used only for 
+            /// Allow identically sized integral types and enums to be considered equivalent (currently used only for
             /// array element types)
             /// </summary>
             AllowSizeEquivalence = 2,
@@ -162,7 +162,7 @@ namespace System.Runtime
 
             if (result == null)
             {
-                // Throw the invalid cast exception defined by the classlib, using the input EEType* 
+                // Throw the invalid cast exception defined by the classlib, using the input EEType*
                 // to find the correct classlib.
 
                 throw pTargetEEType->GetClasslibException(ExceptionIDs.InvalidCast);
@@ -229,7 +229,7 @@ namespace System.Runtime
 
             if (result == null)
             {
-                // Throw the invalid cast exception defined by the classlib, using the input EEType* 
+                // Throw the invalid cast exception defined by the classlib, using the input EEType*
                 // to find the correct classlib.
 
                 throw pTargetEEType->GetClasslibException(ExceptionIDs.InvalidCast);
@@ -306,7 +306,7 @@ namespace System.Runtime
                     EEType* pInterfaceType = interfaceMap[i].InterfaceType;
 
                     // We can ignore interfaces which are not also marked as having generic variance
-                    // unless we're dealing with array covariance. 
+                    // unless we're dealing with array covariance.
                     //
                     // Interfaces which are only variant for arrays have the HasGenericVariance flag set even if they
                     // are not variant.
@@ -395,7 +395,7 @@ namespace System.Runtime
                                                                EETypeRef* pSourceInstantiation,
                                                                EETypeRef* pTargetInstantiation,
                                                                GenericVariance* pVarianceInfo,
-                                                               bool fForceCovariance, 
+                                                               bool fForceCovariance,
                                                                EETypePairList* pVisited)
         {
             // Walk through the instantiations comparing the cast compatibility of each pair
@@ -553,7 +553,7 @@ namespace System.Runtime
                 if (pSourceType->IsParameterizedType
                     && (pTargetType->ParameterizedTypeShape == pSourceType->ParameterizedTypeShape))
                 {
-                    // Source type is also a parameterized type. Are the parameter types compatible? 
+                    // Source type is also a parameterized type. Are the parameter types compatible?
                     if (pSourceType->RelatedParameterType->IsPointerType)
                     {
                         // If the parameter types are pointers, then only exact matches are correct.
@@ -571,8 +571,8 @@ namespace System.Runtime
                     }
                     else
                     {
-                        // Note that using AreTypesAssignableInternal with AssignmentVariation.AllowSizeEquivalence 
-                        // here handles array covariance as well as IFoo[] -> Foo[] etc.  We are not using 
+                        // Note that using AreTypesAssignableInternal with AssignmentVariation.AllowSizeEquivalence
+                        // here handles array covariance as well as IFoo[] -> Foo[] etc.  We are not using
                         // AssignmentVariation.BoxedSource because int[] is not assignable to object[].
                         return CastCache.AreTypesAssignableInternal(pSourceType->RelatedParameterType,
                             pTargetType->RelatedParameterType, AssignmentVariation.AllowSizeEquivalence, pVisited);
@@ -680,7 +680,7 @@ namespace System.Runtime
             if (CastCache.AreTypesAssignableInternal(obj.EEType, arrayElemType, AssignmentVariation.BoxedSource, null))
                 return;
 
-            // Throw the array type mismatch exception defined by the classlib, using the input array's EEType* 
+            // Throw the array type mismatch exception defined by the classlib, using the input array's EEType*
             // to find the correct classlib.
 
             throw array.EEType->GetClasslibException(ExceptionIDs.ArrayTypeMismatch);
@@ -709,7 +709,7 @@ namespace System.Runtime
             // type safety.
                 && !elemType->IsValueType)
             {
-                // Throw the array type mismatch exception defined by the classlib, using the input array's EEType* 
+                // Throw the array type mismatch exception defined by the classlib, using the input array's EEType*
                 // to find the correct classlib.
 
                 throw array.EEType->GetClasslibException(ExceptionIDs.ArrayTypeMismatch);
@@ -736,7 +736,7 @@ namespace System.Runtime
 
                 if (!CastCache.AreTypesAssignableInternal(obj.EEType, arrayElemType, AssignmentVariation.BoxedSource, null))
                 {
-                    // Throw the array type mismatch exception defined by the classlib, using the input array's 
+                    // Throw the array type mismatch exception defined by the classlib, using the input array's
                     // EEType* to find the correct classlib.
 
                     throw array.EEType->GetClasslibException(ExceptionIDs.ArrayTypeMismatch);
@@ -766,7 +766,7 @@ namespace System.Runtime
 
             if (!AreTypesEquivalent(elemType, arrayElemType))
             {
-                // Throw the array type mismatch exception defined by the classlib, using the input array's EEType* 
+                // Throw the array type mismatch exception defined by the classlib, using the input array's EEType*
                 // to find the correct classlib.
 
                 throw array.EEType->GetClasslibException(ExceptionIDs.ArrayTypeMismatch);
@@ -943,7 +943,7 @@ namespace System.Runtime
                 return false;
             }
         }
-        
+
         // source type + target type + assignment variation -> true/false
         [System.Runtime.CompilerServices.EagerStaticClassConstructionAttribute]
         private static class CastCache
@@ -1117,7 +1117,7 @@ namespace System.Runtime
 
                         Entry newEntry = new Entry() { Key = key, Result = result, Next = cache[entryIndex] };
 
-                        // BEWARE: Array store check can lead to infinite recursion. We avoid this by making certain 
+                        // BEWARE: Array store check can lead to infinite recursion. We avoid this by making certain
                         // that the cache trivially answers the case of equivalent types without triggering the cache
                         // miss path. (See CastCache.AreTypesAssignableInternal)
                         cache[entryIndex] = newEntry;
@@ -1153,7 +1153,7 @@ namespace System.Runtime
                 }
 
                 //
-                // Now, we have cache that is overflowing with results. We need to decide whether to resize it or start 
+                // Now, we have cache that is overflowing with results. We need to decide whether to resize it or start
                 // flushing the old entries instead
                 //
 
@@ -1214,7 +1214,7 @@ namespace System.Runtime
                 {
                     s_roundRobinFlushing = false;
 
-                    // Keep the reference to the old cache in a weak handle. We will try to use it to avoid hitting the 
+                    // Keep the reference to the old cache in a weak handle. We will try to use it to avoid hitting the
                     // cache miss path until the GC collects it.
                     if (s_previousCache.IsAllocated)
                     {

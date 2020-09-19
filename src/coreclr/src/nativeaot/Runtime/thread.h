@@ -8,7 +8,7 @@ class ThreadStore;
 class CLREventStatic;
 class Thread;
 
-// The offsets of some fields in the thread (in particular, m_pTransitionFrame) are known to the compiler and get 
+// The offsets of some fields in the thread (in particular, m_pTransitionFrame) are known to the compiler and get
 // inlined into the code.  Let's make sure they don't change just because we enable/disable server GC in a particular
 // runtime build.
 #define KEEP_THREAD_LAYOUT_CONSTANT
@@ -46,7 +46,7 @@ typedef DPTR(ExInfo) PTR_ExInfo;
 
 
 // Also defined in ExceptionHandling.cs, layouts must match.
-// When adding new fields to this struct, ensure they get properly initialized in the exception handling 
+// When adding new fields to this struct, ensure they get properly initialized in the exception handling
 // assembly stubs
 struct ExInfo
 {
@@ -84,8 +84,8 @@ struct ThreadBuffer
     PTR_VOID                m_pStackLow;
     PTR_VOID                m_pStackHigh;
     PTR_UInt8               m_pTEB;                                 // Pointer to OS TEB structure for this thread
-    UInt64                  m_uPalThreadIdForLogging;               // @TODO: likely debug-only 
-    EEThreadId              m_threadId;               
+    UInt64                  m_uPalThreadIdForLogging;               // @TODO: likely debug-only
+    EEThreadId              m_threadId;
     PTR_VOID                m_pThreadStressLog;                     // pointer to head of thread's StressLogChunks
 #ifdef FEATURE_GC_STRESS
     UInt32                  m_uRand;                                // current per-thread random number
@@ -147,7 +147,7 @@ private:
     bool DebugIsSuspended();
 #endif
 
-    // 
+    //
     // SyncState members
     //
     PTR_VOID    GetTransitionFrame();
@@ -230,7 +230,7 @@ public:
     void                EnablePreemptiveMode();
     void                DisablePreemptiveMode();
 
-    // Set the m_pHackPInvokeTunnel field for GC allocation helpers that setup transition frame 
+    // Set the m_pHackPInvokeTunnel field for GC allocation helpers that setup transition frame
     // in assembly code. Do not use anywhere else.
     void                SetCurrentThreadPInvokeTunnelForGcAlloc(void * pTransitionFrame);
 

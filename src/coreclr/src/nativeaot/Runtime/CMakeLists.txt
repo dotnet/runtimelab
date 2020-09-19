@@ -143,10 +143,10 @@ if(WIN32)
 else()
 
   include_directories(unix)
-  
+
   include(CheckIncludeFiles)
   include(CheckLibraryExists)
-  
+
   include(${GC_DIR}/unix/configure.cmake)
   
   if(NOT CLR_CMAKE_TARGET_ARCH_WASM)

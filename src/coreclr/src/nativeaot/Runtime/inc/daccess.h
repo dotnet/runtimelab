@@ -520,10 +520,10 @@
 //*****************************************************************************
 // See code:EEStartup#TableOfContents for EE overview
 
-#ifndef __daccess_h__ 
+#ifndef __daccess_h__
 #define __daccess_h__
 
-#ifndef __in 
+#ifndef __in
 #include <specstrings.h>
 #endif
 
@@ -531,7 +531,7 @@
 
 #include "type_traits.hpp"
 
-#ifdef DACCESS_COMPILE 
+#ifdef DACCESS_COMPILE
 
 #include "safemath.h"
 
@@ -608,7 +608,7 @@ typedef struct _DacGlobals
     ULONG fn__ThreadpoolMgr__AsyncCallbackCompletion;
     ULONG fn__ThreadpoolMgr__AsyncTimerCallbackCompletion;
     ULONG fn__DACNotifyCompilationFinished;
-#ifdef HOST_X86 
+#ifdef HOST_X86
     ULONG fn__NativeDelayFixupAsmStub;
     ULONG fn__NativeDelayFixupAsmStubRet;
 #endif // HOST_X86
@@ -621,7 +621,7 @@ typedef struct _DacGlobals
 
 extern DacGlobals g_dacGlobals;
 
-#ifdef __cplusplus 
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -666,7 +666,7 @@ HRESULT DacFreeVirtual(TADDR mem, ULONG32 size, ULONG32 typeFlags,
       b) Do it only in the DAC definition - breaks marshalling for types that are or contain REGDISPLAY
          (ie StackFrameIterator).
    2) Add a new DebuggerREGDISPLAY type that can hold local or remote addresses, and then create
-      parallel DAC stackwalking code that uses it. This is a bunch of work and 
+      parallel DAC stackwalking code that uses it. This is a bunch of work and
       has higher maintenance cost to keep both code paths operational and functionally identical.
    3) Allocate space in debuggee that will be used to stash the registers when doing a debug stackwalk -
       increases runtime working set for debug only scenario and won't work for dumps
@@ -782,7 +782,7 @@ HRESULT DacReplacePatchesInHostMemory(MemoryRange range, PVOID pBuffer);
 
 #endif // DAC_CLR_ENVIRONMENT
 
-#ifdef __cplusplus 
+#ifdef __cplusplus
 }
 
 //
@@ -968,7 +968,7 @@ public:
     {
         return *(type*)DacInstantiateTypeByAddress(m_addr, sizeof(type), true);
     }
-    
+
 
     using __ComparableTPtrBase::operator==;
     using __ComparableTPtrBase::operator!=;
@@ -1037,7 +1037,7 @@ public:
     {
         return DPtrType(DacTAddrOffset(m_addr, val, sizeof(type)));
     }
-#if (!defined (HOST_X86) && !defined(_SPARC_) && !defined(HOST_ARM)) || (defined(HOST_X86) && defined(__APPLE__)) 
+#if (!defined (HOST_X86) && !defined(_SPARC_) && !defined(HOST_ARM)) || (defined(HOST_X86) && defined(__APPLE__))
     DPtrType operator+(unsigned int val)
     {
         return DPtrType(DacTAddrOffset(m_addr, val, sizeof(type)));
@@ -1168,7 +1168,7 @@ public:
 template<typename type>
 class __DPtr : public __DPtrBase<type,__DPtr<type> >
 {
-#ifdef __GNUC__ 
+#ifdef __GNUC__
 protected:
     //there seems to be a bug in GCC's inference logic.  It can't find m_addr.
     using __DPtrBase<type,__DPtr<type> >::m_addr;
@@ -1327,7 +1327,7 @@ public:
     // This type is not expected to be used anyway.
     typedef type* _Type;
     typedef type* _Ptr;
-    
+
     __VPtr< type >(void) : __TPtrBase() {}
     __VPtr< type >(TADDR addr) : __TPtrBase(addr) {}
     explicit __VPtr< type >(__TPtrBase addr)
@@ -1338,7 +1338,7 @@ public:
     {
         m_addr = DacGetTargetAddrForHostAddr(host, true);
     }
-    
+
     __VPtr< type >& operator=(const __TPtrBase& ptr)
     {
         m_addr = ptr.m_addr;
@@ -1358,7 +1358,7 @@ public:
     {
         return (type*)DacInstantiateClassByVTable(m_addr, sizeof(type), true);
     }
-    
+
     bool operator==(const __VPtr< type >& ptr) const
     {
         return m_addr == ptr.m_addr;
@@ -1796,7 +1796,7 @@ public:
         m_addr = addr;
         return *this;
     }
-    
+
     // note, no marshalling operators (type* conversion, operator ->, operator*)
     // A void* can't be marshalled because we don't know how much to copy
 
@@ -1989,7 +1989,7 @@ namespace dac_imp
         { return addr; }
     };
 
-    // Handles 
+    // Handles
     template <typename TypeT>
     struct conversionHelper<TypeT * &>
     {
@@ -2280,7 +2280,7 @@ typedef void** PTR_PTR_VOID;
 template <typename Tgt, typename Src>
 inline Tgt dac_cast(Src src)
 {
-#ifdef DACCESS_COMPILE 
+#ifdef DACCESS_COMPILE
     // In DAC builds, first get a TADDR for the source, then create the
     // appropriate destination instance.
     TADDR addr = dac_imp::getTaddr(src);
@@ -2360,12 +2360,12 @@ typedef DPTR(TADDR) PTR_PCODE;
 //
 //----------------------------------------------------------------------------
 
-#if !defined(_DEBUG_IMPL) && defined(_DEBUG) && !defined(DACCESS_COMPILE) 
+#if !defined(_DEBUG_IMPL) && defined(_DEBUG) && !defined(DACCESS_COMPILE)
 #define _DEBUG_IMPL 1
 #endif
 
 // Helper macro for tracking EnumMemoryRegions progress.
-#if 0 
+#if 0
 #define EMEM_OUT(args) DacWarning args
 #else // !0
 #define EMEM_OUT(args)

@@ -7,7 +7,7 @@ PROBE_SAVE_FLAGS_EVERYTHING     equ DEFAULT_FRAME_SAVE_FLAGS + PTFF_SAVE_ALL_SCR
 PROBE_SAVE_FLAGS_RAX_IS_GCREF   equ DEFAULT_FRAME_SAVE_FLAGS + PTFF_SAVE_RAX + PTFF_RAX_IS_GCREF
 
 ;;
-;; See PUSH_COOP_PINVOKE_FRAME, this macro is very similar, but also saves RAX and accepts the register 
+;; See PUSH_COOP_PINVOKE_FRAME, this macro is very similar, but also saves RAX and accepts the register
 ;; bitmask in RCX
 ;;
 ;; On entry:
@@ -18,7 +18,7 @@ PROBE_SAVE_FLAGS_RAX_IS_GCREF   equ DEFAULT_FRAME_SAVE_FLAGS + PTFF_SAVE_RAX + P
 ;;
 ;; INVARIANTS
 ;; - The macro assumes it is called from a prolog, prior to a frame pointer being setup.
-;; - All preserved registers remain unchanged from their values in managed code. 
+;; - All preserved registers remain unchanged from their values in managed code.
 ;;
 PUSH_PROBE_FRAME macro threadReg, trashReg, extraStack, BITMASK
 
@@ -51,7 +51,7 @@ endm
 
 ;;
 ;; Remove the frame from a previous call to PUSH_PROBE_FRAME from the top of the stack and restore preserved
-;; registers and return value to their values from before the probe was called (while also updating any 
+;; registers and return value to their values from before the probe was called (while also updating any
 ;; object refs or byrefs).
 ;;
 ;; NOTE: does NOT deallocate the 'extraStack' portion of the stack, the user of this macro must do that.
@@ -74,12 +74,12 @@ POP_PROBE_FRAME macro extraStack
 endm
 
 ;;
-;; Macro to clear the hijack state. This is safe to do because the suspension code will not Unhijack this 
+;; Macro to clear the hijack state. This is safe to do because the suspension code will not Unhijack this
 ;; thread if it finds it at an IP that isn't managed code.
 ;;
 ;; Register state on entry:
 ;;  RDX: thread pointer
-;;  
+;;
 ;; Register state on exit:
 ;;  RCX: trashed
 ;;
@@ -91,12 +91,12 @@ endm
 
 
 ;;
-;; The prolog for all GC suspension hijacks (normal and stress). Fixes up the hijacked return address, and 
+;; The prolog for all GC suspension hijacks (normal and stress). Fixes up the hijacked return address, and
 ;; clears the hijack state.
 ;;
 ;; Register state on entry:
 ;;  All registers correct for return to the original return address.
-;;  
+;;
 ;; Register state on exit:
 ;;  RCX: trashed
 ;;  RDX: thread pointer
@@ -105,7 +105,7 @@ FixupHijackedCallstack macro
 
         ;; rdx <- GetThread(), TRASHES rcx
         INLINE_GETTHREAD rdx, rcx
-        
+
         ;;
         ;; Fix the stack by pushing the original return address
         ;;
@@ -120,7 +120,7 @@ endm
 ;;
 ;; Register state on entry:
 ;;  RBX: thread pointer
-;;  
+;;
 ;; Register state on exit:
 ;;  RBX: thread pointer
 ;;  All other registers trashed
@@ -193,8 +193,8 @@ LEAF_ENTRY RhpGcStressHijackByref, _TEXT
 LEAF_END RhpGcStressHijackByref, _TEXT
 
 ;;
-;; Worker for our GC stress probes.  Do not call directly!!  
-;; Instead, go through RhpGcStressHijack{Scalar|Object|Byref}. 
+;; Worker for our GC stress probes.  Do not call directly!!
+;; Instead, go through RhpGcStressHijack{Scalar|Object|Byref}.
 ;; This worker performs the GC Stress work and returns to the original return address.
 ;;
 ;; Register state on entry:
@@ -235,7 +235,7 @@ NESTED_ENTRY RhpGcProbe, _TEXT
         jnz         Abort
         POP_PROBE_FRAME 0
         ret
-Abort:  
+Abort:
         POP_PROBE_FRAME 0
         mov         rcx, STATUS_REDHAWK_THREAD_ABORT
         pop         rdx         ;; return address as exception RIP
@@ -253,7 +253,7 @@ RhpHijackForGcStress_FrameSize equ SIZEOF__PAL_LIMITED_CONTEXT + 6*10h + 2*8h + 
 ;
 ; Called at the beginning of the epilog when a method is bound with /gcstress
 ;
-; N.B. -- Leaf frames may not have aligned the stack or reserved any scratch space on the stack.  Also, in 
+; N.B. -- Leaf frames may not have aligned the stack or reserved any scratch space on the stack.  Also, in
 ;         order to have a resonable stacktrace in the debugger, we must use the .pushframe unwind directive.
 ;
 ; N.B. #2 -- The "EH jump epilog" codegen depends on rcx/rdx being preserved across this call.  We currently
@@ -267,7 +267,7 @@ NESTED_ENTRY RhpHijackForGcStress, _TEXT
         ;; Align the stack
         and         rsp, -16
 
-        ;; Push the expected "machine frame" for the unwinder to see.  All that it looks at is the RSP and  
+        ;; Push the expected "machine frame" for the unwinder to see.  All that it looks at is the RSP and
         ;; RIP, so we push zero for the others.
         xor     r8, r8
         push    r8              ;; just aligning the stack
@@ -283,7 +283,7 @@ NESTED_ENTRY RhpHijackForGcStress, _TEXT
         alloc_stack     RhpHijackForGcStress_FrameSize
         END_PROLOGUE
 
-        ;; Save xmm scratch regs -- this is probably overkill, only the return value reg is 
+        ;; Save xmm scratch regs -- this is probably overkill, only the return value reg is
         ;; likely to be interesting at this point, but it's a bit ambiguous.
         movdqa      [rsp + 20h + 0*10h], xmm0
         movdqa      [rsp + 20h + 1*10h], xmm1
@@ -299,7 +299,7 @@ NESTED_ENTRY RhpHijackForGcStress, _TEXT
         ;; Setup a PAL_LIMITED_CONTEXT that looks like what you'd get if you had suspended this thread at the
         ;; IP after the call to this helper.
         ;;
-        ;; This is very likely overkill since the calculation of the return address should only need RSP and 
+        ;; This is very likely overkill since the calculation of the return address should only need RSP and
         ;; RBP, but this is test code, so I'm not too worried about efficiency.
         ;;
         mov         [rsp + 20h + 6*10h + 2*8h + OFFSETOF__PAL_LIMITED_CONTEXT__IP],  r11     ; rip at callsite
@@ -342,19 +342,19 @@ endif ;; FEATURE_GC_STRESS
 
 
 ;;
-;; The following functions are _jumped_ to when we need to transfer control from one method to another for EH 
+;; The following functions are _jumped_ to when we need to transfer control from one method to another for EH
 ;; dispatch. These are needed to properly coordinate with the GC hijacking logic. We are essentially replacing
-;; the return from the throwing method with a jump to the handler in the caller, but we need to be aware of 
-;; any return address hijack that may be in place for GC suspension. These routines use a quick test of the 
-;; return address against a specific GC hijack routine, and then fixup the stack pointer to what it would be 
-;; after a real return from the throwing method. Then, if we are not hijacked we can simply jump to the 
+;; the return from the throwing method with a jump to the handler in the caller, but we need to be aware of
+;; any return address hijack that may be in place for GC suspension. These routines use a quick test of the
+;; return address against a specific GC hijack routine, and then fixup the stack pointer to what it would be
+;; after a real return from the throwing method. Then, if we are not hijacked we can simply jump to the
 ;; handler in the caller.
-;; 
-;; If we are hijacked, then we jump to a routine that will unhijack appropriatley and wait for the GC to 
+;;
+;; If we are hijacked, then we jump to a routine that will unhijack appropriatley and wait for the GC to
 ;; complete. There are also variants for GC stress.
 ;;
-;; Note that at this point we are eiher hijacked or we are not, and this will not change until we return to 
-;; managed code. It is an invariant of the system that a thread will only attempt to hijack or unhijack 
+;; Note that at this point we are eiher hijacked or we are not, and this will not change until we return to
+;; managed code. It is an invariant of the system that a thread will only attempt to hijack or unhijack
 ;; another thread while the target thread is suspended in managed code, and this is _not_ managed code.
 ;;
 ;; Register state on entry:
@@ -363,7 +363,7 @@ endif ;; FEATURE_GC_STRESS
 ;;  RDX: handler address we want to jump to.
 ;;  RBX, RSI, RDI, RBP, and R12-R15 are all already correct for return to the caller.
 ;;  The stack still contains the return address.
-;;  
+;;
 ;; Register state on exit:
 ;;  RSP: what it would be after a complete return to the caler.
 ;;  RDX: TRASHED
@@ -408,7 +408,7 @@ endif
 ;;  RDX: handler address we want to jump to.
 ;;  RBX, RSI, RDI, RBP, and R12-R15 are all already correct for return to the caller.
 ;;  The stack is as if we are just about to returned from the call
-;;  
+;;
 ;; Register state on exit:
 ;;  RAX: reference to the exception object
 ;;  RCX: scratch
@@ -421,7 +421,7 @@ EHJumpProbeProlog macro
 
         ;; rdx <- GetThread(), TRASHES rcx
         INLINE_GETTHREAD rdx, rcx
-        
+
         ;; Fix the stack by patching the original return address
         mov         rcx, [rdx + OFFSETOF__Thread__m_pvHijackedReturnAddress]
         mov         [rsp + EHJumpProbeProlog_extraStack], rcx
@@ -435,14 +435,14 @@ EHJumpProbeProlog macro
 endm
 
 ;;
-;; Macro to re-adjust the location of the EH object reference, cleanup the frame, and make the 
+;; Macro to re-adjust the location of the EH object reference, cleanup the frame, and make the
 ;; final jump to the handler for EH jump probe funcs.
 ;;
 ;; Register state on entry:
 ;;  RAX: reference to the exception object
 ;;  RCX: scratch
 ;;  RDX: scratch
-;;  
+;;
 ;; Register state on exit:
 ;;  RSP: correct for return to the caller
 ;;  RCX: reference to the exception object
@@ -466,7 +466,7 @@ endm
 ;;  RDX: handler address we want to jump to.
 ;;  RBX, RSI, RDI, RBP, and R12-R15 are all already correct for return to the caller.
 ;;  The stack is as if we have tail called to this function (rsp points to return address).
-;;        
+;;
 ;; Register state on exit:
 ;;  RSP: correct for return to the caller
 ;;  RBP: previous ebp frame
@@ -504,7 +504,7 @@ ifdef FEATURE_GC_STRESS
 ;;  RDX: handler address we want to jump to.
 ;;  RBX, RSI, RDI, RBP, and R12-R15 are all already correct for return to the caller.
 ;;  The stack is as if we have tail called to this function (rsp points to return address).
-;;        
+;;
 ;; Register state on exit:
 ;;  RSP: correct for return to the caller
 ;;  RBP: previous ebp frame
@@ -545,13 +545,13 @@ NESTED_ENTRY RhpTrapToGC, _TEXT
     sizeof_InitialPushedArgs    equ 2*8             ;; eflags, return value
     sizeof_FixedFrame           equ sizeof_OutgoingScratchSpace + sizeof_PInvokeFrame + sizeof_XmmAlignPad + sizeof_XmmSave + sizeof_MachineFrame
 
-        ;; On the stack on entry: 
-        ;;   [rsp     ]  -> Return address 
+        ;; On the stack on entry:
+        ;;   [rsp     ]  -> Return address
 
         ;; save eflags before we trash them
         pushfq
 
-        ;; What we want to get to: 
+        ;; What we want to get to:
         ;;
         ;;   [rsp     ]  -> outgoing scratch area
         ;;
@@ -606,7 +606,7 @@ NESTED_ENTRY RhpTrapToGC, _TEXT
         sub         rsp, sizeof_XmmAlignPad + sizeof_XmmSave + sizeof_MachineFrame + 16 ; +8 to save RSP, +8 to re-align PSP,
         push        r11                         ; save incoming R11 into save location
         lea         r11, [rsp + 8 + sizeof_XmmAlignPad + sizeof_XmmSave + sizeof_MachineFrame + 16 + sizeof_InitialPushedArgs]
-        
+
     PspCalculated:
         push        r10                         ; save incoming R10 into save location
         xor         r10d, r10d
@@ -762,7 +762,7 @@ DontRestoreXmmAgain:
         pop         r15
         pop         rax                     ; RSP
         pop         rax                     ; RAX save
-        pop         rcx                     
+        pop         rcx
         pop         rdx
         pop         r8
         pop         r9
@@ -772,15 +772,15 @@ DontRestoreXmmAgain:
         ;; restore PSP
         ;; 2F0h -> offset of the PSP area
         ;; 0B8h -> offset of the end of the integer register area which is already popped
-        mov         rsp, [rsp + 2f0h - 0b8h]    
+        mov         rsp, [rsp + 2f0h - 0b8h]
 
         ;; RSP is PSP at this point and the stack looks like this:
         ;;   [PSP - 10] -> eflags save
         ;;   [PSP -  8] -> return address
         ;;   [PSP]      -> caller's frame
         ;;
-        ;; The final step is to restore eflags and return 
-        
+        ;; The final step is to restore eflags and return
+
         lea         rsp, [rsp - 10h]
         jz          @f          ;; result of the test instruction before the pops above
         popfq                   ;; restore flags

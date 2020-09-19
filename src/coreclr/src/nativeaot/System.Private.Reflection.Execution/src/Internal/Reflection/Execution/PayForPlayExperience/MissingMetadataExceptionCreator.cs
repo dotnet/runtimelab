@@ -171,7 +171,7 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
             {
                 if (type.IsArray)
                 {
-                    // Multidim arrays. This is the one case where GetElementType() isn't pay-for-play safe so 
+                    // Multidim arrays. This is the one case where GetElementType() isn't pay-for-play safe so
                     // talk to the diagnostic mapping tables directly if possible or give up.
                     if (!hasRuntimeTypeHandle)
                         return null;

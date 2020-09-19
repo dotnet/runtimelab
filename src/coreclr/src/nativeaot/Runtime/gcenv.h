@@ -158,7 +158,7 @@ public:
         GCSTRESS_UNIQUE             = 16,   // GC only on a unique stack trace
     };
 
-    // This is treated like a constructor--it is not allowed to fail.  We have it like this because we don't 
+    // This is treated like a constructor--it is not allowed to fail.  We have it like this because we don't
     // have a CRT to run a static constructor for us.  For now, at least, we don't want to do any heavy-weight
     // snooping of the environment to control any of these settings, so don't add any code like that here.
     void Construct()

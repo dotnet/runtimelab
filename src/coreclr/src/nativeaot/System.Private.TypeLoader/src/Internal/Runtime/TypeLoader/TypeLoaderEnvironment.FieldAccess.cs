@@ -254,7 +254,7 @@ namespace Internal.Runtime.TypeLoader
         }
 
         /// <summary>
-        /// Resolve a given 32-bit integer (staticFieldRVA) representing a static field address. 
+        /// Resolve a given 32-bit integer (staticFieldRVA) representing a static field address.
         /// For "local" static fields residing in the module given by moduleHandle, staticFieldRVA
         /// directly contains the RVA of the static field. For remote static fields residing in other
         /// modules, staticFieldRVA has the highest bit set (FieldAccessFlags.RemoteStaticFieldRVA)

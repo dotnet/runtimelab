@@ -117,7 +117,7 @@ UInt32 EtwCallback(UInt32 IsEnabled, RH_ETW_CONTEXT * pContext)
 
     // Special check for the runtime provider's GCHeapCollectKeyword.  Profilers
     // flick this to force a full GC.
-    if (IsEnabled && 
+    if (IsEnabled &&
         (pContext->RegistrationHandle == Microsoft_Windows_Redhawk_GC_PublicHandle) &&
         GCHeapUtilities::IsGCHeapInitialized() &&
         ((pContext->MatchAnyKeyword & CLR_GCHEAPCOLLECT_KEYWORD) != 0))
@@ -158,7 +158,7 @@ CrstStatic g_SuspendEELock;
 #endif // _MSC_VER
 EEType g_FreeObjectEEType;
 
-// static 
+// static
 bool RedhawkGCInterface::InitializeSubsystems()
 {
     g_pConfig->Construct();
@@ -203,7 +203,7 @@ bool RedhawkGCInterface::InitializeSubsystems()
     // only the DAC will read from it. This forces the linker to include
     // g_gcDacGlobals.
     volatile void* _dummy = g_gcDacGlobals;
-    
+
     // Initialize the GC subsystem.
     hr = g_pGCHeap->Initialize();
     if (FAILED(hr))
@@ -319,7 +319,7 @@ void RedhawkGCInterface::ReleaseAllocContext(gc_alloc_context * pAllocContext)
     GCHeapUtilities::GetGCHeap()->FixAllocContext(pAllocContext, NULL, NULL);
 }
 
-// static 
+// static
 void RedhawkGCInterface::WaitForGCCompletion()
 {
     GCHeapUtilities::GetGCHeap()->WaitUntilGCComplete();
@@ -356,7 +356,7 @@ bool IsOnReadablePortionOfThread(EnumGcRefScanContext * pSc, PTR_VOID pointer)
     {
         return false;
     }
-    
+
     // If the stack_limit is 0, then it wasn't set properly, and the check below will not
     // operate correctly.
     ASSERT(pSc->stack_limit != 0);
@@ -377,9 +377,9 @@ bool IsOnReadablePortionOfThread(EnumGcRefScanContext * pSc, PTR_VOID pointer)
 #define CONSERVATIVE_REGION_MAGIC_NUMBER 0x4F09E0A9
 #endif
 
-// This is a structure that is created by executing runtime code in order to report a conservative 
+// This is a structure that is created by executing runtime code in order to report a conservative
 // region. In managed code if there is a pinned byref pointer to one of this (with the appropriate
-// magic number set in it, and a hash that matches up) then the region from regionPointerLow to 
+// magic number set in it, and a hash that matches up) then the region from regionPointerLow to
 // regionPointerHigh will be reported conservatively. This can only be used to report memory regions
 // on the current stack and the structure must itself be located on the stack.
 struct ConservativelyReportedRegionDesc
@@ -391,7 +391,7 @@ struct ConservativelyReportedRegionDesc
     PTR_VOID regionPointerLow;
     PTR_VOID regionPointerHigh;
     uintptr_t hash;
-    
+
     static uintptr_t CalculateHash(uintptr_t h1, uintptr_t h2, uintptr_t h3)
     {
         uintptr_t hash = h1;
@@ -421,7 +421,7 @@ static void ReportExplicitConservativeReportedRegionIfValid(EnumGcRefContext * p
 
     PTR_ConservativelyReportedRegionDesc conservativeRegionDesc = (PTR_ConservativelyReportedRegionDesc)(*pObject);
 
-    // Ensure that conservativeRegionDesc pointer points at a readable memory region 
+    // Ensure that conservativeRegionDesc pointer points at a readable memory region
     if (!IsPtrAligned(PTR_TO_TADDR(conservativeRegionDesc)))
     {
         return;
@@ -465,9 +465,9 @@ static void ReportExplicitConservativeReportedRegionIfValid(EnumGcRefContext * p
 
     // Fourth: Compute a hash of the above numbers. Check to see that the hash matches the hash
     // value stored
-    if (ConservativelyReportedRegionDesc::CalculateHash(CONSERVATIVE_REGION_MAGIC_NUMBER, 
+    if (ConservativelyReportedRegionDesc::CalculateHash(CONSERVATIVE_REGION_MAGIC_NUMBER,
                                                         (uintptr_t)PTR_TO_TADDR(conservativeRegionDesc->regionPointerLow),
-                                                        (uintptr_t)PTR_TO_TADDR(conservativeRegionDesc->regionPointerHigh)) 
+                                                        (uintptr_t)PTR_TO_TADDR(conservativeRegionDesc->regionPointerHigh))
         != conservativeRegionDesc->hash)
     {
         return;
@@ -496,7 +496,7 @@ static void EnumGcRefsCallback(void * hCallback, PTR_PTR_VOID pObject, UInt32 fl
     EnumGcRefContext * pCtx = (EnumGcRefContext *)hCallback;
 
     GcEnumObject((PTR_OBJECTREF)pObject, flags, pCtx->f, pCtx->sc);
-    
+
     const UInt32 interiorPinned = GC_CALL_INTERIOR | GC_CALL_PINNED;
     // If this is an interior pinned pointer, check to see if we're working with a ConservativeRegionDesc
     // and if so, report a conservative region. NOTE: do this only during promotion as conservative
@@ -507,9 +507,9 @@ static void EnumGcRefsCallback(void * hCallback, PTR_PTR_VOID pObject, UInt32 fl
     }
 }
 
-// static 
+// static
 void RedhawkGCInterface::EnumGcRefs(ICodeManager * pCodeManager,
-                                    MethodInfo * pMethodInfo, 
+                                    MethodInfo * pMethodInfo,
                                     PTR_VOID safePointAddress,
                                     REGDISPLAY * pRegisterSet,
                                     void * pfnEnumCallback,
@@ -521,7 +521,7 @@ void RedhawkGCInterface::EnumGcRefs(ICodeManager * pCodeManager,
     ctx.sc = (EnumGcRefScanContext *)pvCallbackData;
     ctx.sc->stack_limit = pRegisterSet->GetSP();
 
-    pCodeManager->EnumGcRefs(pMethodInfo, 
+    pCodeManager->EnumGcRefs(pMethodInfo,
                              safePointAddress,
                              pRegisterSet,
                              &ctx);
@@ -536,7 +536,7 @@ void RedhawkGCInterface::EnumGcRefsInRegionConservatively(PTR_RtuObjectRef pLowe
     GcEnumObjectsConservatively((PTR_OBJECTREF)pLowerBound, (PTR_OBJECTREF)pUpperBound, (EnumGcRefCallbackFunc *)pfnEnumCallback, (EnumGcRefScanContext *)pvCallbackData);
 }
 
-// static 
+// static
 void RedhawkGCInterface::EnumGcRef(PTR_RtuObjectRef pRef, GCRefKind kind, void * pfnEnumCallback, void * pvCallbackData)
 {
     ASSERT((GCRK_Object == kind) || (GCRK_Byref == kind));
@@ -559,7 +559,7 @@ void RedhawkGCInterface::BulkEnumGcObjRef(PTR_RtuObjectRef pRefs, UInt32 cRefs, 
     GcBulkEnumObjects((PTR_OBJECTREF)pRefs, cRefs, (EnumGcRefCallbackFunc *)pfnEnumCallback, (EnumGcRefScanContext *)pvCallbackData);
 }
 
-// static 
+// static
 GcSegmentHandle RedhawkGCInterface::RegisterFrozenSegment(void * pSection, size_t SizeSection)
 {
 #ifdef FEATURE_BASICFREEZE
@@ -574,10 +574,10 @@ GcSegmentHandle RedhawkGCInterface::RegisterFrozenSegment(void * pSection, size_
     return (GcSegmentHandle)GCHeapUtilities::GetGCHeap()->RegisterFrozenSegment(&seginfo);
 #else // FEATURE_BASICFREEZE
     return NULL;
-#endif // FEATURE_BASICFREEZE    
+#endif // FEATURE_BASICFREEZE
 }
 
-// static 
+// static
 void RedhawkGCInterface::UnregisterFrozenSegment(GcSegmentHandle segment)
 {
     GCHeapUtilities::GetGCHeap()->UnregisterFrozenSegment((segment_handle)segment);
@@ -585,7 +585,7 @@ void RedhawkGCInterface::UnregisterFrozenSegment(GcSegmentHandle segment)
 
 EXTERN_C UInt32_BOOL g_fGcStressStarted = UInt32_FALSE; // UInt32_BOOL because asm code reads it
 #ifdef FEATURE_GC_STRESS
-// static 
+// static
 void RedhawkGCInterface::StressGc()
 {
     // The GarbageCollect operation below may trash the last win32 error. We save the error here so that it can be
@@ -831,12 +831,12 @@ void GCToEEInterface::RestartEE(bool /*bFinishedGC*/)
 void GCToEEInterface::GcStartWork(int condemned, int /*max_gen*/)
 {
     DebuggerHook::OnBeforeGcCollection();
-    
+
     // Invoke any registered callouts for the start of the collection.
     RestrictedCallouts::InvokeGcCallouts(GCRC_StartCollection, condemned);
 }
 
-// EE can perform post stack scanning action, while the user threads are still suspended 
+// EE can perform post stack scanning action, while the user threads are still suspended
 void GCToEEInterface::AfterGcScanRoots(int condemned, int /*max_gen*/, ScanContext* /*sc*/)
 {
     // Invoke any registered callouts for the end of the mark phase.
@@ -1095,9 +1095,9 @@ void GCToEEInterface::DiagGCEnd(size_t index, int gen, int reason, bool fConcurr
 // Note on last parameter: when calling this for bgc, only ETW
 // should be sending these events so that existing profapi profilers
 // don't get confused.
-void WalkMovedReferences(uint8_t* begin, uint8_t* end, 
+void WalkMovedReferences(uint8_t* begin, uint8_t* end,
                          ptrdiff_t reloc,
-                         void* context, 
+                         void* context,
                          bool fCompacting,
                          bool fBGC)
 {
@@ -1198,8 +1198,8 @@ void GCToEEInterface::StompWriteBarrier(WriteBarrierParameters* args)
         g_card_bundle_table = args->card_bundle_table;
 #endif
 
-        // IMPORTANT: managed heap segments may surround unmanaged/stack segments. In such cases adding another managed 
-        //     heap segment may put a stack/unmanaged write inside the new heap range. However the old card table would 
+        // IMPORTANT: managed heap segments may surround unmanaged/stack segments. In such cases adding another managed
+        //     heap segment may put a stack/unmanaged write inside the new heap range. However the old card table would
         //     not cover it. Therefore we must ensure that the write barriers see the new table before seeing the new bounds.
         //
         //     On architectures with strong ordering, we only need to prevent compiler reordering.
@@ -1245,7 +1245,7 @@ void GCToEEInterface::StompWriteBarrier(WriteBarrierParameters* args)
         assert(args->is_runtime_suspended && "the runtime must be suspended here!");
 
         g_card_table = args->card_table;
-        
+
 #ifdef FEATURE_MANUALLY_MANAGED_CARD_BUNDLES
         assert(g_card_bundle_table == nullptr);
         g_card_bundle_table = args->card_bundle_table;
@@ -1476,7 +1476,7 @@ void GCToEEInterface::FreeStringConfigValue(const char* value)
 
 #endif // !DACCESS_COMPILE
 
-// NOTE: this method is not in thread.cpp because it needs access to the layout of alloc_context for DAC to know the 
+// NOTE: this method is not in thread.cpp because it needs access to the layout of alloc_context for DAC to know the
 // size, but thread.cpp doesn't generally need to include the GC environment headers for any other reason.
 gc_alloc_context * Thread::GetAllocContext()
 {

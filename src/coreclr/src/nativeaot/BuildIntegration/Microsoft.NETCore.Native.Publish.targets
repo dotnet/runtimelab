@@ -22,7 +22,7 @@
   <Target Name="ComputeLinkedFilesToPublish"
           BeforeTargets="ComputeFilesToPublish;ComputeResolvedFilesToPublishList"
           DependsOnTargets="_ComputeAssembliesToCompileToNative;LinkNative">
-    
+
     <ItemGroup>
       <ResolvedAssembliesToPublish Remove="@(_AssembliesToSkipPublish)" />
       <ResolvedAssembliesToPublish Include="@(_LinkedResolvedAssemblies)" />
@@ -30,14 +30,14 @@
       <_ResolvedCopyLocalPublishAssets Remove="@(_AssembliesToSkipPublish)" />
       <_ResolvedCopyLocalPublishAssets Include="@(_LinkedResolvedAssemblies)" />
     </ItemGroup>
-    
+
     <ItemGroup>
       <_NativeIntermediateAssembly Include="@(IntermediateAssembly->'$(NativeOutputPath)%(Filename)$(NativeBinaryExt)')" />
       <IntermediateAssembly Remove="@(IntermediateAssembly)" />
       <IntermediateAssembly Include="@(_NativeIntermediateAssembly)" />
     </ItemGroup>
   </Target>
-  
+
   <!--
     Filter the input publish file list selecting managed assemblies for compilation.
     Also produces _AssembliesToSkipPublish which chops out things from the publish
@@ -57,7 +57,7 @@
     <Error Condition="'$(DisableUnsupportedError)' != 'true' and '$(OS)' != 'Windows_NT' and $(RuntimeIdentifier.StartsWith('win'))" Text="Cross-compilation is not supported yet. https://github.com/dotnet/corert/issues/5458" />
     <Error Condition="'$(DisableUnsupportedError)' != 'true' and !$(RuntimeIdentifier.EndsWith('x64'))" Text="$(RuntimeIdentifier) not supported yet. https://github.com/dotnet/corert/issues/4589" />
 
-    <!-- CoreRT SDK and Framework Assemblies need to be defined to avoid CoreCLR implementations being set as compiler inputs -->  
+    <!-- CoreRT SDK and Framework Assemblies need to be defined to avoid CoreCLR implementations being set as compiler inputs -->
     <Error Condition="'@(PrivateSdkAssemblies)' == ''" Text="The PrivateSdkAssemblies ItemGroup is required for _ComputeAssembliesToCompileToNative" />
     <Error Condition="'@(FrameworkAssemblies)' == ''" Text="The FrameworkAssemblies ItemGroup is required for _ComputeAssembliesToCompileToNative" />
 
@@ -67,7 +67,7 @@
       <Output TaskParameter="ManagedAssemblies" ItemName="_ManagedResolvedAssembliesToPublish" />
       <Output TaskParameter="AssembliesToSkipPublish" ItemName="_AssembliesToSkipPublish" />
     </ComputeManagedAssembliesToCompileToNative>
-    
+
   </Target>
 
   <Target Name="CopyNativeBinary" AfterTargets="Publish">
@@ -78,10 +78,10 @@
 
   <Target Name="CopyNativePdb" Condition="'$(DebugType)' != 'None' and '$(TargetOS)' == 'Windows_NT' and '$(NativeLib)' != 'Static'" AfterTargets="Publish">
     <!-- dotnet CLI produces managed debug symbols - substitute with those we generated during native compilation -->
-    <Delete Files="$(PublishDir)\$(TargetName).pdb"/>    
-    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).pdb" DestinationFolder="$(PublishDir)" />  
+    <Delete Files="$(PublishDir)\$(TargetName).pdb"/>
+    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).pdb" DestinationFolder="$(PublishDir)" />
   </Target>
-  
+
   <Target Name="CopyJitLibrary" Condition="'$(ExperimentalJitSupport)' == 'true'" AfterTargets="Publish">
     <ItemGroup>
       <ClrJitIlc Include="$(IlcPath)\tools\clrjitilc.*" />

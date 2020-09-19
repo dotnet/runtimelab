@@ -192,7 +192,7 @@ namespace System.Reflection.Runtime.General
             }
 
 
-            // If we got here, the typeReference was to a non-nested type. 
+            // If we got here, the typeReference was to a non-nested type.
             if (parentType == HandleType.NamespaceReference)
             {
                 NamespaceReferenceHandle namespaceReferenceHandle = parent.ToNamespaceReferenceHandle(reader);

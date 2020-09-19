@@ -47,7 +47,7 @@ OFFSETOF_UniversalThunk EQU 4
     ;; }
     ;;
     ;; sp-4 - Points at CommonCallingStubInputData
-    ;;  
+    ;;
     ;;
     LEAF_ENTRY __jmpstub__CallingConventionConverter_CommonCallingStub
         ldr     r12, [sp, #-4]

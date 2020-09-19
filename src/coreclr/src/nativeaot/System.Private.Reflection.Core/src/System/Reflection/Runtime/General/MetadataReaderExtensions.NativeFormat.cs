@@ -694,7 +694,7 @@ namespace System.Reflection.Runtime.General
                 back--;
             }
         }
-        
+
         public static string ToFullyQualifiedTypeName(this NamespaceReferenceHandle namespaceReferenceHandle, string typeName, MetadataReader reader)
         {
             StringBuilder fullName = new StringBuilder(64);

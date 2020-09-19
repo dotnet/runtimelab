@@ -11,7 +11,7 @@ namespace System.Reflection
     public readonly struct CustomAttributeNamedArgument
     {
         // This constructor is the one used by .Net Native as the current metadata format only contains the name and the "isField" value,
-        // not the actual member. To keep .Net Native running as before, we'll use the name and isField as the principal data and 
+        // not the actual member. To keep .Net Native running as before, we'll use the name and isField as the principal data and
         // construct the MemberInfo on demand.
         internal CustomAttributeNamedArgument(Type attributeType, string memberName, bool isField, CustomAttributeTypedArgument typedValue)
         {

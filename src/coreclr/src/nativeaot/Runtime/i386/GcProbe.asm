@@ -14,12 +14,12 @@ DEFAULT_PROBE_SAVE_FLAGS        equ PTFF_SAVE_ALL_PRESERVED + PTFF_SAVE_RSP
 PROBE_SAVE_FLAGS_EVERYTHING     equ DEFAULT_PROBE_SAVE_FLAGS + PTFF_SAVE_ALL_SCRATCH
 PROBE_SAVE_FLAGS_RAX_IS_GCREF   equ DEFAULT_PROBE_SAVE_FLAGS + PTFF_SAVE_RAX + PTFF_RAX_IS_GCREF
 ;;
-;; Macro to clear the hijack state. This is safe to do because the suspension code will not Unhijack this 
+;; Macro to clear the hijack state. This is safe to do because the suspension code will not Unhijack this
 ;; thread if it finds it at an IP that isn't managed code.
 ;;
 ;; Register state on entry:
 ;;  EDX: thread pointer
-;;  
+;;
 ;; Register state on exit:
 ;;  No changes
 ;;
@@ -34,7 +34,7 @@ endm
 ;;
 ;; Register state on entry:
 ;;  All registers correct for return to the original return address.
-;;  
+;;
 ;; Register state on exit:
 ;;  EAX: not trashed or saved
 ;;  EBP: new EBP frame with correct return address
@@ -70,7 +70,7 @@ endm
 ;;  EBP: ebp frame
 ;;  ECX, EDX: trashed
 ;;  All other registers correct for return to the original return address.
-;;  
+;;
 ;; Register state on exit:
 ;;  All registers restored as they were when the hijack was first reached.
 ;;
@@ -89,7 +89,7 @@ endm
 ;;  BITMASK_REG_OR_VALUE: register bitmask, PTTR_SAVE_ALL_PRESERVED at a minimum
 ;;  EBP: ebp frame setup with correct return address
 ;;  ESP: points to saved scratch registers
-;;  
+;;
 ;; Register state on exit:
 ;;  ESP: pointer to a PInvokeTransitionFrame on the stack
 ;;  EBX: thread pointer
@@ -128,7 +128,7 @@ endm
 ;;
 ;; Register state on entry:
 ;;  ESP: pointer to a PInvokeTransitionFrame on the stack
-;;  
+;;
 ;; Register state on exit:
 ;;  ESP: points to saved scratch registers, PInvokeTransitionFrame removed
 ;;  EBX: restored
@@ -152,7 +152,7 @@ endm
 ;;  ESP: pointer to a PInvokeTransitionFrame on the stack
 ;;  EBX: thread pointer
 ;;  EBP: EBP frame
-;;  
+;;
 ;; Register state on exit:
 ;;  ESP: pointer to a PInvokeTransitionFrame on the stack
 ;;  EBX: thread pointer
@@ -185,7 +185,7 @@ extern RhpThrowHwEx : proc
 ;;  EDX: thread pointer
 ;;  EBP: EBP frame
 ;;  ESP: scratch registers pushed (ECX & EDX)
-;;  
+;;
 ;; Register state on exit:
 ;;  All registers restored as they were when the hijack was first reached.
 ;;
@@ -202,7 +202,7 @@ SynchronousRendezVous:
 
         mov         edx, [esp + OFFSETOF__PInvokeTransitionFrame__m_Flags]
         ;;
-        ;; Restore preserved registers -- they may have been updated by GC 
+        ;; Restore preserved registers -- they may have been updated by GC
         ;;
         PopProbeFrame
 
@@ -230,7 +230,7 @@ ifdef FEATURE_GC_STRESS
 ;;  EBX: thread pointer
 ;;  EBP: EBP frame
 ;;  ESP: pointer to a PInvokeTransitionFrame on the stack
-;;  
+;;
 ;; Register state on exit:
 ;;  ESP: pointer to a PInvokeTransitionFrame on the stack
 ;;  EBP: EBP frame
@@ -242,7 +242,7 @@ StressGC macro
 endm
 
 ;;
-;; Worker for our GC stress probes.  Do not call directly!!  
+;; Worker for our GC stress probes.  Do not call directly!!
 ;; Instead, go through RhpGcStressHijack. This performs the GC Stress
 ;; work and returns to the original return address.
 ;;
@@ -251,7 +251,7 @@ endm
 ;;  ECX: register bitmask
 ;;  EBP: EBP frame
 ;;  ESP: scratch registers pushed (ECX and EDX)
-;;  
+;;
 ;; Register state on exit:
 ;;  All registers restored as they were when the hijack was first reached.
 ;;
@@ -261,7 +261,7 @@ RhpGcStressProbe  proc
         StressGC
 
         ;;
-        ;; Restore preserved registers -- they may have been updated by GC 
+        ;; Restore preserved registers -- they may have been updated by GC
         ;;
         PopProbeFrame
 
@@ -323,12 +323,12 @@ FASTCALL_ENDFUNC
 FASTCALL_FUNC RhpHijackForGcStress, 0
         push        ebp
         mov         ebp, esp
-        
+
         ;;
         ;; Setup a PAL_LIMITED_CONTEXT that looks like what you'd get if you had suspended this thread at the
         ;; IP after the call to this helper.
         ;;
-        
+
         push        edx
         push        ecx
         push        ebx
@@ -359,19 +359,19 @@ FASTCALL_ENDFUNC
 endif ;; FEATURE_GC_STRESS
 
 ;;
-;; The following functions are _jumped_ to when we need to transfer control from one method to another for EH 
+;; The following functions are _jumped_ to when we need to transfer control from one method to another for EH
 ;; dispatch. These are needed to properly coordinate with the GC hijacking logic. We are essentially replacing
-;; the return from the throwing method with a jump to the handler in the caller, but we need to be aware of 
-;; any return address hijack that may be in place for GC suspension. These routines use a quick test of the 
-;; return address against a specific GC hijack routine, and then fixup the stack pointer to what it would be 
-;; after a real return from the throwing method. Then, if we are not hijacked we can simply jump to the 
+;; the return from the throwing method with a jump to the handler in the caller, but we need to be aware of
+;; any return address hijack that may be in place for GC suspension. These routines use a quick test of the
+;; return address against a specific GC hijack routine, and then fixup the stack pointer to what it would be
+;; after a real return from the throwing method. Then, if we are not hijacked we can simply jump to the
 ;; handler in the caller.
-;; 
-;; If we are hijacked, then we jump to a routine that will unhijack appropriatley and wait for the GC to 
+;;
+;; If we are hijacked, then we jump to a routine that will unhijack appropriatley and wait for the GC to
 ;; complete. There are also variants for GC stress.
 ;;
-;; Note that at this point we are eiher hijacked or we are not, and this will not change until we return to 
-;; managed code. It is an invariant of the system that a thread will only attempt to hijack or unhijack 
+;; Note that at this point we are eiher hijacked or we are not, and this will not change until we return to
+;; managed code. It is an invariant of the system that a thread will only attempt to hijack or unhijack
 ;; another thread while the target thread is suspended in managed code, and this is _not_ managed code.
 ;;
 ;; Register state on entry:
@@ -380,7 +380,7 @@ endif ;; FEATURE_GC_STRESS
 ;;  EDX: what ESP should be after the return address and arg space are removed.
 ;;  EBX, ESI, EDI, and EBP are all already correct for return to the caller.
 ;;  The stack still contains the return address and the arguments to the call.
-;;  
+;;
 ;; Register state on exit:
 ;;  ESP: what it would be after a complete return to the caller.
 ;;
@@ -397,7 +397,7 @@ ENDIF
         ;; We are not hijacked, so we can return to the handler.
         ;; We return to keep the call/return prediction balanced.
         mov         esp, edx        ; The stack is now as if we have returned from the call.
-        push eax                    ; Push the handler as the return address. 
+        push eax                    ; Push the handler as the return address.
         ret
 
 FASTCALL_ENDFUNC
@@ -424,7 +424,7 @@ endif
 ;;  EDX: scratch
 ;;  EBX, ESI, EDI, and EBP are all already correct for return to the caller.
 ;;  The stack is as if we have returned from the call
-;;  
+;;
 ;; Register state on exit:
 ;;  ESP: ebp frame
 ;;  EBP: ebp frame setup with space reserved for the repaired return address
@@ -440,7 +440,7 @@ EHJumpProbeProlog macro
 endm
 
 ;;
-;; Macro to re-adjust the location of the EH object reference, cleanup the EBP frame, and make the 
+;; Macro to re-adjust the location of the EH object reference, cleanup the EBP frame, and make the
 ;; final jump to the handler for EH jump probe funcs.
 ;;
 ;; Register state on entry:
@@ -449,7 +449,7 @@ endm
 ;;  EBP: ebp frame setup with the correct return (handler) address
 ;;  ECX: scratch
 ;;  EDX: scratch
-;;  
+;;
 ;; Register state on exit:
 ;;  ESP: correct for return to the caller
 ;;  EBP: previous ebp frame
@@ -461,7 +461,7 @@ EHJumpProbeEpilog macro
         pop         eax         ; Recover the handler address.
         pop         ebp         ; Pop the ebp frame we setup.
         pop         edx         ; Pop the original return address, which we do not need.
-        push eax                ; Push the handler as the return address. 
+        push eax                ; Push the handler as the return address.
         ret
 endm
 
@@ -474,7 +474,7 @@ endm
 ;;  EDX: what ESP should be after the return address and arg space are removed.
 ;;  EBX, ESI, EDI, and EBP are all already correct for return to the caller.
 ;;  The stack is as if we have returned from the call
-;;        
+;;
 ;; Register state on exit:
 ;;  ESP: correct for return to the caller
 ;;  EBP: previous ebp frame
@@ -483,7 +483,7 @@ endm
 RhpGCProbeForEHJump proc
         mov         esp, edx        ; The stack is now as if we have returned from the call.
         EHJumpProbeProlog
-        
+
         ;; edx <- GetThread(), TRASHES ecx
         INLINE_GETTHREAD edx, ecx
 
@@ -524,7 +524,7 @@ ifdef FEATURE_GC_STRESS
 ;;  EDX: what ESP should be after the return address and arg space are removed.
 ;;  EBX, ESI, EDI, and EBP are all already correct for return to the caller.
 ;;  The stack is as if we have returned from the call
-;;        
+;;
 ;; Register state on exit:
 ;;  ESP: correct for return to the caller
 ;;  EBP: previous ebp frame
@@ -533,7 +533,7 @@ ifdef FEATURE_GC_STRESS
 RhpGCStressProbeForEHJump proc
         mov         esp, edx        ; The stack is now as if we have returned from the call.
         EHJumpProbeProlog
-        
+
         ;; edx <- GetThread(), TRASHES ecx
         INLINE_GETTHREAD edx, ecx
 

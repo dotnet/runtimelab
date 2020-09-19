@@ -8,7 +8,7 @@
 // startup of the application.
 //
 // ILC creates sections in the output obj file to mark the beginning and end of merged global data.
-// It defines sentinel symbols that are used to get the addresses of the start and end of global data 
+// It defines sentinel symbols that are used to get the addresses of the start and end of global data
 // at runtime. The section names are platform-specific to match platform-specific linker conventions.
 //
 #if defined(_MSC_VER)
@@ -30,7 +30,7 @@ __declspec(allocate(".modules$Z")) void * __modules_z[] = { nullptr };
 //
 #pragma comment(linker, "/merge:.modules=.rdata")
 
-// 
+//
 // Unboxing stubs need to be merged, folded and sorted. They are delimited by two special sections (.unbox$A
 // and .unbox$Z). All unboxing stubs are in .unbox$M sections.
 //

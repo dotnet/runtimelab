@@ -99,12 +99,12 @@ namespace System.Reflection.Runtime.TypeParsing
                         // Common sense would dictate throwing an ArgumentException but that's not what the desktop CLR does.
                         // The desktop CLR treats this case by returning FALSE from TypeName::TypeNameParser::GetIdentifier().
                         // Unfortunately, no one checks this return result. Instead, the CLR keeps parsing (unfortunately, the lexer
-                        // was left in some strange state by the previous failure but typically, this goes unnoticed) and eventually, tries to resolve 
+                        // was left in some strange state by the previous failure but typically, this goes unnoticed) and eventually, tries to resolve
                         // a Type whose name is the empty string. When it can't resolve that type, the CLR throws a TypeLoadException()
                         // complaining about be unable to find a type with the empty name.
                         //
                         // To emulate this accidental behavior, we'll throw a special exception that's caught by the TypeParser.
-                        // 
+                        //
                         throw new IllegalEscapeSequenceException();
                     }
                 }
@@ -116,7 +116,7 @@ namespace System.Reflection.Runtime.TypeParsing
         }
 
         //
-        // Lex the next segment as the assembly name at the end of an assembly-qualified type name. (Do not use for 
+        // Lex the next segment as the assembly name at the end of an assembly-qualified type name. (Do not use for
         // assembly names embedded inside generic type arguments.)
         //
         // Terminated by NUL. There are no escape characters defined by the typename lexer (however, AssemblyName
@@ -145,7 +145,7 @@ namespace System.Reflection.Runtime.TypeParsing
         //
         // Lex the next segment as an assembly name embedded inside a generic argument type.
         //
-        // Terminated by an unescaped ']'. 
+        // Terminated by an unescaped ']'.
         //
         public RuntimeAssemblyName GetNextEmbeddedAssemblyName()
         {
@@ -203,8 +203,8 @@ namespace System.Reflection.Runtime.TypeParsing
         }
 
         //
-        // The desktop typename parser has a strange attitude towards whitespace. It throws away whitespace between punctuation tokens and whitespace 
-        // preceeding identifiers or assembly names (and this cannot be escaped away). But whitespace between the end of an identifier 
+        // The desktop typename parser has a strange attitude towards whitespace. It throws away whitespace between punctuation tokens and whitespace
+        // preceeding identifiers or assembly names (and this cannot be escaped away). But whitespace between the end of an identifier
         // and the punctuation that ends it is *not* ignored.
         //
         // In other words, GetType("   Foo") searches for "Foo" but GetType("Foo   ") searches for "Foo   ".

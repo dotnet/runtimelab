@@ -43,7 +43,7 @@ namespace System.Runtime
         [RuntimeImport(RuntimeLibrary, "RhNewObject")]
         internal static extern object RhNewObject(EETypePtr pEEType);
 
-        [MethodImplAttribute(MethodImplOptions.InternalCall)] 
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhBulkMoveWithWriteBarrier")]
         internal static extern unsafe void RhBulkMoveWithWriteBarrier(ref byte dmem, ref byte smem, uint size);
 

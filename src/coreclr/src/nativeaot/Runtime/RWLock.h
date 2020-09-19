@@ -13,7 +13,7 @@ class ReaderWriterLock
 
 #if 0
     // used to prevent writers from being starved by readers
-    // we currently do not prevent writers from starving readers since writers 
+    // we currently do not prevent writers from starving readers since writers
     // are supposed to be rare.
     bool            m_WriterWaiting;
 #endif

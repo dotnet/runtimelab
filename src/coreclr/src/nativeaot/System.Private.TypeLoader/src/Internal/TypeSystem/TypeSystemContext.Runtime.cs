@@ -374,7 +374,7 @@ namespace Internal.TypeSystem
                     }
                     else
                     {
-                        // Allocation of non RuntimeMethodDescs is not handled by this context, so we can just 
+                        // Allocation of non RuntimeMethodDescs is not handled by this context, so we can just
                         // do a reference equality check here.
                         return value1 == value2;
                     }
@@ -433,7 +433,7 @@ namespace Internal.TypeSystem
 
         /// <summary>
         /// Get a DefType that is the generic instantiation of an open generic type over instantiation arguments
-        /// This looks like a rename of GetInstantiatedType, but isn't because the corert GetInstantiatedType 
+        /// This looks like a rename of GetInstantiatedType, but isn't because the corert GetInstantiatedType
         /// relies on typeDef being a MetadataType, whereas this permits non-metadata types.
         /// </summary>
         public DefType ResolveGenericInstantiation(DefType typeDef, Instantiation arguments)
@@ -566,7 +566,7 @@ namespace Internal.TypeSystem
         private LowLevelList<TypeDesc> _typesToFlushTypeSystemStateFrom;
 
         /// <summary>
-        /// Register the types that will get their attached TypeSystemState flushed if the 
+        /// Register the types that will get their attached TypeSystemState flushed if the
         /// type system context is recycled
         /// </summary>
         internal void RegisterTypeForTypeSystemStateFlushing(TypeDesc type)
@@ -638,8 +638,8 @@ namespace Internal.TypeSystem
                 _ecmaModules = new ModuleToEcmaModuleHashtable(this);
 
             return _ecmaModules.GetOrCreateValue(module);
-        }        
-#endif // ECMA_METADATA_SUPPORT        
+        }
+#endif // ECMA_METADATA_SUPPORT
     }
 
     internal static partial class TypeNameHelper

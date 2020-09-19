@@ -22,9 +22,9 @@ static const int card_byte_shift = 10;
 // This function fills a piece of memory in a GC safe way.  It makes the guarantee
 // that it will fill memory in at least pointer sized chunks whenever possible.
 // Unaligned memory at the beginning and remaining bytes at the end are written bytewise.
-// We must make this guarantee whenever we clear memory in the GC heap that could contain 
-// object references.  The GC or other user threads can read object references at any time, 
-// clearing them bytewise can result in a read on another thread getting incorrect data.  
+// We must make this guarantee whenever we clear memory in the GC heap that could contain
+// object references.  The GC or other user threads can read object references at any time,
+// clearing them bytewise can result in a read on another thread getting incorrect data.
 FORCEINLINE void InlineGCSafeFillMemory(void * mem, size_t size, size_t pv)
 {
     UInt8 * memBytes = (UInt8 *)mem;
@@ -64,7 +64,7 @@ FORCEINLINE void InlineForwardGCSafeCopy(void * dest, const void *src, size_t le
     // regions must be non-overlapping
     ASSERT(dmem <= smem || smem + size <= dmem);
 
-    // copy 4 pointers at a time 
+    // copy 4 pointers at a time
     while (size >= 4 * sizeof(size_t))
     {
         size -= 4 * sizeof(size_t);
@@ -106,7 +106,7 @@ FORCEINLINE void InlineBackwardGCSafeCopy(void * dest, const void *src, size_t l
     // regions must be non-overlapping
     ASSERT(smem <= dmem || dmem + size <= smem);
 
-    // copy 4 pointers at a time 
+    // copy 4 pointers at a time
     while (size >= 4 * sizeof(size_t))
     {
         size -= 4 * sizeof(size_t);
@@ -158,7 +158,7 @@ FORCEINLINE void InlineWriteBarrier(void * dst, void * ref)
 {
     if (((uint8_t*)ref >= g_ephemeral_low) && ((uint8_t*)ref < g_ephemeral_high))
     {
-        // volatile is used here to prevent fetch of g_card_table from being reordered 
+        // volatile is used here to prevent fetch of g_card_table from being reordered
         // with g_lowest/highest_address check above. See comment in code:gc_heap::grow_brick_card_tables.
         uint8_t* pCardByte = (uint8_t *)VolatileLoadWithoutBarrier(&g_card_table) + ((size_t)dst >> LOG2_CLUMP_SIZE);
         if (*pCardByte != 0xFF)
@@ -285,8 +285,8 @@ FORCEINLINE void InlinedBulkWriteBarrier(void* pMemStart, size_t cbMemSize)
 
     // calculate the number of clumps to mark (round_up(end) - start)
     size_t clumpCount = endingClump - startingClump;
-    // VolatileLoadWithoutBarrier() is used here to prevent fetch of g_card_table from being reordered 
-    // with g_lowest/highest_address check at the beginning of this function. 
+    // VolatileLoadWithoutBarrier() is used here to prevent fetch of g_card_table from being reordered
+    // with g_lowest/highest_address check at the beginning of this function.
     uint8_t* card = ((uint8_t*)VolatileLoadWithoutBarrier(&g_card_table)) + startingClump;
 
     // Fill the cards. To avoid cache line thrashing we check whether the cards have already been set before

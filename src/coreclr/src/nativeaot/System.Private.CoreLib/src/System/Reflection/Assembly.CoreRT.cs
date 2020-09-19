@@ -15,7 +15,7 @@ namespace System.Reflection
         private static Assembly GetEntryAssemblyInternal() => Internal.Runtime.CompilerHelpers.StartupCodeHelpers.GetEntryAssembly();
 
         [System.Runtime.CompilerServices.Intrinsic]
-        public static Assembly GetExecutingAssembly() { throw NotImplemented.ByDesign; } //Implemented by toolchain. 
+        public static Assembly GetExecutingAssembly() { throw NotImplemented.ByDesign; } //Implemented by toolchain.
 
         public static Assembly GetCallingAssembly()
         {

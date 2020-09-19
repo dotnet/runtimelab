@@ -32,7 +32,7 @@ struct RH_ETW_CONTEXT
     EVENT_FILTER_DESCRIPTOR * FilterData;
     UInt32                    Flags;
     UInt32                    IsEnabled;
-    UInt8                     Level; 
+    UInt8                     Level;
     UInt8                     Reserve;
 };
 

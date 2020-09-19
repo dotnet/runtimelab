@@ -198,7 +198,7 @@ void GCToCLREventSink::FireGCPerHeapHistory_V3(void *freeListAllocated,
                                                uint32_t count,
                                                uint32_t valuesLen,
                                                void *values)
-{    
+{
     FireEtwGCPerHeapHistory_V3(GetClrInstanceId(),
                                freeListAllocated,
                                freeListRejected,

@@ -62,14 +62,14 @@ void Assert(const char * expr, const char * file, UInt32 line_num, const char * 
            "Abort: Exit Immediately\n"
            "Retry: DebugBreak()\n"
            "Ignore: Keep Going\n"
-           "--------------------------------------------------\n", 
+           "--------------------------------------------------\n",
            message ? ("Message: ") : (""),
            message ? (message) : (""),
            message ? ("\n\n") : (""),
            expr, file, line_num);
 
     HANDLE hMod = PalLoadLibraryExW(L"user32.dll", NULL, 0);
-    Int32 (* pfn)(HANDLE, char *, const char *, UInt32) = 
+    Int32 (* pfn)(HANDLE, char *, const char *, UInt32) =
         (Int32 (*)(HANDLE, char *, const char *, UInt32))PalGetProcAddress(hMod, "MessageBoxA");
 
     Int32 result = pfn(NULL, buffer, "Redhawk Assert", MB_ABORTRETRYIGNORE);

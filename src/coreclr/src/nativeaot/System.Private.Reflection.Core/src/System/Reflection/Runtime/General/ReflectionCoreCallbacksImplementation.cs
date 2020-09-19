@@ -184,7 +184,7 @@ namespace System.Reflection.Runtime.General
             return ActivatorImplementation.CreateInstance(type, bindingAttr, binder, args, culture, activationAttributes);
         }
 
-        // V2 api: Creates open or closed delegates to static or instance methods - relaxed signature checking allowed. 
+        // V2 api: Creates open or closed delegates to static or instance methods - relaxed signature checking allowed.
         public sealed override Delegate CreateDelegate(Type type, object firstArgument, MethodInfo method, bool throwOnBindFailure)
         {
             return CreateDelegateWorker(type, firstArgument, method, throwOnBindFailure, allowClosed: true);
@@ -194,7 +194,7 @@ namespace System.Reflection.Runtime.General
         public sealed override Delegate CreateDelegate(Type type, MethodInfo method, bool throwOnBindFailure)
         {
             // This API existed in v1/v1.1 and only expected to create open
-            // instance delegates, so we forbid closed delegates for backward compatibility. 
+            // instance delegates, so we forbid closed delegates for backward compatibility.
             // But we'll allow relaxed signature checking and open static delegates because
             // there's no ambiguity there (the caller would have to explicitly
             // pass us a static method or a method with a non-exact signature
@@ -287,7 +287,7 @@ namespace System.Reflection.Runtime.General
         }
 
         //
-        // Helper for the V1/V1.1 Delegate.CreateDelegate() api. These apis take method names rather than MethodInfo and only expect to create open static delegates 
+        // Helper for the V1/V1.1 Delegate.CreateDelegate() api. These apis take method names rather than MethodInfo and only expect to create open static delegates
         // or closed instance delegates. For backward compatibility, they don't allow relaxed signature matching (which could make the choice of target method ambiguous.)
         //
         private static RuntimeMethodInfo LookupMethodForCreateDelegate(RuntimeTypeInfo runtimeDelegateType, RuntimeTypeInfo containingType, string method, bool isStatic, bool ignoreCase)

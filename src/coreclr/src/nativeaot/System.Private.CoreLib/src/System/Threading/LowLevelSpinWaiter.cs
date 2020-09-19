@@ -9,7 +9,7 @@ namespace System.Threading
     /// A lightweight spin-waiter intended to be used as the first-level wait for a condition before the user forces the thread
     /// into a wait state, and where the condition to be checked in each iteration is relatively cheap, like just an interlocked
     /// operation.
-    /// 
+    ///
     /// Used by the wait subsystem on Unix, so this class cannot have any dependencies on the wait subsystem.
     /// </summary>
     internal struct LowLevelSpinWaiter

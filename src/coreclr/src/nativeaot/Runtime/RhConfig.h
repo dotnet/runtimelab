@@ -10,7 +10,7 @@
 //
 // Values can also be configured through an rhconfig.ini file.  The file must be and ASCII text file, must be
 // placed next to the executing assembly, and be named rhconfig.ini.  The file consists of one config entry per line
-// in the format: <Key>=<Value> 
+// in the format: <Key>=<Value>
 // example:
 // RH_HeapVerify=1
 // RH_BreakOnAssert=1
@@ -40,11 +40,11 @@ private:
     };
 
     //g_iniSettings is a buffer of ConfigPair structs which when initialized is of length RCV_Count
-    //the first N settings which are set in rhconfig.ini will be initialized and the remainder with have 
+    //the first N settings which are set in rhconfig.ini will be initialized and the remainder with have
     //empty string "\0" as a Key and Value
     //
     //if the buffer has not been initialized (ie the ini file has not been read) the value will be NULL
-    //if we already attempted to initialize the file and could not find or read the contents the 
+    //if we already attempted to initialize the file and could not find or read the contents the
     //value will be CONFIG_INI_NOT_AVAIL to distinguish from the unitialized buffer.
     //
     //NOTE: g_iniSettings is only set in ReadConfigIni and must be set atomically only once
@@ -76,8 +76,8 @@ public:
 #define DEBUG_CONFIG_VALUE(_name) DEFINE_VALUE_ACCESSOR(_name, 0)
 #define DEBUG_CONFIG_VALUE_WITH_DEFAULT(_name, defaultVal) DEFINE_VALUE_ACCESSOR(_name, defaultVal)
 #else
-#define DEBUG_CONFIG_VALUE(_name) 
-#define DEBUG_CONFIG_VALUE_WITH_DEFAULT(_name, defaultVal) 
+#define DEBUG_CONFIG_VALUE(_name)
+#define DEBUG_CONFIG_VALUE_WITH_DEFAULT(_name, defaultVal)
 #endif
 #define RETAIL_CONFIG_VALUE(_name) DEFINE_VALUE_ACCESSOR(_name, 0)
 #define RETAIL_CONFIG_VALUE_WITH_DEFAULT(_name, defaultVal) DEFINE_VALUE_ACCESSOR(_name, defaultVal)
@@ -104,22 +104,22 @@ private:
 #undef RETAIL_CONFIG_VALUE_WITH_DEFAULT
         RCV_Count
     };
-    
+
 //accomidate for the maximum number of config values plus sizable buffer for whitespace 2K
-#define CONFIG_FILE_MAXLEN RCV_Count * sizeof(ConfigPair) + 2000  
+#define CONFIG_FILE_MAXLEN RCV_Count * sizeof(ConfigPair) + 2000
 
 private:
     _Ret_maybenull_z_ TCHAR* GetConfigPath();
 
     //Parses one line of rhconfig.ini and populates values in the passed in configPair
-    //returns: true if the parsing was successful, false if the parsing failed. 
+    //returns: true if the parsing was successful, false if the parsing failed.
     //NOTE: if the method fails configPair is left in an unitialized state
     bool ParseConfigLine(_Out_ ConfigPair* configPair, _In_z_ const char * line);
 
     //reads the configuration values from rhconfig.ini and updates g_iniSettings
     //if the file is read succesfully and g_iniSettings will be set to a valid ConfigPair[] of length RCV_Count.
     //if the file does not exist or reading the file fails,  g_iniSettings is set to CONFIG_INI_NOT_AVAIL
-    //NOTE: all return paths must set g_iniSettings 
+    //NOTE: all return paths must set g_iniSettings
     void ReadConfigIni();
 
     //reads a config value from rhconfig.ini into outputBuffer buffer returning the length of the value.

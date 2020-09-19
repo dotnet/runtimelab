@@ -7,7 +7,7 @@
 **
 ** Purpose: Pointer Type to a EEType in the runtime.
 **
-** 
+**
 ===========================================================*/
 
 using System.Runtime;
@@ -79,7 +79,7 @@ namespace System
             return (int)_value->HashCode;
         }
 
-        // 
+        //
         // Faster version of Equals for use on EETypes that are known not to be null and where the "match" case is the hot path.
         //
         public bool FastEquals(EETypePtr other)
@@ -180,7 +180,7 @@ namespace System
             }
         }
 
-        // WARNING: Never call unless the EEType came from an instanced object. Nested enums can be open generics (typeof(Outer<>).NestedEnum) 
+        // WARNING: Never call unless the EEType came from an instanced object. Nested enums can be open generics (typeof(Outer<>).NestedEnum)
         // and this helper has undefined behavior when passed such as a enum.
         internal bool IsEnum
         {
@@ -361,7 +361,7 @@ namespace System
             }
         }
 
-        // Has internal gc pointers. 
+        // Has internal gc pointers.
         internal bool HasPointers
         {
             get

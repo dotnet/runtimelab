@@ -6,7 +6,7 @@
 **
 **
 ** Purpose: The class denotes how to specify the usage of an attribute
-**          
+**
 **
 ===========================================================*/
 
@@ -16,7 +16,7 @@ namespace System
     [AttributeUsage(AttributeTargets.Class, Inherited = true)]
     internal sealed class AttributeUsageAttribute : Attribute
     {
-        //Constructors 
+        //Constructors
         public AttributeUsageAttribute(AttributeTargets validOn)
         {
         }

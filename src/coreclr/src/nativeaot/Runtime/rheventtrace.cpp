@@ -3,7 +3,7 @@
 
 //
 // Redhawk-specific ETW helper code.
-// 
+//
 // When Redhawk does stuff substantially different from desktop CLR, the
 // Redhawk-specific implementations should go here.
 //
@@ -42,8 +42,8 @@
 void BulkTypeEventLogger::LogTypeAndParameters(UInt64 thAsAddr, ETW::TypeSystemLog::TypeLogBehavior typeLogBehavior)
 {
     if (!ETW_TRACING_CATEGORY_ENABLED(
-        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-        TRACE_LEVEL_INFORMATION, 
+        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+        TRACE_LEVEL_INFORMATION,
         CLR_TYPE_KEYWORD))
     {
         return;
@@ -100,7 +100,7 @@ class LoggedTypesTraits : public  DefaultSHashTraits<EEType*>
 {
 public:
 
-    // explicitly declare local typedefs for these traits types, otherwise 
+    // explicitly declare local typedefs for these traits types, otherwise
     // the compiler may get confused
     typedef EEType* key_t;
 
@@ -213,7 +213,7 @@ int BulkTypeEventLogger::LogSingleType(EEType * pEEType)
 #ifdef MULTIPLE_HEAPS
     // We need to add a lock to protect the types hash for Server GC.
     ASSERT_UNCONDITIONALLY("Add a lock to protect s_loggedTypesHash access!");
-#endif 
+#endif
     //Avoid logging the same type twice, but using the hash of loggged types.
     if (s_loggedTypesHash == NULL)
         s_loggedTypesHash = new SHash<LoggedTypesTraits>();
@@ -232,11 +232,11 @@ int BulkTypeEventLogger::LogSingleType(EEType * pEEType)
     {
         FireBulkTypeEvent();
     }
-    
+
     _ASSERTE(m_nBulkTypeValueCount < _countof(m_rgBulkTypeValues));
 
     BulkTypeValue * pVal = &m_rgBulkTypeValues[m_nBulkTypeValueCount];
-    
+
     // Clear out pVal before filling it out (array elements can get reused if there
     // are enough types that we need to flush to multiple events).
     pVal->Clear();
@@ -268,7 +268,7 @@ int BulkTypeEventLogger::LogSingleType(EEType * pEEType)
         // Note: if pEEType->IsCloned(), then no special handling is necessary.  All the
         // functionality we need from the EEType below work just as well from cloned types.
 
-        // Note: For generic types, we do not necessarily know the generic parameters. 
+        // Note: For generic types, we do not necessarily know the generic parameters.
         // So we leave it to the profiler at post-processing time to determine that via
         // the PDBs.  We'll leave pVal->cTypeParameters as 0, even though there could be
         // type parameters.
@@ -279,7 +279,7 @@ int BulkTypeEventLogger::LogSingleType(EEType * pEEType)
             pVal->fixedSizedData.Flags |= kEtwTypeFlagsFinalizable;
         }
 
-        // Note: Pn runtime knows nothing about delegates, and there are no CCWs/RCWs. 
+        // Note: Pn runtime knows nothing about delegates, and there are no CCWs/RCWs.
         // So no other type flags are applicable to set
     }
 
@@ -348,8 +348,8 @@ void ETW::TypeSystemLog::LogTypeAndParametersIfNecessary(BulkTypeEventLogger * p
 #if defined(FEATURE_EVENT_TRACE)
 
     if (!ETW_TRACING_CATEGORY_ENABLED(
-        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-        TRACE_LEVEL_INFORMATION, 
+        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+        TRACE_LEVEL_INFORMATION,
         CLR_TYPE_KEYWORD))
     {
         return;
@@ -426,7 +426,7 @@ BulkComLogger::~BulkComLogger()
         NOTHROW;
         GC_NOTRIGGER;
         MODE_ANY;
-    } 
+    }
     CONTRACTL_END;
 
     FireBulkComEvent();

@@ -136,12 +136,12 @@ __PPF_ThreadReg SETS "r2"
 
 
 ;;
-;; Macro to clear the hijack state. This is safe to do because the suspension code will not Unhijack this 
+;; Macro to clear the hijack state. This is safe to do because the suspension code will not Unhijack this
 ;; thread if it finds it at an IP that isn't managed code.
 ;;
 ;; Register state on entry:
 ;;  r2: thread pointer
-;;  
+;;
 ;; Register state on exit:
 ;;  r12: trashed
 ;;
@@ -155,12 +155,12 @@ __PPF_ThreadReg SETS "r2"
 
 
 ;;
-;; The prolog for all GC suspension hijacks (normal and stress). Fixes up the hijacked return address, and 
+;; The prolog for all GC suspension hijacks (normal and stress). Fixes up the hijacked return address, and
 ;; clears the hijack state.
 ;;
 ;; Register state on entry:
 ;;  All registers correct for return to the original return address.
-;;  
+;;
 ;; Register state on exit:
 ;;  r2: thread pointer
 ;;  r3: trashed
@@ -171,7 +171,7 @@ __PPF_ThreadReg SETS "r2"
 
         ;; r2 <- GetThread(), TRASHES r3
         INLINE_GETTHREAD r2, r3
-        
+
         ;;
         ;; Fix the stack by restoring the original return address
         ;;
@@ -185,7 +185,7 @@ __PPF_ThreadReg SETS "r2"
 ;;
 ;; Register state on entry:
 ;;  r4: thread pointer
-;;  
+;;
 ;; Register state on exit:
 ;;  r4: thread pointer
 ;;  All other registers trashed
@@ -213,8 +213,8 @@ __PPF_ThreadReg SETS "r2"
         ;; The code here should never be executed, and the unwind info is bogus, but we don't mind since the
         ;; stack is broken by the hijack anyway until after we fix it below.
         PROLOG_PUSH {lr}
-        nop                     ; We also need a nop here to simulate the implied bl instruction.  Without 
-                                ; this, an OS-applied -2 will back up into the method prolog and the unwind 
+        nop                     ; We also need a nop here to simulate the implied bl instruction.  Without
+                                ; this, an OS-applied -2 will back up into the method prolog and the unwind
                                 ; will not be applied as desired.
 
     MEND
@@ -288,8 +288,8 @@ __PPF_ThreadReg SETS "r2"
 
 
 ;;
-;; Worker for our GC stress probes.  Do not call directly!!  
-;; Instead, go through RhpGcStressHijack{Scalar|Object|Byref}. 
+;; Worker for our GC stress probes.  Do not call directly!!
+;; Instead, go through RhpGcStressHijack{Scalar|Object|Byref}.
 ;; This worker performs the GC Stress work and returns to the original return address.
 ;;
 ;; Register state on entry:
@@ -335,7 +335,7 @@ __PPF_ThreadReg SETS "r2"
 
         EPILOG_PROBE_FRAME
 
-1        
+1
         FREE_PROBE_FRAME
         EPILOG_NOP mov         r0, #STATUS_REDHAWK_THREAD_ABORT
         EPILOG_NOP mov         r1, lr ;; return address as exception PC
@@ -388,7 +388,7 @@ __PPF_ThreadReg SETS "r2"
         ;; Setup a PAL_LIMITED_CONTEXT that looks like what you'd get if you had suspended this thread at the
         ;; IP after the call to this helper.
         ;;
-        ;; This is very likely overkill since the calculation of the return address should only need SP and 
+        ;; This is very likely overkill since the calculation of the return address should only need SP and
         ;; LR, but this is test code, so I'm not too worried about efficiency.
         ;;
         ;; Setup a PAL_LIMITED_CONTEXT on the stack {
@@ -419,19 +419,19 @@ DREG_SZ equ     (SIZEOF__PAL_LIMITED_CONTEXT - (OFFSETOF__PAL_LIMITED_CONTEXT__L
 
 
 ;;
-;; The following functions are _jumped_ to when we need to transfer control from one method to another for EH 
+;; The following functions are _jumped_ to when we need to transfer control from one method to another for EH
 ;; dispatch. These are needed to properly coordinate with the GC hijacking logic. We are essentially replacing
-;; the return from the throwing method with a jump to the handler in the caller, but we need to be aware of 
-;; any return address hijack that may be in place for GC suspension. These routines use a quick test of the 
-;; return address against a specific GC hijack routine, and then fixup the stack pointer to what it would be 
-;; after a real return from the throwing method. Then, if we are not hijacked we can simply jump to the 
+;; the return from the throwing method with a jump to the handler in the caller, but we need to be aware of
+;; any return address hijack that may be in place for GC suspension. These routines use a quick test of the
+;; return address against a specific GC hijack routine, and then fixup the stack pointer to what it would be
+;; after a real return from the throwing method. Then, if we are not hijacked we can simply jump to the
 ;; handler in the caller.
-;; 
-;; If we are hijacked, then we jump to a routine that will unhijack appropriatley and wait for the GC to 
+;;
+;; If we are hijacked, then we jump to a routine that will unhijack appropriatley and wait for the GC to
 ;; complete. There are also variants for GC stress.
 ;;
-;; Note that at this point we are eiher hijacked or we are not, and this will not change until we return to 
-;; managed code. It is an invariant of the system that a thread will only attempt to hijack or unhijack 
+;; Note that at this point we are eiher hijacked or we are not, and this will not change until we return to
+;; managed code. It is an invariant of the system that a thread will only attempt to hijack or unhijack
 ;; another thread while the target thread is suspended in managed code, and this is _not_ managed code.
 ;;
 ;; Register state on entry:
@@ -440,7 +440,7 @@ DREG_SZ equ     (SIZEOF__PAL_LIMITED_CONTEXT - (OFFSETOF__PAL_LIMITED_CONTEXT__L
 ;;  r2: handler address we want to jump to.
 ;;  Non-volatile registers are all already correct for return to the caller.
 ;;  LR still contains the return address.
-;;  
+;;
 ;; Register state on exit:
 ;;  All registers except r0 and lr unchanged
 ;;
@@ -488,7 +488,7 @@ DREG_SZ equ     (SIZEOF__PAL_LIMITED_CONTEXT - (OFFSETOF__PAL_LIMITED_CONTEXT__L
 ;;  r2: handler address we want to jump to.
 ;;  Non-volatile registers are all already correct for return to the caller.
 ;;  The stack is as if we are just about to returned from the call
-;;  
+;;
 ;; Register state on exit:
 ;;  r0: reference to the exception object
 ;;  r2: thread pointer
@@ -502,7 +502,7 @@ DREG_SZ equ     (SIZEOF__PAL_LIMITED_CONTEXT - (OFFSETOF__PAL_LIMITED_CONTEXT__L
 
         ;; r2 <- GetThread(), TRASHES r1
         INLINE_GETTHREAD r2, r1
-        
+
         ;; Recover the original return address and update the frame
         ldr         lr, [r2, #OFFSETOF__Thread__m_pvHijackedReturnAddress]
         str         lr, [sp, #OFFSETOF__PInvokeTransitionFrame__m_RIP]
@@ -516,13 +516,13 @@ DREG_SZ equ     (SIZEOF__PAL_LIMITED_CONTEXT - (OFFSETOF__PAL_LIMITED_CONTEXT__L
     MEND
 
 ;;
-;; Macro to re-adjust the location of the EH object reference, cleanup the frame, and make the 
+;; Macro to re-adjust the location of the EH object reference, cleanup the frame, and make the
 ;; final jump to the handler for EH jump probe funcs.
 ;;
 ;; Register state on entry:
 ;;  r0: reference to the exception object
 ;;  r1-r3: scratch
-;;  
+;;
 ;; Register state on exit:
 ;;  sp: correct for return to the caller
 ;;  r1: reference to the exception object
@@ -543,7 +543,7 @@ DREG_SZ equ     (SIZEOF__PAL_LIMITED_CONTEXT - (OFFSETOF__PAL_LIMITED_CONTEXT__L
 ;;  r2: thread
 ;;  Non-volatile registers are all already correct for return to the caller.
 ;;  The stack is as if we have tail called to this function (lr points to return address).
-;;        
+;;
 ;; Register state on exit:
 ;;  r7: previous frame pointer
 ;;  r0: reference to the exception object
@@ -580,7 +580,7 @@ DREG_SZ equ     (SIZEOF__PAL_LIMITED_CONTEXT - (OFFSETOF__PAL_LIMITED_CONTEXT__L
 ;;  r2: thread
 ;;  Non-volatile registers are all already correct for return to the caller.
 ;;  The stack is as if we have tail called to this function (lr points to return address).
-;;        
+;;
 ;; Register state on exit:
 ;;  r7: previous frame pointer
 ;;  r0: reference to the exception object

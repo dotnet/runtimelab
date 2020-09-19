@@ -44,12 +44,12 @@ GPTR_IMPL(StressLog, g_pStressLog /*, &StressLog::theLog*/);
 /*********************************************************************************/
 #if defined(HOST_X86)
 
-/* This is like QueryPerformanceCounter but a lot faster.  On machines with 
+/* This is like QueryPerformanceCounter but a lot faster.  On machines with
    variable-speed CPUs (for power management), this is not accurate, but may
    be good enough.
 */
 inline __declspec(naked) unsigned __int64 getTimeStamp() {
-    
+
    __asm {
         RDTSC   // read time stamp counter
         ret
@@ -58,10 +58,10 @@ inline __declspec(naked) unsigned __int64 getTimeStamp() {
 
 #else // HOST_X86
 unsigned __int64 getTimeStamp() {
-    
+
     LARGE_INTEGER ret;
     ZeroMemory(&ret, sizeof(LARGE_INTEGER));
-    
+
     PalQueryPerformanceCounter(&ret);
 
     return ret.QuadPart;
@@ -70,7 +70,7 @@ unsigned __int64 getTimeStamp() {
 #endif // HOST_X86 else
 
 /*********************************************************************************/
-/* Get the the frequency corresponding to 'getTimeStamp'.  For non-x86 
+/* Get the the frequency corresponding to 'getTimeStamp'.  For non-x86
    architectures, this is just the performance counter frequency.
 */
 unsigned __int64 getTickFrequency()
@@ -90,8 +90,8 @@ const static unsigned __int64 RECYCLE_AGE = 0x40000000L;        // after a billi
 
 #ifndef DACCESS_COMPILE
 
-void StressLog::Initialize(unsigned facilities,  unsigned level, unsigned maxBytesPerThread, 
-            unsigned maxBytesTotal, HANDLE hMod) 
+void StressLog::Initialize(unsigned facilities,  unsigned level, unsigned maxBytesPerThread,
+            unsigned maxBytesTotal, HANDLE hMod)
 {
     if (theLog.MaxSizePerThread != 0)
     {
@@ -118,9 +118,9 @@ void StressLog::Initialize(unsigned facilities,  unsigned level, unsigned maxByt
     theLog.facilitiesToLog = facilities | LF_ALWAYS;
     theLog.levelToLog = level;
     theLog.deadCount = 0;
-    
+
     theLog.tickFrequency = getTickFrequency();
-    
+
     PalGetSystemTimeAsFileTime (&theLog.startTime);
     theLog.startTimeStamp = getTimeStamp();
 
@@ -131,7 +131,7 @@ void StressLog::Initialize(unsigned facilities,  unsigned level, unsigned maxByt
 /* create a new thread stress log buffer associated with pThread                 */
 
 ThreadStressLog* StressLog::CreateThreadStressLog(Thread * pThread) {
-    
+
     if (theLog.facilitiesToLog == 0)
         return NULL;
 
@@ -163,36 +163,36 @@ ThreadStressLog* StressLog::CreateThreadStressLogHelper(Thread * pThread) {
     ThreadStressLog* msgs = NULL;
 
     // See if we can recycle a dead thread
-    if (VolatileLoad(&theLog.deadCount) > 0) 
-    {        
+    if (VolatileLoad(&theLog.deadCount) > 0)
+    {
         unsigned __int64 recycleStamp = getTimeStamp() - RECYCLE_AGE;
         msgs = VolatileLoad(&theLog.logs);
-        //find out oldest dead ThreadStressLog in case we can't find one within 
+        //find out oldest dead ThreadStressLog in case we can't find one within
         //recycle age but can't create a new chunk
         ThreadStressLog * oldestDeadMsg = NULL;
-        
-        while(msgs != 0) 
+
+        while(msgs != 0)
         {
             if (msgs->isDead)
             {
                 bool hasTimeStamp = msgs->curPtr != (StressMsg *)msgs->chunkListTail->EndPtr();
-                if (hasTimeStamp && msgs->curPtr->timeStamp < recycleStamp) 
+                if (hasTimeStamp && msgs->curPtr->timeStamp < recycleStamp)
                 {
-                    skipInsert = TRUE;                
+                    skipInsert = TRUE;
                     PalInterlockedDecrement(&theLog.deadCount);
                     break;
                 }
-                
+
                 if (!oldestDeadMsg)
                 {
                     oldestDeadMsg = msgs;
-                }                
+                }
                 else if (hasTimeStamp && oldestDeadMsg->curPtr->timeStamp > msgs->curPtr->timeStamp)
                 {
                     oldestDeadMsg = msgs;
-                }                               
+                }
             }
-            
+
             msgs = msgs->next;
         }
 
@@ -209,7 +209,7 @@ ThreadStressLog* StressLog::CreateThreadStressLogHelper(Thread * pThread) {
     if (msgs == 0)  {
         msgs = new (nothrow) ThreadStressLog();
 
-        if (msgs == 0 ||!msgs->IsValid ()) 
+        if (msgs == 0 ||!msgs->IsValid ())
         {
             delete msgs;
             msgs = 0;
@@ -266,7 +266,7 @@ bool StressLog::AllowNewChunk (long numChunksInCurThread)
     {
         perThreadLimit *= GC_STRESSLOG_MULTIPLY;
     }
-        
+
     if ((UInt32)numChunksInCurThread * STRESSLOG_CHUNK_SIZE >= perThreadLimit)
     {
         return FALSE;
@@ -279,7 +279,7 @@ bool StressLog::ReserveStressLogChunks (unsigned chunksToReserve)
 {
     Thread *pThread = ThreadStore::GetCurrentThread();
     ThreadStressLog* msgs = reinterpret_cast<ThreadStressLog*>(pThread->GetThreadStressLog());
-    if (msgs == 0) 
+    if (msgs == 0)
     {
         msgs = CreateThreadStressLog(pThread);
 
@@ -311,14 +311,14 @@ void ThreadStressLog::LogMsg ( UInt32 facility, int cArgs, const char* format, v
     // Just use debug breaks instead.
 
     ASSERT( cArgs >= 0 && cArgs <= StressMsg::maxArgCnt );
-    
+
     size_t offs = ((size_t)format - StressLog::theLog.moduleOffset);
 
     ASSERT(offs < StressMsg::maxOffset);
     if (offs >= StressMsg::maxOffset)
     {
         // Set it to this string instead.
-        offs = 
+        offs =
 #ifdef _DEBUG
             (size_t)"<BUG: StressLog format string beyond maxOffset>";
 #else // _DEBUG
@@ -348,8 +348,8 @@ void ThreadStressLog::Activate (Thread * pThread)
 {
     _ASSERTE(pThread != NULL);
     //there is no need to zero buffers because we could handle garbage contents
-    threadId = PalGetCurrentThreadIdForLogging(); 
-    isDead = FALSE;        
+    threadId = PalGetCurrentThreadIdForLogging();
+    isDead = FALSE;
     curWriteChunk = chunkListTail;
     curPtr = (StressMsg *)curWriteChunk->EndPtr ();
     writeHasWrapped = FALSE;
@@ -363,8 +363,8 @@ void StressLog::LogMsg (unsigned facility, int cArgs, const char* format, ... )
     _ASSERTE ( cArgs >= 0 && cArgs <= StressMsg::maxArgCnt );
 
     va_list Args;
-    va_start(Args, format);        
-    
+    va_start(Args, format);
+
     Thread *pThread = ThreadStore::GetCurrentThread();
     if (pThread == NULL)
         return;
@@ -390,7 +390,7 @@ void  StressLog::LogCallStack(const char *const callTag){
     unsigned short stackTraceCount = PalCaptureStackBackTrace (2, MAX_CALL_STACK_TRACE, (void**)CallStackTrace, &hash);
     if (stackTraceCount > MAX_CALL_STACK_TRACE)
         stackTraceCount = MAX_CALL_STACK_TRACE;
-    LogMsgOL("Start of %s stack \n", callTag); 
+    LogMsgOL("Start of %s stack \n", callTag);
     unsigned short i = 0;
     for (;i < stackTraceCount; i++)
     {
@@ -433,10 +433,10 @@ bool StressLog::Initialize()
                     curThreadStressLog->curPtr = (StressMsg *)((UInt8 *)curChunk + ((UInt8 *)curThreadStressLog->curPtr - (UInt8 *)PTR_HOST_TO_TADDR(curChunk)));
                     curPtrInitialized = true;
                 }
-                
+
                 curChunk = curChunk->next;
             } while (curChunk != head);
-            
+
             if (!curPtrInitialized)
             {
                 delete curThreadStressLog;
@@ -474,7 +474,7 @@ inline void ThreadStressLog::Activate (Thread * /*pThread*/)
     readHasWrapped = false;
     // the last written log, if it wrapped around may have partially overwritten
     // a previous record.  Update curPtr to reflect the last safe beginning of a record,
-    // but curPtr shouldn't wrap around, otherwise it'll break our assumptions about stress 
+    // but curPtr shouldn't wrap around, otherwise it'll break our assumptions about stress
     // log
     curPtr = (StressMsg*)((char*)curPtr - StressMsg::maxMsgSize());
     if (curPtr < (StressMsg*)curWriteChunk->StartPtr())
@@ -488,10 +488,10 @@ inline void ThreadStressLog::Activate (Thread * /*pThread*/)
     }
 }
 
-ThreadStressLog* StressLog::FindLatestThreadLog() const 
+ThreadStressLog* StressLog::FindLatestThreadLog() const
 {
     const ThreadStressLog* latestLog = 0;
-    for (const ThreadStressLog* ptr = this->logs; ptr != NULL; ptr = ptr->next) 
+    for (const ThreadStressLog* ptr = this->logs; ptr != NULL; ptr = ptr->next)
     {
         if (ptr->readPtr != NULL)
             if (latestLog == 0 || ptr->readPtr->timeStamp > latestLog->readPtr->timeStamp)
@@ -507,7 +507,7 @@ void StressLog::EnumerateStressMsgs(/*STRESSMSGCALLBACK*/void* smcbWrapper, /*EN
     ENDTHREADLOGCALLBACK etcb = (ENDTHREADLOGCALLBACK) etcbWrapper;
     void *argsCopy[StressMsg::maxArgCnt];
 
-    for (;;) 
+    for (;;)
     {
         ThreadStressLog* latestLog = this->FindLatestThreadLog();
 
@@ -516,17 +516,17 @@ void StressLog::EnumerateStressMsgs(/*STRESSMSGCALLBACK*/void* smcbWrapper, /*EN
             break;
         }
         StressMsg* latestMsg = latestLog->readPtr;
-        if (latestMsg->formatOffset != 0 && !latestLog->CompletedDump()) 
+        if (latestMsg->formatOffset != 0 && !latestLog->CompletedDump())
         {
             char format[256];
             TADDR taFmt = (latestMsg->formatOffset) + (TADDR)(this->moduleOffset);
             HRESULT hr = DacReadAll(taFmt, format, _countof(format), false);
-            if (hr != S_OK) 
+            if (hr != S_OK)
                 strcpy_s(format, _countof(format), "Could not read address of format string");
 
             double deltaTime = ((double) (latestMsg->timeStamp - this->startTimeStamp)) / this->tickFrequency;
 
-            // Pass a copy of the args to the callback to avoid foreign code overwriting the stress log 
+            // Pass a copy of the args to the callback to avoid foreign code overwriting the stress log
             // entries (this was the case for %s arguments)
             memcpy_s(argsCopy, sizeof(argsCopy), latestMsg->args, (latestMsg->numberOfArgs)*sizeof(void*));
 
@@ -554,16 +554,16 @@ void StressLog::EnumStressLogMemRanges(/*STRESSLOGMEMRANGECALLBACK*/void* slmrcb
 {
     STRESSLOGMEMRANGECALLBACK slmrcb = (STRESSLOGMEMRANGECALLBACK)slmrcbWrapper;
 
-    // we go to extreme lengths to ensure we don't read in the whole memory representation 
+    // we go to extreme lengths to ensure we don't read in the whole memory representation
     // of the stress log, but only the ranges...
     //
 
     size_t ThreadStressLogAddr = *dac_cast<PTR_SIZE_T>(PTR_HOST_MEMBER_TADDR(StressLog, this, logs));
-    while (ThreadStressLogAddr != NULL) 
+    while (ThreadStressLogAddr != NULL)
     {
         size_t ChunkListHeadAddr = *dac_cast<PTR_SIZE_T>(ThreadStressLogAddr + offsetof(ThreadStressLog, chunkListHead));
         size_t StressLogChunkAddr = ChunkListHeadAddr;
-        
+
         do
         {
             slmrcb(StressLogChunkAddr, sizeof (StressLogChunk), token);
@@ -571,7 +571,7 @@ void StressLog::EnumStressLogMemRanges(/*STRESSLOGMEMRANGECALLBACK*/void* slmrcb
             if (StressLogChunkAddr == NULL)
             {
                 return;
-            }            
+            }
         } while (StressLogChunkAddr != ChunkListHeadAddr);
 
         ThreadStressLogAddr = *dac_cast<PTR_SIZE_T>(ThreadStressLogAddr + offsetof(ThreadStressLog, next));

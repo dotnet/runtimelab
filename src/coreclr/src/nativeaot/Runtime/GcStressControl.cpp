@@ -103,7 +103,7 @@ private:
         if (pEntry == NULL)
         {
             hits = 1;
-            CallsiteCountEntry e = {CallsiteIP, 1, 1, ht}; 
+            CallsiteCountEntry e = {CallsiteIP, 1, 1, ht};
             s_callsites.AddOrReplace(e);
         }
         else
@@ -115,7 +115,7 @@ private:
             }
         }
 
-        return pEntry == NULL;    
+        return pEntry == NULL;
     }
 
     static bool GcStressTriggerFirstHit(UIntNative CallsiteIP, HijackType ht)

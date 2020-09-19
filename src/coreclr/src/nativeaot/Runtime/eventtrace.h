@@ -36,7 +36,7 @@ struct ProfilingScanContext : ScanContext
     BOOL fProfilerPinned;
     void * pvEtwContext;
     void *pHeapId;
-    
+
     ProfilingScanContext(BOOL fProfilerPinnedParam);
 };
 #endif // defined(FEATURE_EVENT_TRACE)
@@ -80,7 +80,7 @@ namespace ETW
 
         // The type this TypeLoggingInfo represents
         TypeHandle th;
-        
+
         // Smart sampling
 
         // These bucket values remember stats of a particular time slice that are used to
@@ -130,7 +130,7 @@ namespace ETW
             // if this is the first time we've encountered the type, in which case, log
             // it
             kTypeLogBehaviorAssumeLockAndLogIfFirstTime,
-            
+
             // Don't take lock, don't consult hash table. Just log the type. (This is
             // used in cases when checking for dupe type logging isn't worth it, such as
             // when logging the finalization of an object.)
@@ -172,7 +172,7 @@ namespace ETW
         // When WPA triggers a GC, it gives us this unique number to append to our
         // GCStart event so WPA can correlate the CLR's GC with the JScript GC they
         // triggered at the same time.
-        // 
+        //
         // We set this value when the GC is triggered, and then retrieve the value on the
         // first subsequent FireGcStart() method call for a full, induced GC, assuming
         // that that's the GC that WPA triggered. This is imperfect, and if we were in
@@ -230,9 +230,9 @@ namespace ETW
 
             // These values are gotten from the gc_reason
             // in gcimpl.h
-            typedef  enum _GC_REASON { 
-                GC_ALLOC_SOH = 0 , 
-                GC_INDUCED = 1 , 
+            typedef  enum _GC_REASON {
+                GC_ALLOC_SOH = 0 ,
+                GC_INDUCED = 1 ,
                 GC_LOWMEMORY = 2,
                 GC_EMPTY = 3,
                 GC_ALLOC_LOH = 4,
@@ -240,7 +240,7 @@ namespace ETW
                 GC_OOS_LOH = 6,
                 GC_INDUCED_NOFORCE = 7
             } GC_REASON;
-            typedef  enum _GC_TYPE { 
+            typedef  enum _GC_TYPE {
                 GC_NGC = 0 , GC_BGC = 1 , GC_FGC = 2
             } GC_TYPE;
             struct {
@@ -256,9 +256,9 @@ namespace ETW
 
             struct {
                 ULONG Reason;
-                // This is only valid when SuspendEE is called by GC (ie, Reason is either 
+                // This is only valid when SuspendEE is called by GC (ie, Reason is either
                 // SUSPEND_FOR_GC or SUSPEND_FOR_GC_PREP.
-                ULONG GcCount; 
+                ULONG GcCount;
             } SuspendEE;
 
             struct {
@@ -266,8 +266,8 @@ namespace ETW
             } GCMark;
 
             struct {
-                ULONGLONG SegmentSize; 
-                ULONGLONG LargeObjectSegmentSize; 
+                ULONGLONG SegmentSize;
+                ULONGLONG LargeObjectSegmentSize;
                 BOOL ServerGC; // TRUE means it's server GC; FALSE means it's workstation.
             } GCSettings;
 
@@ -275,7 +275,7 @@ namespace ETW
                 // The generation that triggered this notification.
                 ULONG Count;
                 // 1 means the notification was due to allocation; 0 means it was due to other factors.
-                ULONG Alloc; 
+                ULONG Alloc;
             } GCFullNotify;
         } ETW_GC_INFO, *PETW_GC_INFO;
 

@@ -44,7 +44,7 @@ StubName    SETS    "RhpInterfaceDispatch$entries"
         ;; Load the EEType from the object instance in x0.
         ldr     x10, [x0]
 
-    GBLA CurrentEntry 
+    GBLA CurrentEntry
 CurrentEntry SETA 0
 
     WHILE CurrentEntry < $entries
@@ -83,7 +83,7 @@ CurrentEntry SETA CurrentEntry + 1
 ;; Stub dispatch routine for dispatch to a vtable slot
 ;;
     LEAF_ENTRY RhpVTableOffsetDispatch
-        ;; xip1 has the interface dispatch cell address in it. 
+        ;; xip1 has the interface dispatch cell address in it.
         ;; load x12 to point to the vtable offset (which is stored in the m_pCache field).
         ldr     x12, [xip1, #OFFSETOF__InterfaceDispatchCell__m_pCache]
 
@@ -103,7 +103,7 @@ CurrentEntry SETA CurrentEntry + 1
 ;;
     LEAF_ENTRY RhpInterfaceDispatchSlow
     ALTERNATE_ENTRY RhpInitialDynamicInterfaceDispatch
-        ;; xip1 has the interface dispatch cell address in it. 
+        ;; xip1 has the interface dispatch cell address in it.
         ;; Calling convention of the universal thunk is:
         ;;  xip0: contains target address for the thunk to call
         ;;  xip1: contains parameter of the thunk's target

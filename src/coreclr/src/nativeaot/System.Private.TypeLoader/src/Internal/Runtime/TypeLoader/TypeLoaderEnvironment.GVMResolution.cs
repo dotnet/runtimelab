@@ -80,7 +80,7 @@ namespace Internal.Runtime.TypeLoader
             string methodName = parser.GetString();
 
             // Signatures are indirected to through a relative offset so that we don't have to parse them
-            // when not comparing signatures (parsing them requires resolving types and is tremendously 
+            // when not comparing signatures (parsing them requires resolving types and is tremendously
             // expensive).
             NativeParser sigParser = parser.GetParserFromRelativeOffset();
             RuntimeSignature methodSig = RuntimeSignature.CreateFromNativeLayoutSignature(moduleHandle, sigParser.Offset);
@@ -280,9 +280,9 @@ namespace Internal.Runtime.TypeLoader
                     //
                     //  Step 3: For each interface in the list in step #2, parse the signature of that interface, do the generic argument
                     //          substitution (in case of a generic interface), and check if this interface signature is assignable from the
-                    //          calling interface signature (from the name and sig input). if there is an exact match based on 
-                    //          interface type, then we've found the right slot. Otherwise, re-scan the entry again and see if some interface 
-                    //          type is compatible with the initial slots interface by means of variance. 
+                    //          calling interface signature (from the name and sig input). if there is an exact match based on
+                    //          interface type, then we've found the right slot. Otherwise, re-scan the entry again and see if some interface
+                    //          type is compatible with the initial slots interface by means of variance.
                     //          This is done by calling the TypeLoaderEnvironment helper function.
                     //
                     // Example:
@@ -298,13 +298,13 @@ namespace Internal.Runtime.TypeLoader
                     //      public class Foo2<T, U> : Foo1<object, U>, IFoo<U, T>
                     //      {
                     //          string IFoo<U, T>.M1<V>() { ... }
-                    //      }        
+                    //      }
                     //
                     //  GVM Table layout for IFoo<T, U>.M1<V>:
                     //  {
                     //      InterfaceTypeHandle = IFoo<T, U>
                     //      InterfaceMethodNameAndSignature = { "M1", SigOf(string M1) }
-                    //      GVMTargetSlots[] = 
+                    //      GVMTargetSlots[] =
                     //      {
                     //          {
                     //              TargetMethodNameAndSignature = { "M1", SigOf(M1) }
@@ -331,7 +331,7 @@ namespace Internal.Runtime.TypeLoader
                     //                  ImplementingTypeHandle = Foo2<T, U>
                     //                  ImplementedInterfacesSignatures[] = { SigOf(IFoo<!1, !0>) }
                     //              }
-                    //          }, 
+                    //          },
                     //      }
                     //  }
                     //

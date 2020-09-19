@@ -26,7 +26,7 @@ namespace System.Reflection
         }
 
         //
-        // Return the next token in assembly name. If you expect the result to be DisplayNameToken.String, 
+        // Return the next token in assembly name. If you expect the result to be DisplayNameToken.String,
         // use GetNext(out String) instead.
         //
         internal Token GetNext()
@@ -36,7 +36,7 @@ namespace System.Reflection
         }
 
         //
-        // Return the next token in assembly name. If the result is DisplayNameToken.String, 
+        // Return the next token in assembly name. If the result is DisplayNameToken.String,
         // sets "tokenString" to the tokenized string.
         //
         internal Token GetNext(out string tokenString)

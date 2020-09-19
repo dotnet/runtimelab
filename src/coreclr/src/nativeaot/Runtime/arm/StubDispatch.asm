@@ -47,7 +47,7 @@ StubName    SETS    "RhpInterfaceDispatch$entries"
         ;; Load the EEType from the object instance in r0.
         ldr     r1, [r0]
 
-        GBLA CurrentEntry 
+        GBLA CurrentEntry
 CurrentEntry SETA 0
     WHILE CurrentEntry < $entries
         CHECK_CACHE_ENTRY CurrentEntry
@@ -110,7 +110,7 @@ CurrentEntry SETA CurrentEntry + 1
         ;; Load the EEType from the object instance in r0.
         ldr     r1, [r0]
 
-        ;; add the vtable offset to the EEType pointer 
+        ;; add the vtable offset to the EEType pointer
         add     r12, r1, r12
 
         ;; Load the target address of the vtable into r12
@@ -123,14 +123,14 @@ CurrentEntry SETA CurrentEntry + 1
 ;; Cache miss case, call the runtime to resolve the target and update the cache.
     LEAF_ENTRY RhpInterfaceDispatchSlow
     ALTERNATE_ENTRY RhpInitialDynamicInterfaceDispatch
-        ;; r12 has the interface dispatch cell address in it. 
+        ;; r12 has the interface dispatch cell address in it.
         ;; The calling convention of the universal thunk is that the parameter
         ;; for the universal thunk target is to be placed in sp-8
         ;; and the universal thunk target address is to be placed in sp-4
         str     r12, [sp, #-8]
         ldr     r12, =RhpCidResolve
         str     r12, [sp, #-4]
-        
+
         ;; jump to universal transition thunk
         b       RhpUniversalTransition_DebugStepTailCall
     LEAF_END RhpInterfaceDispatchSlow

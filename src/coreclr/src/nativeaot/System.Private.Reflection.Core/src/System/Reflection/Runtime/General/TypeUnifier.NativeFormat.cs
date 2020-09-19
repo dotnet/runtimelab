@@ -14,10 +14,10 @@ using System.Reflection.Runtime.MethodInfos;
 using Internal.Metadata.NativeFormat;
 using Internal.Reflection.Core.Execution;
 
-// 
+//
 // It is common practice for app code to compare Type objects using reference equality with the expectation that reference equality
 // is equivalent to semantic equality. To support this, all RuntimeTypeObject objects are interned using weak references.
-// 
+//
 // This assumption is baked into the codebase in these places:
 //
 //   - RuntimeTypeInfo.Equals(object) implements itself as Object.ReferenceEquals(this, obj)
@@ -32,7 +32,7 @@ using Internal.Reflection.Core.Execution;
 //     file for easy auditing and to help ensure that they all operate in a consistent manner.
 //
 //   - The TypeUnifier extension class provides a more friendly interface to the rest of the codebase.
-// 
+//
 
 namespace System.Reflection.Runtime.General
 {
@@ -46,7 +46,7 @@ namespace System.Reflection.Runtime.General
 
         //======================================================================================================
         // This next group services the Type.GetTypeFromHandle() path. Since we already have a RuntimeTypeHandle
-        // in that case, we pass it in as an extra argument as an optimization (otherwise, the unifier will 
+        // in that case, we pass it in as an extra argument as an optimization (otherwise, the unifier will
         // waste cycles looking up the handle again from the mapping tables.)
         //======================================================================================================
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -98,7 +98,7 @@ namespace System.Reflection.Runtime.TypeInfos.NativeFormat
         //
         // For app-compat reasons, we need to make sure that only TypeInfo instance exists for a given semantic type. If you change this, you must change the way
         // RuntimeTypeInfo.Equals() is implemented.
-        // 
+        //
         internal static NativeFormatRuntimeGenericParameterTypeInfoForTypes GetRuntimeGenericParameterTypeInfoForTypes(NativeFormatRuntimeNamedTypeInfo typeOwner, GenericParameterHandle genericParameterHandle)
         {
             UnificationKey key = new UnificationKey(typeOwner.Reader, typeOwner.TypeDefinitionHandle, genericParameterHandle);
@@ -127,7 +127,7 @@ namespace System.Reflection.Runtime.TypeInfos.NativeFormat
         //
         // For app-compat reasons, we need to make sure that only TypeInfo instance exists for a given semantic type. If you change this, you must change the way
         // RuntimeTypeInfo.Equals() is implemented.
-        // 
+        //
         internal static NativeFormatRuntimeGenericParameterTypeInfoForMethods GetRuntimeGenericParameterTypeInfoForMethods(RuntimeNamedMethodInfo methodOwner, MetadataReader reader, GenericParameterHandle genericParameterHandle)
         {
             UnificationKey key = new UnificationKey(methodOwner, reader, genericParameterHandle);

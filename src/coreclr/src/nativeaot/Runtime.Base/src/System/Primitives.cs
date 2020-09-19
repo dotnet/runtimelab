@@ -33,7 +33,7 @@ namespace System
     ** Purpose: The boolean class serves as a wrapper for the primitive
     ** type boolean.
     **
-    ** 
+    **
     ===========================================================*/
 
     // CONTRACT with Runtime
@@ -82,7 +82,7 @@ namespace System
     **
     ** Purpose: A representation of a 8 bit 2's complement integer.
     **
-    ** 
+    **
     ===========================================================*/
 
     // CONTRACT with Runtime
@@ -107,7 +107,7 @@ namespace System
     **
     ** Purpose: A representation of a 8 bit integer (byte)
     **
-    ** 
+    **
     ===========================================================*/
 
 
@@ -133,7 +133,7 @@ namespace System
     **
     ** Purpose: A representation of a 16 bit 2's complement integer.
     **
-    ** 
+    **
     ===========================================================*/
 
 
@@ -158,7 +158,7 @@ namespace System
     **
     ** Purpose: A representation of a short (unsigned 16-bit) integer.
     **
-    ** 
+    **
     ===========================================================*/
 
     // CONTRACT with Runtime
@@ -182,7 +182,7 @@ namespace System
     **
     ** Purpose: A representation of a 32 bit 2's complement integer.
     **
-    ** 
+    **
     ===========================================================*/
 
     // CONTRACT with Runtime
@@ -207,7 +207,7 @@ namespace System
     **
     ** Purpose: A representation of a 32 bit unsigned integer.
     **
-    ** 
+    **
     ===========================================================*/
 
     // CONTRACT with Runtime
@@ -232,7 +232,7 @@ namespace System
     **
     ** Purpose: A representation of a 64 bit 2's complement integer.
     **
-    ** 
+    **
     ===========================================================*/
 
     // CONTRACT with Runtime
@@ -257,7 +257,7 @@ namespace System
     **
     ** Purpose: A representation of a 64 bit unsigned integer.
     **
-    ** 
+    **
     ===========================================================*/
 
     // CONTRACT with Runtime
@@ -327,7 +327,7 @@ namespace System
     **
     ** Purpose: Platform independent integer
     **
-    ** 
+    **
     ===========================================================*/
 
     // CONTRACT with Runtime
@@ -452,7 +452,7 @@ namespace System
     **
     ** Purpose: Platform independent integer
     **
-    ** 
+    **
     ===========================================================*/
 
     // CONTRACT with Runtime

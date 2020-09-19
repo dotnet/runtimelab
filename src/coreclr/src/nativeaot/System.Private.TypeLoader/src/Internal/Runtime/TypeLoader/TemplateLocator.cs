@@ -51,7 +51,7 @@ namespace Internal.Runtime.TypeLoader
 #endif
 
         /// <summary>
-        /// Get the NativeLayout for a type from a ReadyToRun image. 
+        /// Get the NativeLayout for a type from a ReadyToRun image.
         /// </summary>
         public bool TryGetMetadataNativeLayout(TypeDesc concreteType, out NativeFormatModuleInfo nativeLayoutInfoModule, out uint nativeLayoutInfoToken)
         {
@@ -70,7 +70,7 @@ namespace Internal.Runtime.TypeLoader
             {
                 if (moduleInfo.MetadataReader == null)
                     continue;
-                
+
                 ExternalReferencesTable externalFixupsTable;
                 NativeHashtable typeTemplatesHashtable = LoadHashtable(moduleInfo.Handle, ReflectionMapBlob.MetadataBasedTypeTemplateMap, out externalFixupsTable);
 
@@ -107,7 +107,7 @@ namespace Internal.Runtime.TypeLoader
         }
 
         /// <summary>
-        /// Get the NativeLayout for a method from a ReadyToRun image. 
+        /// Get the NativeLayout for a method from a ReadyToRun image.
         /// </summary>
         public bool TryGetMetadataNativeLayout(MethodDesc concreteMethod, out NativeFormatModuleInfo nativeLayoutInfoModule, out uint nativeLayoutInfoToken)
         {

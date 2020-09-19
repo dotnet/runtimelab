@@ -88,7 +88,7 @@ namespace System.Runtime
         // Temporary workaround to unblock shareable assembly bring-up - without shared interop,
         // we must prevent RhWaitForPendingFinalizers from using marshaling because it would
         // rewrite System.Private.CoreLib to reference the non-shareable interop assembly. With shared interop,
-        // we will be able to remove this helper method and change the DllImport above 
+        // we will be able to remove this helper method and change the DllImport above
         // to directly accept a boolean parameter.
         internal static void RhWaitForPendingFinalizers(bool allowReentrantWait)
         {
@@ -430,7 +430,7 @@ namespace System.Runtime
         // Temporary workaround to unblock shareable assembly bring-up - without shared interop,
         // we must prevent RhCompatibleReentrantWaitAny from using marshaling because it would
         // rewrite System.Private.CoreLib to reference the non-shareable interop assembly. With shared interop,
-        // we will be able to remove this helper method and change the DllImport above 
+        // we will be able to remove this helper method and change the DllImport above
         // to directly accept a boolean parameter and use the SetLastError = true modifier.
         internal static unsafe int RhCompatibleReentrantWaitAny(bool alertable, int timeout, int count, IntPtr* handles)
         {
@@ -645,9 +645,9 @@ namespace System.Runtime
         [RuntimeImport(RuntimeLibrary, "RhFindMethodStartAddress")]
         internal static extern unsafe IntPtr RhFindMethodStartAddress(IntPtr codeAddr);
 
-        // Fetch a (managed) stack trace.  Fills in the given array with "return address IPs" for the current 
-        // thread's (managed) stack (array index 0 will be the caller of this method).  The return value is 
-        // the number of frames in the stack or a negative number (representing the required array size) if 
+        // Fetch a (managed) stack trace.  Fills in the given array with "return address IPs" for the current
+        // thread's (managed) stack (array index 0 will be the caller of this method).  The return value is
+        // the number of frames in the stack or a negative number (representing the required array size) if
         // the passed-in buffer is too small.
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhGetCurrentThreadStackTrace")]
@@ -663,7 +663,7 @@ namespace System.Runtime
         internal static extern void RhSetThreadExitCallback(IntPtr pCallback);
 #endif
 
-        // Functions involved in thunks from managed to managed functions (Universal transition transitions 
+        // Functions involved in thunks from managed to managed functions (Universal transition transitions
         // from an arbitrary method call into a defined function, and CallDescrWorker goes the other way.
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhGetUniversalTransitionThunk")]
@@ -688,7 +688,7 @@ namespace System.Runtime
         // The GC conservative reporting descriptor is a special structure of data that the GC
         // parses to determine whether there are specific regions of memory that it should not
         // collect or move around.
-        // This can only be used to report memory regions on the current stack and the structure must itself 
+        // This can only be used to report memory regions on the current stack and the structure must itself
         // be located on the stack.
         // This structure is contractually required to be 4 pointers in size. All details about
         // the contents are abstracted into the runtime
@@ -1146,7 +1146,7 @@ namespace System.Runtime
 
             internal static RhCorElementTypeInfo GetRhCorElementTypeInfo(CorElementType elementType)
             {
-                // The _lookupTable array only covers a subset of RhCorElementTypes, so we return a default 
+                // The _lookupTable array only covers a subset of RhCorElementTypes, so we return a default
                 // info when someone asks for an elementType which does not have an entry in the table.
                 if ((int)elementType > s_lookupTable.Length)
                     return default(RhCorElementTypeInfo);
@@ -1174,8 +1174,8 @@ namespace System.Runtime
 #else
             private const byte log2PointerSize = 2;
 #endif
-            [PreInitialized] // The enclosing class (RuntimeImports) is depended upon (indirectly) by 
-                             // __vtable_IUnknown, which is an eager-init class, so this type must not have a 
+            [PreInitialized] // The enclosing class (RuntimeImports) is depended upon (indirectly) by
+                             // __vtable_IUnknown, which is an eager-init class, so this type must not have a
                              // lazy-init .cctor
             private static RhCorElementTypeInfo[] s_lookupTable = new RhCorElementTypeInfo[]
             {
@@ -1183,7 +1183,7 @@ namespace System.Runtime
                 new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x0000, _flags = 0 },
                 // index = 0x1
                 new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x0000, _flags = 0 },
-                // index = 0x2 = ELEMENT_TYPE_BOOLEAN   (W = BOOL) 
+                // index = 0x2 = ELEMENT_TYPE_BOOLEAN   (W = BOOL)
                 new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x0004, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
                 // index = 0x3 = ELEMENT_TYPE_CHAR      (W = U2, CHAR, I4, U4, I8, U8, R4, R8) (U2 == Char)
                 new RhCorElementTypeInfo { _log2OfSize = 1, _widenMask = 0x3f88, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },

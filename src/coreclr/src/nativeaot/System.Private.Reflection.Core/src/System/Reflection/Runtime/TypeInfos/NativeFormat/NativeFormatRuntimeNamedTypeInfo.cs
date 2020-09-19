@@ -44,12 +44,12 @@ namespace System.Reflection.Runtime.TypeInfos.NativeFormat
         {
             //
             // Look for a [Guid] attribute. If found, return that.
-            // 
+            //
             foreach (CustomAttributeHandle cah in _typeDefinition.CustomAttributes)
             {
                 // We can't reference the GuidAttribute class directly as we don't have an official dependency on System.Runtime.InteropServices.
                 // Following age-old CLR tradition, we search for the custom attribute using a name-based search. Since this makes it harder
-                // to be sure we won't run into custom attribute constructors that comply with the GuidAttribute(String) signature, 
+                // to be sure we won't run into custom attribute constructors that comply with the GuidAttribute(String) signature,
                 // we'll check that it does and silently skip the CA if it doesn't match the expected pattern.
                 if (cah.IsCustomAttributeOfType(_reader, "System.Runtime.InteropServices", "GuidAttribute"))
                 {

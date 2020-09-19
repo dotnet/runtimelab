@@ -22,7 +22,7 @@ namespace System.Reflection.Runtime.General
                 if (!handle.IsTypeDefRefSpecOrModifiedTypeHandle(reader))
                     throw new BadImageFormatException();
             }
-            
+
             Debug.Assert(handle.IsTypeDefRefSpecOrModifiedTypeHandle(reader));
             _reader = reader;
             _handle = handle;

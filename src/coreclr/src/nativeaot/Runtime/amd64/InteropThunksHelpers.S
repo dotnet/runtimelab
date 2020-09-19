@@ -11,12 +11,12 @@ LEAF_ENTRY RhCommonStub, _TEXT
     PUSH_ARGUMENT_REGISTERS
     push_register    r10
 
-    alloc_stack    SIZEOF_FP_REGS 
-    SAVE_FLOAT_ARGUMENT_REGISTERS 0 
+    alloc_stack    SIZEOF_FP_REGS
+    SAVE_FLOAT_ARGUMENT_REGISTERS 0
 
     INLINE_GET_TLS_VAR  tls_thunkData
 
-    RESTORE_FLOAT_ARGUMENT_REGISTERS 0 
+    RESTORE_FLOAT_ARGUMENT_REGISTERS 0
     free_stack    SIZEOF_FP_REGS
 
     pop_register    r10
@@ -32,7 +32,7 @@ LEAF_END RhCommonStub, _TEXT
 
 LEAF_ENTRY RhGetCommonStubAddress, _TEXT
     lea rax, [rip + C_FUNC(RhCommonStub)]
-    ret 
+    ret
 LEAF_END RhGetCommonStubAddress, _TEXT
 
 
@@ -40,6 +40,6 @@ LEAF_ENTRY RhGetCurrentThunkContext, _TEXT
 
     INLINE_GET_TLS_VAR  tls_thunkData
 
-    mov    rax, qword ptr [rax]   
+    mov    rax, qword ptr [rax]
     ret
 LEAF_END RhGetCurrentThunkContext, _TEXT

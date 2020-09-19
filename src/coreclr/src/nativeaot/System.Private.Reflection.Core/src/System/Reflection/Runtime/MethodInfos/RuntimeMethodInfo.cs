@@ -310,7 +310,7 @@ namespace System.Reflection.Runtime.MethodInfos
         internal abstract RuntimeParameterInfo[] GetRuntimeParameters(RuntimeMethodInfo contextMethod, out RuntimeParameterInfo returnParameter);
 
         //
-        // The non-public version of MethodInfo.GetParameters() (does not array-copy.) 
+        // The non-public version of MethodInfo.GetParameters() (does not array-copy.)
         //
         internal RuntimeParameterInfo[] RuntimeParameters
         {
@@ -478,7 +478,7 @@ namespace System.Reflection.Runtime.MethodInfos
                     return false;
             }
 
-            // Enable pointers (which don't necessarily have typehandles). todo:be able to handle intptr <-> pointer, check if we need to handle 
+            // Enable pointers (which don't necessarily have typehandles). todo:be able to handle intptr <-> pointer, check if we need to handle
             // casts via pointer where the pointer types aren't identical
             if (dstType.Equals(srcType))
             {

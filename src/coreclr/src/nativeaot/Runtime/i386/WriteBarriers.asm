@@ -24,7 +24,7 @@ include AsmMacros.inc
 ;; (INVALIDGCVALUE) which disables the check for that location. Since the shadow heap is only validated at GC
 ;; time and these write barrier operations are atomic wrt to GCs this is sufficient to guarantee that the
 ;; shadow heap contains only valid copies of real heap values or INVALIDGCVALUE.
-ifdef WRITE_BARRIER_CHECK  
+ifdef WRITE_BARRIER_CHECK
 
 g_GCShadow      TEXTEQU <?g_GCShadow@@3PAEA>
 g_GCShadowEnd   TEXTEQU <?g_GCShadowEnd@@3PAEA>

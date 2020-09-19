@@ -83,7 +83,7 @@ NESTED_ENTRY RhpNewObject, _TEXT
         mov         rcx, rax            ;; rcx: object
                                         ;; rdx: already contains object size
         call        RhpPublishObject    ;; rax: this function returns the object that was passed-in
-New_SkipPublish: 
+New_SkipPublish:
 
         POP_COOP_PINVOKE_FRAME
         ret
@@ -143,7 +143,7 @@ LEAF_ENTRY RhNewString, _TEXT
         ret
 
 StringSizeOverflow:
-        ; We get here if the size of the final string object can't be represented as an unsigned 
+        ; We get here if the size of the final string object can't be represented as an unsigned
         ; 32-bit value. We're going to tail-call to a managed helper that will throw
         ; an OOM exception that the caller of this allocator understands.
 
@@ -204,7 +204,7 @@ LEAF_ENTRY RhpNewArray, _TEXT
         ret
 
 ArraySizeOverflow:
-        ; We get here if the size of the final array object can't be represented as an unsigned 
+        ; We get here if the size of the final array object can't be represented as an unsigned
         ; 32-bit value. We're going to tail-call to a managed helper that will throw
         ; an overflow exception that the caller of this allocator understands.
 
@@ -252,12 +252,12 @@ NESTED_ENTRY RhpNewArrayRare, _TEXT
         mov         rcx, rax            ;; rcx: object
         mov         rdx, rdi            ;; rdx: object size
         call        RhpPublishObject    ;; rax: this function returns the object that was passed-in
-NewArray_SkipPublish: 
+NewArray_SkipPublish:
 
         POP_COOP_PINVOKE_FRAME
         ret
 
-ArrayOutOfMemory:     
+ArrayOutOfMemory:
         ;; This is the OOM failure path. We're going to tail-call to a managed helper that will throw
         ;; an out of memory exception that the caller of this allocator understands.
 

@@ -2,7 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 //
-// Activator is an object that contains the Activation (CreateInstance/New) 
+// Activator is an object that contains the Activation (CreateInstance/New)
 //  methods for late bound support.
 //
 
@@ -25,7 +25,7 @@ namespace System
         // code, and direct constant references in unshared code.
         //
         // This method is the public surface area. It wraps the CreateInstance intrinsic with the appropriate try/catch
-        // block so that the correct exceptions are generated. Also, it handles the cases where the T type doesn't have 
+        // block so that the correct exceptions are generated. Also, it handles the cases where the T type doesn't have
         // a default constructor.
         [DebuggerGuidedStepThrough]
         public static T CreateInstance<T>()
@@ -116,26 +116,26 @@ namespace System
         [DebuggerStepThrough]
         public static object CreateInstance(Type type, BindingFlags bindingAttr, Binder binder, object[] args, CultureInfo culture, object[] activationAttributes)
             => ReflectionAugments.ReflectionCoreCallbacks.ActivatorCreateInstance(type, bindingAttr, binder, args, culture, activationAttributes);
-        
-        public static ObjectHandle CreateInstance(string assemblyName, string typeName) 
+
+        public static ObjectHandle CreateInstance(string assemblyName, string typeName)
         {
             throw new PlatformNotSupportedException(); // https://github.com/dotnet/corefx/issues/30845
         }
 
-        public static ObjectHandle CreateInstance(string assemblyName, 
-                                                  string typeName, 
-                                                  bool ignoreCase, 
-                                                  BindingFlags bindingAttr, 
-                                                  Binder binder, 
-                                                  object[] args, 
-                                                  CultureInfo culture, 
-                                                  object[] activationAttributes) 
-        { 
+        public static ObjectHandle CreateInstance(string assemblyName,
+                                                  string typeName,
+                                                  bool ignoreCase,
+                                                  BindingFlags bindingAttr,
+                                                  Binder binder,
+                                                  object[] args,
+                                                  CultureInfo culture,
+                                                  object[] activationAttributes)
+        {
             throw new PlatformNotSupportedException(); // https://github.com/dotnet/corefx/issues/30845
         }
 
-        public static ObjectHandle CreateInstance(string assemblyName, string typeName, object[] activationAttributes) 
-        { 
+        public static ObjectHandle CreateInstance(string assemblyName, string typeName, object[] activationAttributes)
+        {
             throw new PlatformNotSupportedException(); // https://github.com/dotnet/corefx/issues/30845
         }
     }

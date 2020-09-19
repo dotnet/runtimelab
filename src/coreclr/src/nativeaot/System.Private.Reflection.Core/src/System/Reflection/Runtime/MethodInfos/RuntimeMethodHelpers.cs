@@ -75,7 +75,7 @@ namespace System.Reflection.Runtime.MethodInfos
                     sb.Append(", ");
                 String parameterTypeString = parameters[i].ParameterTypeString;
 
-                // Legacy: Why use "ByRef" for by ref parameters? What language is this? 
+                // Legacy: Why use "ByRef" for by ref parameters? What language is this?
                 // VB uses "ByRef" but it should precede (not follow) the parameter name.
                 // Why don't we just use "&"?
                 if (parameterTypeString.EndsWith("&"))

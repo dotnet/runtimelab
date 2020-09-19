@@ -36,7 +36,7 @@ UInt32 RhConfig::ReadConfigValue(_In_z_ const TCHAR *wszName, UInt32 uiDefaultVa
     cchResult = PalGetEnvironmentVariable(wszName, wszBuffer, cchBuffer);
 #endif // FEATURE_ENVIRONMENT_VARIABLE_CONFIG
 
-    //if the config key wasn't found in the environment 
+    //if the config key wasn't found in the environment
     if ((cchResult == 0) || (cchResult >= cchBuffer))
         cchResult = GetIniVariable(wszName, wszBuffer, cchBuffer);
 
@@ -156,7 +156,7 @@ UInt32 RhConfig::GetConfigVariable(_In_z_ const TCHAR* configName, const ConfigP
 //reads the configuration values from rhconfig.ini and updates g_iniSettings
 //if the file is read succesfully and g_iniSettings will be set to a valid ConfigPair[] of length RCV_Count.
 //if the file does not exist or reading the file fails,  g_iniSettings is set to CONFIG_INI_NOT_AVAIL
-//NOTE: all return paths must set g_iniSettings 
+//NOTE: all return paths must set g_iniSettings
 void RhConfig::ReadConfigIni()
 {
     if (g_iniSettings == NULL)
@@ -332,8 +332,8 @@ _Ret_maybenull_z_ TCHAR* RhConfig::GetConfigPath()
 {
     const TCHAR* exePathBuff;
 
-    //get the path to rhconfig.ini, this file is expected to live along side the app 
-    //to build the path get the process executable module full path strip off the file name and 
+    //get the path to rhconfig.ini, this file is expected to live along side the app
+    //to build the path get the process executable module full path strip off the file name and
     //append rhconfig.ini
     Int32 pathLen = PalGetModuleFileName(&exePathBuff, NULL);
 
@@ -376,7 +376,7 @@ _Ret_maybenull_z_ TCHAR* RhConfig::GetConfigPath()
 }
 
 //Parses one line of rhconfig.ini and populates values in the passed in configPair
-//returns: true if the parsing was successful, false if the parsing failed. 
+//returns: true if the parsing was successful, false if the parsing failed.
 //NOTE: if the method fails configPair is left in an unitialized state
 bool RhConfig::ParseConfigLine(_Out_ ConfigPair* configPair, _In_z_ const char * line)
 {

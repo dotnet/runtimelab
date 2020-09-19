@@ -85,7 +85,7 @@ namespace Internal.Runtime.TypeLoader
                 throw new BadImageFormatException();
             }
             return methodAddress;
-        }        
+        }
     }
 
     public class NativeFormatModuleInfo : ModuleInfo
@@ -101,7 +101,7 @@ namespace Internal.Runtime.TypeLoader
         {
             MetadataReader = new MetadataReader((IntPtr)pBlob, (int)cbBlob);
         }
-        
+
         /// <summary>
         /// Module metadata reader for NativeFormat metadata
         /// </summary>
@@ -365,7 +365,7 @@ namespace Internal.Runtime.TypeLoader
             _iterationIndex = -1;
             _currentModule = null;
 
-            if (!preferredModuleHandle.IsNull && 
+            if (!preferredModuleHandle.IsNull &&
                 !moduleMap.HandleToModuleIndex.TryGetValue(preferredModuleHandle, out _preferredIndex))
             {
                 Environment.FailFast("Invalid module requested in enumeration: " + preferredModuleHandle.LowLevelToString());
@@ -814,7 +814,7 @@ namespace Internal.Runtime.TypeLoader
             // We should never have a dynamic module that is not associated with a module (where does it come from?!)
             Debug.Assert(false);
             return null;
-        }        
+        }
 
 
         /// <summary>

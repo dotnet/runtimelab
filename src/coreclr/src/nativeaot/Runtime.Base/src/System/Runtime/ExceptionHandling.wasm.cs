@@ -37,7 +37,7 @@ namespace System.Runtime
         }
 
         // TODO: temporary to try things out, when working look to see how to refactor with FindFirstPassHandler
-        private static bool FindFirstPassHandlerWasm(object exception, uint idxStart, uint idxCurrentBlockStart /* the start IL idx of the current block for the landing pad, will use in place of PC */, 
+        private static bool FindFirstPassHandlerWasm(object exception, uint idxStart, uint idxCurrentBlockStart /* the start IL idx of the current block for the landing pad, will use in place of PC */,
             void* shadowStack, ref EHClauseIterator clauseIter, out uint tryRegionIdx, out byte* pHandler)
         {
             pHandler = (byte*)0;
@@ -46,7 +46,7 @@ namespace System.Runtime
             RhEHClauseWasm ehClause = new RhEHClauseWasm();
             for (uint curIdx = 0; clauseIter.Next(ref ehClause); curIdx++)
             {
-                // 
+                //
                 // Skip to the starting try region.  This is used by collided unwinds and rethrows to pickup where
                 // the previous dispatch left off.
                 //
@@ -59,7 +59,7 @@ namespace System.Runtime
                         continue;
                     }
 
-                    // Now, we continue skipping while the try region is identical to the one that invoked the 
+                    // Now, we continue skipping while the try region is identical to the one that invoked the
                     // previous dispatch.
                     if ((ehClause._tryStartOffset == lastTryStart) && (ehClause._tryEndOffset == lastTryEnd))
                     {
@@ -113,7 +113,7 @@ namespace System.Runtime
             RhEHClauseWasm ehClause = new RhEHClauseWasm();
             for (uint curIdx = 0; clauseIter.Next(ref ehClause) && curIdx < idxLimit; curIdx++)
             {
-                // 
+                //
                 // Skip to the starting try region.  This is used by collided unwinds and rethrows to pickup where
                 // the previous dispatch left off.
                 //
@@ -126,7 +126,7 @@ namespace System.Runtime
                         continue;
                     }
 
-                    // Now, we continue skipping while the try region is identical to the one that invoked the 
+                    // Now, we continue skipping while the try region is identical to the one that invoked the
                     // previous dispatch.
                     if ((ehClause._tryStartOffset == lastTryStart) && (ehClause._tryEndOffset == lastTryEnd))
                         continue;
@@ -150,11 +150,11 @@ namespace System.Runtime
                 // N.B. -- We need to suppress GC "in-between" calls to finallys in this loop because we do
                 // not have the correct next-execution point live on the stack and, therefore, may cause a GC
                 // hole if we allow a GC between invocation of finally funclets (i.e. after one has returned
-                // here to the dispatcher, but before the next one is invoked).  Once they are running, it's 
+                // here to the dispatcher, but before the next one is invoked).  Once they are running, it's
                 // fine for them to trigger a GC, obviously.
-                // 
+                //
                 // As a result, RhpCallFinallyFunclet will set this state in the runtime upon return from the
-                // funclet, and we need to reset it if/when we fall out of the loop and we know that the 
+                // funclet, and we need to reset it if/when we fall out of the loop and we know that the
                 // method will no longer get any more GC callbacks.
 
                 byte* pFinallyHandler = ehClause._handlerAddress;

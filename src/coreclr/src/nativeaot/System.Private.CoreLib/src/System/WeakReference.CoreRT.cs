@@ -50,10 +50,10 @@ namespace System
                 bool result = (RuntimeImports.RhHandleGet(h) != null || TryGetComTarget() != null);
 
                 // We want to ensure that if the target is live, then we will
-                // return it to the user. We need to keep this WeakReference object 
+                // return it to the user. We need to keep this WeakReference object
                 // live so m_handle doesn't get set to 0 or reused.
                 // Since m_handle is volatile, the following statement will
-                // guarantee the weakref object is live till the following 
+                // guarantee the weakref object is live till the following
                 // statement.
                 return (m_handle == default(IntPtr)) ? false : result;
             }
@@ -88,10 +88,10 @@ namespace System
                 }
 
                 // We want to ensure that if the target is live, then we will
-                // return it to the user. We need to keep this WeakReference object 
+                // return it to the user. We need to keep this WeakReference object
                 // live so m_handle doesn't get set to 0 or reused.
                 // Since m_handle is volatile, the following statement will
-                // guarantee the weakref object is live till the following 
+                // guarantee the weakref object is live till the following
                 // statement.
                 return (m_handle == default(IntPtr)) ? null : o;
             }
@@ -104,7 +104,7 @@ namespace System
 
 #if false
                 // There is a race w/ finalization where m_handle gets set to
-                // NULL and the WeakReference becomes invalid.  Here we have to 
+                // NULL and the WeakReference becomes invalid.  Here we have to
                 // do the following in order:
                 //
                 // 1.  Get the old object value
@@ -115,7 +115,7 @@ namespace System
                 // with another updater, or we lost a race w/ the finalizer.  In
                 // either case, we can just let the other guy win.
                 Object oldValue = RuntimeImports.RhHandleGet(h);
-                h = m_handle;  
+                h = m_handle;
                 if (h == default(IntPtr))
                     throw new InvalidOperationException(SR.InvalidOperation_HandleIsNotInitialized);
                 GCHandle.InternalCompareExchange(h, value, oldValue, false /* isPinned */);
@@ -141,7 +141,7 @@ namespace System
                 RuntimeImports.RhHandleSet(h, value);
 #endif
 
-                // Ensure we don't have any handle recycling attacks in this 
+                // Ensure we don't have any handle recycling attacks in this
                 // method where the finalizer frees the handle.
                 GC.KeepAlive(this);
             }
@@ -170,7 +170,7 @@ namespace System
         }
 
         /// <summary>
-        /// This method notifies the System.private.Interop.dll to update the conditionalweaktable for weakreferenceInstance->target in case the target is __ComObject. This ensures that we have a means to 
+        /// This method notifies the System.private.Interop.dll to update the conditionalweaktable for weakreferenceInstance->target in case the target is __ComObject. This ensures that we have a means to
         /// go from the managed weak reference to the actual native object even though the managed counterpart might have been collected.
         /// </summary>
         /// <param name="target"></param>

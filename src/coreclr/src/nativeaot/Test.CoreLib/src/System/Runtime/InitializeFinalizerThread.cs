@@ -8,7 +8,7 @@ namespace System.Runtime
     internal static class FinalizerInitRunner
     {
         // Here, we are subscribing to a callback from the runtime.  This callback is made from the finalizer
-        // thread before any objects are finalized.  
+        // thread before any objects are finalized.
         public static void DoInitialize()
         {
         }

@@ -2,9 +2,9 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 //
-// This file is here because we share some common code with the CLR and that platform uses common.h as a 
-// precompiled header. Due to limitations on precompilation (a precompiled header must be included first 
-// and must not be preceded by any other preprocessor directive) we cannot conditionally include common.h, 
+// This file is here because we share some common code with the CLR and that platform uses common.h as a
+// precompiled header. Due to limitations on precompilation (a precompiled header must be included first
+// and must not be preceded by any other preprocessor directive) we cannot conditionally include common.h,
 // so the simplest solution is to maintain this empty header under Redhawk.
 //
 

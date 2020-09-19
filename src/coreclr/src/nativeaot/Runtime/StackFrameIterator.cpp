@@ -147,7 +147,7 @@ void StackFrameIterator::InternalInit(Thread * pThreadToWalk, PTR_PInvokeTransit
     // EH stackwalks are always required to unwind non-volatile floating point state.  This
     // state is never carried by PInvokeTransitionFrames, implying that they can never be used
     // as the initial state for an EH stackwalk.
-    ASSERT_MSG(!(dwFlags & ApplyReturnAddressAdjustment), 
+    ASSERT_MSG(!(dwFlags & ApplyReturnAddressAdjustment),
         "PInvokeTransitionFrame content is not sufficient to seed an EH stackwalk");
 
     EnterInitialInvalidState(pThreadToWalk);
@@ -160,8 +160,8 @@ void StackFrameIterator::InternalInit(Thread * pThreadToWalk, PTR_PInvokeTransit
 
     m_dwFlags = dwFlags;
 
-    // We need to walk the ExInfo chain in parallel with the stackwalk so that we know when we cross over 
-    // exception throw points.  So we must find our initial point in the ExInfo chain here so that we can 
+    // We need to walk the ExInfo chain in parallel with the stackwalk so that we know when we cross over
+    // exception throw points.  So we must find our initial point in the ExInfo chain here so that we can
     // properly walk it in parallel.
     ResetNextExInfoForSP((UIntNative)dac_cast<TADDR>(pFrame));
 
@@ -176,7 +176,7 @@ void StackFrameIterator::InternalInit(Thread * pThreadToWalk, PTR_PInvokeTransit
 #ifdef TARGET_ARM
     m_RegDisplay.pLR = (PTR_UIntNative)PTR_HOST_MEMBER(PInvokeTransitionFrame, pFrame, m_RIP);
     m_RegDisplay.pR11 = (PTR_UIntNative)PTR_HOST_MEMBER(PInvokeTransitionFrame, pFrame, m_ChainPointer);
-     
+
     if (pFrame->m_Flags & PTFF_SAVE_R4)  { m_RegDisplay.pR4 = pPreservedRegsCursor++; }
     if (pFrame->m_Flags & PTFF_SAVE_R5)  { m_RegDisplay.pR5 = pPreservedRegsCursor++; }
     if (pFrame->m_Flags & PTFF_SAVE_R6)  { m_RegDisplay.pR6 = pPreservedRegsCursor++; }
@@ -294,7 +294,7 @@ void StackFrameIterator::InternalInit(Thread * pThreadToWalk, PTR_PInvokeTransit
 
 #endif // defined(USE_PORTABLE_HELPERS)
 
-    // @TODO: currently, we always save all registers -- how do we handle the onese we don't save once we 
+    // @TODO: currently, we always save all registers -- how do we handle the onese we don't save once we
     //        start only saving those that weren't already saved?
 
     // This function guarantees that the final initialized context will refer to a managed
@@ -369,8 +369,8 @@ void StackFrameIterator::InternalInit(Thread * pThreadToWalk, PTR_PAL_LIMITED_CO
 
     m_dwFlags = dwFlags;
 
-    // We need to walk the ExInfo chain in parallel with the stackwalk so that we know when we cross over 
-    // exception throw points.  So we must find our initial point in the ExInfo chain here so that we can 
+    // We need to walk the ExInfo chain in parallel with the stackwalk so that we know when we cross over
+    // exception throw points.  So we must find our initial point in the ExInfo chain here so that we can
     // properly walk it in parallel.
     ResetNextExInfoForSP(pCtx->GetSp());
 
@@ -506,7 +506,7 @@ void StackFrameIterator::InternalInit(Thread * pThreadToWalk, PTR_PAL_LIMITED_CO
 
 PTR_VOID StackFrameIterator::HandleExCollide(PTR_ExInfo pExInfo)
 {
-    STRESS_LOG3(LF_STACKWALK, LL_INFO10000, "   [ ex collide ] kind = %d, pass = %d, idxCurClause = %d\n", 
+    STRESS_LOG3(LF_STACKWALK, LL_INFO10000, "   [ ex collide ] kind = %d, pass = %d, idxCurClause = %d\n",
                 pExInfo->m_kind, pExInfo->m_passNumber, pExInfo->m_idxCurClause);
 
     PTR_VOID collapsingTargetFrame = NULL;
@@ -518,12 +518,12 @@ PTR_VOID StackFrameIterator::HandleExCollide(PTR_ExInfo pExInfo)
     PTR_VOID activeFuncletFramePointer = m_pendingFuncletFramePointer;
     m_pendingFuncletFramePointer = NULL;
 
-    // If we aren't invoking a funclet (i.e. idxCurClause == -1), and we're doing a GC stackwalk, we don't 
-    // want the 2nd-pass collided behavior because that behavior assumes that the previous frame was a 
+    // If we aren't invoking a funclet (i.e. idxCurClause == -1), and we're doing a GC stackwalk, we don't
+    // want the 2nd-pass collided behavior because that behavior assumes that the previous frame was a
     // funclet, which isn't the case when taking a GC at some points in the EH dispatch code.  So we treat it
     // as if the 2nd pass hasn't actually started yet.
-    if ((pExInfo->m_passNumber == 1) || 
-        (pExInfo->m_idxCurClause == 0xFFFFFFFF)) 
+    if ((pExInfo->m_passNumber == 1) ||
+        (pExInfo->m_idxCurClause == 0xFFFFFFFF))
     {
         FAILFAST_OR_DAC_FAIL_MSG(!(curFlags & ApplyReturnAddressAdjustment),
             "did not expect to collide with a 1st-pass ExInfo during a EH stackwalk");
@@ -547,12 +547,12 @@ PTR_VOID StackFrameIterator::HandleExCollide(PTR_ExInfo pExInfo)
 
         // Sync our 'current' ExInfo with the updated state (we may have skipped other dispatches)
         ResetNextExInfoForSP(m_RegDisplay.GetSP());
-        
-        // In case m_ControlPC is pre-adjusted, counteract here, since the caller of this routine 
-        // will apply the adjustment again once we return. If the m_ControlPC is not pre-adjusted, 
+
+        // In case m_ControlPC is pre-adjusted, counteract here, since the caller of this routine
+        // will apply the adjustment again once we return. If the m_ControlPC is not pre-adjusted,
         // this is simply an no-op.
         m_ControlPC = m_OriginalControlPC;
-        
+
         m_dwFlags = curFlags;
 
         // The iterator has been moved to the "owner frame" (either a parent funclet or the main
@@ -582,7 +582,7 @@ void StackFrameIterator::UpdateFromExceptionDispatch(PTR_StackFrameIterator pSou
     ASSERT(m_pendingFuncletFramePointer == NULL);
     PreservedRegPtrs thisFuncletPtrs = this->m_funcletPtrs;
 
-    // Blast over 'this' with everything from the 'source'.  
+    // Blast over 'this' with everything from the 'source'.
     *this = *pSourceIterator;
 
     // Clear the funclet frame pointer (if any) that was loaded from the previous iterator.
@@ -615,7 +615,7 @@ void StackFrameIterator::UpdateFromExceptionDispatch(PTR_StackFrameIterator pSou
     m_RegDisplay.pX26 = thisFuncletPtrs.pX26;
     m_RegDisplay.pX27 = thisFuncletPtrs.pX27;
     m_RegDisplay.pX28 = thisFuncletPtrs.pX28;
-    m_RegDisplay.pFP = thisFuncletPtrs.pFP; 
+    m_RegDisplay.pFP = thisFuncletPtrs.pFP;
 
 #elif defined(UNIX_AMD64_ABI)
     // Save the preserved regs portion of the REGDISPLAY across the unwind through the C# EH dispatch code.
@@ -626,7 +626,7 @@ void StackFrameIterator::UpdateFromExceptionDispatch(PTR_StackFrameIterator pSou
     m_RegDisplay.pR14 = thisFuncletPtrs.pR14;
     m_RegDisplay.pR15 = thisFuncletPtrs.pR15;
 
-#elif defined(TARGET_X86) || defined(TARGET_AMD64) 
+#elif defined(TARGET_X86) || defined(TARGET_AMD64)
     // Save the preserved regs portion of the REGDISPLAY across the unwind through the C# EH dispatch code.
     m_RegDisplay.pRbp = thisFuncletPtrs.pRbp;
     m_RegDisplay.pRdi = thisFuncletPtrs.pRdi;
@@ -678,9 +678,9 @@ void StackFrameIterator::UnwindFuncletInvokeThunk()
 
     bool isFilterInvoke = EQUALS_RETURN_ADDRESS(m_ControlPC, RhpCallFilterFunclet2);
 
-#if defined(UNIX_AMD64_ABI) 
+#if defined(UNIX_AMD64_ABI)
     SP = (PTR_UIntNative)(m_RegDisplay.SP);
-    
+
     if (isFilterInvoke)
     {
         SP++; // stack alignment
@@ -704,7 +704,7 @@ void StackFrameIterator::UnwindFuncletInvokeThunk()
             SP += 3; // 3 locals
         }
     }
-    
+
     m_RegDisplay.pRbp = SP++;
     m_RegDisplay.pRbx = SP++;
     m_RegDisplay.pR12 = SP++;
@@ -713,7 +713,7 @@ void StackFrameIterator::UnwindFuncletInvokeThunk()
     m_RegDisplay.pR15 = SP++;
 #elif defined(TARGET_AMD64)
     static const int ArgumentsScratchAreaSize = 4 * 8;
-    
+
     PTR_Fp128 xmm = (PTR_Fp128)(m_RegDisplay.SP + ArgumentsScratchAreaSize);
 
     for (int i = 0; i < 10; i++)
@@ -738,7 +738,7 @@ void StackFrameIterator::UnwindFuncletInvokeThunk()
         m_funcletPtrs.pR13 = m_RegDisplay.pR13;
         m_funcletPtrs.pR14 = m_RegDisplay.pR14;
         m_funcletPtrs.pR15 = m_RegDisplay.pR15;
-        
+
         if (EQUALS_RETURN_ADDRESS(m_ControlPC, RhpCallCatchFunclet2))
         {
             SP += 3; // 3 locals
@@ -757,7 +757,7 @@ void StackFrameIterator::UnwindFuncletInvokeThunk()
     m_RegDisplay.pR13 = SP++;
     m_RegDisplay.pR14 = SP++;
     m_RegDisplay.pR15 = SP++;
-    
+
 #elif defined(TARGET_X86)
     SP = (PTR_UIntNative)(m_RegDisplay.SP);
 
@@ -818,7 +818,7 @@ void StackFrameIterator::UnwindFuncletInvokeThunk()
     m_RegDisplay.pR9 = SP++;
     m_RegDisplay.pR10 = SP++;
     m_RegDisplay.pR11 = SP++;
-    
+
 #elif defined(TARGET_ARM64)
     PTR_UInt64 d = (PTR_UInt64)(m_RegDisplay.SP);
 
@@ -842,7 +842,7 @@ void StackFrameIterator::UnwindFuncletInvokeThunk()
         m_funcletPtrs.pX22  = m_RegDisplay.pX22;
         m_funcletPtrs.pX23  = m_RegDisplay.pX23;
         m_funcletPtrs.pX24  = m_RegDisplay.pX24;
-        m_funcletPtrs.pX25  = m_RegDisplay.pX25; 
+        m_funcletPtrs.pX25  = m_RegDisplay.pX25;
         m_funcletPtrs.pX26  = m_RegDisplay.pX26;
         m_funcletPtrs.pX27  = m_RegDisplay.pX27;
         m_funcletPtrs.pX28  = m_RegDisplay.pX28;
@@ -852,7 +852,7 @@ void StackFrameIterator::UnwindFuncletInvokeThunk()
     m_RegDisplay.pFP  = SP++;
 
     m_RegDisplay.SetAddrOfIP((PTR_PCODE)SP);
-    m_RegDisplay.SetIP(*SP++); 
+    m_RegDisplay.SetIP(*SP++);
 
     m_RegDisplay.pX19 = SP++;
     m_RegDisplay.pX20 = SP++;
@@ -878,7 +878,7 @@ void StackFrameIterator::UnwindFuncletInvokeThunk()
     m_RegDisplay.SetSP((UIntNative)dac_cast<TADDR>(SP));
     SetControlPC(dac_cast<PTR_VOID>(*(m_RegDisplay.pIP)));
 
-    // We expect to be called by the runtime's C# EH implementation, and since this function's notion of how 
+    // We expect to be called by the runtime's C# EH implementation, and since this function's notion of how
     // to unwind through the stub is brittle relative to the stub itself, we want to check as soon as we can.
     ASSERT(m_pInstance->FindCodeManagerByAddress(m_ControlPC) && "unwind from funclet invoke stub failed");
 #endif // defined(USE_PORTABLE_HELPERS)
@@ -1276,7 +1276,7 @@ void StackFrameIterator::UnwindThrowSiteThunk()
     m_RegDisplay.SetSP(pContext->GetSp());
     SetControlPC(dac_cast<PTR_VOID>(pContext->IP));
 
-    // We expect the throw site to be in managed code, and since this function's notion of how to unwind 
+    // We expect the throw site to be in managed code, and since this function's notion of how to unwind
     // through the stub is brittle relative to the stub itself, we want to check as soon as we can.
     ASSERT(m_pInstance->FindCodeManagerByAddress(m_ControlPC) && "unwind from throw site stub failed");
 #endif // defined(USE_PORTABLE_HELPERS)
@@ -1318,7 +1318,7 @@ UnwindOutOfCurrentManagedFrame:
 
     PTR_VOID pPreviousTransitionFrame;
     FAILFAST_OR_DAC_FAIL(GetCodeManager()->UnwindStackFrame(&m_methodInfo, &m_RegDisplay, &pPreviousTransitionFrame));
-    
+
     bool doingFuncletUnwind = GetCodeManager()->IsFunclet(&m_methodInfo);
 
     if (pPreviousTransitionFrame != NULL)
@@ -1447,7 +1447,7 @@ UnwindOutOfCurrentManagedFrame:
 
         if (exCollide)
         {
-            // OK, so we just hit (collided with) an exception throw point.  We continue by consulting the 
+            // OK, so we just hit (collided with) an exception throw point.  We continue by consulting the
             // ExInfo.
 
             // In the GC stackwalk, this means walking all the way off the end of the managed exception
@@ -1806,7 +1806,7 @@ PTR_VOID StackFrameIterator::AdjustReturnAddressBackward(PTR_VOID controlPC)
 
 // static
 StackFrameIterator::ReturnAddressCategory StackFrameIterator::CategorizeUnadjustedReturnAddress(PTR_VOID returnAddress)
-{    
+{
 #if defined(USE_PORTABLE_HELPERS) // @TODO: CORERT: no portable thunks are defined
 
     return InManagedCode;
@@ -1829,7 +1829,7 @@ StackFrameIterator::ReturnAddressCategory StackFrameIterator::CategorizeUnadjust
         EQUALS_RETURN_ADDRESS(returnAddress, RhpThrowHwEx2) ||
         EQUALS_RETURN_ADDRESS(returnAddress, RhpRethrow2))
     {
-        return InThrowSiteThunk; 
+        return InThrowSiteThunk;
     }
 
     if (
@@ -1861,7 +1861,7 @@ COOP_PINVOKE_HELPER(Boolean, RhpSfiInit, (StackFrameIterator* pThis, PAL_LIMITED
     Thread * pCurThread = ThreadStore::GetCurrentThread();
 
     // The stackwalker is intolerant to hijacked threads, as it is largely expecting to be called from C++
-    // where the hijack state of the thread is invariant.  Because we've exposed the iterator out to C#, we 
+    // where the hijack state of the thread is invariant.  Because we've exposed the iterator out to C#, we
     // need to unhijack every time we callback into C++ because the thread could have been hijacked during our
     // time executing C#.
     pCurThread->Unhijack();
@@ -1881,7 +1881,7 @@ COOP_PINVOKE_HELPER(Boolean, RhpSfiInit, (StackFrameIterator* pThis, PAL_LIMITED
 COOP_PINVOKE_HELPER(Boolean, RhpSfiNext, (StackFrameIterator* pThis, UInt32* puExCollideClauseIdx, Boolean* pfUnwoundReversePInvoke))
 {
     // The stackwalker is intolerant to hijacked threads, as it is largely expecting to be called from C++
-    // where the hijack state of the thread is invariant.  Because we've exposed the iterator out to C#, we 
+    // where the hijack state of the thread is invariant.  Because we've exposed the iterator out to C#, we
     // need to unhijack every time we callback into C++ because the thread could have been hijacked during our
     // time executing C#.
     ThreadStore::GetCurrentThread()->Unhijack();
@@ -1905,8 +1905,8 @@ COOP_PINVOKE_HELPER(Boolean, RhpSfiNext, (StackFrameIterator* pThis, UInt32* puE
         *puExCollideClauseIdx = MaxTryRegionIdx;
     }
 
-    *pfUnwoundReversePInvoke = (pThis->m_dwFlags & StackFrameIterator::UnwoundReversePInvoke) 
-                                    ? Boolean_true 
+    *pfUnwoundReversePInvoke = (pThis->m_dwFlags & StackFrameIterator::UnwoundReversePInvoke)
+                                    ? Boolean_true
                                     : Boolean_false;
     return isValid;
 }

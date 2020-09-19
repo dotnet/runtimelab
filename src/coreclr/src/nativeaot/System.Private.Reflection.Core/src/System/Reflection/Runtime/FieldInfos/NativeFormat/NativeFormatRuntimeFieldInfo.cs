@@ -163,9 +163,9 @@ namespace System.Reflection.Runtime.FieldInfos.NativeFormat
         protected sealed override RuntimeTypeInfo DefiningType { get { return _definingTypeInfo; } }
 
         protected sealed override IEnumerable<CustomAttributeData> TrueCustomAttributes => RuntimeCustomAttributeData.GetCustomAttributes(_reader, _field.CustomAttributes);
-  
+
         protected sealed override int ExplicitLayoutFieldOffsetData => (int)(_field.Offset);
- 
+
         private Handle FieldTypeHandle => _field.Signature.GetFieldSignature(_reader).Type;
 
         private readonly NativeFormatRuntimeNamedTypeInfo _definingTypeInfo;

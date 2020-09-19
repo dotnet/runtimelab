@@ -9,11 +9,11 @@ using System.Runtime.CompilerServices;
 // Implements the single finalizer thread for a Redhawk instance. Essentially waits for an event to fire
 // indicating finalization is necessary then drains the queue of pending finalizable objects, calling the
 // finalize method for each one.
-// 
+//
 
 namespace System.Runtime
 {
-    // We choose this name to avoid clashing with any future public class with the name Finalizer. 
+    // We choose this name to avoid clashing with any future public class with the name Finalizer.
     internal static class __Finalizer
     {
         [UnmanagedCallersOnly(EntryPoint = "ProcessFinalizers", CallConvs = new Type[] { typeof(CallConvCdecl) })]
@@ -26,7 +26,7 @@ namespace System.Runtime
             while (true)
             {
                 // Wait until there's some work to be done. If true is returned we should finalize objects,
-                // otherwise memory is low and we should initiate a collection. 
+                // otherwise memory is low and we should initiate a collection.
                 if (InternalCalls.RhpWaitForFinalizerRequest() != 0)
                 {
                     DrainQueue();
@@ -45,7 +45,7 @@ namespace System.Runtime
         }
 
         // Do not inline this method -- we do not want to accidentally have any temps in ProcessFinalizers which contain
-        // objects that came off of the finalizer queue.  If such temps were reported across the duration of the 
+        // objects that came off of the finalizer queue.  If such temps were reported across the duration of the
         // finalizer thread wait operation, it could cause unpredictable behavior with weak handles.
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static unsafe void DrainQueue()

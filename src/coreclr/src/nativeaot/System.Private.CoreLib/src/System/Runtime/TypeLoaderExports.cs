@@ -74,7 +74,7 @@ namespace System.Runtime
         }
 
         // Initialize the cache eagerly to avoid null checks.
-        // Use array with just single element to make this pay-for-play. The actual cache will be allocated only 
+        // Use array with just single element to make this pay-for-play. The actual cache will be allocated only
         // once the lazy lookups are actually needed.
         private static Entry[] s_cache;
 

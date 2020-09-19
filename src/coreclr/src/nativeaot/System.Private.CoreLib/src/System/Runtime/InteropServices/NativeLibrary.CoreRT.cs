@@ -15,7 +15,7 @@ namespace System.Runtime.InteropServices
         internal static IntPtr LoadLibraryByName(string libraryName, Assembly assembly, DllImportSearchPath? searchPath, bool throwOnError)
         {
             // First checks if a default dllImportSearchPathFlags was passed in, if so, use that value.
-            // Otherwise checks if the assembly has the DefaultDllImportSearchPathsAttribute attribute. 
+            // Otherwise checks if the assembly has the DefaultDllImportSearchPathsAttribute attribute.
             // If so, use that value.
 
             int searchPathFlags;
@@ -66,12 +66,12 @@ namespace System.Runtime.InteropServices
             // P/Invokes are often declared with variations on the actual library name.
             // For example, it's common to leave off the extension/suffix of the library
             // even if it has one, or to leave off a prefix like "lib" even if it has one
-            // (both of these are typically done to smooth over cross-platform differences). 
+            // (both of these are typically done to smooth over cross-platform differences).
             // We try to dlopen with such variations on the original.
             foreach (LibraryNameVariation libraryNameVariation in LibraryNameVariation.DetermineLibraryNameVariations(libraryName, libNameIsRelativePath))
             {
                 string currLibNameVariation = libraryNameVariation.Prefix + libraryName + libraryNameVariation.Suffix;
-                
+
                 if (!libNameIsRelativePath)
                 {
                     int flags = loadWithAlteredPathFlags;

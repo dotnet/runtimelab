@@ -24,13 +24,13 @@ SHash<TRAITS>::~SHash()
 }
 
 template <typename TRAITS>
-typename SHash<TRAITS>::count_t SHash<TRAITS>::GetCount() const 
+typename SHash<TRAITS>::count_t SHash<TRAITS>::GetCount() const
 {
     return m_tableCount;
 }
 
 template <typename TRAITS>
-typename SHash<TRAITS>::count_t SHash<TRAITS>::GetCapacity() const 
+typename SHash<TRAITS>::count_t SHash<TRAITS>::GetCapacity() const
 {
     return m_tableMax;
 }
@@ -142,14 +142,14 @@ bool SHash<TRAITS>::CheckGrowth()
     {
         return Grow();
     }
-        
+
     return true;
 }
 
 template <typename TRAITS>
 bool SHash<TRAITS>::Grow()
 {
-    count_t newSize = (count_t) (m_tableCount 
+    count_t newSize = (count_t) (m_tableCount
                                  * TRAITS::s_growth_factor_numerator / TRAITS::s_growth_factor_denominator
                                  * TRAITS::s_density_factor_denominator / TRAITS::s_density_factor_numerator);
     if (newSize < TRAITS::s_minimum_allocation)
@@ -206,7 +206,7 @@ bool SHash<TRAITS>::CheckGrowth(count_t newElements)
 template <typename TRAITS>
 bool SHash<TRAITS>::Reallocate(count_t newTableSize)
 {
-    ASSERT(newTableSize >= 
+    ASSERT(newTableSize >=
                  (count_t) (GetCount() * TRAITS::s_density_factor_denominator / TRAITS::s_density_factor_numerator));
 
     // Allocation size must be a prime number.  This is necessary so that hashes uniformly
@@ -261,13 +261,13 @@ const typename SHash<TRAITS>::element_t * SHash<TRAITS>::Lookup(PTR_element_t ta
         return NULL;
 
     count_t hash = TRAITS::Hash(key);
-    count_t index = hash % tableSize; 
+    count_t index = hash % tableSize;
     count_t increment = 0; // delay computation
 
     while (true)
     {
         element_t& current = table[index];
-            
+
         if (TRAITS::IsNull(current))
             return NULL;
 
@@ -278,7 +278,7 @@ const typename SHash<TRAITS>::element_t * SHash<TRAITS>::Lookup(PTR_element_t ta
         }
 
         if (increment == 0)
-            increment = (hash % (tableSize-1)) + 1; 
+            increment = (hash % (tableSize-1)) + 1;
 
         index += increment;
         if (index >= tableSize)
@@ -292,13 +292,13 @@ bool SHash<TRAITS>::Add(element_t *table, count_t tableSize, const element_t &el
     key_t key = TRAITS::GetKey(element);
 
     count_t hash = TRAITS::Hash(key);
-    count_t index = hash % tableSize; 
+    count_t index = hash % tableSize;
     count_t increment = 0; // delay computation
 
     while (true)
     {
         element_t& current = table[index];
-            
+
         if (TRAITS::IsNull(current))
         {
             table[index] = element;
@@ -312,7 +312,7 @@ bool SHash<TRAITS>::Add(element_t *table, count_t tableSize, const element_t &el
         }
 
         if (increment == 0)
-            increment = (hash % (tableSize-1)) + 1; 
+            increment = (hash % (tableSize-1)) + 1;
 
         index += increment;
         if (index >= tableSize)
@@ -323,19 +323,19 @@ bool SHash<TRAITS>::Add(element_t *table, count_t tableSize, const element_t &el
 template <typename TRAITS>
 void SHash<TRAITS>::AddOrReplace(element_t *table, count_t tableSize, const element_t &element)
 {
-    ASSERT(!TRAITS::s_supports_remove);        
+    ASSERT(!TRAITS::s_supports_remove);
 
     key_t key = TRAITS::GetKey(element);
 
     count_t hash = TRAITS::Hash(key);
-    count_t index = hash % tableSize; 
+    count_t index = hash % tableSize;
     count_t increment = 0; // delay computation
 
     while (true)
     {
         element_t& current = table[index];
-        ASSERT(!TRAITS::IsDeleted(current));    
- 
+        ASSERT(!TRAITS::IsDeleted(current));
+
         if (TRAITS::IsNull(current))
         {
             table[index] = element;
@@ -350,7 +350,7 @@ void SHash<TRAITS>::AddOrReplace(element_t *table, count_t tableSize, const elem
         }
 
         if (increment == 0)
-            increment = (hash % (tableSize-1)) + 1; 
+            increment = (hash % (tableSize-1)) + 1;
 
         index += increment;
         if (index >= tableSize)
@@ -368,13 +368,13 @@ void SHash<TRAITS>::Remove(element_t *table, count_t tableSize, key_t key)
     ASSERT(Lookup(table, tableSize, key) != NULL);
 
     count_t hash = TRAITS::Hash(key);
-    count_t index = hash % tableSize; 
+    count_t index = hash % tableSize;
     count_t increment = 0; // delay computation
 
     while (true)
     {
         element_t& current = table[index];
-            
+
         if (TRAITS::IsNull(current))
             return;
 
@@ -387,7 +387,7 @@ void SHash<TRAITS>::Remove(element_t *table, count_t tableSize, key_t key)
         }
 
         if (increment == 0)
-            increment = (hash % (tableSize-1)) + 1; 
+            increment = (hash % (tableSize-1)) + 1;
 
         index += increment;
         if (index >= tableSize)
@@ -412,7 +412,7 @@ void SHash<TRAITS>::RemoveElement(element_t *table, count_t tableSize, element_t
 template <typename TRAITS>
 bool SHash<TRAITS>::IsPrime(count_t number)
 {
-    // This is a very low-tech check for primality, which doesn't scale very well.  
+    // This is a very low-tech check for primality, which doesn't scale very well.
     // There are more efficient tests if this proves to be burdensome for larger
     // tables.
 
@@ -435,9 +435,9 @@ namespace
     const UInt32 g_shash_primes[] = {
         11,17,23,29,37,47,59,71,89,107,131,163,197,239,293,353,431,521,631,761,919,
         1103,1327,1597,1931,2333,2801,3371,4049,4861,5839,7013,8419,10103,12143,14591,
-        17519,21023,25229,30293,36353,43627,52361,62851,75431,90523, 108631, 130363, 
+        17519,21023,25229,30293,36353,43627,52361,62851,75431,90523, 108631, 130363,
         156437, 187751, 225307, 270371, 324449, 389357, 467237, 560689, 672827, 807403,
-        968897, 1162687, 1395263, 1674319, 2009191, 2411033, 2893249, 3471899, 4166287, 
+        968897, 1162687, 1395263, 1674319, 2009191, 2411033, 2893249, 3471899, 4166287,
         4999559, 5999471, 7199369 };
 }
 

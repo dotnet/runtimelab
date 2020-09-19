@@ -4,7 +4,7 @@
 #pragma once
 
 // The following definitions are required for interop with the VS Debugger
-// Prior to making any changes to these, please reach out to the VS Debugger 
+// Prior to making any changes to these, please reach out to the VS Debugger
 // team to make sure that your changes are not going to prevent the debugger
 // from working.
 

@@ -78,8 +78,8 @@ namespace System.Reflection.Runtime.BindingFlagSupport
                     }
                     else
                     {
-                        // From our existing code, our policy here is that if a parameterInfo 
-                        // is optional then all subsequent parameterInfos shall be optional. 
+                        // From our existing code, our policy here is that if a parameterInfo
+                        // is optional then all subsequent parameterInfos shall be optional.
 
                         // Thus, iff the first parameterInfo is not optional then this MethodInfo is no longer a canidate.
                         if (!parameterInfos[argumentTypes.Length].IsOptional)
@@ -94,7 +94,7 @@ namespace System.Reflection.Runtime.BindingFlagSupport
                     if (parameterInfos.Length == 0)
                         return false;
 
-                    // The last argument of the signature could be a param array. 
+                    // The last argument of the signature could be a param array.
                     bool shortByMoreThanOneSuppliedArgument = argumentTypes.Length < parameterInfos.Length - 1;
 
                     if (shortByMoreThanOneSuppliedArgument)
@@ -120,7 +120,7 @@ namespace System.Reflection.Runtime.BindingFlagSupport
                     // Legacy behavior is to ignore ExactBinding when InvokeMember is specified.
                     // Why filter by InvokeMember? If the answer is we leave this to the binder then why not leave
                     // all the rest of this  to the binder too? Further, what other semanitc would the binder
-                    // use for BindingFlags.ExactBinding besides this one? Further, why not include CreateInstance 
+                    // use for BindingFlags.ExactBinding besides this one? Further, why not include CreateInstance
                     // in this if statement? That's just InvokeMethod with a constructor, right?
                     if ((bindingFlags & (BindingFlags.InvokeMethod)) == 0)
                     {
@@ -144,7 +144,7 @@ namespace System.Reflection.Runtime.BindingFlagSupport
         // Otherwise, return null.
         //
         // - MethodImpls ignored. (I didn't say it made sense, this is just how the desktop api we're porting behaves.)
-        // - Implemented interfaces ignores. (I didn't say it made sense, this is just how the desktop api we're porting behaves.) 
+        // - Implemented interfaces ignores. (I didn't say it made sense, this is just how the desktop api we're porting behaves.)
         //
         public static M GetImplicitlyOverriddenBaseClassMember<M>(this M member) where M : MemberInfo
         {

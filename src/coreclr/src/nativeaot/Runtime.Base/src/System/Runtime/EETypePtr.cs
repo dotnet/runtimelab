@@ -11,7 +11,7 @@ using System.Runtime.CompilerServices;
 **
 ** Purpose: Pointer Type to a EEType in the runtime.
 **
-** 
+**
 ===========================================================*/
 
 namespace System

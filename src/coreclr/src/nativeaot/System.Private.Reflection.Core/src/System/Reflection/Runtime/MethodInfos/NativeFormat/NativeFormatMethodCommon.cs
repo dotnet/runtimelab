@@ -18,7 +18,7 @@ using Internal.Metadata.NativeFormat;
 
 namespace System.Reflection.Runtime.MethodInfos.NativeFormat
 {
-    // 
+    //
     // Implements methods and properties common to RuntimeMethodInfo and RuntimeConstructorInfo.
     //
     internal struct NativeFormatMethodCommon : IRuntimeMethodCommon<NativeFormatMethodCommon>, IEquatable<NativeFormatMethodCommon>

@@ -35,8 +35,8 @@ struct SpinConstants
     UInt32 uMaximumDuration;
     UInt32 uBackoffFactor;
     UInt32 uRepetitions;
-} g_SpinConstants = { 
-    50,        // dwInitialDuration 
+} g_SpinConstants = {
+    50,        // dwInitialDuration
     40000,     // dwMaximumDuration - ideally (20000 * max(2, numProc))
     3,         // dwBackoffFactor
     10         // dwRepetitions
@@ -90,7 +90,7 @@ ReaderWriterLock::ReaderWriterLock(bool fBlockOnGc) :
 {
     m_spinCount = (
 #ifndef DACCESS_COMPILE
-        (PalGetProcessCpuCount() == 1) ? 0 : 
+        (PalGetProcessCpuCount() == 1) ? 0 :
 #endif
         4000);
     m_fBlockOnGc = fBlockOnGc;
@@ -101,9 +101,9 @@ ReaderWriterLock::ReaderWriterLock(bool fBlockOnGc) :
 
 // Attempt to take the read lock, but do not wait if a writer has the lock.
 // Release the lock if successfully acquired.  Returns true if the lock was
-// taken and released.  Returns false if a writer had the lock.  
+// taken and released.  Returns false if a writer had the lock.
 //
-// BEWARE: Because this method returns after releasing the lock, you can't 
+// BEWARE: Because this method returns after releasing the lock, you can't
 // infer the state of the lock based on the return value.  This is currently
 // only used to detect if a suspended thread owns the write lock to prevent
 // deadlock with the Hijack logic during GC suspension.
@@ -122,7 +122,7 @@ bool ReaderWriterLock::TryAcquireReadLock()
 {
     Int32 RWLock;
 
-    do 
+    do
     {
         RWLock = m_RWLock;
         if (RWLock == -1)
@@ -153,8 +153,8 @@ void ReaderWriterLock::AcquireReadLockWorker()
         // already holds it.  This scenario will deadlock if there are outstanding
         // writers.
 
-        // prevent writers from being starved. This assumes that writers are rare and 
-        // dont hold the lock for a long time. 
+        // prevent writers from being starved. This assumes that writers are rare and
+        // dont hold the lock for a long time.
         while (m_WriterWaiting)
         {
             Int32 spinCount = m_spinCount;
@@ -203,7 +203,7 @@ bool ReaderWriterLock::TryAcquireWriteLock()
     Int32 RWLock = PalInterlockedCompareExchange(&m_RWLock, -1, 0);
 
     ASSERT(RWLock >= 0 || RWLock == -1);
-    
+
     if (RWLock)
         return false;
 

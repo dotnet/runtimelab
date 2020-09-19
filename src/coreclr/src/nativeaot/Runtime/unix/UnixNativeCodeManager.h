@@ -24,7 +24,7 @@ public:
     // Code manager methods
     //
 
-    bool FindMethodInfo(PTR_VOID        ControlPC, 
+    bool FindMethodInfo(PTR_VOID        ControlPC,
                         MethodInfo *    pMethodInfoOut);
 
     bool IsFunclet(MethodInfo * pMethodInfo);
@@ -34,7 +34,7 @@ public:
     PTR_VOID GetFramePointer(MethodInfo *   pMethodInfo,
                              REGDISPLAY *   pRegisterSet);
 
-    void EnumGcRefs(MethodInfo *    pMethodInfo, 
+    void EnumGcRefs(MethodInfo *    pMethodInfo,
                     PTR_VOID        safePointAddress,
                     REGDISPLAY *    pRegisterSet,
                     GCEnumContext * hCallback);

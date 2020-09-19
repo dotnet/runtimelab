@@ -43,7 +43,7 @@ namespace System.Reflection.Runtime.ParameterInfos
             get
             {
                 // Returning "null" matches the desktop behavior, though this is inconsistent with the DBNull/Missing values
-                // returned by non-return ParameterInfo's without default values. 
+                // returned by non-return ParameterInfo's without default values.
                 return null;
             }
         }
@@ -53,7 +53,7 @@ namespace System.Reflection.Runtime.ParameterInfos
             get
             {
                 // Returning "null" matches the desktop behavior, though this is inconsistent with the DBNull/Missing values
-                // returned by non-return ParameterInfo's without default values. 
+                // returned by non-return ParameterInfo's without default values.
                 return null;
             }
         }

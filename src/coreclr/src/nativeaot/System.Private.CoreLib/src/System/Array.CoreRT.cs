@@ -20,7 +20,7 @@ using EETypeElementType = Internal.Runtime.EETypeElementType;
 
 namespace System
 {
-    // Note that we make a T[] (single-dimensional w/ zero as the lower bound) implement both 
+    // Note that we make a T[] (single-dimensional w/ zero as the lower bound) implement both
     // IList<U> and IReadOnlyList<U>, where T : U dynamically.  See the SZArrayHelper class for details.
     public abstract partial class Array : ICollection, IEnumerable, IList, IStructuralComparable, IStructuralEquatable, ICloneable
     {
@@ -238,7 +238,7 @@ namespace System
 
         // Provides a strong exception guarantee - either it succeeds, or
         // it throws an exception with no side effects.  The arrays must be
-        // compatible array types based on the array element type - this 
+        // compatible array types based on the array element type - this
         // method does not support casting, boxing, or primitive widening.
         // It will up-cast, assuming the array types are correct.
         public static void ConstrainedCopy(Array sourceArray, int sourceIndex, Array destinationArray, int destinationIndex, int length)
@@ -479,7 +479,7 @@ namespace System
 
 
         //
-        // Array.CopyImpl case: Value-type array with embedded gc-references. 
+        // Array.CopyImpl case: Value-type array with embedded gc-references.
         //
         private static unsafe void CopyImplValueTypeArrayWithInnerGcRefs(Array sourceArray, int sourceIndex, Array destinationArray, int destinationIndex, int length, bool reliable)
         {
@@ -538,7 +538,7 @@ namespace System
         }
 
         //
-        // Array.CopyImpl case: Value-type array without embedded gc-references. 
+        // Array.CopyImpl case: Value-type array without embedded gc-references.
         //
         internal static unsafe void CopyImplValueTypeArrayNoInnerGcRefs(Array sourceArray, int sourceIndex, Array destinationArray, int destinationIndex, int length)
         {

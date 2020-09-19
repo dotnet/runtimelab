@@ -13,7 +13,7 @@
 //         RSI:  faulting RIP
 //
 // OUTPUT:
-// 
+//
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NESTED_ENTRY RhpThrowHwEx, _TEXT, NoHandler
 
@@ -53,7 +53,7 @@ NESTED_ENTRY RhpThrowHwEx, _TEXT, NoHandler
 
         xor     rdx, rdx
         mov     [rsi + OFFSETOF__ExInfo__m_exception], rdx           // init the exception object to null
-        mov     byte ptr [rsi + OFFSETOF__ExInfo__m_passNumber], 1   // init to the first pass 
+        mov     byte ptr [rsi + OFFSETOF__ExInfo__m_passNumber], 1   // init to the first pass
         mov     dword ptr [rsi + OFFSETOF__ExInfo__m_idxCurClause], 0xFFFFFFFF
         mov     byte ptr [rsi + OFFSETOF__ExInfo__m_kind], 2         // ExKind.HardwareFault
 
@@ -85,7 +85,7 @@ NESTED_END RhpThrowHwEx, _TEXT
 // INPUT:  RDI:  exception object
 //
 // OUTPUT:
-// 
+//
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NESTED_ENTRY RhpThrowEx, _TEXT, NoHandler
 
@@ -93,7 +93,7 @@ NESTED_ENTRY RhpThrowEx, _TEXT, NoHandler
         rsp_offsetof_Context    = STACKSIZEOF_ExInfo
 
         lea     rax, [rsp+8]    // save the RSP of the throw site
-        mov     rsi, [rsp]      // get return address 
+        mov     rsi, [rsp]      // get return address
 
         xor     rdx, rdx
         push_register   rdx             // padding
@@ -123,7 +123,7 @@ NESTED_ENTRY RhpThrowEx, _TEXT, NoHandler
 
         lea                     rbx, [rsp + rsp_offsetof_Context + SIZEOF__PAL_LIMITED_CONTEXT + 0x8]    // rbx <- addr of return address
 
-        // There is runtime C# code that can tail call to RhpThrowEx using a binder intrinsic.  So the return 
+        // There is runtime C# code that can tail call to RhpThrowEx using a binder intrinsic.  So the return
         // address could have been hijacked when we were in that C# code and we must remove the hijack and
         // reflect the correct return address in our exception context record.  The other throw helpers don't
         // need this because they cannot be tail-called from C#.
@@ -134,7 +134,7 @@ NESTED_ENTRY RhpThrowEx, _TEXT, NoHandler
         mov     rsi, rsp                                            // rsi <- ExInfo*
 
         mov     [rsi + OFFSETOF__ExInfo__m_exception], rdx          // init the exception object to null
-        mov     byte ptr [rsi + OFFSETOF__ExInfo__m_passNumber], 1  // init to the first pass 
+        mov     byte ptr [rsi + OFFSETOF__ExInfo__m_passNumber], 1  // init to the first pass
         mov     dword ptr [rsi + OFFSETOF__ExInfo__m_idxCurClause], 0xFFFFFFFF
         mov     byte ptr [rsi + OFFSETOF__ExInfo__m_kind], 1        // ExKind.Throw
 
@@ -167,7 +167,7 @@ NESTED_END RhpThrowEx, _TEXT
 // INPUT:
 //
 // OUTPUT:
-// 
+//
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NESTED_ENTRY RhpRethrow, _TEXT, NoHandler
 
@@ -175,7 +175,7 @@ NESTED_ENTRY RhpRethrow, _TEXT, NoHandler
         rsp_offsetof_Context    = STACKSIZEOF_ExInfo
 
         lea     rax, [rsp+8]    // save the RSP of the throw site
-        mov     rsi, [rsp]      // get return address 
+        mov     rsi, [rsp]      // get return address
 
         xor     rdx, rdx
         push_register   rdx             // padding
@@ -204,7 +204,7 @@ NESTED_ENTRY RhpRethrow, _TEXT, NoHandler
         mov     rsi, rsp                                            // rsi <- ExInfo*
 
         mov     [rsi + OFFSETOF__ExInfo__m_exception], rdx          // init the exception object to null
-        mov     byte ptr [rsi + OFFSETOF__ExInfo__m_passNumber], 1  // init to the first pass 
+        mov     byte ptr [rsi + OFFSETOF__ExInfo__m_passNumber], 1  // init to the first pass
         mov     dword ptr [rsi + OFFSETOF__ExInfo__m_idxCurClause], 0xFFFFFFFF
         mov     byte ptr [rsi + OFFSETOF__ExInfo__m_kind], 0        // init to a deterministic value (ExKind.None)
 
@@ -273,7 +273,7 @@ NESTED_END RhpRethrow, _TEXT
 //         RCX:   ExInfo*
 //
 // OUTPUT:
-// 
+//
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NESTED_ENTRY RhpCallCatchFunclet, _TEXT, NoHandler
 
@@ -339,7 +339,7 @@ NESTED_ENTRY RhpCallCatchFunclet, _TEXT, NoHandler
         mov     rdx, [rsp + locArg2]                                // rdx <- dispatch context
 
 #ifdef _DEBUG
-        // Call into some C++ code to validate the pop of the ExInfo.  We only do this in debug because we 
+        // Call into some C++ code to validate the pop of the ExInfo.  We only do this in debug because we
         // have to spill all the preserved registers and then refill them after the call.
 
         mov     [rsp + locResumeIp], rax                            // save resume IP for later
@@ -412,7 +412,7 @@ NESTED_END RhpCallCatchFunclet, _TEXT
 //         RSI:  REGDISPLAY*
 //
 // OUTPUT:
-// 
+//
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NESTED_ENTRY RhpCallFinallyFunclet, _TEXT, NoHandler
 
@@ -509,7 +509,7 @@ NESTED_END RhpCallFinallyFunclet, _TEXT
 //         RDX:  REGDISPLAY*
 //
 // OUTPUT:
-// 
+//
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NESTED_ENTRY RhpCallFilterFunclet, _TEXT, NoHandler
 
