@@ -23,7 +23,7 @@ extern RhpCallFunclet : proc
 ;;         EDX:  faulting RIP
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 FASTCALL_FUNC  RhpThrowHwEx, 0
 
@@ -57,7 +57,7 @@ FASTCALL_FUNC  RhpThrowHwEx, 0
 
         xor     esi, esi
         mov     [edx + OFFSETOF__ExInfo__m_exception], esi          ;; init the exception object to null
-        mov     byte ptr [edx + OFFSETOF__ExInfo__m_passNumber], 1  ;; init to the first pass 
+        mov     byte ptr [edx + OFFSETOF__ExInfo__m_passNumber], 1  ;; init to the first pass
         mov     dword ptr [edx + OFFSETOF__ExInfo__m_idxCurClause], 0FFFFFFFFh
         mov     byte ptr [edx + OFFSETOF__ExInfo__m_kind], 2        ;; ExKind.HardwareFault
 
@@ -88,7 +88,7 @@ FASTCALL_ENDFUNC
 ;; INPUT:  ECX:  exception object
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 FASTCALL_FUNC  RhpThrowEx, 0
 
@@ -120,7 +120,7 @@ FASTCALL_FUNC  RhpThrowEx, 0
         lea                     ebx, [eax-4]    ;; ebx <- addr of return address
         INLINE_GETTHREAD        eax, edx        ;; eax <- thread, edx <- trashed
 
-        ;; There is runtime C# code that can tail call to RhpThrowEx using a binder intrinsic.  So the return 
+        ;; There is runtime C# code that can tail call to RhpThrowEx using a binder intrinsic.  So the return
         ;; address could have been hijacked when we were in that C# code and we must remove the hijack and
         ;; reflect the correct return address in our exception context record.  The other throw helpers don't
         ;; need this because they cannot be tail-called from C#.
@@ -134,7 +134,7 @@ FASTCALL_FUNC  RhpThrowEx, 0
 
         xor     esi, esi
         mov     [edx + OFFSETOF__ExInfo__m_exception], esi          ;; init the exception object to null
-        mov     byte ptr [edx + OFFSETOF__ExInfo__m_passNumber], 1  ;; init to the first pass 
+        mov     byte ptr [edx + OFFSETOF__ExInfo__m_passNumber], 1  ;; init to the first pass
         mov     dword ptr [edx + OFFSETOF__ExInfo__m_idxCurClause], 0FFFFFFFFh
         mov     byte ptr [edx + OFFSETOF__ExInfo__m_kind], 1        ;; ExKind.Throw
 
@@ -167,7 +167,7 @@ FASTCALL_ENDFUNC
 ;; INPUT:
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 FASTCALL_FUNC  RhpRethrow, 0
 
@@ -204,7 +204,7 @@ FASTCALL_FUNC  RhpRethrow, 0
 
         xor     esi, esi
         mov     [edx + OFFSETOF__ExInfo__m_exception], esi          ;; init the exception object to null
-        mov     byte ptr [edx + OFFSETOF__ExInfo__m_passNumber], 1  ;; init to the first pass 
+        mov     byte ptr [edx + OFFSETOF__ExInfo__m_passNumber], 1  ;; init to the first pass
         mov     dword ptr [edx + OFFSETOF__ExInfo__m_idxCurClause], 0FFFFFFFFh
         mov     byte ptr [edx + OFFSETOF__ExInfo__m_kind], 0        ;; init to a deterministic value (ExKind.None)
 
@@ -236,11 +236,11 @@ FUNCLET_CALL_PROLOGUE macro localsCount
     mov         ebp, esp
 
     push        ebx     ;; save preserved registers (for the stackwalker)
-    push        esi     ;; 
-    push        edi     ;; 
+    push        esi     ;;
+    push        edi     ;;
 
     stack_alloc_size = localsCount * 4
-    
+
     if stack_alloc_size ne 0
     sub         esp, stack_alloc_size
     endif
@@ -270,7 +270,7 @@ endm
 ;;         [ESP + 8]:   ExInfo*
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 FASTCALL_FUNC  RhpCallCatchFunclet, 0
 
@@ -354,7 +354,7 @@ FASTCALL_FUNC  RhpCallCatchFunclet, 0
         mov         ecx, STATUS_REDHAWK_THREAD_ABORT
         mov         edx, [esp + esp_offsetof_ResumeIP]
         mov         esp, eax                                        ;; reset the SP to resume SP value
-        jmp         RhpThrowHwEx                                    ;; Throw the ThreadAbortException as a special kind of hardware exception        
+        jmp         RhpThrowHwEx                                    ;; Throw the ThreadAbortException as a special kind of hardware exception
 
     @@:
         ;; RhpCallFunclet preserved our local EBP value, so let's fetch the correct one for the resume address
@@ -377,7 +377,7 @@ FASTCALL_ENDFUNC
 ;;         EDX:  REGDISPLAY*
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 FASTCALL_FUNC  RhpCallFinallyFunclet, 0
 
@@ -444,7 +444,7 @@ FASTCALL_ENDFUNC
 ;;         [ESP + 4]:   REGDISPLAY*
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 FASTCALL_FUNC  RhpCallFilterFunclet, 0
 

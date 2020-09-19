@@ -78,7 +78,7 @@ AllocFailed:
         mov         ecx, eax            ;; ecx: object
                                         ;; edx: already contains object size
         call        RhpPublishObject    ;; eax: this function returns the object that was passed-in
-NewFast_SkipPublish: 
+NewFast_SkipPublish:
 
         POP_COOP_PINVOKE_FRAME
 
@@ -135,14 +135,14 @@ FASTCALL_FUNC   RhpNewFinalizable, 4
         mov         ecx, eax            ;; ecx: object
                                         ;; edx: already contains object size
         call        RhpPublishObject    ;; eax: this function returns the object that was passed-in
-NewFinalizable_SkipPublish: 
+NewFinalizable_SkipPublish:
 
         POP_COOP_PINVOKE_FRAME
 
         ;; Collapse EBP frame and return
         pop         ebp
         ret
-        
+
 NewFinalizable_OOM:
         ;; This is the failure path. We're going to tail-call to a managed helper that will throw
         ;; an out of memory exception that the caller of this allocator understands.
@@ -153,11 +153,11 @@ NewFinalizable_OOM:
 
         ;; Cleanup our ebp frame
         pop         ebp
-        
+
         mov         ecx, eax            ; EEType pointer
         xor         edx, edx            ; Indicate that we should throw OOM.
         jmp         RhExceptionHandling_FailedAllocation
-        
+
 FASTCALL_ENDFUNC
 
 ;; Allocate a new string.
@@ -254,7 +254,7 @@ StringAllocContextOverflow:
         mov         ecx, eax            ;; ecx: object
         mov         edx, edi            ;; edx: object size
         call        RhpPublishObject    ;; eax: this function returns the object that was passed-in
-NewString_SkipPublish: 
+NewString_SkipPublish:
 
         POP_COOP_PINVOKE_FRAME
         add         esp, 8          ; pop ecx / edx
@@ -276,7 +276,7 @@ StringOutOfMemoryWithFrame:
         jmp         RhExceptionHandling_FailedAllocation
 
 StringSizeOverflow:
-        ;; We get here if the size of the final string object can't be represented as an unsigned 
+        ;; We get here if the size of the final string object can't be represented as an unsigned
         ;; 32-bit value. We're going to tail-call to a managed helper that will throw
         ;; an OOM exception that the caller of this allocator understands.
 
@@ -401,7 +401,7 @@ ArrayAllocContextOverflow:
         mov         ecx, eax            ;; ecx: object
         mov         edx, edi            ;; edx: object size
         call        RhpPublishObject    ;; eax: this function returns the object that was passed-in
-NewArray_SkipPublish: 
+NewArray_SkipPublish:
 
         POP_COOP_PINVOKE_FRAME
         add         esp, 8          ; pop ecx / edx
@@ -430,7 +430,7 @@ ArrayOutOfMemoryNoFrame:
         jmp         RhExceptionHandling_FailedAllocation
 
 ArraySizeOverflow:
-        ; We get here if the size of the final array object can't be represented as an unsigned 
+        ; We get here if the size of the final array object can't be represented as an unsigned
         ; 32-bit value. We're going to tail-call to a managed helper that will throw
         ; an overflow exception that the caller of this allocator understands.
 

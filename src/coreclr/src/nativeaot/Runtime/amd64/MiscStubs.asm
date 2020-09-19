@@ -70,7 +70,7 @@ LEAF_END RhpCheckCctor2, _TEXT
 ;;
 NESTED_ENTRY RhpCheckCctor2__SlowPath, _TEXT
 
-RhpCheckCctor2__SlowPath_FrameSize equ 20h + 10h + 8h ;; Scratch space + storage to save off rax/rdx value + align stack 
+RhpCheckCctor2__SlowPath_FrameSize equ 20h + 10h + 8h ;; Scratch space + storage to save off rax/rdx value + align stack
 
         alloc_stack RhpCheckCctor2__SlowPath_FrameSize
         save_reg_postrsp    rdx, 20h
@@ -119,10 +119,10 @@ LEAF_ENTRY RhpCopyMultibyteNoGCRefs, _TEXT
         jz          NothingToCopy
 
         ; Now check the dest and src pointers.  If they AV, the EH subsystem will recognize the address of the AV,
-        ; unwind the frame, and fixup the stack to make it look like the (managed) caller AV'ed, which will be 
+        ; unwind the frame, and fixup the stack to make it look like the (managed) caller AV'ed, which will be
         ; translated to a managed exception as usual.
 ALTERNATE_ENTRY RhpCopyMultibyteNoGCRefsDestAVLocation
-        cmp         byte ptr [rcx], 0   
+        cmp         byte ptr [rcx], 0
 ALTERNATE_ENTRY RhpCopyMultibyteNoGCRefsSrcAVLocation
         cmp         byte ptr [rdx], 0
 
@@ -153,7 +153,7 @@ LEAF_ENTRY RhpCopyMultibyte, _TEXT
         jz          NothingToCopy
 
         ; Now check the dest and src pointers.  If they AV, the EH subsystem will recognize the address of the AV,
-        ; unwind the frame, and fixup the stack to make it look like the (managed) caller AV'ed, which will be 
+        ; unwind the frame, and fixup the stack to make it look like the (managed) caller AV'ed, which will be
         ; translated to a managed exception as usual.
 ALTERNATE_ENTRY RhpCopyMultibyteDestAVLocation
         cmp         byte ptr [rcx], 0
@@ -188,7 +188,7 @@ LEAF_ENTRY RhpCopyMultibyteWithWriteBarrier, _TEXT
         jz          NothingToCopy
 
         ; Now check the dest and src pointers.  If they AV, the EH subsystem will recognize the address of the AV,
-        ; unwind the frame, and fixup the stack to make it look like the (managed) caller AV'ed, which will be 
+        ; unwind the frame, and fixup the stack to make it look like the (managed) caller AV'ed, which will be
         ; translated to a managed exception as usual.
 ALTERNATE_ENTRY RhpCopyMultibyteWithWriteBarrierDestAVLocation
         cmp         byte ptr [rcx], 0
@@ -223,7 +223,7 @@ LEAF_ENTRY RhpCopyAnyWithWriteBarrier, _TEXT
         jz          NothingToCopy
 
         ; Now check the dest and src pointers.  If they AV, the EH subsystem will recognize the address of the AV,
-        ; unwind the frame, and fixup the stack to make it look like the (managed) caller AV'ed, which will be 
+        ; unwind the frame, and fixup the stack to make it look like the (managed) caller AV'ed, which will be
         ; translated to a managed exception as usual.
 ALTERNATE_ENTRY RhpCopyAnyWithWriteBarrierDestAVLocation
         cmp         byte ptr [rcx], 0

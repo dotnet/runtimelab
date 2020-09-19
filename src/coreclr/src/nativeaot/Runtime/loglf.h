@@ -1,7 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-// The code in sos.DumpStressLog depends on the facility codes 
+// The code in sos.DumpStressLog depends on the facility codes
 // being bit flags sorted in increasing order.
 // See code:EEStartup#TableOfContents for EE overview
 DEFINE_LOG_FACILITY(LF_GC           ,0x00000001)

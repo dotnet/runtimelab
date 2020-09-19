@@ -20,7 +20,7 @@
         .set LOCAL_LABEL(\Name\()_Size), . - C_FUNC(\Name)
         .section __LD,__compact_unwind,regular,debug
         .quad C_FUNC(\Name)
-        .long LOCAL_LABEL(\Name\()_Size) 
+        .long LOCAL_LABEL(\Name\()_Size)
         .long 0x04000000 # DWARF
         .quad 0
         .quad 0
@@ -102,16 +102,16 @@ C_FUNC(\Name):
 .macro save_xmm128_postrsp Reg, Offset
         __Offset = \Offset
         movdqa  xmmword ptr [rsp + __Offset], \Reg
-        // NOTE: We cannot use ".cfi_rel_offset \Reg, __Offset" here, 
+        // NOTE: We cannot use ".cfi_rel_offset \Reg, __Offset" here,
         // the xmm registers are not supported by the libunwind
 .endm
 
 .macro restore_xmm128 Reg, ofs
         __Offset = \ofs
         movdqa          \Reg, xmmword ptr [rsp + __Offset]
-        // NOTE: We cannot use ".cfi_restore \Reg" here, 
+        // NOTE: We cannot use ".cfi_restore \Reg" here,
         // the xmm registers are not supported by the libunwind
-        
+
 .endm
 
 .macro RESET_FRAME_WITH_RBP
@@ -289,7 +289,7 @@ C_FUNC(\Name):
         leaq    \Var@TLSLD(%rip), %rdi
         callq   __tls_get_addr@PLT
         addq    $\Var@DTPOFF, %rax
-#endif 
+#endif
        .intel_syntax noprefix
 .endm
 

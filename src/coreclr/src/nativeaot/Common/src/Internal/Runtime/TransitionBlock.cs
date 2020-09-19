@@ -40,7 +40,7 @@
 #endif
 
 // Provides an abstraction over platform specific calling conventions (specifically, the calling convention
-// utilized by the JIT on that platform). The caller enumerates each argument of a signature in turn, and is 
+// utilized by the JIT on that platform). The caller enumerates each argument of a signature in turn, and is
 // provided with information mapping that argument into registers and/or stack locations.
 
 using System;
@@ -276,7 +276,7 @@ namespace Internal.Runtime
     {
         // No registers on WASM
     }
-    
+
     struct FloatArgumentRegisters
     {
         // No registers on WASM
@@ -299,7 +299,7 @@ namespace Internal.Runtime
 #endif
 
     //
-    // TransitionBlock is layout of stack frame of method call, saved argument registers and saved callee saved registers. Even though not 
+    // TransitionBlock is layout of stack frame of method call, saved argument registers and saved callee saved registers. Even though not
     // all fields are used all the time, we use uniform form for simplicity.
     //
     internal struct TransitionBlock

@@ -162,7 +162,7 @@ namespace System.Reflection.Runtime.PropertyInfos.EcmaFormat
                 MethodAttributes flags = _reader.GetMethodDefinition(methodHandle).Attributes;
                 if ((flags & MethodAttributes.MemberAccessMask) == MethodAttributes.Private)
                     return null;
-            }            
+            }
 
             return RuntimeNamedMethodInfo<EcmaFormatMethodCommon>.GetRuntimeNamedMethodInfo(new EcmaFormatMethodCommon(methodHandle, _definingTypeInfo, ContextTypeInfo), _reflectedType);
         }

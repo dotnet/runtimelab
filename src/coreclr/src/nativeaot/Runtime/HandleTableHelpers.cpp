@@ -7,7 +7,7 @@
 // (since these routines mutate the handle tables which are also accessed during garbage collections). The
 // binder has special knowledge of these methods and doesn't generate the normal code to transition out of the
 // runtime prior to the call.
-// 
+//
 #include "common.h"
 #include "gcenv.h"
 #include "objecthandle.h"
@@ -62,7 +62,7 @@ COOP_PINVOKE_HELPER(void, RhUnregisterRefCountedHandleCallback, (void * pCallout
     RestrictedCallouts::UnregisterRefCountedHandleCallback(pCallout, pTypeFilter);
 }
 
-COOP_PINVOKE_HELPER(OBJECTHANDLE, RhpHandleAllocVariable, (Object * pObject, UInt32 type)) 
+COOP_PINVOKE_HELPER(OBJECTHANDLE, RhpHandleAllocVariable, (Object * pObject, UInt32 type))
 {
     return GCHandleUtilities::GetGCHandleManager()->GetGlobalHandleStore()->CreateHandleWithExtraInfo(pObject, HNDTYPE_VARIABLE, (void*)((uintptr_t)type));
 }

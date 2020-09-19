@@ -19,16 +19,16 @@ namespace System.Reflection.Runtime.TypeParsing
     /// If this resolver is for Assembly.GetType(), the default is that assembly. Third-party resolvers can do whatever they want. If no type exists for that name,
     /// return null. Throw for all other errors. The name will be for a top-level named type only. No nested types. No constructed types.
     /// </summary>
-    /// 
+    ///
     /// <remarks>
     /// This delegate "should" take an "ignoreCase" parameter too, but pragmatically, every resolver we create is a closure for other reasons so
     /// it's more convenient to let "ignoreCase" be just another variable that's captured in that closure.
     /// </remarks>
     internal delegate Type CoreTypeResolver(Assembly containingAssemblyIfAny, string name);
 
-    // 
+    //
     // Captures the various options passed to the Type.GetType() family of apis.
-    // 
+    //
     internal sealed class GetTypeOptions
     {
         public GetTypeOptions(CoreAssemblyResolver coreAssemblyResolver, CoreTypeResolver coreTypeResolver, bool throwOnError, bool ignoreCase)

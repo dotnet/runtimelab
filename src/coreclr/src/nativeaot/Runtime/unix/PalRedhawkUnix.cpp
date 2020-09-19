@@ -298,7 +298,7 @@ public:
             else
             {
 #if HAVE_MACH_ABSOLUTE_TIME
-                // Since OSX doesn't support CLOCK_MONOTONIC, we use relative variant of the 
+                // Since OSX doesn't support CLOCK_MONOTONIC, we use relative variant of the
                 // timed wait and we need to handle spurious wakeups properly.
                 st = pthread_cond_timedwait_relative_np(&m_condition, &m_mutex, &endTime);
                 if ((st == 0) && !m_state)
@@ -478,7 +478,7 @@ thread_local TlsDestructionMonitor tls_destructionMonitor;
 // This thread local variable is used for delegate marshalling
 DECLSPEC_THREAD intptr_t tls_thunkData;
 
-// Attach thread to PAL. 
+// Attach thread to PAL.
 // It can be called multiple times for the same thread.
 // It fails fast if a different thread was already registered.
 // Parameters:

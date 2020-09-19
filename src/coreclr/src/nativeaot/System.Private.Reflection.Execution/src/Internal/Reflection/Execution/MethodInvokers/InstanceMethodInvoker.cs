@@ -40,7 +40,7 @@ namespace Internal.Reflection.Execution.MethodInvokers
                 arguments,
                 binderBundle,
                 wrapInTargetInvocationException: wrapInTargetInvocationException,
-                invokeMethodHelperIsThisCall: false, 
+                invokeMethodHelperIsThisCall: false,
                 methodToCallIsThisCall: true);
             System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
             return result;

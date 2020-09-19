@@ -64,7 +64,7 @@ namespace System
 
         /// <summary>
         /// Return size of all data (excluding ObjHeader and EEType*).
-        /// Note that for strings/arrays this would include the Length as well. 
+        /// Note that for strings/arrays this would include the Length as well.
         /// </summary>
         internal unsafe uint GetRawDataSize()
         {

@@ -29,7 +29,7 @@
       <Link>Internal\Runtime\InteropConstants.cs</Link>
     </Compile>
   </ItemGroup>
- 
+
   <ItemGroup>
     <Compile Include="$(CompilerCommonPath)\Internal\Runtime\MetadataBlob.cs">
       <Link>MetadataBlob.cs</Link>

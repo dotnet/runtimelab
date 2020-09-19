@@ -18,7 +18,7 @@ namespace System.Globalization
 #else
                 if (Interop.Globalization.LoadICU() == 0)
                 {
-                    string message = "Couldn't find a valid ICU package installed on the system. " + 
+                    string message = "Couldn't find a valid ICU package installed on the system. " +
                                     "Set the configuration flag System.Globalization.Invariant to true if you want to run with no globalization support.";
                     Environment.FailFast(message);
                 }

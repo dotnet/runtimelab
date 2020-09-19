@@ -22,14 +22,14 @@ POINTER_SIZE = 0x08
         //      xip0 pointer to the current thunk's data block (data contains 2 pointer values: context + target pointers)
 
         INLINE_GET_TLS_VAR x9, tls_thunkData
-       
+
         // x9  = base address of TLS data
         // xip0 = address of context cell in thunk's data
 
         // store thunk address in thread static
         ldr         x10, [xip0]
         str         x10, [x9]
-        
+
         // Now load the target address and jump to it.
         ldr         xip0, [xip0, #POINTER_SIZE]
         br          xip0

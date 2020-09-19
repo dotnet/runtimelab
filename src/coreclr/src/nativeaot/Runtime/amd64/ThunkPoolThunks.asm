@@ -67,12 +67,12 @@ endm
 TenThunks macro groupIndex, thunkPool
         ;; Each thunk will load the address of its corresponding data (from the page that immediately follows)
         ;; and call a common stub. The address of the common stub is setup by the caller (first qword
-        ;; in the thunks data section, hence the +8's below) depending on the 'kind' of thunks needed (interop, 
+        ;; in the thunks data section, hence the +8's below) depending on the 'kind' of thunks needed (interop,
         ;; fat function pointers, etc...)
-        
+
         ;; Each data block used by a thunk consists of two qword values:
         ;;      - Context: some value given to the thunk as context (passed in r10). Example for fat-fptrs: context = generic dictionary
-        ;;      - Target : target code that the thunk eventually jumps to.     
+        ;;      - Target : target code that the thunk eventually jumps to.
 
         LOAD_DATA_ADDRESS groupIndex,0,thunkPool
         JUMP_TO_COMMON    groupIndex,0,thunkPool
@@ -138,12 +138,12 @@ endm
 ;; mapped multiple  times in memory, and mapping works on allocation
 ;; granularity boundaries (we don't want to map more than what we need)
 ;;
-;; The easiest way to do so is by having the thunks section at the 
+;; The easiest way to do so is by having the thunks section at the
 ;; first 64K aligned virtual address in the binary. We provide a section
 ;; layout file to the linker to tell it how to layout the thunks sections
 ;; that we care about. (ndp\rh\src\runtime\DLLs\app\mrt100_app_sectionlayout.txt)
 ;;
-;; The PE spec says images cannot have gaps between sections (other 
+;; The PE spec says images cannot have gaps between sections (other
 ;; than what is required by the section alignment value in the header),
 ;; therefore we need a couple of padding data sections (otherwise the
 ;; OS will not load the image).
@@ -236,7 +236,7 @@ LEAF_END RhpGetThunksBase, _TEXT
 ;;
 LEAF_ENTRY RhpGetNumThunksPerBlock, _TEXT
         mov     rax, THUNK_POOL_NUM_THUNKS_PER_PAGE
-        ret   
+        ret
 LEAF_END RhpGetNumThunksPerBlock, _TEXT
 
 ;;
@@ -244,7 +244,7 @@ LEAF_END RhpGetNumThunksPerBlock, _TEXT
 ;;
 LEAF_ENTRY RhpGetThunkSize, _TEXT
         mov     rax, THUNK_CODESIZE
-        ret   
+        ret
 LEAF_END RhpGetThunkSize, _TEXT
 
 ;;
@@ -252,7 +252,7 @@ LEAF_END RhpGetThunkSize, _TEXT
 ;;
 LEAF_ENTRY RhpGetNumThunkBlocksPerMapping, _TEXT
         mov     rax, 8
-        ret   
+        ret
 LEAF_END RhpGetNumThunkBlocksPerMapping, _TEXT
 
 ;;
@@ -260,31 +260,31 @@ LEAF_END RhpGetNumThunkBlocksPerMapping, _TEXT
 ;;
 LEAF_ENTRY RhpGetThunkBlockSize, _TEXT
         mov     rax, PAGE_SIZE * 2
-        ret   
+        ret
 LEAF_END RhpGetThunkBlockSize, _TEXT
 
-;; 
+;;
 ;; IntPtr RhpGetThunkDataBlockAddress(IntPtr thunkStubAddress)
-;; 
+;;
 LEAF_ENTRY RhpGetThunkDataBlockAddress, _TEXT
         mov     rax, rcx
         mov     rcx, PAGE_SIZE - 1
         not     rcx
         and     rax, rcx
         add     rax, PAGE_SIZE
-        ret   
+        ret
 LEAF_END RhpGetThunkDataBlockAddress, _TEXT
 
-;; 
+;;
 ;; IntPtr RhpGetThunkStubsBlockAddress(IntPtr thunkDataAddress)
-;; 
+;;
 LEAF_ENTRY RhpGetThunkStubsBlockAddress, _TEXT
         mov     rax, rcx
         mov     rcx, PAGE_SIZE - 1
         not     rcx
         and     rax, rcx
         sub     rax, PAGE_SIZE
-        ret   
+        ret
 LEAF_END RhpGetThunkStubsBlockAddress, _TEXT
 
 

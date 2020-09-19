@@ -183,4 +183,4 @@ inline void PalRaiseFailFastException(PEXCEPTION_RECORD arg1, PCONTEXT arg2, UIn
 {
     RaiseFailFastException(arg1, arg2, arg3);
 }
-#endif 
+#endif

@@ -37,14 +37,14 @@ __SECTIONREL_ThunkParamSlot
         ;; There are arbitrary callers passing arguments with arbitrary signatures.
         ;; Custom calling convention:
         ;;      xip0 pointer to the current thunk's data block (data contains 2 pointer values: context + target pointers)
-        
+
         ;; Save context data into the ThunkParamSlot thread-local variable
         ;; A pointer to the delegate and function pointer for open static delegate should have been saved in the thunk's context cell during thunk allocation
         ldr         x10, =_tls_index
         ldr         w10, [x10]
         ldr         x9, [xpr, #__tls_array]
         ldr         x9, [x9, x10 lsl #3]     ;; x9 <- our TLS base
-       
+
         ;; x9  = base address of TLS data
         ;; x10 = trashed
         ;; xip0 = address of context cell in thunk's data
@@ -54,7 +54,7 @@ __SECTIONREL_ThunkParamSlot
         ldr         x11, =__SECTIONREL_ThunkParamSlot
         ldr         x11, [x11]
         str         x10, [x9, x11]            ;; ThunkParamSlot <- context slot data
-        
+
         ;; Now load the target address and jump to it.
         ldr         xip0, [xip0, #POINTER_SIZE]
         br          xip0

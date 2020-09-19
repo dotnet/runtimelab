@@ -142,7 +142,7 @@ namespace Internal.Runtime.TypeLoader
 
             MethodDesc realTargetMethod = targetMethod;
 
-            // For non-interface methods we support the target method not being the exact target. (This allows 
+            // For non-interface methods we support the target method not being the exact target. (This allows
             // a canonical method to be passed in and work for any generic type instantiation.)
             if (!targetMethod.OwningType.IsInterface)
                 realTargetMethod = instanceType.FindMethodOnTypeWithMatchingTypicalMethod(targetMethod);

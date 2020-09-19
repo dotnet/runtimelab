@@ -11,7 +11,7 @@ namespace System.Collections.Concurrent
 {
     // Abstract base for a thread-safe dictionary mapping a set of keys (K) to values (V).
     //
-    // This flavor of ConcurrentUnifier holds values using weak references. It does not store the keys directly. Instead, values are 
+    // This flavor of ConcurrentUnifier holds values using weak references. It does not store the keys directly. Instead, values are
     // required to contain the key and expose it via IKeyedItem<K>. This flavor should be used in situations where the keys themselves
     // could store direct or indirect references to the value (thus, preventing the value's from being GC'd if the table were to
     // store the keys directly.)
@@ -25,7 +25,7 @@ namespace System.Collections.Concurrent
     // The key must be of a type that implements IEquatable<K>. The unifier calls IEquality<K>.Equals()
     // and Object.GetHashCode() on the keys.
     //
-    // The value must be a reference type that implements IKeyedItem<K>. The unifier invokes the 
+    // The value must be a reference type that implements IKeyedItem<K>. The unifier invokes the
     // IKeyedItem<K>.PrepareKey() method (outside the lock) on any value returned by the factory. This gives the value
     // a chance to do any lazy evaluation of the keys while it's safe to do so.
     //
@@ -40,12 +40,12 @@ namespace System.Collections.Concurrent
     //
     //    - The Factory method will never be called inside the unifier lock. If two threads race to
     //      enter a value for the same key, the Factory() may get invoked twice for the same key - one
-    //      of them will "win" the race and its result entered into the dictionary - other gets thrown away. 
+    //      of them will "win" the race and its result entered into the dictionary - other gets thrown away.
     //
     // Notes:
     //    - This class is used to look up types when GetType() or typeof() is invoked.
     //      That means that this class itself cannot do or call anything that does these
-    //      things. 
+    //      things.
     //
     //    - For this reason, it chooses not to mimic the official ConcurrentDictionary class
     //      (I don't even want to risk using delegates.) Even the LowLevel versions of these
@@ -63,11 +63,11 @@ namespace System.Collections.Concurrent
     //    ConcurrentUnifier handles the synchronization that ensures this.
     //
     //    Safety for concurrent readers is ensured as follows:
-    //    
+    //
     //    Each hash bucket is maintained as a stack.  Inserts are done under
     //    a lock in one of two ways:
     //
-    //    -  The entry is filled out completely, then "published" by a 
+    //    -  The entry is filled out completely, then "published" by a
     //       single write to the top of the bucket.  This ensures that a reader
     //       will see a valid snapshot of the bucket, once it has read the head.
     //
@@ -75,10 +75,10 @@ namespace System.Collections.Concurrent
     //       by a new WeakReference. A reader will either see the old expired WeakReference
     //       (if so, he'll wait for the current lock to be released then do the locked retry)
     //       or the new WeakReference (which is fine for him to see.))
-    //    
+    //
     //    On resize, we allocate an entirely new table, rather than resizing
     //    in place.  We fill in the new table completely, under the lock,
-    //    then "publish" it with a single write.  Any reader that races with 
+    //    then "publish" it with a single write.  Any reader that races with
     //    this will either see the old table or the new one; each will contain
     //    the same data.
     //
@@ -121,7 +121,7 @@ namespace System.Collections.Concurrent
 
                 if (found)
                 {
-                    // Since this DEBUG code is holding a strong reference to "value", state of a key must never go from found to not found, 
+                    // Since this DEBUG code is holding a strong reference to "value", state of a key must never go from found to not found,
                     // and only one value may exist per key.
                     Debug.Assert(checkedFound);
                     Debug.Assert(object.ReferenceEquals(checkedValue, value));
@@ -150,7 +150,7 @@ namespace System.Collections.Concurrent
                 return null;
             }
 
-            // While still outside the lock, invoke the value's PrepareKey method to give the chance to do any lazy evaluation 
+            // While still outside the lock, invoke the value's PrepareKey method to give the chance to do any lazy evaluation
             // it needs to produce the key quickly and in a deadlock-free manner once we're inside the lock.
             value.PrepareKey();
 
@@ -251,13 +251,13 @@ namespace System.Collections.Concurrent
                 Debug.Assert(_owner._lock.IsAcquired);
 
                 // Before we actually grow the size of the table, figure out how much we can recover just by dropping entries with
-                // expired weak references. 
+                // expired weak references.
                 int estimatedNumLiveEntries = 0;
                 for (int bucket = 0; bucket < _buckets.Length; bucket++)
                 {
                     for (int entry = _buckets[bucket]; entry != -1; entry = _entries[entry]._next)
                     {
-                        // Check if the weakreference has expired. 
+                        // Check if the weakreference has expired.
                         V value;
                         if (_entries[entry]._weakValue.TryGetTarget(out value))
                             estimatedNumLiveEntries++;
@@ -305,7 +305,7 @@ namespace System.Collections.Concurrent
                     }
                 }
 
-                // The assertion is "<=" rather than "==" because we allow an entry to "leak" until the next resize if 
+                // The assertion is "<=" rather than "==" because we allow an entry to "leak" until the next resize if
                 // a thread died between the time between we allocated the entry and the time we link it into the bucket stack.
                 // In addition, we don't bother copying entries where the weak reference has expired.
                 Debug.Assert(newNextFreeEntry <= _nextFreeEntry);
@@ -364,7 +364,7 @@ namespace System.Collections.Concurrent
                             Debug.Fail("Bucket " + bucket + " has a cycle in its linked list.");
                     }
                 }
-                // The assertion is "<=" rather than "==" because we allow an entry to "leak" until the next resize if 
+                // The assertion is "<=" rather than "==" because we allow an entry to "leak" until the next resize if
                 // a thread died between the time between we allocated the entry and the time we link it into the bucket stack.
                 Debug.Assert(numEntriesEncountered <= _nextFreeEntry);
 #endif //DEBUG

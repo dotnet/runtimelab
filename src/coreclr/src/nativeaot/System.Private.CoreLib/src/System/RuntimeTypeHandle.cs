@@ -17,7 +17,7 @@ namespace System
     {
         //
         // Caution: There can be and are multiple EEType for the "same" type (e.g. int[]). That means
-        // you can't use the raw IntPtr value for comparisons. 
+        // you can't use the raw IntPtr value for comparisons.
         //
 
         internal RuntimeTypeHandle(EETypePtr pEEType)

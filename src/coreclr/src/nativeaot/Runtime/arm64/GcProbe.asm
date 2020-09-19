@@ -40,7 +40,7 @@ PROBE_FRAME_SIZE    field 0
     MACRO
         ALLOC_PROBE_FRAME $extraStackSpace, $saveFPRegisters
 
-        ;; First create PInvokeTransitionFrame      
+        ;; First create PInvokeTransitionFrame
         PROLOG_SAVE_REG_PAIR   fp, lr, #-(PROBE_FRAME_SIZE + $extraStackSpace)!      ;; Push down stack pointer and store FP and LR
 
         ;; Slot at [sp, #0x10] is reserved for Thread *
@@ -55,7 +55,7 @@ PROBE_FRAME_SIZE    field 0
 
         ;; Slot at [sp, #0x70] is reserved for caller sp
 
-        ;; Save the scratch registers 
+        ;; Save the scratch registers
         PROLOG_NOP str         x0,       [sp, #0x78]
         PROLOG_NOP stp         x1, x2,   [sp, #0x80]
         PROLOG_NOP stp         x3, x4,   [sp, #0x90]
@@ -83,7 +83,7 @@ PROBE_FRAME_SIZE    field 0
     MACRO
         FREE_PROBE_FRAME $extraStackSpace, $restoreFPRegisters
 
-        ;; Restore the scratch registers 
+        ;; Restore the scratch registers
         PROLOG_NOP ldr          x0,       [sp, #0x78]
         PROLOG_NOP ldp          x1, x2,   [sp, #0x80]
         PROLOG_NOP ldp          x3, x4,   [sp, #0x90]
@@ -125,7 +125,7 @@ PROBE_FRAME_SIZE    field 0
         INIT_PROBE_FRAME $threadReg, $trashReg, $savedRegsMask, $gcFlags, $frameSize
 
         LCLS BitmaskStr
-BitmaskStr SETS "$savedRegsMask"        
+BitmaskStr SETS "$savedRegsMask"
 
         str         $threadReg, [sp, #OFFSETOF__PInvokeTransitionFrame__m_pThread]            ; Thread *
         IF          BitmaskStr:LEFT:1 == "#"
@@ -140,7 +140,7 @@ BitmaskStr  SETS BitmaskStr:RIGHT:(:LEN:BitmaskStr - 1)
         str         $trashReg, [sp, #OFFSETOF__PInvokeTransitionFrame__m_Flags]
         add         $trashReg, sp, #$frameSize
         str         $trashReg, [sp, #m_CallersSP]
-    MEND    
+    MEND
 
     ;; Simple macro to use when setting up the probe frame can comprise the entire prolog. Call this macro
     ;; first in the method (no further prolog instructions can be added after this).
@@ -186,9 +186,9 @@ __PPF_ThreadReg SETS "x2"
         EPILOG_RETURN
     MEND
 
-;; In order to avoid trashing VFP registers across the loop hijack we must save all user registers, so that 
-;; registers used by the loop being hijacked will not be affected. Unlike ARM32 where neon registers (NQ0, ..., NQ15) 
-;; are fully covered by the floating point registers D0 ... D31, we have 32 neon registers Q0, ... Q31 on ARM64 
+;; In order to avoid trashing VFP registers across the loop hijack we must save all user registers, so that
+;; registers used by the loop being hijacked will not be affected. Unlike ARM32 where neon registers (NQ0, ..., NQ15)
+;; are fully covered by the floating point registers D0 ... D31, we have 32 neon registers Q0, ... Q31 on ARM64
 ;; which are not fully covered by the register D0 ... D31. Therefore we must explicitly save all Q registers.
 EXTRA_SAVE_SIZE equ (32*16)
 
@@ -214,7 +214,7 @@ EXTRA_SAVE_SIZE equ (32*16)
         PROLOG_NOP stp         q26, q27, [sp, #0x1A0]
         PROLOG_NOP stp         q28, q29, [sp, #0x1C0]
         PROLOG_NOP stp         q30, q31, [sp, #0x1E0]
-        
+
         ALLOC_PROBE_FRAME 0, {false}
     MEND
 
@@ -223,7 +223,7 @@ EXTRA_SAVE_SIZE equ (32*16)
 
         FREE_PROBE_FRAME 0, {false}
 
-        ;; restore all neon registers 
+        ;; restore all neon registers
         PROLOG_NOP ldp         q0, q1,   [sp]
         PROLOG_NOP ldp         q2, q3,   [sp, #0x20]
         PROLOG_NOP ldp         q4, q5,   [sp, #0x40]
@@ -245,12 +245,12 @@ EXTRA_SAVE_SIZE equ (32*16)
     MEND
 
 ;;
-;; Macro to clear the hijack state. This is safe to do because the suspension code will not Unhijack this 
+;; Macro to clear the hijack state. This is safe to do because the suspension code will not Unhijack this
 ;; thread if it finds it at an IP that isn't managed code.
 ;;
 ;; Register state on entry:
 ;;  x2: thread pointer
-;;  
+;;
 ;; Register state on exit:
 ;;
     MACRO
@@ -264,12 +264,12 @@ EXTRA_SAVE_SIZE equ (32*16)
     MEND
 
 ;;
-;; The prolog for all GC suspension hijacks (normal and stress). Fixes up the hijacked return address, and 
+;; The prolog for all GC suspension hijacks (normal and stress). Fixes up the hijacked return address, and
 ;; clears the hijack state.
 ;;
 ;; Register state on entry:
 ;;  All registers correct for return to the original return address.
-;;  
+;;
 ;; Register state on exit:
 ;;  x2: thread pointer
 ;;  x3: trashed
@@ -280,7 +280,7 @@ EXTRA_SAVE_SIZE equ (32*16)
 
         ;; x2 <- GetThread(), TRASHES x3
         INLINE_GETTHREAD x2, x3
-        
+
         ;;
         ;; Fix the stack by restoring the original return address
         ;;
@@ -296,7 +296,7 @@ EXTRA_SAVE_SIZE equ (32*16)
 ;;
 ;; Register state on entry:
 ;;  x4: thread pointer
-;;  
+;;
 ;; Register state on exit:
 ;;  x4: thread pointer
 ;;  All other registers trashed
@@ -323,8 +323,8 @@ EXTRA_SAVE_SIZE equ (32*16)
         ;; The code here should never be executed, and the unwind info is bogus, but we don't mind since the
         ;; stack is broken by the hijack anyway until after we fix it below.
         PROLOG_SAVE_REG_PAIR   fp, lr, #-0x10!
-        nop                     ; We also need a nop here to simulate the implied bl instruction.  Without 
-                                ; this, an OS-applied -4 will back up into the method prolog and the unwind 
+        nop                     ; We also need a nop here to simulate the implied bl instruction.  Without
+                                ; this, an OS-applied -4 will back up into the method prolog and the unwind
                                 ; will not be applied as desired.
 
     MEND
@@ -359,8 +359,8 @@ EXTRA_SAVE_SIZE equ (32*16)
         b           RhpGcStressProbe
     LEAF_END RhpGcStressHijack
 ;;
-;; Worker for our GC stress probes.  Do not call directly!!  
-;; Instead, go through RhpGcStressHijack{Scalar|Object|Byref}. 
+;; Worker for our GC stress probes.  Do not call directly!!
+;; Instead, go through RhpGcStressHijack{Scalar|Object|Byref}.
 ;; This worker performs the GC Stress work and returns to the original return address.
 ;;
 ;; Register state on entry:
@@ -374,7 +374,7 @@ EXTRA_SAVE_SIZE equ (32*16)
 ;;  All other registers restored as they were when the hijack was first reached.
 ;;
     NESTED_ENTRY RhpGcStressProbe
-        PROLOG_PROBE_FRAME x2, x3, x12, 
+        PROLOG_PROBE_FRAME x2, x3, x12,
 
         bl          $REDHAWKGCINTERFACE__STRESSGC
 
@@ -392,7 +392,7 @@ EXTRA_SAVE_SIZE equ (32*16)
     EXTERN RhpThrowHwEx
 
     NESTED_ENTRY RhpGcProbeRare
-        PROLOG_PROBE_FRAME x2, x3, x12, 
+        PROLOG_PROBE_FRAME x2, x3, x12,
 
         mov         x4, x2
         WaitForGCCompletion
@@ -402,7 +402,7 @@ EXTRA_SAVE_SIZE equ (32*16)
 
         EPILOG_PROBE_FRAME
 
-1        
+1
         FREE_PROBE_FRAME 0, {true}
         EPILOG_NOP mov w0, #STATUS_REDHAWK_THREAD_ABORT
         EPILOG_NOP mov x1, lr ;; return address as exception PC
@@ -457,10 +457,10 @@ EXTRA_SAVE_SIZE equ (32*16)
         ;; Setup a PAL_LIMITED_CONTEXT that looks like what you'd get if you had suspended this thread at the
         ;; IP after the call to this helper.
         ;;
-        ;; This is very likely overkill since the calculation of the return address should only need SP and 
+        ;; This is very likely overkill since the calculation of the return address should only need SP and
         ;; LR, but this is test code, so I'm not too worried about efficiency.
         ;;
-        ;; Setup a PAL_LIMITED_CONTEXT on the stack 
+        ;; Setup a PAL_LIMITED_CONTEXT on the stack
         ;; {
             ;; FP and LR already pushed.
             PROLOG_NOP  stp         x0, x1, [sp, #0x10]
@@ -513,10 +513,10 @@ EXTRA_SAVE_SIZE equ (32*16)
         ;; Setup a PAL_LIMITED_CONTEXT that looks like what you'd get if you had suspended this thread at the
         ;; IP after the call to this helper.
         ;;
-        ;; This is very likely overkill since the calculation of the return address should only need SP and 
+        ;; This is very likely overkill since the calculation of the return address should only need SP and
         ;; LR, but this is test code, so I'm not too worried about efficiency.
         ;;
-        ;; Setup a PAL_LIMITED_CONTEXT on the stack 
+        ;; Setup a PAL_LIMITED_CONTEXT on the stack
         ;; {
             ;; FP and LR already pushed.
             PROLOG_NOP  stp         x0, x1, [sp, #0x10]
@@ -564,19 +564,19 @@ EXTRA_SAVE_SIZE equ (32*16)
 
 #if 0 // used by the binder only
 ;;
-;; The following functions are _jumped_ to when we need to transfer control from one method to another for EH 
+;; The following functions are _jumped_ to when we need to transfer control from one method to another for EH
 ;; dispatch. These are needed to properly coordinate with the GC hijacking logic. We are essentially replacing
-;; the return from the throwing method with a jump to the handler in the caller, but we need to be aware of 
-;; any return address hijack that may be in place for GC suspension. These routines use a quick test of the 
-;; return address against a specific GC hijack routine, and then fixup the stack pointer to what it would be 
-;; after a real return from the throwing method. Then, if we are not hijacked we can simply jump to the 
+;; the return from the throwing method with a jump to the handler in the caller, but we need to be aware of
+;; any return address hijack that may be in place for GC suspension. These routines use a quick test of the
+;; return address against a specific GC hijack routine, and then fixup the stack pointer to what it would be
+;; after a real return from the throwing method. Then, if we are not hijacked we can simply jump to the
 ;; handler in the caller.
-;; 
+;;
 ;; If we are hijacked, then we jump to a routine that will unhijack appropriately and wait for the GC to
 ;; complete. There are also variants for GC stress.
 ;;
 ;; Note that at this point we are either hijacked or we are not, and this will not change until we return to
-;; managed code. It is an invariant of the system that a thread will only attempt to hijack or unhijack 
+;; managed code. It is an invariant of the system that a thread will only attempt to hijack or unhijack
 ;; another thread while the target thread is suspended in managed code, and this is _not_ managed code.
 ;;
     MACRO
@@ -619,7 +619,7 @@ EXTRA_SAVE_SIZE equ (32*16)
 ;;  x2: handler address we want to jump to.
 ;;  Non-volatile registers are all already correct for return to the caller.
 ;;  The stack is as if we are just about to returned from the call
-;;  
+;;
 ;; Register state on exit:
 ;;  x0: reference to the exception object
 ;;  x2: thread pointer
@@ -633,7 +633,7 @@ EXTRA_SAVE_SIZE equ (32*16)
 
         ;; x2 <- GetThread(), TRASHES x1
         INLINE_GETTHREAD x2, x1
-        
+
         ;; Recover the original return address and update the frame
         ldr         lr, [x2, #OFFSETOF__Thread__m_pvHijackedReturnAddress]
         str         lr, [sp, #OFFSETOF__PInvokeTransitionFrame__m_RIP]
@@ -648,13 +648,13 @@ EXTRA_SAVE_SIZE equ (32*16)
     MEND
 
 ;;
-;; Macro to re-adjust the location of the EH object reference, cleanup the frame, and make the 
+;; Macro to re-adjust the location of the EH object reference, cleanup the frame, and make the
 ;; final jump to the handler for EH jump probe funcs.
 ;;
 ;; Register state on entry:
 ;;  x0: reference to the exception object
 ;;  x1-x3: scratch
-;;  
+;;
 ;; Register state on exit:
 ;;  sp: correct for return to the caller
 ;;  x1: reference to the exception object
@@ -676,7 +676,7 @@ EXTRA_SAVE_SIZE equ (32*16)
 ;;  x2: thread
 ;;  Non-volatile registers are all already correct for return to the caller.
 ;;  The stack is as if we have tail called to this function (lr points to return address).
-;;        
+;;
 ;; Register state on exit:
 ;;  x0: reference to the exception object
 ;;
@@ -712,7 +712,7 @@ EXTRA_SAVE_SIZE equ (32*16)
 ;;  x2: thread
 ;;  Non-volatile registers are all already correct for return to the caller.
 ;;  The stack is as if we have tail called to this function (lr points to return address).
-;;        
+;;
 ;; Register state on exit:
 ;;  x0: reference to the exception object
 ;;

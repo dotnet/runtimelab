@@ -234,8 +234,8 @@ namespace System
         }
 
         /// <summary>
-        /// Returns the current generation number of the target 
-        /// of a specified <see cref="System.WeakReference"/>.  
+        /// Returns the current generation number of the target
+        /// of a specified <see cref="System.WeakReference"/>.
         /// </summary>
         /// <param name="wo">The WeakReference whose target is the object
         /// whose generation will be returned</param>
@@ -659,7 +659,7 @@ namespace System
         /// 3. Budget adjusted by effectiveness of last 3 triggered GC (add / remove ratio, max 10x)
         /// 4. Budget maxed with 30% of current managed GC size
         /// 5. If Gen2 GC is happening naturally, ignore past pressure
-        /// 
+        ///
         /// Here's a brief description of the ideal algorithm for Add/Remove memory pressure:
         /// Do a GC when (HeapStart is less than X * MemPressureGrowth) where
         /// - HeapStart is GC Heap size after doing the last GC
@@ -765,9 +765,9 @@ namespace System
 
             if (forceFullCollection)
             {
-                // If we force a full collection, we will run the finalizers on all 
+                // If we force a full collection, we will run the finalizers on all
                 // existing objects and do a collection until the value stabilizes.
-                // The value is "stable" when either the value is within 5% of the 
+                // The value is "stable" when either the value is within 5% of the
                 // previous call to GetTotalMemory, or if we have been sitting
                 // here for more than x times (we don't want to loop forever here).
                 int reps = 20;  // Number of iterations

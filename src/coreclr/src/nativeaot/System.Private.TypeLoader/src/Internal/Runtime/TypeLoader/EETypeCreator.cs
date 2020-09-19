@@ -192,7 +192,7 @@ namespace Internal.Runtime.TypeLoader
                 if (pTemplateEEType != null)
                 {
                     valueTypeFieldPaddingEncoded = EETypeBuilderHelpers.ComputeValueTypeFieldPaddingFieldValue(
-                        pTemplateEEType->ValueTypeFieldPadding, 
+                        pTemplateEEType->ValueTypeFieldPadding,
                         (uint)pTemplateEEType->FieldAlignmentRequirement,
                         IntPtr.Size);
                     baseSize = (int)pTemplateEEType->BaseSize;
@@ -346,7 +346,7 @@ namespace Internal.Runtime.TypeLoader
                     {
                         uint nullableValueOffset = state.NullableValueOffset;
 
-                        // The stored offset is never zero (Nullable has a boolean there indicating whether the value is valid). 
+                        // The stored offset is never zero (Nullable has a boolean there indicating whether the value is valid).
                         // If the real offset is one, then the field isn't set. Otherwise the offset is encoded - 1 to save space.
                         if (nullableValueOffset == 1)
                             optionalFields.ClearField(EETypeOptionalFieldTag.NullableValueOffset);
@@ -382,7 +382,7 @@ namespace Internal.Runtime.TypeLoader
                 // Compute the EEType size and allocate it
                 EEType* pEEType;
                 {
-                    // In order to get the size of the EEType to allocate we need the following information 
+                    // In order to get the size of the EEType to allocate we need the following information
                     // 1) The number of VTable slots (from the TypeBuilderState)
                     // 2) The number of Interfaces (from the template)
                     // 3) Whether or not there is a finalizer (from the template)
@@ -439,17 +439,17 @@ namespace Internal.Runtime.TypeLoader
                         Debug.Assert(state.NonUniversalInstanceGCDescSize == cbGCDesc, "Non-universal instance GCDesc size not matching with universal GCDesc size!");
                         Debug.Assert(cbGCDesc == 0 || pEEType->HasGCPointers);
 
-                        // The TestGCDescsForEquality helper will compare 2 GCDescs for equality, 4 bytes at a time (GCDesc contents treated as integers), and will read the 
+                        // The TestGCDescsForEquality helper will compare 2 GCDescs for equality, 4 bytes at a time (GCDesc contents treated as integers), and will read the
                         // GCDesc data in *reverse* order for instance GCDescs (subtracts 4 from the pointer values at each iteration).
                         //    - For the first GCDesc, we use (pEEType - 4) to point to the first 4-byte integer directly preceeding the EEType
-                        //    - For the second GCDesc, given that the state.NonUniversalInstanceGCDesc already points to the first byte preceeding the template EEType, we 
+                        //    - For the second GCDesc, given that the state.NonUniversalInstanceGCDesc already points to the first byte preceeding the template EEType, we
                         //      subtract 3 to point to the first 4-byte integer directly preceeding the template EEType
                         TestGCDescsForEquality(new IntPtr((byte*)pEEType - 4), state.NonUniversalInstanceGCDesc - 3, cbGCDesc, true);
                     }
 #endif
 
                     // Copy the encoded optional fields buffer to the newly allocated memory, and update the OptionalFields field on the EEType
-                    // It is important to set the optional fields first on the newly created EEType, because all other 'setters' 
+                    // It is important to set the optional fields first on the newly created EEType, because all other 'setters'
                     // will assert that the type is dynamic, just to make sure we are not making any changes to statically compiled types
                     pEEType->OptionalFieldsPtr = (byte*)pEEType + cbEEType;
                     optionalFields.WriteToEEType(pEEType, cbOptionalFieldsSize);
@@ -475,11 +475,11 @@ namespace Internal.Runtime.TypeLoader
                                 IntPtr dictionaryPtrValue;
                                 if (requireVtableSlotMapping && state.VTableSlotsMapping.IsDictionarySlot(i, out dictionaryPtrValue))
                                 {
-                                    // This must be the dictionary pointer value of one of the base types of the 
+                                    // This must be the dictionary pointer value of one of the base types of the
                                     // current universal generic type being constructed.
                                     pVtable[vtableSlotInDynamicType] = dictionaryPtrValue;
 
-                                    // Assert that the current template vtable slot is also a NULL value since all 
+                                    // Assert that the current template vtable slot is also a NULL value since all
                                     // universal generic template types have NULL dictionary slot values in their vtables
                                     Debug.Assert(pTemplateVtable[i] == IntPtr.Zero);
                                 }

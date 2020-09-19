@@ -14,7 +14,7 @@ extern RhpReversePInvokeBadTransition : proc
 ;; INPUT: none
 ;;
 ;; TRASHES: none
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 NESTED_ENTRY RhpWaitForSuspend, _TEXT
         push_vol_reg    rax
@@ -64,7 +64,7 @@ NESTED_END RhpWaitForSuspend, _TEXT
 ;; INPUT: RCX: transition frame
 ;;
 ;; TRASHES: RCX, RDX, R8, R9, R10, R11
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 NESTED_ENTRY RhpWaitForGCNoAbort, _TEXT
         push_vol_reg    rax                 ; don't trash the integer return value
@@ -98,7 +98,7 @@ EXTERN RhpThrowHwEx : PROC
 ;; INPUT: RCX: transition frame
 ;;
 ;; TRASHES: RCX, RDX, R8, R9, R10, R11
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 NESTED_ENTRY RhpWaitForGC, _TEXT
         push_nonvol_reg rbx
@@ -150,7 +150,7 @@ LEAF_ENTRY RhpReversePInvoke, _TEXT
         jz          AttachThread
 
         ;;
-        ;; Check for the correct mode.  This is accessible via various odd things that we cannot completely 
+        ;; Check for the correct mode.  This is accessible via various odd things that we cannot completely
         ;; prevent such as :
         ;;     1) Registering a reverse pinvoke entrypoint as a vectored exception handler
         ;;     2) Performing a managed delegate invoke on a reverse pinvoke delegate.
@@ -161,7 +161,7 @@ LEAF_ENTRY RhpReversePInvoke, _TEXT
         ; rax: reverse pinvoke frame
         ; r10: thread
 
-        ; Save previous TransitionFrame prior to making the mode transition so that it is always valid 
+        ; Save previous TransitionFrame prior to making the mode transition so that it is always valid
         ; whenever we might attempt to hijack this thread.
         mov         r11, [r10 + OFFSETOF__Thread__m_pTransitionFrame]
         mov         [rax], r11
@@ -173,13 +173,13 @@ LEAF_ENTRY RhpReversePInvoke, _TEXT
         ret
 
 CheckBadTransition:
-        ;; Allow 'bad transitions' in when the TSF_DoNotTriggerGc mode is set.  This allows us to have 
+        ;; Allow 'bad transitions' in when the TSF_DoNotTriggerGc mode is set.  This allows us to have
         ;; [UnmanagedCallersOnly] methods that are called via the "restricted GC callouts" as well as from native,
         ;; which is necessary because the methods are CCW vtable methods on interfaces passed to native.
         test        dword ptr [r10 + OFFSETOF__Thread__m_ThreadStateFlags], TSF_DoNotTriggerGc
         jz          BadTransition
 
-        ;; RhpTrapThreads will always be set in this case, so we must skip that check.  We must be sure to 
+        ;; RhpTrapThreads will always be set in this case, so we must skip that check.  We must be sure to
         ;; zero-out our 'previous transition frame' state first, however.
         mov         qword ptr [rax], 0
         ret
@@ -251,7 +251,7 @@ NESTED_END RhpReversePInvokeAttachOrTrapThread, _TEXT
 ;;
 ;; RhpReversePInvokeReturn
 ;;
-;; IN:  RCX: address of reverse pinvoke frame 
+;; IN:  RCX: address of reverse pinvoke frame
 ;;
 ;; TRASHES:  RCX, RDX, R10, R11
 ;;
@@ -312,7 +312,7 @@ LEAF_END RhpPInvoke, _TEXT
 ;; IN:  RCX: address of pinvoke frame
 ;;
 ;; TRASHES: RCX, RDX, R8, R9, R10, R11
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 LEAF_ENTRY RhpPInvokeReturn, _TEXT
         mov         rdx, [rcx + OFFSETOF__PInvokeTransitionFrame__m_pThread]

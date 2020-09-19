@@ -15,7 +15,7 @@
 ;; INPUT: none
 ;;
 ;; TRASHES: none
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     NESTED_ENTRY RhpWaitForSuspend
 
@@ -104,7 +104,7 @@ Done
 ;; INPUT: x9: transition frame
 ;;
 ;; TRASHES: x0, x1, x10
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     NESTED_ENTRY RhpWaitForGC
 
@@ -122,7 +122,7 @@ NoWait
         EPILOG_RESTORE_REG_PAIR fp, lr, #0x10!
         EPILOG_NOP  mov w0, #STATUS_REDHAWK_THREAD_ABORT
         EPILOG_NOP  mov x1, lr          ; hijack target address as exception PC
-        EPILOG_NOP  b RhpThrowHwEx        
+        EPILOG_NOP  b RhpThrowHwEx
 
 NoAbort
         EPILOG_RESTORE_REG_PAIR fp, lr, #0x10!
@@ -158,7 +158,7 @@ NoAbort
 
 ThreadAttached
         ;;
-        ;; Check for the correct mode.  This is accessible via various odd things that we cannot completely 
+        ;; Check for the correct mode.  This is accessible via various odd things that we cannot completely
         ;; prevent such as :
         ;;     1) Registering a reverse pinvoke entrypoint as a vectored exception handler
         ;;     2) Performing a managed delegate invoke on a reverse pinvoke delegate.
@@ -166,11 +166,11 @@ ThreadAttached
         ldr         x11, [x10, #OFFSETOF__Thread__m_pTransitionFrame]
         cbz         x11, CheckBadTransition
 
-        ;; Save previous TransitionFrame prior to making the mode transition so that it is always valid 
+        ;; Save previous TransitionFrame prior to making the mode transition so that it is always valid
         ;; whenever we might attempt to hijack this thread.
         str         x11, [x9]
 
-        str         xzr, [x10, #OFFSETOF__Thread__m_pTransitionFrame] 
+        str         xzr, [x10, #OFFSETOF__Thread__m_pTransitionFrame]
         dmb         ish
 
         ldr         x11, =RhpTrapThreads
@@ -180,7 +180,7 @@ ThreadAttached
         ret
 
 CheckBadTransition
-        ;; Allow 'bad transitions' in when the TSF_DoNotTriggerGc mode is set.  This allows us to have 
+        ;; Allow 'bad transitions' in when the TSF_DoNotTriggerGc mode is set.  This allows us to have
         ;; [UnmanagedCallersOnly] methods that are called via the "restricted GC callouts" as well as from native,
         ;; which is necessary because the methods are CCW vtable methods on interfaces passed to native.
         ldr         w11, [x10, #OFFSETOF__Thread__m_ThreadStateFlags]
@@ -196,7 +196,7 @@ CheckBadTransition
 TrapThread
         ;; put the previous frame back (sets us back to preemptive mode)
         ldr         x11, [x9]
-        str         x11, [x10, #OFFSETOF__Thread__m_pTransitionFrame] 
+        str         x11, [x10, #OFFSETOF__Thread__m_pTransitionFrame]
         dmb         ish
 
 AttachThread
@@ -221,7 +221,7 @@ BadTransition
 ;; PRESERVES: x0-x8 -- need to preserve these because the caller assumes they aren't trashed
 ;;
 ;; TRASHES: none
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     NESTED_ENTRY RhpReversePInvokeAttachOrTrapThread
 
@@ -255,7 +255,7 @@ BadTransition
         ldp         x2, x3, [sp, #0x20]
         ldp         x4, x5, [sp, #0x30]
         ldp         x6, x7, [sp, #0x40]
-        ldr         x8, [sp, #0x50] 
+        ldr         x8, [sp, #0x50]
 
         ;; Restore FP and LR registers, and free the allocated stack block
         EPILOG_RESTORE_REG_PAIR   fp, lr, #0xA0!
@@ -282,7 +282,7 @@ BadTransition
         ;; x10: previous M->U transition frame
         ;; x11: thread pointer
 
-        str         x10, [x11, #OFFSETOF__Thread__m_pTransitionFrame] 
+        str         x10, [x11, #OFFSETOF__Thread__m_pTransitionFrame]
         dmb         ish
 
         ldr         x10, =RhpTrapThreads

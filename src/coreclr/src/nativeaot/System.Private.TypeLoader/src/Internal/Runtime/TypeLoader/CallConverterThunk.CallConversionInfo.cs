@@ -504,9 +504,9 @@ namespace Internal.Runtime.TypeLoader
         {
             get
             {
-                // If the target method pointer and/or dictionary are passed as arguments to the converter, they are 
+                // If the target method pointer and/or dictionary are passed as arguments to the converter, they are
                 // considered unknown.
-                // Similarly, delegate thunks and reflection DynamicInvoke thunks do not have any target pointer or 
+                // Similarly, delegate thunks and reflection DynamicInvoke thunks do not have any target pointer or
                 // dictionary pointers stored in their CallConversionInfo structures.
                 if (CallerHasExtraParameterWhichIsFunctionTarget || IsDelegateThunk || IsAnyDynamicInvokerThunk || _targetFunctionPointer == IntPtr.Zero)
                     return false;

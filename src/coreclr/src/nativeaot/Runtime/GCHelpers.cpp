@@ -224,7 +224,7 @@ struct RH_GC_GENERATION_INFO
 
 #if defined(TARGET_X86) && !defined(TARGET_UNIX)
 #include "pshpack4.h"
-#ifdef _MSC_VER 
+#ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable:4121) // alignment of a member was sensitive to packing
 #endif
@@ -314,7 +314,7 @@ EXTERN_C REDHAWK_API Int64 __cdecl RhGetTotalAllocatedBytesPrecise()
     // non-allocated memory from their allocation contexts
 
     GCToEEInterface::SuspendEE(SUSPEND_REASON::SUSPEND_FOR_GC);
-    
+
     allocated = GCHeapUtilities::GetGCHeap()->GetTotalAllocatedBytes() - RedhawkGCInterface::GetDeadThreadsNonAllocBytes();
 
     FOREACH_THREAD(pThread)
@@ -325,7 +325,7 @@ EXTERN_C REDHAWK_API Int64 __cdecl RhGetTotalAllocatedBytesPrecise()
     END_FOREACH_THREAD
 
     GCToEEInterface::RestartEE(true);
-    
+
     return allocated;
 }
 

@@ -155,9 +155,9 @@ namespace Internal.Runtime.Augments
             return Array.NewMultiDimArray(typeHandleForArrayType.ToEETypePtr(), pLengths, lengths.Length);
         }
 
-        // 
+        //
         // Helper to create an array from a newobj instruction
-        // 
+        //
         public static unsafe Array NewObjArray(RuntimeTypeHandle typeHandleForArrayType, int[] arguments)
         {
             EETypePtr eeTypePtr = typeHandleForArrayType.ToEETypePtr();
@@ -1001,8 +1001,8 @@ namespace Internal.Runtime.Augments
         }
 
         /// <summary>
-        /// This method creates a conservatively reported region and calls a function 
-        /// while that region is conservatively reported. 
+        /// This method creates a conservatively reported region and calls a function
+        /// while that region is conservatively reported.
         /// </summary>
         /// <param name="cbBuffer">size of buffer to allocated (buffer size described in bytes)</param>
         /// <param name="pfnTargetToInvoke">function pointer to execute. Must have the calling convention void(void* pBuffer, ref T context)</param>
@@ -1038,8 +1038,8 @@ namespace Internal.Runtime.Augments
         }
 
         /// <summary>
-        /// This method creates a conservatively reported region and calls a function 
-        /// while that region is conservatively reported. 
+        /// This method creates a conservatively reported region and calls a function
+        /// while that region is conservatively reported.
         /// </summary>
         /// <param name="cbBuffer">size of buffer to allocated (buffer size described in bytes)</param>
         /// <param name="pfnTargetToInvoke">function pointer to execute. Must have the calling convention void(void* pBuffer, ref T context)</param>

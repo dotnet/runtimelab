@@ -13,11 +13,11 @@ namespace Internal.Reflection.Execution
     internal static partial class ConstraintValidator
     {
         //
-        // We cannot do the constraint validation against real TypeInfo because of constraints need to be validated 
+        // We cannot do the constraint validation against real TypeInfo because of constraints need to be validated
         // before the type is built.
         //
         // InstantiatedType allows us to use TypeInfo for constraint validation without creating a real TypeInfo.
-        // It implements just enough methods for constraint validation to work, and performs type variable substitution 
+        // It implements just enough methods for constraint validation to work, and performs type variable substitution
         // as necesary.
         //
 

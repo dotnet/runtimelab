@@ -3,8 +3,8 @@
 /*****************************************************************************
  *                                  GCDump.cpp
  *
- * Defines functions to display the GCInfo as defined by the GC-encoding 
- * spec. The GC information may be either dynamically created by a 
+ * Defines functions to display the GCInfo as defined by the GC-encoding
+ * spec. The GC information may be either dynamically created by a
  * Just-In-Time compiler conforming to the standard code-manager spec,
  * or may be persisted by a managed native code compiler conforming
  * to the standard code-manager spec.
@@ -27,7 +27,7 @@ static void DacNullPrintf(const char* , ...) {}
 GCDump::GCDump()
 {
 #ifndef DACCESS_COMPILE
-    // By default, use the standard printf function to dump 
+    // By default, use the standard printf function to dump
     GCDump::gcPrintf = (printfFtn) ::printf;
 #else
     // Default for DAC is a no-op.
@@ -39,7 +39,7 @@ GCDump::GCDump()
 
 /*****************************************************************************/
 
-static const char * const calleeSaveRegMaskBitNumberToName[] = 
+static const char * const calleeSaveRegMaskBitNumberToName[] =
 {
 #if defined(TARGET_X86)
     "EBX",
@@ -445,7 +445,7 @@ void GCDump::DumpCallsiteString(UInt32 callsiteOffset, PTR_UInt8 pbCallsiteStrin
 #endif
                 }
                 gcPrintf("%02x          | 3  %s%s%s \n", b, regName, interior, pinned);
-                count++; 
+                count++;
             }
             break;
 
@@ -475,7 +475,7 @@ void GCDump::DumpCallsiteString(UInt32 callsiteOffset, PTR_UInt8 pbCallsiteStrin
                                 PrintLocalSlot(slotNum, pHeader);
 
                                 isFirst = false;
-                                count++; 
+                                count++;
                             }
                             mask <<= 1;
                             slotNum++;
@@ -606,7 +606,7 @@ void GCDump::DumpCallsiteString(UInt32 callsiteOffset, PTR_UInt8 pbCallsiteStrin
                     }
 
                     gcPrintf("| 6  [%s%s%02X]%s%s\n", baseReg, sign, offset, interior, pinned);
-                    count++; 
+                    count++;
 
                     while (mask > 0)
                     {
@@ -617,7 +617,7 @@ void GCDump::DumpCallsiteString(UInt32 callsiteOffset, PTR_UInt8 pbCallsiteStrin
                                 gcPrintf("      ");
 
                             gcPrintf("            |    [%s%s%02X]%s%s\n", baseReg, sign, offset, interior, pinned);
-                            count++; 
+                            count++;
                         }
                         mask >>= 1;
                     }
@@ -647,10 +647,10 @@ size_t   FASTCALL   GCDump::DumpGCTable (PTR_UInt8              gcInfo,
     }
 
     //
-    // Decode the method GC info 
+    // Decode the method GC info
     //
     // 0ddddccc -- SMALL ENCODING
-    // 
+    //
     //              -- dddd is an index into the delta shortcut table
     //              -- ccc is an offset into the callsite strings blob
     //
@@ -683,7 +683,7 @@ size_t   FASTCALL   GCDump::DumpGCTable (PTR_UInt8              gcInfo,
                 curOffset += VarInt::ReadUnsigned(pCursor);
                 continue;
             }
-            else 
+            else
             if (lowBits == 0x7F) // STRING TERMINATOR
                 break;
 

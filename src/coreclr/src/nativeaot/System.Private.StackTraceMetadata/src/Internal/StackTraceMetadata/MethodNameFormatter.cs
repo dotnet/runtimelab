@@ -89,7 +89,7 @@ namespace Internal.StackTraceMetadata
                 case HandleType.MemberReference:
                     EmitMethodReferenceName(methodHandle.ToMemberReferenceHandle(_metadataReader));
                     break;
-    
+
                 case HandleType.MethodInstantiation:
                     EmitMethodInstantiationName(methodHandle.ToMethodInstantiationHandle(_metadataReader));
                     break;
@@ -97,14 +97,14 @@ namespace Internal.StackTraceMetadata
                 case HandleType.QualifiedMethod:
                     EmitMethodDefinitionName(methodHandle.ToQualifiedMethodHandle(_metadataReader));
                     break;
-    
+
                 default:
                     Debug.Assert(false);
                     _outputBuilder.Append("???");
                     break;
             }
         }
-    
+
         /// <summary>
         /// Emit method reference to the output string builder.
         /// </summary>
@@ -116,7 +116,7 @@ namespace Internal.StackTraceMetadata
             EmitContainingTypeAndMethodName(methodRef, out methodSignature);
             EmitMethodParameters(methodSignature);
         }
-    
+
         /// <summary>
         /// Emit generic method instantiation to the output string builder.
         /// </summary>
@@ -142,7 +142,7 @@ namespace Internal.StackTraceMetadata
             EmitString(method.Name);
             EmitMethodParameters(methodSignature);
         }
-    
+
         /// <summary>
         /// Emit containing type and method name and extract the method signature from a method reference.
         /// </summary>
@@ -155,7 +155,7 @@ namespace Internal.StackTraceMetadata
             _outputBuilder.Append(".");
             EmitString(methodRef.Name);
         }
-    
+
         /// <summary>
         /// Emit parenthesized method argument type list.
         /// </summary>
@@ -166,7 +166,7 @@ namespace Internal.StackTraceMetadata
             EmitTypeVector(methodSignature.Parameters);
             _outputBuilder.Append(")");
         }
-    
+
         /// <summary>
         /// Emit comma-separated list of type names into the output string builder.
         /// </summary>
@@ -187,7 +187,7 @@ namespace Internal.StackTraceMetadata
                 EmitTypeName(handle, namespaceQualified: false);
             }
         }
-    
+
         /// <summary>
         /// Emit the name of a given type to the output string builder.
         /// </summary>
@@ -200,27 +200,27 @@ namespace Internal.StackTraceMetadata
                 case HandleType.TypeReference:
                     EmitTypeReferenceName(typeHandle.ToTypeReferenceHandle(_metadataReader), namespaceQualified);
                     break;
-    
+
                 case HandleType.TypeSpecification:
                     EmitTypeSpecificationName(typeHandle.ToTypeSpecificationHandle(_metadataReader), namespaceQualified);
                     break;
-    
+
                 case HandleType.TypeInstantiationSignature:
                     EmitTypeInstantiationName(typeHandle.ToTypeInstantiationSignatureHandle(_metadataReader), namespaceQualified);
                     break;
-    
+
                 case HandleType.SZArraySignature:
                     EmitSZArrayTypeName(typeHandle.ToSZArraySignatureHandle(_metadataReader), namespaceQualified);
                     break;
-    
+
                 case HandleType.ArraySignature:
                     EmitArrayTypeName(typeHandle.ToArraySignatureHandle(_metadataReader), namespaceQualified);
                     break;
-    
+
                 case HandleType.PointerSignature:
                     EmitPointerTypeName(typeHandle.ToPointerSignatureHandle(_metadataReader));
                     break;
-    
+
                 case HandleType.ByReferenceSignature:
                     EmitByRefTypeName(typeHandle.ToByReferenceSignatureHandle(_metadataReader));
                     break;
@@ -336,7 +336,7 @@ namespace Internal.StackTraceMetadata
             TypeSpecification typeSpec = _metadataReader.GetTypeSpecification(typeSpecHandle);
             EmitTypeName(typeSpec.Signature, namespaceQualified);
         }
-    
+
         /// <summary>
         /// Emit generic instantiation type.
         /// </summary>
@@ -348,7 +348,7 @@ namespace Internal.StackTraceMetadata
             TypeInstantiationSignature typeInst = _metadataReader.GetTypeInstantiationSignature(typeInstHandle);
             EmitTypeName(typeInst.GenericType, namespaceQualified);
         }
-    
+
         /// <summary>
         /// Emit SZArray (single-dimensional array with zero lower bound) type.
         /// </summary>
@@ -360,7 +360,7 @@ namespace Internal.StackTraceMetadata
             EmitTypeName(szArraySig.ElementType, namespaceQualified);
             _outputBuilder.Append("[]");
         }
-    
+
         /// <summary>
         /// Emit multi-dimensional array type.
         /// </summary>
@@ -381,7 +381,7 @@ namespace Internal.StackTraceMetadata
             }
             _outputBuilder.Append(']');
         }
-    
+
         /// <summary>
         /// Emit pointer type.
         /// </summary>
@@ -392,7 +392,7 @@ namespace Internal.StackTraceMetadata
             EmitTypeName(pointerSig.Type, namespaceQualified: false);
             _outputBuilder.Append('*');
         }
-    
+
         /// <summary>
         /// Emit by-reference type.
         /// </summary>
@@ -403,7 +403,7 @@ namespace Internal.StackTraceMetadata
             EmitTypeName(byRefSig.Type, namespaceQualified: false);
             _outputBuilder.Append('&');
         }
-    
+
         /// <summary>
         /// Emit angle-bracketed list of type / method generic arguments.
         /// </summary>
@@ -414,7 +414,7 @@ namespace Internal.StackTraceMetadata
             EmitTypeVector(genericArguments);
             _outputBuilder.Append(']');
         }
-    
+
         /// <summary>
         /// Emit a string (represented by a serialized ConstantStringValue) to the output string builder.
         /// </summary>

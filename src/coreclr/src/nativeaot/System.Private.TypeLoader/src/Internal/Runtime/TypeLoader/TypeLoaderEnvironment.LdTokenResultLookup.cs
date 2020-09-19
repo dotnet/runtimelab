@@ -255,7 +255,7 @@ namespace Internal.Runtime.TypeLoader
             RuntimeFieldHandleInfo* fieldData = *(RuntimeFieldHandleInfo**)&runtimeFieldHandle;
             RuntimeSignature signature;
 
-            // The native layout info signature is a pair. 
+            // The native layout info signature is a pair.
             // The first is a pointer that points to the TypeManager indirection cell.
             // The second is the offset into the native layout info blob in that TypeManager, where the native signature is encoded.
             IntPtr* nativeLayoutInfoSignatureData = (IntPtr*)fieldData->NativeLayoutInfoSignature;
@@ -281,7 +281,7 @@ namespace Internal.Runtime.TypeLoader
 
         #region Method Ldtoken Functions
         /// <summary>
-        /// Create a runtime method handle from name, signature and generic arguments. If the methodSignature 
+        /// Create a runtime method handle from name, signature and generic arguments. If the methodSignature
         /// is constructed from a metadata token, the methodName should be IntPtr.Zero, as it already encodes the method
         /// name.
         /// </summary>
@@ -375,7 +375,7 @@ namespace Internal.Runtime.TypeLoader
                 string name;
 #if ECMA_METADATA_SUPPORT
                 if (moduleInfo is NativeFormatModuleInfo)
-#endif            
+#endif
                 {
                     var metadataReader = ((NativeFormatModuleInfo)moduleInfo).MetadataReader;
                     var methodHandle = methodData->MethodSignature.Token.AsHandle().ToMethodHandle(metadataReader);
@@ -409,7 +409,7 @@ namespace Internal.Runtime.TypeLoader
             RuntimeMethodHandleInfo* methodData = *(RuntimeMethodHandleInfo**)&runtimeMethodHandle;
             RuntimeSignature signature;
 
-            // The native layout info signature is a pair. 
+            // The native layout info signature is a pair.
             // The first is a pointer that points to the TypeManager indirection cell.
             // The second is the offset into the native layout info blob in that TypeManager, where the native signature is encoded.
             IntPtr* nativeLayoutInfoSignatureData = (IntPtr*)methodData->NativeLayoutInfoSignature;

@@ -470,7 +470,7 @@ typedef struct DECLSPEC_ALIGN(8) _CONTEXT {
     void SetArg1Reg(UIntNative val) {  }
     UIntNative GetIp() { return 0; }
 } CONTEXT, *PCONTEXT;
-#endif 
+#endif
 
 #define EXCEPTION_MAXIMUM_PARAMETERS 15 // maximum number of exception parameters
 
@@ -519,7 +519,7 @@ typedef enum _EXCEPTION_DISPOSITION {
 
 
 
-#ifndef DACCESS_COMPILE 
+#ifndef DACCESS_COMPILE
 #ifndef _INC_WINDOWS
 
 typedef UInt32 (WINAPI *PTHREAD_START_ROUTINE)(_In_opt_ void* lpThreadParameter);
@@ -713,7 +713,7 @@ REDHAWK_PALIMPORT Int32 REDHAWK_PALAPI PalGetProcessCpuCount();
 REDHAWK_PALIMPORT UInt32 REDHAWK_PALAPI PalReadFileContents(_In_z_ const TCHAR *, _Out_writes_all_(maxBytesToRead) char * buff, _In_ UInt32 maxBytesToRead);
 
 // Retrieves the entire range of memory dedicated to the calling thread's stack.  This does
-// not get the current dynamic bounds of the stack, which can be significantly smaller than 
+// not get the current dynamic bounds of the stack, which can be significantly smaller than
 // the maximum bounds.
 REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalGetMaximumStackBounds(_Out_ void** ppStackLowOut, _Out_ void** ppStackHighOut);
 
@@ -743,7 +743,7 @@ EXTERN_C unsigned __int64 __getReg(int);
 inline UInt8 * PalNtCurrentTeb()
 {
 #if defined(HOST_X86)
-    return (UInt8*)__readfsdword(0x18); 
+    return (UInt8*)__readfsdword(0x18);
 #elif defined(HOST_AMD64)
     return (UInt8*)__readgsqword(0x30);
 #elif defined(HOST_ARM)
@@ -825,7 +825,7 @@ REDHAWK_PALIMPORT UInt32_BOOL REDHAWK_PALAPI PalAllocateThunksFromTemplate(_In_ 
 REDHAWK_PALIMPORT UInt32_BOOL REDHAWK_PALAPI PalFreeThunksFromTemplate(_In_ void *pBaseAddress);
 
 REDHAWK_PALIMPORT UInt32_BOOL REDHAWK_PALAPI PalMarkThunksAsValidCallTargets(
-    void *virtualAddress, 
+    void *virtualAddress,
     int thunkSize,
     int thunksPerBlock,
     int thunkBlockSize,

@@ -3,8 +3,8 @@
 /*****************************************************************************
  *                                  GCDump.h
  *
- * Defines functions to display the GCInfo as defined by the GC-encoding 
- * spec. The GC information may be either dynamically created by a 
+ * Defines functions to display the GCInfo as defined by the GC-encoding
+ * spec. The GC information may be either dynamically created by a
  * Just-In-Time compiler conforming to the standard code-manager spec,
  * or may be persisted by a managed native code compiler conforming
  * to the standard code-manager spec.

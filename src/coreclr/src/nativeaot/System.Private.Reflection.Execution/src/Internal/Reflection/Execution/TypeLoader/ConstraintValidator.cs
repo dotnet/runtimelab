@@ -63,7 +63,7 @@ namespace Internal.Reflection.Execution
                 throw new ArgumentException(SR.Argument_GenericArgsCount);
             }
 
-            // Do sanity validation of all arguments first. The actual constraint validation can fail in unexpected ways 
+            // Do sanity validation of all arguments first. The actual constraint validation can fail in unexpected ways
             // if it hits SigTypeContext with these never valid types.
             for (int i = 0; i < typeParameters.Length; i++)
             {

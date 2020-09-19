@@ -10,7 +10,7 @@ namespace System.Threading
         /// <summary>
         /// Contains thread-specific information for the wait subsystem. There is one instance per thread that is registered
         /// using <see cref="WaitedListNode"/>s with each <see cref="WaitableObject"/> that the thread is waiting upon.
-        /// 
+        ///
         /// Used by the wait subsystem on Unix, so this class cannot have any dependencies on the wait subsystem.
         /// </summary>
         public sealed class ThreadWaitInfo
@@ -65,7 +65,7 @@ namespace System.Threading
 
             /// <summary>
             /// Indicates whether the next wait should be interrupted.
-            /// 
+            ///
             /// Synchronization:
             /// - In most cases, reads and writes are synchronized with <see cref="s_lock"/>
             /// - Sleep(nonzero) intentionally does not acquire <see cref="s_lock"/>, but it must acquire

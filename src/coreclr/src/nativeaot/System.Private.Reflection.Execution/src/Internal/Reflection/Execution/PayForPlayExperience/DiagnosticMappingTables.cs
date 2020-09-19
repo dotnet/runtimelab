@@ -47,7 +47,7 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
                 TryGetFullNameFromTypeDefEcma(qTypeDefinition, genericParameterOffsets, ref diagnosticName);
                 if (diagnosticName != null)
                     return true;
-                
+
                 if (qTypeDefinition.IsNativeFormatMetadataBased)
                 {
                     TypeDefinitionHandle typeDefinitionHandle = qTypeDefinition.NativeFormatHandle;
@@ -91,7 +91,7 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
             }
             else
             {
-                // If we got here, the metadata is illegal but this helper is for ToString() - better to 
+                // If we got here, the metadata is illegal but this helper is for ToString() - better to
                 // return something partial than throw.
             }
             return ConvertBackTickNameToNameWithReducerInputFormat(s, genericParameterOffsets);

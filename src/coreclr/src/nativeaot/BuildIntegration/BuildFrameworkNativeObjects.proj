@@ -9,7 +9,7 @@
     <Optimize Condition="'$(Configuration)' == 'Release' and '$(Optimize)' == ''">true</Optimize>
     <DebugSymbols Condition="'$(DebugSymbols)' == ''">true</DebugSymbols>
   </PropertyGroup>
-  
+
   <!-- Part of workaround for lack of secondary build artifact import - https://github.com/Microsoft/msbuild/issues/2807 -->
   <Import Project="$(MSBuildThisFileDirectory)\Microsoft.DotNet.ILCompiler.targets" Condition="'$(IlcCalledViaPackage)' == 'true'"/>
   <Import Project="Microsoft.NETCore.Native.targets" Condition="'$(IlcCalledViaPackage)' == ''"/>
@@ -44,5 +44,5 @@
         <IlcCompileInput Include="@(ManagedBinary)" />
     </ItemGroup>
   </Target>
-  
+
 </Project>

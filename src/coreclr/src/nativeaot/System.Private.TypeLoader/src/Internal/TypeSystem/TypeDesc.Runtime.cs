@@ -48,8 +48,8 @@ namespace Internal.TypeSystem
 
         private NativeLayoutFieldDesc[] _nativeLayoutFields;
         /// <summary>
-        /// The native layout fields of a type. This property is for the use of the NativeLayoutFieldAlgorithm, 
-        /// DefType.GetFieldByNativeLayoutOrdinal, TypeBuilderState.PrepareStaticGCLayout and DefType.GetDiagnosticFields 
+        /// The native layout fields of a type. This property is for the use of the NativeLayoutFieldAlgorithm,
+        /// DefType.GetFieldByNativeLayoutOrdinal, TypeBuilderState.PrepareStaticGCLayout and DefType.GetDiagnosticFields
         /// only. Other uses should use the more general purpose GetFields api or similar.
         /// </summary>
         internal NativeLayoutFieldDesc[] NativeLayoutFields

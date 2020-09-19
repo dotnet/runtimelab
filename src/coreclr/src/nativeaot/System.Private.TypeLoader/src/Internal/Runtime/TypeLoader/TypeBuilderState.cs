@@ -261,7 +261,7 @@ namespace Internal.Runtime.TypeLoader
             return new NativeParser(universalLayoutInfo.Reader, universalLayoutInfo.Offset);
         }
 
-        // RuntimeInterfaces is the full list of interfaces that the type implements. It can include private internal implementation 
+        // RuntimeInterfaces is the full list of interfaces that the type implements. It can include private internal implementation
         // detail interfaces that nothing is known about.
         public DefType[] RuntimeInterfaces
         {
@@ -469,7 +469,7 @@ namespace Internal.Runtime.TypeLoader
                 DefType defType = TypeBeingBuilt as DefType;
 
                 // The NonGCStatic fields hold the class constructor data if it exists in the negative space
-                // of the memory region. The ClassConstructorOffset is negative, so it must be negated to 
+                // of the memory region. The ClassConstructorOffset is negative, so it must be negated to
                 // determine the extra space that is used.
 
                 if (defType != null)
@@ -547,7 +547,7 @@ namespace Internal.Runtime.TypeLoader
         ///         - the type already has a type handle
         ///         - the type has a non-universal canonical template
         ///         - the type has already been constructed
-        ///    
+        ///
         /// If the type is a valuetype array, this is the layout of the valuetype held in the array if the type has GC reference fields
         /// Otherwise, it is the layout of the fields in the type.
         /// </summary>
@@ -679,7 +679,7 @@ namespace Internal.Runtime.TypeLoader
                 }
                 else if (defType.IsTemplateCanonical())
                 {
-                    // Canonical templates get their layout directly from the NativeLayoutInfo. 
+                    // Canonical templates get their layout directly from the NativeLayoutInfo.
                     // Parse it and pull that info out here.
 
                     NativeParser typeInfoParser = GetParserForNativeLayoutInfo();

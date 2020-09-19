@@ -475,7 +475,7 @@ namespace System.Threading
 
         // The upper bits of t_currentProcessorIdCache are the currentProcessorId. The lower bits of
         // the t_currentProcessorIdCache are counting down to get it periodically refreshed.
-        // TODO: Consider flushing the currentProcessorIdCache on Wait operations or similar 
+        // TODO: Consider flushing the currentProcessorIdCache on Wait operations or similar
         // actions that are likely to result in changing the executing core
         [ThreadStatic]
         private static int t_currentProcessorIdCache;

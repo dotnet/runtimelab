@@ -21,7 +21,7 @@
 ;; (INVALIDGCVALUE) which disables the check for that location. Since the shadow heap is only validated at GC
 ;; time and these write barrier operations are atomic wrt to GCs this is sufficient to guarantee that the
 ;; shadow heap contains only valid copies of real heap values or INVALIDGCVALUE.
-#ifdef WRITE_BARRIER_CHECK  
+#ifdef WRITE_BARRIER_CHECK
 
     SETALIAS    g_GCShadow, ?g_GCShadow@@3PEAEEA
     SETALIAS    g_GCShadowEnd, ?g_GCShadowEnd@@3PEAEEA
@@ -197,13 +197,13 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
     ALTERNATE_ENTRY RhpCheckedAssignRefX1AVLocation
 
         stlr    x1, [x0]
-        
+
         INSERT_CHECKED_WRITE_BARRIER_CORE x0, x1
-        
+
         ret
 
     LEAF_END RhpCheckedAssignRef
- 
+
 ;; RhpAssignRef(Object** dst, Object* src)
 ;;
 ;; Write barrier for writes to objects that are known to
@@ -221,15 +221,15 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
     ALTERNATE_ENTRY RhpAssignRefX1AVLocation
 
         stlr    x1, [x0]
- 
+
         INSERT_UNCHECKED_WRITE_BARRIER_CORE x0, x1
- 
+
         ret
 
     LEAF_END RhpAssignRef
 
 ;; Interlocked operation helpers where the location is an objectref, thus requiring a GC write barrier upon
-;; successful updates. 
+;; successful updates.
 
 ;; WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 ;; - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at RhpCheckedLockCmpXchgAVLocation
@@ -279,7 +279,7 @@ CmpXchgNoUpdate
 ;; WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 ;; - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen within at RhpCheckedXchgAVLocation
 ;; - Function "UnwindWriteBarrierToCaller" assumes no registers where pushed and LR contains the return address
- 
+
 ;; RhpCheckedXchg(Object** destination, Object* value)
 ;;
 ;; Interlocked exchange on objectref.

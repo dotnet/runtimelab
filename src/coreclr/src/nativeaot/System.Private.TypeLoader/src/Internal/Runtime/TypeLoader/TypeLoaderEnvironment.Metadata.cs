@@ -106,7 +106,7 @@ namespace Internal.Runtime.TypeLoader
         /// Return the metadata handle for a TypeRef if this type was referenced indirectly by other type that pay-for-play has denoted as browsable
         /// (for example, as part of a method signature.)
         ///
-        /// This is only used in "debug" builds to provide better MissingMetadataException diagnostics. 
+        /// This is only used in "debug" builds to provide better MissingMetadataException diagnostics.
         ///
         /// Preconditions:
         ///    runtimeTypeHandle is a typedef (not a constructed type such as an array or generic instance.)
@@ -162,13 +162,13 @@ namespace Internal.Runtime.TypeLoader
         ///
         /// This is used to ensure that we can produce a Type object if requested and that it match up with the analogous
         /// Type obtained via typeof().
-        /// 
+        ///
         ///
         /// Preconditions:
         ///    metadataReader + typeRefHandle  - a valid metadata reader + typeReferenceHandle where "metadataReader" is one
         ///                                      of the metadata readers returned by ExecutionEnvironment.MetadataReaders.
         ///
-        /// Note: Although this method has a "bool" return value like the other mapping table accessors, the Project N pay-for-play design 
+        /// Note: Although this method has a "bool" return value like the other mapping table accessors, the Project N pay-for-play design
         /// guarantees that any type that has a metadata TypeReference to it also has a RuntimeTypeHandle underneath.
         /// </summary>
         /// <param name="metadataReader">Metadata reader for module containing the type reference</param>
@@ -191,7 +191,7 @@ namespace Internal.Runtime.TypeLoader
         ///    metadataReader + typeRefHandle  - a valid metadata reader + typeReferenceHandle where "metadataReader" is one
         ///                                      of the metadata readers returned by ExecutionEnvironment.MetadataReaders.
         ///
-        /// Note: Although this method has a "bool" return value like the other mapping table accessors, the Project N pay-for-play design 
+        /// Note: Although this method has a "bool" return value like the other mapping table accessors, the Project N pay-for-play design
         /// guarantees that any type that has a metadata TypeReference to it also has a RuntimeTypeHandle underneath.
         /// </summary>
         /// <param name="metadataReader">Metadata reader for module containing the type reference</param>
@@ -423,7 +423,7 @@ namespace Internal.Runtime.TypeLoader
                 }
                 else
                 {
-                    // Non-dynamic types do not provide a way to directly get at the non-gc static region. 
+                    // Non-dynamic types do not provide a way to directly get at the non-gc static region.
                     // Use the CctorContextMap instead.
 
                     var moduleHandle = RuntimeAugments.GetModuleFromTypeHandle(typeHandle);
@@ -486,7 +486,7 @@ namespace Internal.Runtime.TypeLoader
         }
 
         /// <summary>
-        /// Look up the default constructor for a given type. Should not be called by code which has already initialized 
+        /// Look up the default constructor for a given type. Should not be called by code which has already initialized
         /// the type system.
         /// </summary>
         /// <param name="type">TypeDesc for the type in question</param>
@@ -540,7 +540,7 @@ namespace Internal.Runtime.TypeLoader
         }
 
         /// <summary>
-        /// Look up the default constructor for a given type. Should not be called by code which has already initialized 
+        /// Look up the default constructor for a given type. Should not be called by code which has already initialized
         /// the type system.
         /// </summary>
         /// <param name="runtimeTypeHandle">Type handle (EEType) for the type in question</param>
@@ -567,7 +567,7 @@ namespace Internal.Runtime.TypeLoader
                     return result;
             }
 
-            // Try to find the default constructor in metadata last (this is costly as it requires spinning up a TypeLoaderContext, and 
+            // Try to find the default constructor in metadata last (this is costly as it requires spinning up a TypeLoaderContext, and
             // currently also the _typeLoaderLock) (TODO when the _typeLoaderLock is no longer necessary to correctly use the type system
             // context, remove the use of the lock here.)
             using (LockHolder.Hold(_typeLoaderLock))
@@ -703,7 +703,7 @@ namespace Internal.Runtime.TypeLoader
         /// <returns></returns>
         public static unsafe bool TryGetMethodMethodNameAndSigFromVTableSlotForPregeneratedOrTemplateType(TypeSystemContext context, RuntimeTypeHandle type, int vtableSlot, out MethodNameAndSignature methodNameAndSig)
         {
-            // 
+            //
             // NOTE: The semantics of the vtable slot and method declaring type in the VirtualInvokeMap table have slight differences between ProjectN and CoreRT ABIs.
             // See comment in TryGetVirtualResolveData for more details.
             //
@@ -788,12 +788,12 @@ namespace Internal.Runtime.TypeLoader
 
             //
             // On CoreRT, the vtable entries for each instantiated type might not necessarily exist.
-            // Example 1: 
+            // Example 1:
             //      If there's a call to Foo<string>.Method1 and a call to Foo<int>.Method2, Foo<string> will
             //      not have Method2 in its vtable and Foo<int> will not have Method1.
             // Example 2:
             //      If there's a call to Foo<string>.Method1 and a call to Foo<object>.Method2, given that both
-            //      of these instantiations share the same canonical form, Foo<__Canon> will have both method 
+            //      of these instantiations share the same canonical form, Foo<__Canon> will have both method
             //      entries, and therefore Foo<string> and Foo<object> will have both entries too.
             // For this reason, the entries that we write to the map in CoreRT will be based on the canonical form
             // of the method's containing type instead of the open type definition.
@@ -809,10 +809,10 @@ namespace Internal.Runtime.TypeLoader
             while (!(entryParser = lookup.GetNext()).IsNull)
             {
                 // Grammar of an entry in the hash table:
-                // Virtual Method uses a normal slot 
+                // Virtual Method uses a normal slot
                 // TypeKey + NameAndSig metadata offset into the native layout metadata + (NumberOfStepsUpParentHierarchyToType << 1) + slot
                 // OR
-                // Generic Virtual Method 
+                // Generic Virtual Method
                 // TypeKey + NameAndSig metadata offset into the native layout metadata + (NumberOfStepsUpParentHierarchyToType << 1 + 1)
 
                 RuntimeTypeHandle entryType = externalReferences.GetRuntimeTypeHandleFromIndex(entryParser.GetUnsigned());
@@ -894,15 +894,15 @@ namespace Internal.Runtime.TypeLoader
         /// </summary>
         /// <param name="module">Module to look in</param>
         /// <param name="declaringType">Declaring type that is known to define the slot</param>
-        /// <param name="logicalSlot">The logical slot that the method goes in. For this method, the logical 
-        /// slot is defined as the nth virtual method defined in order on the type (including base types). 
+        /// <param name="logicalSlot">The logical slot that the method goes in. For this method, the logical
+        /// slot is defined as the nth virtual method defined in order on the type (including base types).
         /// VTable slots reserved for dictionary pointers are ignored.</param>
         /// <param name="methodNameAndSig">The name and signature of the method</param>
         /// <returns>true if a definition is found, false if not</returns>
         private static unsafe bool TryGetMethodNameAndSigFromVirtualResolveData(NativeFormatModuleInfo module,
             RuntimeTypeHandle declaringType, int logicalSlot, out MethodNameAndSignature methodNameAndSig)
         {
-            // 
+            //
             // NOTE: The semantics of the vtable slot and method declaring type in the VirtualInvokeMap table have slight differences between ProjectN and CoreRT ABIs.
             // See comment in TryGetVirtualResolveData for more details.
             //
@@ -922,10 +922,10 @@ namespace Internal.Runtime.TypeLoader
             while (!(entryParser = lookup.GetNext()).IsNull)
             {
                 // Grammar of an entry in the hash table:
-                // Virtual Method uses a normal slot 
+                // Virtual Method uses a normal slot
                 // TypeKey + NameAndSig metadata offset into the native layout metadata + (NumberOfStepsUpParentHierarchyToType << 1) + slot
                 // OR
-                // Generic Virtual Method 
+                // Generic Virtual Method
                 // TypeKey + NameAndSig metadata offset into the native layout metadata + (NumberOfStepsUpParentHierarchyToType << 1 + 1)
 
                 RuntimeTypeHandle entryType = externalReferences.GetRuntimeTypeHandleFromIndex(entryParser.GetUnsigned());
@@ -1212,7 +1212,7 @@ namespace Internal.Runtime.TypeLoader
 
 
             MethodDesc methodOnType = null;
-            
+
             if (declaringTypeDefinition is NativeFormatType)
             {
                 NativeFormatType nativeFormatType = ((NativeFormatType)declaringTypeDefinition);
@@ -1576,7 +1576,7 @@ namespace Internal.Runtime.TypeLoader
                 if (!_isMatchingMethodHandleAndDeclaringType)
                     return false;
 
-                // Nothing special about non-generic methods. 
+                // Nothing special about non-generic methods.
                 if ((_flags & InvokeTableFlags.IsGenericMethod) == 0)
                     return true;
 
@@ -1587,7 +1587,7 @@ namespace Internal.Runtime.TypeLoader
                     return true;
                 }
 
-                // Generic non-shareable method or abstract methods: check for the canonical equivalency of the method 
+                // Generic non-shareable method or abstract methods: check for the canonical equivalency of the method
                 // instantiation arguments that we read from the entry
                 if (((_flags & InvokeTableFlags.RequiresInstArg) == 0) || !_hasEntryPoint)
                     return _lookupMethodInfo.CanInstantiationsShareCode(_methodInstantiation, _canonFormKind);
@@ -1637,7 +1637,7 @@ namespace Internal.Runtime.TypeLoader
                 if (_lookupMethodInfo.IsUninterestingDictionaryComponent(dictionaryComponent))
                     return true;
 
-                // Do not use a fat function-pointer for universal canonical methods because the converter data block already holds the 
+                // Do not use a fat function-pointer for universal canonical methods because the converter data block already holds the
                 // dictionary pointer so it serves as its own instantiating stub
                 if ((_flags & InvokeTableFlags.IsUniversalCanonicalEntry) == 0)
                     methodEntrypoint = _lookupMethodInfo.ProduceFatFunctionPointerMethodEntryPoint(_methodEntrypoint, dictionaryComponent);

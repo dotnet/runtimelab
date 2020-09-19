@@ -9,7 +9,7 @@ namespace System.Runtime.InteropServices
     {
         // The handle cannot be closed until we are sure that no other objects might
         // be using it.  In the case of finalization, there may be other objects in
-        // the finalization queue that still hold a reference to this SafeHandle.  
+        // the finalization queue that still hold a reference to this SafeHandle.
         // So we can't assume that just because our finalizer is running, no other
         // object will need to access this handle.
         //
@@ -23,13 +23,13 @@ namespace System.Runtime.InteropServices
         // finalizer will release the handle.  Thus the handle won't be released in this
         // finalization cycle, but should be released in the next.
         //
-        // This has the effect of delaying cleanup for much longer than would have 
+        // This has the effect of delaying cleanup for much longer than would have
         // happened on the CLR.  This also means that we may not close some handles
         // at shutdown, since there may not be another finalization cycle to run
-        // the delayed finalizer.  If either of these end up being a problem, we should 
-        // consider adding more control over finalization order to MRT (or, better, 
+        // the delayed finalizer.  If either of these end up being a problem, we should
+        // consider adding more control over finalization order to MRT (or, better,
         // turning over control of finalization ordering to System.Private.CoreLib).
-        
+
         private sealed class DelayedFinalizer
         {
             private readonly SafeHandle _safeHandle;

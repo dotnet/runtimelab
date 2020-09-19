@@ -181,7 +181,7 @@ namespace System.Runtime
 
                 if (!isValid)
                 {
-                    // Throw the invalid cast exception defined by the classlib, using the input unbox EEType* 
+                    // Throw the invalid cast exception defined by the classlib, using the input unbox EEType*
                     // to find the correct classlib.
 
                     ExceptionIDs exID = o == null ? ExceptionIDs.NullReference : ExceptionIDs.InvalidCast;
@@ -361,7 +361,7 @@ namespace System.Runtime
         //  5) The region must be IntPtr aligned, and have a size which is also IntPtr aligned
         // If all conditions are satisfied, the region of memory starting at _regionPointerLow and ending at
         // _regionPointerHigh will be conservatively reported.
-        // This can only be used to report memory regions on the current stack and the structure must itself 
+        // This can only be used to report memory regions on the current stack and the structure must itself
         // be located on the stack.
         public struct ConservativelyReportedRegionDesc
         {
@@ -405,7 +405,7 @@ namespace System.Runtime
 #endif
         }
 
-        // Disable conservative reporting 
+        // Disable conservative reporting
         [RuntimeExport("RhDisableConservativeReportingRegion")]
         public static unsafe void RhDisableConservativeReportingRegion(ConservativelyReportedRegionDesc* regionDesc)
         {

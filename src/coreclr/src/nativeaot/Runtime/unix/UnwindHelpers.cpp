@@ -490,7 +490,7 @@ struct Registers_REGDISPLAY : REGDISPLAY
 
     double      getFloatRegister(int num) {abort();}
     void        setFloatRegister(int num, double value) {abort();}
-    
+
     libunwind::v128    getVectorRegister(int num) const;
     void        setVectorRegister(int num, libunwind::v128 value);
 

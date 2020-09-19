@@ -50,7 +50,7 @@ namespace System.Reflection
         public byte[] PublicKeyOrToken { get; }
 
         // Equality - this compares every bit of data in the RuntimeAssemblyName which is acceptable for use as keys in a cache
-        // where semantic duplication is permissible. This method is *not* meant to define ref->def binding rules or 
+        // where semantic duplication is permissible. This method is *not* meant to define ref->def binding rules or
         // assembly binding unification rules.
         public bool Equals(RuntimeAssemblyName other)
         {
@@ -142,7 +142,7 @@ namespace System.Reflection
 
             if (this.PublicKeyOrToken != null)
             {
-                // We must not hand out our own copy of the PKT to AssemblyName as AssemblyName is amazingly trusting and gives untrusted callers 
+                // We must not hand out our own copy of the PKT to AssemblyName as AssemblyName is amazingly trusting and gives untrusted callers
                 // full freedom to scribble on its PKT array. (As do we but we only have trusted callers!)
                 byte[] pkCopy = new byte[this.PublicKeyOrToken.Length];
                 ((ICollection<byte>)(this.PublicKeyOrToken)).CopyTo(pkCopy, 0);

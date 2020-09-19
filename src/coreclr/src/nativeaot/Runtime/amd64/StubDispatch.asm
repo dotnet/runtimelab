@@ -30,7 +30,7 @@ LEAF_ENTRY StubName, _TEXT
 ;EXTERN CID_g_cInterfaceDispatches : DWORD
         ;inc     [CID_g_cInterfaceDispatches]
 
-        ;; r10 currently contains the indirection cell address. 
+        ;; r10 currently contains the indirection cell address.
         ;; load r11 to point to the cache block.
         mov     r11, [r10 + OFFSETOF__InterfaceDispatchCell__m_pCache]
 
@@ -67,7 +67,7 @@ DEFINE_INTERFACE_DISPATCH_STUB 64
 
 ;; Stub dispatch routine for dispatch to a vtable slot
 LEAF_ENTRY RhpVTableOffsetDispatch, _TEXT
-        ;; r10 currently contains the indirection cell address. 
+        ;; r10 currently contains the indirection cell address.
         ;; load rax to point to the vtable offset (which is stored in the m_pCache field).
         mov     rax, [r10 + OFFSETOF__InterfaceDispatchCell__m_pCache]
 

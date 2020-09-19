@@ -39,10 +39,10 @@ struct UnixNativeMethodInfo
 // Ensure that UnixNativeMethodInfo fits into the space reserved by MethodInfo
 static_assert(sizeof(UnixNativeMethodInfo) <= sizeof(MethodInfo), "UnixNativeMethodInfo too big");
 
-UnixNativeCodeManager::UnixNativeCodeManager(TADDR moduleBase, 
+UnixNativeCodeManager::UnixNativeCodeManager(TADDR moduleBase,
                                              PTR_VOID pvManagedCodeStartRange, UInt32 cbManagedCodeRange,
                                              PTR_PTR_VOID pClasslibFunctions, UInt32 nClasslibFunctions)
-    : m_moduleBase(moduleBase), 
+    : m_moduleBase(moduleBase),
       m_pvManagedCodeStartRange(pvManagedCodeStartRange), m_cbManagedCodeRange(cbManagedCodeRange),
       m_pClasslibFunctions(pClasslibFunctions), m_nClasslibFunctions(nClasslibFunctions)
 {
@@ -52,7 +52,7 @@ UnixNativeCodeManager::~UnixNativeCodeManager()
 {
 }
 
-bool UnixNativeCodeManager::FindMethodInfo(PTR_VOID        ControlPC, 
+bool UnixNativeCodeManager::FindMethodInfo(PTR_VOID        ControlPC,
                                            MethodInfo *    pMethodInfoOut)
 {
     // Stackwalker may call this with ControlPC that does not belong to this code manager
@@ -127,7 +127,7 @@ PTR_VOID UnixNativeCodeManager::GetFramePointer(MethodInfo *   pMethodInfo,
     return NULL;
 }
 
-void UnixNativeCodeManager::EnumGcRefs(MethodInfo *    pMethodInfo, 
+void UnixNativeCodeManager::EnumGcRefs(MethodInfo *    pMethodInfo,
                                        PTR_VOID        safePointAddress,
                                        REGDISPLAY *    pRegisterSet,
                                        GCEnumContext * hCallback)
@@ -293,7 +293,7 @@ void UnixNativeCodeManager::UnsynchronizedHijackMethodLoops(MethodInfo * pMethod
 
 PTR_VOID UnixNativeCodeManager::RemapHardwareFaultToGCSafePoint(MethodInfo * pMethodInfo, PTR_VOID controlPC)
 {
-    // GCInfo decoder needs to know whether execution of the method is aborted 
+    // GCInfo decoder needs to know whether execution of the method is aborted
     // while querying for gc-info.  But ICodeManager::EnumGCRef() doesn't receive any
     // flags from mrt. Call to this method is used as a cue to mark the method info
     // as execution aborted. Note - if pMethodInfo was cached, this scheme would not work.
@@ -338,7 +338,7 @@ bool UnixNativeCodeManager::EHEnumInit(MethodInfo * pMethodInfo, PTR_VOID * pMet
     {
         return false;
     }
-   
+
     UnixEHEnumState * pEnumState = (UnixEHEnumState *)pEHEnumStateOut;
 
     *pMethodStartAddress = pNativeMethodInfo->pMethodStartAddress;

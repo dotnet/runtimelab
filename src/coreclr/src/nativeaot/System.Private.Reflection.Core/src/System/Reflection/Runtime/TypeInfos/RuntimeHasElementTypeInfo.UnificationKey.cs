@@ -16,13 +16,13 @@ namespace System.Reflection.Runtime.TypeInfos
         //
         internal struct UnificationKey : IEquatable<UnificationKey>
         {
-            // 
+            //
             // Q: Why is the type handle part of the unification key when it doesn't participate in the Equals/HashCode computations?
             // A: It's a passenger.
             //
-            //    The typeHandle argument is "redundant" in that it can be computed from the rest of the key. However, we have callers (Type.GetTypeFromHandle()) that 
-            //    already have the typeHandle so to avoid an unnecessary round-trip computation, we require the caller to pass it in separately. 
-            //    We allow it to ride along in the key object because the ConcurrentUnifier classes we use don't support passing "extra" parameters to 
+            //    The typeHandle argument is "redundant" in that it can be computed from the rest of the key. However, we have callers (Type.GetTypeFromHandle()) that
+            //    already have the typeHandle so to avoid an unnecessary round-trip computation, we require the caller to pass it in separately.
+            //    We allow it to ride along in the key object because the ConcurrentUnifier classes we use don't support passing "extra" parameters to
             //    their Factory methods.
             //
             public UnificationKey(RuntimeTypeInfo elementType, RuntimeTypeHandle typeHandle)
@@ -46,7 +46,7 @@ namespace System.Reflection.Runtime.TypeInfos
                 if (!ElementType.Equals(other.ElementType))
                     return false;
 
-                // The TypeHandle is not actually part of the key but riding along for convenience (see commment at head of class.) 
+                // The TypeHandle is not actually part of the key but riding along for convenience (see commment at head of class.)
                 // If the other parts of the key matched, this must too.
                 Debug.Assert(TypeHandle.Equals(other.TypeHandle));
                 return true;

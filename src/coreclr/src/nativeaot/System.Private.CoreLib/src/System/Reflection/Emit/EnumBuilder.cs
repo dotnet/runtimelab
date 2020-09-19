@@ -279,7 +279,7 @@ namespace System.Reflection.Emit
         {
             return default;
         }
-        
+
         public override bool IsAssignableFrom(TypeInfo typeInfo)
         {
             return default;

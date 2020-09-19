@@ -412,7 +412,7 @@ void * ReturnFromCallDescrThunk;
 
 #if defined(USE_PORTABLE_HELPERS) || defined(TARGET_UNIX)
 #if !defined (HOST_ARM64)
-// 
+//
 // Return address hijacking
 //
 COOP_PINVOKE_HELPER(void, RhpGcProbeHijackScalar, ())

@@ -8,7 +8,7 @@ namespace System
     //
     // This file contains methods on Type that are internal to the framework.
     //
-    // Before adding new entries to this, ask yourself: is it ever referenced by System.Private.CoreLib? 
+    // Before adding new entries to this, ask yourself: is it ever referenced by System.Private.CoreLib?
     // If not, don't put it here. Put it on RuntimeTypeInfo instead.
     //
     // Some of these "internal" methods are declared "public" because both Reflection.Core and System.Private.CoreLib need to reference them.
@@ -67,7 +67,7 @@ namespace System
             }
         }
 
-        // 
+        //
         // This is a port of the desktop CLR's RuntimeType.FormatTypeName() routine. This routine is used by various Reflection ToString() methods
         // to display the name of a type. Do not use for any other purpose as it inherits some pretty quirky desktop behavior.
         //

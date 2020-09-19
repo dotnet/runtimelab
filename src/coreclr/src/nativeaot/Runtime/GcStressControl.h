@@ -37,7 +37,7 @@ public:
     static bool Equals(UIntNative k1, UIntNative k2)
     { return k1 == k2; }
 
-    static CallsiteCountEntry Null() 
+    static CallsiteCountEntry Null()
     { CallsiteCountEntry e; e.callsiteIP = 0; return e; }
 
     static bool IsNull(const CallsiteCountEntry & e)

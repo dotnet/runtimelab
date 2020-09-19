@@ -27,7 +27,7 @@ namespace System.Threading
         //
         // bit 0: True if the lock is held, false otherwise.
         //
-        // bit 1: True if we've set the event to wake a waiting thread.  The waiter resets this to false when it 
+        // bit 1: True if we've set the event to wake a waiting thread.  The waiter resets this to false when it
         //        wakes up.  This avoids the overhead of setting the event multiple times.
         //
         // everything else: A count of the number of threads waiting on the event.
@@ -146,8 +146,8 @@ namespace System.Threading
             {
                 //
                 // Try to grab the lock.  We may take the lock here even if there are existing waiters.  This creates the possibility
-                // of starvation of waiters, but it also prevents lock convoys from destroying perf. 
-                // The starvation issue is largely mitigated by the priority boost the OS gives to a waiter when we set 
+                // of starvation of waiters, but it also prevents lock convoys from destroying perf.
+                // The starvation issue is largely mitigated by the priority boost the OS gives to a waiter when we set
                 // the event, after we release the lock.  Eventually waiters will be boosted high enough to preempt this thread.
                 //
                 int oldState = _state;

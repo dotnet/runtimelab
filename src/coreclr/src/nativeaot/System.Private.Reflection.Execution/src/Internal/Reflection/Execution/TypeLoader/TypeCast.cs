@@ -55,7 +55,7 @@ namespace Internal.Reflection.Execution
                 foreach (var pInterfaceType in pObjType.GetInterfaces())
                 {
                     // We can ignore interfaces which are not also marked as having generic variance
-                    // unless we're dealing with array covariance. 
+                    // unless we're dealing with array covariance.
                     // if (pInterfaceType.HasGenericVariance || (fArrayCovariance && pInterfaceType.IsGenericType))
 
                     if (!pInterfaceType.IsGenericType)

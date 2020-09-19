@@ -79,7 +79,7 @@ namespace Internal.Runtime.TypeLoader
                                 uint gcStaticsRva = 0;
 
                                 // For images where statics are directly embedded in the image, store the information about where
-                                // to find statics info 
+                                // to find statics info
                                 if (TypeLoaderEnvironment.TryGetStaticsTableEntry(metadataType, out nonGcStaticsRva, out gcStaticsRva))
                                 {
                                     ModuleInfo moduleInfo = TypeLoaderEnvironment.GetModuleInfoForType(metadataType);
@@ -155,7 +155,7 @@ namespace Internal.Runtime.TypeLoader
                 }
                 catch
                 {
-                    // Catch and rethrow any exceptions instead of using finally block. Otherwise, filters that are run during 
+                    // Catch and rethrow any exceptions instead of using finally block. Otherwise, filters that are run during
                     // the first pass of exception unwind may see partially registered types.
 
                     // TODO: Convert this to filter for better diagnostics once we switch to Roslyn
@@ -179,7 +179,7 @@ namespace Internal.Runtime.TypeLoader
                                 TypeSystem.NativeFormat.NativeFormatType nativeFormatType = typeEntry.MetadataDefinitionType as TypeSystem.NativeFormat.NativeFormatType;
                                 if (nativeFormatType != null)
                                 {
-                                    UnregisterNewNamedTypeRuntimeTypeHandle(new QTypeDefinition(nativeFormatType.MetadataReader, 
+                                    UnregisterNewNamedTypeRuntimeTypeHandle(new QTypeDefinition(nativeFormatType.MetadataReader,
                                                                                 nativeFormatType.Handle),
                                                                             nativeFormatType.GetTypeBuilderState().HalfBakedRuntimeTypeHandle);
                                 }
@@ -187,7 +187,7 @@ namespace Internal.Runtime.TypeLoader
                                 TypeSystem.Ecma.EcmaType ecmaFormatType = typeEntry.MetadataDefinitionType as TypeSystem.Ecma.EcmaType;
                                 if (ecmaFormatType != null)
                                 {
-                                    UnregisterNewNamedTypeRuntimeTypeHandle(new QTypeDefinition(ecmaFormatType.MetadataReader, 
+                                    UnregisterNewNamedTypeRuntimeTypeHandle(new QTypeDefinition(ecmaFormatType.MetadataReader,
                                                                                 ecmaFormatType.Handle),
                                                                             ecmaFormatType.GetTypeBuilderState().HalfBakedRuntimeTypeHandle);
                                 }

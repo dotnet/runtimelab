@@ -16,7 +16,7 @@ using Internal.Reflection.Core.Execution;
 namespace System.Reflection.Runtime.MethodInfos
 {
     /// <summary>
-    /// These api's are to be implemented by parsing metadata. 
+    /// These api's are to be implemented by parsing metadata.
     /// </summary>
     /// <typeparam name="TRuntimeMethodCommon"></typeparam>
     internal interface IRuntimeMethodCommon<TRuntimeMethodCommon> where TRuntimeMethodCommon : IRuntimeMethodCommon<TRuntimeMethodCommon>, IEquatable<TRuntimeMethodCommon>

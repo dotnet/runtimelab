@@ -21,7 +21,7 @@
 ;; (INVALIDGCVALUE) which disables the check for that location. Since the shadow heap is only validated at GC
 ;; time and these write barrier operations are atomic wrt to GCs this is sufficient to guarantee that the
 ;; shadow heap contains only valid copies of real heap values or INVALIDGCVALUE.
-#ifdef WRITE_BARRIER_CHECK  
+#ifdef WRITE_BARRIER_CHECK
 
     SETALIAS    g_GCShadow, ?g_GCShadow@@3PAEA
     SETALIAS    g_GCShadowEnd, ?g_GCShadowEnd@@3PAEA
@@ -220,7 +220,7 @@
         ;; Define a helper with a name of the form RhpCheckedAssignRefR0 etc. The location to be updated is in
         ;; $DESTREG. The object reference that will be assigned into that location is in one of the other
         ;; general registers determined by the value of $REFREG. R12 is used as a scratch register.
-        
+
         ;; WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
         ;; - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at WriteBarrierFunctionAvLocation
         ;; - Function "UnwindWriteBarrierToCaller" assumes no registers where pushed and LR contains the return address
@@ -234,7 +234,7 @@ WriteBarrierFunctionAvLocation SETS "RhpCheckedAssignRefAvLocation":cc:"$REFREG"
 
         EXPORT $WriteBarrierFunction
 $WriteBarrierFunction
-    
+
         ;; Export the canonical write barrier under unqualified name as well
         IF "$REFREG" == "R1"
         ALTERNATE_ENTRY RhpCheckedAssignRef
@@ -270,7 +270,7 @@ $WriteBarrierFunction
         ;; Define a helper with a name of the form RhpAssignRefR0 etc. The location to be updated is in
         ;; $DESTREG. The object reference that will be assigned into that location is in one of the other
         ;; general registers determined by the value of $REFREG. R12 is used as a scratch register.
-        
+
         ;; WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
         ;; - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at WriteBarrierFunctionAvLocation
         ;; - Function "UnwindWriteBarrierToCaller" assumes no registers where pushed and LR contains the return address
@@ -322,7 +322,7 @@ $WriteBarrierFunction
         DEFINE_UNCHECKED_WRITE_BARRIER R0, R1
 
 ;; Interlocked operation helpers where the location is an objectref, thus requiring a GC write barrier upon
-;; successful updates. 
+;; successful updates.
 
 ;; WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 ;; - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at RhpCheckedLockCmpXchgAVLocation

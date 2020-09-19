@@ -6,7 +6,7 @@
     .model  flat
     option  casemap:none
 
-    
+
 EXTERN  _IsProcessorFeaturePresent@4 : PROC
 
 PF_XMMI64_INSTRUCTIONS_AVAILABLE equ 10
@@ -44,7 +44,7 @@ alignDone:
     ; compute number of bytes to clear non-temporally
     ; we wish to clear the first 8k or so with rep stos,
     ; anything above that non-temporally
-    
+
     xor     edx,edx
     cmp     ebx,8*1024
     jbe     noNonTempClear

@@ -174,7 +174,7 @@ namespace Internal.Runtime.TypeLoader
         //
         private unsafe int AllocatePhysicalBuffer(out IntPtr buffer)
         {
-            // Allocate a new physical buffer. 
+            // Allocate a new physical buffer.
             IntPtr newPhysicalBuffer = MemoryHelpers.AllocateMemory(PhysicalBufferSize);
             *(int*)newPhysicalBuffer = 0; // write the used buffer size, currently 0
 
@@ -498,7 +498,7 @@ namespace Internal.Runtime.TypeLoader
                 {
                     if (!s_tailCallThunkSizeRegistered)
                     {
-                        // Write out the size of thunks used by the calling convention converter 
+                        // Write out the size of thunks used by the calling convention converter
                         // Make sure that this is called only once
                         encoder.Init();
                         Instance.SerializeDataBlobTypeAndFlags(ref encoder,

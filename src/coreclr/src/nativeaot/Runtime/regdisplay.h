@@ -3,7 +3,7 @@
 
 #if defined(TARGET_X86) || defined(TARGET_AMD64)
 
-struct REGDISPLAY 
+struct REGDISPLAY
 {
     PTR_UIntNative pRax;
     PTR_UIntNative pRcx;
@@ -85,7 +85,7 @@ struct REGDISPLAY
 
 #elif defined(TARGET_ARM64)
 
-struct REGDISPLAY 
+struct REGDISPLAY
 {
     PTR_UIntNative pX0;
     PTR_UIntNative pX1;

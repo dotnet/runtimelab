@@ -37,7 +37,7 @@ namespace System.Threading
         {
             _osHandle = GetOSHandleForCurrentThread();
         }
- 
+
         private static SafeWaitHandle GetOSHandleForCurrentThread()
         {
             IntPtr currentProcHandle = Interop.Kernel32.GetCurrentProcess();
@@ -56,7 +56,7 @@ namespace System.Threading
             ex.HResult = errorCode;
             throw ex;
         }
- 
+
         private static ThreadPriority MapFromOSPriority(OSThreadPriority priority)
         {
             if (priority <= OSThreadPriority.Lowest)
@@ -386,7 +386,7 @@ namespace System.Threading
 
         //
         // Suppresses reentrant waits on the current thread, until a matching call to RestoreReentrantWaits.
-        // This should be used by code that's expected to be called inside the STA message pump, so that it won't 
+        // This should be used by code that's expected to be called inside the STA message pump, so that it won't
         // reenter itself.  In an ASTA, this should only be the CCW implementations of IUnknown and IInspectable.
         //
         internal static void SuppressReentrantWaits()

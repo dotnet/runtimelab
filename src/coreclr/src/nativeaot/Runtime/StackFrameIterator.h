@@ -58,7 +58,7 @@ public:
     bool HasStackRangeToReportConservatively();
     void GetStackRangeToReportConservatively(PTR_RtuObjectRef * ppLowerBound, PTR_RtuObjectRef * ppUpperBound);
 
-    // Debugger Hijacked frame looks very much like a usual managed frame except when the 
+    // Debugger Hijacked frame looks very much like a usual managed frame except when the
     // frame must be reported conservatively, and when that happens, regular GC reporting should be skipped
     bool ShouldSkipRegularGcReporting();
 
@@ -89,8 +89,8 @@ private:
     void NextInternal();
 
     // This will walk m_pNextExInfo from its current value until it finds the next ExInfo at a higher address
-    // than the SP reference value passed in.  This is useful when 'restarting' the stackwalk from a 
-    // particular PInvokeTransitionFrame or after we have a 'collided unwind' that may skip over ExInfos. 
+    // than the SP reference value passed in.  This is useful when 'restarting' the stackwalk from a
+    // particular PInvokeTransitionFrame or after we have a 'collided unwind' that may skip over ExInfos.
     void ResetNextExInfoForSP(UIntNative SP);
 
     void UpdateFromExceptionDispatch(PTR_StackFrameIterator pSourceIterator);
@@ -116,7 +116,7 @@ private:
 
     enum Flags
     {
-        // If this flag is set, each unwind will apply a -1 to the ControlPC.  This is used by EH to ensure 
+        // If this flag is set, each unwind will apply a -1 to the ControlPC.  This is used by EH to ensure
         // that the ControlPC of a callsite stays within the containing try region.
         ApplyReturnAddressAdjustment = 1,
 
@@ -128,7 +128,7 @@ private:
         // This is a state returned by Next() which indicates that we just crossed an ExInfo in our unwind.
         ExCollide                    = 4,
 
-        // If a hardware fault frame is encountered, report its control PC at the binder-inserted GC safe 
+        // If a hardware fault frame is encountered, report its control PC at the binder-inserted GC safe
         // point immediately after the prolog of the most nested enclosing try-region's handler.
         RemapHardwareFaultsToSafePoint = 8,
 
@@ -203,7 +203,7 @@ protected:
     PTR_ExInfo          m_pNextExInfo;
     PTR_VOID            m_pendingFuncletFramePointer;
     PreservedRegPtrs    m_funcletPtrs;  // @TODO: Placing the 'scratch space' in the StackFrameIterator is not
-                                        // preferred because not all StackFrameIterators require this storage 
+                                        // preferred because not all StackFrameIterators require this storage
                                         // space.  However, the implementation simpler by doing it this way.
     bool                m_ShouldSkipRegularGcReporting;
     PTR_VOID            m_OriginalControlPC;

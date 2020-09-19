@@ -160,10 +160,10 @@ namespace System.Reflection.Runtime.General
             if (invokeMethod == null)
             {
                 // No Invoke method found. Since delegate types are compiler constructed, the most likely cause is missing metadata rather than
-                // a missing Invoke method. 
+                // a missing Invoke method.
 
-                // We're deliberating calling FullName rather than ToString() because if it's the type that's missing metadata, 
-                // the FullName property constructs a more informative MissingMetadataException than we can. 
+                // We're deliberating calling FullName rather than ToString() because if it's the type that's missing metadata,
+                // the FullName property constructs a more informative MissingMetadataException than we can.
                 string fullName = delegateType.FullName;
                 throw new MissingMetadataException(SR.Format(SR.Arg_InvokeMethodMissingMetadata, fullName)); // No invoke method found.
             }
@@ -189,8 +189,8 @@ namespace System.Reflection.Runtime.General
                 attributes.Add(instantiatedAttribute);
             }
 
-            // This is here for desktop compatibility. ICustomAttribute.GetCustomAttributes() normally returns an array of the 
-            // exact attribute type requested except in two cases: when the passed in type is an open type and when 
+            // This is here for desktop compatibility. ICustomAttribute.GetCustomAttributes() normally returns an array of the
+            // exact attribute type requested except in two cases: when the passed in type is an open type and when
             // it is a value type. In these two cases, it returns an array of type Object[].
             bool useObjectArray = actualElementType.ContainsGenericParameters || actualElementType.IsValueType;
             int count = attributes.Count;

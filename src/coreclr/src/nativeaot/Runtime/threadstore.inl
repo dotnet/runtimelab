@@ -16,7 +16,7 @@ inline Thread * ThreadStore::GetCurrentThread()
 
     // If this assert fires, and you only need the Thread pointer if the thread has ever previously
     // entered the runtime, then you should be using GetCurrentThreadIfAvailable instead.
-    ASSERT(pCurThread->IsInitialized());    
+    ASSERT(pCurThread->IsInitialized());
     return pCurThread;
 }
 

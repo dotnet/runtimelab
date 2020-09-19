@@ -37,7 +37,7 @@
         // Load the EEType from the object instance in x0.
         ldr     x10, [x0]
 
-    .global CurrentEntry 
+    .global CurrentEntry
     .set CurrentEntry, 0
 
     .rept \entries
@@ -75,7 +75,7 @@
 // Stub dispatch routine for dispatch to a vtable slot
 //
     LEAF_ENTRY RhpVTableOffsetDispatch, _TEXT
-        // xip1 has the interface dispatch cell address in it. 
+        // xip1 has the interface dispatch cell address in it.
         // load x12 to point to the vtable offset (which is stored in the m_pCache field).
         ldr     x12, [xip1, #OFFSETOF__InterfaceDispatchCell__m_pCache]
 
@@ -95,7 +95,7 @@
 //
     LEAF_ENTRY RhpInterfaceDispatchSlow, _TEXT
     ALTERNATE_ENTRY RhpInitialDynamicInterfaceDispatch
-        // xip1 has the interface dispatch cell address in it. 
+        // xip1 has the interface dispatch cell address in it.
         // Calling convention of the universal thunk is:
         //  xip0: contains target address for the thunk to call
         //  xip1: contains parameter of the thunks target

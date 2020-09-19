@@ -100,7 +100,7 @@ namespace Internal.Runtime.TypeLoader
                 return true;
             }
 #endif
-#endif 
+#endif
             methodSignature = default(RuntimeSignature);
             return false;
         }
@@ -142,7 +142,7 @@ namespace Internal.Runtime.TypeLoader
             MethodDesc methodOnInstantiatedType = typicalMethod;
             if (declaringType != declaringTypeDefinition)
                 methodOnInstantiatedType = typeSystemContext.GetMethodForInstantiatedType(typicalMethod, (InstantiatedType)declaringType);
-            
+
             MethodDesc instantiatedMethod = methodOnInstantiatedType;
             if (genericMethodArgs != null)
             {
@@ -153,6 +153,6 @@ namespace Internal.Runtime.TypeLoader
 
             return instantiatedMethod;
         }
-#endif 
+#endif
     }
 }

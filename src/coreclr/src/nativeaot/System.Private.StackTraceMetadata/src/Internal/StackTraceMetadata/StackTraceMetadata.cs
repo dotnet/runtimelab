@@ -78,7 +78,7 @@ namespace Internal.StackTraceMetadata
             {
                 return key.GetHashCode();
             }
-    
+
             /// <summary>
             /// Given a value, compute a hash code which would be identical to the hash code
             /// for a key which should look up this value. This function must be thread safe.
@@ -88,7 +88,7 @@ namespace Internal.StackTraceMetadata
             {
                 return GetKeyHashCode(value.ModuleAddress);
             }
-    
+
             /// <summary>
             /// Compare a key and value. If the key refers to this value, return true.
             /// This function must be thread safe.
@@ -97,7 +97,7 @@ namespace Internal.StackTraceMetadata
             {
                 return key == value.ModuleAddress;
             }
-    
+
             /// <summary>
             /// Compare a value with another value. Return true if values are equal.
             /// This function must be thread safe.
@@ -106,7 +106,7 @@ namespace Internal.StackTraceMetadata
             {
                 return value1.ModuleAddress == value2.ModuleAddress;
             }
-    
+
             /// <summary>
             /// Create a new value from a key. Must be threadsafe. Value may or may not be added
             /// to collection. Return value must not be null.
@@ -137,7 +137,7 @@ namespace Internal.StackTraceMetadata
             /// Start address of the module in question.
             /// </summary>
             private readonly IntPtr _moduleAddress;
-            
+
             /// <summary>
             /// Dictionary mapping method RVA's to tokens within the metadata blob.
             /// </summary>
@@ -180,7 +180,7 @@ namespace Internal.StackTraceMetadata
 
                 byte *rvaToTokenMapBlob;
                 uint rvaToTokenMapBlobSize;
-                
+
                 if (nativeFormatModuleInfo.TryFindBlob(
                         (int)ReflectionMapBlob.EmbeddedMetadata,
                         out metadataBlob,
@@ -228,7 +228,7 @@ namespace Internal.StackTraceMetadata
                     // No stack trace metadata for this module
                     return null;
                 }
-                
+
                 int rawToken;
                 if (!_methodRvaToTokenMap.TryGetValue(rva, out rawToken))
                 {

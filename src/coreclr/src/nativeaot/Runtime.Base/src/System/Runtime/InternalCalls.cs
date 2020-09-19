@@ -30,7 +30,7 @@ namespace System.Runtime
     }
 
     // Constants used with RhpGetClasslibFunction, to indicate which classlib function
-    // we are interested in. 
+    // we are interested in.
     // Note: make sure you change the def in ICodeManager.h if you change this!
     internal enum ClassLibFunctionId
     {

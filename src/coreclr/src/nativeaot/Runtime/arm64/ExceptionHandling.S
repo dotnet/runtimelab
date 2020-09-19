@@ -16,15 +16,15 @@
     .macro ALLOC_THROW_FRAME exceptionType
 
         mov x3, sp
- 
+
         // Setup a PAL_LIMITED_CONTEXT on the stack {
         .if \exceptionType == HARDWARE_EXCEPTION
             sub sp,sp,#0x50
-            stp x3, x1, [sp]   // x3 is the SP and x1 is the IP of the fault site 
+            stp x3, x1, [sp]   // x3 is the SP and x1 is the IP of the fault site
             // TODO PROLOG_PUSH_MACHINE_FRAME
         .else
             PROLOG_STACK_ALLOC 0x50
-            stp x3, lr, [sp]   // x3 is the SP and lr is the IP of the fault site 
+            stp x3, lr, [sp]   // x3 is the SP and lr is the IP of the fault site
         .endif
         stp d8, d9, [sp, #0x10]
         stp d10, d11, [sp, #0x20]
@@ -38,8 +38,8 @@
         PROLOG_SAVE_REG_PAIR x25, x26, #0x50
         PROLOG_SAVE_REG_PAIR x27, x28, #0x60
         // } end PAL_LIMITED_CONTEXT
- 
-        PROLOG_STACK_ALLOC STACKSIZEOF_ExInfo 
+
+        PROLOG_STACK_ALLOC STACKSIZEOF_ExInfo
     .endm
 
 // -----------------------------------------------------------------------------
@@ -237,10 +237,10 @@
 
         // w0: exception code
         // x1: ExInfo*
-        bl          RhThrowHwEx        
+        bl          RhThrowHwEx
 
     EXPORT_POINTER_TO_ADDRESS PointerToRhpThrowHwEx2
-        
+
         // no return
         EMIT_BREAKPOINT
 
@@ -261,12 +261,12 @@
         // x2 = GetThread()
         INLINE_GETTHREAD x2
 
-        // There is runtime C# code that can tail call to RhpThrowEx using a binder intrinsic.  So the return 
+        // There is runtime C# code that can tail call to RhpThrowEx using a binder intrinsic.  So the return
         // address could have been hijacked when we were in that C# code and we must remove the hijack and
         // reflect the correct return address in our exception context record.  The other throw helpers don't
         // need this because they cannot be tail-called from C#.
 
-        // NOTE: we cannot use INLINE_THREAD_UNHIJACK because it will write into the stack at the location 
+        // NOTE: we cannot use INLINE_THREAD_UNHIJACK because it will write into the stack at the location
         // where the tail-calling thread had saved LR, which may not match where we have saved LR.
 
         ldr         x1, [x2, #OFFSETOF__Thread__m_pvHijackedReturnAddress]
@@ -289,7 +289,7 @@
 
 TailCallWasHijacked:
 
-        // Abnormal case where the return address location is now invalid because we ended up here via a tail 
+        // Abnormal case where the return address location is now invalid because we ended up here via a tail
         // call.  In this case, our hijacked return address should be the correct caller of this method.
 
         // stick the previous return address in LR as well as in the right spots in our PAL_LIMITED_CONTEXT.
@@ -389,7 +389,7 @@ NotHijacked:
 //         X3:  ExInfo*
 //
 // OUTPUT:
-// 
+//
 
     NESTED_ENTRY RhpCallCatchFunclet, _TEXT, NoHandler
 
@@ -398,7 +398,7 @@ NotHijacked:
         stp d10, d11, [sp, #0x10]
         stp d12, d13, [sp, #0x20]
         stp d14, d15, [sp, #0x30]
-        stp x0, x2,   [sp, #0x40]  // x0, x2 & x3 are saved so we have the exception object, REGDISPLAY and 
+        stp x0, x2,   [sp, #0x40]  // x0, x2 & x3 are saved so we have the exception object, REGDISPLAY and
         stp x3, xzr,  [sp, #0x50]  // ExInfo later, xzr makes space for the local "is_not_handling_thread_abort"
 
 #define rsp_offset_is_not_handling_thread_abort 0x58
@@ -435,7 +435,7 @@ ClearSuccess_Catch:
 
         //
         // call the funclet
-        // 
+        //
         // x0 still contains the exception object
         blr         x1
 
@@ -465,7 +465,7 @@ PopExInfoLoop:
 DonePopping:
         str         x3, [x1, #OFFSETOF__Thread__m_pExInfoStackHead]     // store the new head on the Thread
 
-        PREPARE_EXTERNAL_VAR_INDIRECT_W RhpTrapThreads, 3 
+        PREPARE_EXTERNAL_VAR_INDIRECT_W RhpTrapThreads, 3
 
         tbz         x3, #TrapThreadsFlags_AbortInProgress_Bit, NoAbort
 
@@ -493,7 +493,7 @@ NoAbort:
 //         X1:  REGDISPLAY*
 //
 // OUTPUT:
-// 
+//
 
     NESTED_ENTRY RhpCallFinallyFunclet, _TEXT, NoHandler
 
@@ -506,7 +506,7 @@ NoAbort:
 
 #define rsp_offset_x1 0x48
 
-        
+
         // We want to suppress hijacking between invocations of subsequent finallys.  We do this because we
         // cannot tolerate a GC after one finally has run (and possibly side-effected the GC state of the
         // method) and then been popped off the stack, leaving behind no trace of its effect.
@@ -540,7 +540,7 @@ ClearSuccess:
 
         //
         // call the funclet
-        // 
+        //
         blr         x0
 
     EXPORT_POINTER_TO_ADDRESS PointerToRhpCallFinallyFunclet2
@@ -566,7 +566,7 @@ SetRetry:
         b           SetRetry
 SetSuccess:
 
-        ldp         d8, d9,   [sp, #0x00] 
+        ldp         d8, d9,   [sp, #0x00]
         ldp         d10, d11, [sp, #0x10]
         ldp         d12, d13, [sp, #0x20]
         ldp         d14, d15, [sp, #0x30]
@@ -585,7 +585,7 @@ SetSuccess:
 //         X2:  REGDISPLAY*
 //
 // OUTPUT:
-// 
+//
 
     NESTED_ENTRY RhpCallFilterFunclet, _TEXT, NoHandler
         ALLOC_CALL_FUNCLET_FRAME 0x40
@@ -599,7 +599,7 @@ SetSuccess:
 
         //
         // call the funclet
-        // 
+        //
         // x0 still contains the exception object
         blr         x1
 

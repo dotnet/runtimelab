@@ -32,7 +32,7 @@ namespace System
         }
 
         // Note: The CLR's Watson bucketization code looks at the caller of the FCALL method
-        // to assign blame for crashes.  Don't mess with this, such as by making it call 
+        // to assign blame for crashes.  Don't mess with this, such as by making it call
         // another managed helper method, unless you consult with some CLR Watson experts.
         [DoesNotReturn]
         public static void FailFast(string message) =>
@@ -52,7 +52,7 @@ namespace System
                 RuntimeExceptionHelpers.FailFast(message, exception);
             }
         }
-        
+
         private static int GetProcessorCount() => Runtime.RuntimeImports.RhGetProcessCpuCount();
 
         internal static void ShutdownCore()

@@ -13,7 +13,7 @@
 ;;         R1:  faulting IP
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     NESTED_ENTRY RhpThrowHwEx
 
@@ -37,7 +37,7 @@
         PROLOG_STACK_ALLOC STACKSIZEOF_ExInfo
 
         ; r0: SP of fault site
-        ; r1: IP of fault site 
+        ; r1: IP of fault site
         ; r2: exception code of fault
         ; lr: IP of fault site (as a 'return address')
 
@@ -84,7 +84,7 @@
 ;; INPUT:  R0:  exception object
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     NESTED_ENTRY RhpThrowEx
 
@@ -103,12 +103,12 @@
         ;; r2 = GetThread(), TRASHES r1
         INLINE_GETTHREAD r2, r1
 
-        ;; There is runtime C# code that can tail call to RhpThrowEx using a binder intrinsic.  So the return 
+        ;; There is runtime C# code that can tail call to RhpThrowEx using a binder intrinsic.  So the return
         ;; address could have been hijacked when we were in that C# code and we must remove the hijack and
         ;; reflect the correct return address in our exception context record.  The other throw helpers don't
         ;; need this because they cannot be tail-called from C#.
 
-        ;; NOTE: we cannot use INLINE_THREAD_UNHIJACK because it will write into the stack at the location 
+        ;; NOTE: we cannot use INLINE_THREAD_UNHIJACK because it will write into the stack at the location
         ;; where the tail-calling thread had saved LR, which may not match where we have saved LR.
 
         ldr         r1, [r2, #OFFSETOF__Thread__m_pvHijackedReturnAddress]
@@ -131,9 +131,9 @@
 
 TailCallWasHijacked
 
-        ;; Abnormal case where the return address location is now invalid because we ended up here via a tail 
+        ;; Abnormal case where the return address location is now invalid because we ended up here via a tail
         ;; call.  In this case, our hijacked return address should be the correct caller of this method.
-        ;; 
+        ;;
 
         ;; stick the previous return address in LR as well as in the right spots in our PAL_LIMITED_CONTEXT.
         mov         lr, r1
@@ -188,7 +188,7 @@ NotHijacked
 ;; INPUT:
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     NESTED_ENTRY RhpRethrow
 
@@ -248,7 +248,7 @@ NotHijacked
 ;;         R3:  ExInfo*
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     NESTED_ENTRY RhpCallCatchFunclet
 
@@ -327,7 +327,7 @@ ClearSuccess_Catch
 
         ;;
         ;; call the funclet
-        ;; 
+        ;;
         ;; r0 still contains the exception object
         blx         r1
 
@@ -388,7 +388,7 @@ NoAbort
 ;;         R1:  REGDISPLAY*
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     NESTED_ENTRY RhpCallFinallyFunclet
 
@@ -468,7 +468,7 @@ ClearSuccess
 
         ;;
         ;; call the funclet
-        ;; 
+        ;;
         blx         r0
 
         EXPORT_POINTER_TO_ADDRESS PointerToRhpCallFinallyFunclet2
@@ -529,7 +529,7 @@ SetSuccess
 ;;         R2:  REGDISPLAY*
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     NESTED_ENTRY RhpCallFilterFunclet
 
@@ -541,7 +541,7 @@ SetSuccess
 
         ;;
         ;; call the funclet
-        ;; 
+        ;;
         ;; r0 still contains the exception object
         blx         r1
 

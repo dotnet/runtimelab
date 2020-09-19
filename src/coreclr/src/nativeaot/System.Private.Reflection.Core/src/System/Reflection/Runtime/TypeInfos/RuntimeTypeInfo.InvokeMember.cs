@@ -29,7 +29,7 @@ namespace System.Reflection.Runtime.TypeInfos
                 // "Must specify binding flags describing the invoke operation required."
                 throw new ArgumentException(SR.Arg_NoAccessSpec, nameof(bindingFlags));
 
-            // Provide a default binding mask if none is provided 
+            // Provide a default binding mask if none is provided
             if ((bindingFlags & MemberBindingMask) == 0)
             {
                 bindingFlags |= BindingFlags.Instance | BindingFlags.Public;
@@ -233,7 +233,7 @@ namespace System.Reflection.Runtime.TypeInfos
                 if ((bindingFlags & BinderNonFieldGetSet) == 0)
                     throw new MissingFieldException(FullName, name);
             }
-            #endregion                    
+            #endregion
 
             #region Property PreConditions
             // @Legacy - This is RTM behavior
@@ -361,7 +361,7 @@ namespace System.Reflection.Runtime.TypeInfos
                     finalists = new MethodInfo[results.Count];
                     results.CopyTo(finalists, 0);
                 }
-                #endregion            
+                #endregion
             }
             #endregion
 

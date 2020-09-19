@@ -9,7 +9,7 @@
 inline UIntNative ALIGN_UP( UIntNative val, UIntNative alignment )
 {
     // alignment must be a power of 2 for this implementation to work (need modulo otherwise)
-    ASSERT( 0 == (alignment & (alignment - 1)) ); 
+    ASSERT( 0 == (alignment & (alignment - 1)) );
     UIntNative result = (val + (alignment - 1)) & ~(alignment - 1);
     ASSERT( result >= val );      // check for overflow
 

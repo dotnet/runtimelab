@@ -65,7 +65,7 @@ LNoFloatingPoint
         ;; export this symbol right now because it confuses DIA unwinder to believe
         ;; it's the beginning of a new method, therefore we export the address
         ;; of an auxiliary variable holding the address instead.
-        
+
         ldr     r3, [r5,#OFFSETOF__CallDescrData__fpReturnSize]
 
         ;; Save FP return value if appropriate
@@ -115,7 +115,7 @@ LFloatingPointReturnDone
 LReturnDone
 
 #ifdef _DEBUG
-        ;; trash the floating point registers to ensure that the HFA return values 
+        ;; trash the floating point registers to ensure that the HFA return values
         ;; won't survive by accident
         vldm    sp, {d0-d3}
 #endif

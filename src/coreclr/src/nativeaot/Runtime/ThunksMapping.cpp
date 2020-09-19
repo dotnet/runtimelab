@@ -102,7 +102,7 @@ EXTERN_C REDHAWK_API void* __cdecl RhAllocateThunksMapping()
 
 #else
 
-    // Note: On secure linux systems, we can't add execute permissions to a mapped virtual memory if it was not created 
+    // Note: On secure linux systems, we can't add execute permissions to a mapped virtual memory if it was not created
     // with execute permissions in the first place. This is why we create the virtual section with RX permissions, then
     // reduce it to RW for the data section. For the stubs section we need to increase to RWX to generate the stubs
     // instructions. After this we go back to RX for the stubs section before the stubs are used and should not be
@@ -320,8 +320,8 @@ EXTERN_C REDHAWK_API void* __cdecl RhAllocateThunksMapping()
     }
     else
     {
-        // We've already used the thunks template in the module for some previous thunks, and we 
-        // cannot reuse it here. Now we need to create a new mapping of the thunks section in order to have 
+        // We've already used the thunks template in the module for some previous thunks, and we
+        // cannot reuse it here. Now we need to create a new mapping of the thunks section in order to have
         // more thunks
 
         UInt8* pModuleBase = (UInt8*)PalGetModuleHandleFromPointer(pThunksTemplateAddress);

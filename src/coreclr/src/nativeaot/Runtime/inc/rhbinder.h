@@ -16,7 +16,7 @@ public:
     static const UInt32 cbChunkCommonCode_ARM   = 32;
 #ifdef TARGET_ARM
     // on ARM, the index of the indirection cell can be computed
-    // from the pointer to the indirection cell left in R12, 
+    // from the pointer to the indirection cell left in R12,
     // thus we need only one entry point on ARM,
     // thus entries take no space, and you can have as many as you want
     static const UInt32 cbEntry                 = 0;
@@ -35,7 +35,7 @@ public:
     static const UInt32 entriesPerChunk         = bundlesPerChunk * entriesPerBundle;
 #endif
 
-    static const UInt32 cbFullBundle            = cbBundleCommonCode + 
+    static const UInt32 cbFullBundle            = cbBundleCommonCode +
                                                   (entriesPerBundle * cbEntry);
 
     static UInt32 EntryIndexToStubOffset(UInt32 entryIndex)
@@ -57,7 +57,7 @@ public:
 
         return 0;
 # else
-        UInt32 cbFullChunk              = cbChunkCommonCode + 
+        UInt32 cbFullChunk              = cbChunkCommonCode +
                                           (bundlesPerChunk * cbBundleCommonCode) +
                                           (entriesPerChunk * cbEntry);
 
@@ -68,7 +68,7 @@ public:
         UInt32 numEntriesInLastBundle    = numEntriesInLastChunk - (numFullBundles * entriesPerBundle);
 
         UInt32 offset                    = (numFullChunks * cbFullChunk) +
-                                          cbChunkCommonCode + 
+                                          cbChunkCommonCode +
                                           (numFullBundles * cbFullBundle) +
                                           (numEntriesInLastBundle * cbEntry);
 
@@ -95,7 +95,7 @@ struct StaticGcDesc
     {
         return (UInt32)(offsetof(StaticGcDesc, m_series) + (m_numSeries * sizeof(GCSeries)));
     }
-    
+
 #ifdef DACCESS_COMPILE
     static UInt32 DacSize(TADDR addr);
 #endif
@@ -174,7 +174,7 @@ public:
     DispatchCellInfo GetDispatchCellInfo()
     {
         DispatchCellInfo cellInfo;
-        
+
         if ((m_slotIndexOrMetadataTokenEncoded & CH_Mask) == CH_TypeAndSlotIndex)
         {
             cellInfo.InterfaceType = m_pInterfaceType;
@@ -204,7 +204,7 @@ struct InterfaceDispatchCell
     // by the binder for interface call sites.
     UIntTarget      m_pStub;    // Call this code to execute the interface dispatch
     volatile UIntTarget m_pCache;   // Context used by the stub above (one or both of the low two bits are set
-                                    // for initial dispatch, and if not set, using this as a cache pointer or 
+                                    // for initial dispatch, and if not set, using this as a cache pointer or
                                     // as a vtable offset.)
                                     //
                                     // In addition, there is a Slot/Flag use of this field. DispatchCells are
@@ -218,12 +218,12 @@ struct InterfaceDispatchCell
     //
     enum Flags
     {
-        // The low 2 bits of the m_pCache pointer are treated specially so that we can avoid the need for 
+        // The low 2 bits of the m_pCache pointer are treated specially so that we can avoid the need for
         // extra fields on this type.
         // OR if the m_pCache value is less than 0x1000 then this it is a vtable offset and should be used as such
         IDC_CachePointerIsInterfaceRelativePointer = 0x3,
         IDC_CachePointerIsIndirectedInterfaceRelativePointer = 0x2,
-        IDC_CachePointerIsInterfacePointerOrMetadataToken = 0x1, // Metadata token is a 30 bit number in this case. 
+        IDC_CachePointerIsInterfacePointerOrMetadataToken = 0x1, // Metadata token is a 30 bit number in this case.
                                                                  // Tokens are required to have at least one of their upper 20 bits set
                                                                  // But they are not required by this part of the system to follow any specific
                                                                  // token format
@@ -262,7 +262,7 @@ struct InterfaceDispatchCell
         while (currentCell->m_pStub != 0)
         {
             currentCell = currentCell + 1;
-        } 
+        }
         UIntTarget cachePointerValueFlags = currentCell->m_pCache;
 
         DispatchCellType cellType = (DispatchCellType)(cachePointerValueFlags >> 16);
@@ -340,14 +340,14 @@ enum PInvokeTransitionFrameFlags
 {
     // NOTE: Keep in sync with ndp\FxCore\CoreRT\src\Native\Runtime\arm\AsmMacros.h
 
-    // NOTE: The order in which registers get pushed in the PInvokeTransitionFrame's m_PreservedRegs list has 
+    // NOTE: The order in which registers get pushed in the PInvokeTransitionFrame's m_PreservedRegs list has
     //       to match the order of these flags (that's also the order in which they are read in StackFrameIterator.cpp
 
     // standard preserved registers
     PTFF_SAVE_R4        = 0x00000001,
     PTFF_SAVE_R5        = 0x00000002,
     PTFF_SAVE_R6        = 0x00000004,
-    PTFF_SAVE_R7        = 0x00000008,   // should never be used, we require FP frames for methods with 
+    PTFF_SAVE_R7        = 0x00000008,   // should never be used, we require FP frames for methods with
                                         // pinvoke and it is saved into the frame pointer field instead
     PTFF_SAVE_R8        = 0x00000010,
     PTFF_SAVE_R9        = 0x00000020,
@@ -376,7 +376,7 @@ enum PInvokeTransitionFrameFlags : UInt64
 {
     // NOTE: Keep in sync with ndp\FxCore\CoreRT\src\Native\Runtime\arm64\AsmMacros.h
 
-    // NOTE: The order in which registers get pushed in the PInvokeTransitionFrame's m_PreservedRegs list has 
+    // NOTE: The order in which registers get pushed in the PInvokeTransitionFrame's m_PreservedRegs list has
     //       to match the order of these flags (that's also the order in which they are read in StackFrameIterator.cpp
 
     // standard preserved registers
@@ -417,7 +417,7 @@ enum PInvokeTransitionFrameFlags : UInt64
     PTFF_SAVE_X17       = 0x0000000010000000,
     PTFF_SAVE_X18       = 0x0000000020000000,
 
-    PTFF_SAVE_FP        = 0x0000000040000000,   // should never be used, we require FP frames for methods with 
+    PTFF_SAVE_FP        = 0x0000000040000000,   // should never be used, we require FP frames for methods with
                                                 // pinvoke and it is saved into the frame pointer field instead
 
     PTFF_SAVE_LR        = 0x0000000080000000,   // this is useful for the case of loop hijacking where we need both
@@ -461,14 +461,14 @@ enum PInvokeTransitionFrameFlags
 {
     // NOTE: Keep in sync with ndp\FxCore\CoreRT\src\Native\Runtime\[amd64|i386]\AsmMacros.inc
 
-    // NOTE: The order in which registers get pushed in the PInvokeTransitionFrame's m_PreservedRegs list has 
+    // NOTE: The order in which registers get pushed in the PInvokeTransitionFrame's m_PreservedRegs list has
     //       to match the order of these flags (that's also the order in which they are read in StackFrameIterator.cpp
 
     // standard preserved registers
     PTFF_SAVE_RBX       = 0x00000001,
     PTFF_SAVE_RSI       = 0x00000002,
     PTFF_SAVE_RDI       = 0x00000004,
-    PTFF_SAVE_RBP       = 0x00000008,   // should never be used, we require RBP frames for methods with 
+    PTFF_SAVE_RBP       = 0x00000008,   // should never be used, we require RBP frames for methods with
                                         // pinvoke and it is saved into the frame pointer field instead
     PTFF_SAVE_R12       = 0x00000010,
     PTFF_SAVE_R13       = 0x00000020,
@@ -530,9 +530,9 @@ struct PInvokeTransitionFrame
                                 // can be an invalid pointer in universal transition cases (which never need to call GetThread)
 #ifdef TARGET_ARM64
     UInt64          m_Flags;  // PInvokeTransitionFrameFlags
-#else   
+#else
     UInt32          m_Flags;  // PInvokeTransitionFrameFlags
-#endif       
+#endif
     UIntTarget      m_PreservedRegs[];
 };
 #endif // USE_PORTABLE_HELPERS
@@ -630,7 +630,7 @@ enum RhEHClauseKind
     RH_EH_CLAUSE_UNUSED             = 3
 };
 
-#define RH_EH_CLAUSE_TYPED_INDIRECT RH_EH_CLAUSE_UNUSED 
+#define RH_EH_CLAUSE_TYPED_INDIRECT RH_EH_CLAUSE_UNUSED
 
 // mapping of cold code blocks to the corresponding hot entry point RVA
 // format is a as follows:

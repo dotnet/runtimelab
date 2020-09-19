@@ -17,7 +17,7 @@ LEAF_END macro Name, Section
     Section ends
 endm
 
-;  - TAILCALL_RAX: ("jmp rax") should be used for tailcalls, this emits an instruction 
+;  - TAILCALL_RAX: ("jmp rax") should be used for tailcalls, this emits an instruction
 ;            sequence which is recognized by the unwinder as a valid epilogue terminator
 TAILJMP_RAX TEXTEQU <DB 048h, 0FFh, 0E0h>
 POINTER_SIZE                        equ 08h
@@ -59,7 +59,7 @@ LEAF_END CallingConventionConverter_ReturnIntegerReturnThunk, _TEXT
 ;; }
 ;;
 ;; r10 - Points at CommonCallingStubInputData
-;;  
+;;
 ;;
 LEAF_ENTRY __jmpstub__CallingConventionConverter_CommonCallingStub, _TEXT
         mov     r11, [r10]                ; put CallingConventionId into r11 as "parameter" to universal transition thunk

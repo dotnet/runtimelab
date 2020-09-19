@@ -40,7 +40,7 @@ void EnumAllStaticGCRefs(EnumGcRefCallbackFunc * fn, EnumGcRefScanContext * sc)
 /*
  * Scan all stack and statics roots
  */
- 
+
 void GCToEEInterface::GcScanRoots(EnumGcRefCallbackFunc * fn,  int condemned, int max_gen, EnumGcRefScanContext * sc)
 {
     DebuggerProtectedBufferListNode* cursor = DebuggerHook::s_debuggerProtectedBuffers;
@@ -62,10 +62,10 @@ void GCToEEInterface::GcScanRoots(EnumGcRefCallbackFunc * fn,  int condemned, in
         // @TODO: it is very bizarre that this IsThreadUsingAllocationContextHeap takes a copy of the
         // allocation context instead of a reference or a pointer to it. This seems very wasteful given how
         // large the alloc_context is.
-        if (!GCHeapUtilities::GetGCHeap()->IsThreadUsingAllocationContextHeap(pThread->GetAllocContext(), 
+        if (!GCHeapUtilities::GetGCHeap()->IsThreadUsingAllocationContextHeap(pThread->GetAllocContext(),
                                                                      sc->thread_number))
         {
-            // STRESS_LOG2(LF_GC|LF_GCROOTS, LL_INFO100, "{ Scan of Thread %p (ID = %x) declined by this heap\n", 
+            // STRESS_LOG2(LF_GC|LF_GCROOTS, LL_INFO100, "{ Scan of Thread %p (ID = %x) declined by this heap\n",
             //             pThread, pThread->GetThreadId());
         }
         else
@@ -92,7 +92,7 @@ void GCToEEInterface::GcScanRoots(EnumGcRefCallbackFunc * fn,  int condemned, in
     {
 #if defined(FEATURE_EVENT_TRACE) && !defined(DACCESS_COMPILE)
         sc->dwEtwRootKind = kEtwGCRootKindHandle;
-#endif 
+#endif
         EnumAllStaticGCRefs(fn, sc);
     }
 }
@@ -120,7 +120,7 @@ void PromoteCarefully(PTR_PTR_Object obj, UInt32 flags, EnumGcRefCallbackFunc * 
     //
     assert(flags & GC_CALL_INTERIOR);
 
-    // If the object reference points into the stack, we 
+    // If the object reference points into the stack, we
     // must not promote it, the GC cannot handle these.
     if (pSc->thread_under_crawl->IsWithinStackBounds(*obj))
         return;

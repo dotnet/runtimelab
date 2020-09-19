@@ -166,7 +166,7 @@ Volatile<LONGLONG> ETW::GCLog::s_l64LastClientSequenceNumber = 0;
 // Rather than checking the NGEN keyword on the runtime provider directly, use this
 // helper that checks that the NGEN runtime provider keyword is enabled AND the
 // OverrideAndSuppressNGenEvents keyword on the runtime provider is NOT enabled.
-// 
+//
 // OverrideAndSuppressNGenEvents allows controllers to set the expensive NGEN keyword for
 // older runtimes (< 4.0) where NGEN PDB info is NOT available, while suppressing those
 // expensive events on newer runtimes (>= 4.5) where NGEN PDB info IS available. Note
@@ -174,7 +174,7 @@ Volatile<LONGLONG> ETW::GCLog::s_l64LastClientSequenceNumber = 0;
 // keyword, b/c NGEN PDBs were made publicly only after 4.0 shipped. So tools that need
 // to consume both <4.0 and 4.0 events would neeed to enable the expensive NGEN events to
 // deal properly with 3.5, even though those events aren't necessary on 4.0.
-// 
+//
 // On CoreCLR, this keyword is a no-op, because coregen PDBs don't exist (and thus we'll
 // need the NGEN rundown to still work on Silverligth).
 //
@@ -187,15 +187,15 @@ BOOL IsRuntimeNgenKeywordEnabledAndNotSuppressed()
 {
     LIMITED_METHOD_CONTRACT;
 
-    return 
+    return
     (
         ETW_TRACING_CATEGORY_ENABLED(
-            MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-            TRACE_LEVEL_INFORMATION, 
-            CLR_NGEN_KEYWORD) 
+            MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+            TRACE_LEVEL_INFORMATION,
+            CLR_NGEN_KEYWORD)
         && ! ( ETW_TRACING_CATEGORY_ENABLED(
-                MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                TRACE_LEVEL_INFORMATION, 
+                MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                TRACE_LEVEL_INFORMATION,
                 CLR_OVERRIDEANDSUPPRESSNGENEVENTS_KEYWORD) )
     );
 }
@@ -205,15 +205,15 @@ BOOL IsRundownNgenKeywordEnabledAndNotSuppressed()
 {
     LIMITED_METHOD_CONTRACT;
 
-    return 
+    return
     (
         ETW_TRACING_CATEGORY_ENABLED(
-            MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, 
-            TRACE_LEVEL_INFORMATION, 
+            MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
+            TRACE_LEVEL_INFORMATION,
             CLR_RUNDOWNNGEN_KEYWORD)
         && ! ( ETW_TRACING_CATEGORY_ENABLED(
-                MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, 
-                TRACE_LEVEL_INFORMATION, 
+                MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
+                TRACE_LEVEL_INFORMATION,
                 CLR_RUNDOWNOVERRIDEANDSUPPRESSNGENEVENTS_KEYWORD) )
     );
 }
@@ -228,9 +228,9 @@ extern "C"
     {
         CallStackFrame *frame=NULL;
         __asm
-        { 
+        {
             mov frame, ebp
-        } 
+        }
         return frame;
     }
 }
@@ -244,7 +244,7 @@ extern "C"
 void ETW::SamplingLog::Append(SIZE_T currentFrame)
 {
     LIMITED_METHOD_CONTRACT;
-    if(m_FrameCount < (ETW::SamplingLog::s_MaxStackSize-1) && 
+    if(m_FrameCount < (ETW::SamplingLog::s_MaxStackSize-1) &&
        currentFrame != 0)
     {
         m_EBPStack[m_FrameCount] = currentFrame;
@@ -256,7 +256,7 @@ void ETW::SamplingLog::Append(SIZE_T currentFrame)
 /* Function to get the callstack on the current thread  */
 /********************************************************/
 ETW::SamplingLog::EtwStackWalkStatus ETW::SamplingLog::GetCurrentThreadsCallStack(UINT32 *frameCount, PVOID **Stack)
-{    
+{
     CONTRACTL
     {
         NOTHROW;
@@ -276,13 +276,13 @@ ETW::SamplingLog::EtwStackWalkStatus ETW::SamplingLog::GetCurrentThreadsCallStac
 
     _ASSERTE(m_FrameCount < ETW::SamplingLog::s_MaxStackSize);
 
-    // this not really needed, but let's do it 
+    // this not really needed, but let's do it
     // because we use the framecount while dumping the stack event
     for(int i=m_FrameCount; i<ETW::SamplingLog::s_MaxStackSize; i++)
     {
         m_EBPStack[i] = 0;
     }
-    // This is for consumers to work correctly because the number of 
+    // This is for consumers to work correctly because the number of
     // frames in the manifest file is specified to be 2
     if(m_FrameCount < 2)
         m_FrameCount = 2;
@@ -327,8 +327,8 @@ ETW::SamplingLog::EtwStackWalkStatus ETW::SamplingLog::SaveCurrentStack(int skip
     if (pThread == NULL)
     {
         return ETW::SamplingLog::UnInitialized;
-    }    
-    // The thread should not have a hijack set up or we can't walk the stack. 
+    }
+    // The thread should not have a hijack set up or we can't walk the stack.
     if (pThread->m_State & Thread::TS_Hijacked) {
         return ETW::SamplingLog::UnInitialized;
     }
@@ -347,26 +347,26 @@ ETW::SamplingLog::EtwStackWalkStatus ETW::SamplingLog::SaveCurrentStack(int skip
         {
             lastEBP = currentEBP;
             currentEBP = currentEBP->m_Next;
-    
+
             // Skip the top N frames
             if(skipTopNFrames) {
                 skipTopNFrames--;
                 continue;
             }
-    
+
             // Save the Return Address for symbol decoding
             Append(lastEBP->m_ReturnAddress);
-            
+
             // Check for stack limits
             if((SIZE_T)currentEBP < (SIZE_T)Thread::GetStackLowerBound() || (SIZE_T)currentEBP > (SIZE_T)Thread::GetStackUpperBound())
             {
                 break;
             }
-    
+
             // If we have a too small address, we are probably bad
             if((SIZE_T)currentEBP < (SIZE_T)0x10000)
                 break;
-    
+
             if((SIZE_T)currentEBP < (SIZE_T)lastEBP)
             {
                 break;
@@ -382,7 +382,7 @@ ETW::SamplingLog::EtwStackWalkStatus ETW::SamplingLog::SaveCurrentStack(int skip
         {
             // Unwind to the caller
             ControlPc = Thread::VirtualUnwindCallFrame(&ctx);
-    
+
             // This is to take care of recursion
             CurrentSP = (UINT_PTR)GetSP(&ctx);
 
@@ -391,16 +391,16 @@ ETW::SamplingLog::EtwStackWalkStatus ETW::SamplingLog::SaveCurrentStack(int skip
             {
                 break;
             }
-    
+
             // Skip the top N frames
             if ( skipTopNFrames ) {
                 skipTopNFrames--;
                 continue;
             }
-    
+
             // Add the stack frame to the list
             Append(ControlPc);
-    
+
             PrevSP = CurrentSP;
         }
 #endif //TARGET_X86
@@ -429,7 +429,7 @@ ETW::SamplingLog::EtwStackWalkStatus ETW::SamplingLog::SaveCurrentStack(int skip
 /****************************************************************************/
 
 /***************************************************************************/
-/* This function should be called from the event tracing callback routine 
+/* This function should be called from the event tracing callback routine
    when the private CLR provider is enabled */
 /***************************************************************************/
 
@@ -439,7 +439,7 @@ void ETW::GCLog::GCSettingsEvent()
 {
     if (GCHeapUtilities::IsGCHeapInitialized())
     {
-        if (ETW_TRACING_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PRIVATE_PROVIDER_Context, 
+        if (ETW_TRACING_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PRIVATE_PROVIDER_Context,
                                                  GCSettings))
         {
             ETW::GCLog::ETW_GC_INFO Info;
@@ -448,7 +448,7 @@ void ETW::GCLog::GCSettingsEvent()
             Info.GCSettings.SegmentSize = GCHeapUtilities::GetGCHeap()->GetValidSegmentSize (FALSE);
             Info.GCSettings.LargeObjectSegmentSize = GCHeapUtilities::GetGCHeap()->GetValidSegmentSize (TRUE);
             FireEtwGCSettings_V1(Info.GCSettings.SegmentSize, Info.GCSettings.LargeObjectSegmentSize, Info.GCSettings.ServerGC, GetClrInstanceId());
-        }  
+        }
         GCHeapUtilities::GetGCHeap()->TraceGCSegments();
     }
 };
@@ -469,8 +469,8 @@ BOOL ETW::GCLog::ShouldWalkHeapObjectsForEtw()
 {
     LIMITED_METHOD_CONTRACT;
     return ETW_TRACING_CATEGORY_ENABLED(
-        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-        TRACE_LEVEL_INFORMATION, 
+        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+        TRACE_LEVEL_INFORMATION,
         CLR_GCHEAPDUMP_KEYWORD);
 }
 
@@ -478,8 +478,8 @@ BOOL ETW::GCLog::ShouldWalkHeapRootsForEtw()
 {
     LIMITED_METHOD_CONTRACT;
     return ETW_TRACING_CATEGORY_ENABLED(
-        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-        TRACE_LEVEL_INFORMATION, 
+        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+        TRACE_LEVEL_INFORMATION,
         CLR_GCHEAPDUMP_KEYWORD);
 }
 
@@ -487,8 +487,8 @@ BOOL ETW::GCLog::ShouldTrackMovementForEtw()
 {
     LIMITED_METHOD_CONTRACT;
     return ETW_TRACING_CATEGORY_ENABLED(
-        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-        TRACE_LEVEL_INFORMATION, 
+        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+        TRACE_LEVEL_INFORMATION,
         CLR_GCHEAPSURVIVALANDMOVEMENT_KEYWORD);
 }
 
@@ -498,8 +498,8 @@ BOOL ETW::GCLog::ShouldWalkStaticsAndCOMForEtw()
     return FALSE;
 }
 
-void ETW::GCLog::WalkStaticsAndCOMForETW() 
-{ 
+void ETW::GCLog::WalkStaticsAndCOMForETW()
+{
     // @TODO:
 }
 
@@ -604,12 +604,12 @@ struct MovedReferenceContextForEtwAndProfapi
         _ASSERTE(pvContext != NULL);
 
         MovedReferenceContextForEtwAndProfapi * pContext = *(MovedReferenceContextForEtwAndProfapi **) pvContext;
-        
+
         // Shouldn't be called if the context was already created.  Perhaps someone made
         // one too many BeginMovedReferences calls, or didn't have an EndMovedReferences
         // in between?
         _ASSERTE(pContext == NULL);
-        
+
         pContext = new (nothrow) MovedReferenceContextForEtwAndProfapi;
         *(MovedReferenceContextForEtwAndProfapi **) pvContext = pContext;
 
@@ -624,7 +624,7 @@ struct MovedReferenceContextForEtwAndProfapi
     {
         LIMITED_METHOD_CONTRACT;
     }
-        
+
     LPVOID pctxProfAPI;
     EtwGcMovementContext * pctxEtw;
 };
@@ -656,16 +656,16 @@ void ETW::GCLog::MovedReference(
     BOOL /*fAllowProfApiNotification*/) // @TODO: unused param from newer implementation
 {
 #ifndef WINXP_AND_WIN2K3_BUILD_SUPPORT
-    CONTRACTL 
+    CONTRACTL
     {
         NOTHROW;
         GC_NOTRIGGER;
         MODE_ANY;
         CAN_TAKE_LOCK;  // EEToProfInterfaceImpl::AllocateMovedReferencesData takes lock
-    } 
+    }
     CONTRACTL_END;
 
-    MovedReferenceContextForEtwAndProfapi * pCtxForEtwAndProfapi = 
+    MovedReferenceContextForEtwAndProfapi * pCtxForEtwAndProfapi =
         (MovedReferenceContextForEtwAndProfapi *) profilingContext;
     if (pCtxForEtwAndProfapi == NULL)
     {
@@ -725,7 +725,7 @@ void ETW::GCLog::MovedReference(
     else
     {
         // Surviving references
-        
+
         _ASSERTE(pContext->cBulkSurvivingObjectRanges < _countof(pContext->rgGCBulkSurvivingObjectRanges));
         EventStructGCBulkSurvivingObjectRangesValue * pValue =
             &pContext->rgGCBulkSurvivingObjectRanges[pContext->cBulkSurvivingObjectRanges];
@@ -781,17 +781,17 @@ void ETW::GCLog::BeginMovedReferences(size_t * pProfilingContext)
 //
 
 // static
-void ETW::GCLog::EndMovedReferences(size_t profilingContext, 
+void ETW::GCLog::EndMovedReferences(size_t profilingContext,
     BOOL /*fAllowProfApiNotification*/) // @TODO: unused param from newer implementation
 {
 #ifndef WINXP_AND_WIN2K3_BUILD_SUPPORT
-    CONTRACTL 
+    CONTRACTL
     {
         NOTHROW;
         GC_NOTRIGGER;
         MODE_ANY;
         CAN_TAKE_LOCK;
-    } 
+    }
     CONTRACTL_END;
 
     MovedReferenceContextForEtwAndProfapi * pCtxForEtwAndProfapi = (MovedReferenceContextForEtwAndProfapi *) profilingContext;
@@ -811,7 +811,7 @@ void ETW::GCLog::EndMovedReferences(size_t profilingContext,
 #endif //PROFILING_SUPPORTED
 
     // ETW
-    
+
     if (!ShouldTrackMovementForEtw())
         return;
 
@@ -854,12 +854,12 @@ void ETW::GCLog::EndMovedReferences(size_t profilingContext,
 /***************************************************************************/
 void ETW::GCLog::ForceGC(LONGLONG l64ClientSequenceNumber)
 {
-    CONTRACTL 
+    CONTRACTL
     {
         NOTHROW;
         GC_TRIGGERS;
         MODE_ANY;
-    } 
+    }
     CONTRACTL_END;
 
 #ifdef FEATURE_REDHAWK
@@ -900,8 +900,8 @@ void ETW::GCLog::FireGcStart(ETW_GC_INFO * pGcInfo)
 #if !defined(FEATURE_PAL) || defined(FEATURE_DTRACE)
 
     if (ETW_TRACING_CATEGORY_ENABLED(
-        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-        TRACE_LEVEL_INFORMATION, 
+        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+        TRACE_LEVEL_INFORMATION,
         CLR_GC_KEYWORD))
     {
 #if !defined(FEATURE_PAL)
@@ -950,12 +950,12 @@ void ETW::GCLog::FireGcStart(ETW_GC_INFO * pGcInfo)
 // static
 HRESULT ETW::GCLog::ForceGCForDiagnostics()
 {
-    CONTRACTL 
+    CONTRACTL
     {
         NOTHROW;
         GC_TRIGGERS;
         MODE_ANY;
-    } 
+    }
     CONTRACTL_END;
 
     HRESULT hr = E_FAIL;
@@ -966,9 +966,9 @@ HRESULT ETW::GCLog::ForceGCForDiagnostics()
 
     // In immersive apps the GarbageCollect() call below will call into Jupiter,
     // which will call back into the runtime to track references. This call
-    // chain would cause a Thread object to be created for this thread while code 
-    // higher on the stack owns the ThreadStoreLock. This will lead to asserts 
-    // since the ThreadStoreLock is non-reentrant. To avoid this we'll create 
+    // chain would cause a Thread object to be created for this thread while code
+    // higher on the stack owns the ThreadStoreLock. This will lead to asserts
+    // since the ThreadStoreLock is non-reentrant. To avoid this we'll create
     // the Thread object here instead.
     if (GetThreadNULLOk() == NULL)
     {
@@ -999,7 +999,7 @@ HRESULT ETW::GCLog::ForceGCForDiagnostics()
         // cooperative mode.
         pThread->DisablePreemptiveMode();
 #endif // FEATURE_REDHAWK
-        
+
         hr = GCHeapUtilities::GetGCHeap()->GarbageCollect(
             -1,     // all generations should be collected
             FALSE,  // low_memory_p
@@ -1042,12 +1042,12 @@ BulkTypeValue::BulkTypeValue() : cTypeParameters(0), rgTypeParameters()
 
 void BulkTypeValue::Clear()
 {
-    CONTRACTL 
+    CONTRACTL
     {
         THROWS;
         GC_NOTRIGGER;
         MODE_ANY;
-    } 
+    }
     CONTRACTL_END;
 
     ZeroMemory(&fixedSizedData, sizeof(fixedSizedData));
@@ -1105,8 +1105,8 @@ void BulkTypeEventLogger::FireBulkTypeEvent()
         // Do fixed-size data as one bulk copy
         _ASSERTE(iDesc < _countof(EventData));
         EventDataDescCreate(
-            &EventData[iDesc++], 
-            &(m_rgBulkTypeValues[iTypeData].fixedSizedData), 
+            &EventData[iDesc++],
+            &(m_rgBulkTypeValues[iTypeData].fixedSizedData),
             sizeof(m_rgBulkTypeValues[iTypeData].fixedSizedData));
 
         // Do var-sized data individually per field
@@ -1118,7 +1118,7 @@ void BulkTypeEventLogger::FireBulkTypeEvent()
 #else   // FEATURE_REDHAWK
         LPCWSTR wszName = m_rgBulkTypeValues[iTypeData].sName.GetUnicode();
         EventDataDescCreate(
-            &EventData[iDesc++], 
+            &EventData[iDesc++],
             (wszName == NULL) ? L"" : wszName,
             (wszName == NULL) ? sizeof(WCHAR) : (m_rgBulkTypeValues[iTypeData].sName.GetCount() + 1) * sizeof(WCHAR));
 #endif // FEATURE_REDHAWK
@@ -1129,7 +1129,7 @@ void BulkTypeEventLogger::FireBulkTypeEvent()
 #endif // FEATURE_REDHAWK
         _ASSERTE(iDesc < _countof(EventData));
         EventDataDescCreate(
-            &EventData[iDesc++], 
+            &EventData[iDesc++],
             &(m_rgBulkTypeValues[iTypeData].cTypeParameters),
             sizeof(m_rgBulkTypeValues[iTypeData].cTypeParameters));
 
@@ -1138,7 +1138,7 @@ void BulkTypeEventLogger::FireBulkTypeEvent()
         {
             _ASSERTE(iDesc < _countof(EventData));
             EventDataDescCreate(
-                &EventData[iDesc++], 
+                &EventData[iDesc++],
 #ifdef FEATURE_REDHAWK
                 ((m_rgBulkTypeValues[iTypeData].cTypeParameters == 1) ?
                     &(m_rgBulkTypeValues[iTypeData].ullSingleTypeParameter) :
@@ -1183,7 +1183,7 @@ int BulkTypeEventLogger::LogSingleType(TypeHandle th)
         GC_NOTRIGGER;
         MODE_ANY;
         CAN_TAKE_LOCK;  // some of the type system stuff can take locks
-    } 
+    }
     CONTRACTL_END;
 
     // If there's no room for another type, flush what we've got
@@ -1191,7 +1191,7 @@ int BulkTypeEventLogger::LogSingleType(TypeHandle th)
     {
         FireBulkTypeEvent();
     }
-    
+
     _ASSERTE(m_nBulkTypeValueCount < _countof(m_rgBulkTypeValues));
 
     if (!th.IsTypeDesc() && th.GetMethodTable()->IsArray())
@@ -1201,7 +1201,7 @@ int BulkTypeEventLogger::LogSingleType(TypeHandle th)
     }
 
     BulkTypeValue * pVal = &m_rgBulkTypeValues[m_nBulkTypeValueCount];
-    
+
     // Clear out pVal before filling it out (array elements can get reused if there
     // are enough types that we need to flush to multiple events).  Clearing the
     // contained SBuffer can throw, so deal with exceptions
@@ -1217,7 +1217,7 @@ int BulkTypeEventLogger::LogSingleType(TypeHandle th)
     }
     EX_END_CATCH(RethrowCorruptingExceptions);
     if (!fSucceeded)
-        return -1;      
+        return -1;
 
     pVal->fixedSizedData.TypeID = (ULONGLONG) th.AsTAddr();
     pVal->fixedSizedData.ModuleID = (ULONGLONG) (TADDR) th.GetModule();
@@ -1243,7 +1243,7 @@ int BulkTypeEventLogger::LogSingleType(TypeHandle th)
         }
         EX_END_CATCH(RethrowCorruptingExceptions);
         if (!fSucceeded)
-            return -1;      
+            return -1;
     }
     else if (th.IsTypeDesc())
     {
@@ -1263,7 +1263,7 @@ int BulkTypeEventLogger::LogSingleType(TypeHandle th)
             }
             EX_END_CATCH(RethrowCorruptingExceptions);
             if (!fSucceeded)
-                return -1;      
+                return -1;
         }
     }
     else
@@ -1302,7 +1302,7 @@ int BulkTypeEventLogger::LogSingleType(TypeHandle th)
             }
             EX_END_CATCH(RethrowCorruptingExceptions);
             if (!fSucceeded)
-                return -1;      
+                return -1;
         }
 
         if (pMT->HasFinalizer())
@@ -1324,8 +1324,8 @@ int BulkTypeEventLogger::LogSingleType(TypeHandle th)
     EX_TRY
     {
         if (ETW_TRACING_CATEGORY_ENABLED(
-            MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-            TRACE_LEVEL_INFORMATION, 
+            MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+            TRACE_LEVEL_INFORMATION,
             CLR_GCHEAPANDTYPENAMES_KEYWORD))
         {
             th.GetName(pVal->sName);
@@ -1394,7 +1394,7 @@ void BulkTypeEventLogger::LogTypeAndParameters(ULONGLONG thAsAddr, ETW::TypeSyst
         GC_NOTRIGGER;
         MODE_ANY;
         CAN_TAKE_LOCK;  // LogSingleType can take locks
-    } 
+    }
     CONTRACTL_END;
 
     TypeHandle th = TypeHandle::FromTAddr((TADDR) thAsAddr);
@@ -1415,7 +1415,7 @@ void BulkTypeEventLogger::LogTypeAndParameters(ULONGLONG thAsAddr, ETW::TypeSyst
     // We're about to recursively call ourselves for the type parameters, so make a
     // local copy of their type handles first (else, as we log them we could flush
     // and clear out m_rgBulkTypeValues, thus trashing pVal)
-    
+
     StackSArray<ULONGLONG> rgTypeParameters;
     DWORD cParams = pVal->rgTypeParameters.GetCount();
 
@@ -1434,7 +1434,7 @@ void BulkTypeEventLogger::LogTypeAndParameters(ULONGLONG thAsAddr, ETW::TypeSyst
     }
     EX_END_CATCH(RethrowCorruptingExceptions);
     if (!fSucceeded)
-        return;      
+        return;
 
     // Before we recurse, adjust the special-cased type-log behavior that allows a
     // top-level type to be logged without lookup, but still requires lookups to avoid
@@ -1461,7 +1461,7 @@ public:
     // that the GC heap walker sends back to the callbacks. This method is passed a
     // pointer to ProfilingScanContext::pvEtwContext or
     // ProfilerWalkHeapContext::pvEtwContext; if non-NULL it gets returned; else, a new
-    // EtwGcHeapDumpContext is allocated, stored in that pointer, and then returned. 
+    // EtwGcHeapDumpContext is allocated, stored in that pointer, and then returned.
     // Callers should test for NULL, which can be returned if out of memory
     static EtwGcHeapDumpContext * GetOrCreateInGCContext(LPVOID * ppvEtwContext)
     {
@@ -1526,7 +1526,7 @@ public:
 
     //---------------------------------------------------------------------------------------
     // GCBulkRootEdge
-    // 
+    //
     // A "root edge" is the relationship between a source "GCRootID" (i.e., stack
     // variable, handle, static, etc.) and the target "RootedNodeAddress" (the managed
     // object that gets rooted).
@@ -1547,7 +1547,7 @@ public:
 
     //---------------------------------------------------------------------------------------
     // GCBulkRootConditionalWeakTableElementEdge
-    // 
+    //
     // These describe dependent handles, which simulate an edge connecting a key NodeID
     // to a value NodeID.
     //
@@ -1567,7 +1567,7 @@ public:
 
     //---------------------------------------------------------------------------------------
     // GCBulkNode
-    // 
+    //
     // A "node" is ANY managed object sitting on the heap, including RootedNodeAddresses
     // as well as leaf nodes.
     //
@@ -1586,7 +1586,7 @@ public:
 
     //---------------------------------------------------------------------------------------
     // GCBulkEdge
-    // 
+    //
     // An "edge" is the relationship between a source node and its referenced target
     // node. Edges are reported in bulk, separately from Nodes, but it is expected that
     // the consumer read the Node and Edge streams together. One takes the first node
@@ -1595,10 +1595,10 @@ public:
     // and reads the next entries in the Edge stream (using this Node's EdgeCount to
     // determine how many) to find all of its targets. This continues on until the Node
     // and Edge streams have been fully read.
-    // 
+    //
     // GCBulkRootEdges are not duplicated in the GCBulkEdge events. GCBulkEdge events
     // begin at the GCBulkRootEdge.RootedNodeAddress and move forward.
-    // 
+    //
     //---------------------------------------------------------------------------------------
 
     // Sequence number for each GCBulkEdge event
@@ -1615,11 +1615,11 @@ public:
 
     //---------------------------------------------------------------------------------------
     // BulkType
-    // 
+    //
     // Types are a bit more complicated to batch up, since their data is of varying
     // size.  BulkTypeEventLogger takes care of the pesky details for us
     //---------------------------------------------------------------------------------------
-    
+
     BulkTypeEventLogger bulkTypeEventLogger;
 };
 
@@ -1687,7 +1687,7 @@ void ETW::GCLog::RootReference(
         _ASSERTE(pvRootID == NULL);
         break;
     }
-    
+
     // Convert GC root flags to ETW root flags
     if (dwGCFlags & GC_CALL_INTERIOR)
         rootFlags |= kEtwGCRootFlagsInterior;
@@ -1697,7 +1697,7 @@ void ETW::GCLog::RootReference(
     // Add root edge to appropriate buffer
     if (fDependentHandle)
     {
-        _ASSERTE(pContext->cGCBulkRootConditionalWeakTableElementEdges < 
+        _ASSERTE(pContext->cGCBulkRootConditionalWeakTableElementEdges <
             _countof(pContext->rgGCBulkRootConditionalWeakTableElementEdges));
         EventStructGCBulkRootConditionalWeakTableElementEdgeValue * pRCWTEEdgeValue =
             &pContext->rgGCBulkRootConditionalWeakTableElementEdges[pContext->cGCBulkRootConditionalWeakTableElementEdges];
@@ -1707,7 +1707,7 @@ void ETW::GCLog::RootReference(
         pContext->cGCBulkRootConditionalWeakTableElementEdges++;
 
         // If RCWTE edge buffer is now full, empty it into ETW
-        if (pContext->cGCBulkRootConditionalWeakTableElementEdges == 
+        if (pContext->cGCBulkRootConditionalWeakTableElementEdges ==
             _countof(pContext->rgGCBulkRootConditionalWeakTableElementEdges))
         {
             FireEtwGCBulkRootConditionalWeakTableElementEdge(
@@ -1825,8 +1825,8 @@ void ETW::GCLog::ObjectReference(
     {
         ETW::TypeSystemLog::LogTypeAndParametersIfNecessary(
             &pContext->bulkTypeEventLogger,     // Batch up this type with others to minimize events
-            typeID, 
-            
+            typeID,
+
             // During heap walk, GC holds the lock for us, so we can directly enter the
             // hash to see if the type has already been logged
             ETW::TypeSystemLog::kTypeLogBehaviorAssumeLockAndLogIfFirstTime
@@ -1847,7 +1847,7 @@ void ETW::GCLog::ObjectReference(
         _ASSERTE(pContext->cGcBulkEdgeValues < _countof(pContext->rgGcBulkEdgeValues));
         EventStructGCBulkEdgeValue * pBulkEdgeValue = &pContext->rgGcBulkEdgeValues[pContext->cGcBulkEdgeValues];
         pBulkEdgeValue->Value = rgObjReferenceTargets[i];
-        // FUTURE: ReferencingFieldID 
+        // FUTURE: ReferencingFieldID
         pBulkEdgeValue->ReferencingFieldID = 0;
         pContext->cGcBulkEdgeValues++;
 
@@ -1891,8 +1891,8 @@ void ETW::GCLog::EndHeapDump(ProfilerWalkHeapContext * profilerWalkHeapContext)
 
     // If the GC events are enabled, flush any remaining root, node, and / or edge data
     if (ETW_TRACING_CATEGORY_ENABLED(
-        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-        TRACE_LEVEL_INFORMATION, 
+        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+        TRACE_LEVEL_INFORMATION,
         CLR_GCHEAPDUMP_KEYWORD))
     {
         if (pContext->cGcBulkRootEdges > 0)
@@ -1938,8 +1938,8 @@ void ETW::GCLog::EndHeapDump(ProfilerWalkHeapContext * profilerWalkHeapContext)
 
     // Ditto for type events
     if (ETW_TRACING_CATEGORY_ENABLED(
-        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-        TRACE_LEVEL_INFORMATION, 
+        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+        TRACE_LEVEL_INFORMATION,
         CLR_TYPE_KEYWORD))
     {
         pContext->bulkTypeEventLogger.FireBulkTypeEvent();
@@ -1986,13 +1986,13 @@ void ETW::GCLog::SendFinalizeObjectEvent(MethodTable * pMT, Object * pObj)
     if (ETW_EVENT_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, FinalizeObject))
     {
         FireEtwFinalizeObject(pMT, pObj, GetClrInstanceId());
-        
+
         // This function checks if type events are enabled; if so, it sends event for
         // finalized object's type (and parameter types, if any)
         ETW::TypeSystemLog::LogTypeAndParametersIfNecessary(
             NULL,       // Not batching this type with others
             (TADDR) pMT,
-            
+
             // Don't spend the time entering the lock and checking the hash table to see
             // if we've already logged the type; just log it (if type events are enabled).
             ETW::TypeSystemLog::kTypeLogBehaviorAlwaysLog
@@ -2042,11 +2042,11 @@ void ETW::ThreadLog::FireThreadCreated(Thread * pThread)
     LIMITED_METHOD_CONTRACT;
 
     FireEtwThreadCreated(
-        (ULONGLONG)pThread, 
-        (ULONGLONG)pThread->GetDomain(), 
+        (ULONGLONG)pThread,
+        (ULONGLONG)pThread->GetDomain(),
         GetEtwThreadFlags(pThread),
         pThread->GetThreadId(),
-        pThread->GetOSThreadId(), 
+        pThread->GetOSThreadId(),
         GetClrInstanceId());
 }
 
@@ -2055,18 +2055,18 @@ void ETW::ThreadLog::FireThreadDC(Thread * pThread)
     LIMITED_METHOD_CONTRACT;
 
     FireEtwThreadDC(
-        (ULONGLONG)pThread, 
-        (ULONGLONG)pThread->GetDomain(), 
+        (ULONGLONG)pThread,
+        (ULONGLONG)pThread->GetDomain(),
         GetEtwThreadFlags(pThread),
         pThread->GetThreadId(),
-        pThread->GetOSThreadId(), 
+        pThread->GetOSThreadId(),
         GetClrInstanceId());
 }
 
 
 
 // TypeSystemLog implementation
-// 
+//
 // We keep track of which TypeHandles have been logged, and stats on instances of these
 // TypeHandles that have been allocated, by a hash table of hash tables. The outer hash
 // table maps Module*'s to an inner hash table that contains all the TypeLoggingInfos for that
@@ -2080,7 +2080,7 @@ class LoggedTypesFromModuleTraits : public NoRemoveSHashTraits< DefaultSHashTrai
 {
 public:
 
-    // explicitly declare local typedefs for these traits types, otherwise 
+    // explicitly declare local typedefs for these traits types, otherwise
     // the compiler may get confused
     typedef NoRemoveSHashTraits< DefaultSHashTraits<ETW::TypeLoggingInfo> > PARENT;
     typedef PARENT::element_t element_t;
@@ -2130,15 +2130,15 @@ public:
 
     // These are used by the outer hash table (mapping Module*'s to instances of
     // LoggedTypesFromModule).
-    static COUNT_T Hash(Module * pModule) 
+    static COUNT_T Hash(Module * pModule)
     {
         LIMITED_METHOD_CONTRACT;
-        return (COUNT_T) (SIZE_T) pModule; 
+        return (COUNT_T) (SIZE_T) pModule;
     }
-    Module * GetKey() 
+    Module * GetKey()
     {
         LIMITED_METHOD_CONTRACT;
-        return pModule; 
+        return pModule;
     }
 
     LoggedTypesFromModule(Module * pModuleParam) : loggedTypesFromModuleHash()
@@ -2160,7 +2160,7 @@ class AllLoggedTypesTraits : public DefaultSHashTraits<ETW::LoggedTypesFromModul
 {
 public:
 
-    // explicitly declare local typedefs for these traits types, otherwise 
+    // explicitly declare local typedefs for these traits types, otherwise
     // the compiler may get confused
     typedef DefaultSHashTraits<ETW::LoggedTypesFromModule *> PARENT;
     typedef PARENT::element_t element_t;
@@ -2195,7 +2195,7 @@ public:
     static const element_t Null()
     {
         LIMITED_METHOD_CONTRACT;
-        return NULL; 
+        return NULL;
     }
 };
 
@@ -2212,7 +2212,7 @@ public:
     // hash tables during the walk.  On each object allocation, this Crst must be
     // entered individually each time.
     static CrstStatic s_cs;
-    
+
     // The outer hash table (mapping Module*'s to instances of LoggedTypesFromModule)
     AllLoggedTypesHash allLoggedTypesHash;
 };
@@ -2241,7 +2241,7 @@ HRESULT ETW::TypeSystemLog::PreRegistrationInit()
     LIMITED_METHOD_CONTRACT;
 
     if (!AllLoggedTypes::s_cs.InitNoThrow(
-        CrstEtwTypeLogHash, 
+        CrstEtwTypeLogHash,
         CRST_UNSAFE_ANYMODE))       // This lock is taken during a GC while walking the heap
     {
         return E_FAIL;
@@ -2282,13 +2282,13 @@ void ETW::TypeSystemLog::PostRegistrationInit()
     {
         // Determine if a COMPLUS env var is overriding the frequency for the sampled
         // object allocated events
-        
+
         // Config value intentionally typed as string, b/c DWORD intepretation is hard-coded
         // to hex, which is not what the user would expect.  This way I can force the
         // conversion to use decimal.
         NewArrayHolder<WCHAR> wszCustomObjectAllocationEventsPerTypePerSec(NULL);
         if (FAILED(CLRConfig::GetConfigValue(
-            CLRConfig::UNSUPPORTED_ETW_ObjectAllocationEventsPerTypePerSec, 
+            CLRConfig::UNSUPPORTED_ETW_ObjectAllocationEventsPerTypePerSec,
             &wszCustomObjectAllocationEventsPerTypePerSec)) ||
             (wszCustomObjectAllocationEventsPerTypePerSec == NULL))
         {
@@ -2387,7 +2387,7 @@ BOOL ETW::TypeSystemLog::IsHeapAllocEventEnabled()
 {
     LIMITED_METHOD_CONTRACT;
 
-    return 
+    return
         // Only fire the event if it was enabled at startup (and thus the slow-JIT new
         // helper is used in all cases)
         s_fHeapAllocEventEnabledOnStartup &&
@@ -2505,12 +2505,12 @@ void ETW::TypeSystemLog::SendObjectAllocatedEvent(Object * pObject)
                 // Although we're skipping logging the allocation, we still need to log
                 // the type (so it's available for resolving future allocation events to
                 // their types).
-                // 
+                //
                 // (See other call to LogTypeAndParametersIfNecessary further down for
                 // more comments.)
                 LogTypeAndParametersIfNecessary(
-                    NULL,                           
-                    th.AsTAddr(), 
+                    NULL,
+                    th.AsTAddr(),
                     kTypeLogBehaviorAssumeLockAndAlwaysLogTopLevelType);
             }
             return;
@@ -2519,26 +2519,26 @@ void ETW::TypeSystemLog::SendObjectAllocatedEvent(Object * pObject)
         // Based on observed allocation stats, adjust our sampling rate for this type
 
         typeLoggingInfo.dwAllocCountInCurrentBucket += typeLoggingInfo.dwAllocsSkippedForSample;
-        int delta = (dwTickNow - typeLoggingInfo.dwTickOfCurrentTimeBucket) & 0x7FFFFFFF;	// make wrap around work.  
+        int delta = (dwTickNow - typeLoggingInfo.dwTickOfCurrentTimeBucket) & 0x7FFFFFFF;	// make wrap around work.
 
-        int nMinAllocPerMSec = typeLoggingInfo.dwAllocCountInCurrentBucket / 16;		// This is an underestimation of the true rate.  
+        int nMinAllocPerMSec = typeLoggingInfo.dwAllocCountInCurrentBucket / 16;		// This is an underestimation of the true rate.
         if (delta >= 16 || (nMinAllocPerMSec > 2 && nMinAllocPerMSec > typeLoggingInfo.flAllocPerMSec * 1.5F))
         {
             float flNewAllocPerMSec  = 0;
             if (delta >= 16)
             {
-                // This is the normal case, our allocation rate is under control with the current throttling.   
+                // This is the normal case, our allocation rate is under control with the current throttling.
                 flNewAllocPerMSec  = ((float) typeLoggingInfo.dwAllocCountInCurrentBucket) / delta;
-                // Do a exponential decay window that is 5 * max(16, AllocationInterval)  
-                typeLoggingInfo.flAllocPerMSec = 0.8F *  typeLoggingInfo.flAllocPerMSec + 0.2F * flNewAllocPerMSec; 
+                // Do a exponential decay window that is 5 * max(16, AllocationInterval)
+                typeLoggingInfo.flAllocPerMSec = 0.8F *  typeLoggingInfo.flAllocPerMSec + 0.2F * flNewAllocPerMSec;
                 typeLoggingInfo.dwTickOfCurrentTimeBucket = dwTickNow;
                 typeLoggingInfo.dwAllocCountInCurrentBucket = 0;
             }
-            else 
+            else
             {
                 flNewAllocPerMSec = (float) nMinAllocPerMSec;
                 // This means the second clause above is true, which means our sampling rate is too low
-                // so we need to throttle quickly. 
+                // so we need to throttle quickly.
                 typeLoggingInfo.flAllocPerMSec = flNewAllocPerMSec;
             }
 
@@ -2574,9 +2574,9 @@ void ETW::TypeSystemLog::SendObjectAllocatedEvent(Object * pObject)
             LogTypeAndParametersIfNecessary(
 
                 // No BulkTypeEventLogger, as we're not batching during a GC heap walk
-                NULL,                           
-                
-                th.AsTAddr(), 
+                NULL,
+
+                th.AsTAddr(),
 
                 // We've determined the type is not yet logged, so no need to check
                 kTypeLogBehaviorAssumeLockAndAlwaysLogTopLevelType);
@@ -2643,8 +2643,8 @@ void ETW::TypeSystemLog::LogTypeAndParametersIfNecessary(BulkTypeEventLogger * p
     CONTRACTL_END;
 
     if (!ETW_TRACING_CATEGORY_ENABLED(
-        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-        TRACE_LEVEL_INFORMATION, 
+        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+        TRACE_LEVEL_INFORMATION,
         CLR_TYPE_KEYWORD))
     {
         return;
@@ -2656,14 +2656,14 @@ void ETW::TypeSystemLog::LogTypeAndParametersIfNecessary(BulkTypeEventLogger * p
         return;
     }
 
-    // Check to see if we've already logged this type.  If so, bail immediately. 
+    // Check to see if we've already logged this type.  If so, bail immediately.
     // Otherwise, mark that it's getting logged (by adding it to the hash), and fall
     // through to the logging code below.  If caller doesn't care, then don't even
     // check; just log the type
-    BOOL fShouldLogType = ((typeLogBehavior == kTypeLogBehaviorAlwaysLog) || 
+    BOOL fShouldLogType = ((typeLogBehavior == kTypeLogBehaviorAlwaysLog) ||
                            (typeLogBehavior == kTypeLogBehaviorAssumeLockAndAlwaysLogTopLevelType)) ?
                            TRUE :
-                           ((typeLogBehavior == kTypeLogBehaviorTakeLockAndLogIfFirstTime) ? 
+                           ((typeLogBehavior == kTypeLogBehaviorTakeLockAndLogIfFirstTime) ?
                                ShouldLogType(th) :
                                ShouldLogTypeNoLock(th));
     if (!fShouldLogType)
@@ -2739,7 +2739,7 @@ BOOL ETW::TypeSystemLog::ShouldLogTypeNoLock(TypeHandle th)
     // adds it to the hash.
     BOOL fCreatedNew = FALSE;
     LookupOrCreateTypeLoggingInfo(th, &fCreatedNew);
-    
+
     // Return whether we had to create the TypeLoggingInfo (indicating it was not yet in
     // the hash, and thus that we hadn't yet logged the type).
     return fCreatedNew;
@@ -2793,7 +2793,7 @@ ETW::TypeLoggingInfo ETW::TypeSystemLog::LookupOrCreateTypeLoggingInfo(TypeHandl
     }
 
     // Step 1: go from LoaderModule to hash of types.
-    
+
     Module * pLoaderModule = th.GetLoaderModule();
     _ASSERTE(pLoaderModule != NULL);
     LoggedTypesFromModule * pLoggedTypesFromModule = s_pAllLoggedTypes->allLoggedTypesHash.Lookup(pLoaderModule);
@@ -2888,8 +2888,8 @@ void ETW::TypeSystemLog::OnModuleUnload(Module * pModule)
     CONTRACTL_END;
 
     if (!ETW_TRACING_CATEGORY_ENABLED(
-        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-        TRACE_LEVEL_INFORMATION, 
+        MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+        TRACE_LEVEL_INFORMATION,
         CLR_TYPE_KEYWORD))
     {
         return;
@@ -2972,8 +2972,8 @@ void ETW::EnumerationLog::ModuleRangeRundown()
 
     EX_TRY
     {
-        if (ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PRIVATE_PROVIDER_Context, 
-                                         TRACE_LEVEL_INFORMATION, 
+        if (ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PRIVATE_PROVIDER_Context,
+                                         TRACE_LEVEL_INFORMATION,
                                          CLR_PERFTRACK_PRIVATE_KEYWORD))
         {
             ETW::EnumerationLog::EnumerationHelper(NULL, NULL, ETW::EnumerationLog::EnumerationStructs::ModuleRangeLoadPrivate);
@@ -3003,19 +3003,19 @@ void ETW::EnumerationLog::StartRundown()
             MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
             TRACE_LEVEL_INFORMATION,
             CLR_RUNDOWNTHREADING_KEYWORD);
-    
-        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, 
-                                        TRACE_LEVEL_INFORMATION, 
-                                        CLR_RUNDOWNJIT_KEYWORD) 
+
+        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
+                                        TRACE_LEVEL_INFORMATION,
+                                        CLR_RUNDOWNJIT_KEYWORD)
            ||
-           ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, 
-                                        TRACE_LEVEL_INFORMATION, 
-                                        CLR_RUNDOWNLOADER_KEYWORD) 
+           ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
+                                        TRACE_LEVEL_INFORMATION,
+                                        CLR_RUNDOWNLOADER_KEYWORD)
            ||
            IsRundownNgenKeywordEnabledAndNotSuppressed()
            ||
-           ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, 
-                                        TRACE_LEVEL_INFORMATION, 
+           ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
+                                        TRACE_LEVEL_INFORMATION,
                                         CLR_RUNDOWNJITTEDMETHODILTONATIVEMAP_KEYWORD)
            ||
            bIsArmRundownEnabled
@@ -3029,14 +3029,14 @@ void ETW::EnumerationLog::StartRundown()
 
             // The rundown flag is expected to be checked in the caller, so no need to check here again
             DWORD enumerationOptions=ETW::EnumerationLog::EnumerationStructs::None;
-            if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, 
-                                            TRACE_LEVEL_INFORMATION, 
+            if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
+                                            TRACE_LEVEL_INFORMATION,
                                             CLR_RUNDOWNLOADER_KEYWORD))
             {
                 enumerationOptions |= ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCStart;
             }
-            if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, 
-                                            TRACE_LEVEL_INFORMATION, 
+            if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
+                                            TRACE_LEVEL_INFORMATION,
                                             CLR_RUNDOWNJIT_KEYWORD))
             {
                 enumerationOptions |= ETW::EnumerationLog::EnumerationStructs::JitMethodDCStart;
@@ -3045,8 +3045,8 @@ void ETW::EnumerationLog::StartRundown()
             {
                 enumerationOptions |= ETW::EnumerationLog::EnumerationStructs::NgenMethodDCStart;
             }
-            if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, 
-                                            TRACE_LEVEL_INFORMATION, 
+            if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
+                                            TRACE_LEVEL_INFORMATION,
                                             CLR_RUNDOWNJITTEDMETHODILTONATIVEMAP_KEYWORD))
             {
                 enumerationOptions |= ETW::EnumerationLog::EnumerationStructs::MethodDCStartILToNativeMap;
@@ -3057,7 +3057,7 @@ void ETW::EnumerationLog::StartRundown()
             }
 
             ETW::EnumerationLog::EnumerationHelper(NULL, NULL, enumerationOptions);
-            
+
             if (bIsArmRundownEnabled)
             {
                 // When an ETW event consumer asks for ARM rundown, that not only enables
@@ -3095,24 +3095,24 @@ DWORD ETW::EnumerationLog::GetEnumerationOptionsFromRuntimeKeywords()
     LIMITED_METHOD_CONTRACT;
 
     DWORD enumerationOptions=ETW::EnumerationLog::EnumerationStructs::None;
-    if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-        TRACE_LEVEL_INFORMATION, 
+    if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+        TRACE_LEVEL_INFORMATION,
         CLR_LOADER_KEYWORD))
     {
         enumerationOptions |= ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleUnload;
     }
-    if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-        TRACE_LEVEL_INFORMATION, 
+    if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+        TRACE_LEVEL_INFORMATION,
         CLR_JIT_KEYWORD) &&
-        ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-        TRACE_LEVEL_INFORMATION, 
+        ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+        TRACE_LEVEL_INFORMATION,
         CLR_ENDENUMERATION_KEYWORD))
     {
         enumerationOptions |= ETW::EnumerationLog::EnumerationStructs::JitMethodUnload;
     }
     if(IsRuntimeNgenKeywordEnabledAndNotSuppressed() &&
-        ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-        TRACE_LEVEL_INFORMATION, 
+        ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+        TRACE_LEVEL_INFORMATION,
         CLR_ENDENUMERATION_KEYWORD))
     {
         enumerationOptions |= ETW::EnumerationLog::EnumerationStructs::NgenMethodUnload;
@@ -3127,7 +3127,7 @@ DWORD ETW::EnumerationLog::GetEnumerationOptionsFromRuntimeKeywords()
 // code:#EtwCallback.  CAPTURE_STATE is the "ETW-sanctioned" way of performing a
 // rundown, whereas the CLR's rundown provider was *our* version of this, implemented
 // before CAPTURE_STATE was standardized.
-// 
+//
 // When doing a CAPTURE_STATE, the CLR rundown provider is completely unused.  Instead,
 // we pay attention to the runtime keywords active at the time the CAPTURE_STATE was
 // requested, and enumerate through the appropriate objects (AppDomains, assemblies,
@@ -3135,12 +3135,12 @@ DWORD ETW::EnumerationLog::GetEnumerationOptionsFromRuntimeKeywords()
 //
 // CAPTURE_STATE is intended to be used primarily by PerfTrack.  Implementing this form
 // of rundown allows PerfTrack to be blissfully unaware of the CLR's rundown provider.
-// 
+//
 
 // static
 void ETW::EnumerationLog::EnumerateForCaptureState()
 {
-    CONTRACTL 
+    CONTRACTL
     {
         NOTHROW;
         GC_TRIGGERS;
@@ -3187,18 +3187,18 @@ void ETW::EnumerationLog::EndRundown()
             MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
             TRACE_LEVEL_INFORMATION,
             CLR_RUNDOWNTHREADING_KEYWORD);
-        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, 
-                                        TRACE_LEVEL_INFORMATION, 
-                                        CLR_RUNDOWNJIT_KEYWORD) 
+        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
+                                        TRACE_LEVEL_INFORMATION,
+                                        CLR_RUNDOWNJIT_KEYWORD)
            ||
-           ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, 
-                                        TRACE_LEVEL_INFORMATION, 
-                                        CLR_RUNDOWNLOADER_KEYWORD) 
+           ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
+                                        TRACE_LEVEL_INFORMATION,
+                                        CLR_RUNDOWNLOADER_KEYWORD)
            ||
            IsRundownNgenKeywordEnabledAndNotSuppressed()
            ||
-           ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, 
-                                        TRACE_LEVEL_INFORMATION, 
+           ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
+                                        TRACE_LEVEL_INFORMATION,
                                         CLR_RUNDOWNJITTEDMETHODILTONATIVEMAP_KEYWORD)
            ||
            bIsPerfTrackRundownEnabled
@@ -3211,14 +3211,14 @@ void ETW::EnumerationLog::EndRundown()
 
             // The rundown flag is expected to be checked in the caller, so no need to check here again
             DWORD enumerationOptions=ETW::EnumerationLog::EnumerationStructs::None;
-            if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, 
-                                            TRACE_LEVEL_INFORMATION, 
+            if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
+                                            TRACE_LEVEL_INFORMATION,
                                             CLR_RUNDOWNLOADER_KEYWORD))
             {
                 enumerationOptions |= ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCEnd;
             }
-            if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, 
-                                            TRACE_LEVEL_INFORMATION, 
+            if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
+                                            TRACE_LEVEL_INFORMATION,
                                             CLR_RUNDOWNJIT_KEYWORD))
             {
                 enumerationOptions |= ETW::EnumerationLog::EnumerationStructs::JitMethodDCEnd;
@@ -3227,8 +3227,8 @@ void ETW::EnumerationLog::EndRundown()
             {
                 enumerationOptions |= ETW::EnumerationLog::EnumerationStructs::NgenMethodDCEnd;
             }
-            if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, 
-                                            TRACE_LEVEL_INFORMATION, 
+            if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
+                                            TRACE_LEVEL_INFORMATION,
                                             CLR_RUNDOWNJITTEDMETHODILTONATIVEMAP_KEYWORD))
             {
                 enumerationOptions |= ETW::EnumerationLog::EnumerationStructs::MethodDCEndILToNativeMap;
@@ -3248,7 +3248,7 @@ void ETW::EnumerationLog::EndRundown()
             // end marker event will go to the rundown provider
             FireEtwDCEndComplete_V1(GetClrInstanceId());
         }
-    } EX_CATCH { 
+    } EX_CATCH {
         STRESS_LOG1(LF_ALWAYS, LL_ERROR, "Exception during Rundown Enumeration, EIP of last AV = %p", g_LastAccessViolationEIP);
     } EX_END_CATCH(SwallowAllExceptions);
 }
@@ -3258,16 +3258,16 @@ void ETW::EnumerationLog::EndRundown()
 
 Routine Description:
 
-    Registers provider with ETW tracing framework. 
-    This function should not be called more than once, on 
-    Dll Process attach only. 
-    Not thread safe.    
+    Registers provider with ETW tracing framework.
+    This function should not be called more than once, on
+    Dll Process attach only.
+    Not thread safe.
 
 Arguments:
     none
 
 Return Value:
-    Returns the return value from RegisterTraceGuids or EventRegister. 
+    Returns the return value from RegisterTraceGuids or EventRegister.
 
 --*/
 
@@ -3359,7 +3359,7 @@ Return Value:
        Returns ERROR_SUCCESS
 
 --*/
-HRESULT ETW::CEtwTracer::UnRegister() 
+HRESULT ETW::CEtwTracer::UnRegister()
 {
     LIMITED_METHOD_CONTRACT;
 
@@ -3396,10 +3396,10 @@ extern "C"
         }
 
         // stacks are supposed to be fired for only the events with a bit set in the etwStackSupportedEvents bitmap
-        if(((etwStackSupportedEvents[providerIndex][Descriptor->Id/8]) & 
+        if(((etwStackSupportedEvents[providerIndex][Descriptor->Id/8]) &
             (1<<(Descriptor->Id%8))) != 0)
         {
-            if(RegHandle == Microsoft_Windows_DotNETRuntimeHandle) {                
+            if(RegHandle == Microsoft_Windows_DotNETRuntimeHandle) {
                 ETW::SamplingLog::SendStackTrace(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, &CLRStackWalk, &CLRStackId);
             } else if(RegHandle == Microsoft_Windows_DotNETRuntimeRundownHandle) {
                 ETW::SamplingLog::SendStackTrace(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, &CLRStackWalkDCStart, &CLRStackRundownId);
@@ -3423,7 +3423,7 @@ extern "C"
     // callback by #defining MCGEN_PRIVATE_ENABLE_CALLBACK_V2 to be a call to this
     // function (EtwCallback), thus causing EtwCallback to get called after the
     // MC-generated code executes.
-    // 
+    //
     // This callback function is called whenever an ETW session is enabled or disabled. A
     // callback function needs to be specified when the provider is registered. C style
     // callback wrappers are needed during event registration. To handle the callback
@@ -3450,26 +3450,26 @@ extern "C"
 
         // Mark that we are the special ETWRundown thread.  Currently all this does
         // is insure that AVs thrown in this thread are treated as normal exceptions.
-        // This allows us to catch and swallow them.   We can do this because we have 
+        // This allows us to catch and swallow them.   We can do this because we have
         // a reasonably strong belief that doing ETW Rundown does not change runtime state
-        // and thus if an AV happens it is better to simply give up logging ETW and 
+        // and thus if an AV happens it is better to simply give up logging ETW and
         // instead of terminating the process (which is what we would do normally)
         ClrFlsThreadTypeSwitch etwRundownThreadHolder(ThreadType_ETWRundownThread);
         PMCGEN_TRACE_CONTEXT context = (PMCGEN_TRACE_CONTEXT)CallbackContext;
 
-        BOOLEAN bIsPublicTraceHandle = 
+        BOOLEAN bIsPublicTraceHandle =
 #ifdef WINXP_AND_WIN2K3_BUILD_SUPPORT
             McGenPreVista ? ((ULONGLONG)Microsoft_Windows_DotNETRuntimeHandle==(ULONGLONG)context) :
 #endif
             (context->RegistrationHandle==Microsoft_Windows_DotNETRuntimeHandle);
-        
+
         BOOLEAN bIsPrivateTraceHandle =
 #ifdef WINXP_AND_WIN2K3_BUILD_SUPPORT
             McGenPreVista ? ((ULONGLONG)Microsoft_Windows_DotNETRuntimePrivateHandle==(ULONGLONG)context) :
 #endif
             (context->RegistrationHandle==Microsoft_Windows_DotNETRuntimePrivateHandle);
-        
-        BOOLEAN bIsRundownTraceHandle = 
+
+        BOOLEAN bIsRundownTraceHandle =
 #ifdef WINXP_AND_WIN2K3_BUILD_SUPPORT
             McGenPreVista ? ((ULONGLONG)Microsoft_Windows_DotNETRuntimeRundownHandle==(ULONGLONG)context) :
 #endif
@@ -3478,10 +3478,10 @@ extern "C"
 
         // A manifest based provider can be enabled to multiple event tracing sessions
         // As long as there is atleast 1 enabled session, IsEnabled will be TRUE
-        // Since classic providers can be enabled to only a single session, 
+        // Since classic providers can be enabled to only a single session,
         // IsEnabled will be TRUE when it is enabled and FALSE when disabled
-        BOOL bEnabled = 
-            ((ControlCode == EVENT_CONTROL_CODE_ENABLE_PROVIDER) || 
+        BOOL bEnabled =
+            ((ControlCode == EVENT_CONTROL_CODE_ENABLE_PROVIDER) ||
              (ControlCode == EVENT_CONTROL_CODE_CAPTURE_STATE));
         if(bEnabled)
         {
@@ -3516,14 +3516,14 @@ extern "C"
                 // Start and End Method/Module Rundowns
                 // Used to fire events that we missed since we started the controller after the process started
                 // flags for immediate start rundown
-                if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, 
-                                                TRACE_LEVEL_INFORMATION, 
+                if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
+                                                TRACE_LEVEL_INFORMATION,
                                                 CLR_RUNDOWNSTART_KEYWORD))
                     ETW::EnumerationLog::StartRundown();
 
                 // flags delayed end rundown
-                if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, 
-                                                TRACE_LEVEL_INFORMATION, 
+                if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
+                                                TRACE_LEVEL_INFORMATION,
                                                 CLR_RUNDOWNEND_KEYWORD))
                     ETW::EnumerationLog::EndRundown();
             }
@@ -3551,7 +3551,7 @@ extern "C"
             }
         }
 #ifdef FEATURE_COMINTEROP
-        if (ETW_EVENT_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PRIVATE_PROVIDER_Context, CCWRefCountChange)) 
+        if (ETW_EVENT_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PRIVATE_PROVIDER_Context, CCWRefCountChange))
             g_pConfig->SetLogCCWRefCountChangeEnabled(bEnabled != 0);
 #endif // FEATURE_COMINTEROP
 
@@ -3588,7 +3588,7 @@ ULONG ETW::CEtwTracer::Register()
     DWORD newLen = GetEnvironmentVariableA("COMPlus_ETWEnabled", szETWEnabled, SIZE_ETWEnabled);
     if (newLen  == 0 || newLen >= SIZE_ETWEnabled || strcmp(szETWEnabled, "1") != 0)
         return 0;
-    
+
     // Get Env Var COMPlus_EventInfo
     char szEventInfo[SIZE_EventInfo];
     newLen = GetEnvironmentVariableA("COMPlus_EventInfo", szEventInfo, SIZE_EventInfo);
@@ -3828,7 +3828,7 @@ void ETW::ExceptionLog::ExceptionThrown(CrawlFrame  *pCf, BOOL bIsReThrownExcept
 
         Thread *pThread = GetThread();
 
-        struct 
+        struct
         {
             OBJECTREF exceptionObj;
             OBJECTREF innerExceptionObj;
@@ -3850,7 +3850,7 @@ void ETW::ExceptionLog::ExceptionThrown(CrawlFrame  *pCf, BOOL bIsReThrownExcept
         _ASSERTE(pExInfo != NULL);
         bIsNestedException = (pExInfo->GetPreviousExceptionTracker() != NULL);
         bIsCSE = (pExInfo->GetCorruptionSeverity() == ProcessCorrupting);
-        bIsCLSCompliant = IsException((gc.exceptionObj)->GetMethodTable()) && 
+        bIsCLSCompliant = IsException((gc.exceptionObj)->GetMethodTable()) &&
                           ((gc.exceptionObj)->GetMethodTable() != MscorlibBinder::GetException(kRuntimeWrappedException));
 
         // A rethrown exception is also a nested exception
@@ -3890,13 +3890,13 @@ void ETW::ExceptionLog::ExceptionThrown(CrawlFrame  *pCf, BOOL bIsReThrownExcept
         gc.exceptionMessageRef =  ((EXCEPTIONREF)gc.exceptionObj)->GetMessage();
         TypeHandle exceptionTypeHandle = (gc.exceptionObj)->GetTypeHandle();
         exceptionTypeHandle.GetName(exceptionType);
-        WCHAR *exceptionTypeName = (WCHAR *)exceptionType.GetUnicode(); 
+        WCHAR *exceptionTypeName = (WCHAR *)exceptionType.GetUnicode();
 
         if(gc.exceptionMessageRef != NULL)
         {
             exceptionMessage = (gc.exceptionMessageRef)->GetBuffer();
         }
-        
+
         HRESULT exceptionHRESULT = ((EXCEPTIONREF)gc.exceptionObj)->GetHResult();
 
         FireEtwExceptionThrown_V1(exceptionTypeName,
@@ -3921,8 +3921,8 @@ void ETW::LoaderLog::DomainLoadReal(BaseDomain *pDomain, __in_opt LPWSTR wszFrie
 
     EX_TRY
     {
-        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                                        TRACE_LEVEL_INFORMATION, 
+        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                                        TRACE_LEVEL_INFORMATION,
                                         CLR_LOADER_KEYWORD))
         {
             DWORD dwEventOptions = ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleLoad;
@@ -3943,8 +3943,8 @@ void ETW::LoaderLog::DomainUnload(AppDomain *pDomain)
 
     EX_TRY
     {
-        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                                        TRACE_LEVEL_INFORMATION, 
+        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                                        TRACE_LEVEL_INFORMATION,
                                         KEYWORDZERO))
         {
             if(!pDomain->NoAccessToHandleTable())
@@ -3952,8 +3952,8 @@ void ETW::LoaderLog::DomainUnload(AppDomain *pDomain)
                 DWORD enumerationOptions = ETW::EnumerationLog::GetEnumerationOptionsFromRuntimeKeywords();
 
                 // Domain unload also causes type unload events
-                if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                                                TRACE_LEVEL_INFORMATION, 
+                if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                                                TRACE_LEVEL_INFORMATION,
                                                 CLR_TYPE_KEYWORD))
                 {
                     enumerationOptions |= ETW::EnumerationLog::EnumerationStructs::TypeUnload;
@@ -3977,15 +3977,15 @@ void ETW::LoaderLog::CollectibleLoaderAllocatorUnload(AssemblyLoaderAllocator *p
 
     EX_TRY
     {
-        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                                        TRACE_LEVEL_INFORMATION, 
+        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                                        TRACE_LEVEL_INFORMATION,
                                         KEYWORDZERO))
         {
             DWORD enumerationOptions = ETW::EnumerationLog::GetEnumerationOptionsFromRuntimeKeywords();
 
             // Collectible Loader Allocator unload also causes type unload events
-            if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                                            TRACE_LEVEL_INFORMATION, 
+            if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                                            TRACE_LEVEL_INFORMATION,
                                             CLR_TYPE_KEYWORD))
             {
                 enumerationOptions |= ETW::EnumerationLog::EnumerationStructs::TypeUnload;
@@ -4001,7 +4001,7 @@ void ETW::LoaderLog::CollectibleLoaderAllocatorUnload(AssemblyLoaderAllocator *p
    Function gets called by both the Callback mechanism and regular ETW events.
    Type is used to differentiate whether its a callback or a normal call*/
 /****************************************************************************/
-void ETW::InfoLog::RuntimeInformation(INT32 type) 
+void ETW::InfoLog::RuntimeInformation(INT32 type)
 {
     CONTRACTL {
         NOTHROW;
@@ -4009,7 +4009,7 @@ void ETW::InfoLog::RuntimeInformation(INT32 type)
     } CONTRACTL_END;
 
     EX_TRY {
-        if((type == ETW::InfoLog::InfoStructs::Normal && ETW_EVENT_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, RuntimeInformationStart)) 
+        if((type == ETW::InfoLog::InfoStructs::Normal && ETW_EVENT_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, RuntimeInformationStart))
 #ifndef FEATURE_PAL
             ||
            (type == ETW::InfoLog::InfoStructs::Callback && ETW_EVENT_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, RuntimeInformationDCStart))
@@ -4028,7 +4028,7 @@ void ETW::InfoLog::RuntimeInformation(INT32 type)
             UINT8 Sku = 0;
             _ASSERTE(g_fEEManagedEXEStartup ||   //CLR started due to a managed exe
                 g_fEEIJWStartup ||               //CLR started as a mixed mode Assembly
-                CLRHosted() || g_fEEHostedStartup || //CLR started through one of the Hosting API CLRHosted() returns true if CLR started through the V2 Interface while 
+                CLRHosted() || g_fEEHostedStartup || //CLR started through one of the Hosting API CLRHosted() returns true if CLR started through the V2 Interface while
                                                     // g_fEEHostedStartup is true if CLR is hosted through the V1 API.
                 g_fEEComActivatedStartup ||      //CLR started as a COM object
                 g_fEEOtherStartup  );            //In case none of the 4 above mentioned cases are true for example ngen, ildasm then we asssume its a "other" startup
@@ -4038,7 +4038,7 @@ void ETW::InfoLog::RuntimeInformation(INT32 type)
 #else
             Sku = ETW::InfoLog::InfoStructs::DesktopCLR;
 #endif //FEATURE_CORECLR
-        
+
             //version info for clr.dll
             USHORT vmMajorVersion = VER_MAJORVERSION;
             USHORT vmMinorVersion = VER_MINORVERSION;
@@ -4075,7 +4075,7 @@ void ETW::InfoLog::RuntimeInformation(INT32 type)
                 //IJW Mode
                 startupMode = ETW::InfoLog::InfoStructs::IJW;
             }
-            else if(g_fEEManagedEXEStartup) 
+            else if(g_fEEManagedEXEStartup)
             {
                 //managed exe
                 startupMode = ETW::InfoLog::InfoStructs::ManagedExe;
@@ -4093,7 +4093,7 @@ void ETW::InfoLog::RuntimeInformation(INT32 type)
                 //Hosted CLR
                 startupMode = ETW::InfoLog::InfoStructs::HostedCLR;
             }
-            else if(g_fEEComActivatedStartup) 
+            else if(g_fEEComActivatedStartup)
             {
                 //com activated
                 startupMode = ETW::InfoLog::InfoStructs::COMActivated;
@@ -4170,15 +4170,15 @@ void ETW::MethodLog::MethodJitted(MethodDesc *pMethodDesc, SString *namespaceOrC
 
     EX_TRY
     {
-        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                                        TRACE_LEVEL_INFORMATION, 
+        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                                        TRACE_LEVEL_INFORMATION,
                                         CLR_JIT_KEYWORD))
         {
             ETW::MethodLog::SendMethodEvent(pMethodDesc, ETW::EnumerationLog::EnumerationStructs::JitMethodLoad, TRUE, namespaceOrClassName, methodName, methodSignature, pCode, rejitID);
         }
 #ifndef WINXP_AND_WIN2K3_BUILD_SUPPORT
-        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                                        TRACE_LEVEL_INFORMATION, 
+        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                                        TRACE_LEVEL_INFORMATION,
                                         CLR_JITTEDMETHODILTONATIVEMAP_KEYWORD))
         {
             // The call to SendMethodILToNativeMapEvent assumes that the debugger's lazy
@@ -4188,7 +4188,7 @@ void ETW::MethodLog::MethodJitted(MethodDesc *pMethodDesc, SString *namespaceOrC
             // or profiler is loaded.  So it should always be available.
             _ASSERTE(g_pDebugInterface != NULL);
             g_pDebugInterface->InitializeLazyDataIfNecessary();
-            
+
             ETW::MethodLog::SendMethodILToNativeMapEvent(pMethodDesc, ETW::EnumerationLog::EnumerationStructs::JitMethodILToNativeMap, rejitID);
         }
 #endif // WINXP_AND_WIN2K3_BUILD_SUPPORT
@@ -4208,8 +4208,8 @@ void ETW::MethodLog::MethodJitting(MethodDesc *pMethodDesc, SString *namespaceOr
 
     EX_TRY
     {
-        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                                        TRACE_LEVEL_VERBOSE, 
+        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                                        TRACE_LEVEL_VERBOSE,
                                         CLR_JIT_KEYWORD))
         {
             pMethodDesc->GetMethodInfo(*namespaceOrClassName, *methodName, *methodSignature);
@@ -4231,8 +4231,8 @@ void ETW::MethodLog::StubInitialized(ULONGLONG ullHelperStartAddress, LPCWSTR pH
 
     EX_TRY
     {
-        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                                        TRACE_LEVEL_INFORMATION, 
+        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                                        TRACE_LEVEL_INFORMATION,
                                         CLR_JIT_KEYWORD))
         {
             DWORD dwHelperSize=0;
@@ -4249,8 +4249,8 @@ void ETW::MethodLog::StubsInitialized(PVOID *pHelperStartAddresss, PVOID *pHelpe
 {
     WRAPPER_NO_CONTRACT;
 
-    if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                                    TRACE_LEVEL_INFORMATION, 
+    if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                                    TRACE_LEVEL_INFORMATION,
                                     CLR_JIT_KEYWORD))
     {
         for(int i=0; i<lNoOfHelpers; i++)
@@ -4275,8 +4275,8 @@ void ETW::MethodLog::DynamicMethodDestroyed(MethodDesc *pMethodDesc)
 
     EX_TRY
     {
-        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                                        TRACE_LEVEL_INFORMATION, 
+        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                                        TRACE_LEVEL_INFORMATION,
                                         CLR_JIT_KEYWORD))
             ETW::MethodLog::SendMethodEvent(pMethodDesc, ETW::EnumerationLog::EnumerationStructs::JitMethodUnload, TRUE);
     } EX_CATCH { } EX_END_CATCH(SwallowAllExceptions);
@@ -4295,9 +4295,9 @@ void ETW::MethodLog::MethodRestored(MethodDesc *pMethodDesc)
     EX_TRY
     {
         if(IsRuntimeNgenKeywordEnabledAndNotSuppressed()
-           && 
-           ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                                        TRACE_LEVEL_INFORMATION, 
+           &&
+           ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                                        TRACE_LEVEL_INFORMATION,
                                         CLR_STARTENUMERATION_KEYWORD))
         {
             ETW::MethodLog::SendMethodEvent(pMethodDesc, ETW::EnumerationLog::EnumerationStructs::NgenMethodLoad, FALSE);
@@ -4317,9 +4317,9 @@ void ETW::MethodLog::MethodTableRestored(MethodTable *pMethodTable)
     EX_TRY
     {
         if(IsRuntimeNgenKeywordEnabledAndNotSuppressed()
-            && 
-            ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                                         TRACE_LEVEL_INFORMATION, 
+            &&
+            ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                                         TRACE_LEVEL_INFORMATION,
                                          CLR_STARTENUMERATION_KEYWORD))
         {
 #ifdef FEATURE_REMOTING
@@ -4353,7 +4353,7 @@ void ETW::SecurityLog::StrongNameVerificationStart(DWORD dwInFlags, __in LPWSTR 
     // since DTrace do not support UNICODE string, they need to be converted to ANSI string
     INT32 nSize = WideCharToMultiByte(strFullyQualifiedAssemblyName, szDtraceOutput1);
     if (nSize != 0)
-        FireEtwStrongNameVerificationStart_V1(dwInFlags, 0, szDtraceOutput1, GetClrInstanceId()); 
+        FireEtwStrongNameVerificationStart_V1(dwInFlags, 0, szDtraceOutput1, GetClrInstanceId());
 #endif
 #endif // !FEATURE_CORECLR
 }
@@ -4373,7 +4373,7 @@ void ETW::SecurityLog::StrongNameVerificationStop(DWORD dwInFlags,ULONG result, 
     // since DTrace do not support UNICODE string, they need to be converted to ANSI string
     INT32 nSize = WideCharToMultiByte(strFullyQualifiedAssemblyName, szDtraceOutput1);
     if (nSize != 0)
-        FireEtwStrongNameVerificationStop_V1(dwInFlags, result, szDtraceOutput1, GetClrInstanceId()); 
+        FireEtwStrongNameVerificationStop_V1(dwInFlags, result, szDtraceOutput1, GetClrInstanceId());
 #endif
 #endif // !FEATURE_CORECLR
 }
@@ -4617,19 +4617,19 @@ void ETW::LoaderLog::ModuleLoad(Module *pModule, LONG liReportedSharedModule)
     EX_TRY
     {
         DWORD enumerationOptions = ETW::EnumerationLog::EnumerationStructs::None;
-        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                                        TRACE_LEVEL_INFORMATION, 
+        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                                        TRACE_LEVEL_INFORMATION,
                                         KEYWORDZERO))
         {
-            BOOL bTraceFlagLoaderSet = ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                                                                    TRACE_LEVEL_INFORMATION, 
+            BOOL bTraceFlagLoaderSet = ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                                                                    TRACE_LEVEL_INFORMATION,
                                                                     CLR_LOADER_KEYWORD);
             BOOL bTraceFlagNgenMethodSet = IsRuntimeNgenKeywordEnabledAndNotSuppressed();
-            BOOL bTraceFlagStartRundownSet = ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                                                                          TRACE_LEVEL_INFORMATION, 
+            BOOL bTraceFlagStartRundownSet = ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                                                                          TRACE_LEVEL_INFORMATION,
                                                                           CLR_STARTENUMERATION_KEYWORD);
-            BOOL bTraceFlagPerfTrackSet = ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-                                                                          TRACE_LEVEL_INFORMATION, 
+            BOOL bTraceFlagPerfTrackSet = ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+                                                                          TRACE_LEVEL_INFORMATION,
                                                                           CLR_PERFTRACK_KEYWORD);
 
             if(liReportedSharedModule == 0)
@@ -4667,7 +4667,7 @@ void ETW::LoaderLog::ModuleLoad(Module *pModule, LONG liReportedSharedModule)
                 ETW::LoaderLog::SendModuleRange(pModule, enumerationOptions);
             }
         }
-#endif 
+#endif
     } EX_CATCH { } EX_END_CATCH(SwallowAllExceptions);
 }
 
@@ -4725,7 +4725,7 @@ void ETW::LoaderLog::SendDomainEvent(BaseDomain *pBaseDomain, DWORD dwEventOptio
     UINT32 uSharingPolicy = bIsAppDomain?(pBaseDomain->AsAppDomain()->GetSharePolicy()):0;
 
     ULONGLONG ullDomainId = (ULONGLONG)pBaseDomain;
-    ULONG ulDomainFlags = ((bIsDefaultDomain ? ETW::LoaderLog::LoaderStructs::DefaultDomain : 0) | 
+    ULONG ulDomainFlags = ((bIsDefaultDomain ? ETW::LoaderLog::LoaderStructs::DefaultDomain : 0) |
                            (bIsExecutable ? ETW::LoaderLog::LoaderStructs::ExecutableDomain : 0) |
                            (bIsSharedDomain ? ETW::LoaderLog::LoaderStructs::SharedDomain : 0) |
                            (uSharingPolicy<<28));
@@ -4773,7 +4773,7 @@ void ETW::LoaderLog::SendDomainEvent(BaseDomain *pBaseDomain, DWORD dwEventOptio
     }
     else
     {
-        _ASSERTE((dwEventOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleLoad) || 
+        _ASSERTE((dwEventOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleLoad) ||
                  (dwEventOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleUnload) ||
                  (dwEventOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCStart) ||
                  (dwEventOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCEnd));
@@ -4818,7 +4818,7 @@ void ETW::LoaderLog::SendAssemblyEvent(Assembly *pAssembly, DWORD dwEventOptions
         GC_TRIGGERS;
     } CONTRACTL_END;
 
-    if(!pAssembly) 
+    if(!pAssembly)
         return;
 
 #ifndef FEATURE_DTRACE
@@ -4834,7 +4834,7 @@ void ETW::LoaderLog::SendAssemblyEvent(Assembly *pAssembly, DWORD dwEventOptions
     ULONGLONG ullAssemblyId = (ULONGLONG)pAssembly;
     ULONGLONG ullDomainId = (ULONGLONG)pAssembly->GetDomain();
     ULONGLONG ullBindingID = 0;
-#if (defined FEATURE_PREJIT) && (defined FEATURE_FUSION_DEPRECATE)  
+#if (defined FEATURE_PREJIT) && (defined FEATURE_FUSION_DEPRECATE)
     ullBindingID = pAssembly->GetManifestFile()->GetBindingID();
 #endif
     ULONG ulAssemblyFlags = ((bIsDomainNeutral ? ETW::LoaderLog::LoaderStructs::DomainNeutralAssembly : 0) |
@@ -4910,7 +4910,7 @@ ETW_INLINE
 
     // Figure out the rest of the event data
     UINT16 ClrInstanceId = GetClrInstanceId();
-    UINT64 ModuleID = (ULONGLONG)(TADDR) pModule;    
+    UINT64 ModuleID = (ULONGLONG)(TADDR) pModule;
 
     for (COUNT_T i = 0; i < RangeCount; ++i)
     {
@@ -5013,10 +5013,10 @@ static void GetCodeViewInfo(Module * pModule, CV_INFO_PDB70 * pCvInfoIL, CV_INFO
         return;
 
     COUNT_T cbDebugEntries;
-    IMAGE_DEBUG_DIRECTORY * rgDebugEntries = 
+    IMAGE_DEBUG_DIRECTORY * rgDebugEntries =
         (IMAGE_DEBUG_DIRECTORY *) pLayout->GetDirectoryEntryData(IMAGE_DIRECTORY_ENTRY_DEBUG, &cbDebugEntries);
 
-    if (cbDebugEntries < sizeof(IMAGE_DEBUG_DIRECTORY)) 
+    if (cbDebugEntries < sizeof(IMAGE_DEBUG_DIRECTORY))
         return;
 
     // Since rgDebugEntries is an array of IMAGE_DEBUG_DIRECTORYs, cbDebugEntries
@@ -5047,8 +5047,8 @@ static void GetCodeViewInfo(Module * pModule, CV_INFO_PDB70 * pCvInfoIL, CV_INFO
 
         // Some compilers set PointerToRawData but not AddressOfRawData as they put the
         // data at the end of the file in an unmapped part of the file
-        RVA rvaOfRawData = (rgDebugEntries[i].AddressOfRawData != NULL) ? 
-            rgDebugEntries[i].AddressOfRawData : 
+        RVA rvaOfRawData = (rgDebugEntries[i].AddressOfRawData != NULL) ?
+            rgDebugEntries[i].AddressOfRawData :
             pLayout->OffsetToRva(rgDebugEntries[i].PointerToRawData);
 
         ULONG cbDebugData = rgDebugEntries[i].SizeOfData;
@@ -5089,11 +5089,11 @@ static void GetCodeViewInfo(Module * pModule, CV_INFO_PDB70 * pCvInfoIL, CV_INFO
         // may be present in the PE file). In some cases, though, cbDebugData will
         // include all MAX_PATH chars even though path gets null-terminated well before
         // the MAX_PATH limit.
-        
+
         // Gotta have at least one byte of the path
         if (cbDebugData < offsetof(CV_INFO_PDB70, path) + sizeof(char))
             return;
-        
+
         // How much space is available for the path?
         size_t cchPathMaxIncludingNullTerminator = (cbDebugData - offsetof(CV_INFO_PDB70, path)) / sizeof(char);
         _ASSERTE(cchPathMaxIncludingNullTerminator >= 1);   // Guaranteed above
@@ -5114,14 +5114,14 @@ static void GetCodeViewInfo(Module * pModule, CV_INFO_PDB70 * pCvInfoIL, CV_INFO
     }
 
     // Return whatever we found
-    
+
     if (pdbInfoLast.m_pPdb70 != NULL)
     {
         // The last guy is the IL (managed) PDB info
         _ASSERTE(pdbInfoLast.m_cbPdb70 <= sizeof(*pCvInfoIL));      // Guaranteed by checks above
         memcpy(pCvInfoIL, pdbInfoLast.m_pPdb70, pdbInfoLast.m_cbPdb70);
     }
-    
+
     if (pdbInfoNextToLast.m_pPdb70 != NULL)
     {
         // The next-to-last guy is the NGEN (native) PDB info
@@ -5150,7 +5150,7 @@ void ETW::LoaderLog::SendModuleEvent(Module *pModule, DWORD dwEventOptions, BOOL
         GC_TRIGGERS;
     } CONTRACTL_END;
 
-    if(!pModule) 
+    if(!pModule)
         return;
 
 #ifndef FEATURE_DTRACE
@@ -5204,7 +5204,7 @@ void ETW::LoaderLog::SendModuleEvent(Module *pModule, DWORD dwEventOptions, BOOL
     SString moduleName = L"";
 #else // !FEATURE_PAL
     SString moduleName;
-#endif // !FEATURE_PAL    
+#endif // !FEATURE_PAL
     if(!bIsDynamicAssembly)
     {
         ModuleILPath = (PWCHAR)pModule->GetAssembly()->GetManifestFile()->GetILimage()->GetPath().GetUnicode();
@@ -5215,7 +5215,7 @@ void ETW::LoaderLog::SendModuleEvent(Module *pModule, DWORD dwEventOptions, BOOL
             ModuleNativePath = (PWCHAR)pModule->GetNativeImage()->GetPath().GetUnicode();
 #endif // FEATURE_PREJIT
     }
-    
+
     // if we do not have a module path yet, we put the module name
     if(bIsDynamicAssembly || ModuleILPath==NULL || wcslen(ModuleILPath) <= 2)
     {
@@ -5258,8 +5258,8 @@ void ETW::LoaderLog::SendModuleEvent(Module *pModule, DWORD dwEventOptions, BOOL
         }
         else
         {
-            _ASSERTE((dwEventOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleLoad) || 
-                     (dwEventOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCStart) || 
+            _ASSERTE((dwEventOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleLoad) ||
+                     (dwEventOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCStart) ||
                      (dwEventOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCEnd));
         }
     }
@@ -5283,9 +5283,9 @@ void ETW::LoaderLog::SendModuleEvent(Module *pModule, DWORD dwEventOptions, BOOL
         }
         else
         {
-            _ASSERTE((dwEventOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleLoad) || 
-                     (dwEventOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleUnload) || 
-                     (dwEventOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCStart) || 
+            _ASSERTE((dwEventOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleLoad) ||
+                     (dwEventOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleUnload) ||
+                     (dwEventOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCStart) ||
                      (dwEventOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCEnd) ||
                      (dwEventOptions & ETW::EnumerationLog::EnumerationStructs::ModuleRangeEnabledAny));
 
@@ -5362,7 +5362,7 @@ void ETW::MethodLog::SendMethodJitStartEvent(MethodDesc *pMethodDesc, SString *n
         if(!namespaceOrClassName|| !methodName|| !methodSignature || (methodName->IsEmpty() && namespaceOrClassName->IsEmpty() && methodSignature->IsEmpty()))
         {
             pMethodDesc->GetMethodInfo(tNamespace, tMethodName, tMethodSignature);
-            namespaceOrClassName = &tNamespace; 
+            namespaceOrClassName = &tNamespace;
             methodName = &tMethodName;
             methodSignature = &tMethodSignature;
         }
@@ -5386,10 +5386,10 @@ void ETW::MethodLog::SendMethodJitStartEvent(MethodDesc *pMethodDesc, SString *n
             return;
 #endif // !FEATURE_DTRACE
 
-        FireEtwMethodJittingStarted_V1(ullMethodIdentifier, 
-                                       ullModuleID, 
-                                       ulMethodToken, 
-                                       ulMethodILSize, 
+        FireEtwMethodJittingStarted_V1(ullMethodIdentifier,
+                                       ullModuleID,
+                                       ulMethodToken,
+                                       ulMethodILSize,
                                        szDtraceOutput1,
                                        szDtraceOutput2,
                                        szDtraceOutput3,
@@ -5421,7 +5421,7 @@ void ETW::MethodLog::SendMethodEvent(MethodDesc *pMethodDesc, DWORD dwEventOptio
     CHAR szDtraceOutput2[DTRACE_OUTPUT_STRING_LEN];
     CHAR szDtraceOutput3[DTRACE_OUTPUT_STRING_LEN];
 #endif // !FEATURE_DTRACE
-    
+
     BOOL bIsRundownProvider = ((dwEventOptions & ETW::EnumerationLog::EnumerationStructs::JitMethodDCStart) ||
                                (dwEventOptions & ETW::EnumerationLog::EnumerationStructs::JitMethodDCEnd) ||
                                (dwEventOptions & ETW::EnumerationLog::EnumerationStructs::NgenMethodDCStart) ||
@@ -5435,12 +5435,12 @@ void ETW::MethodLog::SendMethodEvent(MethodDesc *pMethodDesc, DWORD dwEventOptio
     if (pMethodDesc == NULL)
         return;
 
-    if(!pMethodDesc->IsRestored()) 
+    if(!pMethodDesc->IsRestored())
     {
         // Forcibly restoring ngen methods can cause all sorts of deadlocks and contract violations
         // These events are therefore put under the private provider
-        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PRIVATE_PROVIDER_Context, 
-                                        TRACE_LEVEL_INFORMATION, 
+        if(ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PRIVATE_PROVIDER_Context,
+                                        TRACE_LEVEL_INFORMATION,
                                         CLR_PRIVATENGENFORCERESTORE_KEYWORD))
         {
             PERMANENT_CONTRACT_VIOLATION(GCViolation, ReasonNonShippingCode);
@@ -5455,14 +5455,14 @@ void ETW::MethodLog::SendMethodEvent(MethodDesc *pMethodDesc, DWORD dwEventOptio
 
     if(bIsRundownProvider)
     {
-        bShowVerboseOutput = ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context, 
-            TRACE_LEVEL_VERBOSE, 
-            KEYWORDZERO);        
+        bShowVerboseOutput = ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_RUNDOWN_PROVIDER_Context,
+            TRACE_LEVEL_VERBOSE,
+            KEYWORDZERO);
     }
     else if(bIsRuntimeProvider)
     {
-        bShowVerboseOutput = ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context, 
-            TRACE_LEVEL_VERBOSE, 
+        bShowVerboseOutput = ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
+            TRACE_LEVEL_VERBOSE,
             KEYWORDZERO);
     }
 
@@ -5487,7 +5487,7 @@ void ETW::MethodLog::SendMethodEvent(MethodDesc *pMethodDesc, DWORD dwEventOptio
     ulColdMethodFlags = ulMethodFlags | ETW::MethodLog::MethodStructs::ColdSection; // Method Extent (bits 28, 29, 30, 31)
     ulMethodFlags = ulMethodFlags | ETW::MethodLog::MethodStructs::HotSection;         // Method Extent (bits 28, 29, 30, 31)
 
-    // MethodDesc ==> Code Address ==>JitMananger 
+    // MethodDesc ==> Code Address ==>JitMananger
     TADDR start = pCode ? pCode : PCODEToPINSTR(pMethodDesc->GetNativeCode());
     if(start == 0) {
         // this method hasn't been jitted
@@ -5528,14 +5528,14 @@ void ETW::MethodLog::SendMethodEvent(MethodDesc *pMethodDesc, DWORD dwEventOptio
 
     SString tNamespace, tMethodName, tMethodSignature;
 
-    // if verbose method load info needed, only then 
+    // if verbose method load info needed, only then
     // find method name and signature and fire verbose method load info
-    if(bShowVerboseOutput) 
+    if(bShowVerboseOutput)
     {
         if(!namespaceOrClassName|| !methodName|| !methodSignature || (methodName->IsEmpty() && namespaceOrClassName->IsEmpty() && methodSignature->IsEmpty()))
         {
             pMethodDesc->GetMethodInfo(tNamespace, tMethodName, tMethodSignature);
-            namespaceOrClassName = &tNamespace; 
+            namespaceOrClassName = &tNamespace;
             methodName = &tMethodName;
             methodSignature = &tMethodSignature;
         }
@@ -5561,7 +5561,7 @@ void ETW::MethodLog::SendMethodEvent(MethodDesc *pMethodDesc, DWORD dwEventOptio
         return;
     INT32 nSizeMothodSignature = WideCharToMultiByte(pMethodSignature, szDtraceOutput3);
     if (nSizeMothodSignature == 0)
-        return; 
+        return;
 #endif // !FEATURE_DTRACE
 
     if((dwEventOptions & ETW::EnumerationLog::EnumerationStructs::JitMethodLoad) ||
@@ -5569,26 +5569,26 @@ void ETW::MethodLog::SendMethodEvent(MethodDesc *pMethodDesc, DWORD dwEventOptio
     {
         if(bShowVerboseOutput)
         {
-            FireEtwMethodLoadVerbose_V1_or_V2(ullMethodIdentifier, 
-                ullModuleID, 
-                ullMethodStartAddress, 
-                ulMethodSize, 
-                ulMethodToken, 
-                ulMethodFlags, 
-                szDtraceOutput1, 
-                szDtraceOutput2, 
-                szDtraceOutput3, 
+            FireEtwMethodLoadVerbose_V1_or_V2(ullMethodIdentifier,
+                ullModuleID,
+                ullMethodStartAddress,
+                ulMethodSize,
+                ulMethodToken,
+                ulMethodFlags,
+                szDtraceOutput1,
+                szDtraceOutput2,
+                szDtraceOutput3,
                 GetClrInstanceId(),
                 rejitID);
         }
         else
         {
-            FireEtwMethodLoad_V1_or_V2(ullMethodIdentifier, 
-                ullModuleID, 
-                ullMethodStartAddress, 
-                ulMethodSize, 
-                ulMethodToken, 
-                ulMethodFlags, 
+            FireEtwMethodLoad_V1_or_V2(ullMethodIdentifier,
+                ullModuleID,
+                ullMethodStartAddress,
+                ulMethodSize,
+                ulMethodToken,
+                ulMethodFlags,
                 GetClrInstanceId(),
                 rejitID);
         }
@@ -5596,26 +5596,26 @@ void ETW::MethodLog::SendMethodEvent(MethodDesc *pMethodDesc, DWORD dwEventOptio
         {
             if(bShowVerboseOutput)
             {
-                FireEtwMethodLoadVerbose_V1_or_V2(ullMethodIdentifier, 
-                    ullModuleID, 
-                    ullColdMethodStartAddress, 
-                    ulColdMethodSize, 
-                    ulMethodToken, 
-                    ulColdMethodFlags, 
-                    szDtraceOutput1, 
-                    szDtraceOutput2, 
-                    szDtraceOutput3, 
+                FireEtwMethodLoadVerbose_V1_or_V2(ullMethodIdentifier,
+                    ullModuleID,
+                    ullColdMethodStartAddress,
+                    ulColdMethodSize,
+                    ulMethodToken,
+                    ulColdMethodFlags,
+                    szDtraceOutput1,
+                    szDtraceOutput2,
+                    szDtraceOutput3,
                     GetClrInstanceId(),
                     rejitID);
             }
             else
             {
-                FireEtwMethodLoad_V1_or_V2(ullMethodIdentifier, 
-                    ullModuleID, 
-                    ullColdMethodStartAddress, 
-                    ulColdMethodSize, 
-                    ulMethodToken, 
-                    ulColdMethodFlags, 
+                FireEtwMethodLoad_V1_or_V2(ullMethodIdentifier,
+                    ullModuleID,
+                    ullColdMethodStartAddress,
+                    ulColdMethodSize,
+                    ulMethodToken,
+                    ulColdMethodFlags,
                     GetClrInstanceId(),
                     rejitID);
             }
@@ -5626,26 +5626,26 @@ void ETW::MethodLog::SendMethodEvent(MethodDesc *pMethodDesc, DWORD dwEventOptio
     {
         if(bShowVerboseOutput)
         {
-            FireEtwMethodUnloadVerbose_V1_or_V2(ullMethodIdentifier, 
-                ullModuleID, 
-                ullMethodStartAddress, 
-                ulMethodSize, 
-                ulMethodToken, 
-                ulMethodFlags, 
-                szDtraceOutput1, 
-                szDtraceOutput2, 
-                szDtraceOutput3, 
+            FireEtwMethodUnloadVerbose_V1_or_V2(ullMethodIdentifier,
+                ullModuleID,
+                ullMethodStartAddress,
+                ulMethodSize,
+                ulMethodToken,
+                ulMethodFlags,
+                szDtraceOutput1,
+                szDtraceOutput2,
+                szDtraceOutput3,
                 GetClrInstanceId(),
                 rejitID);
         }
         else
         {
-            FireEtwMethodUnload_V1_or_V2(ullMethodIdentifier, 
-                ullModuleID, 
-                ullMethodStartAddress, 
-                ulMethodSize, 
-                ulMethodToken, 
-                ulMethodFlags, 
+            FireEtwMethodUnload_V1_or_V2(ullMethodIdentifier,
+                ullModuleID,
+                ullMethodStartAddress,
+                ulMethodSize,
+                ulMethodToken,
+                ulMethodFlags,
                 GetClrInstanceId(),
                 rejitID);
         }
@@ -5653,26 +5653,26 @@ void ETW::MethodLog::SendMethodEvent(MethodDesc *pMethodDesc, DWORD dwEventOptio
         {
             if(bShowVerboseOutput)
             {
-                FireEtwMethodUnloadVerbose_V1_or_V2(ullMethodIdentifier, 
-                    ullModuleID, 
-                    ullColdMethodStartAddress, 
-                    ulColdMethodSize, 
-                    ulMethodToken, 
-                    ulColdMethodFlags, 
-                    szDtraceOutput1, 
-                    szDtraceOutput2, 
-                    szDtraceOutput3, 
+                FireEtwMethodUnloadVerbose_V1_or_V2(ullMethodIdentifier,
+                    ullModuleID,
+                    ullColdMethodStartAddress,
+                    ulColdMethodSize,
+                    ulMethodToken,
+                    ulColdMethodFlags,
+                    szDtraceOutput1,
+                    szDtraceOutput2,
+                    szDtraceOutput3,
                     GetClrInstanceId(),
                     rejitID);
             }
             else
             {
-                FireEtwMethodUnload_V1_or_V2(ullMethodIdentifier, 
-                    ullModuleID, 
-                    ullColdMethodStartAddress, 
-                    ulColdMethodSize, 
-                    ulMethodToken, 
-                    ulColdMethodFlags, 
+                FireEtwMethodUnload_V1_or_V2(ullMethodIdentifier,
+                    ullModuleID,
+                    ullColdMethodStartAddress,
+                    ulColdMethodSize,
+                    ulMethodToken,
+                    ulColdMethodFlags,
                     GetClrInstanceId(),
                     rejitID);
             }
@@ -5683,26 +5683,26 @@ void ETW::MethodLog::SendMethodEvent(MethodDesc *pMethodDesc, DWORD dwEventOptio
     {
         if(bShowVerboseOutput)
         {
-            FireEtwMethodDCStartVerbose_V1_or_V2(ullMethodIdentifier, 
-                ullModuleID, 
-                ullMethodStartAddress, 
-                ulMethodSize, 
-                ulMethodToken, 
-                ulMethodFlags, 
-                szDtraceOutput1, 
-                szDtraceOutput2, 
-                szDtraceOutput3, 
+            FireEtwMethodDCStartVerbose_V1_or_V2(ullMethodIdentifier,
+                ullModuleID,
+                ullMethodStartAddress,
+                ulMethodSize,
+                ulMethodToken,
+                ulMethodFlags,
+                szDtraceOutput1,
+                szDtraceOutput2,
+                szDtraceOutput3,
                 GetClrInstanceId(),
                 rejitID);
         }
         else
         {
-            FireEtwMethodDCStart_V1_or_V2(ullMethodIdentifier, 
-                ullModuleID, 
-                ullMethodStartAddress, 
-                ulMethodSize, 
-                ulMethodToken, 
-                ulMethodFlags, 
+            FireEtwMethodDCStart_V1_or_V2(ullMethodIdentifier,
+                ullModuleID,
+                ullMethodStartAddress,
+                ulMethodSize,
+                ulMethodToken,
+                ulMethodFlags,
                 GetClrInstanceId(),
                 rejitID);
         }
@@ -5710,26 +5710,26 @@ void ETW::MethodLog::SendMethodEvent(MethodDesc *pMethodDesc, DWORD dwEventOptio
         {
             if(bShowVerboseOutput)
             {
-                FireEtwMethodDCStartVerbose_V1_or_V2(ullMethodIdentifier, 
-                    ullModuleID, 
-                    ullColdMethodStartAddress, 
-                    ulColdMethodSize, 
-                    ulMethodToken, 
-                    ulColdMethodFlags, 
-                    szDtraceOutput1, 
-                    szDtraceOutput2, 
-                    szDtraceOutput3, 
+                FireEtwMethodDCStartVerbose_V1_or_V2(ullMethodIdentifier,
+                    ullModuleID,
+                    ullColdMethodStartAddress,
+                    ulColdMethodSize,
+                    ulMethodToken,
+                    ulColdMethodFlags,
+                    szDtraceOutput1,
+                    szDtraceOutput2,
+                    szDtraceOutput3,
                     GetClrInstanceId(),
                     rejitID);
             }
             else
             {
-                FireEtwMethodDCStart_V1_or_V2(ullMethodIdentifier, 
-                    ullModuleID, 
-                    ullColdMethodStartAddress, 
-                    ulColdMethodSize, 
-                    ulMethodToken, 
-                    ulColdMethodFlags, 
+                FireEtwMethodDCStart_V1_or_V2(ullMethodIdentifier,
+                    ullModuleID,
+                    ullColdMethodStartAddress,
+                    ulColdMethodSize,
+                    ulMethodToken,
+                    ulColdMethodFlags,
                     GetClrInstanceId(),
                     rejitID);
             }
@@ -5740,26 +5740,26 @@ void ETW::MethodLog::SendMethodEvent(MethodDesc *pMethodDesc, DWORD dwEventOptio
     {
         if(bShowVerboseOutput)
         {
-            FireEtwMethodDCEndVerbose_V1_or_V2(ullMethodIdentifier, 
-                ullModuleID, 
-                ullMethodStartAddress, 
-                ulMethodSize, 
-                ulMethodToken, 
-                ulMethodFlags, 
-                szDtraceOutput1, 
-                szDtraceOutput2, 
-                szDtraceOutput3, 
+            FireEtwMethodDCEndVerbose_V1_or_V2(ullMethodIdentifier,
+                ullModuleID,
+                ullMethodStartAddress,
+                ulMethodSize,
+                ulMethodToken,
+                ulMethodFlags,
+                szDtraceOutput1,
+                szDtraceOutput2,
+                szDtraceOutput3,
                 GetClrInstanceId(),
                 rejitID);
         }
         else
         {
-            FireEtwMethodDCEnd_V1_or_V2(ullMethodIdentifier, 
-                ullModuleID, 
-                ullMethodStartAddress, 
-                ulMethodSize, 
-                ulMethodToken, 
-                ulMethodFlags, 
+            FireEtwMethodDCEnd_V1_or_V2(ullMethodIdentifier,
+                ullModuleID,
+                ullMethodStartAddress,
+                ulMethodSize,
+                ulMethodToken,
+                ulMethodFlags,
                 GetClrInstanceId(),
                 rejitID);
         }
@@ -5767,26 +5767,26 @@ void ETW::MethodLog::SendMethodEvent(MethodDesc *pMethodDesc, DWORD dwEventOptio
         {
             if(bShowVerboseOutput)
             {
-                FireEtwMethodDCEndVerbose_V1_or_V2(ullMethodIdentifier, 
-                    ullModuleID, 
-                    ullColdMethodStartAddress, 
-                    ulColdMethodSize, 
-                    ulMethodToken, 
-                    ulColdMethodFlags, 
-                    szDtraceOutput1, 
-                    szDtraceOutput2, 
-                    szDtraceOutput3, 
+                FireEtwMethodDCEndVerbose_V1_or_V2(ullMethodIdentifier,
+                    ullModuleID,
+                    ullColdMethodStartAddress,
+                    ulColdMethodSize,
+                    ulMethodToken,
+                    ulColdMethodFlags,
+                    szDtraceOutput1,
+                    szDtraceOutput2,
+                    szDtraceOutput3,
                     GetClrInstanceId(),
                     rejitID);
             }
             else
             {
-                FireEtwMethodDCEnd_V1_or_V2(ullMethodIdentifier, 
-                    ullModuleID, 
-                    ullColdMethodStartAddress, 
-                    ulColdMethodSize, 
-                    ulMethodToken, 
-                    ulColdMethodFlags, 
+                FireEtwMethodDCEnd_V1_or_V2(ullMethodIdentifier,
+                    ullModuleID,
+                    ullColdMethodStartAddress,
+                    ulColdMethodSize,
+                    ulMethodToken,
+                    ulColdMethodFlags,
                     GetClrInstanceId(),
                     rejitID);
             }
@@ -5833,7 +5833,7 @@ void ETW::MethodLog::SendMethodILToNativeMapEvent(MethodDesc * pMethodDesc, DWOR
     CONTRACTL_END;
 
     // This is the limit on how big the il-to-native map can get, as measured by number
-    // of entries in each parallel array (IL offset array and native offset array). 
+    // of entries in each parallel array (IL offset array and native offset array).
     // This number was chosen to ensure the overall event stays under the Windows limit
     // of 64K
     const USHORT kMapEntriesMax = 7000;
@@ -5864,13 +5864,13 @@ void ETW::MethodLog::SendMethodILToNativeMapEvent(MethodDesc * pMethodDesc, DWOR
         return;
 
     // Runtime provider.
-    // 
+    //
     // This macro already checks for the JittedMethodILToNativeMapKeyword before
     // choosing to fire the event
     if ((dwEventOptions & ETW::EnumerationLog::EnumerationStructs::JitMethodILToNativeMap) != 0)
     {
         FireEtwMethodILToNativeMap(
-            ullMethodIdentifier, 
+            ullMethodIdentifier,
             rejitID,
             0,          // Extent:  This event is only sent for JITted (not NGENd) methods, and
             //          currently there is only one extent (hot) for JITted methods.
@@ -5881,12 +5881,12 @@ void ETW::MethodLog::SendMethodILToNativeMapEvent(MethodDesc * pMethodDesc, DWOR
     }
 
     // Rundown provider
-    // 
+    //
     // These macros already check for the JittedMethodILToNativeMapRundownKeyword
     // before choosing to fire the event--we further check our options to see if we
     // should fire the Start and / or End flavor of the event (since the keyword alone
     // is insufficient to distinguish these).
-    // 
+    //
     // (for an explanation of the parameters see the FireEtwMethodILToNativeMap call above)
     if ((dwEventOptions & ETW::EnumerationLog::EnumerationStructs::MethodDCStartILToNativeMap) != 0)
         FireEtwMethodDCStartILToNativeMap(ullMethodIdentifier, 0, 0, cMap, rguiILOffset, rguiNativeOffset, GetClrInstanceId());
@@ -5908,15 +5908,15 @@ void ETW::MethodLog::SendHelperEvent(ULONGLONG ullHelperStartAddress, ULONG ulHe
 #endif // !FEATURE_DTRACE
          ULONG methodFlags = ETW::MethodLog::MethodStructs::JitHelperMethod; // helper flag set
 #ifndef FEATURE_DTRACE
-         FireEtwMethodLoadVerbose_V1(ullHelperStartAddress, 
-                                     0, 
-                                     ullHelperStartAddress, 
-                                     ulHelperSize, 
-                                     0, 
-                                     methodFlags, 
-                                     NULL, 
-                                     pHelperName, 
-                                     NULL, 
+         FireEtwMethodLoadVerbose_V1(ullHelperStartAddress,
+                                     0,
+                                     ullHelperStartAddress,
+                                     ulHelperSize,
+                                     0,
+                                     methodFlags,
+                                     NULL,
+                                     pHelperName,
+                                     NULL,
                                      GetClrInstanceId());
 #else // !FEATURE_DTRACE
          // since DTrace do not support UNICODE string, they need to be converted to ANSI string
@@ -5925,15 +5925,15 @@ void ETW::MethodLog::SendHelperEvent(ULONGLONG ullHelperStartAddress, ULONG ulHe
              return;
          // in the action, printf, of DTtrace, it cannot print an arg with value NULL when the format is set %s.
          // Dtrace does not provide the condition statement so that we give a string "NULL" to it.
-         FireEtwMethodLoadVerbose_V1(ullHelperStartAddress, 
-                                     0, 
-                                     ullHelperStartAddress, 
-                                     ulHelperSize, 
-                                     0, 
-                                     methodFlags, 
-                                     szDtraceOutputNULL, 
-                                     szDtraceOutput1, 
-                                     szDtraceOutputNULL, 
+         FireEtwMethodLoadVerbose_V1(ullHelperStartAddress,
+                                     0,
+                                     ullHelperStartAddress,
+                                     ulHelperSize,
+                                     0,
+                                     methodFlags,
+                                     szDtraceOutputNULL,
+                                     szDtraceOutput1,
+                                     szDtraceOutputNULL,
                                      GetClrInstanceId());
 #endif // !FEATURE_DTRACE
     }
@@ -5941,7 +5941,7 @@ void ETW::MethodLog::SendHelperEvent(ULONGLONG ullHelperStartAddress, ULONG ulHe
 
 
 /****************************************************************************/
-/* This routine sends back method events of type 'dwEventOptions', for all 
+/* This routine sends back method events of type 'dwEventOptions', for all
    NGEN methods in pModule */
 /****************************************************************************/
 void ETW::MethodLog::SendEventsForNgenMethods(Module *pModule, DWORD dwEventOptions)
@@ -5966,10 +5966,10 @@ void ETW::MethodLog::SendEventsForNgenMethods(Module *pModule, DWORD dwEventOpti
 }
 
 /****************************************************************************/
-/* This routine sends back method events of type 'dwEventOptions', for all 
-   JITed methods in either a given LoaderAllocator (if pLoaderAllocatorFilter is non NULL) 
+/* This routine sends back method events of type 'dwEventOptions', for all
+   JITed methods in either a given LoaderAllocator (if pLoaderAllocatorFilter is non NULL)
    or in a given Domain (if pDomainFilter is non NULL) or for
-   all methods (if both filters are null) */ 
+   all methods (if both filters are null) */
 /****************************************************************************/
 void ETW::MethodLog::SendEventsForJitMethods(BaseDomain *pDomainFilter, LoaderAllocator *pLoaderAllocatorFilter, DWORD dwEventOptions)
 {
@@ -5986,18 +5986,18 @@ void ETW::MethodLog::SendEventsForJitMethods(BaseDomain *pDomainFilter, LoaderAl
     _ASSERTE((fLoadOrDCStart || fUnloadOrDCEnd) && !(fLoadOrDCStart && fUnloadOrDCEnd));
 
     BOOL fSendMethodEvent =
-        (dwEventOptions & 
+        (dwEventOptions &
             (ETW::EnumerationLog::EnumerationStructs::JitMethodLoad |
             ETW::EnumerationLog::EnumerationStructs::JitMethodDCStart |
             ETW::EnumerationLog::EnumerationStructs::JitMethodUnload |
             ETW::EnumerationLog::EnumerationStructs::JitMethodDCEnd)) != 0;
 
     BOOL fSendILToNativeMapEvent =
-        (dwEventOptions & 
+        (dwEventOptions &
             (ETW::EnumerationLog::EnumerationStructs::MethodDCStartILToNativeMap |
             ETW::EnumerationLog::EnumerationStructs::MethodDCEndILToNativeMap)) != 0;
 
-    BOOL fCollectibleLoaderAllocatorFilter = 
+    BOOL fCollectibleLoaderAllocatorFilter =
         ((pLoaderAllocatorFilter != NULL) && (pLoaderAllocatorFilter->IsCollectible()));
 #ifndef WINXP_AND_WIN2K3_BUILD_SUPPORT
     if (fSendILToNativeMapEvent)
@@ -6021,13 +6021,13 @@ void ETW::MethodLog::SendEventsForJitMethods(BaseDomain *pDomainFilter, LoaderAl
             continue;
 
         TADDR codeStart = heapIterator.GetMethodCode();
-        
+
         // Grab rejitID from the rejit manager. Short-circuit the call if we're filtering
         // by a collectible loader allocator, since rejit is not supported on RefEmit
         // assemblies.  This also allows us to avoid having to pre-enter the rejit
         // manager locks (which we have to do when filtering by domain; see
         // code:#TableLockHolder).
-        ReJITID rejitID = 
+        ReJITID rejitID =
             fCollectibleLoaderAllocatorFilter ?
             0 :
             pMD->GetReJitManager()->GetReJitIdNoLock(pMD, codeStart);
@@ -6054,8 +6054,8 @@ void ETW::MethodLog::SendEventsForJitMethods(BaseDomain *pDomainFilter, LoaderAl
             if (fSendMethodEvent)
             {
                 ETW::MethodLog::SendMethodEvent(
-                    pMD, 
-                    dwEventOptions, 
+                    pMD,
+                    dwEventOptions,
                     TRUE,           // bIsJit
                     NULL,           // namespaceOrClassName
                     NULL,           // methodName
@@ -6079,8 +6079,8 @@ void ETW::MethodLog::SendEventsForJitMethods(BaseDomain *pDomainFilter, LoaderAl
             if (fSendMethodEvent)
             {
                 ETW::MethodLog::SendMethodEvent(
-                    pMD, 
-                    dwEventOptions, 
+                    pMD,
+                    dwEventOptions,
                     TRUE,           // bIsJit
                     NULL,           // namespaceOrClassName
                     NULL,           // methodName
@@ -6105,7 +6105,7 @@ void ETW::MethodLog::SendEventsForJitMethods(BaseDomain *pDomainFilter, LoaderAl
 //
 void ETW::EnumerationLog::IterateAppDomain(AppDomain * pAppDomain, DWORD enumerationOptions)
 {
-    CONTRACTL 
+    CONTRACTL
     {
         THROWS;
         GC_TRIGGERS;
@@ -6119,7 +6119,7 @@ void ETW::EnumerationLog::IterateAppDomain(AppDomain * pAppDomain, DWORD enumera
 
     if (pAppDomain->IsFinalized())
     {
-        return; 
+        return;
     }
 
     // Since we're not FINALIZED yet, the handle table should remain intact,
@@ -6135,11 +6135,11 @@ void ETW::EnumerationLog::IterateAppDomain(AppDomain * pAppDomain, DWORD enumera
 }
 
 /********************************************************************************/
-/* This routine fires ETW events for 
-   Domain, 
-   Assemblies in them, 
-   DomainModule's in them, 
-   Modules in them, 
+/* This routine fires ETW events for
+   Domain,
+   Assemblies in them,
+   DomainModule's in them,
+   Modules in them,
    JIT methods in them,
    and the NGEN methods in them
    based on enumerationOptions.*/
@@ -6151,7 +6151,7 @@ void ETW::EnumerationLog::IterateDomain(BaseDomain *pDomain, DWORD enumerationOp
         GC_TRIGGERS;
         PRECONDITION(pDomain != NULL);
     } CONTRACTL_END;
-    
+
 #if defined(_DEBUG) && !defined(DACCESS_COMPILE)
     // Do not call IterateDomain() directly with an AppDomain.  Use
     // IterateAppDomain(), whch wraps this function with a hold on the
@@ -6164,19 +6164,19 @@ void ETW::EnumerationLog::IterateDomain(BaseDomain *pDomain, DWORD enumerationOp
 #endif // defined(_DEBUG) && !defined(DACCESS_COMPILE)
 
     EX_TRY
-    {    
+    {
         // DC Start events for Domain
         if(enumerationOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCStart)
         {
             ETW::LoaderLog::SendDomainEvent(pDomain, enumerationOptions);
         }
-    
+
         // DC End or Unload Jit Method events
         if (enumerationOptions & ETW::EnumerationLog::EnumerationStructs::JitMethodUnloadOrDCEndAny)
         {
             ETW::MethodLog::SendEventsForJitMethods(pDomain, NULL, enumerationOptions);
         }
-    
+
         if (pDomain->IsAppDomain())
         {
             AppDomain::AssemblyIterator assemblyIterator = pDomain->AsAppDomain()->IterateAssembliesEx(
@@ -6192,9 +6192,9 @@ void ETW::EnumerationLog::IterateDomain(BaseDomain *pDomain, DWORD enumerationOp
                 {
                     ETW::EnumerationLog::IterateAssembly(pAssembly, enumerationOptions);
                 }
-                
+
                 DomainModuleIterator domainModuleIterator = pDomainAssembly->IterateModules(kModIterIncludeLoaded);
-                while (domainModuleIterator.Next()) 
+                while (domainModuleIterator.Next())
                 {
                     Module * pModule = domainModuleIterator.GetModule();
                     ETW::EnumerationLog::IterateModule(pModule, enumerationOptions);
@@ -6219,28 +6219,28 @@ void ETW::EnumerationLog::IterateDomain(BaseDomain *pDomain, DWORD enumerationOp
                 }
 
                 ModuleIterator domainModuleIterator = pAssembly->IterateModules();
-                while (domainModuleIterator.Next()) 
+                while (domainModuleIterator.Next())
                 {
                     Module * pModule = domainModuleIterator.GetModule();
                     ETW::EnumerationLog::IterateModule(pModule, enumerationOptions);
                 }
 
-                if ((enumerationOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCEnd) || 
+                if ((enumerationOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCEnd) ||
                     (enumerationOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleUnload))
                 {
                     ETW::EnumerationLog::IterateAssembly(pAssembly, enumerationOptions);
                 }
             }
         }
-        
+
         // DC Start or Load Jit Method events
         if (enumerationOptions & ETW::EnumerationLog::EnumerationStructs::JitMethodLoadOrDCStartAny)
         {
             ETW::MethodLog::SendEventsForJitMethods(pDomain, NULL, enumerationOptions);
         }
-    
+
         // DC End or Unload events for Domain
-        if((enumerationOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCEnd) || 
+        if((enumerationOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCEnd) ||
            (enumerationOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleUnload))
         {
             ETW::LoaderLog::SendDomainEvent(pDomain, enumerationOptions);
@@ -6250,10 +6250,10 @@ void ETW::EnumerationLog::IterateDomain(BaseDomain *pDomain, DWORD enumerationOp
 
 
 /********************************************************************************/
-/* This routine fires ETW events for 
-   Assembly in LoaderAllocator, 
-   DomainModule's in them, 
-   Modules in them, 
+/* This routine fires ETW events for
+   Assembly in LoaderAllocator,
+   DomainModule's in them,
+   Modules in them,
    JIT methods in them,
    and the NGEN methods in them
    based on enumerationOptions.*/
@@ -6265,20 +6265,20 @@ void ETW::EnumerationLog::IterateCollectibleLoaderAllocator(AssemblyLoaderAlloca
         GC_TRIGGERS;
         PRECONDITION(pLoaderAllocator != NULL);
     } CONTRACTL_END;
-    
+
     EX_TRY
-    {    
+    {
         // Unload Jit Method events
         if (enumerationOptions & ETW::EnumerationLog::EnumerationStructs::JitMethodUnload)
         {
             ETW::MethodLog::SendEventsForJitMethods(NULL, pLoaderAllocator, enumerationOptions);
         }
-    
+
         Assembly *pAssembly = pLoaderAllocator->Id()->GetDomainAssembly()->GetAssembly();
         _ASSERTE(!pAssembly->IsDomainNeutral()); // Collectible Assemblies are not domain neutral.
 
         DomainModuleIterator domainModuleIterator = pLoaderAllocator->Id()->GetDomainAssembly()->IterateModules(kModIterIncludeLoaded);
-        while (domainModuleIterator.Next()) 
+        while (domainModuleIterator.Next())
         {
             Module *pModule = domainModuleIterator.GetModule();
             ETW::EnumerationLog::IterateModule(pModule, enumerationOptions);
@@ -6308,7 +6308,7 @@ void ETW::EnumerationLog::IterateAssembly(Assembly *pAssembly, DWORD enumeration
         GC_TRIGGERS;
         PRECONDITION(pAssembly != NULL);
     } CONTRACTL_END;
-    
+
     EX_TRY
     {
         // DC Start events for Assembly
@@ -6316,7 +6316,7 @@ void ETW::EnumerationLog::IterateAssembly(Assembly *pAssembly, DWORD enumeration
         {
             ETW::LoaderLog::SendAssemblyEvent(pAssembly, enumerationOptions);
         }
-        
+
         // DC Start, DCEnd, events for DomainModule
         if((enumerationOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCEnd) ||
            (enumerationOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCStart))
@@ -6324,7 +6324,7 @@ void ETW::EnumerationLog::IterateAssembly(Assembly *pAssembly, DWORD enumeration
             if(pAssembly->GetDomain()->IsAppDomain())
             {
                 DomainModuleIterator dmIterator = pAssembly->FindDomainAssembly(pAssembly->GetDomain()->AsAppDomain())->IterateModules(kModIterIncludeLoaded);
-                while (dmIterator.Next()) 
+                while (dmIterator.Next())
                 {
                     ETW::LoaderLog::SendModuleEvent(dmIterator.GetModule(), enumerationOptions, TRUE);
                 }
@@ -6351,27 +6351,27 @@ void ETW::EnumerationLog::IterateModule(Module *pModule, DWORD enumerationOption
         GC_TRIGGERS;
         PRECONDITION(pModule != NULL);
     } CONTRACTL_END;
-    
+
     EX_TRY
-    {    
+    {
         // DC Start events for Module
         if((enumerationOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCStart) ||
            (enumerationOptions & ETW::EnumerationLog::EnumerationStructs::ModuleRangeDCStart))
         {
             ETW::LoaderLog::SendModuleEvent(pModule, enumerationOptions);
         }
-        
+
         // DC Start or Load or DC End or Unload Ngen Method events
-        if((enumerationOptions & ETW::EnumerationLog::EnumerationStructs::NgenMethodLoad) || 
-           (enumerationOptions & ETW::EnumerationLog::EnumerationStructs::NgenMethodDCStart) || 
-           (enumerationOptions & ETW::EnumerationLog::EnumerationStructs::NgenMethodUnload) || 
+        if((enumerationOptions & ETW::EnumerationLog::EnumerationStructs::NgenMethodLoad) ||
+           (enumerationOptions & ETW::EnumerationLog::EnumerationStructs::NgenMethodDCStart) ||
+           (enumerationOptions & ETW::EnumerationLog::EnumerationStructs::NgenMethodUnload) ||
            (enumerationOptions & ETW::EnumerationLog::EnumerationStructs::NgenMethodDCEnd))
         {
             ETW::MethodLog::SendEventsForNgenMethods(pModule, enumerationOptions);
-        }            
-        
+        }
+
         // DC End or Unload events for Module
-        if((enumerationOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCEnd) || 
+        if((enumerationOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleDCEnd) ||
            (enumerationOptions & ETW::EnumerationLog::EnumerationStructs::DomainAssemblyModuleUnload) ||
            (enumerationOptions & ETW::EnumerationLog::EnumerationStructs::ModuleRangeDCEnd))
         {
@@ -6384,11 +6384,11 @@ void ETW::EnumerationLog::IterateModule(Module *pModule, DWORD enumerationOption
         {
             ETW::TypeSystemLog::OnModuleUnload(pModule);
         }
-        
+
         // ModuleRangeLoadPrivate events for module range information from attach/detach scenarios
-        if (ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PRIVATE_PROVIDER_Context, 
-                                         TRACE_LEVEL_INFORMATION, 
-                                         CLR_PERFTRACK_PRIVATE_KEYWORD) && 
+        if (ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PRIVATE_PROVIDER_Context,
+                                         TRACE_LEVEL_INFORMATION,
+                                         CLR_PERFTRACK_PRIVATE_KEYWORD) &&
             (enumerationOptions & ETW::EnumerationLog::EnumerationStructs::ModuleRangeLoadPrivate))
         {
             ETW::LoaderLog::SendModuleEvent(pModule, enumerationOptions);
@@ -6409,9 +6409,9 @@ void ETW::EnumerationLog::IterateModule(Module *pModule, DWORD enumerationOption
 //
 // Notes:
 //     * if all filter args are NULL, events from all domains are reported
-//     
+//
 // #TableLockHolder:
-// 
+//
 // A word about ReJitManager::TableLockHolder... As we enumerate through the functions,
 // we may need to grab their ReJITIDs. The ReJitManager grabs its table Crst in order to
 // fetch these. However, several other kinds of locks are being taken during this
@@ -6435,12 +6435,12 @@ void ETW::EnumerationLog::EnumerationHelper(Module *moduleFilter, BaseDomain *do
         THROWS;
         GC_TRIGGERS;
     } CONTRACTL_END;
-    
+
     // Disable IBC logging during ETW enumeration since we call a lot of functionality
     // that does logging and causes problems in the shutdown path due to critical
     // section access for IBC logging
     IBCLoggingDisabler disableLogging;
-    
+
     // See code:#TableLockHolder
     ReJitManager::TableLockHolder lkRejitMgrSharedDomain(SharedDomain::GetDomain()->GetReJitManager());
 
@@ -6455,7 +6455,7 @@ void ETW::EnumerationLog::EnumerationHelper(Module *moduleFilter, BaseDomain *do
         {
             ETW::MethodLog::SendEventsForJitMethods(NULL, NULL, enumerationOptions);
         }
-    
+
         ETW::EnumerationLog::IterateModule(moduleFilter, enumerationOptions);
 
         // DC Start or Load Jit Method events from all Domains
@@ -6480,7 +6480,7 @@ void ETW::EnumerationLog::EnumerationHelper(Module *moduleFilter, BaseDomain *do
                 ETW::EnumerationLog::IterateDomain(domainFilter, enumerationOptions);
             }
         }
-        else 
+        else
         {
             AppDomainIterator appDomainIterator(FALSE);
             while(appDomainIterator.Next())
@@ -6495,8 +6495,8 @@ void ETW::EnumerationLog::EnumerationHelper(Module *moduleFilter, BaseDomain *do
                 }
             }
             ETW::EnumerationLog::IterateDomain(SharedDomain::GetDomain(), enumerationOptions);
-        }    
-    }    
+        }
+    }
 }
 
 #endif // !FEATURE_REDHAWK

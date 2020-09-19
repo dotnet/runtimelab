@@ -38,9 +38,9 @@ class EEType;
 //
 // READ THIS!
 //
-// This struct exists for type description purposes, but you must never directly refer to the object 
-// reference.  The only code allowed to do this is the code inherited directly from the CLR, which all 
-// includes gcrhenv.h.  If your code is outside the namespace of gcrhenv.h, direct object reference 
+// This struct exists for type description purposes, but you must never directly refer to the object
+// reference.  The only code allowed to do this is the code inherited directly from the CLR, which all
+// includes gcrhenv.h.  If your code is outside the namespace of gcrhenv.h, direct object reference
 // manipulation is prohibited--use C# instead.
 //
 // To enforce this, we declare RtuObjectRef as a class with no public members.
@@ -51,7 +51,7 @@ class RtuObjectRef
 private:
 #else
 public:
-#endif 
+#endif
     TADDR pvObject;
 };
 
@@ -87,7 +87,7 @@ typedef void * GcSegmentHandle;
 
 #define RH_LARGE_OBJECT_SIZE 85000
 
-// A 'clump' is defined as the size of memory covered by 1 byte in the card table.  These constants are 
+// A 'clump' is defined as the size of memory covered by 1 byte in the card table.  These constants are
 // verified against gcpriv.h in gcrhee.cpp.
 #if (POINTER_SIZE == 8)
 #define CLUMP_SIZE 0x800
@@ -116,7 +116,7 @@ public:
     static void BulkEnumGcObjRef(PTR_RtuObjectRef pRefs, UInt32 cRefs, void * pfnEnumCallback, void * pvCallbackData);
 
     static void EnumGcRefs(ICodeManager * pCodeManager,
-                           MethodInfo * pMethodInfo, 
+                           MethodInfo * pMethodInfo,
                            PTR_VOID safePointAddress,
                            REGDISPLAY * pRegisterSet,
                            void * pfnEnumCallback,

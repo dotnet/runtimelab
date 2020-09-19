@@ -11,7 +11,7 @@
 //
 
 // By default, print assert to console and break in the debugger, if attached.  Set to 0 for a pop-up dialog on assert.
-DEBUG_CONFIG_VALUE_WITH_DEFAULT(BreakOnAssert, 1) 
+DEBUG_CONFIG_VALUE_WITH_DEFAULT(BreakOnAssert, 1)
 
 RETAIL_CONFIG_VALUE(HeapVerify)
 RETAIL_CONFIG_VALUE(StressLogLevel)

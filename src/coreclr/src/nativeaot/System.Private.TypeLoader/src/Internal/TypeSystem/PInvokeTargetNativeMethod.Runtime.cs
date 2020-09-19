@@ -15,7 +15,7 @@ using Internal.TypeSystem;
 namespace Internal.IL.Stubs
 {
     public sealed partial class PInvokeTargetNativeMethod
-    {        
+    {
         public override MethodNameAndSignature NameAndSignature
         {
             get

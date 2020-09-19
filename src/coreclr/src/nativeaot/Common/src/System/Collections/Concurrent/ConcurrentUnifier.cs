@@ -24,12 +24,12 @@ namespace System.Collections.Concurrent
     //
     //    - The Factory method will never be called inside the unifier lock. If two threads race to
     //      enter a value for the same key, the Factory() may get invoked twice for the same key - one
-    //      of them will "win" the race and its result entered into the dictionary - other gets thrown away. 
+    //      of them will "win" the race and its result entered into the dictionary - other gets thrown away.
     //
     // Notes:
     //    - This class is used to look up types when GetType() or typeof() is invoked.
     //      That means that this class itself cannot do or call anything that does these
-    //      things. 
+    //      things.
     //
     //    - For this reason, it chooses not to mimic the official ConcurrentDictionary class
     //      (I don't even want to risk using delegates.) Even the LowLevel versions of these
@@ -47,15 +47,15 @@ namespace System.Collections.Concurrent
     //    ConcurrentUnifier handles the synchronization that ensures this.
     //
     //    Safety for concurrent readers is ensured as follows:
-    //    
+    //
     //    Each hash bucket is maintained as a stack.  Inserts are done under
-    //    a lock; the entry is filled out completely, then "published" by a 
+    //    a lock; the entry is filled out completely, then "published" by a
     //    single write to the top of the bucket.  This ensures that a reader
     //    will see a valid snapshot of the bucket, once it has read the head.
-    //    
+    //
     //    On resize, we allocate an entirely new table, rather than resizing
     //    in place.  We fill in the new table completely, under the lock,
-    //    then "publish" it with a single write.  Any reader that races with 
+    //    then "publish" it with a single write.  Any reader that races with
     //    this will either see the old table or the new one; each will contain
     //    the same data.
     //
@@ -233,7 +233,7 @@ namespace System.Collections.Concurrent
                     }
                 }
 
-                // The assertion is "<=" rather than "==" because we allow an entry to "leak" until the next resize if 
+                // The assertion is "<=" rather than "==" because we allow an entry to "leak" until the next resize if
                 // a thread died between the time between we allocated the entry and the time we link it into the bucket stack.
                 Debug.Assert(newNextFreeEntry <= _nextFreeEntry);
 
@@ -284,7 +284,7 @@ namespace System.Collections.Concurrent
                             Debug.Fail("Bucket " + bucket + " has a cycle in its linked list.");
                     }
                 }
-                // The assertion is "<=" rather than "==" because we allow an entry to "leak" until the next resize if 
+                // The assertion is "<=" rather than "==" because we allow an entry to "leak" until the next resize if
                 // a thread died between the time between we allocated the entry and the time we link it into the bucket stack.
                 Debug.Assert(numEntriesEncountered <= _nextFreeEntry);
 #endif //DEBUG

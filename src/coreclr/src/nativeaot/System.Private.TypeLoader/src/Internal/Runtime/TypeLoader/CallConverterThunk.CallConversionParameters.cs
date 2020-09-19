@@ -140,7 +140,7 @@ namespace Internal.Runtime.TypeLoader
             _dynamicInvokeParams = null;
             _dynamicInvokeByRefObjectArgs = null;
 
-            // 
+            //
             // Setup input argument iterator for the caller
             //
             ArgIteratorData callerIteratorData;
@@ -184,7 +184,7 @@ namespace Internal.Runtime.TypeLoader
                     // Setup argument offsets.
                     int ofsCallerTemp = callerArgsLookupTargetFunctionPointer.GetNextOffset();
 
-                    // Check to see if we've handled all the arguments that we are to pass to the callee. 
+                    // Check to see if we've handled all the arguments that we are to pass to the callee.
                     if (TransitionBlock.InvalidOffset == ofsCallerTemp)
                         break;
 
@@ -239,7 +239,7 @@ namespace Internal.Runtime.TypeLoader
                 }
             }
 
-            // 
+            //
             // Setup output argument iterator for the callee
             //
             _calleeArgs = new ArgIterator(conversionInfo.ArgIteratorData,
@@ -252,7 +252,7 @@ namespace Internal.Runtime.TypeLoader
                                                 conversionInfo.IsOpenInstanceDelegateThunk,
                                                 conversionInfo.IsClosedStaticDelegate);
 
-            // The function pointer, 'hasParamType', and 'hasThis' flags for the callee arg iterator need to be computed/read from the caller's 
+            // The function pointer, 'hasParamType', and 'hasThis' flags for the callee arg iterator need to be computed/read from the caller's
             // input arguments in the case of a reflection invoker thunk (the target method pointer and 'hasThis' flags are
             // passed in as parameters from the caller, not loaded from a static method signature in native layout)
             if (conversionInfo.IsReflectionDynamicInvokerThunk)

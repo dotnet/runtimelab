@@ -44,17 +44,17 @@ C_FUNC(\Name):
 .macro PREPARE_EXTERNAL_VAR Name, HelperReg
         adrp \HelperReg, C_FUNC(\Name)
         add	\HelperReg, \HelperReg, :lo12:C_FUNC(\Name)
-.endm 
+.endm
 
 .macro PREPARE_EXTERNAL_VAR_INDIRECT Name, HelperReg
         adrp \HelperReg, C_FUNC(\Name)
         ldr	\HelperReg, [\HelperReg, :lo12:C_FUNC(\Name)]
-.endm 
+.endm
 
 .macro PREPARE_EXTERNAL_VAR_INDIRECT_W Name, HelperReg
         adrp x\HelperReg, C_FUNC(\Name)
         ldr	w\HelperReg, [x\HelperReg, :lo12:C_FUNC(\Name)]
-.endm 
+.endm
 
 
 .macro PROLOG_STACK_ALLOC Size
@@ -114,12 +114,12 @@ C_FUNC(\Name):
 .endm
 
 //-----------------------------------------------------------------------------
-// The Following sets of SAVE_*_REGISTERS expect the memory to be reserved and 
+// The Following sets of SAVE_*_REGISTERS expect the memory to be reserved and
 // base address to be passed in $reg
 //
 
 // Reserve 64 bytes of memory before calling  SAVE_ARGUMENT_REGISTERS
-.macro SAVE_ARGUMENT_REGISTERS reg, ofs 
+.macro SAVE_ARGUMENT_REGISTERS reg, ofs
 
         stp                    x0, x1, [\reg, #(\ofs)]
         stp                    x2, x3, [\reg, #(\ofs + 16)]
@@ -129,7 +129,7 @@ C_FUNC(\Name):
 .endm
 
 // Reserve 64 bytes of memory before calling  SAVE_FLOAT_ARGUMENT_REGISTERS
-.macro SAVE_FLOAT_ARGUMENT_REGISTERS reg, ofs 
+.macro SAVE_FLOAT_ARGUMENT_REGISTERS reg, ofs
 
         stp                    d0, d1, [\reg, #(\ofs)]
         stp                    d2, d3, [\reg, #(\ofs + 16)]
@@ -138,7 +138,7 @@ C_FUNC(\Name):
 
 .endm
 
-.macro RESTORE_ARGUMENT_REGISTERS reg, ofs 
+.macro RESTORE_ARGUMENT_REGISTERS reg, ofs
 
         ldp                    x0, x1, [\reg, #(\ofs)]
         ldp                    x2, x3, [\reg, #(\ofs + 16)]
@@ -147,7 +147,7 @@ C_FUNC(\Name):
 
 .endm
 
-.macro RESTORE_FLOAT_ARGUMENT_REGISTERS reg, ofs 
+.macro RESTORE_FLOAT_ARGUMENT_REGISTERS reg, ofs
 
         ldp                    d0, d1, [\reg, #(\ofs)]
         ldp                    d2, d3, [\reg, #(\ofs + 16)]
@@ -174,7 +174,7 @@ C_FUNC(\Name):
 
 
 .macro PREPARE_INLINE_GETTHREAD
-.global tls_CurrentThread 
+.global tls_CurrentThread
 .endm
 
 .macro INLINE_GETTHREAD target

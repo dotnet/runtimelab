@@ -14,7 +14,7 @@ namespace System.Reflection.Runtime.TypeInfos
 {
     //
     // TypeInfos that represent type definitions (i.e. Foo or Foo<>, but not Foo<int> or arrays/pointers/byrefs.)
-    // 
+    //
     //
     internal abstract partial class RuntimeNamedTypeInfo : RuntimeTypeDefinitionTypeInfo, IEquatable<RuntimeNamedTypeInfo>
     {
@@ -156,7 +156,7 @@ namespace System.Reflection.Runtime.TypeInfos
 
                 // Metadata parameter checking should not have allowed 0 for packing size.
                 // The runtime later converts a packing size of 0 to 8 so do the same here
-                // because it's more useful from a user perspective. 
+                // because it's more useful from a user perspective.
                 if (pack == 0)
                     pack = DefaultPackingSize;
 

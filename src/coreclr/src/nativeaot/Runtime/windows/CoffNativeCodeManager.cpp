@@ -170,11 +170,11 @@ static PTR_VOID GetUnwindDataBlob(TADDR moduleBase, PTR_RUNTIME_FUNCTION pRuntim
 }
 
 
-CoffNativeCodeManager::CoffNativeCodeManager(TADDR moduleBase, 
+CoffNativeCodeManager::CoffNativeCodeManager(TADDR moduleBase,
                                              PTR_VOID pvManagedCodeStartRange, UInt32 cbManagedCodeRange,
                                              PTR_RUNTIME_FUNCTION pRuntimeFunctionTable, UInt32 nRuntimeFunctionTable,
                                              PTR_PTR_VOID pClasslibFunctions, UInt32 nClasslibFunctions)
-    : m_moduleBase(moduleBase), 
+    : m_moduleBase(moduleBase),
       m_pvManagedCodeStartRange(pvManagedCodeStartRange), m_cbManagedCodeRange(cbManagedCodeRange),
       m_pRuntimeFunctionTable(pRuntimeFunctionTable), m_nRuntimeFunctionTable(nRuntimeFunctionTable),
       m_pClasslibFunctions(pClasslibFunctions), m_nClasslibFunctions(nClasslibFunctions)
@@ -192,21 +192,21 @@ static int LookupUnwindInfoForMethod(UInt32 relativePc,
 {
 #ifdef TARGET_ARM
     relativePc |= THUMB_CODE;
-#endif 
+#endif
 
     // Binary search the RUNTIME_FUNCTION table
     // Use linear search once we get down to a small number of elements
     // to avoid Binary search overhead.
-    while (high - low > 10) 
+    while (high - low > 10)
     {
        int middle = low + (high - low) / 2;
 
        PTR_RUNTIME_FUNCTION pFunctionEntry = pRuntimeFunctionTable + middle;
-       if (relativePc < pFunctionEntry->BeginAddress) 
+       if (relativePc < pFunctionEntry->BeginAddress)
        {
            high = middle - 1;
-       } 
-       else 
+       }
+       else
        {
            low = middle;
        }
@@ -242,7 +242,7 @@ struct CoffNativeMethodInfo
 // Ensure that CoffNativeMethodInfo fits into the space reserved by MethodInfo
 static_assert(sizeof(CoffNativeMethodInfo) <= sizeof(MethodInfo), "CoffNativeMethodInfo too big");
 
-bool CoffNativeCodeManager::FindMethodInfo(PTR_VOID        ControlPC, 
+bool CoffNativeCodeManager::FindMethodInfo(PTR_VOID        ControlPC,
                                            MethodInfo *    pMethodInfoOut)
 {
     // Stackwalker may call this with ControlPC that does not belong to this code manager
@@ -265,7 +265,7 @@ bool CoffNativeCodeManager::FindMethodInfo(PTR_VOID        ControlPC,
 
     pMethodInfo->runtimeFunction = pRuntimeFunction;
 
-    // The runtime function could correspond to a funclet.  We need to get to the 
+    // The runtime function could correspond to a funclet.  We need to get to the
     // runtime function of the main method.
     for (;;)
     {
@@ -330,7 +330,7 @@ PTR_VOID CoffNativeCodeManager::GetFramePointer(MethodInfo *   pMethInfo,
     return NULL;
 }
 
-void CoffNativeCodeManager::EnumGcRefs(MethodInfo *    pMethodInfo, 
+void CoffNativeCodeManager::EnumGcRefs(MethodInfo *    pMethodInfo,
                                        PTR_VOID        safePointAddress,
                                        REGDISPLAY *    pRegisterSet,
                                        GCEnumContext * hCallback)
@@ -367,7 +367,7 @@ void CoffNativeCodeManager::EnumGcRefs(MethodInfo *    pMethodInfo,
 
     if (!decoder.EnumerateLiveSlots(
         pRegisterSet,
-        false /* reportScratchSlots */, 
+        false /* reportScratchSlots */,
         flags,
         hCallback->pCallback,
         hCallback
@@ -384,7 +384,7 @@ UIntNative CoffNativeCodeManager::GetConservativeUpperBoundForOutgoingArgs(Metho
     // Return value
     UIntNative upperBound;
     CoffNativeMethodInfo* pNativeMethodInfo = (CoffNativeMethodInfo *) pMethodInfo;
-    
+
     size_t unwindDataBlobSize;
     PTR_VOID pUnwindDataBlob = GetUnwindDataBlob(m_moduleBase, pNativeMethodInfo->runtimeFunction, &unwindDataBlobSize);
     PTR_UInt8 p = dac_cast<PTR_UInt8>(pUnwindDataBlob) + unwindDataBlobSize;
@@ -395,12 +395,12 @@ UIntNative CoffNativeCodeManager::GetConservativeUpperBoundForOutgoingArgs(Metho
 
     if ((unwindBlockFlags & UBF_FUNC_REVERSE_PINVOKE) != 0)
     {
-        TADDR basePointer =  dac_cast<TADDR>(pRegisterSet->GetFP());        
-        
+        TADDR basePointer =  dac_cast<TADDR>(pRegisterSet->GetFP());
+
         // Get the method's GC info
         GcInfoDecoder decoder(GCInfoToken(p), DECODE_REVERSE_PINVOKE_VAR);
         UINT32 stackBasedRegister = decoder.GetStackBaseRegister();
-        
+
         if (stackBasedRegister == NO_STACK_BASE_REGISTER)
         {
             basePointer = dac_cast<TADDR>(pRegisterSet->GetSP());
@@ -427,7 +427,7 @@ UIntNative CoffNativeCodeManager::GetConservativeUpperBoundForOutgoingArgs(Metho
             context.Rsp = pRegisterSet->GetSP();
             context.Rbp = pRegisterSet->GetFP();
             context.Rip = pRegisterSet->GetIP();
-    
+
             RtlVirtualUnwind(NULL,
                             dac_cast<TADDR>(m_moduleBase),
                             pRegisterSet->IP,
@@ -649,7 +649,7 @@ void CoffNativeCodeManager::UnsynchronizedHijackMethodLoops(MethodInfo * pMethod
 
 PTR_VOID CoffNativeCodeManager::RemapHardwareFaultToGCSafePoint(MethodInfo * pMethodInfo, PTR_VOID controlPC)
 {
-    // GCInfo decoder needs to know whether execution of the method is aborted 
+    // GCInfo decoder needs to know whether execution of the method is aborted
     // while querying for gc-info.  But ICodeManager::EnumGCRef() doesn't receive any
     // flags from mrt. Call to this method is used as a cue to mark the method info
     // as execution aborted. Note - if pMethodInfo was cached, this scheme would not work.
@@ -784,7 +784,7 @@ void * CoffNativeCodeManager::GetClasslibFunction(ClasslibFunctionId functionId)
 
 PTR_VOID CoffNativeCodeManager::GetAssociatedData(PTR_VOID ControlPC)
 {
-    if (dac_cast<TADDR>(ControlPC) < dac_cast<TADDR>(m_pvManagedCodeStartRange) || 
+    if (dac_cast<TADDR>(ControlPC) < dac_cast<TADDR>(m_pvManagedCodeStartRange) ||
         dac_cast<TADDR>(m_pvManagedCodeStartRange) + m_cbManagedCodeRange <= dac_cast<TADDR>(ControlPC))
     {
         return NULL;

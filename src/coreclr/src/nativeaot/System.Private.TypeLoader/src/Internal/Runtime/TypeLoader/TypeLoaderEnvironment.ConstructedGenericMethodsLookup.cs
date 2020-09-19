@@ -145,7 +145,7 @@ namespace Internal.Runtime.TypeLoader
                 //
                 // Entries read from the hashtable are loaded as GenericMethodDescs, and compared to the input.
                 // This lookup is slower than the lookups using RuntimeTypeHandles, but can handle cases where we don't have
-                // RuntimeTypeHandle values for all of the components of the input GenericMethodDesc, but still need to look it up in case the 
+                // RuntimeTypeHandle values for all of the components of the input GenericMethodDesc, but still need to look it up in case the
                 // method dictionary statically really exists
                 //
                 TypeSystemContext context = _methodToLookup.Context;

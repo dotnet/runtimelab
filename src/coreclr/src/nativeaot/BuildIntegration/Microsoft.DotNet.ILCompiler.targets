@@ -1,4 +1,4 @@
-<Project 
+<Project
   xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
 
@@ -36,5 +36,5 @@
     </CreateProperty>
   </Target>
 
-  <Import Project="$(MSBuildThisFileDirectory)\Microsoft.NETCore.Native.targets" />  
+  <Import Project="$(MSBuildThisFileDirectory)\Microsoft.NETCore.Native.targets" />
 </Project>

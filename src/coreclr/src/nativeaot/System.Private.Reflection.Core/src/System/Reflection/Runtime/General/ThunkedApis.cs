@@ -24,7 +24,7 @@ namespace System.Reflection.Runtime.Assemblies
         public sealed override Module[] GetModules(bool getResourceModules) => Modules.ToArray();
         public sealed override Type[] GetTypes() => DefinedTypes.ToArray();
 
-        // "copiedName" only affects whether CodeBase is set to the assembly location before or after the shadow-copy. 
+        // "copiedName" only affects whether CodeBase is set to the assembly location before or after the shadow-copy.
         // That concept is meaningless on .NET Native.
         public sealed override AssemblyName GetName(bool copiedName) => GetName();
 
@@ -202,8 +202,8 @@ namespace System.Reflection.Runtime.TypeInfos
                 if (!simpleNameMatches)
                     continue;
 
-                // This check exists for desktop compat: 
-                //   (1) caller can optionally omit namespace part of name in pattern- we'll still match. 
+                // This check exists for desktop compat:
+                //   (1) caller can optionally omit namespace part of name in pattern- we'll still match.
                 //   (2) ignoreCase:true does not apply to the namespace portion.
                 if (ns != null && !ns.Equals(ifc.Namespace))
                     continue;

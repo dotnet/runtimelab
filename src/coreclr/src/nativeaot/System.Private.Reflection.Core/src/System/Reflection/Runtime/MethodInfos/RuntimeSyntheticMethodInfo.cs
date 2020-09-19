@@ -150,7 +150,7 @@ namespace System.Reflection.Runtime.MethodInfos
         {
             get
             {
-                // The only synthetic methods come from array types which can never be inherited from. So unless that changes, 
+                // The only synthetic methods come from array types which can never be inherited from. So unless that changes,
                 // we don't provide a way to specify the ReflectedType.
                 return DeclaringType;
             }

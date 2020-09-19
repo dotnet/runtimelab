@@ -164,7 +164,7 @@ NewOutOfMemory
         bx          lr
 
 StringSizeOverflow
-        ; We get here if the size of the final string object can't be represented as an unsigned 
+        ; We get here if the size of the final string object can't be represented as an unsigned
         ; 32-bit value. We're going to tail-call to a managed helper that will throw
         ; an OOM exception that the caller of this allocator understands.
 
@@ -229,7 +229,7 @@ ArrayAlignSize
         bx          lr
 
 ArraySizeOverflow
-        ; We get here if the size of the final array object can't be represented as an unsigned 
+        ; We get here if the size of the final array object can't be represented as an unsigned
         ; 32-bit value. We're going to tail-call to a managed helper that will throw
         ; an overflow exception that the caller of this allocator understands.
 
@@ -253,7 +253,7 @@ ArraySizeBig
         adds        r2, #3
         bcs         ArrayOutOfMemoryFinal
         b           ArrayAlignSize
-        
+
 ArrayOutOfMemoryFinal
         ; r0 holds EEType pointer already
         mov         r1, #0                  ; Indicate that we should throw OOM.
@@ -413,7 +413,7 @@ Alloc8Failed
 
         LEAF_END RhpNewFinalizableAlign8
 
-;; Allocate a value type object (i.e. box it) on an 8 byte boundary + 4 (so that the value type payload 
+;; Allocate a value type object (i.e. box it) on an 8 byte boundary + 4 (so that the value type payload
 ;; itself is 8 byte aligned).
 ;;  r0 == EEType
         LEAF_ENTRY RhpNewFastMisalign
@@ -548,7 +548,7 @@ NewArray8_SkipPublish
         EPILOG_RETURN
 
 Array8SizeOverflow
-        ; We get here if the size of the final array object can't be represented as an unsigned 
+        ; We get here if the size of the final array object can't be represented as an unsigned
         ; 32-bit value. We're going to tail-call to a managed helper that will throw
         ; an OOM or overflow exception that the caller of this allocator understands.
 

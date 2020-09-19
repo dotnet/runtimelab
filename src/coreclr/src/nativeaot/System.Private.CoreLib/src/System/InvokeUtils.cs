@@ -28,7 +28,7 @@ namespace System
         //
         // The transforms supported are:
         //
-        //    Value-preserving widenings of primitive integrals and floats. 
+        //    Value-preserving widenings of primitive integrals and floats.
         //    Enums can be converted to the same or wider underlying primitive.
         //    Primitives can be converted to an enum with the same or wider underlying primitive.
         //
@@ -38,7 +38,7 @@ namespace System
         // Rather, the transformation happens naturally when the caller unboxes the value to its final destination.
         //
         // This method is targeted by the Delegate ILTransformer.
-        //    
+        //
         //
         public static object CheckArgument(object srcObject, RuntimeTypeHandle dstType, BinderBundle binderBundle)
         {
@@ -58,7 +58,7 @@ namespace System
         {
             if (srcObject == null)
             {
-                // null -> default(T) 
+                // null -> default(T)
                 if (dstEEType.IsPointer)
                 {
                     return default(IntPtr);
@@ -297,7 +297,7 @@ namespace System
         }
 
         // These thread static fields are used instead of passing parameters normally through to the helper functions
-        // that actually implement dynamic invocation. This allows the large number of dynamically generated 
+        // that actually implement dynamic invocation. This allows the large number of dynamically generated
         // functions to be just that little bit smaller, which, when spread across the many invocation helper thunks
         // generated adds up quite a bit.
         [ThreadStatic]
@@ -344,7 +344,7 @@ namespace System
         }
 
         // This is only called if we have to invoke a custom binder to coerce a parameter type. It leverages s_targetMethodOrDelegate to retrieve
-        // the unaltered parameter type to pass to the binder. 
+        // the unaltered parameter type to pass to the binder.
         private static Type GetExactTypeForCustomBinder()
         {
             Debug.Assert(s_binderBundle != null && s_targetMethodOrDelegate is MethodBase);
@@ -649,7 +649,7 @@ namespace System
             // Call DynamicInvokeParamHelperCore as an in parameter, and return a managed byref to the interesting bit.
             //
             // This function exactly matches DynamicInvokeParamHelperRef except for the value of the enum passed to DynamicInvokeParamHelperCore
-            // 
+            //
 
             int index;
             DynamicInvokeParamLookupType paramLookupType;
@@ -673,7 +673,7 @@ namespace System
             // Call DynamicInvokeParamHelperCore as a ref parameter, and return a managed byref to the interesting bit. As this can't actually be defined in C# there is an IL transform that fills this in.
             //
             // This function exactly matches DynamicInvokeParamHelperIn except for the value of the enum passed to DynamicInvokeParamHelperCore
-            // 
+            //
 
             int index;
             DynamicInvokeParamLookupType paramLookupType;

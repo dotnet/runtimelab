@@ -14,7 +14,7 @@ using System.Reflection.Runtime.Assemblies;
 namespace System.Reflection.Runtime.TypeParsing
 {
     //
-    // The TypeName class is the base class for a family of types that represent the nodes in a parse tree for 
+    // The TypeName class is the base class for a family of types that represent the nodes in a parse tree for
     // assembly-qualified type names.
     //
     internal abstract class TypeName

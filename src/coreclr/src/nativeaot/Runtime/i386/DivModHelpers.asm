@@ -35,7 +35,7 @@ esp_offsetof_divisor_high     equ 16
 ;;
 ;; OUTPUT: EAX: result low
 ;;         EDX: result high
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 FASTCALL_FUNC  RhpLDiv, 16
 
@@ -98,7 +98,7 @@ ThrowClasslibDivideByZeroException endp
 ;;
 ;; OUTPUT: EAX: result low
 ;;         EDX: result high
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 FASTCALL_FUNC  RhpLMod, 16
 
@@ -146,7 +146,7 @@ FASTCALL_ENDFUNC
 ;;         EDX: quotient high
 ;;         ECX: remainder high
 ;;         EBX: remainder high
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 FASTCALL_FUNC  RhpLDivMod, 16
 
@@ -192,7 +192,7 @@ FASTCALL_ENDFUNC
 ;;
 ;; OUTPUT: EAX: result low
 ;;         EDX: result high
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 FASTCALL_FUNC  RhpULDiv, 16
 
@@ -200,7 +200,7 @@ FASTCALL_FUNC  RhpULDiv, 16
         mov     eax,[esp+esp_offsetof_divisor_low]
         or      eax,[esp+esp_offsetof_divisor_high]
         jne     __aulldiv
-        jmp     ThrowClasslibDivideByZeroException        
+        jmp     ThrowClasslibDivideByZeroException
 
 FASTCALL_ENDFUNC
 
@@ -215,7 +215,7 @@ FASTCALL_ENDFUNC
 ;;
 ;; OUTPUT: EAX: result low
 ;;         EDX: result high
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 FASTCALL_FUNC  RhpULMod, 16
 
@@ -223,7 +223,7 @@ FASTCALL_FUNC  RhpULMod, 16
         mov     eax,[esp+esp_offsetof_divisor_low]
         or      eax,[esp+esp_offsetof_divisor_high]
         jne     __aullrem
-        jmp     ThrowClasslibDivideByZeroException        
+        jmp     ThrowClasslibDivideByZeroException
 
 FASTCALL_ENDFUNC
 
@@ -240,7 +240,7 @@ FASTCALL_ENDFUNC
 ;;         EDX: quotient high
 ;;         ECX: remainder high
 ;;         EBX: remainder high
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 FASTCALL_FUNC  RhpULDivMod, 16
 
@@ -248,7 +248,7 @@ FASTCALL_FUNC  RhpULDivMod, 16
         mov     eax,[esp+esp_offsetof_divisor_low]
         or      eax,[esp+esp_offsetof_divisor_high]
         jne     __aulldvrm
-        jmp     ThrowClasslibDivideByZeroException        
+        jmp     ThrowClasslibDivideByZeroException
 
 FASTCALL_ENDFUNC
 

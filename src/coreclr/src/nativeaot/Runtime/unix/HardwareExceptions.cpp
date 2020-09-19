@@ -226,7 +226,7 @@ uint64_t GetModRMOperandValue(uint8_t rex, uint8_t* ip, void* context, bool is8B
 
 // Skip all prefixes until the instruction code or the REX prefix is found
 // Parameters:
-// 	uint8_t** ip :          Pointer to the current instruction pointer. Updated 
+// 	uint8_t** ip :          Pointer to the current instruction pointer. Updated
 //                          as the function walks the codes.
 //  bool* hasOpSizePrefix : Pointer to bool, on exit set to true if a op size prefix
 //                          was found.
@@ -245,12 +245,12 @@ uint8_t SkipPrefixes(uint8_t **ip, bool* hasOpSizePrefix)
         case 0x66: // Operand-Size
             *hasOpSizePrefix = true;
             break;
-            
+
             // Segment overrides
         case 0x26: // ES
         case 0x2E: // CS
         case 0x36: // SS
-        case 0x3E: // DS 
+        case 0x3E: // DS
         case 0x64: // FS
         case 0x65: // GS
 
@@ -306,7 +306,7 @@ bool IsDivByZeroAnIntegerOverflow(void* context)
         ASSERT_UNCONDITIONALLY("Invalid instruction (expected IDIV or DIV)");
     }
 
-    // If the division operand is zero, it was division by zero. Otherwise the failure 
+    // If the division operand is zero, it was division by zero. Otherwise the failure
     // must have been an overflow.
     return divisor != 0;
 }
@@ -446,20 +446,20 @@ uint32_t GetExceptionCodeForSignal(const siginfo_t *siginfo, const void *context
     switch (trap)
     {
         case T_PRIVINFLT : /* privileged instruction */
-            return EXCEPTION_PRIV_INSTRUCTION; 
+            return EXCEPTION_PRIV_INSTRUCTION;
         case T_BPTFLT :    /* breakpoint instruction */
             return EXCEPTION_BREAKPOINT;
         case T_ARITHTRAP : /* arithmetic trap */
             return 0;      /* let the caller pick an exception code */
 #ifdef T_ASTFLT
-        case T_ASTFLT :    /* system forced exception : ^C, ^\. SIGINT signal 
+        case T_ASTFLT :    /* system forced exception : ^C, ^\. SIGINT signal
                               handler shouldn't be calling this function, since
                               it doesn't need an exception code */
             // Trap code T_ASTFLT received, shouldn't get here;
             return 0;
 #endif  // T_ASTFLT
         case T_PROTFLT :   /* protection fault */
-            return EXCEPTION_ACCESS_VIOLATION; 
+            return EXCEPTION_ACCESS_VIOLATION;
         case T_TRCTRAP :   /* debug exception (sic) */
             return EXCEPTION_SINGLE_STEP;
         case T_PAGEFLT :   /* page fault */
@@ -473,23 +473,23 @@ uint32_t GetExceptionCodeForSignal(const siginfo_t *siginfo, const void *context
         case T_OFLOW :
             return EXCEPTION_INT_OVERFLOW;
         case T_BOUND :     /* bound instruction fault */
-            return EXCEPTION_ARRAY_BOUNDS_EXCEEDED; 
+            return EXCEPTION_ARRAY_BOUNDS_EXCEEDED;
         case T_DNA :       /* device not available fault */
-            return EXCEPTION_ILLEGAL_INSTRUCTION; 
+            return EXCEPTION_ILLEGAL_INSTRUCTION;
         case T_DOUBLEFLT : /* double fault */
-            return EXCEPTION_ILLEGAL_INSTRUCTION; 
+            return EXCEPTION_ILLEGAL_INSTRUCTION;
         case T_FPOPFLT :   /* fp coprocessor operand fetch fault */
-            return EXCEPTION_FLT_INVALID_OPERATION; 
+            return EXCEPTION_FLT_INVALID_OPERATION;
         case T_TSSFLT :    /* invalid tss fault */
-            return EXCEPTION_ILLEGAL_INSTRUCTION; 
+            return EXCEPTION_ILLEGAL_INSTRUCTION;
         case T_SEGNPFLT :  /* segment not present fault */
-            return EXCEPTION_ACCESS_VIOLATION; 
+            return EXCEPTION_ACCESS_VIOLATION;
         case T_STKFLT :    /* stack fault */
-            return EXCEPTION_STACK_OVERFLOW; 
+            return EXCEPTION_STACK_OVERFLOW;
         case T_MCHK :      /* machine check trap */
-            return EXCEPTION_ILLEGAL_INSTRUCTION; 
+            return EXCEPTION_ILLEGAL_INSTRUCTION;
         case T_RESERVED :  /* reserved (unknown) */
-            return EXCEPTION_ILLEGAL_INSTRUCTION; 
+            return EXCEPTION_ILLEGAL_INSTRUCTION;
         default:
             // Got unknown trap code trap;
             break;
@@ -506,9 +506,9 @@ bool HardwareExceptionHandler(int code, siginfo_t *siginfo, void *context, void*
         UIntNative faultCode = GetExceptionCodeForSignal(siginfo, context);
 
 #ifdef HOST_AMD64
-        // It is possible that an overflow was mapped to a divide-by-zero exception. 
+        // It is possible that an overflow was mapped to a divide-by-zero exception.
         // This happens when we try to divide the maximum negative value of a
-        // signed integer with -1. 
+        // signed integer with -1.
         //
         // Thus, we will attempt to decode the instruction @ RIP to determine if that
         // is the case using the faulting context.

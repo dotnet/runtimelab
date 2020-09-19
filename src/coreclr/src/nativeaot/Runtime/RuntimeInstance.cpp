@@ -86,7 +86,7 @@ ICodeManager * RuntimeInstance::FindCodeManagerByAddress(PTR_VOID pvAddress)
 #ifndef DACCESS_COMPILE
 
 // Find the code manager containing the given address, which might be a return address from a managed function. The
-// address may be to another managed function, or it may be to an unmanaged function. The address may also refer to 
+// address may be to another managed function, or it may be to an unmanaged function. The address may also refer to
 // an EEType.
 ICodeManager * RuntimeInstance::FindCodeManagerForClasslibFunction(PTR_VOID address)
 {
@@ -171,7 +171,7 @@ ReaderWriterLock& RuntimeInstance::GetTypeManagerLock()
 
 #ifndef DACCESS_COMPILE
 
-RuntimeInstance::RuntimeInstance() : 
+RuntimeInstance::RuntimeInstance() :
     m_pThreadStore(NULL),
     m_conservativeStackReportingEnabled(false),
     m_pUnboxingStubsRegion(NULL)
@@ -263,7 +263,7 @@ bool RuntimeInstance::RegisterUnboxingStubs(PTR_VOID pvStartRange, UInt32 cbRang
     do
     {
         pEntry->m_pNextRegion = m_pUnboxingStubsRegion;
-    } 
+    }
     while (PalInterlockedCompareExchangePointer((void *volatile *)&m_pUnboxingStubsRegion, pEntry, pEntry->m_pNextRegion) != pEntry->m_pNextRegion);
 
     return true;
@@ -341,12 +341,12 @@ COOP_PINVOKE_HELPER(void*, RhpRegisterOsModule, (HANDLE hOsModule))
     return hOsModule; // Return non-null on success
 }
 
-RuntimeInstance::TypeManagerList& RuntimeInstance::GetTypeManagerList() 
+RuntimeInstance::TypeManagerList& RuntimeInstance::GetTypeManagerList()
 {
     return m_TypeManagerList;
 }
 
-// static 
+// static
 bool RuntimeInstance::Initialize(HANDLE hPalInstance)
 {
     NewHolder<RuntimeInstance> pRuntimeInstance = new (nothrow) RuntimeInstance();

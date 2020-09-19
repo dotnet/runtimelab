@@ -16,7 +16,7 @@ using Internal.Reflection.Core.Execution;
 // The CoreGet() methods on RuntimeTypeInfo provide the raw source material for the Type.Get*() family of apis.
 //
 // These retrieve directly introduced (not inherited) members whose names match the passed in NameFilter (if NameFilter is null,
-// return all members.) To avoid allocating objects, prefer to pass the metadata constant string value handle to NameFilter rather 
+// return all members.) To avoid allocating objects, prefer to pass the metadata constant string value handle to NameFilter rather
 // than strings.
 //
 // The ReflectedType is the type that the Type.Get*() api was invoked on. Use it to establish the returned MemberInfo object's

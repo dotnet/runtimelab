@@ -79,7 +79,7 @@ namespace rh { namespace util
         VALUE_TYPE m_start;
         VALUE_TYPE m_end;
     };
-    
+
     //---------------------------------------------------------------------------------------------
     // Represents address range [a,b), and provides various convenience methods.
 

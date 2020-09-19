@@ -11,7 +11,7 @@
 // This version of holder does not have a default constructor.
 
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
-#define EQUALS_DEFAULT 
+#define EQUALS_DEFAULT
 #else
 #define EQUALS_DEFAULT = default
 #endif
@@ -20,7 +20,7 @@ template <typename TYPE, void (*ACQUIRE_FUNC)(TYPE), void (*RELEASE_FUNC)(TYPE)>
 class HolderNoDefaultValue
 {
 public:
-    HolderNoDefaultValue(TYPE value, bool fTake = true) : m_value(value), m_held(false) 
+    HolderNoDefaultValue(TYPE value, bool fTake = true) : m_value(value), m_held(false)
         { if (fTake) { ACQUIRE_FUNC(value); m_held = true; } }
 
     ~HolderNoDefaultValue() { if (m_held) RELEASE_FUNC(m_value); }
@@ -97,7 +97,7 @@ FORCEINLINE void DoNothing(TYPE /*value*/)
 }
 
 // -----------------------------------------------------------------------------------------------------------
-template <typename TYPE> 
+template <typename TYPE>
 FORCEINLINE void Delete(TYPE *value)
 {
     delete value;
@@ -130,7 +130,7 @@ public:
 //  } // delete [] foo on out of scope
 //-----------------------------------------------------------------------------
 
-template <typename TYPE> 
+template <typename TYPE>
 FORCEINLINE void DeleteArray(TYPE *value)
 {
     delete [] value;

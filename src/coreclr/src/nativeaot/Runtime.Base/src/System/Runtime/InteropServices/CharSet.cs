@@ -3,7 +3,7 @@
 
 namespace System.Runtime.InteropServices
 {
-    // Use this in P/Direct function prototypes to specify 
+    // Use this in P/Direct function prototypes to specify
     // which character set to use when marshalling Strings.
     // Using Ansi will marshal the strings as 1 byte char*'s.
     // Using Unicode will marshal the strings as 2 byte wchar*'s.

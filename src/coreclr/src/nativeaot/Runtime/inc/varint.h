@@ -19,12 +19,12 @@ public:
     //
     // WARNING: This method returns the negative of the length of the value that it just skipped!
     //
-    // This was helpful in the GC info scan loop because it allowed us to always skip past unsigned values in 
+    // This was helpful in the GC info scan loop because it allowed us to always skip past unsigned values in
     // the  body of the loop.  At the end of loop, we use this negative sign to distinguish between two cases
     // and that allows us to decode the unsigned value that we need outside of the loop.  Note that we encode
-    // the negatives in the s_negLengthTable to avoid any additional operations in the body of the GC scan 
+    // the negatives in the s_negLengthTable to avoid any additional operations in the body of the GC scan
     // loop.
-    // 
+    //
     static IntNative SkipUnsigned(PTR_UInt8 & pbEncoding)
     {
         UIntNative lengthBits = *pbEncoding & 0x0F;
@@ -96,7 +96,7 @@ private:
 };
 
 __declspec(selectany)
-Int8 VarInt::s_negLengthTab[16] = 
+Int8 VarInt::s_negLengthTab[16] =
 {
     -1,    // 0
     -2,    // 1

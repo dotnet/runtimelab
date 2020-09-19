@@ -123,7 +123,7 @@ _RhpCopyMultibyteNoGCRefs PROC PUBLIC
         mov         edx, [esp + 8]  ; edx <- src
 
         ; Now check the dest and src pointers.  If they AV, the EH subsystem will recognize the address of the AV,
-        ; unwind the frame, and fixup the stack to make it look like the (managed) caller AV'ed, which will be 
+        ; unwind the frame, and fixup the stack to make it look like the (managed) caller AV'ed, which will be
         ; translated to a managed exception as usual.
 ALTERNATE_ENTRY RhpCopyMultibyteNoGCRefsDestAVLocation
         cmp         byte ptr [ecx], 0
@@ -164,7 +164,7 @@ _RhpCopyMultibyte PROC PUBLIC
         mov         edx, [esp + 8]  ; edx <- src
 
         ; Now check the dest and src pointers.  If they AV, the EH subsystem will recognize the address of the AV,
-        ; unwind the frame, and fixup the stack to make it look like the (managed) caller AV'ed, which will be 
+        ; unwind the frame, and fixup the stack to make it look like the (managed) caller AV'ed, which will be
         ; translated to a managed exception as usual.
 ALTERNATE_ENTRY RhpCopyMultibyteDestAVLocation
         cmp         byte ptr [ecx], 0
@@ -207,7 +207,7 @@ _RhpCopyMultibyteWithWriteBarrier PROC PUBLIC
         mov         edx, [esp + 8]  ; edx <- src
 
         ; Now check the dest and src pointers.  If they AV, the EH subsystem will recognize the address of the AV,
-        ; unwind the frame, and fixup the stack to make it look like the (managed) caller AV'ed, which will be 
+        ; unwind the frame, and fixup the stack to make it look like the (managed) caller AV'ed, which will be
         ; translated to a managed exception as usual.
 ALTERNATE_ENTRY RhpCopyMultibyteWithWriteBarrierDestAVLocation
         cmp         byte ptr [ecx], 0
@@ -250,7 +250,7 @@ _RhpCopyAnyWithWriteBarrier PROC PUBLIC
         mov         edx, [esp + 8]  ; edx <- src
 
         ; Now check the dest and src pointers.  If they AV, the EH subsystem will recognize the address of the AV,
-        ; unwind the frame, and fixup the stack to make it look like the (managed) caller AV'ed, which will be 
+        ; unwind the frame, and fixup the stack to make it look like the (managed) caller AV'ed, which will be
         ; translated to a managed exception as usual.
 ALTERNATE_ENTRY RhpCopyAnyWithWriteBarrierDestAVLocation
         cmp         byte ptr [ecx], 0

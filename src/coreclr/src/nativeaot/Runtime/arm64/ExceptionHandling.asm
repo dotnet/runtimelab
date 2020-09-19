@@ -16,15 +16,15 @@
         ALLOC_THROW_FRAME $exceptionType
 
         PROLOG_NOP mov x3, sp
- 
+
         ;; Setup a PAL_LIMITED_CONTEXT on the stack {
         IF $exceptionType == HARDWARE_EXCEPTION
             PROLOG_NOP sub sp,sp,#0x50
-            PROLOG_NOP stp x3, x1, [sp]   ; x3 is the SP and x1 is the IP of the fault site 
+            PROLOG_NOP stp x3, x1, [sp]   ; x3 is the SP and x1 is the IP of the fault site
             PROLOG_PUSH_MACHINE_FRAME
         ELSE
             PROLOG_STACK_ALLOC 0x50
-            PROLOG_NOP stp x3, lr, [sp]   ; x3 is the SP and lr is the IP of the fault site 
+            PROLOG_NOP stp x3, lr, [sp]   ; x3 is the SP and lr is the IP of the fault site
         ENDIF
         PROLOG_NOP stp d8, d9, [sp, #0x10]
         PROLOG_NOP stp d10, d11, [sp, #0x20]
@@ -38,15 +38,15 @@
         PROLOG_SAVE_REG_PAIR x25, x26, #0x50
         PROLOG_SAVE_REG_PAIR x27, x28, #0x60
         ;; } end PAL_LIMITED_CONTEXT
- 
-        PROLOG_STACK_ALLOC STACKSIZEOF_ExInfo 
-    MEND 
+
+        PROLOG_STACK_ALLOC STACKSIZEOF_ExInfo
+    MEND
 
 ;; -----------------------------------------------------------------------------
 ;; Macro used to create frame of funclet calling helpers (RhpCallXXXXFunclet)
 ;; $extraStackSize - extra stack space that the user of the macro can use to
 ;;                   store additional registers
-    MACRO 
+    MACRO
         ALLOC_CALL_FUNCLET_FRAME $extraStackSize
 
         ; Using below prolog instead of PROLOG_SAVE_REG_PAIR fp,lr, #-60!
@@ -73,7 +73,7 @@
 ;;                   store additional registers.
 ;;                   It needs to match the value passed to the corresponding
 ;;                   ALLOC_CALL_FUNCLET_FRAME.
-    MACRO 
+    MACRO
         FREE_CALL_FUNCLET_FRAME $extraStackSize
 
         IF $extraStackSize != 0
@@ -209,7 +209,7 @@
 ;;         X1:  faulting IP
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     NESTED_ENTRY RhpThrowHwEx
 
@@ -241,10 +241,10 @@
 
         ;; w0: exception code
         ;; x1: ExInfo*
-        bl          RhThrowHwEx        
+        bl          RhThrowHwEx
 
     EXPORT_POINTER_TO_ADDRESS PointerToRhpThrowHwEx2
-        
+
         ;; no return
         EMIT_BREAKPOINT
 
@@ -257,7 +257,7 @@
 ;; INPUT:  X0:  exception object
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     NESTED_ENTRY RhpThrowEx
 
@@ -266,12 +266,12 @@
         ;; x2 = GetThread(), TRASHES x1
         INLINE_GETTHREAD x2, x1
 
-        ;; There is runtime C# code that can tail call to RhpThrowEx using a binder intrinsic.  So the return 
+        ;; There is runtime C# code that can tail call to RhpThrowEx using a binder intrinsic.  So the return
         ;; address could have been hijacked when we were in that C# code and we must remove the hijack and
         ;; reflect the correct return address in our exception context record.  The other throw helpers don't
         ;; need this because they cannot be tail-called from C#.
 
-        ;; NOTE: we cannot use INLINE_THREAD_UNHIJACK because it will write into the stack at the location 
+        ;; NOTE: we cannot use INLINE_THREAD_UNHIJACK because it will write into the stack at the location
         ;; where the tail-calling thread had saved LR, which may not match where we have saved LR.
 
         ldr         x1, [x2, #OFFSETOF__Thread__m_pvHijackedReturnAddress]
@@ -294,9 +294,9 @@
 
 TailCallWasHijacked
 
-        ;; Abnormal case where the return address location is now invalid because we ended up here via a tail 
+        ;; Abnormal case where the return address location is now invalid because we ended up here via a tail
         ;; call.  In this case, our hijacked return address should be the correct caller of this method.
-        ;; 
+        ;;
 
         ;; stick the previous return address in LR as well as in the right spots in our PAL_LIMITED_CONTEXT.
         mov         lr, x1
@@ -348,7 +348,7 @@ NotHijacked
 ;; INPUT:
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     NESTED_ENTRY RhpRethrow
 
@@ -396,7 +396,7 @@ NotHijacked
 ;;         X3:  ExInfo*
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     NESTED_ENTRY RhpCallCatchFunclet
 
@@ -405,7 +405,7 @@ NotHijacked
         stp d10, d11, [sp, #0x10]
         stp d12, d13, [sp, #0x20]
         stp d14, d15, [sp, #0x30]
-        stp x0, x2,   [sp, #0x40]  ;; x0, x2 & x3 are saved so we have the exception object, REGDISPLAY and 
+        stp x0, x2,   [sp, #0x40]  ;; x0, x2 & x3 are saved so we have the exception object, REGDISPLAY and
         stp x3, xzr,  [sp, #0x50]  ;; ExInfo later, xzr makes space for the local "is_not_handling_thread_abort"
 
 #define rsp_offset_is_not_handling_thread_abort 0x58
@@ -442,7 +442,7 @@ ClearSuccess_Catch
 
         ;;
         ;; call the funclet
-        ;; 
+        ;;
         ;; x0 still contains the exception object
         blr         x1
 
@@ -501,7 +501,7 @@ NoAbort
 ;;         X1:  REGDISPLAY*
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     NESTED_ENTRY RhpCallFinallyFunclet
 
@@ -548,7 +548,7 @@ ClearSuccess
 
         ;;
         ;; call the funclet
-        ;; 
+        ;;
         blr         x0
 
     EXPORT_POINTER_TO_ADDRESS PointerToRhpCallFinallyFunclet2
@@ -574,7 +574,7 @@ SetRetry
         b           SetRetry
 SetSuccess
 
-        ldp         d8, d9,   [sp, #0x00] 
+        ldp         d8, d9,   [sp, #0x00]
         ldp         d10, d11, [sp, #0x10]
         ldp         d12, d13, [sp, #0x20]
         ldp         d14, d15, [sp, #0x30]
@@ -594,7 +594,7 @@ SetSuccess
 ;;         X2:  REGDISPLAY*
 ;;
 ;; OUTPUT:
-;; 
+;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     NESTED_ENTRY RhpCallFilterFunclet
         ALLOC_CALL_FUNCLET_FRAME 0x40
@@ -608,7 +608,7 @@ SetSuccess
 
         ;;
         ;; call the funclet
-        ;; 
+        ;;
         ;; x0 still contains the exception object
         blr         x1
 

@@ -50,7 +50,7 @@ class CoffNativeCodeManager : public ICodeManager
     UInt32 m_nClasslibFunctions;
 
 public:
-    CoffNativeCodeManager(TADDR moduleBase, 
+    CoffNativeCodeManager(TADDR moduleBase,
                           PTR_VOID pvManagedCodeStartRange, UInt32 cbManagedCodeRange,
                           PTR_RUNTIME_FUNCTION pRuntimeFunctionTable, UInt32 nRuntimeFunctionTable,
                           PTR_PTR_VOID pClasslibFunctions, UInt32 nClasslibFunctions);
@@ -60,7 +60,7 @@ public:
     // Code manager methods
     //
 
-    bool FindMethodInfo(PTR_VOID        ControlPC, 
+    bool FindMethodInfo(PTR_VOID        ControlPC,
                         MethodInfo *    pMethodInfoOut);
 
     bool IsFunclet(MethodInfo * pMethodInfo);
@@ -70,7 +70,7 @@ public:
     PTR_VOID GetFramePointer(MethodInfo *   pMethodInfo,
                              REGDISPLAY *   pRegisterSet);
 
-    void EnumGcRefs(MethodInfo *    pMethodInfo, 
+    void EnumGcRefs(MethodInfo *    pMethodInfo,
                     PTR_VOID        safePointAddress,
                     REGDISPLAY *    pRegisterSet,
                     GCEnumContext * hCallback);

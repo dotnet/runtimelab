@@ -158,7 +158,7 @@ namespace Internal.Reflection.Execution
         ///    metadataReader + typeDefHandle  - a valid metadata reader + typeDefinitionHandle where "metadataReader" is one
         ///                                      of the metadata readers returned by ExecutionEnvironment.MetadataReaders.
         ///
-        /// Note: Although this method has a "bool" return value like the other mapping table accessors, the Project N pay-for-play design 
+        /// Note: Although this method has a "bool" return value like the other mapping table accessors, the Project N pay-for-play design
         /// guarantees that any type enabled for metadata also has a RuntimeTypeHandle underneath.
         /// </summary>
         /// <param name="qTypeDefinition">TypeDef handle for the type to look up</param>
@@ -172,7 +172,7 @@ namespace Internal.Reflection.Execution
         /// Return the metadata handle for a TypeRef if this type was referenced indirectly by other type that pay-for-play has denoted as browsable
         /// (for example, as part of a method signature.)
         ///
-        /// This is only used in "debug" builds to provide better MissingMetadataException diagnostics. 
+        /// This is only used in "debug" builds to provide better MissingMetadataException diagnostics.
         ///
         /// Preconditions:
         ///    runtimeTypeHandle is a typedef (not a constructed type such as an array or generic instance.)
@@ -191,13 +191,13 @@ namespace Internal.Reflection.Execution
         ///
         /// This is used to ensure that we can produce a Type object if requested and that it match up with the analogous
         /// Type obtained via typeof().
-        /// 
+        ///
         ///
         /// Preconditions:
         ///    metadataReader + typeRefHandle  - a valid metadata reader + typeReferenceHandle where "metadataReader" is one
         ///                                      of the metadata readers returned by ExecutionEnvironment.MetadataReaders.
         ///
-        /// Note: Although this method has a "bool" return value like the other mapping table accessors, the Project N pay-for-play design 
+        /// Note: Although this method has a "bool" return value like the other mapping table accessors, the Project N pay-for-play design
         /// guarantees that any type that has a metadata TypeReference to it also has a RuntimeTypeHandle underneath.
         /// </summary>
         /// <param name="metadataReader">Metadata reader for module containing the type reference</param>
@@ -231,7 +231,7 @@ namespace Internal.Reflection.Execution
         }
 
         //
-        // Given a RuntimeTypeHandle for any array type E[], return a RuntimeTypeHandle for type E, if the pay for play policy denoted E[] as browsable. 
+        // Given a RuntimeTypeHandle for any array type E[], return a RuntimeTypeHandle for type E, if the pay for play policy denoted E[] as browsable.
         //
         // Preconditions:
         //      arrayTypeHandle is a valid RuntimeTypeHandle of type array.
@@ -252,7 +252,7 @@ namespace Internal.Reflection.Execution
         // Preconditions:
         //     elementTypeHandle is a valid RuntimeTypeHandle.
         //
-        // Calling this with rank 1 is not equivalent to calling TryGetArrayTypeForElementType()! 
+        // Calling this with rank 1 is not equivalent to calling TryGetArrayTypeForElementType()!
         //
         public unsafe sealed override bool TryGetMultiDimArrayTypeForElementType(RuntimeTypeHandle elementTypeHandle, int rank, out RuntimeTypeHandle arrayTypeHandle)
         {
@@ -261,7 +261,7 @@ namespace Internal.Reflection.Execution
                 arrayTypeHandle = default(RuntimeTypeHandle);
                 return false;
             }
-            
+
             if ((rank < MDArray.MinRank) || (rank > MDArray.MaxRank))
             {
                 throw new TypeLoadException(SR.Format(SR.MultiDim_Of_This_Rank_Not_Supported, rank));
@@ -283,7 +283,7 @@ namespace Internal.Reflection.Execution
         }
 
         //
-        // Given a RuntimeTypeHandle for any pointer type E*, return a RuntimeTypeHandle for type E, if the pay-for-play policy denotes E* as browsable. 
+        // Given a RuntimeTypeHandle for any pointer type E*, return a RuntimeTypeHandle for type E, if the pay-for-play policy denotes E* as browsable.
         // This is used to implement Type.GetElementType() for pointers.
         //
         // Preconditions:
@@ -308,7 +308,7 @@ namespace Internal.Reflection.Execution
         }
 
         //
-        // Given a RuntimeTypeHandle for any byref type E&, return a RuntimeTypeHandle for type E, if the pay-for-play policy denotes E& as browsable. 
+        // Given a RuntimeTypeHandle for any byref type E&, return a RuntimeTypeHandle for type E, if the pay-for-play policy denotes E& as browsable.
         // This is used to implement Type.GetElementType() for byrefs.
         //
         // Preconditions:
@@ -587,7 +587,7 @@ namespace Internal.Reflection.Execution
 
             if ((methodInvokeMetadata.InvokeTableFlags & InvokeTableFlags.CallingConventionMask) != 0)
             {
-                // MethodInvokeInfo found, but it references a method with a native calling convention. 
+                // MethodInvokeInfo found, but it references a method with a native calling convention.
                 return null;
             }
 
@@ -814,7 +814,7 @@ namespace Internal.Reflection.Execution
         private Func<NativeFormatModuleInfo, FunctionPointersToOffsets> _computeLdFtnLookupExactInstantiations = ComputeLdftnReverseLookup_ExactInstantiations;
 
         /// <summary>
-        /// Initialize a lookup array of module to function pointer/parser offset pair arrays. Do so in a manner that will allow 
+        /// Initialize a lookup array of module to function pointer/parser offset pair arrays. Do so in a manner that will allow
         /// future work which will invalidate the cache (by setting it to null)
         /// </summary>
         /// <param name="ldftnReverseLookupStatic">pointer to static which holds cache value. This is treated as a volatile variable</param>
@@ -930,7 +930,7 @@ namespace Internal.Reflection.Execution
                         for (int curIndex = startIndex; curIndex <= endIndex; curIndex++)
                         {
                             uint parserOffset = perModuleLookup.Value.Data[curIndex].Offset;
-                            if (TryGetMethodForOriginalLdFtnResult_ExactInstantiation_Inner(perModuleLookup.Key, forStartAddress: false, canonOriginalLdFtnResult, parserOffset, 
+                            if (TryGetMethodForOriginalLdFtnResult_ExactInstantiation_Inner(perModuleLookup.Key, forStartAddress: false, canonOriginalLdFtnResult, parserOffset,
                                     ref declaringTypeHandle, out methodHandle, out genericMethodTypeArgumentHandles))
                                 return true;
                         }
@@ -1106,7 +1106,7 @@ namespace Internal.Reflection.Execution
 
             if (forStartAddress)
             {
-                declaringTypeHandle = externalReferences.GetRuntimeTypeHandleFromIndex(entryDeclaringTypeRaw);    
+                declaringTypeHandle = externalReferences.GetRuntimeTypeHandleFromIndex(entryDeclaringTypeRaw);
             }
             else
             {
@@ -1151,11 +1151,11 @@ namespace Internal.Reflection.Execution
                 {
                     RuntimeExceptionHelpers.FailFast("Unable to resolve named type to having a metadata reader");
                 }
-                
-                MethodHandle nativeFormatMethodHandle = 
+
+                MethodHandle nativeFormatMethodHandle =
                     (((int)HandleType.Method << 24) | (int)entryMethodHandleOrNameAndSigRaw).AsMethodHandle();
 
-                methodHandle = new QMethodDefinition(qTypeDefinition.NativeFormatReader, nativeFormatMethodHandle); 
+                methodHandle = new QMethodDefinition(qTypeDefinition.NativeFormatReader, nativeFormatMethodHandle);
             }
             else
             {
@@ -1322,7 +1322,7 @@ namespace Internal.Reflection.Execution
                 case FieldTableFlags.Instance:
                     {
                         int fieldOffsetDelta = RuntimeAugments.IsValueType(declaringTypeHandle) ? IntPtr.Size : 0;
-            
+
                         return RuntimeAugments.IsValueType(fieldTypeHandle) ?
                             (FieldAccessor)new ValueTypeFieldAccessorForInstanceFields(
                                 fieldAccessMetadata.Offset + fieldOffsetDelta, declaringTypeHandle, fieldTypeHandle) :
@@ -1591,26 +1591,26 @@ namespace Internal.Reflection.Execution
                 Debug.Assert(handles != null && types != null);
             }
 
-            // IF THESE SEMANTICS EVER CHANGE UPDATE THE LOGIC WHICH DEFINES THIS BEHAVIOR IN 
-            // THE DYNAMIC TYPE LOADER AS WELL AS THE COMPILER. 
+            // IF THESE SEMANTICS EVER CHANGE UPDATE THE LOGIC WHICH DEFINES THIS BEHAVIOR IN
+            // THE DYNAMIC TYPE LOADER AS WELL AS THE COMPILER.
             //
             // Parameter's are considered to have type layout dependent on their generic instantiation
-            // if the type of the parameter in its signature is a type variable, or if the type is a generic 
+            // if the type of the parameter in its signature is a type variable, or if the type is a generic
             // structure which meets 2 characteristics:
             // 1. Structure size/layout is affected by the size/layout of one or more of its generic parameters
             // 2. One or more of the generic parameters is a type variable, or a generic structure which also recursively
             //    would satisfy constraint 2. (Note, that in the recursion case, whether or not the structure is affected
             //    by the size/layout of its generic parameters is not investigated.)
-            //    
+            //
             // Examples parameter types, and behavior.
-            // 
+            //
             // T -> true
             // List<T> -> false
             // StructNotDependentOnArgsForSize<T> -> false
             // GenStructDependencyOnArgsForSize<T> -> true
             // StructNotDependentOnArgsForSize<GenStructDependencyOnArgsForSize<T>> -> true
             // StructNotDependentOnArgsForSize<GenStructDependencyOnArgsForSize<List<T>>>> -> false
-            // 
+            //
             // Example non-parameter type behavior
             // T -> true
             // List<T> -> false

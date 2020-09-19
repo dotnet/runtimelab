@@ -16,14 +16,14 @@ namespace System.Reflection
 {
     //==============================================================================================================
     // This api set retrieves the "effective" set of custom attributes associated with a given Reflection element.
-    // The effective set not only includes attributes declared directly on the element but attributes inherited 
+    // The effective set not only includes attributes declared directly on the element but attributes inherited
     // from the element's "parents."
     //
     // Api conventions:
     //
     //    - "T or "attributeType" arguments must be non-null, non-interface type that derives from System.Attribute.
     //
-    //    - The default for the "inherited" parameter is "true". For Assemblies, Modules and FieldInfos, 
+    //    - The default for the "inherited" parameter is "true". For Assemblies, Modules and FieldInfos,
     //      the api ignores the value of "inherited."
     //
     //
@@ -34,7 +34,7 @@ namespace System.Reflection
     //
     //      - TypeInfos inherit from base classes (but not interfaces.)
     //
-    //      - MethodInfos that override a virtual in a base class (but not an interface) inherit 
+    //      - MethodInfos that override a virtual in a base class (but not an interface) inherit
     //        from the method it overrode.
     //
     //      - PropertyInfos that override a virtual in a base class (but not an interface) inherit
@@ -46,11 +46,11 @@ namespace System.Reflection
     //      - ParameterInfos whose declaring method overrides a virtual in a base class (but not an interface)
     //        inherit from the matching parameter in the method that was overridden.
     //
-    //   Custom attributes only flow down this chain if they are marked inheritable. Note that the 
+    //   Custom attributes only flow down this chain if they are marked inheritable. Note that the
     //   AttributeUsageAttribute attribute it itself inheritable, and custom attributes can derive from other custom attributes:
     //   if a custom attribute and its base class(s) both define AttributeUsages, the most derived AttributeUsage wins.
     //
-    //   If an element and one of its parents both include a custom attribute of the *exact same type* (even 
+    //   If an element and one of its parents both include a custom attribute of the *exact same type* (even
     //   if calling different overloads of the constructor), and that attribute types does *not* declare AllowMultiple=true,
     //   these apis will only return the one attached to the most derived parent.)
     //
@@ -66,7 +66,7 @@ namespace System.Reflection
         // This group returns the single custom attribute whose type matches or is a subclass of "attributeType".
         //
         // Returns null if no matching custom attribute found.
-        // 
+        //
         // Throws AmbiguousMatchException if multple matches found.
         //==============================================================================================================
         public static Attribute GetCustomAttribute(this Assembly element, Type attributeType)
@@ -111,7 +111,7 @@ namespace System.Reflection
         // This group returns the single custom attribute whose type matches or is a subclass of "T".
         //
         // Returns null if no matching custom attribute found.
-        // 
+        //
         // Throws AmbiguousMatchException if multple matches found.
         //==============================================================================================================
         public static T GetCustomAttribute<T>(this Assembly element) where T : Attribute
@@ -329,7 +329,7 @@ namespace System.Reflection
 
 
         //==============================================================================================================================
-        // Helper for the GetCustomAttributes() methods that take a specific attribute type. For desktop compatibility, 
+        // Helper for the GetCustomAttributes() methods that take a specific attribute type. For desktop compatibility,
         // we return a freshly allocated array of the specific attribute type even though the api's return type promises only an IEnumerable<Attribute>.
         // There are known store apps that cast the results of apis and expect the cast to work. The implementation of Attribute.GetCustomAttribute()
         // also relies on this (it performs an unsafe cast to Attribute[] and does not re-copy the array.)
@@ -361,11 +361,11 @@ namespace System.Reflection
         }
 
         //==============================================================================================================================
-        // This is used to "convert" the output of CustomAttributeExtensions.GetCustomAttributes() from IEnumerable<Attribute> to Attribute[] 
+        // This is used to "convert" the output of CustomAttributeExtensions.GetCustomAttributes() from IEnumerable<Attribute> to Attribute[]
         // as required by the Attribute.GetCustomAttributes() members.
         //
-        // This relies on the fact that CustomAttributeExtensions.GetCustomAttribute()'s actual return type is an array whose element type is that 
-        // of the specific attributeType searched on. (Though this isn't explicitly promised, real world code does in fact rely on this so 
+        // This relies on the fact that CustomAttributeExtensions.GetCustomAttribute()'s actual return type is an array whose element type is that
+        // of the specific attributeType searched on. (Though this isn't explicitly promised, real world code does in fact rely on this so
         // this is a compat thing we're stuck with now.)
         //==============================================================================================================================
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

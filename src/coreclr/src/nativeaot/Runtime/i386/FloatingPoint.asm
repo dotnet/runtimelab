@@ -22,7 +22,7 @@ fremloop:
         wait
         sahf
         jp          fremloop    ; Continue while the FPU status bit C2 is set
-        
+
         fxch        st(1)       ; swap, so divisor is on top and result is in st(1)
         fstp        st(0)       ; Pop the divisor from the FP stack
 
@@ -47,7 +47,7 @@ fremloopd:
         fstp        st(0)       ; Pop the divisor from the FP stack
 
         ret         10h
-        
+
 FASTCALL_ENDFUNC
 
 

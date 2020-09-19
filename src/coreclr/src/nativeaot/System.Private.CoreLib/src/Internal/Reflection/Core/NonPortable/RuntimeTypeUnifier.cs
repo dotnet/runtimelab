@@ -14,7 +14,7 @@ namespace Internal.Reflection.Core.NonPortable
     //
     // ! If you change this policy to not unify all instances, you must change the implementation of Equals/GetHashCode in the runtime type classes.
     //
-    // The RuntimeTypeUnifier maintains a record of all System.Type objects created by the runtime. The split into two classes is an artifact of 
+    // The RuntimeTypeUnifier maintains a record of all System.Type objects created by the runtime. The split into two classes is an artifact of
     // reflection being implemented partly in System.Private.CoreLib and partly in S.R.R.
     //
     // Though the present incarnation enforces the "one instance per semantic identity rule", its surface area is also designed
@@ -23,7 +23,7 @@ namespace Internal.Reflection.Core.NonPortable
     // ! If you do switch away from a "one instance per semantic identity rule", you must also change the implementation
     // ! of RuntimeType.Equals() and RuntimeType.GetHashCode().
     //
-    // 
+    //
     // Internal details:
     //
     //  The RuntimeType is not a single class but a family of classes that can be categorized along two dimensions:
@@ -53,9 +53,9 @@ namespace Internal.Reflection.Core.NonPortable
         //
         // TypeTable mapping raw RuntimeTypeHandles (normalized or otherwise) to Types.
         //
-        // Unlike most unifier tables, RuntimeTypeHandleToRuntimeTypeCache exists for fast lookup, not unification. It hashes and compares 
-        // on the raw IntPtr value of the RuntimeTypeHandle. Because Redhawk can and does create multiple EETypes for the same 
-        // semantically identical type, the same RuntimeType can legitimately appear twice in this table. The factory, however, 
+        // Unlike most unifier tables, RuntimeTypeHandleToRuntimeTypeCache exists for fast lookup, not unification. It hashes and compares
+        // on the raw IntPtr value of the RuntimeTypeHandle. Because Redhawk can and does create multiple EETypes for the same
+        // semantically identical type, the same RuntimeType can legitimately appear twice in this table. The factory, however,
         // does a second lookup in the true unifying tables rather than creating the Type itself.
         // Thus, the one-to-one relationship between Type reference identity and Type semantic identity is preserved.
         //

@@ -34,10 +34,10 @@ GVAL_IMPL_INIT(UInt64, g_MostRecentFuncEvalHijackInstructionPointer, 0);
 /// Retrieve the global FuncEval parameter buffer size.
 /// </summary>
 /// <remarks>
-/// During debugging, if a FuncEval is requested, 
-/// the func eval infrastructure needs to know how much buffer to allocate for the debugger to 
-/// write the parameter information in. The C# supporting code will call this API to obtain the 
-/// buffer size. By that time, the value should have been set through the UpdateFuncEvalParameterBufferSize() 
+/// During debugging, if a FuncEval is requested,
+/// the func eval infrastructure needs to know how much buffer to allocate for the debugger to
+/// write the parameter information in. The C# supporting code will call this API to obtain the
+/// buffer size. By that time, the value should have been set through the UpdateFuncEvalParameterBufferSize()
 /// method on the ISosRedhawk7 interface.
 /// </remarks>
 EXTERN_C REDHAWK_API UInt32 __cdecl RhpGetFuncEvalParameterBufferSize()
@@ -49,9 +49,9 @@ EXTERN_C REDHAWK_API UInt32 __cdecl RhpGetFuncEvalParameterBufferSize()
 /// Retrieve the global FuncEval mode.
 /// </summary>
 /// <remarks>
-/// During debugging, if a FuncEval is requested, 
-/// the func eval infrastructure needs to know what mode to execute the FuncEval request 
-/// The C# supporting code will call this API to obtain the mode. By that time, the value 
+/// During debugging, if a FuncEval is requested,
+/// the func eval infrastructure needs to know what mode to execute the FuncEval request
+/// The C# supporting code will call this API to obtain the mode. By that time, the value
 /// should have been set through the UpdateFuncEvalMode() method on the ISosRedhawk7 interface.
 /// </remarks>
 EXTERN_C REDHAWK_API UInt32 __cdecl RhpGetFuncEvalMode()

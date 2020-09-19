@@ -42,7 +42,7 @@ COOP_PINVOKE_HELPER(Boolean, RhpEHEnumNext, (EHEnum* pEHEnum, EHClause* pEHClaus
     return pEHEnum->m_pCodeManager->EHEnumNext(&pEHEnum->m_state, pEHClause);
 }
 
-// Unmanaged helper to locate one of two classlib-provided functions that the runtime needs to 
+// Unmanaged helper to locate one of two classlib-provided functions that the runtime needs to
 // implement throwing of exceptions out of Rtm, and fail-fast. This may return NULL if the classlib
 // found via the provided address does not have the necessary exports.
 COOP_PINVOKE_HELPER(void *, RhpGetClasslibFunctionFromCodeAddress, (void * address, ClasslibFunctionId functionId))
@@ -50,7 +50,7 @@ COOP_PINVOKE_HELPER(void *, RhpGetClasslibFunctionFromCodeAddress, (void * addre
     return GetRuntimeInstance()->GetClasslibFunctionFromCodeAddress(address, functionId);
 }
 
-// Unmanaged helper to locate one of two classlib-provided functions that the runtime needs to 
+// Unmanaged helper to locate one of two classlib-provided functions that the runtime needs to
 // implement throwing of exceptions out of Rtm, and fail-fast. This may return NULL if the classlib
 // found via the provided address does not have the necessary exports.
 COOP_PINVOKE_HELPER(void *, RhpGetClasslibFunctionFromEEType, (EEType * pEEType, ClasslibFunctionId functionId))
@@ -178,9 +178,9 @@ struct EXCEPTION_REGISTRATION_RECORD
 };
 #endif // HOST_X86
 
-EXTERN_C void __cdecl RhpFailFastForPInvokeExceptionPreemp(IntNative PInvokeCallsiteReturnAddr, 
+EXTERN_C void __cdecl RhpFailFastForPInvokeExceptionPreemp(IntNative PInvokeCallsiteReturnAddr,
                                                            void* pExceptionRecord, void* pContextRecord);
-EXTERN_C void REDHAWK_CALLCONV RhpFailFastForPInvokeExceptionCoop(IntNative PInvokeCallsiteReturnAddr, 
+EXTERN_C void REDHAWK_CALLCONV RhpFailFastForPInvokeExceptionCoop(IntNative PInvokeCallsiteReturnAddr,
                                                                   void* pExceptionRecord, void* pContextRecord);
 Int32 __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs);
 
@@ -193,9 +193,9 @@ EXTERN_C Int32 __stdcall RhpPInvokeExceptionGuard(PEXCEPTION_RECORD       pExcep
 #ifdef APP_LOCAL_RUNTIME
     UNREFERENCED_PARAMETER(pDispatcherContext);
     //
-    // When running on Windows 8.1 RTM, we cannot register our vectored exception handler, because that 
-    // version of MRT100.dll does not support it.  However, the binder sets this function as the personality 
-    // routine for every reverse p/invoke, so we can handle hardware exceptions from managed code here.  
+    // When running on Windows 8.1 RTM, we cannot register our vectored exception handler, because that
+    // version of MRT100.dll does not support it.  However, the binder sets this function as the personality
+    // routine for every reverse p/invoke, so we can handle hardware exceptions from managed code here.
     //
     EXCEPTION_POINTERS pointers;
     pointers.ExceptionRecord = pExceptionRecord;
@@ -209,9 +209,9 @@ EXTERN_C Int32 __stdcall RhpPInvokeExceptionGuard(PEXCEPTION_RECORD       pExcep
 
     // If the thread is currently in the "do not trigger GC" mode, we must not allocate, we must not reverse pinvoke, or
     // return from a pinvoke.  All of these things will deadlock with the GC and they all become increasingly likely as
-    // exception dispatch kicks off.  So we just nip this in the bud as early as possible with a FailFast.  The most 
-    // likely case where this occurs is in our GC-callouts for Jupiter lifetime management -- in that case, we have 
-    // managed code that calls to native code (without pinvoking) which might have a bug that causes an AV.  
+    // exception dispatch kicks off.  So we just nip this in the bud as early as possible with a FailFast.  The most
+    // likely case where this occurs is in our GC-callouts for Jupiter lifetime management -- in that case, we have
+    // managed code that calls to native code (without pinvoking) which might have a bug that causes an AV.
     if (pThread->IsDoNotTriggerGcSet())
         RhFailFast();
 
@@ -303,7 +303,7 @@ EXTERN_C void * RhpCopyAnyWithWriteBarrierSrcAVLocation;
 static bool InWriteBarrierHelper(UIntNative faultingIP)
 {
 #ifndef USE_PORTABLE_HELPERS
-    static UIntNative writeBarrierAVLocations[] = 
+    static UIntNative writeBarrierAVLocations[] =
     {
         (UIntNative)&RhpAssignRefAVLocation,
         (UIntNative)&RhpCheckedAssignRefAVLocation,

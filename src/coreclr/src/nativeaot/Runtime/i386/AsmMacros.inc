@@ -128,7 +128,7 @@ POP_COOP_PINVOKE_FRAME macro
     pop         ebx
     pop         esi
     pop         edi
-    pop         ecx 
+    pop         ecx
 endm
 
 

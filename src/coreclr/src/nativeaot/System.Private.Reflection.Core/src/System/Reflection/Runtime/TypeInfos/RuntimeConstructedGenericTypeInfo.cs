@@ -19,7 +19,7 @@ namespace System.Reflection.Runtime.TypeInfos
 {
     //
     // TypeInfos that represent constructed generic types.
-    // 
+    //
     //
     internal sealed partial class RuntimeConstructedGenericTypeInfo : RuntimeTypeInfo, IKeyedItem<RuntimeConstructedGenericTypeInfo.UnificationKey>
     {
@@ -44,8 +44,8 @@ namespace System.Reflection.Runtime.TypeInfos
 
         //
         // Implements IKeyedItem.PrepareKey.
-        // 
-        // This method is the keyed item's chance to do any lazy evaluation needed to produce the key quickly. 
+        //
+        // This method is the keyed item's chance to do any lazy evaluation needed to produce the key quickly.
         // Concurrent unifiers are guaranteed to invoke this method at least once and wait for it
         // to complete before invoking the Key property. The unifier lock is NOT held across the call.
         //
@@ -57,7 +57,7 @@ namespace System.Reflection.Runtime.TypeInfos
 
         //
         // Implements IKeyedItem.Key.
-        // 
+        //
         // Produce the key. This is a high-traffic property and is called while the hash table's lock is held. Thus, it should
         // return a precomputed stored value and refrain from invoking other methods. If the keyed item wishes to
         // do lazy evaluation of the key, it should do so in the PrepareKey() method.

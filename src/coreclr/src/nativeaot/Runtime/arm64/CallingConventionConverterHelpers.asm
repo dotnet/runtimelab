@@ -2,7 +2,7 @@
 ;; The .NET Foundation licenses this file to you under the MIT license.
 
 #include "ksarm64.h"
-    
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; CallingConventionCoverter Helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 POINTER_SIZE                        equ 0x08
@@ -38,7 +38,7 @@ POINTER_SIZE                        equ 0x08
     ;; }
     ;;
     ;; xip0 - Points at CommonCallingStubInputData
-    ;;  
+    ;;
     ;;
     LEAF_ENTRY __jmpstub__CallingConventionConverter_CommonCallingStub
         ldr     xip1, [xip0]                ; put CallingConventionId into xip1 as "parameter" to universal transition thunk

@@ -59,9 +59,9 @@ namespace Internal.Reflection.Extensions.NonPortable
                     // Because the Project N toolchain removes any custom attribute that refuses to opt into metadata so at this point,
                     // we could simply return an empty enumeration and "be correct." However, the code paths following this already do that naturally.
                     // (i.e. the "passFilter" will never return true, thus we will never attempt to query the custom attribute type for its
-                    // own AttributeUsage custom attribute.) If the toolchain behavior changes in the future, it's preferable that 
-                    // this shows up as new MissingMetadataExceptions rather than incorrect results from the api so we will not put 
-                    // in an explicit return here. 
+                    // own AttributeUsage custom attribute.) If the toolchain behavior changes in the future, it's preferable that
+                    // this shows up as new MissingMetadataExceptions rather than incorrect results from the api so we will not put
+                    // in an explicit return here.
                 }
             }
 

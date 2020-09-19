@@ -39,7 +39,7 @@ namespace System
             {
                 object fieldValue = fieldValues[i];
 
-                // The hashcode of an array ignores the contents of the array, so it can produce 
+                // The hashcode of an array ignores the contents of the array, so it can produce
                 // different hashcodes for arrays with the same contents.
                 // Since we do deep comparisons of arrays in Equals(), this means Equals and GetHashCode will
                 // be inconsistent for arrays. Therefore, we ignore hashes of arrays.

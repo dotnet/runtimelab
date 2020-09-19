@@ -4,7 +4,7 @@
 #include "common.h"
 
 // This class is used to encapsulate the internals of our unwinding implementation
-// and any custom versions of libunwind structures that we use for performance 
+// and any custom versions of libunwind structures that we use for performance
 // reasons.
 class UnwindHelpers
 {

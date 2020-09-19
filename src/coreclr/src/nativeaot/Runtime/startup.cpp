@@ -106,8 +106,8 @@ static bool InitDLL(HANDLE hPalInstance)
     unsigned dwPerThreadChunks = (dwTotalStressLogSize / 24) / STRESSLOG_CHUNK_SIZE;
     if (dwTotalStressLogSize != 0)
     {
-        StressLog::Initialize(facility, dwStressLogLevel, 
-                              dwPerThreadChunks * STRESSLOG_CHUNK_SIZE, 
+        StressLog::Initialize(facility, dwStressLogLevel,
+                              dwPerThreadChunks * STRESSLOG_CHUNK_SIZE,
                               (unsigned)dwTotalStressLogSize, hPalInstance);
     }
 #endif // STRESS_LOG
@@ -133,21 +133,21 @@ static void CheckForPalFallback()
     if (disallowSetting == 0)
         return;
 
-    // The fallback provider doesn't implement write watch, so we check for the write watch capability as a 
-    // proxy for whether or not we're using the fallback provider since we don't have direct access to this 
+    // The fallback provider doesn't implement write watch, so we check for the write watch capability as a
+    // proxy for whether or not we're using the fallback provider since we don't have direct access to this
     // information from here.
 
     if (disallowSetting == 1)
     {
-        // If RH_DisallowRuntimeServicesFallback is set to 1, we want to fail fast if we discover that we're 
-        // running against the fallback provider.  
+        // If RH_DisallowRuntimeServicesFallback is set to 1, we want to fail fast if we discover that we're
+        // running against the fallback provider.
         if (!PalHasCapability(WriteWatchCapability))
             RhFailFast();
     }
     else if (disallowSetting == 2)
     {
-        // If RH_DisallowRuntimeServicesFallback is set to 2, we want to fail fast if we discover that we're 
-        // NOT running against the fallback provider.  
+        // If RH_DisallowRuntimeServicesFallback is set to 2, we want to fail fast if we discover that we're
+        // NOT running against the fallback provider.
         if (PalHasCapability(WriteWatchCapability))
             RhFailFast();
     }
@@ -405,7 +405,7 @@ COOP_PINVOKE_HELPER(void, RhpEnableConservativeStackReporting, ())
 //
 // Currently called only from a managed executable once Main returns, this routine does whatever is needed to
 // cleanup managed state before exiting. There's not a lot here at the moment since we're always about to let
-// the OS tear the process down anyway. 
+// the OS tear the process down anyway.
 //
 // @TODO: Eventually we'll probably have a hosting API and explicit shutdown request. When that happens we'll
 // something more sophisticated here since we won't be able to rely on the OS cleaning up after us.

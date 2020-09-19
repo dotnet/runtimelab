@@ -183,7 +183,7 @@ namespace System
         }
 
         // This is the classlib-provided fail-fast function that will be invoked whenever the runtime
-        // needs to cause the process to exit. It is the classlib's opprotunity to customize the 
+        // needs to cause the process to exit. It is the classlib's opprotunity to customize the
         // termination behavior in whatever way necessary.
         [RuntimeExport("FailFast")]
         public static void RuntimeFailFast(RhFailFastReason reason, Exception exception, IntPtr pExAddress, IntPtr pExContext)
@@ -226,7 +226,7 @@ namespace System
         [DoesNotReturn]
         internal static void FailFast(string message, Exception exception, RhFailFastReason reason, IntPtr pExAddress, IntPtr pExContext)
         {
-            // If this a recursive call to FailFast, avoid all unnecessary and complex activity the second time around to avoid the recursion 
+            // If this a recursive call to FailFast, avoid all unnecessary and complex activity the second time around to avoid the recursion
             // that got us here the first time (Some judgement is required as to what activity is "unnecessary and complex".)
             bool minimalFailFast = InFailFast.Value || (exception == PreallocatedOutOfMemoryException.Instance);
             InFailFast.Value = true;
@@ -269,7 +269,7 @@ namespace System
         // accessing this flag.
         private static class InFailFast
         {
-            // This boolean is used to stop runaway FailFast recursions. Though this is technically a concurrently set field, it only gets set during 
+            // This boolean is used to stop runaway FailFast recursions. Though this is technically a concurrently set field, it only gets set during
             // fatal process shutdowns and it's only purpose is a reasonable-case effort to make a bad situation a little less bad.
             // Trying to use locks or other concurrent access apis would actually defeat the purpose of making FailFast as robust as possible.
             public static bool Value;
@@ -280,7 +280,7 @@ namespace System
         /// <summary>
         /// This is the header that describes our 'error report' buffer to the minidump auxiliary provider.
         /// Its format is know to that system-wide DLL, so do not change it.  The remainder of the buffer is
-        /// opaque to the minidump auxiliary provider, so it'll have its own format that is more easily 
+        /// opaque to the minidump auxiliary provider, so it'll have its own format that is more easily
         /// changed.
         /// </summary>
         [StructLayout(LayoutKind.Sequential)]
@@ -298,7 +298,7 @@ namespace System
 
         /// <summary>
         /// This header describes the contents of the serialized error report to DAC, which can deserialize it
-        /// from a dump file or live debugging session.  This format is easier to change than the 
+        /// from a dump file or live debugging session.  This format is easier to change than the
         /// ERROR_REPORT_BUFFER_HEADER, but it is still well-known to DAC, so any changes must update the
         /// version number and also have corresponding changes made to DAC.
         /// </summary>
@@ -306,8 +306,8 @@ namespace System
         private struct SERIALIZED_ERROR_REPORT_HEADER
         {
             private int _errorReportSignature;           // This is the version of the 'container format'.
-            private int _exceptionSerializationVersion;  // This is the version of the Exception format.  It is 
-                                                         // separate from the 'container format' version since the 
+            private int _exceptionSerializationVersion;  // This is the version of the Exception format.  It is
+                                                         // separate from the 'container format' version since the
                                                          // implementation of the Exception serialization is owned by
                                                          // the Exception class.
             private int _exceptionCount;                 // We just contain a logical array of exceptions.
@@ -390,10 +390,10 @@ namespace System
 
         /// <summary>
         /// This method will call the runtime to gather the Exception objects from every exception dispatch in
-        /// progress on the current thread.  It will then serialize them into a new buffer and pass that 
-        /// buffer back to the runtime, which will publish it to a place where a global "minidump auxiliary 
+        /// progress on the current thread.  It will then serialize them into a new buffer and pass that
+        /// buffer back to the runtime, which will publish it to a place where a global "minidump auxiliary
         /// provider" will be able to save the buffer's contents into triage dumps.
-        /// 
+        ///
         /// Thread safety information: The guarantee of this method is that the buffer it produces will have
         /// complete and correct information for all live exceptions on the current thread (as long as the same exception object
         /// is not thrown simultaneously on multiple threads). It will do a best-effort attempt to serialize information about exceptions
@@ -459,7 +459,7 @@ namespace System
             // Make sure we serialize currentException
             if (!exceptions.Contains(currentException))
             {
-                // When this happens, currentException is probably passed to this function through System.Environment.FailFast(), we 
+                // When this happens, currentException is probably passed to this function through System.Environment.FailFast(), we
                 // would want to treat as if this exception is last thrown in the current thread.
                 exceptions.Insert(0, currentException);
                 currentNestingLevel++;

@@ -58,7 +58,7 @@ DoCall:
 
         EXPORT_POINTER_TO_ADDRESS PointerToReturnFromCallDescrThunk
 
-        ; Symbol used to identify thunk call to managed function so the special 
+        ; Symbol used to identify thunk call to managed function so the special
         ; case unwinder can unwind through this function. Sadly we cannot directly
         ; export this symbol right now because it confuses DIA unwinder to believe
         ; it's the beginning of a new method, therefore we export the address
@@ -69,7 +69,7 @@ DoCall:
         mov     ecx, dword ptr [rbx + OFFSETOF__CallDescrData__fpReturnSize]
         test    ecx, ecx
         jz      ReturnsInt
-        
+
         cmp     ecx, 4
         je      ReturnsFloat
         cmp     ecx, 8

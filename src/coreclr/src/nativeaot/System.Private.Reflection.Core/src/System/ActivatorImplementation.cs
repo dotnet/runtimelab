@@ -23,7 +23,7 @@ namespace System
             CreateInstanceCheckType(type);
 
             // This short-circuit depends on the fact that the toolchain prohibits valuetypes with nullary constructors. Unfortunately, we can't check for the presence of nullary
-            // constructors without risking a MissingMetadataException, and we can't regress the prior N behavior that allowed CreateInstance on valuetypes to work regardless of metadata. 
+            // constructors without risking a MissingMetadataException, and we can't regress the prior N behavior that allowed CreateInstance on valuetypes to work regardless of metadata.
             if (type.IsValueType)
                 return RuntimeAugments.NewObject(type.TypeHandle);
 
@@ -60,7 +60,7 @@ namespace System
             int numArgs = args.Length;
 
             // This short-circuit depends on the fact that the toolchain prohibits valuetypes with nullary constructors. Unfortunately, we can't check for the presence of nullary
-            // constructors without risking a MissingMetadataException, and we can't regress the prior N behavior that allowed CreateInstance on valuetypes to work regardless of metadata. 
+            // constructors without risking a MissingMetadataException, and we can't regress the prior N behavior that allowed CreateInstance on valuetypes to work regardless of metadata.
             if (numArgs == 0 && type.IsValueType)
                 return RuntimeAugments.NewObject(type.TypeHandle);
 
@@ -100,7 +100,7 @@ namespace System
                 //
                 // The only time this matters at all is if (1) a third party binder is being used and (2) it actually reordered the array
                 // which it shouldn't have done because (a) we didn't request it to bind arguments by name, and (b) it's kinda hard to
-                // reorder a zero-length args array. But who knows what a third party binder will do if we make a call to it that we didn't 
+                // reorder a zero-length args array. But who knows what a third party binder will do if we make a call to it that we didn't
                 // used to do, so we'll preserve the CoreClr order of calls just to be safe.
                 state = null;
             }

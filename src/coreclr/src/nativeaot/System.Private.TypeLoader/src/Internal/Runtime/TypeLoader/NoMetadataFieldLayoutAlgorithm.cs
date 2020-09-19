@@ -8,7 +8,7 @@ using System.Diagnostics;
 namespace Internal.Runtime.TypeLoader
 {
     /// <summary>
-    /// Useable when we have runtime EEType structures. Can represent the field layout necessary 
+    /// Useable when we have runtime EEType structures. Can represent the field layout necessary
     /// to represent the size/alignment of the overall type, but must delegate to either NativeLayoutFieldAlgorithm
     /// or MetadataFieldLayoutAlgorithm to get information about individual fields.
     /// </summary>
@@ -23,7 +23,7 @@ namespace Internal.Runtime.TypeLoader
         }
 
         /// <summary>
-        /// Reads the minimal information about type layout encoded in the 
+        /// Reads the minimal information about type layout encoded in the
         /// EEType. That doesn't include field information.
         /// </summary>
         public unsafe override ComputedInstanceFieldLayout ComputeInstanceLayout(DefType type, InstanceLayoutKind layoutKind)

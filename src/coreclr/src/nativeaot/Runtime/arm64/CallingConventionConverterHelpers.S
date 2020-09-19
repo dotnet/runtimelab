@@ -38,7 +38,7 @@ POINTER_SIZE = 0x08
     // }
     //
     // xip0 - Points at CommonCallingStubInputData
-    //  
+    //
     //
     LEAF_ENTRY __jmpstub__CallingConventionConverter_CommonCallingStub, _TEXT
         ldr     xip1, [xip0]                // put CallingConventionId into xip1 as "parameter" to universal transition thunk

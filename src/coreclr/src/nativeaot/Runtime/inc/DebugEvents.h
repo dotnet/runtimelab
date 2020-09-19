@@ -18,7 +18,7 @@
 // Perhaps it is because now we are in building 40? Who would know
 #define CLRDBG_NOTIFICATION_EXCEPTION_CODE  ((int) 0x04040400)
 
-// This is exception argument 0 included in debugger notification events. 
+// This is exception argument 0 included in debugger notification events.
 // The debugger uses this as a sanity check.
 // This could be very volatile data that changes between builds.
 // NOTE: Again intentionally different than CLR's checksum (0x31415927)
@@ -27,7 +27,7 @@
 //       the same.
 #define CLRDBG_EXCEPTION_DATA_CHECKSUM ((int) 0x27182818)
 
-typedef enum 
+typedef enum
 {
     DEBUG_EVENT_TYPE_INVALID = 0,
     DEBUG_EVENT_TYPE_LOAD_MODULE = 1,
@@ -47,7 +47,7 @@ struct DebugEventPayload
     DebugEventType type;
     union
     {
-        struct 
+        struct
         {
             CORDB_ADDRESS pModuleHeader; //ModuleHeader*
         } ModuleLoadUnload;

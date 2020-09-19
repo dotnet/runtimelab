@@ -119,9 +119,9 @@ namespace System.Runtime
             internal void* _pTargetType;
 
             ///<summary>
-            /// We expect the stackwalker to adjust return addresses to point at 'return address - 1' so that we 
+            /// We expect the stackwalker to adjust return addresses to point at 'return address - 1' so that we
             /// can use an interval here that is closed at the start and open at the end.  When a hardware fault
-            /// occurs, the IP is pointing at the start of the instruction and will not be adjusted by the 
+            /// occurs, the IP is pointing at the start of the instruction and will not be adjusted by the
             /// stackwalker.  Therefore, it will naturally work with an interval that has a closed start and open
             /// end.
             ///</summary>
@@ -146,13 +146,13 @@ namespace System.Runtime
             InternalCalls.RhpFallbackFailFast();
         }
 
-        // Given an address pointing somewhere into a managed module, get the classlib-defined fail-fast 
-        // function and invoke it.  Any failure to find and invoke the function, or if it returns, results in 
+        // Given an address pointing somewhere into a managed module, get the classlib-defined fail-fast
+        // function and invoke it.  Any failure to find and invoke the function, or if it returns, results in
         // MRT-defined fail-fast behavior.
         internal static void FailFastViaClasslib(RhFailFastReason reason, object unhandledException,
             IntPtr classlibAddress)
         {
-            // Find the classlib function that will fail fast. This is a RuntimeExport function from the 
+            // Find the classlib function that will fail fast. This is a RuntimeExport function from the
             // classlib module, and is therefore managed-callable.
             IntPtr pFailFastFunction = (IntPtr)InternalCalls.RhpGetClasslibFunctionFromCodeAddress(classlibAddress,
                                                                            ClassLibFunctionId.FailFast);
@@ -322,8 +322,8 @@ namespace System.Runtime
             return e;
         }
 
-        // Given an ExceptionID and an EEType address, get an exception object of a type that the module containing 
-        // the given address will understand. This finds the classlib-defined GetRuntimeException function and asks 
+        // Given an ExceptionID and an EEType address, get an exception object of a type that the module containing
+        // the given address will understand. This finds the classlib-defined GetRuntimeException function and asks
         // it for the exception object.
         internal static Exception GetClasslibExceptionFromEEType(ExceptionIDs id, IntPtr pEEType)
         {
@@ -358,8 +358,8 @@ namespace System.Runtime
             return e;
         }
 
-        // RhExceptionHandling_ functions are used to throw exceptions out of our asm helpers. We tail-call from 
-        // the asm helpers to these functions, which performs the throw. The tail-call is important: it ensures that 
+        // RhExceptionHandling_ functions are used to throw exceptions out of our asm helpers. We tail-call from
+        // the asm helpers to these functions, which performs the throw. The tail-call is important: it ensures that
         // the stack is crawlable from within these functions.
         [RuntimeExport("RhExceptionHandling_ThrowClasslibOverflowException")]
         public static void ThrowClasslibOverflowException(IntPtr address)
@@ -384,7 +384,7 @@ namespace System.Runtime
         {
             ExceptionIDs exID = fIsOverflow ? ExceptionIDs.Overflow : ExceptionIDs.OutOfMemory;
 
-            // Throw the out of memory exception defined by the classlib, using the input EEType* 
+            // Throw the out of memory exception defined by the classlib, using the input EEType*
             // to find the correct classlib.
 
             throw pEEType.ToPointer()->GetClasslibException(exID);
@@ -394,8 +394,8 @@ namespace System.Runtime
         private static OutOfMemoryException s_theOOMException = new OutOfMemoryException();
 
         // MRT exports GetRuntimeException for the few cases where we have a helper that throws an exception
-        // and may be called by either MRT or other classlibs and that helper needs to throw an exception. 
-        // There are only a few cases where this happens now (the fast allocation helpers), so we limit the 
+        // and may be called by either MRT or other classlibs and that helper needs to throw an exception.
+        // There are only a few cases where this happens now (the fast allocation helpers), so we limit the
         // exception types that MRT will return.
         [RuntimeExport("GetRuntimeException")]
         public static Exception GetRuntimeException(ExceptionIDs id)
@@ -440,7 +440,7 @@ namespace System.Runtime
             // the rest of the struct is left unspecified.
         }
 
-        // N.B. -- These values are burned into the throw helper assembly code and are also known the the 
+        // N.B. -- These values are burned into the throw helper assembly code and are also known the the
         //         StackFrameIterator code.
         [Flags]
         internal enum ExKind : byte
@@ -511,9 +511,9 @@ namespace System.Runtime
             [FieldOffset(AsmOffsets.OFFSETOF__ExInfo__m_passNumber)]
             internal byte _passNumber;
 
-            // BEWARE: This field is used by the stackwalker to know if the dispatch code has reached the 
-            //         point at which a handler is called.  In other words, it serves as an "is a handler 
-            //         active" state where '_idxCurClause == MaxTryRegionIdx' means 'no'. 
+            // BEWARE: This field is used by the stackwalker to know if the dispatch code has reached the
+            //         point at which a handler is called.  In other words, it serves as an "is a handler
+            //         active" state where '_idxCurClause == MaxTryRegionIdx' means 'no'.
             [FieldOffset(AsmOffsets.OFFSETOF__ExInfo__m_idxCurClause)]
             internal uint _idxCurClause;
 
@@ -548,7 +548,7 @@ namespace System.Runtime
 
                 case (uint)HwExceptionCode.STATUS_REDHAWK_WRITE_BARRIER_NULL_REFERENCE:
                     // The write barrier where the actual fault happened has been unwound already.
-                    // The IP of this fault needs to be treated as return address, not as IP of 
+                    // The IP of this fault needs to be treated as return address, not as IP of
                     // faulting instruction.
                     instructionFault = false;
                     exceptionId = ExceptionIDs.NullReference;
@@ -562,7 +562,7 @@ namespace System.Runtime
                     exceptionId = ExceptionIDs.DataMisaligned;
                     break;
 
-                // N.B. -- AVs that have a read/write address lower than 64k are already transformed to 
+                // N.B. -- AVs that have a read/write address lower than 64k are already transformed to
                 //         HwExceptionCode.REDHAWK_NULL_REFERENCE prior to calling this routine.
                 case (uint)HwExceptionCode.STATUS_ACCESS_VIOLATION:
                     exceptionId = ExceptionIDs.AccessViolation;
@@ -717,7 +717,7 @@ namespace System.Runtime
             // Due to the stackwalker logic, we cannot tolerate triggering a GC from the dispatch code once we
             // are in the 2nd pass.  This is because the stackwalker applies a particular unwind semantic to
             // 'collapse' funclets which gets confused when we walk out of the dispatch code and encounter the
-            // 'main body' without first encountering the funclet.  The thunks used to invoke 2nd-pass 
+            // 'main body' without first encountering the funclet.  The thunks used to invoke 2nd-pass
             // funclets will always toggle this mode off before invoking them.
             InternalCalls.RhpSetThreadDoNotTriggerGC();
 
@@ -770,15 +770,15 @@ namespace System.Runtime
                 "Handling frame must have a valid stack frame pointer");
         }
 
-        private static void UpdateStackTrace(object exceptionObj, UIntPtr curFramePtr, IntPtr ip, 
+        private static void UpdateStackTrace(object exceptionObj, UIntPtr curFramePtr, IntPtr ip,
             ref bool isFirstRethrowFrame, ref UIntPtr prevFramePtr, ref bool isFirstFrame)
         {
-            // We use the fact that all funclet stack frames belonging to the same logical method activation 
+            // We use the fact that all funclet stack frames belonging to the same logical method activation
             // will have the same FramePointer value.  Additionally, the stackwalker will return a sequence of
-            // callbacks for all the funclet stack frames, one right after the other.  The classlib doesn't 
-            // want to know about funclets, so we strip them out by only reporting the first frame of a 
+            // callbacks for all the funclet stack frames, one right after the other.  The classlib doesn't
+            // want to know about funclets, so we strip them out by only reporting the first frame of a
             // sequence of funclets.  This is correct because the leafmost funclet is first in the sequence
-            // and corresponds to the current 'IP state' of the method.            
+            // and corresponds to the current 'IP state' of the method.
             if ((prevFramePtr == UIntPtr.Zero) || (curFramePtr != prevFramePtr))
             {
                 AppendExceptionStackFrameViaClasslib(exceptionObj, ip,
@@ -808,7 +808,7 @@ namespace System.Runtime
             RhEHClause ehClause;
             for (uint curIdx = 0; InternalCalls.RhpEHEnumNext(&ehEnum, &ehClause); curIdx++)
             {
-                // 
+                //
                 // Skip to the starting try region.  This is used by collided unwinds and rethrows to pickup where
                 // the previous dispatch left off.
                 //
@@ -820,7 +820,7 @@ namespace System.Runtime
                         continue;
                     }
 
-                    // Now, we continue skipping while the try region is identical to the one that invoked the 
+                    // Now, we continue skipping while the try region is identical to the one that invoked the
                     // previous dispatch.
                     if ((ehClause._tryStartOffset == lastTryStart) && (ehClause._tryEndOffset == lastTryEnd))
                         continue;
@@ -923,7 +923,7 @@ namespace System.Runtime
             RhEHClause ehClause;
             for (uint curIdx = 0; InternalCalls.RhpEHEnumNext(&ehEnum, &ehClause) && curIdx < idxLimit; curIdx++)
             {
-                // 
+                //
                 // Skip to the starting try region.  This is used by collided unwinds and rethrows to pickup where
                 // the previous dispatch left off.
                 //
@@ -935,7 +935,7 @@ namespace System.Runtime
                         continue;
                     }
 
-                    // Now, we continue skipping while the try region is identical to the one that invoked the 
+                    // Now, we continue skipping while the try region is identical to the one that invoked the
                     // previous dispatch.
                     if ((ehClause._tryStartOffset == lastTryStart) && (ehClause._tryEndOffset == lastTryEnd))
                         continue;
@@ -959,11 +959,11 @@ namespace System.Runtime
                 // N.B. -- We need to suppress GC "in-between" calls to finallys in this loop because we do
                 // not have the correct next-execution point live on the stack and, therefore, may cause a GC
                 // hole if we allow a GC between invocation of finally funclets (i.e. after one has returned
-                // here to the dispatcher, but before the next one is invoked).  Once they are running, it's 
+                // here to the dispatcher, but before the next one is invoked).  Once they are running, it's
                 // fine for them to trigger a GC, obviously.
-                // 
+                //
                 // As a result, RhpCallFinallyFunclet will set this state in the runtime upon return from the
-                // funclet, and we need to reset it if/when we fall out of the loop and we know that the 
+                // funclet, and we need to reset it if/when we fall out of the loop and we know that the
                 // method will no longer get any more GC callbacks.
 
                 byte* pFinallyHandler = ehClause._handlerAddress;

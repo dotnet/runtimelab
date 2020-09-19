@@ -44,7 +44,7 @@ UInt32 WINAPI FinalizerStart(void* pContext)
     ThreadStore::AttachCurrentThread();
     Thread * pThread = ThreadStore::GetCurrentThread();
 
-    // Disallow gcstress on this thread to work around the current implementation's limitation that it will 
+    // Disallow gcstress on this thread to work around the current implementation's limitation that it will
     // get into an infinite loop if performed on the finalizer thread.
     pThread->SetSuppressGcStress();
 
@@ -93,7 +93,7 @@ bool RhStartFinalizerThread()
         }
     }
 
-    // We always return true, so the GC can start even if we failed. 
+    // We always return true, so the GC can start even if we failed.
     return true;
 
 #else // APP_LOCAL_RUNTIME

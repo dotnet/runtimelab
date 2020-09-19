@@ -15,9 +15,9 @@ using Internal.Runtime.CompilerServices;
 
 namespace System
 {
-    // WARNING: Bartok hard-codes offsets to the delegate fields, so it's notion of where fields are may 
-    // differ from the runtime's notion.  Bartok honors sequential and explicit layout directives, so I've 
-    // ordered the fields in such a way as to match the runtime's layout and then just tacked on this 
+    // WARNING: Bartok hard-codes offsets to the delegate fields, so it's notion of where fields are may
+    // differ from the runtime's notion.  Bartok honors sequential and explicit layout directives, so I've
+    // ordered the fields in such a way as to match the runtime's layout and then just tacked on this
     // sequential layout directive so that Bartok matches it.
     [StructLayout(LayoutKind.Sequential)]
     [DebuggerDisplay("Target method(s) = {GetTargetMethodsDescriptionForDebugger()}")]
@@ -86,28 +86,28 @@ namespace System
         }
 
         //
-        // If there is a default value string, the overridden function should set the 
+        // If there is a default value string, the overridden function should set the
         // s_DefaultValueString field and return true.
         private protected virtual bool LoadDefaultValueString() { return false; }
 
         /// <summary>
         /// Used by various parts of the runtime as a replacement for Delegate.Method
-        /// 
-        /// The Interop layer uses this to distinguish between different methods on a 
+        ///
+        /// The Interop layer uses this to distinguish between different methods on a
         /// single type, and to get the function pointer for delegates to static functions
-        /// 
+        ///
         /// The reflection apis use this api to figure out what MethodInfo is related
         /// to a delegate.
-        /// 
+        ///
         /// </summary>
-        /// <param name="typeOfFirstParameterIfInstanceDelegate"> 
+        /// <param name="typeOfFirstParameterIfInstanceDelegate">
         ///   This value indicates which type an delegate's function pointer is associated with
         ///   This value is ONLY set for delegates where the function pointer points at an instance method
         /// </param>
-        /// <param name="isOpenResolver"> 
+        /// <param name="isOpenResolver">
         ///   This value indicates if the returned pointer is an open resolver structure.
         /// </param>
-        /// <param name="isInterpreterEntrypoint"> 
+        /// <param name="isInterpreterEntrypoint">
         ///   Delegate points to an object array thunk (the delegate wraps a Func&lt;object[], object&gt; delegate). This
         ///   is typically a delegate pointing to the LINQ expression interpreter.
         /// </param>
@@ -643,7 +643,7 @@ namespace System
             }
         }
 
-        // V2 api: Creates open or closed delegates to static or instance methods - relaxed signature checking allowed. 
+        // V2 api: Creates open or closed delegates to static or instance methods - relaxed signature checking allowed.
         public static Delegate CreateDelegate(Type type, object firstArgument, MethodInfo method, bool throwOnBindFailure) => ReflectionAugments.ReflectionCoreCallbacks.CreateDelegate(type, firstArgument, method, throwOnBindFailure);
 
         // V1 api: Creates open delegates to static or instance methods - relaxed signature checking allowed.
@@ -709,7 +709,7 @@ namespace System
         {
             Delegate del = (Delegate)(RuntimeImports.RhNewObject(delegateEEType));
 
-            // What? No constructor call? That's right, and it's not an oversight. All "construction" work happens in 
+            // What? No constructor call? That's right, and it's not an oversight. All "construction" work happens in
             // the Initialize() methods. This helper has a hard dependency on this invariant.
 
             if (isStatic)

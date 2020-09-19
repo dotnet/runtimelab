@@ -26,7 +26,7 @@ TSF_DoNotTriggerGc_Bit          = 4
 // INPUT: none
 //
 // TRASHES: none
-// 
+//
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
     NESTED_ENTRY RhpWaitForSuspend, _TEXT, NoHandler
 
@@ -112,7 +112,7 @@ Done:
 // INPUT: x9: transition frame
 //
 // TRASHES: x0, x1, x10
-// 
+//
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
     NESTED_ENTRY RhpWaitForGC, _TEXT, NoHandler
 
@@ -130,7 +130,7 @@ NoWait:
         EPILOG_RESTORE_REG_PAIR_INDEXED fp, lr, #0x10
         mov w0, #STATUS_REDHAWK_THREAD_ABORT
         mov x1, lr          // hijack target address as exception PC
-        b RhpThrowHwEx        
+        b RhpThrowHwEx
 
 NoAbort:
         EPILOG_RESTORE_REG_PAIR_INDEXED fp, lr, #0x10
@@ -165,7 +165,7 @@ NoAbort:
 
 ThreadAttached:
         //
-        // Check for the correct mode.  This is accessible via various odd things that we cannot completely 
+        // Check for the correct mode.  This is accessible via various odd things that we cannot completely
         // prevent such as :
         //     1) Registering a reverse pinvoke entrypoint as a vectored exception handler
         //     2) Performing a managed delegate invoke on a reverse pinvoke delegate.
@@ -173,11 +173,11 @@ ThreadAttached:
         ldr         x11, [x10, #OFFSETOF__Thread__m_pTransitionFrame]
         cbz         x11, CheckBadTransition
 
-        // Save previous TransitionFrame prior to making the mode transition so that it is always valid 
+        // Save previous TransitionFrame prior to making the mode transition so that it is always valid
         // whenever we might attempt to hijack this thread.
         str         x11, [x9]
 
-        str         xzr, [x10, #OFFSETOF__Thread__m_pTransitionFrame] 
+        str         xzr, [x10, #OFFSETOF__Thread__m_pTransitionFrame]
         dmb         ish
 
         PREPARE_EXTERNAL_VAR_INDIRECT_W RhpTrapThreads, 11
@@ -187,7 +187,7 @@ ThreadAttached:
         ret
 
 CheckBadTransition:
-        // Allow 'bad transitions' in when the TSF_DoNotTriggerGc mode is set.  This allows us to have 
+        // Allow 'bad transitions' in when the TSF_DoNotTriggerGc mode is set.  This allows us to have
         // [NativeCallable] methods that are called via the "restricted GC callouts" as well as from native,
         // which is necessary because the methods are CCW vtable methods on interfaces passed to native.
         ldr         w11, [x10, #OFFSETOF__Thread__m_ThreadStateFlags]
@@ -203,7 +203,7 @@ CheckBadTransition:
 TrapThread:
         // put the previous frame back (sets us back to preemptive mode)
         ldr         x11, [x9]
-        str         x11, [x10, #OFFSETOF__Thread__m_pTransitionFrame] 
+        str         x11, [x10, #OFFSETOF__Thread__m_pTransitionFrame]
         dmb         ish
 
 AttachThread:
@@ -226,7 +226,7 @@ BadTransition:
 // PRESERVES: x0-x8 -- need to preserve these because the caller assumes they are not trashed
 //
 // TRASHES: none
-// 
+//
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
     NESTED_ENTRY RhpReversePInvokeAttachOrTrapThread, _TEXT, NoHandler
 
@@ -260,7 +260,7 @@ BadTransition:
         ldp         x2, x3, [sp, #0x20]
         ldp         x4, x5, [sp, #0x30]
         ldp         x6, x7, [sp, #0x40]
-        ldr         x8, [sp, #0x50] 
+        ldr         x8, [sp, #0x50]
 
         // Restore FP and LR registers, and free the allocated stack block
         EPILOG_RESTORE_REG_PAIR_INDEXED   fp, lr, #0xA0

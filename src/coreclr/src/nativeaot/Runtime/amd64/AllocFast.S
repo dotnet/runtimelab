@@ -186,7 +186,7 @@ LOCAL_LABEL(RhNewString_RarePath):
         jmp C_FUNC(RhpNewArrayRare)
 
 LOCAL_LABEL(StringSizeOverflow):
-        // We get here if the size of the final string object can't be represented as an unsigned 
+        // We get here if the size of the final string object can't be represented as an unsigned
         // 32-bit value. We're going to tail-call to a managed helper that will throw
         // an OOM exception that the caller of this allocator understands.
 
@@ -269,7 +269,7 @@ LOCAL_LABEL(RhpNewArray_RarePath):
         jmp C_FUNC(RhpNewArrayRare)
 
 LOCAL_LABEL(ArraySizeOverflow):
-        // We get here if the size of the final array object can't be represented as an unsigned 
+        // We get here if the size of the final array object can't be represented as an unsigned
         // 32-bit value. We're going to tail-call to a managed helper that will throw
         // an overflow exception that the caller of this allocator understands.
 

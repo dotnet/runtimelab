@@ -28,7 +28,7 @@ endm
 ;; {
 ;;   8 bytes of space
 ;;   Used to hold return information.
-;;   eax, and 32bit float returns use the first 4 bytes, 
+;;   eax, and 32bit float returns use the first 4 bytes,
 ;;   eax,edx and 64bit float returns use the full 8 bytes
 ;; };
 ;;
@@ -94,7 +94,7 @@ LEAF_ENTRY __jmpstub__CallingConventionConverter_CommonCallingStub, _TEXT
         push        ebp
         mov         ebp, esp
         push        [eax]   ; First argument
-        mov         eax,[eax+4] ; 
+        mov         eax,[eax+4] ;
         push        [eax]   ; Pointer to CallingConventionConverter Managed thunk
         mov         eax,[eax+4] ; Pointer to UniversalTransitionThunk
         jmp         eax

@@ -5,7 +5,7 @@
 **
 **
 **
-** Purpose: Synchronizes access to a shared resource or region of code in a multi-threaded 
+** Purpose: Synchronizes access to a shared resource or region of code in a multi-threaded
 **             program.
 **
 **

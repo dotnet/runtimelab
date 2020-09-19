@@ -15,7 +15,7 @@ using Internal.Reflection.Core.Execution;
 namespace System.Reflection.Runtime.TypeInfos
 {
     //
-    // The runtime's implementation of TypeInfo's for array types. 
+    // The runtime's implementation of TypeInfo's for array types.
     //
     internal sealed partial class RuntimeArrayTypeInfo : RuntimeHasElementTypeInfo
     {

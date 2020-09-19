@@ -18,7 +18,7 @@ namespace System.Collections.Generic
     ** This does not strive to implement the full api surface area
     ** (but any portion it does implement should match the real Dictionary<>'s
     ** behavior.)
-    ** 
+    **
     ===========================================================*/
 #if TYPE_LOADER_IMPLEMENTATION
     [System.Runtime.CompilerServices.ForceDictionaryLookups]

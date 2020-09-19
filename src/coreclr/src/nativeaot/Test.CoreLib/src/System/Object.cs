@@ -48,7 +48,7 @@ namespace System
         {
             get
             {
-                // NOTE:  if managed code can be run when the GC has objects marked, then this method is 
+                // NOTE:  if managed code can be run when the GC has objects marked, then this method is
                 //        unsafe.  But, generically, we don't expect managed code such as this to be allowed
                 //        to run while the GC is running.
                 return m_pEEType;

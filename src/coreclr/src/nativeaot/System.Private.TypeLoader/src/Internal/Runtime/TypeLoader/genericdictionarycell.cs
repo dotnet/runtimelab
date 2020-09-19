@@ -54,7 +54,7 @@ namespace Internal.Runtime.TypeLoader
             {
                 // This api should never be called. The intention is that this cell is special
                 // cased to have a value which is relative to other cells being emitted.
-                throw new NotSupportedException(); 
+                throw new NotSupportedException();
             }
 
             internal unsafe override void WriteCellIntoDictionary(TypeBuilder typeBuilder, IntPtr* pDictionary, int slotIndex)
@@ -215,7 +215,7 @@ namespace Internal.Runtime.TypeLoader
                 builder.RegisterForPreparation(ConstraintType);
                 // Do not use builder.PrepareMethod here. That
                 // would prepare the dictionary for the method,
-                // and if the method is abstract, there is no 
+                // and if the method is abstract, there is no
                 // dictionary. Also, the dictionary is not necessary
                 // to create the ldtoken.
                 builder.RegisterForPreparation(ConstrainedMethod.OwningType);
@@ -321,8 +321,8 @@ namespace Internal.Runtime.TypeLoader
 
             internal override IntPtr Create(TypeBuilder builder)
             {
-                // TODO (USG): What if this method's instantiation is a non-shareable one (from a normal canonical 
-                // perspective) and there's an exact method pointer for the method in question, do we still 
+                // TODO (USG): What if this method's instantiation is a non-shareable one (from a normal canonical
+                // perspective) and there's an exact method pointer for the method in question, do we still
                 // construct a method dictionary to be used with the universal canonical method implementation?
                 Debug.Assert(GenericMethod.RuntimeMethodDictionary != IntPtr.Zero);
                 return GenericMethod.RuntimeMethodDictionary;
@@ -365,7 +365,7 @@ namespace Internal.Runtime.TypeLoader
 
                 // Do not use builder.PrepareMethod here. That
                 // would prepare the dictionary for the method,
-                // and if the method is abstract, there is no 
+                // and if the method is abstract, there is no
                 // dictionary. Also, the dictionary is not necessary
                 // to create the ldtoken.
                 builder.RegisterForPreparation(Method.OwningType);
@@ -485,7 +485,7 @@ namespace Internal.Runtime.TypeLoader
                 int result = (int)VTableSlot;
 
                 // Check if the current type can share code with normal canonical
-                // generic types. If not, then the vtable layout will not have a 
+                // generic types. If not, then the vtable layout will not have a
                 // slot for a dictionary pointer, and we need to adjust the slot number
                 AdjustVtableSlot(ContainingType, ContainingTypeTemplate, ref result);
                 Debug.Assert(result >= 0);
@@ -781,7 +781,7 @@ namespace Internal.Runtime.TypeLoader
             {
                 if (_exactFunctionPointer != IntPtr.Zero)
                 {
-                    // We are done... we don't need to create any unboxing stubs or calling convertion translation 
+                    // We are done... we don't need to create any unboxing stubs or calling convertion translation
                     // thunks for exact non-shareable method instantiations
                     return _exactFunctionPointer;
                 }

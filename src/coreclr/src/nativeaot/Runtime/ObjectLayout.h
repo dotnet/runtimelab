@@ -42,7 +42,7 @@ class Object
     friend class AsmOffsets;
 
     PTR_EEType  m_pEEType;
-public:  
+public:
     EEType * get_EEType() const
         { return m_pEEType; }
     EEType * get_SafeEEType() const
@@ -57,7 +57,7 @@ public:
 #endif
 
     //
-    // Adapter methods for GC code so that GC and runtime code can use the same type.  
+    // Adapter methods for GC code so that GC and runtime code can use the same type.
     // These methods are deprecated -- only use from existing GC code.
     //
     MethodTable * RawGetMethodTable() const
@@ -72,7 +72,7 @@ public:
     {
         m_pEEType = PTR_EEType((EEType *)pMT);
     }
-    ////// End adaptor methods 
+    ////// End adaptor methods
 };
 typedef DPTR(Object) PTR_Object;
 typedef DPTR(PTR_Object) PTR_PTR_Object;
@@ -93,7 +93,7 @@ class Array : public Object
 #if defined(HOST_64BIT)
     UInt32       m_uAlignpad;
 #endif // HOST_64BIT
-public:  
+public:
     UInt32 GetArrayLength();
     void InitArrayLength(UInt32 length);
     void* GetArrayData();

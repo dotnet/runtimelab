@@ -17,7 +17,7 @@ namespace System.Threading
         //
         // Binary tree used to keep track of active thread ids. Each node of the tree keeps track of 32 consecutive ids.
         // Implemented as immutable collection to avoid locks. Each modification creates a new top level node.
-        // 
+        //
         private class ImmutableIdDispenser
         {
             private readonly ImmutableIdDispenser _left; // Child nodes
@@ -189,8 +189,8 @@ namespace System.Threading
         [ThreadStatic]
         private static int t_currentManagedThreadId;
 
-        // We have to avoid the static constructors on the ManagedThreadId class, otherwise we can run into stack overflow as first time Current property get called, 
-        // the runtime will ensure running the static constructor and this process will call the Current property again (when taking any lock) 
+        // We have to avoid the static constructors on the ManagedThreadId class, otherwise we can run into stack overflow as first time Current property get called,
+        // the runtime will ensure running the static constructor and this process will call the Current property again (when taking any lock)
         //      System::Environment.get_CurrentManagedThreadId
         //      System::Threading::Lock.Acquire
         //      System::Runtime::CompilerServices::ClassConstructorRunner::Cctor.GetCctor

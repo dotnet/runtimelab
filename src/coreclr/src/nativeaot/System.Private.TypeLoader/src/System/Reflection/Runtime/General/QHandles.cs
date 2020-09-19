@@ -120,7 +120,7 @@ namespace System.Reflection.Runtime.General
     }
 
     public partial struct QTypeDefinition
-    {   
+    {
         public object Reader { get { return _reader; } }
         public int Token { get { return _handle; } }
 

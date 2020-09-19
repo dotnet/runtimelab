@@ -2,7 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 //
 // File: eventtracepriv.h
-// 
+//
 // Contains some private definitions used by eventrace.cpp, but that aren't needed by
 // clients of eventtrace.cpp, and thus don't belong in eventtrace.h. Also, since
 // inclusions of this file are tightly controlled (basically just by eventtrace.cpp), we
@@ -104,7 +104,7 @@ public:
     // event?
     int GetByteCountInEvent()
     {
-        return 
+        return
             sizeof(fixedSizedData) +
             sizeof(cTypeParameters) +
 #ifdef FEATURE_REDHAWK
@@ -132,7 +132,7 @@ public:
 #ifdef FEATURE_REDHAWK
     // If > 1 type parameter, this is an array of their EEType*'s
     NewArrayHolder<ULONGLONG> rgTypeParameters;
-    
+
     // If exactly one type parameter, this is its EEType*.  (If != 1 type parameter,
     // this is 0.)
     ULONGLONG ullSingleTypeParameter;
@@ -158,7 +158,7 @@ private:
     // Estimate of how many type value elements we can put into the struct array, while
     // staying under the ETW event size limit. Note that this is impossible to calculate
     // perfectly, since each element of the struct array has variable size.
-    // 
+    //
     // In addition to the byte-size limit per event, Windows always forces on us a
     // max-number-of-descriptors per event, which in the case of BulkType, will kick in
     // far sooner. There's a max number of 128 descriptors allowed per event. 2 are used
@@ -170,13 +170,13 @@ private:
     // would let us max out the number of type values to batch by allowing the byte-size
     // limit to kick in before the max-descriptor limit. We could esimate that as
     // follows:
-    // 
-    //     static const int kMaxCountTypeValues = kMaxBytesTypeValues / 
+    //
+    //     static const int kMaxCountTypeValues = kMaxBytesTypeValues /
     //        (sizeof(EventStructBulkTypeFixedSizedData) +
     //         200 * sizeof(WCHAR) +       // Assume 199 + 1 terminating-NULL character in type name
     //         sizeof(UINT) +              // Type parameter count
     //         10 * sizeof(ULONGLONG));    // Assume 10 type parameters
-    // 
+    //
     // The downside, though, is that we would have to do a lot more copying to fill out
     // that buffer before sending the event. It's unclear that increasing the batch size
     // is enough of a win to offset all the extra buffer copying. So for now, we'll keep
@@ -184,10 +184,10 @@ private:
 
     // How many types have we batched?
     int m_nBulkTypeValueCount;
-    
+
     // What is the byte size of all the types we've batched?
     int m_nBulkTypeValueByteCount;
-    
+
     // List of types we've batched.
     BulkTypeValue m_rgBulkTypeValues[kMaxCountTypeValues];
 

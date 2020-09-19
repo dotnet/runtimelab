@@ -41,7 +41,7 @@ LEAF_END CallingConventionConverter_ReturnIntegerReturnThunk, _TEXT
 // }
 //
 // r10 - Points at CommonCallingStubInputData
-//  
+//
 //
 LEAF_ENTRY __jmpstub__CallingConventionConverter_CommonCallingStub, _TEXT
         // UNIXTODO: Implement this function

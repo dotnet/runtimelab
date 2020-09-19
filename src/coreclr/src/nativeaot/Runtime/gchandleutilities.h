@@ -12,7 +12,7 @@ class GCHandleUtilities
 {
 public:
     // Retrieves the GC handle table.
-    static IGCHandleManager* GetGCHandleManager() 
+    static IGCHandleManager* GetGCHandleManager()
     {
         LIMITED_METHOD_CONTRACT;
 

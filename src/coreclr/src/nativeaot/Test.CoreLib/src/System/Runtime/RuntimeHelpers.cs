@@ -10,7 +10,7 @@ namespace System.Runtime.CompilerServices
             get
             {
                 // Number of bytes from the address pointed to by a reference to
-                // a String to the first 16-bit character in the String.  
+                // a String to the first 16-bit character in the String.
                 // This property allows C#'s fixed statement to work on Strings.
                 return string.FIRST_CHAR_OFFSET;
             }

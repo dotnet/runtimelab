@@ -5,8 +5,8 @@
 // Why this file exists:
 //
 // Because the Reflection base types have so many overridable members, it becomes difficult to distinguish
-// members we decided not to override vs. those we forgot to override. It would be nice if C# had a construct to 
-// tell the reader (and Intellisense) that we've made an explicit decision *not* to override an inherited member, 
+// members we decided not to override vs. those we forgot to override. It would be nice if C# had a construct to
+// tell the reader (and Intellisense) that we've made an explicit decision *not* to override an inherited member,
 // but since it doesn't, we'll make do with this instead.
 //
 // In DEBUG builds, we'll add a base-delegating override so that it's clear we made an explicit decision
@@ -14,8 +14,8 @@
 // cost. That way, every overridable member is accounted for (i.e. the codebase should always be kept in a state
 // where hitting "override" + SPACE never brings up additional suggestions in Intellisense.)
 //
-// To avoid introducing inadvertent inconsistencies between DEBUG and RELEASE behavior due to the fragile base class 
-// problem, only do this for public or protected members that already exist on the public api type. Since we know 
+// To avoid introducing inadvertent inconsistencies between DEBUG and RELEASE behavior due to the fragile base class
+// problem, only do this for public or protected members that already exist on the public api type. Since we know
 // we'll never remove those members, we'll avoid the problem of "base" being compile-bound to something different
 // from the runtime "base."
 //

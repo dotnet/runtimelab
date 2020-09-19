@@ -28,7 +28,7 @@ namespace System.Reflection.Runtime.TypeInfos
     // custom attributes or interfaces return an empty list rather than throwing a MissingMetadataException.
     //
     // Since these represent "internal framework types", the app cannot prove we are lying.
-    // 
+    //
     internal sealed partial class RuntimeBlockedTypeInfo : RuntimeTypeDefinitionTypeInfo
     {
         private RuntimeBlockedTypeInfo(RuntimeTypeHandle typeHandle, bool isGenericTypeDefinition)

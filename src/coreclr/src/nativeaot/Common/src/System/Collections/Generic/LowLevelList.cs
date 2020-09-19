@@ -14,7 +14,7 @@
 **
 ** This file is a subset of System.Collections\System\Collections\Generics\List.cs
 ** and should be kept in sync with that file.
-** 
+**
 ===========================================================*/
 
 using System;
@@ -57,7 +57,7 @@ namespace System.Collections.Generic
         // Constructs a List with a given initial capacity. The list is
         // initially empty, but will have room for the given number of elements
         // before any reallocations are required.
-        // 
+        //
         public LowLevelList(int capacity)
         {
             if (capacity < 0) throw new ArgumentOutOfRangeException(nameof(capacity));
@@ -71,7 +71,7 @@ namespace System.Collections.Generic
         // Constructs a List, copying the contents of the given collection. The
         // size and capacity of the new list will both be equal to the size of the
         // given collection.
-        // 
+        //
         public LowLevelList(IEnumerable<T> collection)
         {
             if (collection == null)
@@ -110,9 +110,9 @@ namespace System.Collections.Generic
         }
 
         // Gets and sets the capacity of this list.  The capacity is the size of
-        // the internal array used to hold items.  When set, the internal 
+        // the internal array used to hold items.  When set, the internal
         // array of the list is reallocated to the given capacity.
-        // 
+        //
         public int Capacity
         {
             get
@@ -152,7 +152,7 @@ namespace System.Collections.Generic
         }
 
         // Sets or Gets the element at the given index.
-        // 
+        //
         public T this[int index]
         {
             get
@@ -251,9 +251,9 @@ namespace System.Collections.Generic
 
 
         // Copies a section of this list to the given array at the given index.
-        // 
+        //
         // The method uses the Array.Copy method to copy the elements.
-        // 
+        //
         public void CopyTo(int index, T[] array, int arrayIndex, int count)
         {
             if (_size - index < count)
@@ -275,10 +275,10 @@ namespace System.Collections.Generic
         // this list. The list is searched forwards from beginning to end.
         // The elements of the list are compared to the given value using the
         // Object.Equals method.
-        // 
+        //
         // This method uses the Array.IndexOf method to perform the
         // search.
-        // 
+        //
         public int IndexOf(T item)
         {
             return Array.IndexOf(_items, item, 0, _size);
@@ -290,10 +290,10 @@ namespace System.Collections.Generic
         // index and ending at count number of elements. The
         // elements of the list are compared to the given value using the
         // Object.Equals method.
-        // 
+        //
         // This method uses the Array.IndexOf method to perform the
         // search.
-        // 
+        //
         public int IndexOf(T item, int index)
         {
             if (index > _size)
@@ -304,7 +304,7 @@ namespace System.Collections.Generic
         // Inserts an element into this list at a given index. The size of the list
         // is increased by one. If required, the capacity of the list is doubled
         // before inserting the new element.
-        // 
+        //
         public void Insert(int index, T item)
         {
             // Note that insertions at the end are legal.
@@ -383,7 +383,7 @@ namespace System.Collections.Generic
 
         // Removes the element at the given index. The size of the list is
         // decreased by one.
-        // 
+        //
         public bool Remove(T item)
         {
             int index = IndexOf(item);
@@ -397,7 +397,7 @@ namespace System.Collections.Generic
         }
 
         // This method removes all items which matches the predicate.
-        // The complexity is O(n).   
+        // The complexity is O(n).
         public int RemoveAll(Predicate<T> match)
         {
             if (match == null)
@@ -433,7 +433,7 @@ namespace System.Collections.Generic
 
         // Removes the element at the given index. The size of the list is
         // decreased by one.
-        // 
+        //
         public void RemoveAt(int index)
         {
             if ((uint)index >= (uint)_size)

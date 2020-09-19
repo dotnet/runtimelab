@@ -12,28 +12,28 @@ THUNK_POOL_NUM_THUNKS_PER_PAGE      equ 0xFA    ;; 250 thunks per page
 
 POINTER_SIZE                        equ 0x08
 
-    MACRO 
+    MACRO
         NAMED_READONLY_DATA_SECTION $name, $areaAlias
         AREA    $areaAlias,DATA,READONLY
 RO$name % 8
     MEND
-    
+
     ;; This macro is used to declare the thunks data blocks. Unlike the macro above (which is just used for padding),
     ;; this macro needs to assign labels to each data block, so we can address them using PC-relative addresses.
-    MACRO 
+    MACRO
         NAMED_READWRITE_DATA_SECTION $name, $areaAlias, $pageIndex
         AREA    $areaAlias,DATA
         THUNKS_DATA_PAGE_BLOCK $pageIndex
     MEND
 
-    MACRO 
+    MACRO
         LOAD_DATA_ADDRESS $groupIndex, $index, $pageIndex
-        
+
         ;; Set xip0 to the address of the current thunk's data block. This is done using labels.
         adr      xip0, label_$groupIndex_$index_P$pageIndex
     MEND
 
-    MACRO 
+    MACRO
         JUMP_TO_COMMON $groupIndex, $index
         ;; start                                        : xip0 points to the current thunks first data cell in the data page
         ;; set xip0 to begining of data page            : xip0 <- xip0 - (THUNK_DATASIZE * current thunk's index)
@@ -42,7 +42,7 @@ RO$name % 8
         ldr      xip1, [xip0, #(PAGE_SIZE - POINTER_SIZE - ($groupIndex * THUNK_DATASIZE * 10 + THUNK_DATASIZE * $index))]
         br       xip1
 
-        brk     0xf000      ;; Stubs need to be 16-byte aligned for CFG table. Filling padding with a 
+        brk     0xf000      ;; Stubs need to be 16-byte aligned for CFG table. Filling padding with a
                             ;; deterministic brk instruction, instead of having it just filled with zeros.
     MEND
 
@@ -56,13 +56,13 @@ label_$groupIndex_$index_P$pageIndex
         DCQ 0
     MEND
 
-    MACRO 
+    MACRO
         TenThunks $groupIndex, $pageIndex
 
         ;; Each thunk will load the address of its corresponding data (from the page that immediately follows)
         ;; and call a common stub. The address of the common stub is setup by the caller (last qword
         ;; in the thunks data section) depending on the 'kind' of thunks needed (interop, fat function pointers, etc...)
-        
+
         ;; Each data block used by a thunk consists of two qword values:
         ;;      - Context: some value given to the thunk as context. Example for fat-fptrs: context = generic dictionary
         ;;      - Target : target code that the thunk eventually jumps to.
@@ -97,8 +97,8 @@ label_$groupIndex_$index_P$pageIndex
         LOAD_DATA_ADDRESS $groupIndex,9,$pageIndex
         JUMP_TO_COMMON    $groupIndex,9
     MEND
-    
-    MACRO 
+
+    MACRO
         TenThunkDataBlocks $groupIndex, $pageIndex
 
         ;; Similar to the thunks stubs block, we declare the thunks data blocks here
@@ -114,30 +114,30 @@ label_$groupIndex_$index_P$pageIndex
         THUNK_LABELED_DATA_BLOCK $groupIndex, 8, $pageIndex
         THUNK_LABELED_DATA_BLOCK $groupIndex, 9, $pageIndex
     MEND
-    
-    MACRO 
+
+    MACRO
         THUNKS_PAGE_BLOCK $pageIndex
-        
+
         TenThunks 0, $pageIndex
         TenThunks 1, $pageIndex
         TenThunks 2, $pageIndex
         TenThunks 3, $pageIndex
         TenThunks 4, $pageIndex
-        TenThunks 5, $pageIndex 
-        TenThunks 6, $pageIndex 
-        TenThunks 7, $pageIndex 
-        TenThunks 8, $pageIndex 
-        TenThunks 9, $pageIndex 
+        TenThunks 5, $pageIndex
+        TenThunks 6, $pageIndex
+        TenThunks 7, $pageIndex
+        TenThunks 8, $pageIndex
+        TenThunks 9, $pageIndex
         TenThunks 10, $pageIndex
-        TenThunks 11, $pageIndex 
-        TenThunks 12, $pageIndex 
-        TenThunks 13, $pageIndex 
-        TenThunks 14, $pageIndex 
-        TenThunks 15, $pageIndex 
-        TenThunks 16, $pageIndex 
-        TenThunks 17, $pageIndex 
-        TenThunks 18, $pageIndex 
-        TenThunks 19, $pageIndex 
+        TenThunks 11, $pageIndex
+        TenThunks 12, $pageIndex
+        TenThunks 13, $pageIndex
+        TenThunks 14, $pageIndex
+        TenThunks 15, $pageIndex
+        TenThunks 16, $pageIndex
+        TenThunks 17, $pageIndex
+        TenThunks 18, $pageIndex
+        TenThunks 19, $pageIndex
         TenThunks 20, $pageIndex
         TenThunks 21, $pageIndex
         TenThunks 22, $pageIndex
@@ -145,29 +145,29 @@ label_$groupIndex_$index_P$pageIndex
         TenThunks 24, $pageIndex
     MEND
 
-    MACRO 
+    MACRO
         THUNKS_DATA_PAGE_BLOCK $pageIndex
-        
+
         TenThunkDataBlocks 0, $pageIndex
         TenThunkDataBlocks 1, $pageIndex
         TenThunkDataBlocks 2, $pageIndex
         TenThunkDataBlocks 3, $pageIndex
         TenThunkDataBlocks 4, $pageIndex
-        TenThunkDataBlocks 5, $pageIndex 
-        TenThunkDataBlocks 6, $pageIndex 
-        TenThunkDataBlocks 7, $pageIndex 
-        TenThunkDataBlocks 8, $pageIndex 
-        TenThunkDataBlocks 9, $pageIndex 
-        TenThunkDataBlocks 10, $pageIndex 
-        TenThunkDataBlocks 11, $pageIndex 
-        TenThunkDataBlocks 12, $pageIndex 
-        TenThunkDataBlocks 13, $pageIndex 
-        TenThunkDataBlocks 14, $pageIndex 
-        TenThunkDataBlocks 15, $pageIndex 
-        TenThunkDataBlocks 16, $pageIndex 
-        TenThunkDataBlocks 17, $pageIndex 
-        TenThunkDataBlocks 18, $pageIndex 
-        TenThunkDataBlocks 19, $pageIndex 
+        TenThunkDataBlocks 5, $pageIndex
+        TenThunkDataBlocks 6, $pageIndex
+        TenThunkDataBlocks 7, $pageIndex
+        TenThunkDataBlocks 8, $pageIndex
+        TenThunkDataBlocks 9, $pageIndex
+        TenThunkDataBlocks 10, $pageIndex
+        TenThunkDataBlocks 11, $pageIndex
+        TenThunkDataBlocks 12, $pageIndex
+        TenThunkDataBlocks 13, $pageIndex
+        TenThunkDataBlocks 14, $pageIndex
+        TenThunkDataBlocks 15, $pageIndex
+        TenThunkDataBlocks 16, $pageIndex
+        TenThunkDataBlocks 17, $pageIndex
+        TenThunkDataBlocks 18, $pageIndex
+        TenThunkDataBlocks 19, $pageIndex
         TenThunkDataBlocks 20, $pageIndex
         TenThunkDataBlocks 21, $pageIndex
         TenThunkDataBlocks 22, $pageIndex
@@ -181,12 +181,12 @@ label_$groupIndex_$index_P$pageIndex
     ;; mapped multiple  times in memory, and mapping works on allocation
     ;; granularity boundaries (we don't want to map more than what we need)
     ;;
-    ;; The easiest way to do so is by having the thunks section at the 
+    ;; The easiest way to do so is by having the thunks section at the
     ;; first 64K aligned virtual address in the binary. We provide a section
     ;; layout file to the linker to tell it how to layout the thunks sections
     ;; that we care about. (ndp\rh\src\runtime\DLLs\app\mrt100_app_sectionlayout.txt)
     ;;
-    ;; The PE spec says images cannot have gaps between sections (other 
+    ;; The PE spec says images cannot have gaps between sections (other
     ;; than what is required by the section alignment value in the header),
     ;; therefore we need a couple of padding data sections (otherwise the
     ;; OS will not load the image).
@@ -209,8 +209,8 @@ label_$groupIndex_$index_P$pageIndex
     NAMED_READONLY_DATA_SECTION PaddingFor64KAlignment14, "|.pad14|"
 
     ;;
-    ;; Declaring all the data section first since they have labels referenced by the stubs sections, to prevent 
-    ;; compilation errors ("undefined symbols"). The stubs/data sections will be correctly laid out in the image 
+    ;; Declaring all the data section first since they have labels referenced by the stubs sections, to prevent
+    ;; compilation errors ("undefined symbols"). The stubs/data sections will be correctly laid out in the image
     ;; using using the explicit layout configurations (ndp\rh\src\runtime\DLLs\mrt100_sectionlayout.txt)
     ;;
     NAMED_READWRITE_DATA_SECTION ThunkData0, "|.tkd0|", 0
@@ -256,18 +256,18 @@ label_$groupIndex_$index_P$pageIndex
     LEAF_ENTRY ThunkPool6, "|.tks6|"
         THUNKS_PAGE_BLOCK 6
     LEAF_END ThunkPool6
-    
+
     LEAF_ENTRY ThunkPool7, "|.tks7|"
         THUNKS_PAGE_BLOCK 7
     LEAF_END ThunkPool7
 
-    
+
     ;;
     ;; IntPtr RhpGetThunksBase()
     ;;
     ;; ARM64TODO: There is a bug in the arm64 assembler which ends up with mis-sorted Pdata entries
     ;; for the functions in this file.  As a work around, don't generate pdata for these small stubs.
-    ;; All the "No_PDATA" variants need to be removed after MASM bug 516396 is fixed. 
+    ;; All the "No_PDATA" variants need to be removed after MASM bug 516396 is fixed.
     LEAF_ENTRY_NO_PDATA RhpGetThunksBase
         ;; Return the address of the first thunk pool to the caller (this is really the base address)
         ldr     x0, =ThunkPool
@@ -309,9 +309,9 @@ label_$groupIndex_$index_P$pageIndex
         ret
     LEAF_END_NO_PDATA RhpGetThunkBlockSize
 
-    ;; 
+    ;;
     ;; IntPtr RhpGetThunkDataBlockAddress(IntPtr thunkStubAddress)
-    ;; 
+    ;;
     LEAF_ENTRY_NO_PDATA RhpGetThunkDataBlockAddress
         mov     x12, PAGE_SIZE - 1
         bic     x0, x0, x12
@@ -320,9 +320,9 @@ label_$groupIndex_$index_P$pageIndex
         ret
     LEAF_END_NO_PDATA RhpGetThunkDataBlockAddress
 
-    ;; 
+    ;;
     ;; IntPtr RhpGetThunkStubsBlockAddress(IntPtr thunkDataAddress)
-    ;; 
+    ;;
     LEAF_ENTRY_NO_PDATA RhpGetThunkStubsBlockAddress
         mov     x12, PAGE_SIZE - 1
         bic     x0, x0, x12

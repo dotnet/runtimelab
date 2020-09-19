@@ -35,7 +35,7 @@ namespace Internal.Reflection.Execution.MethodInvokers
         internal static MethodInvoker CreateMethodInvoker(RuntimeTypeHandle declaringTypeHandle, QMethodDefinition methodHandle, MethodInvokeInfo methodInvokeInfo)
         {
             bool isStatic = false;
-            
+
             if (methodHandle.IsNativeFormatMetadataBased)
             {
                 Method method = methodHandle.NativeFormatHandle.GetMethod(methodHandle.NativeFormatReader);

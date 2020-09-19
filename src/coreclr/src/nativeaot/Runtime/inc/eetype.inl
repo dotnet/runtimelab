@@ -33,7 +33,7 @@ inline bool EEType::DacVerify()
     return DacVerifyWorker(this);
 }
 // static
-inline bool EEType::DacVerifyWorker(EEType* pThis)  
+inline bool EEType::DacVerifyWorker(EEType* pThis)
 {
     //*********************************************************************
     //**** ASSUMES MAX TYPE HIERARCHY DEPTH OF 1024 TYPES              ****
@@ -68,7 +68,7 @@ inline bool EEType::DacVerifyWorker(EEType* pThis)
         if (pCurrentType == NULL)
             break;
     }
-    
+
     if (pCurrentType != NULL)
         return false;   // assume we found an infinite loop
 

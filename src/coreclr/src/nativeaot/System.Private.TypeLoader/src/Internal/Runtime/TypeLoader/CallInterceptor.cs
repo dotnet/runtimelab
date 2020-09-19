@@ -67,9 +67,9 @@ namespace Internal.Runtime.CallInterceptor
         private LocalVariableType[] _types;
 
         /// <summary>
-        /// Construct from memory. Must not be used with LocalVariableType[] where the types contains 
+        /// Construct from memory. Must not be used with LocalVariableType[] where the types contains
         /// GC references, or is itself a reference type, unless the memory is externally protected
-        /// pbMemory MUST point to a region of memory of at least IntPtr.Size*types.Length, and must 
+        /// pbMemory MUST point to a region of memory of at least IntPtr.Size*types.Length, and must
         /// be aligned for IntPtr access. Callers of this constructor are responsible for
         /// ensuring that the memory is appropriately gc-protected
         /// </summary>
@@ -113,7 +113,7 @@ namespace Internal.Runtime.CallInterceptor
 
         /// <summary>
         /// Copy a byref from source to to this local variable set. Instead of copying the data a, la Get/Set,
-        /// copy the actual byref pointer. This function may be used with pointer types as well, (although 
+        /// copy the actual byref pointer. This function may be used with pointer types as well, (although
         /// more interesting is the case where its a translation between a pinned byref and a pointer)
         /// </summary>
         public unsafe void SetByRef(int targetIndex, ref LocalVariableSet sourceLocalSet, int sourceIndex)
@@ -125,7 +125,7 @@ namespace Internal.Runtime.CallInterceptor
         }
 
         /// <summary>
-        /// Get the address of the variable data. This function must not be used with a non-pinned byref type 
+        /// Get the address of the variable data. This function must not be used with a non-pinned byref type
         /// (IntPtr isn't GC protected in that case)
         /// </summary>
         public unsafe IntPtr GetAddressOfVarData(int index)
@@ -164,7 +164,7 @@ namespace Internal.Runtime.CallInterceptor
         }
 
         /// <summary>
-        /// Helper api to setup a space where a LocalVariableSet is defined. Note that the lifetime of the variable 
+        /// Helper api to setup a space where a LocalVariableSet is defined. Note that the lifetime of the variable
         /// set is the lifetime of until the callback function returns
         /// </summary>
         unsafe public static void SetupArbitraryLocalVariableSet<T>(LocalVariableSetFunc<T> callback, ref T param, LocalVariableType[] types) where T : struct
@@ -181,7 +181,7 @@ namespace Internal.Runtime.CallInterceptor
         }
 
         /// <summary>
-        /// Helper api to initialize a local variable set initialized with as much memory as 
+        /// Helper api to initialize a local variable set initialized with as much memory as
         /// ComputeNecessaryMemoryForStackLocalVariableSet specifies. Used as part of pattern for manual construction
         /// of LocalVariableSet
         /// </summary>
@@ -1282,7 +1282,7 @@ namespace Internal.Runtime.CallInterceptor
         private static object s_thunkPoolHeap;
 
         /// <summary>
-        /// Construct a call interceptor object. At time of construction whether it is a native to managed, or managed to managed 
+        /// Construct a call interceptor object. At time of construction whether it is a native to managed, or managed to managed
         /// call interceptor must be known. Derive from this type to implement custom call interceptors.
         /// </summary>
         protected CallInterceptor(bool nativeToManaged)
@@ -1295,7 +1295,7 @@ namespace Internal.Runtime.CallInterceptor
         /// Return type is the first type, the rest are parameters
         /// This function is called when the thunk is executed at least once.
         /// </summary>
-        /// 
+        ///
         public abstract LocalVariableType[] ArgumentAndReturnTypes { get; }
         /// <summary>
         /// Calling convention of the interceptor.
@@ -1304,7 +1304,7 @@ namespace Internal.Runtime.CallInterceptor
         public abstract CallingConvention CallingConvention { get; }
 
         /// <summary>
-        /// Extra local variables to create. This is intended as a convenience feature for developers of CallInterceptors that 
+        /// Extra local variables to create. This is intended as a convenience feature for developers of CallInterceptors that
         /// immediately make dynamic calls.
         /// This function is called when the thunk is executed at least once.
         /// </summary>
@@ -1350,7 +1350,7 @@ namespace Internal.Runtime.CallInterceptor
 
 
         /// <summary>
-        /// Get the function pointer for this call interceptor. It will create the function pointer on 
+        /// Get the function pointer for this call interceptor. It will create the function pointer on
         /// first access, or after it has been freed via FreeThunk()
         /// </summary>
         public IntPtr GetThunkAddress()

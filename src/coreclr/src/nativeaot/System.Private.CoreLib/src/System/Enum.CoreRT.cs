@@ -40,7 +40,7 @@ namespace System
                 throw new ArgumentException(SR.Arg_MustBeEnum, nameof(enumType));
             if (!enumType.IsRuntimeImplemented())
                 throw new ArgumentException(SR.Arg_MustBeType, nameof(enumType));
-            
+
             // Check for the unfortunate "typeof(Outer<>).InnerEnum" corner case.
             if (enumType.ContainsGenericParameters)
                 throw new InvalidOperationException(SR.Format(SR.Arg_OpenType, enumType.ToString()));
@@ -119,11 +119,11 @@ namespace System
         // Note: This works on both Enum's and underlying integer values.
         //
         //
-        // This returns the underlying enum values as "ulong" regardless of the actual underlying type. Signed integral 
+        // This returns the underlying enum values as "ulong" regardless of the actual underlying type. Signed integral
         // types get sign-extended into the 64-bit value, unsigned types get zero-extended.
         //
         // The return value is "bool" if "value" is not an enum or an "integer type" as defined by the BCL Enum apis.
-        // 
+        //
         private static bool TryGetUnboxedValueOfEnumOrInteger(object value, out ulong result)
         {
             EETypePtr eeType = value.EETypePtr;
@@ -197,7 +197,7 @@ namespace System
             if (!TryGetUnboxedValueOfEnumOrInteger(value, out rawValue))
                 throw new ArgumentException(SR.Arg_MustBeEnumBaseTypeOrEnum, nameof(value));
 
-            // For desktop compatibility, do not bounce an incoming integer that's the wrong size. 
+            // For desktop compatibility, do not bounce an incoming integer that's the wrong size.
             // Do a value-preserving cast of both it and the enum values and do a 64-bit compare.
 
             if (!enumType.IsEnum)
@@ -333,7 +333,7 @@ namespace System
         [Conditional("BIGENDIAN")]
         private static unsafe void AdjustForEndianness(ref byte* pValue, EETypePtr enumEEType)
         {
-            // On Debug builds, include the big-endian code to help deter bitrot (the "Conditional("BIGENDIAN")" will prevent it from executing on little-endian). 
+            // On Debug builds, include the big-endian code to help deter bitrot (the "Conditional("BIGENDIAN")" will prevent it from executing on little-endian).
             // On Release builds, exclude code to deter IL bloat and toolchain work.
 #if BIGENDIAN || DEBUG
             EETypeElementType elementType = enumEEType.ElementType;

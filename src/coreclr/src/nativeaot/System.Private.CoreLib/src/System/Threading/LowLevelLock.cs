@@ -7,7 +7,7 @@ namespace System.Threading
 {
     /// <summary>
     /// A lightweight non-recursive mutex.
-    /// 
+    ///
     /// Used by the wait subsystem on Unix, so this class cannot have any dependencies on the wait subsystem.
     /// </summary>
     internal sealed class LowLevelLock : IDisposable

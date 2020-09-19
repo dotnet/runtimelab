@@ -67,7 +67,7 @@ namespace System.Reflection.Runtime.General
             _reader = reader;
             _handle = handle.ToIntToken();
         }
-    
+
         public bool IsNativeFormatMetadataBased
         {
             get

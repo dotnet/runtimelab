@@ -1232,7 +1232,7 @@ namespace Internal.Runtime
             {
                 byte* optionalFields = OptionalFieldsPtr;
 
-                // If there are no optional fields then the alignment must have been the default, IntPtr.Size. 
+                // If there are no optional fields then the alignment must have been the default, IntPtr.Size.
                 // (This happens for all reference types, and for valuetypes with default alignment and no padding)
                 if (optionalFields == null)
                     return IntPtr.Size;

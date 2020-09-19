@@ -20,7 +20,7 @@
 #define ARGUMENT_REGISTERS_SIZE (COUNT_ARG_REGISTERS * INTEGER_REGISTER_SIZE)
 
 // Largest return block is 4 doubles
-#define RETURN_BLOCK_SIZE (32) 
+#define RETURN_BLOCK_SIZE (32)
 
 #define COUNT_FLOAT_ARG_REGISTERS (8)
 #define FLOAT_REGISTER_SIZE (8)
@@ -49,7 +49,7 @@
 
 //
 // RhpUniversalTransition
-// 
+//
 // At input to this function, x0-8, d0-7 and the stack may contain any number of arguments.
 //
 // In addition, there are 2 extra arguments passed in the intra-procedure-call scratch register:
@@ -152,7 +152,7 @@
     .endm
 
     // To enable proper step-in behavior in the debugger, we need to have two instances
-    // of the thunk. For the first one, the debugger steps into the call in the function, 
+    // of the thunk. For the first one, the debugger steps into the call in the function,
     // for the other, it steps over it.
     UNIVERSAL_TRANSITION UniversalTransition
     UNIVERSAL_TRANSITION UniversalTransition_DebugStepTailCall

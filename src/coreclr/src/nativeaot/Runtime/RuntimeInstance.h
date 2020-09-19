@@ -59,7 +59,7 @@ public:
     };
 
     typedef SList<TypeManagerEntry> TypeManagerList;
-    
+
 private:
     TypeManagerList             m_TypeManagerList;
 

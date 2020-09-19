@@ -9,7 +9,7 @@ namespace System.Threading
     {
         /// <summary>
         /// A synchronization object that can participate in <see cref="WaitSubsystem"/>'s wait operations.
-        /// 
+        ///
         /// Used by the wait subsystem on Unix, so this class cannot have any dependencies on the wait subsystem.
         /// </summary>
         public sealed class WaitableObject

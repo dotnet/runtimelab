@@ -302,7 +302,7 @@ namespace System.Runtime.InteropServices
             // That's quite acceptable for an obsoleted API.
 
             Type structType = ptr.GetType();
-            
+
             int size = SizeOf(structType);
 
             // Compat note: CLR wouldn't bother with a range check. If someone does this,

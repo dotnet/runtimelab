@@ -56,7 +56,7 @@ GPTR_DECL(GcDacVars, g_gcDacGlobals);
 class GCHeapUtilities {
 public:
     // Retrieves the GC heap.
-    inline static IGCHeap* GetGCHeap() 
+    inline static IGCHeap* GetGCHeap()
     {
         assert(g_pGCHeap != nullptr);
         return g_pGCHeap;

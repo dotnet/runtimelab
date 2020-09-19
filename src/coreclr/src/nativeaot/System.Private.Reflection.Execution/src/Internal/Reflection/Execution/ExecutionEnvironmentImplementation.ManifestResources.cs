@@ -50,7 +50,7 @@ namespace Internal.Reflection.Execution
                 throw new ArgumentNullException(nameof(name));
 
 
-            // This was most likely an embedded resource which the toolchain should have embedded 
+            // This was most likely an embedded resource which the toolchain should have embedded
             // into an assembly.
             LowLevelList<ResourceInfo> resourceInfos = GetExtractedResources(assembly);
             for (int i = 0; i < resourceInfos.Count; i++)
@@ -144,7 +144,7 @@ namespace Internal.Reflection.Execution
                                 dict[assemblyName] = assemblyResources;
                             }
 
-                            assemblyResources.Add(resourceInfo);                            
+                            assemblyResources.Add(resourceInfo);
                         }
                     }
 

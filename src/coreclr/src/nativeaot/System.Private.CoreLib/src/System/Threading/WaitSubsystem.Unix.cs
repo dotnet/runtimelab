@@ -8,27 +8,27 @@ using Microsoft.Win32.SafeHandles;
 namespace System.Threading
 {
     /// # Wait subsystem
-    /// 
+    ///
     /// ## Types
-    /// 
+    ///
     /// <see cref="WaitSubsystem"/>
     ///   - Static API surface for dealing with synchronization objects that support multi-wait, and to put a thread into a wait
     ///     state, on Unix
     ///   - Any interaction with the wait subsystem from outside should go through APIs on this class, and should not directly
     ///     go through any of the nested classes
-    ///     
+    ///
     /// <see cref="WaitableObject"/>
     ///   - An object that supports the features of <see cref="EventWaitHandle"/>, <see cref="Semaphore"/>, and
     ///     <see cref="Mutex"/>. The handle of each of those classes is associated with a <see cref="WaitableObject"/>.
-    ///     
+    ///
     /// <see cref="ThreadWaitInfo"/>
     ///   - Keeps information about a thread's wait and provides functionlity to put a thread into a wait state and to take it
     ///     out of a wait state. Each thread has an instance available through <see cref="Thread.WaitInfo"/>.
-    ///     
+    ///
     /// <see cref="HandleManager"/>
     ///   - Provides functionality to allocate a handle associated with a <see cref="WaitableObject"/>, to retrieve the object
     ///     from a handle, and to delete a handle.
-    /// 
+    ///
     /// <see cref="LowLevelLock"/> and <see cref="LowLevelMonitor"/>
     ///   - These are "low level" in the sense they don't depend on this wait subsystem, and any waits done are not
     ///     interruptible
@@ -38,9 +38,9 @@ namespace System.Threading
     ///     pair. Each thread has an instance in <see cref="ThreadWaitInfo._waitMonitor"/>, which is used to synchronize the
     ///     thread's wait state and for waiting. <see cref="LowLevelLock"/> also uses an instance of
     ///     <see cref="LowLevelMonitor"/> for waiting.
-    /// 
+    ///
     /// ## Design goals
-    /// 
+    ///
     /// Behave similarly to wait operations on Windows
     ///   - The design is similar to the one used by CoreCLR's PAL, but much simpler due to there being no need for supporting
     ///     process/thread waits, or cross-process multi-waits (which CoreCLR also does not support but there are many design
@@ -83,17 +83,17 @@ namespace System.Threading
     ///     - The wait state of a thread (<see cref="ThreadWaitInfo._waitSignalState"/>), among other things, is synchornized
     ///       using the thread's <see cref="ThreadWaitInfo._waitMonitor"/>, so signalers and interrupters acquire the monitor's
     ///       lock before checking the wait state of a thread and signaling the thread to wake up.
-    /// 
+    ///
     /// Self-consistent in the event of any exception
     ///   - Try/finally is used extensively, including around any operation that could fail due to out-of-memory
-    /// 
+    ///
     /// Decent balance between memory usage and performance
     ///   - <see cref="WaitableObject"/> is intended to be as small as possible while avoiding virtual calls and casts
     ///   - As <see cref="Mutex"/> is not commonly used and requires more state, some of its state is separated into
     ///     <see cref="WaitableObject._ownershipInfo"/>
     ///   - When support for cross-process objects is added, the current thought is to have an <see cref="object"/> field that
     ///     is used for both cross-process state and ownership state.
-    /// 
+    ///
     /// No allocation in typical cases of any operation except where necessary
     ///   - Since the maximum number of wait handles for a multi-wait operation is limited to
     ///     <see cref="WaitHandle.MaxWaitHandles"/>, arrays necessary for holding information about a multi-wait, and list nodes
@@ -101,7 +101,7 @@ namespace System.Threading
     ///   - Threads track owned mutexes by linking the <see cref="WaitableObject.OwnershipInfo"/> instance into a linked list
     ///     <see cref="ThreadWaitInfo.LockedMutexesHead"/>. <see cref="WaitableObject.OwnershipInfo"/> is itself a list node,
     ///     and is created along with the mutex <see cref="WaitableObject"/>.
-    /// 
+    ///
     /// Minimal p/invokes in typical uncontended cases
     ///   - <see cref="HandleManager"/> currently uses <see cref="Runtime.InteropServices.GCHandle"/> in the interest of
     ///     simplicity, which p/invokes and does a cast to get the <see cref="WaitableObject"/> from a handle
@@ -112,7 +112,7 @@ namespace System.Threading
     ///     typically not held for very long, especially since allocations inside the lock will be rare.
     ///   - Since <see cref="s_lock"/> provides mutual exclusion for the states of all <see cref="WaitableObject"/>s in the
     ///     process, any operation that does not involve waiting or releasing a wait can occur with minimal p/invokes
-    /// 
+    ///
     [EagerStaticClassConstruction] // the wait subsystem is used during lazy class construction
     internal static partial class WaitSubsystem
     {

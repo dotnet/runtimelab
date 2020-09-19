@@ -339,7 +339,7 @@ namespace Internal.Runtime.CompilerHelpers
 #endif // TARGET_ARM
 
         //
-        // Matching return types of throw helpers enables tailcalling them. It improves performance 
+        // Matching return types of throw helpers enables tailcalling them. It improves performance
         // of the hot path because of it does not need to raise full stackframe.
         //
 
