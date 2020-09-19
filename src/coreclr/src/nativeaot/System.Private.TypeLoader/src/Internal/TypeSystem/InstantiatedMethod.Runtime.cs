@@ -55,7 +55,7 @@ namespace Internal.TypeSystem
             RuntimeMethodDictionary = rmd;
         }
 
-        public override System.Boolean UnboxingStub
+        public override bool UnboxingStub
         {
             get
             {

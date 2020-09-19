@@ -34,7 +34,7 @@ namespace Internal.Runtime.TypeLoader
             }
 
             _elements = (IntPtr)pBlob;
-            _elementsCount = (uint)(cbBlob / sizeof(TableElement));
+            _elementsCount = (uint)(cbBlob / sizeof(uint));
 
             return true;
         }
@@ -74,19 +74,19 @@ namespace Internal.Runtime.TypeLoader
             return Initialize(module, ReflectionMapBlob.CommonFixupsTable);
         }
 
-        unsafe public uint GetRvaFromIndex(uint index)
+        public unsafe uint GetRvaFromIndex(uint index)
         {
             // The usage of this API will need to go away since this is not fully portable
             // and we'll not be able to support this for CppCodegen.
             throw new PlatformNotSupportedException();
         }
 
-        unsafe public IntPtr GetIntPtrFromIndex(uint index)
+        public unsafe IntPtr GetIntPtrFromIndex(uint index)
         {
             return GetAddressFromIndex(index);
         }
 
-        unsafe public IntPtr GetFunctionPointerFromIndex(uint index)
+        public unsafe IntPtr GetFunctionPointerFromIndex(uint index)
         {
             return GetAddressFromIndex(index);
         }
@@ -108,7 +108,7 @@ namespace Internal.Runtime.TypeLoader
             return GetIntPtrFromIndex(index);
         }
 
-        unsafe public IntPtr GetAddressFromIndex(uint index)
+        public unsafe IntPtr GetAddressFromIndex(uint index)
         {
             if (index >= _elementsCount)
                 throw new BadImageFormatException();

@@ -83,7 +83,7 @@ namespace Internal.Reflection.Execution
                 if (!formalArg.SatisfiesConstraints(typeContext, actualArg))
                 {
                     throw new ArgumentException(SR.Format(SR.Argument_ConstraintFailed, actualArg, definition.ToString(), formalArg),
-                        String.Format("GenericArguments[{0}]", i));
+                        string.Format("GenericArguments[{0}]", i));
                 }
             }
         }

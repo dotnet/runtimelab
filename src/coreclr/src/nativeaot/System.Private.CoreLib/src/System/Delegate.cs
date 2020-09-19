@@ -47,9 +47,7 @@ namespace System
 
         internal object m_firstParameter;
         internal object m_helperObject;
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2111:PointersShouldNotBeVisible")]
         internal IntPtr m_extraFunctionPointerOrData;
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2111:PointersShouldNotBeVisible")]
         internal IntPtr m_functionPointer;
 
         [ThreadStatic]
@@ -112,7 +110,7 @@ namespace System
         ///   is typically a delegate pointing to the LINQ expression interpreter.
         /// </param>
         /// <returns></returns>
-        unsafe internal IntPtr GetFunctionPointer(out RuntimeTypeHandle typeOfFirstParameterIfInstanceDelegate, out bool isOpenResolver, out bool isInterpreterEntrypoint)
+        internal unsafe IntPtr GetFunctionPointer(out RuntimeTypeHandle typeOfFirstParameterIfInstanceDelegate, out bool isOpenResolver, out bool isInterpreterEntrypoint)
         {
             typeOfFirstParameterIfInstanceDelegate = default(RuntimeTypeHandle);
             isOpenResolver = false;
@@ -390,7 +388,7 @@ namespace System
 
             // Verify that the types are the same...
             if (!InternalEqualTypes(this, d))
-                throw new ArgumentException();
+                throw new ArgumentException(SR.Arg_DlgtTypeMis);
 
             if (IsDynamicDelegate() && d.IsDynamicDelegate())
             {

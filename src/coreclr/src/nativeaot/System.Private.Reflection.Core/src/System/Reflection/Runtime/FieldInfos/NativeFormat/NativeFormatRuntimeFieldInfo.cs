@@ -88,7 +88,7 @@ namespace System.Reflection.Runtime.FieldInfos.NativeFormat
             }
         }
 
-        public sealed override String ToString()
+        public sealed override string ToString()
         {
             TypeContext typeContext = _contextTypeInfo.TypeContext;
             Handle typeHandle = _field.Signature.GetFieldSignature(_reader).Type;
@@ -111,7 +111,7 @@ namespace System.Reflection.Runtime.FieldInfos.NativeFormat
             return true;
         }
 
-        public sealed override bool Equals(Object obj)
+        public sealed override bool Equals(object obj)
         {
             if (!(obj is NativeFormatRuntimeFieldInfo other))
                 return false;

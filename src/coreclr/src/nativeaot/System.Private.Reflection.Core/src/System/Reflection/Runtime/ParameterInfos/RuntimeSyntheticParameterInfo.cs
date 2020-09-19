@@ -40,7 +40,7 @@ namespace System.Reflection.Runtime.ParameterInfos
             }
         }
 
-        public sealed override Object DefaultValue
+        public sealed override object DefaultValue
         {
             get
             {
@@ -48,7 +48,7 @@ namespace System.Reflection.Runtime.ParameterInfos
             }
         }
 
-        public sealed override Object RawDefaultValue
+        public sealed override object RawDefaultValue
         {
             get
             {
@@ -69,7 +69,7 @@ namespace System.Reflection.Runtime.ParameterInfos
 
         public sealed override Type[] GetRequiredCustomModifiers() => Array.Empty<Type>();
 
-        public sealed override String Name
+        public sealed override string Name
         {
             get
             {
@@ -93,7 +93,7 @@ namespace System.Reflection.Runtime.ParameterInfos
             }
         }
 
-        internal sealed override String ParameterTypeString
+        internal sealed override string ParameterTypeString
         {
             get
             {
@@ -104,4 +104,3 @@ namespace System.Reflection.Runtime.ParameterInfos
         private readonly RuntimeTypeInfo _parameterType;
     }
 }
-

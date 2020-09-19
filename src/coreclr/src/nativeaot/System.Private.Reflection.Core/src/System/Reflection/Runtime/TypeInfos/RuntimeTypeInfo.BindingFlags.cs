@@ -202,4 +202,3 @@ namespace System.Reflection.Runtime.TypeInfos
         private const int GenericParameterCountAny = -1;
     }
 }
-

@@ -373,7 +373,7 @@ namespace Internal.Runtime.CompilerHelpers
         }
 #endif
 
-        internal unsafe static void* CoTaskMemAllocAndZeroMemory(int size)
+        internal static unsafe void* CoTaskMemAllocAndZeroMemory(int size)
         {
             byte* ptr = (byte*)Marshal.AllocCoTaskMem(size);
 
@@ -384,7 +384,7 @@ namespace Internal.Runtime.CompilerHelpers
             return ptr;
         }
 
-        internal unsafe static void CoTaskMemFree(void* p)
+        internal static unsafe void CoTaskMemFree(void* p)
         {
             Marshal.FreeCoTaskMem((IntPtr)p);
         }

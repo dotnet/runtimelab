@@ -43,7 +43,7 @@ namespace System.Reflection.Runtime.MethodInfos
         /// </summary>
         void FillInMetadataDescribedParameters(ref VirtualRuntimeParameterInfoArray result, QSignatureTypeHandle[] parameterTypes, MethodBase contextMethod, TypeContext typeContext);
 
-        String Name { get; }
+        string Name { get; }
 
         MethodInvoker GetUncachedMethodInvoker(RuntimeTypeInfo[] methodArguments, MemberInfo exceptionPertainant);
 

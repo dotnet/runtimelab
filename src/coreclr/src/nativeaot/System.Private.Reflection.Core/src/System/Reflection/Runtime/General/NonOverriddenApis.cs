@@ -166,5 +166,3 @@ namespace System.Reflection.Runtime.TypeInfos
 #endif //DEBUG
     }
 }
-
-

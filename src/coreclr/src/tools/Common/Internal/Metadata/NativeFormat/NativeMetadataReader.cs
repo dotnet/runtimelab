@@ -65,7 +65,7 @@ namespace Internal.Metadata.NativeFormat
 
     public partial struct Handle
     {
-        public override bool Equals(Object obj)
+        public override bool Equals(object obj)
         {
             if (obj is Handle)
                 return _value == ((Handle)obj)._value;
@@ -166,7 +166,7 @@ namespace Internal.Metadata.NativeFormat
     public partial struct ConstantReferenceValue
     {
         /// Always returns null value.
-        public Object Value
+        public object Value
         { get { return null; } }
     } // ConstantReferenceValue
 

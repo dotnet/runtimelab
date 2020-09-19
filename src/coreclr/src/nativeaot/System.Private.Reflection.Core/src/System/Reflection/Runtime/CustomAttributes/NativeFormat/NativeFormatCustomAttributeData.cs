@@ -89,7 +89,7 @@ namespace System.Reflection.Runtime.CustomAttributes.NativeFormat
             }
         }
 
-        internal sealed override String AttributeTypeString
+        internal sealed override string AttributeTypeString
         {
             get
             {
@@ -113,7 +113,7 @@ namespace System.Reflection.Runtime.CustomAttributes.NativeFormat
                         _reader,
                         fixedArgumentHandle,
                         throwIfMissingMetadata,
-                        delegate ()
+                        delegate
                         {
                             // If we got here, the custom attribute blob lacked type information (this is actually the typical case.) We must fallback to
                             // parsing the constructor's signature to get the type info.
@@ -170,14 +170,14 @@ namespace System.Reflection.Runtime.CustomAttributes.NativeFormat
             foreach (NamedArgumentHandle namedArgumentHandle in _customAttribute.NamedArguments)
             {
                 NamedArgument namedArgument = namedArgumentHandle.GetNamedArgument(_reader);
-                String memberName = namedArgument.Name.GetString(_reader);
+                string memberName = namedArgument.Name.GetString(_reader);
                 bool isField = (namedArgument.Flags == NamedArgumentMemberKind.Field);
                 CustomAttributeTypedArgument typedValue =
                     ParseFixedArgument(
                         _reader,
                         namedArgument.Value,
                         throwIfMissingMetadata,
-                        delegate ()
+                        delegate
                         {
                             // We got here because the custom attribute blob did not inclue type information. For named arguments, this is considered illegal metadata
                             // (ECMA always includes type info for named arguments.)
@@ -227,7 +227,7 @@ namespace System.Reflection.Runtime.CustomAttributes.NativeFormat
                 }
             }
 
-            Object value;
+            object value;
             Exception e = fixedArgument.Value.TryParseConstantValue(reader, out value);
             if (e != null)
             {

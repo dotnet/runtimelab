@@ -97,7 +97,7 @@ namespace Internal.Runtime.TypeLoader
         internal static CallingConventionConverter_CommonCallingStub_PointerData s_commonStubData;
 
         [DllImport("*", ExactSpelling = true, EntryPoint = "CallingConventionConverter_GetStubs")]
-        private extern static unsafe void CallingConventionConverter_GetStubs(out IntPtr returnVoidStub,
+        private static extern unsafe void CallingConventionConverter_GetStubs(out IntPtr returnVoidStub,
                                                                       out IntPtr returnIntegerStub,
                                                                       out IntPtr commonStub
 #if CALLDESCR_FPARGREGSARERETURNREGS
@@ -109,7 +109,7 @@ namespace Internal.Runtime.TypeLoader
 
 #if TARGET_ARM
         [DllImport("*", ExactSpelling = true, EntryPoint = "CallingConventionConverter_SpecifyCommonStubData")]
-        private extern static unsafe void CallingConventionConverter_SpecifyCommonStubData(IntPtr commonStubData);
+        private static extern unsafe void CallingConventionConverter_SpecifyCommonStubData(IntPtr commonStubData);
 #endif
 
         private static bool s_callConverterThunk = CallConverterThunk_LazyCctor();
@@ -426,7 +426,7 @@ namespace Internal.Runtime.TypeLoader
         // We must make this guarantee whenever we clear memory in the GC heap that could contain
         // object references.  The GC or other user threads can read object references at any time,
         // clearing them bytewise can result in a read on another thread getting incorrect data.
-        unsafe internal static void gcSafeMemzeroPointer(byte* pointer, int size)
+        internal static unsafe void gcSafeMemzeroPointer(byte* pointer, int size)
         {
             byte* memBytes = pointer;
             byte* endBytes = (pointer + size);
@@ -447,13 +447,13 @@ namespace Internal.Runtime.TypeLoader
                 *memBytes++ = (byte)0;
         }
 
-        unsafe internal static void memzeroPointer(byte* pointer, int size)
+        internal static unsafe void memzeroPointer(byte* pointer, int size)
         {
             for (int i = 0; i < size; i++)
                 pointer[i] = 0;
         }
 
-        unsafe internal static void memzeroPointerAligned(byte* pointer, int size)
+        internal static unsafe void memzeroPointerAligned(byte* pointer, int size)
         {
             size = ArgIterator.ALIGN_UP(size, IntPtr.Size);
             size /= IntPtr.Size;
@@ -464,7 +464,7 @@ namespace Internal.Runtime.TypeLoader
             }
         }
 
-        unsafe private static bool isPointerAligned(void* pointer)
+        private static unsafe bool isPointerAligned(void* pointer)
         {
             if (sizeof(IntPtr) == 4)
             {
@@ -482,7 +482,7 @@ namespace Internal.Runtime.TypeLoader
         private unsafe delegate void InvokeTargetDel(void* allocatedbuffer, ref CallConversionParameters conversionParams);
 
         [DebuggerGuidedStepThroughAttribute]
-        unsafe private static IntPtr CallConversionThunk(IntPtr callerTransitionBlockParam, IntPtr callConversionId)
+        private static unsafe IntPtr CallConversionThunk(IntPtr callerTransitionBlockParam, IntPtr callConversionId)
         {
             CallConversionParameters conversionParams = default(CallConversionParameters);
 
@@ -523,7 +523,7 @@ namespace Internal.Runtime.TypeLoader
         }
 
         [DebuggerGuidedStepThroughAttribute]
-        unsafe private static IntPtr MulticastDelegateInvoke(ref CallConversionParameters conversionParams)
+        private static unsafe IntPtr MulticastDelegateInvoke(ref CallConversionParameters conversionParams)
         {
             // Create a transition block on the stack.
             // Note that SizeOfFrameArgumentArray does overflow checks with sufficient margin to prevent overflows here
@@ -544,7 +544,7 @@ namespace Internal.Runtime.TypeLoader
         }
 
         [DebuggerGuidedStepThroughAttribute]
-        unsafe private static void InvokeTarget(void* allocatedStackBuffer, ref CallConversionParameters conversionParams)
+        private static unsafe void InvokeTarget(void* allocatedStackBuffer, ref CallConversionParameters conversionParams)
         {
             byte* callerTransitionBlock = conversionParams._callerTransitionBlock;
             byte* calleeTransitionBlock = ((byte*)allocatedStackBuffer) + TransitionBlock.GetNegSpaceSize();
@@ -784,7 +784,7 @@ namespace Internal.Runtime.TypeLoader
                         {
                             Debug.Assert(!isCallerArgPassedByRef);
                             Debug.Assert(conversionParams._callerArgs.GetArgSize() == IntPtr.Size);
-                            argumentsAsObjectArray[arg] = Unsafe.As<IntPtr, Object>(ref *(IntPtr*)pSrc);
+                            argumentsAsObjectArray[arg] = Unsafe.As<IntPtr, object>(ref *(IntPtr*)pSrc);
                         }
                         else
                         {
@@ -1392,7 +1392,7 @@ namespace Internal.Runtime.TypeLoader
 #endif
 
 #if TARGET_X86
-        unsafe internal static void SetupCallerActualReturnData(byte* callerTransitionBlock)
+        internal static unsafe void SetupCallerActualReturnData(byte* callerTransitionBlock)
         {
             // X86 needs to pass callee pop information to the return value thunks, so, since it
             // only has 2 argument registers and may/may not need to return 8 bytes of data, put the return

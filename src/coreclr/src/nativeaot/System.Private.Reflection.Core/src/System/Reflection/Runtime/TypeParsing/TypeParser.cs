@@ -34,12 +34,12 @@ namespace System.Reflection.Runtime.TypeParsing
         //
         // Parses a typename. The typename may be optionally postpended with a "," followed by a legal assembly name.
         //
-        private static TypeName ParseAssemblyQualifiedTypeName(String s)
+        private static TypeName ParseAssemblyQualifiedTypeName(string s)
         {
             // Desktop compat: a whitespace-only "typename" qualified by an assembly name throws an ArgumentException rather than
             // a TypeLoadException.
             int idx = 0;
-            while (idx < s.Length && Char.IsWhiteSpace(s[idx]))
+            while (idx < s.Length && char.IsWhiteSpace(s[idx]))
             {
                 idx++;
             }
@@ -66,11 +66,11 @@ namespace System.Reflection.Runtime.TypeParsing
             catch (TypeLexer.IllegalEscapeSequenceException)
             {
                 // Emulates a CLR4.5 bug that causes any string that contains an illegal escape sequence to be parsed as the empty string.
-                return ParseAssemblyQualifiedTypeName(String.Empty);
+                return ParseAssemblyQualifiedTypeName(string.Empty);
             }
         }
 
-        private TypeParser(String s)
+        private TypeParser(string s)
         {
             _lexer = new TypeLexer(s);
         }
@@ -170,7 +170,7 @@ namespace System.Reflection.Runtime.TypeParsing
             while (_lexer.Peek == TokenType.Plus)
             {
                 _lexer.Skip();
-                String nestedTypeName = _lexer.GetNextIdentifier();
+                string nestedTypeName = _lexer.GetNextIdentifier();
                 namedType = new NestedTypeName(nestedTypeName, namedType);
             }
             return namedType;
@@ -181,7 +181,7 @@ namespace System.Reflection.Runtime.TypeParsing
         //
         private NamespaceTypeName ParseNamespaceTypeName()
         {
-            String fullName = _lexer.GetNextIdentifier();
+            string fullName = _lexer.GetNextIdentifier();
             return new NamespaceTypeName(fullName);
         }
 
@@ -220,4 +220,3 @@ namespace System.Reflection.Runtime.TypeParsing
         private readonly TypeLexer _lexer;
     }
 }
-

@@ -25,7 +25,7 @@ namespace Internal.NativeFormat
             _offset = _reader.SkipString(_offset);
         }
     }
-    
+
     internal partial class NativeReader
     {
         public string ReadString(uint offset)
@@ -42,7 +42,7 @@ namespace Internal.NativeFormat
 
             if (numBytes == 0)
             {
-                value = String.Empty;
+                value = string.Empty;
                 return offset;
             }
 

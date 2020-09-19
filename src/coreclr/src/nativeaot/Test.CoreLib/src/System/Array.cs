@@ -7,7 +7,7 @@ using EEType = Internal.Runtime.EEType;
 
 namespace System
 {
-    partial class Array
+    public partial class Array
     {
         // This is the classlib-provided "get array eetype" function that will be invoked whenever the runtime
         // needs to know the base type of an array.

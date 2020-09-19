@@ -220,7 +220,7 @@ namespace Internal.Runtime.TypeLoader
 
             while (!currentHandle.IsNull(reader))
             {
-                switch(currentHandle.HandleType)
+                switch (currentHandle.HandleType)
                 {
                     case HandleType.TypeReference:
                     case HandleType.NamespaceReference:

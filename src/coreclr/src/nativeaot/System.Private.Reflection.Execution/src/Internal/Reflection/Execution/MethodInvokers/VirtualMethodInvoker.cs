@@ -25,7 +25,7 @@ namespace Internal.Reflection.Execution.MethodInvokers
             _declaringTypeHandle = declaringTypeHandle;
         }
 
-        public sealed override Delegate CreateDelegate(RuntimeTypeHandle delegateType, Object target, bool isStatic, bool isVirtual, bool isOpen)
+        public sealed override Delegate CreateDelegate(RuntimeTypeHandle delegateType, object target, bool isStatic, bool isVirtual, bool isOpen)
         {
             if (!isOpen)
             {
@@ -51,13 +51,13 @@ namespace Internal.Reflection.Execution.MethodInvokers
         }
 
         [DebuggerGuidedStepThroughAttribute]
-        protected sealed override Object Invoke(Object thisObject, Object[] arguments, BinderBundle binderBundle, bool wrapInTargetInvocationException)
+        protected sealed override object Invoke(object thisObject, object[] arguments, BinderBundle binderBundle, bool wrapInTargetInvocationException)
         {
             ValidateThis(thisObject, _declaringTypeHandle);
 
             IntPtr resolvedVirtual = OpenMethodResolver.ResolveMethod(MethodInvokeInfo.VirtualResolveData, thisObject);
 
-            Object result = RuntimeAugments.CallDynamicInvokeMethod(
+            object result = RuntimeAugments.CallDynamicInvokeMethod(
                 thisObject,
                 resolvedVirtual,
                 null /*thisPtrDynamicInvokeMethod*/,
@@ -98,4 +98,3 @@ namespace Internal.Reflection.Execution.MethodInvokers
         private RuntimeTypeHandle _declaringTypeHandle;
     }
 }
-

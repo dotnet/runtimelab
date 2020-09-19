@@ -48,4 +48,3 @@ namespace System.Reflection.Runtime.BindingFlagSupport
         }
     }
 }
-

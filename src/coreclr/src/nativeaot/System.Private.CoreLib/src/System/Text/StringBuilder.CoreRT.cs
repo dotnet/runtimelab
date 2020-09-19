@@ -141,7 +141,7 @@ namespace System.Text
             }
         }
 
-        unsafe private static void ThreadSafeCopy(char[] source, int sourceIndex, char* destinationPtr, int count)
+        private static unsafe void ThreadSafeCopy(char[] source, int sourceIndex, char* destinationPtr, int count)
         {
             if (count > 0)
             {

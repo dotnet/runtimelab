@@ -76,7 +76,7 @@ namespace System.Reflection.Runtime.Assemblies.NativeFormat
             while (idx-- != 0)
             {
                 // Each iteration finds a match for one segment of the namespace chain.
-                String expected = namespaceParts[idx];
+                string expected = namespaceParts[idx];
                 bool foundMatch = false;
                 foreach (NamespaceDefinitionHandle candidate in candidates)
                 {

@@ -30,7 +30,7 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
             if (pertainant == null)
                 return new MissingMetadataException(SR.Format(SR.Reflection_InsufficientMetadata_NoHelpAvailable, "<unavailable>"));
 
-            String usefulPertainant = ComputeUsefulPertainantIfPossible(pertainant);
+            string usefulPertainant = ComputeUsefulPertainantIfPossible(pertainant);
             if (usefulPertainant == null)
                 return new MissingMetadataException(Format(SR.Reflection_InsufficientMetadata_NoHelpAvailable, pertainant.ToString()));
             else
@@ -61,13 +61,13 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
         internal static MissingMetadataException CreateMissingArrayTypeException(Type elementType, bool isMultiDim, int rank)
         {
             Debug.Assert(rank == 1 || isMultiDim);
-            String s = CreateArrayTypeStringIfAvailable(elementType, rank);
+            string s = CreateArrayTypeStringIfAvailable(elementType, rank);
             return CreateFromString(s);
         }
 
         internal static MissingMetadataException CreateMissingConstructedGenericTypeException(Type genericTypeDefinition, Type[] genericTypeArguments)
         {
-            String s = CreateConstructedGenericTypeStringIfAvailable(genericTypeDefinition, genericTypeArguments);
+            string s = CreateConstructedGenericTypeStringIfAvailable(genericTypeDefinition, genericTypeArguments);
             return CreateFromString(s);
         }
 
@@ -76,14 +76,14 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
             if (pertainant == null)
                 return new MissingMetadataException(SR.Format(SR.Reflection_InsufficientMetadata_NoHelpAvailable, "<unavailable>"));
 
-            String usefulPertainant = ComputeUsefulPertainantIfPossible(pertainant);
+            string usefulPertainant = ComputeUsefulPertainantIfPossible(pertainant);
             if (usefulPertainant == null)
                 return new MissingMetadataException(Format(SR.Reflection_InsufficientMetadata_NoHelpAvailable, pertainant.ToString()));
             else
                 return new MissingMetadataException(Format(resourceId, usefulPertainant));
         }
 
-        public static String ComputeUsefulPertainantIfPossible(Object pertainant)
+        public static string ComputeUsefulPertainantIfPossible(object pertainant)
         {
             {
                 Type type = null;
@@ -162,7 +162,7 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
             return null;  //Give up
         }
 
-        internal static String ToDisplayStringIfAvailable(this Type type, List<int> genericParameterOffsets)
+        internal static string ToDisplayStringIfAvailable(this Type type, List<int> genericParameterOffsets)
         {
             RuntimeTypeHandle runtimeTypeHandle = ReflectionCoreExecution.ExecutionDomain.GetTypeHandleIfAvailable(type);
             bool hasRuntimeTypeHandle = !runtimeTypeHandle.Equals(default(RuntimeTypeHandle));
@@ -181,7 +181,7 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
                 }
                 else
                 {
-                    String s = type.GetElementType().ToDisplayStringIfAvailable(null);
+                    string s = type.GetElementType().ToDisplayStringIfAvailable(null);
                     if (s == null)
                         return null;
                     return s + (type.IsPointer ? "*" : "&");
@@ -216,7 +216,7 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
             }
             else if (hasRuntimeTypeHandle)
             {
-                String s;
+                string s;
                 if (!DiagnosticMappingTables.TryGetDiagnosticStringForNamedType(runtimeTypeHandle, out s, genericParameterOffsets))
                     return null;
 
@@ -228,19 +228,19 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
             }
         }
 
-        private static String CreateArrayTypeStringIfAvailable(Type elementType, int rank)
+        private static string CreateArrayTypeStringIfAvailable(Type elementType, int rank)
         {
-            String s = elementType.ToDisplayStringIfAvailable(null);
+            string s = elementType.ToDisplayStringIfAvailable(null);
             if (s == null)
                 return null;
 
-            return s + "[" + new String(',', rank - 1) + "]";  // This does not bother to display multidims of rank 1 correctly since we bail on that case in the prior statement.
+            return s + "[" + new string(',', rank - 1) + "]";  // This does not bother to display multidims of rank 1 correctly since we bail on that case in the prior statement.
         }
 
-        private static String CreateConstructedGenericTypeStringIfAvailable(Type genericTypeDefinition, Type[] genericTypeArguments)
+        private static string CreateConstructedGenericTypeStringIfAvailable(Type genericTypeDefinition, Type[] genericTypeArguments)
         {
             List<int> genericParameterOffsets = new List<int>();
-            String genericTypeDefinitionString = genericTypeDefinition.ToDisplayStringIfAvailable(genericParameterOffsets);
+            string genericTypeDefinitionString = genericTypeDefinition.ToDisplayStringIfAvailable(genericParameterOffsets);
 
             if (genericTypeDefinitionString == null)
                 return null;
@@ -277,7 +277,7 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
         // This combination turns rich error messages from the framework into resource keys without the substitution strings.
         // We'll detect this case here and append the substitution string manually.
         //
-        private static String Format(String resourceMessage, Object parameter)
+        private static string Format(string resourceMessage, object parameter)
         {
             if (resourceMessage.Contains("{0}"))
                 return SR.Format(resourceMessage, parameter);

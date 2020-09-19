@@ -14,7 +14,7 @@ namespace Internal.Runtime.TypeLoader
         private struct OptionalField
         {
             internal bool m_fPresent;
-            internal UInt32 m_uiValue;
+            internal uint m_uiValue;
         }
 
         internal OptionalFieldsRuntimeBuilder(byte* pInitializeFromOptionalFields = null)
@@ -28,19 +28,19 @@ namespace Internal.Runtime.TypeLoader
                 byte fieldHeader = NativePrimitiveDecoder.ReadUInt8(ref pInitializeFromOptionalFields);
                 isLastField = (fieldHeader & 0x80) != 0;
                 EETypeOptionalFieldTag eCurrentTag = (EETypeOptionalFieldTag)(fieldHeader & 0x7f);
-                UInt32 uiCurrentValue = NativePrimitiveDecoder.DecodeUnsigned(ref pInitializeFromOptionalFields);
+                uint uiCurrentValue = NativePrimitiveDecoder.DecodeUnsigned(ref pInitializeFromOptionalFields);
 
                 _rgFields[(int)eCurrentTag].m_fPresent = true;
                 _rgFields[(int)eCurrentTag].m_uiValue = uiCurrentValue;
             }
         }
 
-        internal UInt32 GetFieldValue(EETypeOptionalFieldTag eTag, UInt32 defaultValueIfNotFound)
+        internal uint GetFieldValue(EETypeOptionalFieldTag eTag, uint defaultValueIfNotFound)
         {
             return _rgFields[(int)eTag].m_fPresent ? _rgFields[(int)eTag].m_uiValue : defaultValueIfNotFound;
         }
 
-        internal void SetFieldValue(EETypeOptionalFieldTag eTag, UInt32 value)
+        internal void SetFieldValue(EETypeOptionalFieldTag eTag, uint value)
         {
             _rgFields[(int)eTag].m_fPresent = true;
             _rgFields[(int)eTag].m_uiValue = value;

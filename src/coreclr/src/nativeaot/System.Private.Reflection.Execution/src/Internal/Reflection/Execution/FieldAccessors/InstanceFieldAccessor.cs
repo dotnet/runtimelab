@@ -20,7 +20,7 @@ namespace Internal.Reflection.Execution.FieldAccessors
 
         public sealed override int Offset => OffsetPlusHeader - RuntimeAugments.ObjectHeaderSize;
 
-        public sealed override Object GetField(Object obj)
+        public sealed override object GetField(object obj)
         {
             if (obj == null)
                 throw new TargetException(SR.RFLCT_Targ_StatFldReqTarg);
@@ -51,7 +51,7 @@ namespace Internal.Reflection.Execution.FieldAccessors
 
         protected abstract object UncheckedGetFieldDirectFromValueType(TypedReference typedReference);
 
-        public sealed override void SetField(Object obj, Object value, BinderBundle binderBundle)
+        public sealed override void SetField(object obj, object value, BinderBundle binderBundle)
         {
             if (obj == null)
                 throw new TargetException(SR.RFLCT_Targ_StatFldReqTarg);
@@ -90,8 +90,8 @@ namespace Internal.Reflection.Execution.FieldAccessors
 
         protected abstract void UncheckedSetFieldDirectIntoValueType(TypedReference typedReference, object value);
 
-        protected abstract Object UncheckedGetField(Object obj);
-        protected abstract void UncheckedSetField(Object obj, Object value);
+        protected abstract object UncheckedGetField(object obj);
+        protected abstract void UncheckedSetField(object obj, object value);
 
         protected int OffsetPlusHeader { get; }
         protected RuntimeTypeHandle DeclaringTypeHandle { get; }

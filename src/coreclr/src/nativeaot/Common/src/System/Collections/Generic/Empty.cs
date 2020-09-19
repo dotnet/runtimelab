@@ -41,7 +41,7 @@ namespace System.Collections.Generic
                 get { throw new InvalidOperationException(); }
             }
 
-            Object IEnumerator.Current
+            object IEnumerator.Current
             {
                 get { throw new InvalidOperationException(); }
             }
@@ -63,4 +63,3 @@ namespace System.Collections.Generic
         private static IEnumerable<T> _enumerable = new EmptyEnumImpl();
     }
 }
-

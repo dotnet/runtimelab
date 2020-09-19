@@ -9,6 +9,6 @@ internal partial class Interop
     {
         [DllImport(Libraries.Kernel32)]
         [SuppressGCTransition]
-        internal extern static int GetLastError();
+        internal static extern int GetLastError();
     }
 }

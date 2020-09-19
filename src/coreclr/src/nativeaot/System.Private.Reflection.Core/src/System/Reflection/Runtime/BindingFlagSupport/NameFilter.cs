@@ -36,4 +36,3 @@ namespace System.Reflection.Runtime.BindingFlagSupport
         public sealed override bool Matches(string name) => name.Equals(ExpectedName, StringComparison.OrdinalIgnoreCase);
     }
 }
-

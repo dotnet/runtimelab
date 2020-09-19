@@ -135,8 +135,8 @@ namespace Internal.Reflection.Execution
             }
 
             public override Assembly Assembly { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
-            public override String AssemblyQualifiedName { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
-            public override String FullName { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
+            public override string AssemblyQualifiedName { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
+            public override string FullName { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
             public override ConstructorInfo[] GetConstructors(BindingFlags bindingAttr) { Debug.Assert(false); throw NotImplemented.ByDesign; }
             public override object[] GetCustomAttributes(bool inherit) { Debug.Assert(false); throw NotImplemented.ByDesign; }
             public override object[] GetCustomAttributes(Type attributeType, bool inherit) { Debug.Assert(false); throw NotImplemented.ByDesign; }
@@ -154,8 +154,8 @@ namespace Internal.Reflection.Execution
             public override Guid GUID { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
             public override object InvokeMember(string name, BindingFlags invokeAttr, Binder binder, object target, object[] args, ParameterModifier[] modifiers, CultureInfo culture, string[] namedParameters) { Debug.Assert(false); throw NotImplemented.ByDesign; }
             public override Module Module { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
-            public override String Namespace { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
-            public override String Name { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
+            public override string Namespace { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
+            public override string Name { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
             public override Type UnderlyingSystemType { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
 
             protected override ConstructorInfo GetConstructorImpl(BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers) { Debug.Assert(false); throw NotImplemented.ByDesign; }
@@ -213,7 +213,7 @@ namespace Internal.Reflection.Execution
 
         private static bool IsNullable(this Type type)
         {
-            return type.IsGenericType && Object.ReferenceEquals(CommonRuntimeTypes.Nullable, type.GetGenericTypeDefinition());
+            return type.IsGenericType && object.ReferenceEquals(CommonRuntimeTypes.Nullable, type.GetGenericTypeDefinition());
         }
 
         private static Type GetNullableType(this Type type)
@@ -228,22 +228,22 @@ namespace Internal.Reflection.Execution
 
         private static bool IsSystemObject(this Type type)
         {
-            return Object.ReferenceEquals(CommonRuntimeTypes.Object, type);
+            return object.ReferenceEquals(CommonRuntimeTypes.Object, type);
         }
 
         private static bool IsSystemValueType(this Type type)
         {
-            return Object.ReferenceEquals(CommonRuntimeTypes.ValueType, type);
+            return object.ReferenceEquals(CommonRuntimeTypes.ValueType, type);
         }
 
         private static bool IsSystemArray(this Type type)
         {
-            return Object.ReferenceEquals(CommonRuntimeTypes.Array, type);
+            return object.ReferenceEquals(CommonRuntimeTypes.Array, type);
         }
 
         private static bool IsSystemVoid(this Type type)
         {
-            return Object.ReferenceEquals(CommonRuntimeTypes.Void, type);
+            return object.ReferenceEquals(CommonRuntimeTypes.Void, type);
         }
 
         private static bool HasExplicitOrImplicitPublicDefaultConstructor(this Type type)
@@ -287,19 +287,19 @@ namespace Internal.Reflection.Execution
                 return 0;
             }
 
-            if (Object.ReferenceEquals(CommonRuntimeTypes.Byte, normalizedType) || Object.ReferenceEquals(CommonRuntimeTypes.SByte, normalizedType))
+            if (object.ReferenceEquals(CommonRuntimeTypes.Byte, normalizedType) || object.ReferenceEquals(CommonRuntimeTypes.SByte, normalizedType))
                 return 1;
 
-            if (Object.ReferenceEquals(CommonRuntimeTypes.UInt16, normalizedType) || Object.ReferenceEquals(CommonRuntimeTypes.Int16, normalizedType))
+            if (object.ReferenceEquals(CommonRuntimeTypes.UInt16, normalizedType) || object.ReferenceEquals(CommonRuntimeTypes.Int16, normalizedType))
                 return 2;
 
-            if (Object.ReferenceEquals(CommonRuntimeTypes.UInt32, normalizedType) || Object.ReferenceEquals(CommonRuntimeTypes.Int32, normalizedType))
+            if (object.ReferenceEquals(CommonRuntimeTypes.UInt32, normalizedType) || object.ReferenceEquals(CommonRuntimeTypes.Int32, normalizedType))
                 return 4;
 
-            if (Object.ReferenceEquals(CommonRuntimeTypes.UInt64, normalizedType) || Object.ReferenceEquals(CommonRuntimeTypes.Int64, normalizedType))
+            if (object.ReferenceEquals(CommonRuntimeTypes.UInt64, normalizedType) || object.ReferenceEquals(CommonRuntimeTypes.Int64, normalizedType))
                 return 8;
 
-            if (Object.ReferenceEquals(CommonRuntimeTypes.UIntPtr, normalizedType) || Object.ReferenceEquals(CommonRuntimeTypes.IntPtr, normalizedType))
+            if (object.ReferenceEquals(CommonRuntimeTypes.UIntPtr, normalizedType) || object.ReferenceEquals(CommonRuntimeTypes.IntPtr, normalizedType))
                 return sizeof(IntPtr);
 
             return 0;

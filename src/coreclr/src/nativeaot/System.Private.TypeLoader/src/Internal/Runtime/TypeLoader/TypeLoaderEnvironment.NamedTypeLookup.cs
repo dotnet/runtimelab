@@ -275,7 +275,7 @@ namespace Internal.Runtime.TypeLoader
 
             NamedTypeLookupResult rthToMetadataResult = _runtimeTypeHandleToMetadataHashtable.AddOrGetExisting(result);
 
-            if (!Object.ReferenceEquals(rthToMetadataResult, result))
+            if (!object.ReferenceEquals(rthToMetadataResult, result))
             {
                 rthToMetadataResult.QualifiedTypeDefinition = qTypeDefinition;
                 rthToMetadataResult.GcStaticFields = gcStaticFields;
@@ -304,7 +304,7 @@ namespace Internal.Runtime.TypeLoader
         public void FinishAddingNewNamedTypes()
         {
             _namedTypeLookupLiveVersion++;
-            if (_namedTypeLookupLiveVersion == Int32.MaxValue)
+            if (_namedTypeLookupLiveVersion == int.MaxValue)
                 Environment.FailFast("Too many types loaded");
         }
     }

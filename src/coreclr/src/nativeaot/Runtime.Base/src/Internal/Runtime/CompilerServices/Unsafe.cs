@@ -46,7 +46,7 @@ namespace Internal.Runtime.CompilerServices
         /// </summary>
         [Intrinsic]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T As<T>(Object value) where T : class
+        public static T As<T>(object value) where T : class
         {
             // This method is implemented by the toolchain
             throw new PlatformNotSupportedException();

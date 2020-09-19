@@ -150,7 +150,7 @@ namespace System.Reflection.Runtime.PropertyInfos
                 _lazyGetterInvoker = Getter.GetUncachedMethodInvoker(Array.Empty<RuntimeTypeInfo>(), this);
             }
             if (index == null)
-                index = Array.Empty<Object>();
+                index = Array.Empty<object>();
             return _lazyGetterInvoker.Invoke(obj, index, binder, invokeAttr, culture);
         }
 
@@ -164,7 +164,7 @@ namespace System.Reflection.Runtime.PropertyInfos
             }
         }
 
-        public sealed override String Name
+        public sealed override string Name
         {
             get
             {
@@ -231,14 +231,14 @@ namespace System.Reflection.Runtime.PropertyInfos
 
                 _lazySetterInvoker = Setter.GetUncachedMethodInvoker(Array.Empty<RuntimeTypeInfo>(), this);
             }
-            Object[] arguments;
+            object[] arguments;
             if (index == null)
             {
-                arguments = new Object[] { value };
+                arguments = new object[] { value };
             }
             else
             {
-                arguments = new Object[index.Length + 1];
+                arguments = new object[index.Length + 1];
                 for (int i = 0; i < index.Length; i++)
                 {
                     arguments[i] = index[i];
@@ -248,7 +248,7 @@ namespace System.Reflection.Runtime.PropertyInfos
             _lazySetterInvoker.Invoke(obj, arguments, binder, invokeAttr, culture);
         }
 
-        public sealed override String ToString()
+        public sealed override string ToString()
         {
             StringBuilder sb = new StringBuilder(30);
 
@@ -270,7 +270,7 @@ namespace System.Reflection.Runtime.PropertyInfos
             return sb.ToString();
         }
 
-        String ITraceableTypeMember.MemberName
+        string ITraceableTypeMember.MemberName
         {
             get
             {
@@ -344,7 +344,7 @@ namespace System.Reflection.Runtime.PropertyInfos
         // Types that derive from RuntimePropertyInfo must implement the following public surface area members
         public abstract override PropertyAttributes Attributes { get; }
         public abstract override IEnumerable<CustomAttributeData> CustomAttributes { get; }
-        public abstract override bool Equals(Object obj);
+        public abstract override bool Equals(object obj);
         public abstract override int GetHashCode();
         public abstract override int MetadataToken { get; }
 
@@ -409,7 +409,6 @@ namespace System.Reflection.Runtime.PropertyInfos
 
         private volatile Type _lazyPropertyType;
 
-        private String _debugName;
+        private string _debugName;
     }
 }
-

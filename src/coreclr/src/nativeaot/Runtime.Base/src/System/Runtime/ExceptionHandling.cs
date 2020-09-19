@@ -521,7 +521,7 @@ namespace System.Runtime
             internal StackFrameIterator _frameIter;
 
             [FieldOffset(AsmOffsets.OFFSETOF__ExInfo__m_notifyDebuggerSP)]
-            volatile internal UIntPtr _notifyDebuggerSP;
+            internal volatile UIntPtr _notifyDebuggerSP;
         }
 
         //

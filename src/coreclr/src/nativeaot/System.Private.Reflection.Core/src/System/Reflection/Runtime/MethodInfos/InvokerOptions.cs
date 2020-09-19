@@ -11,4 +11,3 @@ namespace System.Reflection.Runtime.MethodInfos
         DontWrapException = 0x00000002, // Don't wrap target exceptions in TargetInvocationException.
     }
 }
-

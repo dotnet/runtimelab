@@ -28,7 +28,7 @@ namespace Internal.Metadata.NativeFormat
             else
             {
                 Debug.Assert(parentHandleType == HandleType.ScopeDefinition);
-                Debug.Assert(String.IsNullOrEmpty(reader.GetString(namespaceDefinition.Name)), "Root namespace with a name?");
+                Debug.Assert(string.IsNullOrEmpty(reader.GetString(namespaceDefinition.Name)), "Root namespace with a name?");
             }
         }
 
@@ -48,7 +48,7 @@ namespace Internal.Metadata.NativeFormat
             else
             {
                 Debug.Assert(parentHandleType == HandleType.ScopeReference);
-                Debug.Assert(String.IsNullOrEmpty(reader.GetString(namespaceReference.Name)), "Root namespace with a name?");
+                Debug.Assert(string.IsNullOrEmpty(reader.GetString(namespaceReference.Name)), "Root namespace with a name?");
             }
         }
 

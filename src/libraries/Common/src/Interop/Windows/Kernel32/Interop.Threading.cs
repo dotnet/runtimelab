@@ -12,22 +12,22 @@ internal static partial class Interop
         internal const int WAIT_FAILED = unchecked((int)0xFFFFFFFF);
 
         [DllImport(Libraries.Kernel32)]
-        internal extern static uint WaitForMultipleObjectsEx(uint nCount, IntPtr lpHandles, bool bWaitAll, uint dwMilliseconds, bool bAlertable);
+        internal static extern uint WaitForMultipleObjectsEx(uint nCount, IntPtr lpHandles, bool bWaitAll, uint dwMilliseconds, bool bAlertable);
 
         [DllImport(Libraries.Kernel32)]
-        internal extern static uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
+        internal static extern uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
 
         [DllImport(Libraries.Kernel32)]
-        internal extern static uint SignalObjectAndWait(IntPtr hObjectToSignal, IntPtr hObjectToWaitOn, uint dwMilliseconds, bool bAlertable);
+        internal static extern uint SignalObjectAndWait(IntPtr hObjectToSignal, IntPtr hObjectToWaitOn, uint dwMilliseconds, bool bAlertable);
 
         [DllImport(Libraries.Kernel32)]
-        internal extern static void Sleep(uint milliseconds);
+        internal static extern void Sleep(uint milliseconds);
 
         internal const uint CREATE_SUSPENDED = 0x00000004;
         internal const uint STACK_SIZE_PARAM_IS_A_RESERVATION = 0x00010000;
 
         [DllImport(Libraries.Kernel32)]
-        internal extern static unsafe SafeWaitHandle CreateThread(
+        internal static extern unsafe SafeWaitHandle CreateThread(
             IntPtr lpThreadAttributes,
             IntPtr dwStackSize,
             IntPtr lpStartAddress,
@@ -38,15 +38,15 @@ internal static partial class Interop
         internal delegate uint ThreadProc(IntPtr lpParameter);
 
         [DllImport(Libraries.Kernel32)]
-        internal extern static uint ResumeThread(SafeWaitHandle hThread);
+        internal static extern uint ResumeThread(SafeWaitHandle hThread);
 
         [DllImport(Libraries.Kernel32)]
-        internal extern static IntPtr GetCurrentThread();
+        internal static extern IntPtr GetCurrentThread();
 
         internal const int DUPLICATE_SAME_ACCESS = 2;
 
         [DllImport(Libraries.Kernel32, SetLastError = true)]
-        internal extern static bool DuplicateHandle(
+        internal static extern bool DuplicateHandle(
             IntPtr hSourceProcessHandle,
             IntPtr hSourceHandle,
             IntPtr hTargetProcessHandle,
@@ -69,9 +69,9 @@ internal static partial class Interop
         }
 
         [DllImport(Libraries.Kernel32)]
-        internal extern static ThreadPriority GetThreadPriority(SafeWaitHandle hThread);
+        internal static extern ThreadPriority GetThreadPriority(SafeWaitHandle hThread);
 
         [DllImport(Libraries.Kernel32)]
-        internal extern static bool SetThreadPriority(SafeWaitHandle hThread, int nPriority);
+        internal static extern bool SetThreadPriority(SafeWaitHandle hThread, int nPriority);
     }
 }

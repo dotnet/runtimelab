@@ -13,7 +13,7 @@ namespace Internal.Reflection.Execution.FieldAccessors
         {
         }
 
-        protected sealed override Object UncheckedGetField(Object obj)
+        protected sealed override object UncheckedGetField(object obj)
         {
             return RuntimeAugments.LoadValueTypeField(obj, OffsetPlusHeader, this.FieldTypeHandle);
         }
@@ -23,7 +23,7 @@ namespace Internal.Reflection.Execution.FieldAccessors
             return RuntimeAugments.LoadValueTypeFieldValueFromValueType(typedReference, this.Offset, this.FieldTypeHandle);
         }
 
-        protected sealed override void UncheckedSetField(Object obj, Object value)
+        protected sealed override void UncheckedSetField(object obj, object value)
         {
             RuntimeAugments.StoreValueTypeField(obj, OffsetPlusHeader, value, this.FieldTypeHandle);
         }

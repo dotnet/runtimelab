@@ -223,7 +223,7 @@ namespace Internal.Runtime.TypeLoader
             public IntPtr _context;
             public IntPtr _signature;
 
-            public override bool Equals(Object obj)
+            public override bool Equals(object obj)
             {
                 if (!(obj is LazyDictionaryContext))
                     return false;

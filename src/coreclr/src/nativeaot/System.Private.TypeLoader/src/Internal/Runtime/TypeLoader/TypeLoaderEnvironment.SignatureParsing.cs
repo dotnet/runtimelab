@@ -27,7 +27,7 @@ namespace Internal.Runtime.TypeLoader
         {
             if (signature1.IsNativeLayoutSignature && signature2.IsNativeLayoutSignature)
             {
-                if(signature1.StructuralEquals(signature2))
+                if (signature1.StructuralEquals(signature2))
                     return true;
 
                 NativeFormatModuleInfo module1 = ModuleList.GetModuleInfoByHandle(new TypeManagerHandle(signature1.ModuleHandle));

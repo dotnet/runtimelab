@@ -201,4 +201,3 @@ namespace System.Reflection.Runtime.BindingFlagSupport
         private const int Grow = 64;
     }
 }
-

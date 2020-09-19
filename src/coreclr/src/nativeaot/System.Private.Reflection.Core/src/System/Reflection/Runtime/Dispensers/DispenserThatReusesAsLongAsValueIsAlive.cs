@@ -42,4 +42,3 @@ namespace System.Reflection.Runtime.Dispensers
         private readonly FactoryConcurrentUnifierW _concurrentUnifier;
     }
 }
-

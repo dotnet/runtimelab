@@ -47,7 +47,6 @@ namespace Internal.Runtime.CompilerServices
     [CLSCompliant(false)]
     public unsafe struct RuntimeMethodHandleInfo
     {
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2111:PointersShouldNotBeVisible")]
         public IntPtr NativeLayoutInfoSignature;
 
         public static unsafe RuntimeMethodHandle InfoToHandle(RuntimeMethodHandleInfo* info)

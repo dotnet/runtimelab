@@ -37,7 +37,7 @@ namespace System.Reflection.Runtime.Assemblies
             return this.Equals((object)other);
         }
 
-        public sealed override String FullName
+        public sealed override string FullName
         {
             get
             {
@@ -65,7 +65,7 @@ namespace System.Reflection.Runtime.Assemblies
             }
         }
 
-        public sealed override Type GetType(String name, bool throwOnError, bool ignoreCase)
+        public sealed override Type GetType(string name, bool throwOnError, bool ignoreCase)
         {
 #if ENABLE_REFLECTION_TRACE
             if (ReflectionTrace.Enabled)
@@ -204,11 +204,11 @@ namespace System.Reflection.Runtime.Assemblies
         public abstract override IEnumerable<TypeInfo> DefinedTypes { get; }
         public abstract override MethodInfo EntryPoint { get; }
         public abstract override IEnumerable<Type> ExportedTypes { get; }
-        public abstract override ManifestResourceInfo GetManifestResourceInfo(String resourceName);
-        public abstract override String[] GetManifestResourceNames();
-        public abstract override Stream GetManifestResourceStream(String name);
+        public abstract override ManifestResourceInfo GetManifestResourceInfo(string resourceName);
+        public abstract override string[] GetManifestResourceNames();
+        public abstract override Stream GetManifestResourceStream(string name);
         public abstract override string ImageRuntimeVersion { get; }
-        public abstract override bool Equals(Object obj);
+        public abstract override bool Equals(object obj);
         public abstract override int GetHashCode();
 
         /// <summary>

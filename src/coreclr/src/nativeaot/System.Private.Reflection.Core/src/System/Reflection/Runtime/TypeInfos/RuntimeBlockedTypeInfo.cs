@@ -253,6 +253,3 @@ namespace System.Reflection.Runtime.TypeInfos
         private volatile string _lazyGeneratedName;
     }
 }
-
-
-

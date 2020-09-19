@@ -331,7 +331,7 @@ namespace System.Runtime
             uint nFrames = 0;
             bool success = true;
 
-            StackFrameIterator frameIter = new StackFrameIterator();
+            StackFrameIterator frameIter = default;
 
             bool isValid = frameIter.Init(null);
             Debug.Assert(isValid, "Missing RhGetCurrentThreadStackTrace frame");

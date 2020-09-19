@@ -21,4 +21,3 @@ namespace System.Reflection.Runtime.BindingFlagSupport
         public sealed override bool Matches(ConstantStringValueHandle stringHandle, MetadataReader reader) => stringHandle.GetConstantStringValue(reader).Value.Equals(ExpectedName, StringComparison.OrdinalIgnoreCase);
     }
 }
-

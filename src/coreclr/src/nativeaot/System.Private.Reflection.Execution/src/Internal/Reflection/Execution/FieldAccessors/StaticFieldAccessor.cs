@@ -22,7 +22,7 @@ namespace Internal.Reflection.Execution.FieldAccessors
             _cctorContext = cctorContext;
         }
 
-        public sealed override Object GetField(Object obj)
+        public sealed override object GetField(object obj)
         {
             if (_cctorContext != IntPtr.Zero)
             {
@@ -34,7 +34,7 @@ namespace Internal.Reflection.Execution.FieldAccessors
         // GetValueDirect() can be used on static fields though this seems like a silly thing to do.
         public sealed override object GetFieldDirect(TypedReference typedReference) => GetField(null);
 
-        public sealed override void SetField(Object obj, Object value, BinderBundle binderBundle)
+        public sealed override void SetField(object obj, object value, BinderBundle binderBundle)
         {
             if (_cctorContext != IntPtr.Zero)
             {
@@ -63,8 +63,8 @@ namespace Internal.Reflection.Execution.FieldAccessors
             }
         }
 
-        protected abstract Object GetFieldBypassCctor();
-        protected abstract void SetFieldBypassCctor(Object value, BinderBundle binderBundle);
+        protected abstract object GetFieldBypassCctor();
+        protected abstract void SetFieldBypassCctor(object value, BinderBundle binderBundle);
         protected abstract void SetFieldDirectBypassCctor(object value);
     }
 }

@@ -8,7 +8,7 @@ using Internal.Runtime.CompilerServices;
 
 namespace System
 {
-    partial class Buffer
+    public static partial class Buffer
     {
         // Non-inlinable wrapper around the QCall that avoids polluting the fast path
         // with P/Invoke prolog/epilog.
@@ -36,7 +36,7 @@ namespace System
 
         // This method has different signature for x64 and other platforms and is done for performance reasons.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal unsafe static void Memmove<T>(ref T destination, ref T source, nuint elementCount)
+        internal static unsafe void Memmove<T>(ref T destination, ref T source, nuint elementCount)
         {
             if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
             {

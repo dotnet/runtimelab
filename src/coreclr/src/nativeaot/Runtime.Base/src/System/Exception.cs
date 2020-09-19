@@ -11,7 +11,7 @@ namespace System
 
         public Exception() { }
 
-        public Exception(String str)
+        public Exception(string str)
         {
             _exceptionString = str;
         }

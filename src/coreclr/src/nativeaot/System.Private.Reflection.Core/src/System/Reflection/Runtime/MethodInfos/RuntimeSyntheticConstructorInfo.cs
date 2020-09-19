@@ -80,9 +80,9 @@ namespace System.Reflection.Runtime.MethodInfos
         public sealed override object Invoke(BindingFlags invokeAttr, Binder binder, object[] parameters, CultureInfo culture)
         {
             if (parameters == null)
-                parameters = Array.Empty<Object>();
+                parameters = Array.Empty<object>();
 
-            Object ctorAllocatedObject = this.MethodInvoker.Invoke(null, parameters, binder, invokeAttr, culture);
+            object ctorAllocatedObject = this.MethodInvoker.Invoke(null, parameters, binder, invokeAttr, culture);
             System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
             return ctorAllocatedObject;
         }
@@ -95,7 +95,7 @@ namespace System.Reflection.Runtime.MethodInfos
             }
         }
 
-        public sealed override String Name
+        public sealed override string Name
         {
             get
             {
@@ -128,7 +128,7 @@ namespace System.Reflection.Runtime.MethodInfos
             return _declaringType.GetHashCode();
         }
 
-        public sealed override String ToString()
+        public sealed override string ToString()
         {
             // A constructor's "return type" is always System.Void and we don't want to allocate a ParameterInfo object to record that revelation.
             // In deference to that, ComputeToString() lets us pass null as a synonym for "void."

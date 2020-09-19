@@ -99,7 +99,7 @@ namespace Internal.Runtime.TypeLoader
             }
         }
 
-        protected sealed internal override bool IsIDynamicInterfaceCastableInterface(DefType type)
+        protected internal sealed override bool IsIDynamicInterfaceCastableInterface(DefType type)
         {
             throw new NotImplementedException();
         }
@@ -119,34 +119,34 @@ namespace Internal.Runtime.TypeLoader
                     return (DefType)ResolveRuntimeTypeHandle(typeof(void).TypeHandle);
 
                 case WellKnownType.Boolean:
-                    return (DefType)ResolveRuntimeTypeHandle(typeof(Boolean).TypeHandle);
+                    return (DefType)ResolveRuntimeTypeHandle(typeof(bool).TypeHandle);
 
                 case WellKnownType.Char:
-                    return (DefType)ResolveRuntimeTypeHandle(typeof(Char).TypeHandle);
+                    return (DefType)ResolveRuntimeTypeHandle(typeof(char).TypeHandle);
 
                 case WellKnownType.SByte:
-                    return (DefType)ResolveRuntimeTypeHandle(typeof(SByte).TypeHandle);
+                    return (DefType)ResolveRuntimeTypeHandle(typeof(sbyte).TypeHandle);
 
                 case WellKnownType.Byte:
-                    return (DefType)ResolveRuntimeTypeHandle(typeof(Byte).TypeHandle);
+                    return (DefType)ResolveRuntimeTypeHandle(typeof(byte).TypeHandle);
 
                 case WellKnownType.Int16:
-                    return (DefType)ResolveRuntimeTypeHandle(typeof(Int16).TypeHandle);
+                    return (DefType)ResolveRuntimeTypeHandle(typeof(short).TypeHandle);
 
                 case WellKnownType.UInt16:
-                    return (DefType)ResolveRuntimeTypeHandle(typeof(UInt16).TypeHandle);
+                    return (DefType)ResolveRuntimeTypeHandle(typeof(ushort).TypeHandle);
 
                 case WellKnownType.Int32:
-                    return (DefType)ResolveRuntimeTypeHandle(typeof(Int32).TypeHandle);
+                    return (DefType)ResolveRuntimeTypeHandle(typeof(int).TypeHandle);
 
                 case WellKnownType.UInt32:
-                    return (DefType)ResolveRuntimeTypeHandle(typeof(UInt32).TypeHandle);
+                    return (DefType)ResolveRuntimeTypeHandle(typeof(uint).TypeHandle);
 
                 case WellKnownType.Int64:
-                    return (DefType)ResolveRuntimeTypeHandle(typeof(Int64).TypeHandle);
+                    return (DefType)ResolveRuntimeTypeHandle(typeof(long).TypeHandle);
 
                 case WellKnownType.UInt64:
-                    return (DefType)ResolveRuntimeTypeHandle(typeof(UInt64).TypeHandle);
+                    return (DefType)ResolveRuntimeTypeHandle(typeof(ulong).TypeHandle);
 
                 case WellKnownType.IntPtr:
                     return (DefType)ResolveRuntimeTypeHandle(typeof(IntPtr).TypeHandle);
@@ -155,10 +155,10 @@ namespace Internal.Runtime.TypeLoader
                     return (DefType)ResolveRuntimeTypeHandle(typeof(UIntPtr).TypeHandle);
 
                 case WellKnownType.Single:
-                    return (DefType)ResolveRuntimeTypeHandle(typeof(Single).TypeHandle);
+                    return (DefType)ResolveRuntimeTypeHandle(typeof(float).TypeHandle);
 
                 case WellKnownType.Double:
-                    return (DefType)ResolveRuntimeTypeHandle(typeof(Double).TypeHandle);
+                    return (DefType)ResolveRuntimeTypeHandle(typeof(double).TypeHandle);
 
                 case WellKnownType.ValueType:
                     return (DefType)ResolveRuntimeTypeHandle(typeof(ValueType).TypeHandle);
@@ -170,10 +170,10 @@ namespace Internal.Runtime.TypeLoader
                     return (DefType)ResolveRuntimeTypeHandle(typeof(Nullable<>).TypeHandle);
 
                 case WellKnownType.Object:
-                    return (DefType)ResolveRuntimeTypeHandle(typeof(Object).TypeHandle);
+                    return (DefType)ResolveRuntimeTypeHandle(typeof(object).TypeHandle);
 
                 case WellKnownType.String:
-                    return (DefType)ResolveRuntimeTypeHandle(typeof(String).TypeHandle);
+                    return (DefType)ResolveRuntimeTypeHandle(typeof(string).TypeHandle);
 
                 case WellKnownType.Array:
                     return (DefType)ResolveRuntimeTypeHandle(typeof(Array).TypeHandle);

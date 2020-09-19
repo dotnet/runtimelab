@@ -30,9 +30,9 @@ namespace System.Runtime
         // Allocate handle.
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpHandleAlloc")]
-        private static extern IntPtr RhpHandleAlloc(Object value, GCHandleType type);
+        private static extern IntPtr RhpHandleAlloc(object value, GCHandleType type);
 
-        internal static IntPtr RhHandleAlloc(Object value, GCHandleType type)
+        internal static IntPtr RhHandleAlloc(object value, GCHandleType type)
         {
             IntPtr h = RhpHandleAlloc(value, type);
             if (h == IntPtr.Zero)
@@ -87,18 +87,18 @@ namespace System.Runtime
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpFallbackFailFast")]
-        internal extern static unsafe void RhpFallbackFailFast();
+        internal static extern unsafe void RhpFallbackFailFast();
 
         //
         // Interlocked helpers
         //
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpLockCmpXchg32")]
-        internal extern static int InterlockedCompareExchange(ref int location1, int value, int comparand);
+        internal static extern int InterlockedCompareExchange(ref int location1, int value, int comparand);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpMemoryBarrier")]
-        internal extern static void MemoryBarrier();
+        internal static extern void MemoryBarrier();
 
         // Moves memory from smem to dmem. Size must be a positive value.
         // This copy uses an intrinsic to be safe for copying arbitrary bits of

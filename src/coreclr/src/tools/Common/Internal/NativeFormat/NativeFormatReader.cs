@@ -481,7 +481,7 @@ namespace Internal.NativeFormat
         public bool IsNull { get { return _reader == null; } }
 
         //
-        // The enumerator does not conform to the regular C# enumerator pattern to avoid paying 
+        // The enumerator does not conform to the regular C# enumerator pattern to avoid paying
         // its performance penalty (allocation, multiple calls per iteration)
         //
         public struct Enumerator
@@ -518,7 +518,7 @@ namespace Internal.NativeFormat
                     _parser.SkipInteger();
                 }
 
-                return new NativeParser();
+                return default;
             }
         }
 
@@ -547,7 +547,7 @@ namespace Internal.NativeFormat
                     }
 
                     if (_currentBucket >= _table._bucketMask)
-                        return new NativeParser();
+                        return default;
 
                     _currentBucket++;
                     _parser = _table.GetParserForBucket(_currentBucket, out _endOffset);
@@ -582,7 +582,7 @@ namespace Internal.NativeFormat
             return new NativeParser(_reader, _baseOffset + start);
         }
 
-        // The recommended code pattern to perform lookup is: 
+        // The recommended code pattern to perform lookup is:
         //
         //  var lookup = t.Lookup(TypeHashingAlgorithms.ComputeGenericInstanceHashCode(genericTypeDefinitionHandle, genericTypeArgumentHandles));
         //  NativeParser typeParser;

@@ -50,7 +50,7 @@ namespace System.Runtime
         internal static void TriggerGC()
         {
 #if FEATURE_GC_STRESS
-            if(GCStress.Initialized)
+            if (GCStress.Initialized)
                 InternalCalls.RhCollect(-1, InternalGCCollectionMode.Blocking);
 #endif
         }

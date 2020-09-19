@@ -70,7 +70,7 @@ namespace System.Reflection.Runtime.MethodInfos
         }
 
         // V4.5 api - Creates open or closed delegates over static or instance methods.
-        public sealed override Delegate CreateDelegate(Type delegateType, Object target)
+        public sealed override Delegate CreateDelegate(Type delegateType, object target)
         {
 #if ENABLE_REFLECTION_TRACE
             if (ReflectionTrace.Enabled)
@@ -187,7 +187,7 @@ namespace System.Reflection.Runtime.MethodInfos
                 ReflectionTrace.MethodBase_Invoke(this, obj, parameters);
 #endif
             if (parameters == null)
-                parameters = Array.Empty<Object>();
+                parameters = Array.Empty<object>();
             MethodInvoker methodInvoker = this.MethodInvoker;
             object result = methodInvoker.Invoke(obj, parameters, binder, invokeAttr, culture);
             System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
@@ -228,7 +228,7 @@ namespace System.Reflection.Runtime.MethodInfos
             get;
         }
 
-        public sealed override String Name
+        public sealed override string Name
         {
             get
             {
@@ -268,7 +268,7 @@ namespace System.Reflection.Runtime.MethodInfos
             }
         }
 
-        public abstract override String ToString();
+        public abstract override string ToString();
 
         public abstract override RuntimeMethodHandle MethodHandle { get; }
 
@@ -280,7 +280,7 @@ namespace System.Reflection.Runtime.MethodInfos
             }
         }
 
-        String ITraceableTypeMember.MemberName
+        string ITraceableTypeMember.MemberName
         {
             get
             {
@@ -293,7 +293,7 @@ namespace System.Reflection.Runtime.MethodInfos
             get;
         }
 
-        internal abstract String RuntimeName
+        internal abstract string RuntimeName
         {
             get;
         }
@@ -373,7 +373,7 @@ namespace System.Reflection.Runtime.MethodInfos
         /// Common CreateDelegate worker. NOTE: If the method signature is not compatible, this method returns null rather than throwing an ArgumentException.
         /// This is needed to support the api overloads that have a "throwOnBindFailure" parameter.
         /// </summary>
-        internal Delegate CreateDelegateNoThrowOnBindFailure(RuntimeTypeInfo runtimeDelegateType, Object target, bool allowClosed)
+        internal Delegate CreateDelegateNoThrowOnBindFailure(RuntimeTypeInfo runtimeDelegateType, object target, bool allowClosed)
         {
             Debug.Assert(runtimeDelegateType.IsDelegate);
 
@@ -528,7 +528,6 @@ namespace System.Reflection.Runtime.MethodInfos
             return this;
         }
 
-        private String _debugName;
+        private string _debugName;
     }
 }
-

@@ -45,7 +45,7 @@ namespace Internal.Reflection.Execution
 
         public sealed override Exception CreateNonInvokabilityException(MemberInfo pertainant)
         {
-            String resourceName = SR.Object_NotInvokable;
+            string resourceName = SR.Object_NotInvokable;
 
             if (pertainant is MethodBase methodBase)
             {
@@ -57,7 +57,7 @@ namespace Internal.Reflection.Execution
                         throw new PlatformNotSupportedException(SR.PlatformNotSupported_CannotInvokeDelegateCtor);
                 }
             }
-            String pertainantString = MissingMetadataExceptionCreator.ComputeUsefulPertainantIfPossible(pertainant);
+            string pertainantString = MissingMetadataExceptionCreator.ComputeUsefulPertainantIfPossible(pertainant);
             if (pertainantString == null)
                 pertainantString = "?";
             return new MissingRuntimeArtifactException(SR.Format(resourceName, pertainantString));
@@ -77,4 +77,3 @@ namespace Internal.Reflection.Execution
         private ExecutionEnvironmentImplementation _executionEnvironment;
     }
 }
-

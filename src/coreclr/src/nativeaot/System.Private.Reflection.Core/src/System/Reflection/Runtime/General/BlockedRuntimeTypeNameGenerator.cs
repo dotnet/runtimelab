@@ -37,5 +37,3 @@ namespace System.Reflection.Runtime.General
         private static readonly BlockedRuntimeTypeNameTable s_blockedNameTable = new BlockedRuntimeTypeNameTable();
     }
 }
-
-

@@ -16,7 +16,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="System\ActivatorImplementation.cs" />
-    <Compile Include="System\DBNull.cs" />
     <Compile Include="System\Reflection\Runtime\Assemblies\NativeFormat\NativeFormatRuntimeAssembly.cs" />
     <Compile Include="System\Reflection\Runtime\Assemblies\NativeFormat\NativeFormatRuntimeAssembly.GetTypeCore.CaseSensitive.cs" />
     <Compile Include="System\Reflection\Runtime\Assemblies\RuntimeAssembly.cs" />
@@ -65,7 +64,6 @@
     <Compile Include="System\Reflection\Runtime\General\NamespaceChain.cs" />
     <Compile Include="System\Reflection\Runtime\General\NativeFormat\DefaultValueParser.cs" />
     <Compile Include="System\Reflection\Runtime\General\NonOverriddenApis.cs" />
-    <Compile Include="System\Reflection\Runtime\General\RuntimeNamespaceInfo.cs" />
     <Compile Include="System\Reflection\Runtime\General\RuntimeTypeHandleKey.cs" />
     <Compile Include="System\Reflection\Runtime\General\ThunkedApis.cs" />
     <Compile Include="System\Reflection\Runtime\General\ToStringUtils.cs" />

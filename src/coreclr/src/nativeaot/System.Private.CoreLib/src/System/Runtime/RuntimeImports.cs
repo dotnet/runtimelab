@@ -212,7 +212,7 @@ namespace System.Runtime
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhCompareObjectContentsAndPadding")]
-        internal extern static bool RhCompareObjectContentsAndPadding(object obj1, object obj2);
+        internal static extern bool RhCompareObjectContentsAndPadding(object obj1, object obj2);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhGetProcessCpuCount")]
@@ -278,7 +278,7 @@ namespace System.Runtime
             // The runtime performs additional checks in debug builds
             return _RhHandleGet(handle);
 #else
-            return Unsafe.As<IntPtr, Object>(ref *(IntPtr*)handle);
+            return Unsafe.As<IntPtr, object>(ref *(IntPtr*)handle);
 #endif
         }
 
@@ -735,33 +735,33 @@ namespace System.Runtime
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhConvertPublicKeyToPublicKeyToken")]
-        private extern static unsafe void RhConvertPublicKeyToPublicKeyToken(byte* pbPublicKey, int cbPublicKey, byte* pbPublicKeyTokenOut, int cbPublicKeyTokenOut);
+        private static extern unsafe void RhConvertPublicKeyToPublicKeyToken(byte* pbPublicKey, int cbPublicKey, byte* pbPublicKeyTokenOut, int cbPublicKeyTokenOut);
 
         //
         // ETW helpers.
         //
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpETWLogLiveCom")]
-        internal extern static void RhpETWLogLiveCom(int eventType, IntPtr CCWHandle, IntPtr objectID, IntPtr typeRawValue, IntPtr IUnknown, IntPtr VTable, int comRefCount, int jupiterRefCount, int flags);
+        internal static extern void RhpETWLogLiveCom(int eventType, IntPtr CCWHandle, IntPtr objectID, IntPtr typeRawValue, IntPtr IUnknown, IntPtr VTable, int comRefCount, int jupiterRefCount, int flags);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpETWShouldWalkCom")]
-        internal extern static bool RhpETWShouldWalkCom();
+        internal static extern bool RhpETWShouldWalkCom();
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpEtwExceptionThrown")]
-        internal extern static unsafe void RhpEtwExceptionThrown(char* exceptionTypeName, char* exceptionMessage, IntPtr faultingIP, long hresult);
+        internal static extern unsafe void RhpEtwExceptionThrown(char* exceptionTypeName, char* exceptionMessage, IntPtr faultingIP, long hresult);
 
         //
         // Interlocked helpers
         //
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpLockCmpXchg32")]
-        internal extern static int InterlockedCompareExchange(ref int location1, int value, int comparand);
+        internal static extern int InterlockedCompareExchange(ref int location1, int value, int comparand);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpLockCmpXchg64")]
-        internal extern static long InterlockedCompareExchange(ref long location1, long value, long comparand);
+        internal static extern long InterlockedCompareExchange(ref long location1, long value, long comparand);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
 #if TARGET_64BIT
@@ -769,19 +769,19 @@ namespace System.Runtime
 #else
         [RuntimeImport(RuntimeLibrary, "RhpLockCmpXchg32")]
 #endif
-        internal extern static IntPtr InterlockedCompareExchange(ref IntPtr location1, IntPtr value, IntPtr comparand);
+        internal static extern IntPtr InterlockedCompareExchange(ref IntPtr location1, IntPtr value, IntPtr comparand);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpCheckedLockCmpXchg")]
-        internal extern static object InterlockedCompareExchange(ref object location1, object value, object comparand);
+        internal static extern object InterlockedCompareExchange(ref object location1, object value, object comparand);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpCheckedXchg")]
-        internal extern static object InterlockedExchange(ref object location1, object value);
+        internal static extern object InterlockedExchange(ref object location1, object value);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpMemoryBarrier")]
-        internal extern static void MemoryBarrier();
+        internal static extern void MemoryBarrier();
 
         [Intrinsic]
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
@@ -1235,4 +1235,3 @@ namespace System.Runtime
         }
     }
 }
-

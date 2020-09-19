@@ -78,7 +78,7 @@ namespace System.Reflection.Runtime.EventInfos
             }
         }
 
-        public sealed override String Name
+        public sealed override string Name
         {
             get
             {
@@ -134,7 +134,7 @@ namespace System.Reflection.Runtime.EventInfos
             }
         }
 
-        public sealed override String ToString()
+        public sealed override string ToString()
         {
             MethodInfo addMethod = this.AddMethod;
             ParameterInfo[] parameters = addMethod.GetParametersNoCopy();
@@ -144,7 +144,7 @@ namespace System.Reflection.Runtime.EventInfos
             return runtimeParameterInfo.ParameterTypeString + " " + this.Name;
         }
 
-        String ITraceableTypeMember.MemberName
+        string ITraceableTypeMember.MemberName
         {
             get
             {
@@ -180,7 +180,7 @@ namespace System.Reflection.Runtime.EventInfos
         // Types that derive from RuntimeEventInfo must implement the following public surface area members
         public abstract override EventAttributes Attributes { get; }
         public abstract override IEnumerable<CustomAttributeData> CustomAttributes { get; }
-        public abstract override bool Equals(Object obj);
+        public abstract override bool Equals(object obj);
         public abstract override int GetHashCode();
         public abstract override Type EventHandlerType { get; }
         public abstract override int MetadataToken { get; }
@@ -216,6 +216,6 @@ namespace System.Reflection.Runtime.EventInfos
         private volatile MethodInfo _lazyAdder;
         private volatile MethodInfo _lazyRemover;
 
-        private String _debugName;
+        private string _debugName;
     }
 }

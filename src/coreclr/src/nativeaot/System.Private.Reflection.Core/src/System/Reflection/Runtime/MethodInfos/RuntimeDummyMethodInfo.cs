@@ -48,4 +48,3 @@ namespace System.Reflection.Runtime.MethodInfos
         public static readonly RuntimeDummyMethodInfo Instance = new RuntimeDummyMethodInfo();
     }
 }
-

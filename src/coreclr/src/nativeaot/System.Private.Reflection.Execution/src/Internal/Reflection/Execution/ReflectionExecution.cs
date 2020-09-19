@@ -74,7 +74,7 @@ namespace Internal.Reflection.Execution
         //
         public static Type ExtensibleGetType(string typeName, string callingAssemblyName, Func<AssemblyName, Assembly> assemblyResolver, Func<Assembly, string, bool, Type> typeResolver, bool throwOnError, bool ignoreCase)
         {
-            LowLevelListWithIList<String> defaultAssemblies = new LowLevelListWithIList<String>();
+            LowLevelListWithIList<string> defaultAssemblies = new LowLevelListWithIList<string>();
             defaultAssemblies.Add(callingAssemblyName);
             defaultAssemblies.Add(AssemblyBinder.DefaultAssemblyNameForGetType);
             return ReflectionCoreExecution.ExecutionDomain.GetType(typeName, assemblyResolver, typeResolver, throwOnError, ignoreCase, defaultAssemblies);
@@ -114,4 +114,3 @@ namespace Internal.Reflection.Execution
         internal static ExecutionEnvironmentImplementation ExecutionEnvironment { get; private set; }
     }
 }
-

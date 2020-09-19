@@ -66,14 +66,14 @@ namespace System.Reflection.Runtime.MethodInfos
 
         // Used by method and property ToString() methods to display the list of parameter types. Replicates the behavior of MethodBase.ConstructParameters()
         // but in a pay-to-play-safe way.
-        internal static String ComputeParametersString(RuntimeParameterInfo[] parameters)
+        internal static string ComputeParametersString(RuntimeParameterInfo[] parameters)
         {
             StringBuilder sb = new StringBuilder(30);
             for (int i = 0; i < parameters.Length; i++)
             {
                 if (i != 0)
                     sb.Append(", ");
-                String parameterTypeString = parameters[i].ParameterTypeString;
+                string parameterTypeString = parameters[i].ParameterTypeString;
 
                 // Legacy: Why use "ByRef" for by ref parameters? What language is this?
                 // VB uses "ByRef" but it should precede (not follow) the parameter name.
@@ -85,7 +85,7 @@ namespace System.Reflection.Runtime.MethodInfos
             return sb.ToString();
         }
 
-        internal static String ComputeToString(MethodBase contextMethod, RuntimeTypeInfo[] methodTypeArguments, RuntimeParameterInfo[] parameters, RuntimeParameterInfo returnParameter)
+        internal static string ComputeToString(MethodBase contextMethod, RuntimeTypeInfo[] methodTypeArguments, RuntimeParameterInfo[] parameters, RuntimeParameterInfo returnParameter)
         {
             StringBuilder sb = new StringBuilder(30);
             sb.Append(returnParameter == null ? "Void" : returnParameter.ParameterTypeString);  // ConstructorInfos allowed to pass in null rather than craft a ReturnParameterInfo that's always of type void.
@@ -93,13 +93,13 @@ namespace System.Reflection.Runtime.MethodInfos
             sb.Append(contextMethod.Name);
             if (methodTypeArguments.Length != 0)
             {
-                String sep = "";
+                string sep = "";
                 sb.Append('[');
                 foreach (RuntimeTypeInfo methodTypeArgument in methodTypeArguments)
                 {
                     sb.Append(sep);
                     sep = ",";
-                    String name = methodTypeArgument.InternalNameIfAvailable;
+                    string name = methodTypeArgument.InternalNameIfAvailable;
                     if (name == null)
                         name = Type.DefaultTypeNameWhenMissingMetadata;
                     sb.Append(methodTypeArgument.Name);

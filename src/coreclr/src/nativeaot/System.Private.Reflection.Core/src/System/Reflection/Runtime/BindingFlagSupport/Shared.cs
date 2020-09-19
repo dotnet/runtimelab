@@ -158,7 +158,7 @@ namespace System.Reflection.Runtime.BindingFlagSupport
             {
                 return null;
             }
-            String name = member.Name;
+            string name = member.Name;
             TypeInfo typeInfo = member.DeclaringType.GetTypeInfo();
             for (;;)
             {
@@ -193,4 +193,3 @@ namespace System.Reflection.Runtime.BindingFlagSupport
         }
     }
 }
-

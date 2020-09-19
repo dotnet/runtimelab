@@ -27,7 +27,7 @@ namespace Internal.Reflection.Core
     //
     public abstract class AssemblyBinder
     {
-        public const String DefaultAssemblyNameForGetType = "System.Private.CoreLib";
+        public const string DefaultAssemblyNameForGetType = "System.Private.CoreLib";
 
         public abstract bool Bind(RuntimeAssemblyName refName, bool cacheMissedLookups, out AssemblyBindResult result, out Exception exception);
 

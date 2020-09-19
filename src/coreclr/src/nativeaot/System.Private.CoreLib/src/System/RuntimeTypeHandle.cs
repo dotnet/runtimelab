@@ -165,4 +165,3 @@ namespace System
         private IntPtr _value;
     }
 }
-

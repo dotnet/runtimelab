@@ -26,7 +26,7 @@ namespace System.Threading
 
         private ApartmentState _initialApartmentState = ApartmentState.Unknown;
 
-        private volatile static bool s_comInitializedOnFinalizerThread;
+        private static volatile bool s_comInitializedOnFinalizerThread;
 
         private void PlatformSpecificInitialize()
         {

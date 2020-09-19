@@ -53,7 +53,7 @@ namespace System.Reflection.Runtime.CustomAttributes
             }
         }
 
-        internal sealed override String AttributeTypeString
+        internal sealed override string AttributeTypeString
         {
             get
             {

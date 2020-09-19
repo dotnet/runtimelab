@@ -10,7 +10,6 @@ namespace Internal.Runtime.CompilerServices
     [CLSCompliant(false)]
     public unsafe struct RuntimeFieldHandleInfo
     {
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2111:PointersShouldNotBeVisible")]
         public IntPtr NativeLayoutInfoSignature;
     }
 }

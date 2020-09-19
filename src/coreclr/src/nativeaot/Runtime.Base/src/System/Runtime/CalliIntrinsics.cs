@@ -33,4 +33,3 @@ namespace System.Runtime
         internal static T Call<T>(IntPtr pfn, IntPtr arg0, int arg1, IntPtr arg2) { throw new NotImplementedException(); }
     }
 }
-

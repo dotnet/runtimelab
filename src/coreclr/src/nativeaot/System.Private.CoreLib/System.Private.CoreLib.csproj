@@ -169,7 +169,6 @@
     <Compile Include="src\System\Globalization\GlobalizationMode.cs" />
     <Compile Include="src\System\Globalization\GlobalizationMode.Windows.cs" Condition="'$(TargetsWindows)'=='true'" />
     <Compile Include="src\System\Globalization\GlobalizationMode.Unix.cs" Condition="'$(TargetsUnix)'=='true'" />
-    <Compile Include="src\System\Guid.CoreRT.cs" />
     <Compile Include="src\System\InvokeUtils.cs" />
     <Compile Include="src\System\IO\FileLoadException.CoreRT.cs" />
     <Compile Include="src\System\IO\Stream.CoreRT.cs" />
@@ -309,9 +308,6 @@
     </Compile>
     <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.GetCurrentProcessorNumber.cs">
       <Link>Interop\Windows\Kernel32\Interop.GetCurrentProcessorNumber.cs</Link>
-    </Compile>
-    <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.Environment.cs">
-      <Link>Interop\Windows\Kernel32\Interop.Environment.cs</Link>
     </Compile>
     <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.Threading.cs">
       <Link>Interop\Windows\Kernel32\Interop.Threading.cs</Link>

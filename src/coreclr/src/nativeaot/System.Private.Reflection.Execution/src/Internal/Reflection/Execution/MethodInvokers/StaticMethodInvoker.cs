@@ -24,7 +24,7 @@ namespace Internal.Reflection.Execution.MethodInvokers
         }
 
         [DebuggerGuidedStepThroughAttribute]
-        protected sealed override Object Invoke(Object thisObject, Object[] arguments, BinderBundle binderBundle, bool wrapInTargetInvocationException)
+        protected sealed override object Invoke(object thisObject, object[] arguments, BinderBundle binderBundle, bool wrapInTargetInvocationException)
         {
             object result = RuntimeAugments.CallDynamicInvokeMethod(
                 thisObject,
@@ -45,4 +45,3 @@ namespace Internal.Reflection.Execution.MethodInvokers
         public sealed override IntPtr LdFtnResult => MethodInvokeInfo.LdFtnResult;
     }
 }
-

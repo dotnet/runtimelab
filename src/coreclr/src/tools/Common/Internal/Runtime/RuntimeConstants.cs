@@ -26,12 +26,12 @@ namespace Internal.Runtime
         /// that EEType.
         /// </summary>
         public const int Uninitialized = 0x1;
-        
+
         /// <summary>
         /// Flag set if the next pointer loc points to GCStaticsPreInitDataNode.
         /// Otherise it is the next GCStatic entry.
         /// </summary>
-        public const int HasPreInitializedData = 0x2; 
+        public const int HasPreInitializedData = 0x2;
 
         public const int Mask = Uninitialized | HasPreInitializedData;
     }

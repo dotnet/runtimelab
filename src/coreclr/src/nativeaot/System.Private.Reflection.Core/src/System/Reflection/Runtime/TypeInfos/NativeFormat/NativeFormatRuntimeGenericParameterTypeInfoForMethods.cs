@@ -89,4 +89,3 @@ namespace System.Reflection.Runtime.TypeInfos.NativeFormat
         private readonly RuntimeNamedMethodInfo _declaringRuntimeNamedMethodInfo;
     }
 }
-

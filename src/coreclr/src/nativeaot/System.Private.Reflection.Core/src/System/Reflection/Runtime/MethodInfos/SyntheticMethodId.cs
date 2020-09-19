@@ -27,4 +27,3 @@ namespace System.Reflection.Runtime.MethodInfos
         ArrayCtorJagged = unchecked((int)0x80000000),
     }
 }
-

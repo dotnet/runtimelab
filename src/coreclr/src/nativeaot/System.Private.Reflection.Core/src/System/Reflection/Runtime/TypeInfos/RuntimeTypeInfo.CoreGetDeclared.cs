@@ -38,7 +38,7 @@ namespace System.Reflection.Runtime.TypeInfos
             if (definingType != null)
             {
                 // If there is a definingType, we do not support Synthetic constructors
-                Debug.Assert(Object.ReferenceEquals(SyntheticConstructors, Empty<RuntimeConstructorInfo>.Enumerable));
+                Debug.Assert(object.ReferenceEquals(SyntheticConstructors, Empty<RuntimeConstructorInfo>.Enumerable));
 
                 return definingType.CoreGetDeclaredConstructors(optionalNameFilter, this);
             }
@@ -61,7 +61,7 @@ namespace System.Reflection.Runtime.TypeInfos
             if (definingType != null)
             {
                 // If there is a definingType, we do not support Synthetic constructors
-                Debug.Assert(Object.ReferenceEquals(SyntheticMethods, Empty<RuntimeMethodInfo>.Enumerable));
+                Debug.Assert(object.ReferenceEquals(SyntheticMethods, Empty<RuntimeMethodInfo>.Enumerable));
 
                 return definingType.CoreGetDeclaredMethods(optionalNameFilter, reflectedType, this);
             }
@@ -156,4 +156,3 @@ namespace System.Reflection.Runtime.TypeInfos
         }
     }
 }
-

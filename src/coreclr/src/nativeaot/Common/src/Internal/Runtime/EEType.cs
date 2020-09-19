@@ -448,7 +448,7 @@ namespace Internal.Runtime
             set
             {
                 Debug.Assert(IsGeneric && IsDynamicType);
-                UInt32 cbOffset = GetFieldOffset(EETypeField.ETF_GenericDefinition);
+                uint cbOffset = GetFieldOffset(EETypeField.ETF_GenericDefinition);
                 fixed (EEType* pThis = &this)
                 {
                     *((EEType**)((byte*)pThis + cbOffset)) = value;
@@ -492,7 +492,7 @@ namespace Internal.Runtime
         internal void SetGenericComposition(IntPtr data)
         {
             Debug.Assert(IsGeneric && IsDynamicType);
-            UInt32 cbOffset = GetFieldOffset(EETypeField.ETF_GenericComposition);
+            uint cbOffset = GetFieldOffset(EETypeField.ETF_GenericComposition);
             fixed (EEType* pThis = &this)
             {
                 *((IntPtr*)((byte*)pThis + cbOffset)) = data;
@@ -667,11 +667,11 @@ namespace Internal.Runtime
             {
                 if (value)
                 {
-                    _usFlags |= (UInt16)EETypeFlags.HasPointersFlag;
+                    _usFlags |= (ushort)EETypeFlags.HasPointersFlag;
                 }
                 else
                 {
-                    _usFlags &= (UInt16)~EETypeFlags.HasPointersFlag;
+                    _usFlags &= (ushort)~EETypeFlags.HasPointersFlag;
                 }
             }
 #endif
@@ -965,7 +965,7 @@ namespace Internal.Runtime
             set
             {
                 Debug.Assert(IsDynamicType && IsParameterizedType);
-                _usFlags &= ((UInt16)~EETypeFlags.RelatedTypeViaIATFlag);
+                _usFlags &= ((ushort)~EETypeFlags.RelatedTypeViaIATFlag);
                 _relatedType._pRelatedParameterType = value;
             }
 #endif
@@ -1013,13 +1013,13 @@ namespace Internal.Runtime
         }
 
 #if TYPE_LOADER_IMPLEMENTATION
-        internal void SetSealedVirtualSlot(IntPtr value, UInt16 slotNumber)
+        internal void SetSealedVirtualSlot(IntPtr value, ushort slotNumber)
         {
             Debug.Assert(IsDynamicType);
 
             fixed (EEType* pThis = &this)
             {
-                UInt32 cbSealedVirtualSlotsTypeOffset = GetFieldOffset(EETypeField.ETF_SealedVirtualSlots);
+                uint cbSealedVirtualSlotsTypeOffset = GetFieldOffset(EETypeField.ETF_SealedVirtualSlots);
                 IntPtr* pSealedVirtualsSlotTable = *(IntPtr**)((byte*)pThis + cbSealedVirtualSlotsTypeOffset);
                 pSealedVirtualsSlotTable[slotNumber] = value;
             }
@@ -1043,9 +1043,9 @@ namespace Internal.Runtime
             {
                 Debug.Assert(IsDynamicType);
 
-                _usFlags |= (UInt16)EETypeFlags.OptionalFieldsFlag;
+                _usFlags |= (ushort)EETypeFlags.OptionalFieldsFlag;
 
-                UInt32 cbOptionalFieldsOffset = GetFieldOffset(EETypeField.ETF_OptionalFieldsPtr);
+                uint cbOptionalFieldsOffset = GetFieldOffset(EETypeField.ETF_OptionalFieldsPtr);
                 fixed (EEType* pThis = &this)
                 {
                     *(byte**)((byte*)pThis + cbOptionalFieldsOffset) = value;
@@ -1069,7 +1069,7 @@ namespace Internal.Runtime
             set
             {
                 Debug.Assert(IsDynamicType);
-                UInt32 cbOffset = GetFieldOffset(EETypeField.ETF_DynamicTemplateType);
+                uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicTemplateType);
                 fixed (EEType* pThis = &this)
                 {
                     *(EEType**)((byte*)pThis + cbOffset) = value;
@@ -1093,7 +1093,7 @@ namespace Internal.Runtime
             set
             {
                 Debug.Assert((RareFlags & EETypeRareFlags.IsDynamicTypeWithGcStatics) != 0);
-                UInt32 cbOffset = GetFieldOffset(EETypeField.ETF_DynamicGcStatics);
+                uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicGcStatics);
                 fixed (EEType* pThis = &this)
                 {
                     *(IntPtr*)((byte*)pThis + cbOffset) = value;
@@ -1117,7 +1117,7 @@ namespace Internal.Runtime
             set
             {
                 Debug.Assert((RareFlags & EETypeRareFlags.IsDynamicTypeWithNonGcStatics) != 0);
-                UInt32 cbOffset = GetFieldOffset(EETypeField.ETF_DynamicNonGcStatics);
+                uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicNonGcStatics);
                 fixed (EEType* pThis = &this)
                 {
                     *(IntPtr*)((byte*)pThis + cbOffset) = value;
@@ -1147,7 +1147,7 @@ namespace Internal.Runtime
             set
             {
                 Debug.Assert(RareFlags.HasFlag(EETypeRareFlags.HasDynamicModuleFlag));
-                UInt32 cbOffset = GetFieldOffset(EETypeField.ETF_DynamicModule);
+                uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicModule);
                 fixed (EEType* pThis = &this)
                 {
                     *(DynamicModule**)((byte*)pThis + cbOffset) = value;
@@ -1408,9 +1408,9 @@ namespace Internal.Runtime
         }
 
 #if TYPE_LOADER_IMPLEMENTATION
-        internal static UInt32 GetSizeofEEType(
-            UInt16 cVirtuals,
-            UInt16 cInterfaces,
+        internal static uint GetSizeofEEType(
+            ushort cVirtuals,
+            ushort cInterfaces,
             bool fHasFinalizer,
             bool fRequiresOptionalFields,
             bool fHasSealedVirtuals,
@@ -1419,7 +1419,7 @@ namespace Internal.Runtime
             bool fHasGcStatics,
             bool fHasThreadStatics)
         {
-            return (UInt32)(sizeof(EEType) +
+            return (uint)(sizeof(EEType) +
                 (IntPtr.Size * cVirtuals) +
                 (sizeof(EEInterfaceInfo) * cInterfaces) +
                 sizeof(IntPtr) + // TypeManager
@@ -1430,7 +1430,7 @@ namespace Internal.Runtime
                 (fHasGenericInfo ? sizeof(IntPtr)*2 : 0) + // pointers to GenericDefinition and GenericComposition
                 (fHasNonGcStatics ? sizeof(IntPtr) : 0) + // pointer to data
                 (fHasGcStatics ? sizeof(IntPtr) : 0) +  // pointer to data
-                (fHasThreadStatics ? sizeof(UInt32) : 0)); // tls offset
+                (fHasThreadStatics ? sizeof(uint) : 0)); // tls offset
         }
 #endif
     }

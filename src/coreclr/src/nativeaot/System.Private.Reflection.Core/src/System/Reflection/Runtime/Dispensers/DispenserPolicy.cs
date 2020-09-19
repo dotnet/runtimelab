@@ -14,5 +14,3 @@ namespace System.Reflection.Runtime.Dispensers
         public abstract DispenserAlgorithm GetAlgorithm(DispenserScenario scenario);
     }
 }
-
-

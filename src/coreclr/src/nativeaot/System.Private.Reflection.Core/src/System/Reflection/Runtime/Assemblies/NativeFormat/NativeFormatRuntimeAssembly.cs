@@ -147,17 +147,17 @@ namespace System.Reflection.Runtime.Assemblies.NativeFormat
             }
         }
 
-        public sealed override ManifestResourceInfo GetManifestResourceInfo(String resourceName)
+        public sealed override ManifestResourceInfo GetManifestResourceInfo(string resourceName)
         {
             return ReflectionCoreExecution.ExecutionEnvironment.GetManifestResourceInfo(this, resourceName);
         }
 
-        public sealed override String[] GetManifestResourceNames()
+        public sealed override string[] GetManifestResourceNames()
         {
             return ReflectionCoreExecution.ExecutionEnvironment.GetManifestResourceNames(this);
         }
 
-        public sealed override Stream GetManifestResourceStream(String name)
+        public sealed override Stream GetManifestResourceStream(string name)
         {
             return ReflectionCoreExecution.ExecutionEnvironment.GetManifestResourceStream(this, name);
         }
@@ -188,7 +188,7 @@ namespace System.Reflection.Runtime.Assemblies.NativeFormat
             }
         }
 
-        public sealed override bool Equals(Object obj)
+        public sealed override bool Equals(object obj)
         {
             NativeFormatRuntimeAssembly other = obj as NativeFormatRuntimeAssembly;
             return Equals(other);

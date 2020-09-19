@@ -152,7 +152,7 @@ namespace Internal.StackTraceMetadata
         {
             methodSignature = _metadataReader.GetMethodSignature(methodRef.Signature.ToMethodSignatureHandle(_metadataReader));
             EmitTypeName(methodRef.Parent, namespaceQualified: true);
-            _outputBuilder.Append(".");
+            _outputBuilder.Append('.');
             EmitString(methodRef.Name);
         }
 
@@ -162,9 +162,9 @@ namespace Internal.StackTraceMetadata
         /// <param name="methodSignature">Method signature to use for parameter formatting</param>
         private void EmitMethodParameters(MethodSignature methodSignature)
         {
-            _outputBuilder.Append("(");
+            _outputBuilder.Append('(');
             EmitTypeVector(methodSignature.Parameters);
-            _outputBuilder.Append(")");
+            _outputBuilder.Append(')');
         }
 
         /// <summary>

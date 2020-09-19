@@ -13,7 +13,7 @@ namespace System.Runtime
     internal static unsafe class CachedInterfaceDispatch
     {
         [RuntimeExport("RhpCidResolve")]
-        unsafe private static IntPtr RhpCidResolve(IntPtr callerTransitionBlockParam, IntPtr pCell)
+        private static unsafe IntPtr RhpCidResolve(IntPtr callerTransitionBlockParam, IntPtr pCell)
         {
             IntPtr locationOfThisPointer = callerTransitionBlockParam + TransitionBlock.GetThisOffset();
             object pObject = Unsafe.As<IntPtr, object>(ref *(IntPtr*)locationOfThisPointer);
@@ -64,7 +64,7 @@ namespace System.Runtime
         [RuntimeExport("RhResolveDispatch")]
         private static IntPtr RhResolveDispatch(object pObject, EETypePtr interfaceType, ushort slot)
         {
-            DispatchCellInfo cellInfo = new DispatchCellInfo();
+            DispatchCellInfo cellInfo = default;
             cellInfo.CellType = DispatchCellType.InterfaceAndSlot;
             cellInfo.InterfaceType = interfaceType;
             cellInfo.InterfaceSlot = slot;

@@ -56,4 +56,3 @@ namespace System.Reflection.Runtime.TypeInfos.NativeFormat
         private readonly RuntimeTypeDefinitionTypeInfo _declaringType;
     }
 }
-

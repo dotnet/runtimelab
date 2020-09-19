@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 namespace Internal.Runtime.CompilerServices
 {
     [ReflectionBlocked]
-    partial class Unsafe
+    public static partial class Unsafe
     {
     }
 }

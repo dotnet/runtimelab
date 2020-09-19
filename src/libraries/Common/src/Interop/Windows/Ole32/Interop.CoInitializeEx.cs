@@ -13,6 +13,6 @@ internal static partial class Interop
         internal const uint COINIT_MULTITHREADED = 0;
 
         [DllImport(Interop.Libraries.Ole32, ExactSpelling = true)]
-        internal extern static int CoInitializeEx(IntPtr reserved, uint dwCoInit);
+        internal static extern int CoInitializeEx(IntPtr reserved, uint dwCoInit);
     }
 }

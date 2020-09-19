@@ -338,7 +338,7 @@ namespace System
 #pragma warning disable 0660, 0661
     public struct IntPtr
     {
-        unsafe private void* _value; // The compiler treats void* closest to uint hence explicit casts are required to preserve int behavior
+        private unsafe void* _value; // The compiler treats void* closest to uint hence explicit casts are required to preserve int behavior
 
         [Intrinsic]
         public static readonly IntPtr Zero;
@@ -463,7 +463,7 @@ namespace System
 #pragma warning disable 0660, 0661
     public struct UIntPtr
     {
-        unsafe private void* _value;
+        private unsafe void* _value;
 
         [Intrinsic]
         public static readonly UIntPtr Zero;

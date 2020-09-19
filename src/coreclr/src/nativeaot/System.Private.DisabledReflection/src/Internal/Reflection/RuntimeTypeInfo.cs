@@ -83,9 +83,9 @@ namespace Internal.Reflection
 
         public override ConstructorInfo[] GetConstructors(BindingFlags bindingAttr) => throw new NotSupportedException(SR.Reflection_Disabled);
 
-        public override object[] GetCustomAttributes(bool inherit) => DoNotThrowForAttributes ? new Attribute[0] :  throw new NotSupportedException(SR.Reflection_Disabled);
+        public override object[] GetCustomAttributes(bool inherit) => DoNotThrowForAttributes ? Array.Empty<Attribute>() :  throw new NotSupportedException(SR.Reflection_Disabled);
 
-        public override object[] GetCustomAttributes(Type attributeType, bool inherit) => DoNotThrowForAttributes ? new Attribute[0] : throw new NotSupportedException(SR.Reflection_Disabled);
+        public override object[] GetCustomAttributes(Type attributeType, bool inherit) => DoNotThrowForAttributes ? Array.Empty<Attribute>() : throw new NotSupportedException(SR.Reflection_Disabled);
 
         public override IList<CustomAttributeData> GetCustomAttributesData() => DoNotThrowForAttributes ? new List<CustomAttributeData>().AsReadOnly() : throw new NotSupportedException(SR.Reflection_Disabled);
 

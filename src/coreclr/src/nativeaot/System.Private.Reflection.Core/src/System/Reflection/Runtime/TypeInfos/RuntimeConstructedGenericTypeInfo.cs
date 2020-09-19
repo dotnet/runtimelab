@@ -339,4 +339,3 @@ namespace System.Reflection.Runtime.TypeInfos
         private readonly UnificationKey _key;
     }
 }
-

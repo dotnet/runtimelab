@@ -41,4 +41,3 @@ namespace System.Reflection.Runtime.General
         private readonly RuntimeTypeInfo[] _genericMethodArguments;
     }
 }
-

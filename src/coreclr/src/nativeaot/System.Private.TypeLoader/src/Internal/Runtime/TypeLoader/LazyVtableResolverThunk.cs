@@ -26,13 +26,13 @@ namespace Internal.Runtime.TypeLoader
         private static volatile IntPtr[] s_thunks = InitialThunks();
 
         [DllImport("*", ExactSpelling = true, EntryPoint = "VTableResolver_Init")]
-        private extern static unsafe int VTableResolver_Init(out IntPtr firstResolverThunk,
+        private static extern unsafe int VTableResolver_Init(out IntPtr firstResolverThunk,
                                                      IntPtr vtableResolveCallback,
                                                      IntPtr universalTransition,
                                                      out int pregeneratedThunkCount);
 
         [DllImport("*", ExactSpelling = true, EntryPoint = "VTableResolver_GetCommonCallingStub")]
-        private extern static unsafe IntPtr VTableResolver_GetCommonCallingStub();
+        private static extern unsafe IntPtr VTableResolver_GetCommonCallingStub();
 
         /// <summary>
         /// Build initial array of vtable thunks. These thunks are the ones directly embedded in
@@ -146,7 +146,7 @@ namespace Internal.Runtime.TypeLoader
         /// <param name="callerTransitionBlockParam">pointer to the arguments of the called function</param>
         /// <param name="eeTypePointerOffsetAsIntPtr">eeTypePointerOffsetAsIntPtr is the offset from the start of the EEType to the vtable slot</param>
         /// <returns>function pointer of correct override of virtual function</returns>
-        unsafe private static IntPtr VTableResolveThunk(IntPtr callerTransitionBlockParam, IntPtr eeTypePointerOffsetAsIntPtr)
+        private static unsafe IntPtr VTableResolveThunk(IntPtr callerTransitionBlockParam, IntPtr eeTypePointerOffsetAsIntPtr)
         {
             int eeTypePointerOffset = (int)eeTypePointerOffsetAsIntPtr;
             int vtableSlotIndex = EETypeVTableOffsetToSlotIndex(eeTypePointerOffset);

@@ -18,7 +18,7 @@ namespace System.Reflection.Runtime.MethodInfos
     //
     internal sealed partial class RuntimeSyntheticMethodInfo : RuntimeMethodInfo, IRuntimeMemberInfoWithNoMetadataDefinition
     {
-        private RuntimeSyntheticMethodInfo(SyntheticMethodId syntheticMethodId, String name, RuntimeArrayTypeInfo declaringType, RuntimeTypeInfo[] parameterTypes, RuntimeTypeInfo returnType, InvokerOptions options, CustomMethodInvokerAction action)
+        private RuntimeSyntheticMethodInfo(SyntheticMethodId syntheticMethodId, string name, RuntimeArrayTypeInfo declaringType, RuntimeTypeInfo[] parameterTypes, RuntimeTypeInfo returnType, InvokerOptions options, CustomMethodInvokerAction action)
         {
             _syntheticMethodId = syntheticMethodId;
             _name = name;
@@ -62,7 +62,7 @@ namespace System.Reflection.Runtime.MethodInfos
             return other is MethodInfo && other is IRuntimeMemberInfoWithNoMetadataDefinition;
         }
 
-        public sealed override bool Equals(Object obj)
+        public sealed override bool Equals(object obj)
         {
             if (!(obj is RuntimeSyntheticMethodInfo other))
                 return false;
@@ -156,7 +156,7 @@ namespace System.Reflection.Runtime.MethodInfos
             }
         }
 
-        public sealed override String ToString()
+        public sealed override string ToString()
         {
             return RuntimeMethodHelpers.ComputeToString(this, Array.Empty<RuntimeTypeInfo>(), RuntimeParameters, RuntimeReturnParameter);
         }
@@ -187,7 +187,7 @@ namespace System.Reflection.Runtime.MethodInfos
             }
         }
 
-        internal sealed override String RuntimeName
+        internal sealed override string RuntimeName
         {
             get
             {
@@ -216,7 +216,7 @@ namespace System.Reflection.Runtime.MethodInfos
             }
         }
 
-        private readonly String _name;
+        private readonly string _name;
         private readonly SyntheticMethodId _syntheticMethodId;
         private readonly RuntimeArrayTypeInfo _declaringType;
         private readonly RuntimeTypeInfo[] _runtimeParameterTypes;

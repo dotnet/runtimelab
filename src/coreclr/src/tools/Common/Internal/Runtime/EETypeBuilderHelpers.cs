@@ -39,21 +39,21 @@ namespace Internal.Runtime
 
                 return elementType;
 
-            }            
+            }
         }
 
-        public static UInt16 ComputeFlags(TypeDesc type)
+        public static ushort ComputeFlags(TypeDesc type)
         {
-            UInt16 flags = type.IsParameterizedType ?
-                (UInt16)EETypeKind.ParameterizedEEType : (UInt16)EETypeKind.CanonicalEEType;
+            ushort flags = type.IsParameterizedType ?
+                (ushort)EETypeKind.ParameterizedEEType : (ushort)EETypeKind.CanonicalEEType;
 
             // The top 5 bits of flags are used to convey enum underlying type, primitive type, or mark the type as being System.Array
             EETypeElementType elementType = ComputeEETypeElementType(type);
-            flags |= (UInt16)((UInt16)elementType << (UInt16)EETypeFlags.ElementTypeShift);
+            flags |= (ushort)((ushort)elementType << (ushort)EETypeFlags.ElementTypeShift);
 
             if (type.IsGenericDefinition)
             {
-                flags |= (UInt16)EETypeKind.GenericTypeDefEEType;
+                flags |= (ushort)EETypeKind.GenericTypeDefEEType;
 
                 // Generic type definition EETypes don't set the other flags.
                 return flags;
@@ -61,31 +61,31 @@ namespace Internal.Runtime
 
             if (type.HasFinalizer)
             {
-                flags |= (UInt16)EETypeFlags.HasFinalizerFlag;
+                flags |= (ushort)EETypeFlags.HasFinalizerFlag;
             }
 
             if (type.IsDefType
                 && !type.IsCanonicalSubtype(CanonicalFormKind.Universal)
                 && ((DefType)type).ContainsGCPointers)
             {
-                flags |= (UInt16)EETypeFlags.HasPointersFlag;
+                flags |= (ushort)EETypeFlags.HasPointersFlag;
             }
             else if (type.IsArray && !type.IsCanonicalSubtype(CanonicalFormKind.Universal))
             {
                 var arrayElementType = ((ArrayType)type).ElementType;
                 if ((arrayElementType.IsValueType && ((DefType)arrayElementType).ContainsGCPointers) || arrayElementType.IsGCPointer)
                 {
-                    flags |= (UInt16)EETypeFlags.HasPointersFlag;
+                    flags |= (ushort)EETypeFlags.HasPointersFlag;
                 }
             }
 
             if (type.HasInstantiation)
             {
-                flags |= (UInt16)EETypeFlags.IsGenericFlag;
+                flags |= (ushort)EETypeFlags.IsGenericFlag;
 
                 if (type.HasVariance)
                 {
-                    flags |= (UInt16)EETypeFlags.GenericVarianceFlag;
+                    flags |= (ushort)EETypeFlags.GenericVarianceFlag;
                 }
             }
 
@@ -96,11 +96,11 @@ namespace Internal.Runtime
         // if the alignment is 8 bytes or less. If the alignment is higher then there may be a need for more bits to hold
         // the rest of the padding data.
         // If paddings of greater than 7 bytes are necessary, then the high bits of the field represent that padding
-        private const UInt32 ValueTypePaddingLowMask = 0x7;
-        private const UInt32 ValueTypePaddingHighMask = 0xFFFFFF00;
-        private const UInt32 ValueTypePaddingMax = 0x07FFFFFF;
+        private const uint ValueTypePaddingLowMask = 0x7;
+        private const uint ValueTypePaddingHighMask = 0xFFFFFF00;
+        private const uint ValueTypePaddingMax = 0x07FFFFFF;
         private const int ValueTypePaddingHighShift = 8;
-        private const UInt32 ValueTypePaddingAlignmentMask = 0xF8;
+        private const uint ValueTypePaddingAlignmentMask = 0xF8;
         private const int ValueTypePaddingAlignmentShift = 3;
 
         /// <summary>
@@ -109,13 +109,13 @@ namespace Internal.Runtime
         /// of objects on the GCHeap. The amount of padding is recorded to allow unboxing to locals /
         /// arrays of value types which don't need it.
         /// </summary>
-        internal static UInt32 ComputeValueTypeFieldPaddingFieldValue(UInt32 padding, UInt32 alignment, int targetPointerSize)
+        internal static uint ComputeValueTypeFieldPaddingFieldValue(uint padding, uint alignment, int targetPointerSize)
         {
             // For the default case, return 0
             if ((padding == 0) && (alignment == targetPointerSize))
                 return 0;
 
-            UInt32 alignmentLog2 = 0;
+            uint alignmentLog2 = 0;
             Debug.Assert(alignment != 0);
 
             while ((alignment & 1) == 0)
@@ -130,9 +130,9 @@ namespace Internal.Runtime
             // Our alignment values here are adjusted by one to allow for a default of 0 (which represents pointer alignment)
             alignmentLog2++;
 
-            UInt32 paddingLowBits = padding & ValueTypePaddingLowMask;
-            UInt32 paddingHighBits = ((padding & ~ValueTypePaddingLowMask) >> ValueTypePaddingAlignmentShift) << ValueTypePaddingHighShift;
-            UInt32 alignmentLog2Bits = alignmentLog2 << ValueTypePaddingAlignmentShift;
+            uint paddingLowBits = padding & ValueTypePaddingLowMask;
+            uint paddingHighBits = ((padding & ~ValueTypePaddingLowMask) >> ValueTypePaddingAlignmentShift) << ValueTypePaddingHighShift;
+            uint alignmentLog2Bits = alignmentLog2 << ValueTypePaddingAlignmentShift;
             Debug.Assert((alignmentLog2Bits & ~ValueTypePaddingAlignmentMask) == 0);
             return paddingLowBits | paddingHighBits | alignmentLog2Bits;
         }

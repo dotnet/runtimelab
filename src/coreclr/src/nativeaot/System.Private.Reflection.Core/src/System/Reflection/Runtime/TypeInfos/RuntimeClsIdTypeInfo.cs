@@ -97,4 +97,3 @@ namespace System.Reflection.Runtime.TypeInfos
         private readonly RuntimeConstructorInfo[] _constructors;
     }
 }
-
