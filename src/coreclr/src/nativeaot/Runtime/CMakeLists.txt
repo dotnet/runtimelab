@@ -135,12 +135,6 @@ if(WIN32)
 
   set(ASM_SUFFIX asm)
 
-  if(CLR_CMAKE_PLATFORM_ARCH_AMD64)
-    set(ARCH_SOURCES_DIR amd64)
-  elseif(CLR_CMAKE_PLATFORM_ARCH_I386)
-    set(ARCH_SOURCES_DIR i386)
-  endif()
-
   list(APPEND RUNTIME_SOURCES_ARCH_ASM
     ${ARCH_SOURCES_DIR}/GC.${ASM_SUFFIX}
     ${ARCH_SOURCES_DIR}/GcProbe.${ASM_SUFFIX}
@@ -155,7 +149,7 @@ else()
   
   include(${GC_DIR}/unix/configure.cmake)
   
-  if(NOT CLR_CMAKE_PLATFORM_ARCH_WASM)
+  if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
     include_directories(../libunwind/include)
   else()
     include_directories($ENV{EMSCRIPTEN/system/lib/libcxxabi/include})
@@ -186,24 +180,13 @@ else()
     ../libunwind/src/libunwind.cpp
   )
 
-  if(CLR_CMAKE_PLATFORM_DARWIN)
+  if(CLR_CMAKE_TARGET_OSX)
     list(APPEND FULL_RUNTIME_SOURCES
       ../libunwind/src/Unwind_AppleExtras.cpp
     )
   endif()
 
   set(ASM_SUFFIX S)
-  if(CLR_CMAKE_PLATFORM_ARCH_AMD64)
-    set(ARCH_SOURCES_DIR amd64)
-  elseif(CLR_CMAKE_PLATFORM_ARCH_ARM64)
-    set(ARCH_SOURCES_DIR arm64)
-  elseif(CLR_CMAKE_PLATFORM_ARCH_ARM)
-    set(ARCH_SOURCES_DIR arm)
-  elseif(CLR_CMAKE_PLATFORM_ARCH_I386)
-    set(ARCH_SOURCES_DIR i386)
-  elseif(CLR_CMAKE_PLATFORM_ARCH_WASM)
-    set(ARCH_SOURCES_DIR wasm)
-  endif()
 
   list(APPEND RUNTIME_SOURCES_ARCH_ASM
     ../libunwind/src/UnwindRegistersRestore.S
@@ -277,7 +260,7 @@ convert_to_absolute_path(SERVER_GC_SOURCES ${SERVER_GC_SOURCES})
 
 convert_to_absolute_path(RUNTIME_SOURCES_ARCH_ASM ${RUNTIME_SOURCES_ARCH_ASM})
 
-if(NOT CLR_CMAKE_PLATFORM_ARCH_WASM)
+if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_subdirectory(Full)
 endif()
 
