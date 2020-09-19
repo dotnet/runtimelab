@@ -22,6 +22,9 @@
     <LibraryNameExtension Condition="$([MSBuild]::IsOsPlatform('WINDOWS'))">.dll</LibraryNameExtension>
     <LibraryNameExtension Condition="$([MSBuild]::IsOsPlatform('LINUX'))">.so</LibraryNameExtension>
     <LibraryNameExtension Condition="$([MSBuild]::IsOsPlatform('OSX'))">.dylib</LibraryNameExtension>
+    <ILCompilerRuntimeIdentifier Condition="$([MSBuild]::IsOsPlatform('WINDOWS'))">win-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
+    <ILCompilerRuntimeIdentifier Condition="$([MSBuild]::IsOsPlatform('LINUX'))">linux-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
+    <ILCompilerRuntimeIdentifier Condition="$([MSBuild]::IsOsPlatform('OSX'))">osx-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -42,13 +45,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="$(NuGetPackageRoot)\runtime.$(DefaultAppHostRuntimeIdentifier).microsoft.dotnet.objectwriter\$(ObjectWriterVersion)\runtimes\$(DefaultAppHostRuntimeIdentifier)\native\$(LibraryNamePrefix)objwriter$(LibraryNameExtension)">
+    <Content Include="$(NuGetPackageRoot)\runtime.$(ILCompilerRuntimeIdentifier).microsoft.dotnet.objectwriter\$(ObjectWriterVersion)\runtimes\$(ILCompilerRuntimeIdentifier)\native\$(LibraryNamePrefix)objwriter$(LibraryNameExtension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
     </Content>
 
-    <Content Include="$(NuGetPackageRoot)\runtime.$(DefaultAppHostRuntimeIdentifier).microsoft.netcore.coredistools\$(CoreDisToolsVersion)\runtimes\$(DefaultAppHostRuntimeIdentifier)\native\coredistools.dll" Condition="'$(IncludeCoreDisTools)' == 'true'">
+    <Content Include="$(NuGetPackageRoot)\runtime.$(ILCompilerRuntimeIdentifier).microsoft.netcore.coredistools\$(CoreDisToolsVersion)\runtimes\$(ILCompilerRuntimeIdentifier)\native\coredistools.dll" Condition="'$(IncludeCoreDisTools)' == 'true'">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
