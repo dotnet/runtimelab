@@ -138,7 +138,7 @@ namespace System.Runtime.InteropServices
             {
                 errorTracker.TrackErrorCode(LoadLibErrorTracker.ERROR_MOD_NOT_FOUND);
             }
-            else if (libraryName == String.Empty)
+            else if (libraryName == string.Empty)
             {
                 errorTracker.TrackErrorCode(LoadLibErrorTracker.ERROR_INVALID_PARAMETER);
             }
