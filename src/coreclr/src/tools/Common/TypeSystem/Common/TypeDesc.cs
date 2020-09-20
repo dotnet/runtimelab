@@ -32,15 +32,15 @@ namespace Internal.TypeSystem
         public static bool operator ==(TypeDesc left, TypeDesc right)
         {
             // Its only valid to compare two TypeDescs in the same context
-            Debug.Assert(Object.ReferenceEquals(left, null) || Object.ReferenceEquals(right, null) || Object.ReferenceEquals(left.Context, right.Context));
-            return Object.ReferenceEquals(left, right);
+            Debug.Assert(object.ReferenceEquals(left, null) || object.ReferenceEquals(right, null) || object.ReferenceEquals(left.Context, right.Context));
+            return object.ReferenceEquals(left, right);
         }
 
         public static bool operator !=(TypeDesc left, TypeDesc right)
         {
             // Its only valid to compare two TypeDescs in the same context
-            Debug.Assert(Object.ReferenceEquals(left, null) || Object.ReferenceEquals(right, null) || Object.ReferenceEquals(left.Context, right.Context));
-            return !Object.ReferenceEquals(left, right);
+            Debug.Assert(object.ReferenceEquals(left, null) || object.ReferenceEquals(right, null) || object.ReferenceEquals(left.Context, right.Context));
+            return !object.ReferenceEquals(left, right);
         }
 #endif
 

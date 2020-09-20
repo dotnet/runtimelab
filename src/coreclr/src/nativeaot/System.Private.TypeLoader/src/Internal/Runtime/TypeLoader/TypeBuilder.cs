@@ -97,7 +97,7 @@ namespace Internal.Runtime.TypeLoader
         private object _epoch = new object();
 
 #if DEBUG
-        private bool _finalTypeBuilding = false;
+        private bool _finalTypeBuilding;
 #endif
 
         // Helper exception to abort type building if we do not find the generic type template
