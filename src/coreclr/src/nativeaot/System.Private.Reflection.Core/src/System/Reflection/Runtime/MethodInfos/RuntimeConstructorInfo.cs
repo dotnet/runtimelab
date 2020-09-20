@@ -81,7 +81,7 @@ namespace System.Reflection.Runtime.MethodInfos
                 ReflectionTrace.MethodBase_Invoke(this, obj, parameters);
 #endif
             if (parameters == null)
-                parameters = Array.Empty<Object>();
+                parameters = Array.Empty<object>();
             MethodInvoker methodInvoker;
             try
             {
@@ -153,9 +153,9 @@ namespace System.Reflection.Runtime.MethodInfos
 
         public abstract override MethodImplAttributes MethodImplementationFlags { get; }
 
-        public abstract override String Name { get; }
+        public abstract override string Name { get; }
 
-        public abstract override bool Equals(Object obj);
+        public abstract override bool Equals(object obj);
 
         public abstract override int GetHashCode();
 
@@ -168,7 +168,7 @@ namespace System.Reflection.Runtime.MethodInfos
             }
         }
 
-        public abstract override String ToString();
+        public abstract override string ToString();
 
         public abstract override RuntimeMethodHandle MethodHandle { get; }
 

@@ -99,13 +99,9 @@ namespace System.Reflection
 
         private const uint SizeOfPublicKeyBlob = 12;
 
-        private const int PUBLIC_KEY_TOKEN_LEN = 8;
-
         private static byte[] s_ecmaKey =
         {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         };
     }
 }
-
-

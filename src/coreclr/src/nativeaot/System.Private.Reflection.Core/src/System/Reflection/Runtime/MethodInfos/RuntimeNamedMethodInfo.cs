@@ -19,7 +19,7 @@ namespace System.Reflection.Runtime.MethodInfos
 {
     internal abstract class RuntimeNamedMethodInfo : RuntimeMethodInfo
     {
-        protected internal abstract String ComputeToString(RuntimeMethodInfo contextMethod);
+        protected internal abstract string ComputeToString(RuntimeMethodInfo contextMethod);
         internal abstract MethodInvoker GetUncachedMethodInvoker(RuntimeTypeInfo[] methodArguments, MemberInfo exceptionPertainant);
         internal abstract RuntimeMethodHandle GetRuntimeMethodHandle(Type[] methodArguments);
     }
@@ -198,7 +198,7 @@ namespace System.Reflection.Runtime.MethodInfos
             }
         }
 
-        public sealed override String ToString()
+        public sealed override string ToString()
         {
             return ComputeToString(this);
         }
@@ -218,7 +218,7 @@ namespace System.Reflection.Runtime.MethodInfos
             return _common.HasSameMetadataDefinitionAs(otherMethod._common);
         }
 
-        public sealed override bool Equals(Object obj)
+        public sealed override bool Equals(object obj)
         {
             if (!(obj is RuntimeNamedMethodInfo<TRuntimeMethodCommon> other))
                 return false;
@@ -236,7 +236,7 @@ namespace System.Reflection.Runtime.MethodInfos
 
         public sealed override RuntimeMethodHandle MethodHandle => GetRuntimeMethodHandle(null);
 
-        protected internal sealed override String ComputeToString(RuntimeMethodInfo contextMethod)
+        protected internal sealed override string ComputeToString(RuntimeMethodInfo contextMethod)
         {
             return RuntimeMethodHelpers.ComputeToString(ref _common, contextMethod, contextMethod.RuntimeGenericArgumentsOrParameters);
         }
@@ -262,7 +262,7 @@ namespace System.Reflection.Runtime.MethodInfos
             }
         }
 
-        internal sealed override String RuntimeName
+        internal sealed override string RuntimeName
         {
             get
             {

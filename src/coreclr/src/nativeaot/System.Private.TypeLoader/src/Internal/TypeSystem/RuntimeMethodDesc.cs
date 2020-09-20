@@ -96,7 +96,7 @@ namespace Internal.TypeSystem.NoMetadata
         }
 
         private bool _unboxingStub;
-        public override System.Boolean UnboxingStub
+        public override bool UnboxingStub
         {
             get
             {

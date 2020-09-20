@@ -116,7 +116,7 @@ namespace Internal.Runtime.TypeLoader
         /// <param name="canonFormKind">Canonical form to use</param>
         /// <param name="fieldAccessMetadata">Output - metadata information for field accessor construction</param>
         /// <returns>true when found, false otherwise</returns>
-        private unsafe static bool TryGetFieldAccessMetadataFromFieldAccessMap(
+        private static unsafe bool TryGetFieldAccessMetadataFromFieldAccessMap(
             MetadataReader metadataReader,
             RuntimeTypeHandle declaringTypeHandle,
             FieldHandle fieldHandle,

@@ -9,6 +9,6 @@ internal static partial class Interop
     internal static partial class Kernel32
     {
         [DllImport(Libraries.Kernel32)]
-        internal extern static uint GetCurrentProcessorNumber();
+        internal static extern uint GetCurrentProcessorNumber();
     }
 }

@@ -102,7 +102,7 @@ namespace System.Reflection.Runtime.FieldInfos
 
         public abstract override Type[] GetRequiredCustomModifiers();
 
-        public sealed override Object GetValue(Object obj)
+        public sealed override object GetValue(object obj)
         {
 #if ENABLE_REFLECTION_TRACE
             if (ReflectionTrace.Enabled)
@@ -175,7 +175,7 @@ namespace System.Reflection.Runtime.FieldInfos
         /// </summary>
         protected abstract string MetadataName { get; }
 
-        public sealed override String Name
+        public sealed override string Name
         {
             get
             {
@@ -188,7 +188,7 @@ namespace System.Reflection.Runtime.FieldInfos
             }
         }
 
-        String ITraceableTypeMember.MemberName
+        string ITraceableTypeMember.MemberName
         {
             get
             {
@@ -211,8 +211,8 @@ namespace System.Reflection.Runtime.FieldInfos
         // Types that derive from RuntimeFieldInfo must implement the following public surface area members
         public abstract override FieldAttributes Attributes { get; }
         public abstract override int MetadataToken { get; }
-        public abstract override String ToString();
-        public abstract override bool Equals(Object obj);
+        public abstract override string ToString();
+        public abstract override bool Equals(object obj);
         public abstract override int GetHashCode();
         public abstract override RuntimeFieldHandle FieldHandle { get; }
 
@@ -238,7 +238,7 @@ namespace System.Reflection.Runtime.FieldInfos
                         // Legacy: ECMA335 does not require that the metadata literal match the type of the field that declares it.
                         // For desktop compat, we return the metadata literal as is and do not attempt to convert or validate against the Field type.
 
-                        Object defaultValue;
+                        object defaultValue;
                         if (!GetDefaultValueIfAvailable(raw: false, defaultValue: out defaultValue))
                         {
                             throw new BadImageFormatException(); // Field marked literal but has no default value.
@@ -299,6 +299,6 @@ namespace System.Reflection.Runtime.FieldInfos
 
         private volatile Type _lazyFieldType;
 
-        private String _debugName;
+        private string _debugName;
     }
 }

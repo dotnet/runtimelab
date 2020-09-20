@@ -533,7 +533,7 @@ namespace Internal.Runtime.TypeLoader
             using (LockHolder.Hold(_typeLoaderLock))
             {
                 // Check if some other thread already allocated a floating dictionary and updated the fixed portion
-                if(*(IntPtr*)dictionaryPtr != IntPtr.Zero)
+                if (*(IntPtr*)dictionaryPtr != IntPtr.Zero)
                     return *(IntPtr*)dictionaryPtr;
 
                 try

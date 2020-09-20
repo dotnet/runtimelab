@@ -15,7 +15,7 @@ namespace System.Reflection.Runtime.TypeParsing
     //
     internal sealed class TypeLexer
     {
-        public TypeLexer(String s)
+        public TypeLexer(string s)
         {
             // Turn the string into a char array with a NUL terminator.
             char[] chars = new char[s.Length + 1];
@@ -40,7 +40,7 @@ namespace System.Reflection.Runtime.TypeParsing
             {
                 SkipWhiteSpace();
                 int index = _index + 1;
-                while (Char.IsWhiteSpace(_chars[index]))
+                while (char.IsWhiteSpace(_chars[index]))
                     index++;
                 char c = _chars[index];
                 return CharToToken(c);
@@ -73,7 +73,7 @@ namespace System.Reflection.Runtime.TypeParsing
         //
         // Terminated by the first non-escaped reserved character ('[', ']', '+', '&', '*' or ',')
         //
-        public String GetNextIdentifier()
+        public string GetNextIdentifier()
         {
             SkipWhiteSpace();
 
@@ -112,7 +112,7 @@ namespace System.Reflection.Runtime.TypeParsing
             }
 
             _index = src;
-            return new String(buffer, 0, dst);
+            return new string(buffer, 0, dst);
         }
 
         //
@@ -138,7 +138,7 @@ namespace System.Reflection.Runtime.TypeParsing
                 buffer[dst++] = c;
             }
             _index = src;
-            String fullName = new String(buffer, 0, dst);
+            string fullName = new string(buffer, 0, dst);
             return AssemblyNameParser.Parse(fullName);
         }
 
@@ -172,7 +172,7 @@ namespace System.Reflection.Runtime.TypeParsing
                 buffer[dst++] = c;
             }
             _index = src;
-            String fullName = new String(buffer, 0, dst);
+            string fullName = new string(buffer, 0, dst);
             return AssemblyNameParser.Parse(fullName);
         }
 
@@ -214,7 +214,7 @@ namespace System.Reflection.Runtime.TypeParsing
         //
         private void SkipWhiteSpace()
         {
-            while (Char.IsWhiteSpace(_chars[_index]))
+            while (char.IsWhiteSpace(_chars[_index]))
                 _index++;
         }
 

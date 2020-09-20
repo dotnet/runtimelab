@@ -23,14 +23,14 @@ namespace System.Threading
         {
         }
 
-        unsafe private static void NativeOverlappedCallback(object obj)
+        private static unsafe void NativeOverlappedCallback(object obj)
         {
             NativeOverlapped* overlapped = (NativeOverlapped*)(IntPtr)obj;
             _IOCompletionCallback.PerformIOCompletionCallback(0, 0, overlapped);
         }
 
         [CLSCompliant(false)]
-        unsafe public static bool UnsafeQueueNativeOverlapped(NativeOverlapped* overlapped)
+        public static unsafe bool UnsafeQueueNativeOverlapped(NativeOverlapped* overlapped)
         {
             // OS doesn't signal handle, so do it here (CoreCLR does this assignment in ThreadPoolNative::CorPostQueuedCompletionStatus)
             overlapped->InternalLow = (IntPtr)0;

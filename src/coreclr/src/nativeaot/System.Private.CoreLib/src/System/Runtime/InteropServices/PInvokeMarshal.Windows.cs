@@ -85,7 +85,7 @@ namespace System.Runtime.InteropServices
         }
 
         // Return number of charaters encoded in native byte array lpMultiByteStr
-        unsafe public static int GetCharCount(byte* multiByteStr, int multiByteLen)
+        public static unsafe int GetCharCount(byte* multiByteStr, int multiByteLen)
         {
             return Interop.Kernel32.MultiByteToWideChar(Interop.Kernel32.CP_ACP, 0, multiByteStr, multiByteLen, default(char*), 0);
         }

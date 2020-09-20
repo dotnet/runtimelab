@@ -213,4 +213,3 @@ namespace System.Reflection.Runtime.TypeInfos
         private readonly int _position;
     }
 }
-

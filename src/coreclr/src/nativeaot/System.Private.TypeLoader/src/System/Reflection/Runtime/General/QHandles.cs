@@ -31,7 +31,7 @@ namespace Internal.Reflection.Core
             }
         }
 
-        public override bool Equals(Object obj)
+        public override bool Equals(object obj)
         {
             if (!(obj is QScopeDefinition))
                 return false;
@@ -70,7 +70,7 @@ namespace System.Reflection.Runtime.General
         public MetadataReader Reader { get { return _reader; } }
         public Handle Handle { get { return _handle; } }
 
-        public override bool Equals(Object obj)
+        public override bool Equals(object obj)
         {
             if (!(obj is QHandle))
                 return false;
@@ -157,7 +157,7 @@ namespace System.Reflection.Runtime.General
         public MetadataReader Reader { get { return _reader; } }
         public GenericParameterHandle Handle { get { return _handle; } }
 
-        public override bool Equals(Object obj)
+        public override bool Equals(object obj)
         {
             if (!(obj is QGenericParameter))
                 return false;

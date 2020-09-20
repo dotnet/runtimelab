@@ -46,7 +46,7 @@ namespace System.Reflection.Runtime.ParameterInfos.NativeFormat
             }
         }
 
-        public sealed override String Name
+        public sealed override string Name
         {
             get
             {

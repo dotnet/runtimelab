@@ -15,8 +15,6 @@ namespace System.Threading
         private const int LockedMask = 1;
         private const int WaiterCountIncrement = 2;
 
-        private const int MaximumPreemptingAcquireDurationMilliseconds = 200;
-
         /// <summary>
         /// Layout:
         ///   - Bit 0: 1 if the lock is locked, 0 otherwise

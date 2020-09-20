@@ -98,7 +98,7 @@ namespace System.Reflection.Runtime.PropertyInfos.NativeFormat
             return true;
         }
 
-        public sealed override bool Equals(Object obj)
+        public sealed override bool Equals(object obj)
         {
             if (!(obj is NativeFormatRuntimePropertyInfo other))
                 return false;

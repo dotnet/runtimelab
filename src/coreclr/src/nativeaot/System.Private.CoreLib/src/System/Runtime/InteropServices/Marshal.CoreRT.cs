@@ -18,7 +18,7 @@ namespace System
 
 namespace System.Runtime.InteropServices
 {
-    partial class Marshal
+    public static partial class Marshal
     {
         internal static int SizeOfHelper(Type t, bool throwIfNotMarshalable)
         {
@@ -31,7 +31,7 @@ namespace System.Runtime.InteropServices
             if (t == null)
                 throw new ArgumentNullException(nameof(t));
 
-            if (String.IsNullOrEmpty(fieldName))
+            if (string.IsNullOrEmpty(fieldName))
                 throw new ArgumentNullException(nameof(fieldName));
 
             if (t.TypeHandle.IsGenericTypeDefinition())
@@ -42,7 +42,7 @@ namespace System.Runtime.InteropServices
 
         private static object PtrToStructureHelper(IntPtr ptr, Type structureType)
         {
-            Object boxedStruct = InteropExtensions.RuntimeNewObject(structureType.TypeHandle);
+            object boxedStruct = InteropExtensions.RuntimeNewObject(structureType.TypeHandle);
             PtrToStructureImpl(ptr, boxedStruct);
             return boxedStruct;
         }
@@ -118,7 +118,7 @@ namespace System.Runtime.InteropServices
             RuntimeTypeHandle structureTypeHandle = structuretype.TypeHandle;
 
             if (structureTypeHandle.IsGenericType() || structureTypeHandle.IsGenericTypeDefinition())
-                throw new ArgumentException(SR.Argument_NeedNonGenericType, "t");
+                throw new ArgumentException(SR.Argument_NeedNonGenericType, nameof(structuretype));
 
             if (structureTypeHandle.IsEnum() ||
                 structureTypeHandle.IsInterface() ||
@@ -162,7 +162,7 @@ namespace System.Runtime.InteropServices
 
             if (structureTypeHandle.IsGenericType() || structureTypeHandle.IsGenericTypeDefinition())
             {
-                throw new ArgumentException(nameof(structure), SR.Argument_NeedNonGenericObject);
+                throw new ArgumentException(SR.Argument_NeedNonGenericObject, nameof(structure));
             }
 
             IntPtr marshalStub;

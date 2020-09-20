@@ -77,7 +77,7 @@ namespace Internal.Runtime.TypeLoader
             DynamicModulePtr = dynamicModulePtr;
         }
 
-        internal unsafe static IntPtr ResolveTypeSlotDispatch(IntPtr targetTypeAsIntPtr, IntPtr interfaceTypeAsIntPtr, ushort slot)
+        internal static unsafe IntPtr ResolveTypeSlotDispatch(IntPtr targetTypeAsIntPtr, IntPtr interfaceTypeAsIntPtr, ushort slot)
         {
             IntPtr methodAddress;
             if (!TypeLoaderEnvironment.Instance.TryResolveTypeSlotDispatch(targetTypeAsIntPtr, interfaceTypeAsIntPtr, slot, out methodAddress))
@@ -481,7 +481,7 @@ namespace Internal.Runtime.TypeLoader
         public bool MoveNext()
         {
             bool result;
-            do
+            while (true)
             {
                 result = _moduleInfoEnumerator.MoveNext();
                 // Ecma module shouldn't be reported as they should not be enumerated by ModuleHandle (as its always the System module)
@@ -489,8 +489,7 @@ namespace Internal.Runtime.TypeLoader
                 {
                     break;
                 }
-            } while(true);
-
+            }
             return result;
         }
 

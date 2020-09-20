@@ -38,7 +38,7 @@ namespace System.Reflection.Runtime.ParameterInfos
             }
         }
 
-        public sealed override Object DefaultValue
+        public sealed override object DefaultValue
         {
             get
             {
@@ -67,7 +67,7 @@ namespace System.Reflection.Runtime.ParameterInfos
             }
         }
 
-        public sealed override String Name
+        public sealed override string Name
         {
             get
             {
@@ -84,4 +84,3 @@ namespace System.Reflection.Runtime.ParameterInfos
         }
     }
 }
-

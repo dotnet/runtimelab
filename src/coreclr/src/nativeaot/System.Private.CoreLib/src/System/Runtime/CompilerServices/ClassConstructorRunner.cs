@@ -42,7 +42,7 @@ namespace System.Runtime.CompilerServices
             return nonGcStaticBase;
         }
 
-        private unsafe static object CheckStaticClassConstructionReturnThreadStaticBase(TypeManagerSlot* pModuleData, int typeTlsIndex, StaticClassConstructionContext* context)
+        private static unsafe object CheckStaticClassConstructionReturnThreadStaticBase(TypeManagerSlot* pModuleData, int typeTlsIndex, StaticClassConstructionContext* context)
         {
             object threadStaticBase = ThreadStatics.GetThreadStaticBaseForType(pModuleData, typeTlsIndex);
             EnsureClassConstructorRun(context);
@@ -370,7 +370,7 @@ namespace System.Runtime.CompilerServices
                     {
                         if (cctors[cctorIndex].Exception == null)
                         {
-                            cctors[cctorIndex] = new Cctor();
+                            cctors[cctorIndex] = default;
                             s_count--;
                         }
                     }

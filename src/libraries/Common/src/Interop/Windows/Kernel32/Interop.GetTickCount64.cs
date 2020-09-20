@@ -11,6 +11,6 @@ internal static partial class Interop
     {
         [DllImport(Libraries.Kernel32)]
         [SuppressGCTransition]
-        internal extern static ulong GetTickCount64();
+        internal static extern ulong GetTickCount64();
     }
 }

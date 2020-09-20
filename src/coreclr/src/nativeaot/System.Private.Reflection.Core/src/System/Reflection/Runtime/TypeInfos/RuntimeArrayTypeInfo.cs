@@ -72,7 +72,7 @@ namespace System.Reflection.Runtime.TypeInfos
                         arrayType,
                         ctorParameters,
                         InvokerOptions.AllowNullThis | InvokerOptions.DontWrapException,
-                        delegate (Object _this, Object[] args, Type thisType)
+                        delegate (object _this, object[] args, Type thisType)
                         {
                             int[] lengths = new int[rank];
                             for (int i = 0; i < rank; i++)
@@ -110,7 +110,7 @@ namespace System.Reflection.Runtime.TypeInfos
                             arrayType,
                             ctorParameters,
                             InvokerOptions.AllowNullThis | InvokerOptions.DontWrapException,
-                            delegate (Object _this, Object[] args, Type thisType)
+                            delegate (object _this, object[] args, Type thisType)
                             {
                                 int[] lengths = new int[args.Length];
                                 for (int i = 0; i < args.Length; i++)
@@ -146,7 +146,7 @@ namespace System.Reflection.Runtime.TypeInfos
                         arrayType,
                         ctorParameters,
                         InvokerOptions.AllowNullThis | InvokerOptions.DontWrapException,
-                        delegate (Object _this, Object[] args, Type thisType)
+                        delegate (object _this, object[] args, Type thisType)
                         {
                             int[] lengths = new int[rank];
                             int[] lowerBounds = new int[rank];
@@ -184,7 +184,7 @@ namespace System.Reflection.Runtime.TypeInfos
                         getParameters,
                         elementType,
                         InvokerOptions.None,
-                        delegate (Object _this, Object[] args, Type thisType)
+                        delegate (object _this, object[] args, Type thisType)
                         {
                             Array array = (Array)_this;
                             int[] indices = new int[rank];
@@ -207,13 +207,13 @@ namespace System.Reflection.Runtime.TypeInfos
                         setParameters,
                         voidType,
                         InvokerOptions.None,
-                        delegate (Object _this, Object[] args, Type thisType)
+                        delegate (object _this, object[] args, Type thisType)
                         {
                             Array array = (Array)_this;
                             int[] indices = new int[rank];
                             for (int i = 0; i < rank; i++)
                                 indices[i] = (int)(args[i]);
-                            Object value = args[rank];
+                            object value = args[rank];
                             array.SetValue(value, indices);
                             return null;
                         }
@@ -231,7 +231,7 @@ namespace System.Reflection.Runtime.TypeInfos
                         addressParameters,
                         elementType.GetByRefType(),
                         InvokerOptions.None,
-                        delegate (Object _this, Object[] args, Type thisType)
+                        delegate (object _this, object[] args, Type thisType)
                         {
                             throw new NotSupportedException();
                         }

@@ -12,6 +12,7 @@ using Internal.TypeSystem;
 using Internal.Runtime.Augments;
 using Internal.TypeSystem.NativeFormat;
 using Internal.NativeFormat;
+using System.Runtime.CompilerServices;
 
 namespace Internal.Runtime.TypeLoader
 {
@@ -220,7 +221,7 @@ namespace Internal.Runtime.TypeLoader
         }
 
         // Write the given byte array to the logical buffer in a thread-safe manner
-        private void ThreadSafeWriteBytes(byte[] src)
+        private unsafe void ThreadSafeWriteBytes(byte[] src)
         {
             lock (Instance)
             {
@@ -235,7 +236,7 @@ namespace Internal.Runtime.TypeLoader
                     if (availableSize < requiredSize)
                         throw new OutOfMemoryException();
                 }
-                PInvokeMarshal.CopyToNative(src, 0, dst, src.Length);
+                src.AsSpan().CopyTo(new Span<byte>((void*)dst, src.Length));
                 UpdatePhysicalBufferUsedSize();    // make sure that used physical buffer size is updated
             }
         }

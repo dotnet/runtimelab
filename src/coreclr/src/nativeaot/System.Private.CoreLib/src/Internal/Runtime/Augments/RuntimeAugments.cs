@@ -303,23 +303,23 @@ namespace Internal.Runtime.Augments
         public static unsafe object LoadPointerTypeField(object obj, int fieldOffset, RuntimeTypeHandle fieldType)
         {
             ref byte address = ref Unsafe.AddByteOffset(ref obj.GetRawData(), new IntPtr(fieldOffset - ObjectHeaderSize));
-            return Pointer.Box((void*)Unsafe.As<byte,IntPtr>(ref address), Type.GetTypeFromHandle(fieldType));
+            return Pointer.Box((void*)Unsafe.As<byte, IntPtr>(ref address), Type.GetTypeFromHandle(fieldType));
         }
 
         public static unsafe void StoreReferenceTypeField(IntPtr address, object fieldValue)
         {
-            Volatile.Write<Object>(ref Unsafe.As<IntPtr, object>(ref *(IntPtr*)address), fieldValue);
+            Volatile.Write<object>(ref Unsafe.As<IntPtr, object>(ref *(IntPtr*)address), fieldValue);
         }
 
         public static unsafe object LoadReferenceTypeField(IntPtr address)
         {
-            return Volatile.Read<Object>(ref Unsafe.As<IntPtr, object>(ref *(IntPtr*)address));
+            return Volatile.Read<object>(ref Unsafe.As<IntPtr, object>(ref *(IntPtr*)address));
         }
 
         public static void StoreReferenceTypeField(object obj, int fieldOffset, object fieldValue)
         {
             ref byte address = ref Unsafe.AddByteOffset(ref obj.GetRawData(), new IntPtr(fieldOffset - ObjectHeaderSize));
-            Volatile.Write<Object>(ref Unsafe.As<byte, object>(ref address), fieldValue);
+            Volatile.Write<object>(ref Unsafe.As<byte, object>(ref address), fieldValue);
         }
 
         public static object LoadReferenceTypeField(object obj, int fieldOffset)
@@ -773,7 +773,7 @@ namespace Internal.Runtime.Augments
 #if TARGET_UNIX
             byte* pModuleNameUtf8;
             int numUtf8Chars = RuntimeImports.RhGetModuleFileName(moduleBase, out pModuleNameUtf8);
-            String modulePath = System.Text.Encoding.UTF8.GetString(pModuleNameUtf8, numUtf8Chars);
+            string modulePath = System.Text.Encoding.UTF8.GetString(pModuleNameUtf8, numUtf8Chars);
 #else // TARGET_UNIX
             char* pModuleName;
             int numChars = RuntimeImports.RhGetModuleFileName(moduleBase, out pModuleName);
@@ -1010,7 +1010,7 @@ namespace Internal.Runtime.Augments
         [DebuggerGuidedStepThroughAttribute]
         public static void RunFunctionWithConservativelyReportedBuffer<T>(int cbBuffer, IntPtr pfnTargetToInvoke, ref T context)
         {
-            RuntimeImports.ConservativelyReportedRegionDesc regionDesc = new RuntimeImports.ConservativelyReportedRegionDesc();
+            RuntimeImports.ConservativelyReportedRegionDesc regionDesc = default;
             RunFunctionWithConservativelyReportedBufferInternal(cbBuffer, pfnTargetToInvoke, ref context, ref regionDesc);
             System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
         }
@@ -1048,7 +1048,7 @@ namespace Internal.Runtime.Augments
         [DebuggerGuidedStepThroughAttribute]
         public static void RunFunctionWithConservativelyReportedBuffer<T, U>(int cbBuffer, IntPtr pfnTargetToInvoke, ref T context, ref U context2)
         {
-            RuntimeImports.ConservativelyReportedRegionDesc regionDesc = new RuntimeImports.ConservativelyReportedRegionDesc();
+            RuntimeImports.ConservativelyReportedRegionDesc regionDesc = default;
             RunFunctionWithConservativelyReportedBufferInternal(cbBuffer, pfnTargetToInvoke, ref context, ref context2, ref regionDesc);
             System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
         }

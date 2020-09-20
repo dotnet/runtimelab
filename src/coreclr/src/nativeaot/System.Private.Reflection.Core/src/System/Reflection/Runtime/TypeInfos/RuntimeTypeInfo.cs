@@ -608,7 +608,7 @@ namespace System.Reflection.Runtime.TypeInfos
             return 0 != (Classification & TypeClassification.IsValueType);
         }
 
-        String ITraceableTypeMember.MemberName
+        string ITraceableTypeMember.MemberName
         {
             get
             {
@@ -783,7 +783,7 @@ namespace System.Reflection.Runtime.TypeInfos
             if (_debugName == null)
             {
                 _debugName = "Constructing..."; // Protect against any inadvertent reentrancy.
-                String debugName;
+                string debugName;
 #if ENABLE_REFLECTION_TRACE
                 if (ReflectionTrace.Enabled)
                     debugName = this.GetTraceString();  // If tracing on, call this.GetTraceString() which only gives you useful strings when metadata is available but doesn't pollute the ETW trace.
@@ -912,7 +912,6 @@ namespace System.Reflection.Runtime.TypeInfos
 
         private volatile TypeClassification _lazyClassification;
 
-        private String _debugName;
+        private string _debugName;
     }
 }
-

@@ -53,7 +53,7 @@ namespace System.Reflection.Runtime.MethodInfos
             return _genericMethodDefinition.HasSameMetadataDefinitionAs(other);
         }
 
-        public sealed override bool Equals(Object obj)
+        public sealed override bool Equals(object obj)
         {
             if (!(obj is RuntimeConstructedGenericMethodInfo other))
                 return false;
@@ -150,7 +150,7 @@ namespace System.Reflection.Runtime.MethodInfos
             }
         }
 
-        public sealed override String ToString()
+        public sealed override string ToString()
         {
             return _genericMethodDefinition.ComputeToString(this);
         }
@@ -187,7 +187,7 @@ namespace System.Reflection.Runtime.MethodInfos
             }
         }
 
-        internal sealed override String RuntimeName
+        internal sealed override string RuntimeName
         {
             get
             {
@@ -216,4 +216,3 @@ namespace System.Reflection.Runtime.MethodInfos
         private readonly RuntimeTypeInfo[] _genericTypeArguments;
     }
 }
-

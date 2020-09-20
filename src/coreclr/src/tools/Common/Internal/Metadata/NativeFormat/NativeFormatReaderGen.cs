@@ -146,9 +146,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ArraySignatureHandle
 
@@ -254,9 +254,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ByReferenceSignatureHandle
 
@@ -361,9 +361,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantBooleanArrayHandle
 
@@ -468,9 +468,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantBooleanValueHandle
 
@@ -587,9 +587,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantBoxedEnumValueHandle
 
@@ -694,9 +694,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantByteArrayHandle
 
@@ -801,9 +801,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantByteValueHandle
 
@@ -908,9 +908,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantCharArrayHandle
 
@@ -1015,9 +1015,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantCharValueHandle
 
@@ -1122,9 +1122,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantDoubleArrayHandle
 
@@ -1229,9 +1229,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantDoubleValueHandle
 
@@ -1346,9 +1346,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantEnumArrayHandle
 
@@ -1453,9 +1453,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantHandleArrayHandle
 
@@ -1560,9 +1560,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantInt16ArrayHandle
 
@@ -1667,9 +1667,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantInt16ValueHandle
 
@@ -1774,9 +1774,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantInt32ArrayHandle
 
@@ -1881,9 +1881,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantInt32ValueHandle
 
@@ -1988,9 +1988,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantInt64ArrayHandle
 
@@ -2095,9 +2095,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantInt64ValueHandle
 
@@ -2192,9 +2192,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantReferenceValueHandle
 
@@ -2299,9 +2299,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantSByteArrayHandle
 
@@ -2406,9 +2406,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantSByteValueHandle
 
@@ -2513,9 +2513,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantSingleArrayHandle
 
@@ -2620,9 +2620,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantSingleValueHandle
 
@@ -2728,9 +2728,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantStringArrayHandle
 
@@ -2835,9 +2835,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantStringValueHandle
 
@@ -2942,9 +2942,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantUInt16ArrayHandle
 
@@ -3049,9 +3049,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantUInt16ValueHandle
 
@@ -3156,9 +3156,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantUInt32ArrayHandle
 
@@ -3263,9 +3263,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantUInt32ValueHandle
 
@@ -3370,9 +3370,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantUInt64ArrayHandle
 
@@ -3477,9 +3477,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ConstantUInt64ValueHandle
 
@@ -3605,9 +3605,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // CustomAttributeHandle
 
@@ -3753,9 +3753,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // EventHandle
 
@@ -3911,9 +3911,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // FieldHandle
 
@@ -4019,9 +4019,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // FieldSignatureHandle
 
@@ -4148,9 +4148,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // FixedArgumentHandle
 
@@ -4255,9 +4255,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // FunctionPointerSignatureHandle
 
@@ -4413,9 +4413,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // GenericParameterHandle
 
@@ -4552,9 +4552,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // MemberReferenceHandle
 
@@ -4719,9 +4719,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // MethodHandle
 
@@ -4838,9 +4838,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // MethodImplHandle
 
@@ -4967,9 +4967,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // MethodInstantiationHandle
 
@@ -5084,9 +5084,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // MethodSemanticsHandle
 
@@ -5234,9 +5234,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // MethodSignatureHandle
 
@@ -5341,9 +5341,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // MethodTypeVariableSignatureHandle
 
@@ -5470,9 +5470,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ModifiedTypeHandle
 
@@ -5597,9 +5597,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // NamedArgumentHandle
 
@@ -5745,9 +5745,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // NamespaceDefinitionHandle
 
@@ -5863,9 +5863,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // NamespaceReferenceHandle
 
@@ -6011,9 +6011,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ParameterHandle
 
@@ -6119,9 +6119,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // PointerSignatureHandle
 
@@ -6277,9 +6277,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // PropertyHandle
 
@@ -6406,9 +6406,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // PropertySignatureHandle
 
@@ -6523,9 +6523,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // QualifiedFieldHandle
 
@@ -6640,9 +6640,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // QualifiedMethodHandle
 
@@ -6748,9 +6748,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // SZArraySignatureHandle
 
@@ -7005,9 +7005,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ScopeDefinitionHandle
 
@@ -7192,9 +7192,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // ScopeReferenceHandle
 
@@ -7451,9 +7451,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // TypeDefinitionHandle
 
@@ -7588,9 +7588,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // TypeForwarderHandle
 
@@ -7707,9 +7707,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // TypeInstantiationSignatureHandle
 
@@ -7835,9 +7835,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // TypeReferenceHandle
 
@@ -7953,9 +7953,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // TypeSpecificationHandle
 
@@ -8060,9 +8060,9 @@ namespace Internal.Metadata.NativeFormat
                 throw new ArgumentException();
         } // _Validate
 
-        public override String ToString()
+        public override string ToString()
         {
-            return String.Format("{0:X8}", _value);
+            return string.Format("{0:X8}", _value);
         } // ToString
     } // TypeVariableSignatureHandle
 
@@ -10417,7 +10417,7 @@ namespace Internal.Metadata.NativeFormat
         public ConstantStringValue GetConstantStringValue(ConstantStringValueHandle handle)
         {
             if (IsNull(handle))
-                return new ConstantStringValue();
+                return default;
             ConstantStringValue record;
             record._reader = this;
             record._handle = handle;

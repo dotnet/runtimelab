@@ -19,7 +19,7 @@ namespace System.Runtime.InteropServices
         private IntPtr _handle;
 
         // Allocate a handle storing the object and the type.
-        private UnsafeGCHandle(Object value, GCHandleType type)
+        private UnsafeGCHandle(object value, GCHandleType type)
         {
             Debug.Assert((uint)type <= (uint)GCHandleType.Normal, "unexpected handle type");
 
@@ -28,13 +28,13 @@ namespace System.Runtime.InteropServices
                 throw new OutOfMemoryException();
         }
 
-        public static UnsafeGCHandle Alloc(Object value, GCHandleType type)
+        public static UnsafeGCHandle Alloc(object value, GCHandleType type)
         {
             return new UnsafeGCHandle(value, type);
         }
 
         // Target property - allows getting / updating of the handle's referent.
-        public unsafe Object Target
+        public unsafe object Target
         {
             get
             {
@@ -43,7 +43,7 @@ namespace System.Runtime.InteropServices
                 // The runtime performs additional checks in debug builds
                 return InternalCalls.RhHandleGet(_handle);
 #else
-                return Unsafe.As<IntPtr, Object>(ref *(IntPtr*)_handle);
+                return Unsafe.As<IntPtr, object>(ref *(IntPtr*)_handle);
 #endif
             }
 

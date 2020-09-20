@@ -16,7 +16,7 @@ namespace Internal.Reflection.Execution.FieldAccessors
         {
         }
 
-        unsafe protected sealed override Object GetFieldBypassCctor()
+        protected unsafe sealed override object GetFieldBypassCctor()
         {
             if (FieldBase == FieldTableFlags.GCStatic)
             {
@@ -35,7 +35,7 @@ namespace Internal.Reflection.Execution.FieldAccessors
             return RuntimeAugments.LoadReferenceTypeField(threadStaticRegion, FieldOffset);
         }
 
-        unsafe protected sealed override void UncheckedSetFieldBypassCctor(Object value)
+        protected unsafe sealed override void UncheckedSetFieldBypassCctor(object value)
         {
             if (FieldBase == FieldTableFlags.GCStatic)
             {

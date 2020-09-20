@@ -14,10 +14,10 @@ namespace Internal.Reflection.Core.Execution
     public abstract class FieldAccessor
     {
         protected FieldAccessor() { }
-        public abstract Object GetField(Object obj);
+        public abstract object GetField(object obj);
         public abstract object GetFieldDirect(TypedReference typedReference);
 
-        public abstract void SetField(Object obj, Object value, BinderBundle binderBundle);
+        public abstract void SetField(object obj, object value, BinderBundle binderBundle);
         public abstract void SetFieldDirect(TypedReference typedReference, object value);
 
         /// <summary>

@@ -72,7 +72,7 @@ namespace System
             }
 
             if (length == 0)
-                Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
+                throw Win32Marshal.GetExceptionForLastWin32Error();
 
             // length includes the null terminator
             builder.Length = (int)length - 1;

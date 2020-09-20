@@ -51,7 +51,7 @@ internal partial class Interop
 
         [DllImport(Libraries.Kernel32, EntryPoint = "RaiseFailFastException")]
         [DoesNotReturn]
-        private extern static unsafe void RaiseFailFastException(
+        private static extern unsafe void RaiseFailFastException(
             EXCEPTION_RECORD* pExceptionRecord,
             IntPtr pContextRecord,
             uint dwFlags);

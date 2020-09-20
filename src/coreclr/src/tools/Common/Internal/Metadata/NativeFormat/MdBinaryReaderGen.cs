@@ -21,7 +21,7 @@ namespace Internal.Metadata.NativeFormat
             values = new BooleanCollection(reader, offset);
             uint count;
             offset = reader.DecodeUnsigned(offset, out count);
-            offset = checked(offset + count * sizeof(Boolean));
+            offset = checked(offset + count * sizeof(bool));
             return offset;
         } // Read
 
@@ -30,7 +30,7 @@ namespace Internal.Metadata.NativeFormat
             values = new CharCollection(reader, offset);
             uint count;
             offset = reader.DecodeUnsigned(offset, out count);
-            offset = checked(offset + count * sizeof(Char));
+            offset = checked(offset + count * sizeof(char));
             return offset;
         } // Read
 
@@ -39,7 +39,7 @@ namespace Internal.Metadata.NativeFormat
             values = new ByteCollection(reader, offset);
             uint count;
             offset = reader.DecodeUnsigned(offset, out count);
-            offset = checked(offset + count * sizeof(Byte));
+            offset = checked(offset + count * sizeof(byte));
             return offset;
         } // Read
 
@@ -48,7 +48,7 @@ namespace Internal.Metadata.NativeFormat
             values = new SByteCollection(reader, offset);
             uint count;
             offset = reader.DecodeUnsigned(offset, out count);
-            offset = checked(offset + count * sizeof(SByte));
+            offset = checked(offset + count * sizeof(sbyte));
             return offset;
         } // Read
 
@@ -57,7 +57,7 @@ namespace Internal.Metadata.NativeFormat
             values = new Int16Collection(reader, offset);
             uint count;
             offset = reader.DecodeUnsigned(offset, out count);
-            offset = checked(offset + count * sizeof(Int16));
+            offset = checked(offset + count * sizeof(short));
             return offset;
         } // Read
 
@@ -66,7 +66,7 @@ namespace Internal.Metadata.NativeFormat
             values = new UInt16Collection(reader, offset);
             uint count;
             offset = reader.DecodeUnsigned(offset, out count);
-            offset = checked(offset + count * sizeof(UInt16));
+            offset = checked(offset + count * sizeof(ushort));
             return offset;
         } // Read
 
@@ -75,7 +75,7 @@ namespace Internal.Metadata.NativeFormat
             values = new Int32Collection(reader, offset);
             uint count;
             offset = reader.DecodeUnsigned(offset, out count);
-            offset = checked(offset + count * sizeof(Int32));
+            offset = checked(offset + count * sizeof(int));
             return offset;
         } // Read
 
@@ -84,7 +84,7 @@ namespace Internal.Metadata.NativeFormat
             values = new UInt32Collection(reader, offset);
             uint count;
             offset = reader.DecodeUnsigned(offset, out count);
-            offset = checked(offset + count * sizeof(UInt32));
+            offset = checked(offset + count * sizeof(uint));
             return offset;
         } // Read
 
@@ -93,7 +93,7 @@ namespace Internal.Metadata.NativeFormat
             values = new Int64Collection(reader, offset);
             uint count;
             offset = reader.DecodeUnsigned(offset, out count);
-            offset = checked(offset + count * sizeof(Int64));
+            offset = checked(offset + count * sizeof(long));
             return offset;
         } // Read
 
@@ -102,7 +102,7 @@ namespace Internal.Metadata.NativeFormat
             values = new UInt64Collection(reader, offset);
             uint count;
             offset = reader.DecodeUnsigned(offset, out count);
-            offset = checked(offset + count * sizeof(UInt64));
+            offset = checked(offset + count * sizeof(ulong));
             return offset;
         } // Read
 
@@ -111,7 +111,7 @@ namespace Internal.Metadata.NativeFormat
             values = new SingleCollection(reader, offset);
             uint count;
             offset = reader.DecodeUnsigned(offset, out count);
-            offset = checked(offset + count * sizeof(Single));
+            offset = checked(offset + count * sizeof(float));
             return offset;
         } // Read
 
@@ -120,7 +120,7 @@ namespace Internal.Metadata.NativeFormat
             values = new DoubleCollection(reader, offset);
             uint count;
             offset = reader.DecodeUnsigned(offset, out count);
-            offset = checked(offset + count * sizeof(Double));
+            offset = checked(offset + count * sizeof(double));
             return offset;
         } // Read
 

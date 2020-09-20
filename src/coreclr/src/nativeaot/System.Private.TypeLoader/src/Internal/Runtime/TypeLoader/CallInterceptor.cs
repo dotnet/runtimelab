@@ -73,7 +73,7 @@ namespace Internal.Runtime.CallInterceptor
         /// be aligned for IntPtr access. Callers of this constructor are responsible for
         /// ensuring that the memory is appropriately gc-protected
         /// </summary>
-        unsafe public LocalVariableSet(IntPtr* pbMemory, LocalVariableType[] types)
+        public unsafe LocalVariableSet(IntPtr* pbMemory, LocalVariableType[] types)
         {
             _pbMemory = pbMemory;
             _types = types;
@@ -167,9 +167,9 @@ namespace Internal.Runtime.CallInterceptor
         /// Helper api to setup a space where a LocalVariableSet is defined. Note that the lifetime of the variable
         /// set is the lifetime of until the callback function returns
         /// </summary>
-        unsafe public static void SetupArbitraryLocalVariableSet<T>(LocalVariableSetFunc<T> callback, ref T param, LocalVariableType[] types) where T : struct
+        public static unsafe void SetupArbitraryLocalVariableSet<T>(LocalVariableSetFunc<T> callback, ref T param, LocalVariableType[] types) where T : struct
         {
-            SetupLocalVariableSetInfo<T> localVarSetInfo = new SetupLocalVariableSetInfo<T>();
+            SetupLocalVariableSetInfo<T> localVarSetInfo = default;
             localVarSetInfo.Callback = callback;
             localVarSetInfo.Types = types;
 

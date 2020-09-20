@@ -21,14 +21,14 @@ namespace Internal.Runtime.TypeLoader
 {
     public abstract class GenericDictionaryCell
     {
-        abstract internal void Prepare(TypeBuilder builder);
-        abstract internal IntPtr Create(TypeBuilder builder);
+        internal abstract void Prepare(TypeBuilder builder);
+        internal abstract IntPtr Create(TypeBuilder builder);
         internal unsafe virtual void WriteCellIntoDictionary(TypeBuilder typeBuilder, IntPtr* pDictionary, int slotIndex)
         {
             pDictionary[slotIndex] = Create(typeBuilder);
         }
 
-        virtual internal IntPtr CreateLazyLookupCell(TypeBuilder builder, out IntPtr auxResult)
+        internal virtual IntPtr CreateLazyLookupCell(TypeBuilder builder, out IntPtr auxResult)
         {
             auxResult = IntPtr.Zero;
             return Create(builder);
@@ -49,8 +49,8 @@ namespace Internal.Runtime.TypeLoader
         {
             internal uint OtherDictionarySlot;
 
-            override internal void Prepare(TypeBuilder builder) { }
-            override internal IntPtr Create(TypeBuilder builder)
+            internal override void Prepare(TypeBuilder builder) { }
+            internal override IntPtr Create(TypeBuilder builder)
             {
                 // This api should never be called. The intention is that this cell is special
                 // cased to have a value which is relative to other cells being emitted.
@@ -74,7 +74,7 @@ namespace Internal.Runtime.TypeLoader
         {
             internal TypeDesc Type;
 
-            override internal void Prepare(TypeBuilder builder)
+            internal override void Prepare(TypeBuilder builder)
             {
                 if (Type.IsCanonicalSubtype(CanonicalFormKind.Any))
                     Environment.FailFast("Canonical types do not have EETypes");
@@ -82,7 +82,7 @@ namespace Internal.Runtime.TypeLoader
                 builder.RegisterForPreparation(Type);
             }
 
-            override internal IntPtr Create(TypeBuilder builder)
+            internal override IntPtr Create(TypeBuilder builder)
             {
                 return builder.GetRuntimeTypeHandle(Type).ToIntPtr();
             }
@@ -92,7 +92,7 @@ namespace Internal.Runtime.TypeLoader
         {
             internal DefType Type;
 
-            override internal void Prepare(TypeBuilder builder)
+            internal override void Prepare(TypeBuilder builder)
             {
                 if (Type.IsCanonicalSubtype(CanonicalFormKind.Any))
                     Environment.FailFast("Canonical types do not have EETypes");
@@ -106,7 +106,7 @@ namespace Internal.Runtime.TypeLoader
                     builder.RegisterForPreparation(Type);
             }
 
-            override internal IntPtr Create(TypeBuilder builder)
+            internal override IntPtr Create(TypeBuilder builder)
             {
                 if (Type.IsNullable)
                     return builder.GetRuntimeTypeHandle(Type.Instantiation[0]).ToIntPtr();
@@ -130,7 +130,7 @@ namespace Internal.Runtime.TypeLoader
             internal TypeDesc InterfaceType;
             internal int Slot;
 
-            override internal void Prepare(TypeBuilder builder)
+            internal override void Prepare(TypeBuilder builder)
             {
                 if (InterfaceType.IsCanonicalSubtype(CanonicalFormKind.Any))
                     Environment.FailFast("Unable to compute call information for a canonical interface");
@@ -138,7 +138,7 @@ namespace Internal.Runtime.TypeLoader
                 builder.RegisterForPreparation(InterfaceType);
             }
 
-            override internal IntPtr Create(TypeBuilder builder)
+            internal override IntPtr Create(TypeBuilder builder)
             {
                 return RuntimeAugments.NewInterfaceDispatchCell(builder.GetRuntimeTypeHandle(InterfaceType), Slot);
             }
@@ -154,7 +154,7 @@ namespace Internal.Runtime.TypeLoader
             internal TypeDesc ConstrainedMethodType;
             internal int ConstrainedMethodSlot;
 
-            override internal void Prepare(TypeBuilder builder)
+            internal override void Prepare(TypeBuilder builder)
             {
                 if (ConstraintType.IsCanonicalSubtype(CanonicalFormKind.Any) || ConstrainedMethodType.IsCanonicalSubtype(CanonicalFormKind.Any))
                     Environment.FailFast("Unable to compute call information for a canonical type/method.");
@@ -163,7 +163,7 @@ namespace Internal.Runtime.TypeLoader
                 builder.RegisterForPreparation(ConstrainedMethodType);
             }
 
-            override internal IntPtr Create(TypeBuilder builder)
+            internal override IntPtr Create(TypeBuilder builder)
             {
                 return ConstrainedCallSupport.NonGenericConstrainedCallDesc.GetDirectConstrainedCallPtr(builder.GetRuntimeTypeHandle(ConstraintType),
                                                                                 builder.GetRuntimeTypeHandle(ConstrainedMethodType),
@@ -180,7 +180,7 @@ namespace Internal.Runtime.TypeLoader
             internal TypeDesc ConstrainedMethodType;
             internal int ConstrainedMethodSlot;
 
-            override internal void Prepare(TypeBuilder builder)
+            internal override void Prepare(TypeBuilder builder)
             {
                 if (ConstraintType.IsCanonicalSubtype(CanonicalFormKind.Any) || ConstrainedMethodType.IsCanonicalSubtype(CanonicalFormKind.Any))
                     Environment.FailFast("Unable to compute call information for a canonical type/method.");
@@ -189,7 +189,7 @@ namespace Internal.Runtime.TypeLoader
                 builder.RegisterForPreparation(ConstrainedMethodType);
             }
 
-            override internal IntPtr Create(TypeBuilder builder)
+            internal override IntPtr Create(TypeBuilder builder)
             {
                 return ConstrainedCallSupport.NonGenericConstrainedCallDesc.Get(builder.GetRuntimeTypeHandle(ConstraintType),
                                                                                 builder.GetRuntimeTypeHandle(ConstrainedMethodType),
@@ -207,7 +207,7 @@ namespace Internal.Runtime.TypeLoader
             internal IntPtr MethodName;
             internal RuntimeSignature MethodSignature;
 
-            override internal void Prepare(TypeBuilder builder)
+            internal override void Prepare(TypeBuilder builder)
             {
                 if (ConstraintType.IsCanonicalSubtype(CanonicalFormKind.Any) || ConstrainedMethod.IsCanonicalMethod(CanonicalFormKind.Any))
                     Environment.FailFast("Unable to compute call information for a canonical type/method.");
@@ -223,7 +223,7 @@ namespace Internal.Runtime.TypeLoader
                     builder.RegisterForPreparation(type);
             }
 
-            override internal IntPtr Create(TypeBuilder builder)
+            internal override IntPtr Create(TypeBuilder builder)
             {
                 RuntimeTypeHandle[] genericArgHandles = ConstrainedMethod.HasInstantiation ?
                     builder.GetRuntimeTypeHandles(ConstrainedMethod.Instantiation) : null;
@@ -248,7 +248,7 @@ namespace Internal.Runtime.TypeLoader
                                   // otherwise, an extra indirection will be inserted
 #endif
 
-            override internal void Prepare(TypeBuilder builder)
+            internal override void Prepare(TypeBuilder builder)
             {
                 if (Type.IsCanonicalSubtype(CanonicalFormKind.Any))
                     Environment.FailFast("Unable to compute static field locations for a canonical type.");
@@ -256,7 +256,7 @@ namespace Internal.Runtime.TypeLoader
                 builder.RegisterForPreparation(Type);
             }
 
-            override internal IntPtr Create(TypeBuilder builder)
+            internal override IntPtr Create(TypeBuilder builder)
             {
                 RuntimeTypeHandle typeHandle = builder.GetRuntimeTypeHandle(Type);
                 switch (DataKind)
@@ -291,7 +291,7 @@ namespace Internal.Runtime.TypeLoader
                 }
             }
 
-            override internal unsafe IntPtr CreateLazyLookupCell(TypeBuilder builder, out IntPtr auxResult)
+            internal override unsafe IntPtr CreateLazyLookupCell(TypeBuilder builder, out IntPtr auxResult)
             {
                 auxResult = IntPtr.Zero;
                 return *(IntPtr*)Create(builder);
@@ -498,7 +498,7 @@ namespace Internal.Runtime.TypeLoader
         {
             internal TypeDesc Type;
 
-            override internal void Prepare(TypeBuilder builder)
+            internal override void Prepare(TypeBuilder builder)
             {
                 if (Type.IsCanonicalSubtype(CanonicalFormKind.Any))
                     Environment.FailFast("Canonical types cannot be allocated");
@@ -506,13 +506,13 @@ namespace Internal.Runtime.TypeLoader
                 builder.RegisterForPreparation(Type);
             }
 
-            override internal IntPtr Create(TypeBuilder builder)
+            internal override IntPtr Create(TypeBuilder builder)
             {
                 RuntimeTypeHandle th = GetRuntimeTypeHandleWithNullableTransform(builder, Type);
                 return RuntimeAugments.GetAllocateObjectHelperForType(th);
             }
 
-            override internal unsafe IntPtr CreateLazyLookupCell(TypeBuilder builder, out IntPtr auxResult)
+            internal override unsafe IntPtr CreateLazyLookupCell(TypeBuilder builder, out IntPtr auxResult)
             {
                 RuntimeTypeHandle th = GetRuntimeTypeHandleWithNullableTransform(builder, Type);
                 auxResult = th.ToIntPtr();
@@ -524,12 +524,12 @@ namespace Internal.Runtime.TypeLoader
         {
             internal TypeDesc Type;
 
-            override internal void Prepare(TypeBuilder builder)
+            internal override void Prepare(TypeBuilder builder)
             {
                 builder.RegisterForPreparation(Type);
             }
 
-            override internal IntPtr Create(TypeBuilder builder)
+            internal override IntPtr Create(TypeBuilder builder)
             {
                 IntPtr result = TypeLoaderEnvironment.Instance.TryGetDefaultConstructorForType(Type);
 
@@ -893,7 +893,7 @@ namespace Internal.Runtime.TypeLoader
             internal TypeDesc Type;
             internal bool Throwing;
 
-            override internal void Prepare(TypeBuilder builder)
+            internal override void Prepare(TypeBuilder builder)
             {
                 if (Type.IsCanonicalSubtype(CanonicalFormKind.Any))
                     Environment.FailFast("Canonical types do not have EETypes");
@@ -901,13 +901,13 @@ namespace Internal.Runtime.TypeLoader
                 builder.RegisterForPreparation(Type);
             }
 
-            override internal IntPtr Create(TypeBuilder builder)
+            internal override IntPtr Create(TypeBuilder builder)
             {
                 RuntimeTypeHandle th = GetRuntimeTypeHandleWithNullableTransform(builder, Type);
                 return RuntimeAugments.GetCastingHelperForType(th, Throwing);
             }
 
-            override internal unsafe IntPtr CreateLazyLookupCell(TypeBuilder builder, out IntPtr auxResult)
+            internal override unsafe IntPtr CreateLazyLookupCell(TypeBuilder builder, out IntPtr auxResult)
             {
                 RuntimeTypeHandle th = GetRuntimeTypeHandleWithNullableTransform(builder, Type);
                 auxResult = th.ToIntPtr();
@@ -919,7 +919,7 @@ namespace Internal.Runtime.TypeLoader
         {
             internal TypeDesc Type;
 
-            override internal void Prepare(TypeBuilder builder)
+            internal override void Prepare(TypeBuilder builder)
             {
                 if (Type.IsCanonicalSubtype(CanonicalFormKind.Any))
                     Environment.FailFast("Canonical types do not have EETypes");
@@ -927,12 +927,12 @@ namespace Internal.Runtime.TypeLoader
                 builder.RegisterForPreparation(Type);
             }
 
-            override internal IntPtr Create(TypeBuilder builder)
+            internal override IntPtr Create(TypeBuilder builder)
             {
                 return RuntimeAugments.GetAllocateArrayHelperForType(builder.GetRuntimeTypeHandle(Type));
             }
 
-            override internal unsafe IntPtr CreateLazyLookupCell(TypeBuilder builder, out IntPtr auxResult)
+            internal override unsafe IntPtr CreateLazyLookupCell(TypeBuilder builder, out IntPtr auxResult)
             {
                 auxResult = builder.GetRuntimeTypeHandle(Type).ToIntPtr();
                 return *(IntPtr*)Create(builder);
@@ -943,7 +943,7 @@ namespace Internal.Runtime.TypeLoader
         {
             internal TypeDesc Type;
 
-            override internal void Prepare(TypeBuilder builder)
+            internal override void Prepare(TypeBuilder builder)
             {
                 if (Type.IsCanonicalSubtype(CanonicalFormKind.Any))
                     Environment.FailFast("Canonical types do not have EETypes");
@@ -951,12 +951,12 @@ namespace Internal.Runtime.TypeLoader
                 builder.RegisterForPreparation(Type);
             }
 
-            override internal IntPtr Create(TypeBuilder builder)
+            internal override IntPtr Create(TypeBuilder builder)
             {
                 return RuntimeAugments.GetCheckArrayElementTypeHelperForType(builder.GetRuntimeTypeHandle(Type));
             }
 
-            override internal unsafe IntPtr CreateLazyLookupCell(TypeBuilder builder, out IntPtr auxResult)
+            internal override unsafe IntPtr CreateLazyLookupCell(TypeBuilder builder, out IntPtr auxResult)
             {
                 auxResult = builder.GetRuntimeTypeHandle(Type).ToIntPtr();
                 return *(IntPtr*)Create(builder);
@@ -970,7 +970,7 @@ namespace Internal.Runtime.TypeLoader
             internal Instantiation MethodArgs;
             internal Instantiation TypeArgs;
 
-            override internal void Prepare(TypeBuilder builder)
+            internal override void Prepare(TypeBuilder builder)
             {
                 if (!MethodArgs.IsNull)
                 {
@@ -990,7 +990,7 @@ namespace Internal.Runtime.TypeLoader
                 }
             }
 
-            override internal IntPtr Create(TypeBuilder builder)
+            internal override IntPtr Create(TypeBuilder builder)
             {
                 RuntimeTypeHandle[] typeArgs = null;
                 RuntimeTypeHandle[] methodArgs = null;

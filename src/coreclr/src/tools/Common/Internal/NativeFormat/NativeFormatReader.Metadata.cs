@@ -56,7 +56,7 @@ namespace Internal.NativeFormat
         public NativeParser GetParserForBagElementKind(BagElementKind kindToFind)
         {
             var parser = this;
-            
+
             BagElementKind kind;
             while ((kind = parser.GetBagElementKind()) != BagElementKind.End)
             {

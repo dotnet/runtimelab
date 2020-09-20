@@ -178,4 +178,3 @@ namespace Internal.Reflection.Extensions.NonPortable
         }
     }
 }
-

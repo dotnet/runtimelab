@@ -10,7 +10,7 @@ internal static partial class Interop
 {
     internal static unsafe partial class Kernel32
     {
-        [DllImport(Libraries.Kernel32, EntryPoint = "GetModuleFileNameW", CharSet = CharSet.Unicode)]
-        public extern static int GetModuleFileName(IntPtr hModule, StringBuilder lpFilename, int nSize);
+        [DllImport(Libraries.Kernel32, EntryPoint = "GetModuleFileNameW", SetLastError = true, CharSet = CharSet.Unicode, ExactSpelling = true)]
+        internal static extern uint GetModuleFileName(IntPtr hModule, ref char lpFilename, uint nSize);
     }
 }

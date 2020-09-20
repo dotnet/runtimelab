@@ -1314,8 +1314,8 @@ namespace Internal.Runtime.TypeLoader
         // pre-loaded types, and metadata handles.
         private struct PreloadedTypeComparator : IInvokeMapEntryDataDeclaringTypeAndGenericMethodParameterHandling<IntPtr>
         {
-            readonly private RuntimeTypeHandle _declaringTypeHandle;
-            readonly private RuntimeTypeHandle[] _genericMethodTypeArgumentHandles;
+            private readonly RuntimeTypeHandle _declaringTypeHandle;
+            private readonly RuntimeTypeHandle[] _genericMethodTypeArgumentHandles;
 
             public PreloadedTypeComparator(RuntimeTypeHandle declaringTypeHandle, RuntimeTypeHandle[] genericMethodTypeArgumentHandles)
             {
@@ -1363,7 +1363,7 @@ namespace Internal.Runtime.TypeLoader
         // a type system object with Metadata
         private struct TypeSystemTypeComparator : IInvokeMapEntryDataDeclaringTypeAndGenericMethodParameterHandling<bool>
         {
-            readonly private MethodDesc _targetMethod;
+            private readonly MethodDesc _targetMethod;
 
             public TypeSystemTypeComparator(MethodDesc targetMethod)
             {
@@ -1447,10 +1447,10 @@ namespace Internal.Runtime.TypeLoader
         {
             // Read-only inputs
             private TLookupMethodInfo _lookupMethodInfo;
-            readonly private CanonicalFormKind _canonFormKind;
-            readonly private TypeManagerHandle _moduleHandle;
-            readonly private TypeManagerHandle _moduleForMethodHandle;
-            readonly private MethodHandle _methodHandle;
+            private readonly CanonicalFormKind _canonFormKind;
+            private readonly TypeManagerHandle _moduleHandle;
+            private readonly TypeManagerHandle _moduleForMethodHandle;
+            private readonly MethodHandle _methodHandle;
 
             // Parsed data from entry in the hashtable
             public InvokeTableFlags _flags;

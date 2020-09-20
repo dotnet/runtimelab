@@ -143,7 +143,7 @@ namespace Internal.Runtime.CompilerServices
             }
         }
 
-        unsafe private IntPtr ResolveMethod(object thisObject)
+        private unsafe IntPtr ResolveMethod(object thisObject)
         {
             if (_resolveType == DispatchResolve)
             {
@@ -159,12 +159,12 @@ namespace Internal.Runtime.CompilerServices
             }
         }
 
-        unsafe internal static IntPtr ResolveMethodWorker(IntPtr resolver, object thisObject)
+        internal static unsafe IntPtr ResolveMethodWorker(IntPtr resolver, object thisObject)
         {
             return ((OpenMethodResolver*)resolver)->ResolveMethod(thisObject);
         }
 
-        unsafe public static IntPtr ResolveMethod(IntPtr resolver, object thisObject)
+        public static unsafe IntPtr ResolveMethod(IntPtr resolver, object thisObject)
         {
             IntPtr nonVirtualOpenInvokeCodePointer = ((OpenMethodResolver*)resolver)->_nonVirtualOpenInvokeCodePointer;
             if (nonVirtualOpenInvokeCodePointer != IntPtr.Zero)
@@ -173,7 +173,7 @@ namespace Internal.Runtime.CompilerServices
             return TypeLoaderExports.OpenInstanceMethodLookup(resolver, thisObject);
         }
 
-        unsafe public static IntPtr ResolveMethod(IntPtr resolverPtr, RuntimeTypeHandle thisType)
+        public static unsafe IntPtr ResolveMethod(IntPtr resolverPtr, RuntimeTypeHandle thisType)
         {
             OpenMethodResolver* resolver = ((OpenMethodResolver*)resolverPtr);
             IntPtr nonVirtualOpenInvokeCodePointer = resolver->_nonVirtualOpenInvokeCodePointer;
@@ -238,7 +238,7 @@ namespace Internal.Runtime.CompilerServices
 
         private static LowLevelDictionary<OpenMethodResolver, IntPtr> s_internedResolverHash = new LowLevelDictionary<OpenMethodResolver, IntPtr>();
 
-        unsafe public IntPtr ToIntPtr()
+        public unsafe IntPtr ToIntPtr()
         {
             lock (s_internedResolverHash)
             {

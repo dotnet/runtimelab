@@ -123,7 +123,7 @@ namespace System.Reflection.Runtime.EventInfos.NativeFormat
             return true;
         }
 
-        public sealed override bool Equals(Object obj)
+        public sealed override bool Equals(object obj)
         {
             if (!(obj is NativeFormatRuntimeEventInfo other))
                 return false;

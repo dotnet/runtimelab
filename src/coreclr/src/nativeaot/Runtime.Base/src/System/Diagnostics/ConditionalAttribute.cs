@@ -6,12 +6,12 @@ namespace System.Diagnostics
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = true)]
     internal sealed class ConditionalAttribute : Attribute
     {
-        public ConditionalAttribute(String conditionString)
+        public ConditionalAttribute(string conditionString)
         {
             _conditionString = conditionString;
         }
 
-        public String ConditionString
+        public string ConditionString
         {
             get
             {
@@ -19,6 +19,6 @@ namespace System.Diagnostics
             }
         }
 
-        private String _conditionString;
+        private string _conditionString;
     }
 }

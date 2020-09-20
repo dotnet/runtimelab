@@ -229,6 +229,3 @@ namespace System.Reflection.Runtime.TypeInfos
         private readonly bool _isGenericTypeDefinition;
     }
 }
-
-
-

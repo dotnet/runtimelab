@@ -16,7 +16,7 @@ namespace System.Runtime.InteropServices
         }
 
         [SupportedOSPlatform("windows")]
-        public unsafe static int AddRef(IntPtr pUnk)
+        public static unsafe int AddRef(IntPtr pUnk)
         {
             if (pUnk == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(pUnk));
@@ -218,7 +218,7 @@ namespace System.Runtime.InteropServices
         }
 
         [SupportedOSPlatform("windows")]
-        public unsafe static int QueryInterface(IntPtr pUnk, ref Guid iid, out IntPtr ppv)
+        public static unsafe int QueryInterface(IntPtr pUnk, ref Guid iid, out IntPtr ppv)
         {
             if (pUnk == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(pUnk));
@@ -248,7 +248,7 @@ namespace System.Runtime.InteropServices
         }
 
         [SupportedOSPlatform("windows")]
-        public unsafe static int Release(IntPtr pUnk)
+        public static unsafe int Release(IntPtr pUnk)
         {
             if (pUnk == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(pUnk));

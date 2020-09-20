@@ -366,7 +366,7 @@ namespace System
 
         #region ToObject
 
-        internal unsafe static object ToObject(EETypePtr enumEEType, long value)
+        internal static unsafe object ToObject(EETypePtr enumEEType, long value)
         {
             Debug.Assert(enumEEType.IsEnum);
 

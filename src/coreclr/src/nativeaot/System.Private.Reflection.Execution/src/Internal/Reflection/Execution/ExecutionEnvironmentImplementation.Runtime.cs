@@ -20,7 +20,7 @@ namespace Internal.Reflection.Execution
     //==========================================================================================================
     internal sealed partial class ExecutionEnvironmentImplementation : ExecutionEnvironment
     {
-        public sealed override Object NewObject(RuntimeTypeHandle typeHandle)
+        public sealed override object NewObject(RuntimeTypeHandle typeHandle)
         {
             return RuntimeAugments.NewObject(typeHandle);
         }
@@ -163,4 +163,3 @@ notFound:
         }
     }
 }
-

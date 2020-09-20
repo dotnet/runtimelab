@@ -28,7 +28,7 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
         //
         // That isn't all that interesting for Dictionary, but it becomes substantially more interesting for nested generic types, or types which are compiler named as
         // those may contain embedded <> pairs and such.
-        public static bool TryGetDiagnosticStringForNamedType(RuntimeTypeHandle runtimeTypeHandle, out String diagnosticName, List<int> genericParameterOffsets)
+        public static bool TryGetDiagnosticStringForNamedType(RuntimeTypeHandle runtimeTypeHandle, out string diagnosticName, List<int> genericParameterOffsets)
         {
             diagnosticName = null;
             ExecutionEnvironmentImplementation executionEnvironment = ReflectionExecution.ExecutionEnvironment;
@@ -60,9 +60,9 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
 
         static partial void TryGetFullNameFromTypeDefEcma(QTypeDefinition qTypeDefinition, List<int> genericParameterOffsets, ref string result);
 
-        private static String GetTypeFullNameFromTypeRef(TypeReferenceHandle typeReferenceHandle, MetadataReader reader, List<int> genericParameterOffsets)
+        private static string GetTypeFullNameFromTypeRef(TypeReferenceHandle typeReferenceHandle, MetadataReader reader, List<int> genericParameterOffsets)
         {
-            String s = "";
+            string s = "";
 
             TypeReference typeReference = typeReferenceHandle.GetTypeReference(reader);
             s = typeReference.TypeName.GetString(reader);
@@ -70,7 +70,7 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
             HandleType parentHandleType = parentHandle.HandleType;
             if (parentHandleType == HandleType.TypeReference)
             {
-                String containingTypeName = GetTypeFullNameFromTypeRef(parentHandle.ToTypeReferenceHandle(reader), reader, genericParameterOffsets);
+                string containingTypeName = GetTypeFullNameFromTypeRef(parentHandle.ToTypeReferenceHandle(reader), reader, genericParameterOffsets);
                 s = containingTypeName + "." + s;
             }
             else if (parentHandleType == HandleType.NamespaceReference)
@@ -79,7 +79,7 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
                 for (;;)
                 {
                     NamespaceReference namespaceReference = namespaceReferenceHandle.GetNamespaceReference(reader);
-                    String namespacePart = namespaceReference.Name.GetStringOrNull(reader);
+                    string namespacePart = namespaceReference.Name.GetStringOrNull(reader);
                     if (namespacePart == null)
                         break; // Reached the root namespace.
                     s = namespacePart + "." + s;
@@ -97,7 +97,7 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
             return ConvertBackTickNameToNameWithReducerInputFormat(s, genericParameterOffsets);
         }
 
-        public static String ConvertBackTickNameToNameWithReducerInputFormat(String typename, List<int> genericParameterOffsets)
+        public static string ConvertBackTickNameToNameWithReducerInputFormat(string typename, List<int> genericParameterOffsets)
         {
             int indexOfBackTick = typename.LastIndexOf('`');
             if (indexOfBackTick != -1)
@@ -107,7 +107,7 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
                 {
                     string textAfterBackTick = typename.Substring(indexOfBackTick + 1);
                     int genericParameterCount;
-                    if (Int32.TryParse(textAfterBackTick, out genericParameterCount) && (genericParameterCount > 0))
+                    if (int.TryParse(textAfterBackTick, out genericParameterCount) && (genericParameterCount > 0))
                     {
                         // Replace the `Number with <,,,> where the count of ',' is one less than Number.
                         StringBuilder genericTypeName = new StringBuilder();
@@ -133,9 +133,9 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
             return typename;
         }
 
-        private static String GetTypeFullNameFromTypeDef(TypeDefinitionHandle typeDefinitionHandle, MetadataReader reader, List<int> genericParameterOffsets)
+        private static string GetTypeFullNameFromTypeDef(TypeDefinitionHandle typeDefinitionHandle, MetadataReader reader, List<int> genericParameterOffsets)
         {
-            String s = "";
+            string s = "";
 
             TypeDefinition typeDefinition = typeDefinitionHandle.GetTypeDefinition(reader);
             s = typeDefinition.Name.GetString(reader);
@@ -143,7 +143,7 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
             TypeDefinitionHandle enclosingTypeDefHandle = typeDefinition.EnclosingType;
             if (!enclosingTypeDefHandle.IsNull(reader))
             {
-                String containingTypeName = GetTypeFullNameFromTypeDef(enclosingTypeDefHandle, reader, genericParameterOffsets);
+                string containingTypeName = GetTypeFullNameFromTypeDef(enclosingTypeDefHandle, reader, genericParameterOffsets);
                 s = containingTypeName + "." + s;
             }
             else
@@ -152,7 +152,7 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
                 for (;;)
                 {
                     NamespaceDefinition namespaceDefinition = namespaceHandle.GetNamespaceDefinition(reader);
-                    String namespacePart = namespaceDefinition.Name.GetStringOrNull(reader);
+                    string namespacePart = namespaceDefinition.Name.GetStringOrNull(reader);
                     if (namespacePart == null)
                         break; // Reached the root namespace.
                     s = namespacePart + "." + s;
@@ -178,4 +178,3 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
         }
     }
 }
-

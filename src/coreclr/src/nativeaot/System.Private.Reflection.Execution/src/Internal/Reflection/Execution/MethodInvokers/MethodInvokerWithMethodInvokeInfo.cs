@@ -19,7 +19,7 @@ namespace Internal.Reflection.Execution.MethodInvokers
             MethodInvokeInfo = methodInvokeInfo;
         }
 
-        public override Delegate CreateDelegate(RuntimeTypeHandle delegateType, Object target, bool isStatic, bool isVirtual, bool isOpen)
+        public override Delegate CreateDelegate(RuntimeTypeHandle delegateType, object target, bool isStatic, bool isVirtual, bool isOpen)
         {
             return RuntimeAugments.CreateDelegate(
                 delegateType,
@@ -66,4 +66,3 @@ namespace Internal.Reflection.Execution.MethodInvokers
         protected MethodInvokeInfo MethodInvokeInfo { get; private set; }
     }
 }
-

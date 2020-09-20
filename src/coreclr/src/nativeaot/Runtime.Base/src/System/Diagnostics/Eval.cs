@@ -12,7 +12,7 @@ namespace System.Diagnostics
     {
         [MethodImpl(MethodImplOptions.NoInlining)]
         [RuntimeExport("RhpDebugFuncEvalHelper")]
-        public unsafe static void RhpDebugFuncEvalHelper(IntPtr unusedTransitionBlock, IntPtr classlibAddress)
+        public static unsafe void RhpDebugFuncEvalHelper(IntPtr unusedTransitionBlock, IntPtr classlibAddress)
         {
             IntPtr pDebugFuncEvalHelper = (IntPtr)InternalCalls.RhpGetClasslibFunctionFromCodeAddress(classlibAddress, ClassLibFunctionId.DebugFuncEvalHelper);
             Debug.Assert(pDebugFuncEvalHelper != IntPtr.Zero);

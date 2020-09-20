@@ -24,7 +24,7 @@ namespace Internal.Reflection.Core.Execution
         //==============================================================================================
         // Access to the underlying execution engine's object allocation routines.
         //==============================================================================================
-        public abstract Object NewObject(RuntimeTypeHandle typeHandle);
+        public abstract object NewObject(RuntimeTypeHandle typeHandle);
         public abstract Array NewArray(RuntimeTypeHandle typeHandleForArrayType, int count);
         public abstract Array NewMultiDimArray(RuntimeTypeHandle typeHandleForArrayType, int[] lengths, int[] lowerBounds);
 
@@ -86,9 +86,9 @@ namespace Internal.Reflection.Core.Execution
         //==============================================================================================
         // Manifest resource stream support.
         //==============================================================================================
-        public abstract ManifestResourceInfo GetManifestResourceInfo(Assembly assembly, String resourceName);
-        public abstract String[] GetManifestResourceNames(Assembly assembly);
-        public abstract Stream GetManifestResourceStream(Assembly assembly, String name);
+        public abstract ManifestResourceInfo GetManifestResourceInfo(Assembly assembly, string resourceName);
+        public abstract string[] GetManifestResourceNames(Assembly assembly);
+        public abstract Stream GetManifestResourceStream(Assembly assembly, string name);
 
         //==============================================================================================
         // Other

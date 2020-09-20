@@ -321,7 +321,6 @@ namespace System.Runtime
         /// valid thunk in use. The caller of this API is responsible for providing a valid
         /// address of a thunk that was not previously freed.
         /// </summary>
-        /// <returns>True if the thunk's data was successfully set.</returns>
         public unsafe void SetThunkData(IntPtr thunkAddress, IntPtr context, IntPtr target)
         {
             IntPtr dataAddress = TryGetThunkDataAddress(thunkAddress);

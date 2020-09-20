@@ -22,10 +22,10 @@ namespace System.Reflection.Runtime.General
             NamespaceDefinition currentNamespaceDefinition = innerMostNamespaceHandle.GetNamespaceDefinition(reader);
             ConstantStringValueHandle currentNameHandle = currentNamespaceDefinition.Name;
             Handle currentNamespaceHandle = innerMostNamespaceHandle.ToHandle(reader);
-            LowLevelList<String> names = new LowLevelList<String>();
+            LowLevelList<string> names = new LowLevelList<string>();
             for (;;)
             {
-                String name = currentNameHandle.GetStringOrNull(reader);
+                string name = currentNameHandle.GetStringOrNull(reader);
                 names.Add(name);
                 currentNamespaceHandle = currentNamespaceDefinition.ParentScopeOrNamespace;
                 HandleType handleType = currentNamespaceHandle.HandleType;
@@ -62,7 +62,7 @@ namespace System.Reflection.Runtime.General
                 int idx = count - 1;
                 while (idx-- != 0)
                 {
-                    String name = names[idx];
+                    string name = names[idx];
                     if (name == null)
                         throw new BadImageFormatException(); // null namespace fragment found in middle.
                     sb.Append(name);
@@ -73,8 +73,7 @@ namespace System.Reflection.Runtime.General
             }
         }
 
-        internal String NameSpace { get; }
+        internal string NameSpace { get; }
         internal ScopeDefinitionHandle DefiningScope { get; }
     }
 }
-

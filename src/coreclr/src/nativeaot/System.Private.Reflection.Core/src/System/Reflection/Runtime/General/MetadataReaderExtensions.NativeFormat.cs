@@ -24,7 +24,7 @@ namespace System.Reflection.Runtime.General
     //
     public static class NativeFormatMetadataReaderExtensions
     {
-        public static bool StringOrNullEquals(this ConstantStringValueHandle handle, String valueOrNull, MetadataReader reader)
+        public static bool StringOrNullEquals(this ConstantStringValueHandle handle, string valueOrNull, MetadataReader reader)
         {
             if (valueOrNull == null)
                 return handle.IsNull(reader);
@@ -216,7 +216,7 @@ namespace System.Reflection.Runtime.General
             return nameHandle.StringEquals(ConstructorInfo.ConstructorName, reader) || nameHandle.StringEquals(ConstructorInfo.TypeConstructorName, reader);
         }
 
-        private static Exception ParseBoxedEnumConstantValue(this ConstantBoxedEnumValueHandle handle, MetadataReader reader, out Object value)
+        private static Exception ParseBoxedEnumConstantValue(this ConstantBoxedEnumValueHandle handle, MetadataReader reader, out object value)
         {
             ConstantBoxedEnumValue record = handle.GetConstantBoxedEnumValue(reader);
 
@@ -316,16 +316,16 @@ namespace System.Reflection.Runtime.General
             }
         }
 
-        public static Object ParseConstantValue(this Handle handle, MetadataReader reader)
+        public static object ParseConstantValue(this Handle handle, MetadataReader reader)
         {
-            Object value;
+            object value;
             Exception exception = handle.TryParseConstantValue(reader, out value);
             if (exception != null)
                 throw exception;
             return value;
         }
 
-        public static Object ParseConstantNumericValue(this Handle handle, MetadataReader reader)
+        public static object ParseConstantNumericValue(this Handle handle, MetadataReader reader)
         {
             switch (handle.HandleType)
             {
@@ -358,7 +358,7 @@ namespace System.Reflection.Runtime.General
             }
         }
 
-        public static Exception TryParseConstantValue(this Handle handle, MetadataReader reader, out Object value)
+        public static Exception TryParseConstantValue(this Handle handle, MetadataReader reader, out object value)
         {
             HandleType handleType = handle.HandleType;
             switch (handleType)
@@ -551,10 +551,10 @@ namespace System.Reflection.Runtime.General
         //
         public static bool IsCustomAttributeOfType(this CustomAttributeHandle customAttributeHandle,
                                                    MetadataReader reader,
-                                                   String ns,
-                                                   String name)
+                                                   string ns,
+                                                   string name)
         {
-            String[] namespaceParts = ns.Split('.');
+            string[] namespaceParts = ns.Split('.');
             Handle typeHandle = customAttributeHandle.GetCustomAttribute(reader).GetAttributeTypeHandle(reader);
             HandleType handleType = typeHandle.HandleType;
             if (handleType == HandleType.TypeDefinition)
@@ -566,7 +566,7 @@ namespace System.Reflection.Runtime.General
                 int idx = namespaceParts.Length;
                 while (idx-- != 0)
                 {
-                    String namespacePart = namespaceParts[idx];
+                    string namespacePart = namespaceParts[idx];
                     NamespaceDefinition namespaceDefinition = nsHandle.GetNamespaceDefinition(reader);
                     if (!namespaceDefinition.Name.StringOrNullEquals(namespacePart, reader))
                         return false;
@@ -589,7 +589,7 @@ namespace System.Reflection.Runtime.General
                 int idx = namespaceParts.Length;
                 while (idx-- != 0)
                 {
-                    String namespacePart = namespaceParts[idx];
+                    string namespacePart = namespaceParts[idx];
                     NamespaceReference namespaceReference = nsHandle.GetNamespaceReference(reader);
                     if (!namespaceReference.Name.StringOrNullEquals(namespacePart, reader))
                         return false;
@@ -606,13 +606,13 @@ namespace System.Reflection.Runtime.General
         }
 
 
-        public static String ToNamespaceName(this NamespaceDefinitionHandle namespaceDefinitionHandle, MetadataReader reader)
+        public static string ToNamespaceName(this NamespaceDefinitionHandle namespaceDefinitionHandle, MetadataReader reader)
         {
-            String ns = "";
+            string ns = "";
             for (;;)
             {
                 NamespaceDefinition currentNamespaceDefinition = namespaceDefinitionHandle.GetNamespaceDefinition(reader);
-                String name = currentNamespaceDefinition.Name.GetStringOrNull(reader);
+                string name = currentNamespaceDefinition.Name.GetStringOrNull(reader);
                 if (name != null)
                 {
                     if (ns.Length != 0)
@@ -702,7 +702,7 @@ namespace System.Reflection.Runtime.General
             for (;;)
             {
                 namespaceReference = namespaceReferenceHandle.GetNamespaceReference(reader);
-                String namespacePart = namespaceReference.Name.GetStringOrNull(reader);
+                string namespacePart = namespaceReference.Name.GetStringOrNull(reader);
                 if (namespacePart == null)
                     break;
                 fullName.Append('.');
@@ -970,4 +970,3 @@ namespace System.Reflection.Runtime.General
         }
     }
 }
-

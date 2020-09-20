@@ -33,7 +33,7 @@ namespace Internal.Reflection.Execution
 
         public sealed override Type GetType(string typeName, Func<AssemblyName, Assembly> assemblyResolver, Func<Assembly, string, bool, Type> typeResolver, bool throwOnError, bool ignoreCase, string defaultAssemblyName)
         {
-            LowLevelListWithIList<String> defaultAssemblies = new LowLevelListWithIList<String>();
+            LowLevelListWithIList<string> defaultAssemblies = new LowLevelListWithIList<string>();
             if (defaultAssemblyName != null)
                 defaultAssemblies.Add(defaultAssemblyName);
             defaultAssemblies.Add(AssemblyBinder.DefaultAssemblyNameForGetType);
@@ -89,7 +89,7 @@ namespace Internal.Reflection.Execution
 
         // This is called from the ToString() helper of a RuntimeType that does not have full metadata.
         // This helper makes a "best effort" to give the caller something better than "EETypePtr nnnnnnnnn".
-        public sealed override String GetBetterDiagnosticInfoIfAvailable(RuntimeTypeHandle runtimeTypeHandle)
+        public sealed override string GetBetterDiagnosticInfoIfAvailable(RuntimeTypeHandle runtimeTypeHandle)
         {
             return Type.GetTypeFromHandle(runtimeTypeHandle).ToDisplayStringIfAvailable(null);
         }

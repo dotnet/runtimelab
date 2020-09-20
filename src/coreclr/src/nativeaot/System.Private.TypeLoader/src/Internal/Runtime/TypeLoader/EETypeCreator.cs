@@ -91,7 +91,7 @@ namespace Internal.Runtime.TypeLoader
             rtth.ToEETypePtr()->BaseType = baseTypeHandle.ToEETypePtr();
         }
 
-        public static unsafe void SetComponentSize(this RuntimeTypeHandle rtth, UInt16 componentSize)
+        public static unsafe void SetComponentSize(this RuntimeTypeHandle rtth, ushort componentSize)
         {
             rtth.ToEETypePtr()->ComponentSize = componentSize;
         }
@@ -137,7 +137,7 @@ namespace Internal.Runtime.TypeLoader
     {
         private static IntPtr s_emptyGCDesc;
 
-        private static void CreateEETypeWorker(EEType* pTemplateEEType, UInt32 hashCodeOfNewType,
+        private static void CreateEETypeWorker(EEType* pTemplateEEType, uint hashCodeOfNewType,
             int arity, bool requireVtableSlotMapping, TypeBuilderState state)
         {
             bool successful = false;
@@ -297,7 +297,7 @@ namespace Internal.Runtime.TypeLoader
                 {
                     optionalFields = new OptionalFieldsRuntimeBuilder(pTemplateEEType != null ? pTemplateEEType->OptionalFieldsPtr : null);
 
-                    UInt32 rareFlags = optionalFields.GetFieldValue(EETypeOptionalFieldTag.RareFlags, 0);
+                    uint rareFlags = optionalFields.GetFieldValue(EETypeOptionalFieldTag.RareFlags, 0);
 
                     if (state.NumSealedVTableEntries > 0)
                         rareFlags |= (uint)EETypeRareFlags.HasSealedVTableEntriesFlag;
@@ -556,10 +556,10 @@ namespace Internal.Runtime.TypeLoader
                 {
                     state.HalfBakedSealedVTable = MemoryHelpers.AllocateMemory((int)state.NumSealedVTableEntries * IntPtr.Size);
 
-                    UInt32 cbSealedVirtualSlotsTypeOffset = pEEType->GetFieldOffset(EETypeField.ETF_SealedVirtualSlots);
+                    uint cbSealedVirtualSlotsTypeOffset = pEEType->GetFieldOffset(EETypeField.ETF_SealedVirtualSlots);
                     *((IntPtr*)((byte*)pEEType + cbSealedVirtualSlotsTypeOffset)) = state.HalfBakedSealedVTable;
 
-                    for (UInt16 i = 0; i < state.NumSealedVTableEntries; i++)
+                    for (ushort i = 0; i < state.NumSealedVTableEntries; i++)
                     {
                         IntPtr value = pTemplateEEType->GetSealedVirtualSlot(i);
                         pEEType->SetSealedVirtualSlot(value, i);
@@ -580,7 +580,7 @@ namespace Internal.Runtime.TypeLoader
 
                     dynamicDispatchMapPtr = MemoryHelpers.AllocateMemory(pTemplateDispatchMap->Size);
 
-                    UInt32 cbDynamicDispatchMapOffset = pEEType->GetFieldOffset(EETypeField.ETF_DynamicDispatchMap);
+                    uint cbDynamicDispatchMapOffset = pEEType->GetFieldOffset(EETypeField.ETF_DynamicDispatchMap);
                     *((IntPtr*)((byte*)pEEType + cbDynamicDispatchMapOffset)) = dynamicDispatchMapPtr;
 
                     DispatchMap* pDynamicDispatchMap = (DispatchMap*)dynamicDispatchMapPtr;
@@ -973,7 +973,7 @@ namespace Internal.Runtime.TypeLoader
         }
 
         [Conditional("GENERICS_FORCE_USG")]
-        unsafe private static void TestGCDescsForEquality(IntPtr dynamicGCDesc, IntPtr templateGCDesc, int cbGCDesc, bool isInstanceGCDesc)
+        private static unsafe void TestGCDescsForEquality(IntPtr dynamicGCDesc, IntPtr templateGCDesc, int cbGCDesc, bool isInstanceGCDesc)
         {
             if (templateGCDesc == IntPtr.Zero)
                 return;
@@ -1010,7 +1010,7 @@ namespace Internal.Runtime.TypeLoader
             Debug.Assert(!foundDifferences);
         }
 
-        public static RuntimeTypeHandle CreatePointerEEType(UInt32 hashCodeOfNewType, RuntimeTypeHandle pointeeTypeHandle, TypeDesc pointerType)
+        public static RuntimeTypeHandle CreatePointerEEType(uint hashCodeOfNewType, RuntimeTypeHandle pointeeTypeHandle, TypeDesc pointerType)
         {
             TypeBuilderState state = new TypeBuilderState(pointerType);
 
@@ -1024,7 +1024,7 @@ namespace Internal.Runtime.TypeLoader
             return state.HalfBakedRuntimeTypeHandle;
         }
 
-        public static RuntimeTypeHandle CreateByRefEEType(UInt32 hashCodeOfNewType, RuntimeTypeHandle pointeeTypeHandle, TypeDesc byRefType)
+        public static RuntimeTypeHandle CreateByRefEEType(uint hashCodeOfNewType, RuntimeTypeHandle pointeeTypeHandle, TypeDesc byRefType)
         {
             TypeBuilderState state = new TypeBuilderState(byRefType);
 

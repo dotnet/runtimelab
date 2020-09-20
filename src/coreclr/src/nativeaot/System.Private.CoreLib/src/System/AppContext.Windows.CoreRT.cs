@@ -18,26 +18,22 @@ namespace System
         /// </summary>
         private static string GetBaseDirectoryCore()
         {
-            StringBuilder buffer = new StringBuilder(Interop.Kernel32.MAX_PATH);
-            while (true)
+            var builder = new ValueStringBuilder(stackalloc char[Interop.Kernel32.MAX_PATH]);
+
+            uint length;
+            while ((length = Interop.Kernel32.GetModuleFileName(IntPtr.Zero, ref builder.GetPinnableReference(), (uint)builder.Capacity)) >= builder.Capacity)
             {
-                int size = Interop.Kernel32.GetModuleFileName(IntPtr.Zero, buffer, buffer.Capacity);
-                if (size == 0)
-                {
-                    throw Win32Marshal.GetExceptionForWin32Error(Marshal.GetLastWin32Error());
-                }
-
-                if (Marshal.GetLastWin32Error() == Interop.Errors.ERROR_INSUFFICIENT_BUFFER)
-                {
-                    // Enlarge the buffer and try again.
-                    buffer.EnsureCapacity(buffer.Capacity * 2);
-                    continue;
-                }
-
-                // Return path to the executable image including the terminating slash
-                string fileName = buffer.ToString();
-                return fileName.Substring(0, fileName.LastIndexOf('\\') + 1);
+                builder.EnsureCapacity((int)length);
             }
+
+            if (length == 0)
+                throw Win32Marshal.GetExceptionForLastWin32Error();
+
+            builder.Length = (int)length;
+
+            // Return path to the executable image including the terminating slash
+            string fileName = builder.ToString();
+            return fileName.Substring(0, fileName.LastIndexOf('\\') + 1);
         }
     }
 }

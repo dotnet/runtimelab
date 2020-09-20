@@ -46,18 +46,18 @@ namespace System.Reflection.Runtime.CustomAttributes
             }
         }
 
-        public sealed override String ToString()
+        public sealed override string ToString()
         {
             try
             {
-                String ctorArgs = "";
+                string ctorArgs = "";
                 IList<CustomAttributeTypedArgument> constructorArguments = GetConstructorArguments(throwIfMissingMetadata: false);
                 if (constructorArguments == null)
                     return LastResortToString;
                 for (int i = 0; i < constructorArguments.Count; i++)
-                    ctorArgs += String.Format(i == 0 ? "{0}" : ", {0}", ComputeTypedArgumentString(constructorArguments[i], typed: false));
+                    ctorArgs += string.Format(i == 0 ? "{0}" : ", {0}", ComputeTypedArgumentString(constructorArguments[i], typed: false));
 
-                String namedArgs = "";
+                string namedArgs = "";
                 IList<CustomAttributeNamedArgument> namedArguments = GetNamedArguments(throwIfMissingMetadata: false);
                 if (namedArguments == null)
                     return LastResortToString;
@@ -69,13 +69,13 @@ namespace System.Reflection.Runtime.CustomAttributes
                     // (nor conveniently computable as it's not captured in the Project N metadata.) The only consequence is that for
                     // the rare case of fields and properties typed "Object", we won't decorate the argument value with its actual type name.
                     bool typed = true;
-                    namedArgs += String.Format(
+                    namedArgs += string.Format(
                         i == 0 && ctorArgs.Length == 0 ? "{0} = {1}" : ", {0} = {1}",
                         namedArgument.MemberName,
                         ComputeTypedArgumentString(namedArgument.TypedValue, typed));
                 }
 
-                return String.Format("[{0}({1}{2})]", AttributeTypeString, ctorArgs, namedArgs);
+                return string.Format("[{0}({1}{2})]", AttributeTypeString, ctorArgs, namedArgs);
             }
             catch (MissingMetadataException)
             {
@@ -104,7 +104,7 @@ namespace System.Reflection.Runtime.CustomAttributes
             throw new MissingMethodException();
         }
 
-        internal abstract String AttributeTypeString { get; }
+        internal abstract string AttributeTypeString { get; }
 
         //
         // If throwIfMissingMetadata is false, returns null rather than throwing a MissingMetadataException.
@@ -119,43 +119,43 @@ namespace System.Reflection.Runtime.CustomAttributes
         //
         // Computes the ToString() value for a CustomAttributeTypedArgument struct.
         //
-        private static String ComputeTypedArgumentString(CustomAttributeTypedArgument cat, bool typed)
+        private static string ComputeTypedArgumentString(CustomAttributeTypedArgument cat, bool typed)
         {
             Type argumentType = cat.ArgumentType;
             if (argumentType == null)
                 return cat.ToString();
 
-            Object value = cat.Value;
+            object value = cat.Value;
             if (argumentType.IsEnum)
-                return String.Format(typed ? "{0}" : "({1}){0}", value, argumentType.FullName);
+                return string.Format(typed ? "{0}" : "({1}){0}", value, argumentType.FullName);
 
             if (value == null)
-                return String.Format(typed ? "null" : "({0})null", argumentType.Name);
+                return string.Format(typed ? "null" : "({0})null", argumentType.Name);
 
             if (argumentType.Equals(CommonRuntimeTypes.String))
-                return String.Format("\"{0}\"", value);
+                return string.Format("\"{0}\"", value);
 
             if (argumentType.Equals(CommonRuntimeTypes.Char))
-                return String.Format("'{0}'", value);
+                return string.Format("'{0}'", value);
 
             if (argumentType.Equals(CommonRuntimeTypes.Type))
-                return String.Format("typeof({0})", ((Type)value).FullName);
+                return string.Format("typeof({0})", ((Type)value).FullName);
 
             else if (argumentType.IsArray)
             {
-                String result = null;
+                string result = null;
                 IList<CustomAttributeTypedArgument> array = value as IList<CustomAttributeTypedArgument>;
 
                 Type elementType = argumentType.GetElementType();
-                result = String.Format(@"new {0}[{1}] {{ ", elementType.IsEnum ? elementType.FullName : elementType.Name, array.Count);
+                result = string.Format(@"new {0}[{1}] {{ ", elementType.IsEnum ? elementType.FullName : elementType.Name, array.Count);
 
                 for (int i = 0; i < array.Count; i++)
-                    result += String.Format(i == 0 ? "{0}" : ", {0}", ComputeTypedArgumentString(array[i], elementType != CommonRuntimeTypes.Object));
+                    result += string.Format(i == 0 ? "{0}" : ", {0}", ComputeTypedArgumentString(array[i], elementType != CommonRuntimeTypes.Object));
 
                 return result += " }";
             }
 
-            return String.Format(typed ? "{0}" : "({1}){0}", value, argumentType.Name);
+            return string.Format(typed ? "{0}" : "({1}){0}", value, argumentType.Name);
         }
 
         private string LastResortToString
@@ -171,7 +171,7 @@ namespace System.Reflection.Runtime.CustomAttributes
         // Wrap a custom attribute argument (or an element of an array-typed custom attribute argument) in a CustomAttributeTypeArgument structure
         // for insertion into a CustomAttributeData value.
         //
-        protected CustomAttributeTypedArgument WrapInCustomAttributeTypedArgument(Object value, Type argumentType)
+        protected CustomAttributeTypedArgument WrapInCustomAttributeTypedArgument(object value, Type argumentType)
         {
             if (argumentType.Equals(CommonRuntimeTypes.Object))
             {
@@ -191,7 +191,7 @@ namespace System.Reflection.Runtime.CustomAttributes
                     throw new BadImageFormatException();
                 Type reportedElementType = argumentType.GetElementType();
                 LowLevelListWithIList<CustomAttributeTypedArgument> elementTypedArguments = new LowLevelListWithIList<CustomAttributeTypedArgument>();
-                foreach (Object elementValue in enumerableValue)
+                foreach (object elementValue in enumerableValue)
                 {
                     CustomAttributeTypedArgument elementTypedArgument = WrapInCustomAttributeTypedArgument(elementValue, reportedElementType);
                     elementTypedArguments.Add(elementTypedArgument);

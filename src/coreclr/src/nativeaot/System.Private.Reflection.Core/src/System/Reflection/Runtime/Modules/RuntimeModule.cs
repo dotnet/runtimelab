@@ -90,4 +90,3 @@ namespace System.Reflection.Runtime.Modules
         protected sealed override ModuleHandle GetModuleHandleImpl() => new ModuleHandle(this);
     }
 }
-

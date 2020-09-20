@@ -10,9 +10,9 @@ namespace System.Reflection.Runtime.TypeInfos
 {
     internal abstract partial class RuntimeTypeInfo
     {
-        public sealed override Object InvokeMember(
-            String name, BindingFlags bindingFlags, Binder binder, Object target,
-            Object[] providedArgs, ParameterModifier[] modifiers, CultureInfo culture, String[] namedParams)
+        public sealed override object InvokeMember(
+            string name, BindingFlags bindingFlags, Binder binder, object target,
+            object[] providedArgs, ParameterModifier[] modifiers, CultureInfo culture, string[] namedParams)
         {
             const BindingFlags MemberBindingMask = (BindingFlags)0x000000FF;
             const BindingFlags InvocationMask = (BindingFlags)0x0000FF00;
@@ -160,7 +160,7 @@ namespace System.Reflection.Runtime.TypeInfos
                 if (selFld != null)
                 {
                     #region Invocation on a field
-                    if (selFld.FieldType.IsArray || Object.ReferenceEquals(selFld.FieldType, CommonRuntimeTypes.Array))
+                    if (selFld.FieldType.IsArray || object.ReferenceEquals(selFld.FieldType, CommonRuntimeTypes.Array))
                     {
                         #region Invocation of an array Field
                         int idxCnt;
@@ -385,7 +385,7 @@ namespace System.Reflection.Runtime.TypeInfos
                 if (providedArgs == null)
                     providedArgs = Array.Empty<object>();
 
-                Object state = null;
+                object state = null;
 
 
                 MethodBase invokeMethod = null;
@@ -399,7 +399,7 @@ namespace System.Reflection.Runtime.TypeInfos
                 //if (useCache && argCnt == invokeMethod.GetParameters().Length)
                 //    AddMethodToCache(name, bindingFlags, argCnt, providedArgs, invokeMethod);
 
-                Object result = ((MethodInfo)invokeMethod).Invoke(target, bindingFlags, binder, providedArgs, culture);
+                object result = ((MethodInfo)invokeMethod).Invoke(target, bindingFlags, binder, providedArgs, culture);
 
                 if (state != null)
                     binder.ReorderArgumentArray(ref providedArgs, state);
@@ -412,4 +412,3 @@ namespace System.Reflection.Runtime.TypeInfos
         }
     }
 }
-

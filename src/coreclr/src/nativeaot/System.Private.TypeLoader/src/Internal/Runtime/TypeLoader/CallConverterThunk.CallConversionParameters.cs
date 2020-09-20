@@ -208,7 +208,7 @@ namespace Internal.Runtime.TypeLoader
                 Debug.Assert(_callerArgs.HasThis() && !_conversionInfo.IsUnboxingThunk);
 
                 IntPtr locationOfThisPointer = (IntPtr)(_callerTransitionBlock + ArgIterator.GetThisOffset());
-                _delegateData._delegateObject = (Delegate)Unsafe.As<IntPtr, Object>(ref *(IntPtr*)locationOfThisPointer);
+                _delegateData._delegateObject = (Delegate)Unsafe.As<IntPtr, object>(ref *(IntPtr*)locationOfThisPointer);
                 Debug.Assert(_delegateData._delegateObject != null);
 
                 RuntimeAugments.GetDelegateData(
@@ -388,7 +388,7 @@ namespace Internal.Runtime.TypeLoader
                         return null;
 
                     Debug.Assert(!_callerArgs.IsArgPassedByRef());
-                    return Unsafe.As<IntPtr, Object>(ref *(IntPtr*)pSrc);
+                    return Unsafe.As<IntPtr, object>(ref *(IntPtr*)pSrc);
                 }
                 else
                 {

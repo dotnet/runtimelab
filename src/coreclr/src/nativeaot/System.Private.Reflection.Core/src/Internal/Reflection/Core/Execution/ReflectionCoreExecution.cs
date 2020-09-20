@@ -46,6 +46,6 @@ namespace Internal.Reflection.Core.Execution
             }
         }
 
-        private volatile static ExecutionDomain s_executionDomain;
+        private static volatile ExecutionDomain s_executionDomain;
     }
 }

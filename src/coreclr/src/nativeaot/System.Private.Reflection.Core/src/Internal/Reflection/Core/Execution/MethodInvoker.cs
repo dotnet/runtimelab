@@ -20,16 +20,16 @@ namespace Internal.Reflection.Core.Execution
         protected MethodInvoker() { }
 
         [DebuggerGuidedStepThrough]
-        public Object Invoke(Object thisObject, Object[] arguments, Binder binder, BindingFlags invokeAttr, CultureInfo cultureInfo)
+        public object Invoke(object thisObject, object[] arguments, Binder binder, BindingFlags invokeAttr, CultureInfo cultureInfo)
         {
             BinderBundle binderBundle = binder.ToBinderBundle(invokeAttr, cultureInfo);
             bool wrapInTargetInvocationException = (invokeAttr & BindingFlags.DoNotWrapExceptions) == 0;
-            Object result = Invoke(thisObject, arguments, binderBundle, wrapInTargetInvocationException);
+            object result = Invoke(thisObject, arguments, binderBundle, wrapInTargetInvocationException);
             System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
             return result;
         }
-        protected abstract Object Invoke(Object thisObject, Object[] arguments, BinderBundle binderBundle, bool wrapInTargetInvocationException);
-        public abstract Delegate CreateDelegate(RuntimeTypeHandle delegateType, Object target, bool isStatic, bool isVirtual, bool isOpen);
+        protected abstract object Invoke(object thisObject, object[] arguments, BinderBundle binderBundle, bool wrapInTargetInvocationException);
+        public abstract Delegate CreateDelegate(RuntimeTypeHandle delegateType, object target, bool isStatic, bool isVirtual, bool isOpen);
 
         // This property is used to retrieve the target method pointer. It is used by the RuntimeMethodHandle.GetFunctionPointer API
         public abstract IntPtr LdFtnResult { get; }
@@ -53,4 +53,3 @@ namespace Internal.Reflection.Core.Execution
         }
     }
 }
-

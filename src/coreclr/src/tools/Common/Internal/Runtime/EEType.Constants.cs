@@ -19,9 +19,9 @@ namespace Internal.Runtime
         /// <summary>
         /// This flag is set when m_RelatedType is in a different module.  In that case, _pRelatedType
         /// actually points to an IAT slot in this module, which then points to the desired EEType in the
-        /// other module.  In other words, there is an extra indirection through m_RelatedType to get to 
-        /// the related type in the other module.  When this flag is set, it is expected that you use the 
-        /// "_ppXxxxViaIAT" member of the RelatedTypeUnion for the particular related type you're 
+        /// other module.  In other words, there is an extra indirection through m_RelatedType to get to
+        /// the related type in the other module.  When this flag is set, it is expected that you use the
+        /// "_ppXxxxViaIAT" member of the RelatedTypeUnion for the particular related type you're
         /// accessing.
         /// </summary>
         RelatedTypeViaIATFlag = 0x0004,

@@ -21,10 +21,10 @@ namespace System.Reflection.Runtime.ParameterInfos
 
         public abstract override ParameterAttributes Attributes { get; }
         public abstract override IEnumerable<CustomAttributeData> CustomAttributes { get; }
-        public abstract override Object DefaultValue { get; }
+        public abstract override object DefaultValue { get; }
         public abstract override object RawDefaultValue { get; }
 
-        public sealed override bool Equals(Object obj)
+        public sealed override bool Equals(object obj)
         {
             if (!(obj is RuntimeParameterInfo other))
                 return false;
@@ -59,7 +59,7 @@ namespace System.Reflection.Runtime.ParameterInfos
             }
         }
 
-        public abstract override String Name { get; }
+        public abstract override string Name { get; }
         public abstract override Type ParameterType { get; }
 
         public sealed override int Position
@@ -70,17 +70,16 @@ namespace System.Reflection.Runtime.ParameterInfos
             }
         }
 
-        public sealed override String ToString()
+        public sealed override string ToString()
         {
             return this.ParameterTypeString + " " + this.Name;
         }
 
         // Gets the ToString() output of ParameterType in a pay-to-play-safe way: Other Reflection ToString() methods should always use this rather than
         // "ParameterType.ToString()".
-        internal abstract String ParameterTypeString { get; }
+        internal abstract string ParameterTypeString { get; }
 
         private readonly MemberInfo _member;
         private readonly int _position;
     }
 }
-

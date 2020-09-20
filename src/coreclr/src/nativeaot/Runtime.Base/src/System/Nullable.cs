@@ -8,7 +8,7 @@ namespace System
     internal struct Nullable<T> where T : struct
     {
 #pragma warning disable 169 // The field 'blah' is never used
-        private readonly Boolean _hasValue;
+        private readonly bool _hasValue;
         private T _value;
 #pragma warning restore 0169
     }

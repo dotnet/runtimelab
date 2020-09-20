@@ -161,7 +161,7 @@ namespace System.Reflection.Runtime.General
                 return resolvedRuntimeTypeHandle.GetTypeForRuntimeTypeHandle();
 
             TypeReference typeReference = typeReferenceHandle.GetTypeReference(reader);
-            String name = typeReference.TypeName.GetString(reader);
+            string name = typeReference.TypeName.GetString(reader);
             Handle parent = typeReference.ParentNamespaceOrType;
             HandleType parentType = parent.HandleType;
             TypeInfo outerTypeInfo = null;
@@ -223,4 +223,3 @@ namespace System.Reflection.Runtime.General
         }
     }
 }
-

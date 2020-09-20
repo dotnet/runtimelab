@@ -20,7 +20,7 @@ namespace Internal.TypeSystem
     /// A LockFreeReaderKeyValueComparer must be provided to perform these operations.
     /// This hashtable may not store a pointer to null or (void*)1
     /// </summary>
-    abstract public class LockFreeReaderHashtableOfPointers<TKey, TValue>
+    public abstract class LockFreeReaderHashtableOfPointers<TKey, TValue>
     {
         private const int _initialSize = 16;
         private const int _fillPercentageBeforeResize = 60;
@@ -30,7 +30,7 @@ namespace Internal.TypeSystem
         /// Any modifications to this array must be additive only, and there must
         /// never be a situation where the visible _hashtable has less data than
         /// it did at an earlier time. This value is initialized to an array of size
-        /// 1. (That array is never mutated as any additions will trigger an Expand 
+        /// 1. (That array is never mutated as any additions will trigger an Expand
         /// operation, but we don't use an empty array as the
         /// initial step, as this approach allows the TryGetValue logic to always
         /// succeed without needing any length or null checks.)
@@ -46,7 +46,7 @@ namespace Internal.TypeSystem
 
         /// <summary>
         /// _count represents the current count of elements in the hashtable
-        /// _count is used in combination with _resizeCount to control when the 
+        /// _count is used in combination with _resizeCount to control when the
         /// hashtable should expand
         /// </summary>
         private volatile int _count;
@@ -66,7 +66,7 @@ namespace Internal.TypeSystem
         private volatile int _resizeCount = _initialSize * _fillPercentageBeforeResize / 100;
 
         /// <summary>
-        /// Get the underlying array for the hashtable at this time. 
+        /// Get the underlying array for the hashtable at this time.
         /// </summary>
         private IntPtr[] GetCurrentHashtable()
         {
@@ -159,8 +159,8 @@ namespace Internal.TypeSystem
         /// Gets the value associated with the specified key.
         /// </summary>
         /// <param name="key">The key of the value to get.</param>
-        /// <param name="value">When this method returns, contains the value associated with 
-        /// the specified key, if the key is found; otherwise, the default value for the type 
+        /// <param name="value">When this method returns, contains the value associated with
+        /// the specified key, if the key is found; otherwise, the default value for the type
         /// of the value parameter. This parameter is passed uninitialized. This function is threadsafe,
         /// and wait-free</param>
         /// <returns>true if a value was found</returns>
@@ -235,15 +235,15 @@ namespace Internal.TypeSystem
         /// </summary>
         private void Expand(IntPtr[] oldHashtable)
         {
-            lock(this)
+            lock (this)
             {
                 // If somebody else already resized, don't try to do it based on an old table
-                if(oldHashtable != _hashtable)
+                if (oldHashtable != _hashtable)
                 {
                     return;
                 }
 
-                // The checked statement here protects against both the hashTable size and _reserve overflowing. That does mean 
+                // The checked statement here protects against both the hashTable size and _reserve overflowing. That does mean
                 // the maximum size of _hashTable is 0x70000000
                 int newSize = checked(oldHashtable.Length * 2);
 
@@ -335,7 +335,7 @@ namespace Internal.TypeSystem
             bool unused;
             return AddOrGetExistingInner(value, out unused);
         }
-        
+
         private TValue AddOrGetExistingInner(TValue value, out bool addedValue)
         {
             IntPtr ptrValue = ConvertValueToIntPtr(value);
@@ -374,7 +374,7 @@ namespace Internal.TypeSystem
         /// Attemps to add a value to the hashtable, or find a value which is already present in the hashtable.
         /// In some cases, this will fail due to contention with other additions and must be retried.
         /// Note that the key is not specified as it is implicit in the value. This function is thread-safe,
-        /// but must only take locks around internal operations and GetValueHashCode. 
+        /// but must only take locks around internal operations and GetValueHashCode.
         /// </summary>
         /// <param name="value">Value to attempt to add to the hashtable, must not be null</param>
         /// <param name="addedValue">Set to true if <paramref name="value"/> was added to the table. False if the value
@@ -448,7 +448,7 @@ namespace Internal.TypeSystem
             {
                 WriteAbortNullToLocation(hashTableLocal, tableIndex);
                 // Pulse the lock so we don't spin during an expansion
-                lock(this) { }
+                lock (this) { }
                 Interlocked.Decrement(ref _reserve);
                 return false;
             }
@@ -480,7 +480,6 @@ namespace Internal.TypeSystem
         /// <summary>
         /// Writes the value into the table. Must only be used to overwrite a sentinel.
         /// </summary>
-        /// <returns>True if the value was successfully written</returns>
         private void WriteValueToLocation(IntPtr value, IntPtr[] hashTableLocal, int tableIndex)
         {
             // Add to hash, use a volatile write to ensure that
@@ -492,7 +491,6 @@ namespace Internal.TypeSystem
         /// <summary>
         /// Abandons the sentinel. Must only be used to overwrite a sentinel.
         /// </summary>
-        /// <returns>True if the value was successfully written</returns>
         private void WriteAbortNullToLocation(IntPtr[] hashTableLocal, int tableIndex)
         {
             // Abandon sentinel, use a volatile write to ensure that
@@ -592,8 +590,8 @@ namespace Internal.TypeSystem
             private TValue _current;
 
             /// <summary>
-            /// Use this to get an enumerable collection from a LockFreeReaderHashtable. 
-            /// Used instead of a GetEnumerator method on the LockFreeReaderHashtable to 
+            /// Use this to get an enumerable collection from a LockFreeReaderHashtable.
+            /// Used instead of a GetEnumerator method on the LockFreeReaderHashtable to
             /// reduce excess type creation. (By moving the method here, the generic dictionary for
             /// LockFreeReaderHashtable does not need to contain a reference to the
             /// enumerator type.

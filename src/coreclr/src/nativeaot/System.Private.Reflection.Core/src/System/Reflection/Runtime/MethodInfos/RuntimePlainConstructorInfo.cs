@@ -95,14 +95,14 @@ namespace System.Reflection.Runtime.MethodInfos
                 ReflectionTrace.ConstructorInfo_Invoke(this, parameters);
 #endif
             if (parameters == null)
-                parameters = Array.Empty<Object>();
+                parameters = Array.Empty<object>();
 
             // Most objects are allocated by NewObject and their constructors return "void". But in many frameworks,
             // there are "weird" cases (e.g. String) where the constructor must do both the allocation and initialization.
             // Reflection.Core does not hardcode these special cases. It's up to the ExecutionEnvironment to steer
             // us the right way by coordinating the implementation of NewObject and MethodInvoker.
-            Object newObject = ReflectionCoreExecution.ExecutionEnvironment.NewObject(this.DeclaringType.TypeHandle);
-            Object ctorAllocatedObject = this.MethodInvoker.Invoke(newObject, parameters, binder, invokeAttr, culture);
+            object newObject = ReflectionCoreExecution.ExecutionEnvironment.NewObject(this.DeclaringType.TypeHandle);
+            object ctorAllocatedObject = this.MethodInvoker.Invoke(newObject, parameters, binder, invokeAttr, culture);
             System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
             return newObject != null ? newObject : ctorAllocatedObject;
         }
@@ -123,7 +123,7 @@ namespace System.Reflection.Runtime.MethodInfos
             }
         }
 
-        public sealed override String Name
+        public sealed override string Name
         {
             get
             {
@@ -155,7 +155,7 @@ namespace System.Reflection.Runtime.MethodInfos
             return _common.HasSameMetadataDefinitionAs(otherConstructor._common);
         }
 
-        public sealed override bool Equals(Object obj)
+        public sealed override bool Equals(object obj)
         {
             if (!(obj is RuntimePlainConstructorInfo<TRuntimeMethodCommon> other))
                 return false;
@@ -167,7 +167,7 @@ namespace System.Reflection.Runtime.MethodInfos
             return _common.GetHashCode();
         }
 
-        public sealed override String ToString()
+        public sealed override string ToString()
         {
             return RuntimeMethodHelpers.ComputeToString(ref _common, this, Array.Empty<RuntimeTypeInfo>());
         }
@@ -205,4 +205,3 @@ namespace System.Reflection.Runtime.MethodInfos
         private TRuntimeMethodCommon _common;
     }
 }
-

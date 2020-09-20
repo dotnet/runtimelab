@@ -20,7 +20,7 @@ namespace Internal.Reflection.Execution
     //==========================================================================================================
     internal sealed partial class ExecutionEnvironmentImplementation : ExecutionEnvironment
     {
-        public sealed override ManifestResourceInfo GetManifestResourceInfo(Assembly assembly, String resourceName)
+        public sealed override ManifestResourceInfo GetManifestResourceInfo(Assembly assembly, string resourceName)
         {
             LowLevelList<ResourceInfo> resourceInfos = GetExtractedResources(assembly);
             for (int i = 0; i < resourceInfos.Count; i++)
@@ -33,10 +33,10 @@ namespace Internal.Reflection.Execution
             return null;
         }
 
-        public sealed override String[] GetManifestResourceNames(Assembly assembly)
+        public sealed override string[] GetManifestResourceNames(Assembly assembly)
         {
             LowLevelList<ResourceInfo> resourceInfos = GetExtractedResources(assembly);
-            String[] names = new String[resourceInfos.Count];
+            string[] names = new string[resourceInfos.Count];
             for (int i = 0; i < resourceInfos.Count; i++)
             {
                 names[i] = resourceInfos[i].Name;
@@ -44,7 +44,7 @@ namespace Internal.Reflection.Execution
             return names;
         }
 
-        public sealed override Stream GetManifestResourceStream(Assembly assembly, String name)
+        public sealed override Stream GetManifestResourceStream(Assembly assembly, string name)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -97,15 +97,15 @@ namespace Internal.Reflection.Execution
 
         private LowLevelList<ResourceInfo> GetExtractedResources(Assembly assembly)
         {
-            LowLevelDictionary<String, LowLevelList<ResourceInfo>> extractedResourceDictionary = this.ExtractedResourceDictionary;
-            String assemblyName = assembly.GetName().FullName;
+            LowLevelDictionary<string, LowLevelList<ResourceInfo>> extractedResourceDictionary = this.ExtractedResourceDictionary;
+            string assemblyName = assembly.GetName().FullName;
             LowLevelList<ResourceInfo> resourceInfos;
             if (!extractedResourceDictionary.TryGetValue(assemblyName, out resourceInfos))
                 return new LowLevelList<ResourceInfo>();
             return resourceInfos;
         }
 
-        private LowLevelDictionary<String, LowLevelList<ResourceInfo>> ExtractedResourceDictionary
+        private LowLevelDictionary<string, LowLevelList<ResourceInfo>> ExtractedResourceDictionary
         {
             get
             {
@@ -114,7 +114,7 @@ namespace Internal.Reflection.Execution
                     // Lazily create the extracted resource dictionary. If two threads race here, we may construct two dictionaries
                     // and overwrite one - this is ok since the dictionaries are read-only once constructed and they contain the identical data.
 
-                    LowLevelDictionary<String, LowLevelList<ResourceInfo>> dict = new LowLevelDictionary<String, LowLevelList<ResourceInfo>>();
+                    LowLevelDictionary<string, LowLevelList<ResourceInfo>> dict = new LowLevelDictionary<string, LowLevelList<ResourceInfo>>();
 
                     foreach (NativeFormatModuleInfo module in ModuleList.EnumerateModules())
                     {
@@ -138,7 +138,7 @@ namespace Internal.Reflection.Execution
                             ResourceInfo resourceInfo = new ResourceInfo(resourceName, resourceOffset, resourceLength, module);
 
                             LowLevelList<ResourceInfo> assemblyResources;
-                            if(!dict.TryGetValue(assemblyName, out assemblyResources))
+                            if (!dict.TryGetValue(assemblyName, out assemblyResources))
                             {
                                 assemblyResources = new LowLevelList<ResourceInfo>();
                                 dict[assemblyName] = assemblyResources;
@@ -157,16 +157,16 @@ namespace Internal.Reflection.Execution
         /// <summary>
         /// Reads linked resources from the app directory
         /// </summary>
-        private Stream ReadFileFromAppDirectory(String name)
+        private Stream ReadFileFromAppDirectory(string name)
         {
 #if ENABLE_WINRT
             if (WinRTInterop.Callbacks.IsAppxModel())
                 return (Stream)WinRTInterop.Callbacks.ReadFileIntoStream(name);
 #endif // ENABLE_WINRT
 
-            String pathToRunningExe = RuntimeAugments.TryGetFullPathToMainApplication();
-            String directoryContainingRunningExe = Path.GetDirectoryName(pathToRunningExe);
-            String fullName = Path.Combine(directoryContainingRunningExe, name);
+            string pathToRunningExe = RuntimeAugments.TryGetFullPathToMainApplication();
+            string directoryContainingRunningExe = Path.GetDirectoryName(pathToRunningExe);
+            string fullName = Path.Combine(directoryContainingRunningExe, name);
 
             if (RuntimeAugments.FileExists(fullName))
                 return new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -181,11 +181,11 @@ namespace Internal.Reflection.Execution
         /// The dictionary's key is a Fusion-style assembly name.
         /// The dictionary's value is a list of (resourcename,index) tuples.
         /// </summary>
-        private static volatile LowLevelDictionary<String, LowLevelList<ResourceInfo>> s_extractedResourceDictionary;
+        private static volatile LowLevelDictionary<string, LowLevelList<ResourceInfo>> s_extractedResourceDictionary;
 
         private struct ResourceInfo
         {
-            public ResourceInfo(String name, int index, int length, NativeFormatModuleInfo module)
+            public ResourceInfo(string name, int index, int length, NativeFormatModuleInfo module)
             {
                 Name = name;
                 Index = index;
@@ -193,11 +193,10 @@ namespace Internal.Reflection.Execution
                 Module = module;
             }
 
-            public String Name { get; }
+            public string Name { get; }
             public int Index { get; }
             public int Length { get; }
             public NativeFormatModuleInfo Module { get; }
         }
     }
 }
-

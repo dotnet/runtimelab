@@ -265,7 +265,7 @@ namespace System.Reflection.Runtime.MethodInfos.NativeFormat
             return result.Remainder;
         }
 
-        public String Name
+        public string Name
         {
             get
             {
@@ -302,7 +302,7 @@ namespace System.Reflection.Runtime.MethodInfos.NativeFormat
 
         public IEnumerable<CustomAttributeData> TrueCustomAttributes => RuntimeCustomAttributeData.GetCustomAttributes(_reader, _method.CustomAttributes);
 
-        public override bool Equals(Object obj)
+        public override bool Equals(object obj)
         {
             if (!(obj is NativeFormatMethodCommon other))
                 return false;

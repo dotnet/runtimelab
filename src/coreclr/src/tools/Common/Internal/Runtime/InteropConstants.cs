@@ -9,7 +9,7 @@ namespace Internal.Runtime
         /// Flag set in RuntimeInteropData if the entry is for type with marshallers
         /// </summary>
         public const int HasMarshallers = 0x1;
-        
+
         /// <summary>
         /// Flag set in RuntimeInteropData if the entry is for type with invalid interop layout
         /// </summary>

@@ -10,7 +10,7 @@ namespace Microsoft.Win32.SafeHandles
         protected override bool ReleaseHandle()
         {
             WaitSubsystem.DeleteHandle(handle);
-		    return true;
+            return true;
         }
     }
 }

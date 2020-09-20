@@ -65,7 +65,7 @@ namespace Internal.Metadata.NativeFormat
 
     public partial struct Handle
     {
-        public override bool Equals(Object obj)
+        public override bool Equals(object obj)
         {
             if (obj is Handle)
                 return _value == ((Handle)obj)._value;
@@ -146,7 +146,7 @@ namespace Internal.Metadata.NativeFormat
 #if DEBUG
         public override string ToString()
         {
-            return String.Format("{1} : {0,8:X8}", _value, Enum.GetName(typeof(HandleType), this.HandleType));
+            return string.Format("{1} : {0,8:X8}", _value, Enum.GetName(typeof(HandleType), this.HandleType));
         }
 #endif
     }
@@ -166,7 +166,7 @@ namespace Internal.Metadata.NativeFormat
     public partial struct ConstantReferenceValue
     {
         /// Always returns null value.
-        public Object Value
+        public object Value
         { get { return null; } }
     } // ConstantReferenceValue
 

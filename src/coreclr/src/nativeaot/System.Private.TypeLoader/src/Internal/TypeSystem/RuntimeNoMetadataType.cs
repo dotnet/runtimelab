@@ -343,7 +343,7 @@ namespace Internal.TypeSystem.NoMetadata
         }
 
 #if DEBUG
-        private string _cachedToString = null;
+        private string _cachedToString;
 
         public override string ToString()
         {
@@ -364,7 +364,7 @@ namespace Internal.TypeSystem.NoMetadata
                     sb.Append(i == 0 ? "[" : ", ");
                     sb.Append(Instantiation[i].ToString());
                 }
-                if (Instantiation.Length > 0) sb.Append("]");
+                if (Instantiation.Length > 0) sb.Append(']');
             }
 
             _cachedToString = sb.ToString();

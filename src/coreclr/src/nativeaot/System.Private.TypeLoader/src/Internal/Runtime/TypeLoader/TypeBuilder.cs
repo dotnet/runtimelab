@@ -94,10 +94,10 @@ namespace Internal.Runtime.TypeLoader
 
         private LowLevelList<TypeDesc> _typesThatNeedPreparation;
 
-        private Object _epoch = new Object();
+        private object _epoch = new object();
 
 #if DEBUG
-        private bool _finalTypeBuilding = false;
+        private bool _finalTypeBuilding;
 #endif
 
         // Helper exception to abort type building if we do not find the generic type template
@@ -1136,7 +1136,7 @@ namespace Internal.Runtime.TypeLoader
             }
         }
 
-        unsafe private void FinishTypeDictionary(TypeDesc type, TypeBuilderState state)
+        private unsafe void FinishTypeDictionary(TypeDesc type, TypeBuilderState state)
         {
             if (state.Dictionary != null)
             {
@@ -1159,7 +1159,7 @@ namespace Internal.Runtime.TypeLoader
             }
         }
 
-        unsafe private void FinishMethodDictionary(InstantiatedMethod method)
+        private unsafe void FinishMethodDictionary(InstantiatedMethod method)
         {
             Debug.Assert(method.Dictionary != null);
 
@@ -1167,7 +1167,7 @@ namespace Internal.Runtime.TypeLoader
             method.Dictionary.Finish(this);
         }
 
-        unsafe private void FinishClassConstructor(TypeDesc type, TypeBuilderState state)
+        private unsafe void FinishClassConstructor(TypeDesc type, TypeBuilderState state)
         {
             if (!state.HasStaticConstructor)
                 return;

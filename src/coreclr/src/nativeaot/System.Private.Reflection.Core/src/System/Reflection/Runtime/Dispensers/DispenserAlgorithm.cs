@@ -24,5 +24,3 @@ namespace System.Reflection.Runtime.Dispensers
         public static readonly DispenserAlgorithm ReuseAsLongAsKeyIsAlive = new DispenserAlgorithm();
     }
 }
-
-
