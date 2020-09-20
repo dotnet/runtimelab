@@ -146,7 +146,7 @@ namespace Internal.Metadata.NativeFormat
 #if DEBUG
         public override string ToString()
         {
-            return String.Format("{1} : {0,8:X8}", _value, Enum.GetName(typeof(HandleType), this.HandleType));
+            return string.Format("{1} : {0,8:X8}", _value, Enum.GetName(typeof(HandleType), this.HandleType));
         }
 #endif
     }
