@@ -42,7 +42,7 @@ namespace Microsoft.Interop
 
         public IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context)
         {
-            if (!info.IsByRef || info.IsManagedReturnPosition)
+            if (!UsesNativeIdentifier(info, context))
                 yield break;
 
             (string managedIdentifier, string nativeIdentifier) = context.GetIdentifiers(info);
@@ -97,6 +97,11 @@ namespace Microsoft.Interop
                 default:
                     break;
             }
+        }
+
+        public bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context)
+        {
+            return info.IsByRef && !info.IsManagedReturnPosition;
         }
     }
 

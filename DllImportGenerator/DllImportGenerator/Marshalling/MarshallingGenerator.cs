@@ -45,6 +45,15 @@ namespace Microsoft.Interop
         /// <see cref="FixedStatementSyntax"/> will be ignored.
         /// </remarks>
         IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context);
+
+        /// <summary>
+        /// Returns whether or not this marshaller uses an identifier for the native value in addition
+        /// to an identifer for the managed value.
+        /// </summary>
+        /// <param name="info">Object to marshal</param>
+        /// <param name="context">Code generation context</param>
+        /// <returns>If the marshaller uses an identifier for the native value, true; otherwise, false.</returns>
+        bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context);
     }
 
     internal class MarshallingGenerators

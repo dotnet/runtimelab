@@ -45,9 +45,6 @@ namespace Microsoft.Interop
             switch (context.CurrentStage)
             {
                 case StubCodeContext.Stage.Setup:
-                    if (info.IsManagedReturnPosition)
-                        nativeIdentifier = context.GenerateReturnNativeIdentifier();
-
                     yield return LocalDeclarationStatement(
                         VariableDeclaration(
                             AsNativeType(info),
@@ -111,5 +108,7 @@ namespace Microsoft.Interop
                     break;
             }
         }
+
+        public bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context) => true;
     }
 }
