@@ -25,22 +25,19 @@ namespace Microsoft.Interop
 
         public ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context)
         {
-            if (info.IsByRef)
+            if (!info.IsByRef)
             {
-                if (!context.PinningSupported)
-                {
-                    return Argument(
-                        PrefixUnaryExpression(
-                            SyntaxKind.AddressOfExpression,
-                            IdentifierName(context.GetIdentifiers(info).native)));
-                }
-                else
-                {
-                    return Argument(IdentifierName(context.GetIdentifiers(info).native));
-                }
+                return Argument(IdentifierName(info.InstanceIdentifier));
             }
-
-            return Argument(IdentifierName(info.InstanceIdentifier));
+            else if (context.PinningSupported)
+            {
+                return Argument(IdentifierName(context.GetIdentifiers(info).native));
+                
+            }
+            return Argument(
+                    PrefixUnaryExpression(
+                        SyntaxKind.AddressOfExpression,
+                        IdentifierName(context.GetIdentifiers(info).native)));
         }
 
         public IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context)
@@ -50,40 +47,7 @@ namespace Microsoft.Interop
 
             (string managedIdentifier, string nativeIdentifier) = context.GetIdentifiers(info);
 
-            if (!context.PinningSupported)
-            {
-                switch (context.CurrentStage)
-                {
-                    case StubCodeContext.Stage.Setup:
-                        yield return LocalDeclarationStatement(
-                            VariableDeclaration(
-                                AsNativeType(info),
-                                SingletonSeparatedList(
-                                    VariableDeclarator(nativeIdentifier))));
-                        break;
-                    case StubCodeContext.Stage.Marshal:
-                        if (info.RefKind == RefKind.Ref)
-                        {
-                            yield return ExpressionStatement(
-                                AssignmentExpression(
-                                    SyntaxKind.SimpleAssignmentExpression,
-                                    IdentifierName(nativeIdentifier),
-                                    IdentifierName(managedIdentifier)));
-                        }
-
-                        break;
-                    case StubCodeContext.Stage.Unmarshal:
-                        yield return ExpressionStatement(
-                            AssignmentExpression(
-                                SyntaxKind.SimpleAssignmentExpression,
-                                IdentifierName(managedIdentifier),
-                                IdentifierName(nativeIdentifier)));
-                        break;
-                    default:
-                        break;
-                }
-            }
-            else
+            if (context.PinningSupported)
             {
                 if (context.CurrentStage == StubCodeContext.Stage.Pin)
                 {
@@ -101,6 +65,37 @@ namespace Microsoft.Interop
                         EmptyStatement()
                     );
                 }
+                yield break;
+            }
+            switch (context.CurrentStage)
+            {
+                case StubCodeContext.Stage.Setup:
+                    yield return LocalDeclarationStatement(
+                        VariableDeclaration(
+                            AsNativeType(info),
+                            SingletonSeparatedList(
+                                VariableDeclarator(nativeIdentifier))));
+                    break;
+                case StubCodeContext.Stage.Marshal:
+                    if (info.RefKind == RefKind.Ref)
+                    {
+                        yield return ExpressionStatement(
+                            AssignmentExpression(
+                                SyntaxKind.SimpleAssignmentExpression,
+                                IdentifierName(nativeIdentifier),
+                                IdentifierName(managedIdentifier)));
+                    }
+
+                    break;
+                case StubCodeContext.Stage.Unmarshal:
+                    yield return ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            IdentifierName(managedIdentifier),
+                            IdentifierName(nativeIdentifier)));
+                    break;
+                default:
+                    break;
             }
         }
     }
