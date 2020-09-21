@@ -27,6 +27,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <NativeLibraryExtension Condition="'$(NativeCodeGen)' == 'wasm'">.bc</NativeLibraryExtension>
       <FullRuntimeName>libRuntime</FullRuntimeName>
       <FullRuntimeName Condition="'$(ServerGarbageCollection)' != ''">libRuntime.ServerGC</FullRuntimeName>
+      <BootstrapperLibraryName>bootstrapper</BootstrapperLibraryName>
+      <BootstrapperLibraryName Condition="$(NativeLib) != ''">bootstrapperdll</BootstrapperLibraryName>
     </PropertyGroup>
 
     <ItemGroup>
@@ -38,14 +40,9 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ItemGroup>
 
     <ItemGroup>
-      <NativeLibrary Condition="'$(IlcMultiModule)' == 'true' and $(NativeCodeGen) == ''" Include="$(SharedLibrary)" />
-      <NativeLibrary Condition="$(NativeCodeGen) == '' and $(NativeLib) == ''" Include="$(IlcPath)/sdk/libbootstrapper.a" />
-      <NativeLibrary Condition="$(NativeCodeGen) == '' and $(NativeLib) != ''" Include="$(IlcPath)/sdk/libbootstrapperdll.a" />
+      <_WholeNativeLibrary Condition="$(NativeCodeGen) == ''" Include="$(IlcPath)/sdk/$(BootstrapperLibraryName).a" />
       <NativeLibrary Condition="$(NativeCodeGen) == ''" Include="$(IlcPath)/sdk/$(FullRuntimeName).a" />
-      <NativeLibrary Condition="$(NativeCodeGen) == 'cpp'" Include="$(IlcPath)/sdk/libbootstrappercpp.a" />
-      <NativeLibrary Condition="$(NativeCodeGen) == 'cpp'" Include="$(IlcPath)/sdk/libPortableRuntime.a" />
-      <NativeLibrary Condition="$(NativeCodeGen) == 'wasm'" Include="$(IlcPath)/sdk/libbootstrappercpp.bc" />
-      <NativeLibrary Condition="$(NativeCodeGen) == 'wasm'" Include="$(IlcPath)/sdk/libPortableRuntime.bc" />
+      <NativeLibrary Condition="$(NativeCodeGen) == '' and '$(IlcMultiModule)' == 'true'" Include="$(SharedLibrary)" />
     </ItemGroup>
 
     <ItemGroup>
@@ -70,6 +67,9 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <ItemGroup>
       <LinkerArg Include="@(NativeLibrary)" />
+      <LinkerArg Include="--whole-archive" />
+      <LinkerArg Include="@(_WholeNativeLibrary)" />
+      <LinkerArg Include="--no-whole-archive" />
       <LinkerArg Include="-g" Condition="$(NativeDebugSymbols) == 'true'" />
       <LinkerArg Include="-Wl,--strip-debug" Condition="$(NativeDebugSymbols) != 'true' and '$(TargetOS)' != 'OSX'" />
       <LinkerArg Include="-Wl,-rpath,'$ORIGIN'" />
