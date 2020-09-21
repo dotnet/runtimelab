@@ -70,6 +70,7 @@ namespace Microsoft.Interop
 
             switch (info)
             {
+                // Blittable primitives with no marshalling info or with a compatible [MarshalAs] attribute.
                 case { ManagedType: { SpecialType: SpecialType.System_SByte }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.I1 } }
                     or { ManagedType: { SpecialType: SpecialType.System_Byte }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.U1 } }
                     or { ManagedType: { SpecialType: SpecialType.System_Int16 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.I2 } }
@@ -82,7 +83,6 @@ namespace Microsoft.Interop
                     or { ManagedType: { SpecialType: SpecialType.System_UIntPtr }, MarshallingAttributeInfo: null}
                     or { ManagedType: { SpecialType: SpecialType.System_Single }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.R4 } }
                     or { ManagedType: { SpecialType: SpecialType.System_Double }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.R8 } }:
-                    // Blittable primitives with no marshalling info or with a compatible [MarshalAs] attribute.
                     generator = Blittable;
                     return true;
 
@@ -106,19 +106,19 @@ namespace Microsoft.Interop
                 case { MarshallingAttributeInfo: BlittableTypeAttributeInfo _ }:
                     generator = Blittable;
                     return true;
-
+                
+                // Simple marshalling with new attribute model
                 case { MarshallingAttributeInfo: NativeMarshallingAttributeInfo { ValuePropertyType: null, NativeMarshallingType: { } nativeType } }:
-                    // Simple marshalling with new attribute model
                     generator = null;
                     return true;
 
+                // Marshalling with Value property (and possibly GetPinnableReference) in new model    
                 case { MarshallingAttributeInfo: NativeMarshallingAttributeInfo { ValuePropertyType: { } nativeType } }:
-                    // Marshalling with Value property (and possibly GetPinnableReference) in new model
                     generator = null;
                     return true;
 
+                // Simple marshalling with new attribute model, only have type name.
                 case { MarshallingAttributeInfo: GeneratedNativeMarshallingAttributeInfo { NativeMarshallingFullyQualifiedTypeName: string name } }:
-                    // Simple marshalling with new attribute model, only have type name.
                     generator = null;
                     return true;
 
