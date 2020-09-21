@@ -119,8 +119,10 @@ namespace Microsoft.Interop
     
     internal class VariantBoolMarshaller : BoolMarshallerBase
     {
+        private const short VARIANT_TRUE = -1;
+        private const short VARIANT_FALSE = 0;
         public VariantBoolMarshaller()
-            : base(PredefinedType(Token(SyntaxKind.ShortKeyword)), -1, 0)
+            : base(PredefinedType(Token(SyntaxKind.ShortKeyword)), VARIANT_TRUE, VARIANT_FALSE)
         {
         }
     }
