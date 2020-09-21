@@ -95,6 +95,11 @@ namespace Microsoft.Interop
 
             static MarshalAsInfo CreateMarshalAsInfo(AttributeData attrData)
             {
+                UnmanagedType unmanagedType = (UnmanagedType)attrData.ConstructorArguments[0].Value!;
+                if (unmanagedType == 0)
+                {
+                    // [TODO] diagnostic
+                }
                 string? customMarshallerTypeName = null;
                 string? customMarshallerCookie = null;
                 UnmanagedType unmanagedArraySubType = 0;
@@ -136,7 +141,7 @@ namespace Microsoft.Interop
                 }
                 
                 return new MarshalAsInfo(
-                    UnmanagedType: (UnmanagedType)attrData.ConstructorArguments[0].Value!,
+                    UnmanagedType: unmanagedType,
                     CustomMarshallerTypeName: customMarshallerTypeName,
                     CustomMarshallerCookie: customMarshallerCookie,
                     UnmanagedArraySubType: unmanagedArraySubType,
