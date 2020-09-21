@@ -27,8 +27,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <NativeLibraryExtension Condition="'$(NativeCodeGen)' == 'wasm'">.bc</NativeLibraryExtension>
       <FullRuntimeName>libRuntime</FullRuntimeName>
       <FullRuntimeName Condition="'$(ServerGarbageCollection)' != ''">libRuntime.ServerGC</FullRuntimeName>
-      <BootstrapperLibraryName>bootstrapper</BootstrapperLibraryName>
-      <BootstrapperLibraryName Condition="$(NativeLib) != ''">bootstrapperdll</BootstrapperLibraryName>
+      <BootstrapperLibraryName>libbootstrapper</BootstrapperLibraryName>
+      <BootstrapperLibraryName Condition="$(NativeLib) != ''">libbootstrapperdll</BootstrapperLibraryName>
     </PropertyGroup>
 
     <ItemGroup>
