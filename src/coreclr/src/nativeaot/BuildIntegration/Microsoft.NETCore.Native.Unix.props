@@ -66,10 +66,12 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ItemGroup>
 
     <ItemGroup>
-      <LinkerArg Include="@(NativeLibrary)" />
-      <LinkerArg Include="-Wl,--whole-archive" />
+      <LinkerArg Include="-Wl,--whole-archive" Condition="'$(TargetOS)' != 'OSX'" />
+      <LinkerArg Include="-Wl,--all_load" Condition="'$(TargetOS)' == 'OSX'" />
       <LinkerArg Include="@(_WholeNativeLibrary)" />
-      <LinkerArg Include="-Wl,--no-whole-archive" />
+      <LinkerArg Include="-Wl,--no-whole-archive" Condition="'$(TargetOS)' != 'OSX'" />
+      <LinkerArg Include="-Wl,--noall_load" Condition="'$(TargetOS)' == 'OSX'" />
+      <LinkerArg Include="@(NativeLibrary)" />
       <LinkerArg Include="-g" Condition="$(NativeDebugSymbols) == 'true'" />
       <LinkerArg Include="-Wl,--strip-debug" Condition="$(NativeDebugSymbols) != 'true' and '$(TargetOS)' != 'OSX'" />
       <LinkerArg Include="-Wl,-rpath,'$ORIGIN'" />
