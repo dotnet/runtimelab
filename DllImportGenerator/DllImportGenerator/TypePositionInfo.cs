@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-
+using DllImportGenerator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -43,7 +43,7 @@ namespace Microsoft.Interop
 
         public static TypePositionInfo CreateForParameter(IParameterSymbol paramSymbol, Compilation compilation)
         {
-            var marshallingInfo = GetMarshallingAttributeInfo(paramSymbol.GetAttributes());
+            var marshallingInfo = GetMarshallingAttributeInfo(paramSymbol.GetAttributes(), compilation);
             var typeInfo = new TypePositionInfo()
             {
                 ManagedType = paramSymbol.Type,
@@ -58,7 +58,7 @@ namespace Microsoft.Interop
 
         public static TypePositionInfo CreateForType(ITypeSymbol type, IEnumerable<AttributeData> attributes, Compilation compilation)
         {
-            var marshallingInfo = GetMarshallingAttributeInfo(attributes);
+            var marshallingInfo = GetMarshallingAttributeInfo(attributes, compilation);
             var typeInfo = new TypePositionInfo()
             {
                 ManagedType = type,
@@ -72,15 +72,15 @@ namespace Microsoft.Interop
         }
 
 #nullable enable
-        private static MarshallingAttributeInfo? GetMarshallingAttributeInfo(IEnumerable<AttributeData> attributes)
+        private static MarshallingAttributeInfo? GetMarshallingAttributeInfo(IEnumerable<AttributeData> attributes, Compilation compilation)
         {
             MarshallingAttributeInfo? marshallingInfo = null;
             // Look at attributes on the type.
             foreach (var attrData in attributes)
             {
-                string attributeName = attrData.AttributeClass!.Name;
+                INamedTypeSymbol attributeClass = attrData.AttributeClass!;
 
-                if (nameof(MarshalAsAttribute).Equals(attributeName))
+                if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.System_Runtime_InteropServices_MarshalAsAttribute), attributeClass))
                 {
                     if (marshallingInfo is not null)
                     {
@@ -88,6 +88,14 @@ namespace Microsoft.Interop
                     }
                     // https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.marshalasattribute
                     marshallingInfo = CreateMarshalAsInfo(attrData);
+                }
+                else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.BlittableTypeAttribute), attributeClass))
+                {
+                    if (marshallingInfo is not null)
+                    {
+                        // TODO: diagnostic
+                    }
+                    marshallingInfo = new BlittableTypeAttributeInfo();
                 }
             }
 
