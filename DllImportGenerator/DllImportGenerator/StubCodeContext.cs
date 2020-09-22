@@ -41,7 +41,12 @@ namespace Microsoft.Interop
             /// <summary>
             /// Perform any cleanup required
             /// </summary>
-            Cleanup
+            Cleanup,
+            
+            /// <summary>
+            /// Keep alive any managed objects that need to stay alive across the call.
+            /// </summary>
+            KeepAlive
         }
 
         public Stage CurrentStage { get; protected set; }

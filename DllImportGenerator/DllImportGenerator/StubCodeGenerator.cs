@@ -135,6 +135,7 @@ namespace Microsoft.Interop
                 Stage.Marshal,
                 Stage.Pin,
                 Stage.Invoke,
+                Stage.KeepAlive,
                 Stage.Unmarshal,
                 Stage.Cleanup
             };
