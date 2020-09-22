@@ -6,7 +6,7 @@ trigger:
   batch: true
   branches:
     include:
-    - Utf8String
+    - feature/*
   paths:
     include:
     - '*'
@@ -26,7 +26,7 @@ trigger:
 pr:
   branches:
     include:
-    - Utf8String
+    - feature/*
   paths:
     include:
     - '*'
@@ -106,10 +106,11 @@ stages:
         nameSuffix: All_Configurations
         buildArgs: -s libs -c $(_BuildConfig) -allConfigurations $(OfficialBuildArgs)
 
-  #
-  # CoreCLR Test builds using live libraries release build
-  #
   - ${{ if ne(variables.isOfficialBuild, true) }}:
+
+    #
+    # CoreCLR Test builds using live libraries release build
+    #
     - template: /eng/pipelines/common/platform-matrix.yml
       parameters:
         jobTemplate: /eng/pipelines/common/templates/runtimes/build-test-job.yml
@@ -123,10 +124,9 @@ stages:
           - build_Linux_x64_Checked_
           - build_Linux_x64_Release_
 
-  #
-  # CoreCLR Test executions using live libraries
-  #
-  - ${{ if ne(variables.isOfficialBuild, true) }}:
+    #
+    # CoreCLR Test executions using live libraries
+    #
     - template: /eng/pipelines/common/platform-matrix.yml
       parameters:
         jobTemplate: /eng/pipelines/common/templates/runtimes/run-test-job.yml
@@ -141,7 +141,6 @@ stages:
           dependsOn:
           - coreclr_common_test_build_p0_AnyOS_AnyCPU_Checked
 
-  - ${{ if ne(variables.isOfficialBuild, true) }}:
     - template: /eng/pipelines/common/platform-matrix.yml
       parameters:
         jobTemplate: /eng/pipelines/common/templates/runtimes/run-test-job.yml
@@ -158,10 +157,9 @@ stages:
           - build_Windows_NT_x64_Checked_
           - build_Windows_NT_x64_Release_
 
-  #
-  # Libraries Release Test Execution against a release coreclr runtime
-  #
-  - ${{ if ne(variables.isOfficialBuild, true) }}:
+    #
+    # Libraries Release Test Execution against a release coreclr runtime
+    #
     - template: /eng/pipelines/common/platform-matrix.yml
       parameters:
         jobTemplate: /eng/pipelines/libraries/run-test-job.yml
@@ -179,7 +177,6 @@ stages:
           dependsOn:
           - build_Linux_x64_Release_
 
-  - ${{ if ne(variables.isOfficialBuild, true) }}:
     - template: /eng/pipelines/common/platform-matrix.yml
       parameters:
         jobTemplate: /eng/pipelines/libraries/run-test-job.yml
