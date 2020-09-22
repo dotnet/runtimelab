@@ -43,7 +43,7 @@ namespace Microsoft.Interop
 
         public static TypePositionInfo CreateForParameter(IParameterSymbol paramSymbol, Compilation compilation)
         {
-            var marshallingInfo = GetMarshallingAttributeInfo(paramSymbol.GetAttributes(), compilation);
+            var marshallingInfo = GetMarshallingAttributeInfo(paramSymbol.Type, paramSymbol.GetAttributes(), compilation);
             var typeInfo = new TypePositionInfo()
             {
                 ManagedType = paramSymbol.Type,
@@ -58,7 +58,7 @@ namespace Microsoft.Interop
 
         public static TypePositionInfo CreateForType(ITypeSymbol type, IEnumerable<AttributeData> attributes, Compilation compilation)
         {
-            var marshallingInfo = GetMarshallingAttributeInfo(attributes, compilation);
+            var marshallingInfo = GetMarshallingAttributeInfo(type, attributes, compilation);
             var typeInfo = new TypePositionInfo()
             {
                 ManagedType = type,
@@ -72,7 +72,7 @@ namespace Microsoft.Interop
         }
 
 #nullable enable
-        private static MarshallingAttributeInfo? GetMarshallingAttributeInfo(IEnumerable<AttributeData> attributes, Compilation compilation)
+        private static MarshallingAttributeInfo? GetMarshallingAttributeInfo(ITypeSymbol type, IEnumerable<AttributeData> attributes, Compilation compilation)
         {
             MarshallingAttributeInfo? marshallingInfo = null;
             // Look at attributes on the type.
@@ -89,13 +89,48 @@ namespace Microsoft.Interop
                     // https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.marshalasattribute
                     marshallingInfo = CreateMarshalAsInfo(attrData);
                 }
-                else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.BlittableTypeAttribute), attributeClass))
+                else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.MarshalUsingAttribute), attributeClass))
                 {
                     if (marshallingInfo is not null)
                     {
                         // TODO: diagnostic
                     }
-                    marshallingInfo = new BlittableTypeAttributeInfo();
+                    // TODO: set marshallingInfo
+                }
+            }
+
+            // If we aren't overriding the marshalling at usage time,
+            // then fall back to the information on the element type itself.
+            if (marshallingInfo is null)
+            {
+                foreach (var attrData in type.GetAttributes())
+                {
+                    INamedTypeSymbol attributeClass = attrData.AttributeClass!;
+
+                    if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.BlittableTypeAttribute), attributeClass))
+                    {
+                        if (marshallingInfo is not null)
+                        {
+                            // TODO: diagnostic
+                        }
+                        marshallingInfo = new BlittableTypeAttributeInfo();
+                    }
+                    else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.NativeMarshallingAttribute), attributeClass))
+                    {
+                        if (marshallingInfo is not null)
+                        {
+                            // TODO: diagnostic
+                        }
+                        // TODO: parse native marshalling data
+                    }
+                    else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.GeneratedMarshallingAttribute), attributeClass))
+                    {
+                        if (marshallingInfo is not null)
+                        {
+                            // TODO: diagnostic
+                        }
+                        marshallingInfo = type.IsConsideredBlittable() ? new BlittableTypeAttributeInfo() : new GeneratedNativeMarshallingAttributeInfo(null! /* TODO: determine naming convention */);
+                    }
                 }
             }
 
