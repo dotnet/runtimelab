@@ -73,7 +73,7 @@ namespace ILCompiler
             else
             {
                 // Account for System.Globalization.Native, System.Native, etc
-                return importModule.StartsWith("libSystem.") || importModule == "QCall";
+                return importModule.StartsWith("libSystem.");
             }
         }
     }

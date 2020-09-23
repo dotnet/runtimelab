@@ -5,6 +5,10 @@ internal static partial class Interop
 {
     internal static partial class Libraries
     {
+#if CORERT
+        internal const string GlobalizationNative = "libSystem.Globalization.Native";
+#else
         internal const string GlobalizationNative = "QCall";
+#endif
     }
 }
