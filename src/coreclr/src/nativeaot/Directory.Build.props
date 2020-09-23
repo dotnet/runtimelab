@@ -12,7 +12,7 @@
     <DebugType>Portable</DebugType>
     <DebugSymbols>true</DebugSymbols>
 
-    <OutputPath>$(BinDir)/aotsdk/</OutputPath>
+    <OutputPath Condition="$(MSBuildProjectName.StartsWith('System.Private.'))">$(BinDir)/aotsdk/</OutputPath>
     <Configurations>Debug;Release;Checked</Configurations>
     <Platforms>x64;x86;arm;arm64</Platforms>
 
