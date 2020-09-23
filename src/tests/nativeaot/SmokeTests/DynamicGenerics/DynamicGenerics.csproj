@@ -6,6 +6,9 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DisableNativeAotReflectionCompatibility>true</DisableNativeAotReflectionCompatibility>
     <DebugType>portable</DebugType>
+
+    <!-- Look for MULTIMODULE_BUILD #define for the more specific incompatible parts -->
+    <NativeAotMultimoduleIncompatible>true</NativeAotMultimoduleIncompatible>
   </PropertyGroup>
 
   <PropertyGroup>

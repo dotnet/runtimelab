@@ -4,6 +4,7 @@
     <CLRTestKind>BuildAndRun</CLRTestKind>
     <CLRTestPriority>0</CLRTestPriority>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <NativeAotMultimoduleIncompatible>true</NativeAotMultimoduleIncompatible>
   </PropertyGroup>
 
   <PropertyGroup>

@@ -74,9 +74,20 @@ fi
 
   <Target Name="GetNativeAotBatchScript">
     <PropertyGroup>
+      <NativeAotMultimoduleIncompatibleScript Condition="'$(NativeAotMultimoduleIncompatible)' == 'true'">
+        <![CDATA[
+  ECHO SKIPPING EXECUTION BECAUSE TEST IS NOT COMPATIBLE WITH MULTIMODULE COMPILATION
+  popd
+  Exit /b 0
+        ]]>
+      </NativeAotMultimoduleIncompatibleScript>
+
       <NativeAotBatchScript Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(NativeAotTest)' != 'false'">
         <![CDATA[
 if defined RunNativeAot (
+    rem Delete any leftover native compilation bits
+    IF EXIST native rmdir /s /q native
+
     set __Command=!_DebuggerFullPath!
     REM Tests run locally need __TestDotNetCmd (set by runtest.py) or a compatible 5.0 dotnet runtime in the path
     if defined __TestDotNetCmd (
@@ -86,6 +97,11 @@ if defined RunNativeAot (
     )
 
     set __Command=!__Command! msbuild /p:IlcPath=!CORE_ROOT!\nativeaot nativebuild.proj
+
+    if defined NativeAotMultimodule (
+        set __Command=!__Command! /p:IlcMultiModule=true /p:DisableFrameworkLibGeneration=true /p:FrameworkLibPath=!CORE_ROOT!\nativeaot\sdk
+        $(NativeAotMultimoduleIncompatibleScript)
+    )
 
     echo "!__Command!"
     call !__Command!
