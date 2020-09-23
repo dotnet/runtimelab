@@ -467,10 +467,10 @@ set __BuildErr=%__LogsDir%\%__BuildLogRootName%_%__TargetOS%__%__BuildArch%__%__
 set __MsbuildLog=/flp:Verbosity=normal;LogFile="%__BuildLog%"
 set __MsbuildWrn=/flp1:WarningsOnly;LogFile="%__BuildWrn%"
 set __MsbuildErr=/flp2:ErrorsOnly;LogFile="%__BuildErr%"
-set __Logging=!__MsbuildLog! !__MsbuildWrn! !__MsbuildErr!
+set __Logging='!__MsbuildLog!' '!__MsbuildWrn!' '!__MsbuildErr!'
 
-powershell -NoProfile -ExecutionPolicy ByPass -NoLogo -File "%__RepoRootDir%\eng\common\msbuild.ps1" %__ArcadeScriptArgs%^
-  %__RepoRootDir%\src\tests\run.proj /t:CreateTestOverlay /nodeReuse:false^
+powershell -NoProfile -ExecutionPolicy ByPass -NoLogo -Command "%__RepoRootDir%\eng\common\msbuild.ps1" %__ArcadeScriptArgs%^
+  %__RepoRootDir%\src\tests\run.proj -warnAsError:0 /t:CreateTestOverlay /nodeReuse:false^
   /p:RestoreDefaultOptimizationDataPackage=false /p:PortableBuild=true^
   /p:UsePartialNGENOptimization=false /maxcpucount^
   %__SkipFXRestoreArg%^
