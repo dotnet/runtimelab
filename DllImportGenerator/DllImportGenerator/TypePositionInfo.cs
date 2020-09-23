@@ -95,7 +95,7 @@ namespace Microsoft.Interop
                     {
                         // TODO: diagnostic
                     }
-                    // TODO: set marshallingInfo
+                    marshallingInfo = CreateNativeMarshallingInfo(attrData, false);
                 }
             }
 
@@ -121,7 +121,7 @@ namespace Microsoft.Interop
                         {
                             // TODO: diagnostic
                         }
-                        // TODO: parse native marshalling data
+                        marshallingInfo = CreateNativeMarshallingInfo(attrData, true);
                     }
                     else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.GeneratedMarshallingAttribute), attributeClass))
                     {
@@ -191,6 +191,48 @@ namespace Microsoft.Interop
                     ArraySizeConst: arraySizeConst,
                     ArraySizeParamIndex: arraySizeParamIndex
                 );
+            }
+        
+            NativeMarshallingAttributeInfo CreateNativeMarshallingInfo(AttributeData attrData, bool allowGetPinnableReference)
+            {
+                ITypeSymbol spanOfByte = compilation.GetTypeByMetadataName(TypeNames.System_Span)!.Construct(compilation.GetSpecialType(SpecialType.System_Byte));
+                INamedTypeSymbol nativeType = (INamedTypeSymbol)attrData.ConstructorArguments[0].Value!;
+                SupportedMarshallingMethods methods = 0;
+                IPropertySymbol? valueProperty = ManualTypeMarshallingHelper.FindValueProperty(nativeType);
+                foreach (var ctor in nativeType.Constructors)
+                {
+                    if (ManualTypeMarshallingHelper.IsManagedToNativeConstructor(ctor, type) &&
+                        (valueProperty is null or { GetMethod: not null }))
+                    {
+                        methods |= SupportedMarshallingMethods.ManagedToNative;
+                    }
+                    else if (ManualTypeMarshallingHelper.IsStackallocConstructor(ctor, type, spanOfByte) &&
+                        (valueProperty is null or { GetMethod: not null }))
+                    {
+                        methods |= SupportedMarshallingMethods.ManagedToNativeStackalloc;
+                    }
+                }
+
+                if (ManualTypeMarshallingHelper.HasToManagedMethod(nativeType, type) &&
+                    (valueProperty is null or { SetMethod: not null }))
+                {
+                    methods |= SupportedMarshallingMethods.NativeToManaged;
+                }
+
+                if (allowGetPinnableReference && ManualTypeMarshallingHelper.FindGetPinnableReference(type) != null)
+                {
+                    methods |= SupportedMarshallingMethods.Pinning;
+                }
+
+                if (methods == 0)
+                {
+                    // TODO: Diagnostic since no marshalling methods are supported.
+                }
+
+                return new NativeMarshallingAttributeInfo(
+                    nativeType,
+                    valueProperty?.Type,
+                    methods);
             }
         }
 #nullable restore

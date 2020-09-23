@@ -32,13 +32,22 @@ namespace Microsoft.Interop
     /// </summary>
     internal sealed record BlittableTypeAttributeInfo : MarshallingAttributeInfo;
 
+    [Flags]
+    internal enum SupportedMarshallingMethods
+    {
+        ManagedToNative = 0x1,
+        NativeToManaged = 0x2,
+        ManagedToNativeStackalloc = 0x4,
+        Pinning = 0x8
+    }
+
     /// <summary>
     /// User-applied System.Runtime.InteropServices.NativeMarshallingAttribute
     /// </summary>
     internal sealed record NativeMarshallingAttributeInfo(
         ITypeSymbol NativeMarshallingType,
         ITypeSymbol? ValuePropertyType,
-        bool HasGetPinnableReference) : MarshallingAttributeInfo;
+        SupportedMarshallingMethods MarshallingMethods) : MarshallingAttributeInfo;
 
     /// <summary>
     /// User-applied System.Runtime.InteropServices.GeneratedMarshallingAttribute

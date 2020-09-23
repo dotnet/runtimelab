@@ -312,15 +312,14 @@ namespace Microsoft.Interop
                     {
                         continue;
                     }
-                    if (ctor.Parameters.Length == 1 && SymbolEqualityComparer.Default.Equals(type, ctor.Parameters[0].Type))
+                    if (ManualTypeMarshallingHelper.IsManagedToNativeConstructor(ctor, type))
                     {
                         hasConstructor = true;
                     }
-                    if (ctor.Parameters.Length == 2 && SymbolEqualityComparer.Default.Equals(type, ctor.Parameters[0].Type)
-                                                    && SymbolEqualityComparer.Default.Equals(SpanOfByte, ctor.Parameters[1].Type))
+                    if (ManualTypeMarshallingHelper.IsStackallocConstructor(ctor, type, SpanOfByte))
                     {
                         hasStackallocConstructor = true;
-                        IFieldSymbol stackAllocSizeField = nativeType.GetMembers("StackBufferSize").OfType<IFieldSymbol>().FirstOrDefault();
+                        IFieldSymbol stackAllocSizeField = nativeType.GetMembers(ManualTypeMarshallingHelper.StackBufferSizeFieldName).OfType<IFieldSymbol>().FirstOrDefault();
                         if (stackAllocSizeField is null or { DeclaredAccessibility: not Accessibility.Public } or { IsConst: false } or { Type: not { SpecialType: SpecialType.System_Int32 } })
                         {
                             context.ReportDiagnostic(Diagnostic.Create(StackallocConstructorMustHaveStackBufferSizeConstantRule, ctor.DeclaringSyntaxReferences[0].GetSyntax()!.GetLocation(), nativeType.ToDisplayString()));
@@ -328,9 +327,7 @@ namespace Microsoft.Interop
                     }
                 }
 
-                bool hasToManaged = marshalerType.GetMembers("ToManaged")
-                                                    .OfType<IMethodSymbol>()
-                                                    .Any(m => m.Parameters.IsEmpty && !m.ReturnsByRef && !m.ReturnsByRefReadonly && SymbolEqualityComparer.Default.Equals(m.ReturnType, type) && !m.IsStatic);
+                bool hasToManaged = ManualTypeMarshallingHelper.HasToManagedMethod(marshalerType, type);
 
                 // Validate that the native type has at least one marshalling method (either managed to native or native to managed)
                 if (!hasConstructor && !hasStackallocConstructor && !hasToManaged)
@@ -344,7 +341,7 @@ namespace Microsoft.Interop
                     context.ReportDiagnostic(Diagnostic.Create(StackallocMarshallingShouldSupportAllocatingMarshallingFallbackRule, GetSyntaxReferenceForDiagnostic(marshalerType).GetSyntax().GetLocation(), marshalerType.ToDisplayString()));
                 }
 
-                IPropertySymbol? valueProperty = nativeType.GetMembers("Value").OfType<IPropertySymbol>().FirstOrDefault();
+                IPropertySymbol? valueProperty = ManualTypeMarshallingHelper.FindValueProperty(nativeType);
                 if (valueProperty is not null)
                 {
                     nativeType = valueProperty.Type;
