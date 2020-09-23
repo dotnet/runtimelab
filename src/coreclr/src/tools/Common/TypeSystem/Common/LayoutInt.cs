@@ -82,7 +82,7 @@ namespace Internal.TypeSystem
             return new LayoutInt(checked(left._value + right._value));
         }
 
-        public static LayoutInt operator-(LayoutInt left, LayoutInt right)
+        public static LayoutInt operator -(LayoutInt left, LayoutInt right)
         {
             if (left.IsIndeterminate || right.IsIndeterminate)
                 return Indeterminate;

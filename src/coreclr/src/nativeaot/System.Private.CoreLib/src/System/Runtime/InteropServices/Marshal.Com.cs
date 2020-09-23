@@ -6,6 +6,8 @@ using System.Reflection;
 using System.Runtime.InteropServices.ComTypes;
 using System.Runtime.Versioning;
 
+using Internal.Reflection.Augments;
+
 namespace System.Runtime.InteropServices
 {
     public static partial class Marshal
@@ -180,10 +182,9 @@ namespace System.Runtime.InteropServices
             throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
         }
 
-        [SupportedOSPlatform("windows")]
-        public static Type? GetTypeFromCLSID(Guid clsid)
+        internal static Type? GetTypeFromCLSID(Guid clsid, string? server, bool throwOnError)
         {
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            return ReflectionAugments.ReflectionCoreCallbacks.GetTypeFromCLSID(clsid, server, throwOnError);
         }
 
         [SupportedOSPlatform("windows")]

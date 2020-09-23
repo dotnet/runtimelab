@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace System.Threading
 {
@@ -340,8 +341,10 @@ namespace System.Threading
         [MethodImpl(MethodImplOptions.NoInlining)] // Slow path method. Make sure that the caller frame does not pay for PInvoke overhead.
         public static bool Yield() => RuntimeImports.RhYield();
 
+        [UnsupportedOSPlatform("browser")]
         public void Start() => StartInternal(null);
 
+        [UnsupportedOSPlatform("browser")]
         public void Start(object parameter)
         {
             if (_threadStart is ThreadStart)

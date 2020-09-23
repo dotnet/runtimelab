@@ -14,6 +14,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.Versioning;
 
 using Internal.Runtime.CompilerServices;
 
@@ -140,14 +141,7 @@ namespace System.Threading
 
         #region Public Wait/Pulse methods
 
-        // Remoting is not supported, ignore exitContext
-        public static bool Wait(object obj, int millisecondsTimeout, bool exitContext) =>
-            Wait(obj, millisecondsTimeout);
-
-        // Remoting is not supported, ignore exitContext
-        public static bool Wait(object obj, TimeSpan timeout, bool exitContext) =>
-            Wait(obj, WaitHandle.ToTimeoutMilliseconds(timeout));
-
+        [UnsupportedOSPlatform("browser")]
         public static bool Wait(object obj, int millisecondsTimeout)
         {
             Condition condition = GetCondition(obj);
@@ -159,9 +153,21 @@ namespace System.Threading
             }
         }
 
+        [UnsupportedOSPlatform("browser")]
         public static bool Wait(object obj, TimeSpan timeout) => Wait(obj, WaitHandle.ToTimeoutMilliseconds(timeout));
 
+        [UnsupportedOSPlatform("browser")]
         public static bool Wait(object obj) => Wait(obj, Timeout.Infinite);
+
+        // Remoting is not supported, exitContext argument is unused
+        [UnsupportedOSPlatform("browser")]
+        public static bool Wait(object obj, int millisecondsTimeout, bool exitContext) =>
+            Wait(obj, millisecondsTimeout);
+
+        // Remoting is not supported, exitContext argument is unused
+        [UnsupportedOSPlatform("browser")]
+        public static bool Wait(object obj, TimeSpan timeout, bool exitContext) =>
+            Wait(obj, WaitHandle.ToTimeoutMilliseconds(timeout));
 
         public static void Pulse(object obj)
         {

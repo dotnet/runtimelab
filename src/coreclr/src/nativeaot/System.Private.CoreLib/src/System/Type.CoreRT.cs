@@ -83,26 +83,6 @@ namespace System
         [RequiresUnreferencedCode("The type might be removed")]
         public static Type GetType(string typeName, Func<AssemblyName, Assembly> assemblyResolver, Func<Assembly, string, bool, Type> typeResolver, bool throwOnError, bool ignoreCase) => RuntimeAugments.Callbacks.GetType(typeName, assemblyResolver, typeResolver, throwOnError: throwOnError, ignoreCase: ignoreCase, defaultAssembly: null);
 
-        [SupportedOSPlatform("windows")]
-        public static Type GetTypeFromCLSID(Guid clsid, string server, bool throwOnError) => ReflectionAugments.ReflectionCoreCallbacks.GetTypeFromCLSID(clsid, server, throwOnError);
-
-        [SupportedOSPlatform("windows")]
-        public static Type GetTypeFromProgID(string progID, string server, bool throwOnError)
-        {
-            if (progID == null)
-                throw new ArgumentNullException(nameof(progID));
-
-            Guid clsid;
-            Exception exception = GetCLSIDFromProgID(progID, out clsid);
-            if (exception != null)
-            {
-                if (throwOnError)
-                    throw exception;
-                return null;
-            }
-            return Type.GetTypeFromCLSID(clsid, server, throwOnError);
-        }
-
         [Intrinsic]
         public static bool operator ==(Type left, Type right)
         {
