@@ -380,6 +380,12 @@ namespace $([System.String]::Copy($(Category)).Replace(".","_").Replace("\","").
       />
   </Target>
 
+  <Target Name="NativeAotCompileFramework" AfterTargets="CopyDependencyToCoreRoot" Condition="'$(NativeAotMultimodule)' == 'true'">
+    <MSBuild Projects="$(CORE_ROOT)/nativeaot/build/BuildFrameworkNativeObjects.proj"
+      Targets="CreateLib"
+      Properties="FrameworkLibPath=$(CORE_ROOT)/nativeaot/sdk;FrameworkObjPath=$(BaseIntermediateOutputPath)/NativeAOTFX;IlcPath=$(CORE_ROOT)/nativeaot" />
+  </Target>
+
   <Target Name="CreateAllWrappers" DependsOnTargets="GetListOfTestCmds;FindCmdDirectories">
     <MSBuild Projects="$(MSBuildProjectFile)" Targets="CreateXunitWrapper;BuildXunitWrapper" Properties="_CMDDIR=%(TestDirectories.Identity);TestSrcDir=$(XunitTestBinBase)" />
   </Target>

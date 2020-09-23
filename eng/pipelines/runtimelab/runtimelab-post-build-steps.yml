@@ -7,12 +7,18 @@ parameters:
 
 steps:
   # Build coreclr native test output
-  - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) skipstressdependencies $(buildConfigUpper) ${{ parameters.archType }}
-    displayName: Build tests
+  - ${{ if eq(parameters.osGroup, 'Windows_NT') }}:
+    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) skipstressdependencies $(buildConfigUpper) ${{ parameters.archType }} /p:NativeAotMultimodule=true
+      displayName: Build tests
+  - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
+    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) skipstressdependencies $(buildConfigUpper) ${{ parameters.archType }}
+      displayName: Build tests
 
   - ${{ if eq(parameters.osGroup, 'Windows_NT') }}:
     - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
-      displayName: Run tests
+      displayName: Run tests in single file mode
+    - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests nativeaotmultimodule $(buildConfigUpper) ${{ parameters.archType }}
+      displayName: Run tests in multifile mode
   - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
     - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
       displayName: Run tests

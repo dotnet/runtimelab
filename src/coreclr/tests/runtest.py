@@ -122,6 +122,7 @@ parser.add_argument("--ilasmroundtrip", dest="ilasmroundtrip", action="store_tru
 parser.add_argument("--run_crossgen_tests", dest="run_crossgen_tests", action="store_true", default=False)
 parser.add_argument("--run_crossgen2_tests", dest="run_crossgen2_tests", action="store_true", default=False)
 parser.add_argument("--run_nativeaot_tests", dest="run_nativeaot_tests", action="store_true", default=False)
+parser.add_argument("--nativeaot_multimodule", dest="nativeaot_multimodule", action="store_true", default=False)
 parser.add_argument("--large_version_bubble", dest="large_version_bubble", action="store_true", default=False)
 parser.add_argument("--precompile_core_root", dest="precompile_core_root", action="store_true", default=False)
 parser.add_argument("--skip_test_run", dest="skip_test_run", action="store_true", default=False, help="Does not run tests. Useful in conjunction with --precompile_core_root")
@@ -915,6 +916,11 @@ def run_tests(args,
         print("Setting RunNativeAot=true")
         os.environ["RunNativeAot"] = "true"
 
+    if args.nativeaot_multimodule:
+        print("Native AOT will be compiled in multimodule mode")
+        print("Setting NativeAotMultimodule=true")
+        os.environ["NativeAotMultimodule"] = "true"
+
     if args.large_version_bubble:
         print("Large Version Bubble enabled")
         os.environ["LargeVersionBubble"] = "true"
@@ -1093,6 +1099,11 @@ def setup_args(args):
                               "run_nativeaot_tests",
                               lambda unused: True,
                               "Error setting run_nativeaot_tests")
+
+    coreclr_setup_args.verify(args,
+                              "nativeaot_multimodule",
+                              lambda unused: True,
+                              "Error setting nativeaot_multimodule")
 
     coreclr_setup_args.verify(args,
                               "precompile_core_root",
