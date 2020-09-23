@@ -251,11 +251,6 @@
     <Compile Include="src\System\Threading\WaitHandle.CoreRT.cs" />
     <Compile Include="src\System\Type.CoreRT.cs" />
     <Compile Include="src\System\Type.Internal.cs" />
-    <Compile Condition="'$(TargetsWindows)'=='true'" Include="src\System\Type.Win32.cs" />
-    <Compile Condition="'$(TargetsWindows)'=='true'" Include="$(CommonPath)\Interop\Windows\Ole32\Interop.CLSIDFromProgID.cs">
-      <Link>Interop\Windows\Ole32\Interop.CLSIDFromProgID.cs</Link>
-    </Compile>
-    <Compile Condition="'$(TargetsUnix)'=='true'" Include="src\System\Type.Unix.cs" />
     <Compile Include="src\System\TypedReference.cs" />
     <Compile Include="src\System\TypeUnificationKey.cs" />
     <Compile Include="src\System\TypeLoadException.CoreRT.cs" />
