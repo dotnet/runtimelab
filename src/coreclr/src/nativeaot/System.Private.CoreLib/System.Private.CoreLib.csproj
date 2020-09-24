@@ -240,7 +240,7 @@
     <Compile Include="src\System\Threading\LockHolder.cs" />
     <Compile Include="src\System\Threading\LowLevelLock.cs" />
     <Compile Include="src\System\Threading\LowLevelSpinWaiter.cs" />
-    <Compile Include="src\System\Threading\Monitor.cs" />
+    <Compile Include="src\System\Threading\Monitor.CoreRT.cs" />
     <Compile Include="src\System\Threading\ObjectHeader.cs" Condition="'$(UseSyncTable)' == 'true'" />
     <Compile Include="src\System\Threading\Overlapped.cs" />
     <Compile Include="src\System\Threading\SyncTable.cs" Condition="'$(UseSyncTable)' == 'true'" />
