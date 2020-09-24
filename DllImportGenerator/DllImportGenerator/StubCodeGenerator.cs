@@ -73,12 +73,13 @@ namespace Microsoft.Interop
             TypePositionInfo retTypeInfo)
         {
             Debug.Assert(retTypeInfo.IsNativeReturnPosition);
+            
+            var context = new StubCodeGenerator(Stage.Setup);
 
             string dllImportName = stubMethod.Name + "__PInvoke__";
-            var paramMarshallers = paramsTypeInfo.Select(p => GetMarshalInfo(p)).ToList();
-            var retMarshaller = GetMarshalInfo(retTypeInfo);
+            var paramMarshallers = paramsTypeInfo.Select(p => GetMarshalInfo(p, context)).ToList();
+            var retMarshaller = GetMarshalInfo(retTypeInfo, context);
 
-            var context = new StubCodeGenerator(Stage.Setup);
             var statements = new List<StatementSyntax>();
 
             if (retMarshaller.Generator.UsesNativeIdentifier(retTypeInfo, context))
@@ -253,10 +254,10 @@ namespace Microsoft.Interop
             return (codeBlock, dllImport);
         }
 
-        private static (TypePositionInfo TypeInfo, IMarshallingGenerator Generator) GetMarshalInfo(TypePositionInfo info)
+        private static (TypePositionInfo TypeInfo, IMarshallingGenerator Generator) GetMarshalInfo(TypePositionInfo info, StubCodeContext context)
         {
             IMarshallingGenerator generator;
-            if (!MarshallingGenerators.TryCreate(info, out generator))
+            if (!MarshallingGenerators.TryCreate(info, context, out generator))
             {
                 // [TODO] Report warning
             }

@@ -88,6 +88,11 @@ namespace DllImportGenerator.Test
             yield return new[] { CodeSnippets.PreserveSigFalse<UIntPtr[]>() };
             yield return new[] { CodeSnippets.DelegateParametersAndModifiers };
             yield return new[] { CodeSnippets.DelegateMarshalAsParametersAndModifiers };
+            yield return new[] { CodeSnippets.CustomStructMarshallingParametersAndModifiers };
+            yield return new[] { CodeSnippets.CustomStructMarshallingStackallocParametersAndModifiers };
+            yield return new[] { CodeSnippets.CustomStructMarshallingStackallocValuePropertyParametersAndModifiers };
+            yield return new[] { CodeSnippets.CustomStructMarshallingValuePropertyParametersAndModifiers };
+            yield return new[] { CodeSnippets.CustomStructMarshallingPinnableParametersAndModifiers };
         }
 
         [Theory]

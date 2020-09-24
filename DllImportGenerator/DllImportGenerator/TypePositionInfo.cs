@@ -30,7 +30,7 @@ namespace Microsoft.Interop
         public RefKind RefKind { get; private set; }
         public SyntaxKind RefKindSyntax { get; private set; }
         
-        public bool IsByRef => RefKind == RefKind.Ref || RefKind == RefKind.Out;
+        public bool IsByRef => RefKind != RefKind.None;
 
         public bool IsManagedReturnPosition { get => this.ManagedIndex == ReturnIndex; }
         public bool IsNativeReturnPosition { get => this.NativeIndex == ReturnIndex; }
@@ -134,7 +134,7 @@ namespace Microsoft.Interop
                 }
             }
 
-            return null;
+            return marshallingInfo;
 
             static MarshalAsInfo CreateMarshalAsInfo(AttributeData attrData)
             {

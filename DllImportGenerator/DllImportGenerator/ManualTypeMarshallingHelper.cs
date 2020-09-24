@@ -9,10 +9,12 @@ namespace Microsoft.Interop
     {
         public const string ValuePropertyName = "Value";
         public const string StackBufferSizeFieldName = "StackBufferSize";
+        public const string ToManagedMethodName = "ToManaged";
+        public const string FreeNativeMethodName = "FreeNative";
 
         public static bool HasToManagedMethod(ITypeSymbol nativeType, ITypeSymbol managedType)
         {
-            return nativeType.GetMembers("ToManaged")
+            return nativeType.GetMembers(ToManagedMethodName)
                     .OfType<IMethodSymbol>()
                     .Any(m => m.Parameters.IsEmpty &&
                         !m.ReturnsByRef &&
@@ -50,6 +52,14 @@ namespace Microsoft.Interop
             return type.GetMembers(ValuePropertyName)
                 .OfType<IPropertySymbol>()
                 .FirstOrDefault(p => !p.IsStatic);
+        }
+
+        public static bool HasFreeNativeMethod(ITypeSymbol type)
+        {
+            return type.GetMembers(FreeNativeMethodName)
+                .OfType<IMethodSymbol>()
+                .Any(m => m is { Parameters: { Length: 0 } } and
+                    ({ ReturnType: { SpecialType: SpecialType.System_Void } }));
         }
     }
 }

@@ -79,7 +79,7 @@ namespace Microsoft.Interop
 
                     break;
                 case StubCodeContext.Stage.Unmarshal:
-                    if (info.IsManagedReturnPosition || info.IsByRef)
+                    if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
                     {
                         // <managedIdentifier> = <nativeIdentifier> != 0;
                         yield return ExpressionStatement(
@@ -89,7 +89,7 @@ namespace Microsoft.Interop
                                 BinaryExpression(
                                     SyntaxKind.NotEqualsExpression,
                                     IdentifierName(nativeIdentifier),
-                                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)))));
+                                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(_falseValue)))));
                     }
                     break;
                 default:

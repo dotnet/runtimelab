@@ -65,7 +65,7 @@ namespace Microsoft.Interop
         public static readonly BlittableMarshaller Blittable = new BlittableMarshaller();
         public static readonly DelegateMarshaler Delegate = new DelegateMarshaler();
 
-        public static bool TryCreate(TypePositionInfo info, out IMarshallingGenerator generator)
+        public static bool TryCreate(TypePositionInfo info, StubCodeContext context, out IMarshallingGenerator generator)
         {
 #if GENERATE_FORWARDER
             generator = MarshallingGenerators.Forwarder;
@@ -115,15 +115,38 @@ namespace Microsoft.Interop
                 case { MarshallingAttributeInfo: BlittableTypeAttributeInfo _ }:
                     generator = Blittable;
                     return true;
-                
-                // Simple marshalling with new attribute model
-                case { MarshallingAttributeInfo: NativeMarshallingAttributeInfo { ValuePropertyType: null, NativeMarshallingType: { } nativeType } }:
-                    generator = null;
-                    return true;
 
-                // Marshalling with Value property (and possibly GetPinnableReference) in new model    
-                case { MarshallingAttributeInfo: NativeMarshallingAttributeInfo { ValuePropertyType: { } nativeType } }:
-                    generator = null;
+                // Marshalling in new model    
+                case { MarshallingAttributeInfo: NativeMarshallingAttributeInfo marshalInfo }:
+                    // The marshalling method for this type doesn't support marshalling from native to managed,
+                    // but our scenario requires marshalling from native to managed.
+                    if ((info.RefKind == RefKind.Ref || info.RefKind == RefKind.Out) &&
+                        (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.NativeToManaged) == 0)
+                    {
+                        generator = Forwarder;
+                        return false;
+                    }
+                    // The marshalling method for this type doesn't support marshalling from managed to native by value,
+                    // but our scneario requires marshalling from managed to native by value.
+                    else if (!info.IsByRef &&
+                        ((marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNative) == 0 &&
+                        (!context.PinningSupported || (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.Pinning) != 0) &&
+                        (!context.StackSpaceUsable || (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNativeStackalloc) != 0)))
+                    {
+                        generator = Forwarder;
+                        return false;
+                    }
+                    // The marshalling method for this type doesn't support marshalling from managed to native by reference,
+                    // but our scenario requires marshalling from managed to native by reference.
+                    else if ((info.RefKind == RefKind.In || info.RefKind == RefKind.Ref) &&
+                        (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNative) == 0 &&
+                        (!context.StackSpaceUsable || (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNativeStackalloc) == 0))
+                    {
+                        generator = Forwarder;
+                        return false;
+                    }
+                    
+                    generator = new CustomNativeTypeMarshaler(marshalInfo);
                     return true;
 
                 // Simple marshalling with new attribute model, only have type name.
