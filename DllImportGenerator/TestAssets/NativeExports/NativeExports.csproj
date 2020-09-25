@@ -4,22 +4,11 @@
     <TargetFramework>net5.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EnableDynamicLoading>true</EnableDynamicLoading>
+    <DnneAddGeneratedBinaryToProject>true</DnneAddGeneratedBinaryToProject>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="DNNE" Version="1.*" />
-  </ItemGroup>
-
-  <!--
-    Consuming this project's generated native exports requires the
-    native binary and the generated *.runtimeconfig.json file.
-  -->
-  <ItemGroup>
-    <None Include="$(OutputPath)$(DnneNativeExportsBinaryName)$(DnneNativeBinaryExt)">
-      <Link>$(DnneNativeExportsBinaryName)$(DnneNativeBinaryExt)</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Visible>false</Visible>
-    </None>
   </ItemGroup>
 
   <!--
