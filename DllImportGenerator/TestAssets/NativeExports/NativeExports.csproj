@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DNNE" Version="1.*" />
+  </ItemGroup>
+
+  <!--
+    Consuming this project's generated native exports requires the
+    native binary and the generated *.runtimeconfig.json file.
+  -->
+  <ItemGroup>
+    <None Include="$(OutputPath)$(DnneNativeExportsBinaryName)$(DnneNativeBinaryExt)">
+      <Link>$(DnneNativeExportsBinaryName)$(DnneNativeBinaryExt)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </None>
+
+    <!--
+      The order of copy for None items and generation of the runtimeconfig.json files
+      are inverted and I am unable to figure out the best way to circumvent this issue.
+      As a mitigation I am checking if the file exists and only adding it in that case.
+      This requires building twice from a clean environment, but with this hack a
+      ProjectReference to this project works as desired.
+    -->
+    <None Include="$(OutputPath)$(TargetName).runtimeconfig.json"
+        Condition="Exists('$(OutputPath)$(TargetName).runtimeconfig.json')">
+      <Link>$(TargetName).runtimeconfig.json</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </None>
+  </ItemGroup>
+
+</Project>
