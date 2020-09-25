@@ -124,16 +124,6 @@ namespace Microsoft.Interop
                 isEnabledByDefault: true,
                 description: new LocalizableResourceString(nameof(Resources.StackallocMarshallingShouldSupportAllocatingMarshallingFallbackDescription), Resources.ResourceManager, typeof(Resources)));
 
-        public readonly static DiagnosticDescriptor StackallocConstructorMustHaveStackBufferSizeConstantRule =
-            new DiagnosticDescriptor(
-                "INTEROPGEN012",
-                "StackallocConstructorMustHaveStackBufferSizeConstant",
-                new LocalizableResourceString(nameof(Resources.StackallocConstructorMustHaveStackBufferSizeConstantMessage), Resources.ResourceManager, typeof(Resources)),
-                Category,
-                DiagnosticSeverity.Error,
-                isEnabledByDefault: true,
-                description: new LocalizableResourceString(nameof(Resources.StackallocConstructorMustHaveStackBufferSizeConstantDescription), Resources.ResourceManager, typeof(Resources)));
-
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => 
             ImmutableArray.Create(
                 BlittableTypeMustBeBlittableRule,
@@ -146,8 +136,7 @@ namespace Microsoft.Interop
                 ValuePropertyMustHaveSetterRule,
                 ValuePropertyMustHaveGetterRule,
                 GetPinnableReferenceShouldSupportAllocatingMarshallingFallbackRule,
-                StackallocMarshallingShouldSupportAllocatingMarshallingFallbackRule,
-                StackallocConstructorMustHaveStackBufferSizeConstantRule);
+                StackallocMarshallingShouldSupportAllocatingMarshallingFallbackRule);
 
         public override void Initialize(AnalysisContext context)
         {
@@ -319,11 +308,6 @@ namespace Microsoft.Interop
                     if (ManualTypeMarshallingHelper.IsStackallocConstructor(ctor, type, SpanOfByte))
                     {
                         hasStackallocConstructor = true;
-                        IFieldSymbol stackAllocSizeField = nativeType.GetMembers(ManualTypeMarshallingHelper.StackBufferSizeFieldName).OfType<IFieldSymbol>().FirstOrDefault();
-                        if (stackAllocSizeField is null or { DeclaredAccessibility: not Accessibility.Public } or { IsConst: false } or { Type: not { SpecialType: SpecialType.System_Int32 } })
-                        {
-                            context.ReportDiagnostic(Diagnostic.Create(StackallocConstructorMustHaveStackBufferSizeConstantRule, ctor.DeclaringSyntaxReferences[0].GetSyntax()!.GetLocation(), nativeType.ToDisplayString()));
-                        }
                     }
                 }
 
