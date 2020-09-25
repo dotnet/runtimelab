@@ -116,6 +116,11 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.BlittableStructParametersAndModifiers };
             yield return new[] { CodeSnippets.GenericBlittableStructParametersAndModifiers };
             yield return new[] { CodeSnippets.BasicParametersAndModifiers("Microsoft.Win32.SafeHandles.SafeFileHandle") };
+            yield return new[] { CodeSnippets.CustomStructMarshallingParametersAndModifiers };
+            yield return new[] { CodeSnippets.CustomStructMarshallingStackallocParametersAndModifiers };
+            yield return new[] { CodeSnippets.CustomStructMarshallingStackallocValuePropertyParametersAndModifiers };
+            yield return new[] { CodeSnippets.CustomStructMarshallingValuePropertyParametersAndModifiers };
+            yield return new[] { CodeSnippets.CustomStructMarshallingPinnableParametersAndModifiers };
         }
 
         public static IEnumerable<object[]> CodeSnippetsToCompile_WithDiagnostics()

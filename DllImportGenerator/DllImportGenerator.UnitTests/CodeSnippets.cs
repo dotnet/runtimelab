@@ -446,5 +446,111 @@ partial class Test
 }}";
 
         public static string ArrayParameterWithNestedMarshalInfo<T>(UnmanagedType nestedMarshalType) => ArrayParameterWithNestedMarshalInfo(typeof(T).ToString(), nestedMarshalType);
+        public static string CustomStructMarshallingParametersAndModifiers = BasicParametersAndModifiers("S") + @"
+[NativeMarshalling(typeof(Native))]
+struct S
+{
+    public bool b;
+}
+
+struct Native
+{
+    private int i;
+    public Native(S s)
+    {
+        i = s.b ? 1 : 0;
+    }
+
+    public S ToManaged() => new S { b = i != 0 };
+}
+";
+
+        public static string CustomStructMarshallingStackallocParametersAndModifiers = BasicParametersAndModifiers("S") + @"
+[NativeMarshalling(typeof(Native))]
+struct S
+{
+    public bool b;
+}
+
+struct Native
+{
+    private int i;
+    public Native(S s, System.Span<byte> b)
+    {
+        i = s.b ? 1 : 0;
+    }
+
+    public S ToManaged() => new S { b = i != 0 };
+
+    public const int StackBufferSize = 1;
+}
+";
+        public static string CustomStructMarshallingStackallocValuePropertyParametersAndModifiers = BasicParametersAndModifiers("S") + @"
+[NativeMarshalling(typeof(Native))]
+struct S
+{
+    public bool b;
+}
+
+struct Native
+{
+    public Native(S s, System.Span<byte> b)
+    {
+        Value = s.b ? 1 : 0;
+    }
+
+    public S ToManaged() => new S { b = Value != 0 };
+
+    public int Value { get; set; }
+
+    public const int StackBufferSize = 1;
+}
+";
+        public static string CustomStructMarshallingValuePropertyParametersAndModifiers = BasicParametersAndModifiers("S") + @"
+[NativeMarshalling(typeof(Native))]
+struct S
+{
+    public bool b;
+}
+
+struct Native
+{
+    public Native(S s)
+    {
+        Value = s.b ? 1 : 0;
+    }
+
+    public S ToManaged() => new S { b = Value != 0 };
+
+    public int Value { get; set; }
+}
+";
+        public static string CustomStructMarshallingPinnableParametersAndModifiers = BasicParametersAndModifiers("S") + @"
+[NativeMarshalling(typeof(Native))]
+class S
+{
+    public int i;
+
+    public ref int GetPinnableReference() => ref i;
+}
+
+unsafe struct Native
+{
+    private int* ptr;
+    public Native(S s)
+    {
+        ptr = (int*)Marshal.AllocHGlobal(sizeof(int));
+        *ptr = s.i;
+    }
+
+    public S ToManaged() => new S { i = *ptr };
+
+    public nint Value
+    {
+        get => (nint)ptr;
+        set => ptr = (int*)value;
+    }
+}
+";
     }
 }

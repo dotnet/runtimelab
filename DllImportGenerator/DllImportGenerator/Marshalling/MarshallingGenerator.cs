@@ -166,7 +166,7 @@ namespace Microsoft.Interop
 
                 // Marshalling in new model
                 case { MarshallingAttributeInfo: NativeMarshallingAttributeInfo marshalInfo }:
-                    return Forwarder;
+                    return CreateCustomNativeTypeMarshaller(info, context, marshalInfo);
 
                 // Simple marshalling with new attribute model, only have type name.
                 case { MarshallingAttributeInfo: GeneratedNativeMarshallingAttributeInfo(string nativeTypeName) }:
@@ -344,6 +344,37 @@ namespace Microsoft.Interop
             return elementMarshaller == Blittable
                 ? new BlittableArrayMarshaller(numElementsExpression)
                 : new NonBlittableArrayMarshaller(elementMarshaller, numElementsExpression);
+        }
+
+        private static IMarshallingGenerator CreateCustomNativeTypeMarshaller(TypePositionInfo info, StubCodeContext context, NativeMarshallingAttributeInfo marshalInfo)
+        {
+
+            // The marshalling method for this type doesn't support marshalling from native to managed,
+            // but our scenario requires marshalling from native to managed.
+            if ((info.RefKind == RefKind.Ref || info.RefKind == RefKind.Out) &&
+                (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.NativeToManaged) == 0)
+            {
+                throw new MarshallingNotSupportedException(info, context);
+            }
+            // The marshalling method for this type doesn't support marshalling from managed to native by value,
+            // but our scneario requires marshalling from managed to native by value.
+            else if (!info.IsByRef &&
+                ((marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNative) == 0 &&
+                (!context.PinningSupported || (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.Pinning) != 0) &&
+                (!context.StackSpaceUsable || (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNativeStackalloc) != 0)))
+            {
+                throw new MarshallingNotSupportedException(info, context);
+            }
+            // The marshalling method for this type doesn't support marshalling from managed to native by reference,
+            // but our scenario requires marshalling from managed to native by reference.
+            else if ((info.RefKind == RefKind.In || info.RefKind == RefKind.Ref) &&
+                (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNative) == 0 &&
+                (!context.StackSpaceUsable || (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNativeStackalloc) == 0))
+            {
+                throw new MarshallingNotSupportedException(info, context);
+            }
+            
+            return new CustomNativeTypeMarshaler(marshalInfo);
         }
     }
 }
