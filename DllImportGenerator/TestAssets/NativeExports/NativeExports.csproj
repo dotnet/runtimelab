@@ -20,20 +20,28 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
     </None>
-
-    <!--
-      The order of copy for None items and generation of the runtimeconfig.json files
-      are inverted and I am unable to figure out the best way to circumvent this issue.
-      As a mitigation I am checking if the file exists and only adding it in that case.
-      This requires building twice from a clean environment, but with this hack a
-      ProjectReference to this project works as desired.
-    -->
-    <None Include="$(OutputPath)$(TargetName).runtimeconfig.json"
-        Condition="Exists('$(OutputPath)$(TargetName).runtimeconfig.json')">
-      <Link>$(TargetName).runtimeconfig.json</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Visible>false</Visible>
-    </None>
   </ItemGroup>
+
+  <!--
+    The Target below is used to mitigate a limitation when referencing
+    application projects. The work to improve this is tracked with:
+        https://github.com/dotnet/sdk/issues/1675
+    See https://github.com/dotnet/sdk/issues/1675#issuecomment-658779827
+  -->
+  <Target Name="AddRuntimeDependenciesToContent"
+        Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp'"
+        BeforeTargets="GetCopyToOutputDirectoryItems"
+        DependsOnTargets="GenerateBuildDependencyFile;GenerateBuildRuntimeConfigurationFiles">
+    <ItemGroup>
+      <ContentWithTargetPath Include="$(ProjectDepsFilePath)"
+                            Condition="'$(GenerateDependencyFile)' == 'true'"
+                            CopyToOutputDirectory="PreserveNewest"
+                            TargetPath="$(ProjectDepsFileName)" />
+      <ContentWithTargetPath Include="$(ProjectRuntimeConfigFilePath)"
+                            Condition="'$(GenerateRuntimeConfigurationFiles)' == 'true'"
+                            CopyToOutputDirectory="PreserveNewest"
+                            TargetPath="$(ProjectRuntimeConfigFileName)" />
+    </ItemGroup>
+  </Target>
 
 </Project>
