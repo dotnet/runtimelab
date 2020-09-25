@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace NativeExportsNE
+namespace NativeExports
 {
     public unsafe class ScalarOps
     {
