@@ -88,6 +88,8 @@ namespace DllImportGenerator.Test
             yield return new[] { CodeSnippets.PreserveSigFalse<UIntPtr[]>() };
             yield return new[] { CodeSnippets.DelegateParametersAndModifiers };
             yield return new[] { CodeSnippets.DelegateMarshalAsParametersAndModifiers };
+            yield return new[] { CodeSnippets.BlittableStructParametersAndModifiers };
+            yield return new[] { CodeSnippets.GenericBlittableStructParametersAndModifiers };
         }
 
         [Theory]
