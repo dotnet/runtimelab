@@ -8,10 +8,10 @@ parameters:
 steps:
   # Build coreclr native test output
   - ${{ if eq(parameters.osGroup, 'Windows_NT') }}:
-    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) skipstressdependencies $(buildConfigUpper) ${{ parameters.archType }} /p:NativeAotMultimodule=true
+    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot skipstressdependencies $(buildConfigUpper) ${{ parameters.archType }} /p:NativeAotMultimodule=true /p:SmokeTestsOnly=true
       displayName: Build tests
   - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
-    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) skipstressdependencies $(buildConfigUpper) ${{ parameters.archType }}
+    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot skipstressdependencies $(buildConfigUpper) ${{ parameters.archType }} /p:SmokeTestsOnly=true
       displayName: Build tests
 
   - ${{ if eq(parameters.osGroup, 'Windows_NT') }}:

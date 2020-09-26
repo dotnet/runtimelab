@@ -540,6 +540,7 @@ usage_list+=("-crossgenframeworkonly: only compile the framework in CORE_ROOT wi
 
 usage_list+=("-crossgen: Precompiles the framework managed assemblies in coreroot.")
 usage_list+=("-crossgen2: Precompiles the framework managed assemblies in coreroot using the Crossgen2 compiler.")
+usage_list+=("-nativeaot: Builds the tests for Native AOT compilation.")
 usage_list+=("-priority1: include priority=1 tests in the build.")
 usage_list+=("-allTargets: Build managed tests for all target platforms.")
 
@@ -593,6 +594,10 @@ handle_arguments_local() {
             __CompositeBuildMode=1
             __DoCrossgen2=1
             __TestBuildMode=crossgen2
+            ;;
+
+        nativeaot|-nativeaot)
+            __UnprocessedBuildArgs+=("/p:TestBuildMode=nativeaot")
             ;;
 
         generatelayoutonly|-generatelayoutonly)
