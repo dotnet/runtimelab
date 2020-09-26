@@ -46,7 +46,14 @@ namespace Microsoft.Interop
             /// <summary>
             /// Keep alive any managed objects that need to stay alive across the call.
             /// </summary>
-            KeepAlive
+            KeepAlive,
+
+            /// <summary>
+            /// Convert native data to managed data
+            /// where native values will leak if we
+            /// fail to unmarshal, but do run cleanup.
+            /// </summary>
+            LeakSafeUnmarshal
         }
 
         public Stage CurrentStage { get; protected set; }

@@ -64,6 +64,7 @@ namespace Microsoft.Interop
         public static readonly Forwarder Forwarder = new Forwarder();
         public static readonly BlittableMarshaller Blittable = new BlittableMarshaller();
         public static readonly DelegateMarshaller Delegate = new DelegateMarshaller();
+        public static readonly SafeHandleMarshaller SafeHandle = new SafeHandleMarshaller();
 
         public static bool TryCreate(TypePositionInfo info, StubCodeContext context, out IMarshallingGenerator generator)
         {
@@ -123,6 +124,11 @@ namespace Microsoft.Interop
 
                 // Simple marshalling with new attribute model, only have type name.
                 case { MarshallingAttributeInfo: GeneratedNativeMarshallingAttributeInfo { NativeMarshallingFullyQualifiedTypeName: string name } }:
+                    generator = Forwarder;
+                    return false;
+
+                case { MarshallingAttributeInfo: SafeHandleMarshallingInfo _}:
+                    
                     generator = Forwarder;
                     return false;
 

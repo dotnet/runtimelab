@@ -141,6 +141,7 @@ namespace Microsoft.Interop
                 Stage.Invoke,
                 Stage.KeepAlive,
                 Stage.Unmarshal,
+                Stage.LeakSafeUnmarshal,
                 Stage.Cleanup
             };
 
