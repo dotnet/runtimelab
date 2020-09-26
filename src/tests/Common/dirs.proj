@@ -17,10 +17,29 @@
       <DisabledProjects Include="$(TestRoot)TestWrappers*\**\*.csproj" />
     </ItemGroup>
 
+    <!-- These rely on implementation details of CoreCLR CoreLib -->
+    <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot'">
+      <DisabledProjects Include="$(TestRoot)Interop\COM\Activator\Activator.csproj" />
+      <DisabledProjects Include="$(TestRoot)Interop\ICastable\Castable.csproj" />
+      <DisabledProjects Include="$(TestRoot)Interop\IJW\LoadIjwFromModuleHandle\LoadIjwFromModuleHandle.csproj" />
+    </ItemGroup>
+
+    <!-- Temporarily don't build because we don't restore Microsoft.CodeAnalysis in external.csproj - DO NOT BRING THIS HACK OVER to dotnet/runtime -->
     <ItemGroup>
+      <DisabledProjects Include="$(TestRoot)JIT\Performance\CodeQuality\Roslyn\CscBench.csproj" />
+      <DisabledProjects Include="$(TestRoot)managed\Compilation\Compilation.csproj" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(SmokeTestsOnly)' == 'true' and '$(TestBuildMode)' == 'nativeaot'">
       <AllProjects Include="$(TestRoot)nativeaot\**\*.csproj" Exclude="@(DisabledProjects)" />
       <AllProjects Include="$(TestRoot)nativeaot\**\*.fsproj" Exclude="@(DisabledProjects)" />
       <AllProjects Include="$(TestRoot)nativeaot\**\*.ilproj" Exclude="@(DisabledProjects)" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(SmokeTestsOnly)' != 'true'">
+      <AllProjects Include="$(TestRoot)**\*.csproj" Exclude="@(DisabledProjects)" />
+      <AllProjects Include="$(TestRoot)**\*.fsproj" Exclude="@(DisabledProjects)" />
+      <AllProjects Include="$(TestRoot)**\*.ilproj" Exclude="@(DisabledProjects)" />
     </ItemGroup>
 
     <!-- All the test projects are partitioned into the test groups as defined below.

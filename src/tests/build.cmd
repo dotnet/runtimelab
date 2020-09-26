@@ -113,6 +113,7 @@ if /i "%1" == "buildagainstpackages"  (echo error: Remove /BuildAgainstPackages 
 if /i "%1" == "crossgen"              (set __DoCrossgen=1&set __TestBuildMode=crossgen&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "crossgen2"             (set __DoCrossgen2=1&set __TestBuildMode=crossgen2&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "composite"             (set __CompositeBuildMode=1&set __DoCrossgen2=1&set __TestBuildMode=crossgen2&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
+if /i "%1" == "nativeaot"             (set __TestBuildMode=nativeaot&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "runtimeid"             (set __RuntimeId=%2&set processedArgs=!processedArgs! %1 %2&shift&shift&goto Arg_Loop)
 if /i "%1" == "targetsNonWindows"     (set __TargetsWindows=0&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "Exclude"               (set __Exclude=%2&set processedArgs=!processedArgs! %1 %2&shift&shift&goto Arg_Loop)
@@ -150,7 +151,7 @@ if "%__TargetsWindows%"=="1" (
 @if defined _echo @echo on
 
 set __CommonMSBuildArgs=/p:TargetOS=%__TargetOS% /p:Configuration=%__BuildType% /p:TargetArchitecture=%__BuildArch%
-set __msbuildArgs=/p:TargetOS=%__TargetOS% /p:Configuration=%__BuildType% /p:TargetArchitecture=%__BuildArch% /nologo /verbosity:minimal /clp:Summary /maxcpucount
+set __msbuildArgs=/p:TargetOS=%__TargetOS% /p:Configuration=%__BuildType% /p:TargetArchitecture=%__BuildArch% /nologo /verbosity:minimal /clp:Summary /maxcpucount /p:TestBuildMode=%__TestBuildMode%
 
 echo %__MsgPrefix%Commencing CoreCLR test build
 
@@ -515,7 +516,7 @@ if %%__Mono%%==1 (
 )
 
 REM Build wrappers using the local SDK's msbuild. As we move to arcade, the other builds should be moved away from run.exe as well.
-call "%__RepoRootDir%\dotnet.cmd" msbuild %__RepoRootDir%\src\tests\run.proj /nodereuse:false /p:BuildWrappers=true /p:TestBuildMode=%__TestBuildMode% !__Logging! %__msbuildArgs% %TargetsWindowsMsbuildArg% %__SkipFXRestoreArg% %__UnprocessedBuildArgs% /p:RuntimeFlavor=%RuntimeFlavor%
+call "%__RepoRootDir%\dotnet.cmd" msbuild %__RepoRootDir%\src\tests\run.proj /nodereuse:false /p:BuildWrappers=true !__Logging! %__msbuildArgs% %TargetsWindowsMsbuildArg% %__SkipFXRestoreArg% %__UnprocessedBuildArgs% /p:RuntimeFlavor=%RuntimeFlavor%
 if errorlevel 1 (
     echo %__ErrMsgPrefix%%__MsgPrefix%Error: XUnit wrapper build failed. Refer to the build log files for details:
     echo     %__BuildLog%
