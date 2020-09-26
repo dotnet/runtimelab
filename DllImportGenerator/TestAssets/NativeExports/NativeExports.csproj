@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DNNE" Version="1.*" />
+    <PackageReference Include="DNNE" Version="1.0.11" />
   </ItemGroup>
 
   <!--
@@ -18,7 +18,6 @@
     See https://github.com/dotnet/sdk/issues/1675#issuecomment-658779827
   -->
   <Target Name="AddRuntimeDependenciesToContent"
-        Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp'"
         BeforeTargets="GetCopyToOutputDirectoryItems"
         DependsOnTargets="GenerateBuildDependencyFile;GenerateBuildRuntimeConfigurationFiles">
     <ItemGroup>
