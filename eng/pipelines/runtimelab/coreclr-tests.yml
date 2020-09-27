@@ -24,6 +24,7 @@ jobs:
       extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
       extraStepsParameters:
         smokeTestsOnly: 'false'
+        runSingleFileTests: false
 
 
 #
@@ -42,3 +43,4 @@ jobs:
       extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
       extraStepsParameters:
         smokeTestsOnly: 'false'
+        runSingleFileTests: false
