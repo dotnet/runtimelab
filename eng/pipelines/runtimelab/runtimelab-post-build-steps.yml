@@ -4,11 +4,12 @@ parameters:
   osGroup: ''
   osSubgroup: ''
   uploadTests: false
+  smokeTestsOnly: 'true'
 
 steps:
   # Build coreclr native test output
   - ${{ if eq(parameters.osGroup, 'Windows_NT') }}:
-    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot skipstressdependencies $(buildConfigUpper) ${{ parameters.archType }} /p:NativeAotMultimodule=true /p:SmokeTestsOnly=true
+    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot skipstressdependencies $(buildConfigUpper) ${{ parameters.archType }} /p:NativeAotMultimodule=true /p:SmokeTestsOnly=${{ parameters.smokeTestsOnly }}
       displayName: Build tests
   - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
     - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot skipstressdependencies $(buildConfigUpper) ${{ parameters.archType }} /p:SmokeTestsOnly=true
