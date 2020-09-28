@@ -1366,6 +1366,21 @@
             <Issue>EventPipe</Issue>
         </ExcludeList>
 
+        <!-- Release/optimized test failures -->
+        <ExcludeList Include="$(XunitTestBinBase)/JIT/Regression/CLR-x86-JIT/V2.0-Beta2/b426654/*">
+            <Issue>Needs triage</Issue>
+        </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader/methodoverriding/regressions/549411/exploit/*">
+            <Issue>Needs triage</Issue>
+        </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/JIT/Regression/CLR-x86-JIT/v2.1/DDB/B168384/LdfldaHack/*">
+            <Issue>Needs triage</Issue>
+        </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/JIT/Regression/JitBlue/DevDiv_754566/DevDiv_754566/*">
+            <Issue>Needs triage</Issue>
+        </ExcludeList>
+
+
         <!-- Catch(T) in shared code -->
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Methodical\eh\generics\throwincatch_d\*" />
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Methodical\eh\generics\throwincatch_do\*" />
