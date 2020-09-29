@@ -127,10 +127,9 @@ namespace Microsoft.Interop
                     generator = Forwarder;
                     return false;
 
-                case { MarshallingAttributeInfo: SafeHandleMarshallingInfo _}:
-                    
-                    generator = Forwarder;
-                    return false;
+                case { MarshallingAttributeInfo: SafeHandleMarshallingInfo _}:  
+                    generator = SafeHandle;
+                    return true;
 
                 default:
                     generator = Forwarder;

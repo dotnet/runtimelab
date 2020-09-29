@@ -55,12 +55,16 @@ namespace Microsoft.Interop
                             AsNativeType(info),
                             SingletonSeparatedList(
                                 VariableDeclarator(nativeIdentifier))));
-                    yield return LocalDeclarationStatement(
-                        VariableDeclaration(
-                            PredefinedType(Token(SyntaxKind.BoolKeyword)),
-                            SingletonSeparatedList(
-                                VariableDeclarator(addRefdIdentifier)
-                                .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.FalseLiteralExpression))))));
+                    if (!info.IsManagedReturnPosition && info.RefKind != RefKind.Out)
+                    {
+                        yield return LocalDeclarationStatement(
+                                                VariableDeclaration(
+                                                    PredefinedType(Token(SyntaxKind.BoolKeyword)),
+                                                    SingletonSeparatedList(
+                                                        VariableDeclarator(addRefdIdentifier)
+                                                        .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.FalseLiteralExpression))))));
+                    
+                    }
                     if (info.IsByRef && info.RefKind != RefKind.In)
                     {
                         // We create the new handle in the Setup phase
@@ -90,14 +94,51 @@ namespace Microsoft.Interop
                                                 IdentifierName("DangerousGetHandle")),
                                             ArgumentList()))))));
                     }
+                    else if (info.IsManagedReturnPosition)
+                    {
+                        yield return ExpressionStatement(
+                            AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                                IdentifierName(managedIdentifier),
+                                InvocationExpression(
+                                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                                ParseName(TypeNames.System_Runtime_InteropServices_MarshalEx),
+                                                GenericName(Identifier("CreateSafeHandle"),
+                                                    TypeArgumentList(SingletonSeparatedList(info.ManagedType.AsTypeSyntax())))),
+                                            ArgumentList())));
+                    }
                     break;
                 case StubCodeContext.Stage.Marshal:
                     if (info.RefKind != RefKind.Out)
                     {
-                        yield return ParseStatement($"{managedIdentifier}.DangerousAddRef(ref {addRefdIdentifier}");
+                        // <managedIdentifier>.DangerousAddRef(ref <addRefdIdentifier>);
+                        yield return ExpressionStatement(
+                            InvocationExpression(
+                                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                    IdentifierName(managedIdentifier),
+                                    IdentifierName("DangerousAddRef")),
+                                ArgumentList(SingletonSeparatedList(
+                                    Argument(IdentifierName(addRefdIdentifier))
+                                        .WithRefKindKeyword(Token(SyntaxKind.RefKeyword))))));
+
+
+                        ExpressionSyntax assignHandleToNativeExpression = 
+                            AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                                IdentifierName(nativeIdentifier),
+                                InvocationExpression(
+                                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                        IdentifierName(managedIdentifier),
+                                        IdentifierName("DangerousGetHandle")),
+                                    ArgumentList()));
                         if (info.IsByRef && info.RefKind != RefKind.In)
                         {
-                            yield return ParseStatement($"{handleValueBackupIdentifier} = {nativeIdentifier} = {managedIdentifier}.DangerousGetHandle();");
+                            yield return ExpressionStatement(
+                                AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                                    IdentifierName(handleValueBackupIdentifier),
+                                    assignHandleToNativeExpression));
+                        }
+                        else
+                        {
+                            yield return ExpressionStatement(assignHandleToNativeExpression);
                         }
                     }
                     break;
@@ -131,7 +172,9 @@ namespace Microsoft.Interop
                                 
                         // Do not unmarshal the handle if the value didn't change.
                         yield return IfStatement(
-                            ParseExpression($"{handleValueBackupIdentifier} != {nativeIdentifier}"),
+                            BinaryExpression(SyntaxKind.NotEqualsExpression,
+                                IdentifierName(handleValueBackupIdentifier),
+                                IdentifierName(nativeIdentifier)),
                             Block(
                                 unmarshalStatement,
                                 ExpressionStatement(
