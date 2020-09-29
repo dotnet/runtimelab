@@ -201,20 +201,20 @@ namespace Microsoft.Interop
                 IPropertySymbol? valueProperty = ManualTypeMarshallingHelper.FindValueProperty(nativeType);
                 foreach (var ctor in nativeType.Constructors)
                 {
-                    if (ManualTypeMarshallingHelper.IsManagedToNativeConstructor(ctor, type) &&
-                        (valueProperty is null or { GetMethod: not null }))
+                    if (ManualTypeMarshallingHelper.IsManagedToNativeConstructor(ctor, type)
+                        && (valueProperty is null or { GetMethod: not null }))
                     {
                         methods |= SupportedMarshallingMethods.ManagedToNative;
                     }
-                    else if (ManualTypeMarshallingHelper.IsStackallocConstructor(ctor, type, spanOfByte) &&
-                        (valueProperty is null or { GetMethod: not null }))
+                    else if (ManualTypeMarshallingHelper.IsStackallocConstructor(ctor, type, spanOfByte)
+                        && (valueProperty is null or { GetMethod: not null }))
                     {
                         methods |= SupportedMarshallingMethods.ManagedToNativeStackalloc;
                     }
                 }
 
-                if (ManualTypeMarshallingHelper.HasToManagedMethod(nativeType, type) &&
-                    (valueProperty is null or { SetMethod: not null }))
+                if (ManualTypeMarshallingHelper.HasToManagedMethod(nativeType, type)
+                    && (valueProperty is null or { SetMethod: not null }))
                 {
                     methods |= SupportedMarshallingMethods.NativeToManaged;
                 }

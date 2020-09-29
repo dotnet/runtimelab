@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 using Microsoft.CodeAnalysis;
@@ -23,6 +24,7 @@ namespace Microsoft.Interop
 
         public TypeSyntax AsNativeType(TypePositionInfo info)
         {
+            Debug.Assert(info.ManagedType.SpecialType == SpecialType.System_Boolean);
             return _nativeType;
         }
 

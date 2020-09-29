@@ -63,6 +63,9 @@ namespace Microsoft.Interop
             }
             else
             {
+                // If the info isn't in either the managed or native return position,
+                // then we can use the base implementation since we have an identifier name provided
+                // in the original metadata.
                 return base.GetIdentifiers(info);
             }
         }

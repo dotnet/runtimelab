@@ -153,11 +153,11 @@ namespace Microsoft.Interop
             var marshalUsingAttribute = context.Compilation.GetTypeByMetadataName(TypeNames.MarshalUsingAttribute);
             var spanOfByte = context.Compilation.GetTypeByMetadataName(TypeNames.System_Span)!.Construct(context.Compilation.GetSpecialType(SpecialType.System_Byte));
 
-            if (generatedMarshallingAttribute is not null &&
-                blittableTypeAttribute is not null &&
-                nativeMarshallingAttribute is not null &&
-                marshalUsingAttribute is not null &&
-                spanOfByte is not null)
+            if (generatedMarshallingAttribute is not null
+                && blittableTypeAttribute is not null
+                && nativeMarshallingAttribute is not null
+                && marshalUsingAttribute is not null
+                && spanOfByte is not null)
             {
                 var perCompilationAnalyzer = new PerCompilationAnalyzer(
                     generatedMarshallingAttribute,
@@ -301,14 +301,9 @@ namespace Microsoft.Interop
                     {
                         continue;
                     }
-                    if (ManualTypeMarshallingHelper.IsManagedToNativeConstructor(ctor, type))
-                    {
-                        hasConstructor = true;
-                    }
-                    if (ManualTypeMarshallingHelper.IsStackallocConstructor(ctor, type, SpanOfByte))
-                    {
-                        hasStackallocConstructor = true;
-                    }
+
+                    hasConstructor |= ManualTypeMarshallingHelper.IsManagedToNativeConstructor(ctor, type);
+                    hasStackallocConstructor |= ManualTypeMarshallingHelper.IsStackallocConstructor(ctor, type, SpanOfByte);
                 }
 
                 bool hasToManaged = ManualTypeMarshallingHelper.HasToManagedMethod(marshalerType, type);
