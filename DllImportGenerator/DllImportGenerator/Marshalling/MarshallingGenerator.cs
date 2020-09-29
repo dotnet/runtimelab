@@ -63,7 +63,7 @@ namespace Microsoft.Interop
         public static readonly VariantBoolMarshaller VariantBool = new VariantBoolMarshaller();
         public static readonly Forwarder Forwarder = new Forwarder();
         public static readonly BlittableMarshaller Blittable = new BlittableMarshaller();
-        public static readonly DelegateMarshaler Delegate = new DelegateMarshaler();
+        public static readonly DelegateMarshaller Delegate = new DelegateMarshaller();
 
         public static bool TryCreate(TypePositionInfo info, StubCodeContext context, out IMarshallingGenerator generator)
         {
