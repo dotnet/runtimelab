@@ -19,7 +19,8 @@ namespace Benchmarking
         public string FullyQualifiedClassName { get; init; }
         public string MethodName { get; init; }
         public string GeneratedCode { get; init; }
-        public uint CodeSize { get; init; }
+        public uint GeneratedCodeSize { get; init; }
+        public string ILCode { get; init; }
     }
 
     /// <summary>
@@ -124,14 +125,15 @@ namespace Benchmarking
 
                 if (mcgs.Value.Count == 1)
                 {
-                    yield return new(mcgs.Key, mcgs.Value.Last().GeneratedCode);
+                    var mcg = mcgs.Value.Last();
+                    yield return new(mcgs.Key, mcg.GeneratedCode + Environment.NewLine + mcg.ILCode);
                 }
                 else
                 {
                     int i = 1;
                     foreach (var mcg in mcgs.Value)
                     {
-                        yield return new(mcgs.Key + $" ({i})", mcg.GeneratedCode);
+                        yield return new(mcgs.Key + $" ({i})", mcg.GeneratedCode + Environment.NewLine + mcg.ILCode);
                         ++i;
                     }
                 }

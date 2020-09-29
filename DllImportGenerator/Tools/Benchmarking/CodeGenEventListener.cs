@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using System.IO;
-
 using Iced.Intel;
 
 using Decoder = Iced.Intel.Decoder;
@@ -63,6 +62,7 @@ namespace Benchmarking
             ulong methodId = 0;
             string fqClassName = string.Empty;
             string methodName = string.Empty;
+            string ilCode = string.Empty;
             uint metadataToken = 0;
 
             // See https://docs.microsoft.com/dotnet/framework/performance/interop-etw-events
@@ -87,6 +87,10 @@ namespace Benchmarking
                 {
                     metadataToken = (uint)payload;
                 }
+                else if (payloadName == "StubMethodILCode")
+                {
+                    ilCode = (string)payload;
+                }
             }
 
             Debug.Assert(methodId != 0);
@@ -94,7 +98,8 @@ namespace Benchmarking
             {
                 MetadataToken = metadataToken,
                 FullyQualifiedClassName = fqClassName,
-                MethodName = methodName
+                MethodName = methodName,
+                ILCode = ilCode,
             });;
         }
 
@@ -110,6 +115,7 @@ namespace Benchmarking
             string namespaceName = "?";
             string methodName = "?";
             string methodSignature = "?";
+            string ilCode = string.Empty;
             uint flags = 0;
             uint metadataToken = 0;
 
@@ -160,6 +166,7 @@ namespace Benchmarking
                 metadataToken = pin.MetadataToken;
                 namespaceName = pin.FullyQualifiedClassName;
                 methodName = pin.MethodName;
+                ilCode = pin.ILCode;
             }
 
             string flagString = "";
@@ -241,7 +248,8 @@ namespace Benchmarking
                 FullyQualifiedClassName = namespaceName,
                 MethodName = methodName,
                 GeneratedCode = generatedCode.ToString(),
-                CodeSize = size
+                GeneratedCodeSize = size,
+                ILCode = ilCode,
             });
         }
 
@@ -250,6 +258,7 @@ namespace Benchmarking
             public uint MetadataToken { get; init; }
             public string FullyQualifiedClassName { get; init; }
             public string MethodName { get; init; }
+            public string ILCode { get; init; }
         }
 
         private unsafe class MemoryCodeReader : CodeReader
