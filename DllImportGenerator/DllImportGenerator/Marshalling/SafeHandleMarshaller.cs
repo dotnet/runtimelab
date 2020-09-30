@@ -39,8 +39,22 @@ namespace Microsoft.Interop
 
         public IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context)
         {
-            // [TODO] Handle byrefs in a more common place?
-            // This pattern will become very common (arrays and strings will also use it)
+            // The high level logic (note that the parameter may be in, out or both):
+            // 1) If this is an input parameter we need to AddRef the SafeHandle.
+            // 2) If this is an output parameter we need to preallocate a SafeHandle to wrap the new native handle value. We
+            //    must allocate this before the native call to avoid a failure point when we already have a native resource
+            //    allocated. We must allocate a new SafeHandle even if we have one on input since both input and output native
+            //    handles need to be tracked and released by a SafeHandle.
+            // 3) Initialize a local IntPtr that will be passed to the native call. If we have an input SafeHandle the value
+            //    comes from there otherwise we get it from the new SafeHandle (which is guaranteed to be initialized to an
+            //    invalid handle value).
+            // 4) If this is a out parameter we also store the original handle value (that we just computed above) in a local
+            //    variable.
+            // 5) If we successfully AddRef'd the incoming SafeHandle, we need to Release it before we return.
+            // 6) After the native call, if this is an output parameter and the handle value we passed to native differs from
+            //    the local copy we made then the new handle value is written into the output SafeHandle and that SafeHandle
+            //    is propagated back to the caller.
+
             (string managedIdentifier, string nativeIdentifier) = context.GetIdentifiers(info);
             string addRefdIdentifier = $"{managedIdentifier}__addRefd";
             string newHandleObjectIdentifier = info.IsManagedReturnPosition
