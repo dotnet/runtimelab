@@ -22,6 +22,7 @@ using Internal.CorConstants;
 
 using ILCompiler;
 using ILCompiler.DependencyAnalysis;
+using Internal.IL.Stubs;
 
 #if READYTORUN
 using System.Reflection.Metadata.Ecma335;
@@ -1294,9 +1295,17 @@ namespace Internal.JitInterface
 
             Get_CORINFO_SIG_INFO(methodSig, sig);
 
-            if (sig->callConv == CorInfoCallConv.CORINFO_CALLCONV_UNMANAGED)
+            // CORINFO_CALLCONV_UNMANAGED is handled by Get_CORINFO_SIG_INFO
+            Debug.Assert(sig->callConv != CorInfoCallConv.CORINFO_CALLCONV_UNMANAGED);
+
+            // TODO: Replaced this with a public mechanism to mark calli with SuppressGCTransition once it becomes available.
+            if (methodIL is PInvokeILStubMethodIL stubIL)
             {
-                throw new NotImplementedException();
+                var method = stubIL.OwningMethod;
+                if (method.IsPInvoke && method.IsSuppressGCTransition())
+                {
+                    sig->flags |= CorInfoSigInfoFlags.CORINFO_SIGFLAG_SUPPRESS_GC_TRANSITION;
+                }
             }
 
 #if !READYTORUN
