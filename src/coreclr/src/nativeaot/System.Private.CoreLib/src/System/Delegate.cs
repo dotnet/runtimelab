@@ -148,7 +148,7 @@ namespace System
         // This function is known to the IL Transformer.
         private void InitializeClosedInstance(object firstParameter, IntPtr functionPointer)
         {
-            if (firstParameter == null)
+            if (firstParameter is null)
                 throw new ArgumentException(SR.Arg_DlgtNullInst);
 
             m_functionPointer = functionPointer;
@@ -160,7 +160,7 @@ namespace System
         {
             // This method is like InitializeClosedInstance, but it handles ALL cases. In particular, it handles generic method with fun function pointers.
 
-            if (firstParameter == null)
+            if (firstParameter is null)
                 throw new ArgumentException(SR.Arg_DlgtNullInst);
 
             if (!FunctionPointerOps.IsGenericMethodPointer(functionPointer))
@@ -180,7 +180,7 @@ namespace System
         // This function is known to the compiler.
         private void InitializeClosedInstanceWithGVMResolution(object firstParameter, RuntimeMethodHandle tokenOfGenericVirtualMethod)
         {
-            if (firstParameter == null)
+            if (firstParameter is null)
                 throw new ArgumentException(SR.Arg_DlgtNullInst);
 
             IntPtr functionResolution = TypeLoaderExports.GVMLookupForSlot(firstParameter, tokenOfGenericVirtualMethod);
@@ -208,7 +208,7 @@ namespace System
 
         private void InitializeClosedInstanceToInterface(object firstParameter, IntPtr dispatchCell)
         {
-            if (firstParameter == null)
+            if (firstParameter is null)
                 throw new ArgumentException(SR.Arg_DlgtNullInst);
 
             m_functionPointer = RuntimeImports.RhpResolveInterfaceMethod(firstParameter, dispatchCell);
@@ -383,7 +383,7 @@ namespace System
         //  to form a new delegate.
         protected virtual Delegate CombineImpl(Delegate d)
         {
-            if ((object)d == null) // cast to object for a more efficient test
+            if (d is null) // cast to object for a more efficient test
                 return this;
 
             // Verify that the types are the same...
@@ -511,7 +511,7 @@ namespace System
             //
             MulticastDelegate v = d as MulticastDelegate;
 
-            if (v == null)
+            if (v is null)
                 return this;
             if (v.m_helperObject as Delegate[] == null)
             {

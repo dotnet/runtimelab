@@ -22,8 +22,8 @@ namespace System.Reflection.Runtime.BindingFlagSupport
         //
         public static bool QualifiesBasedOnParameterCount(this MethodBase methodBase, BindingFlags bindingFlags, CallingConventions callConv, Type[] argumentTypes)
         {
-            Debug.Assert(methodBase != null);
-            Debug.Assert(argumentTypes != null);
+            Debug.Assert(methodBase is not null);
+            Debug.Assert(argumentTypes is not null);
 #if DEBUG
             bindingFlags &= ~(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly | BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase);
 #endif
@@ -127,7 +127,7 @@ namespace System.Reflection.Runtime.BindingFlagSupport
                         for (int i = 0; i < parameterInfos.Length; i++)
                         {
                             // a null argument type implies a null arg which is always a perfect match
-                            if ((object)argumentTypes[i] != null && !argumentTypes[i].MatchesParameterTypeExactly(parameterInfos[i]))
+                            if (argumentTypes[i] is not null && !argumentTypes[i].MatchesParameterTypeExactly(parameterInfos[i]))
                                 return false;
                         }
                     }

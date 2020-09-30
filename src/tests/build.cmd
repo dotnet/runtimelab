@@ -470,6 +470,10 @@ set __MsbuildWrn=/flp1:WarningsOnly;LogFile="%__BuildWrn%"
 set __MsbuildErr=/flp2:ErrorsOnly;LogFile="%__BuildErr%"
 set __Logging='!__MsbuildLog!' '!__MsbuildWrn!' '!__MsbuildErr!'
 
+REM Temporarily make this dotnet more permanent
+REM We need this for Native AOT CI testing until ilc becomes a selfcontained app.
+call "%__RepoRootDir%\dotnet.cmd" --version
+
 powershell -NoProfile -ExecutionPolicy ByPass -NoLogo -Command "%__RepoRootDir%\eng\common\msbuild.ps1" %__ArcadeScriptArgs%^
   %__RepoRootDir%\src\tests\run.proj -warnAsError:0 /t:CreateTestOverlay /nodeReuse:false^
   /p:RestoreDefaultOptimizationDataPackage=false /p:PortableBuild=true^

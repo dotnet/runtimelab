@@ -75,7 +75,7 @@ namespace System
 
         public static Array CreateInstance(Type elementType, int length)
         {
-            if ((object)elementType == null)
+            if (elementType is null)
                 throw new ArgumentNullException(nameof(elementType));
 
             return CreateSzArray(elementType, length);
@@ -83,7 +83,7 @@ namespace System
 
         public static unsafe Array CreateInstance(Type elementType, int length1, int length2)
         {
-            if ((object)elementType == null)
+            if (elementType is null)
                 throw new ArgumentNullException(nameof(elementType));
             if (length1 < 0)
                 throw new ArgumentOutOfRangeException(nameof(length1));
@@ -99,7 +99,7 @@ namespace System
 
         public static unsafe Array CreateInstance(Type elementType, int length1, int length2, int length3)
         {
-            if ((object)elementType == null)
+            if (elementType is null)
                 throw new ArgumentNullException(nameof(elementType));
             if (length1 < 0)
                 throw new ArgumentOutOfRangeException(nameof(length1));
@@ -118,9 +118,9 @@ namespace System
 
         public static Array CreateInstance(Type elementType, params int[] lengths)
         {
-            if ((object)elementType == null)
+            if (elementType is null)
                 throw new ArgumentNullException(nameof(elementType));
-            if (lengths == null)
+            if (lengths is null)
                 throw new ArgumentNullException(nameof(lengths));
             if (lengths.Length == 0)
                 throw new ArgumentException(SR.Arg_NeedAtLeast1Rank);
@@ -138,11 +138,11 @@ namespace System
 
         public static Array CreateInstance(Type elementType, int[] lengths, int[] lowerBounds)
         {
-            if (elementType == null)
+            if (elementType is null)
                 throw new ArgumentNullException(nameof(elementType));
-            if (lengths == null)
+            if (lengths is null)
                 throw new ArgumentNullException(nameof(lengths));
-            if (lowerBounds == null)
+            if (lowerBounds is null)
                 throw new ArgumentNullException(nameof(lowerBounds));
             if (lengths.Length != lowerBounds.Length)
                 throw new ArgumentException(SR.Arg_RanksAndBounds);
@@ -259,9 +259,9 @@ namespace System
         //
         private static unsafe void CopyImpl(Array sourceArray, int sourceIndex, Array destinationArray, int destinationIndex, int length, bool reliable)
         {
-            if (sourceArray == null)
+            if (sourceArray is null)
                 throw new ArgumentNullException(nameof(sourceArray));
-            if (destinationArray == null)
+            if (destinationArray is null)
                 throw new ArgumentNullException(nameof(destinationArray));
 
             int sourceRank = sourceArray.Rank;
@@ -844,7 +844,7 @@ namespace System
 
         private static unsafe void ReportClearErrors(Array array, int index, int length)
         {
-            if (array == null)
+            if (array is null)
                 throw new ArgumentNullException(nameof(array));
 
             if (index < 0 || index > array.Length || length < 0 || length > array.Length)
@@ -995,7 +995,7 @@ namespace System
 
         public unsafe object GetValue(params int[] indices)
         {
-            if (indices == null)
+            if (indices is null)
                 throw new ArgumentNullException(nameof(indices));
 
             int length = indices.Length;
@@ -1123,7 +1123,7 @@ namespace System
 
         public unsafe void SetValue(object value, params int[] indices)
         {
-            if (indices == null)
+            if (indices is null)
                 throw new ArgumentNullException(nameof(indices));
 
             int length = indices.Length;
