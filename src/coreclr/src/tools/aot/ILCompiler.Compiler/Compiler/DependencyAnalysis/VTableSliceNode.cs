@@ -198,6 +198,11 @@ namespace ILCompiler.DependencyAnalysis
             Debug.Assert(!virtualMethod.HasInstantiation);
             Debug.Assert(virtualMethod.IsVirtual);
             Debug.Assert(_slots == null && _usedMethods != null);
+            Debug.Assert(virtualMethod.OwningType == _type);
+
+            // Finalizers are called via a field on the EEType, not through the VTable
+            if (_type.IsObject && virtualMethod.Name == "Finalize")
+                return;
 
             _usedMethods.Add(virtualMethod);
         }
