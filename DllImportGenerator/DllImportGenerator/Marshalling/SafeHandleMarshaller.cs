@@ -83,7 +83,7 @@ namespace Microsoft.Interop
                     if (info.IsByRef && info.RefKind != RefKind.In)
                     {
                         // We create the new handle in the Setup phase
-                        // so we reduce the possible failure points during unmarshalling, where we would
+                        // so we eliminate the possible failure points during unmarshalling, where we would
                         // leak the handle if we failed to create the handle.
                         yield return LocalDeclarationStatement(
                             VariableDeclaration(
