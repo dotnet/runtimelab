@@ -49,11 +49,10 @@ namespace Microsoft.Interop
             KeepAlive,
 
             /// <summary>
-            /// Convert native data to managed data
-            /// where native values will leak if we
-            /// fail to unmarshal, but do run cleanup.
+            /// Convert native data to managed data even in the case of an exception during
+            /// the non-cleanup phases.
             /// </summary>
-            LeakSafeUnmarshal
+            GuaranteedUnmarshal
         }
 
         public Stage CurrentStage { get; protected set; }
