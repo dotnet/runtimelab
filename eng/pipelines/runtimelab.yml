@@ -45,12 +45,6 @@ pr:
 
 variables:
   - template: /eng/pipelines/common/variables.yml
-  - ${{ if and(ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest')) }}:
-    - name: OfficialBuildArgs
-      value: /p:OfficialBuildId=$(Build.BuildNumber)
-  - ${{ if or(eq(variables['System.TeamProject'], 'public'), eq(variables['Build.Reason'], 'PullRequest')) }}:
-    - name: OfficialBuildArgs
-      value: ''
 
 stages:
 - stage: Build
@@ -96,7 +90,7 @@ stages:
         ${{ if eq(variables.isOfficialBuild, false) }}:
           buildArgs: -s clr+libs+libs.tests+installer -c $(_BuildConfig) /p:ArchiveTests=true
         ${{ if eq(variables.isOfficialBuild, true) }}:
-          buildArgs: -s clr+libs -sign -c $(_BuildConfig) $(OfficialBuildArgs)
+          buildArgs: -s clr+libs -c $(_BuildConfig)
 
   #
   # Build with Release allConfigurations to produce packages
@@ -111,7 +105,7 @@ stages:
         isOfficialBuild: ${{ and(ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest')) }}
         testGroup: innerloop
         nameSuffix: All_Configurations
-        buildArgs: -s libs -c $(_BuildConfig) -allConfigurations $(OfficialBuildArgs)
+        buildArgs: -s libs -c $(_BuildConfig) -allConfigurations
         ${{ if eq(variables.isOfficialBuild, true) }}:
           extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
           extraStepsParameters:
