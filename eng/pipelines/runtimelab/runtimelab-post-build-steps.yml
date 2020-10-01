@@ -22,7 +22,7 @@ steps:
         displayName: Run tests in single file mode
     - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
       - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
-      displayName: Run tests in single file mode
+        displayName: Run tests in single file mode
 
   - ${{ if eq(parameters.osGroup, 'Windows_NT') }}:
     - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests nativeaotmultimodule $(buildConfigUpper) ${{ parameters.archType }}
