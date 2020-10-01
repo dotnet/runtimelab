@@ -3,12 +3,15 @@ parameters:
   archType: ''
   osGroup: ''
   osSubgroup: ''
+  nameSuffix: ''
   uploadTests: false
+  uploadUnsignedArtifacts: false
 
 steps:
   # Build coreclr native test output
-  - script: $(Build.SourcesDirectory)/src/coreclr/build-test$(scriptExt) skipstressdependencies skipmanaged skipgeneratelayout $(buildConfigUpper) ${{ parameters.archType }}
-    displayName: Build native test components
+  - ${{ if eq(parameters.uploadTests, true) }}:
+    - script: $(Build.SourcesDirectory)/src/coreclr/build-test$(scriptExt) skipstressdependencies skipmanaged skipgeneratelayout $(buildConfigUpper) ${{ parameters.archType }}
+      displayName: Build native test components
 
   # Copy all build output into artifacts staging directory
   - template: /eng/pipelines/libraries/prepare-for-bin-publish.yml
@@ -36,16 +39,16 @@ steps:
         artifactName: libraries_test_assets_${{ parameters.osGroup }}_${{ parameters.archType }}_${{ parameters.buildConfig }}
         displayName: Test Assets
 
-  # Zip product native assets for use by Tests
-  - template: /eng/pipelines/common/upload-artifact-step.yml
-    parameters:
-      rootFolder: $(Build.SourcesDirectory)/artifacts/tests/coreclr/obj/${{ parameters.osGroup }}.${{ parameters.archType }}.$(buildConfigUpper)
-      includeRootFolder: false
-      archiveType: $(archiveType)
-      tarCompression: $(tarCompression)
-      archiveExtension: $(archiveExtension)
-      artifactName: CoreCLRNativeTestArtifacts_${{ parameters.osGroup }}${{ parameters.osSubgroup }}_${{ parameters.archType }}_${{ parameters.buildConfig }}
-      displayName: 'native test components'
+    # Zip product native assets for use by Tests
+    - template: /eng/pipelines/common/upload-artifact-step.yml
+      parameters:
+        rootFolder: $(Build.SourcesDirectory)/artifacts/tests/coreclr/obj/${{ parameters.osGroup }}.${{ parameters.archType }}.$(buildConfigUpper)
+        includeRootFolder: false
+        archiveType: $(archiveType)
+        tarCompression: $(tarCompression)
+        archiveExtension: $(archiveExtension)
+        artifactName: CoreCLRNativeTestArtifacts_${{ parameters.osGroup }}${{ parameters.osSubgroup }}_${{ parameters.archType }}_${{ parameters.buildConfig }}
+        displayName: 'native test components'
 
   # Zip Libraries Build Output
   - template: /eng/pipelines/common/upload-artifact-step.yml
@@ -57,3 +60,9 @@ steps:
       archiveExtension: $(archiveExtension)
       artifactName: libraries_bin_${{ parameters.osGroup }}${{ parameters.osSubgroup }}_${{ parameters.archType }}_${{ parameters.buildConfig }}
       displayName: Build Assets
+
+  # Upload unsigned artifacts
+  - ${{ if eq(parameters.uploadUnsignedArtifacts, true) }}:
+    - template: /eng/pipelines/common/upload-unsigned-artifacts-step.yml
+      parameters:
+        name: packages_${{ parameters.osGroup }}${{ parameters.osSubgroup }}_${{ parameters.archType }}_${{ parameters.buildConfig }}${{ parameters.nameSuffix }}
