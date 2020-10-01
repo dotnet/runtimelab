@@ -45,6 +45,9 @@ pr:
 
 variables:
   - template: /eng/pipelines/common/variables.yml
+  - ${{ if and(ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest')) }}:
+    - name: TeamName
+      value: dotnet-core
 
 stages:
 - stage: Build
@@ -86,7 +89,7 @@ stages:
         extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
         extraStepsParameters:
           uploadTests: ${{ eq(variables.isOfficialBuild, false) }}
-          uploadUnsignedArtifacts: ${{ eq(variables.isOfficialBuild, true) }}
+          uploadUnsignedArtifacts: false
         ${{ if eq(variables.isOfficialBuild, false) }}:
           buildArgs: -s clr+libs+libs.tests+installer -c $(_BuildConfig) /p:ArchiveTests=true
         ${{ if eq(variables.isOfficialBuild, true) }}:
@@ -98,11 +101,11 @@ stages:
   - template: /eng/pipelines/common/platform-matrix.yml
     parameters:
       jobTemplate: /eng/pipelines/common/global-build-job.yml
-      buildConfig: release
+      buildConfig: Release
       platforms:
       - Windows_NT_x64
       jobParameters:
-        isOfficialBuild: ${{ and(ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest')) }}
+        isOfficialBuild: ${{ variables.isOfficialBuild }}
         testGroup: innerloop
         nameSuffix: All_Configurations
         buildArgs: -s libs -c $(_BuildConfig) -allConfigurations
@@ -110,10 +113,24 @@ stages:
           extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
           extraStepsParameters:
             uploadUnsignedArtifacts: true
+            isOfficialBuild: true
+            librariesBinArtifactName: libraries_bin_official_allconfigurations
 
+  # Installer official builds need to build installers and need the libraries all configurations build
+  - ${{ if eq(variables.isOfficialBuild, true) }}:
+    - template: /eng/pipelines/installer/installer-matrix.yml
+      parameters:
+        jobParameters:
+          liveRuntimeBuildConfig: Release
+          liveLibrariesBuildConfig: Release
+          isOfficialBuild: ${{ variables.isOfficialBuild }}
+          useOfficialAllConfigurations: true
+          dependsOnGlobalBuild: true
+        platforms:
+        - Linux_x64
+        - Windows_NT_x64
 
   - ${{ if ne(variables.isOfficialBuild, true) }}:
-
     #
     # CoreCLR Test builds using live libraries release build
     #

@@ -4,6 +4,8 @@ parameters:
   osGroup: ''
   osSubgroup: ''
   nameSuffix: ''
+  librariesBinArtifactName: ''
+  isOfficialBuild: false
   uploadTests: false
   uploadUnsignedArtifacts: false
 
@@ -15,6 +17,8 @@ steps:
 
   # Copy all build output into artifacts staging directory
   - template: /eng/pipelines/libraries/prepare-for-bin-publish.yml
+    parameters:
+      isOfficialBuild: ${{ parameters.isOfficialBuild }}
 
   # Zip CoreCLR Build Output
   - template: /eng/pipelines/common/upload-artifact-step.yml
@@ -58,7 +62,7 @@ steps:
       tarCompression: $(tarCompression)
       includeRootFolder: false
       archiveExtension: $(archiveExtension)
-      artifactName: libraries_bin_${{ parameters.osGroup }}${{ parameters.osSubgroup }}_${{ parameters.archType }}_${{ parameters.buildConfig }}
+      artifactName: ${{ coalesce(parameters.librariesBinArtifactName, format('libraries_bin_{0}{1}_{2}_{3}', parameters.osGroup, parameters.osSubgroup, parameters.archType, parameters.buildConfig)) }}
       displayName: Build Assets
 
   # Upload unsigned artifacts
