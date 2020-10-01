@@ -6,7 +6,7 @@ trigger:
   batch: true
   branches:
     include:
-    # Add Experiment branch here
+    - feature/FreeBSD
   paths:
     include:
     - '*'
@@ -26,7 +26,7 @@ trigger:
 pr:
   branches:
     include:
-    # Add Experiment branch here
+    - feature/FreeBSD
   paths:
     include:
     - '*'
