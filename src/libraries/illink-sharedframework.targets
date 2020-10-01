@@ -27,6 +27,8 @@
       -->
       <LinkerNoWarn Condition="'$(TargetOS)' != 'Windows_NT'">$(LinkerNoWarn);IL2008</LinkerNoWarn>
       <LinkerNoWarn Condition="'$(Platform)' != 'x64' AND '$(Platform)' != 'arm64'">$(LinkerNoWarn);IL2012</LinkerNoWarn>
+      <!-- https://github.com/dotnet/runtimelab/issues/106 - warnings suppressed for NativeAOT CoreLib -->
+      <LinkerNoWarn>$(LinkerNoWarn);IL2059;IL2072;IL2075;IL2080</LinkerNoWarn>
       <ILLinkArgs>$(ILLinkArgs) --nowarn $(LinkerNoWarn)</ILLinkArgs>
     </PropertyGroup>
 
