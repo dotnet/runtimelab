@@ -19,4 +19,9 @@ set DOTNET_MULTILEVEL_LOOKUP=0
 :: Disable first run since we want to control all package sources
 set DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 
+:: Temporarily make this dotnet more permanent
+:: We need this for Native AOT CI testing until ilc becomes a selfcontained app.
+set DOTNET_ROLL_FORWARD=Major
+set DOTNET_ROOT=%dotnetPath%
+
 call "%dotnetPath%\dotnet.exe" %*
