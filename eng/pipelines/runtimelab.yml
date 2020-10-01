@@ -58,7 +58,7 @@ jobs:
 - template: /eng/pipelines/common/platform-matrix.yml
   parameters:
     jobTemplate: /eng/pipelines/common/global-build-job.yml
-    buildConfig: Release
+    buildConfig: Checked
     platforms:
     # - Linux_x64
     # - Windows_NT_x64
@@ -73,7 +73,7 @@ jobs:
 - template: /eng/pipelines/common/platform-matrix.yml
   parameters:
     jobTemplate: /eng/pipelines/common/global-build-job.yml
-    buildConfig: Checked
+    buildConfig: Release
     platforms:
     - Linux_x64
     - FreeBSD
