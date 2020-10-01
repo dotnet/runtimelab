@@ -6,7 +6,7 @@ trigger:
   batch: true
   branches:
     include:
-    # Add Experiment branch here
+    - FreeBSD
   paths:
     include:
     - '*'
@@ -26,7 +26,7 @@ trigger:
 pr:
   branches:
     include:
-    # Add Experiment branch here
+    - FreeBSD
   paths:
     include:
     - '*'
@@ -58,13 +58,13 @@ jobs:
 - template: /eng/pipelines/common/platform-matrix.yml
   parameters:
     jobTemplate: /eng/pipelines/common/global-build-job.yml
-    buildConfig: Checked
+    buildConfig: Release
     platforms:
     - Linux_x64
     - Windows_NT_x64
     jobParameters:
       testGroup: innerloop
-      buildArgs: -s clr+libs+installer -c debug -runtimeConfiguration Checked
+      buildArgs: -s clr+libs+installer -c Release
       extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
 
 #
@@ -76,7 +76,7 @@ jobs:
     buildConfig: Release
     platforms:
     - Linux_x64
-    - Windows_NT_x64
+    - FreeBSD
     jobParameters:
       testGroup: innerloop
       buildArgs: -s clr+libs+libs.tests+installer -c $(_BuildConfig) /p:ArchiveTests=true
