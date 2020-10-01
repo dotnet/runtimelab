@@ -64,7 +64,7 @@ jobs:
     # - Windows_NT_x64
     jobParameters:
       testGroup: innerloop
-      buildArgs: -s clr+libs+installer -c Release
+      buildArgs: -s clr+libs+installer -c debug -runtimeConfiguration Checked
       extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
 
 #
@@ -73,7 +73,7 @@ jobs:
 - template: /eng/pipelines/common/platform-matrix.yml
   parameters:
     jobTemplate: /eng/pipelines/common/global-build-job.yml
-    buildConfig: Release
+    buildConfig: Checked
     platforms:
     - Linux_x64
     - FreeBSD
