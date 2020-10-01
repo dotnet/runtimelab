@@ -1200,6 +1200,9 @@
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Methodical/Arrays/misc/_il_dbginitializearray/*">
             <Issue>Implement general purpose RuntimeHelpers.InitializeArray</Issue>
         </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/JIT\Methodical/explicit/rotate/_opt_dbgrotarg_float/*">
+            <Issue>Needs triage. Might be non-deterministic. Reproed without optimizations.</Issue>
+        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Methodical/eh/basics/throwinfilter_d/*">
             <Issue>Throwing from a filter block</Issue>
         </ExcludeList>
