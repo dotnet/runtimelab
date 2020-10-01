@@ -60,8 +60,8 @@ jobs:
     jobTemplate: /eng/pipelines/common/global-build-job.yml
     buildConfig: Release
     platforms:
-    - Linux_x64
-    - Windows_NT_x64
+    # - Linux_x64
+    # - Windows_NT_x64
     jobParameters:
       testGroup: innerloop
       buildArgs: -s clr+libs+installer -c Release
