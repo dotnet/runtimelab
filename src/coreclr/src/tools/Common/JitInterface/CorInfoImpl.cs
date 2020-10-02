@@ -1298,7 +1298,7 @@ namespace Internal.JitInterface
             // CORINFO_CALLCONV_UNMANAGED is handled by Get_CORINFO_SIG_INFO
             Debug.Assert(sig->callConv != CorInfoCallConv.CORINFO_CALLCONV_UNMANAGED);
 
-            // TODO: Replaced this with a public mechanism to mark calli with SuppressGCTransition once it becomes available.
+            // TODO: Replace this with a public mechanism to mark calli with SuppressGCTransition once it becomes available.
             if (methodIL is PInvokeILStubMethodIL stubIL)
             {
                 var method = stubIL.OwningMethod;
