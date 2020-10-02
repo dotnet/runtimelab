@@ -13,29 +13,18 @@
       <File Remove="@(RuntimeFile)" />
     </ItemGroup>
 
-    <ItemGroup>
-      <IlcCompilerFile Include="$(CoreCLRILCompilerDir)*" />
-      <IlcBuildTaskFile Include="$(CoreCLRILCompilerDir)netstandard\*" />
-      <FrameworkFile Include="@(RuntimeFile)" Condition="'%(RuntimeFile.TargetPath)' == 'runtimes/$(PackageRID)/lib/$(NetCoreAppCurrent)'" />
-      <AotSdkFile Include="$(CoreCLRAotSdkDir)*" />
-      <BuildIntegrationFile Include="$(CoreCLRBuildIntegrationDir)*" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <File Include="@(IlcCompilerFile)">
-        <TargetPath>tools</TargetPath>
-      </File>
-      <File Include="@(IlcBuildTaskFile)">
-        <TargetPath>tools/netstandard</TargetPath>
-      </File>
-      <File Include="@(FrameworkFile)">
+    <ItemGroup Condition="'$(PackageTargetRuntime)' != ''">
+      <File Include="@(RuntimeFile)" Condition="'%(RuntimeFile.TargetPath)' == 'runtimes/$(PackageRID)/lib/$(NetCoreAppCurrent)'">
         <TargetPath>framework</TargetPath>
       </File>
-      <File Include="@(AotSdkFile)">
-        <TargetPath>sdk</TargetPath>
+      <File Include="@(RuntimeFile)" Condition="'%(RuntimeFile.TargetPath)' == 'runtimes/$(PackageRID)/native' and '%(RuntimeFile.Extension)' == '.a'">
+        <TargetPath>framework</TargetPath>
       </File>
-      <File Include="@(BuildIntegrationFile)">
-        <TargetPath>build</TargetPath>
+      <File Include="$(CoreCLRILCompilerDir)*">
+        <TargetPath>tools</TargetPath>
+      </File>
+      <File Include="$(CoreCLRAotSdkDir)*">
+        <TargetPath>sdk</TargetPath>
       </File>
       <File Include="$(CoreCLRArtifactsPath)\$(LibraryFilePrefix)clrjit$(LibraryFileExtension)">
         <TargetPath>tools\$(LibraryFilePrefix)clrjitilc$(LibraryFileExtension)</TargetPath>
@@ -45,6 +34,14 @@
       </File>
     </ItemGroup>
 
+    <ItemGroup>
+      <File Include="$(CoreCLRBuildIntegrationDir)*">
+        <TargetPath>build</TargetPath>
+      </File>
+      <File Include="$(CoreCLRILCompilerDir)netstandard\*">
+        <TargetPath>tools/netstandard</TargetPath>
+      </File>
+    </ItemGroup>
   </Target>
 
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
