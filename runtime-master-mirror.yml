@@ -1,0 +1,72 @@
+# Disable triggers as it should only be called using Maestro
+trigger: none
+
+jobs:
+  - job: Mirror_runtime_to_runtimelab
+    displayName: Mirror runtime to runtimelab
+    pool:
+      vmImage: 'windows-2019'
+    variables:
+    - name: WorkingDirectoryName
+      value: repo-dir
+    - name: SourceRemote
+      value: runtime
+    - name: SourceBranch
+      value: master
+    - name: TargetBranch
+      value: runtime-master
+    - group: DotNet-Maestro
+
+    steps:
+    - checkout: none
+
+    - script: git clone https://runtimelab-bot:$(_runtimelab-bot)@github.com/dotnet/runtimelab $(WorkingDirectoryName) -b $(TargetBranch)
+      displayName: Clone runtimelab
+    - script: git remote add $(SourceRemote) https://github.com/dotnet/$(SourceRemote)
+      displayName: Add source $(SourceRemote)
+      workingDirectory: $(WorkingDirectoryName)
+    - script: git fetch $(SourceRemote) $(SourceBranch)
+      displayName: Git fetch $(SourceRemote)/$(SourceBranch)
+      workingDirectory: $(WorkingDirectoryName)
+    - script: git reset --hard $(SourceRemote)/$(SourceBranch)
+      displayName: Reset branch
+      workingDirectory: $(WorkingDirectoryName)
+
+    - task: PowerShell@2
+      displayName: Push changes to runtimelab/$(TargetBranch)
+      inputs:
+        targetType: inline
+        workingDirectory: $(WorkingDirectoryName)
+        script: |
+          git push origin $(TargetBranch) $(ExtraPushArgs)
+
+          if ($LASTEXITCODE -EQ 0) {
+            Write-Host "Push was successful"
+            exit
+          }
+
+          git fetch origin
+          git fetch $(SourceRemote)
+          $commits = (git --no-pager rev-list $(SourceRemote)/$(SourceBranch)..origin/$(TargetBranch) | Measure-Object -line).Lines
+          if ($commits -NE 0) {
+            Write-Host "##vso[task.LogIssue type=error;]Mirror repository runtimelab has unexpected commits"
+            git --no-pager log $(SourceRemote)/$(SourceBranch)..origin/$(TargetBranch)
+            exit 1
+          }
+
+          Write-Host "##vso[task.LogIssue type=warning;]Push failed for unknown reason"
+          $retryattempt=0
+          while ($retryattempt -LT 3) {
+            $retryattempt+=1
+            Write-Host "Retry attempt $retryattempt of 3 in 5 seconds..."
+            Start-Sleep -Seconds 5
+
+            git push origin $(TargetBranch) $(ExtraPushArgs)
+            if ($LASTEXITCODE -EQ 0) {
+              Write-Host "Push successful"
+              exit
+            }
+          }
+
+          Write-Host "##vso[task.LogIssue type=error;]git failed to push to Azure DevOps mirror"
+          exit 1
