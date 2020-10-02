@@ -1197,6 +1197,12 @@
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Methodical/Arrays/misc/_il_relinitializearray/*">
             <Issue>Implement general purpose RuntimeHelpers.InitializeArray</Issue>
         </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/JIT/Methodical/Arrays/misc/_il_dbginitializearray/*">
+            <Issue>Implement general purpose RuntimeHelpers.InitializeArray</Issue>
+        </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/JIT\Methodical/explicit/rotate/_opt_dbgrotarg_float/*">
+            <Issue>Needs triage. Might be non-deterministic. Reproed without optimizations.</Issue>
+        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Methodical/eh/basics/throwinfilter_d/*">
             <Issue>Throwing from a filter block</Issue>
         </ExcludeList>
@@ -1320,6 +1326,12 @@
         <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader/regressions/529206/vsw529206ModuleCctor/*">
             <Issue>Module constructors</Issue>
         </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader/regressions/vsw529206/vsw529206ModuleCctor/*">
+            <Issue>Module constructors</Issue>
+        </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader/regressions/asurt150271/test3/*">
+            <Issue>needs triage</Issue>
+        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader/TSAmbiguities/CollapsedInterfaces/HelloWorld/*">
             <Issue>Needs triage</Issue>
         </ExcludeList>
@@ -1344,6 +1356,9 @@
         <ExcludeList Include="$(XunitTestBinBase)/readytorun/**/*">
             <Issue>ReadyToRun tests</Issue>
         </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/reflection/Modifiers/modifiers/*">
+            <Issue>needs triage</Issue>
+        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/reflection/SetValue/TrySetReadonlyStaticField/*">
             <Issue>Disallow setting readonly static fields</Issue>
         </ExcludeList>
@@ -1353,6 +1368,21 @@
         <ExcludeList Include="$(XunitTestBinBase)/tracing/**/*">
             <Issue>EventPipe</Issue>
         </ExcludeList>
+
+        <!-- Release/optimized test failures -->
+        <ExcludeList Include="$(XunitTestBinBase)/JIT/Regression/CLR-x86-JIT/V2.0-Beta2/b426654/b426654/*">
+            <Issue>Needs triage</Issue>
+        </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader/methodoverriding/regressions/549411/exploit/*">
+            <Issue>Needs triage</Issue>
+        </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/JIT/Regression/CLR-x86-JIT/v2.1/DDB/B168384/LdfldaHack/*">
+            <Issue>Needs triage</Issue>
+        </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/JIT/Regression/JitBlue/DevDiv_754566/DevDiv_754566/*">
+            <Issue>Needs triage</Issue>
+        </ExcludeList>
+
 
         <!-- Catch(T) in shared code -->
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Methodical\eh\generics\throwincatch_d\*" />

@@ -4,21 +4,26 @@ parameters:
   osGroup: ''
   osSubgroup: ''
   uploadTests: false
+  smokeTestsOnly: true
+  runSingleFileTests: true
 
 steps:
   # Build coreclr native test output
   - ${{ if eq(parameters.osGroup, 'Windows_NT') }}:
-    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot skipstressdependencies $(buildConfigUpper) ${{ parameters.archType }} /p:NativeAotMultimodule=true /p:SmokeTestsOnly=true
+    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot skipstressdependencies $(buildConfigUpper) ${{ parameters.archType }} /p:NativeAotMultimodule=true /p:SmokeTestsOnly=${{ parameters.smokeTestsOnly }}
       displayName: Build tests
   - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
     - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot skipstressdependencies $(buildConfigUpper) ${{ parameters.archType }} /p:SmokeTestsOnly=true
       displayName: Build tests
 
+  - ${{ if eq(parameters.runSingleFileTests, true) }}:
+    - ${{ if eq(parameters.osGroup, 'Windows_NT') }}:
+      - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
+        displayName: Run tests in single file mode
+    - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
+      - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
+        displayName: Run tests in single file mode
+
   - ${{ if eq(parameters.osGroup, 'Windows_NT') }}:
-    - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
-      displayName: Run tests in single file mode
     - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests nativeaotmultimodule $(buildConfigUpper) ${{ parameters.archType }}
       displayName: Run tests in multifile mode
-  - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
-    - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
-      displayName: Run tests

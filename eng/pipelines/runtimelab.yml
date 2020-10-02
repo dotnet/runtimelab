@@ -85,5 +85,3 @@ jobs:
       testGroup: innerloop
       buildArgs: -s nativeaot+libs+installer -c $(_BuildConfig) /p:ArchiveTests=true
       extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-      extraStepsParameters:
-        uploadTests: true

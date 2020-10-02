@@ -312,6 +312,11 @@ set CLRTestExitCode=!ERRORLEVEL!
 if defined RunCrossGen (
   call :ReleaseLock
 )
+if defined RunNativeAot (
+  if NOT "%CLRTestNoCleanup%" == "" (
+    IF EXIST native rmdir /s /q native
+  )
+)
 $(BatchLinkerTestCleanupCmds)
       ]]></BatchCLRTestLaunchCmds>
 
