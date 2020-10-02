@@ -270,11 +270,7 @@
   </ItemGroup>
   <ItemGroup Condition="'$(TargetsWindows)'=='true'">
     <Compile Include="src\Microsoft\Win32\SafeHandles\SafeThreadPoolIOHandle.cs" />
-    <Compile Include="src\System\AppContext.Windows.CoreRT.cs" />
     <Compile Include="src\System\Runtime\InteropServices\PInvokeMarshal.Windows.cs" />
-    <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.GetModuleFileName.cs">
-      <Link>Interop\Windows\Kernel32\Interop.GetModuleFileName.cs</Link>
-    </Compile>
     <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.GetCurrentThreadId.cs">
       <Link>Interop\Windows\Kernel32\Interop.GetCurrentThreadId.cs</Link>
     </Compile>
@@ -334,7 +330,6 @@
   </ItemGroup>
   <ItemGroup Condition="'$(TargetsUnix)'=='true'">
     <Compile Include="src\Microsoft\Win32\SafeHandles\SafeWaitHandle.Unix.cs" />
-    <Compile Include="src\System\AppContext.Unix.CoreRT.cs" />
     <Compile Include="src\System\Environment.CoreRT.Unix.cs" />
     <Compile Include="src\System\Runtime\InteropServices\PInvokeMarshal.Unix.cs" />
     <Compile Include="src\System\Threading\EventWaitHandle.Unix.cs" />
@@ -356,9 +351,6 @@
     </Compile>
     <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.GetEnv.cs">
       <Link>Interop\Unix\System.Native\Interop.GetEnv.cs</Link>
-    </Compile>
-    <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.GetExecutableAbsolutePath.cs">
-      <Link>Interop\Unix\System.Native\Interop.GetExecutableAbsolutePath.cs</Link>
     </Compile>
     <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.SchedGetCpu.cs">
       <Link>Interop\Unix\System.Native\Interop.SchedGetCpu.cs</Link>

@@ -2,7 +2,6 @@ project(System.Native C)
 
 set(NATIVE_SOURCES
     pal_environment.c
-    pal_exepath.c
     pal_dynamicload.c
     pal_errno.c
     pal_interfaceaddresses.c
