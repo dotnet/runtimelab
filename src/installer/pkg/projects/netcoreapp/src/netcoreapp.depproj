@@ -100,8 +100,8 @@
 
     <ItemGroup Condition="'$(PackageRID)' != ''">
       <LibrariesRuntimeFiles Condition="'%(IsNative)' != 'true'" TargetPath="runtimes/$(PackageRID)/lib/$(NetCoreAppCurrent)" />
-      <!-- dotnet/runtime filters out .a files - do not bring this diff over: https://github.com/dotnet/runtimelab/issues/106 -->
       <LibrariesRuntimeFiles Condition="'%(IsNative)' == 'true'" TargetPath="$([System.String]::new('runtimes/$(PackageRID)/native/%(LibrariesRuntimeFiles.NativeSubDirectory)%(RecursiveDir)').TrimEnd('/'))" />
+      <!-- dotnet/runtime filters out .a files - do not bring this diff over: https://github.com/dotnet/runtimelab/issues/106 -->
       <ReferenceCopyLocalPaths Include="@(LibrariesRuntimeFiles)" />
     </ItemGroup>
 
