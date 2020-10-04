@@ -1690,20 +1690,9 @@ namespace Internal.TypeSystem.Interop
                 // Let the runtime generate the proper MissingMemberException for this.
                 throw new NotSupportedException();
 #else
-                var emitter = _ilCodeStreams.Emitter;
-
-                MethodSignature ctorSignature = new MethodSignature(0, 0, Context.GetWellKnownType(WellKnownType.Void),
-                      new TypeDesc[] {
-                          Context.GetWellKnownType(WellKnownType.String)
-                      });
-                MethodDesc exceptionCtor = InteropTypes.GetMissingMemberException(Context).GetKnownMethod(".ctor", ctorSignature);
-
-                string name = ((MetadataType)ManagedType).Name;
-                codeStream.Emit(ILOpcode.ldstr, emitter.NewToken(String.Format("'{0}' does not have a default constructor. Subclasses of SafeHandle must have a default constructor to support marshaling a Windows HANDLE into managed code.", name)));
-                codeStream.Emit(ILOpcode.newobj, emitter.NewToken(exceptionCtor));
-                codeStream.Emit(ILOpcode.throw_);
-
-                return;
+                ThrowHelper.ThrowMissingMethodException(ManagedType, ".ctor",
+                    new MethodSignature(MethodSignatureFlags.None, genericParameterCount: 0,
+                    ManagedType.Context.GetWellKnownType(WellKnownType.Void), TypeDesc.EmptyTypes));
 #endif
             }
 
