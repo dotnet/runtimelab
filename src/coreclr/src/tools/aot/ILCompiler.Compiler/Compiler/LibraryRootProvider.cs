@@ -20,24 +20,44 @@ namespace ILCompiler
 
         public void AddCompilationRoots(IRootingServiceProvider rootProvider)
         {
-            foreach (TypeDesc type in _module.GetAllTypes())
-            {
-                try
-                {
-                    rootProvider.AddCompilationRoot(type, "Library module type");
-                }
-                catch (TypeSystemException)
-                {
-                    // TODO: fail compilation if a switch was passed
+            TypeSystemContext context = _module.Context;
 
-                    // Swallow type load exceptions while rooting
+            foreach (MetadataType type in _module.GetAllTypes())
+            {
+                if (!RootType(type, rootProvider))
                     continue;
 
-                    // TODO: Log as a warning
-                }
+                if (type.IsGenericDefinition)
+                {
+                    // Generic type - try to create a canonical instantiation and root that.
+                    // The multifile compilation group relies on the fact that a canonical
+                    // instantiation is going to be homed in the definition module.
+                    bool canonMakesSense = true;
+                    foreach (var p in type.Instantiation)
+                    {
+                        if (((GenericParameterDesc)p).HasNotNullableValueTypeConstraint)
+                            canonMakesSense = false;
+                    }
 
-                // If this is not a generic definition, root all methods
-                if (!type.HasInstantiation)
+                    if (canonMakesSense)
+                    {
+                        TypeDesc[] canonInstantiation = new TypeDesc[type.Instantiation.Length];
+                        for (int i = 0; i < canonInstantiation.Length; i++)
+                            canonInstantiation[i] = context.CanonType;
+                        TypeDesc typeWithMethods = type.MakeInstantiatedType(canonInstantiation);
+
+                        // Do not root EEType for System.Array`1 because it's magic and the EEType
+                        // should never be generated.
+                        if (type.Module != context.SystemModule || type.Name != "Array`1" || type.Namespace != "System")
+                        {
+                            if (!RootType(typeWithMethods, rootProvider))
+                                continue;
+                        }
+
+                        RootMethods(typeWithMethods, "Library module method", rootProvider);
+                    }
+                }
+                else
                 {
                     RootMethods(type, "Library module method", rootProvider);
                     rootProvider.RootThreadStaticBaseForType(type, "Library module type statics");
@@ -45,6 +65,25 @@ namespace ILCompiler
                     rootProvider.RootNonGCStaticBaseForType(type, "Library module type statics");
                 }
             }
+        }
+
+        private bool RootType(TypeDesc type, IRootingServiceProvider rootProvider)
+        {
+            try
+            {
+                rootProvider.AddCompilationRoot(type, "Library module type");
+            }
+            catch (TypeSystemException)
+            {
+                // TODO: fail compilation if a switch was passed
+
+                // Swallow type load exceptions while rooting
+                return false;
+
+                // TODO: Log as a warning
+            }
+
+            return true;
         }
 
         private void RootMethods(TypeDesc type, string reason, IRootingServiceProvider rootProvider)

@@ -73,5 +73,10 @@ namespace ILCompiler
         /// accessed through the target platform's import mechanism (ie, Import Address Table on Windows)
         /// </summary>
         public abstract bool CanHaveReferenceThroughImportTable { get; }
+
+        /// <summary>
+        /// If true, the method body of a method contained in this compilation group generates a method body into the output.
+        /// </summary>
+        public abstract bool GeneratesMethodBodyIntoOutput(MethodDesc method);
     }
 }

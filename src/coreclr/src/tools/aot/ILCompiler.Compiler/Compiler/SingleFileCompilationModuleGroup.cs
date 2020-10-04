@@ -24,6 +24,11 @@ namespace ILCompiler
             return true;
         }
 
+        public override bool GeneratesMethodBodyIntoOutput(MethodDesc method)
+        {
+            return true;
+        }
+
         public override bool ContainsMethodDictionary(MethodDesc method)
         {
             Debug.Assert(method.GetCanonMethodTarget(CanonicalFormKind.Specific) != method);

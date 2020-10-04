@@ -48,7 +48,12 @@ namespace ILCompiler.DependencyAnalysis
                     (_isFoldable ? ObjectNodeSection.FoldableManagedCodeUnixContentSection : ObjectNodeSection.ManagedCodeUnixContentSection);
             }
         }
-        
+
+        public override bool ShouldSkipEmittingObjectNode(NodeFactory factory)
+        {
+            return !factory.CompilationModuleGroup.GeneratesMethodBodyIntoOutput(Method);
+        }
+
         public override bool StaticDependenciesAreComputed => _methodCode != null;
 
         public virtual void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)

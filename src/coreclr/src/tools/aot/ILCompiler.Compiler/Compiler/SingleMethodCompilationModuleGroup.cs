@@ -28,6 +28,11 @@ namespace ILCompiler
             }
         }
 
+        public override bool GeneratesMethodBodyIntoOutput(MethodDesc method)
+        {
+            return true;
+        }
+
         public override bool ContainsMethodBody(MethodDesc method, bool unboxingStub)
         {
             return method == _method;

@@ -82,7 +82,7 @@ namespace ILCompiler
             return ExportForm.None;
         }
 
-        private bool IsModuleInCompilationGroup(EcmaModule module)
+        protected bool IsModuleInCompilationGroup(EcmaModule module)
         {
             return _compilationModuleSet.Contains(module);
         }
@@ -106,7 +106,7 @@ namespace ILCompiler
             {
                 return false;
             }
-        } 
+        }
     }
 
     /// <summary>
@@ -133,6 +133,37 @@ namespace ILCompiler
         {
             return (type.HasInstantiation || type.IsArray) && ShouldProduceFullVTable(type) && 
                    type.ConvertToCanonForm(CanonicalFormKind.Specific).IsCanonicalSubtype(CanonicalFormKind.Any);
+        }
+
+        public override bool GeneratesMethodBodyIntoOutput(MethodDesc method)
+        {
+            // As a size on disk optimization, don't generate method bodies for fully canonical methods outside
+            // their home module. We define the home module as the module that contains the definition.
+            // The compilation root provider is required to ensure that the canonical bodies are generated
+            // in their home module. This prevents situations where common types like List<__Canon>..ctor have
+            // their bodies generated into dozens of object files.
+            //
+            // We have to use this kludge instead of reporting this from ContainsMethodBody because this
+            // method body still needs to be compiled/analyzed to figure out the generic dictionary dependencies
+            // because if there's a canonical body, there is a dictionary. We just don't need to write it out.
+
+            Debug.Assert(ContainsMethodBody(method, unboxingStub: false));
+
+            if (!method.IsCanonicalMethod(CanonicalFormKind.Any) || method.HasInstantiation)
+                return true;
+
+            TypeDesc owningType = method.OwningType;
+            foreach (var p in owningType.Instantiation)
+            {
+                if (!method.Context.IsCanonicalDefinitionType(p, CanonicalFormKind.Any))
+                    return true;
+            }
+
+            EcmaType ecmaOwningType = owningType.GetTypeDefinition() as EcmaType;
+            if (ecmaOwningType == null)
+                return true;
+
+            return IsModuleInCompilationGroup(ecmaOwningType.EcmaModule);
         }
     }
 }
