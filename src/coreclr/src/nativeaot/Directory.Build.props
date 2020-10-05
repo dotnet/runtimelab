@@ -98,4 +98,6 @@
     <AotCommonPath>$(MSBuildThisFileDirectory)Common\src\</AotCommonPath>
     <CompilerCommonPath>$(MSBuildThisFileDirectory)..\tools\Common\</CompilerCommonPath>
   </PropertyGroup>
+
+  <Import Condition="'$(MSBuildProjectName)' != 'System.Private.CoreLib'" Project="$(RepositoryEngineeringDir)versioning.targets" />
 </Project>
