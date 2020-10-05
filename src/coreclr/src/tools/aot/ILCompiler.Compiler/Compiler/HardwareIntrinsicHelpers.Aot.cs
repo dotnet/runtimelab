@@ -156,9 +156,13 @@ namespace ILCompiler
                     result |= instructionSet switch
                     {
                         InstructionSet.X64_AES => Aes,
+                        InstructionSet.X64_AES_X64 => Aes,
                         InstructionSet.X64_PCLMULQDQ => Pclmulqdq,
+                        InstructionSet.X64_PCLMULQDQ_X64 => Pclmulqdq,
                         InstructionSet.X64_SSE3 => Sse3,
+                        InstructionSet.X64_SSE3_X64 => Sse3,
                         InstructionSet.X64_SSSE3 => Ssse3,
+                        InstructionSet.X64_SSSE3_X64 => Ssse3,
                         InstructionSet.X64_SSE41 => Sse41,
                         InstructionSet.X64_SSE41_X64 => Sse41,
                         InstructionSet.X64_SSE42 => Sse42,
@@ -166,8 +170,11 @@ namespace ILCompiler
                         InstructionSet.X64_POPCNT => Popcnt,
                         InstructionSet.X64_POPCNT_X64 => Popcnt,
                         InstructionSet.X64_AVX => Avx,
+                        InstructionSet.X64_AVX_X64 => Avx,
                         InstructionSet.X64_FMA => Fma,
+                        InstructionSet.X64_FMA_X64 => Fma,
                         InstructionSet.X64_AVX2 => Avx2,
+                        InstructionSet.X64_AVX2_X64 => Avx2,
                         InstructionSet.X64_BMI1 => Bmi1,
                         InstructionSet.X64_BMI1_X64 => Bmi1,
                         InstructionSet.X64_BMI2 => Bmi2,
@@ -183,7 +190,7 @@ namespace ILCompiler
                         InstructionSet.X64_X86Base => 0,
                         InstructionSet.X64_X86Base_X64 => 0,
 
-                        _ => throw new NotSupportedException()
+                        _ => throw new NotSupportedException(instructionSet.ToString())
                     };
                 }
 
