@@ -240,7 +240,7 @@ namespace Microsoft.Interop
                     methods);
             }
         
-            static MarshallingInfo CreateTypeBasedMarshallingInfo(ITypeSymbol type, Compilation compilation)
+            static MarshallingInfo? CreateTypeBasedMarshallingInfo(ITypeSymbol type, Compilation compilation)
             {
                 var conversion = compilation.ClassifyCommonConversion(type, compilation.GetTypeByMetadataName(TypeNames.System_Runtime_InteropServices_SafeHandle)!);
                 if (conversion.Exists && 
@@ -250,7 +250,7 @@ namespace Microsoft.Interop
                 {
                     return new SafeHandleMarshallingInfo();
                 }
-                return null!;
+                return null;
             }
         }
 #nullable restore
