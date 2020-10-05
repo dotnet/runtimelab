@@ -72,6 +72,8 @@ stages:
           testGroup: innerloop
           buildArgs: -s clr+libs+installer -c debug -runtimeConfiguration Checked
           extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+          extraStepsParameters:
+            uploadRuntimeTests: true
 
   #
   # Build with Release config and Release runtimeConfiguration
@@ -88,7 +90,7 @@ stages:
         testGroup: innerloop
         extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
         extraStepsParameters:
-          uploadTests: ${{ eq(variables.isOfficialBuild, false) }}
+          uploadLibrariesTests: ${{ eq(variables.isOfficialBuild, false) }}
           uploadUnsignedArtifacts: false
         ${{ if eq(variables.isOfficialBuild, false) }}:
           buildArgs: -s clr+libs+libs.tests+installer -c $(_BuildConfig) /p:ArchiveTests=true
