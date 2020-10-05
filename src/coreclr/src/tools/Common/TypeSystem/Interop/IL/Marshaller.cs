@@ -1686,14 +1686,9 @@ namespace Internal.TypeSystem.Interop
             var ctor = ManagedType.GetParameterlessConstructor();
             if (ctor == null || ((MetadataType)ManagedType).IsAbstract)
             {
-#if READYTORUN
-                // Let the runtime generate the proper MissingMemberException for this.
-                throw new NotSupportedException();
-#else
                 ThrowHelper.ThrowMissingMethodException(ManagedType, ".ctor",
                     new MethodSignature(MethodSignatureFlags.None, genericParameterCount: 0,
                     ManagedType.Context.GetWellKnownType(WellKnownType.Void), TypeDesc.EmptyTypes));
-#endif
             }
 
             codeStream.Emit(ILOpcode.newobj, _ilCodeStreams.Emitter.NewToken(ctor));
