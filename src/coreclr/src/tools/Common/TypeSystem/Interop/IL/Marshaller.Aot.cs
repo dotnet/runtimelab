@@ -872,11 +872,11 @@ namespace Internal.TypeSystem.Interop
             ILEmitter emitter = _ilCodeStreams.Emitter;
 
             var helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertNativeComInterfaceToManaged");
-            LoadManagedValue(codeStream);
+            LoadNativeValue(codeStream);
 
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
 
-            StoreNativeValue(codeStream);
+            StoreManagedValue(codeStream);
         }
 
         protected override void TransformNativeToManaged(ILCodeStream codeStream)
