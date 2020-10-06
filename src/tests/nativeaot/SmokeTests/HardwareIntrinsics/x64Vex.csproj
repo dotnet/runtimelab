@@ -18,6 +18,7 @@
     </NativeAotProjectLines>
   </PropertyGroup>
 
+  <PropertyGroup>
     <BashCLRTestPreCommands><![CDATA[
 $(BashCLRTestPreCommands)
     if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -30,6 +31,7 @@ $(BashCLRTestPreCommands)
         fi
     fi
 ]]></BashCLRTestPreCommands>
+  </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="Program.cs" />
