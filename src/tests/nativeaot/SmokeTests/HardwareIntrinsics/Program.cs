@@ -132,13 +132,19 @@ unsafe class Program
     static bool IsConstantTrue(delegate*<bool> code)
     {
         return
-            memcmp((byte*)code, new byte[] { 0xB8, 0x01, 0x00, 0x00, 0x00, 0xC3 }); // mov eax, 1; ret
+            // mov eax, 1; ret
+            memcmp((byte*)code, new byte[] { 0xB8, 0x01, 0x00, 0x00, 0x00, 0xC3 })
+            // push rbp; sub rsp, 10h; lea rbp, [rsp+10h]; mov dword ptr [rbp-4], 1
+            || memcmp((byte*)code, new byte[] { 0x55, 0x48, 0x83, 0xEC, 0x10, 0x48, 0x8D, 0x6C, 0x24, 0x10, 0xC7, 0x45, 0xFC, 0x01, 0x00, 0x00, 0x00 });
     }
 
     static bool IsConstantFalse(delegate*<bool> code)
     {
         return
-            memcmp((byte*)code, new byte[] { 0x33, 0xC0, 0xC3 }); // xor eax, eax; ret
+            // xor eax, eax; ret
+            memcmp((byte*)code, new byte[] { 0x33, 0xC0, 0xC3 })
+            // push rbp; sub rsp, 10h; lea rbp, [rsp+10h]; xor eax, eax
+            || memcmp((byte*)code, new byte[] { 0x55, 0x48, 0x83, 0xEC, 0x10, 0x48, 0x8D, 0x6C, 0x24, 0x10, 0x33, 0xC0 });
     }
 
     static void AssertIsConstantTrue(delegate*<bool> code)
