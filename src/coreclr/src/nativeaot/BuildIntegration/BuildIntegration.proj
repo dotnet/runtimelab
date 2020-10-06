@@ -2,7 +2,7 @@
   <Import Project="../Directory.Build.props" />
 
   <PropertyGroup>
-    <OutputPath>$(BinDir)/build/</OutputPath>
+    <OutputPath>$(RuntimeBinDir)/build/</OutputPath>
   </PropertyGroup>
 
   <ItemGroup>

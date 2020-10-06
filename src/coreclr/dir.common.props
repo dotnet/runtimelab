@@ -35,12 +35,12 @@
     <BaseIntermediateOutputPath Condition="'$(IsNativeAotProject)' == 'true'">$(RepoRoot)artifacts\obj\coreclr\nativeaot\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
 
     <SourceDir>$(ProjectDir)src\</SourceDir>
-    <BinDir>$(ArtifactsDir)bin\coreclr\$(PlatformConfigPathPart)\</BinDir>
+    <RuntimeBinDir>$(ArtifactsDir)bin\coreclr\$(PlatformConfigPathPart)\</RuntimeBinDir>
 
     <!-- We don't append back slash because this path is used by nuget.exe as output directory and it
          fails to write packages to it if the path contains the forward slash.
     -->
-    <PackagesBinDir>$(BinDir).nuget\</PackagesBinDir>
+    <PackagesBinDir>$(RuntimeBinDir).nuget\</PackagesBinDir>
   </PropertyGroup>
 
   <PropertyGroup>
