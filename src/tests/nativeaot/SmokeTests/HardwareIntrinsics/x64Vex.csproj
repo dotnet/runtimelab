@@ -18,6 +18,19 @@
     </NativeAotProjectLines>
   </PropertyGroup>
 
+    <BashCLRTestPreCommands><![CDATA[
+$(BashCLRTestPreCommands)
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sysctl -a
+
+        sysctl -a | grep machdep.cpu.leaf7_features | grep AVX2 >/dev/null
+        if [ $? -ne 0 ]; then
+          echo No support for AVX2, test not applicable.
+          exit 0
+        fi
+    fi
+]]></BashCLRTestPreCommands>
+
   <ItemGroup>
     <Compile Include="Program.cs" />
   </ItemGroup>
