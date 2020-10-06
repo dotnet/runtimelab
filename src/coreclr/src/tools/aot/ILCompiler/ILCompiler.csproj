@@ -9,7 +9,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendTargetFrameworkToOutputPath Condition="'$(BuildingInsideVisualStudio)' == 'true'">true</AppendTargetFrameworkToOutputPath>
-    <OutputPath>$(BinDir)/ilc</OutputPath>
+    <OutputPath>$(RuntimeBinDir)/ilc</OutputPath>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
     <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
     <RuntimeIdentifiers>linux-x64;win-x64;osx-x64</RuntimeIdentifiers>
@@ -58,13 +58,13 @@
       <Pack>false</Pack>
     </Content>
 
-    <Content Include="$(BinDir)\$(LibraryNamePrefix)jitinterface_$(TargetArchitecture)$(LibraryNameExtension)">
+    <Content Include="$(RuntimeBinDir)\$(LibraryNamePrefix)jitinterface_$(TargetArchitecture)$(LibraryNameExtension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
     </Content>
 
-    <Content Include="$(BinDir)\$(LibraryNamePrefix)clrjit$(LibraryNameExtension)">
+    <Content Include="$(RuntimeBinDir)\$(LibraryNamePrefix)clrjit$(LibraryNameExtension)">
       <Link>$(LibraryNamePrefix)clrjitilc$(LibraryNameExtension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
