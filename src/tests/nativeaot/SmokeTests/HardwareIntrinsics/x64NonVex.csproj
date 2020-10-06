@@ -7,9 +7,17 @@
     <IlcDisableReflection>true</IlcDisableReflection>
     <DefineConstants>$(DefineConstants);NON_VEX_INTRINSICS</DefineConstants>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <NativeAotProjectLines>
+      <![CDATA[
   <ItemGroup>
     <IlcArg Include="--instructionset:sse4.2" />
   </ItemGroup>
+      ]]>
+    </NativeAotProjectLines>
+  </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="Program.cs" />
   </ItemGroup>
