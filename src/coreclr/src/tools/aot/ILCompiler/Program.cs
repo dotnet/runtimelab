@@ -387,7 +387,7 @@ namespace ILCompiler
                 if (supportedInstructionSet.HasInstructionSet(InstructionSet.X64_AVX))
                 {
                     optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("fma");
-                    optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("bmi1");
+                    optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("bmi");
                     optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("bmi2");
                 }
             }
