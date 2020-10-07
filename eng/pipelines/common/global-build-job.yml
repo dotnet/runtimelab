@@ -92,6 +92,7 @@ jobs:
           buildConfig: ${{ parameters.buildConfig }}
           runtimeFlavor: ${{ parameters.runtimeFlavor }}
           helixQueues: ${{ parameters.helixQueues }}
+          nameSuffix: ${{ parameters.nameSuffix }}
           ${{ insert }}: ${{ parameters.extraStepsParameters }}
 
     - task: PublishBuildArtifacts@1
