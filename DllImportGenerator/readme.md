@@ -11,7 +11,7 @@ The [Demo project](./DllImportGenerator/Demo) is designed to be immediately cons
 * Step into the `Demo` application and observe the generated code for the `Sum` functions.
 * Find the implementation of the `sumrefi` function and set a breakpoint. Run the debugger and explore the stack.
 * Add a new export in the `NativeExports` project and update the `Demo` application to call the new export.
-* Consider the differences and try the above scenarios when building in `Debug` or `Release`.
+* Try the above scenarios when building in `Debug` or `Release`. Consider the differences.
 
 ## Designs
 
