@@ -20,14 +20,12 @@ The [Demo project](./DllImportGenerator/Demo) is designed to be immediately cons
 
 ## Workflow
 
+All features of the [`dotnet` command line tool](https://docs.microsoft.com/dotnet/core/tools/) are supported for the respective project types (e.g. `build`, `run`, `test`). A consistent cross-platform inner dev loop with an IDE is available using [Visual Studio Code](https://code.visualstudio.com/) when appropriate .NET extensions are loaded.
+
 On Windows, loading the [solution](./DllImportGenerator.sln) in [Visual Studio](https://visualstudio.microsoft.com/) 2019 or later will enable the edit, build, debug inner dev loop. All features of Visual Studio are expected to operate correctly (e.g. Debugger, Test runner, Profiler).
-
-On non-Windows platforms, all features of the `dotnet` command line tool are supported for the respective project types (e.g. `build`, `run`, `test`).
-
-A consistent cross-platform inner dev loop is also supported in [Visual Studio Code](https://code.visualstudio.com/) when appropriate .NET extensions are loaded.
 
 Most of the above options have [official tutorials](https://docs.microsoft.com/dotnet/core/tutorials/). It is an aim of this project to follow canonical workflows that are intuitive to all developers.
 
 ### Testing assets
 
-This project has no explicit native build system and should remain that way. The [`DNNE`](https://github.com/AaronRobinsonMSFT/DNNE/) project is be leveraged to create native exports that can be called from the P/Invokes during testing.
+This project has no explicit native build system and should remain that way. The [`DNNE`](https://github.com/AaronRobinsonMSFT/DNNE/) project is used to create native exports that can be called from the P/Invokes during testing.
