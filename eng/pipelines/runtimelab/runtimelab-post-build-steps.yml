@@ -33,4 +33,4 @@ steps:
   - ${{ if eq(parameters.uploadUnsignedArtifacts, true) }}:
     - template: /eng/pipelines/common/upload-unsigned-artifacts-step.yml
       parameters:
-        name: packages_${{ parameters.osGroup }}${{ parameters.osSubgroup }}_${{ parameters.archType }}_${{ parameters.buildConfig }}${{ parameters.nameSuffix }}
+        name: packages
