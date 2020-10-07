@@ -45,43 +45,56 @@ pr:
 
 variables:
   - template: /eng/pipelines/common/variables.yml
+  - ${{ if and(ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest')) }}:
+    - name: TeamName
+      value: dotnet-core
 
-jobs:
-#
-# Checkout repository
-#
-- template: /eng/pipelines/common/checkout-job.yml
+stages:
+- stage: Build
+  jobs:
+  #
+  # Checkout repository
+  #
+  - template: /eng/pipelines/common/checkout-job.yml
 
-#
-# Build with Debug config and Checked runtimeConfiguration
-#
-- template: /eng/pipelines/common/platform-matrix.yml
-  parameters:
-    jobTemplate: /eng/pipelines/common/global-build-job.yml
-    buildConfig: Checked
-    platforms:
-    - Linux_x64
-    - Windows_NT_x64
-    - OSX_x64
-    jobParameters:
-      timeoutInMinutes: 90
-      testGroup: innerloop
-      buildArgs: -s nativeaot+libs+installer -lc release -rc checked
-      extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+  #
+  # Build with Debug config and Checked runtimeConfiguration
+  #
+  - ${{ if ne(variables.isOfficialBuild, true) }}:
+    - template: /eng/pipelines/common/platform-matrix.yml
+      parameters:
+        jobTemplate: /eng/pipelines/common/global-build-job.yml
+        buildConfig: Checked
+        platforms:
+        - Linux_x64
+        - Windows_NT_x64
+        - OSX_x64
+        jobParameters:
+          timeoutInMinutes: 90
+          testGroup: innerloop
+          buildArgs: -s nativeaot+libs+installer -lc release -rc checked
+          extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
 
-#
-# Build with Release config and Release runtimeConfiguration
-#
-- template: /eng/pipelines/common/platform-matrix.yml
-  parameters:
-    jobTemplate: /eng/pipelines/common/global-build-job.yml
-    buildConfig: Release
-    platforms:
-    - Linux_x64
-    - Windows_NT_x64
-    - OSX_x64
-    jobParameters:
-      timeoutInMinutes: 90
-      testGroup: innerloop
-      buildArgs: -s nativeaot+libs+installer -c $(_BuildConfig) /p:ArchiveTests=true
-      extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+  #
+  # Build with Release config and Release runtimeConfiguration
+  #
+  - template: /eng/pipelines/common/platform-matrix.yml
+    parameters:
+      jobTemplate: /eng/pipelines/common/global-build-job.yml
+      buildConfig: Release
+      platforms:
+      - Linux_x64
+      - Windows_NT_x64
+      - OSX_x64
+      jobParameters:
+        timeoutInMinutes: 90
+        testGroup: innerloop
+        buildArgs: -s nativeaot+libs+installer -c $(_BuildConfig)
+        extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+        extraStepsParameters:
+          uploadUnsignedArtifacts: ${{ variables.isOfficialBuild }}
+
+- ${{ if eq(variables.isOfficialBuild, true) }}:
+  - template: /eng/pipelines/official/stages/publish.yml
+    parameters:
+      isOfficialBuild: true

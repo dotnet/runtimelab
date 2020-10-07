@@ -6,6 +6,7 @@ parameters:
   uploadTests: false
   smokeTestsOnly: true
   runSingleFileTests: true
+  uploadUnsignedArtifacts: false
 
 steps:
   # Build coreclr native test output
@@ -27,3 +28,9 @@ steps:
   - ${{ if eq(parameters.osGroup, 'Windows_NT') }}:
     - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests nativeaotmultimodule $(buildConfigUpper) ${{ parameters.archType }}
       displayName: Run tests in multifile mode
+
+    # Upload unsigned artifacts
+  - ${{ if eq(parameters.uploadUnsignedArtifacts, true) }}:
+    - template: /eng/pipelines/common/upload-unsigned-artifacts-step.yml
+      parameters:
+        name: packages_${{ parameters.osGroup }}${{ parameters.osSubgroup }}_${{ parameters.archType }}_${{ parameters.buildConfig }}${{ parameters.nameSuffix }}
