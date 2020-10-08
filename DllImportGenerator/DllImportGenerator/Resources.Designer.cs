@@ -133,6 +133,15 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The specified value &apos;{0}&apos; for &apos;{1}&apos; is not supported by source-generated P/Invokes. If the specified configuration is required, use a regular `DllImport` instead..
+        /// </summary>
+        internal static string ConfigurationNotSupportedMessageValue {
+            get {
+                return ResourceManager.GetString("ConfigurationNotSupportedMessageValue", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Specified configuration is not supported by source-generated P/Invokes..
         /// </summary>
         internal static string ConfigurationNotSupportedTitle {

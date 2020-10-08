@@ -141,6 +141,9 @@
   <data name="ConfigurationNotSupportedMessageReturn" xml:space="preserve">
     <value>The specified '{0}' configuration for the return value of method '{1}' is not supported by source-generated P/Invokes. If the specified configuration is required, use a regular `DllImport` instead.</value>
   </data>
+  <data name="ConfigurationNotSupportedMessageValue" xml:space="preserve">
+    <value>The specified value '{0}' for '{1}' is not supported by source-generated P/Invokes. If the specified configuration is required, use a regular `DllImport` instead.</value>
+  </data>
   <data name="ConfigurationNotSupportedTitle" xml:space="preserve">
     <value>Specified configuration is not supported by source-generated P/Invokes.</value>
   </data>

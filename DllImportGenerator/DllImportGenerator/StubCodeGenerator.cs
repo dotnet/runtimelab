@@ -41,8 +41,7 @@ namespace Microsoft.Interop
             Stage.Cleanup
         };
 
-        public IEnumerable<Diagnostic> Diagnostics => diagnostics;
-        private readonly List<Diagnostic> diagnostics = new List<Diagnostic>();
+        private readonly GeneratorDiagnostics diagnostics;
 
         private readonly IMethodSymbol stubMethod;
         private readonly List<(TypePositionInfo TypeInfo, IMarshallingGenerator Generator)> paramMarshallers;
@@ -51,12 +50,14 @@ namespace Microsoft.Interop
         public StubCodeGenerator(
             IMethodSymbol stubMethod,
             IEnumerable<TypePositionInfo> paramsTypeInfo,
-            TypePositionInfo retTypeInfo)
+            TypePositionInfo retTypeInfo,
+            GeneratorDiagnostics generatorDiagnostics)
         {
             Debug.Assert(retTypeInfo.IsNativeReturnPosition);
 
             this.CurrentStage = Stages[0];
             this.stubMethod = stubMethod;
+            this.diagnostics = generatorDiagnostics;
 
             // Get marshallers for parameters
             this.paramMarshallers = paramsTypeInfo.Select(p =>
@@ -64,12 +65,7 @@ namespace Microsoft.Interop
                 IMarshallingGenerator generator;
                 if (!MarshallingGenerators.TryCreate(p, this, out generator))
                 {
-                    IParameterSymbol paramSymbol = stubMethod.Parameters[p.ManagedIndex];
-                    this.diagnostics.Add(
-                        paramSymbol.CreateDiagnostic(
-                            GeneratorDiagnostics.ParameterTypeNotSupported,
-                            paramSymbol.Type.ToDisplayString(),
-                            paramSymbol.Name));
+                    this.diagnostics.ReportMarshallingNotSupported(this.stubMethod, p);
                 }
 
                 return (p, generator);
@@ -79,11 +75,7 @@ namespace Microsoft.Interop
             IMarshallingGenerator retGenerator;
             if (!MarshallingGenerators.TryCreate(retTypeInfo, this, out retGenerator))
             {
-                this.diagnostics.Add(
-                    stubMethod.CreateDiagnostic(
-                        GeneratorDiagnostics.ReturnTypeNotSupported,
-                        stubMethod.ReturnType.ToDisplayString(),
-                        stubMethod.Name));
+                this.diagnostics.ReportMarshallingNotSupported(this.stubMethod, retTypeInfo);
             }
 
             this.retMarshaller = (retTypeInfo, retGenerator);

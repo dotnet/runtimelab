@@ -43,7 +43,7 @@ namespace Microsoft.Interop
         }
     }
 
-    internal class GeneratorDiagnostics
+    public class GeneratorDiagnostics
     {
         private class Ids
         {
@@ -104,6 +104,16 @@ namespace Microsoft.Interop
                 isEnabledByDefault: true,
                 description: GetResourceString(Resources.ConfigurationNotSupportedDescription));
 
+        public readonly static DiagnosticDescriptor ConfigurationValueNotSupported =
+            new DiagnosticDescriptor(
+                Ids.ConfigurationNotSupported,
+                GetResourceString(nameof(Resources.ConfigurationNotSupportedTitle)),
+                GetResourceString(nameof(Resources.ConfigurationNotSupportedMessageValue)),
+                Category,
+                DiagnosticSeverity.Error,
+                isEnabledByDefault: true,
+                description: GetResourceString(Resources.ConfigurationNotSupportedDescription));
+
         private readonly GeneratorExecutionContext context;
 
         public GeneratorDiagnostics(GeneratorExecutionContext context)
@@ -111,7 +121,29 @@ namespace Microsoft.Interop
             this.context = context;
         }
 
-        public void ReportMarshallingNotSupported(
+        public void ReportConfigurationNotSupported(
+            AttributeData attributeData,
+            string configurationName,
+            string? unsupportedValue = null)
+        {
+            if (unsupportedValue == null)
+            {
+                this.context.ReportDiagnostic(
+                    attributeData.CreateDiagnostic(
+                        GeneratorDiagnostics.ConfigurationNotSupported,
+                        configurationName));
+            }
+            else
+            {
+                this.context.ReportDiagnostic(
+                    attributeData.CreateDiagnostic(
+                        GeneratorDiagnostics.ConfigurationValueNotSupported,
+                        unsupportedValue,
+                        configurationName));
+            }
+        }
+
+        internal void ReportMarshallingNotSupported(
             IMethodSymbol method,
             TypePositionInfo info)
         {

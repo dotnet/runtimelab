@@ -41,9 +41,9 @@ namespace Microsoft.Interop
 
         public MarshallingInfo MarshallingAttributeInfo { get; private set; }
 
-        public static TypePositionInfo CreateForParameter(IParameterSymbol paramSymbol, Compilation compilation)
+        public static TypePositionInfo CreateForParameter(IParameterSymbol paramSymbol, Compilation compilation, GeneratorDiagnostics diagnostics)
         {
-            var marshallingInfo = GetMarshallingInfo(paramSymbol.Type, paramSymbol.GetAttributes(), compilation);
+            var marshallingInfo = GetMarshallingInfo(paramSymbol.Type, paramSymbol.GetAttributes(), compilation, diagnostics);
             var typeInfo = new TypePositionInfo()
             {
                 ManagedType = paramSymbol.Type,
@@ -56,9 +56,9 @@ namespace Microsoft.Interop
             return typeInfo;
         }
 
-        public static TypePositionInfo CreateForType(ITypeSymbol type, IEnumerable<AttributeData> attributes, Compilation compilation)
+        public static TypePositionInfo CreateForType(ITypeSymbol type, IEnumerable<AttributeData> attributes, Compilation compilation, GeneratorDiagnostics diagnostics)
         {
-            var marshallingInfo = GetMarshallingInfo(type, attributes, compilation);
+            var marshallingInfo = GetMarshallingInfo(type, attributes, compilation, diagnostics);
             var typeInfo = new TypePositionInfo()
             {
                 ManagedType = type,
@@ -72,7 +72,7 @@ namespace Microsoft.Interop
         }
 
 #nullable enable
-        private static MarshallingInfo? GetMarshallingInfo(ITypeSymbol type, IEnumerable<AttributeData> attributes, Compilation compilation)
+        private static MarshallingInfo? GetMarshallingInfo(ITypeSymbol type, IEnumerable<AttributeData> attributes, Compilation compilation, GeneratorDiagnostics diagnostics)
         {
             MarshallingInfo? marshallingInfo = null;
             // Look at attributes on the type.
@@ -87,7 +87,7 @@ namespace Microsoft.Interop
                         // TODO: diagnostic
                     }
                     // https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.marshalasattribute
-                    marshallingInfo = CreateMarshalAsInfo(attrData);
+                    marshallingInfo = CreateMarshalAsInfo(attrData, diagnostics);
                 }
                 else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.MarshalUsingAttribute), attributeClass))
                 {
@@ -141,12 +141,12 @@ namespace Microsoft.Interop
 
             return marshallingInfo;
 
-            static MarshalAsInfo CreateMarshalAsInfo(AttributeData attrData)
+            static MarshalAsInfo CreateMarshalAsInfo(AttributeData attrData, GeneratorDiagnostics diagnostics)
             {
                 UnmanagedType unmanagedType = (UnmanagedType)attrData.ConstructorArguments[0].Value!;
-                if (unmanagedType == 0)
+                if (!Enum.IsDefined(typeof(UnmanagedType), unmanagedType))
                 {
-                    // [TODO] diagnostic
+                    diagnostics.ReportConfigurationNotSupported(attrData, nameof(UnmanagedType), unmanagedType.ToString());
                 }
                 string? customMarshallerTypeName = null;
                 string? customMarshallerCookie = null;
@@ -165,7 +165,7 @@ namespace Microsoft.Interop
                         case nameof(MarshalAsAttribute.SafeArraySubType):
                         case nameof(MarshalAsAttribute.SafeArrayUserDefinedSubType):
                         case nameof(MarshalAsAttribute.IidParameterIndex):
-                            // [TODO] Report not supported
+                            diagnostics.ReportConfigurationNotSupported(attrData, namedArg.Key);
                             break;
                         case nameof(MarshalAsAttribute.MarshalTypeRef):
                         case nameof(MarshalAsAttribute.MarshalType):
@@ -185,7 +185,6 @@ namespace Microsoft.Interop
                             arraySizeParamIndex = (short)namedArg.Value.Value!;
                             break;
                     }
-
                 }
 
                 return new MarshalAsInfo(
