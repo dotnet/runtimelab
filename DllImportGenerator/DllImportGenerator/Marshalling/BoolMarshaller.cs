@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -102,14 +101,30 @@ namespace Microsoft.Interop
         public bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context) => true;
     }
 
-    internal class CBoolMarshaller : BoolMarshallerBase
+    /// <summary>
+    /// Marshals a boolean value as 1 byte.
+    /// </summary>
+    /// <remarks>
+    /// This boolean type is the natural size of a boolean in the CLR (<see href="https://www.ecma-international.org/publications/standards/Ecma-335.htm">ECMA-335 (III.1.1.2)</see>).
+    ///
+    /// This is also typically compatible with <see href="https://en.cppreference.com/w/c/types/boolean">C99</see>
+    /// and <see href="https://en.cppreference.com/w/cpp/language/types">C++</see>, but that is implementation defined
+    /// therefore consulting your compiler specification is encouraged.
+    /// </remarks>
+    internal class ByteBoolMarshaller : BoolMarshallerBase
     {
-        public CBoolMarshaller()
+        public ByteBoolMarshaller()
             : base(PredefinedType(Token(SyntaxKind.ByteKeyword)), trueValue: 1, falseValue: 0)
         {
         }
     }
 
+    /// <summary>
+    /// Marshals a boolean value as a 4-byte integer.
+    /// </summary>
+    /// <remarks>
+    /// Corresponds to the definition of <see href="https://docs.microsoft.com/windows/win32/winprog/windows-data-types">BOOL</see>.
+    /// </remarks>
     internal class WinBoolMarshaller : BoolMarshallerBase
     {
         public WinBoolMarshaller()
@@ -117,13 +132,16 @@ namespace Microsoft.Interop
         {
         }
     }
-    
+
+    /// <summary>
+    /// Marshal a boolean value as a VARIANT_BOOL (Windows OLE/Automation type).
+    /// </summary>
     internal class VariantBoolMarshaller : BoolMarshallerBase
     {
         private const short VARIANT_TRUE = -1;
         private const short VARIANT_FALSE = 0;
         public VariantBoolMarshaller()
-            : base(PredefinedType(Token(SyntaxKind.ShortKeyword)), VARIANT_TRUE, VARIANT_FALSE)
+            : base(PredefinedType(Token(SyntaxKind.ShortKeyword)), trueValue: VARIANT_TRUE, falseValue: VARIANT_FALSE)
         {
         }
     }

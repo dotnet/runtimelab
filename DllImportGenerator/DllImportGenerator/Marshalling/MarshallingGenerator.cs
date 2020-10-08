@@ -58,7 +58,7 @@ namespace Microsoft.Interop
 
     internal class MarshallingGenerators
     {
-        public static readonly CBoolMarshaller CBool = new CBoolMarshaller();
+        public static readonly ByteBoolMarshaller ByteBool = new ByteBoolMarshaller();
         public static readonly WinBoolMarshaller WinBool = new WinBoolMarshaller();
         public static readonly VariantBoolMarshaller VariantBool = new VariantBoolMarshaller();
         public static readonly Forwarder Forwarder = new Forwarder();
@@ -97,10 +97,10 @@ namespace Microsoft.Interop
                     return true;
 
                 case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: null }:
-                    generator = CBool;
+                    generator = ByteBool;
                     return true;
                 case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I1 or UnmanagedType.U1 } }:
-                    generator = CBool;
+                    generator = ByteBool;
                     return true;
                 case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I4 or UnmanagedType.U4 } }:
                     generator = WinBool;
