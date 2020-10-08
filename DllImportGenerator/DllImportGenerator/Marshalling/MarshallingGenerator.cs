@@ -97,12 +97,12 @@ namespace Microsoft.Interop
                     return true;
 
                 case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: null }:
-                    generator = ByteBool;
+                    generator = WinBool; // [Compat]
                     return true;
                 case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I1 or UnmanagedType.U1 } }:
                     generator = ByteBool;
                     return true;
-                case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I4 or UnmanagedType.U4 } }:
+                case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I4 or UnmanagedType.U4 or UnmanagedType.Bool } }:
                     generator = WinBool;
                     return true;
                 case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.VariantBool } }:
