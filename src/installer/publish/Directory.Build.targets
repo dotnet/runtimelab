@@ -15,6 +15,10 @@
       $(DownloadDirectory)IntermediateUnsignedArtifacts\Windows_x64\Shipping\a.nupkg
   -->
   <Target Name="FindDownloadedArtifacts">
+    <PropertyGroup>
+      <PublishAllPackages Condition="'$(PublishAllPackages)' == '' and $(BUILD_REPOSITORY_URI.Contains('runtimelab'))">true</PublishAllPackages>
+    </PropertyGroup>
+
     <ItemGroup>
       <DownloadedArtifactFile Include="$(DownloadDirectory)**" />
 
@@ -72,7 +76,10 @@
         Include="$(DownloadDirectory)**\*Transport*.nupkg"
         Exclude="@(RuntimeNupkgFile);@(RidAgnosticNupkgToPublishFile);@(DownloadedSymbolNupkgFile)" />
 
-      <NupkgToPublishFile Include="@(RuntimeNupkgFile);@(RidAgnosticNupkgToPublishFile);@(TransportPackagesToPublishFile)" />
+      <NupkgToPublishFile Condition="'$(PublishAllPackages)' != 'true'"
+                          Include="@(RuntimeNupkgFile);@(RidAgnosticNupkgToPublishFile);@(TransportPackagesToPublishFile)" />
+      <NupkgToPublishFile Condition="'$(PublishAllPackages)' == 'true'"
+                          Include="$(DownloadDirectory)*\**\*.nupkg" />
 
       <!--
         Assuming all symbol packages ship and can be found by turning .nupkg => .symbols.nupkg, find
