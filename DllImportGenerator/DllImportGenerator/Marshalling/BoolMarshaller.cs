@@ -86,8 +86,7 @@ namespace Microsoft.Interop
                     {
                         // <managedIdentifier> = <nativeIdentifier> == _trueValue;
                         // <managedIdentifier> = <nativeIdentifier> != _falseValue;
-                        var binaryOp = _compareToTrue ? SyntaxKind.EqualsExpression : SyntaxKind.NotEqualsExpression;
-                        var comparand = _compareToTrue ? _trueValue : _falseValue;
+                        var (binaryOp, comparand) = _compareToTrue ? (SyntaxKind.EqualsExpression, _trueValue) : (SyntaxKind.NotEqualsExpression, _falseValue);
 
                         yield return ExpressionStatement(
                             AssignmentExpression(
