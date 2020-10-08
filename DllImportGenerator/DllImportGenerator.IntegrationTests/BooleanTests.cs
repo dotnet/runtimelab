@@ -7,33 +7,33 @@ namespace DllImportGenerator.IntegrationTests
 {
     partial class NativeExportsNE
     {
-        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_byte_as_uint")]
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "bytebool_return_as_uint")]
         public static partial uint ReturnByteBoolAsUInt([MarshalAs(UnmanagedType.U1)] bool input);
 
-        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_byte_as_uint")]
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "bytebool_return_as_uint")]
         public static partial uint ReturnSByteBoolAsUInt([MarshalAs(UnmanagedType.I1)] bool input);
 
-        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_ushort_as_uint")]
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "variantbool_return_as_uint")]
         public static partial uint ReturnVariantBoolAsUInt([MarshalAs(UnmanagedType.VariantBool)] bool input);
 
-        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_uint_as_uint")]
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "bool_return_as_uint")]
         public static partial uint ReturnIntBoolAsUInt([MarshalAs(UnmanagedType.I4)] bool input);
 
-        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_uint_as_uint")]
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "bool_return_as_uint")]
         public static partial uint ReturnUIntBoolAsUInt([MarshalAs(UnmanagedType.U4)] bool input);
 
-        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_uint_as_uint")]
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "bool_return_as_uint")]
         public static partial uint ReturnWinBoolAsUInt([MarshalAs(UnmanagedType.Bool)] bool input);
 
-        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_uint_as_uint")]
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "bool_return_as_uint")]
         [return: MarshalAs(UnmanagedType.U1)]
         public static partial bool ReturnUIntAsByteBool(uint input);
 
-        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_uint_as_uint")]
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "bool_return_as_uint")]
         [return: MarshalAs(UnmanagedType.VariantBool)]
         public static partial bool ReturnUIntAsVariantBool(uint input);
 
-        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_uint_as_uint")]
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "bool_return_as_uint")]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static partial bool ReturnUIntAsWinBool(uint input);
     }
