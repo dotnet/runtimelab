@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using DllImportGenerator;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -29,7 +29,7 @@ namespace Microsoft.Interop
 
         public RefKind RefKind { get; private set; }
         public SyntaxKind RefKindSyntax { get; private set; }
-        
+
         public bool IsByRef => RefKind != RefKind.None;
 
         public bool IsManagedReturnPosition { get => this.ManagedIndex == ReturnIndex; }
@@ -187,7 +187,7 @@ namespace Microsoft.Interop
                     }
 
                 }
-                
+
                 return new MarshalAsInfo(
                     UnmanagedType: unmanagedType,
                     CustomMarshallerTypeName: customMarshallerTypeName,
@@ -197,7 +197,7 @@ namespace Microsoft.Interop
                     ArraySizeParamIndex: arraySizeParamIndex
                 );
             }
-        
+
             NativeMarshallingAttributeInfo CreateNativeMarshallingInfo(AttributeData attrData, bool allowGetPinnableReference)
             {
                 ITypeSymbol spanOfByte = compilation.GetTypeByMetadataName(TypeNames.System_Span)!.Construct(compilation.GetSpecialType(SpecialType.System_Byte));
@@ -239,11 +239,11 @@ namespace Microsoft.Interop
                     valueProperty?.Type,
                     methods);
             }
-        
+
             static MarshallingInfo? CreateTypeBasedMarshallingInfo(ITypeSymbol type, Compilation compilation)
             {
                 var conversion = compilation.ClassifyCommonConversion(type, compilation.GetTypeByMetadataName(TypeNames.System_Runtime_InteropServices_SafeHandle)!);
-                if (conversion.Exists && 
+                if (conversion.Exists &&
                     conversion.IsImplicit &&
                     conversion.IsReference &&
                     !type.IsAbstract)

@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace DllImportGenerator {
+namespace Microsoft.Interop {
     using System;
     
     
@@ -39,7 +39,7 @@ namespace DllImportGenerator {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("DllImportGenerator.Resources", typeof(Resources).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Microsoft.Interop.Resources", typeof(Resources).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -93,6 +93,33 @@ namespace DllImportGenerator {
         internal static string CannotHaveMultipleMarshallingAttributesMessage {
             get {
                 return ResourceManager.GetString("CannotHaveMultipleMarshallingAttributesMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Source-generated P/Invokes will ignore any configuration that is not supported. If the specified configuration is required, use a regular `DllImport` instead.
+        /// </summary>
+        internal static string ConfigurationNotSupportedDescription {
+            get {
+                return ResourceManager.GetString("ConfigurationNotSupportedDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The &apos;{0}&apos; configuration is not supported by source-generated P/Invokes. The generated source will ignore the specified configuration..
+        /// </summary>
+        internal static string ConfigurationNotSupportedMessage {
+            get {
+                return ResourceManager.GetString("ConfigurationNotSupportedMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Specified configuration is not supported by source-generated P/Invokes..
+        /// </summary>
+        internal static string ConfigurationNotSupportedTitle {
+            get {
+                return ResourceManager.GetString("ConfigurationNotSupportedTitle", resourceCulture);
             }
         }
         
@@ -237,6 +264,42 @@ namespace DllImportGenerator {
         internal static string StackallocMarshallingShouldSupportAllocatingMarshallingFallbackMessage {
             get {
                 return ResourceManager.GetString("StackallocMarshallingShouldSupportAllocatingMarshallingFallbackMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to For types that are not supported by source-generated P/Invokes, the resulting P/Invoke will rely on the underlying runtime to marshal the specified type..
+        /// </summary>
+        internal static string TypeNotSupportedDescription {
+            get {
+                return ResourceManager.GetString("TypeNotSupportedDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The type &apos;{0}&apos; is not supported by source-generated P/Invokes. The generated source will not handle marshalling of parameter &apos;{1}&apos;..
+        /// </summary>
+        internal static string TypeNotSupportedMessageParameter {
+            get {
+                return ResourceManager.GetString("TypeNotSupportedMessageParameter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The type &apos;{0}&apos; is not supported by source-generated P/Invokes. The generated source will not handle marshalling of the return value for method &apos;{1}&apos;..
+        /// </summary>
+        internal static string TypeNotSupportedMessageReturn {
+            get {
+                return ResourceManager.GetString("TypeNotSupportedMessageReturn", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Specified type is not supported by source-generated P/Invokes.
+        /// </summary>
+        internal static string TypeNotSupportedTitle {
+            get {
+                return ResourceManager.GetString("TypeNotSupportedTitle", resourceCulture);
             }
         }
         

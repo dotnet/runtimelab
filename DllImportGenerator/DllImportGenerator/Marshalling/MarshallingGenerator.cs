@@ -117,7 +117,7 @@ namespace Microsoft.Interop
                     generator = Blittable;
                     return true;
 
-                // Marshalling in new model    
+                // Marshalling in new model
                 case { MarshallingAttributeInfo: NativeMarshallingAttributeInfo marshalInfo }:
                     generator = Forwarder;
                     return false;
@@ -127,8 +127,12 @@ namespace Microsoft.Interop
                     generator = Forwarder;
                     return false;
 
-                case { MarshallingAttributeInfo: SafeHandleMarshallingInfo _}:  
+                case { MarshallingAttributeInfo: SafeHandleMarshallingInfo _}:
                     generator = SafeHandle;
+                    return true;
+
+                case { ManagedType: { SpecialType: SpecialType.System_Void } }:
+                    generator = Forwarder;
                     return true;
 
                 default:

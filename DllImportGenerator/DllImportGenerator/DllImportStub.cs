@@ -106,6 +106,8 @@ namespace Microsoft.Interop
             // Cancel early if requested
             token.ThrowIfCancellationRequested();
 
+            var diagnostics = new List<Diagnostic>();
+
             // Determine the namespace
             string stubTypeNamespace = null;
             if (!(method.ContainingNamespace is null)
@@ -162,7 +164,9 @@ namespace Microsoft.Interop
             }
 
             // Generate stub code
-            var (code, dllImport) = StubCodeGenerator.GenerateSyntax(method, paramsTypeInfo, retTypeInfo);
+            var stubGenerator = new StubCodeGenerator(method, paramsTypeInfo, retTypeInfo);
+            var (code, dllImport) = stubGenerator.GenerateSyntax();
+            diagnostics.AddRange(stubGenerator.Diagnostics);
 
             return new DllImportStub()
             {
@@ -172,7 +176,7 @@ namespace Microsoft.Interop
                 StubContainingTypes = containingTypes,
                 StubCode = code,
                 DllImportDeclaration = dllImport,
-                Diagnostics = Enumerable.Empty<Diagnostic>(),
+                Diagnostics = diagnostics,
             };
         }
     }

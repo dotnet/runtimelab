@@ -129,6 +129,15 @@
   <data name="CannotHaveMultipleMarshallingAttributesMessage" xml:space="preserve">
     <value>Type '{0}' is marked with 'BlittableTypeAttribute' and 'NativeMarshallingAttribute'. A type can only have one of these two attributes.</value>
   </data>
+  <data name="ConfigurationNotSupportedDescription" xml:space="preserve">
+    <value>Source-generated P/Invokes will ignore any configuration that is not supported. If the specified configuration is required, use a regular `DllImport` instead</value>
+  </data>
+  <data name="ConfigurationNotSupportedMessage" xml:space="preserve">
+    <value>The '{0}' configuration is not supported by source-generated P/Invokes. The generated source will ignore the specified configuration.</value>
+  </data>
+  <data name="ConfigurationNotSupportedTitle" xml:space="preserve">
+    <value>Specified configuration is not supported by source-generated P/Invokes.</value>
+  </data>
   <data name="GetPinnableReferenceReturnTypeBlittableDescription" xml:space="preserve">
     <value>The return type of 'GetPinnableReference' (after accounting for 'ref') must be blittable.</value>
   </data>
@@ -176,6 +185,18 @@
   </data>
   <data name="StackallocMarshallingShouldSupportAllocatingMarshallingFallbackMessage" xml:space="preserve">
     <value>Native type '{0}' has a stack-allocating constructor does not support marshalling in scenarios where stack allocation is impossible.</value>
+  </data>
+  <data name="TypeNotSupportedDescription" xml:space="preserve">
+    <value>For types that are not supported by source-generated P/Invokes, the resulting P/Invoke will rely on the underlying runtime to marshal the specified type.</value>
+  </data>
+  <data name="TypeNotSupportedMessageParameter" xml:space="preserve">
+    <value>The type '{0}' is not supported by source-generated P/Invokes. The generated source will not handle marshalling of parameter '{1}'.</value>
+  </data>
+  <data name="TypeNotSupportedMessageReturn" xml:space="preserve">
+    <value>The type '{0}' is not supported by source-generated P/Invokes. The generated source will not handle marshalling of the return value for method '{1}'.</value>
+  </data>
+  <data name="TypeNotSupportedTitle" xml:space="preserve">
+    <value>Specified type is not supported by source-generated P/Invokes</value>
   </data>
   <data name="ValuePropertyMustHaveGetterDescription" xml:space="preserve">
     <value>The native type's 'Value' property must have a getter to support marshalling from managed to native.</value>

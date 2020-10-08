@@ -101,7 +101,7 @@ namespace DllImportGenerator.UnitTests
             TestUtils.AssertPreSourceGeneratorCompilation(comp);
 
             var newComp = TestUtils.RunGenerators(comp, out var generatorDiags, new Microsoft.Interop.DllImportGenerator());
-            Assert.Empty(generatorDiags);
+            Assert.All(generatorDiags, d => Assert.NotEqual(DiagnosticSeverity.Error, d.Severity));
 
             var newCompDiags = newComp.GetDiagnostics();
             Assert.Empty(newCompDiags);
