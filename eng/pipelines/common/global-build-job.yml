@@ -10,6 +10,7 @@ parameters:
   variables: []
   timeoutInMinutes: ''
   pool: ''
+  platform: ''
   condition: true
   isOfficialBuild: false
   runtimeFlavor: 'coreclr'
@@ -93,6 +94,7 @@ jobs:
           runtimeFlavor: ${{ parameters.runtimeFlavor }}
           helixQueues: ${{ parameters.helixQueues }}
           nameSuffix: ${{ parameters.nameSuffix }}
+          platform: ${{ parameters.platform }}
           ${{ insert }}: ${{ parameters.extraStepsParameters }}
 
     - task: PublishBuildArtifacts@1
