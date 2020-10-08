@@ -7,8 +7,7 @@ steps:
   inputs:
     SourceFolder: '$(Build.SourcesDirectory)/artifacts/packages/$(_BuildConfig)'
     Contents: |
-      Shipping/**/*
-      NonShipping/**/*
+      Shipping/**/*ILCompiler*
     TargetFolder: '$(Build.StagingDirectory)/UnsignedArtifacts/${{ parameters.name }}'
     CleanTargetFolder: true
 
