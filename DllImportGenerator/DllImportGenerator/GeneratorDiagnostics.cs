@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 using Microsoft.CodeAnalysis;
@@ -7,7 +8,42 @@ using Microsoft.CodeAnalysis;
 
 namespace Microsoft.Interop
 {
-    public static class GeneratorDiagnostics
+    internal static class DiagnosticExtensions
+    {
+        public static Diagnostic CreateDiagnostic(
+            this ISymbol symbol,
+            DiagnosticDescriptor descriptor,
+            params object[] args)
+        {
+            IEnumerable<Location> locationsInSource = symbol.Locations.Where(l => l.IsInSource);
+            if (!locationsInSource.Any())
+                return Diagnostic.Create(descriptor, Location.None, args);
+
+            return Diagnostic.Create(
+                descriptor,
+                location: locationsInSource.First(),
+                additionalLocations: locationsInSource.Skip(1),
+                messageArgs: args);
+        }
+
+        public static Diagnostic CreateDiagnostic(
+            this AttributeData attributeData,
+            DiagnosticDescriptor descriptor,
+            params object[] args)
+        {
+            SyntaxReference? syntaxReference = attributeData.ApplicationSyntaxReference;
+            Location location = syntaxReference is not null
+                ? syntaxReference.GetSyntax().GetLocation()
+                : Location.None;
+
+            return Diagnostic.Create(
+                descriptor,
+                location: location.IsInSource ? location : Location.None,
+                messageArgs: args);
+        }
+    }
+
+    internal class GeneratorDiagnostics
     {
         private class Ids
         {
@@ -38,6 +74,26 @@ namespace Microsoft.Interop
                 isEnabledByDefault: true,
                 description: GetResourceString(Resources.TypeNotSupportedDescription));
 
+        public readonly static DiagnosticDescriptor ParameterConfigurationNotSupported =
+            new DiagnosticDescriptor(
+                Ids.ConfigurationNotSupported,
+                GetResourceString(nameof(Resources.ConfigurationNotSupportedTitle)),
+                GetResourceString(nameof(Resources.ConfigurationNotSupportedMessageParameter)),
+                Category,
+                DiagnosticSeverity.Error,
+                isEnabledByDefault: true,
+                description: GetResourceString(Resources.ConfigurationNotSupportedDescription));
+
+        public readonly static DiagnosticDescriptor ReturnConfigurationNotSupported =
+            new DiagnosticDescriptor(
+                Ids.ConfigurationNotSupported,
+                GetResourceString(nameof(Resources.ConfigurationNotSupportedTitle)),
+                GetResourceString(nameof(Resources.ConfigurationNotSupportedMessageReturn)),
+                Category,
+                DiagnosticSeverity.Error,
+                isEnabledByDefault: true,
+                description: GetResourceString(Resources.ConfigurationNotSupportedDescription));
+
         public readonly static DiagnosticDescriptor ConfigurationNotSupported =
             new DiagnosticDescriptor(
                 Ids.ConfigurationNotSupported,
@@ -48,20 +104,63 @@ namespace Microsoft.Interop
                 isEnabledByDefault: true,
                 description: GetResourceString(Resources.ConfigurationNotSupportedDescription));
 
-        public static Diagnostic CreateDiagnostic(
-            this ISymbol symbol,
-            DiagnosticDescriptor descriptor,
-            params object[] args)
-        {
-            IEnumerable<Location> locationsInSource = symbol.Locations.Where(l => l.IsInSource);
-            if (!locationsInSource.Any())
-                return Diagnostic.Create(descriptor, Location.None, args);
+        private readonly GeneratorExecutionContext context;
 
-            return Diagnostic.Create(
-                descriptor,
-                location: locationsInSource.First(),
-                additionalLocations: locationsInSource.Skip(1),
-                messageArgs: args);
+        public GeneratorDiagnostics(GeneratorExecutionContext context)
+        {
+            this.context = context;
+        }
+
+        public void ReportMarshallingNotSupported(
+            IMethodSymbol method,
+            TypePositionInfo info)
+        {
+            if (info.MarshallingAttributeInfo != null && info.MarshallingAttributeInfo is MarshalAsInfo)
+            {
+                // Report that the specified marshalling configuration is not supported.
+                // We don't forward marshalling attributes, so this is reported differently
+                // than when there is no attribute and the type itself is not supported.
+                if (info.IsManagedReturnPosition)
+                {
+                    this.context.ReportDiagnostic(
+                        method.CreateDiagnostic(
+                            GeneratorDiagnostics.ReturnConfigurationNotSupported,
+                            nameof(System.Runtime.InteropServices.MarshalAsAttribute),
+                            method.Name));
+                }
+                else
+                {
+                    Debug.Assert(info.ManagedIndex <= method.Parameters.Length);
+                    IParameterSymbol paramSymbol = method.Parameters[info.ManagedIndex];
+                    this.context.ReportDiagnostic(
+                        paramSymbol.CreateDiagnostic(
+                            GeneratorDiagnostics.ParameterConfigurationNotSupported,
+                            nameof(System.Runtime.InteropServices.MarshalAsAttribute),
+                            paramSymbol.Name));
+                }
+            }
+            else
+            {
+                // Report that the type is not supported
+                if (info.IsManagedReturnPosition)
+                {
+                    this.context.ReportDiagnostic(
+                        method.CreateDiagnostic(
+                            GeneratorDiagnostics.ReturnTypeNotSupported,
+                            method.ReturnType.ToDisplayString(),
+                            method.Name));
+                }
+                else
+                {
+                    Debug.Assert(info.ManagedIndex <= method.Parameters.Length);
+                    IParameterSymbol paramSymbol = method.Parameters[info.ManagedIndex];
+                    this.context.ReportDiagnostic(
+                        paramSymbol.CreateDiagnostic(
+                            GeneratorDiagnostics.ParameterTypeNotSupported,
+                            paramSymbol.Type.ToDisplayString(),
+                            paramSymbol.Name));
+                }
+            }
         }
 
         private static LocalizableResourceString GetResourceString(string resourceName)

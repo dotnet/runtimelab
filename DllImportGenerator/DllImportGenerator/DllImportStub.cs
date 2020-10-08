@@ -101,12 +101,11 @@ namespace Microsoft.Interop
             IMethodSymbol method,
             GeneratedDllImportData dllImportData,
             Compilation compilation,
+            GeneratorDiagnostics diagnostics,
             CancellationToken token = default)
         {
             // Cancel early if requested
             token.ThrowIfCancellationRequested();
-
-            var diagnostics = new List<Diagnostic>();
 
             // Determine the namespace
             string stubTypeNamespace = null;
@@ -164,9 +163,8 @@ namespace Microsoft.Interop
             }
 
             // Generate stub code
-            var stubGenerator = new StubCodeGenerator(method, paramsTypeInfo, retTypeInfo);
+            var stubGenerator = new StubCodeGenerator(method, paramsTypeInfo, retTypeInfo, diagnostics);
             var (code, dllImport) = stubGenerator.GenerateSyntax();
-            diagnostics.AddRange(stubGenerator.Diagnostics);
 
             return new DllImportStub()
             {
@@ -176,7 +174,6 @@ namespace Microsoft.Interop
                 StubContainingTypes = containingTypes,
                 StubCode = code,
                 DllImportDeclaration = dllImport,
-                Diagnostics = diagnostics,
             };
         }
     }

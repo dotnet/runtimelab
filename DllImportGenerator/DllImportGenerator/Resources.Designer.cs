@@ -97,7 +97,7 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Source-generated P/Invokes will ignore any configuration that is not supported. If the specified configuration is required, use a regular `DllImport` instead.
+        ///   Looks up a localized string similar to Source-generated P/Invokes will ignore any configuration that is not supported..
         /// </summary>
         internal static string ConfigurationNotSupportedDescription {
             get {
@@ -106,11 +106,29 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The &apos;{0}&apos; configuration is not supported by source-generated P/Invokes. The generated source will ignore the specified configuration..
+        ///   Looks up a localized string similar to The &apos;{0}&apos; configuration is not supported by source-generated P/Invokes. If the specified configuration is required, use a regular `DllImport` instead..
         /// </summary>
         internal static string ConfigurationNotSupportedMessage {
             get {
                 return ResourceManager.GetString("ConfigurationNotSupportedMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The specified &apos;{0}&apos; configuration for parameter &apos;{1}&apos; is not supported by source-generated P/Invokes. If the specified configuration is required, use a regular `DllImport` instead..
+        /// </summary>
+        internal static string ConfigurationNotSupportedMessageParameter {
+            get {
+                return ResourceManager.GetString("ConfigurationNotSupportedMessageParameter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The specified &apos;{0}&apos; configuration for the return value of method &apos;{1}&apos; is not supported by source-generated P/Invokes. If the specified configuration is required, use a regular `DllImport` instead..
+        /// </summary>
+        internal static string ConfigurationNotSupportedMessageReturn {
+            get {
+                return ResourceManager.GetString("ConfigurationNotSupportedMessageReturn", resourceCulture);
             }
         }
         
@@ -286,7 +304,7 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The type &apos;{0}&apos; is not supported by source-generated P/Invokes. The generated source will not handle marshalling of the return value for method &apos;{1}&apos;..
+        ///   Looks up a localized string similar to The type &apos;{0}&apos; is not supported by source-generated P/Invokes. The generated source will not handle marshalling of the return value of method &apos;{1}&apos;..
         /// </summary>
         internal static string TypeNotSupportedMessageReturn {
             get {

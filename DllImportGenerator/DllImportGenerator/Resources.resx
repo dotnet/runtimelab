@@ -130,10 +130,16 @@
     <value>Type '{0}' is marked with 'BlittableTypeAttribute' and 'NativeMarshallingAttribute'. A type can only have one of these two attributes.</value>
   </data>
   <data name="ConfigurationNotSupportedDescription" xml:space="preserve">
-    <value>Source-generated P/Invokes will ignore any configuration that is not supported. If the specified configuration is required, use a regular `DllImport` instead</value>
+    <value>Source-generated P/Invokes will ignore any configuration that is not supported.</value>
   </data>
   <data name="ConfigurationNotSupportedMessage" xml:space="preserve">
-    <value>The '{0}' configuration is not supported by source-generated P/Invokes. The generated source will ignore the specified configuration.</value>
+    <value>The '{0}' configuration is not supported by source-generated P/Invokes. If the specified configuration is required, use a regular `DllImport` instead.</value>
+  </data>
+  <data name="ConfigurationNotSupportedMessageParameter" xml:space="preserve">
+    <value>The specified '{0}' configuration for parameter '{1}' is not supported by source-generated P/Invokes. If the specified configuration is required, use a regular `DllImport` instead.</value>
+  </data>
+  <data name="ConfigurationNotSupportedMessageReturn" xml:space="preserve">
+    <value>The specified '{0}' configuration for the return value of method '{1}' is not supported by source-generated P/Invokes. If the specified configuration is required, use a regular `DllImport` instead.</value>
   </data>
   <data name="ConfigurationNotSupportedTitle" xml:space="preserve">
     <value>Specified configuration is not supported by source-generated P/Invokes.</value>
@@ -193,7 +199,7 @@
     <value>The type '{0}' is not supported by source-generated P/Invokes. The generated source will not handle marshalling of parameter '{1}'.</value>
   </data>
   <data name="TypeNotSupportedMessageReturn" xml:space="preserve">
-    <value>The type '{0}' is not supported by source-generated P/Invokes. The generated source will not handle marshalling of the return value for method '{1}'.</value>
+    <value>The type '{0}' is not supported by source-generated P/Invokes. The generated source will not handle marshalling of the return value of method '{1}'.</value>
   </data>
   <data name="TypeNotSupportedTitle" xml:space="preserve">
     <value>Specified type is not supported by source-generated P/Invokes</value>
