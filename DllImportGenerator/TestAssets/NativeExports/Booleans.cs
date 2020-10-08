@@ -58,5 +58,11 @@ namespace NativeExports
 
             return expected == actual ? 1 : 0;
         }
+
+        [UnmanagedCallersOnly(EntryPoint = "return_uint_as")]
+        public static uint ReturnUIntAs(uint input)
+        {
+            return input;
+        }
     }
 }

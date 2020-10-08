@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 using Xunit;
 
@@ -41,6 +42,18 @@ namespace DllImportGenerator.IntegrationTests
         public static partial bool ValidateWinBoolValue(
             int expected,
             [MarshalAs(UnmanagedType.Bool)] bool actual);
+
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_uint_as")]
+        [return: MarshalAs(UnmanagedType.U1)]
+        public static partial bool ReturnUIntAsByteBool(uint input);
+
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_uint_as")]
+        [return: MarshalAs(UnmanagedType.VariantBool)]
+        public static partial bool ReturnUIntAsVariantBool(uint input);
+
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_uint_as")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static partial bool ReturnUIntAsWinBool(uint input);
     }
 
     public class BooleanTests
@@ -101,6 +114,54 @@ namespace DllImportGenerator.IntegrationTests
             Assert.True(NativeExportsNE.ValidateWinBoolValue(0, false));
             Assert.False(NativeExportsNE.ValidateWinBoolValue(0, true));
             Assert.False(NativeExportsNE.ValidateWinBoolValue(1, false));
+        }
+
+        public static IEnumerable<object[]> ByteBoolReturns()
+        {
+            yield return new object[] { 0, false };
+            yield return new object[] { 1, true };
+            yield return new object[] { 37, true };
+            yield return new object[] { 0xff, true };
+            yield return new object[] { 0xffffff00, false };
+        }
+
+        [Theory]
+        [MemberData(nameof(ByteBoolReturns))]
+        public void ValidateByteBoolReturns(uint value, bool expected)
+        {
+            Assert.Equal(expected, NativeExportsNE.ReturnUIntAsByteBool(value));
+        }
+
+        public static IEnumerable<object[]> VariantBoolReturns()
+        {
+            yield return new object[] { 0, false };
+            yield return new object[] { 1, false };
+            yield return new object[] { 0xffff, true };
+            yield return new object[] { 0xffffffff, true };
+            yield return new object[] { 0xffff0000, false };
+        }
+
+        [Theory]
+        [MemberData(nameof(VariantBoolReturns))]
+        public void ValidateVariantBoolReturns(uint value, bool expected)
+        {
+            Assert.Equal(expected, NativeExportsNE.ReturnUIntAsVariantBool(value));
+        }
+
+        public static IEnumerable<object[]> WinBoolReturns()
+        {
+            yield return new object[] { 0, false };
+            yield return new object[] { 1, true};
+            yield return new object[] { 37, true };
+            yield return new object[] { 0xffffffff, true };
+            yield return new object[] { 0x80000000, true };
+        }
+
+        [Theory]
+        [MemberData(nameof(WinBoolReturns))]
+        public void ValidateWinBoolReturns(uint value, bool expected)
+        {
+            Assert.Equal(expected, NativeExportsNE.ReturnUIntAsWinBool(value));
         }
     }
 }

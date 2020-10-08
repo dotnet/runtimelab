@@ -13,12 +13,14 @@ namespace Microsoft.Interop
         private readonly PredefinedTypeSyntax _nativeType;
         private readonly int _trueValue;
         private readonly int _falseValue;
+        private readonly bool _compareToTrue;
 
-        protected BoolMarshallerBase(PredefinedTypeSyntax nativeType, int trueValue, int falseValue)
+        protected BoolMarshallerBase(PredefinedTypeSyntax nativeType, int trueValue, int falseValue, bool compareToTrue)
         {
             _nativeType = nativeType;
             _trueValue = trueValue;
             _falseValue = falseValue;
+            _compareToTrue = compareToTrue;
         }
 
         public TypeSyntax AsNativeType(TypePositionInfo info)
@@ -82,15 +84,19 @@ namespace Microsoft.Interop
                 case StubCodeContext.Stage.Unmarshal:
                     if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
                     {
-                        // <managedIdentifier> = <nativeIdentifier> != 0;
+                        // <managedIdentifier> = <nativeIdentifier> == _trueValue;
+                        // <managedIdentifier> = <nativeIdentifier> != _falseValue;
+                        var binaryOp = _compareToTrue ? SyntaxKind.EqualsExpression : SyntaxKind.NotEqualsExpression;
+                        var comparand = _compareToTrue ? _trueValue : _falseValue;
+
                         yield return ExpressionStatement(
                             AssignmentExpression(
                                 SyntaxKind.SimpleAssignmentExpression,
                                 IdentifierName(managedIdentifier),
                                 BinaryExpression(
-                                    SyntaxKind.NotEqualsExpression,
+                                    binaryOp,
                                     IdentifierName(nativeIdentifier),
-                                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(_falseValue)))));
+                                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(comparand)))));
                     }
                     break;
                 default:
@@ -114,7 +120,7 @@ namespace Microsoft.Interop
     internal class ByteBoolMarshaller : BoolMarshallerBase
     {
         public ByteBoolMarshaller()
-            : base(PredefinedType(Token(SyntaxKind.ByteKeyword)), trueValue: 1, falseValue: 0)
+            : base(PredefinedType(Token(SyntaxKind.ByteKeyword)), trueValue: 1, falseValue: 0, compareToTrue: false)
         {
         }
     }
@@ -128,7 +134,7 @@ namespace Microsoft.Interop
     internal class WinBoolMarshaller : BoolMarshallerBase
     {
         public WinBoolMarshaller()
-            : base(PredefinedType(Token(SyntaxKind.IntKeyword)), trueValue: 1, falseValue: 0)
+            : base(PredefinedType(Token(SyntaxKind.IntKeyword)), trueValue: 1, falseValue: 0, compareToTrue: false)
         {
         }
     }
@@ -141,7 +147,7 @@ namespace Microsoft.Interop
         private const short VARIANT_TRUE = -1;
         private const short VARIANT_FALSE = 0;
         public VariantBoolMarshaller()
-            : base(PredefinedType(Token(SyntaxKind.ShortKeyword)), trueValue: VARIANT_TRUE, falseValue: VARIANT_FALSE)
+            : base(PredefinedType(Token(SyntaxKind.ShortKeyword)), trueValue: VARIANT_TRUE, falseValue: VARIANT_FALSE, compareToTrue: true)
         {
         }
     }
