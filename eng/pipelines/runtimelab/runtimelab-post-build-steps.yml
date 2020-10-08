@@ -3,6 +3,7 @@ parameters:
   archType: ''
   osGroup: ''
   osSubgroup: ''
+  platform: ''
   uploadTests: false
   smokeTestsOnly: true
   runSingleFileTests: true
@@ -33,4 +34,4 @@ steps:
   - ${{ if eq(parameters.uploadUnsignedArtifacts, true) }}:
     - template: /eng/pipelines/common/upload-unsigned-artifacts-step.yml
       parameters:
-        name: packages
+        name: ${{ parameters.platform }}
