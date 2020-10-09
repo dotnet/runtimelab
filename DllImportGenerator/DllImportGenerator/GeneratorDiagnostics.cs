@@ -43,6 +43,9 @@ namespace Microsoft.Interop
         }
     }
 
+    /// <summary>
+    /// Class for reporting diagnostics in the DLL import generator
+    /// </summary>
     public class GeneratorDiagnostics
     {
         private class Ids
@@ -121,6 +124,12 @@ namespace Microsoft.Interop
             this.context = context;
         }
 
+        /// <summary>
+        /// Report diagnostic for configuration that is not supported by the DLL import source generator
+        /// </summary>
+        /// <param name="attributeData">Attribute specifying the unsupported configuration</param>
+        /// <param name="configurationName">Name of the configuration</param>
+        /// <param name="unsupportedValue">[Optiona] Unsupported configuration value</param>
         public void ReportConfigurationNotSupported(
             AttributeData attributeData,
             string configurationName,
@@ -143,6 +152,11 @@ namespace Microsoft.Interop
             }
         }
 
+        /// <summary>
+        /// Report diagnostic for marshalling of a parameter/return that is not supported
+        /// </summary>
+        /// <param name="method">Method with the parameter/return</param>
+        /// <param name="info">Type info for the parameter/return</param>
         internal void ReportMarshallingNotSupported(
             IMethodSymbol method,
             TypePositionInfo info)

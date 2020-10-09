@@ -70,7 +70,7 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Type &apos;{0}&apos; is marked with &apos;BlittableTypeAttribute&apos; but is not blittable..
+        ///   Looks up a localized string similar to Type &apos;{0}&apos; is marked with &apos;BlittableTypeAttribute&apos; but is not blittable.
         /// </summary>
         internal static string BlittableTypeMustBeBlittableMessage {
             get {
@@ -160,7 +160,7 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The dereferenced type of the return type of the &apos;GetPinnableReference&apos; method must be blittable..
+        ///   Looks up a localized string similar to The dereferenced type of the return type of the &apos;GetPinnableReference&apos; method must be blittable.
         /// </summary>
         internal static string GetPinnableReferenceReturnTypeBlittableMessage {
             get {
@@ -178,7 +178,7 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Type &apos;{0}&apos; has a &apos;GetPinnableReference&apos; method but its native type does not support marshalling in scenarios where pinning is impossible..
+        ///   Looks up a localized string similar to Type &apos;{0}&apos; has a &apos;GetPinnableReference&apos; method but its native type does not support marshalling in scenarios where pinning is impossible.
         /// </summary>
         internal static string GetPinnableReferenceShouldSupportAllocatingMarshallingFallbackMessage {
             get {
@@ -196,7 +196,7 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The native type &apos;{0}&apos; for the type &apos;{1}&apos; is not blittable..
+        ///   Looks up a localized string similar to The native type &apos;{0}&apos; for the type &apos;{1}&apos; is not blittable.
         /// </summary>
         internal static string NativeTypeMustBeBlittableMessage {
             get {
@@ -214,7 +214,7 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The native type for the type &apos;{0}&apos; is null..
+        ///   Looks up a localized string similar to The native type for the type &apos;{0}&apos; is null.
         /// </summary>
         internal static string NativeTypeMustBeNonNullMessage {
             get {
@@ -232,7 +232,7 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The native type &apos;{0}&apos; must be pointer sized because the managed type &apos;{1}&apos; has a &apos;GetPinnableReference&apos; method..
+        ///   Looks up a localized string similar to The native type &apos;{0}&apos; must be pointer sized because the managed type &apos;{1}&apos; has a &apos;GetPinnableReference&apos; method.
         /// </summary>
         internal static string NativeTypeMustBePointerSizedMessage {
             get {
@@ -250,7 +250,7 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The native type &apos;{0}&apos; must be a value type and have a constructor that takes one parameter of type &apos;{1}&apos; or a parameterless instance method named &apos;ToManaged&apos; that returns &apos;{1}&apos;..
+        ///   Looks up a localized string similar to The native type &apos;{0}&apos; must be a value type and have a constructor that takes one parameter of type &apos;{1}&apos; or a parameterless instance method named &apos;ToManaged&apos; that returns &apos;{1}&apos;.
         /// </summary>
         internal static string NativeTypeMustHaveRequiredShapeMessage {
             get {
@@ -268,7 +268,7 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The native type &apos;{0}&apos; must have a &apos;public const int StackBufferSize&apos; field that specifies the size of the stack buffer because it has a constructor that takes a stack-allocated Span&lt;byte&gt;..
+        ///   Looks up a localized string similar to The native type &apos;{0}&apos; must have a &apos;public const int StackBufferSize&apos; field that specifies the size of the stack buffer because it has a constructor that takes a stack-allocated Span&lt;byte&gt;.
         /// </summary>
         internal static string StackallocConstructorMustHaveStackBufferSizeConstantMessage {
             get {
@@ -286,7 +286,7 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Native type &apos;{0}&apos; has a stack-allocating constructor does not support marshalling in scenarios where stack allocation is impossible..
+        ///   Looks up a localized string similar to Native type &apos;{0}&apos; has a stack-allocating constructor does not support marshalling in scenarios where stack allocation is impossible.
         /// </summary>
         internal static string StackallocMarshallingShouldSupportAllocatingMarshallingFallbackMessage {
             get {
@@ -340,7 +340,7 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The &apos;Value&apos; property on the native type &apos;{0}&apos; must have a getter..
+        ///   Looks up a localized string similar to The &apos;Value&apos; property on the native type &apos;{0}&apos; must have a getter.
         /// </summary>
         internal static string ValuePropertyMustHaveGetterMessage {
             get {
@@ -358,7 +358,7 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The &apos;Value&apos; property on the native type &apos;{0}&apos; must have a setter..
+        ///   Looks up a localized string similar to The &apos;Value&apos; property on the native type &apos;{0}&apos; must have a setter.
         /// </summary>
         internal static string ValuePropertyMustHaveSetterMessage {
             get {
