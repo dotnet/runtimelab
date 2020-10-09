@@ -46,6 +46,11 @@ namespace System.Net.Quic
             _provider = implementationProvider.CreateConnection(options);
         }
 
+        public QuicConnection(QuicClientConnectionOptions options)
+            : this(QuicImplementationProviders.Default, options)
+        {
+        }
+
         internal QuicConnection(QuicConnectionProvider provider)
         {
             _provider = provider;
