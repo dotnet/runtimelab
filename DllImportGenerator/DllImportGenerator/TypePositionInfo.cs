@@ -143,7 +143,10 @@ namespace Microsoft.Interop
 
             static MarshalAsInfo CreateMarshalAsInfo(AttributeData attrData, GeneratorDiagnostics diagnostics)
             {
-                UnmanagedType unmanagedType = (UnmanagedType)attrData.ConstructorArguments[0].Value!;
+                object unmanagedTypeObj = attrData.ConstructorArguments[0].Value!;
+                UnmanagedType unmanagedType = unmanagedTypeObj is short
+                    ? (UnmanagedType)(short)unmanagedTypeObj
+                    : (UnmanagedType)unmanagedTypeObj;
                 if (!Enum.IsDefined(typeof(UnmanagedType), unmanagedType))
                 {
                     diagnostics.ReportConfigurationNotSupported(attrData, nameof(UnmanagedType), unmanagedType.ToString());
@@ -165,7 +168,7 @@ namespace Microsoft.Interop
                         case nameof(MarshalAsAttribute.SafeArraySubType):
                         case nameof(MarshalAsAttribute.SafeArrayUserDefinedSubType):
                         case nameof(MarshalAsAttribute.IidParameterIndex):
-                            diagnostics.ReportConfigurationNotSupported(attrData, namedArg.Key);
+                            diagnostics.ReportConfigurationNotSupported(attrData, $"{attrData.AttributeClass!.Name}{Type.Delimiter}{namedArg.Key}");
                             break;
                         case nameof(MarshalAsAttribute.MarshalTypeRef):
                         case nameof(MarshalAsAttribute.MarshalType):
