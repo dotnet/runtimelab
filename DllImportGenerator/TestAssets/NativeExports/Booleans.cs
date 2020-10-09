@@ -21,5 +21,11 @@ namespace NativeExports
         {
             return input;
         }
+
+        [UnmanagedCallersOnly(EntryPoint = "bool_return_as_refuint")]
+        public static void ReturnUIntAsRefUInt(uint input, uint* res)
+        {
+            *res = input;
+        }
     }
 }

@@ -97,7 +97,7 @@ namespace Microsoft.Interop
                     return true;
 
                 case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: null }:
-                    generator = WinBool; // [Compat]
+                    generator = WinBool; // [Compat] Matching the default for the built-in runtime marshallers.
                     return true;
                 case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I1 or UnmanagedType.U1 } }:
                     generator = ByteBool;

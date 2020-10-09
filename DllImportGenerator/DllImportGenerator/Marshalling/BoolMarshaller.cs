@@ -85,6 +85,7 @@ namespace Microsoft.Interop
                     if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
                     {
                         // <managedIdentifier> = <nativeIdentifier> == _trueValue;
+                        //   or
                         // <managedIdentifier> = <nativeIdentifier> != _falseValue;
                         var (binaryOp, comparand) = _compareToTrue ? (SyntaxKind.EqualsExpression, _trueValue) : (SyntaxKind.NotEqualsExpression, _falseValue);
 
@@ -112,9 +113,9 @@ namespace Microsoft.Interop
     /// <remarks>
     /// This boolean type is the natural size of a boolean in the CLR (<see href="https://www.ecma-international.org/publications/standards/Ecma-335.htm">ECMA-335 (III.1.1.2)</see>).
     ///
-    /// This is also typically compatible with <see href="https://en.cppreference.com/w/c/types/boolean">C99</see>
-    /// and <see href="https://en.cppreference.com/w/cpp/language/types">C++</see>, but that is implementation defined
-    /// therefore consulting your compiler specification is encouraged.
+    /// This is typically compatible with <see href="https://en.cppreference.com/w/c/types/boolean">C99</see>
+    /// and <see href="https://en.cppreference.com/w/cpp/language/types">C++</see>, but those is implementation defined.
+    /// Consult your compiler specification.
     /// </remarks>
     internal class ByteBoolMarshaller : BoolMarshallerBase
     {

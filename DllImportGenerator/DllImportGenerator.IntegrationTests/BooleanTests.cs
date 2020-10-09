@@ -36,6 +36,24 @@ namespace DllImportGenerator.IntegrationTests
         [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "bool_return_as_uint")]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static partial bool ReturnUIntAsWinBool(uint input);
+
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "bool_return_as_refuint")]
+        public static partial void ReturnUIntAsRefByteBool(uint input, [MarshalAs(UnmanagedType.U1)] ref bool res);
+
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "bool_return_as_refuint")]
+        public static partial void ReturnUIntAsOutByteBool(uint input, [MarshalAs(UnmanagedType.U1)] out bool res);
+
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "bool_return_as_refuint")]
+        public static partial void ReturnUIntAsRefVariantBool(uint input, [MarshalAs(UnmanagedType.VariantBool)] ref bool res);
+
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "bool_return_as_refuint")]
+        public static partial void ReturnUIntAsOutVariantBool(uint input, [MarshalAs(UnmanagedType.VariantBool)] out bool res);
+
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "bool_return_as_refuint")]
+        public static partial void ReturnUIntAsRefWinBool(uint input, [MarshalAs(UnmanagedType.Bool)] ref bool res);
+
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "bool_return_as_refuint")]
+        public static partial void ReturnUIntAsOutWinBool(uint input, [MarshalAs(UnmanagedType.Bool)] out bool res);
     }
 
     public class BooleanTests
@@ -61,53 +79,62 @@ namespace DllImportGenerator.IntegrationTests
             Assert.Equal((uint)0, NativeExportsNE.ReturnWinBoolAsUInt(false));
         }
 
-        public static IEnumerable<object[]> ByteBoolReturns()
-        {
-            yield return new object[] { 0, false };
-            yield return new object[] { 1, true };
-            yield return new object[] { 37, true };
-            yield return new object[] { 0xff, true };
-            yield return new object[] { 0xffffff00, false };
-        }
-
         [Theory]
-        [MemberData(nameof(ByteBoolReturns))]
+        [InlineData(new object[] { 0, false })]
+        [InlineData(new object[] { 1, true })]
+        [InlineData(new object[] { 37, true })]
+        [InlineData(new object[] { 0xff, true })]
+        [InlineData(new object[] { 0xffffff00, false })]
         public void ValidateByteBoolReturns(uint value, bool expected)
         {
             Assert.Equal(expected, NativeExportsNE.ReturnUIntAsByteBool(value));
-        }
 
-        public static IEnumerable<object[]> VariantBoolReturns()
-        {
-            yield return new object[] { 0, false };
-            yield return new object[] { 1, false };
-            yield return new object[] { 0xff, false };
-            yield return new object[] { VARIANT_TRUE, true };
-            yield return new object[] { 0xffffffff, true };
-            yield return new object[] { 0xffff0000, false };
+            bool result = !expected;
+            NativeExportsNE.ReturnUIntAsRefByteBool(value, ref result);
+            Assert.Equal(expected, result);
+
+            result = !expected;
+            NativeExportsNE.ReturnUIntAsOutByteBool(value, out result);
+            Assert.Equal(expected, result);
         }
 
         [Theory]
-        [MemberData(nameof(VariantBoolReturns))]
+        [InlineData(new object[] { 0, false })]
+        [InlineData(new object[] { 1, false })]
+        [InlineData(new object[] { 0xff, false })]
+        [InlineData(new object[] { VARIANT_TRUE, true })]
+        [InlineData(new object[] { 0xffffffff, true })]
+        [InlineData(new object[] { 0xffff0000, false })]
         public void ValidateVariantBoolReturns(uint value, bool expected)
         {
             Assert.Equal(expected, NativeExportsNE.ReturnUIntAsVariantBool(value));
-        }
 
-        public static IEnumerable<object[]> WinBoolReturns()
-        {
-            yield return new object[] { 0, false };
-            yield return new object[] { 1, true};
-            yield return new object[] { 37, true };
-            yield return new object[] { 0xffffffff, true };
-            yield return new object[] { 0x80000000, true };
+            bool result = !expected;
+            NativeExportsNE.ReturnUIntAsRefVariantBool(value, ref result);
+            Assert.Equal(expected, result);
+
+            result = !expected;
+            NativeExportsNE.ReturnUIntAsOutVariantBool(value, out result);
+            Assert.Equal(expected, result);
         }
 
         [Theory]
-        [MemberData(nameof(WinBoolReturns))]
+        [InlineData(new object[] { 0, false })]
+        [InlineData(new object[] { 1, true})]
+        [InlineData(new object[] { 37, true })]
+        [InlineData(new object[] { 0xffffffff, true })]
+        [InlineData(new object[] { 0x80000000, true })]
         public void ValidateWinBoolReturns(uint value, bool expected)
         {
             Assert.Equal(expected, NativeExportsNE.ReturnUIntAsWinBool(value));
+
+            bool result = !expected;
+            NativeExportsNE.ReturnUIntAsRefWinBool(value, ref result);
+            Assert.Equal(expected, result);
+
+            result = !expected;
+            NativeExportsNE.ReturnUIntAsOutWinBool(value, out result);
+            Assert.Equal(expected, result);
         }
     }
 }
