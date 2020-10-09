@@ -48,7 +48,7 @@ namespace Microsoft.Interop
     /// </summary>
     public class GeneratorDiagnostics
     {
-        private class Ids
+        public class Ids
         {
             public const string Prefix = "DLLIMPORTGEN";
             public const string TypeNotSupported = Prefix + "001";
@@ -63,7 +63,7 @@ namespace Microsoft.Interop
                 GetResourceString(nameof(Resources.TypeNotSupportedTitle)),
                 GetResourceString(nameof(Resources.TypeNotSupportedMessageParameter)),
                 Category,
-                DiagnosticSeverity.Warning,
+                DiagnosticSeverity.Error,
                 isEnabledByDefault: true,
                 description: GetResourceString(Resources.TypeNotSupportedDescription));
 
@@ -73,7 +73,7 @@ namespace Microsoft.Interop
                 GetResourceString(nameof(Resources.TypeNotSupportedTitle)),
                 GetResourceString(nameof(Resources.TypeNotSupportedMessageReturn)),
                 Category,
-                DiagnosticSeverity.Warning,
+                DiagnosticSeverity.Error,
                 isEnabledByDefault: true,
                 description: GetResourceString(Resources.TypeNotSupportedDescription));
 
