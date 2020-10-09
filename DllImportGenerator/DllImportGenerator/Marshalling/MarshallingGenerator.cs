@@ -53,6 +53,9 @@ namespace Microsoft.Interop
         /// <param name="info">Object to marshal</param>
         /// <param name="context">Code generation context</param>
         /// <returns>If the marshaller uses an identifier for the native value, true; otherwise, false.</returns>
+        /// <remarks>
+        /// <see cref="StubCodeContext.CurrentStage" /> of <paramref name="context"/> may not be valid.
+        /// </remarks>
         bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context);
     }
 

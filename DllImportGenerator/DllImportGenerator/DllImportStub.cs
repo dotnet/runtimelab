@@ -49,8 +49,6 @@ namespace Microsoft.Interop
 
         public MethodDeclarationSyntax DllImportDeclaration { get; private set; }
 
-        public IEnumerable<Diagnostic> Diagnostics { get; private set; }
-
         /// <summary>
         /// Flags used to indicate members on GeneratedDllImport attribute.
         /// </summary>

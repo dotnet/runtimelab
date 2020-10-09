@@ -55,7 +55,6 @@ namespace Microsoft.Interop
         {
             Debug.Assert(retTypeInfo.IsNativeReturnPosition);
 
-            this.CurrentStage = Stages[0];
             this.stubMethod = stubMethod;
             this.diagnostics = generatorDiagnostics;
 
@@ -79,19 +78,6 @@ namespace Microsoft.Interop
             }
 
             this.retMarshaller = (retTypeInfo, retGenerator);
-        }
-
-        /// <summary>
-        /// Generate an identifier for the native return value and update the context with the new value
-        /// </summary>
-        /// <returns>Identifier for the native return value</returns>
-        public void GenerateReturnNativeIdentifier()
-        {
-            if (CurrentStage != Stage.Setup)
-                throw new InvalidOperationException();
-
-            // Update the native identifier for the return value
-            ReturnNativeIdentifier = $"{ReturnIdentifier}{GeneratedNativeIdentifierSuffix}";
         }
 
         public override (string managed, string native) GetIdentifiers(TypePositionInfo info)
@@ -119,13 +105,13 @@ namespace Microsoft.Interop
 
         public (BlockSyntax Code, MethodDeclarationSyntax DllImport) GenerateSyntax()
         {
-            this.CurrentStage = Stages[0];
             string dllImportName = stubMethod.Name + "__PInvoke__";
             var statements = new List<StatementSyntax>();
 
             if (retMarshaller.Generator.UsesNativeIdentifier(retMarshaller.TypeInfo, this))
             {
-                this.GenerateReturnNativeIdentifier();
+                // Update the native identifier for the return value
+                ReturnNativeIdentifier = $"{ReturnIdentifier}{GeneratedNativeIdentifierSuffix}";
             }
 
             foreach (var marshaller in paramMarshallers)
