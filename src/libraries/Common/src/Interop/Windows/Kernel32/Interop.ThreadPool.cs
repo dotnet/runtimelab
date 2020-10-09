@@ -8,10 +8,8 @@ internal static partial class Interop
 {
     internal static partial class Kernel32
     {
-        internal delegate void WorkCallback(IntPtr Instance, IntPtr Context, IntPtr Work);
-
         [DllImport(Libraries.Kernel32)]
-        internal static extern IntPtr CreateThreadpoolWork(IntPtr pfnwk, IntPtr pv, IntPtr pcbe);
+        internal static extern unsafe IntPtr CreateThreadpoolWork(delegate* unmanaged<IntPtr, IntPtr, IntPtr, void> pfnwk, IntPtr pv, IntPtr pcbe);
 
         [DllImport(Libraries.Kernel32)]
         internal static extern void SubmitThreadpoolWork(IntPtr pwk);
@@ -19,10 +17,8 @@ internal static partial class Interop
         [DllImport(Libraries.Kernel32)]
         internal static extern void CloseThreadpoolWork(IntPtr pwk);
 
-        internal delegate void WaitCallback(IntPtr Instance, IntPtr Context, IntPtr Wait, uint WaitResult);
-
         [DllImport(Libraries.Kernel32)]
-        internal static extern IntPtr CreateThreadpoolWait(IntPtr pfnwa, IntPtr pv, IntPtr pcbe);
+        internal static extern unsafe IntPtr CreateThreadpoolWait(delegate* unmanaged<IntPtr, IntPtr, IntPtr, uint, void> pfnwa, IntPtr pv, IntPtr pcbe);
 
         [DllImport(Libraries.Kernel32)]
         internal static extern void SetThreadpoolWait(IntPtr pwa, IntPtr h, IntPtr pftTimeout);

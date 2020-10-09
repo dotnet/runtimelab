@@ -188,7 +188,7 @@ namespace System.Threading
             }
         }
 
-        private bool CreateThread(GCHandle thisThreadHandle)
+        private unsafe bool CreateThread(GCHandle thisThreadHandle)
         {
             const int AllocationGranularity = 0x10000;  // 64 KiB
 
@@ -211,7 +211,7 @@ namespace System.Threading
 
             uint threadId;
             _osHandle = Interop.Kernel32.CreateThread(IntPtr.Zero, (IntPtr)stackSize,
-                AddrofIntrinsics.AddrOf<Interop.Kernel32.ThreadProc>(ThreadEntryPoint), (IntPtr)thisThreadHandle,
+                &ThreadEntryPoint, (IntPtr)thisThreadHandle,
                 Interop.Kernel32.CREATE_SUSPENDED | Interop.Kernel32.STACK_SIZE_PARAM_IS_A_RESERVATION,
                 out threadId);
 
@@ -230,7 +230,7 @@ namespace System.Threading
         /// <summary>
         /// This is an entry point for managed threads created by application
         /// </summary>
-        [UnmanagedCallersOnly(CallConvs = new Type[] { typeof(CallConvStdcall) })]
+        [UnmanagedCallersOnly]
         private static uint ThreadEntryPoint(IntPtr parameter)
         {
             StartThread(parameter);

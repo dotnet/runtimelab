@@ -111,7 +111,7 @@ namespace System
             return results;
 
             // Use a local, unsafe function since we cannot use `yield return` inside of an `unsafe` block
-            unsafe bool ParseEntry(IntPtr current, out string key, out string value)
+            static unsafe bool ParseEntry(IntPtr current, out string key, out string value)
             {
                 // Setup
                 key = null;

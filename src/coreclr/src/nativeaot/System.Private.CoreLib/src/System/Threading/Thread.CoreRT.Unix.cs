@@ -17,10 +17,10 @@ namespace System.Threading
 
         internal WaitSubsystem.ThreadWaitInfo WaitInfo => _waitInfo;
 
-        private void PlatformSpecificInitialize()
+        private unsafe void PlatformSpecificInitialize()
         {
             _waitInfo = new WaitSubsystem.ThreadWaitInfo(this);
-            RuntimeImports.RhSetThreadExitCallback(AddrofIntrinsics.AddrOf<Action>(OnThreadExit));
+            RuntimeImports.RhSetThreadExitCallback(&OnThreadExit);
         }
 
         // Platform-specific initialization of foreign threads, i.e. threads not created by Thread.Start
@@ -93,15 +93,14 @@ namespace System.Threading
             }
         }
 
-        private bool CreateThread(GCHandle thisThreadHandle)
+        private unsafe bool CreateThread(GCHandle thisThreadHandle)
         {
             // Create the Stop event before starting the thread to make sure
             // it is ready to be signaled at thread shutdown time.
             // This also avoids OOM after creating the thread.
             _stopped = new ManualResetEvent(false);
 
-            if (!Interop.Sys.RuntimeThread_CreateThread((IntPtr)_maxStackSize,
-                AddrofIntrinsics.AddrOf<Interop.Sys.ThreadProc>(ThreadEntryPoint), (IntPtr)thisThreadHandle))
+            if (!Interop.Sys.RuntimeThread_CreateThread((IntPtr)_maxStackSize, &ThreadEntryPoint, (IntPtr)thisThreadHandle))
             {
                 return false;
             }

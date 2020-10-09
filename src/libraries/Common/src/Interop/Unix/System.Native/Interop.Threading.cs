@@ -8,9 +8,7 @@ internal static partial class Interop
 {
     internal unsafe partial class Sys
     {
-        internal delegate IntPtr ThreadProc(IntPtr parameter);
-
         [DllImport(Libraries.SystemNative, EntryPoint = "SystemNative_RuntimeThread_CreateThread")]
-        internal static extern bool RuntimeThread_CreateThread(IntPtr stackSize, IntPtr startAddress, IntPtr parameter);
+        internal static extern unsafe bool RuntimeThread_CreateThread(IntPtr stackSize, delegate* unmanaged<IntPtr, IntPtr> startAddress, IntPtr parameter);
     }
 }
