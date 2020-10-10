@@ -30,7 +30,7 @@ namespace System.Threading
             get { return _handle; }
         }
 
-        public static ThreadPoolBoundHandle BindHandle(SafeHandle handle)
+        public static unsafe ThreadPoolBoundHandle BindHandle(SafeHandle handle)
         {
             if (handle == null)
                 throw new ArgumentNullException(nameof(handle));
@@ -38,8 +38,7 @@ namespace System.Threading
             if (handle.IsClosed || handle.IsInvalid)
                 throw new ArgumentException(SR.Argument_InvalidHandle, nameof(handle));
 
-            IntPtr callback = AddrofIntrinsics.AddrOf<Interop.NativeIoCompletionCallback>(OnNativeIOCompleted);
-            SafeThreadPoolIOHandle threadPoolHandle = Interop.Kernel32.CreateThreadpoolIo(handle, callback, IntPtr.Zero, IntPtr.Zero);
+            SafeThreadPoolIOHandle threadPoolHandle = Interop.Kernel32.CreateThreadpoolIo(handle, &OnNativeIOCompleted, IntPtr.Zero, IntPtr.Zero);
             if (threadPoolHandle.IsInvalid)
             {
                 int errorCode = Marshal.GetLastWin32Error();
@@ -160,7 +159,7 @@ namespace System.Threading
             return data;
         }
 
-        [UnmanagedCallersOnly(CallConvs = new Type[] { typeof(CallConvStdcall) })]
+        [UnmanagedCallersOnly]
         private static unsafe void OnNativeIOCompleted(IntPtr instance, IntPtr context, IntPtr overlappedPtr, uint ioResult, UIntPtr numberOfBytesTransferred, IntPtr ioPtr)
         {
             var wrapper = ThreadPoolCallbackWrapper.Enter();

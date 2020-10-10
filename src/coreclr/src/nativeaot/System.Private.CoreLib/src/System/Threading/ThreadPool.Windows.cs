@@ -29,7 +29,7 @@ namespace System.Threading
         // Pointer to the TP_WAIT structure
         private IntPtr _tpWait;
 
-        internal RegisteredWaitHandle(SafeWaitHandle waitHandle, _ThreadPoolWaitOrTimerCallback callbackHelper,
+        internal unsafe RegisteredWaitHandle(SafeWaitHandle waitHandle, _ThreadPoolWaitOrTimerCallback callbackHelper,
             uint millisecondsTimeout, bool repeating)
         {
             _lock = new Lock();
@@ -45,8 +45,7 @@ namespace System.Threading
             // Allocate _gcHandle and _tpWait as the last step and make sure they are never leaked
             _gcHandle = GCHandle.Alloc(this);
 
-            _tpWait = Interop.Kernel32.CreateThreadpoolWait(
-                AddrofIntrinsics.AddrOf<Interop.Kernel32.WaitCallback>(RegisteredWaitCallback), (IntPtr)_gcHandle, IntPtr.Zero);
+            _tpWait = Interop.Kernel32.CreateThreadpoolWait(&RegisteredWaitCallback, (IntPtr)_gcHandle, IntPtr.Zero);
 
             if (_tpWait == IntPtr.Zero)
             {
@@ -55,7 +54,7 @@ namespace System.Threading
             }
         }
 
-        [UnmanagedCallersOnly(CallConvs = new Type[] { typeof(CallConvStdcall) })]
+        [UnmanagedCallersOnly]
         internal static void RegisteredWaitCallback(IntPtr instance, IntPtr context, IntPtr wait, uint waitResult)
         {
             var wrapper = ThreadPoolCallbackWrapper.Enter();
@@ -331,7 +330,7 @@ namespace System.Threading
             return true;
         }
 
-        [UnmanagedCallersOnly(CallConvs = new Type[] { typeof(CallConvStdcall) })]
+        [UnmanagedCallersOnly]
         private static void DispatchCallback(IntPtr instance, IntPtr context, IntPtr work)
         {
             var wrapper = ThreadPoolCallbackWrapper.Enter();
@@ -344,13 +343,11 @@ namespace System.Threading
             wrapper.Exit(resetThread: false);
         }
 
-        internal static void RequestWorkerThread()
+        internal static unsafe void RequestWorkerThread()
         {
             if (s_work == IntPtr.Zero)
             {
-                IntPtr nativeCallback = AddrofIntrinsics.AddrOf<Interop.Kernel32.WorkCallback>(DispatchCallback);
-
-                IntPtr work = Interop.Kernel32.CreateThreadpoolWork(nativeCallback, IntPtr.Zero, IntPtr.Zero);
+                IntPtr work = Interop.Kernel32.CreateThreadpoolWork(&DispatchCallback, IntPtr.Zero, IntPtr.Zero);
                 if (work == IntPtr.Zero)
                     throw new OutOfMemoryException();
 

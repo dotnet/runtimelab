@@ -21,7 +21,7 @@ namespace System.Threading
             _id = id;
         }
 
-        [UnmanagedCallersOnly(CallConvs = new Type[] { typeof(CallConvStdcall) })]
+        [UnmanagedCallersOnly]
         private static void TimerCallback(IntPtr instance, IntPtr context, IntPtr timer)
         {
             int id = (int)context;
@@ -35,9 +35,7 @@ namespace System.Threading
         {
             if (_nativeTimer == IntPtr.Zero)
             {
-                IntPtr nativeCallback = AddrofIntrinsics.AddrOf<Interop.Kernel32.TimerCallback>(TimerCallback);
-
-                _nativeTimer = Interop.Kernel32.CreateThreadpoolTimer(nativeCallback, (IntPtr)_id, IntPtr.Zero);
+                _nativeTimer = Interop.Kernel32.CreateThreadpoolTimer(&TimerCallback, (IntPtr)_id, IntPtr.Zero);
                 if (_nativeTimer == IntPtr.Zero)
                     throw new OutOfMemoryException();
             }

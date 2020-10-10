@@ -660,7 +660,7 @@ namespace System.Runtime
 #if TARGET_UNIX
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhSetThreadExitCallback")]
-        internal static extern void RhSetThreadExitCallback(IntPtr pCallback);
+        internal static extern unsafe void RhSetThreadExitCallback(delegate* unmanaged<void> pCallback);
 #endif
 
         // Functions involved in thunks from managed to managed functions (Universal transition transitions

@@ -1316,12 +1316,12 @@ namespace Internal.Runtime.CallInterceptor
         internal static LowLevelList<int> s_freeCallInterceptorIds = new LowLevelList<int>();
         private static int s_countFreeCallInterceptorId;
 
-        static CallInterceptor()
+        static unsafe CallInterceptor()
         {
             s_managedToManagedCommonStubData = CallConverterThunk.s_commonStubData;
-            s_managedToManagedCommonStubData.ManagedCallConverterThunk = Intrinsics.AddrOf<CallInterceptorThunkDelegate>(CallInterceptorThunk);
+            s_managedToManagedCommonStubData.ManagedCallConverterThunk = (IntPtr)(delegate*<IntPtr, IntPtr, IntPtr>)&CallInterceptorThunk;
             s_nativeToManagedCommonStubData = CallConverterThunk.s_commonStubData;
-            s_nativeToManagedCommonStubData.ManagedCallConverterThunk = Intrinsics.AddrOf<CallInterceptorThunkDelegate>(CallInterceptorThunkUnmanagedCallersOnly);
+            s_nativeToManagedCommonStubData.ManagedCallConverterThunk = (IntPtr)(delegate* unmanaged<IntPtr, IntPtr, IntPtr>)&CallInterceptorThunkUnmanagedCallersOnly;
         }
 
         /// <summary>
@@ -1691,8 +1691,6 @@ namespace Internal.Runtime.CallInterceptor
 
             return callConversionOps.ToArray();
         }
-
-        private delegate IntPtr CallInterceptorThunkDelegate(IntPtr callerTransitionBlockParam, IntPtr thunkId);
 
         private static unsafe IntPtr CallInterceptorThunk(IntPtr callerTransitionBlockParam, IntPtr thunkId)
         {

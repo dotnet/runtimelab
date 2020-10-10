@@ -30,12 +30,10 @@ internal static partial class Interop
         internal static extern unsafe SafeWaitHandle CreateThread(
             IntPtr lpThreadAttributes,
             IntPtr dwStackSize,
-            IntPtr lpStartAddress,
+            delegate* unmanaged<IntPtr, uint> lpStartAddress,
             IntPtr lpParameter,
             uint dwCreationFlags,
             out uint lpThreadId);
-
-        internal delegate uint ThreadProc(IntPtr lpParameter);
 
         [DllImport(Libraries.Kernel32)]
         internal static extern uint ResumeThread(SafeWaitHandle hThread);
