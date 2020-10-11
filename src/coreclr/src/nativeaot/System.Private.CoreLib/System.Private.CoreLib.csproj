@@ -198,7 +198,6 @@
     <Compile Include="src\System\Runtime\CompilerServices\ForceLazyDictionaryAttribute.cs" />
     <Compile Include="src\System\Runtime\CompilerServices\EagerStaticClassConstructionAttribute.cs" />
     <Compile Include="src\System\Runtime\CompilerServices\ForceDictionaryLookupsAttribute.cs" />
-    <Compile Include="src\System\Runtime\CompilerServices\InitializedDataAttributes.cs" />
     <Compile Include="src\System\Runtime\CompilerServices\ReflectionBlockedAttribute.cs" />
     <Compile Include="src\System\Runtime\CompilerServices\RuntimeFeature.CoreRT.cs" />
     <Compile Include="src\System\Runtime\CompilerServices\StaticClassConstructionContext.cs" />

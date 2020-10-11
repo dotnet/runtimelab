@@ -1174,9 +1174,6 @@ namespace System.Runtime
 #else
             private const byte log2PointerSize = 2;
 #endif
-            [PreInitialized] // The enclosing class (RuntimeImports) is depended upon (indirectly) by
-                             // __vtable_IUnknown, which is an eager-init class, so this type must not have a
-                             // lazy-init .cctor
             private static RhCorElementTypeInfo[] s_lookupTable = new RhCorElementTypeInfo[]
             {
                 // index = 0x0
