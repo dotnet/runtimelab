@@ -2172,7 +2172,7 @@ namespace System.Threading.Tasks
         {
             Debug.Assert(props != null);
 
-            // In rare occurences during AppDomainUnload() processing, it is possible for this method to be called
+            // In rare occurrences during AppDomainUnload() processing, it is possible for this method to be called
             // simultaneously on the same task from two different contexts.  This can result in m_exceptionalChildren
             // being nulled out while it is being processed, which could lead to a NullReferenceException.  To
             // protect ourselves, we'll cache m_exceptionalChildren in a local variable.
@@ -5469,15 +5469,15 @@ namespace System.Threading.Tasks
         /// </exception>
         public static Task WhenAll(IEnumerable<Task> tasks)
         {
-            // Take a more efficient path if tasks is actually an array
-            if (tasks is Task[] taskArray)
-            {
-                return WhenAll(taskArray);
-            }
-
             // Skip a List allocation/copy if tasks is a collection
             if (tasks is ICollection<Task> taskCollection)
             {
+                // Take a more efficient path if tasks is actually an array
+                if (tasks is Task[] taskArray)
+                {
+                    return WhenAll(taskArray);
+                }
+
                 int index = 0;
                 taskArray = new Task[taskCollection.Count];
                 foreach (Task task in tasks)
@@ -6077,6 +6077,25 @@ namespace System.Threading.Tasks
         /// </exception>
         public static Task<Task> WhenAny(IEnumerable<Task> tasks)
         {
+            // Skip a List allocation/copy if tasks is a collection
+            if (tasks is ICollection<Task> taskCollection)
+            {
+                // Take a more efficient path if tasks is actually an array
+                if (tasks is Task[] taskArray)
+                {
+                    return WhenAny(taskArray);
+                }
+
+                int index = 0;
+                taskArray = new Task[taskCollection.Count];
+                foreach (Task task in tasks)
+                {
+                    if (task == null) ThrowHelper.ThrowArgumentException(ExceptionResource.Task_MultiTaskContinuation_NullTask, ExceptionArgument.tasks);
+                    taskArray[index++] = task;
+                }
+                return TaskFactory.CommonCWAnyLogic(taskArray);
+            }
+
             if (tasks == null) ThrowHelper.ThrowArgumentNullException(ExceptionArgument.tasks);
 
             // Make a defensive copy, as the user may manipulate the tasks collection
