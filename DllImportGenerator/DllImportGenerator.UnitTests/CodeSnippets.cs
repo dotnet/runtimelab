@@ -282,6 +282,22 @@ partial class Test
 ";
 
         /// <summary>
+        /// Declaration with parameters with <see cref="CharSet"/> set.
+        /// </summary>
+        public static string BasicParametersAndModifiersWithCharSet<T>(CharSet value) => @$"
+using System.Runtime.InteropServices;
+partial class Test
+{{
+    [GeneratedDllImport(""DoesNotExist"", CharSet = CharSet.{value})]
+    public static partial {typeof(T)} Method(
+        {typeof(T)} p,
+        in {typeof(T)} pIn,
+        ref {typeof(T)} pRef,
+        out {typeof(T)} pOut);
+}}
+";
+
+        /// <summary>
         /// Declaration with parameters.
         /// </summary>
         public static string BasicParametersAndModifiers(string typeName) => @$"

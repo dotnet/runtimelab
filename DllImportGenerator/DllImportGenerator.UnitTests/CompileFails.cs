@@ -1,5 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -10,6 +12,8 @@ namespace DllImportGenerator.UnitTests
         public static IEnumerable<object[]> CodeSnippetsToCompile()
         {
             yield return new object[] { CodeSnippets.UserDefinedPrefixedAttributes, 3 };
+            yield return new object[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<char>(CharSet.None), 5 };
+            yield return new object[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<char>(CharSet.Ansi), 5 };
         }
 
         [Theory]
@@ -20,21 +24,13 @@ namespace DllImportGenerator.UnitTests
             TestUtils.AssertPreSourceGeneratorCompilation(comp);
 
             var newComp = TestUtils.RunGenerators(comp, out var generatorDiags, new Microsoft.Interop.DllImportGenerator());
-            Assert.Empty(generatorDiags);
 
-            var newCompDiags = newComp.GetDiagnostics();
+            // Verify the compilation failed with error diagnostics.
+            int errorCount = 0;
+            errorCount += generatorDiags.Count(d => d.Severity == DiagnosticSeverity.Error);
+            errorCount += newComp.GetDiagnostics().Count(d => d.Severity == DiagnosticSeverity.Error);
 
-            // Verify the compilation failed with missing impl.
-            int missingImplCount = 0;
-            foreach (var diag in newCompDiags)
-            {
-                if ("CS8795".Equals(diag.Id))
-                {
-                    missingImplCount++;
-                }
-            }
-
-            Assert.Equal(failCount, missingImplCount);
+            Assert.Equal(failCount, errorCount);
         }
     }
 }
