@@ -22,6 +22,9 @@ namespace DllImportGenerator.IntegrationTests
     public class CharacterTests
     {
         [Theory]
+        [InlineData(new object[] { 'A', 0x41 })]
+        [InlineData(new object[] { 'E', 0x45 })]
+        [InlineData(new object[] { 'J', 0x4a })]
         [InlineData(new object[] { 'ß', 0xdf })]
         [InlineData(new object[] { '✅', 0x2705 })]
         [InlineData(new object[] { '鸟', 0x9e1f })]
