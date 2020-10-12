@@ -11,7 +11,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Testing;
 using Microsoft.CodeAnalysis.Testing.Verifiers;
 
-namespace DllImportGenerator.Test.Verifiers
+namespace DllImportGenerator.UnitTests.Verifiers
 {
     public static class CSharpAnalyzerVerifier<TAnalyzer>
         where TAnalyzer : DiagnosticAnalyzer, new()
@@ -48,8 +48,8 @@ namespace DllImportGenerator.Test.Verifiers
                 ReferenceAssemblies = refAssem;
                 SolutionTransforms.Add((solution, projectId) =>
                 {
-                    var project = solution.GetProject(projectId);
-                    var compilationOptions = project.CompilationOptions;
+                    var project = solution.GetProject(projectId)!;
+                    var compilationOptions = project.CompilationOptions!;
                     compilationOptions = compilationOptions.WithSpecificDiagnosticOptions(
                         compilationOptions.SpecificDiagnosticOptions.SetItems(CSharpVerifierHelper.NullableWarnings));
                     solution = solution.WithProjectCompilationOptions(projectId, compilationOptions);

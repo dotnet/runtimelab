@@ -53,12 +53,15 @@ namespace Microsoft.Interop
         /// <param name="info">Object to marshal</param>
         /// <param name="context">Code generation context</param>
         /// <returns>If the marshaller uses an identifier for the native value, true; otherwise, false.</returns>
+        /// <remarks>
+        /// <see cref="StubCodeContext.CurrentStage" /> of <paramref name="context"/> may not be valid.
+        /// </remarks>
         bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context);
     }
 
     internal class MarshallingGenerators
     {
-        public static readonly CBoolMarshaller CBool = new CBoolMarshaller();
+        public static readonly ByteBoolMarshaller ByteBool = new ByteBoolMarshaller();
         public static readonly WinBoolMarshaller WinBool = new WinBoolMarshaller();
         public static readonly VariantBoolMarshaller VariantBool = new VariantBoolMarshaller();
         public static readonly Forwarder Forwarder = new Forwarder();
@@ -97,12 +100,12 @@ namespace Microsoft.Interop
                     return true;
 
                 case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: null }:
-                    generator = CBool;
+                    generator = WinBool; // [Compat] Matching the default for the built-in runtime marshallers.
                     return true;
                 case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I1 or UnmanagedType.U1 } }:
-                    generator = CBool;
+                    generator = ByteBool;
                     return true;
-                case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I4 or UnmanagedType.U4 } }:
+                case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I4 or UnmanagedType.U4 or UnmanagedType.Bool } }:
                     generator = WinBool;
                     return true;
                 case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.VariantBool } }:
@@ -117,7 +120,7 @@ namespace Microsoft.Interop
                     generator = Blittable;
                     return true;
 
-                // Marshalling in new model    
+                // Marshalling in new model
                 case { MarshallingAttributeInfo: NativeMarshallingAttributeInfo marshalInfo }:
                     generator = Forwarder;
                     return false;
@@ -127,8 +130,12 @@ namespace Microsoft.Interop
                     generator = Forwarder;
                     return false;
 
-                case { MarshallingAttributeInfo: SafeHandleMarshallingInfo _}:  
+                case { MarshallingAttributeInfo: SafeHandleMarshallingInfo _}:
                     generator = SafeHandle;
+                    return true;
+
+                case { ManagedType: { SpecialType: SpecialType.System_Void } }:
+                    generator = Forwarder;
                     return true;
 
                 default:

@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.30204.135
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DllImportGenerator", "DllImportGenerator\DllImportGenerator.csproj", "{0E14E01F-A582-4D22-8737-BF9DE5270435}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DllImportGenerator.Test", "DllImportGenerator.Test\DllImportGenerator.Test.csproj", "{B8CA13C4-F41B-4ABD-A9F3-63A02C53B96E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DllImportGenerator.UnitTests", "DllImportGenerator.UnitTests\DllImportGenerator.UnitTests.csproj", "{B8CA13C4-F41B-4ABD-A9F3-63A02C53B96E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Demo", "Demo\Demo.csproj", "{E478EE77-E072-4A42-B453-EBFDA7728717}"
 EndProject
@@ -13,7 +13,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ancillary.Interop", "Ancill
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TestAssets", "TestAssets", "{2CFB9A7A-4AAF-4B6A-8CC8-540F64C3B45F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NativeExports", "TestAssets\NativeExports\NativeExports.csproj", "{32FDA079-0E9F-4A36-ADA5-6593B67A54AC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NativeExports", "TestAssets\NativeExports\NativeExports.csproj", "{32FDA079-0E9F-4A36-ADA5-6593B67A54AC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DllImportGenerator.IntegrationTests", "DllImportGenerator.IntegrationTests\DllImportGenerator.IntegrationTests.csproj", "{162C204A-ED59-4EF3-A5FA-E58CC06FAB4D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tools", "Tools", "{69D56AC9-232B-4E76-B6C1-33A7B06B6855}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PInvokeDump", "Tools\PInvokeDump\PInvokeDump.csproj", "{6FD4AF19-0CAA-413C-A2BD-C888AA2E8CFB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,12 +47,21 @@ Global
 		{32FDA079-0E9F-4A36-ADA5-6593B67A54AC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{32FDA079-0E9F-4A36-ADA5-6593B67A54AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{32FDA079-0E9F-4A36-ADA5-6593B67A54AC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6FD4AF19-0CAA-413C-A2BD-C888AA2E8CFB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6FD4AF19-0CAA-413C-A2BD-C888AA2E8CFB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6FD4AF19-0CAA-413C-A2BD-C888AA2E8CFB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6FD4AF19-0CAA-413C-A2BD-C888AA2E8CFB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{162C204A-ED59-4EF3-A5FA-E58CC06FAB4D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{162C204A-ED59-4EF3-A5FA-E58CC06FAB4D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{162C204A-ED59-4EF3-A5FA-E58CC06FAB4D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{162C204A-ED59-4EF3-A5FA-E58CC06FAB4D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{32FDA079-0E9F-4A36-ADA5-6593B67A54AC} = {2CFB9A7A-4AAF-4B6A-8CC8-540F64C3B45F}
+		{6FD4AF19-0CAA-413C-A2BD-C888AA2E8CFB} = {69D56AC9-232B-4E76-B6C1-33A7B06B6855}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5344B739-3A02-402A-8777-0D54DEC4F3BA}
