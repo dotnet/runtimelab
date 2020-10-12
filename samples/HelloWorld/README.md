@@ -26,14 +26,14 @@ In your shell/command prompt navigate to the root directory of your project and 
 This will add a nuget.config file to your application. Open the file and in the ``<packageSources> `` element under ``<clear/>`` add the following:
 
 ```xml
-<add key="dotnet-core" value="https://dotnetfeed.blob.core.windows.net/dotnet-core/index.json" />
+<add key="dotnet-experimental" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-experimental/nuget/v3/index.json" />
 <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
 ```
 
 Once you've added the package source, add a reference to the compiler by running the following command:
 
 ```bash
-> dotnet add package Microsoft.DotNet.ILCompiler -v 1.0.0-alpha-* 
+> dotnet add package Microsoft.DotNet.ILCompiler -v 6.0.0-alpha-*
 ```
 
 ## Restore and Publish your app

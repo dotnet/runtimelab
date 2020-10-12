@@ -1,10 +1,12 @@
-# Type System Overview
+# Managed Type System Overview
 
 Author: Michal Strehovsky ([@MichalStrehovsky](https://github.com/MichalStrehovsky)) - 2016
 
 ## Introduction
 
-The type system is a major component of CoreRT. It represents the modules, types, methods, and fields within a program and provides higher level services to the type system users that lets them get answers to various interesting questions.
+The managed type system is a major component of CoreRT. It represents the modules, types, methods, and fields within a program and provides higher level services to the type system users that lets them get answers to various interesting questions.
+
+The managed type system is equivalent of [CoreCLR type system](type-system.md) rewritten in C#. We've always wanted to implement runtime functionality in C#. The managed type system is the infrastructure that allows us to do that.
 
 Some of the high level services the type system provides are:
 
@@ -37,7 +39,7 @@ The type system provides access to most of the underlying metadata, but abstract
 
 The classes that represent types within the type system are:
 
-![hierarchy](../images/typesystem-hierarchy.png)
+![hierarchy](images/typesystem-hierarchy.png)
 
 Most of the classes in this hierarchy are not supposed to be derived by the type system user and many of them are sealed to prevent that.
 

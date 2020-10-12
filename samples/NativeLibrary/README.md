@@ -77,9 +77,8 @@ int result =  MyImport(5,3);
 
 ## Exporting methods
 
-For a C# method in the native library to be consumable by external programs, it has to be explicitly exported using the `[UnmanagedCallersOnly]` attribute. First define the `System.Runtime.InteropServices.UnmanagedCallersOnlyAttribute` in your project, see [here](UnmanagedCallersOnly.cs). The local definition of the `UnmanagedCallersOnlyAttribute` is a temporary workaround that will go away once the attribute is added to the official .NET Core public surface.
-
-Next, apply the attribute to the method, specifying the `EntryPoint`:
+For a C# method in the native library to be consumable by external programs, it has to be explicitly exported using the `[UnmanagedCallersOnly]` attribute.
+Apply the attribute to the method, specifying the `EntryPoint`:
 
 ```csharp
 [UnmanagedCallersOnly(EntryPoint = "add")]
