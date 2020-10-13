@@ -17,6 +17,7 @@ namespace DllImportGenerator.Tools
         public string EnclosingTypeName { get; init; }
         public string MethodName { get; init; }
 
+        public CharSet CharSet { get; init; }
         public bool PreserveSig { get; init; }
         public bool SetLastError { get; init; }
         public bool BestFitMapping { get; init; }
@@ -92,11 +93,19 @@ namespace DllImportGenerator.Tools
 
                 // Process method details
                 MethodImportAttributes impAttr = methodImp.Attributes;
+                CharSet charSet = (impAttr & MethodImportAttributes.CharSetMask) switch
+                {
+                    MethodImportAttributes.CharSetAnsi => CharSet.Ansi,
+                    MethodImportAttributes.CharSetAuto => CharSet.Auto,
+                    MethodImportAttributes.CharSetUnicode => CharSet.Unicode,
+                    _ => CharSet.None
+                };
                 TypeDefinition typeDef = mdReader.GetTypeDefinition(methodDef.GetDeclaringType());
                 var method = new PInvokeMethod()
                 {
                     EnclosingTypeName = GetTypeDefinitionFullName(mdReader, typeDef),
                     MethodName = methodName,
+                    CharSet = charSet,
                     PreserveSig = (methodDef.ImplAttributes & MethodImplAttributes.PreserveSig) != 0,
                     SetLastError = (impAttr & MethodImportAttributes.SetLastError) != 0,
                     BestFitMapping = (impAttr & MethodImportAttributes.BestFitMappingMask) == MethodImportAttributes.BestFitMappingEnable,

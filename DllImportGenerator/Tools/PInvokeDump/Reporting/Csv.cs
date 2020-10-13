@@ -16,7 +16,20 @@ namespace DllImportGenerator.Tools.Reporting
         /// <returns>CSV text</returns>
         public static string Generate(PInvokeDump dump)
         {
-            var result = new StringBuilder($"Assembly Path{Separator}Method Name{Separator}Return{Separator}Arguments{Environment.NewLine}");
+            string[] headers = new string[]
+            {
+                "Assembly Path",
+                "Method Name",
+                "Return",
+                "Arguments",
+                nameof(PInvokeMethod.BestFitMapping),
+                nameof(PInvokeMethod.CharSet),
+                nameof(PInvokeMethod.PreserveSig),
+                nameof(PInvokeMethod.SetLastError),
+                nameof(PInvokeMethod.ThrowOnUnmappableChar)
+            };
+            var result = new StringBuilder(string.Join(Separator, headers));
+            result.AppendLine();
             foreach ((string assemblyPath, IReadOnlyCollection<PInvokeMethod> importedMethods) in dump.MethodsByAssemblyPath)
             {
                 if (importedMethods.Count == 0)
@@ -25,7 +38,17 @@ namespace DllImportGenerator.Tools.Reporting
                 foreach (var method in importedMethods)
                 {
                     var argumentTypes = string.Join(Separator, method.ArgumentTypes.Select(t => t.ToString()));
-                    result.AppendLine($"\"{assemblyPath}\"{Separator}{method.EnclosingTypeName}{Type.Delimiter}{method.MethodName}{Separator}{method.ReturnType}{Separator}\"{argumentTypes}\"");
+                    result.AppendLine(string.Join(
+                        Separator,
+                        $"\"{assemblyPath}\"",
+                        $"{method.EnclosingTypeName}{Type.Delimiter}{method.MethodName}",
+                        method.ReturnType,
+                        $"\"{argumentTypes}\"",
+                        method.BestFitMapping,
+                        method.CharSet,
+                        method.PreserveSig,
+                        method.SetLastError,
+                        method.ThrowOnUnmappableChar));
                 }
             }
 
