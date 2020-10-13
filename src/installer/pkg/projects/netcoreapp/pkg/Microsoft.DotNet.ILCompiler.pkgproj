@@ -3,6 +3,7 @@
 
   <PropertyGroup>
     <BuildRuntimePackages>true</BuildRuntimePackages>
+    <IncludeSymbolsInPackage>true</IncludeSymbolsInPackage>
   </PropertyGroup>
 
   <Target Name="GetIlcCompilerFiles"
@@ -25,12 +26,6 @@
       </File>
       <File Include="$(CoreCLRAotSdkDir)*">
         <TargetPath>sdk</TargetPath>
-      </File>
-      <File Include="$(CoreCLRArtifactsPath)\$(LibraryFilePrefix)clrjit$(LibraryFileExtension)">
-        <TargetPath>tools\$(LibraryFilePrefix)clrjitilc$(LibraryFileExtension)</TargetPath>
-      </File>
-      <File Include="$(CoreCLRArtifactsPath)\$(LibraryFilePrefix)jitinterface_$(TargetArchitecture)$(LibraryFileExtension)">
-        <TargetPath>tools</TargetPath>
       </File>
     </ItemGroup>
 
