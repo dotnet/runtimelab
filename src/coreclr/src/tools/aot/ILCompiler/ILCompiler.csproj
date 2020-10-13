@@ -29,6 +29,12 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <SelfContained>true</SelfContained>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <RuntimeIdentifier>$(ILCompilerRuntimeIdentifier)</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <ObjectWriterVersion>1.0.0-alpha-28820-01</ObjectWriterVersion>
     <CoreDisToolsVersion>1.0.1-prerelease-00005</CoreDisToolsVersion>
 
