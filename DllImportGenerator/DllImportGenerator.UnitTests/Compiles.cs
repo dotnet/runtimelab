@@ -52,7 +52,6 @@ namespace DllImportGenerator.UnitTests
             //yield return new[] { CodeSnippets.BasicParametersAndModifiers<IntPtr[]>() };
             //yield return new[] { CodeSnippets.BasicParametersAndModifiers<UIntPtr[]>() };
             yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<char>(CharSet.Unicode) };
-            yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<char>(CharSet.Auto) };
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<bool>(UnmanagedType.Bool) };
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<bool>(UnmanagedType.VariantBool) };
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<bool>(UnmanagedType.I1) };

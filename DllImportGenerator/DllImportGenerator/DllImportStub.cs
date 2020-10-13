@@ -138,8 +138,8 @@ namespace Microsoft.Interop
                 defaultEncoding = dllImportData.CharSet switch
                 {
                     CharSet.Unicode => CharEncoding.Utf16,
-                    CharSet.Auto => CharEncoding.Utf16,
-                    _ => CharEncoding.Utf8,
+                    CharSet.Auto => CharEncoding.PlatformDefined,
+                    _ => CharEncoding.Utf8, // [Compat] ANSI is no longer ANSI code pages on Windows and UTF-8, on non-Windows.
                 };
             }
 

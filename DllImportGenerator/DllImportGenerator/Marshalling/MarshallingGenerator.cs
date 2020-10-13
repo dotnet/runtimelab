@@ -151,9 +151,14 @@ namespace Microsoft.Interop
                 case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: null }:
                     return Utf16Char; // [Compat] Default marshalling is UTF-16.
                 case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshallingInfoStringSupport { CharEncoding: CharEncoding.Utf8 } }:
-                    throw new MarshallingNotSupportedException(info, context) // [Compat] Marshalling a char as UTF-8 isn't supported. See CharSet.Ansi.
+                    throw new MarshallingNotSupportedException(info, context) // [Compat] See conversion from CharSet.Ansi to UTF-8.
                     {
                         NotSupportedDetails = Resources.MarshallingCharAsCharSetAnsiNotSupported
+                    };
+                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshallingInfoStringSupport { CharEncoding: CharEncoding.PlatformDefined } }:
+                    throw new MarshallingNotSupportedException(info, context) // [Compat] See conversion of CharSet.Auto.
+                    {
+                        NotSupportedDetails = Resources.MarshallingCharAsCharSetAutoNotSupported
                     };
                 case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshallingInfoStringSupport { CharEncoding: CharEncoding.Utf16 } }:
                     return Utf16Char;

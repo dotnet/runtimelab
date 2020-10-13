@@ -12,6 +12,7 @@ namespace DllImportGenerator.UnitTests
         public static IEnumerable<object[]> CodeSnippetsToCompile()
         {
             yield return new object[] { CodeSnippets.UserDefinedPrefixedAttributes, 3 };
+            yield return new object[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<char>(CharSet.Auto), 5 };
             yield return new object[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<char>(CharSet.None), 5 };
             yield return new object[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<char>(CharSet.Ansi), 5 };
         }

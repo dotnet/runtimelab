@@ -196,6 +196,15 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Marshalling char with CharSet.Auto is not supported. Instead, manually convert the char type to a single byte and pass to the source-generated P/Invoke..
+        /// </summary>
+        internal static string MarshallingCharAsCharSetAutoNotSupported {
+            get {
+                return ResourceManager.GetString("MarshallingCharAsCharSetAutoNotSupported", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to A native type for a given type must be blittable..
         /// </summary>
         internal static string NativeTypeMustBeBlittableDescription {
