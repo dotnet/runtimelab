@@ -20,6 +20,13 @@ namespace DllImportGenerator.Tools.Reporting
                 {
                     result.AppendLine($"  {method.EnclosingTypeName}{Type.Delimiter}{method.MethodName}");
                     result.AppendLine($"    {method.ReturnType} ({string.Join(", ", method.ArgumentTypes.Select(t => t.ToString()))})");
+                    result.AppendLine("    Attributes:");
+                    result.AppendLine(string.Join(Environment.NewLine,
+                        $"      {nameof(method.BestFitMapping)}={method.BestFitMapping}",
+                        $"      {nameof(method.CharSet)}={method.CharSet}",
+                        $"      {nameof(method.PreserveSig)}={method.PreserveSig}",
+                        $"      {nameof(method.SetLastError)}={method.SetLastError}",
+                        $"      {nameof(method.ThrowOnUnmappableChar)}={method.ThrowOnUnmappableChar}"));
                 }
             }
 
