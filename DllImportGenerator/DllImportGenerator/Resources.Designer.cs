@@ -187,7 +187,7 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Marshalling char with CharSet.Ansi is not supported. Instead, manually convert the char type to a single byte and pass to the source-generated P/Invoke..
+        ///   Looks up a localized string similar to Marshalling char with CharSet.Ansi is not supported. Instead, manually convert the char type to the desired byte representation and pass to the source-generated P/Invoke..
         /// </summary>
         internal static string MarshallingCharAsCharSetAnsiNotSupported {
             get {
@@ -196,7 +196,7 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Marshalling char with CharSet.Auto is not supported. Instead, manually convert the char type to a single byte and pass to the source-generated P/Invoke..
+        ///   Looks up a localized string similar to Marshalling char with CharSet.Auto is not supported. Instead, manually convert the char type to the desired byte representation and pass to the source-generated P/Invoke..
         /// </summary>
         internal static string MarshallingCharAsCharSetAutoNotSupported {
             get {

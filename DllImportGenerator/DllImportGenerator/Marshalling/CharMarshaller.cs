@@ -11,11 +11,10 @@ namespace Microsoft.Interop
 {
     internal class Utf16CharMarshaller : IMarshallingGenerator
     {
-        private readonly PredefinedTypeSyntax _nativeType;
+        private static readonly PredefinedTypeSyntax NativeType = PredefinedType(Token(SyntaxKind.UShortKeyword));
 
         public Utf16CharMarshaller()
         {
-            _nativeType = PredefinedType(Token(SyntaxKind.UShortKeyword));
         }
 
         public ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context)
@@ -35,7 +34,7 @@ namespace Microsoft.Interop
         public TypeSyntax AsNativeType(TypePositionInfo info)
         {
             Debug.Assert(info.ManagedType.SpecialType == SpecialType.System_Char);
-            return _nativeType;
+            return NativeType;
         }
 
         public ParameterSyntax AsParameter(TypePositionInfo info)

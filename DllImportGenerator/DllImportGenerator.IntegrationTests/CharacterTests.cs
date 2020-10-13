@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 using Xunit;
 
@@ -6,6 +7,12 @@ namespace DllImportGenerator.IntegrationTests
 {
     partial class NativeExportsNE
     {
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "unicode_return_as_uint")]
+        public static partial uint ReturnDefaultAsUInt(char input);
+
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "char_return_as_uint")]
+        public static partial char ReturnUIntAsDefault(uint input);
+
         [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "unicode_return_as_uint", CharSet = CharSet.Unicode)]
         public static partial uint ReturnUnicodeAsUInt(char input);
 
@@ -17,31 +24,41 @@ namespace DllImportGenerator.IntegrationTests
 
         [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "char_return_as_refuint", CharSet = CharSet.Unicode)]
         public static partial void ReturnUIntAsOutUnicode(uint input, out char res);
+
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "char_return_as_uint", CharSet = CharSet.None)]
+        [return: MarshalAs(UnmanagedType.U2)]
+        public static partial char ReturnU2AsU2IgnoreCharSet([MarshalAs(UnmanagedType.U2)] char input);
+
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "char_return_as_uint", CharSet = CharSet.Ansi)]
+        [return: MarshalAs(UnmanagedType.I2)]
+        public static partial char ReturnI2AsI2IgnoreCharSet([MarshalAs(UnmanagedType.I2)] char input);
     }
 
     public class CharacterTests
     {
+        public static IEnumerable<object[]> CharacterMappings()
+        {
+            yield return new object[] { 'A', 0x41 };
+            yield return new object[] { 'E', 0x45 };
+            yield return new object[] { 'J', 0x4a };
+            yield return new object[] { 'ß', 0xdf };
+            yield return new object[] { '✅', 0x2705 };
+            yield return new object[] { '鸟', 0x9e1f };
+        }
+
         [Theory]
-        [InlineData(new object[] { 'A', 0x41 })]
-        [InlineData(new object[] { 'E', 0x45 })]
-        [InlineData(new object[] { 'J', 0x4a })]
-        [InlineData(new object[] { 'ß', 0xdf })]
-        [InlineData(new object[] { '✅', 0x2705 })]
-        [InlineData(new object[] { '鸟', 0x9e1f })]
+        [MemberData(nameof(CharacterMappings))]
         public void ValidateUnicodeCharIsMarshalledAsExpected(char value, uint expected)
         {
+            Assert.Equal(expected, NativeExportsNE.ReturnDefaultAsUInt(value));
             Assert.Equal(expected, NativeExportsNE.ReturnUnicodeAsUInt(value));
         }
 
         [Theory]
-        [InlineData(new object[] { 0x41, 'A' })]
-        [InlineData(new object[] { 0x45, 'E' })]
-        [InlineData(new object[] { 0x4a, 'J' })]
-        [InlineData(new object[] { 0xdf, 'ß' })]
-        [InlineData(new object[] { 0x2705, '✅' })]
-        [InlineData(new object[] { 0x9e1f, '鸟' })]
-        public void ValidateUnicodeReturns(uint value, char expected)
+        [MemberData(nameof(CharacterMappings))]
+        public void ValidateUnicodeReturns(char expected, uint value)
         {
+            Assert.Equal(expected, NativeExportsNE.ReturnUIntAsDefault(value));
             Assert.Equal(expected, NativeExportsNE.ReturnUIntAsUnicode(value));
 
             char result = '\u0000';
@@ -51,6 +68,15 @@ namespace DllImportGenerator.IntegrationTests
             result = '\u0000';
             NativeExportsNE.ReturnUIntAsOutUnicode(value, out result);
             Assert.Equal(expected, result);
+        }
+
+        [Theory]
+        [MemberData(nameof(CharacterMappings))]
+        public void ValidateIgnoreCharSet(char value, uint expectedUInt)
+        {
+            char expected = (char)expectedUInt;
+            Assert.Equal(expected, NativeExportsNE.ReturnU2AsU2IgnoreCharSet(value));
+            Assert.Equal(expected, NativeExportsNE.ReturnI2AsI2IgnoreCharSet(value));
         }
     }
 }

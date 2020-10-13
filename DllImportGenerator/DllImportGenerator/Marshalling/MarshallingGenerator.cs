@@ -150,6 +150,12 @@ namespace Microsoft.Interop
 
                 case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: null }:
                     return Utf16Char; // [Compat] Default marshalling is UTF-16.
+                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I2 } }:
+                    return Utf16Char;
+                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.U2 } }:
+                    return Utf16Char;
+                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshallingInfoStringSupport { CharEncoding: CharEncoding.Utf16 } }:
+                    return Utf16Char;
                 case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshallingInfoStringSupport { CharEncoding: CharEncoding.Utf8 } }:
                     throw new MarshallingNotSupportedException(info, context) // [Compat] See conversion from CharSet.Ansi to UTF-8.
                     {
@@ -160,8 +166,6 @@ namespace Microsoft.Interop
                     {
                         NotSupportedDetails = Resources.MarshallingCharAsCharSetAutoNotSupported
                     };
-                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshallingInfoStringSupport { CharEncoding: CharEncoding.Utf16 } }:
-                    return Utf16Char;
 
                 case { ManagedType: { TypeKind: TypeKind.Delegate }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.FunctionPtr } }:
                     return Delegate;
