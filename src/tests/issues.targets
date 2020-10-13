@@ -963,9 +963,6 @@
         <ExcludeList Include="$(XunitTestBinBase)/ilasm/System/Runtime/CompilerServices/MethodImplOptionsTests/*">
             <Issue>Needs ILASM built</Issue>
         </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/Interop/ArrayMarshalling/ByValArray/MarshalArrayByValTest/*">
-            <Issue>Needs triage</Issue>
-        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/Interop/ArrayMarshalling/SafeArray/SafeArrayTest/*">
             <Issue>Needs triage</Issue>
         </ExcludeList>

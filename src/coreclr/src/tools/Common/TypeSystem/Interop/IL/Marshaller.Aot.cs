@@ -137,9 +137,9 @@ namespace Internal.TypeSystem.Interop
             ILEmitter emitter = _ilCodeStreams.Emitter;
             var helper = Context.GetHelperEntryPoint("InteropHelpers", "AnsiCharToWideChar");
 
-            LoadManagedValue(codeStream);
+            LoadNativeValue(codeStream);
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
-            StoreNativeValue(codeStream);
+            StoreManagedValue(codeStream);
         }
     }
 
@@ -705,6 +705,18 @@ namespace Internal.TypeSystem.Interop
             StoreNativeValue(codeStream);
 
             codeStream.EmitLabel(lNull);
+        }
+
+        protected override void AllocNativeToManaged(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+
+            MethodDesc ctor = ManagedType.GetParameterlessConstructor();
+            if (ctor == null)
+                throw new InvalidProgramException();
+
+            codeStream.Emit(ILOpcode.newobj, emitter.NewToken(ctor));
+            StoreManagedValue(codeStream);
         }
 
         protected override void TransformManagedToNative(ILCodeStream codeStream)
