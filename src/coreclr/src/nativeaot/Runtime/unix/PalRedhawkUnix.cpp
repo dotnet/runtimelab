@@ -67,9 +67,8 @@
 #include <mach/mach_port.h>
 #endif // __APPLE__
 
-#if HAVE_MACH_ABSOLUTE_TIME
-#include <mach/mach_time.h>
-static mach_timebase_info_data_t s_TimebaseInfo;
+#if HAVE_CLOCK_GETTIME_NSEC_NP
+#include <time.h>
 #endif
 
 using std::nullptr_t;
@@ -204,7 +203,7 @@ public:
 
         PthreadCondAttrHolder attrsHolder(&attrs);
 
-#if HAVE_PTHREAD_CONDATTR_SETCLOCK && !HAVE_MACH_ABSOLUTE_TIME
+#if HAVE_PTHREAD_CONDATTR_SETCLOCK && !HAVE_CLOCK_GETTIME_NSEC_NP
         // Ensure that the pthread_cond_timedwait will use CLOCK_MONOTONIC
         st = pthread_condattr_setclock(&attrs, CLOCK_MONOTONIC);
         if (st != 0)
@@ -212,7 +211,7 @@ public:
             ASSERT_UNCONDITIONALLY("Failed to set UnixEvent condition variable wait clock");
             return false;
         }
-#endif // HAVE_PTHREAD_CONDATTR_SETCLOCK && !HAVE_MACH_ABSOLUTE_TIME
+#endif // HAVE_PTHREAD_CONDATTR_SETCLOCK && !HAVE_CLOCK_GETTIME_NSEC_NP
 
         st = pthread_mutex_init(&m_mutex, NULL);
         if (st != 0)
@@ -257,13 +256,13 @@ public:
     uint32_t Wait(uint32_t milliseconds)
     {
         timespec endTime;
-#if HAVE_MACH_ABSOLUTE_TIME
-        uint64_t endMachTime;
+#if HAVE_CLOCK_GETTIME_NSEC_NP
+        uint64_t endNanoseconds;
         if (milliseconds != INFINITE)
         {
             uint64_t nanoseconds = (uint64_t)milliseconds * tccMilliSecondsToNanoSeconds;
             NanosecondsToTimeSpec(nanoseconds, &endTime);
-            endMachTime = mach_absolute_time() + nanoseconds * s_TimebaseInfo.denom / s_TimebaseInfo.numer;
+            endNanoseconds = clock_gettime_nsec_np(CLOCK_UPTIME_RAW) + nanoseconds;
         }
 #elif HAVE_PTHREAD_CONDATTR_SETCLOCK
         if (milliseconds != INFINITE)
@@ -286,17 +285,17 @@ public:
             }
             else
             {
-#if HAVE_MACH_ABSOLUTE_TIME
+#if HAVE_CLOCK_GETTIME_NSEC_NP
                 // Since OSX doesn't support CLOCK_MONOTONIC, we use relative variant of the
                 // timed wait and we need to handle spurious wakeups properly.
                 st = pthread_cond_timedwait_relative_np(&m_condition, &m_mutex, &endTime);
                 if ((st == 0) && !m_state)
                 {
-                    uint64_t machTime = mach_absolute_time();
-                    if (machTime < endMachTime)
+                    uint64_t currentNanoseconds = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+                    if (currentNanoseconds < endNanoseconds)
                     {
                         // The wake up was spurious, recalculate the relative endTime
-                        uint64_t remainingNanoseconds = (endMachTime - machTime) * s_TimebaseInfo.numer / s_TimebaseInfo.denom;
+                        uint64_t remainingNanoseconds = (endNanoseconds - currentNanoseconds);
                         NanosecondsToTimeSpec(remainingNanoseconds, &endTime);
                     }
                     else
@@ -307,9 +306,9 @@ public:
                         st = ETIMEDOUT;
                     }
                 }
-#else // HAVE_MACH_ABSOLUTE_TIME
+#else // HAVE_CLOCK_GETTIME_NSEC_NP
                 st = pthread_cond_timedwait(&m_condition, &m_mutex, &endTime);
-#endif // HAVE_MACH_ABSOLUTE_TIME
+#endif // HAVE_CLOCK_GETTIME_NSEC_NP
                 // Verify that if the wait timed out, the event was not set
                 ASSERT((st != ETIMEDOUT) || !m_state);
             }
@@ -407,14 +406,6 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalInit()
 
     if (!QueryLogicalProcessorCount())
         return false;
-
-#if HAVE_MACH_ABSOLUTE_TIME
-    kern_return_t machRet;
-    if ((machRet = mach_timebase_info(&s_TimebaseInfo)) != KERN_SUCCESS)
-    {
-        return false;
-    }
-#endif
 
 #ifndef USE_PORTABLE_HELPERS
     if (!InitializeHardwareExceptionHandling())
@@ -654,9 +645,9 @@ REDHAWK_PALEXPORT UInt64 REDHAWK_PALAPI PalGetTickCount64()
 {
     UInt64 retval = 0;
 
-#if HAVE_MACH_ABSOLUTE_TIME
+#if HAVE_CLOCK_GETTIME_NSEC_NP
     {
-        retval = (mach_absolute_time() * s_TimebaseInfo.numer / s_TimebaseInfo.denom) / tccMilliSecondsToNanoSeconds;
+        retval = clock_gettime_nsec_np(CLOCK_UPTIME_RAW) / tccMilliSecondsToNanoSeconds;
     }
 #elif HAVE_CLOCK_MONOTONIC
     {
