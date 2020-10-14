@@ -8,8 +8,7 @@ The Native AOT toolchain can be currently built for Linux, macOS and Windows x64
 - Run `build[.cmd|.sh] nativeaot+libs+installer -rc [Debug|Release] -lc Release`. This will restore nuget packages required for building and build the parts of the repo required for the Native AOT toolchain.
 - The build will place the toolchain packages at `artifacts\packages\[Debug|Release]\Shipping`. To publish your project using these packages:
    - Add the package directory to your `nuget.config` file. For example, replace `dotnet-experimental` line in `samples\HelloWorld\nuget.config` with `<add key="local" value="C:\runtimelab\artifacts\packages\Debug\Shipping" />`
-   - Run `dotnet restore --packages pkg -r [win-x64|linux-x64|osx-64]` to restore the package into your project. `--package pkg` option restores the package into a local directory that is easy to cleanup once you are done. It avoids polluting the global nuget cache with your locally built dev package.
-   - Publish your project as usual: `dotnet publish -r [win-x64|linux-x64|osx-64] -c Release`.
+   - Run `dotnet publish --packages pkg -r [win-x64|linux-x64|osx-64] -c [Debug|Release]` to publish your project. `--package pkg` option restores the package into a local directory that is easy to cleanup once you are done. It avoids polluting the global nuget cache with your locally built dev package.
 
 ## Visual Studio Solutions
 

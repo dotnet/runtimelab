@@ -227,15 +227,6 @@ namespace System
             return ref Unsafe.AddByteOffset(ref _numComponents, POINTER_SIZE);
         }
 
-        // Copies length elements from sourceArray, starting at sourceIndex, to
-        // destinationArray, starting at destinationIndex.
-        //
-        public static void Copy(Array sourceArray, int sourceIndex, Array destinationArray, int destinationIndex, int length)
-        {
-            if (!RuntimeImports.TryArrayCopy(sourceArray, sourceIndex, destinationArray, destinationIndex, length))
-                CopyImpl(sourceArray, sourceIndex, destinationArray, destinationIndex, length, false);
-        }
-
         // Provides a strong exception guarantee - either it succeeds, or
         // it throws an exception with no side effects.  The arrays must be
         // compatible array types based on the array element type - this
@@ -243,14 +234,67 @@ namespace System
         // It will up-cast, assuming the array types are correct.
         public static void ConstrainedCopy(Array sourceArray, int sourceIndex, Array destinationArray, int destinationIndex, int length)
         {
-            if (!RuntimeImports.TryArrayCopy(sourceArray, sourceIndex, destinationArray, destinationIndex, length))
-                CopyImpl(sourceArray, sourceIndex, destinationArray, destinationIndex, length, true);
+            CopyImpl(sourceArray, sourceIndex, destinationArray, destinationIndex, length, reliable: true);
         }
 
-        public static void Copy(Array sourceArray, Array destinationArray, int length)
+        public static unsafe void Copy(Array sourceArray, Array destinationArray, int length)
         {
-            if (!RuntimeImports.TryArrayCopy(sourceArray, 0, destinationArray, 0, length))
-                CopyImpl(sourceArray, 0, destinationArray, 0, length, false);
+            if (sourceArray is null)
+                ThrowHelper.ThrowArgumentNullException(ExceptionArgument.sourceArray);
+            if (destinationArray is null)
+                ThrowHelper.ThrowArgumentNullException(ExceptionArgument.destinationArray);
+
+            EEType* pEEType = sourceArray.EEType;
+            if (pEEType == destinationArray.EEType &&
+                pEEType->IsSzArray &&
+                (uint)length <= (nuint)sourceArray.LongLength &&
+                (uint)length <= (nuint)destinationArray.LongLength)
+            {
+                nuint byteCount = (uint)length * (nuint)pEEType->ComponentSize;
+                ref byte src = ref Unsafe.As<RawArrayData>(sourceArray).Data;
+                ref byte dst = ref Unsafe.As<RawArrayData>(destinationArray).Data;
+
+                if (pEEType->HasGCPointers)
+                    Buffer.BulkMoveWithWriteBarrier(ref dst, ref src, byteCount);
+                else
+                    Buffer.Memmove(ref dst, ref src, byteCount);
+
+                // GC.KeepAlive(sourceArray) not required. pMT kept alive via sourceArray
+                return;
+            }
+
+            // Less common
+            CopyImpl(sourceArray, sourceArray.GetLowerBound(0), destinationArray, destinationArray.GetLowerBound(0), length, reliable: false);
+        }
+
+        public static unsafe void Copy(Array sourceArray, int sourceIndex, Array destinationArray, int destinationIndex, int length)
+        {
+            if (sourceArray != null && destinationArray != null)
+            {
+                EEType* pEEType = sourceArray.EEType;
+                if (pEEType == destinationArray.EEType &&
+                    pEEType->IsSzArray &&
+                    length >= 0 && sourceIndex >= 0 && destinationIndex >= 0 &&
+                    (uint)(sourceIndex + length) <= (nuint)sourceArray.LongLength &&
+                    (uint)(destinationIndex + length) <= (nuint)destinationArray.LongLength)
+                {
+                    nuint elementSize = (nuint)pEEType->ComponentSize;
+                    nuint byteCount = (uint)length * elementSize;
+                    ref byte src = ref Unsafe.AddByteOffset(ref Unsafe.As<RawArrayData>(sourceArray).Data, (uint)sourceIndex * elementSize);
+                    ref byte dst = ref Unsafe.AddByteOffset(ref Unsafe.As<RawArrayData>(destinationArray).Data, (uint)destinationIndex * elementSize);
+
+                    if (pEEType->HasGCPointers)
+                        Buffer.BulkMoveWithWriteBarrier(ref dst, ref src, byteCount);
+                    else
+                        Buffer.Memmove(ref dst, ref src, byteCount);
+
+                    // GC.KeepAlive(sourceArray) not required. pMT kept alive via sourceArray
+                    return;
+                }
+            }
+
+            // Less common
+            CopyImpl(sourceArray!, sourceIndex, destinationArray!, destinationIndex, length, reliable: false);
         }
 
         //
@@ -260,9 +304,9 @@ namespace System
         private static unsafe void CopyImpl(Array sourceArray, int sourceIndex, Array destinationArray, int destinationIndex, int length, bool reliable)
         {
             if (sourceArray is null)
-                throw new ArgumentNullException(nameof(sourceArray));
+                ThrowHelper.ThrowArgumentNullException(ExceptionArgument.sourceArray);
             if (destinationArray is null)
-                throw new ArgumentNullException(nameof(destinationArray));
+                ThrowHelper.ThrowArgumentNullException(ExceptionArgument.destinationArray);
 
             int sourceRank = sourceArray.Rank;
             int destinationRank = destinationArray.Rank;
@@ -836,24 +880,38 @@ namespace System
             }
         }
 
-        public static void Clear(Array array, int index, int length)
+        public static unsafe void Clear(Array array, int index, int length)
         {
-            if (!RuntimeImports.TryArrayClear(array, index, length))
-                ReportClearErrors(array, index, length);
-        }
+            if (array == null)
+                ThrowHelper.ThrowArgumentNullException(ExceptionArgument.array);
 
-        private static unsafe void ReportClearErrors(Array array, int index, int length)
-        {
-            if (array is null)
-                throw new ArgumentNullException(nameof(array));
+            ref byte p = ref Unsafe.As<RawArrayData>(array).Data;
+            int lowerBound = 0;
 
-            if (index < 0 || index > array.Length || length < 0 || length > array.Length)
-                throw new IndexOutOfRangeException();
-            if (length > (array.Length - index))
-                throw new IndexOutOfRangeException();
+            EEType* pEEType = array.EEType;
+            if (!pEEType->IsSzArray)
+            {
+                int rank = pEEType->ArrayRank;
+                lowerBound = Unsafe.Add(ref Unsafe.As<byte, int>(ref p), rank);
+                p = ref Unsafe.Add(ref p, 2 * sizeof(int) * rank); // skip the bounds
+            }
 
-            // The above checks should have covered all the reasons why Clear would fail.
-            Debug.Assert(false);
+            int offset = index - lowerBound;
+
+            if (index < lowerBound || offset < 0 || length < 0 || (uint)(offset + length) > (nuint)array.LongLength)
+                ThrowHelper.ThrowIndexOutOfRangeException();
+
+            nuint elementSize = pEEType->ComponentSize;
+
+            ref byte ptr = ref Unsafe.AddByteOffset(ref p, (uint)offset * elementSize);
+            nuint byteLength = (uint)length * elementSize;
+
+            if (pEEType->HasGCPointers)
+                SpanHelpers.ClearWithReferences(ref Unsafe.As<byte, IntPtr>(ref ptr), byteLength / (uint)sizeof(IntPtr));
+            else
+                SpanHelpers.ClearWithoutReferences(ref ptr, byteLength);
+
+            // GC.KeepAlive(array) not required. pMT kept alive via `ptr`
         }
 
         public int GetLength(int dimension)

@@ -1071,14 +1071,6 @@ namespace System.Runtime
         [DllImport(RuntimeImports.RuntimeLibrary, ExactSpelling = true)]
         internal static extern unsafe void* memset(byte* mem, int value, nuint size);
 
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "RhpArrayCopy")]
-        internal static extern bool TryArrayCopy(Array sourceArray, int sourceIndex, Array destinationArray, int destinationIndex, int length);
-
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "RhpArrayClear")]
-        internal static extern bool TryArrayClear(Array array, int index, int length);
-
 #if TARGET_X86 || TARGET_AMD64
         [DllImport(RuntimeLibrary, ExactSpelling = true, CallingConvention = CallingConvention.Cdecl)]
         internal static extern unsafe void RhCpuIdEx(int* cpuInfo, int functionId, int subFunctionId);
