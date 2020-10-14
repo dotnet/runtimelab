@@ -55,7 +55,7 @@ namespace Microsoft.Interop
             public const string ConfigurationNotSupported = Prefix + "002";
         }
 
-        private const string Category = "DllImportGenerator";
+        private const string Category = "Usage";
 
         public readonly static DiagnosticDescriptor ParameterTypeNotSupported =
             new DiagnosticDescriptor(
