@@ -16,7 +16,7 @@ To enable reflection-free mode in a project that is already using CoreRT, add th
 </PropertyGroup>
 ```
 
-(More switches are documented in the [Optimizing CoreRT](optimizing-corert.md) document.)
+(More switches are documented in the [Optimizing CoreRT](optimizing.md) document.)
 
 ## What's different at compile time with reflection disabled
 
