@@ -133,7 +133,7 @@ namespace System.Threading
             if (currentThread != null)
             {
                 StopThread(currentThread);
-                JoinInternal(0);
+                currentThread.JoinInternal(0);
             }
         }
 
