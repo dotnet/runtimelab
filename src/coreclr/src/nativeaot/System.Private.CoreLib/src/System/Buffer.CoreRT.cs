@@ -42,9 +42,9 @@ namespace System
             {
                 // Blittable memmove
 
-                RuntimeImports.memmove(
-                    (byte*)Unsafe.AsPointer(ref destination),
-                    (byte*)Unsafe.AsPointer(ref source),
+                Memmove(
+                    ref Unsafe.As<T, byte>(ref destination),
+                    ref Unsafe.As<T, byte>(ref source),
                     elementCount * (nuint)Unsafe.SizeOf<T>());
             }
             else
