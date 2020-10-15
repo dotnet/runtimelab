@@ -54,7 +54,7 @@ namespace Internal.Runtime.CompilerHelpers
         private static int Shutdown()
         {
             Thread.WaitForForegroundThreads();
-            
+
             Environment.ShutdownCore();
 
             return Environment.ExitCode;

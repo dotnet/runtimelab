@@ -38,7 +38,7 @@ namespace System.Threading
         private Lock _lock;
 
         // so far the only place we initialize it is `WaitForForegroundThreads`
-        // and only in the case when there are running foreground threads 
+        // and only in the case when there are running foreground threads
         // by the moment of `StartupCodeHelpers.Shutdown()` invocation
         private static ManualResetEvent s_allDone;
 
@@ -556,14 +556,14 @@ namespace System.Threading
             return (currentProcessorIdCache >> ProcessorIdCacheShift);
         }
 
-        internal static void IncrementRunningForeground() 
+        internal static void IncrementRunningForeground()
         {
             Interlocked.Increment(ref s_foregroundRunningCount);
         }
 
-        internal static void DecrementRunningForeground() 
+        internal static void DecrementRunningForeground()
         {
-            if (Interlocked.Decrement(ref s_foregroundRunningCount) == 0) 
+            if (Interlocked.Decrement(ref s_foregroundRunningCount) == 0)
             {
                 // Interlocked.Decrement issues full memory barrier 
                 // so most recent write to s_allDone should be visible here
