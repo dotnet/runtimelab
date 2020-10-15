@@ -2,9 +2,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29123.88
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ILCompiler.DependencyAnalysisFramework", "ILCompiler.DependencyAnalysisFramework\ILCompiler.DependencyAnalysisFramework.csproj", "{FB2D45F2-FA4C-42B2-8E53-3E1F30CF8046}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ILCompiler", "ILCompiler\ILCompiler.csproj", "{6856F5F6-E568-493F-AF8A-7F624B5A02A5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ILCompiler.DependencyAnalysisFramework", "ILCompiler.DependencyAnalysisFramework\ILCompiler.DependencyAnalysisFramework.csproj", "{FB2D45F2-FA4C-42B2-8E53-3E1F30CF8046}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ILCompiler.MetadataTransform", "ILCompiler.MetadataTransform\ILCompiler.MetadataTransform.csproj", "{B68D5B9E-405B-4E44-B2CC-418EC78AE070}"
 EndProject
