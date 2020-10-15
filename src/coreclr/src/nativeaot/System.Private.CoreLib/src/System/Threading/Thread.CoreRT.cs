@@ -565,14 +565,14 @@ namespace System.Threading
         {
             if (Interlocked.Decrement(ref s_foregroundRunningCount) == 0)
             {
-                // Interlocked.Decrement issues full memory barrier 
+                // Interlocked.Decrement issues full memory barrier
                 // so most recent write to s_allDone should be visible here
                 s_allDone?.Set();
             }
         }
 
-        internal static void WaitForForegroundThreads() 
-        {         
+        internal static void WaitForForegroundThreads()
+        {
             Thread.CurrentThread.IsBackground = true;
             // last read/write inside `IsBackground` issues full barrier no matter of logic flow
             // so we can just read `s_foregroundRunningCount`
@@ -583,7 +583,7 @@ namespace System.Threading
             }
             Volatile.Write(ref s_allDone, new ManualResetEvent(false));
             // other foreground threads could have their job finished meanwhile
-            // Volatile.Write above issues release barrier 
+            // Volatile.Write above issues release barrier
             // but we need acquire barrier to observe most recent write to s_foregroundRunningCount
             if (Volatile.Read(ref s_foregroundRunningCount) == 0)
             {
