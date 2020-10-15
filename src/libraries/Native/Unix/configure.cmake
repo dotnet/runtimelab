@@ -572,9 +572,9 @@ else()
 endif()
 
 check_symbol_exists(
-    mach_absolute_time
-    mach/mach_time.h
-    HAVE_MACH_ABSOLUTE_TIME)
+    clock_gettime_nsec_np
+    time.h
+    HAVE_CLOCK_GETTIME_NSEC_NP)
 
 check_symbol_exists(
     futimes

@@ -54,7 +54,7 @@ LowLevelMonitor* SystemNative_LowLevelMonitor_Create()
         return NULL;
     }
 
-#if HAVE_MACH_ABSOLUTE_TIME
+#if HAVE_CLOCK_GETTIME_NSEC_NP
     // Older versions of OSX don't support CLOCK_MONOTONIC, so we don't use pthread_condattr_setclock. See
     // Wait(int32_t timeoutMilliseconds).
     error = pthread_cond_init(&monitor->Condition, NULL);
@@ -161,7 +161,7 @@ int32_t SystemNative_LowLevelMonitor_TimedWait(LowLevelMonitor *monitor, int32_t
     // Calculate the time at which a timeout should occur, and wait. Older versions of OSX don't support clock_gettime with
     // CLOCK_MONOTONIC, so we instead compute the relative timeout duration, and use a relative variant of the timed wait.
     struct timespec timeoutTimeSpec;
-#if HAVE_MACH_ABSOLUTE_TIME
+#if HAVE_CLOCK_GETTIME_NSEC_NP
     timeoutTimeSpec.tv_sec = timeoutMilliseconds / 1000;
     timeoutTimeSpec.tv_nsec = (timeoutMilliseconds % 1000) * 1000 * 1000;
     error = pthread_cond_timedwait_relative_np(&monitor->Condition, &monitor->Mutex, &timeoutTimeSpec);
