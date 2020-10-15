@@ -237,24 +237,24 @@ namespace System
             CopyImpl(sourceArray, sourceIndex, destinationArray, destinationIndex, length, reliable: true);
         }
 
-        public static unsafe void Copy(Array sourceArray, Array destinationArray, int length)
+        public static void Copy(Array sourceArray, Array destinationArray, int length)
         {
             if (sourceArray is null)
                 ThrowHelper.ThrowArgumentNullException(ExceptionArgument.sourceArray);
             if (destinationArray is null)
                 ThrowHelper.ThrowArgumentNullException(ExceptionArgument.destinationArray);
 
-            EEType* pEEType = sourceArray.EEType;
-            if (pEEType == destinationArray.EEType &&
-                pEEType->IsSzArray &&
+            EETypePtr eeType = sourceArray.EETypePtr;
+            if (eeType.FastEquals(destinationArray.EETypePtr) &&
+                eeType.IsSzArray &&
                 (uint)length <= (nuint)sourceArray.LongLength &&
                 (uint)length <= (nuint)destinationArray.LongLength)
             {
-                nuint byteCount = (uint)length * (nuint)pEEType->ComponentSize;
+                nuint byteCount = (uint)length * (nuint)eeType.ComponentSize;
                 ref byte src = ref Unsafe.As<RawArrayData>(sourceArray).Data;
                 ref byte dst = ref Unsafe.As<RawArrayData>(destinationArray).Data;
 
-                if (pEEType->HasGCPointers)
+                if (eeType.HasPointers)
                     Buffer.BulkMoveWithWriteBarrier(ref dst, ref src, byteCount);
                 else
                     Buffer.Memmove(ref dst, ref src, byteCount);
@@ -271,19 +271,19 @@ namespace System
         {
             if (sourceArray != null && destinationArray != null)
             {
-                EEType* pEEType = sourceArray.EEType;
-                if (pEEType == destinationArray.EEType &&
-                    pEEType->IsSzArray &&
+                EETypePtr eeType = sourceArray.EETypePtr;
+                if (eeType.FastEquals(destinationArray.EETypePtr) &&
+                    eeType.IsSzArray &&
                     length >= 0 && sourceIndex >= 0 && destinationIndex >= 0 &&
                     (uint)(sourceIndex + length) <= (nuint)sourceArray.LongLength &&
                     (uint)(destinationIndex + length) <= (nuint)destinationArray.LongLength)
                 {
-                    nuint elementSize = (nuint)pEEType->ComponentSize;
+                    nuint elementSize = (nuint)eeType.ComponentSize;
                     nuint byteCount = (uint)length * elementSize;
                     ref byte src = ref Unsafe.AddByteOffset(ref Unsafe.As<RawArrayData>(sourceArray).Data, (uint)sourceIndex * elementSize);
                     ref byte dst = ref Unsafe.AddByteOffset(ref Unsafe.As<RawArrayData>(destinationArray).Data, (uint)destinationIndex * elementSize);
 
-                    if (pEEType->HasGCPointers)
+                    if (eeType.HasPointers)
                         Buffer.BulkMoveWithWriteBarrier(ref dst, ref src, byteCount);
                     else
                         Buffer.Memmove(ref dst, ref src, byteCount);
@@ -888,10 +888,10 @@ namespace System
             ref byte p = ref Unsafe.As<RawArrayData>(array).Data;
             int lowerBound = 0;
 
-            EEType* pEEType = array.EEType;
-            if (!pEEType->IsSzArray)
+            EETypePtr eeType = array.EETypePtr;
+            if (!eeType.IsSzArray)
             {
-                int rank = pEEType->ArrayRank;
+                int rank = eeType.ArrayRank;
                 lowerBound = Unsafe.Add(ref Unsafe.As<byte, int>(ref p), rank);
                 p = ref Unsafe.Add(ref p, 2 * sizeof(int) * rank); // skip the bounds
             }
@@ -901,12 +901,12 @@ namespace System
             if (index < lowerBound || offset < 0 || length < 0 || (uint)(offset + length) > (nuint)array.LongLength)
                 ThrowHelper.ThrowIndexOutOfRangeException();
 
-            nuint elementSize = pEEType->ComponentSize;
+            nuint elementSize = eeType.ComponentSize;
 
             ref byte ptr = ref Unsafe.AddByteOffset(ref p, (uint)offset * elementSize);
             nuint byteLength = (uint)length * elementSize;
 
-            if (pEEType->HasGCPointers)
+            if (eeType.HasPointers)
                 SpanHelpers.ClearWithReferences(ref Unsafe.As<byte, IntPtr>(ref ptr), byteLength / (uint)sizeof(IntPtr));
             else
                 SpanHelpers.ClearWithoutReferences(ref ptr, byteLength);
