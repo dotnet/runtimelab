@@ -1,0 +1,18 @@
+<Project>
+  <Import Project="Sdk.props" Sdk="Microsoft.DotNet.Arcade.Sdk" />
+
+  <PropertyGroup>
+    <Copyright>$(CopyrightNetFoundation)</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+    <DebugType>embedded</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <LangVersion>Latest</LangVersion>
+    <IsPackable>true</IsPackable>
+
+    <!-- Set this property to false if you don't want to use the runtime
+          framework version defined in Versions.props -->
+    <UseCustomRuntimeVersion>true</UseCustomRuntimeVersion>
+    <RuntimeFrameworkVersion Condition="$(UseCustomRuntimeVersion)">$(MicrosoftNETCoreAppVersion)</RuntimeFrameworkVersion>
+  </PropertyGroup>
+</Project>

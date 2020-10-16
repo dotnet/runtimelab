@@ -1,0 +1,43 @@
+parameters:
+  jobTemplate: ''
+  buildConfig: ''
+  platforms: []
+  jobParameters: {}
+
+jobs:
+
+# Linux x64
+- ${{ if containsValue(parameters.platforms, 'Linux_x64') }}:
+  - template: ${{ parameters.jobTemplate }}
+    parameters:
+      variables: ${{ parameters.variables }}
+      osGroup: Linux
+      archType: x64
+      pool:
+        vmImage: 'ubuntu-latest'
+      buildConfig: ${{ parameters.buildConfig }}
+      ${{ insert }}: ${{ parameters.jobParameters }}
+
+# OSX x64
+- ${{ if containsValue(parameters.platforms, 'OSX_x64') }}:
+  - template: ${{ parameters.jobTemplate }}
+    parameters:
+      variables: ${{ parameters.variables }}
+      osGroup: OSX
+      archType: x64
+      pool:
+        vmImage: 'macOS-latest'
+      buildConfig: ${{ parameters.buildConfig }}
+      ${{ insert }}: ${{ parameters.jobParameters }}
+
+# OSX x64
+- ${{ if containsValue(parameters.platforms, 'Windows_NT_x64') }}:
+  - template: ${{ parameters.jobTemplate }}
+    parameters:
+      variables: ${{ parameters.variables }}
+      osGroup: Windows_NT
+      archType: x64
+      pool:
+        vmImage: 'windows-latest'
+      buildConfig: ${{ parameters.buildConfig }}
+      ${{ insert }}: ${{ parameters.jobParameters }}

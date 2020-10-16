@@ -1,0 +1,57 @@
+parameters:
+  variables: {}
+  osGroup: ''
+  archType: ''
+  buildConfig: ''
+  container: ''
+  pool: {}
+  isOfficialBuild: ''
+  runTests: true
+
+jobs:
+
+- template: /eng/common/templates/job/job.yml
+  parameters:
+    displayName: ${{ format('{0} {1} {2}', parameters.osGroup, parameters.archType, parameters.buildConfig) }}
+    name: ${{ format('{0}_{1}_{2}', parameters.osGroup, parameters.archType, parameters.buildConfig) }}
+    enableTelemetry: ${{ parameters.isOfficialBuild }}
+    helixRepo: dotnet/runtimelab
+    pool: ${{ parameters.pool }}
+    enablePublishBuildArtifacts: true
+
+    ${{ if ne(parameters.container, '') }}:
+      ${{ if eq(parameters.container.registry, 'mcr') }}:
+        container: ${{ format('{0}:{1}', 'mcr.microsoft.com/dotnet-buildtools/prereqs', parameters.container.image) }}
+      ${{ if ne(parameters.container.registry, 'mcr') }}:
+        container: ${{ format('{0}:{1}', parameters.container.registry, parameters.container.image) }}
+
+    variables:
+      - _BuildConfig: ${{ parameters.buildConfig }}
+      - _buildScript: build.cmd
+
+      - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
+        - _buildScript: ./build.sh
+      
+      - _testBuildArg: ''
+      - ${{ if eq(parameters.runTests, true) }}:
+        - _testBuildArg: -test
+
+    steps:
+    - script: $(_buildScript)
+              -ci
+              $(_testBuildArg)
+              -c ${{ parameters.buildConfig }}
+              /p:TargetPlatform=${{ parameters.archType }}
+      displayName: Build and Test
+
+    - ${{ if eq(parameters.runTests, true) }}:
+      - task: PublishTestResults@2
+        displayName: Publish Test Results
+        inputs:
+          testResultsFormat: 'VSTest'
+          testResultsFiles: '*.xml' 
+          searchFolder: '$(Build.SourcesDirectory)/artifacts/TestResults/$(_BuildConfig)'
+          testRunTitle: ${{ format('{0}_{1}_{2}', parameters.osGroup, parameters.archType, parameters.buildConfig) }}
+          mergeTestResults: ${{ parameters.mergeTestResults }}
+        continueOnError: true
+        condition: always()
