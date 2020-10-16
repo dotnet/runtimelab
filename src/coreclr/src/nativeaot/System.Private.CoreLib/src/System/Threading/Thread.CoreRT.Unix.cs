@@ -17,10 +17,9 @@ namespace System.Threading
 
         internal WaitSubsystem.ThreadWaitInfo WaitInfo => _waitInfo;
 
-        private unsafe void PlatformSpecificInitialize()
+        private void PlatformSpecificInitialize()
         {
             _waitInfo = new WaitSubsystem.ThreadWaitInfo(this);
-            RuntimeImports.RhSetThreadExitCallback(&OnThreadExit);
         }
 
         // Platform-specific initialization of foreign threads, i.e. threads not created by Thread.Start
@@ -48,18 +47,10 @@ namespace System.Threading
                 // Inform the wait subsystem that the thread is exiting. For instance, this would abandon any mutexes locked by
                 // the thread.
                 WaitSubsystem.OnThreadExiting(currentThread);
-
-                // Set the Stopped bit and signal the current thread as stopped
-                int state = currentThread._threadState;
-                if ((state & (int)(ThreadState.Stopped | ThreadState.Aborted)) == 0)
-                {
-                    currentThread.SetThreadStateBit(ThreadState.Stopped);
-                }
+                StopThread(currentThread);
                 currentThread._stopped.Set();
             }
         }
-
-        private ThreadState GetThreadState() => (ThreadState)_threadState;
 
         private bool JoinInternal(int millisecondsTimeout)
         {

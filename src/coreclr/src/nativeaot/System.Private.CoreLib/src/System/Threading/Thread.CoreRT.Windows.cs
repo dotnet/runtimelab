@@ -126,23 +126,14 @@ namespace System.Threading
             return Interop.Kernel32.SetThreadPriority(_osHandle, (int)MapToOSPriority(priority));
         }
 
-        private ThreadState GetThreadState()
+        [UnmanagedCallersOnly]
+        private static void OnThreadExit()
         {
-            int state = _threadState;
-            // If the thread is marked as alive, check if it has finished execution
-            if ((state & (int)(ThreadState.Unstarted | ThreadState.Stopped | ThreadState.Aborted)) == 0)
+            Thread currentThread = t_currentThread;
+            if (currentThread != null)
             {
-                if (JoinInternal(0))
-                {
-                    state = _threadState;
-                    if ((state & (int)(ThreadState.Stopped | ThreadState.Aborted)) == 0)
-                    {
-                        SetThreadStateBit(ThreadState.Stopped);
-                        state = _threadState;
-                    }
-                }
+                StopThread(currentThread);
             }
-            return (ThreadState)state;
         }
 
         private bool JoinInternal(int millisecondsTimeout)

@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Threading;
 
 using Internal.Runtime.Augments;
 
@@ -52,6 +53,8 @@ namespace Internal.Runtime.CompilerHelpers
         // Shuts down the class library and returns the process exit code.
         private static int Shutdown()
         {
+            Thread.WaitForForegroundThreads();
+
             Environment.ShutdownCore();
 
             return Environment.ExitCode;

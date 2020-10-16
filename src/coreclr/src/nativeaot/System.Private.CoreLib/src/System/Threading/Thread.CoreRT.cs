@@ -37,6 +37,13 @@ namespace System.Threading
         // Protects starting the thread and setting its priority
         private Lock _lock;
 
+        // so far the only place we initialize it is `WaitForForegroundThreads`
+        // and only in the case when there are running foreground threads
+        // by the moment of `StartupCodeHelpers.Shutdown()` invocation
+        private static ManualResetEvent s_allDone;
+
+        private static int s_foregroundRunningCount;
+
         private Thread()
         {
             _threadState = (int)ThreadState.Unstarted;
@@ -44,6 +51,12 @@ namespace System.Threading
             _lock = new Lock();
 
             PlatformSpecificInitialize();
+            RegisterThreadExitCallback();
+        }
+
+        private unsafe void RegisterThreadExitCallback()
+        {
+            RuntimeImports.RhSetThreadExitCallback(&OnThreadExit);
         }
 
         private void SetStartHelper(Delegate threadStart, int maxStackSize)
@@ -87,6 +100,10 @@ namespace System.Threading
             {
                 state |= ThreadState.Background;
             }
+            else
+            {
+                Interlocked.Increment(ref s_foregroundRunningCount);
+            }
 
             currentThread._threadState = (int)(state | ThreadState.Running);
             currentThread.PlatformSpecificInitializeExistingThread();
@@ -119,9 +136,9 @@ namespace System.Threading
                 _name = null;
             }
 
-            if (!GetThreadStateBit(ThreadState.Background))
+            if ((SetThreadStateBit(ThreadState.Background) & (int)ThreadState.Background) == 0)
             {
-                SetThreadStateBit(ThreadState.Background);
+                DecrementRunningForeground();
             }
 
             ThreadPriority newPriority = ThreadPriority.Normal;
@@ -143,17 +160,13 @@ namespace System.Threading
         {
             get
             {
-                // Refresh ThreadState.Stopped bit if necessary
-                ThreadState state = GetThreadState();
-                return (state & (ThreadState.Unstarted | ThreadState.Stopped | ThreadState.Aborted)) == 0;
+                return ((ThreadState)_threadState & (ThreadState.Unstarted | ThreadState.Stopped | ThreadState.Aborted)) == 0;
             }
         }
 
         private bool IsDead()
         {
-            // Refresh ThreadState.Stopped bit if necessary
-            ThreadState state = GetThreadState();
-            return (state & (ThreadState.Stopped | ThreadState.Aborted)) != 0;
+            return ((ThreadState)_threadState & (ThreadState.Stopped | ThreadState.Aborted)) != 0;
         }
 
         public bool IsBackground
@@ -172,14 +185,25 @@ namespace System.Threading
                 {
                     throw new ThreadStateException(SR.ThreadState_Dead_State);
                 }
-                // TODO: Keep a counter of running foregroung threads so we can wait on process exit
+                // we changing foreground count only for started threads
+                // on thread start we count its state in `StartThread`
                 if (value)
                 {
-                    SetThreadStateBit(ThreadState.Background);
+                    int threadState = SetThreadStateBit(ThreadState.Background);
+                    // was foreground and has started
+                    if ((threadState & ((int)ThreadState.Background | (int)ThreadState.Unstarted)) == 0)
+                    {
+                        DecrementRunningForeground();
+                    }
                 }
                 else
                 {
-                    ClearThreadStateBit(ThreadState.Background);
+                    int threadState = ClearThreadStateBit(ThreadState.Background);
+                    // was background and has started
+                    if ((threadState & ((int)ThreadState.Background | (int)ThreadState.Unstarted)) == (int)ThreadState.Background)
+                    {
+                        IncrementRunningForeground();
+                    }
                 }
             }
         }
@@ -259,7 +283,7 @@ namespace System.Threading
             }
         }
 
-        public ThreadState ThreadState => (GetThreadState() & PublicThreadStateMask);
+        public ThreadState ThreadState => ((ThreadState)_threadState & PublicThreadStateMask);
 
         private bool GetThreadStateBit(ThreadState bit)
         {
@@ -267,7 +291,7 @@ namespace System.Threading
             return (_threadState & (int)bit) != 0;
         }
 
-        private void SetThreadStateBit(ThreadState bit)
+        private int SetThreadStateBit(ThreadState bit)
         {
             int oldState, newState;
             do
@@ -275,9 +299,10 @@ namespace System.Threading
                 oldState = _threadState;
                 newState = oldState | (int)bit;
             } while (Interlocked.CompareExchange(ref _threadState, newState, oldState) != oldState);
+            return oldState;
         }
 
-        private void ClearThreadStateBit(ThreadState bit)
+        private int ClearThreadStateBit(ThreadState bit)
         {
             int oldState, newState;
             do
@@ -285,6 +310,7 @@ namespace System.Threading
                 oldState = _threadState;
                 newState = oldState & ~(int)bit;
             } while (Interlocked.CompareExchange(ref _threadState, newState, oldState) != oldState);
+            return oldState;
         }
 
         internal void SetWaitSleepJoinState()
@@ -429,7 +455,11 @@ namespace System.Threading
             }
 
             // Report success to the creator thread, which will free threadHandle and _threadStartArg
-            thread.ClearThreadStateBit(ThreadState.Unstarted);
+            int state = thread.ClearThreadStateBit(ThreadState.Unstarted);
+            if ((state & (int)ThreadState.Background) == 0)
+            {
+                IncrementRunningForeground();
+            }
 
             if (thread._startCulture != null)
             {
@@ -461,6 +491,19 @@ namespace System.Threading
             finally
             {
                 thread.SetThreadStateBit(ThreadState.Stopped);
+            }
+        }
+
+        private static void StopThread(Thread thread)
+        {
+            int state = thread._threadState;
+            if ((state & (int)(ThreadState.Stopped | ThreadState.Aborted)) == 0)
+            {
+                thread.SetThreadStateBit(ThreadState.Stopped);
+            }
+            if ((state & (int)ThreadState.Background) == 0)
+            {
+                DecrementRunningForeground();
             }
         }
 
@@ -511,6 +554,42 @@ namespace System.Threading
             if ((currentProcessorIdCache & ProcessorIdCacheCountDownMask) == 0)
                 return RefreshCurrentProcessorId();
             return (currentProcessorIdCache >> ProcessorIdCacheShift);
+        }
+
+        internal static void IncrementRunningForeground()
+        {
+            Interlocked.Increment(ref s_foregroundRunningCount);
+        }
+
+        internal static void DecrementRunningForeground()
+        {
+            if (Interlocked.Decrement(ref s_foregroundRunningCount) == 0)
+            {
+                // Interlocked.Decrement issues full memory barrier
+                // so most recent write to s_allDone should be visible here
+                s_allDone?.Set();
+            }
+        }
+
+        internal static void WaitForForegroundThreads()
+        {
+            Thread.CurrentThread.IsBackground = true;
+            // last read/write inside `IsBackground` issues full barrier no matter of logic flow
+            // so we can just read `s_foregroundRunningCount`
+            if (s_foregroundRunningCount == 0)
+            {
+                // current thread is the last foreground thread, so let the runtime finish
+                return;
+            }
+            Volatile.Write(ref s_allDone, new ManualResetEvent(false));
+            // other foreground threads could have their job finished meanwhile
+            // Volatile.Write above issues release barrier
+            // but we need acquire barrier to observe most recent write to s_foregroundRunningCount
+            if (Volatile.Read(ref s_foregroundRunningCount) == 0)
+            {
+                return;
+            }
+            s_allDone.WaitOne();
         }
     }
 }
