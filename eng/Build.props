@@ -1,0 +1,5 @@
+<Project>
+  <ItemGroup>
+    <ProjectToBuild Include="$(RepoRoot)Experiment.sln" />
+  </ItemGroup>
+</Project>

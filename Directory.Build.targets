@@ -1,0 +1,12 @@
+<Project>
+  <!-- Use a custom framework version -->
+  <ItemGroup>
+    <FrameworkReference Update="Microsoft.NETCore.App"
+                        Condition="'$(UseCustomRuntimeVersion)' == 'true' and '$(TargetFrameworkIdentifier)' == '.NETCoreApp'"
+                        TargetFramework="$(TargetFramework)"
+                        RuntimeFrameworkVersion="$(MicrosoftNETCoreAppVersion)"
+                        TargetingPackVersion="$(MicrosoftNETCoreAppVersion)" />
+  </ItemGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.DotNet.Arcade.Sdk" />
+</Project>
