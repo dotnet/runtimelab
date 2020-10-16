@@ -481,6 +481,7 @@ Int32 __stdcall RhpHardwareExceptionHandler(UIntNative faultCode, UIntNative fau
             }
 
             translateToManagedException = true;
+        }
     }
 
     if (translateToManagedException)
