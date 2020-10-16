@@ -94,4 +94,8 @@
       <Link>CommandLine\CommandLineHelpers.cs</Link>
     </Compile>
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="repro\*" />
+  </ItemGroup>
 </Project>
