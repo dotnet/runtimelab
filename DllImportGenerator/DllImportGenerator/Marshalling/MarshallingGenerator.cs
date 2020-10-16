@@ -98,6 +98,7 @@ namespace Microsoft.Interop
         public static readonly WinBoolMarshaller WinBool = new WinBoolMarshaller();
         public static readonly VariantBoolMarshaller VariantBool = new VariantBoolMarshaller();
         public static readonly Utf16CharMarshaller Utf16Char = new Utf16CharMarshaller();
+        public static readonly Utf16StringMarshaller Utf16String = new Utf16StringMarshaller();
         public static readonly Forwarder Forwarder = new Forwarder();
         public static readonly BlittableMarshaller Blittable = new BlittableMarshaller();
         public static readonly DelegateMarshaller Delegate = new DelegateMarshaller();
@@ -166,6 +167,8 @@ namespace Microsoft.Interop
                     {
                         NotSupportedDetails = Resources.MarshallingCharAsCharSetAutoNotSupported
                     };
+                case { ManagedType: { SpecialType: SpecialType.System_String } }:
+                    return CreateStringMarshaller(info, context);
 
                 case { ManagedType: { TypeKind: TypeKind.Delegate }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.FunctionPtr } }:
                     return Delegate;
@@ -191,6 +194,34 @@ namespace Microsoft.Interop
                     throw new MarshallingNotSupportedException(info, context);
             }
 #endif
+        }
+
+        private static IMarshallingGenerator CreateStringMarshaller(TypePositionInfo info, StubCodeContext context)
+        {
+            MarshallingInfo marshalInfo = info.MarshallingAttributeInfo;
+            if (marshalInfo == null)
+                return Utf16String; // [Compat] Default marshalling is UTF-16.
+
+            // Explicit MarshalAs takes precedence over string encoding info
+            if (marshalInfo is MarshalAsInfo marshalAsInfo)
+            {
+                switch (marshalAsInfo.UnmanagedType)
+                {
+                    case UnmanagedType.LPTStr:
+                    case UnmanagedType.LPWStr:
+                        return Utf16String;
+                }
+            }
+            else if (marshalInfo is MarshallingInfoStringSupport marshalStringInfo)
+            {
+                switch (marshalStringInfo.CharEncoding)
+                {
+                    case CharEncoding.Utf16:
+                        return Utf16String;
+                }
+            }
+
+            throw new MarshallingNotSupportedException(info, context);
         }
     }
 }
