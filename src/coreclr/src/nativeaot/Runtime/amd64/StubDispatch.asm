@@ -24,6 +24,7 @@ endm
 DEFINE_INTERFACE_DISPATCH_STUB macro entries
 
 StubName textequ @CatStr( RhpInterfaceDispatch, entries )
+StubAVLocation textequ @CatStr( RhpInterfaceDispatchAVLocation, entries )
 
 LEAF_ENTRY StubName, _TEXT
 
@@ -35,6 +36,7 @@ LEAF_ENTRY StubName, _TEXT
         mov     r11, [r10 + OFFSETOF__InterfaceDispatchCell__m_pCache]
 
         ;; Load the EEType from the object instance in rcx.
+        ALTERNATE_ENTRY StubAVLocation
         mov     rax, [rcx]
 
 CurrentEntry = 0
@@ -56,6 +58,10 @@ LEAF_END StubName, _TEXT
 ;;
 ;; The mrt100dbi requires these be exported to identify mrt100 code that dispatches back into managed.
 ;; If you change or add any new dispatch stubs, please also change slr.def and dbi\process.cpp CordbProcess::GetExportStepInfo
+;;
+;; If you change or add any new dispatch stubs, exception handling might need to be aware because it refers to the
+;; *AVLocation symbols defined by the dispatch stubs to be able to unwind and blame user code if a NullRef happens
+;; during the interface dispatch.
 ;;
 DEFINE_INTERFACE_DISPATCH_STUB 1
 DEFINE_INTERFACE_DISPATCH_STUB 2
@@ -85,6 +91,11 @@ LEAF_END RhpVTableOffsetDispatch, _TEXT
 ;; Initial dispatch on an interface when we don't have a cache yet.
 LEAF_ENTRY RhpInitialInterfaceDispatch, _TEXT
 ALTERNATE_ENTRY RhpInitialDynamicInterfaceDispatch
+        ;; Trigger an AV if we're dispatching on a null this.
+        ;; The exception handling infrastructure is aware of the fact that this is the first
+        ;; instruction of RhpInitialInterfaceDispatch and uses it to translate an AV here
+        ;; to a NullReferenceException at the callsite.
+        cmp     qword ptr [rcx], 0
 
         ;; Just tail call to the cache miss helper.
         jmp RhpInterfaceDispatchSlow
