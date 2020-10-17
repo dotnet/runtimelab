@@ -52,11 +52,18 @@ namespace DllImportGenerator.UnitTests
             //yield return new[] { CodeSnippets.BasicParametersAndModifiers<IntPtr[]>() };
             //yield return new[] { CodeSnippets.BasicParametersAndModifiers<UIntPtr[]>() };
             yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<char>(CharSet.Unicode) };
+            yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<string>(CharSet.Unicode) };
+            //yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<string>(CharSet.Ansi) };
+            //yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<string>(CharSet.Auto) };
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<bool>(UnmanagedType.Bool) };
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<bool>(UnmanagedType.VariantBool) };
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<bool>(UnmanagedType.I1) };
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<char>(UnmanagedType.I2) };
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<char>(UnmanagedType.U2) };
+            yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<string>(UnmanagedType.LPWStr) };
+            yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<string>(UnmanagedType.LPTStr) };
+            yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<string>(UnmanagedType.LPUTF8Str) };
+            //yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<string>(UnmanagedType.LPStr) };
             //yield return new[] { CodeSnippets.EnumParameters };
             yield return new[] { CodeSnippets.PreserveSigFalseVoidReturn };
             yield return new[] { CodeSnippets.PreserveSigFalse<byte>() };
@@ -115,6 +122,11 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.BasicParametersAndModifiers<string[]>() };
             yield return new[] { CodeSnippets.BasicParametersAndModifiers<IntPtr[]>() };
             yield return new[] { CodeSnippets.BasicParametersAndModifiers<UIntPtr[]>() };
+
+            yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<string>(CharSet.Ansi) };
+            yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<string>(CharSet.Auto) };
+            
+            yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<string>(UnmanagedType.LPStr) };
 
             yield return new[] { CodeSnippets.EnumParameters };
 

@@ -5,8 +5,8 @@ namespace NativeExports
 {
     public static unsafe class Strings
     {
-        [UnmanagedCallersOnly(EntryPoint = "ushort_return_length")]
-        public static int ReturnLengthOfUShortString(ushort* input)
+        [UnmanagedCallersOnly(EntryPoint = "return_length_ushort")]
+        public static int ReturnLengthUShort(ushort* input)
         {
             if (input == null)
                 return -1;
@@ -14,8 +14,8 @@ namespace NativeExports
             return GetLength(input);
         }
 
-        [UnmanagedCallersOnly(EntryPoint = "byte_return_length")]
-        public static int ReturnLengthOfByteString(byte* input)
+        [UnmanagedCallersOnly(EntryPoint = "return_length_byte")]
+        public static int ReturnLengthByte(byte* input)
         {
             if (input == null)
                 return -1;
@@ -23,32 +23,32 @@ namespace NativeExports
             return GetLength(input);
         }
 
-        [UnmanagedCallersOnly(EntryPoint = "append_return_ushort")]
-        public static ushort* AppendReturnAsUShort(ushort* a, ushort* b)
+        [UnmanagedCallersOnly(EntryPoint = "reverse_return_ushort")]
+        public static ushort* ReverseReturnUShort(ushort* input)
         {
-            return Append(a, b);
+            return Reverse(input);
         }
 
-        [UnmanagedCallersOnly(EntryPoint = "append_return_byte")]
-        public static byte* AppendReturnAsByte(byte* a, byte* b)
+        [UnmanagedCallersOnly(EntryPoint = "reverse_return_byte")]
+        public static byte* ReverseReturnByte(byte* input)
         {
-            return Append(a, b);
+            return Reverse(input);
         }
 
-        [UnmanagedCallersOnly(EntryPoint = "append_outushort")]
-        public static void AppendReturnAsOutUShort(ushort* a, ushort* b, ushort** ret)
+        [UnmanagedCallersOnly(EntryPoint = "reverse_out_ushort")]
+        public static void ReverseReturnAsOutUShort(ushort* input, ushort** ret)
         {
-            *ret = Append(a, b);
+            *ret = Reverse(input);
         }
 
-        [UnmanagedCallersOnly(EntryPoint = "append_outbyte")]
-        public static void AppendReturnAsOutByte(byte* a, byte* b, byte** ret)
+        [UnmanagedCallersOnly(EntryPoint = "reverse_out_byte")]
+        public static void ReverseReturnAsOutByte(byte* input, byte** ret)
         {
-            *ret = Append(a, b);
+            *ret = Reverse(input);
         }
 
-        [UnmanagedCallersOnly(EntryPoint = "reverse_refushort")]
-        public static void ReverseRefUShort(ushort** refInput)
+        [UnmanagedCallersOnly(EntryPoint = "reverse_inplace_ref_ushort")]
+        public static void ReverseInPlaceUShort(ushort** refInput)
         {
             if (*refInput == null)
                 return;
@@ -58,34 +58,64 @@ namespace NativeExports
             span.Reverse();
         }
 
-        [UnmanagedCallersOnly(EntryPoint = "reverse_refbyte")]
-        public static void ReverseRefByte(byte** refInput)
+        [UnmanagedCallersOnly(EntryPoint = "reverse_inplace_ref_byte")]
+        public static void ReverseInPlaceByte(byte** refInput)
         {
             int len = GetLength(*refInput);
             var span = new Span<byte>(*refInput, len);
             span.Reverse();
         }
 
-        private static ushort* Append(ushort* a, ushort* b)
+        [UnmanagedCallersOnly(EntryPoint = "reverse_replace_ref_ushort")]
+        public static void ReverseReplaceRefUShort(ushort** s)
         {
-            int lenA = GetLength(a);
-            int lenB = GetLength(b);
-            ushort* res = (ushort*)Marshal.AllocCoTaskMem((lenA + lenB + 1) * sizeof(ushort));
-            new Span<ushort>(a, lenA).CopyTo(new Span<ushort>(res, lenA));
-            new Span<ushort>(b, lenB).CopyTo(new Span<ushort>(res + lenA, lenB));
-            res[lenA + lenB] = 0;
-            return res;
+            if (*s == null)
+                return;
+
+            ushort* ret = Reverse(*s);
+            Marshal.FreeCoTaskMem((IntPtr)(*s));
+            *s = ret;
         }
 
-        private static byte* Append(byte* a, byte* b)
+        [UnmanagedCallersOnly(EntryPoint = "reverse_replace_ref_byte")]
+        public static void ReverseReplaceRefByte(byte** s)
         {
-            int lenA = GetLength(a);
-            int lenB = GetLength(b);
-            byte* res = (byte*)Marshal.AllocCoTaskMem((lenA + lenB + 1) * sizeof(byte));
-            new Span<byte>(a, lenA).CopyTo(new Span<byte>(res, lenA));
-            new Span<byte>(b, lenB).CopyTo(new Span<byte>(res + lenA, lenB));
-            res[lenA + lenB] = 0;
-            return res;
+            if (*s == null)
+                return;
+
+            byte* ret = Reverse(*s);
+            Marshal.FreeCoTaskMem((IntPtr)(*s));
+            *s = ret;
+        }
+
+        private static ushort* Reverse(ushort *s)
+        {
+            if (s == null)
+                return null;
+
+            int len = GetLength(s);
+            ushort* ret = (ushort*)Marshal.AllocCoTaskMem((len + 1) * sizeof(ushort));
+            var span = new Span<ushort>(ret, len);
+
+            new Span<ushort>(s, len).CopyTo(span);
+            span.Reverse();
+            ret[len] = 0;
+            return ret;
+        }
+
+        private static byte* Reverse(byte* s)
+        {
+            if (s == null)
+                return null;
+
+            int len = GetLength(s);
+            byte* ret = (byte*)Marshal.AllocCoTaskMem((len + 1) * sizeof(byte));
+            var span = new Span<byte>(ret, len);
+
+            new Span<byte>(s, len).CopyTo(span);
+            span.Reverse();
+            ret[len] = 0;
+            return ret;
         }
 
         private static int GetLength(ushort* input)
