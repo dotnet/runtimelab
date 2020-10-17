@@ -238,7 +238,6 @@ namespace Microsoft.Interop
                 case StubCodeContext.Stage.Unmarshal:
                     if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
                     {
-                        // [TODO] Check string length is not over 0x7ffffff0 max
                         // <managedIdentifier> = <nativeIdentifier> == null ? null : new string((char*)<nativeIdentifier>);
                         yield return ExpressionStatement(
                             AssignmentExpression(
