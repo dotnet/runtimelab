@@ -1,6 +1,6 @@
 # Standalone Experiments
 
-These branch contains a template for standalone experiments, which means that experiments that are a library, which doesn't depend on runtime changes and doesn't need the overhead of having all the runtime, libraries and installer code, can use this minimal template.
+This branch contains a template for standalone experiments, which means that experiments that are a library, which doesn't depend on runtime changes and doesn't need the overhead of having all the runtime, libraries and installer code, can use this minimal template.
 
 ## Create your experiment
 
