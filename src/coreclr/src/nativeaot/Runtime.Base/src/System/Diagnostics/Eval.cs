@@ -16,7 +16,7 @@ namespace System.Diagnostics
         {
             IntPtr pDebugFuncEvalHelper = (IntPtr)InternalCalls.RhpGetClasslibFunctionFromCodeAddress(classlibAddress, ClassLibFunctionId.DebugFuncEvalHelper);
             Debug.Assert(pDebugFuncEvalHelper != IntPtr.Zero);
-            CalliIntrinsics.CallVoid(pDebugFuncEvalHelper);
+            ((delegate*<void>)pDebugFuncEvalHelper)();
         }
     }
 }

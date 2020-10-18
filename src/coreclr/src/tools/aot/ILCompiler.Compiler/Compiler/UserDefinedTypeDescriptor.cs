@@ -231,7 +231,12 @@ namespace ILCompiler
             {
                 return GetByRefTypeIndex(((ParameterizedType)type).ParameterType);
             }
+            else if (type.IsFunctionPointer)
+            {
+                return GetPointerTypeIndex(type.Context.GetWellKnownType(WellKnownType.Void));
+            }
 
+            Debug.Fail("Unhandled UserDefinedTypeDescriptor type: {type}");
             return 0;
         }
 

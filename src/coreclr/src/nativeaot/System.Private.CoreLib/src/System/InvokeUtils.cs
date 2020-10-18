@@ -357,7 +357,7 @@ namespace System
         private static readonly Func<Type> s_getExactTypeForCustomBinder = GetExactTypeForCustomBinder;
 
         [DebuggerGuidedStepThroughAttribute]
-        internal static object CallDynamicInvokeMethod(
+        internal static unsafe object CallDynamicInvokeMethod(
             object thisPtr,
             IntPtr methodToCall,
             object thisPtrDynamicInvokeMethod,
@@ -413,19 +413,22 @@ namespace System
                     if (invokeMethodHelperIsThisCall)
                     {
                         Debug.Assert(methodToCallIsThisCall == true);
-                        result = CalliIntrinsics.Call(dynamicInvokeHelperMethod, thisPtrDynamicInvokeMethod, thisPtr, methodToCall, ref argSetupState);
+                        result = ((delegate*<object, object, IntPtr, ref ArgSetupState, object>)dynamicInvokeHelperMethod)
+                            (thisPtrDynamicInvokeMethod, thisPtr, methodToCall, ref argSetupState);
                         System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
                     }
                     else
                     {
                         if (dynamicInvokeHelperGenericDictionary != IntPtr.Zero)
                         {
-                            result = CalliIntrinsics.Call(dynamicInvokeHelperMethod, dynamicInvokeHelperGenericDictionary, thisPtr, methodToCall, ref argSetupState, methodToCallIsThisCall);
+                            result = ((delegate*<IntPtr, object, IntPtr, ref ArgSetupState, bool, object>)dynamicInvokeHelperMethod)
+                                (dynamicInvokeHelperGenericDictionary, thisPtr, methodToCall, ref argSetupState, methodToCallIsThisCall);
                             DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
                         }
                         else
                         {
-                            result = CalliIntrinsics.Call(dynamicInvokeHelperMethod, thisPtr, methodToCall, ref argSetupState, methodToCallIsThisCall);
+                            result = ((delegate*<object, IntPtr, ref ArgSetupState, bool, object>)dynamicInvokeHelperMethod)
+                                (thisPtr, methodToCall, ref argSetupState, methodToCallIsThisCall);
                             DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
                         }
                     }
@@ -494,47 +497,6 @@ namespace System
         {
             // argSetupStatePtr is a pointer to a *pinned* ArgSetupState object
             DynamicInvokeArgSetupComplete(ref Unsafe.As<byte, ArgSetupState>(ref *(byte*)argSetupStatePtr));
-        }
-
-        [System.Runtime.InteropServices.McgIntrinsicsAttribute]
-        private static class CalliIntrinsics
-        {
-            [DebuggerStepThrough]
-            internal static object Call(
-                IntPtr dynamicInvokeHelperMethod,
-                object thisPtrForDynamicInvokeHelperMethod,
-                object thisPtr,
-                IntPtr methodToCall,
-                ref ArgSetupState argSetupState)
-            {
-                // This method is implemented elsewhere in the toolchain
-                throw new NotSupportedException();
-            }
-
-            [DebuggerStepThrough]
-            internal static object Call(
-                IntPtr dynamicInvokeHelperMethod,
-                object thisPtr,
-                IntPtr methodToCall,
-                ref ArgSetupState argSetupState,
-                bool isTargetThisCall)
-            {
-                // This method is implemented elsewhere in the toolchain
-                throw new NotSupportedException();
-            }
-
-            [DebuggerStepThrough]
-            internal static object Call(
-                IntPtr dynamicInvokeHelperMethod,
-                IntPtr dynamicInvokeHelperGenericDictionary,
-                object thisPtr,
-                IntPtr methodToCall,
-                ref ArgSetupState argSetupState,
-                bool isTargetThisCall)
-            {
-                // This method is implemented elsewhere in the toolchain
-                throw new NotSupportedException();
-            }
         }
 
         // Template function that is used to call dynamically

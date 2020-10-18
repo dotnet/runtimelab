@@ -166,7 +166,8 @@ namespace System.Runtime
             try
             {
                 // Invoke the classlib fail fast function.
-                CalliIntrinsics.CallVoid(pFailFastFunction, reason, unhandledException, IntPtr.Zero, IntPtr.Zero);
+                ((delegate*<RhFailFastReason, object, IntPtr, IntPtr, void>)pFailFastFunction)
+                    (reason, unhandledException, IntPtr.Zero, IntPtr.Zero);
             }
             catch when (true)
             {
@@ -214,7 +215,7 @@ namespace System.Runtime
 
             try
             {
-                CalliIntrinsics.CallVoid(pOnFirstChanceFunction, exception);
+                ((delegate*<object, void>)pOnFirstChanceFunction)(exception);
             }
             catch when (true)
             {
@@ -246,7 +247,8 @@ namespace System.Runtime
 
             try
             {
-                CalliIntrinsics.CallVoid(pFailFastFunction, reason, unhandledException, exInfo._pExContext->IP, (IntPtr)pContext);
+                ((delegate*<RhFailFastReason, object, IntPtr, IntPtr, void>)pFailFastFunction)
+                    (reason, unhandledException, exInfo._pExContext->IP, (IntPtr)pContext);
             }
             catch when (true)
             {
@@ -276,7 +278,7 @@ namespace System.Runtime
 
                 try
                 {
-                    CalliIntrinsics.CallVoid(pAppendStackFrame, exception, ip, flags);
+                    ((delegate*<object, IntPtr, int, void>)pAppendStackFrame)(exception, ip, flags);
                 }
                 catch when (true)
                 {
@@ -303,7 +305,7 @@ namespace System.Runtime
             Exception e = null;
             try
             {
-                e = CalliIntrinsics.Call<Exception>(pGetRuntimeExceptionFunction, id);
+                e = ((delegate*<ExceptionIDs, Exception>)pGetRuntimeExceptionFunction)(id);
             }
             catch when (true)
             {
@@ -339,7 +341,7 @@ namespace System.Runtime
             Exception e = null;
             try
             {
-                e = CalliIntrinsics.Call<Exception>(pGetRuntimeExceptionFunction, id);
+                e = ((delegate*<ExceptionIDs, Exception>)pGetRuntimeExceptionFunction)(id);
             }
             catch when (true)
             {

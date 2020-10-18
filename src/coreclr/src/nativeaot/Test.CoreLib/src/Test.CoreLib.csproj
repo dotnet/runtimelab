@@ -37,9 +37,6 @@
     <Compile Include="..\..\Runtime.Base\src\System\Runtime\__Finalizer.cs">
       <Link>Runtime.Base\src\System\Runtime\__Finalizer.cs</Link>
     </Compile>
-    <Compile Include="..\..\Runtime.Base\src\System\Runtime\CalliIntrinsics.cs">
-      <Link>Runtime.Base\src\System\Runtime\CalliIntrinsics.cs</Link>
-    </Compile>
     <Compile Include="..\..\Runtime.Base\src\System\Runtime\EEType.Runtime.cs">
       <Link>Runtime.Base\src\System\Runtime\EEType.Runtime.cs</Link>
     </Compile>
@@ -185,9 +182,6 @@
     </Compile>
     <Compile Include="..\..\Runtime.Base\src\System\Runtime\InteropServices\LayoutKind.cs">
       <Link>System\Runtime\InteropServices\LayoutKind.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Runtime.Base\src\System\Runtime\InteropServices\McgIntrinsicsAttribute.cs">
-      <Link>System\Runtime\InteropServices\McgIntrinsicsAttribute.cs</Link>
     </Compile>
     <Compile Include="..\..\Runtime.Base\src\System\Runtime\InteropServices\UnmanagedCallersOnlyAttribute.cs">
       <Link>System\Runtime\InteropServices\UnmanagedCallersOnlyAttribute.cs</Link>

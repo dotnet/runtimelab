@@ -392,48 +392,34 @@ namespace System.Runtime
     [ReflectionBlocked]
     public delegate IntPtr RuntimeObjectFactory(IntPtr context, IntPtr signature, object contextObject, ref IntPtr auxResult);
 
-    [System.Runtime.InteropServices.McgIntrinsicsAttribute]
-    internal class RawCalliHelper
+    internal unsafe class RawCalliHelper
     {
         [MethodImplAttribute(MethodImplOptions.AggressiveInlining)]
         public static T Call<T>(System.IntPtr pfn, IntPtr arg)
-        {
-            return default(T);
-        }
+            => ((delegate*<IntPtr, T>)pfn)(arg);
 
         [MethodImplAttribute(MethodImplOptions.AggressiveInlining)]
         public static void Call(System.IntPtr pfn, object arg)
-        {
-        }
+            => ((delegate*<object, void>)pfn)(arg);
 
         [MethodImplAttribute(MethodImplOptions.AggressiveInlining)]
         public static T Call<T>(System.IntPtr pfn, IntPtr arg1, IntPtr arg2)
-        {
-            return default(T);
-        }
+            => ((delegate*<IntPtr, IntPtr, T>)pfn)(arg1, arg2);
 
         [MethodImplAttribute(MethodImplOptions.AggressiveInlining)]
         public static T Call<T>(System.IntPtr pfn, IntPtr arg1, IntPtr arg2, object arg3, out IntPtr arg4)
-        {
-            arg4 = IntPtr.Zero;
-            return default(T);
-        }
+            => ((delegate*<IntPtr, IntPtr, object, out IntPtr, T>)pfn)(arg1, arg2, arg3, out arg4);
 
         [MethodImplAttribute(MethodImplOptions.AggressiveInlining)]
         public static void Call(System.IntPtr pfn, IntPtr arg1, object arg2)
-        {
-        }
+            => ((delegate*<IntPtr, object, void>)pfn)(arg1, arg2);
 
         [MethodImplAttribute(MethodImplOptions.AggressiveInlining)]
         public static T Call<T>(System.IntPtr pfn, object arg1, IntPtr arg2)
-        {
-            return default(T);
-        }
+            => ((delegate*<object, IntPtr, T>)pfn)(arg1, arg2);
 
         [MethodImplAttribute(MethodImplOptions.AggressiveInlining)]
         public static T Call<T>(IntPtr pfn, string[] arg0)
-        {
-            return default(T);
-        }
+            => ((delegate*<string[], T>)pfn)(arg0);
     }
 }

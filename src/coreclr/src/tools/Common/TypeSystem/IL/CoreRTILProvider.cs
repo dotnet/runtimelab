@@ -243,23 +243,6 @@ namespace Internal.IL
         {
             if (method is EcmaMethod ecmaMethod)
             {
-                // TODO: Workaround: we should special case methods with Intrinsic attribute, but since
-                //       CoreLib source is still not in the repo, we have to work with what we have, which is
-                //       an MCG attribute on the type itself...
-                if (((MetadataType)ecmaMethod.OwningType).HasCustomAttribute("System.Runtime.InteropServices", "McgIntrinsicsAttribute"))
-                {
-                    var name = ecmaMethod.Name;
-                    if (name == "Call" || name.StartsWith("StdCall"))
-                    {
-                        return CalliIntrinsic.EmitIL(ecmaMethod);
-                    }
-                    else
-                    if (name == "AddrOf")
-                    {
-                        return AddrOfIntrinsic.EmitIL(ecmaMethod);
-                    }
-                }
-
                 if (ecmaMethod.IsIntrinsic)
                 {
                     MethodIL result = TryGetIntrinsicMethodIL(ecmaMethod);

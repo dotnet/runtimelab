@@ -10,7 +10,6 @@ using Debug = Internal.Runtime.CompilerHelpers.StartupDebug;
 
 namespace Internal.Runtime.CompilerHelpers
 {
-    [McgIntrinsics]
     public static partial class StartupCodeHelpers
     {
         /// <summary>
@@ -193,17 +192,13 @@ namespace Internal.Runtime.CompilerHelpers
             }
         }
 
-        private static void Call(System.IntPtr pfn)
-        {
-        }
-
         private static unsafe void RunEagerClassConstructors(IntPtr cctorTableStart, int length)
         {
             IntPtr cctorTableEnd = (IntPtr)((byte*)cctorTableStart + length);
 
             for (IntPtr* tab = (IntPtr*)cctorTableStart; tab < (IntPtr*)cctorTableEnd; tab++)
             {
-                Call(*tab);
+                ((delegate*<void>)*tab)();
             }
         }
 

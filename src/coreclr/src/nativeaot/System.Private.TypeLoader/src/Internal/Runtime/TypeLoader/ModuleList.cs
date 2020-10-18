@@ -61,18 +61,16 @@ namespace Internal.Runtime.TypeLoader
             if ((moduleType == ModuleType.ReadyToRun) || (moduleType == ModuleType.Ecma))
             {
                 // Dynamic type load modules utilize dynamic type resolution
-                dynamicModulePtr->DynamicTypeSlotDispatchResolve = Intrinsics.AddrOf(
-                    (Func<IntPtr, IntPtr, ushort, IntPtr>)ResolveTypeSlotDispatch);
+                dynamicModulePtr->DynamicTypeSlotDispatchResolve = &ResolveTypeSlotDispatch;
             }
             else
             {
                 Debug.Assert(moduleType == ModuleType.Eager);
                 // Pre-generated modules do not
-                dynamicModulePtr->DynamicTypeSlotDispatchResolve = IntPtr.Zero;
+                dynamicModulePtr->DynamicTypeSlotDispatchResolve = null;
             }
 
-            dynamicModulePtr->GetRuntimeException = Intrinsics.AddrOf(
-                (Func<ExceptionIDs, Exception>)RuntimeExceptionHelpers.GetRuntimeException);
+            dynamicModulePtr->GetRuntimeException = &RuntimeExceptionHelpers.GetRuntimeException;
 
             DynamicModulePtr = dynamicModulePtr;
         }

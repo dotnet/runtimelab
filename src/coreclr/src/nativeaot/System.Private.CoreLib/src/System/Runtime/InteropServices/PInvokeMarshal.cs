@@ -206,7 +206,7 @@ namespace System.Runtime.InteropServices
         /// <summary>
         /// Retrieve the corresponding P/invoke instance from the stub
         /// </summary>
-        public static Delegate GetDelegateForFunctionPointer(IntPtr ptr, RuntimeTypeHandle delegateType)
+        public static unsafe Delegate GetDelegateForFunctionPointer(IntPtr ptr, RuntimeTypeHandle delegateType)
         {
             if (ptr == IntPtr.Zero)
                 return null;
@@ -248,7 +248,7 @@ namespace System.Runtime.InteropServices
             IntPtr pDelegateCreationStub = RuntimeAugments.InteropCallbacks.GetForwardDelegateCreationStub(delegateType);
             Debug.Assert(pDelegateCreationStub != IntPtr.Zero);
 
-            return CalliIntrinsics.Call<Delegate>(pDelegateCreationStub, ptr);
+            return ((delegate*<IntPtr, Delegate>)pDelegateCreationStub)(ptr);
         }
 
         /// <summary>
@@ -309,12 +309,6 @@ namespace System.Runtime.InteropServices
                 Environment.FailFast(SR.Delegate_GarbageCollected);
             }
             return target;
-        }
-
-        [McgIntrinsics]
-        private static unsafe class CalliIntrinsics
-        {
-            internal static T Call<T>(IntPtr pfn, IntPtr arg0) { throw new NotSupportedException(); }
         }
         #endregion
 

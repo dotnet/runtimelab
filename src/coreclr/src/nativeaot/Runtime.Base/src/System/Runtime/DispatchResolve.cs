@@ -17,10 +17,9 @@ namespace System.Runtime
             DynamicModule* dynamicModule = pTgtType->DynamicModule;
 
             // Use the dynamic module resolver if it's present
-            if ((dynamicModule != null) && (dynamicModule->DynamicTypeSlotDispatchResolve != IntPtr.Zero))
+            if ((dynamicModule != null) && (dynamicModule->DynamicTypeSlotDispatchResolve != null))
             {
-                return CalliIntrinsics.Call<IntPtr>(dynamicModule->DynamicTypeSlotDispatchResolve,
-                                                    (IntPtr)pTgtType, (IntPtr)pItfType, itfSlotNumber);
+                return dynamicModule->DynamicTypeSlotDispatchResolve((IntPtr)pTgtType, (IntPtr)pItfType, itfSlotNumber);
             }
 
             // Start at the current type and work up the inheritance chain

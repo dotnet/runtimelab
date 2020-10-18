@@ -47,7 +47,9 @@
     <Compile Include="$(AotCommonPath)\Internal\Runtime\UniversalGenericParameterLayout.cs">
       <Link>UniversalGenericParameterLayout.cs</Link>
     </Compile>
-    <Compile Include="$(AotCommonPath)\System\Collections\Generic\LowLevelList.cs" />
+    <Compile Include="$(AotCommonPath)\System\Collections\Generic\LowLevelList.cs">
+      <Link>LowLevelList.cs</Link>
+    </Compile>
     <Compile Include="$(CompilerCommonPath)\Internal\Runtime\MetadataBlob.cs">
       <Link>MetadataBlob.cs</Link>
     </Compile>
@@ -64,6 +66,9 @@
       <Link>SR.cs</Link>
     </Compile>
     <Compile Include="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System\SR.cs" />
+    <Compile Include="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System\Runtime\CompilerServices\IntrinsicAttribute.cs">
+      <Link>IntrinsicAttribute.cs</Link>
+    </Compile>
     <Compile Include="$(CompilerCommonPath)\TypeSystem\Canon\ArrayType.Canon.cs">
       <Link>Internal\TypeSystem\ArrayType.Canon.cs</Link>
     </Compile>
@@ -294,7 +299,6 @@
     <Compile Include="Internal\Runtime\TypeLoader\LazyVtableResolverThunk.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\LockFreeObjectInterner.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\LowLevelStringConverter.cs" />
-    <Compile Include="Internal\Runtime\TypeLoader\McgIntrinsics.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\MetadataFixupKind.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\MetadataNameExtensions.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\MetadataReaderExtensions.cs" />
