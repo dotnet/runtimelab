@@ -32,8 +32,6 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.BasicParametersAndModifiers<float>() };
             yield return new[] { CodeSnippets.BasicParametersAndModifiers<double>() };
             yield return new[] { CodeSnippets.BasicParametersAndModifiers<bool>() };
-            yield return new[] { CodeSnippets.BasicParametersAndModifiers<char>() };
-            yield return new[] { CodeSnippets.BasicParametersAndModifiers<string>() };
             yield return new[] { CodeSnippets.BasicParametersAndModifiers<IntPtr>() };
             yield return new[] { CodeSnippets.BasicParametersAndModifiers<UIntPtr>() };
             //yield return new[] { CodeSnippets.BasicParametersAndModifiers<byte[]>() };
@@ -77,8 +75,6 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.PreserveSigFalse<float>() };
             yield return new[] { CodeSnippets.PreserveSigFalse<double>() };
             yield return new[] { CodeSnippets.PreserveSigFalse<bool>() };
-            yield return new[] { CodeSnippets.PreserveSigFalse<char>() };
-            yield return new[] { CodeSnippets.PreserveSigFalse<string>() };
             yield return new[] { CodeSnippets.PreserveSigFalse<IntPtr>() };
             yield return new[] { CodeSnippets.PreserveSigFalse<UIntPtr>() };
             //yield return new[] { CodeSnippets.PreserveSigFalse<byte[]>() };

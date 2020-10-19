@@ -9,15 +9,6 @@ namespace DllImportGenerator.IntegrationTests
 {
     partial class NativeExportsNE
     {
-        public partial class DefaultEncoding
-        {
-            [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_length_ushort")]
-            public static partial int ReturnLength(string s);
-
-            [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "reverse_return_ushort")]
-            public static partial string Reverse_Return(string s);
-        }
-
         public partial class Unicode
         {
             [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_length_ushort", CharSet = CharSet.Unicode)]
@@ -44,6 +35,9 @@ namespace DllImportGenerator.IntegrationTests
             [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_length_ushort")]
             public static partial int ReturnLength([MarshalAs(UnmanagedType.LPTStr)] string s);
 
+            [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_length_ushort", CharSet = CharSet.None)]
+            public static partial int ReturnLength_IgnoreCharSet([MarshalAs(UnmanagedType.LPTStr)] string s);
+
             [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "reverse_return_ushort")]
             [return: MarshalAs(UnmanagedType.LPTStr)]
             public static partial string Reverse_Return([MarshalAs(UnmanagedType.LPTStr)] string s);
@@ -66,6 +60,9 @@ namespace DllImportGenerator.IntegrationTests
             [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_length_ushort")]
             public static partial int ReturnLength([MarshalAs(UnmanagedType.LPWStr)] string s);
 
+            [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_length_ushort", CharSet = CharSet.None)]
+            public static partial int ReturnLength_IgnoreCharSet([MarshalAs(UnmanagedType.LPWStr)] string s);
+
             [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "reverse_return_ushort")]
             [return: MarshalAs(UnmanagedType.LPWStr)]
             public static partial string Reverse_Return([MarshalAs(UnmanagedType.LPWStr)] string s);
@@ -87,6 +84,9 @@ namespace DllImportGenerator.IntegrationTests
         {
             [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_length_byte")]
             public static partial int ReturnLength([MarshalAs(UnmanagedType.LPUTF8Str)] string s);
+
+            [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_length_byte", CharSet = CharSet.None)]
+            public static partial int ReturnLength_IgnoreCharSet([MarshalAs(UnmanagedType.LPUTF8Str)] string s);
 
             [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "reverse_return_byte")]
             [return: MarshalAs(UnmanagedType.LPUTF8Str)]
@@ -123,10 +123,12 @@ namespace DllImportGenerator.IntegrationTests
         public void UnicodeStringMarshalledAsExpected(string value)
         {
             int expectedLen = value != null ? value.Length : -1;
-            Assert.Equal(expectedLen, NativeExportsNE.DefaultEncoding.ReturnLength(value));
             Assert.Equal(expectedLen, NativeExportsNE.Unicode.ReturnLength(value));
             Assert.Equal(expectedLen, NativeExportsNE.LPWStr.ReturnLength(value));
             Assert.Equal(expectedLen, NativeExportsNE.LPTStr.ReturnLength(value));
+
+            Assert.Equal(expectedLen, NativeExportsNE.LPWStr.ReturnLength_IgnoreCharSet(value));
+            Assert.Equal(expectedLen, NativeExportsNE.LPTStr.ReturnLength_IgnoreCharSet(value));
         }
 
         [Theory]
@@ -135,7 +137,6 @@ namespace DllImportGenerator.IntegrationTests
         {
             string expected = ReverseChars(value);
 
-            Assert.Equal(expected, NativeExportsNE.DefaultEncoding.Reverse_Return(value));
             Assert.Equal(expected, NativeExportsNE.Unicode.Reverse_Return(value));
             Assert.Equal(expected, NativeExportsNE.LPWStr.Reverse_Return(value));
             Assert.Equal(expected, NativeExportsNE.LPTStr.Reverse_Return(value));
@@ -200,6 +201,7 @@ namespace DllImportGenerator.IntegrationTests
         {
             int expectedLen = value != null ? Encoding.UTF8.GetByteCount(value) : -1;
             Assert.Equal(expectedLen, NativeExportsNE.LPUTF8Str.ReturnLength(value));
+            Assert.Equal(expectedLen, NativeExportsNE.LPUTF8Str.ReturnLength_IgnoreCharSet(value));
         }
 
         [Theory]

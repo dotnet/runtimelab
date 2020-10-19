@@ -140,7 +140,7 @@ namespace Microsoft.Interop
                     CharSet.Unicode => CharEncoding.Utf16,
                     CharSet.Auto => CharEncoding.PlatformDefined,
                     CharSet.Ansi => CharEncoding.Ansi,
-                    _ => CharEncoding.Utf8, // [Compat] Default to UTF-8
+                    _ => CharEncoding.Undefined, // [Compat] Do not assume a specific value for None
                 };
             }
 

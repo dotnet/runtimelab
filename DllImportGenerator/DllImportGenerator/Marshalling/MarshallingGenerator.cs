@@ -150,24 +150,9 @@ namespace Microsoft.Interop
                 case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.VariantBool } }:
                     return VariantBool;
 
-                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: null }:
-                    return Utf16Char; // [Compat] Default marshalling is UTF-16.
-                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I2 } }:
-                    return Utf16Char;
-                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.U2 } }:
-                    return Utf16Char;
-                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshallingInfoStringSupport { CharEncoding: CharEncoding.Utf16 } }:
-                    return Utf16Char;
-                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshallingInfoStringSupport { CharEncoding: CharEncoding.Utf8 } }:
-                    throw new MarshallingNotSupportedException(info, context) // [Compat] See conversion from CharSet.Ansi to UTF-8.
-                    {
-                        NotSupportedDetails = Resources.MarshallingCharAsCharSetAnsiNotSupported
-                    };
-                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshallingInfoStringSupport { CharEncoding: CharEncoding.PlatformDefined } }:
-                    throw new MarshallingNotSupportedException(info, context) // [Compat] See conversion of CharSet.Auto.
-                    {
-                        NotSupportedDetails = Resources.MarshallingCharAsCharSetAutoNotSupported
-                    };
+                case { ManagedType: { SpecialType: SpecialType.System_Char } }:
+                    return CreateCharMarshaller(info, context);
+
                 case { ManagedType: { SpecialType: SpecialType.System_String } }:
                     return CreateStringMarshaller(info, context);
 
@@ -197,11 +182,61 @@ namespace Microsoft.Interop
 #endif
         }
 
+        private static IMarshallingGenerator CreateCharMarshaller(TypePositionInfo info, StubCodeContext context)
+        {
+            MarshallingInfo marshalInfo = info.MarshallingAttributeInfo;
+            if (marshalInfo == null)
+            {
+                // [Compat] Require explicit marshalling information.
+                throw new MarshallingNotSupportedException(info, context)
+                {
+                    NotSupportedDetails = Resources.MarshallingStringOrCharAsUndefinedNotSupported
+                };
+            }
+
+            // Explicit MarshalAs takes precedence over string encoding info
+            if (marshalInfo is MarshalAsInfo marshalAsInfo)
+            {
+                switch (marshalAsInfo.UnmanagedType)
+                {
+                    case UnmanagedType.I2:
+                    case UnmanagedType.U2:
+                        return Utf16Char;
+                }
+            }
+            else if (marshalInfo is MarshallingInfoStringSupport marshalStringInfo)
+            {
+                switch (marshalStringInfo.CharEncoding)
+                {
+                    case CharEncoding.Utf16:
+                        return Utf16Char;
+                    case CharEncoding.Ansi:
+                        throw new MarshallingNotSupportedException(info, context) // [Compat] ANSI is not supported for char
+                        {
+                            NotSupportedDetails = string.Format(Resources.MarshallingCharAsSpecifiedCharSetNotSupported, CharSet.Ansi)
+                        };
+                    case CharEncoding.PlatformDefined:
+                        throw new MarshallingNotSupportedException(info, context) // [Compat] See conversion of CharSet.Auto.
+                        {
+                            NotSupportedDetails = string.Format(Resources.MarshallingCharAsSpecifiedCharSetNotSupported, CharSet.Auto)
+                        };
+                }
+            }
+
+            throw new MarshallingNotSupportedException(info, context);
+        }
+
         private static IMarshallingGenerator CreateStringMarshaller(TypePositionInfo info, StubCodeContext context)
         {
             MarshallingInfo marshalInfo = info.MarshallingAttributeInfo;
             if (marshalInfo == null)
-                return Utf16String; // [Compat] Default marshalling is UTF-16.
+            {
+                // [Compat] Require explicit marshalling information.
+                throw new MarshallingNotSupportedException(info, context)
+                {
+                    NotSupportedDetails = Resources.MarshallingStringOrCharAsUndefinedNotSupported
+                };
+            }
 
             // Explicit MarshalAs takes precedence over string encoding info
             if (marshalInfo is MarshalAsInfo marshalAsInfo)
