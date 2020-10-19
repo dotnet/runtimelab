@@ -330,32 +330,6 @@ static bool InWriteBarrierHelper(UIntNative faultingIP)
     return false;
 }
 
-static UIntNative UnwindSimpleHelperToCaller(
-#ifdef TARGET_UNIX
-    PAL_LIMITED_CONTEXT * pContext
-#else
-    _CONTEXT * pContext
-#endif
-    )
-{
-#if defined(_DEBUG)
-    UIntNative faultingIP = pContext->GetIp();
-    ASSERT(InWriteBarrierHelper(faultingIP) || InInterfaceDispatchHelper(faultingIP));
-#endif
-#if defined(HOST_AMD64) || defined(HOST_X86)
-    // simulate a ret instruction
-    UIntNative sp = pContext->GetSp();
-    UIntNative adjustedFaultingIP = *(UIntNative *)sp;
-    pContext->SetSp(sp+sizeof(UIntNative)); // pop the stack
-#elif defined(HOST_ARM) || defined(HOST_ARM64)
-    UIntNative adjustedFaultingIP = pContext->GetLr();
-#else
-    UIntNative adjustedFaultingIP = 0; // initializing to make the compiler happy
-    PORTABILITY_ASSERT("UnwindSimpleHelperToCaller");
-#endif
-    return adjustedFaultingIP;
-}
-
 EXTERN_C void* RhpInitialInterfaceDispatch;
 EXTERN_C void* RhpInterfaceDispatchAVLocation1;
 EXTERN_C void* RhpInterfaceDispatchAVLocation2;
@@ -395,6 +369,32 @@ static bool InInterfaceDispatchHelper(UIntNative faultingIP)
 #endif // USE_PORTABLE_HELPERS
 
     return false;
+}
+
+static UIntNative UnwindSimpleHelperToCaller(
+#ifdef TARGET_UNIX
+    PAL_LIMITED_CONTEXT * pContext
+#else
+    _CONTEXT * pContext
+#endif
+    )
+{
+#if defined(_DEBUG)
+    UIntNative faultingIP = pContext->GetIp();
+    ASSERT(InWriteBarrierHelper(faultingIP) || InInterfaceDispatchHelper(faultingIP));
+#endif
+#if defined(HOST_AMD64) || defined(HOST_X86)
+    // simulate a ret instruction
+    UIntNative sp = pContext->GetSp();
+    UIntNative adjustedFaultingIP = *(UIntNative *)sp;
+    pContext->SetSp(sp+sizeof(UIntNative)); // pop the stack
+#elif defined(HOST_ARM) || defined(HOST_ARM64)
+    UIntNative adjustedFaultingIP = pContext->GetLr();
+#else
+    UIntNative adjustedFaultingIP = 0; // initializing to make the compiler happy
+    PORTABILITY_ASSERT("UnwindSimpleHelperToCaller");
+#endif
+    return adjustedFaultingIP;
 }
 
 #ifdef TARGET_UNIX
