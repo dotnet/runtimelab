@@ -340,7 +340,7 @@ static UIntNative UnwindSimpleHelperToCaller(
 {
 #if defined(_DEBUG)
     UIntNative faultingIP = pContext->GetIp();
-    ASSERT(InWriteBarrierHelper(faultingIP));
+    ASSERT(InWriteBarrierHelper(faultingIP) || InInterfaceDispatchHelper(faultingIP));
 #endif
 #if defined(HOST_AMD64) || defined(HOST_X86)
     // simulate a ret instruction
