@@ -73,7 +73,7 @@ ALTERNATE_ENTRY RhpInitialDynamicInterfaceDispatch
         // The exception handling infrastructure is aware of the fact that this is the first
         // instruction of RhpInitialInterfaceDispatch and uses it to translate an AV here
         // to a NullReferenceException at the callsite.
-        cmp     qword ptr [rdi], 0
+        cmp     byte ptr [rdi], 0
 
         // Just tail call to the cache miss helper.
         jmp     C_FUNC(RhpInterfaceDispatchSlow)
