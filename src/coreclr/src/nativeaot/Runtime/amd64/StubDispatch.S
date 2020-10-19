@@ -19,6 +19,7 @@ LEAF_ENTRY RhpInterfaceDispatch\entries, _TEXT
         mov     r11, [r10 + OFFSETOF__InterfaceDispatchCell__m_pCache]
 
         // Load the EEType from the object instance in rdi.
+        ALTERNATE_ENTRY RhpInterfaceDispatchAVLocation\entries
         mov     rax, [rdi]
 
         CurrentOffset = OFFSETOF__InterfaceDispatchCache__m_rgEntries
@@ -47,6 +48,10 @@ LEAF_END RhpInterfaceDispatch\entries, _TEXT
 // The mrt100dbi requires these be exported to identify mrt100 code that dispatches back into managed.
 // If you change or add any new dispatch stubs, please also change slr.def and dbi\process.cpp CordbProcess::GetExportStepInfo
 //
+// If you change or add any new dispatch stubs, exception handling might need to be aware because it refers to the
+// *AVLocation symbols defined by the dispatch stubs to be able to unwind and blame user code if a NullRef happens
+// during the interface dispatch.
+//
 DEFINE_INTERFACE_DISPATCH_STUB 1
 DEFINE_INTERFACE_DISPATCH_STUB 2
 DEFINE_INTERFACE_DISPATCH_STUB 4
@@ -64,6 +69,11 @@ LEAF_END RhpVTableOffsetDispatch, _TEXT
 // Initial dispatch on an interface when we don't have a cache yet.
 LEAF_ENTRY RhpInitialInterfaceDispatch, _TEXT
 ALTERNATE_ENTRY RhpInitialDynamicInterfaceDispatch
+        // Trigger an AV if we're dispatching on a null this.
+        // The exception handling infrastructure is aware of the fact that this is the first
+        // instruction of RhpInitialInterfaceDispatch and uses it to translate an AV here
+        // to a NullReferenceException at the callsite.
+        cmp     byte ptr [rdi], 0
 
         // Just tail call to the cache miss helper.
         jmp     C_FUNC(RhpInterfaceDispatchSlow)

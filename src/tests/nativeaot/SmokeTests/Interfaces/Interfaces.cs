@@ -16,6 +16,9 @@ public class BringUpTest
         if (TestInterfaceCache() == Fail)
             return Fail;
 
+        if (TestAVInInterfaceCache() == Fail)
+            return Fail;
+
         if (TestMultipleInterfaces() == Fail)
             return Fail;
 
@@ -34,12 +37,9 @@ public class BringUpTest
         return Pass;
     }
 
-    #region Interface Dispatch Cache Test
-
-    private static int TestInterfaceCache()
+    private static MyInterface[] MakeInterfaceArray()
     {
         MyInterface[] itfs = new MyInterface[50];
-
         itfs[0] = new Foo0();
         itfs[1] = new Foo1();
         itfs[2] = new Foo2();
@@ -90,6 +90,14 @@ public class BringUpTest
         itfs[47] = new Foo47();
         itfs[48] = new Foo48();
         itfs[49] = new Foo49();
+        return itfs;
+    }
+
+    #region Interface Dispatch Cache Test
+
+    private static int TestInterfaceCache()
+    {
+        MyInterface[] itfs = MakeInterfaceArray();
 
         StringBuilder sb = new StringBuilder();
         int counter = 0;
@@ -123,10 +131,67 @@ public class BringUpTest
         return 100;
     }
 
+    private static int TestAVInInterfaceCache()
+    {
+        MyInterface[] itfs = MakeInterfaceArray();
+
+        MyInterface[] testArray = new MyInterface[itfs.Length * 2];
+
+        for (int i = 0; i < itfs.Length; i++)
+        {
+            testArray[i * 2 + 1] = itfs[i];
+        }
+
+        int numExceptions = 0;
+
+        // Make sure AV in dispatch helpers is translated to NullRef
+        for (int i = 0; i < testArray.Length; i++)
+        {
+            try
+            {
+                testArray[i].GetAnInt();
+            }
+            catch (NullReferenceException)
+            {
+                numExceptions++;
+            }
+        }
+
+        // Make sure there's no trouble with unwinding out of the dispatch helper
+        InterfaceWithManyParameters testInstance = null;
+        for (int i = 0; i < 3; i++)
+        {
+            try
+            {
+                testInstance.ManyParameters(0, 0, 0, 0, 0, 0, 0, 0);
+            }
+            catch (NullReferenceException)
+            {
+                numExceptions++;
+            }
+            if (testInstance == null)
+                testInstance = new ClassWithManyParameters();
+            else
+                testInstance = null;
+        }
+
+        return numExceptions == itfs.Length + 2 ? Pass : Fail;
+    }
+
     interface MyInterface
     {
         int GetAnInt();
         string GetAString();
+    }
+
+    interface InterfaceWithManyParameters
+    {
+        int ManyParameters(int a, int b, int c, int d, int e, int f, int g, int h);
+    }
+
+    class ClassWithManyParameters : InterfaceWithManyParameters
+    {
+        public int ManyParameters(int a, int b, int c, int d, int e, int f, int g, int h) => 42;
     }
 
     class Foo0 : MyInterface { public int GetAnInt() { return 0; } public string GetAString() { return "Foo0"; } }

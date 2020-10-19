@@ -330,7 +330,48 @@ static bool InWriteBarrierHelper(UIntNative faultingIP)
     return false;
 }
 
-static UIntNative UnwindWriteBarrierToCaller(
+EXTERN_C void* RhpInitialInterfaceDispatch;
+EXTERN_C void* RhpInterfaceDispatchAVLocation1;
+EXTERN_C void* RhpInterfaceDispatchAVLocation2;
+EXTERN_C void* RhpInterfaceDispatchAVLocation4;
+EXTERN_C void* RhpInterfaceDispatchAVLocation8;
+EXTERN_C void* RhpInterfaceDispatchAVLocation16;
+EXTERN_C void* RhpInterfaceDispatchAVLocation32;
+EXTERN_C void* RhpInterfaceDispatchAVLocation64;
+
+static bool InInterfaceDispatchHelper(UIntNative faultingIP)
+{
+#ifndef USE_PORTABLE_HELPERS
+    static UIntNative interfaceDispatchAVLocations[] =
+    {
+        (UIntNative)&RhpInitialInterfaceDispatch,
+        (UIntNative)&RhpInterfaceDispatchAVLocation1,
+        (UIntNative)&RhpInterfaceDispatchAVLocation2,
+        (UIntNative)&RhpInterfaceDispatchAVLocation4,
+        (UIntNative)&RhpInterfaceDispatchAVLocation8,
+        (UIntNative)&RhpInterfaceDispatchAVLocation16,
+        (UIntNative)&RhpInterfaceDispatchAVLocation32,
+        (UIntNative)&RhpInterfaceDispatchAVLocation64,
+    };
+
+    // compare the IP against the list of known possible AV locations in the interface dispatch helpers
+    for (size_t i = 0; i < sizeof(interfaceDispatchAVLocations) / sizeof(interfaceDispatchAVLocations[0]); i++)
+    {
+#if defined(HOST_AMD64) || defined(HOST_X86)
+        // Verify that the runtime is not linked with incremental linking enabled. Incremental linking
+        // wraps every method symbol with a jump stub that breaks the following check.
+        ASSERT(*(UInt8*)interfaceDispatchAVLocations[i] != 0xE9); // jmp XXXXXXXX
+#endif
+
+        if (interfaceDispatchAVLocations[i] == faultingIP)
+            return true;
+    }
+#endif // USE_PORTABLE_HELPERS
+
+    return false;
+}
+
+static UIntNative UnwindSimpleHelperToCaller(
 #ifdef TARGET_UNIX
     PAL_LIMITED_CONTEXT * pContext
 #else
@@ -340,7 +381,7 @@ static UIntNative UnwindWriteBarrierToCaller(
 {
 #if defined(_DEBUG)
     UIntNative faultingIP = pContext->GetIp();
-    ASSERT(InWriteBarrierHelper(faultingIP));
+    ASSERT(InWriteBarrierHelper(faultingIP) || InInterfaceDispatchHelper(faultingIP));
 #endif
 #if defined(HOST_AMD64) || defined(HOST_X86)
     // simulate a ret instruction
@@ -351,7 +392,7 @@ static UIntNative UnwindWriteBarrierToCaller(
     UIntNative adjustedFaultingIP = pContext->GetLr();
 #else
     UIntNative adjustedFaultingIP = 0; // initializing to make the compiler happy
-    PORTABILITY_ASSERT("UnwindWriteBarrierToCaller");
+    PORTABILITY_ASSERT("UnwindSimpleHelperToCaller");
 #endif
     return adjustedFaultingIP;
 }
@@ -364,22 +405,17 @@ Int32 __stdcall RhpHardwareExceptionHandler(UIntNative faultCode, UIntNative fau
     UIntNative faultingIP = palContext->GetIp();
 
     ICodeManager * pCodeManager = GetRuntimeInstance()->FindCodeManagerByAddress((PTR_VOID)faultingIP);
-    if ((pCodeManager != NULL) || (faultCode == STATUS_ACCESS_VIOLATION && InWriteBarrierHelper(faultingIP)))
+    bool translateToManagedException = false;
+    if (pCodeManager != NULL)
     {
         // Make sure that the OS does not use our internal fault codes
-        ASSERT(faultCode != STATUS_REDHAWK_NULL_REFERENCE && faultCode != STATUS_REDHAWK_WRITE_BARRIER_NULL_REFERENCE);
+        ASSERT(faultCode != STATUS_REDHAWK_NULL_REFERENCE && faultCode != STATUS_REDHAWK_UNMANAGED_HELPER_NULL_REFERENCE);
 
         if (faultCode == STATUS_ACCESS_VIOLATION)
         {
             if (faultAddress < NULL_AREA_SIZE)
             {
-                faultCode = pCodeManager ? STATUS_REDHAWK_NULL_REFERENCE : STATUS_REDHAWK_WRITE_BARRIER_NULL_REFERENCE;
-            }
-
-            if (pCodeManager == NULL)
-            {
-                // we were AV-ing in a write barrier helper - unwind our way to our caller
-                faultingIP = UnwindWriteBarrierToCaller(palContext);
+                faultCode = STATUS_REDHAWK_NULL_REFERENCE;
             }
         }
         else if (faultCode == STATUS_STACK_OVERFLOW)
@@ -390,6 +426,31 @@ Int32 __stdcall RhpHardwareExceptionHandler(UIntNative faultCode, UIntNative fau
             RhFailFast();
         }
 
+        translateToManagedException = true;
+    }
+    else if (faultCode == STATUS_ACCESS_VIOLATION)
+    {
+        // If this was an AV and code manager is null, this was an AV in unmanaged code.
+        // Could still be an AV in one of our assembly helpers that we know how to handle.
+        bool inWriteBarrierHelper = InWriteBarrierHelper(faultingIP);
+        bool inInterfaceDispatchHelper = InInterfaceDispatchHelper(faultingIP);
+
+        if (inWriteBarrierHelper || inInterfaceDispatchHelper)
+        {
+            if (faultAddress < NULL_AREA_SIZE)
+            {
+                faultCode = STATUS_REDHAWK_UNMANAGED_HELPER_NULL_REFERENCE;
+            }
+
+            // we were AV-ing in a helper - unwind our way to our caller
+            faultingIP = UnwindSimpleHelperToCaller(palContext);
+
+            translateToManagedException = true;
+        }
+    }
+
+    if (translateToManagedException)
+    {
         *arg0Reg = faultCode;
         *arg1Reg = faultingIP;
         palContext->SetIp((UIntNative)&RhpThrowHwEx);
@@ -408,22 +469,17 @@ Int32 __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
 
     ICodeManager * pCodeManager = GetRuntimeInstance()->FindCodeManagerByAddress((PTR_VOID)faultingIP);
     UIntNative faultCode = pExPtrs->ExceptionRecord->ExceptionCode;
-    if ((pCodeManager != NULL) || (faultCode == STATUS_ACCESS_VIOLATION && InWriteBarrierHelper(faultingIP)))
+    bool translateToManagedException = false;
+    if (pCodeManager != NULL)
     {
         // Make sure that the OS does not use our internal fault codes
-        ASSERT(faultCode != STATUS_REDHAWK_NULL_REFERENCE && faultCode != STATUS_REDHAWK_WRITE_BARRIER_NULL_REFERENCE);
+        ASSERT(faultCode != STATUS_REDHAWK_NULL_REFERENCE && faultCode != STATUS_REDHAWK_UNMANAGED_HELPER_NULL_REFERENCE);
 
         if (faultCode == STATUS_ACCESS_VIOLATION)
         {
             if (pExPtrs->ExceptionRecord->ExceptionInformation[1] < NULL_AREA_SIZE)
             {
-                faultCode = pCodeManager ? STATUS_REDHAWK_NULL_REFERENCE : STATUS_REDHAWK_WRITE_BARRIER_NULL_REFERENCE;
-            }
-
-            if (pCodeManager == NULL)
-            {
-                // we were AV-ing in a write barrier helper - unwind our way to our caller
-                faultingIP = UnwindWriteBarrierToCaller(pExPtrs->ContextRecord);
+                faultCode = STATUS_REDHAWK_NULL_REFERENCE;
             }
         }
         else if (faultCode == STATUS_STACK_OVERFLOW)
@@ -434,6 +490,31 @@ Int32 __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
             PalRaiseFailFastException(pExPtrs->ExceptionRecord, pExPtrs->ContextRecord, 0);
         }
 
+        translateToManagedException = true;
+    }
+    else if (faultCode == STATUS_ACCESS_VIOLATION)
+    {
+        // If this was an AV and code manager is null, this was an AV in unmanaged code.
+        // Could still be an AV in one of our assembly helpers that we know how to handle.
+        bool inWriteBarrierHelper = InWriteBarrierHelper(faultingIP);
+        bool inInterfaceDispatchHelper = InInterfaceDispatchHelper(faultingIP);
+
+        if (inWriteBarrierHelper || inInterfaceDispatchHelper)
+        {
+            if (pExPtrs->ExceptionRecord->ExceptionInformation[1] < NULL_AREA_SIZE)
+            {
+                faultCode = STATUS_REDHAWK_UNMANAGED_HELPER_NULL_REFERENCE;
+            }
+
+            // we were AV-ing in a helper - unwind our way to our caller
+            faultingIP = UnwindSimpleHelperToCaller(pExPtrs->ContextRecord);
+
+            translateToManagedException = true;
+        }
+    }
+
+    if (translateToManagedException)
+    {
         pExPtrs->ContextRecord->SetIp((UIntNative)&RhpThrowHwEx);
         pExPtrs->ContextRecord->SetArg0Reg(faultCode);
         pExPtrs->ContextRecord->SetArg1Reg(faultingIP);

@@ -1351,6 +1351,8 @@ namespace Internal.JitInterface
 #endif
                         ));
                 }
+
+                pResult->nullInstanceCheck = false;
             }
             else if ((flags & CORINFO_CALLINFO_FLAGS.CORINFO_CALLINFO_LDFTN) == 0
                 && _compilation.HasFixedSlotVTable(targetMethod.OwningType))

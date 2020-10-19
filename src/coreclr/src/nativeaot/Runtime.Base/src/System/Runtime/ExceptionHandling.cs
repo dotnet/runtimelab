@@ -425,7 +425,7 @@ namespace System.Runtime
         private enum HwExceptionCode : uint
         {
             STATUS_REDHAWK_NULL_REFERENCE = 0x00000000u,
-            STATUS_REDHAWK_WRITE_BARRIER_NULL_REFERENCE = 0x00000042u,
+            STATUS_REDHAWK_UNMANAGED_HELPER_NULL_REFERENCE = 0x00000042u,
             STATUS_REDHAWK_THREAD_ABORT = 0x00000043u,
 
             STATUS_DATATYPE_MISALIGNMENT = 0x80000002u,
@@ -548,7 +548,7 @@ namespace System.Runtime
                     exceptionId = ExceptionIDs.NullReference;
                     break;
 
-                case (uint)HwExceptionCode.STATUS_REDHAWK_WRITE_BARRIER_NULL_REFERENCE:
+                case (uint)HwExceptionCode.STATUS_REDHAWK_UNMANAGED_HELPER_NULL_REFERENCE:
                     // The write barrier where the actual fault happened has been unwound already.
                     // The IP of this fault needs to be treated as return address, not as IP of
                     // faulting instruction.
