@@ -330,7 +330,7 @@ static bool InWriteBarrierHelper(UIntNative faultingIP)
     return false;
 }
 
-static UIntNative UnwindWriteBarrierToCaller(
+static UIntNative UnwindSimpleHelperToCaller(
 #ifdef TARGET_UNIX
     PAL_LIMITED_CONTEXT * pContext
 #else
@@ -351,7 +351,7 @@ static UIntNative UnwindWriteBarrierToCaller(
     UIntNative adjustedFaultingIP = pContext->GetLr();
 #else
     UIntNative adjustedFaultingIP = 0; // initializing to make the compiler happy
-    PORTABILITY_ASSERT("UnwindWriteBarrierToCaller");
+    PORTABILITY_ASSERT("UnwindSimpleHelperToCaller");
 #endif
     return adjustedFaultingIP;
 }
@@ -397,32 +397,6 @@ static bool InInterfaceDispatchHelper(UIntNative faultingIP)
     return false;
 }
 
-static UIntNative UnwindInterfaceDispatchToCaller(
-#ifdef TARGET_UNIX
-    PAL_LIMITED_CONTEXT* pContext
-#else
-    _CONTEXT* pContext
-#endif
-)
-{
-#if defined(_DEBUG)
-    UIntNative faultingIP = pContext->GetIp();
-    ASSERT(InInterfaceDispatchHelper(faultingIP));
-#endif
-#if defined(HOST_AMD64) || defined(HOST_X86)
-    // simulate a ret instruction
-    UIntNative sp = pContext->GetSp();
-    UIntNative adjustedFaultingIP = *(UIntNative*)sp;
-    pContext->SetSp(sp + sizeof(UIntNative)); // pop the stack
-#elif defined(HOST_ARM) || defined(HOST_ARM64)
-    UIntNative adjustedFaultingIP = pContext->GetLr();
-#else
-    UIntNative adjustedFaultingIP = 0; // initializing to make the compiler happy
-    PORTABILITY_ASSERT("UnwindInterfaceDispatchToCaller");
-#endif
-    return adjustedFaultingIP;
-}
-
 #ifdef TARGET_UNIX
 
 Int32 __stdcall RhpHardwareExceptionHandler(UIntNative faultCode, UIntNative faultAddress,
@@ -435,7 +409,7 @@ Int32 __stdcall RhpHardwareExceptionHandler(UIntNative faultCode, UIntNative fau
     if (pCodeManager != NULL)
     {
         // Make sure that the OS does not use our internal fault codes
-        ASSERT(faultCode != STATUS_REDHAWK_NULL_REFERENCE && faultCode != STATUS_REDHAWK_WRITE_BARRIER_NULL_REFERENCE);
+        ASSERT(faultCode != STATUS_REDHAWK_NULL_REFERENCE && faultCode != STATUS_REDHAWK_UNMANAGED_HELPER_NULL_REFERENCE);
 
         if (faultCode == STATUS_ACCESS_VIOLATION)
         {
@@ -465,20 +439,11 @@ Int32 __stdcall RhpHardwareExceptionHandler(UIntNative faultCode, UIntNative fau
         {
             if (faultAddress < NULL_AREA_SIZE)
             {
-                faultCode = STATUS_REDHAWK_WRITE_BARRIER_NULL_REFERENCE;
+                faultCode = STATUS_REDHAWK_UNMANAGED_HELPER_NULL_REFERENCE;
             }
 
-            if (inWriteBarrierHelper)
-            {
-                // we were AV-ing in a write barrier helper - unwind our way to our caller
-                faultingIP = UnwindWriteBarrierToCaller(palContext);
-            }
-            else
-            {
-                ASSERT(inInterfaceDispatchHelper);
-                // we were AV-ing in an interface dispatch helper - unwind our way to our caller
-                faultingIP = UnwindInterfaceDispatchToCaller(palContext);
-            }
+            // we were AV-ing in a helper - unwind our way to our caller
+            faultingIP = UnwindSimpleHelperToCaller(palContext);
 
             translateToManagedException = true;
         }
@@ -508,7 +473,7 @@ Int32 __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
     if (pCodeManager != NULL)
     {
         // Make sure that the OS does not use our internal fault codes
-        ASSERT(faultCode != STATUS_REDHAWK_NULL_REFERENCE && faultCode != STATUS_REDHAWK_WRITE_BARRIER_NULL_REFERENCE);
+        ASSERT(faultCode != STATUS_REDHAWK_NULL_REFERENCE && faultCode != STATUS_REDHAWK_UNMANAGED_HELPER_NULL_REFERENCE);
 
         if (faultCode == STATUS_ACCESS_VIOLATION)
         {
@@ -538,20 +503,11 @@ Int32 __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
         {
             if (pExPtrs->ExceptionRecord->ExceptionInformation[1] < NULL_AREA_SIZE)
             {
-                faultCode = STATUS_REDHAWK_WRITE_BARRIER_NULL_REFERENCE;
+                faultCode = STATUS_REDHAWK_UNMANAGED_HELPER_NULL_REFERENCE;
             }
 
-            if (inWriteBarrierHelper)
-            {
-                // we were AV-ing in a write barrier helper - unwind our way to our caller
-                faultingIP = UnwindWriteBarrierToCaller(pExPtrs->ContextRecord);
-            }
-            else
-            {
-                ASSERT(inInterfaceDispatchHelper);
-                // we were AV-ing in an interface dispatch helper - unwind our way to our caller
-                faultingIP = UnwindInterfaceDispatchToCaller(pExPtrs->ContextRecord);
-            }
+            // we were AV-ing in a helper - unwind our way to our caller
+            faultingIP = UnwindSimpleHelperToCaller(pExPtrs->ContextRecord);
 
             translateToManagedException = true;
         }

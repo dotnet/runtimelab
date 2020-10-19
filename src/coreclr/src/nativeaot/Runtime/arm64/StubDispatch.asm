@@ -34,7 +34,8 @@
     MACRO
         DEFINE_INTERFACE_DISPATCH_STUB $entries
 
-StubName    SETS    "RhpInterfaceDispatch$entries"
+StubName       SETS    "RhpInterfaceDispatch$entries"
+StubAVLocation SETS    "RhpInterfaceDispatchAVLocation$entries"
 
     NESTED_ENTRY $StubName
 
@@ -42,6 +43,7 @@ StubName    SETS    "RhpInterfaceDispatch$entries"
         ldr     x9, [xip1, #OFFSETOF__InterfaceDispatchCell__m_pCache]
 
         ;; Load the EEType from the object instance in x0.
+        ALTERNATE_ENTRY $StubAVLocation
         ldr     x10, [x0]
 
     GBLA CurrentEntry
@@ -62,6 +64,10 @@ CurrentEntry SETA CurrentEntry + 1
 ;;
 ;; Define all the stub routines we currently need.
 ;;
+;; If you change or add any new dispatch stubs, exception handling might need to be aware because it refers to the
+;; *AVLocation symbols defined by the dispatch stubs to be able to unwind and blame user code if a NullRef happens
+;; during the interface dispatch.
+;;
     DEFINE_INTERFACE_DISPATCH_STUB 1
     DEFINE_INTERFACE_DISPATCH_STUB 2
     DEFINE_INTERFACE_DISPATCH_STUB 4
@@ -75,6 +81,12 @@ CurrentEntry SETA CurrentEntry + 1
 ;; Initial dispatch on an interface when we don't have a cache yet.
 ;;
     LEAF_ENTRY RhpInitialInterfaceDispatch
+        ;; Trigger an AV if we're dispatching on a null this.
+        ;; The exception handling infrastructure is aware of the fact that this is the first
+        ;; instruction of RhpInitialInterfaceDispatch and uses it to translate an AV here
+        ;; to a NullReferenceException at the callsite.
+        ldr     xzr, [x0]
+
         ;; Just tail call to the cache miss helper.
         b RhpInterfaceDispatchSlow
     LEAF_END RhpInitialInterfaceDispatch
