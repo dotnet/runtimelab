@@ -45,41 +45,58 @@ pr:
 
 variables:
   - template: /eng/pipelines/common/variables.yml
+  - ${{ if and(ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest')) }}:
+    - name: TeamName
+      value: dotnet-core
 
-jobs:
-#
-# Checkout repository
-#
-- template: /eng/pipelines/common/checkout-job.yml
+stages:
+- stage: Build
+  jobs:
+  #
+  # Checkout repository
+  #
+  - template: /eng/pipelines/common/checkout-job.yml
 
-#
-# Build with Release config and Release runtimeConfiguration
-#
-- template: /eng/pipelines/common/platform-matrix.yml
-  parameters:
-    jobTemplate: /eng/pipelines/common/global-build-job.yml
-    buildConfig: Release
-    platforms:
-    - Linux_x64
-    - FreeBSD_x64
-    jobParameters:
-      testGroup: innerloop
-      buildArgs: -s clr+libs+libs.tests+installer -c $(_BuildConfig) /p:ArchiveTests=true
-      extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-      extraStepsParameters:
-        uploadTests: true
+  #
+  # Build with Release config and Release runtimeConfiguration
+  #
+  - template: /eng/pipelines/common/platform-matrix.yml
+    parameters:
+      jobTemplate: /eng/pipelines/common/global-build-job.yml
+      buildConfig: Release
+      platforms:
+      - Linux_x64
+      - FreeBSD_x64
+      jobParameters:
+        isOfficialBuild: ${{ variables.isOfficialBuild }}
+        testGroup: innerloop
+        extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+        extraStepsParameters:
+          uploadLibrariesTests: ${{ eq(variables.isOfficialBuild, false) }}
+          uploadUnsignedArtifacts: false
+        ${{ if eq(variables.isOfficialBuild, false) }}:
+          buildArgs: -s clr+libs+libs.tests+installer -c $(_BuildConfig) /p:ArchiveTests=true
+        ${{ if eq(variables.isOfficialBuild, true) }}:
+          buildArgs: -s clr+libs -c $(_BuildConfig)
 
-#
-# Build with Release allConfigurations to produce packages
-#
-- template: /eng/pipelines/common/platform-matrix.yml
-  parameters:
-    jobTemplate: /eng/pipelines/common/global-build-job.yml
-    buildConfig: release
-    platforms:
-    - Windows_NT_x64
-    jobParameters:
-      testGroup: innerloop
-      nameSuffix: All_Configurations
-      buildArgs: -s libs -c $(_BuildConfig) -allConfigurations
+  #
+  # Build with Release allConfigurations to produce packages
+  #
+  - template: /eng/pipelines/common/platform-matrix.yml
+    parameters:
+      jobTemplate: /eng/pipelines/common/global-build-job.yml
+      buildConfig: Release
+      platforms:
+      - Windows_NT_x64
+      jobParameters:
+        isOfficialBuild: ${{ variables.isOfficialBuild }}
+        testGroup: innerloop
+        nameSuffix: AllConfigurations
+        buildArgs: -s libs -c $(_BuildConfig) -allConfigurations
+        ${{ if eq(variables.isOfficialBuild, true) }}:
+          extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+          extraStepsParameters:
+            uploadUnsignedArtifacts: true
+            isOfficialBuild: true
+            librariesBinArtifactName: libraries_bin_official_allconfigurations
 
