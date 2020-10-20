@@ -389,7 +389,7 @@ namespace DllImportGenerator.Tools.Reporting
         {
             IReadOnlyDictionary<string, IReadOnlyCollection<PInvokeMethod>> importsByAssemblyPath = dump.MethodsByAssemblyPath;
 
-            string[] headers = { "Name", "Return", "Arguments" };
+            string[] headers = { "Name", "Return", "Arguments", "Attributes" };
             var tableHeader = new StringBuilder();
             tableHeader.Append(@$"<th class=""status-indicator"" scope=""col""></th>");
             foreach (var header in headers)
@@ -411,7 +411,13 @@ namespace DllImportGenerator.Tools.Reporting
                                 optionFilter: string.Join(' ', nameValues),
                                 $"{method.EnclosingTypeName}<br/>{method.MethodName}",
                                 method.ReturnType.ToString(),
-                                string.Join("<br/>", method.ArgumentTypes.Select(t => t.ToString()))));
+                                string.Join("<br/>", method.ArgumentTypes.Select(t => t.ToString())),
+                                string.Join("<br/>",
+                                    $"{nameof(method.BestFitMapping)}={method.BestFitMapping}",
+                                    $"{nameof(method.CharSet)}={method.CharSet}",
+                                    $"{nameof(method.PreserveSig)}={method.PreserveSig}",
+                                    $"{nameof(method.SetLastError)}={method.SetLastError}",
+                                    $"{nameof(method.ThrowOnUnmappableChar)}={method.ThrowOnUnmappableChar}")));
                     }
                 }
             }
