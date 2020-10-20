@@ -61,7 +61,7 @@ jobs:
     buildConfig: Release
     platforms:
     - Linux_x64
-    - FreeBSD
+    - FreeBSD_x64
     jobParameters:
       testGroup: innerloop
       buildArgs: -s clr+libs+libs.tests+installer -c $(_BuildConfig) /p:ArchiveTests=true
