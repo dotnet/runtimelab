@@ -21,7 +21,7 @@
       <RunSettingsFileContent>$(RunSettingsFileContent.Replace('$$RESULTSDIRECTORY$$', '$(ArtifactsTestResultsDir)')
                                                       .Replace('$$SOLUTIONDIRECTORY$$', '$(RepoRoot)')
                                                       .Replace('$$TARGETPLATFORM$$', '$(TargetPlatform)')
-                                                      .Replace('$$TRXRESULTSNAME$$', '$(ResultsFileName).xml')
+                                                      .Replace('$$TRXRESULTSNAME$$', '$(ResultsFileName).trx')
                                                       .Replace('$$HTMLRESULTSNAME$$', '$(ResultsFileName).html')
                                                       .Replace('$$DOTNETHOSTPATH$$', '$(DotNetTool)'))</RunSettingsFileContent>
     </PropertyGroup>

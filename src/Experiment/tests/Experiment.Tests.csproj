@@ -4,6 +4,6 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <ProjectReference Include="$(RepoRoot)\src\Experiment.csproj" />
+    <ProjectReference Include="..\src\Experiment.csproj" />
   </ItemGroup>
 </Project>

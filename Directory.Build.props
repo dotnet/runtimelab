@@ -15,4 +15,16 @@
     <UseCustomRuntimeVersion>true</UseCustomRuntimeVersion>
     <RuntimeFrameworkVersion Condition="$(UseCustomRuntimeVersion)">$(MicrosoftNETCoreAppVersion)</RuntimeFrameworkVersion>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <IsPackable>false</IsPackable>
+    <TestCaptureOutput>false</TestCaptureOutput>
+    <TargetPlatform Condition="'$(TargetPlatform)' == ''">x64</TargetPlatform>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsTestProject)' == 'true'">
+    <PackageReference Update="Microsoft.NET.Test.Sdk" Version="$(MicrosoftNETTestSdkVersion)" PrivateAssets="true" />
+    <PackageReference Update="xunit" Version="$(XunitVersion)" />
+    <PackageReference Update="xunit.runner.visualstudio" Version="$(XUnitRunnerVisualStudioVersion)" PrivateAssets="all" />
+  </ItemGroup>
 </Project>

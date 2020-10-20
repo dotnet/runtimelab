@@ -8,5 +8,7 @@
                         TargetingPackVersion="$(MicrosoftNETCoreAppVersion)" />
   </ItemGroup>
 
+  <Import Condition="'$(IsTestProject)' == 'true'" Project="$(RepositoryEngineeringDir)testing\runsettings.targets" />
+
   <Import Project="Sdk.targets" Sdk="Microsoft.DotNet.Arcade.Sdk" />
 </Project>

@@ -9,6 +9,7 @@
     <PatchVersion>0</PatchVersion>
     <PreReleaseVersionLabel>alpha</PreReleaseVersionLabel>
     <!-- Opt-out repo features -->
+    <UseVSTestRunner>true</UseVSTestRunner>
     <UsingToolXliff>false</UsingToolXliff>
     <!-- Libs -->
     <MicrosoftNETCoreAppVersion>6.0.0-alpha.1.20514.9</MicrosoftNETCoreAppVersion>
