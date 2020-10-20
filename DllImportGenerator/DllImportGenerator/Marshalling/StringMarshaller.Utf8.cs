@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -9,11 +8,16 @@ namespace Microsoft.Interop
 {
     internal sealed class Utf8StringMarshaller : IMarshallingGenerator
     {
+        // [Compat] Equivalent of MAX_PATH on Windows to match built-in system
+        // The assumption is file paths are the most common case for marshalling strings,
+        // so the threshold for optimized allocation is based on that length.
         private const int StackAllocBytesThreshold = 260;
 
         private static readonly TypeSyntax InteropServicesMarshalType = ParseTypeName(TypeNames.System_Runtime_InteropServices_Marshal);
         private static readonly TypeSyntax NativeType = PointerType(PredefinedType(Token(SyntaxKind.ByteKeyword)));
         private static readonly TypeSyntax UTF8EncodingType = ParseTypeName("System.Text.Encoding.UTF8");
+
+        private static readonly int MaxByteCountPerChar = 3;
 
         public ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context)
         {
@@ -85,7 +89,6 @@ namespace Microsoft.Interop
                                             .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.FalseLiteralExpression))))));
 
                             string stackAllocPtrIdentifier = $"{managedIdentifier}__stackalloc";
-                            string fixedCharIdentifier = $"{managedIdentifier}__fixedChar";
                             string byteLenIdentifier = $"{managedIdentifier}__byteLen";
 
                             // Code block for stackalloc if string is below threshold size
@@ -103,17 +106,7 @@ namespace Microsoft.Interop
                                                             SingletonList<ArrayRankSpecifierSyntax>(
                                                                 ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(
                                                                     IdentifierName(byteLenIdentifier))))))))))),
-                                // fixed (char* <fixedChar> = <managedIdentifier>)
-                                // {
-                                //     <byteLen> = Encoding.UTF8.GetBytes(<fixedChar>, <managedIdentifier>.Length, <stackAllocPtr>, <byteLen>);
-                                // }
-                                FixedStatement(
-                                    VariableDeclaration(
-                                        PointerType(PredefinedType(Token(SyntaxKind.CharKeyword))),
-                                        SingletonSeparatedList<VariableDeclaratorSyntax>(
-                                            VariableDeclarator(fixedCharIdentifier)
-                                            .WithInitializer(EqualsValueClause(IdentifierName(managedIdentifier))))),
-                                    Block(
+                                        // <byteLen> = Encoding.UTF8.GetBytes(<managed>, new Span<byte>(<stackAllocPtr>, <byteLen>));
                                         ExpressionStatement(
                                             AssignmentExpression(
                                                 SyntaxKind.SimpleAssignmentExpression,
@@ -125,13 +118,17 @@ namespace Microsoft.Interop
                                                         IdentifierName("GetBytes")),
                                                     ArgumentList(
                                                         SeparatedList(new ArgumentSyntax[] {
-                                                            Argument(IdentifierName(fixedCharIdentifier)),
-                                                            Argument(MemberAccessExpression(
-                                                                SyntaxKind.SimpleMemberAccessExpression,
-                                                                IdentifierName(managedIdentifier),
-                                                                IdentifierName("Length"))),
-                                                            Argument(IdentifierName(stackAllocPtrIdentifier)),
-                                                            Argument(IdentifierName(byteLenIdentifier))}))))))),
+                                                            Argument(IdentifierName(managedIdentifier)),
+                                                            Argument(
+                                                                ObjectCreationExpression(
+                                                                    GenericName(Identifier("System.Span"),
+                                                                        TypeArgumentList(SingletonSeparatedList<TypeSyntax>(
+                                                                            PredefinedType(Token(SyntaxKind.ByteKeyword))))),
+                                                                    ArgumentList(
+                                                                        SeparatedList(new ArgumentSyntax[]{
+                                                                            Argument(IdentifierName(stackAllocPtrIdentifier)),
+                                                                            Argument(IdentifierName(byteLenIdentifier))})),
+                                                                    initializer: null))}))))),
                                 // <stackAllocPtr>[<byteLen>] = 0;
                                 ExpressionStatement(
                                     AssignmentExpression(
@@ -157,6 +154,9 @@ namespace Microsoft.Interop
                             // }
                             // else
                             // {
+                            //     // + 1 for number of characters in case left over high surrogate is ?
+                            //     // * <MaxByteCountPerChar> (3 for UTF-8)
+                            //     // +1 for null terminator
                             //     int <byteLen> = (<managed>.Length + 1) * 3 + 1;
                             //     if (<byteLen> > <StackAllocBytesThreshold>)
                             //     {
@@ -165,10 +165,7 @@ namespace Microsoft.Interop
                             //     else
                             //     {
                             //         byte* <stackAllocPtr> = stackalloc byte[<byteLen>];
-                            //         fixed (char* <fixedChar> = <managed>)
-                            //         {
-                            //             <byteLen> = Encoding.UTF8.GetBytes(<fixedChar>, <managed>.Length, <stackAllocPtr>, <byteLen>);
-                            //         }
+                            //         <byteLen> = Encoding.UTF8.GetBytes(<managed>, new Span<byte>(<stackAllocPtr>, <byteLen>));
                             //         <stackAllocPtr>[<byteLen>] = 0;
                             //         <native> = (byte*)<stackAllocPtr>;
                             //     }
@@ -186,7 +183,11 @@ namespace Microsoft.Interop
                                             LiteralExpression(SyntaxKind.NullLiteralExpression)))),
                                 ElseClause(
                                     Block(
-                                        LocalDeclarationStatement(
+                                        // + 1 for number of characters in case left over high surrogate is ?
+                                        // * <MaxByteCountPerChar> (3 for UTF-8)
+                                        // +1 for null terminator
+                                        // int <byteLen> = (<managed>.Length + 1) * 3 + 1;
+                                       LocalDeclarationStatement(
                                             VariableDeclaration(
                                                 PredefinedType(Token(SyntaxKind.IntKeyword)),
                                                 SingletonSeparatedList<VariableDeclaratorSyntax>(
@@ -204,7 +205,7 @@ namespace Microsoft.Interop
                                                                                 IdentifierName(managedIdentifier),
                                                                                 IdentifierName("Length")),
                                                                             LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))),
-                                                                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(3))),
+                                                                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(MaxByteCountPerChar))),
                                                                 LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(1)))))))),
                                         IfStatement(
                                             BinaryExpression(
