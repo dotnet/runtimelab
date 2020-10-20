@@ -40,7 +40,14 @@ namespace Microsoft.Interop
         UnmanagedType UnmanagedArraySubType,
         int ArraySizeConst,
         short ArraySizeParamIndex,
-        CharEncoding CharEncoding) : MarshallingInfoStringSupport(CharEncoding);
+        CharEncoding CharEncoding) : MarshallingInfoStringSupport(CharEncoding)
+    {
+        /// <summary>
+        /// Helper method to enable cleaner pattern matching for the common case of
+        /// a MarshalAs attribute that just uses the constructor parameter and no additional properties.
+        /// </summary>
+        public void Deconstruct(out UnmanagedType unmanagedType) => unmanagedType = UnmanagedType;
+    }
 
     /// <summary>
     /// User-applied System.Runtime.InteropServices.BlittableTypeAttribute

@@ -125,38 +125,38 @@ namespace Microsoft.Interop
             switch (info)
             {
                 // Blittable primitives with no marshalling info or with a compatible [MarshalAs] attribute.
-                case { ManagedType: { SpecialType: SpecialType.System_SByte }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.I1 } }
-                    or { ManagedType: { SpecialType: SpecialType.System_Byte }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.U1 } }
-                    or { ManagedType: { SpecialType: SpecialType.System_Int16 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.I2 } }
-                    or { ManagedType: { SpecialType: SpecialType.System_UInt16 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.U2 } }
-                    or { ManagedType: { SpecialType: SpecialType.System_Int32 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.I4 } }
-                    or { ManagedType: { SpecialType: SpecialType.System_UInt32 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.U4 } }
-                    or { ManagedType: { SpecialType: SpecialType.System_Int64 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.I8 } }
-                    or { ManagedType: { SpecialType: SpecialType.System_UInt64 }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.U8 } }
+                case { ManagedType: { SpecialType: SpecialType.System_SByte }, MarshallingAttributeInfo: null or MarshalAsInfo(UnmanagedType.I1) }
+                    or { ManagedType: { SpecialType: SpecialType.System_Byte }, MarshallingAttributeInfo: null or MarshalAsInfo(UnmanagedType.U1) }
+                    or { ManagedType: { SpecialType: SpecialType.System_Int16 }, MarshallingAttributeInfo: null or MarshalAsInfo(UnmanagedType.I2) }
+                    or { ManagedType: { SpecialType: SpecialType.System_UInt16 }, MarshallingAttributeInfo: null or MarshalAsInfo(UnmanagedType.U2) }
+                    or { ManagedType: { SpecialType: SpecialType.System_Int32 }, MarshallingAttributeInfo: null or MarshalAsInfo(UnmanagedType.I4) }
+                    or { ManagedType: { SpecialType: SpecialType.System_UInt32 }, MarshallingAttributeInfo: null or MarshalAsInfo(UnmanagedType.U4) }
+                    or { ManagedType: { SpecialType: SpecialType.System_Int64 }, MarshallingAttributeInfo: null or MarshalAsInfo(UnmanagedType.I8) }
+                    or { ManagedType: { SpecialType: SpecialType.System_UInt64 }, MarshallingAttributeInfo: null or MarshalAsInfo(UnmanagedType.U8) }
                     or { ManagedType: { SpecialType: SpecialType.System_IntPtr }, MarshallingAttributeInfo: null }
                     or { ManagedType: { SpecialType: SpecialType.System_UIntPtr }, MarshallingAttributeInfo: null}
-                    or { ManagedType: { SpecialType: SpecialType.System_Single }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.R4 } }
-                    or { ManagedType: { SpecialType: SpecialType.System_Double }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.R8 } }:
+                    or { ManagedType: { SpecialType: SpecialType.System_Single }, MarshallingAttributeInfo: null or MarshalAsInfo(UnmanagedType.R4) }
+                    or { ManagedType: { SpecialType: SpecialType.System_Double }, MarshallingAttributeInfo: null or MarshalAsInfo(UnmanagedType.R8) }:
                     return Blittable;
 
                 case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: null }:
                     return WinBool; // [Compat] Matching the default for the built-in runtime marshallers.
-                case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I1 or UnmanagedType.U1 } }:
+                case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo(UnmanagedType.I1 or UnmanagedType.U1) }:
                     return ByteBool;
-                case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I4 or UnmanagedType.U4 or UnmanagedType.Bool } }:
+                case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo(UnmanagedType.I4 or UnmanagedType.U4 or UnmanagedType.Bool) }:
                     return WinBool;
-                case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.VariantBool } }:
+                case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo(UnmanagedType.VariantBool) }:
                     return VariantBool;
 
                 case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: null }:
                     return Utf16Char; // [Compat] Default marshalling is UTF-16.
-                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.I2 } }:
+                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshalAsInfo(UnmanagedType.I2) }:
                     return Utf16Char;
-                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshalAsInfo { UnmanagedType: UnmanagedType.U2 } }:
+                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshalAsInfo(UnmanagedType.U2) }:
                     return Utf16Char;
-                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshallingInfoStringSupport { CharEncoding: CharEncoding.Utf16 } }:
+                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshallingInfoStringSupport(CharEncoding.Utf16) }:
                     return Utf16Char;
-                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshallingInfoStringSupport { CharEncoding: CharEncoding.Utf8 } }:
+                case { ManagedType: { SpecialType: SpecialType.System_Char }, MarshallingAttributeInfo: MarshallingInfoStringSupport(CharEncoding.Utf8) }:
                     throw new MarshallingNotSupportedException(info, context) // [Compat] See conversion from CharSet.Ansi to UTF-8.
                     {
                         NotSupportedDetails = Resources.MarshallingCharAsCharSetAnsiNotSupported
@@ -167,10 +167,10 @@ namespace Microsoft.Interop
                         NotSupportedDetails = Resources.MarshallingCharAsCharSetAutoNotSupported
                     };
 
-                case { ManagedType: { TypeKind: TypeKind.Delegate }, MarshallingAttributeInfo: null or MarshalAsInfo { UnmanagedType: UnmanagedType.FunctionPtr } }:
+                case { ManagedType: { TypeKind: TypeKind.Delegate }, MarshallingAttributeInfo: null or MarshalAsInfo(UnmanagedType.FunctionPtr) }:
                     return Delegate;
 
-                case { MarshallingAttributeInfo: BlittableTypeAttributeInfo _ }:
+                case { MarshallingAttributeInfo: BlittableTypeAttributeInfo }:
                     return Blittable;
 
                 // Marshalling in new model
@@ -178,10 +178,10 @@ namespace Microsoft.Interop
                     return Forwarder;
 
                 // Simple marshalling with new attribute model, only have type name.
-                case { MarshallingAttributeInfo: GeneratedNativeMarshallingAttributeInfo { NativeMarshallingFullyQualifiedTypeName: string name } }:
+                case { MarshallingAttributeInfo: GeneratedNativeMarshallingAttributeInfo(string nativeTypeName) }:
                     return Forwarder;
 
-                case { MarshallingAttributeInfo: SafeHandleMarshallingInfo _}:
+                case { MarshallingAttributeInfo: SafeHandleMarshallingInfo }:
                     return SafeHandle;
 
                 case { ManagedType: { SpecialType: SpecialType.System_Void } }:
