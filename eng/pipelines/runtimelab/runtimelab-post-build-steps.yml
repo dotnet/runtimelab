@@ -3,6 +3,7 @@ parameters:
   archType: ''
   osGroup: ''
   osSubgroup: ''
+  osArg: ''
   uploadTests: false
 
 steps:
