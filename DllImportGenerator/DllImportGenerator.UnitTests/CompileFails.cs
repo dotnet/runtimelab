@@ -30,6 +30,9 @@ namespace DllImportGenerator.UnitTests
             // Unsupported UnmanagedType
             yield return new object[] { CodeSnippets.MarshalAsParametersAndModifiers<char>(UnmanagedType.I1), 5, 0 };
             yield return new object[] { CodeSnippets.MarshalAsParametersAndModifiers<char>(UnmanagedType.U1), 5, 0 };
+
+            // Unsupported MarshalTypeRef, MarshalType, MarshalCookie
+            yield return new object[] { CodeSnippets.MarshalAsCustomMarshalerOnTypes, 12, 0 };
         }
 
         [Theory]
