@@ -1,0 +1,53 @@
+parameters:
+  variables: {}
+  osGroup: ''
+  archType: ''
+  container: ''
+  pool: {}
+  isOfficialBuild: ''
+  runTests: true
+
+jobs:
+
+- template: /eng/common/templates/job/job.yml
+  parameters:
+    displayName: ${{ format('{0} {1}', parameters.osGroup, parameters.archType) }}
+    name: ${{ format('{0}_{1}', parameters.osGroup, parameters.archType) }}
+    enableTelemetry: ${{ parameters.isOfficialBuild }}
+    helixRepo: dotnet/runtimelab
+    pool: ${{ parameters.pool }}
+    enablePublishBuildArtifacts: true
+    strategy:
+      matrix:
+        Release:
+          _BuildConfig: Release
+        Debug:
+          _BuildConfig: Debug
+
+    ${{ if eq(parameters.runTests, true) }}:
+      testResultsFormat: vstest
+      testRunTitle: ${{ parameters.osGroup }}_${{ parameters.archType }}_$(_BuildConfig)
+
+    ${{ if ne(parameters.container, '') }}:
+      ${{ if eq(parameters.container.registry, 'mcr') }}:
+        container: ${{ format('{0}:{1}', 'mcr.microsoft.com/dotnet-buildtools/prereqs', parameters.container.image) }}
+      ${{ if ne(parameters.container.registry, 'mcr') }}:
+        container: ${{ format('{0}:{1}', parameters.container.registry, parameters.container.image) }}
+
+    variables:
+      - _buildScript: build.cmd
+
+      - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
+        - _buildScript: ./build.sh
+      
+      - _testBuildArg: ''
+      - ${{ if eq(parameters.runTests, true) }}:
+        - _testBuildArg: -test
+
+    steps:
+    - script: $(_buildScript)
+              -ci
+              $(_testBuildArg)
+              -c $(_BuildConfig)
+              /p:TargetPlatform=${{ parameters.archType }}
+      displayName: Build and Test

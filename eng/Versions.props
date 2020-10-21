@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <!-- Experiment package versions properties -->
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <!-- File version numbers -->
+    <MajorVersion>1</MajorVersion>
+    <MinorVersion>0</MinorVersion>
+    <PatchVersion>0</PatchVersion>
+    <PreReleaseVersionLabel>alpha</PreReleaseVersionLabel>
+    <!-- Opt-out repo features -->
+    <UseVSTestRunner>true</UseVSTestRunner>
+    <UsingToolXliff>false</UsingToolXliff>
+    <!-- Libs -->
+    <MicrosoftNETCoreAppVersion>6.0.0-alpha.1.20514.9</MicrosoftNETCoreAppVersion>
+    <MicrosoftNETTestSdkVersion>16.7.1</MicrosoftNETTestSdkVersion>
+    <XUnitVersion>2.4.1</XUnitVersion>
+    <XUnitRunnerVisualStudioVersion>2.4.3</XUnitRunnerVisualStudioVersion>
+  </PropertyGroup>
+</Project>
