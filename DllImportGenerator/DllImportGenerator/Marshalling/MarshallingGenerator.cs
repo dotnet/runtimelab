@@ -103,6 +103,8 @@ namespace Microsoft.Interop
         public static readonly DelegateMarshaller Delegate = new DelegateMarshaller();
         public static readonly SafeHandleMarshaller SafeHandle = new SafeHandleMarshaller();
 
+        public static readonly BlittableArrayMarshaller BlittableArray = new BlittableArrayMarshaller();
+
         /// <summary>
         /// Create an <see cref="IMarshallingGenerator"/> instance to marshalling the supplied type.
         /// </summary>
@@ -183,6 +185,18 @@ namespace Microsoft.Interop
 
                 case { MarshallingAttributeInfo: SafeHandleMarshallingInfo }:
                     return SafeHandle;
+
+                case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType : ITypeSymbol elementType } , MarshallingAttributeInfo: null}:
+                    {
+                        IMarshallingGenerator elementMarshaller = Create(TypePositionInfo.CreateForType(elementType, null), context);
+                        return elementMarshaller == Blittable ? BlittableArray : new NonBlittableArrayMarshaller(elementMarshaller);
+                    }
+
+                case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType : ITypeSymbol elementType } , MarshallingAttributeInfo: MarshalAsInfo(UnmanagedType.LPArray) marshalAsInfo }:
+                    {
+                        IMarshallingGenerator elementMarshaller = Create(TypePositionInfo.CreateForType(elementType, marshalAsInfo.CreateArraySubTypeMarshalAsInfo()), context);
+                        return elementMarshaller == Blittable ? BlittableArray : new NonBlittableArrayMarshaller(elementMarshaller);
+                    }
 
                 case { ManagedType: { SpecialType: SpecialType.System_Void } }:
                     return Forwarder;

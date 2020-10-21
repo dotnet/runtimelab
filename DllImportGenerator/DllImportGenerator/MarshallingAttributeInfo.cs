@@ -42,6 +42,21 @@ namespace Microsoft.Interop
         short ArraySizeParamIndex,
         CharEncoding CharEncoding) : MarshallingInfoStringSupport(CharEncoding)
     {
+        public MarshalAsInfo(UnmanagedType unmanagedType, CharEncoding charEncoding)
+            :this(unmanagedType, null, null, 0, 0, 0, charEncoding)
+        {
+        }
+
+        public MarshalAsInfo? CreateArraySubTypeMarshalAsInfo()
+        {
+            Debug.Assert(UnmanagedType is UnmanagedType.LPArray or UnmanagedType.ByValArray or UnmanagedType.SafeArray);
+            if (UnmanagedArraySubType == 0)
+            {
+                return null;
+            }
+            return new MarshalAsInfo(UnmanagedArraySubType, CharEncoding);
+        }
+
         /// <summary>
         /// Helper method to enable cleaner pattern matching for the common case of
         /// a MarshalAs attribute that just uses the constructor parameter and no additional properties.

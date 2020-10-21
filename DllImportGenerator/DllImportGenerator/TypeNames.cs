@@ -22,6 +22,8 @@ namespace Microsoft.Interop
 
         public const string System_Runtime_InteropServices_MarshalEx = "System.Runtime.InteropServices.MarshalEx";
         
+        public const string System_Runtime_InteropServices_MemoryMarshal = "System.Runtime.InteropServices.MemoryMarshal";
+        
         public const string System_Runtime_InteropServices_SafeHandle = "System.Runtime.InteropServices.SafeHandle";
     }
 }
