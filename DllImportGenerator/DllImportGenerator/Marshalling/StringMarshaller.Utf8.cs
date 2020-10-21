@@ -13,11 +13,17 @@ namespace Microsoft.Interop
         // so the threshold for optimized allocation is based on that length.
         private const int StackAllocBytesThreshold = 260;
 
+        // Conversion from a 2-byte 'char' in UTF-16 to bytes in UTF-8 has a maximum of 3 bytes per 'char'
+        // Two bytes ('char') in UTF-16 can be either:
+        //   - Code point in the Basic Multilingual Plane: all 16 bits are that of the code point
+        //   - Part of a pair for a code point in the Supplementary Planes: 10 bits are that of the code point
+        // In UTF-8, 3 bytes are need to represent the code point in first and 4 bytes in the second. Thus, the
+        // maximum number of bytes per 'char' is 3.
+        private const int MaxByteCountPerChar = 3;
+
         private static readonly TypeSyntax InteropServicesMarshalType = ParseTypeName(TypeNames.System_Runtime_InteropServices_Marshal);
         private static readonly TypeSyntax NativeType = PointerType(PredefinedType(Token(SyntaxKind.ByteKeyword)));
         private static readonly TypeSyntax UTF8EncodingType = ParseTypeName("System.Text.Encoding.UTF8");
-
-        private static readonly int MaxByteCountPerChar = 3;
 
         public ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context)
         {
