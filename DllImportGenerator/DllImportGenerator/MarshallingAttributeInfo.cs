@@ -20,6 +20,7 @@ namespace Microsoft.Interop
         Undefined,
         Utf8,
         Utf16,
+        Ansi,
         PlatformDefined
     }
 
@@ -34,16 +35,14 @@ namespace Microsoft.Interop
     /// User-applied System.Runtime.InteropServices.MarshalAsAttribute
     /// </summary>
     internal sealed record MarshalAsInfo(
-        UnmanagedType UnmanagedType, 
-        string? CustomMarshallerTypeName,
-        string? CustomMarshallerCookie,
+        UnmanagedType UnmanagedType,
         UnmanagedType UnmanagedArraySubType,
         int ArraySizeConst,
         short ArraySizeParamIndex,
         CharEncoding CharEncoding) : MarshallingInfoStringSupport(CharEncoding)
     {
         public MarshalAsInfo(UnmanagedType unmanagedType, CharEncoding charEncoding)
-            :this(unmanagedType, null, null, 0, 0, 0, charEncoding)
+            :this(unmanagedType, 0, 0, 0, charEncoding)
         {
         }
 
