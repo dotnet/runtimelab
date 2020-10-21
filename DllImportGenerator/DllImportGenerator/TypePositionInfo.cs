@@ -171,7 +171,8 @@ namespace Microsoft.Interop
                 UnmanagedType unmanagedType = unmanagedTypeObj is short
                     ? (UnmanagedType)(short)unmanagedTypeObj
                     : (UnmanagedType)unmanagedTypeObj;
-                if (!Enum.IsDefined(typeof(UnmanagedType), unmanagedType))
+                if (!Enum.IsDefined(typeof(UnmanagedType), unmanagedType)
+                    || unmanagedType == UnmanagedType.CustomMarshaler)
                 {
                     diagnostics.ReportConfigurationNotSupported(attrData, nameof(UnmanagedType), unmanagedType.ToString());
                 }
