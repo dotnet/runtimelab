@@ -4,50 +4,74 @@ parameters:
   archType: ''
   container: ''
   pool: {}
-  isOfficialBuild: ''
+  isOfficialBuild: false
   runTests: true
 
 jobs:
 
-- template: /eng/common/templates/job/job.yml
+- template: /eng/common/templates/jobs/jobs.yml
   parameters:
-    displayName: ${{ format('{0} {1}', parameters.osGroup, parameters.archType) }}
-    name: ${{ format('{0}_{1}', parameters.osGroup, parameters.archType) }}
-    enableTelemetry: ${{ parameters.isOfficialBuild }}
+    enableTelemetry: true
     helixRepo: dotnet/runtimelab
     pool: ${{ parameters.pool }}
     enablePublishBuildArtifacts: true
-    strategy:
-      matrix:
-        Release:
-          _BuildConfig: Release
-        Debug:
-          _BuildConfig: Debug
+    enablePublishBuildAssets: true
+    enablePublishUsingPipelines: true
+    enableMicrobuild: true
+    graphFileGeneration:
+      enabled: false
+      includeToolset: false
 
-    ${{ if eq(parameters.runTests, true) }}:
-      testResultsFormat: vstest
-      testRunTitle: ${{ parameters.osGroup }}_${{ parameters.archType }}_$(_BuildConfig)
+    jobs:
+    - job: ${{ format('{0}_{1}', parameters.osGroup, parameters.archType) }}
+      displayName: ${{ format('{0} {1}', parameters.osGroup, parameters.archType) }}
+      strategy:
+        matrix:
+          Release:
+            _BuildConfig: Release
+          ${{ if eq(parameters.isOfficialBuild, false) }}:
+            Debug:
+              _BuildConfig: Debug
 
-    ${{ if ne(parameters.container, '') }}:
-      ${{ if eq(parameters.container.registry, 'mcr') }}:
-        container: ${{ format('{0}:{1}', 'mcr.microsoft.com/dotnet-buildtools/prereqs', parameters.container.image) }}
-      ${{ if ne(parameters.container.registry, 'mcr') }}:
-        container: ${{ format('{0}:{1}', parameters.container.registry, parameters.container.image) }}
+      ${{ if eq(parameters.runTests, true) }}:
+        testResultsFormat: vstest
+        testRunTitle: ${{ parameters.osGroup }}_${{ parameters.archType }}_$(_BuildConfig)
 
-    variables:
-      - _buildScript: build.cmd
+      ${{ if ne(parameters.container, '') }}:
+        ${{ if eq(parameters.container.registry, 'mcr') }}:
+          container: ${{ format('{0}:{1}', 'mcr.microsoft.com/dotnet-buildtools/prereqs', parameters.container.image) }}
+        ${{ if ne(parameters.container.registry, 'mcr') }}:
+          container: ${{ format('{0}:{1}', parameters.container.registry, parameters.container.image) }}
 
-      - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
-        - _buildScript: ./build.sh
-      
-      - _testBuildArg: ''
-      - ${{ if eq(parameters.runTests, true) }}:
-        - _testBuildArg: -test
+      variables:
+        - _buildScript: build.cmd
 
-    steps:
-    - script: $(_buildScript)
-              -ci
-              $(_testBuildArg)
-              -c $(_BuildConfig)
-              /p:TargetPlatform=${{ parameters.archType }}
-      displayName: Build and Test
+        - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
+          - _buildScript: ./build.sh
+        
+        - _testBuildArg: ''
+        - ${{ if eq(parameters.runTests, true) }}:
+          - _testBuildArg: -test
+
+        - _officialBuildArgs: ''
+        - ${{ if eq(parameters.isOfficialBuild, true) }}:
+          - group: DotNet-Symbol-Server-Pats
+          - _SignType: real
+          - _officialBuildArgs: -sign
+                                -publish
+                                /p:DotNetSignType=$(_SignType)
+                                /p:TeamName=$(_TeamName)
+                                /p:OfficialBuildId=$(Build.BuildNumber)
+                                /p:DotNetPublishUsingPipelines=true
+                                /p:DotNetSymbolServerTokenMsdl=$(microsoft-symbol-server-pat)
+                                /p:DotNetSymbolServerTokenSymWeb=$(symweb-symbol-server-pat)
+
+      steps:
+      - script: $(_buildScript)
+                -ci
+                -pack
+                -c $(_BuildConfig)
+                $(_testBuildArg)
+                $(_officialBuildArgs)
+                /p:TargetPlatform=${{ parameters.archType }}
+        displayName: Build and Test
