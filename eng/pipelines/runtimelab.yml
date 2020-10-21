@@ -73,7 +73,7 @@ stages:
         extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
         extraStepsParameters:
           uploadLibrariesTests: ${{ eq(variables.isOfficialBuild, false) }}
-          uploadUnsignedArtifacts: false
+          uploadUnsignedArtifacts: ${{ variables.isOfficialBuild }}
         ${{ if eq(variables.isOfficialBuild, false) }}:
           buildArgs: -s clr+libs+libs.tests+installer -c $(_BuildConfig) /p:ArchiveTests=true
         ${{ if eq(variables.isOfficialBuild, true) }}:
