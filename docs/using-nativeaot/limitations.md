@@ -6,7 +6,7 @@ the [.NET Runtime Form Factors](https://github.com/dotnet/designs/blob/main/acce
 
 The key limitations include:
 
-- No dynamic loading (e.g. Assembly.LoadFile)
-- No runtime code generation (e.g. System.Reflection.Emit)
+- No dynamic loading (e.g. `Assembly.LoadFile`)
+- No runtime code generation (e.g. `System.Reflection.Emit`)
 - No managed C++, no built-in COM and WinRT interop support
-- AOT friendly reflection use only or manual annotations to make arbitrary reflection work
+- No [unconstrained reflection](reflection-in-aot-mode.md)
