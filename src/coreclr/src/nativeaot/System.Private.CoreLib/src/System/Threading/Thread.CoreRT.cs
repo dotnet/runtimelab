@@ -37,6 +37,11 @@ namespace System.Threading
         // Protects starting the thread and setting its priority
         private Lock _lock;
 
+        // This is used for a quick check on thread pool threads after running a work item to determine if the name, background
+        // state, or priority were changed by the work item, and if so to reset it. Other threads may also change some of those,
+        // but those types of changes may race with the reset anyway, so this field doesn't need to be synchronized.
+        private bool _mayNeedResetForThreadPool;
+
         // so far the only place we initialize it is `WaitForForegroundThreads`
         // and only in the case when there are running foreground threads
         // by the moment of `StartupCodeHelpers.Shutdown()` invocation
@@ -125,30 +130,6 @@ namespace System.Threading
         }
 
         /// <summary>
-        /// Resets properties of the current thread pool thread that may have been changed by a user callback.
-        /// </summary>
-        internal void ResetThreadPoolThread()
-        {
-            Debug.Assert(this == Thread.CurrentThread);
-
-            if (_name != null)
-            {
-                _name = null;
-            }
-
-            if ((SetThreadStateBit(ThreadState.Background) & (int)ThreadState.Background) == 0)
-            {
-                DecrementRunningForeground();
-            }
-
-            ThreadPriority newPriority = ThreadPriority.Normal;
-            if ((_priority != newPriority) && SetPriorityLive(newPriority))
-            {
-                _priority = newPriority;
-            }
-        }
-
-        /// <summary>
         /// Returns true if the underlying OS thread has been created and started execution of managed code.
         /// </summary>
         private bool HasStarted()
@@ -203,6 +184,7 @@ namespace System.Threading
                     if ((threadState & ((int)ThreadState.Background | (int)ThreadState.Unstarted)) == (int)ThreadState.Background)
                     {
                         IncrementRunningForeground();
+                        _mayNeedResetForThreadPool = true;
                     }
                 }
             }
@@ -279,6 +261,11 @@ namespace System.Threading
                         throw new ThreadStateException(SR.ThreadState_SetPriorityFailed);
                     }
                     _priority = value;
+                }
+
+                if (value != ThreadPriority.Normal)
+                {
+                    _mayNeedResetForThreadPool = true;
                 }
             }
         }

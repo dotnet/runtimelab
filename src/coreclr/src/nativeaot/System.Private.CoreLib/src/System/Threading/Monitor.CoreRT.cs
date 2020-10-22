@@ -234,8 +234,21 @@ namespace System.Threading
 
         private static readonly ThreadInt64PersistentCounter s_lockContentionCounter = new ThreadInt64PersistentCounter();
 
+        [ThreadStatic]
+        private static object t_ContentionCountObject;
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static object CreateThreadLocalContentionCountObject()
+        {
+            Debug.Assert(t_ContentionCountObject == null);
+
+            object threadLocalContentionCountObject = s_lockContentionCounter.CreateThreadLocalCountObject();
+            t_ContentionCountObject = threadLocalContentionCountObject;
+            return threadLocalContentionCountObject;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void IncrementLockContentionCount() => s_lockContentionCounter.Increment();
+        internal static void IncrementLockContentionCount() => ThreadInt64PersistentCounter.Increment(t_ContentionCountObject ?? CreateThreadLocalContentionCountObject());
 
         /// <summary>
         /// Gets the number of times there was contention upon trying to take a <see cref="Monitor"/>'s lock so far.

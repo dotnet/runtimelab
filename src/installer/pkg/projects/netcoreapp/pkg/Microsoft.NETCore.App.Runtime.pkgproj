@@ -5,7 +5,7 @@
     shared framework on those platforms.
   -->
   <PropertyGroup>
-    <ExcludeHostAssets Condition="'$(RuntimeFlavor)' == 'Mono'">true</ExcludeHostAssets>
+    <ExcludeHostAssets Condition="'$(TargetsMobile)' == 'true'">true</ExcludeHostAssets>
     <ExcludeHostAssets Condition="'$(ClrNativeAot)' == 'true'">true</ExcludeHostAssets>
   </PropertyGroup>
   <!--

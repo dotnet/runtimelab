@@ -34,7 +34,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <FeatureHardwareIntrinsics>true</FeatureHardwareIntrinsics>
-    <FeatureThreadInt64PersistentCounter>true</FeatureThreadInt64PersistentCounter>
+    <FeatureSharedLowLevelLock>true</FeatureSharedLowLevelLock>
   </PropertyGroup>
 
   <!-- Sources -->
@@ -237,8 +237,6 @@
     <Compile Include="src\System\Threading\Condition.cs" />
     <Compile Include="src\System\Threading\Interlocked.cs" />
     <Compile Include="src\System\Threading\LockHolder.cs" />
-    <Compile Include="src\System\Threading\LowLevelLock.cs" />
-    <Compile Include="src\System\Threading\LowLevelSpinWaiter.cs" />
     <Compile Include="src\System\Threading\Monitor.CoreRT.cs" />
     <Compile Include="src\System\Threading\ObjectHeader.cs" Condition="'$(UseSyncTable)' == 'true'" />
     <Compile Include="src\System\Threading\Overlapped.cs" />
