@@ -83,12 +83,12 @@ namespace Microsoft.Interop
             return typeInfo;
         }
 
-        public static TypePositionInfo CreateForType(ITypeSymbol type, MarshallingInfo? marshallingInfo, string identifier = "")
+        public static TypePositionInfo CreateForType(ITypeSymbol type, MarshallingInfo? marshallingInfo)
         {
             var typeInfo = new TypePositionInfo()
             {
                 ManagedType = type,
-                InstanceIdentifier = identifier,
+                InstanceIdentifier = string.Empty,
                 RefKind = RefKind.None,
                 RefKindSyntax = SyntaxKind.None,
                 MarshallingAttributeInfo = marshallingInfo

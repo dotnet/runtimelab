@@ -173,6 +173,10 @@ namespace Microsoft.Interop
                     return Forwarder;
 
                 case { MarshallingAttributeInfo: SafeHandleMarshallingInfo }:
+                    if (!context.CanUseAdditionalTemporaryState)
+                    {
+                        throw new MarshallingNotSupportedException(info, context);
+                    }
                     return SafeHandle;
 
                 case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType : ITypeSymbol elementType } , MarshallingAttributeInfo: null}:

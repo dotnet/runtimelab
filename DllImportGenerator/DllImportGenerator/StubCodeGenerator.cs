@@ -16,6 +16,8 @@ namespace Microsoft.Interop
 
         public override bool StackSpaceUsable => true;
 
+        public override bool CanUseAdditionalTemporaryState => true;
+
         /// <summary>
         /// Identifier for managed return value
         /// </summary>

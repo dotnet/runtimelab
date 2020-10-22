@@ -17,7 +17,7 @@ namespace Microsoft.Interop
 
         public TypeSyntax AsNativeType(TypePositionInfo info)
         {
-            return PointerType(_elementMarshaller.AsNativeType(TypePositionInfo.CreateForType(info.ManagedType, null)));
+            return PointerType(_elementMarshaller.AsNativeType(TypePositionInfo.CreateForType(((IArrayTypeSymbol)info.ManagedType).ElementType, null)));
         }
 
         public ParameterSyntax AsParameter(TypePositionInfo info)

@@ -66,6 +66,8 @@ namespace Microsoft.Interop
 
         public abstract bool StackSpaceUsable { get; }
 
+        public abstract bool CanUseAdditionalTemporaryState { get; }
+
         protected const string GeneratedNativeIdentifierSuffix = "_gen_native";
 
         /// <summary>
