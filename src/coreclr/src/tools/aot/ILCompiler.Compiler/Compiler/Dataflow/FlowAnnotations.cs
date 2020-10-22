@@ -1,38 +1,44 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using Mono.Cecil;
-using Mono.Cecil.Cil;
+using System.Reflection.Metadata;
 
-namespace Mono.Linker.Dataflow
+using Internal.IL;
+using Internal.TypeSystem;
+using Internal.TypeSystem.Ecma;
+
+using Debug = System.Diagnostics.Debug;
+
+namespace ILCompiler.Dataflow
 {
-    class FlowAnnotations
+    /// <summary>
+    /// Caches dataflow annotations for type members.
+    /// </summary>
+    public class FlowAnnotations
     {
-        readonly LinkContext _context;
-        readonly Dictionary<TypeDefinition, TypeAnnotations> _annotations = new Dictionary<TypeDefinition, TypeAnnotations>();
-        readonly TypeHierarchyCache _hierarchyInfo = new TypeHierarchyCache();
-
-        public FlowAnnotations(LinkContext context)
+        private readonly TypeAnnotationsHashtable _hashtable;
+        
+        public FlowAnnotations(Logger logger, ILProvider ilProvider)
         {
-            _context = context;
+            _hashtable = new TypeAnnotationsHashtable(logger, ilProvider);
         }
 
-        public bool RequiresDataFlowAnalysis(MethodDefinition method)
+        public bool RequiresDataflowAnalysis(MethodDesc method)
         {
-            return GetAnnotations(method.DeclaringType).TryGetAnnotation(method, out _);
+            Debug.Assert(method.IsTypicalMethodDefinition);
+            return GetAnnotations(method.OwningType).TryGetAnnotation(method, out _);
         }
 
-        public bool RequiresDataFlowAnalysis(FieldDefinition field)
+        public bool RequiresDataflowAnalysis(FieldDesc field)
         {
-            return GetAnnotations(field.DeclaringType).TryGetAnnotation(field, out _);
+            Debug.Assert(field.IsTypicalFieldDefinition);
+            return GetAnnotations(field.OwningType).TryGetAnnotation(field, out _);
         }
 
-        public bool RequiresDataFlowAnalysis(GenericParameter genericParameter)
+        public bool RequiresDataflowAnalysis(GenericParameterDesc genericParameter)
         {
             return GetGenericParameterAnnotation(genericParameter) != DynamicallyAccessedMemberTypes.None;
         }
@@ -41,10 +47,11 @@ namespace Mono.Linker.Dataflow
         /// Retrieves the annotations for the given parameter.
         /// </summary>
         /// <param name="parameterIndex">Parameter index in the IL sense. Parameter 0 on instance methods is `this`.</param>
-        /// <returns></returns>
-        public DynamicallyAccessedMemberTypes GetParameterAnnotation(MethodDefinition method, int parameterIndex)
+        public DynamicallyAccessedMemberTypes GetParameterAnnotation(MethodDesc method, int parameterIndex)
         {
-            if (GetAnnotations(method.DeclaringType).TryGetAnnotation(method, out var annotation) && annotation.ParameterAnnotations != null)
+            Debug.Assert(method.IsTypicalMethodDefinition);
+
+            if (GetAnnotations(method.OwningType).TryGetAnnotation(method, out var annotation) && annotation.ParameterAnnotations != null)
             {
                 return annotation.ParameterAnnotations[parameterIndex];
             }
@@ -52,9 +59,11 @@ namespace Mono.Linker.Dataflow
             return DynamicallyAccessedMemberTypes.None;
         }
 
-        public DynamicallyAccessedMemberTypes GetReturnParameterAnnotation(MethodDefinition method)
+        public DynamicallyAccessedMemberTypes GetReturnParameterAnnotation(MethodDesc method)
         {
-            if (GetAnnotations(method.DeclaringType).TryGetAnnotation(method, out var annotation))
+            Debug.Assert(method.IsTypicalMethodDefinition);
+
+            if (GetAnnotations(method.OwningType).TryGetAnnotation(method, out var annotation))
             {
                 return annotation.ReturnParameterAnnotation;
             }
@@ -62,9 +71,11 @@ namespace Mono.Linker.Dataflow
             return DynamicallyAccessedMemberTypes.None;
         }
 
-        public DynamicallyAccessedMemberTypes GetFieldAnnotation(FieldDefinition field)
+        public DynamicallyAccessedMemberTypes GetFieldAnnotation(FieldDesc field)
         {
-            if (GetAnnotations(field.DeclaringType).TryGetAnnotation(field, out var annotation))
+            Debug.Assert(field.IsTypicalFieldDefinition);
+
+            if (GetAnnotations(field.OwningType).TryGetAnnotation(field, out var annotation))
             {
                 return annotation.Annotation;
             }
@@ -72,70 +83,89 @@ namespace Mono.Linker.Dataflow
             return DynamicallyAccessedMemberTypes.None;
         }
 
-        public DynamicallyAccessedMemberTypes GetGenericParameterAnnotation(GenericParameter genericParameter)
+        public DynamicallyAccessedMemberTypes GetGenericParameterAnnotation(GenericParameterDesc genericParameter)
         {
-            TypeDefinition declaringType = genericParameter.DeclaringType?.Resolve();
-            if (declaringType != null)
-            {
-                if (GetAnnotations(declaringType).TryGetAnnotation(genericParameter, out var annotation))
-                    return annotation;
-
+            if (genericParameter is not EcmaGenericParameter ecmaGenericParameter)
                 return DynamicallyAccessedMemberTypes.None;
-            }
 
-            MethodDefinition declaringMethod = genericParameter.DeclaringMethod?.Resolve();
-            if (declaringMethod != null && GetAnnotations(declaringMethod.DeclaringType).TryGetAnnotation(declaringMethod, out var methodTypeAnnotations) &&
-                methodTypeAnnotations.TryGetAnnotation(genericParameter, out var methodAnnotation))
-                return methodAnnotation;
+            GenericParameter paramDef = ecmaGenericParameter.MetadataReader.GetGenericParameter(ecmaGenericParameter.Handle);
 
-            return DynamicallyAccessedMemberTypes.None;
-        }
-
-        TypeAnnotations GetAnnotations(TypeDefinition type)
-        {
-            if (!_annotations.TryGetValue(type, out TypeAnnotations value))
+            if (ecmaGenericParameter.Kind == GenericParameterKind.Type)
             {
-                value = BuildTypeAnnotations(type);
-                _annotations.Add(type, value);
-            }
-
-            return value;
-        }
-
-        static bool IsDynamicallyAccessedMembersAttribute(CustomAttribute attribute)
-        {
-            var attributeType = attribute.AttributeType;
-            return attributeType.Name == "DynamicallyAccessedMembersAttribute" && attributeType.Namespace == "System.Diagnostics.CodeAnalysis";
-        }
-
-        DynamicallyAccessedMemberTypes GetMemberTypesForDynamicallyAccessedMembersAttribute(ICustomAttributeProvider provider, IMemberDefinition locationMember = null)
-        {
-            if (!_context.CustomAttributes.HasCustomAttributes(provider))
-                return DynamicallyAccessedMemberTypes.None;
-            foreach (var attribute in _context.CustomAttributes.GetCustomAttributes(provider))
-            {
-                if (!IsDynamicallyAccessedMembersAttribute(attribute))
-                    continue;
-                if (attribute.ConstructorArguments.Count == 1)
-                    return (DynamicallyAccessedMemberTypes)(int)attribute.ConstructorArguments[0].Value;
-                else
-                    _context.LogWarning(
-                        $"Attribute 'System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute' doesn't have the required number of parameters specified",
-                        2028, locationMember ?? (provider as IMemberDefinition));
-            }
-            return DynamicallyAccessedMemberTypes.None;
-        }
-
-        TypeAnnotations BuildTypeAnnotations(TypeDefinition type)
-        {
-            var annotatedFields = new ArrayBuilder<FieldAnnotation>();
-
-            // First go over all fields with an explicit annotation
-            if (type.HasFields)
-            {
-                foreach (FieldDefinition field in type.Fields)
+                TypeDesc parent = ecmaGenericParameter.Module.GetType(paramDef.Parent);
+                if (GetAnnotations(parent).TryGetAnnotation(ecmaGenericParameter, out var annotation))
                 {
-                    DynamicallyAccessedMemberTypes annotation = GetMemberTypesForDynamicallyAccessedMembersAttribute(field);
+                    return annotation;
+                }
+            }
+            else
+            {
+                Debug.Assert(ecmaGenericParameter.Kind == GenericParameterKind.Method);
+                MethodDesc parent = ecmaGenericParameter.Module.GetMethod(paramDef.Parent);
+                if (GetAnnotations(parent.OwningType).TryGetAnnotation(parent, out var methodAnnotation)
+                    && methodAnnotation.TryGetAnnotation(genericParameter, out var annotation))
+                {
+                    return annotation;
+                }
+            }
+
+            return DynamicallyAccessedMemberTypes.None;
+        }
+
+        private TypeAnnotations GetAnnotations(TypeDesc type)
+        {
+            return _hashtable.GetOrCreateValue(type);
+        }
+
+        private class TypeAnnotationsHashtable : LockFreeReaderHashtable<TypeDesc, TypeAnnotations>
+        {
+            private readonly ILProvider _ilProvider;
+            private readonly Logger _logger;
+
+            public TypeAnnotationsHashtable(Logger logger, ILProvider ilProvider) => (_logger, _ilProvider) = (logger, ilProvider);
+
+            private static DynamicallyAccessedMemberTypes GetMemberTypesForDynamicallyAccessedMembersAttribute(MetadataReader reader, CustomAttributeHandleCollection customAttributeHandles)
+            {
+                CustomAttributeHandle ca = reader.GetCustomAttributeHandle(customAttributeHandles, "System.Diagnostics.CodeAnalysis", "DynamicallyAccessedMembersAttribute");
+                if (ca.IsNil)
+                    return DynamicallyAccessedMemberTypes.None;
+
+                BlobReader blobReader = reader.GetBlobReader(reader.GetCustomAttribute(ca).Value);
+                Debug.Assert(blobReader.Length == 8);
+                if (blobReader.Length != 8)
+                    return DynamicallyAccessedMemberTypes.None;
+
+                blobReader.ReadUInt16(); // Prolog
+                return (DynamicallyAccessedMemberTypes)blobReader.ReadUInt32();
+            }
+
+            protected override bool CompareKeyToValue(TypeDesc key, TypeAnnotations value) => key == value.Type;
+            protected override bool CompareValueToValue(TypeAnnotations value1, TypeAnnotations value2) => value1.Type == value2.Type;
+            protected override int GetKeyHashCode(TypeDesc key) => key.GetHashCode();
+            protected override int GetValueHashCode(TypeAnnotations value) => value.Type.GetHashCode();
+
+            protected override TypeAnnotations CreateValueFromKey(TypeDesc key)
+            {
+                // We scan the entire type at this point; the reason for doing that is properties.
+                //
+                // We allow annotating properties, but those annotations need to flow onto individual get/set methods
+                // and backing fields. Without scanning all properties, we can't answer questions about fields/methods.
+                // And if we're going over all properties, we might as well go over everything else to keep things simple.
+
+                Debug.Assert(key.IsTypeDefinition);
+                if (key is not EcmaType ecmaType)
+                    return new TypeAnnotations(key, null, null, null);
+
+                MetadataReader reader = ecmaType.MetadataReader;
+
+                var annotatedFields = new ArrayBuilder<FieldAnnotation>();
+
+                // First go over all fields with an explicit annotation
+                foreach (EcmaField field in ecmaType.GetFields())
+                {
+                    FieldDefinition fieldDef = reader.GetFieldDefinition(field.Handle);
+                    DynamicallyAccessedMemberTypes annotation =
+                        GetMemberTypesForDynamicallyAccessedMembersAttribute(reader, fieldDef.GetCustomAttributes());
                     if (annotation == DynamicallyAccessedMemberTypes.None)
                     {
                         continue;
@@ -144,7 +174,7 @@ namespace Mono.Linker.Dataflow
                     if (!IsTypeInterestingForDataflow(field.FieldType))
                     {
                         // Already know that there's a non-empty annotation on a field which is not System.Type/String and we're about to ignore it
-                        _context.LogWarning(
+                        _logger.LogWarning(
                             $"Field '{field.GetDisplayName()}' has 'DynamicallyAccessedMembersAttribute', but that attribute can only be applied to fields of type 'System.Type' or 'System.String'",
                             2097, field, subcategory: MessageSubCategory.TrimAnalysis);
                         continue;
@@ -152,93 +182,99 @@ namespace Mono.Linker.Dataflow
 
                     annotatedFields.Add(new FieldAnnotation(field, annotation));
                 }
-            }
 
-            var annotatedMethods = new ArrayBuilder<MethodAnnotations>();
+                var annotatedMethods = new ArrayBuilder<MethodAnnotations>();
 
-            // Next go over all methods with an explicit annotation
-            if (type.HasMethods)
-            {
-                foreach (MethodDefinition method in type.Methods)
+                // Next go over all methods with an explicit annotation
+                foreach (EcmaMethod method in ecmaType.GetMethods())
                 {
                     DynamicallyAccessedMemberTypes[] paramAnnotations = null;
 
                     // We convert indices from metadata space to IL space here.
                     // IL space assigns index 0 to the `this` parameter on instance methods.
 
-
-                    DynamicallyAccessedMemberTypes methodMemberTypes = GetMemberTypesForDynamicallyAccessedMembersAttribute(method);
+                    DynamicallyAccessedMemberTypes methodMemberTypes =
+                        GetMemberTypesForDynamicallyAccessedMembersAttribute(reader, reader.GetMethodDefinition(method.Handle).GetCustomAttributes());
 
                     int offset;
-                    if (method.HasImplicitThis())
+                    if (!method.Signature.IsStatic)
                     {
                         offset = 1;
-                        if (IsTypeInterestingForDataflow(method.DeclaringType))
-                        {
-                            // If there's an annotation on the method itself and it's one of the special types (System.Type for example)
-                            // treat that annotation as annotating the "this" parameter.
-                            if (methodMemberTypes != DynamicallyAccessedMemberTypes.None)
-                            {
-                                paramAnnotations = new DynamicallyAccessedMemberTypes[method.Parameters.Count + offset];
-                                paramAnnotations[0] = methodMemberTypes;
-                            }
-                        }
-                        else if (methodMemberTypes != DynamicallyAccessedMemberTypes.None)
-                        {
-                            _context.LogWarning(
-                                $"The 'DynamicallyAccessedMembersAttribute' is not allowed on methods. It is allowed on method return value or method parameters though.",
-                                2041, method, subcategory: MessageSubCategory.TrimAnalysis);
-                        }
                     }
                     else
                     {
                         offset = 0;
-                        if (methodMemberTypes != DynamicallyAccessedMemberTypes.None)
+                    }
+
+                    // If there's an annotation on the method itself and it's one of the special types (System.Type for example)
+                    // treat that annotation as annotating the "this" parameter.
+                    if (methodMemberTypes != DynamicallyAccessedMemberTypes.None)
+                    {
+                        if (IsTypeInterestingForDataflow(method.OwningType) && !method.Signature.IsStatic)
                         {
-                            _context.LogWarning(
+                            paramAnnotations = new DynamicallyAccessedMemberTypes[method.Signature.Length + offset];
+                            paramAnnotations[0] = methodMemberTypes;
+                        }
+                        else
+                        {
+                            _logger.LogWarning(
                                 $"The 'DynamicallyAccessedMembersAttribute' is not allowed on methods. It is allowed on method return value or method parameters though.",
                                 2041, method, subcategory: MessageSubCategory.TrimAnalysis);
                         }
                     }
 
-                    for (int i = 0; i < method.Parameters.Count; i++)
+                    MethodDefinition methodDef = reader.GetMethodDefinition(method.Handle);
+                    ParameterHandleCollection parameterHandles = methodDef.GetParameters();
+
+                    DynamicallyAccessedMemberTypes returnAnnotation = DynamicallyAccessedMemberTypes.None;
+
+                    foreach (ParameterHandle parameterHandle in parameterHandles)
                     {
-                        var methodParameter = method.Parameters[i];
-                        DynamicallyAccessedMemberTypes pa = GetMemberTypesForDynamicallyAccessedMembersAttribute(methodParameter, method);
-                        if (pa == DynamicallyAccessedMemberTypes.None)
-                            continue;
+                        Parameter parameter = reader.GetParameter(parameterHandle);
 
-                        if (!IsTypeInterestingForDataflow(methodParameter.ParameterType))
+                        if (parameter.SequenceNumber == 0)
                         {
-                            _context.LogWarning(
-                                $"Parameter '{DiagnosticUtilities.GetParameterNameForErrorMessage(methodParameter)}' of method '{DiagnosticUtilities.GetMethodSignatureDisplayName(methodParameter.Method)}' has 'DynamicallyAccessedMembersAttribute', but that attribute can only be applied to parameters of type 'System.Type' or 'System.String'",
-                                2098, method, subcategory: MessageSubCategory.TrimAnalysis);
-                            continue;
+                            // this is the return parameter
+                            returnAnnotation = GetMemberTypesForDynamicallyAccessedMembersAttribute(reader, parameter.GetCustomAttributes());
+                            if (returnAnnotation != DynamicallyAccessedMemberTypes.None && !IsTypeInterestingForDataflow(method.Signature.ReturnType))
+                            {
+                                _logger.LogWarning(
+                                    $"Return parameter of method '{method.GetDisplayName()}' has 'DynamicallyAccessedMembersAttribute', but that attribute can only be applied to parameters of type 'System.Type' or 'System.String'",
+                                    2098, method, subcategory: MessageSubCategory.TrimAnalysis);
+                            }
                         }
+                        else
+                        {
+                            DynamicallyAccessedMemberTypes pa = GetMemberTypesForDynamicallyAccessedMembersAttribute(reader, parameter.GetCustomAttributes());
+                            if (pa == DynamicallyAccessedMemberTypes.None)
+                                continue;
 
-                        if (paramAnnotations == null)
-                        {
-                            paramAnnotations = new DynamicallyAccessedMemberTypes[method.Parameters.Count + offset];
+                            if (!IsTypeInterestingForDataflow(method.Signature[parameter.SequenceNumber]))
+                            {
+                                _logger.LogWarning(
+                                    $"Parameter #{parameter.SequenceNumber} of method '{method.GetDisplayName()}' has 'DynamicallyAccessedMembersAttribute', but that attribute can only be applied to parameters of type 'System.Type' or 'System.String'",
+                                    2098, method, subcategory: MessageSubCategory.TrimAnalysis);
+                                continue;
+                            }
+
+                            if (paramAnnotations == null)
+                            {
+                                paramAnnotations = new DynamicallyAccessedMemberTypes[method.Signature.Length + offset];
+                            }
+                            paramAnnotations[parameter.SequenceNumber - 1 + offset] = pa;
                         }
-                        paramAnnotations[i + offset] = pa;
                     }
 
-                    DynamicallyAccessedMemberTypes returnAnnotation = IsTypeInterestingForDataflow(method.ReturnType) ?
-                        GetMemberTypesForDynamicallyAccessedMembersAttribute(method.MethodReturnType, method) : DynamicallyAccessedMemberTypes.None;
-
                     DynamicallyAccessedMemberTypes[] genericParameterAnnotations = null;
-                    if (method.HasGenericParameters)
+                    foreach (EcmaGenericParameter genericParameter in method.Instantiation)
                     {
-                        for (int genericParameterIndex = 0; genericParameterIndex < method.GenericParameters.Count; genericParameterIndex++)
+                        GenericParameter genericParameterDef = reader.GetGenericParameter(genericParameter.Handle);
+                        var annotation = GetMemberTypesForDynamicallyAccessedMembersAttribute(reader, genericParameterDef.GetCustomAttributes());
+                        if (annotation != DynamicallyAccessedMemberTypes.None)
                         {
-                            var genericParameter = method.GenericParameters[genericParameterIndex];
-                            var annotation = GetMemberTypesForDynamicallyAccessedMembersAttribute(genericParameter, method);
-                            if (annotation != DynamicallyAccessedMemberTypes.None)
-                            {
-                                if (genericParameterAnnotations == null)
-                                    genericParameterAnnotations = new DynamicallyAccessedMemberTypes[method.GenericParameters.Count];
-                                genericParameterAnnotations[genericParameterIndex] = annotation;
-                            }
+                            if (genericParameterAnnotations == null)
+                                genericParameterAnnotations = new DynamicallyAccessedMemberTypes[method.Instantiation.Length];
+                            genericParameterAnnotations[genericParameter.Index] = annotation;
                         }
                     }
 
@@ -247,93 +283,96 @@ namespace Mono.Linker.Dataflow
                         annotatedMethods.Add(new MethodAnnotations(method, paramAnnotations, returnAnnotation, genericParameterAnnotations));
                     }
                 }
-            }
 
-            // Next up are properties. Annotations on properties are kind of meta because we need to
-            // map them to annotations on methods/fields. They're syntactic sugar - what they do is expressible
-            // by placing attribute on the accessor/backing field. For complex properties, that's what people
-            // will need to do anyway. Like so:
-            //
-            // [field: Attribute]
-            // Type MyProperty {
-            //     [return: Attribute]
-            //     get;
-            //     [value: Attribute]
-            //     set;
-            //  }
-            //
+                // Next up are properties. Annotations on properties are kind of meta because we need to
+                // map them to annotations on methods/fields. They're syntactic sugar - what they do is expressible
+                // by placing attribute on the accessor/backing field. For complex properties, that's what people
+                // will need to do anyway. Like so:
+                //
+                // [field: Attribute]
+                // Type MyProperty
+                // {
+                //     [return: Attribute]
+                //     get;
+                //     [value: Attribute]
+                //     set;
+                //  }
 
-            if (type.HasProperties)
-            {
-                foreach (PropertyDefinition property in type.Properties)
+                foreach (PropertyDefinitionHandle propertyHandle in reader.GetTypeDefinition(ecmaType.Handle).GetProperties())
                 {
-                    DynamicallyAccessedMemberTypes annotation = GetMemberTypesForDynamicallyAccessedMembersAttribute(property);
+                    DynamicallyAccessedMemberTypes annotation = GetMemberTypesForDynamicallyAccessedMembersAttribute(
+                        reader, reader.GetPropertyDefinition(propertyHandle).GetCustomAttributes());
                     if (annotation == DynamicallyAccessedMemberTypes.None)
                         continue;
 
-                    if (!IsTypeInterestingForDataflow(property.PropertyType))
+                    PropertyPseudoDesc property = new PropertyPseudoDesc(ecmaType, propertyHandle);
+
+                    if (!IsTypeInterestingForDataflow(property.Signature.ReturnType))
                     {
-                        _context.LogWarning(
+                        _logger.LogWarning(
                             $"Property '{property.GetDisplayName()}' has 'DynamicallyAccessedMembersAttribute', but that attribute can only be applied to properties of type 'System.Type' or 'System.String'",
                             2099, property, subcategory: MessageSubCategory.TrimAnalysis);
                         continue;
                     }
 
-                    FieldDefinition backingFieldFromSetter = null;
+                    FieldDesc backingFieldFromSetter = null;
 
                     // Propagate the annotation to the setter method
-                    MethodDefinition setMethod = property.SetMethod;
+                    MethodDesc setMethod = property.Setter;
                     if (setMethod != null)
                     {
 
                         // Abstract property backing field propagation doesn't make sense, and any derived property will be validated
                         // to have the exact same annotations on getter/setter, and thus if it has a detectable backing field that will be validated as well.
-                        if (setMethod.HasBody)
+                        MethodIL methodBody = _ilProvider.GetMethodIL(setMethod);
+                        if (methodBody != null)
                         {
                             // Look for the compiler generated backing field. If it doesn't work out simply move on. In such case we would still
                             // propagate the annotation to the setter/getter and later on when analyzing the setter/getter we will warn
                             // that the field (which ever it is) must be annotated as well.
-                            ScanMethodBodyForFieldAccess(setMethod.Body, write: true, out backingFieldFromSetter);
+                            ScanMethodBodyForFieldAccess(methodBody, write: true, out backingFieldFromSetter);
                         }
 
                         if (annotatedMethods.Any(a => a.Method == setMethod))
                         {
-                            _context.LogWarning(
+                            
+                            _logger.LogWarning(
                                 $"'DynamicallyAccessedMembersAttribute' on property '{property.GetDisplayName()}' conflicts with the same attribute on its accessor '{setMethod.GetDisplayName()}'.",
                                 2043, setMethod, subcategory: MessageSubCategory.TrimAnalysis);
                         }
                         else
                         {
-                            int offset = setMethod.HasImplicitThis() ? 1 : 0;
-                            if (setMethod.Parameters.Count > 0)
+                            int offset = setMethod.Signature.IsStatic ? 0 : 1;
+                            if (setMethod.Signature.Length > 0)
                             {
-                                DynamicallyAccessedMemberTypes[] paramAnnotations = new DynamicallyAccessedMemberTypes[setMethod.Parameters.Count + offset];
+                                DynamicallyAccessedMemberTypes[] paramAnnotations = new DynamicallyAccessedMemberTypes[setMethod.Signature.Length + offset];
                                 paramAnnotations[offset] = annotation;
                                 annotatedMethods.Add(new MethodAnnotations(setMethod, paramAnnotations, DynamicallyAccessedMemberTypes.None, null));
                             }
                         }
                     }
 
-                    FieldDefinition backingFieldFromGetter = null;
+                    FieldDesc backingFieldFromGetter = null;
 
                     // Propagate the annotation to the getter method
-                    MethodDefinition getMethod = property.GetMethod;
+                    MethodDesc getMethod = property.Getter;
                     if (getMethod != null)
                     {
 
                         // Abstract property backing field propagation doesn't make sense, and any derived property will be validated
                         // to have the exact same annotations on getter/setter, and thus if it has a detectable backing field that will be validated as well.
-                        if (getMethod.HasBody)
+                        MethodIL methodBody = _ilProvider.GetMethodIL(getMethod);
+                        if (methodBody != null)
                         {
                             // Look for the compiler generated backing field. If it doesn't work out simply move on. In such case we would still
                             // propagate the annotation to the setter/getter and later on when analyzing the setter/getter we will warn
                             // that the field (which ever it is) must be annotated as well.
-                            ScanMethodBodyForFieldAccess(getMethod.Body, write: false, out backingFieldFromGetter);
+                            ScanMethodBodyForFieldAccess(methodBody, write: false, out backingFieldFromGetter);
                         }
 
                         if (annotatedMethods.Any(a => a.Method == getMethod))
                         {
-                            _context.LogWarning(
+                            _logger.LogWarning(
                                 $"'DynamicallyAccessedMembersAttribute' on property '{property.GetDisplayName()}' conflicts with the same attribute on its accessor '{getMethod.GetDisplayName()}'.",
                                 2043, getMethod, subcategory: MessageSubCategory.TrimAnalysis);
                         }
@@ -343,11 +382,11 @@ namespace Mono.Linker.Dataflow
                         }
                     }
 
-                    FieldDefinition backingField;
+                    FieldDesc backingField;
                     if (backingFieldFromGetter != null && backingFieldFromSetter != null &&
                         backingFieldFromGetter != backingFieldFromSetter)
                     {
-                        _context.LogWarning(
+                        _logger.LogWarning(
                             $"Could not find a unique backing field for property '{property.GetDisplayName()}' to propagate 'DynamicallyAccessedMembersAttribute'.",
                             2042, property, subcategory: MessageSubCategory.TrimAnalysis);
                         backingField = null;
@@ -361,7 +400,7 @@ namespace Mono.Linker.Dataflow
                     {
                         if (annotatedFields.Any(a => a.Field == backingField))
                         {
-                            _context.LogWarning(
+                            _logger.LogWarning(
                                 $"'DynamicallyAccessedMemberAttribute' on property '{property.GetDisplayName()}' conflicts with the same attribute on its backing field '{backingField.GetDisplayName()}'.",
                                 2056, backingField, subcategory: MessageSubCategory.TrimAnalysis);
                         }
@@ -371,234 +410,124 @@ namespace Mono.Linker.Dataflow
                         }
                     }
                 }
-            }
 
-            DynamicallyAccessedMemberTypes[] typeGenericParameterAnnotations = null;
-            if (type.HasGenericParameters)
-            {
-                for (int genericParameterIndex = 0; genericParameterIndex < type.GenericParameters.Count; genericParameterIndex++)
+                DynamicallyAccessedMemberTypes[] typeGenericParameterAnnotations = null;
+                foreach (EcmaGenericParameter genericParameter in ecmaType.Instantiation)
                 {
-                    var genericParameter = type.GenericParameters[genericParameterIndex];
-                    var annotation = GetMemberTypesForDynamicallyAccessedMembersAttribute(genericParameter, type);
+                    GenericParameter genericParameterDef = reader.GetGenericParameter(genericParameter.Handle);
+
+                    var annotation = GetMemberTypesForDynamicallyAccessedMembersAttribute(reader, genericParameterDef.GetCustomAttributes());
                     if (annotation != DynamicallyAccessedMemberTypes.None)
                     {
                         if (typeGenericParameterAnnotations == null)
-                            typeGenericParameterAnnotations = new DynamicallyAccessedMemberTypes[type.GenericParameters.Count];
-                        typeGenericParameterAnnotations[genericParameterIndex] = annotation;
+                            typeGenericParameterAnnotations = new DynamicallyAccessedMemberTypes[ecmaType.Instantiation.Length];
+                        typeGenericParameterAnnotations[genericParameter.Index] = annotation;
                     }
                 }
+
+                return new TypeAnnotations(ecmaType, annotatedMethods.ToArray(), annotatedFields.ToArray(), typeGenericParameterAnnotations);
             }
 
-            return new TypeAnnotations(type, annotatedMethods.ToArray(), annotatedFields.ToArray(), typeGenericParameterAnnotations);
-        }
-
-        static bool ScanMethodBodyForFieldAccess(MethodBody body, bool write, out FieldDefinition found)
-        {
-            // Tries to find the backing field for a property getter/setter.
-            // Returns true if this is a method body that we can unambiguously analyze.
-            // The found field could still be null if there's no backing store.
-
-            FieldReference foundReference = null;
-
-            foreach (Instruction instruction in body.Instructions)
+            private static bool ScanMethodBodyForFieldAccess(MethodIL body, bool write, out FieldDesc found)
             {
-                switch (instruction.OpCode.Code)
-                {
-                    case Code.Ldsfld when !write:
-                    case Code.Ldfld when !write:
-                    case Code.Stsfld when write:
-                    case Code.Stfld when write:
-
-                        if (foundReference != null)
-                        {
-                            // This writes/reads multiple fields - can't guess which one is the backing store.
-                            // Return failure.
-                            found = null;
-                            return false;
-                        }
-
-                        foundReference = (FieldReference)instruction.Operand;
-                        break;
-                }
-            }
-
-            if (foundReference == null)
-            {
-                // Doesn't access any fields. Could be e.g. "Type Foo => typeof(Bar);"
-                // Return success.
+                // Tries to find the backing field for a property getter/setter.
+                // Returns true if this is a method body that we can unambiguously analyze.
+                // The found field could still be null if there's no backing store.
                 found = null;
+
+                ILReader ilReader = new ILReader(body.GetILBytes());
+
+                while (ilReader.HasNext)
+                {
+                    ILOpcode opcode = ilReader.ReadILOpcode();
+                    switch (opcode)
+                    {
+                        case ILOpcode.ldsfld when !write:
+                        case ILOpcode.ldfld when !write:
+                        case ILOpcode.stsfld when write:
+                        case ILOpcode.stfld when write:
+                            {
+                                // This writes/reads multiple fields - can't guess which one is the backing store.
+                                // Return failure.
+                                if (found != null)
+                                {
+                                    found = null;
+                                    return false;
+                                }
+                                found = (FieldDesc)body.GetObject(ilReader.ReadILToken());
+                            }
+                            break;
+                        default:
+                            ilReader.Skip(opcode);
+                            break;
+                    }
+                }
+
+                if (found == null)
+                {
+                    // Doesn't access any fields. Could be e.g. "Type Foo => typeof(Bar);"
+                    // Return success.
+                    return true;
+                }
+
+                if (found.OwningType != body.OwningMethod.OwningType ||
+                    found.IsStatic != body.OwningMethod.Signature.IsStatic ||
+                    !found.HasCustomAttribute("System.Runtime.CompilerServices", "CompilerGeneratedAttribute"))
+                {
+                    // A couple heuristics to make sure we got the right field.
+                    // Return failure.
+                    found = null;
+                    return false;
+                }
+
                 return true;
             }
 
-            found = foundReference.Resolve();
-
-            if (found == null)
+            private bool IsTypeInterestingForDataflow(TypeDesc type)
             {
-                // If the field doesn't resolve, it can't be a field on the current type
-                // anyway. Return failure.
+                // NOTE: this method is not particulary fast. It's assumed that the caller limits
+                // calls to this method as much as possible.
+
+                if (type.IsWellKnownType(WellKnownType.String))
+                    return true;
+
+                if (!type.IsDefType)
+                    return false;
+
+                var metadataType = (MetadataType)type;
+
+                foreach (var intf in type.RuntimeInterfaces)
+                {
+                    if (intf.Name == "IReflect" && intf.Namespace == "System.Reflection")
+                        return true;
+                }
+
+                do
+                {
+                    if (metadataType.Name == "Type" && metadataType.Namespace == "System")
+                        return true;
+                } while ((metadataType = metadataType.MetadataBaseType) != null);
+
                 return false;
             }
-
-            if (found.DeclaringType != body.Method.DeclaringType ||
-                found.IsStatic != body.Method.IsStatic ||
-                !found.IsCompilerGenerated())
-            {
-                // A couple heuristics to make sure we got the right field.
-                // Return failure.
-                found = null;
-                return false;
-            }
-
-            return true;
         }
 
-        bool IsTypeInterestingForDataflow(TypeReference typeReference)
+        private class TypeAnnotations
         {
-            return typeReference.MetadataType == MetadataType.String ||
-                _hierarchyInfo.IsSystemType(typeReference) ||
-                _hierarchyInfo.IsSystemReflectionIReflect(typeReference);
-        }
-
-        internal void ValidateMethodAnnotationsAreSame(MethodDefinition method, MethodDefinition baseMethod)
-        {
-            GetAnnotations(method.DeclaringType).TryGetAnnotation(method, out var methodAnnotations);
-            GetAnnotations(baseMethod.DeclaringType).TryGetAnnotation(baseMethod, out var baseMethodAnnotations);
-
-            if (methodAnnotations.ReturnParameterAnnotation != baseMethodAnnotations.ReturnParameterAnnotation)
-                LogValidationWarning(method.MethodReturnType, baseMethod.MethodReturnType, method);
-
-            if (methodAnnotations.ParameterAnnotations != null || baseMethodAnnotations.ParameterAnnotations != null)
-            {
-                if (methodAnnotations.ParameterAnnotations == null)
-                    ValidateMethodParametersHaveNoAnnotations(ref baseMethodAnnotations, method, baseMethod, method);
-                else if (baseMethodAnnotations.ParameterAnnotations == null)
-                    ValidateMethodParametersHaveNoAnnotations(ref methodAnnotations, method, baseMethod, method);
-                else
-                {
-                    if (methodAnnotations.ParameterAnnotations.Length != baseMethodAnnotations.ParameterAnnotations.Length)
-                        return;
-
-                    for (int parameterIndex = 0; parameterIndex < methodAnnotations.ParameterAnnotations.Length; parameterIndex++)
-                    {
-                        if (methodAnnotations.ParameterAnnotations[parameterIndex] != baseMethodAnnotations.ParameterAnnotations[parameterIndex])
-                            LogValidationWarning(
-                                DiagnosticUtilities.GetMethodParameterFromIndex(method, parameterIndex),
-                                DiagnosticUtilities.GetMethodParameterFromIndex(baseMethod, parameterIndex),
-                                method);
-                    }
-                }
-            }
-
-            if (methodAnnotations.GenericParameterAnnotations != null || baseMethodAnnotations.GenericParameterAnnotations != null)
-            {
-                if (methodAnnotations.GenericParameterAnnotations == null)
-                    ValidateMethodGenericParametersHaveNoAnnotations(ref baseMethodAnnotations, method, baseMethod, method);
-                else if (baseMethodAnnotations.GenericParameterAnnotations == null)
-                    ValidateMethodGenericParametersHaveNoAnnotations(ref methodAnnotations, method, baseMethod, method);
-                else
-                {
-                    if (methodAnnotations.GenericParameterAnnotations.Length != baseMethodAnnotations.GenericParameterAnnotations.Length)
-                        return;
-
-                    for (int genericParameterIndex = 0; genericParameterIndex < methodAnnotations.GenericParameterAnnotations.Length; genericParameterIndex++)
-                    {
-                        if (methodAnnotations.GenericParameterAnnotations[genericParameterIndex] != baseMethodAnnotations.GenericParameterAnnotations[genericParameterIndex])
-                        {
-                            LogValidationWarning(
-                                method.GenericParameters[genericParameterIndex],
-                                baseMethod.GenericParameters[genericParameterIndex],
-                                method);
-                        }
-                    }
-                }
-            }
-        }
-
-        void ValidateMethodParametersHaveNoAnnotations(ref MethodAnnotations methodAnnotations, MethodDefinition method, MethodDefinition baseMethod, IMemberDefinition origin)
-        {
-            for (int parameterIndex = 0; parameterIndex < methodAnnotations.ParameterAnnotations.Length; parameterIndex++)
-            {
-                var annotation = methodAnnotations.ParameterAnnotations[parameterIndex];
-                if (annotation != DynamicallyAccessedMemberTypes.None)
-                    LogValidationWarning(
-                        DiagnosticUtilities.GetMethodParameterFromIndex(method, parameterIndex),
-                        DiagnosticUtilities.GetMethodParameterFromIndex(baseMethod, parameterIndex),
-                        origin);
-            }
-        }
-
-        void ValidateMethodGenericParametersHaveNoAnnotations(ref MethodAnnotations methodAnnotations, MethodDefinition method, MethodDefinition baseMethod, IMemberDefinition origin)
-        {
-            for (int genericParameterIndex = 0; genericParameterIndex < methodAnnotations.GenericParameterAnnotations.Length; genericParameterIndex++)
-            {
-                if (methodAnnotations.GenericParameterAnnotations[genericParameterIndex] != DynamicallyAccessedMemberTypes.None)
-                {
-                    LogValidationWarning(
-                        method.GenericParameters[genericParameterIndex],
-                        baseMethod.GenericParameters[genericParameterIndex],
-                        origin);
-                }
-            }
-        }
-
-        void LogValidationWarning(IMetadataTokenProvider provider, IMetadataTokenProvider baseProvider, IMemberDefinition origin)
-        {
-            Debug.Assert(provider.GetType() == baseProvider.GetType());
-            Debug.Assert(!(provider is GenericParameter genericParameter) || genericParameter.DeclaringMethod != null);
-            switch (provider)
-            {
-                case ParameterDefinition parameterDefinition:
-                    var baseParameterDefinition = (ParameterDefinition)baseProvider;
-                    _context.LogWarning(
-                        $"'DynamicallyAccessedMemberTypes' in 'DynamicallyAccessedMembersAttribute' on the parameter '{DiagnosticUtilities.GetParameterNameForErrorMessage(parameterDefinition)}' of method '{DiagnosticUtilities.GetMethodSignatureDisplayName(parameterDefinition.Method)}' " +
-                        $"don't match overridden parameter '{DiagnosticUtilities.GetParameterNameForErrorMessage(baseParameterDefinition)}' of method '{DiagnosticUtilities.GetMethodSignatureDisplayName(baseParameterDefinition.Method)}'. " +
-                        $"All overridden members must have the same 'DynamicallyAccessedMembersAttribute' usage.",
-                        2092, origin, subcategory: MessageSubCategory.TrimAnalysis);
-                    break;
-                case MethodReturnType methodReturnType:
-                    _context.LogWarning(
-                        $"'DynamicallyAccessedMemberTypes' in 'DynamicallyAccessedMembersAttribute' on the return value of method '{DiagnosticUtilities.GetMethodSignatureDisplayName(methodReturnType.Method)}' " +
-                        $"don't match overridden return value of method '{DiagnosticUtilities.GetMethodSignatureDisplayName(((MethodReturnType)baseProvider).Method)}'. " +
-                        $"All overridden members must have the same 'DynamicallyAccessedMembersAttribute' usage.",
-                        2093, origin, subcategory: MessageSubCategory.TrimAnalysis);
-                    break;
-                // No fields - it's not possible to have a virtual field and override it
-                case MethodDefinition methodDefinition:
-                    _context.LogWarning(
-                        $"'DynamicallyAccessedMemberTypes' in 'DynamicallyAccessedMembersAttribute' on the implicit 'this' parameter of method '{DiagnosticUtilities.GetMethodSignatureDisplayName(methodDefinition)}' " +
-                        $"don't match overridden implicit 'this' parameter of method '{DiagnosticUtilities.GetMethodSignatureDisplayName((MethodDefinition)baseProvider)}'. " +
-                        $"All overridden members must have the same 'DynamicallyAccessedMembersAttribute' usage.",
-                        2094, origin, subcategory: MessageSubCategory.TrimAnalysis);
-                    break;
-                case GenericParameter genericParameterOverride:
-                    var genericParameterBase = (GenericParameter)baseProvider;
-                    _context.LogWarning(
-                        $"'DynamicallyAccessedMemberTypes' in 'DynamicallyAccessedMembersAttribute' on the generic parameter '{genericParameterOverride.Name}' of '{DiagnosticUtilities.GetGenericParameterDeclaringMemberDisplayName(genericParameterOverride)}' " +
-                        $"don't match overridden generic parameter '{genericParameterBase.Name}' of '{DiagnosticUtilities.GetGenericParameterDeclaringMemberDisplayName(genericParameterBase)}'. " +
-                        $"All overridden members must have the same 'DynamicallyAccessedMembersAttribute' usage.",
-                        2095, origin, subcategory: MessageSubCategory.TrimAnalysis);
-                    break;
-                default:
-                    throw new NotImplementedException($"Unsupported provider type{provider.GetType()}");
-            }
-        }
-
-        readonly struct TypeAnnotations
-        {
-            readonly TypeDefinition _type;
-            readonly MethodAnnotations[] _annotatedMethods;
-            readonly FieldAnnotation[] _annotatedFields;
-            readonly DynamicallyAccessedMemberTypes[] _genericParameterAnnotations;
+            public readonly TypeDesc Type;
+            private readonly MethodAnnotations[] _annotatedMethods;
+            private readonly FieldAnnotation[] _annotatedFields;
+            private readonly DynamicallyAccessedMemberTypes[] _genericParameterAnnotations;
 
             public TypeAnnotations(
-                TypeDefinition type,
+                TypeDesc type,
                 MethodAnnotations[] annotatedMethods,
                 FieldAnnotation[] annotatedFields,
                 DynamicallyAccessedMemberTypes[] genericParameterAnnotations)
-                => (_type, _annotatedMethods, _annotatedFields, _genericParameterAnnotations)
+                => (Type, _annotatedMethods, _annotatedFields, _genericParameterAnnotations)
                  = (type, annotatedMethods, annotatedFields, genericParameterAnnotations);
 
-            public bool TryGetAnnotation(MethodDefinition method, out MethodAnnotations annotations)
+            public bool TryGetAnnotation(MethodDesc method, out MethodAnnotations annotations)
             {
                 annotations = default;
 
@@ -619,7 +548,7 @@ namespace Mono.Linker.Dataflow
                 return false;
             }
 
-            public bool TryGetAnnotation(FieldDefinition field, out FieldAnnotation annotation)
+            public bool TryGetAnnotation(FieldDesc field, out FieldAnnotation annotation)
             {
                 annotation = default;
 
@@ -640,7 +569,7 @@ namespace Mono.Linker.Dataflow
                 return false;
             }
 
-            public bool TryGetAnnotation(GenericParameter genericParameter, out DynamicallyAccessedMemberTypes annotation)
+            public bool TryGetAnnotation(GenericParameterDesc genericParameter, out DynamicallyAccessedMemberTypes annotation)
             {
                 annotation = default;
 
@@ -649,7 +578,7 @@ namespace Mono.Linker.Dataflow
 
                 for (int genericParameterIndex = 0; genericParameterIndex < _genericParameterAnnotations.Length; genericParameterIndex++)
                 {
-                    if (_type.GenericParameters[genericParameterIndex] == genericParameter)
+                    if (Type.Instantiation[genericParameterIndex] == genericParameter)
                     {
                         annotation = _genericParameterAnnotations[genericParameterIndex];
                         return true;
@@ -660,22 +589,22 @@ namespace Mono.Linker.Dataflow
             }
         }
 
-        readonly struct MethodAnnotations
+        private readonly struct MethodAnnotations
         {
-            public readonly MethodDefinition Method;
+            public readonly MethodDesc Method;
             public readonly DynamicallyAccessedMemberTypes[] ParameterAnnotations;
             public readonly DynamicallyAccessedMemberTypes ReturnParameterAnnotation;
             public readonly DynamicallyAccessedMemberTypes[] GenericParameterAnnotations;
 
             public MethodAnnotations(
-                MethodDefinition method,
+                MethodDesc method,
                 DynamicallyAccessedMemberTypes[] paramAnnotations,
                 DynamicallyAccessedMemberTypes returnParamAnnotations,
                 DynamicallyAccessedMemberTypes[] genericParameterAnnotations)
                 => (Method, ParameterAnnotations, ReturnParameterAnnotation, GenericParameterAnnotations) =
                     (method, paramAnnotations, returnParamAnnotations, genericParameterAnnotations);
 
-            public bool TryGetAnnotation(GenericParameter genericParameter, out DynamicallyAccessedMemberTypes annotation)
+            public bool TryGetAnnotation(GenericParameterDesc genericParameter, out DynamicallyAccessedMemberTypes annotation)
             {
                 annotation = default;
 
@@ -684,7 +613,7 @@ namespace Mono.Linker.Dataflow
 
                 for (int genericParameterIndex = 0; genericParameterIndex < GenericParameterAnnotations.Length; genericParameterIndex++)
                 {
-                    if (Method.GenericParameters[genericParameterIndex] == genericParameter)
+                    if (Method.Instantiation[genericParameterIndex] == genericParameter)
                     {
                         annotation = GenericParameterAnnotations[genericParameterIndex];
                         return true;
@@ -695,12 +624,12 @@ namespace Mono.Linker.Dataflow
             }
         }
 
-        readonly struct FieldAnnotation
+        private readonly struct FieldAnnotation
         {
-            public readonly FieldDefinition Field;
+            public readonly FieldDesc Field;
             public readonly DynamicallyAccessedMemberTypes Annotation;
 
-            public FieldAnnotation(FieldDefinition field, DynamicallyAccessedMemberTypes annotation)
+            public FieldAnnotation(FieldDesc field, DynamicallyAccessedMemberTypes annotation)
                 => (Field, Annotation) = (field, annotation);
         }
     }
