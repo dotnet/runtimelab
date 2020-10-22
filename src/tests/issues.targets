@@ -1272,9 +1272,6 @@
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Regression/JitBlue/GitHub_4044/GitHub_4044/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/188</Issue>
         </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/JIT/Regression/VS-ia64-JIT/V2.0-Beta2/b309576/b309576/*">
-            <Issue>https://github.com/dotnet/runtimelab/issues/199</Issue>
-        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/JIT/superpmi/superpmicollect/*">
             <Issue>CoreCLR test</Issue>
         </ExcludeList>
