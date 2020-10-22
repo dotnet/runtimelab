@@ -68,6 +68,7 @@ stages:
       - Linux_x64
       - FreeBSD_x64
       jobParameters:
+        timeoutInMinutes: 120
         isOfficialBuild: ${{ variables.isOfficialBuild }}
         testGroup: innerloop
         extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
