@@ -10,7 +10,10 @@ namespace Microsoft.Interop
     // for C# 10 discriminated unions. Once discriminated unions are released,
     // these should be updated to be implemented as a discriminated union.
 
-    internal abstract record MarshallingInfo {}
+    internal abstract record MarshallingInfo
+    {
+        public const MarshallingInfo Empty = null!;
+    }
 
     /// <summary>
     /// Character encoding enumeration.
