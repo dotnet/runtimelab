@@ -12,7 +12,13 @@ namespace Microsoft.Interop
 
     internal abstract record MarshallingInfo
     {
-        public const MarshallingInfo Empty = null!;
+    }
+
+    internal sealed record NoMarshallingInfo : MarshallingInfo
+    {
+        public static readonly MarshallingInfo Instance = new NoMarshallingInfo();
+
+        private NoMarshallingInfo() { }
     }
 
     /// <summary>

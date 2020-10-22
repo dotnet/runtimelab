@@ -137,7 +137,7 @@ namespace Microsoft.Interop
                 return new MarshallingInfoStringSupport(defaultInfo.CharEncoding);
             }
 
-            return MarshallingInfo.Empty;
+            return NoMarshallingInfo.Instance;
 
             static MarshalAsInfo CreateMarshalAsInfo(AttributeData attrData, DefaultMarshallingInfo defaultInfo, GeneratorDiagnostics diagnostics)
             {
@@ -244,7 +244,7 @@ namespace Microsoft.Interop
                     marshallingInfo = new SafeHandleMarshallingInfo();
                     return true;
                 }
-                marshallingInfo = MarshallingInfo.Empty;
+                marshallingInfo = NoMarshallingInfo.Instance;
                 return false;
             }
         }
