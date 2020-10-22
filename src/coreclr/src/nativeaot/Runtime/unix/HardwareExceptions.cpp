@@ -391,6 +391,7 @@ uint32_t GetExceptionCodeForSignal(const siginfo_t *siginfo, const void *context
                 default:
                     break;
             }
+            break;
         case SIGTRAP:
             switch (siginfo->si_code)
             {

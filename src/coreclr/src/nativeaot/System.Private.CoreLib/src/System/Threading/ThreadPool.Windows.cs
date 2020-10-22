@@ -235,6 +235,8 @@ namespace System.Threading
     {
         internal const bool EnableWorkerTracking = false;
 
+        internal const bool SupportsTimeSensitiveWorkItems = false; // the timer currently doesn't queue time-sensitive work
+
         // Time in ms for which ThreadPoolWorkQueue.Dispatch keeps executing work items before returning to the OS
         private const uint DispatchQuantum = 30;
 
@@ -256,10 +258,26 @@ namespace System.Threading
 
         private static readonly ThreadInt64PersistentCounter s_completedWorkItemCounter = new ThreadInt64PersistentCounter();
 
+        [ThreadStatic]
+        private static object? t_completionCountObject;
+
         internal static void InitializeForThreadPoolThread() => s_threadCounter.Set();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void IncrementCompletedWorkItemCount() => s_completedWorkItemCounter.Increment();
+        internal static void IncrementCompletedWorkItemCount() => ThreadInt64PersistentCounter.Increment(GetOrCreateThreadLocalCompletionCountObject());
+
+        internal static object GetOrCreateThreadLocalCompletionCountObject() =>
+            t_completionCountObject ?? CreateThreadLocalCompletionCountObject();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static object CreateThreadLocalCompletionCountObject()
+        {
+            Debug.Assert(t_completionCountObject == null);
+
+            object threadLocalCompletionCountObject = s_completedWorkItemCounter.CreateThreadLocalCountObject();
+            t_completionCountObject = threadLocalCompletionCountObject;
+            return threadLocalCompletionCountObject;
+        }
 
         public static bool SetMaxThreads(int workerThreads, int completionPortThreads)
         {
@@ -312,21 +330,13 @@ namespace System.Threading
         /// </remarks>
         public static long CompletedWorkItemCount => s_completedWorkItemCounter.Count;
 
-        internal static bool KeepDispatching(int startTickCount)
-        {
-            // Note: this function may incorrectly return false due to TickCount overflow
-            // if work item execution took around a multiple of 2^32 milliseconds (~49.7 days),
-            // which is improbable.
-            return ((uint)(Environment.TickCount - startTickCount) < DispatchQuantum);
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void NotifyWorkItemProgress() => IncrementCompletedWorkItemCount();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static bool NotifyWorkItemComplete()
+        internal static bool NotifyWorkItemComplete(object? threadLocalCompletionCountObject, int currentTimeMs)
         {
-            IncrementCompletedWorkItemCount();
+            ThreadInt64PersistentCounter.Increment(threadLocalCompletionCountObject);
             return true;
         }
 
