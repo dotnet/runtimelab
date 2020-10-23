@@ -133,8 +133,13 @@ namespace Microsoft.Interop
 
         public override bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context) => true;
         
-        protected override ExpressionSyntax GenerateAllocationExpression(TypePositionInfo info, StubCodeContext context)
+        protected override ExpressionSyntax GenerateAllocationExpression(
+            TypePositionInfo info,
+            StubCodeContext context,
+            SyntaxToken byteLengthIdentifier,
+            out bool allocationRequiresByteLength)
         {
+            allocationRequiresByteLength = false;
             // (byte*)Marshal.StringToCoTaskMemUni(<managed>)
             return CastExpression(
                 AsNativeType(info),

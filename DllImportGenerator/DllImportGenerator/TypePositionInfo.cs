@@ -191,8 +191,8 @@ namespace Microsoft.Interop
                     diagnostics.ReportConfigurationNotSupported(attrData, nameof(UnmanagedType), unmanagedType.ToString());
                 }
                 UnmanagedType unmanagedArraySubType = 0;
-                int arraySizeConst = 0;
-                short arraySizeParamIndex = 0;
+                int arraySizeConst = MarshalAsInfo.UnspecifiedData;
+                short arraySizeParamIndex = MarshalAsInfo.UnspecifiedData;
 
                 // All other data on attribute is defined as NamedArguments.
                 foreach (var namedArg in attrData.NamedArguments)
@@ -233,7 +233,7 @@ namespace Microsoft.Interop
 
             static NativeMarshallingAttributeInfo CreateNativeMarshallingInfo(ITypeSymbol type, Compilation compilation, AttributeData attrData, bool allowGetPinnableReference)
             {
-                ITypeSymbol spanOfByte = compilation.GetTypeByMetadataName(TypeNames.System_Span)!.Construct(compilation.GetSpecialType(SpecialType.System_Byte));
+                ITypeSymbol spanOfByte = compilation.GetTypeByMetadataName(TypeNames.System_Span_Metadata)!.Construct(compilation.GetSpecialType(SpecialType.System_Byte));
                 INamedTypeSymbol nativeType = (INamedTypeSymbol)attrData.ConstructorArguments[0].Value!;
                 SupportedMarshallingMethods methods = 0;
                 IPropertySymbol? valueProperty = ManualTypeMarshallingHelper.FindValueProperty(nativeType);

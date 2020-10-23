@@ -61,6 +61,8 @@ namespace Microsoft.Interop
         /// a MarshalAs attribute that just uses the constructor parameter and no additional properties.
         /// </summary>
         public void Deconstruct(out UnmanagedType unmanagedType) => unmanagedType = UnmanagedType;
+
+        public const short UnspecifiedData = -1;
     }
 
     /// <summary>

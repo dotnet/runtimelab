@@ -269,5 +269,17 @@ namespace Microsoft.Interop
 
             return (codeBlock, dllImport);
         }
+
+        public override TypePositionInfo? GetTypePositionInfoForManagedIndex(int index)
+        {
+            foreach (var (info, _) in paramMarshallers)
+            {
+                if (info.ManagedIndex == index)
+                {
+                    return info;
+                }
+            }
+            return null;
+        }
     }
 }

@@ -30,9 +30,23 @@ namespace Microsoft.Interop
                 AssignmentExpression(
                     SyntaxKind.SimpleAssignmentExpression,
                     IdentifierName(nativeIdentifier),
-                    GenerateAllocationExpression(info, context)));
-            if (!context.CanUseAdditionalTemporaryState || (info.IsByRef && info.RefKind != RefKind.In))
+                    GenerateAllocationExpression(info, context, Identifier(byteLenIdentifier), out bool allocationRequiresByteLength)));
+
+            // int <byteLenIdentifier> = <byteLengthExpression>;
+            var byteLenAssignment = LocalDeclarationStatement(
+                VariableDeclaration(
+                    PredefinedType(Token(SyntaxKind.IntKeyword)),
+                    SingletonSeparatedList<VariableDeclaratorSyntax>(
+                        VariableDeclarator(byteLenIdentifier)
+                            .WithInitializer(EqualsValueClause(
+                                GenerateByteLengthCalculationExpression(info, context))))));
+            
+            if (!context.CanUseAdditionalTemporaryState || !context.StackSpaceUsable || (info.IsByRef && info.RefKind != RefKind.In))
             {
+                if (allocationRequiresByteLength)
+                {
+                    yield return byteLenAssignment;
+                }
                 yield return allocationStatement;
             }
             else
@@ -44,6 +58,8 @@ namespace Microsoft.Interop
                         SingletonSeparatedList(
                             VariableDeclarator(allocationMarkerIdentifier)
                                 .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.FalseLiteralExpression))))));
+
+                yield return byteLenAssignment;
 
                 // Code block for stackalloc if string is below threshold size
                 var marshalOnStack = Block(
@@ -69,15 +85,6 @@ namespace Microsoft.Interop
                             CastExpression(
                                 AsNativeType(info),
                                 IdentifierName(stackAllocPtrIdentifier)))));
-
-                //   int <byteLenIdentifier> = <byteLengthExpression>;
-                yield return LocalDeclarationStatement(
-                        VariableDeclaration(
-                            PredefinedType(Token(SyntaxKind.IntKeyword)),
-                            SingletonSeparatedList<VariableDeclaratorSyntax>(
-                                VariableDeclarator(byteLenIdentifier)
-                                    .WithInitializer(EqualsValueClause(
-                                        GenerateByteLengthCalculationExpression(info, context))))));
 
                 //   if (<byteLen> > <StackAllocBytesThreshold>)
                 //   {
@@ -149,7 +156,9 @@ namespace Microsoft.Interop
 
         protected abstract ExpressionSyntax GenerateAllocationExpression(
             TypePositionInfo info,
-            StubCodeContext context);
+            StubCodeContext context,
+            SyntaxToken byteLengthIdentifier,
+            out bool allocationRequiresByteLength);
 
         protected abstract ExpressionSyntax GenerateByteLengthCalculationExpression(
             TypePositionInfo info,

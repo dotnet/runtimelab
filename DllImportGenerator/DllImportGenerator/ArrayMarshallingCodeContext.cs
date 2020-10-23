@@ -36,5 +36,11 @@ namespace Microsoft.Interop
             var (managed, native) = base.GetIdentifiers(info);
             return ($"{managed}[{indexerIdentifier}]", $"{native}[{indexerIdentifier}]");
         }
+
+        public override TypePositionInfo? GetTypePositionInfoForManagedIndex(int index)
+        {
+            // We don't have parameters to look at when we're in the middle of marshalling an array.
+            return null;
+        }
     }
 }

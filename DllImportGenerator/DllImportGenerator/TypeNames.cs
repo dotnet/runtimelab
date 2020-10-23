@@ -14,7 +14,8 @@ namespace Microsoft.Interop
 
         public const string MarshalUsingAttribute = "System.Runtime.InteropServices.MarshalUsingAttribute";
 
-        public const string System_Span = "System.Span`1";
+        public const string System_Span_Metadata = "System.Span`1";
+        public const string System_Span = "System.Span";
 
         public const string System_Runtime_InteropServices_StructLayoutAttribute = "System.Runtime.InteropServices.StructLayoutAttribute";
 

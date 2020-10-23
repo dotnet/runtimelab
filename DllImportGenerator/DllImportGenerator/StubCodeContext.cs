@@ -79,5 +79,7 @@ namespace Microsoft.Interop
         {
             return (info.InstanceIdentifier, $"__{info.InstanceIdentifier}{GeneratedNativeIdentifierSuffix}");
         }
+
+        public abstract TypePositionInfo? GetTypePositionInfoForManagedIndex(int index);
     }
 }
