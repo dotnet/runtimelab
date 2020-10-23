@@ -25,6 +25,11 @@ namespace Microsoft.Interop.Diagnostics
             return new StartStopEvent(methodCount);
         }
 
+        // N.B. The 'Start' and 'Stop' suffixes for event names (i.e. "xxxStart" and "xxxStop")
+        //  have special meaning in EventSource. They enable creating 'activities' if they are
+        //  paired and the Stop event's ID is +1 the Start event's ID.
+        //  See https://blogs.msdn.microsoft.com/vancem/2015/09/14/exploring-eventsource-activity-correlation-and-causation-features/
+
         [Event(StartSourceGenerationEventId, Level = EventLevel.Informational, Keywords = Keywords.SourceGeneration)]
         public void SourceGenerationStart(int methodCount)
         {
