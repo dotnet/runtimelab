@@ -99,9 +99,12 @@ namespace Microsoft.Interop
         public static readonly ByteBoolMarshaller ByteBool = new ByteBoolMarshaller();
         public static readonly WinBoolMarshaller WinBool = new WinBoolMarshaller();
         public static readonly VariantBoolMarshaller VariantBool = new VariantBoolMarshaller();
+
         public static readonly Utf16CharMarshaller Utf16Char = new Utf16CharMarshaller();
         public static readonly Utf16StringMarshaller Utf16String = new Utf16StringMarshaller();
         public static readonly Utf8StringMarshaller Utf8String = new Utf8StringMarshaller();
+        public static readonly AnsiStringMarshaller AnsiString = new AnsiStringMarshaller(Utf8String);
+
         public static readonly Forwarder Forwarder = new Forwarder();
         public static readonly BlittableMarshaller Blittable = new BlittableMarshaller();
         public static readonly DelegateMarshaller Delegate = new DelegateMarshaller();
@@ -259,6 +262,8 @@ namespace Microsoft.Interop
             {
                 switch (marshalAsInfo.UnmanagedType)
                 {
+                    case UnmanagedType.LPStr:
+                        return AnsiString;
                     case UnmanagedType.LPTStr:
                     case UnmanagedType.LPWStr:
                         return Utf16String;
@@ -270,6 +275,8 @@ namespace Microsoft.Interop
             {
                 switch (marshalStringInfo.CharEncoding)
                 {
+                    case CharEncoding.Ansi:
+                        return AnsiString;
                     case CharEncoding.Utf16:
                         return Utf16String;
                     case CharEncoding.Utf8:
