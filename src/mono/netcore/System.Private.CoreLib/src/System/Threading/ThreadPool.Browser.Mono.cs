@@ -4,24 +4,22 @@
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Runtime.Versioning;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Win32.SafeHandles;
 
 namespace System.Threading
 {
-    public sealed partial class RegisteredWaitHandle : MarshalByRefObject
+    [UnsupportedOSPlatform("browser")]
+    public sealed class RegisteredWaitHandle : MarshalByRefObject
     {
+        internal RegisteredWaitHandle()
+        {
+        }
+
         public bool Unregister(WaitHandle? waitObject)
         {
             throw new PlatformNotSupportedException();
-        }
-    }
-
-    internal sealed partial class CompleteWaitThreadPoolWorkItem : IThreadPoolWorkItem
-    {
-        void IThreadPoolWorkItem.Execute()
-        {
-            Debug.Fail("Registered wait handles are currently not supported");
         }
     }
 
@@ -94,8 +92,16 @@ namespace System.Threading
 
         internal static object? GetOrCreateThreadLocalCompletionCountObject() => null;
 
-        private static void RegisterWaitForSingleObjectCore(WaitHandle? waitObject, RegisteredWaitHandle registeredWaitHandle) =>
+        private static RegisteredWaitHandle RegisterWaitForSingleObject(
+             WaitHandle? waitObject,
+             WaitOrTimerCallback? callBack,
+             object? state,
+             uint millisecondsTimeOutInterval,
+             bool executeOnlyOnce,
+             bool flowExecutionContext)
+        {
             throw new PlatformNotSupportedException();
+        }
 
         [DynamicDependency("Callback")]
         [DynamicDependency("PumpThreadPool")]
