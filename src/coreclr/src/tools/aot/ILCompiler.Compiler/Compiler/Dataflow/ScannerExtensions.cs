@@ -1,58 +1,114 @@
-﻿ï»¿// Licensed to the .NET Foundation under one or more agreements.
+﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
 
 using System;
 using System.Collections.Generic;
-using Mono.Cecil;
-using Mono.Cecil.Cil;
 
-namespace Mono.Linker.Dataflow
+using Internal.IL;
+using Internal.TypeSystem;
+
+using Debug = System.Diagnostics.Debug;
+
+namespace ILCompiler.Dataflow
 {
-    static class ScannerExtensions
+    internal static class ScannerExtensions
     {
-        public static bool IsControlFlowInstruction(in this OpCode opcode)
+        public static bool IsControlFlowInstruction(this ILOpcode opcode)
         {
-            return opcode.FlowControl == FlowControl.Branch
-                || opcode.FlowControl == FlowControl.Cond_Branch
-                || (opcode.FlowControl == FlowControl.Return && opcode.Code != Code.Ret);
+            switch (opcode)
+            {
+                case ILOpcode.br_s:
+                case ILOpcode.br:
+                case ILOpcode.brfalse_s:
+                case ILOpcode.brtrue_s:
+                case ILOpcode.beq_s:
+                case ILOpcode.bge_s:
+                case ILOpcode.bgt_s:
+                case ILOpcode.ble_s:
+                case ILOpcode.blt_s:
+                case ILOpcode.bne_un_s:
+                case ILOpcode.bge_un_s:
+                case ILOpcode.bgt_un_s:
+                case ILOpcode.ble_un_s:
+                case ILOpcode.blt_un_s:
+                case ILOpcode.brfalse:
+                case ILOpcode.brtrue:
+                case ILOpcode.beq:
+                case ILOpcode.bge:
+                case ILOpcode.bgt:
+                case ILOpcode.ble:
+                case ILOpcode.blt:
+                case ILOpcode.bne_un:
+                case ILOpcode.bge_un:
+                case ILOpcode.bgt_un:
+                case ILOpcode.ble_un:
+                case ILOpcode.blt_un:
+                case ILOpcode.switch_:
+                case ILOpcode.leave:
+                case ILOpcode.leave_s:
+                case ILOpcode.endfilter:
+                case ILOpcode.endfinally:
+                case ILOpcode.throw_:
+                case ILOpcode.rethrow:
+                    return true;
+            }
+            return false;
         }
 
-        public static HashSet<int> ComputeBranchTargets(this MethodBody methodBody)
+        public static HashSet<int> ComputeBranchTargets(this MethodIL methodBody)
         {
             HashSet<int> branchTargets = new HashSet<int>();
-            foreach (Instruction operation in methodBody.Instructions)
+            var reader = new ILReader(methodBody.GetILBytes());
+            while (reader.HasNext)
             {
-                if (!operation.OpCode.IsControlFlowInstruction())
-                    continue;
-                Object value = operation.Operand;
-                if (value is Instruction inst)
+                ILOpcode opcode = reader.ReadILOpcode();
+                if (opcode >= ILOpcode.br_s && opcode <= ILOpcode.blt_un)
                 {
-                    branchTargets.Add(inst.Offset);
+                    branchTargets.Add(reader.ReadBranchDestination(opcode));
                 }
-                else if (value is Instruction[] instructions)
+                else if (opcode == ILOpcode.switch_)
                 {
-                    foreach (Instruction switchLabel in instructions)
+                    uint count = reader.ReadILUInt32();
+                    int jmpBase = reader.Offset + (int)(4 * count);
+                    for (uint i = 0; i < count; i++)
                     {
-                        branchTargets.Add(switchLabel.Offset);
+                        branchTargets.Add((int)reader.ReadILUInt32() + jmpBase);
                     }
                 }
-            }
-            foreach (ExceptionHandler einfo in methodBody.ExceptionHandlers)
-            {
-                if (einfo.HandlerType == ExceptionHandlerType.Filter)
+                else
                 {
-                    branchTargets.Add(einfo.FilterStart.Offset);
+                    reader.Skip(opcode);
                 }
-                branchTargets.Add(einfo.HandlerStart.Offset);
+            }
+            foreach (ILExceptionRegion einfo in methodBody.GetExceptionRegions())
+            {
+                if (einfo.Kind == ILExceptionRegionKind.Filter)
+                {
+                    branchTargets.Add(einfo.FilterOffset);
+                }
+                branchTargets.Add(einfo.HandlerOffset);
             }
             return branchTargets;
         }
 
-        public static bool IsByRefOrPointer(this TypeReference typeRef)
+        public static bool IsByRefOrPointer(this TypeDesc type)
         {
-            return typeRef.IsByReference || typeRef.IsPointer;
+            return type.IsByRef || type.IsPointer;
+        }
+
+        public static int ReadBranchDestination(this ref ILReader reader, ILOpcode currentOpcode)
+        {
+            if ((currentOpcode >= ILOpcode.br_s && currentOpcode <= ILOpcode.blt_un_s)
+                || currentOpcode == ILOpcode.leave_s)
+            {
+                return (sbyte)reader.ReadILByte() + reader.Offset;
+            }
+            else
+            {
+                Debug.Assert((currentOpcode >= ILOpcode.br && currentOpcode <= ILOpcode.blt_un)
+                    || currentOpcode == ILOpcode.leave);
+                return (int)reader.ReadILUInt32() + reader.Offset;
+            }
         }
     }
-
 }

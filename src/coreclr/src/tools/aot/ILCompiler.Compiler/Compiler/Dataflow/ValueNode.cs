@@ -1,18 +1,19 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
 
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
-using Mono.Cecil;
-using FieldDefinition = Mono.Cecil.FieldDefinition;
-using GenericParameter = Mono.Cecil.GenericParameter;
-using TypeDefinition = Mono.Cecil.TypeDefinition;
 
-namespace Mono.Linker.Dataflow
+using Internal.IL;
+using Internal.TypeSystem;
+using Internal.TypeSystem.Ecma;
+
+using Debug = System.Diagnostics.Debug;
+
+namespace ILCompiler.Dataflow
 {
     public enum ValueNodeKind
     {
@@ -563,13 +564,13 @@ namespace Mono.Linker.Dataflow
     /// </summary>
     class SystemTypeValue : LeafValueNode
     {
-        public SystemTypeValue(TypeDefinition typeRepresented)
+        public SystemTypeValue(TypeDesc typeRepresented)
         {
             Kind = ValueNodeKind.SystemType;
             TypeRepresented = typeRepresented;
         }
 
-        public TypeDefinition TypeRepresented { get; private set; }
+        public TypeDesc TypeRepresented { get; private set; }
 
         public override bool Equals(ValueNode other)
         {
@@ -597,13 +598,13 @@ namespace Mono.Linker.Dataflow
     /// </summary>
     class RuntimeTypeHandleValue : LeafValueNode
     {
-        public RuntimeTypeHandleValue(TypeDefinition typeRepresented)
+        public RuntimeTypeHandleValue(TypeDesc typeRepresented)
         {
             Kind = ValueNodeKind.RuntimeTypeHandle;
             TypeRepresented = typeRepresented;
         }
 
-        public TypeDefinition TypeRepresented { get; }
+        public TypeDesc TypeRepresented { get; }
 
         public override bool Equals(ValueNode other)
         {
@@ -632,7 +633,7 @@ namespace Mono.Linker.Dataflow
     /// </summary>
     class SystemTypeForGenericParameterValue : LeafValueWithDynamicallyAccessedMemberNode
     {
-        public SystemTypeForGenericParameterValue(GenericParameter genericParameter, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes)
+        public SystemTypeForGenericParameterValue(GenericParameterDesc genericParameter, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes)
         {
             Kind = ValueNodeKind.SystemTypeForGenericParameter;
             GenericParameter = genericParameter;
@@ -640,7 +641,7 @@ namespace Mono.Linker.Dataflow
             SourceContext = genericParameter;
         }
 
-        public GenericParameter GenericParameter { get; }
+        public GenericParameterDesc GenericParameter { get; }
 
         public override bool Equals(ValueNode other)
         {
@@ -669,13 +670,13 @@ namespace Mono.Linker.Dataflow
     /// </summary>
     class RuntimeTypeHandleForGenericParameterValue : LeafValueNode
     {
-        public RuntimeTypeHandleForGenericParameterValue(GenericParameter genericParameter)
+        public RuntimeTypeHandleForGenericParameterValue(GenericParameterDesc genericParameter)
         {
             Kind = ValueNodeKind.RuntimeTypeHandleForGenericParameter;
             GenericParameter = genericParameter;
         }
 
-        public GenericParameter GenericParameter { get; }
+        public GenericParameterDesc GenericParameter { get; }
 
         public override bool Equals(ValueNode other)
         {
@@ -737,7 +738,7 @@ namespace Mono.Linker.Dataflow
     /// </summary>
     abstract class LeafValueWithDynamicallyAccessedMemberNode : LeafValueNode
     {
-        public IMetadataTokenProvider SourceContext { get; protected set; }
+        public object SourceContext { get; protected set; }
 
         /// <summary>
         /// The bitfield of dynamically accessed member types the node guarantees
@@ -750,7 +751,7 @@ namespace Mono.Linker.Dataflow
     /// </summary>
     class MethodParameterValue : LeafValueWithDynamicallyAccessedMemberNode
     {
-        public MethodParameterValue(int parameterIndex, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes, IMetadataTokenProvider sourceContext)
+        public MethodParameterValue(int parameterIndex, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes, object sourceContext)
         {
             Kind = ValueNodeKind.MethodParameter;
             ParameterIndex = parameterIndex;
@@ -787,7 +788,7 @@ namespace Mono.Linker.Dataflow
     /// </summary>
     class AnnotatedStringValue : LeafValueWithDynamicallyAccessedMemberNode
     {
-        public AnnotatedStringValue(IMetadataTokenProvider sourceContext, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes)
+        public AnnotatedStringValue(object sourceContext, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes)
         {
             Kind = ValueNodeKind.AnnotatedString;
             DynamicallyAccessedMemberTypes = dynamicallyAccessedMemberTypes;
@@ -974,7 +975,7 @@ namespace Mono.Linker.Dataflow
         }
     }
 
-    delegate TypeDefinition TypeResolver(string assemblyString, string typeString);
+    delegate TypeDesc TypeResolver(string assemblyString, string typeString);
 
     /// <summary>
     /// The result of a Type.GetType.
@@ -1036,7 +1037,7 @@ namespace Mono.Linker.Dataflow
 
                         foreach (string name in names)
                         {
-                            TypeDefinition typeDefinition = _resolver(assemblyName, name);
+                            TypeDesc typeDefinition = _resolver(assemblyName, name);
                             if (typeDefinition != null)
                             {
                                 foundAtLeastOne = true;
@@ -1081,7 +1082,7 @@ namespace Mono.Linker.Dataflow
     /// </summary>
     class LoadFieldValue : LeafValueWithDynamicallyAccessedMemberNode
     {
-        public LoadFieldValue(FieldDefinition fieldToLoad, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes)
+        public LoadFieldValue(FieldDesc fieldToLoad, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes)
         {
             Kind = ValueNodeKind.LoadField;
             Field = fieldToLoad;
@@ -1089,7 +1090,7 @@ namespace Mono.Linker.Dataflow
             SourceContext = fieldToLoad;
         }
 
-        public FieldDefinition Field { get; private set; }
+        public FieldDesc Field { get; private set; }
 
         public override bool Equals(ValueNode other)
         {

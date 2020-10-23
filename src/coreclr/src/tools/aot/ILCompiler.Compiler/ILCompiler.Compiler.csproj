@@ -168,6 +168,10 @@
     <Compile Include="Compiler\CompilerGeneratedInteropStubManager.cs" />
     <Compile Include="Compiler\Dataflow\DisplayNameHelpers.cs" />
     <Compile Include="Compiler\Dataflow\FlowAnnotations.cs" />
+    <Compile Include="Compiler\Dataflow\MethodBodyScanner.cs" />
+    <Compile Include="Compiler\Dataflow\MethodReturnType.cs" />
+    <Compile Include="Compiler\Dataflow\ScannerExtensions.cs" />
+    <Compile Include="Compiler\Dataflow\ValueNode.cs" />
     <Compile Include="Compiler\DebugInformationProvider.cs" />
     <Compile Include="Compiler\DependencyAnalysis\DefaultConstructorMapNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\DelegateMarshallingDataNode.cs" />
