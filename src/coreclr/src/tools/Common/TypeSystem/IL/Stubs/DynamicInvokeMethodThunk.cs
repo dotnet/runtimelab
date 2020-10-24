@@ -49,26 +49,25 @@ namespace Internal.IL.Stubs
             // TODO: function pointer types are odd: https://github.com/dotnet/corert/issues/1929
             // ----------------------------------------------------------------
 
-            TypeDesc unwrappedReturnType = UnwrapByRef(signature.ReturnType);
+            // ----------------------------------------------------------------
+            // Methods that take or return ByRef-like types can't be reflection invoked
+            //
+            // TODO: CoreCLR allows invoking methods that take ByRef-like types by value when the argument has
+            // the default null value. It is a corner case that is unlikely to be exercised in practice.
+            // ----------------------------------------------------------------
 
+            TypeDesc unwrappedReturnType = UnwrapByRef(signature.ReturnType);
             if (unwrappedReturnType.IsFunctionPointer)
                 return false;
-
-            for (int i = 0; i < signature.Length; i++)
-                if (UnwrapByRef(signature[i]).IsFunctionPointer)
-                    return false;
-
-            // ----------------------------------------------------------------
-            // Methods that return ByRef-like types or take them by reference can't be reflection invoked
-            // ----------------------------------------------------------------
-
             if (!unwrappedReturnType.IsSignatureVariable && unwrappedReturnType.IsByRefLike)
                 return false;
 
             for (int i = 0; i < signature.Length; i++)
             {
-                ByRefType paramType = signature[i] as ByRefType;
-                if (paramType != null && !paramType.ParameterType.IsSignatureVariable && UnwrapByRef(paramType.ParameterType).IsByRefLike)
+                TypeDesc unwrappedParameterType = UnwrapByRef(signature[i]);
+                if (unwrappedParameterType.IsFunctionPointer)
+                    return false;
+                if (!unwrappedParameterType.IsSignatureVariable && unwrappedParameterType.IsByRefLike)
                     return false;
             }
 
