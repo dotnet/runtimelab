@@ -1,10 +1,10 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
 
+using System;
 using System.Collections.Generic;
 
-namespace System.CommandLine
+namespace Internal.CommandLine
 {
     internal static class ArgumentLexer
     {
@@ -16,7 +16,7 @@ namespace System.CommandLine
             //
             // A token combines the modifier (/, -, --), the option name, and the option
             // value.
-            // 
+            //
             // Please note that this code doesn't combine arguments. It only provides
             // some pre-processing over the arguments to split out the modifier,
             // option, and value:
@@ -79,6 +79,10 @@ namespace System.CommandLine
                     {
                         name = nameAndValue;
                         value = null;
+                    }
+                    else
+                    {
+                        value = value.Trim('"');
                     }
                 }
 

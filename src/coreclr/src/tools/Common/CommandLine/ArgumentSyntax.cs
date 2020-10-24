@@ -1,11 +1,11 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace System.CommandLine
+namespace Internal.CommandLine
 {
     public sealed partial class ArgumentSyntax
     {
@@ -430,9 +430,7 @@ namespace System.CommandLine
 
         public string GetHelpText()
         {
-            // TODO: This should use Console.WindowWidth but this API isn't available yet.
-            // return GetHelpText(Console.WindowWidth - 2);
-            return GetHelpText(72);
+            return GetHelpText(Console.WindowWidth - 2);
         }
 
         public string GetHelpText(int maxWidth)

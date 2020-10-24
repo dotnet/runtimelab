@@ -1,16 +1,16 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace System.CommandLine
+using Linq = System.Linq;
+
+namespace Internal.CommandLine
 {
-    // Low level replacement of LINQ Enumerable class. In particular, this implementation
+    // Low-level replacement of LINQ Enumerable class. In particular, this implementation
     // doesn't use generic virtual methods.
-    // System.CommandLine needs to be usable for small .NET Native apps that don't carry the
-    // overhead of expensive runtime features such as the generic virtual methods.
     internal static class Enumerable
     {
         public static IEnumerable<T> Empty<T>()

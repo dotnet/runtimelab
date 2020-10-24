@@ -1,11 +1,10 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
 
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
-namespace System.CommandLine
+namespace Internal.CommandLine
 {
     public abstract class Argument
     {
@@ -39,7 +38,7 @@ namespace System.CommandLine
         public bool IsHidden { get; set; }
 
         public bool IsRequired { get; private set; }
-        
+
         public virtual bool IsList
         {
             get { return false; }

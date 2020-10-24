@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <Description>CLI commandline command parsing</Description>
-    <TargetFrameworks>netstandard1.5</TargetFrameworks>
-    <PackageTags>Command line parsing support corefxlab</PackageTags>
-    <RootNamespace />
-  </PropertyGroup>
-</Project>
