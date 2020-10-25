@@ -98,12 +98,12 @@ namespace Internal.IL.Stubs.StartupCode
             {
                 if (_mainMethod.HasCustomAttribute("System", "STAThreadAttribute"))
                 {
-                    codeStream.EmitLdc(0 /* ApartmentState.STA */);
+                    codeStream.EmitLdc((int)System.Threading.ApartmentState.STA);
                     codeStream.Emit(ILOpcode.call, emitter.NewToken(initApartmentState));
                 }
                 if (_mainMethod.HasCustomAttribute("System", "MTAThreadAttribute"))
                 {
-                    codeStream.EmitLdc(1 /* ApartmentState.MTA */);
+                    codeStream.EmitLdc((int)System.Threading.ApartmentState.MTA);
                     codeStream.Emit(ILOpcode.call, emitter.NewToken(initApartmentState));
                 }
             }
