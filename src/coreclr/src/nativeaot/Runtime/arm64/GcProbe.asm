@@ -411,6 +411,9 @@ EXTRA_SAVE_SIZE equ (32*16)
 
     LEAF_ENTRY RhpGcPoll
         brk 0xf000 ;; TODO: remove after debugging/testing stub
+        ;
+        ; !!!!! Native AOT note: take implementation from GcProbe.S instead - it's more compact
+        ;
         ; @todo: I'm assuming it's not OK to trash any register here. If that's not true we can optimize the
         ; push/pops out of this fast path.
         str         x0, [sp], #-0x10!

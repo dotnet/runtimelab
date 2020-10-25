@@ -568,11 +568,9 @@ COOP_PINVOKE_HELPER(void *, RhGetCurrentThunkContext, ())
     return NULL;
 }
 
-#endif
-
-#if !(defined(TARGET_ARM64) && defined(TARGET_UNIX))
 COOP_PINVOKE_HELPER(void, RhpGcPoll, ())
 {
     // TODO: implement
 }
+
 #endif
