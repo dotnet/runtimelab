@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Runtime.Versioning;
 using System.Threading;
 
 using Internal.Runtime.Augments;
@@ -59,5 +60,13 @@ namespace Internal.Runtime.CompilerHelpers
 
             return Environment.ExitCode;
         }
+
+#if TARGET_WINDOWS
+        [SupportedOSPlatform("windows")]
+        private static void InitializeApartmentState(ApartmentState state)
+        {
+            Thread.CurrentThread.SetApartmentState(state);
+        }
+#endif
     }
 }

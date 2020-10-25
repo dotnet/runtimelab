@@ -1425,6 +1425,9 @@
   <data name="NotSupported_MaxWaitHandles" xml:space="preserve">
     <value>The number of WaitHandles must be less than or equal to 64.</value>
   </data>
+  <data name="NotSupported_MaxWaitHandles_STA" xml:space="preserve">
+    <value>The number of WaitHandles on a STA thread must be less than or equal to 63.</value>
+  </data>
   <data name="NotSupported_NoCodepageData" xml:space="preserve">
     <value>No data is available for encoding {0}. For information on defining a custom encoding, see the documentation for the Encoding.RegisterProvider method.</value>
   </data>

@@ -22,23 +22,32 @@ namespace System.Threading
         {
             Debug.Assert(millisecondsTimeout >= -1);
 
-            //
-            // In the CLR, we use CoWaitForMultipleHandles to pump messages while waiting in an STA.  In that case, we cannot use WAIT_ALL.
-            // That's because the wait would only be satisfied if a message arrives while the handles are signalled.
-            //
-            if (waitAll)
+            // Normalize waitAll
+            if (numHandles == 1)
+                waitAll = false;
+
+            bool reentrantWait = Thread.ReentrantWaitsEnabled;
+
+            if (reentrantWait)
             {
-                if (numHandles == 1)
-                    waitAll = false;
-                else if (Thread.GetCurrentApartmentType() == Thread.ApartmentType.STA)
+                //
+                // In the CLR, we use CoWaitForMultipleHandles to pump messages while waiting in an STA.  In that case, we cannot use WAIT_ALL.
+                // That's because the wait would only be satisfied if a message arrives while the handles are signalled.
+                //
+                if (waitAll)
                     throw new NotSupportedException(SR.NotSupported_WaitAllSTAThread);
+
+                // CoWaitForMultipleHandles does not support more than 63 handles. It returns RPC_S_CALLPENDING for more than 63 handles
+                // that is impossible to differentiate from timeout.
+                if (numHandles > 63)
+                    throw new NotSupportedException(SR.NotSupported_MaxWaitHandles_STA);
             }
 
             Thread currentThread = Thread.CurrentThread;
             currentThread.SetWaitSleepJoinState();
 
             int result;
-            if (Thread.ReentrantWaitsEnabled)
+            if (reentrantWait)
             {
                 Debug.Assert(!waitAll);
                 result = RuntimeImports.RhCompatibleReentrantWaitAny(false, millisecondsTimeout, numHandles, pHandles);

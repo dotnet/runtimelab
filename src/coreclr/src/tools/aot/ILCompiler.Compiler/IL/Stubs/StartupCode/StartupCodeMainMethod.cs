@@ -92,6 +92,22 @@ namespace Internal.IL.Stubs.StartupCode
                 codeStream.Emit(ILOpcode.call, emitter.NewToken(initEntryAssembly));
             }
 
+            // Initialize COM apartment
+            MethodDesc initApartmentState = startup.GetMethod("InitializeApartmentState", null);
+            if (initApartmentState != null)
+            {
+                if (_mainMethod.HasCustomAttribute("System", "STAThreadAttribute"))
+                {
+                    codeStream.EmitLdc((int)System.Threading.ApartmentState.STA);
+                    codeStream.Emit(ILOpcode.call, emitter.NewToken(initApartmentState));
+                }
+                if (_mainMethod.HasCustomAttribute("System", "MTAThreadAttribute"))
+                {
+                    codeStream.EmitLdc((int)System.Threading.ApartmentState.MTA);
+                    codeStream.Emit(ILOpcode.call, emitter.NewToken(initApartmentState));
+                }
+            }
+
             // Call program Main
             if (_mainMethod.Signature.Length > 0)
             {
@@ -210,6 +226,11 @@ namespace Internal.IL.Stubs.StartupCode
                 {
                     return WrappedMethod.Signature;
                 }
+            }
+
+            public override bool HasCustomAttribute(string attributeNamespace, string attributeName)
+            {
+                return WrappedMethod.HasCustomAttribute(attributeNamespace, attributeName);
             }
 
             public override MethodIL EmitIL()
