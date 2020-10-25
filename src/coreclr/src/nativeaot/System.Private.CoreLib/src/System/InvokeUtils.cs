@@ -56,6 +56,9 @@ namespace System
 
         internal static object CheckArgument(object srcObject, EETypePtr dstEEType, CheckArgumentSemantics semantics, BinderBundle binderBundle, Func<Type> getExactTypeForCustomBinder = null)
         {
+            // Methods with ByRefLike types in signatures should be filtered out by the compiler
+            Debug.Assert(!dstEEType.IsByRefLike);
+
             if (srcObject == null)
             {
                 // null -> default(T)
@@ -587,16 +590,12 @@ namespace System
             return null;
         }
 
-        [DebuggerStepThrough]
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private static void DynamicInvokeUnboxIntoActualNullable(object actualBoxedNullable, object boxedFillObject, EETypePtr nullableType)
         {
             // get a byref to the data within the actual boxed nullable, and then call RhUnBox with the boxedFillObject as the boxed object, and nullableType as the unbox type, and unbox into the actualBoxedNullable
             RuntimeImports.RhUnbox(boxedFillObject, ref actualBoxedNullable.GetRawData(), nullableType);
         }
 
-        [DebuggerStepThrough]
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private static object DynamicInvokeBoxIntoNonNullable(object actualBoxedNullable)
         {
             // grab the pointer to data, box using the EEType of the actualBoxedNullable, and then return the boxed object
@@ -613,9 +612,7 @@ namespace System
             // This function exactly matches DynamicInvokeParamHelperRef except for the value of the enum passed to DynamicInvokeParamHelperCore
             //
 
-            int index;
-            DynamicInvokeParamLookupType paramLookupType;
-            object obj = DynamicInvokeParamHelperCore(rth, out paramLookupType, out index, DynamicInvokeParamType.In);
+            object obj = DynamicInvokeParamHelperCore(rth, out DynamicInvokeParamLookupType paramLookupType, out int index, DynamicInvokeParamType.In);
 
             if (paramLookupType == DynamicInvokeParamLookupType.ValuetypeObjectReturned)
             {
@@ -637,9 +634,7 @@ namespace System
             // This function exactly matches DynamicInvokeParamHelperIn except for the value of the enum passed to DynamicInvokeParamHelperCore
             //
 
-            int index;
-            DynamicInvokeParamLookupType paramLookupType;
-            object obj = DynamicInvokeParamHelperCore(rth, out paramLookupType, out index, DynamicInvokeParamType.Ref);
+            object obj = DynamicInvokeParamHelperCore(rth, out DynamicInvokeParamLookupType paramLookupType, out int index, DynamicInvokeParamType.Ref);
 
             if (paramLookupType == DynamicInvokeParamLookupType.ValuetypeObjectReturned)
             {
