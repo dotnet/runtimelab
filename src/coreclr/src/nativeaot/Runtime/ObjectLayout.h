@@ -46,7 +46,11 @@ public:
     EEType * get_EEType() const
         { return m_pEEType; }
     EEType * get_SafeEEType() const
+#ifdef TARGET_64BIT
+        { return dac_cast<PTR_EEType>((dac_cast<TADDR>(m_pEEType)) & ~((UIntNative)7)); }
+#else
         { return dac_cast<PTR_EEType>((dac_cast<TADDR>(m_pEEType)) & ~((UIntNative)3)); }
+#endif
     ObjHeader * GetHeader() { return dac_cast<DPTR(ObjHeader)>(dac_cast<TADDR>(this) - SYNC_BLOCK_SKEW); }
 #ifndef DACCESS_COMPILE
     void set_EEType(EEType * pEEType)
