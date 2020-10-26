@@ -192,11 +192,14 @@ int main(int argc, char* argv[])
 #endif // !CORERT_DLL
 
 #ifdef CORERT_DLL
-static struct InitializeRuntimePointerHelper
+struct InitializeRuntimePointerHelper
 {
     InitializeRuntimePointerHelper()
     {
         RhSetRuntimeInitializationCallback(&InitializeRuntime);
     }
-} initializeRuntimePointerHelper;
+};
+
+extern "C" InitializeRuntimePointerHelper CoreRT_StaticInitialization;
+InitializeRuntimePointerHelper CoreRT_StaticInitialization;
 #endif // CORERT_DLL
