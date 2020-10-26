@@ -807,4 +807,27 @@ LEAF_ENTRY RhpSuppressGcStress, _TEXT
 LEAF_END RhpSuppressGcStress, _TEXT
 endif ;; FEATURE_GC_STRESS
 
+LEAF_ENTRY RhpGcPoll, _TEXT
+
+        cmp         [RhpTrapThreads], TrapThreadsFlags_None
+        jne         @F                  ; forward branch - predicted not taken
+        ret
+@@:
+        jmp         RhpGcPollRare
+
+LEAF_END RhpGcPoll, _TEXT
+
+NESTED_ENTRY RhpGcPollRare, _TEXT
+
+        PUSH_COOP_PINVOKE_FRAME rcx
+        END_PROLOGUE
+
+        call        RhpGcPoll2
+
+        POP_COOP_PINVOKE_FRAME
+
+        ret
+
+NESTED_END RhpGcPollRare, _TEXT
+
         end

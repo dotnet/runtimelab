@@ -404,6 +404,7 @@ EXTERN RhpCalculateStackTraceWorker             : PROC
 EXTERN RhThrowHwEx                              : PROC
 EXTERN RhThrowEx                                : PROC
 EXTERN RhRethrow                                : PROC
+EXTERN RhpGcPoll2                               : PROC
 ifdef FEATURE_GC_STRESS
 EXTERN REDHAWKGCINTERFACE__STRESSGC             : PROC
 EXTERN THREAD__HIJACKFORGCSTRESS                : PROC
