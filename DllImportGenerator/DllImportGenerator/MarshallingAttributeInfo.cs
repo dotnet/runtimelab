@@ -10,7 +10,16 @@ namespace Microsoft.Interop
     // for C# 10 discriminated unions. Once discriminated unions are released,
     // these should be updated to be implemented as a discriminated union.
 
-    internal abstract record MarshallingInfo {}
+    internal abstract record MarshallingInfo
+    {
+    }
+
+    internal sealed record NoMarshallingInfo : MarshallingInfo
+    {
+        public static readonly MarshallingInfo Instance = new NoMarshallingInfo();
+
+        private NoMarshallingInfo() { }
+    }
 
     /// <summary>
     /// Character encoding enumeration.
@@ -46,12 +55,12 @@ namespace Microsoft.Interop
         {
         }
 
-        public MarshalAsInfo? CreateArraySubTypeMarshalAsInfo()
+        public MarshallingInfo CreateArraySubTypeMarshalAsInfo()
         {
             Debug.Assert(UnmanagedType is UnmanagedType.LPArray or UnmanagedType.ByValArray or UnmanagedType.SafeArray);
             if (UnmanagedArraySubType == 0)
             {
-                return null;
+                return NoMarshallingInfo.Instance;
             }
             return new MarshalAsInfo(UnmanagedArraySubType, CharEncoding);
         }

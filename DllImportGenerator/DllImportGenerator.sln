@@ -22,6 +22,7 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PInvokeDump", "Tools\PInvokeDump\PInvokeDump.csproj", "{6FD4AF19-0CAA-413C-A2BD-C888AA2E8CFB}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Benchmarking", "Tools\Benchmarking\Benchmarking.csproj", "{927F1081-FFE6-4897-9030-D9023F7EE604}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharedTypes", "TestAssets\SharedTypes\SharedTypes.csproj", "{D42D99E6-DA2B-48D5-BEED-F093A8E600BE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -61,6 +62,10 @@ Global
 		{927F1081-FFE6-4897-9030-D9023F7EE604}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{927F1081-FFE6-4897-9030-D9023F7EE604}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{927F1081-FFE6-4897-9030-D9023F7EE604}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D42D99E6-DA2B-48D5-BEED-F093A8E600BE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D42D99E6-DA2B-48D5-BEED-F093A8E600BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D42D99E6-DA2B-48D5-BEED-F093A8E600BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D42D99E6-DA2B-48D5-BEED-F093A8E600BE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -69,6 +74,7 @@ Global
 		{32FDA079-0E9F-4A36-ADA5-6593B67A54AC} = {2CFB9A7A-4AAF-4B6A-8CC8-540F64C3B45F}
 		{6FD4AF19-0CAA-413C-A2BD-C888AA2E8CFB} = {69D56AC9-232B-4E76-B6C1-33A7B06B6855}
 		{927F1081-FFE6-4897-9030-D9023F7EE604} = {69D56AC9-232B-4E76-B6C1-33A7B06B6855}
+		{D42D99E6-DA2B-48D5-BEED-F093A8E600BE} = {2CFB9A7A-4AAF-4B6A-8CC8-540F64C3B45F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5344B739-3A02-402A-8777-0D54DEC4F3BA}

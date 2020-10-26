@@ -51,7 +51,7 @@ namespace Microsoft.Interop
         public int NativeIndex { get; init; }
         public int UnmanagedLCIDConversionArgIndex { get; init; }
 
-        public MarshallingInfo? MarshallingAttributeInfo { get; init; }
+        public MarshallingInfo MarshallingAttributeInfo { get; init; }
 
         public static TypePositionInfo CreateForParameter(IParameterSymbol paramSymbol, DefaultMarshallingInfo defaultInfo, Compilation compilation, GeneratorDiagnostics diagnostics)
         {
@@ -83,7 +83,7 @@ namespace Microsoft.Interop
             return typeInfo;
         }
 
-        public static TypePositionInfo CreateForType(ITypeSymbol type, MarshallingInfo? marshallingInfo)
+        public static TypePositionInfo CreateForType(ITypeSymbol type, MarshallingInfo marshallingInfo)
         {
             var typeInfo = new TypePositionInfo()
             {
@@ -97,10 +97,8 @@ namespace Microsoft.Interop
             return typeInfo;
         }
 
-        private static MarshallingInfo? GetMarshallingInfo(ITypeSymbol type, IEnumerable<AttributeData> attributes, DefaultMarshallingInfo defaultInfo, Compilation compilation, GeneratorDiagnostics diagnostics)
+        private static MarshallingInfo GetMarshallingInfo(ITypeSymbol type, IEnumerable<AttributeData> attributes, DefaultMarshallingInfo defaultInfo, Compilation compilation, GeneratorDiagnostics diagnostics)
         {
-            MarshallingInfo? marshallingInfo = null;
-
             // Look at attributes passed in - usage specific.
             foreach (var attrData in attributes)
             {
@@ -108,76 +106,52 @@ namespace Microsoft.Interop
 
                 if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.System_Runtime_InteropServices_MarshalAsAttribute), attributeClass))
                 {
-                    if (marshallingInfo is not null)
-                    {
-                        // TODO: diagnostic
-                    }
                     // https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.marshalasattribute
-                    marshallingInfo = CreateMarshalAsInfo(attrData, defaultInfo, diagnostics);
+                    return CreateMarshalAsInfo(attrData, defaultInfo, diagnostics);
                 }
                 else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.MarshalUsingAttribute), attributeClass))
                 {
-                    if (marshallingInfo is not null)
-                    {
-                        // TODO: diagnostic
-                    }
-                    marshallingInfo = CreateNativeMarshallingInfo(type, compilation, attrData, allowGetPinnableReference: false);
+                    return CreateNativeMarshallingInfo(type, compilation, attrData, allowGetPinnableReference: false);
                 }
             }
 
             // If we aren't overriding the marshalling at usage time,
             // then fall back to the information on the element type itself.
-            if (marshallingInfo is null)
+            foreach (var attrData in type.GetAttributes())
             {
-                foreach (var attrData in type.GetAttributes())
-                {
-                    INamedTypeSymbol attributeClass = attrData.AttributeClass!;
+                INamedTypeSymbol attributeClass = attrData.AttributeClass!;
 
-                    if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.BlittableTypeAttribute), attributeClass))
-                    {
-                        if (marshallingInfo is not null)
-                        {
-                            // TODO: diagnostic
-                        }
-                        marshallingInfo = new BlittableTypeAttributeInfo();
-                    }
-                    else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.NativeMarshallingAttribute), attributeClass))
-                    {
-                        if (marshallingInfo is not null)
-                        {
-                            // TODO: diagnostic
-                        }
-                        marshallingInfo = CreateNativeMarshallingInfo(type, compilation, attrData, allowGetPinnableReference: true);
-                    }
-                    else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.GeneratedMarshallingAttribute), attributeClass))
-                    {
-                        if (marshallingInfo is not null)
-                        {
-                            // TODO: diagnostic
-                        }
-                        marshallingInfo = type.IsConsideredBlittable() ? new BlittableTypeAttributeInfo() : new GeneratedNativeMarshallingAttributeInfo(null! /* TODO: determine naming convention */);
-                    }
+                if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.BlittableTypeAttribute), attributeClass))
+                {
+                    return new BlittableTypeAttributeInfo();
+                }
+                else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.NativeMarshallingAttribute), attributeClass))
+                {
+                    return CreateNativeMarshallingInfo(type, compilation, attrData, allowGetPinnableReference: true);
+                }
+                else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.GeneratedMarshallingAttribute), attributeClass))
+                {
+                    return type.IsConsideredBlittable() ? new BlittableTypeAttributeInfo() : new GeneratedNativeMarshallingAttributeInfo(null! /* TODO: determine naming convention */);
                 }
             }
 
             // If the type doesn't have custom attributes that dictate marshalling,
             // then consider the type itself.
-            if (marshallingInfo is null)
+            if (TryCreateTypeBasedMarshallingInfo(type, compilation, out MarshallingInfo infoMaybe))
             {
-                marshallingInfo = CreateTypeBasedMarshallingInfo(type, compilation);
+                return infoMaybe;
             }
 
             // No marshalling info was computed, but a character encoding was provided.
             // If the type is a character or string then pass on these details.
-            if (marshallingInfo is null
-                && defaultInfo.CharEncoding != CharEncoding.Undefined
+            if (defaultInfo.CharEncoding != CharEncoding.Undefined
                 && (type.SpecialType == SpecialType.System_Char
                     || type.SpecialType == SpecialType.System_String))
             {
-                marshallingInfo = new MarshallingInfoStringSupport(defaultInfo.CharEncoding);
+                return new MarshallingInfoStringSupport(defaultInfo.CharEncoding);
             }
 
-            return marshallingInfo;
+            return NoMarshallingInfo.Instance;
 
             static MarshalAsInfo CreateMarshalAsInfo(AttributeData attrData, DefaultMarshallingInfo defaultInfo, GeneratorDiagnostics diagnostics)
             {
@@ -273,7 +247,7 @@ namespace Microsoft.Interop
                     methods);
             }
 
-            static MarshallingInfo? CreateTypeBasedMarshallingInfo(ITypeSymbol type, Compilation compilation)
+            static bool TryCreateTypeBasedMarshallingInfo(ITypeSymbol type, Compilation compilation, out MarshallingInfo marshallingInfo)
             {
                 var conversion = compilation.ClassifyCommonConversion(type, compilation.GetTypeByMetadataName(TypeNames.System_Runtime_InteropServices_SafeHandle)!);
                 if (conversion.Exists &&
@@ -281,9 +255,11 @@ namespace Microsoft.Interop
                     conversion.IsReference &&
                     !type.IsAbstract)
                 {
-                    return new SafeHandleMarshallingInfo();
+                    marshallingInfo = new SafeHandleMarshallingInfo();
+                    return true;
                 }
-                return null;
+                marshallingInfo = NoMarshallingInfo.Instance;
+                return false;
             }
         }
 

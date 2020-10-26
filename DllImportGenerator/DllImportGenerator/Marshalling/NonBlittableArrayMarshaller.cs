@@ -27,7 +27,7 @@ namespace Microsoft.Interop
 
         private TypeSyntax GetNativeElementTypeSyntax(TypePositionInfo info)
         {
-            return _elementMarshaller.AsNativeType(TypePositionInfo.CreateForType(GetElementTypeSymbol(info), null));
+            return _elementMarshaller.AsNativeType(TypePositionInfo.CreateForType(GetElementTypeSymbol(info), NoMarshallingInfo.Instance));
         }
 
         public override TypeSyntax AsNativeType(TypePositionInfo info)
