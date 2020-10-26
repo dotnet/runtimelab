@@ -69,7 +69,7 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<char>(CharSet.Unicode) };
             yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<string>(CharSet.Unicode) };
             yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<string>(CharSet.Ansi) };
-            //yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<string>(CharSet.Auto) };
+            yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<string>(CharSet.Auto) };
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<bool>(UnmanagedType.Bool) };
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<bool>(UnmanagedType.VariantBool) };
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<bool>(UnmanagedType.I1) };
@@ -140,8 +140,6 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.ArrayParameterWithSizeParam<float>(isByRef: false) };
             yield return new[] { CodeSnippets.ArrayParameterWithSizeParam<double>(isByRef: false) };
             yield return new[] { CodeSnippets.ArrayParameterWithSizeParam<bool>(isByRef: false) };
-
-            yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<string>(CharSet.Auto) };
 
             yield return new[] { CodeSnippets.EnumParameters };
 

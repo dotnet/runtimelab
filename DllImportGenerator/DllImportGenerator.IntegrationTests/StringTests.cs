@@ -180,6 +180,51 @@ namespace DllImportGenerator.IntegrationTests
             [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = EntryPoints.Byte.ReverseInplace)]
             public static partial void Reverse_Replace_Ref([MarshalAs(UnmanagedType.LPStr)] ref string s);
         }
+
+        public partial class Auto
+        {
+            public partial class Unix
+            {
+                [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = EntryPoints.Byte.ReturnLength, CharSet = CharSet.Auto)]
+                public static partial int ReturnLength(string s);
+
+                [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = EntryPoints.Byte.ReverseReturn, CharSet = CharSet.Auto)]
+                public static partial string Reverse_Return(string s);
+
+                [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = EntryPoints.Byte.ReverseOut, CharSet = CharSet.Auto)]
+                public static partial void Reverse_Out(string s, out string ret);
+
+                [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = EntryPoints.Byte.ReverseInplace, CharSet = CharSet.Auto)]
+                public static partial void Reverse_Ref(ref string s);
+
+                [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = EntryPoints.Byte.ReverseInplace, CharSet = CharSet.Auto)]
+                public static partial void Reverse_In(in string s);
+
+                [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = EntryPoints.Byte.ReverseInplace, CharSet = CharSet.Auto)]
+                public static partial void Reverse_Replace_Ref(ref string s);
+            }
+
+            public partial class Windows
+            {
+                [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = EntryPoints.UShort.ReturnLength, CharSet = CharSet.Auto)]
+                public static partial int ReturnLength(string s);
+
+                [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = EntryPoints.UShort.ReverseReturn, CharSet = CharSet.Auto)]
+                public static partial string Reverse_Return(string s);
+
+                [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = EntryPoints.UShort.ReverseOut, CharSet = CharSet.Auto)]
+                public static partial void Reverse_Out(string s, out string ret);
+
+                [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = EntryPoints.UShort.ReverseInplace, CharSet = CharSet.Auto)]
+                public static partial void Reverse_Ref(ref string s);
+
+                [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = EntryPoints.UShort.ReverseInplace, CharSet = CharSet.Auto)]
+                public static partial void Reverse_In(in string s);
+
+                [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = EntryPoints.UShort.ReverseInplace, CharSet = CharSet.Auto)]
+                public static partial void Reverse_Replace_Ref(ref string s);
+            }
+        }
     }
 
     public class StringTests
@@ -372,6 +417,83 @@ namespace DllImportGenerator.IntegrationTests
             refValue = value;
             NativeExportsNE.LPStr.Reverse_Replace_Ref(ref refValue);
             Assert.Equal(expected, refValue);
+        }
+
+        [Theory]
+        [MemberData(nameof(UnicodeStrings))]
+        public void AutoStringMarshalledAsExpected(string value)
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                int expectedLen = value != null ? value.Length : -1;
+                Assert.Equal(expectedLen, NativeExportsNE.Auto.Windows.ReturnLength(value));
+            }
+            else
+            {
+                int expectedLen = value != null ? Encoding.UTF8.GetByteCount(value) : -1;
+                Assert.Equal(expectedLen, NativeExportsNE.Auto.Unix.ReturnLength(value));
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(UnicodeStrings))]
+        public void AutoStringReturn(string value)
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                string expected = ReverseChars(value);
+                Assert.Equal(expected, NativeExportsNE.Auto.Windows.Reverse_Return(value));
+
+                string ret;
+                NativeExportsNE.Auto.Windows.Reverse_Out(value, out ret);
+                Assert.Equal(expected, ret);
+            }
+            else
+            {
+                string expected = ReverseBytes(value, Encoding.UTF8);
+                Assert.Equal(expected, NativeExportsNE.Auto.Unix.Reverse_Return(value));
+
+                string ret;
+                NativeExportsNE.Auto.Unix.Reverse_Out(value, out ret);
+                Assert.Equal(expected, ret);
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(UnicodeStrings))]
+        public void AutoStringByRef(string value)
+        {
+            string refValue = value;
+
+            if (OperatingSystem.IsWindows())
+            {
+                string expected = ReverseChars(value);
+                NativeExportsNE.Auto.Windows.Reverse_In(in refValue);
+                Assert.Equal(value, refValue); // Should not be updated when using 'in'
+
+                refValue = value;
+                NativeExportsNE.Auto.Windows.Reverse_Ref(ref refValue);
+                Assert.Equal(expected, refValue);
+
+                refValue = value;
+                NativeExportsNE.Auto.Windows.Reverse_Replace_Ref(ref refValue);
+                Assert.Equal(expected, refValue);
+
+            }
+            else
+            {
+                string expected = ReverseBytes(value, Encoding.UTF8);
+                NativeExportsNE.Auto.Unix.Reverse_In(in refValue);
+                Assert.Equal(value, refValue); // Should not be updated when using 'in'
+
+                refValue = value;
+                NativeExportsNE.Auto.Unix.Reverse_Ref(ref refValue);
+                Assert.Equal(expected, refValue);
+
+                refValue = value;
+                NativeExportsNE.Auto.Unix.Reverse_Replace_Ref(ref refValue);
+                Assert.Equal(expected, refValue);
+            }
         }
 
         private static string ReverseChars(string value)

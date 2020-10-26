@@ -104,6 +104,7 @@ namespace Microsoft.Interop
         public static readonly Utf16StringMarshaller Utf16String = new Utf16StringMarshaller();
         public static readonly Utf8StringMarshaller Utf8String = new Utf8StringMarshaller();
         public static readonly AnsiStringMarshaller AnsiString = new AnsiStringMarshaller(Utf8String);
+        public static readonly PlatformDefinedStringMarshaller PlatformDefinedString = new PlatformDefinedStringMarshaller(Utf16String, Utf8String);
 
         public static readonly Forwarder Forwarder = new Forwarder();
         public static readonly BlittableMarshaller Blittable = new BlittableMarshaller();
@@ -281,6 +282,8 @@ namespace Microsoft.Interop
                         return Utf16String;
                     case CharEncoding.Utf8:
                         return Utf8String;
+                    case CharEncoding.PlatformDefined:
+                        return PlatformDefinedString;
                 }
             }
 
