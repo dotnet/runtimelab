@@ -301,18 +301,17 @@ namespace Microsoft.Interop
                     {
                         var (managed, native) = context.GetIdentifiers(paramIndexInfo);
                         string identifier = Create(paramIndexInfo, context).UsesNativeIdentifier(paramIndexInfo, context) ? native : managed;
-                        sizeParamIndexExpression = CheckedExpression(SyntaxKind.CheckedExpression,
-                            CastExpression(
+                        sizeParamIndexExpression = CastExpression(
                                 PredefinedType(Token(SyntaxKind.IntKeyword)),
-                                IdentifierName(identifier)));
+                                IdentifierName(identifier));
                     }
                 }
                 numElementsExpression = (constSizeExpression, sizeParamIndexExpression) switch
                 {
                     (null, null) => throw new MarshallingNotSupportedException(info, context),
                     (not null, null) => constSizeExpression!,
-                    (null, not null) => sizeParamIndexExpression!,
-                    (not null, not null) => BinaryExpression(SyntaxKind.AddExpression, constSizeExpression!, sizeParamIndexExpression!)
+                    (null, not null) => CheckedExpression(SyntaxKind.CheckedExpression, sizeParamIndexExpression!),
+                    (not null, not null) => CheckedExpression(SyntaxKind.CheckedExpression, BinaryExpression(SyntaxKind.AddExpression, constSizeExpression!, sizeParamIndexExpression!))
                 };
             }
             else

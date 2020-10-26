@@ -128,42 +128,50 @@ namespace Microsoft.Interop
                 case StubCodeContext.Stage.Unmarshal:
                     if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
                     {
-                        // <managedIdentifier> = new <managedElementType>[<numElementsExpression>];
-                        yield return ExpressionStatement(
-                            AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
-                                IdentifierName(managedIdentifer),
-                                ArrayCreationExpression(
-                                ArrayType(GetElementTypeSyntax(info),
-                                    SingletonList(ArrayRankSpecifier(
-                                        SingletonSeparatedList(_numElementsExpr)))))));
-
-                        // new Span<T>(nativeIdentifier, managedIdentifier.Length).CopyTo(managedIdentifier);
-                        yield return ExpressionStatement(
-                            InvocationExpression(
-                                MemberAccessExpression(
-                                    SyntaxKind.SimpleMemberAccessExpression,
-                                    ObjectCreationExpression(
-                                                GenericName(TypeNames.System_Span)
-                                                .WithTypeArgumentList(
-                                                    TypeArgumentList(
-                                                        SingletonSeparatedList(
-                                                            GetElementTypeSyntax(info)))))
-                                            .WithArgumentList(
-                                                ArgumentList(
-                                                    SeparatedList(
-                                                        new[]{
-                                                            Argument(
-                                                                IdentifierName(nativeIdentifier)),
-                                                            Argument(
-                                                                MemberAccessExpression(
-                                                                    SyntaxKind.SimpleMemberAccessExpression,
-                                                                    IdentifierName(managedIdentifer),
-                                                                    IdentifierName("Length")))}))),
-                                    IdentifierName("CopyTo")))
-                            .WithArgumentList(
-                                ArgumentList(
-                                    SingletonSeparatedList(
-                                        Argument(IdentifierName(managedIdentifer))))));
+                        yield return IfStatement(
+                            BinaryExpression(SyntaxKind.NotEqualsExpression,
+                            IdentifierName(nativeIdentifier),
+                            LiteralExpression(SyntaxKind.NullLiteralExpression)),
+                            Block(
+                                // <managedIdentifier> = new <managedElementType>[<numElementsExpression>];
+                                ExpressionStatement(
+                                    AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                                        IdentifierName(managedIdentifer),
+                                        ArrayCreationExpression(
+                                        ArrayType(GetElementTypeSyntax(info),
+                                            SingletonList(ArrayRankSpecifier(
+                                                SingletonSeparatedList(_numElementsExpr))))))),                      
+                                // new Span<T>(nativeIdentifier, managedIdentifier.Length).CopyTo(managedIdentifier);
+                                ExpressionStatement(
+                                    InvocationExpression(
+                                        MemberAccessExpression(
+                                            SyntaxKind.SimpleMemberAccessExpression,
+                                            ObjectCreationExpression(
+                                                        GenericName(TypeNames.System_Span)
+                                                        .WithTypeArgumentList(
+                                                            TypeArgumentList(
+                                                                SingletonSeparatedList(
+                                                                    GetElementTypeSyntax(info)))))
+                                                    .WithArgumentList(
+                                                        ArgumentList(
+                                                            SeparatedList(
+                                                                new[]{
+                                                                    Argument(
+                                                                        IdentifierName(nativeIdentifier)),
+                                                                    Argument(
+                                                                        MemberAccessExpression(
+                                                                            SyntaxKind.SimpleMemberAccessExpression,
+                                                                            IdentifierName(managedIdentifer),
+                                                                            IdentifierName("Length")))}))),
+                                            IdentifierName("CopyTo")))
+                                    .WithArgumentList(
+                                        ArgumentList(
+                                            SingletonSeparatedList(
+                                                Argument(IdentifierName(managedIdentifer))))))),
+                            ElseClause(
+                                ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                                    IdentifierName(managedIdentifer),
+                                    LiteralExpression(SyntaxKind.NullLiteralExpression)))));
                     }
                     break;
                 case StubCodeContext.Stage.Cleanup:
