@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
 {
@@ -105,8 +107,6 @@ namespace Microsoft.Interop
         public static readonly DelegateMarshaller Delegate = new DelegateMarshaller();
         public static readonly SafeHandleMarshaller SafeHandle = new SafeHandleMarshaller();
 
-        public static readonly BlittableArrayMarshaller BlittableArray = new BlittableArrayMarshaller();
-
         /// <summary>
         /// Create an <see cref="IMarshallingGenerator"/> instance to marshalling the supplied type.
         /// </summary>
@@ -180,16 +180,10 @@ namespace Microsoft.Interop
                     return SafeHandle;
 
                 case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType : ITypeSymbol elementType } , MarshallingAttributeInfo: null}:
-                    {
-                        IMarshallingGenerator elementMarshaller = Create(TypePositionInfo.CreateForType(elementType, null), context);
-                        return elementMarshaller == Blittable ? BlittableArray : new NonBlittableArrayMarshaller(elementMarshaller);
-                    }
+                    return CreateArrayMarshaller(info, context, elementType, null);
 
                 case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType : ITypeSymbol elementType } , MarshallingAttributeInfo: MarshalAsInfo(UnmanagedType.LPArray) marshalAsInfo }:
-                    {
-                        IMarshallingGenerator elementMarshaller = Create(TypePositionInfo.CreateForType(elementType, marshalAsInfo.CreateArraySubTypeMarshalAsInfo()), context);
-                        return elementMarshaller == Blittable ? BlittableArray : new NonBlittableArrayMarshaller(elementMarshaller);
-                    }
+                    return CreateArrayMarshaller(info, context, elementType, marshalAsInfo.CreateArraySubTypeMarshalAsInfo());
 
                 case { ManagedType: { SpecialType: SpecialType.System_Void } }:
                     return Forwarder;
@@ -280,6 +274,66 @@ namespace Microsoft.Interop
             }
 
             throw new MarshallingNotSupportedException(info, context);
+        }
+
+        
+        private static ExpressionSyntax GetNumElementsExpressionFromMarshallingInfo(TypePositionInfo info, StubCodeContext context)
+        {
+            ExpressionSyntax numElementsExpression;
+            if (info.MarshallingAttributeInfo is MarshalAsInfo { ArraySizeParamIndex: short index, ArraySizeConst: int constSize })
+            {
+                LiteralExpressionSyntax? constSizeExpression = constSize != MarshalAsInfo.UnspecifiedData
+                    ? LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(constSize))
+                    : null;
+                ExpressionSyntax? sizeParamIndexExpression = null;
+                if (index != MarshalAsInfo.UnspecifiedData)
+                {
+                    TypePositionInfo? paramIndexInfo = context.GetTypePositionInfoForManagedIndex(index);
+                    if (paramIndexInfo is null)
+                    {
+                        throw new MarshallingNotSupportedException(info, context);
+                    }
+                    else if (!paramIndexInfo.ManagedType.IsIntegralType())
+                    {
+                        throw new MarshallingNotSupportedException(info, context);
+                    }
+                    else
+                    {
+                        var (managed, native) = context.GetIdentifiers(paramIndexInfo);
+                        string identifier = Create(paramIndexInfo, context).UsesNativeIdentifier(paramIndexInfo, context) ? native : managed;
+                        sizeParamIndexExpression = CheckedExpression(SyntaxKind.CheckedExpression,
+                            CastExpression(
+                                PredefinedType(Token(SyntaxKind.IntKeyword)),
+                                IdentifierName(identifier)));
+                    }
+                }
+                numElementsExpression = (constSizeExpression, sizeParamIndexExpression) switch
+                {
+                    (null, null) => throw new MarshallingNotSupportedException(info, context),
+                    (not null, null) => constSizeExpression!,
+                    (null, not null) => sizeParamIndexExpression!,
+                    (not null, not null) => BinaryExpression(SyntaxKind.AddExpression, constSizeExpression!, sizeParamIndexExpression!)
+                };
+            }
+            else
+            {
+                throw new MarshallingNotSupportedException(info, context);
+            }
+
+            return numElementsExpression;
+        }
+
+        private static IMarshallingGenerator CreateArrayMarshaller(TypePositionInfo info, StubCodeContext context, ITypeSymbol elementType, MarshallingInfo? elementMarshallingInfo)
+        {
+            var elementMarshaller = Create(TypePositionInfo.CreateForType(elementType, elementMarshallingInfo), context);
+            ExpressionSyntax numElementsExpression = LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0));
+            if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
+            {
+                // In this case, we need a numElementsExpression supplied from metadata, so we'll calculate it here.
+                numElementsExpression = GetNumElementsExpressionFromMarshallingInfo(info, context);
+            }
+            
+            return elementMarshaller == Blittable ? new BlittableArrayMarshaller(numElementsExpression) : new NonBlittableArrayMarshaller(elementMarshaller, numElementsExpression);
         }
     }
 }

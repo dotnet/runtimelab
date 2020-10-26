@@ -10,6 +10,12 @@ namespace Microsoft.Interop
     internal class BlittableArrayMarshaller : ConditionalStackallocMarshallingGenerator
     {
         private const int StackAllocBytesThreshold = 0x200;
+        private readonly ExpressionSyntax _numElementsExpr;
+
+        public BlittableArrayMarshaller(ExpressionSyntax numElementsExpr)
+        {
+            _numElementsExpr = numElementsExpr;
+        }
 
         private TypeSyntax GetElementTypeSyntax(TypePositionInfo info)
         {
@@ -32,18 +38,18 @@ namespace Microsoft.Interop
 
         public override ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context)
         {
-            return info.IsByRef ?
-                Argument(IdentifierName(context.GetIdentifiers(info).native))
-                : Argument(
+            return info.IsByRef
+                ? Argument(
                     PrefixUnaryExpression(
                         SyntaxKind.AddressOfExpression,
-                        IdentifierName(context.GetIdentifiers(info).native)));
+                        IdentifierName(context.GetIdentifiers(info).native)))
+                : Argument(IdentifierName(context.GetIdentifiers(info).native));
         }
 
         public override IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context)
         {
             var (managedIdentifer, nativeIdentifier) = context.GetIdentifiers(info);
-            if (!info.IsByRef && context.PinningSupported)
+            if (!info.IsByRef && !info.IsManagedReturnPosition && context.PinningSupported)
             {
                 if (context.CurrentStage == StubCodeContext.Stage.Pin)
                 {
@@ -124,13 +130,12 @@ namespace Microsoft.Interop
                     {
                         // <managedIdentifier> = new <managedElementType>[<numElementsExpression>];
                         yield return ExpressionStatement(
-                            AssignmentExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
                                 IdentifierName(managedIdentifer),
                                 ArrayCreationExpression(
                                 ArrayType(GetElementTypeSyntax(info),
                                     SingletonList(ArrayRankSpecifier(
-                                        SingletonSeparatedList(
-                                            MarshallerHelpers.GetNumElementsExpressionFromMarshallingInfo(info, context))))))));
+                                        SingletonSeparatedList(_numElementsExpr)))))));
 
                         // new Span<T>(nativeIdentifier, managedIdentifier.Length).CopyTo(managedIdentifier);
                         yield return ExpressionStatement(
@@ -169,7 +174,7 @@ namespace Microsoft.Interop
 
         public override bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context)
         {
-            return (info.IsByRef && !info.IsManagedReturnPosition) || !context.PinningSupported;
+            return (info.IsByRef || info.IsManagedReturnPosition) || !context.PinningSupported;
         }
 
         protected override ExpressionSyntax GenerateAllocationExpression(TypePositionInfo info, StubCodeContext context, SyntaxToken byteLengthIdentifier, out bool allocationRequiresByteLength)

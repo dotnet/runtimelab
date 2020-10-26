@@ -12,14 +12,22 @@ namespace Microsoft.Interop
         private const int StackAllocBytesThreshold = 0x200;
 
         private IMarshallingGenerator _elementMarshaller;
-        public NonBlittableArrayMarshaller(IMarshallingGenerator elementMarshaller)
+        private readonly ExpressionSyntax _numElementsExpr;
+
+        public NonBlittableArrayMarshaller(IMarshallingGenerator elementMarshaller, ExpressionSyntax numElementsExpr)
         {
             _elementMarshaller = elementMarshaller;
+            _numElementsExpr = numElementsExpr;
+        }
+
+        private ITypeSymbol GetElementTypeSymbol(TypePositionInfo info)
+        {
+            return ((IArrayTypeSymbol)info.ManagedType).ElementType;
         }
 
         private TypeSyntax GetNativeElementTypeSyntax(TypePositionInfo info)
         {
-            return _elementMarshaller.AsNativeType(TypePositionInfo.CreateForType(((IArrayTypeSymbol)info.ManagedType).ElementType, null));
+            return _elementMarshaller.AsNativeType(TypePositionInfo.CreateForType(GetElementTypeSymbol(info), null));
         }
 
         public override TypeSyntax AsNativeType(TypePositionInfo info)
@@ -38,12 +46,12 @@ namespace Microsoft.Interop
 
         public override ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context)
         {
-            return info.IsByRef ?
-                Argument(IdentifierName(context.GetIdentifiers(info).native))
-                : Argument(
+            return info.IsByRef
+                ? Argument(
                     PrefixUnaryExpression(
                         SyntaxKind.AddressOfExpression,
-                        IdentifierName(context.GetIdentifiers(info).native)));
+                        IdentifierName(context.GetIdentifiers(info).native)))
+                : Argument(IdentifierName(context.GetIdentifiers(info).native));
         }
 
         public override IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context)
@@ -71,9 +79,9 @@ namespace Microsoft.Interop
                         }
 
                         string indexerIdentifier = "i";
-                        var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, indexerIdentifier);
+                        var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, indexerIdentifier, context);
                         yield return MarshallerHelpers.GetForLoop(managedIdentifer, indexerIdentifier)
-                            .WithStatement(Block(List(_elementMarshaller.Generate(info, arraySubContext))));
+                            .WithStatement(Block(List(_elementMarshaller.Generate(info with { ManagedType = GetElementTypeSymbol(info) }, arraySubContext))));
                     }
                     break;
                 case StubCodeContext.Stage.Unmarshal:
@@ -81,29 +89,38 @@ namespace Microsoft.Interop
                     {
                         // <managedIdentifier> = new <managedElementType>[<numElementsExpression>];
                         yield return ExpressionStatement(
-                            AssignmentExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
                                 IdentifierName(managedIdentifer),
                                 ArrayCreationExpression(
-                                ArrayType(((IArrayTypeSymbol)info.ManagedType).ElementType.AsTypeSyntax(),
+                                ArrayType(GetElementTypeSymbol(info).AsTypeSyntax(),
                                     SingletonList(ArrayRankSpecifier(
-                                        SingletonSeparatedList(
-                                            MarshallerHelpers.GetNumElementsExpressionFromMarshallingInfo(info, context))))))));
+                                        SingletonSeparatedList(_numElementsExpr)))))));
 
                         string indexerIdentifier = "i";
-                        var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, indexerIdentifier);
+                        var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, indexerIdentifier, context);
                         yield return MarshallerHelpers.GetForLoop(managedIdentifer, indexerIdentifier)
-                            .WithStatement(Block(List(_elementMarshaller.Generate(info, arraySubContext))));
+                            .WithStatement(Block(List(_elementMarshaller.Generate(info with { ManagedType = GetElementTypeSymbol(info) }, arraySubContext))));
                     }
                     break;
                 case StubCodeContext.Stage.Cleanup:
-                    yield return GenerateConditionalAllocationFreeSyntax(info, context);
+                    {
+                        yield return GenerateConditionalAllocationFreeSyntax(info, context);
+                        string indexerIdentifier = "i";
+                        var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, indexerIdentifier, context);
+                        var elementCleanup = List(_elementMarshaller.Generate(info with { ManagedType = GetElementTypeSymbol(info) }, arraySubContext));
+                        if (elementCleanup.Count != 0)
+                        {
+                            yield return MarshallerHelpers.GetForLoop(managedIdentifer, indexerIdentifier)
+                                .WithStatement(Block(elementCleanup));
+                        }
+                    }
                     break;
             }
         }
 
         public override bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context)
         {
-            return (info.IsByRef && !info.IsManagedReturnPosition) || !context.PinningSupported;
+            return true;
         }
         
 

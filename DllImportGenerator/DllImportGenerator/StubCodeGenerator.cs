@@ -46,6 +46,7 @@ namespace Microsoft.Interop
         private readonly GeneratorDiagnostics diagnostics;
 
         private readonly IMethodSymbol stubMethod;
+        private readonly IEnumerable<TypePositionInfo> paramsTypeInfo;
         private readonly List<(TypePositionInfo TypeInfo, IMarshallingGenerator Generator)> paramMarshallers;
         private readonly (TypePositionInfo TypeInfo, IMarshallingGenerator Generator) retMarshaller;
 
@@ -58,6 +59,7 @@ namespace Microsoft.Interop
             Debug.Assert(retTypeInfo.IsNativeReturnPosition);
 
             this.stubMethod = stubMethod;
+            this.paramsTypeInfo = paramsTypeInfo.ToList();
             this.diagnostics = generatorDiagnostics;
 
             // Get marshallers for parameters
@@ -272,7 +274,7 @@ namespace Microsoft.Interop
 
         public override TypePositionInfo? GetTypePositionInfoForManagedIndex(int index)
         {
-            foreach (var (info, _) in paramMarshallers)
+            foreach (var info in paramsTypeInfo)
             {
                 if (info.ManagedIndex == index)
                 {

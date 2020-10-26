@@ -13,6 +13,7 @@ namespace Microsoft.Interop
     internal sealed class ArrayMarshallingCodeContext : StubCodeContext
     {
         private readonly string indexerIdentifier;
+        private readonly StubCodeContext parentContext;
 
         public override bool PinningSupported => false;
 
@@ -20,10 +21,11 @@ namespace Microsoft.Interop
 
         public override bool CanUseAdditionalTemporaryState => false;
 
-        public ArrayMarshallingCodeContext(Stage currentStage, string indexerIdentifier)
+        public ArrayMarshallingCodeContext(Stage currentStage, string indexerIdentifier, StubCodeContext parentContext)
         {
             CurrentStage = currentStage;
             this.indexerIdentifier = indexerIdentifier;
+            this.parentContext = parentContext;
         }
 
         /// <summary>
@@ -33,7 +35,7 @@ namespace Microsoft.Interop
         /// <returns>Managed and native identifiers</returns>
         public override (string managed, string native) GetIdentifiers(TypePositionInfo info)
         {
-            var (managed, native) = base.GetIdentifiers(info);
+            var (managed, native) = parentContext.GetIdentifiers(info);
             return ($"{managed}[{indexerIdentifier}]", $"{native}[{indexerIdentifier}]");
         }
 

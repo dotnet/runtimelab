@@ -19,7 +19,7 @@ namespace Microsoft.Interop
     /// <summary>
     /// Positional type information involved in unmanaged/managed scenarios.
     /// </summary>
-    internal sealed class TypePositionInfo
+    internal sealed record TypePositionInfo
     {
         public const int UnsetIndex = int.MinValue;
         public const int ReturnIndex = UnsetIndex + 1;
@@ -36,22 +36,22 @@ namespace Microsoft.Interop
         }
 #pragma warning restore
 
-        public string InstanceIdentifier { get; private set; }
-        public ITypeSymbol ManagedType { get; private set; }
+        public string InstanceIdentifier { get; init; }
+        public ITypeSymbol ManagedType { get; init; }
 
-        public RefKind RefKind { get; private set; }
-        public SyntaxKind RefKindSyntax { get; private set; }
+        public RefKind RefKind { get; init; }
+        public SyntaxKind RefKindSyntax { get; init; }
 
         public bool IsByRef => RefKind != RefKind.None;
 
         public bool IsManagedReturnPosition { get => this.ManagedIndex == ReturnIndex; }
         public bool IsNativeReturnPosition { get => this.NativeIndex == ReturnIndex; }
 
-        public int ManagedIndex { get; set; }
-        public int NativeIndex { get; set; }
-        public int UnmanagedLCIDConversionArgIndex { get; private set; }
+        public int ManagedIndex { get; init; }
+        public int NativeIndex { get; init; }
+        public int UnmanagedLCIDConversionArgIndex { get; init; }
 
-        public MarshallingInfo? MarshallingAttributeInfo { get; private set; }
+        public MarshallingInfo? MarshallingAttributeInfo { get; init; }
 
         public static TypePositionInfo CreateForParameter(IParameterSymbol paramSymbol, DefaultMarshallingInfo defaultInfo, Compilation compilation, GeneratorDiagnostics diagnostics)
         {
