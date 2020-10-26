@@ -434,5 +434,17 @@ partial class Test
 
         public static string ArrayParameterWithSizeParam<T>(bool isByRef) => ArrayParameterWithSizeParam(typeof(T).ToString(), isByRef);
 
+
+        public static string ArrayParameterWithNestedMarshalInfo(string elementType, UnmanagedType nestedMarshalInfo) => $@"
+using System.Runtime.InteropServices;
+partial class Test
+{{
+    [GeneratedDllImport(""DoesNotExist"")]
+    public static partial void Method(
+        [MarshalAs(UnmanagedType.LPArray, ArraySubType=UnmanagedType.{nestedMarshalInfo})] {elementType}[] pRef
+        );
+}}";
+
+        public static string ArrayParameterWithNestedMarshalInfo<T>(UnmanagedType nestedMarshalType) => ArrayParameterWithNestedMarshalInfo(typeof(T).ToString(), nestedMarshalType);
     }
 }
