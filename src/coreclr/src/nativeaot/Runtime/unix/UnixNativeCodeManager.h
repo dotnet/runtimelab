@@ -8,15 +8,15 @@ class UnixNativeCodeManager : public ICodeManager
     TADDR m_moduleBase;
 
     PTR_VOID m_pvManagedCodeStartRange;
-    UInt32 m_cbManagedCodeRange;
+    uint32_t m_cbManagedCodeRange;
 
     PTR_PTR_VOID m_pClasslibFunctions;
-    UInt32 m_nClasslibFunctions;
+    uint32_t m_nClasslibFunctions;
 
 public:
     UnixNativeCodeManager(TADDR moduleBase,
-                          PTR_VOID pvManagedCodeStartRange, UInt32 cbManagedCodeRange,
-                          PTR_PTR_VOID pClasslibFunctions, UInt32 nClasslibFunctions);
+                          PTR_VOID pvManagedCodeStartRange, uint32_t cbManagedCodeRange,
+                          PTR_PTR_VOID pClasslibFunctions, uint32_t nClasslibFunctions);
 
     virtual ~UnixNativeCodeManager();
 
@@ -43,7 +43,7 @@ public:
                           REGDISPLAY *    pRegisterSet,                 // in/out
                           PTR_VOID *      ppPreviousTransitionFrame);   // out
 
-    UIntNative GetConservativeUpperBoundForOutgoingArgs(MethodInfo *   pMethodInfo,
+    uintptr_t GetConservativeUpperBoundForOutgoingArgs(MethodInfo *   pMethodInfo,
                                                         REGDISPLAY *   pRegisterSet);
 
     bool GetReturnAddressHijackInfo(MethodInfo *    pMethodInfo,

@@ -85,7 +85,7 @@ bool CLREventStatic::Reset()
 
 uint32_t CLREventStatic::Wait(uint32_t dwMilliseconds, bool bAlertable, bool bAllowReentrantWait)
 {
-    UInt32 result = WAIT_FAILED;
+    uint32_t result = WAIT_FAILED;
 
     if (m_fInitialized)
     {

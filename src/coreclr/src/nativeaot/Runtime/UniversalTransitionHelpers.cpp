@@ -35,7 +35,7 @@
 
 EXTERN_C
 DECLSPEC_ALIGN(TRASH_VALUE_ALIGNMENT)
-const UInt32 RhpIntegerTrashValues[] = {
+const uint32_t RhpIntegerTrashValues[] = {
  // Lo32         Hi32               Lo32       Hi32        Hi32:Lo32
  // -----------  -----------        ---------  ---------   ------------------
     0x07801001U, 0x07802002U,   // (125833217, 125837314) (540467148372316161)
@@ -50,7 +50,7 @@ const UInt32 RhpIntegerTrashValues[] = {
 
 EXTERN_C
 DECLSPEC_ALIGN(TRASH_VALUE_ALIGNMENT)
-const UInt32 RhpFpTrashValues[] = {
+const uint32_t RhpFpTrashValues[] = {
  // Lo32         Hi32               Lo32                 Hi32                  Hi32:Lo32
  // -----------  -----------        -------------------  -------------------   -------------------
     0x42001001U, 0x42002002U,   // (32.0156288146972660, 32.0312576293945310) (8657061952.00781440)

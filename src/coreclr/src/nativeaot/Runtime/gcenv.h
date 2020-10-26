@@ -106,11 +106,11 @@ public:
 class MethodTable
 {
 public:
-    UInt32 GetBaseSize() { return ((EEType*)this)->get_BaseSize(); }
-    UInt16 GetComponentSize() { return ((EEType*)this)->get_ComponentSize(); }
-    UInt16 RawGetComponentSize() { return ((EEType*)this)->get_ComponentSize(); }
-    UInt32 ContainsPointers() { return ((EEType*)this)->HasReferenceFields(); }
-    UInt32 ContainsPointersOrCollectible() { return ((EEType*)this)->HasReferenceFields(); }
+    uint32_t GetBaseSize() { return ((EEType*)this)->get_BaseSize(); }
+    uint16_t GetComponentSize() { return ((EEType*)this)->get_ComponentSize(); }
+    uint16_t RawGetComponentSize() { return ((EEType*)this)->get_ComponentSize(); }
+    uint32_t ContainsPointers() { return ((EEType*)this)->HasReferenceFields(); }
+    uint32_t ContainsPointersOrCollectible() { return ((EEType*)this)->HasReferenceFields(); }
     UInt32_BOOL HasComponentSize() const { return TRUE; }
 #ifdef FEATURE_PREMORTEM_FINALIZATION
     UInt32_BOOL HasFinalizer() { return ((EEType*)this)->HasFinalizer(); }
@@ -118,9 +118,9 @@ public:
 #endif // FEATURE_PREMORTEM_FINALIZATION
 #ifdef FEATURE_STRUCTALIGN
 #ifdef FEATURE_BARTOK
-    UInt32 GetRequiredAlignment() const { return ((EEType*)this)->get_BaseAlignment(); }
+    uint32_t GetRequiredAlignment() const { return ((EEType*)this)->get_BaseAlignment(); }
 #else // FEATURE_BARTOK
-    UInt32 GetRequiredAlignment() const { return sizeof(void*); }
+    uint32_t GetRequiredAlignment() const { return sizeof(void*); }
 #endif // FEATURE_BARTOK
 #endif // FEATURE_STRUCTALIGN
     bool RequiresAlign8() { return ((EEType*)this)->RequiresAlign8(); }
@@ -130,7 +130,7 @@ public:
 
 class EEConfig
 {
-    UInt8 m_gcStressMode;
+    uint8_t m_gcStressMode;
 
 public:
     enum HeapVerifyFlags {
@@ -167,7 +167,7 @@ public:
     }
 
     GCStressFlags GetGCStressLevel()        const { return (GCStressFlags) m_gcStressMode; }
-    void    SetGCStressLevel(int val)             { m_gcStressMode = (UInt8) val;}
+    void    SetGCStressLevel(int val)             { m_gcStressMode = (uint8_t) val;}
 
     bool    GetGCAllowVeryLargeObjects ()   const { return true; }
 
@@ -179,10 +179,10 @@ public:
 };
 extern EEConfig* g_pConfig;
 
-EXTERN_C UInt32 _tls_index;
-inline UInt16 GetClrInstanceId()
+EXTERN_C uint32_t _tls_index;
+inline uint16_t GetClrInstanceId()
 {
-    return (UInt16)_tls_index;
+    return (uint16_t)_tls_index;
 }
 
 class IGCHeap;

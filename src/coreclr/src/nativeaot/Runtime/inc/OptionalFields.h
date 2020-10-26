@@ -184,7 +184,7 @@ public:
 #define DEFINE_INLINE_OPTIONAL_FIELD(_name, _type)                       \
     _type Get##_name(_type defaultValue)                                 \
     {                                                                    \
-    return (_type)GetInlineField(OFT_##_name, (UInt32)defaultValue); \
+    return (_type)GetInlineField(OFT_##_name, (uint32_t)defaultValue); \
     }
 
 #include "OptionalFieldDefinitions.h"
@@ -196,7 +196,7 @@ private:
 
     // Reads a field value (or the basis for an out-of-line record delta) starting from the first byte of a
     // field description. Advances the field location to the start of the next field.
-    static UInt32 DecodeFieldValue(PTR_UInt8 * ppFields);
+    static uint32_t DecodeFieldValue(PTR_UInt8 * ppFields);
 
-    UInt32 GetInlineField(OptionalFieldTag eTag, UInt32 uiDefaultValue);
+    uint32_t GetInlineField(OptionalFieldTag eTag, uint32_t uiDefaultValue);
 };

@@ -48,16 +48,16 @@
 // Some counters used for debugging and profiling the algorithms.
 extern "C"
 {
-    UInt32 CID_g_cLoadVirtFunc = 0;
-    UInt32 CID_g_cCacheMisses = 0;
-    UInt32 CID_g_cCacheSizeOverflows = 0;
-    UInt32 CID_g_cCacheOutOfMemory = 0;
-    UInt32 CID_g_cCacheReallocates = 0;
-    UInt32 CID_g_cCacheAllocates = 0;
-    UInt32 CID_g_cCacheDiscards = 0;
-    UInt32 CID_g_cInterfaceDispatches = 0;
-    UInt32 CID_g_cbMemoryAllocated = 0;
-    UInt32 CID_g_rgAllocatesBySize[CID_MAX_CACHE_SIZE_LOG2 + 1] = { 0 };
+    uint32_t CID_g_cLoadVirtFunc = 0;
+    uint32_t CID_g_cCacheMisses = 0;
+    uint32_t CID_g_cCacheSizeOverflows = 0;
+    uint32_t CID_g_cCacheOutOfMemory = 0;
+    uint32_t CID_g_cCacheReallocates = 0;
+    uint32_t CID_g_cCacheAllocates = 0;
+    uint32_t CID_g_cCacheDiscards = 0;
+    uint32_t CID_g_cInterfaceDispatches = 0;
+    uint32_t CID_g_cbMemoryAllocated = 0;
+    uint32_t CID_g_rgAllocatesBySize[CID_MAX_CACHE_SIZE_LOG2 + 1] = { 0 };
 };
 
 #define CID_COUNTER_INC(_counter_name) CID_g_c##_counter_name++
@@ -88,16 +88,16 @@ static void * UpdatePointerPairAtomically(void * pPairLocation,
 {
 #if defined(HOST_64BIT)
     // The same comments apply to the AMD64 version. The CompareExchange looks a little different since the
-    // API was refactored in terms of Int64 to avoid creating a 128-bit integer type.
+    // API was refactored in terms of int64_t to avoid creating a 128-bit integer type.
 
-    Int64 rgComparand[2] = { 0 , 0 };
+    int64_t rgComparand[2] = { 0 , 0 };
     if (!fFailOnNonNull)
     {
-        rgComparand[0] = *(Int64 volatile *)pPairLocation;
-        rgComparand[1] = *((Int64 volatile *)pPairLocation + 1);
+        rgComparand[0] = *(int64_t volatile *)pPairLocation;
+        rgComparand[1] = *((int64_t volatile *)pPairLocation + 1);
     }
 
-    UInt8 bResult = PalInterlockedCompareExchange128((Int64*)pPairLocation, (Int64)pSecondPointer, (Int64)pFirstPointer, rgComparand);
+    uint8_t bResult = PalInterlockedCompareExchange128((int64_t*)pPairLocation, (int64_t)pSecondPointer, (int64_t)pFirstPointer, rgComparand);
     if (bResult == 1)
     {
         // Success, return old value of second pointer (rgComparand is updated by
@@ -109,13 +109,13 @@ static void * UpdatePointerPairAtomically(void * pPairLocation,
     return pSecondPointer;
 #else
     // Stuff the two pointers into a 64-bit value as the proposed new value for the CompareExchange64 below.
-    Int64 iNewValue = (Int64)((UInt64)(UIntNative)pFirstPointer | ((UInt64)(UIntNative)pSecondPointer << 32));
+    int64_t iNewValue = (int64_t)((uint64_t)(uintptr_t)pFirstPointer | ((uint64_t)(uintptr_t)pSecondPointer << 32));
 
     // Read the old value in the location. If fFailOnNonNull is set we just assume this was zero and we'll
     // fail below if that's not the case.
-    Int64 iOldValue = fFailOnNonNull ? 0 : *(Int64 volatile *)pPairLocation;
+    int64_t iOldValue = fFailOnNonNull ? 0 : *(int64_t volatile *)pPairLocation;
 
-    Int64 iUpdatedOldValue = PalInterlockedCompareExchange64((Int64*)pPairLocation, iNewValue, iOldValue);
+    int64_t iUpdatedOldValue = PalInterlockedCompareExchange64((int64_t*)pPairLocation, iNewValue, iOldValue);
     if (iUpdatedOldValue == iOldValue)
     {
         // Successful update. Return the previous value of the second pointer. For cache entry updates
@@ -123,7 +123,7 @@ static void * UpdatePointerPairAtomically(void * pPairLocation,
         // NULL in the success case is all the caller cares about. For indirection cell updates the second
         // pointer represents the old cache and the caller needs this data so they can schedule the cache
         // for deletion once it becomes safe to do so.
-        return (void*)(UInt32)(iOldValue >> 32);
+        return (void*)(uint32_t)(iOldValue >> 32);
     }
 
     // The update failed due to a racing update to the same location. Return the new value of the second
@@ -153,12 +153,12 @@ static bool UpdateCacheEntryAtomically(InterfaceDispatchCacheEntry *pEntry,
 // returned pointer is non-NULL it represents a cache that should be scheduled for release.
 static InterfaceDispatchCache * UpdateCellStubAndCache(InterfaceDispatchCell * pCell,
                                                        void * pStub,
-                                                       UIntNative newCacheValue)
+                                                       uintptr_t newCacheValue)
 {
     C_ASSERT(offsetof(InterfaceDispatchCell, m_pStub) == 0);
     C_ASSERT(offsetof(InterfaceDispatchCell, m_pCache) == sizeof(void*));
 
-    UIntNative oldCacheValue = (UIntNative)UpdatePointerPairAtomically(pCell, pStub, (void*)newCacheValue, false);
+    uintptr_t oldCacheValue = (uintptr_t)UpdatePointerPairAtomically(pCell, pStub, (void*)newCacheValue, false);
 
     if (InterfaceDispatchCell::IsCache(oldCacheValue))
     {
@@ -241,7 +241,7 @@ static void * g_rgDispatchStubs[CID_MAX_CACHE_SIZE_LOG2 + 1] = {
 };
 
 // Map a cache size into a linear index.
-static UInt32 CacheSizeToIndex(UInt32 cCacheEntries)
+static uint32_t CacheSizeToIndex(uint32_t cCacheEntries)
 {
     switch (cCacheEntries)
     {
@@ -267,7 +267,7 @@ static UInt32 CacheSizeToIndex(UInt32 cCacheEntries)
 // Allocates and initializes new cache of the given size. If given a previous version of the cache (guaranteed
 // to be smaller) it will also pre-populate the new cache with the contents of the old. Additionally the
 // address of the interface dispatch stub associated with this size of cache is returned.
-static UIntNative AllocateCache(UInt32 cCacheEntries, InterfaceDispatchCache * pExistingCache, const DispatchCellInfo *pNewCellInfo, void ** ppStub)
+static uintptr_t AllocateCache(uint32_t cCacheEntries, InterfaceDispatchCache * pExistingCache, const DispatchCellInfo *pNewCellInfo, void ** ppStub)
 {
     if (pNewCellInfo->CellType == DispatchCellType::VTableOffset)
     {
@@ -283,7 +283,7 @@ static UIntNative AllocateCache(UInt32 cCacheEntries, InterfaceDispatchCache * p
     InterfaceDispatchCache * pCache = NULL;
 
     // Transform cache size back into a linear index.
-    UInt32 idxCacheSize = CacheSizeToIndex(cCacheEntries);
+    uint32_t idxCacheSize = CacheSizeToIndex(cCacheEntries);
 
     // Attempt to allocate the head of the free list of the correct cache size.
     if (g_rgFreeLists[idxCacheSize] != NULL)
@@ -339,7 +339,7 @@ static UIntNative AllocateCache(UInt32 cCacheEntries, InterfaceDispatchCache * p
     // Pass back the stub the corresponds to this cache size.
     *ppStub = g_rgDispatchStubs[idxCacheSize];
 
-    return (UIntNative)pCache;
+    return (uintptr_t)pCache;
 }
 
 // Discards a cache by adding it to a list of caches that may still be in use but will be made available for
@@ -395,7 +395,7 @@ void ReclaimUnusedInterfaceDispatchCaches()
         InterfaceDispatchCache * pNextCache = pCache->m_pNextFree;
 
         // Transform cache size back into a linear index.
-        UInt32 idxCacheSize = CacheSizeToIndex(pCache->m_cEntries);
+        uint32_t idxCacheSize = CacheSizeToIndex(pCache->m_cEntries);
 
         // Insert the cache onto the head of the correct free list.
         pCache->m_pNextFree = g_rgFreeLists[idxCacheSize];
@@ -413,7 +413,7 @@ void ReclaimUnusedInterfaceDispatchCaches()
         InterfaceDispatchCache * pCache = pDiscardedCacheBlock->m_pCache;
 
         // Transform cache size back into a linear index.
-        UInt32 idxCacheSize = CacheSizeToIndex(pCache->m_cEntries);
+        uint32_t idxCacheSize = CacheSizeToIndex(pCache->m_cEntries);
 
         // Insert the cache onto the head of the correct free list.
         pCache->m_pNextFree = g_rgFreeLists[idxCacheSize];
@@ -452,11 +452,11 @@ COOP_PINVOKE_HELPER(PTR_Code, RhpUpdateDispatchCellCache, (InterfaceDispatchCell
     // Attempt to update the cache with this new mapping (if we have any cache at all, the initial state
     // is none).
     InterfaceDispatchCache * pCache = (InterfaceDispatchCache*)pCell->GetCache();
-    UInt32 cOldCacheEntries = 0;
+    uint32_t cOldCacheEntries = 0;
     if (pCache != NULL)
     {
         InterfaceDispatchCacheEntry * pCacheEntry = pCache->m_rgEntries;
-        for (UInt32 i = 0; i < pCache->m_cEntries; i++, pCacheEntry++)
+        for (uint32_t i = 0; i < pCache->m_cEntries; i++, pCacheEntry++)
         {
             if (pCacheEntry->m_pInstanceType == NULL)
             {
@@ -484,9 +484,9 @@ COOP_PINVOKE_HELPER(PTR_Code, RhpUpdateDispatchCellCache, (InterfaceDispatchCell
         return (PTR_Code)pTargetCode;
     }
 
-    UInt32 cNewCacheEntries = cOldCacheEntries ? cOldCacheEntries * 2 : 1;
+    uint32_t cNewCacheEntries = cOldCacheEntries ? cOldCacheEntries * 2 : 1;
     void *pStub;
-    UIntNative newCacheValue = AllocateCache(cNewCacheEntries, pCache, pNewCellInfo, &pStub);
+    uintptr_t newCacheValue = AllocateCache(cNewCacheEntries, pCache, pNewCellInfo, &pStub);
     if (newCacheValue == 0)
     {
         CID_COUNTER_INC(CacheOutOfMemory);
@@ -525,7 +525,7 @@ COOP_PINVOKE_HELPER(PTR_Code, RhpSearchDispatchCellCache, (InterfaceDispatchCell
     if (pCache != NULL)
     {
         InterfaceDispatchCacheEntry * pCacheEntry = pCache->m_rgEntries;
-        for (UInt32 i = 0; i < pCache->m_cEntries; i++, pCacheEntry++)
+        for (uint32_t i = 0; i < pCache->m_cEntries; i++, pCacheEntry++)
             if (pCacheEntry->m_pInstanceType == pInstanceType)
                 return (PTR_Code)pCacheEntry->m_pTargetCode;
     }

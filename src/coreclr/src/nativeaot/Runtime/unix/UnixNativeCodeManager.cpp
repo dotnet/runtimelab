@@ -40,8 +40,8 @@ struct UnixNativeMethodInfo
 static_assert(sizeof(UnixNativeMethodInfo) <= sizeof(MethodInfo), "UnixNativeMethodInfo too big");
 
 UnixNativeCodeManager::UnixNativeCodeManager(TADDR moduleBase,
-                                             PTR_VOID pvManagedCodeStartRange, UInt32 cbManagedCodeRange,
-                                             PTR_PTR_VOID pClasslibFunctions, UInt32 nClasslibFunctions)
+                                             PTR_VOID pvManagedCodeStartRange, uint32_t cbManagedCodeRange,
+                                             PTR_PTR_VOID pClasslibFunctions, uint32_t nClasslibFunctions)
     : m_moduleBase(moduleBase),
       m_pvManagedCodeStartRange(pvManagedCodeStartRange), m_cbManagedCodeRange(cbManagedCodeRange),
       m_pClasslibFunctions(pClasslibFunctions), m_nClasslibFunctions(nClasslibFunctions)
@@ -63,10 +63,10 @@ bool UnixNativeCodeManager::FindMethodInfo(PTR_VOID        ControlPC,
     }
 
     UnixNativeMethodInfo * pMethodInfo = (UnixNativeMethodInfo *)pMethodInfoOut;
-    UIntNative startAddress;
-    UIntNative lsda;
+    uintptr_t startAddress;
+    uintptr_t lsda;
 
-    if (!FindProcInfo((UIntNative)ControlPC, &startAddress, &lsda))
+    if (!FindProcInfo((uintptr_t)ControlPC, &startAddress, &lsda))
     {
         return false;
     }
@@ -144,7 +144,7 @@ void UnixNativeCodeManager::EnumGcRefs(MethodInfo *    pMethodInfo,
     if ((unwindBlockFlags & UBF_FUNC_HAS_EHINFO) != 0)
         p += sizeof(int32_t);
 
-    UInt32 codeOffset = (UInt32)(PINSTRToPCODE(dac_cast<TADDR>(safePointAddress)) - PINSTRToPCODE(dac_cast<TADDR>(pNativeMethodInfo->pMethodStartAddress)));
+    uint32_t codeOffset = (uint32_t)(PINSTRToPCODE(dac_cast<TADDR>(safePointAddress)) - PINSTRToPCODE(dac_cast<TADDR>(pNativeMethodInfo->pMethodStartAddress)));
 
     GcInfoDecoder decoder(
         GCInfoToken(p),
@@ -170,10 +170,10 @@ void UnixNativeCodeManager::EnumGcRefs(MethodInfo *    pMethodInfo,
     }
 }
 
-UIntNative UnixNativeCodeManager::GetConservativeUpperBoundForOutgoingArgs(MethodInfo * pMethodInfo, REGDISPLAY * pRegisterSet)
+uintptr_t UnixNativeCodeManager::GetConservativeUpperBoundForOutgoingArgs(MethodInfo * pMethodInfo, REGDISPLAY * pRegisterSet)
 {
     // Return value
-    UIntNative upperBound;
+    uintptr_t upperBound;
 
     UnixNativeMethodInfo * pNativeMethodInfo = (UnixNativeMethodInfo *)pMethodInfo;
 
@@ -209,7 +209,7 @@ UIntNative UnixNativeCodeManager::GetConservativeUpperBoundForOutgoingArgs(Metho
 
         // Reverse PInvoke case.  The embedded reverse PInvoke frame is guaranteed to reside above
         // all outgoing arguments.
-        upperBound = (UIntNative)dac_cast<TADDR>(basePointer + slot);
+        upperBound = (uintptr_t)dac_cast<TADDR>(basePointer + slot);
     }
     else
     {
@@ -311,8 +311,8 @@ struct UnixEHEnumState
 {
     PTR_UInt8 pMethodStartAddress;
     PTR_UInt8 pEHInfo;
-    UInt32 uClause;
-    UInt32 nClauses;
+    uint32_t uClause;
+    uint32_t nClauses;
 };
 
 // Ensure that UnixEHEnumState fits into the space reserved by EHEnumState
@@ -366,7 +366,7 @@ bool UnixNativeCodeManager::EHEnumNext(EHEnumState * pEHEnumState, EHClause * pE
 
     pEHClauseOut->m_tryStartOffset = VarInt::ReadUnsigned(pEnumState->pEHInfo);
 
-    UInt32 tryEndDeltaAndClauseKind = VarInt::ReadUnsigned(pEnumState->pEHInfo);
+    uint32_t tryEndDeltaAndClauseKind = VarInt::ReadUnsigned(pEnumState->pEHInfo);
     pEHClauseOut->m_clauseKind = (EHClauseKind)(tryEndDeltaAndClauseKind & 0x3);
     pEHClauseOut->m_tryEndOffset = pEHClauseOut->m_tryStartOffset + (tryEndDeltaAndClauseKind >> 2);
 
@@ -382,23 +382,23 @@ bool UnixNativeCodeManager::EHEnumNext(EHEnumState * pEHEnumState, EHClause * pE
     switch (pEHClauseOut->m_clauseKind)
     {
     case EH_CLAUSE_TYPED:
-        pEHClauseOut->m_handlerAddress = dac_cast<UInt8*>(PINSTRToPCODE(dac_cast<TADDR>(pEnumState->pMethodStartAddress))) + VarInt::ReadUnsigned(pEnumState->pEHInfo);
+        pEHClauseOut->m_handlerAddress = dac_cast<uint8_t*>(PINSTRToPCODE(dac_cast<TADDR>(pEnumState->pMethodStartAddress))) + VarInt::ReadUnsigned(pEnumState->pEHInfo);
 
         // Read target type
         {
             // @TODO: CORERT: Compress EHInfo using type table index scheme
             // https://github.com/dotnet/corert/issues/972
-            Int32 typeRelAddr = *((PTR_Int32&)pEnumState->pEHInfo);
+            int32_t typeRelAddr = *((PTR_Int32&)pEnumState->pEHInfo);
             pEHClauseOut->m_pTargetType = dac_cast<PTR_VOID>(pEnumState->pEHInfo + typeRelAddr);
             pEnumState->pEHInfo += 4;
         }
         break;
     case EH_CLAUSE_FAULT:
-        pEHClauseOut->m_handlerAddress = dac_cast<UInt8*>(PINSTRToPCODE(dac_cast<TADDR>(pEnumState->pMethodStartAddress))) + VarInt::ReadUnsigned(pEnumState->pEHInfo);
+        pEHClauseOut->m_handlerAddress = dac_cast<uint8_t*>(PINSTRToPCODE(dac_cast<TADDR>(pEnumState->pMethodStartAddress))) + VarInt::ReadUnsigned(pEnumState->pEHInfo);
         break;
     case EH_CLAUSE_FILTER:
-        pEHClauseOut->m_handlerAddress = dac_cast<UInt8*>(PINSTRToPCODE(dac_cast<TADDR>(pEnumState->pMethodStartAddress))) + VarInt::ReadUnsigned(pEnumState->pEHInfo);
-        pEHClauseOut->m_filterAddress = dac_cast<UInt8*>(PINSTRToPCODE(dac_cast<TADDR>(pEnumState->pMethodStartAddress))) + VarInt::ReadUnsigned(pEnumState->pEHInfo);
+        pEHClauseOut->m_handlerAddress = dac_cast<uint8_t*>(PINSTRToPCODE(dac_cast<TADDR>(pEnumState->pMethodStartAddress))) + VarInt::ReadUnsigned(pEnumState->pEHInfo);
+        pEHClauseOut->m_filterAddress = dac_cast<uint8_t*>(PINSTRToPCODE(dac_cast<TADDR>(pEnumState->pMethodStartAddress))) + VarInt::ReadUnsigned(pEnumState->pEHInfo);
         break;
     default:
         UNREACHABLE_MSG("unexpected EHClauseKind");
@@ -445,15 +445,15 @@ PTR_VOID UnixNativeCodeManager::GetAssociatedData(PTR_VOID ControlPC)
     return dac_cast<PTR_VOID>(p + *dac_cast<PTR_Int32>(p));
 }
 
-extern "C" bool RegisterCodeManager(ICodeManager * pCodeManager, PTR_VOID pvStartRange, UInt32 cbRange);
+extern "C" bool RegisterCodeManager(ICodeManager * pCodeManager, PTR_VOID pvStartRange, uint32_t cbRange);
 extern "C" void UnregisterCodeManager(ICodeManager * pCodeManager);
-extern "C" bool RegisterUnboxingStubs(PTR_VOID pvStartRange, UInt32 cbRange);
+extern "C" bool RegisterUnboxingStubs(PTR_VOID pvStartRange, uint32_t cbRange);
 
 extern "C"
 bool RhRegisterOSModule(void * pModule,
-                        void * pvManagedCodeStartRange, UInt32 cbManagedCodeRange,
-                        void * pvUnboxingStubsStartRange, UInt32 cbUnboxingStubsRange,
-                        void ** pClasslibFunctions, UInt32 nClasslibFunctions)
+                        void * pvManagedCodeStartRange, uint32_t cbManagedCodeRange,
+                        void * pvUnboxingStubsStartRange, uint32_t cbUnboxingStubsRange,
+                        void ** pClasslibFunctions, uint32_t nClasslibFunctions)
 {
     NewHolder<UnixNativeCodeManager> pUnixNativeCodeManager = new (nothrow) UnixNativeCodeManager((TADDR)pModule,
         pvManagedCodeStartRange, cbManagedCodeRange,

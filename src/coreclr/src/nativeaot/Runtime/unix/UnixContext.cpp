@@ -535,7 +535,7 @@ void NativeContextToPalContext(const void* context, PAL_LIMITED_CONTEXT* palCont
 }
 
 // Redirect Unix native context to the PAL_LIMITED_CONTEXT and also set the first two argument registers
-void RedirectNativeContext(void* context, const PAL_LIMITED_CONTEXT* palContext, UIntNative arg0Reg, UIntNative arg1Reg)
+void RedirectNativeContext(void* context, const PAL_LIMITED_CONTEXT* palContext, uintptr_t arg0Reg, uintptr_t arg1Reg)
 {
     ucontext_t *nativeContext = (ucontext_t*)context;
 
@@ -607,7 +607,7 @@ uint64_t GetPC(void* context)
 #endif // HOST_AMD64
 
 // Find LSDA and start address for a function at address controlPC
-bool FindProcInfo(UIntNative controlPC, UIntNative* startAddress, UIntNative* lsda)
+bool FindProcInfo(uintptr_t controlPC, uintptr_t* startAddress, uintptr_t* lsda)
 {
     unw_proc_info_t procInfo;
 
@@ -620,7 +620,7 @@ bool FindProcInfo(UIntNative controlPC, UIntNative* startAddress, UIntNative* ls
 
 #if defined(HOST_ARM)
     // libunwind fills by reference not by value for ARM
-    *lsda = *((UIntNative *)procInfo.lsda);
+    *lsda = *((uintptr_t *)procInfo.lsda);
 #else
     *lsda = procInfo.lsda;
 #endif

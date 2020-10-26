@@ -18,7 +18,7 @@ FORCEINLINE void System_YieldProcessor() { PalYieldProcessor(); }
 #endif
 #define PalYieldProcessor Dont_Use_PalYieldProcessor
 
-#define SIZE_T UIntNative
+#define SIZE_T uintptr_t
 
 const unsigned int MinNsPerNormalizedYield = 37; // measured typically 37-46 on post-Skylake
 const unsigned int NsPerOptimalMaxSpinIterationDuration = 272; // approx. 900 cycles, measured 281 on pre-Skylake, 263 on post-Skylake

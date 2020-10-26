@@ -31,7 +31,7 @@
 #include "DebugEventSource.h"
 #include "DebugFuncEval.h"
 
-EXTERN_C volatile UInt32 RhpTrapThreads = (UInt32)TrapThreadsFlags::None;
+EXTERN_C volatile uint32_t RhpTrapThreads = (uint32_t)TrapThreadsFlags::None;
 
 GVAL_IMPL_INIT(PTR_Thread, RhpSuspendingThread, 0);
 
@@ -130,7 +130,7 @@ void ThreadStore::AttachCurrentThread(bool fAcquireThreadStoreLock)
     // see if that's going on and, if so, use a proper wait instead of the RWL's spinning.  NOTE: when we are
     // called with fAcquireThreadStoreLock==false, we are being called in a situation where the GC is trying to
     // init a GC thread, so we must honor the flag to mean "do not block on GC" or else we will deadlock.
-    if (fAcquireThreadStoreLock && (RhpTrapThreads != (UInt32)TrapThreadsFlags::None))
+    if (fAcquireThreadStoreLock && (RhpTrapThreads != (uint32_t)TrapThreadsFlags::None))
         RedhawkGCInterface::WaitForGCCompletion();
 
     ThreadStore* pTS = GetThreadStore();
@@ -236,7 +236,7 @@ void ThreadStore::SuspendAllThreads(bool waitForGCEvent, bool fireDebugEvent)
     m_SuspendCompleteEvent.Reset();
 
     // set the global trap for pinvoke leave and return
-    RhpTrapThreads |= (UInt32)TrapThreadsFlags::TrapThreads;
+    RhpTrapThreads |= (uint32_t)TrapThreadsFlags::TrapThreads;
 
     // Set each module's loop hijack flag
     GetRuntimeInstance()->SetLoopHijackFlags(RhpTrapThreads);
@@ -301,7 +301,7 @@ void ThreadStore::ResumeAllThreads(bool waitForGCEvent)
     }
     END_FOREACH_THREAD
 
-    RhpTrapThreads &= ~(UInt32)TrapThreadsFlags::TrapThreads;
+    RhpTrapThreads &= ~(uint32_t)TrapThreadsFlags::TrapThreads;
 
     // Reset module's hijackLoops flag
     GetRuntimeInstance()->SetLoopHijackFlags(0);
@@ -316,7 +316,7 @@ void ThreadStore::ResumeAllThreads(bool waitForGCEvent)
 
 void ThreadStore::WaitForSuspendComplete()
 {
-    UInt32 waitResult = m_SuspendCompleteEvent.Wait(INFINITE, false);
+    uint32_t waitResult = m_SuspendCompleteEvent.Wait(INFINITE, false);
     if (waitResult == WAIT_FAILED)
         RhFailFast();
 }
@@ -327,8 +327,8 @@ void ThreadStore::InitiateThreadAbort(Thread* targetThread, Object * threadAbort
 {
     SuspendAllThreads(/* waitForGCEvent = */ false, /* fireDebugEvent = */ false);
     // TODO: consider enabling multiple thread aborts running in parallel on different threads
-    ASSERT((RhpTrapThreads & (UInt32)TrapThreadsFlags::AbortInProgress) == 0);
-    RhpTrapThreads |= (UInt32)TrapThreadsFlags::AbortInProgress;
+    ASSERT((RhpTrapThreads & (uint32_t)TrapThreadsFlags::AbortInProgress) == 0);
+    RhpTrapThreads |= (uint32_t)TrapThreadsFlags::AbortInProgress;
 
     targetThread->SetThreadAbortException(threadAbortException);
 
@@ -366,8 +366,8 @@ void ThreadStore::CancelThreadAbort(Thread* targetThread)
 {
     SuspendAllThreads(/* waitForGCEvent = */ false, /* fireDebugEvent = */ false);
 
-    ASSERT((RhpTrapThreads & (UInt32)TrapThreadsFlags::AbortInProgress) != 0);
-    RhpTrapThreads &= ~(UInt32)TrapThreadsFlags::AbortInProgress;
+    ASSERT((RhpTrapThreads & (uint32_t)TrapThreadsFlags::AbortInProgress) != 0);
+    RhpTrapThreads &= ~(uint32_t)TrapThreadsFlags::AbortInProgress;
 
     PInvokeTransitionFrame* transitionFrame = reinterpret_cast<PInvokeTransitionFrame*>(targetThread->GetTransitionFrame());
     if (transitionFrame != nullptr)
@@ -430,10 +430,10 @@ EXTERN_C ThreadBuffer* RhpGetThread()
 // declaration of _tls_index directly.
 
 // volatile to prevent the compiler from removing the unused global variable
-volatile UInt32 * p_tls_index;
-volatile UInt32 SECTIONREL__tls_CurrentThread;
+volatile uint32_t * p_tls_index;
+volatile uint32_t SECTIONREL__tls_CurrentThread;
 
-EXTERN_C UInt32 _tls_index;
+EXTERN_C uint32_t _tls_index;
 #if defined(TARGET_ARM64)
 // ARM64TODO: Re-enable optimization
 #pragma optimize("", off)
@@ -442,19 +442,19 @@ void ThreadStore::SaveCurrentThreadOffsetForDAC()
 {
     p_tls_index = &_tls_index;
 
-    UInt8 * pTls = *(UInt8 **)(PalNtCurrentTeb() + OFFSETOF__TEB__ThreadLocalStoragePointer);
+    uint8_t * pTls = *(uint8_t **)(PalNtCurrentTeb() + OFFSETOF__TEB__ThreadLocalStoragePointer);
 
-    UInt8 * pOurTls = *(UInt8 **)(pTls + (_tls_index * sizeof(void*)));
+    uint8_t * pOurTls = *(uint8_t **)(pTls + (_tls_index * sizeof(void*)));
 
-    SECTIONREL__tls_CurrentThread = (UInt32)((UInt8 *)&tls_CurrentThread - pOurTls);
+    SECTIONREL__tls_CurrentThread = (uint32_t)((uint8_t *)&tls_CurrentThread - pOurTls);
 }
 #if defined(TARGET_ARM64)
 #pragma optimize("", on)
 #endif
 #else // DACCESS_COMPILE
 
-GPTR_IMPL(UInt32, p_tls_index);
-GVAL_IMPL(UInt32, SECTIONREL__tls_CurrentThread);
+GPTR_IMPL(uint32_t, p_tls_index);
+GVAL_IMPL(uint32_t, SECTIONREL__tls_CurrentThread);
 
 //
 // This routine supports the !Thread debugger extension routine
@@ -466,7 +466,7 @@ PTR_Thread ThreadStore::GetThreadFromTEB(TADDR pTEB)
     if (pTEB == NULL)
         return NULL;
 
-    UInt32 tlsIndex = *p_tls_index;
+    uint32_t tlsIndex = *p_tls_index;
     TADDR pTls = *(PTR_TADDR)(pTEB + OFFSETOF__TEB__ThreadLocalStoragePointer);
     if (pTls == NULL)
         return NULL;
@@ -492,14 +492,14 @@ void ThreadStore::SaveCurrentThreadOffsetForDAC()
 #ifndef DACCESS_COMPILE
 
 // internal static extern unsafe bool RhGetExceptionsForCurrentThread(Exception[] outputArray, out int writtenCountOut);
-COOP_PINVOKE_HELPER(Boolean, RhGetExceptionsForCurrentThread, (Array* pOutputArray, Int32* pWrittenCountOut))
+COOP_PINVOKE_HELPER(Boolean, RhGetExceptionsForCurrentThread, (Array* pOutputArray, int32_t* pWrittenCountOut))
 {
     return GetThreadStore()->GetExceptionsForCurrentThread(pOutputArray, pWrittenCountOut);
 }
 
-Boolean ThreadStore::GetExceptionsForCurrentThread(Array* pOutputArray, Int32* pWrittenCountOut)
+Boolean ThreadStore::GetExceptionsForCurrentThread(Array* pOutputArray, int32_t* pWrittenCountOut)
 {
-    Int32 countWritten = 0;
+    int32_t countWritten = 0;
     Object** pArrayElements;
     Thread * pThread = GetCurrentThread();
 
@@ -516,7 +516,7 @@ Boolean ThreadStore::GetExceptionsForCurrentThread(Array* pOutputArray, Int32* p
         goto Error;
 
     // Input array was not big enough.  We don't even partially fill it.
-    if (pOutputArray->GetArrayLength() < (UInt32)countWritten)
+    if (pOutputArray->GetArrayLength() < (uint32_t)countWritten)
         goto Error;
 
     *pWrittenCountOut = countWritten;

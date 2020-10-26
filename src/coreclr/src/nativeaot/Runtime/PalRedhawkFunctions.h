@@ -1,8 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-extern "C" UInt16 __stdcall CaptureStackBackTrace(UInt32, UInt32, void*, UInt32*);
-inline UInt16 PalCaptureStackBackTrace(UInt32 arg1, UInt32 arg2, void* arg3, UInt32* arg4)
+extern "C" uint16_t __stdcall CaptureStackBackTrace(uint32_t, uint32_t, void*, uint32_t*);
+inline uint16_t PalCaptureStackBackTrace(uint32_t arg1, uint32_t arg2, void* arg3, uint32_t* arg4)
 {
     return CaptureStackBackTrace(arg1, arg2, arg3, arg4);
 }
@@ -25,8 +25,8 @@ inline void PalDeleteCriticalSection(CRITICAL_SECTION * arg1)
     DeleteCriticalSection(arg1);
 }
 
-extern "C" UInt32_BOOL __stdcall DuplicateHandle(HANDLE, HANDLE, HANDLE, HANDLE *, UInt32, UInt32_BOOL, UInt32);
-inline UInt32_BOOL PalDuplicateHandle(HANDLE arg1, HANDLE arg2, HANDLE arg3, HANDLE * arg4, UInt32 arg5, UInt32_BOOL arg6, UInt32 arg7)
+extern "C" UInt32_BOOL __stdcall DuplicateHandle(HANDLE, HANDLE, HANDLE, HANDLE *, uint32_t, UInt32_BOOL, uint32_t);
+inline UInt32_BOOL PalDuplicateHandle(HANDLE arg1, HANDLE arg2, HANDLE arg3, HANDLE * arg4, uint32_t arg5, UInt32_BOOL arg6, uint32_t arg7)
 {
     return DuplicateHandle(arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
@@ -37,20 +37,20 @@ inline void PalEnterCriticalSection(CRITICAL_SECTION * arg1)
     EnterCriticalSection(arg1);
 }
 
-extern "C" UInt32 __stdcall EventRegister(const GUID *, void *, void *, REGHANDLE *);
-inline UInt32 PalEventRegister(const GUID * arg1, void * arg2, void * arg3, REGHANDLE * arg4)
+extern "C" uint32_t __stdcall EventRegister(const GUID *, void *, void *, REGHANDLE *);
+inline uint32_t PalEventRegister(const GUID * arg1, void * arg2, void * arg3, REGHANDLE * arg4)
 {
     return EventRegister(arg1, arg2, arg3, arg4);
 }
 
-extern "C" UInt32 __stdcall EventUnregister(REGHANDLE);
-inline UInt32 PalEventUnregister(REGHANDLE arg1)
+extern "C" uint32_t __stdcall EventUnregister(REGHANDLE);
+inline uint32_t PalEventUnregister(REGHANDLE arg1)
 {
     return EventUnregister(arg1);
 }
 
-extern "C" UInt32 __stdcall EventWrite(REGHANDLE, const EVENT_DESCRIPTOR *, UInt32, EVENT_DATA_DESCRIPTOR *);
-inline UInt32 PalEventWrite(REGHANDLE arg1, const EVENT_DESCRIPTOR * arg2, UInt32 arg3, EVENT_DATA_DESCRIPTOR * arg4)
+extern "C" uint32_t __stdcall EventWrite(REGHANDLE, const EVENT_DESCRIPTOR *, uint32_t, EVENT_DATA_DESCRIPTOR *);
+inline uint32_t PalEventWrite(REGHANDLE arg1, const EVENT_DESCRIPTOR * arg2, uint32_t arg3, EVENT_DATA_DESCRIPTOR * arg4)
 {
     return EventWrite(arg1, arg2, arg3, arg4);
 }
@@ -67,8 +67,8 @@ inline HANDLE PalGetCurrentProcess()
     return GetCurrentProcess();
 }
 
-extern "C" UInt32 __stdcall GetCurrentProcessId();
-inline UInt32 PalGetCurrentProcessId()
+extern "C" uint32_t __stdcall GetCurrentProcessId();
+inline uint32_t PalGetCurrentProcessId()
 {
     return GetCurrentProcessId();
 }
@@ -80,14 +80,14 @@ inline HANDLE PalGetCurrentThread()
 }
 
 #ifdef UNICODE
-extern "C" UInt32 __stdcall GetEnvironmentVariableW(__in_z_opt LPCWSTR, __out_z_opt LPWSTR, UInt32);
-inline UInt32 PalGetEnvironmentVariable(__in_z_opt LPCWSTR arg1, __out_z_opt LPWSTR arg2, UInt32 arg3)
+extern "C" uint32_t __stdcall GetEnvironmentVariableW(__in_z_opt LPCWSTR, __out_z_opt LPWSTR, uint32_t);
+inline uint32_t PalGetEnvironmentVariable(__in_z_opt LPCWSTR arg1, __out_z_opt LPWSTR arg2, uint32_t arg3)
 {
     return GetEnvironmentVariableW(arg1, arg2, arg3);
 }
 #else
-extern "C" UInt32 __stdcall GetEnvironmentVariableA(__in_z_opt LPCSTR, __out_z_opt LPSTR, UInt32);
-inline UInt32 PalGetEnvironmentVariable(__in_z_opt LPCSTR arg1, __out_z_opt LPSTR arg2, UInt32 arg3)
+extern "C" uint32_t __stdcall GetEnvironmentVariableA(__in_z_opt LPCSTR, __out_z_opt LPSTR, uint32_t);
+inline uint32_t PalGetEnvironmentVariable(__in_z_opt LPCSTR arg1, __out_z_opt LPSTR arg2, uint32_t arg3)
 {
     return GetEnvironmentVariableA(arg1, arg2, arg3);
 }
@@ -99,8 +99,8 @@ inline void * PalGetProcAddress(HANDLE arg1, const char * arg2)
     return GetProcAddress(arg1, arg2);
 }
 
-extern "C" UInt32_BOOL __stdcall InitializeCriticalSectionEx(CRITICAL_SECTION *, UInt32, UInt32);
-inline UInt32_BOOL PalInitializeCriticalSectionEx(CRITICAL_SECTION * arg1, UInt32 arg2, UInt32 arg3)
+extern "C" UInt32_BOOL __stdcall InitializeCriticalSectionEx(CRITICAL_SECTION *, uint32_t, uint32_t);
+inline UInt32_BOOL PalInitializeCriticalSectionEx(CRITICAL_SECTION * arg1, uint32_t arg2, uint32_t arg3)
 {
     return InitializeCriticalSectionEx(arg1, arg2, arg3);
 }
@@ -117,8 +117,8 @@ inline void PalLeaveCriticalSection(CRITICAL_SECTION * arg1)
     LeaveCriticalSection(arg1);
 }
 
-extern "C" HANDLE __stdcall LoadLibraryExW(const WCHAR *, HANDLE, UInt32);
-inline HANDLE PalLoadLibraryExW(const WCHAR * arg1, HANDLE arg2, UInt32 arg3)
+extern "C" HANDLE __stdcall LoadLibraryExW(const WCHAR *, HANDLE, uint32_t);
+inline HANDLE PalLoadLibraryExW(const WCHAR * arg1, HANDLE arg2, uint32_t arg3)
 {
     return LoadLibraryExW(arg1, arg2, arg3);
 }
@@ -135,8 +135,8 @@ inline UInt32_BOOL PalQueryPerformanceFrequency(LARGE_INTEGER * arg1)
     return QueryPerformanceFrequency(arg1);
 }
 
-extern "C" void __stdcall RaiseException(UInt32, UInt32, UInt32, const UInt32 *);
-inline void PalRaiseException(UInt32 arg1, UInt32 arg2, UInt32 arg3, const UInt32 * arg4)
+extern "C" void __stdcall RaiseException(uint32_t, uint32_t, uint32_t, const uint32_t *);
+inline void PalRaiseException(uint32_t arg1, uint32_t arg2, uint32_t arg3, const uint32_t * arg4)
 {
     RaiseException(arg1, arg2, arg3, arg4);
 }
@@ -159,14 +159,14 @@ inline UInt32_BOOL PalSetEvent(HANDLE arg1)
     return SetEvent(arg1);
 }
 
-extern "C" void __stdcall TerminateProcess(HANDLE, UInt32);
-inline void PalTerminateProcess(HANDLE arg1, UInt32 arg2)
+extern "C" void __stdcall TerminateProcess(HANDLE, uint32_t);
+inline void PalTerminateProcess(HANDLE arg1, uint32_t arg2)
 {
     TerminateProcess(arg1, arg2);
 }
 
-extern "C" UInt32 __stdcall WaitForSingleObjectEx(HANDLE, UInt32, UInt32_BOOL);
-inline UInt32 PalWaitForSingleObjectEx(HANDLE arg1, UInt32 arg2, UInt32_BOOL arg3)
+extern "C" uint32_t __stdcall WaitForSingleObjectEx(HANDLE, uint32_t, UInt32_BOOL);
+inline uint32_t PalWaitForSingleObjectEx(HANDLE arg1, uint32_t arg2, UInt32_BOOL arg3)
 {
     return WaitForSingleObjectEx(arg1, arg2, arg3);
 }
@@ -178,8 +178,8 @@ inline void PalGetSystemTimeAsFileTime(FILETIME * arg1)
     GetSystemTimeAsFileTime(arg1);
 }
 
-extern "C" void __stdcall RaiseFailFastException(PEXCEPTION_RECORD, PCONTEXT, UInt32);
-inline void PalRaiseFailFastException(PEXCEPTION_RECORD arg1, PCONTEXT arg2, UInt32 arg3)
+extern "C" void __stdcall RaiseFailFastException(PEXCEPTION_RECORD, PCONTEXT, uint32_t);
+inline void PalRaiseFailFastException(PEXCEPTION_RECORD arg1, PCONTEXT arg2, uint32_t arg3)
 {
     RaiseFailFastException(arg1, arg2, arg3);
 }

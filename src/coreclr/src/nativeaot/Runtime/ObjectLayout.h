@@ -17,20 +17,20 @@ class ObjHeader
 {
 private:
 #if defined(HOST_64BIT)
-    UInt32   m_uAlignpad;
+    uint32_t   m_uAlignpad;
 #endif // HOST_64BIT
-    UInt32   m_uSyncBlockValue;
+    uint32_t   m_uSyncBlockValue;
 
 public:
-    UInt32 GetBits() { return m_uSyncBlockValue; }
-    void SetBit(UInt32 uBit);
-    void ClrBit(UInt32 uBit);
+    uint32_t GetBits() { return m_uSyncBlockValue; }
+    void SetBit(uint32_t uBit);
+    void ClrBit(uint32_t uBit);
     void SetGCBit() { m_uSyncBlockValue |= BIT_SBLK_GC_RESERVE; }
     void ClrGCBit() { m_uSyncBlockValue &= ~BIT_SBLK_GC_RESERVE; }
 };
 
 //-------------------------------------------------------------------------------------------------
-static UIntNative const SYNC_BLOCK_SKEW  = sizeof(void *);
+static uintptr_t const SYNC_BLOCK_SKEW  = sizeof(void *);
 
 class EEType;
 typedef DPTR(class EEType) PTR_EEType;
@@ -47,9 +47,9 @@ public:
         { return m_pEEType; }
     EEType * get_SafeEEType() const
 #ifdef TARGET_64BIT
-        { return dac_cast<PTR_EEType>((dac_cast<TADDR>(m_pEEType)) & ~((UIntNative)7)); }
+        { return dac_cast<PTR_EEType>((dac_cast<TADDR>(m_pEEType)) & ~((uintptr_t)7)); }
 #else
-        { return dac_cast<PTR_EEType>((dac_cast<TADDR>(m_pEEType)) & ~((UIntNative)3)); }
+        { return dac_cast<PTR_EEType>((dac_cast<TADDR>(m_pEEType)) & ~((uintptr_t)3)); }
 #endif
     ObjHeader * GetHeader() { return dac_cast<DPTR(ObjHeader)>(dac_cast<TADDR>(this) - SYNC_BLOCK_SKEW); }
 #ifndef DACCESS_COMPILE
@@ -82,10 +82,10 @@ typedef DPTR(Object) PTR_Object;
 typedef DPTR(PTR_Object) PTR_PTR_Object;
 
 //-------------------------------------------------------------------------------------------------
-static UIntNative const MIN_OBJECT_SIZE  = (2 * sizeof(void*)) + sizeof(ObjHeader);
+static uintptr_t const MIN_OBJECT_SIZE  = (2 * sizeof(void*)) + sizeof(ObjHeader);
 
 //-------------------------------------------------------------------------------------------------
-static UIntNative const REFERENCE_SIZE   = sizeof(Object *);
+static uintptr_t const REFERENCE_SIZE   = sizeof(Object *);
 
 //-------------------------------------------------------------------------------------------------
 class Array : public Object
@@ -93,13 +93,13 @@ class Array : public Object
     friend class ArrayBase;
     friend class AsmOffsets;
 
-    UInt32       m_Length;
+    uint32_t       m_Length;
 #if defined(HOST_64BIT)
-    UInt32       m_uAlignpad;
+    uint32_t       m_uAlignpad;
 #endif // HOST_64BIT
 public:
-    UInt32 GetArrayLength();
-    void InitArrayLength(UInt32 length);
+    uint32_t GetArrayLength();
+    void InitArrayLength(uint32_t length);
     void* GetArrayData();
 };
 typedef DPTR(Array) PTR_Array;
@@ -110,8 +110,8 @@ class String : public Object
     friend class AsmOffsets;
     friend class StringConstants;
 
-    UInt32       m_Length;
-    UInt16       m_FirstChar;
+    uint32_t       m_Length;
+    uint16_t       m_FirstChar;
 };
 typedef DPTR(String) PTR_String;
 
@@ -119,15 +119,15 @@ typedef DPTR(String) PTR_String;
 class StringConstants
 {
 public:
-    static UIntNative const ComponentSize = sizeof(((String*)0)->m_FirstChar);
-    static UIntNative const BaseSize = sizeof(ObjHeader) + offsetof(String, m_FirstChar) + ComponentSize;
+    static uintptr_t const ComponentSize = sizeof(((String*)0)->m_FirstChar);
+    static uintptr_t const BaseSize = sizeof(ObjHeader) + offsetof(String, m_FirstChar) + ComponentSize;
 };
 
 //-------------------------------------------------------------------------------------------------
-static UIntNative const STRING_COMPONENT_SIZE = StringConstants::ComponentSize;
+static uintptr_t const STRING_COMPONENT_SIZE = StringConstants::ComponentSize;
 
 //-------------------------------------------------------------------------------------------------
-static UIntNative const STRING_BASE_SIZE = StringConstants::BaseSize;
+static uintptr_t const STRING_BASE_SIZE = StringConstants::BaseSize;
 
 //-------------------------------------------------------------------------------------------------
-static UIntNative const MAX_STRING_LENGTH = 0x3FFFFFDF;
+static uintptr_t const MAX_STRING_LENGTH = 0x3FFFFFDF;

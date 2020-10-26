@@ -257,7 +257,7 @@ void StressLog::ThreadDetach(ThreadStressLog *msgs) {
 bool StressLog::AllowNewChunk (long numChunksInCurThread)
 {
     _ASSERTE (numChunksInCurThread <= VolatileLoad(&theLog.totalChunk));
-    UInt32 perThreadLimit = theLog.MaxSizePerThread;
+    uint32_t perThreadLimit = theLog.MaxSizePerThread;
 
     if (numChunksInCurThread == 0 /*&& IsSuspendEEThread()*/)
         return TRUE;
@@ -267,12 +267,12 @@ bool StressLog::AllowNewChunk (long numChunksInCurThread)
         perThreadLimit *= GC_STRESSLOG_MULTIPLY;
     }
 
-    if ((UInt32)numChunksInCurThread * STRESSLOG_CHUNK_SIZE >= perThreadLimit)
+    if ((uint32_t)numChunksInCurThread * STRESSLOG_CHUNK_SIZE >= perThreadLimit)
     {
         return FALSE;
     }
 
-    return (UInt32)VolatileLoad(&theLog.totalChunk) * STRESSLOG_CHUNK_SIZE < theLog.MaxSizeTotal;
+    return (uint32_t)VolatileLoad(&theLog.totalChunk) * STRESSLOG_CHUNK_SIZE < theLog.MaxSizeTotal;
 }
 
 bool StressLog::ReserveStressLogChunks (unsigned chunksToReserve)
@@ -304,7 +304,7 @@ bool StressLog::ReserveStressLogChunks (unsigned chunksToReserve)
 /*********************************************************************************/
 /* fetch a buffer that can be used to write a stress message, it is thread safe */
 
-void ThreadStressLog::LogMsg ( UInt32 facility, int cArgs, const char* format, va_list Args)
+void ThreadStressLog::LogMsg ( uint32_t facility, int cArgs, const char* format, va_list Args)
 {
 
     // Asserts in this function cause infinite loops in the asserting mechanism.
@@ -386,7 +386,7 @@ void StressLog::LogMsg (unsigned facility, int cArgs, const char* format, ... )
 void  StressLog::LogCallStack(const char *const callTag){
 
     size_t  CallStackTrace[MAX_CALL_STACK_TRACE];
-    UInt32 hash;
+    uint32_t hash;
     unsigned short stackTraceCount = PalCaptureStackBackTrace (2, MAX_CALL_STACK_TRACE, (void**)CallStackTrace, &hash);
     if (stackTraceCount > MAX_CALL_STACK_TRACE)
         stackTraceCount = MAX_CALL_STACK_TRACE;
@@ -430,7 +430,7 @@ bool StressLog::Initialize()
                 if (!curPtrInitialized && curChunk == curThreadStressLog->curWriteChunk)
                 {
                     // adjust curPtr to the debugger's address space
-                    curThreadStressLog->curPtr = (StressMsg *)((UInt8 *)curChunk + ((UInt8 *)curThreadStressLog->curPtr - (UInt8 *)PTR_HOST_TO_TADDR(curChunk)));
+                    curThreadStressLog->curPtr = (StressMsg *)((uint8_t *)curChunk + ((uint8_t *)curThreadStressLog->curPtr - (uint8_t *)PTR_HOST_TO_TADDR(curChunk)));
                     curPtrInitialized = true;
                 }
 

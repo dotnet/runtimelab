@@ -33,7 +33,7 @@
 class GcStressControl
 {
 public:
-    static bool ShouldHijack(UIntNative CallsiteIP, HijackType ht)
+    static bool ShouldHijack(uintptr_t CallsiteIP, HijackType ht)
     {
         if (s_initState != isInited)
             Initialize();
@@ -65,7 +65,7 @@ private:
 
     static void Initialize()
     {
-        volatile InitState is = (InitState) PalInterlockedCompareExchange((volatile Int32*)(&s_initState), isIniting, isNotInited);
+        volatile InitState is = (InitState) PalInterlockedCompareExchange((volatile int32_t*)(&s_initState), isIniting, isNotInited);
         if (is == isNotInited)
         {
             s_lock.InitNoThrow(CrstGcStressControl);
@@ -73,7 +73,7 @@ private:
             if (g_pRhConfig->GetGcStressSeed())
                 s_lGcStressRNGSeed = g_pRhConfig->GetGcStressSeed();
             else
-                s_lGcStressRNGSeed = (UInt32)PalGetTickCount64();
+                s_lGcStressRNGSeed = (uint32_t)PalGetTickCount64();
 
             if (g_pRhConfig->GetGcStressFreqDenom())
                 s_lGcStressFreqDenom = g_pRhConfig->GetGcStressFreqDenom();
@@ -90,7 +90,7 @@ private:
     }
 
     // returns true if no entry was found for CallsiteIP, false otherwise
-    static bool GcStressTrackAtIP(UIntNative CallsiteIP, HijackType ht, bool bForceGC)
+    static bool GcStressTrackAtIP(uintptr_t CallsiteIP, HijackType ht, bool bForceGC)
     {
         // do this under a lock, as the underlying SHash might be "grown" by
         // operations on other threads
@@ -118,12 +118,12 @@ private:
         return pEntry == NULL;
     }
 
-    static bool GcStressTriggerFirstHit(UIntNative CallsiteIP, HijackType ht)
+    static bool GcStressTriggerFirstHit(uintptr_t CallsiteIP, HijackType ht)
     {
         return GcStressTrackAtIP(CallsiteIP, ht, false);
     }
 
-    static UInt32 GcStressRNG(UInt32 uMaxValue, Thread *pCurrentThread)
+    static uint32_t GcStressRNG(uint32_t uMaxValue, Thread *pCurrentThread)
     {
         if (!pCurrentThread->IsRandInited())
         {
@@ -133,7 +133,7 @@ private:
         return pCurrentThread->NextRand() % uMaxValue;
     }
 
-    static bool GcStressTriggerRandom(UIntNative CallsiteIP, HijackType ht, Thread *pCurrentThread)
+    static bool GcStressTriggerRandom(uintptr_t CallsiteIP, HijackType ht, Thread *pCurrentThread)
     {
         bool bRes = false;
         if (ht == htLoop)
@@ -154,8 +154,8 @@ private:
 
 private:
     static CrstStatic           s_lock;
-    static UInt32               s_lGcStressRNGSeed;
-    static UInt32               s_lGcStressFreqDenom;
+    static uint32_t               s_lGcStressRNGSeed;
+    static uint32_t               s_lGcStressFreqDenom;
     static volatile InitState   s_initState;
 
 public:
@@ -166,13 +166,13 @@ public:
 
 CallsiteCountSHash GcStressControl::s_callsites;
 CrstStatic GcStressControl::s_lock;
-UInt32 GcStressControl::s_lGcStressRNGSeed = 0;
-UInt32 GcStressControl::s_lGcStressFreqDenom = 0;
+uint32_t GcStressControl::s_lGcStressRNGSeed = 0;
+uint32_t GcStressControl::s_lGcStressFreqDenom = 0;
 volatile GcStressControl::InitState GcStressControl::s_initState = GcStressControl::isNotInited;
 
 GPTR_IMPL_INIT(CallsiteCountSHash, g_pCallsites, &GcStressControl::s_callsites);
 
-bool ShouldHijackForGcStress(UIntNative CallsiteIP, HijackType ht)
+bool ShouldHijackForGcStress(uintptr_t CallsiteIP, HijackType ht)
 {
     return GcStressControl::ShouldHijack(CallsiteIP, ht);
 }

@@ -62,22 +62,22 @@ COOP_PINVOKE_HELPER(void, RhUnregisterRefCountedHandleCallback, (void * pCallout
     RestrictedCallouts::UnregisterRefCountedHandleCallback(pCallout, pTypeFilter);
 }
 
-COOP_PINVOKE_HELPER(OBJECTHANDLE, RhpHandleAllocVariable, (Object * pObject, UInt32 type))
+COOP_PINVOKE_HELPER(OBJECTHANDLE, RhpHandleAllocVariable, (Object * pObject, uint32_t type))
 {
     return GCHandleUtilities::GetGCHandleManager()->GetGlobalHandleStore()->CreateHandleWithExtraInfo(pObject, HNDTYPE_VARIABLE, (void*)((uintptr_t)type));
 }
 
-COOP_PINVOKE_HELPER(UInt32, RhHandleGetVariableType, (OBJECTHANDLE handle))
+COOP_PINVOKE_HELPER(uint32_t, RhHandleGetVariableType, (OBJECTHANDLE handle))
 {
     return GetVariableHandleType(handle);
 }
 
-COOP_PINVOKE_HELPER(void, RhHandleSetVariableType, (OBJECTHANDLE handle, UInt32 type))
+COOP_PINVOKE_HELPER(void, RhHandleSetVariableType, (OBJECTHANDLE handle, uint32_t type))
 {
     UpdateVariableHandleType(handle, type);
 }
 
-COOP_PINVOKE_HELPER(UInt32, RhHandleCompareExchangeVariableType, (OBJECTHANDLE handle, UInt32 oldType, UInt32 newType))
+COOP_PINVOKE_HELPER(uint32_t, RhHandleCompareExchangeVariableType, (OBJECTHANDLE handle, uint32_t oldType, uint32_t newType))
 {
     return CompareExchangeVariableHandleType(handle, oldType, newType);
 }

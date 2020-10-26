@@ -36,13 +36,13 @@
 #include "GCMemoryHelpers.inl"
 
 #if defined(USE_PORTABLE_HELPERS)
-EXTERN_C REDHAWK_API void* REDHAWK_CALLCONV RhpGcAlloc(EEType *pEEType, UInt32 uFlags, UIntNative cbSize, void * pTransitionFrame);
-EXTERN_C REDHAWK_API void* REDHAWK_CALLCONV RhpPublishObject(void* pObject, UIntNative cbSize);
+EXTERN_C REDHAWK_API void* REDHAWK_CALLCONV RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame);
+EXTERN_C REDHAWK_API void* REDHAWK_CALLCONV RhpPublishObject(void* pObject, uintptr_t cbSize);
 
 struct gc_alloc_context
 {
-    UInt8*         alloc_ptr;
-    UInt8*         alloc_limit;
+    uint8_t*         alloc_ptr;
+    uint8_t*         alloc_limit;
     __int64        alloc_bytes; //Number of bytes allocated on SOH by this context
     __int64        alloc_bytes_loh; //Number of bytes allocated on LOH by this context
     void*          gc_reserved_1;
@@ -64,8 +64,8 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFast, (EEType* pEEType))
 
     size_t size = pEEType->get_BaseSize();
 
-    UInt8* result = acontext->alloc_ptr;
-    UInt8* advance = result + size;
+    uint8_t* result = acontext->alloc_ptr;
+    uint8_t* advance = result + size;
     if (advance <= acontext->alloc_limit)
     {
         acontext->alloc_ptr = advance;
@@ -132,7 +132,7 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArray, (EEType * pArrayEEType, int numElement
     {
         // Perform the size computation using 64-bit integeres to detect overflow
         uint64_t size64 = (uint64_t)pArrayEEType->get_BaseSize() + ((uint64_t)numElements * (uint64_t)pArrayEEType->get_ComponentSize());
-        size64 = (size64 + (sizeof(UIntNative)-1)) & ~(sizeof(UIntNative)-1);
+        size64 = (size64 + (sizeof(uintptr_t)-1)) & ~(sizeof(uintptr_t)-1);
 
         size = (size_t)size64;
         if (size != size64)
@@ -144,17 +144,17 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArray, (EEType * pArrayEEType, int numElement
 #endif // !HOST_64BIT
     {
         size = (size_t)pArrayEEType->get_BaseSize() + ((size_t)numElements * (size_t)pArrayEEType->get_ComponentSize());
-        size = ALIGN_UP(size, sizeof(UIntNative));
+        size = ALIGN_UP(size, sizeof(uintptr_t));
     }
 
-    UInt8* result = acontext->alloc_ptr;
-    UInt8* advance = result + size;
+    uint8_t* result = acontext->alloc_ptr;
+    uint8_t* advance = result + size;
     if (advance <= acontext->alloc_limit)
     {
         acontext->alloc_ptr = advance;
         pObject = (Array *)result;
         pObject->set_EEType(pArrayEEType);
-        pObject->InitArrayLength((UInt32)numElements);
+        pObject->InitArrayLength((uint32_t)numElements);
         return pObject;
     }
 
@@ -164,7 +164,7 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArray, (EEType * pArrayEEType, int numElement
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
     }
     pObject->set_EEType(pArrayEEType);
-    pObject->InitArrayLength((UInt32)numElements);
+    pObject->InitArrayLength((uint32_t)numElements);
 
     if (size >= RH_LARGE_OBJECT_SIZE)
         RhpPublishObject(pObject, size);
@@ -202,13 +202,13 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFastAlign8, (EEType* pEEType))
     Object* pObject;
 
     size_t size = pEEType->get_BaseSize();
-    size = (size + (sizeof(UIntNative) - 1)) & ~(sizeof(UIntNative) - 1);
+    size = (size + (sizeof(uintptr_t) - 1)) & ~(sizeof(uintptr_t) - 1);
 
-    UInt8* result = acontext->alloc_ptr;
+    uint8_t* result = acontext->alloc_ptr;
 
     int requiresPadding = ((uint32_t)result) & 7;
     if (requiresPadding) size += 12;
-    UInt8* advance = result + size;
+    uint8_t* advance = result + size;
     if (advance <= acontext->alloc_limit)
     {
         acontext->alloc_ptr = advance;
@@ -244,11 +244,11 @@ COOP_PINVOKE_HELPER(Object*, RhpNewFastMisalign, (EEType* pEEType))
     Object* pObject;
 
     size_t size = pEEType->get_BaseSize();
-    UInt8* result = acontext->alloc_ptr;
+    uint8_t* result = acontext->alloc_ptr;
 
     int requiresPadding = (((uint32_t)result) & 7) != 4;
     if (requiresPadding) size += 12;
-    UInt8* advance = result + size;
+    uint8_t* advance = result + size;
     if (advance <= acontext->alloc_limit)
     {
         acontext->alloc_ptr = advance;
@@ -292,7 +292,7 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArrayAlign8, (EEType * pArrayEEType, int numE
 
     size_t size;
 
-    UInt32 baseSize = pArrayEEType->get_BaseSize();
+    uint32_t baseSize = pArrayEEType->get_BaseSize();
 #ifndef HOST_64BIT
     // if the element count is <= 0x10000, no overflow is possible because the component size is
     // <= 0xffff, and thus the product is <= 0xffff0000, and the base size is only ~12 bytes
@@ -300,7 +300,7 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArrayAlign8, (EEType * pArrayEEType, int numE
     {
         // Perform the size computation using 64-bit integeres to detect overflow
         uint64_t size64 = (uint64_t)baseSize + ((uint64_t)numElements * (uint64_t)pArrayEEType->get_ComponentSize());
-        size64 = (size64 + (sizeof(UIntNative) - 1)) & ~(sizeof(UIntNative) - 1);
+        size64 = (size64 + (sizeof(uintptr_t) - 1)) & ~(sizeof(uintptr_t) - 1);
 
         size = (size_t)size64;
         if (size != size64)
@@ -312,13 +312,13 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArrayAlign8, (EEType * pArrayEEType, int numE
 #endif // !HOST_64BIT
     {
         size = (size_t)baseSize + ((size_t)numElements * (size_t)pArrayEEType->get_ComponentSize());
-        size = ALIGN_UP(size, sizeof(UIntNative));
+        size = ALIGN_UP(size, sizeof(uintptr_t));
     }
-    UInt8* result = acontext->alloc_ptr;
+    uint8_t* result = acontext->alloc_ptr;
     int requiresAlignObject = ((uint32_t)result) & 7;
     if (requiresAlignObject) size += 12;
 
-    UInt8* advance = result + size;
+    uint8_t* advance = result + size;
     if (advance <= acontext->alloc_limit)
     {
         acontext->alloc_ptr = advance;
@@ -330,7 +330,7 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArrayAlign8, (EEType * pArrayEEType, int numE
         }
         pObject = (Array*)result;
         pObject->set_EEType(pArrayEEType);
-        pObject->InitArrayLength((UInt32)numElements);
+        pObject->InitArrayLength((uint32_t)numElements);
         return pObject;
     }
 
@@ -340,7 +340,7 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArrayAlign8, (EEType * pArrayEEType, int numE
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
     }
     pObject->set_EEType(pArrayEEType);
-    pObject->InitArrayLength((UInt32)numElements);
+    pObject->InitArrayLength((uint32_t)numElements);
 
     if (size >= RH_LARGE_OBJECT_SIZE)
         RhpPublishObject(pObject, size);
@@ -476,13 +476,13 @@ COOP_PINVOKE_HELPER(Object *, RhpCheckedXchg, (Object ** location, Object * valu
     return ret;
 }
 
-COOP_PINVOKE_HELPER(Int32, RhpLockCmpXchg32, (Int32 * location, Int32 value, Int32 comparand))
+COOP_PINVOKE_HELPER(int32_t, RhpLockCmpXchg32, (int32_t * location, int32_t value, int32_t comparand))
 {
     // @TODO: USE_PORTABLE_HELPERS - Null check
     return PalInterlockedCompareExchange(location, value, comparand);
 }
 
-COOP_PINVOKE_HELPER(Int64, RhpLockCmpXchg64, (Int64 * location, Int64 value, Int64 comparand))
+COOP_PINVOKE_HELPER(int64_t, RhpLockCmpXchg64, (int64_t * location, int64_t value, int64_t comparand))
 {
     // @TODO: USE_PORTABLE_HELPERS - Null check
     return PalInterlockedCompareExchange64(location, value, comparand);
@@ -548,9 +548,9 @@ COOP_PINVOKE_HELPER(void, RhCallDescrWorker, (void * callDescr))
 }
 
 #ifdef CALLDESCR_FPARGREGSARERETURNREGS
-COOP_PINVOKE_HELPER(void, CallingConventionConverter_GetStubs, (UIntNative* pReturnVoidStub, UIntNative* pReturnIntegerStub, UIntNative* pCommonStub))
+COOP_PINVOKE_HELPER(void, CallingConventionConverter_GetStubs, (uintptr_t* pReturnVoidStub, uintptr_t* pReturnIntegerStub, uintptr_t* pCommonStub))
 #else
-COOP_PINVOKE_HELPER(void, CallingConventionConverter_GetStubs, (UIntNative* pReturnVoidStub, UIntNative* pReturnIntegerStub, UIntNative* pCommonStub, UIntNative* pReturnFloatingPointReturn4Thunk, UIntNative* pReturnFloatingPointReturn8Thunk))
+COOP_PINVOKE_HELPER(void, CallingConventionConverter_GetStubs, (uintptr_t* pReturnVoidStub, uintptr_t* pReturnIntegerStub, uintptr_t* pCommonStub, uintptr_t* pReturnFloatingPointReturn4Thunk, uintptr_t* pReturnFloatingPointReturn8Thunk))
 #endif
 {
     ASSERT_UNCONDITIONALLY("NYI");

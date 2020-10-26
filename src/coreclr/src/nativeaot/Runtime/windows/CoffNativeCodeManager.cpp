@@ -171,9 +171,9 @@ static PTR_VOID GetUnwindDataBlob(TADDR moduleBase, PTR_RUNTIME_FUNCTION pRuntim
 
 
 CoffNativeCodeManager::CoffNativeCodeManager(TADDR moduleBase,
-                                             PTR_VOID pvManagedCodeStartRange, UInt32 cbManagedCodeRange,
-                                             PTR_RUNTIME_FUNCTION pRuntimeFunctionTable, UInt32 nRuntimeFunctionTable,
-                                             PTR_PTR_VOID pClasslibFunctions, UInt32 nClasslibFunctions)
+                                             PTR_VOID pvManagedCodeStartRange, uint32_t cbManagedCodeRange,
+                                             PTR_RUNTIME_FUNCTION pRuntimeFunctionTable, uint32_t nRuntimeFunctionTable,
+                                             PTR_PTR_VOID pClasslibFunctions, uint32_t nClasslibFunctions)
     : m_moduleBase(moduleBase),
       m_pvManagedCodeStartRange(pvManagedCodeStartRange), m_cbManagedCodeRange(cbManagedCodeRange),
       m_pRuntimeFunctionTable(pRuntimeFunctionTable), m_nRuntimeFunctionTable(nRuntimeFunctionTable),
@@ -185,7 +185,7 @@ CoffNativeCodeManager::~CoffNativeCodeManager()
 {
 }
 
-static int LookupUnwindInfoForMethod(UInt32 relativePc,
+static int LookupUnwindInfoForMethod(uint32_t relativePc,
                                      PTR_RUNTIME_FUNCTION pRuntimeFunctionTable,
                                      int low,
                                      int high)
@@ -256,7 +256,7 @@ bool CoffNativeCodeManager::FindMethodInfo(PTR_VOID        ControlPC,
 
     TADDR relativePC = dac_cast<TADDR>(ControlPC) - m_moduleBase;
 
-    int MethodIndex = LookupUnwindInfoForMethod((UInt32)relativePC, m_pRuntimeFunctionTable,
+    int MethodIndex = LookupUnwindInfoForMethod((uint32_t)relativePC, m_pRuntimeFunctionTable,
         0, m_nRuntimeFunctionTable - 1);
     if (MethodIndex < 0)
         return false;
@@ -351,7 +351,7 @@ void CoffNativeCodeManager::EnumGcRefs(MethodInfo *    pMethodInfo,
         p += sizeof(int32_t);
 
     TADDR methodStartAddress = m_moduleBase + pNativeMethodInfo->mainRuntimeFunction->BeginAddress;
-    UInt32 codeOffset = (UInt32)(dac_cast<TADDR>(safePointAddress) - methodStartAddress);
+    uint32_t codeOffset = (uint32_t)(dac_cast<TADDR>(safePointAddress) - methodStartAddress);
 
     GcInfoDecoder decoder(
         GCInfoToken(p),
@@ -377,12 +377,12 @@ void CoffNativeCodeManager::EnumGcRefs(MethodInfo *    pMethodInfo,
     }
 }
 
-UIntNative CoffNativeCodeManager::GetConservativeUpperBoundForOutgoingArgs(MethodInfo * pMethodInfo, REGDISPLAY * pRegisterSet)
+uintptr_t CoffNativeCodeManager::GetConservativeUpperBoundForOutgoingArgs(MethodInfo * pMethodInfo, REGDISPLAY * pRegisterSet)
 {
 #if defined(TARGET_AMD64)
 
     // Return value
-    UIntNative upperBound;
+    uintptr_t upperBound;
     CoffNativeMethodInfo* pNativeMethodInfo = (CoffNativeMethodInfo *) pMethodInfo;
 
     size_t unwindDataBlobSize;
@@ -412,7 +412,7 @@ UIntNative CoffNativeCodeManager::GetConservativeUpperBoundForOutgoingArgs(Metho
         // Reverse PInvoke case.  The embedded reverse PInvoke frame is guaranteed to reside above
         // all outgoing arguments.
         INT32 slot = decoder.GetReversePInvokeFrameStackSlot();
-        upperBound =  (UIntNative) dac_cast<TADDR>(basePointer + slot);
+        upperBound =  (uintptr_t) dac_cast<TADDR>(basePointer + slot);
     }
     else
     {
@@ -446,7 +446,7 @@ UIntNative CoffNativeCodeManager::GetConservativeUpperBoundForOutgoingArgs(Metho
             // the frame pointer generally points to a location that is separated from the pushed RBP
             // value by an offset that is recorded in the info header.  Recover the address of the
             // pushed RBP value by subtracting this offset.
-            upperBound = (UIntNative) dac_cast<TADDR>(pRegisterSet->GetFP() - ((PTR_UNWIND_INFO) pUnwindDataBlob)->FrameOffset);
+            upperBound = (uintptr_t) dac_cast<TADDR>(pRegisterSet->GetFP() - ((PTR_UNWIND_INFO) pUnwindDataBlob)->FrameOffset);
         }
     }
     return upperBound;
@@ -667,8 +667,8 @@ struct CoffEHEnumState
 {
     PTR_UInt8 pMethodStartAddress;
     PTR_UInt8 pEHInfo;
-    UInt32 uClause;
-    UInt32 nClauses;
+    uint32_t uClause;
+    uint32_t nClauses;
 };
 
 // Ensure that CoffEHEnumState fits into the space reserved by EHEnumState
@@ -721,7 +721,7 @@ bool CoffNativeCodeManager::EHEnumNext(EHEnumState * pEHEnumState, EHClause * pE
 
     pEHClauseOut->m_tryStartOffset = VarInt::ReadUnsigned(pEnumState->pEHInfo);
 
-    UInt32 tryEndDeltaAndClauseKind = VarInt::ReadUnsigned(pEnumState->pEHInfo);
+    uint32_t tryEndDeltaAndClauseKind = VarInt::ReadUnsigned(pEnumState->pEHInfo);
     pEHClauseOut->m_clauseKind = (EHClauseKind)(tryEndDeltaAndClauseKind & 0x3);
     pEHClauseOut->m_tryEndOffset = pEHClauseOut->m_tryStartOffset + (tryEndDeltaAndClauseKind >> 2);
 
@@ -743,7 +743,7 @@ bool CoffNativeCodeManager::EHEnumNext(EHEnumState * pEHEnumState, EHClause * pE
         {
             // @TODO: CORERT: Compress EHInfo using type table index scheme
             // https://github.com/dotnet/corert/issues/972
-            UInt32 typeRVA = *((PTR_UInt32&)pEnumState->pEHInfo)++;
+            uint32_t typeRVA = *((PTR_UInt32&)pEnumState->pEHInfo)++;
             pEHClauseOut->m_pTargetType = dac_cast<PTR_VOID>(m_moduleBase + typeRVA);
         }
         break;
@@ -792,7 +792,7 @@ PTR_VOID CoffNativeCodeManager::GetAssociatedData(PTR_VOID ControlPC)
 
     TADDR relativePC = dac_cast<TADDR>(ControlPC) - m_moduleBase;
 
-    int MethodIndex = LookupUnwindInfoForMethod((UInt32)relativePC, m_pRuntimeFunctionTable, 0, m_nRuntimeFunctionTable - 1);
+    int MethodIndex = LookupUnwindInfoForMethod((uint32_t)relativePC, m_pRuntimeFunctionTable, 0, m_nRuntimeFunctionTable - 1);
     if (MethodIndex < 0)
         return NULL;
 
@@ -807,19 +807,19 @@ PTR_VOID CoffNativeCodeManager::GetAssociatedData(PTR_VOID ControlPC)
     if ((unwindBlockFlags & UBF_FUNC_HAS_ASSOCIATED_DATA) == 0)
         return NULL;
 
-    UInt32 dataRVA = *(UInt32*)p;
+    uint32_t dataRVA = *(uint32_t*)p;
     return dac_cast<PTR_VOID>(m_moduleBase + dataRVA);
 }
 
-extern "C" bool __stdcall RegisterCodeManager(ICodeManager * pCodeManager, PTR_VOID pvStartRange, UInt32 cbRange);
+extern "C" bool __stdcall RegisterCodeManager(ICodeManager * pCodeManager, PTR_VOID pvStartRange, uint32_t cbRange);
 extern "C" void __stdcall UnregisterCodeManager(ICodeManager * pCodeManager);
-extern "C" bool __stdcall RegisterUnboxingStubs(PTR_VOID pvStartRange, UInt32 cbRange);
+extern "C" bool __stdcall RegisterUnboxingStubs(PTR_VOID pvStartRange, uint32_t cbRange);
 
 extern "C"
 bool RhRegisterOSModule(void * pModule,
-                        void * pvManagedCodeStartRange, UInt32 cbManagedCodeRange,
-                        void * pvUnboxingStubsStartRange, UInt32 cbUnboxingStubsRange,
-                        void ** pClasslibFunctions, UInt32 nClasslibFunctions)
+                        void * pvManagedCodeStartRange, uint32_t cbManagedCodeRange,
+                        void * pvUnboxingStubsStartRange, uint32_t cbUnboxingStubsRange,
+                        void ** pClasslibFunctions, uint32_t nClasslibFunctions)
 {
     PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)pModule;
     PIMAGE_NT_HEADERS pNTHeaders = (PIMAGE_NT_HEADERS)((TADDR)pModule + pDosHeader->e_lfanew);

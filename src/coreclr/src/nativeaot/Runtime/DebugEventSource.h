@@ -12,9 +12,9 @@
 #define __DEBUG_EVENT_SOURCE_H_
 
 // This global is set from out of process using the debugger. It controls which events are emitted.
-GVAL_DECL(UInt32, g_DebuggerEventsFilter);
+GVAL_DECL(uint32_t, g_DebuggerEventsFilter);
 
-typedef UInt64 CORDB_ADDRESS;
+typedef uint64_t CORDB_ADDRESS;
 
 #ifndef DACCESS_COMPILE
 

@@ -108,7 +108,7 @@ void GCToEEInterface::GcEnumAllocContexts (enum_alloc_context_func* fn, void* pa
 
 #endif //!DACCESS_COMPILE
 
-void PromoteCarefully(PTR_PTR_Object obj, UInt32 flags, EnumGcRefCallbackFunc * fnGcEnumRef, EnumGcRefScanContext * pSc)
+void PromoteCarefully(PTR_PTR_Object obj, uint32_t flags, EnumGcRefCallbackFunc * fnGcEnumRef, EnumGcRefScanContext * pSc)
 {
     //
     // Sanity check that the flags contain only these three values
@@ -128,7 +128,7 @@ void PromoteCarefully(PTR_PTR_Object obj, UInt32 flags, EnumGcRefCallbackFunc * 
     fnGcEnumRef(obj, pSc, flags);
 }
 
-void GcEnumObject(PTR_PTR_Object ppObj, UInt32 flags, EnumGcRefCallbackFunc * fnGcEnumRef, EnumGcRefScanContext * pSc)
+void GcEnumObject(PTR_PTR_Object ppObj, uint32_t flags, EnumGcRefCallbackFunc * fnGcEnumRef, EnumGcRefScanContext * pSc)
 {
     //
     // Sanity check that the flags contain only these three values
@@ -144,11 +144,11 @@ void GcEnumObject(PTR_PTR_Object ppObj, UInt32 flags, EnumGcRefCallbackFunc * fn
         fnGcEnumRef(ppObj, pSc, flags);
 }
 
-void GcBulkEnumObjects(PTR_PTR_Object pObjs, UInt32 cObjs, EnumGcRefCallbackFunc * fnGcEnumRef, EnumGcRefScanContext * pSc)
+void GcBulkEnumObjects(PTR_PTR_Object pObjs, uint32_t cObjs, EnumGcRefCallbackFunc * fnGcEnumRef, EnumGcRefScanContext * pSc)
 {
     PTR_PTR_Object ppObj = pObjs;
 
-    for (UInt32 i = 0; i < cObjs; i++)
+    for (uint32_t i = 0; i < cObjs; i++)
         fnGcEnumRef(ppObj++, pSc, 0);
 }
 

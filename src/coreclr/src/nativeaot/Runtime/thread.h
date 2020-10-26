@@ -27,7 +27,7 @@ class Thread;
 # endif
 #endif // HOST_64BIT
 
-#define TOP_OF_STACK_MARKER ((PTR_VOID)(UIntNative)(IntNative)-1)
+#define TOP_OF_STACK_MARKER ((PTR_VOID)(uintptr_t)(intptr_t)-1)
 
 #define DYNAMIC_TYPE_TLS_OFFSET_FLAG 0x80000000
 
@@ -55,16 +55,16 @@ struct ExInfo
     PTR_PAL_LIMITED_CONTEXT m_pExContext;
     PTR_Object              m_exception;  // actual object reference, specially reported by GcScanRootsWorker
     ExKind                  m_kind;
-    UInt8                   m_passNumber;
-    UInt32                  m_idxCurClause;
+    uint8_t                   m_passNumber;
+    uint32_t                  m_idxCurClause;
     StackFrameIterator      m_frameIter;
     volatile void*          m_notifyDebuggerSP;
 };
 
 struct ThreadBuffer
 {
-    UInt8                   m_rgbAllocContextBuffer[SIZEOF_ALLOC_CONTEXT];
-    UInt32 volatile         m_ThreadStateFlags;                     // see Thread::ThreadStateFlags enum
+    uint8_t                   m_rgbAllocContextBuffer[SIZEOF_ALLOC_CONTEXT];
+    uint32_t volatile         m_ThreadStateFlags;                     // see Thread::ThreadStateFlags enum
 #if DACCESS_COMPILE
     PTR_VOID                m_pTransitionFrame;
 #else
@@ -77,26 +77,26 @@ struct ThreadBuffer
     void **                 m_ppvHijackedReturnAddressLocation;
     void *                  m_pvHijackedReturnAddress;
 #ifdef HOST_64BIT
-    UIntNative              m_uHijackedReturnValueFlags;            // used on ARM64 only; however, ARM64 and AMD64 share field offsets
+    uintptr_t              m_uHijackedReturnValueFlags;            // used on ARM64 only; however, ARM64 and AMD64 share field offsets
 #endif // HOST_64BIT
     PTR_ExInfo              m_pExInfoStackHead;
     Object*                 m_threadAbortException;                 // ThreadAbortException instance -set only during thread abort
     PTR_VOID                m_pStackLow;
     PTR_VOID                m_pStackHigh;
     PTR_UInt8               m_pTEB;                                 // Pointer to OS TEB structure for this thread
-    UInt64                  m_uPalThreadIdForLogging;               // @TODO: likely debug-only
+    uint64_t                  m_uPalThreadIdForLogging;               // @TODO: likely debug-only
     EEThreadId              m_threadId;
     PTR_VOID                m_pThreadStressLog;                     // pointer to head of thread's StressLogChunks
 #ifdef FEATURE_GC_STRESS
-    UInt32                  m_uRand;                                // current per-thread random number
+    uint32_t                  m_uRand;                                // current per-thread random number
 #endif // FEATURE_GC_STRESS
 
     // Thread Statics Storage for dynamic types
-    UInt32          m_numDynamicTypesTlsCells;
+    uint32_t          m_numDynamicTypesTlsCells;
     PTR_PTR_UInt8   m_pDynamicTypesTlsCells;
 
     PTR_PTR_VOID    m_pThreadLocalModuleStatics;
-    UInt32          m_numThreadLocalModuleStatics;
+    uint32_t          m_numThreadLocalModuleStatics;
 };
 
 struct ReversePInvokeFrame
@@ -164,12 +164,12 @@ public:
     gc_alloc_context *  GetAllocContext();  // @TODO: I would prefer to not expose this in this way
 
 #ifndef DACCESS_COMPILE
-    UInt64              GetPalThreadIdForLogging();
+    uint64_t              GetPalThreadIdForLogging();
     bool                IsCurrentThread();
 
     void                GcScanRoots(void * pfnEnumCallback, void * pvCallbackData);
 #else
-    typedef void GcScanRootsCallbackFunc(PTR_RtuObjectRef ppObject, void* token, UInt32 flags);
+    typedef void GcScanRootsCallbackFunc(PTR_RtuObjectRef ppObject, void* token, uint32_t flags);
     bool GcScanRoots(GcScanRootsCallbackFunc * pfnCallback, void * token, PTR_PAL_LIMITED_CONTEXT pInitialContext);
 #endif
 
@@ -190,10 +190,10 @@ public:
 
     void                GetStackBounds(PTR_VOID * ppStackLow, PTR_VOID * ppStackHigh);
 
-    PTR_UInt8           AllocateThreadLocalStorageForDynamicType(UInt32 uTlsTypeOffset, UInt32 tlsStorageSize, UInt32 numTlsCells);
+    PTR_UInt8           AllocateThreadLocalStorageForDynamicType(uint32_t uTlsTypeOffset, uint32_t tlsStorageSize, uint32_t numTlsCells);
     // mrt100 Debugger (dac) has dependencies on the GetThreadLocalStorageForDynamicType method.
-    PTR_UInt8           GetThreadLocalStorageForDynamicType(UInt32 uTlsTypeOffset);
-    PTR_UInt8           GetThreadLocalStorage(UInt32 uTlsIndex, UInt32 uTlsStartOffset);
+    PTR_UInt8           GetThreadLocalStorageForDynamicType(uint32_t uTlsTypeOffset);
+    PTR_UInt8           GetThreadLocalStorage(uint32_t uTlsIndex, uint32_t uTlsStartOffset);
     PTR_UInt8           GetTEB();
 
     void                PushExInfo(ExInfo * pExInfo);
@@ -211,8 +211,8 @@ public:
     void                SetThreadStressLog(void * ptsl);
 #endif // DACCESS_COMPILE
 #ifdef FEATURE_GC_STRESS
-    void                SetRandomSeed(UInt32 seed);
-    UInt32              NextRand();
+    void                SetRandomSeed(uint32_t seed);
+    uint32_t              NextRand();
     bool                IsRandInited();
 #endif // FEATURE_GC_STRESS
     PTR_ExInfo          GetCurExInfo();
@@ -262,8 +262,8 @@ public:
     Object * GetThreadAbortException();
     void SetThreadAbortException(Object *exception);
 
-    Object* GetThreadStaticStorageForModule(UInt32 moduleIndex);
-    Boolean SetThreadStaticStorageForModule(Object * pStorage, UInt32 moduleIndex);
+    Object* GetThreadStaticStorageForModule(uint32_t moduleIndex);
+    Boolean SetThreadStaticStorageForModule(Object * pStorage, uint32_t moduleIndex);
 };
 
 #ifndef __GCENV_BASE_INCLUDED__
@@ -292,7 +292,7 @@ struct DacScanCallbackData
 };
 
 typedef DacScanCallbackData EnumGcRefScanContext;
-typedef void EnumGcRefCallbackFunc(PTR_PTR_Object, EnumGcRefScanContext* callbackData, UInt32 flags);
+typedef void EnumGcRefCallbackFunc(PTR_PTR_Object, EnumGcRefScanContext* callbackData, uint32_t flags);
 
 #else // DACCESS_COMPILE
 #ifndef __GCENV_BASE_INCLUDED__

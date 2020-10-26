@@ -32,15 +32,15 @@
 
 #ifdef  FEATURE_GC_STRESS
 enum HijackType { htLoop, htCallsite };
-bool ShouldHijackForGcStress(UIntNative CallsiteIP, HijackType ht);
+bool ShouldHijackForGcStress(uintptr_t CallsiteIP, HijackType ht);
 #endif // FEATURE_GC_STRESS
 
 #include "shash.inl"
 
 #ifndef DACCESS_COMPILE
-COOP_PINVOKE_HELPER(UInt8 *, RhSetErrorInfoBuffer, (UInt8 * pNewBuffer))
+COOP_PINVOKE_HELPER(uint8_t *, RhSetErrorInfoBuffer, (uint8_t * pNewBuffer))
 {
-    return (UInt8 *) PalSetWerDataBuffer(pNewBuffer);
+    return (uint8_t *) PalSetWerDataBuffer(pNewBuffer);
 }
 #endif // DACCESS_COMPILE
 
@@ -50,9 +50,9 @@ ThreadStore *   RuntimeInstance::GetThreadStore()
     return m_pThreadStore;
 }
 
-COOP_PINVOKE_HELPER(UInt8 *, RhFindMethodStartAddress, (void * codeAddr))
+COOP_PINVOKE_HELPER(uint8_t *, RhFindMethodStartAddress, (void * codeAddr))
 {
-    return dac_cast<UInt8 *>(GetRuntimeInstance()->FindMethodStartAddress(dac_cast<PTR_VOID>(codeAddr)));
+    return dac_cast<uint8_t *>(GetRuntimeInstance()->FindMethodStartAddress(dac_cast<PTR_VOID>(codeAddr)));
 }
 
 PTR_UInt8 RuntimeInstance::FindMethodStartAddress(PTR_VOID ControlPC)
@@ -126,9 +126,9 @@ PTR_UInt8 RuntimeInstance::GetTargetOfUnboxingAndInstantiatingStub(PTR_VOID Cont
         PTR_UInt8 pData = (PTR_UInt8)pCodeManager->GetAssociatedData(ControlPC);
         if (pData != NULL)
         {
-            UInt8 flags = *pData++;
+            uint8_t flags = *pData++;
 
-            if ((flags & (UInt8)AssociatedDataFlags::HasUnboxingStubTarget) != 0)
+            if ((flags & (uint8_t)AssociatedDataFlags::HasUnboxingStubTarget) != 0)
                 return pData + *dac_cast<PTR_Int32>(pData);
         }
     }
@@ -151,7 +151,7 @@ void RuntimeInstance::EnumAllStaticGCRefs(void * pfnCallback, void * pvCallbackD
     }
 }
 
-void RuntimeInstance::SetLoopHijackFlags(UInt32 flag)
+void RuntimeInstance::SetLoopHijackFlags(uint32_t flag)
 {
     for (TypeManagerList::Iterator iter = m_TypeManagerList.Begin(); iter != m_TypeManagerList.End(); iter++)
     {
@@ -197,7 +197,7 @@ void RuntimeInstance::EnableConservativeStackReporting()
     m_conservativeStackReportingEnabled = true;
 }
 
-bool RuntimeInstance::RegisterCodeManager(ICodeManager * pCodeManager, PTR_VOID pvStartRange, UInt32 cbRange)
+bool RuntimeInstance::RegisterCodeManager(ICodeManager * pCodeManager, PTR_VOID pvStartRange, uint32_t cbRange)
 {
     CodeManagerEntry * pEntry = new (nothrow) CodeManagerEntry();
     if (NULL == pEntry)
@@ -239,7 +239,7 @@ void RuntimeInstance::UnregisterCodeManager(ICodeManager * pCodeManager)
     delete pEntry;
 }
 
-extern "C" bool __stdcall RegisterCodeManager(ICodeManager * pCodeManager, PTR_VOID pvStartRange, UInt32 cbRange)
+extern "C" bool __stdcall RegisterCodeManager(ICodeManager * pCodeManager, PTR_VOID pvStartRange, uint32_t cbRange)
 {
     return GetRuntimeInstance()->RegisterCodeManager(pCodeManager, pvStartRange, cbRange);
 }
@@ -249,7 +249,7 @@ extern "C" void __stdcall UnregisterCodeManager(ICodeManager * pCodeManager)
     return GetRuntimeInstance()->UnregisterCodeManager(pCodeManager);
 }
 
-bool RuntimeInstance::RegisterUnboxingStubs(PTR_VOID pvStartRange, UInt32 cbRange)
+bool RuntimeInstance::RegisterUnboxingStubs(PTR_VOID pvStartRange, uint32_t cbRange)
 {
     ASSERT(pvStartRange != NULL && cbRange > 0);
 
@@ -269,12 +269,12 @@ bool RuntimeInstance::RegisterUnboxingStubs(PTR_VOID pvStartRange, UInt32 cbRang
     return true;
 }
 
-bool RuntimeInstance::IsUnboxingStub(UInt8* pCode)
+bool RuntimeInstance::IsUnboxingStub(uint8_t* pCode)
 {
     UnboxingStubsRegion * pCurrent = m_pUnboxingStubsRegion;
     while (pCurrent != NULL)
     {
-        UInt8* pUnboxingStubsRegion = dac_cast<UInt8*>(pCurrent->m_pRegionStart);
+        uint8_t* pUnboxingStubsRegion = dac_cast<uint8_t*>(pCurrent->m_pRegionStart);
         if (pCode >= pUnboxingStubsRegion && pCode < (pUnboxingStubsRegion + pCurrent->m_cbRegion))
             return true;
 
@@ -284,7 +284,7 @@ bool RuntimeInstance::IsUnboxingStub(UInt8* pCode)
     return false;
 }
 
-extern "C" bool __stdcall RegisterUnboxingStubs(PTR_VOID pvStartRange, UInt32 cbRange)
+extern "C" bool __stdcall RegisterUnboxingStubs(PTR_VOID pvStartRange, uint32_t cbRange)
 {
     return GetRuntimeInstance()->RegisterUnboxingStubs(pvStartRange, cbRange);
 }
@@ -306,7 +306,7 @@ bool RuntimeInstance::RegisterTypeManager(TypeManager * pTypeManager)
     return true;
 }
 
-COOP_PINVOKE_HELPER(TypeManagerHandle, RhpCreateTypeManager, (HANDLE osModule, void* pModuleHeader, PTR_PTR_VOID pClasslibFunctions, UInt32 nClasslibFunctions))
+COOP_PINVOKE_HELPER(TypeManagerHandle, RhpCreateTypeManager, (HANDLE osModule, void* pModuleHeader, PTR_PTR_VOID pClasslibFunctions, uint32_t nClasslibFunctions))
 {
     TypeManager * typeManager = TypeManager::Create(osModule, pModuleHeader, pClasslibFunctions, nClasslibFunctions);
     GetRuntimeInstance()->RegisterTypeManager(typeManager);
@@ -374,7 +374,7 @@ void RuntimeInstance::Destroy()
     delete this;
 }
 
-bool RuntimeInstance::ShouldHijackLoopForGcStress(UIntNative CallsiteIP)
+bool RuntimeInstance::ShouldHijackLoopForGcStress(uintptr_t CallsiteIP)
 {
 #ifdef FEATURE_GC_STRESS
     return ShouldHijackForGcStress(CallsiteIP, htLoop);
@@ -384,7 +384,7 @@ bool RuntimeInstance::ShouldHijackLoopForGcStress(UIntNative CallsiteIP)
 #endif // FEATURE_GC_STRESS
 }
 
-bool RuntimeInstance::ShouldHijackCallsiteForGcStress(UIntNative CallsiteIP)
+bool RuntimeInstance::ShouldHijackCallsiteForGcStress(uintptr_t CallsiteIP)
 {
 #ifdef FEATURE_GC_STRESS
     return ShouldHijackForGcStress(CallsiteIP, htCallsite);
@@ -394,7 +394,7 @@ bool RuntimeInstance::ShouldHijackCallsiteForGcStress(UIntNative CallsiteIP)
 #endif // FEATURE_GC_STRESS
 }
 
-COOP_PINVOKE_HELPER(UInt32, RhGetGCDescSize, (EEType* pEEType))
+COOP_PINVOKE_HELPER(uint32_t, RhGetGCDescSize, (EEType* pEEType))
 {
     return RedhawkGCInterface::GetGCDescSize(pEEType);
 }
@@ -508,7 +508,7 @@ COOP_PINVOKE_HELPER(PTR_VOID, RhGetRuntimeHelperForType, (EEType * pEEType, int 
 #ifdef FEATURE_CACHED_INTERFACE_DISPATCH
 EXTERN_C void RhpInitialDynamicInterfaceDispatch();
 
-COOP_PINVOKE_HELPER(void *, RhNewInterfaceDispatchCell, (EEType * pInterface, Int32 slotNumber))
+COOP_PINVOKE_HELPER(void *, RhNewInterfaceDispatchCell, (EEType * pInterface, int32_t slotNumber))
 {
     InterfaceDispatchCell * pCell = new (nothrow) InterfaceDispatchCell[2];
     if (pCell == NULL)
@@ -519,16 +519,16 @@ COOP_PINVOKE_HELPER(void *, RhNewInterfaceDispatchCell, (EEType * pInterface, In
     ASSERT(IS_ALIGNED(pCell, 2 * POINTER_SIZE));
     ASSERT(IS_ALIGNED(pInterface, (InterfaceDispatchCell::IDC_CachePointerMask + 1)));
 
-    pCell[0].m_pStub = (UIntNative)&RhpInitialDynamicInterfaceDispatch;
-    pCell[0].m_pCache = ((UIntNative)pInterface) | InterfaceDispatchCell::IDC_CachePointerIsInterfacePointerOrMetadataToken;
+    pCell[0].m_pStub = (uintptr_t)&RhpInitialDynamicInterfaceDispatch;
+    pCell[0].m_pCache = ((uintptr_t)pInterface) | InterfaceDispatchCell::IDC_CachePointerIsInterfacePointerOrMetadataToken;
     pCell[1].m_pStub = 0;
-    pCell[1].m_pCache = (UIntNative)slotNumber;
+    pCell[1].m_pCache = (uintptr_t)slotNumber;
 
     return pCell;
 }
 #endif // FEATURE_CACHED_INTERFACE_DISPATCH
 
-COOP_PINVOKE_HELPER(PTR_UInt8, RhGetThreadLocalStorageForDynamicType, (UInt32 uOffset, UInt32 tlsStorageSize, UInt32 numTlsCells))
+COOP_PINVOKE_HELPER(PTR_UInt8, RhGetThreadLocalStorageForDynamicType, (uint32_t uOffset, uint32_t tlsStorageSize, uint32_t numTlsCells))
 {
     Thread * pCurrentThread = ThreadStore::GetCurrentThread();
 

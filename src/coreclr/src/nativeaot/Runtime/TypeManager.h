@@ -6,7 +6,6 @@
 
 struct StaticGcDesc;
 class DispatchMap;
-typedef unsigned char       UInt8;
 
 class TypeManager
 {
@@ -16,23 +15,23 @@ class TypeManager
     DispatchMap**               m_pDispatchMapTable;
     StaticGcDesc*               m_pStaticsGCInfo;
     StaticGcDesc*               m_pThreadStaticsGCInfo;
-    UInt8*                      m_pStaticsGCDataSection;
-    UInt8*                      m_pThreadStaticsDataSection;
-    UInt32*                     m_pTlsIndex;  // Pointer to TLS index if this module uses thread statics
+    uint8_t*                    m_pStaticsGCDataSection;
+    uint8_t*                    m_pThreadStaticsDataSection;
+    uint32_t*                   m_pTlsIndex;  // Pointer to TLS index if this module uses thread statics
     void**                      m_pClasslibFunctions;
-    UInt32                      m_nClasslibFunctions;
-    UInt32*                     m_pLoopHijackFlag;
+    uint32_t                    m_nClasslibFunctions;
+    uint32_t*                   m_pLoopHijackFlag;
 
-    TypeManager(HANDLE osModule, ReadyToRunHeader * pHeader, void** pClasslibFunctions, UInt32 nClasslibFunctions);
+    TypeManager(HANDLE osModule, ReadyToRunHeader * pHeader, void** pClasslibFunctions, uint32_t nClasslibFunctions);
 
 public:
-    static TypeManager * Create(HANDLE osModule, void * pModuleHeader, void** pClasslibFunctions, UInt32 nClasslibFunctions);
+    static TypeManager * Create(HANDLE osModule, void * pModuleHeader, void** pClasslibFunctions, uint32_t nClasslibFunctions);
     void * GetModuleSection(ReadyToRunSectionType sectionId, int * length);
     void EnumStaticGCRefs(void * pfnCallback, void * pvCallbackData);
     HANDLE GetOsModuleHandle();
     void* GetClasslibFunction(ClasslibFunctionId functionId);
-    UInt32* GetPointerToTlsIndex() { return m_pTlsIndex; }
-    void SetLoopHijackFlag(UInt32 flag) { if (m_pLoopHijackFlag != nullptr) *m_pLoopHijackFlag = flag; }
+    uint32_t* GetPointerToTlsIndex() { return m_pTlsIndex; }
+    void SetLoopHijackFlag(uint32_t flag) { if (m_pLoopHijackFlag != nullptr) *m_pLoopHijackFlag = flag; }
 
 private:
 
@@ -48,7 +47,7 @@ private:
     };
 
     void EnumStaticGCRefsBlock(void * pfnCallback, void * pvCallbackData, StaticGcDesc* pStaticGcInfo);
-    void EnumThreadStaticGCRefsBlock(void * pfnCallback, void * pvCallbackData, StaticGcDesc* pStaticGcInfo, UInt8* pbThreadStaticData);
+    void EnumThreadStaticGCRefsBlock(void * pfnCallback, void * pvCallbackData, StaticGcDesc* pStaticGcInfo, uint8_t* pbThreadStaticData);
 };
 
 // TypeManagerHandle represents an AOT module in MRT based runtimes.

@@ -99,7 +99,7 @@ RhConfig * g_pRhConfig = &g_sRhConfig;
 // function whenever the system enables or disables tracing for this provider.
 //
 
-UInt32 EtwCallback(UInt32 IsEnabled, RH_ETW_CONTEXT * pContext)
+uint32_t EtwCallback(uint32_t IsEnabled, RH_ETW_CONTEXT * pContext)
 {
     GCHeapUtilities::RecordEventStateChange(!!(pContext->RegistrationHandle == Microsoft_Windows_Redhawk_GC_PublicHandle),
                                             static_cast<GCEventKeyword>(pContext->MatchAnyKeyword),
@@ -227,7 +227,7 @@ bool RedhawkGCInterface::InitializeSubsystems()
 //  pTransitionFrame-  transition frame to make stack crawable
 // Returns a pointer to the object allocated or NULL on failure.
 
-COOP_PINVOKE_HELPER(void*, RhpGcAlloc, (EEType *pEEType, UInt32 uFlags, UIntNative cbSize, void * pTransitionFrame))
+COOP_PINVOKE_HELPER(void*, RhpGcAlloc, (EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame))
 {
     Thread * pThread = ThreadStore::GetCurrentThread();
 
@@ -293,7 +293,7 @@ COOP_PINVOKE_HELPER(void*, RhpGcAlloc, (EEType *pEEType, UInt32 uFlags, UIntNati
 }
 
 // returns the object pointer for caller's convenience
-COOP_PINVOKE_HELPER(void*, RhpPublishObject, (void* pObject, UIntNative cbSize))
+COOP_PINVOKE_HELPER(void*, RhpPublishObject, (void* pObject, uintptr_t cbSize))
 {
     UNREFERENCED_PARAMETER(cbSize);
     ASSERT(cbSize >= LARGE_OBJECT_SIZE);
@@ -340,7 +340,7 @@ void EEType::InitializeAsGcFreeType()
 
 #endif // !DACCESS_COMPILE
 
-extern void GcEnumObject(PTR_OBJECTREF pObj, UInt32 flags, EnumGcRefCallbackFunc * fnGcEnumRef, EnumGcRefScanContext * pSc);
+extern void GcEnumObject(PTR_OBJECTREF pObj, uint32_t flags, EnumGcRefCallbackFunc * fnGcEnumRef, EnumGcRefScanContext * pSc);
 extern void GcEnumObjectsConservatively(PTR_OBJECTREF pLowerBound, PTR_OBJECTREF pUpperBound, EnumGcRefCallbackFunc * fnGcEnumRef, EnumGcRefScanContext * pSc);
 extern void GcBulkEnumObjects(PTR_OBJECTREF pObjs, DWORD cObjs, EnumGcRefCallbackFunc * fnGcEnumRef, EnumGcRefScanContext * pSc);
 
@@ -491,13 +491,13 @@ static void ReportExplicitConservativeReportedRegionIfValid(EnumGcRefContext * p
     GcEnumObjectsConservatively((PTR_OBJECTREF)conservativeRegionDesc->regionPointerLow, (PTR_OBJECTREF)conservativeRegionDesc->regionPointerHigh, pCtx->f, pCtx->sc);
 }
 
-static void EnumGcRefsCallback(void * hCallback, PTR_PTR_VOID pObject, UInt32 flags)
+static void EnumGcRefsCallback(void * hCallback, PTR_PTR_VOID pObject, uint32_t flags)
 {
     EnumGcRefContext * pCtx = (EnumGcRefContext *)hCallback;
 
     GcEnumObject((PTR_OBJECTREF)pObject, flags, pCtx->f, pCtx->sc);
 
-    const UInt32 interiorPinned = GC_CALL_INTERIOR | GC_CALL_PINNED;
+    const uint32_t interiorPinned = GC_CALL_INTERIOR | GC_CALL_PINNED;
     // If this is an interior pinned pointer, check to see if we're working with a ConservativeRegionDesc
     // and if so, report a conservative region. NOTE: do this only during promotion as conservative
     // reporting has no value during other GC phases.
@@ -554,7 +554,7 @@ void RedhawkGCInterface::EnumGcRef(PTR_RtuObjectRef pRef, GCRefKind kind, void *
 #ifndef DACCESS_COMPILE
 
 // static
-void RedhawkGCInterface::BulkEnumGcObjRef(PTR_RtuObjectRef pRefs, UInt32 cRefs, void * pfnEnumCallback, void * pvCallbackData)
+void RedhawkGCInterface::BulkEnumGcObjRef(PTR_RtuObjectRef pRefs, uint32_t cRefs, void * pfnEnumCallback, void * pvCallbackData)
 {
     GcBulkEnumObjects((PTR_OBJECTREF)pRefs, cRefs, (EnumGcRefCallbackFunc *)pfnEnumCallback, (EnumGcRefScanContext *)pvCallbackData);
 }
@@ -590,7 +590,7 @@ void RedhawkGCInterface::StressGc()
 {
     // The GarbageCollect operation below may trash the last win32 error. We save the error here so that it can be
     // restored after the GC operation;
-    Int32 lastErrorOnEntry = PalGetLastError();
+    int32_t lastErrorOnEntry = PalGetLastError();
 
     if (g_fGcStressStarted && !ThreadStore::GetCurrentThread()->IsSuppressGcStressSet() && !ThreadStore::GetCurrentThread()->IsDoNotTriggerGcSet())
     {
@@ -708,14 +708,14 @@ void RedhawkGCInterface::ScanHandleTableRoots(GcScanRootFunction pfnScanCallback
 
 #ifndef DACCESS_COMPILE
 
-UInt32 RedhawkGCInterface::GetGCDescSize(void * pType)
+uint32_t RedhawkGCInterface::GetGCDescSize(void * pType)
 {
     MethodTable * pMT = (MethodTable *)pType;
 
     if (!pMT->ContainsPointersOrCollectible())
         return 0;
 
-    return (UInt32)CGCDesc::GetCGCDescFromMT(pMT)->GetSize();
+    return (uint32_t)CGCDesc::GetCGCDescFromMT(pMT)->GetSize();
 }
 
 COOP_PINVOKE_HELPER(void, RhpCopyObjectContents, (Object* pobjDest, Object* pobjSrc))
@@ -743,8 +743,8 @@ COOP_PINVOKE_HELPER(Boolean, RhCompareObjectContentsAndPadding, (Object* pObj1, 
     EEType * pEEType = pObj1->get_EEType();
     size_t cbFields = pEEType->get_BaseSize() - (sizeof(ObjHeader) + sizeof(EEType*));
 
-    UInt8 * pbFields1 = (UInt8*)pObj1 + sizeof(EEType*);
-    UInt8 * pbFields2 = (UInt8*)pObj2 + sizeof(EEType*);
+    uint8_t * pbFields1 = (uint8_t*)pObj1 + sizeof(EEType*);
+    uint8_t * pbFields2 = (uint8_t*)pObj2 + sizeof(EEType*);
 
     return (memcmp(pbFields1, pbFields2, cbFields) == 0) ? Boolean_true : Boolean_false;
 }
@@ -775,7 +775,7 @@ uint64_t RedhawkGCInterface::GetDeadThreadsNonAllocBytes()
 #else
     // As it could be noticed we read 64bit values that may be concurrently updated.
     // Such reads are not guaranteed to be atomic on 32bit so extra care should be taken.
-    return PalInterlockedCompareExchange64((Int64*)&s_DeadThreadsNonAllocBytes, 0, 0);
+    return PalInterlockedCompareExchange64((int64_t*)&s_DeadThreadsNonAllocBytes, 0, 0);
 #endif
 }
 
@@ -795,7 +795,7 @@ void GCToEEInterface::SuspendEE(SUSPEND_REASON reason)
     ETW::GCLog::ETW_GC_INFO Info;
     Info.SuspendEE.Reason = reason;
     Info.SuspendEE.GcCount = (((reason == SUSPEND_FOR_GC) || (reason == SUSPEND_FOR_GC_PREP)) ?
-        (UInt32)GCHeapUtilities::GetGCHeap()->GetGcCount() : (UInt32)-1);
+        (uint32_t)GCHeapUtilities::GetGCHeap()->GetGcCount() : (uint32_t)-1);
 #endif // FEATURE_EVENT_TRACE
 
     FireEtwGCSuspendEEBegin_V1(Info.SuspendEE.Reason, Info.SuspendEE.GcCount, GetClrInstanceId());

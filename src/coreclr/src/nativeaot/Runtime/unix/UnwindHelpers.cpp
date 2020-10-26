@@ -405,7 +405,7 @@ void Registers_arm_rt::setRegister(int num, uint32_t value, uint32_t location)
 {
 
     if (num == UNW_REG_SP || num == UNW_ARM_SP) {
-        regs->SP = (UIntNative )value;
+        regs->SP = (uintptr_t )value;
         return;
     }
 
@@ -609,7 +609,7 @@ inline uint64_t Registers_REGDISPLAY::getRegister(int regNum) const {
 void Registers_REGDISPLAY::setRegister(int num, uint64_t value, uint64_t location)
 {
     if (num == UNW_REG_SP || num == UNW_ARM64_SP) {
-        SP = (UIntNative )value;
+        SP = (uintptr_t )value;
         return;
     }
 
@@ -726,7 +726,7 @@ libunwind::v128 Registers_REGDISPLAY::getVectorRegister(int num) const
 {
     num -= UNW_ARM64_D8;
 
-    if (num < 0 || num >= sizeof(D) / sizeof(UInt64))
+    if (num < 0 || num >= sizeof(D) / sizeof(uint64_t))
     {
         PORTABILITY_ASSERT("unsupported arm64 vector register");
     }
@@ -745,12 +745,12 @@ void Registers_REGDISPLAY::setVectorRegister(int num, libunwind::v128 value)
 {
     num -= UNW_ARM64_D8;
 
-    if (num < 0 || num >= sizeof(D) / sizeof(UInt64))
+    if (num < 0 || num >= sizeof(D) / sizeof(uint64_t))
     {
         PORTABILITY_ASSERT("unsupported arm64 vector register");
     }
 
-    D[num] = (UInt64)value.vec[2] << 32 | (UInt64)value.vec[3];
+    D[num] = (uint64_t)value.vec[2] << 32 | (uint64_t)value.vec[3];
 }
 
 #endif // TARGET_ARM64

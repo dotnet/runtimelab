@@ -81,7 +81,7 @@ enum FailureType { ftAllocation, ftOverflow };
 
 // DefaultHashTraits provides defaults for seldomly customized values in traits classes.
 
-template < typename ELEMENT, typename COUNT_T = UInt32 >
+template < typename ELEMENT, typename COUNT_T = uint32_t >
 class DefaultSHashTraits
 {
   public:

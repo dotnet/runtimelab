@@ -27,19 +27,19 @@ struct RH_ETW_CONTEXT
 {
     TRACEHANDLE               RegistrationHandle;
     TRACEHANDLE               Logger;
-    UInt64                    MatchAnyKeyword;
-    UInt64                    MatchAllKeyword;
+    uint64_t                    MatchAnyKeyword;
+    uint64_t                    MatchAllKeyword;
     EVENT_FILTER_DESCRIPTOR * FilterData;
-    UInt32                    Flags;
-    UInt32                    IsEnabled;
-    UInt8                     Level;
-    UInt8                     Reserve;
+    uint32_t                    Flags;
+    uint32_t                    IsEnabled;
+    uint8_t                     Level;
+    uint8_t                     Reserve;
 };
 
-UInt32 EtwCallback(UInt32 IsEnabled, RH_ETW_CONTEXT * CallbackContext);
+uint32_t EtwCallback(uint32_t IsEnabled, RH_ETW_CONTEXT * CallbackContext);
 
 __declspec(noinline) __inline void __stdcall
-RhEtwControlCallback(GUID * /*SourceId*/, UInt32 IsEnabled, UInt8 Level, UInt64 MatchAnyKeyword, UInt64 MatchAllKeyword, EVENT_FILTER_DESCRIPTOR * FilterData, void * CallbackContext)
+RhEtwControlCallback(GUID * /*SourceId*/, uint32_t IsEnabled, uint8_t Level, uint64_t MatchAnyKeyword, uint64_t MatchAllKeyword, EVENT_FILTER_DESCRIPTOR * FilterData, void * CallbackContext)
 {
     RH_ETW_CONTEXT * Ctx = (RH_ETW_CONTEXT*)CallbackContext;
     if (Ctx == NULL)
@@ -160,150 +160,150 @@ extern "C" __declspec(selectany) RH_ETW_CONTEXT MICROSOFT_WINDOWS_REDHAWK_GC_PRI
 
 #define FireEtwPrvSetGCHandle(HandleID, ObjectID, Kind, Generation, AppDomainID, ClrInstanceID) (MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_Context.IsEnabled && PalEventEnabled(Microsoft_Windows_Redhawk_GC_PrivateHandle, &PrvSetGCHandle)) ? Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_PrvSetGCHandle(Microsoft_Windows_Redhawk_GC_PrivateHandle, &PrvSetGCHandle, HandleID, ObjectID, Kind, Generation, AppDomainID, ClrInstanceID) : 0
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_BGCAllocWait(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 Reason, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_BGCAllocWait(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t Reason, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[2];
-    EventDataDescCreate(&EventData[0], &Reason, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Reason, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 2, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_BGCDrainMark(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt64 Objects, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_BGCDrainMark(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint64_t Objects, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[2];
-    EventDataDescCreate(&EventData[0], &Objects, sizeof(UInt64));
-    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Objects, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 2, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_BGCOverflow(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt64 Min, UInt64 Max, UInt64 Objects, UInt32 IsLarge, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_BGCOverflow(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint64_t Min, uint64_t Max, uint64_t Objects, uint32_t IsLarge, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[5];
-    EventDataDescCreate(&EventData[0], &Min, sizeof(UInt64));
-    EventDataDescCreate(&EventData[1], &Max, sizeof(UInt64));
-    EventDataDescCreate(&EventData[2], &Objects, sizeof(UInt64));
-    EventDataDescCreate(&EventData[3], &IsLarge, sizeof(UInt32));
-    EventDataDescCreate(&EventData[4], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Min, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[1], &Max, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[2], &Objects, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[3], &IsLarge, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[4], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 5, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_BGCRevisit(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt64 Pages, UInt64 Objects, UInt32 IsLarge, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_BGCRevisit(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint64_t Pages, uint64_t Objects, uint32_t IsLarge, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[4];
-    EventDataDescCreate(&EventData[0], &Pages, sizeof(UInt64));
-    EventDataDescCreate(&EventData[1], &Objects, sizeof(UInt64));
-    EventDataDescCreate(&EventData[2], &IsLarge, sizeof(UInt32));
-    EventDataDescCreate(&EventData[3], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Pages, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[1], &Objects, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[2], &IsLarge, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[3], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 4, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_GCFullNotify_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 GenNumber, UInt32 IsAlloc, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_GCFullNotify_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t GenNumber, uint32_t IsAlloc, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[3];
-    EventDataDescCreate(&EventData[0], &GenNumber, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &IsAlloc, sizeof(UInt32));
-    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &GenNumber, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &IsAlloc, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 3, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_GCGlobalHeap_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt64 FinalYoungestDesired, Int32 NumHeaps, UInt32 CondemnedGeneration, UInt32 Gen0ReductionCount, UInt32 Reason, UInt32 GlobalMechanisms, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_GCGlobalHeap_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint64_t FinalYoungestDesired, int32_t NumHeaps, uint32_t CondemnedGeneration, uint32_t Gen0ReductionCount, uint32_t Reason, uint32_t GlobalMechanisms, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[7];
-    EventDataDescCreate(&EventData[0], &FinalYoungestDesired, sizeof(UInt64));
-    EventDataDescCreate(&EventData[1], &NumHeaps, sizeof(Int32));
-    EventDataDescCreate(&EventData[2], &CondemnedGeneration, sizeof(UInt32));
-    EventDataDescCreate(&EventData[3], &Gen0ReductionCount, sizeof(UInt32));
-    EventDataDescCreate(&EventData[4], &Reason, sizeof(UInt32));
-    EventDataDescCreate(&EventData[5], &GlobalMechanisms, sizeof(UInt32));
-    EventDataDescCreate(&EventData[6], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &FinalYoungestDesired, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[1], &NumHeaps, sizeof(int32_t));
+    EventDataDescCreate(&EventData[2], &CondemnedGeneration, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[3], &Gen0ReductionCount, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[4], &Reason, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[5], &GlobalMechanisms, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[6], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 7, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_GCJoin_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 Heap, UInt32 JoinTime, UInt32 JoinType, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_GCJoin_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t Heap, uint32_t JoinTime, uint32_t JoinType, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[4];
-    EventDataDescCreate(&EventData[0], &Heap, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &JoinTime, sizeof(UInt32));
-    EventDataDescCreate(&EventData[2], &JoinType, sizeof(UInt32));
-    EventDataDescCreate(&EventData[3], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Heap, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &JoinTime, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[2], &JoinType, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[3], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 4, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_GCNoUserData(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_GCNoUserData(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[1];
-    EventDataDescCreate(&EventData[0], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 1, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_GCOptimized_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt64 DesiredAllocation, UInt64 NewAllocation, UInt32 GenerationNumber, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_GCOptimized_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint64_t DesiredAllocation, uint64_t NewAllocation, uint32_t GenerationNumber, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[4];
-    EventDataDescCreate(&EventData[0], &DesiredAllocation, sizeof(UInt64));
-    EventDataDescCreate(&EventData[1], &NewAllocation, sizeof(UInt64));
-    EventDataDescCreate(&EventData[2], &GenerationNumber, sizeof(UInt32));
-    EventDataDescCreate(&EventData[3], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &DesiredAllocation, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[1], &NewAllocation, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[2], &GenerationNumber, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[3], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 4, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_GCSettings(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt64 SegmentSize, UInt64 LargeObjectSegmentSize, UInt32_BOOL ServerGC)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_GCSettings(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint64_t SegmentSize, uint64_t LargeObjectSegmentSize, UInt32_BOOL ServerGC)
 {
     EVENT_DATA_DESCRIPTOR EventData[3];
-    EventDataDescCreate(&EventData[0], &SegmentSize, sizeof(UInt64));
-    EventDataDescCreate(&EventData[1], &LargeObjectSegmentSize, sizeof(UInt64));
+    EventDataDescCreate(&EventData[0], &SegmentSize, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[1], &LargeObjectSegmentSize, sizeof(uint64_t));
     EventDataDescCreate(&EventData[2], &ServerGC, sizeof(UInt32_BOOL));
     return PalEventWrite(RegHandle, Descriptor, 3, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_PinPlugAtGCTime(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, void* PlugStart, void* PlugEnd, void* GapBeforeSize, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_PinPlugAtGCTime(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, void* PlugStart, void* PlugEnd, void* GapBeforeSize, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[4];
     EventDataDescCreate(&EventData[0], &PlugStart, sizeof(void*));
     EventDataDescCreate(&EventData[1], &PlugEnd, sizeof(void*));
     EventDataDescCreate(&EventData[2], &GapBeforeSize, sizeof(void*));
-    EventDataDescCreate(&EventData[3], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[3], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 4, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_PrvDestroyGCHandle(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, void* HandleID, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_PrvDestroyGCHandle(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, void* HandleID, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[2];
     EventDataDescCreate(&EventData[0], &HandleID, sizeof(void*));
-    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 2, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_PrvGCMark_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 HeapNum, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_PrvGCMark_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t HeapNum, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[2];
-    EventDataDescCreate(&EventData[0], &HeapNum, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &HeapNum, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 2, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_PrvSetGCHandle(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, void* HandleID, void* ObjectID, UInt32 Kind, UInt32 Generation, UInt64 AppDomainID, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_PrvSetGCHandle(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, void* HandleID, void* ObjectID, uint32_t Kind, uint32_t Generation, uint64_t AppDomainID, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[6];
     EventDataDescCreate(&EventData[0], &HandleID, sizeof(void*));
     EventDataDescCreate(&EventData[1], &ObjectID, sizeof(void*));
-    EventDataDescCreate(&EventData[2], &Kind, sizeof(UInt32));
-    EventDataDescCreate(&EventData[3], &Generation, sizeof(UInt32));
-    EventDataDescCreate(&EventData[4], &AppDomainID, sizeof(UInt64));
-    EventDataDescCreate(&EventData[5], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[2], &Kind, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[3], &Generation, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[4], &AppDomainID, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[5], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 6, EventData);
 }
 
@@ -430,399 +430,399 @@ extern "C" __declspec(selectany) RH_ETW_CONTEXT MICROSOFT_WINDOWS_REDHAWK_GC_PUB
 
 #define FireEtwSetGCHandle(HandleID, ObjectID, Kind, Generation, AppDomainID, ClrInstanceID) (MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_Context.IsEnabled && PalEventEnabled(Microsoft_Windows_Redhawk_GC_PublicHandle, &SetGCHandle)) ? Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_SetGCHandle(Microsoft_Windows_Redhawk_GC_PublicHandle, &SetGCHandle, HandleID, ObjectID, Kind, Generation, AppDomainID, ClrInstanceID) : 0
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_BulkType(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 Count, UInt16 ClrInstanceID, ULONG Values_Len_, const PVOID Values)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_BulkType(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t Count, uint16_t ClrInstanceID, ULONG Values_Len_, const PVOID Values)
 {
     EVENT_DATA_DESCRIPTOR EventData[11];
-    EventDataDescCreate(&EventData[0], &Count, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Count, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(uint16_t));
     EventDataDescCreate(&EventData[2], Values, Count * Values_Len_);
     return PalEventWrite(RegHandle, Descriptor, 3, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_DestroyGCHandle(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, void* HandleID, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_DestroyGCHandle(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, void* HandleID, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[2];
     EventDataDescCreate(&EventData[0], &HandleID, sizeof(void*));
-    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 2, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_Exception(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, LPCWSTR ExceptionType, LPCWSTR ExceptionMessage, void* ExceptionEIP, UInt32 ExceptionHRESULT, UInt16 ExceptionFlags, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_Exception(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, LPCWSTR ExceptionType, LPCWSTR ExceptionMessage, void* ExceptionEIP, uint32_t ExceptionHRESULT, uint16_t ExceptionFlags, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[6];
     EventDataDescCreate(&EventData[0], (ExceptionType != NULL) ? ExceptionType : L"", (ExceptionType != NULL) ? (ULONG)((wcslen(ExceptionType) + 1) * sizeof(WCHAR)) : (ULONG)sizeof(L""));
     EventDataDescCreate(&EventData[1], (ExceptionMessage != NULL) ? ExceptionMessage : L"", (ExceptionMessage != NULL) ? (ULONG)((wcslen(ExceptionMessage) + 1) * sizeof(WCHAR)) : (ULONG)sizeof(L""));
     EventDataDescCreate(&EventData[2], &ExceptionEIP, sizeof(void*));
-    EventDataDescCreate(&EventData[3], &ExceptionHRESULT, sizeof(UInt32));
-    EventDataDescCreate(&EventData[4], &ExceptionFlags, sizeof(UInt16));
-    EventDataDescCreate(&EventData[5], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[3], &ExceptionHRESULT, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[4], &ExceptionFlags, sizeof(uint16_t));
+    EventDataDescCreate(&EventData[5], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 6, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCAllocationTick_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 AllocationAmount, UInt32 AllocationKind, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCAllocationTick_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t AllocationAmount, uint32_t AllocationKind, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[3];
-    EventDataDescCreate(&EventData[0], &AllocationAmount, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &AllocationKind, sizeof(UInt32));
-    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &AllocationAmount, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &AllocationKind, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 3, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCAllocationTick_V2(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 AllocationAmount, UInt32 AllocationKind, UInt16 ClrInstanceID, UInt64 AllocationAmount64, void* TypeID, LPCWSTR TypeName, UInt32 HeapIndex)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCAllocationTick_V2(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t AllocationAmount, uint32_t AllocationKind, uint16_t ClrInstanceID, uint64_t AllocationAmount64, void* TypeID, LPCWSTR TypeName, uint32_t HeapIndex)
 {
     EVENT_DATA_DESCRIPTOR EventData[7];
-    EventDataDescCreate(&EventData[0], &AllocationAmount, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &AllocationKind, sizeof(UInt32));
-    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(UInt16));
-    EventDataDescCreate(&EventData[3], &AllocationAmount64, sizeof(UInt64));
+    EventDataDescCreate(&EventData[0], &AllocationAmount, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &AllocationKind, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(uint16_t));
+    EventDataDescCreate(&EventData[3], &AllocationAmount64, sizeof(uint64_t));
     EventDataDescCreate(&EventData[4], &TypeID, sizeof(void*));
     EventDataDescCreate(&EventData[5], (TypeName != NULL) ? TypeName : L"", (TypeName != NULL) ? (ULONG)((wcslen(TypeName) + 1) * sizeof(WCHAR)) : (ULONG)sizeof(L""));
-    EventDataDescCreate(&EventData[6], &HeapIndex, sizeof(UInt32));
+    EventDataDescCreate(&EventData[6], &HeapIndex, sizeof(uint32_t));
     return PalEventWrite(RegHandle, Descriptor, 7, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCAllocationTick_V3(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 AllocationAmount, UInt32 AllocationKind, UInt16 ClrInstanceID, UInt64 AllocationAmount64, void* TypeID, LPCWSTR TypeName, UInt32 HeapIndex, void* Address)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCAllocationTick_V3(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t AllocationAmount, uint32_t AllocationKind, uint16_t ClrInstanceID, uint64_t AllocationAmount64, void* TypeID, LPCWSTR TypeName, uint32_t HeapIndex, void* Address)
 {
     EVENT_DATA_DESCRIPTOR EventData[8];
-    EventDataDescCreate(&EventData[0], &AllocationAmount, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &AllocationKind, sizeof(UInt32));
-    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(UInt16));
-    EventDataDescCreate(&EventData[3], &AllocationAmount64, sizeof(UInt64));
+    EventDataDescCreate(&EventData[0], &AllocationAmount, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &AllocationKind, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(uint16_t));
+    EventDataDescCreate(&EventData[3], &AllocationAmount64, sizeof(uint64_t));
     EventDataDescCreate(&EventData[4], &TypeID, sizeof(void*));
     EventDataDescCreate(&EventData[5], (TypeName != NULL) ? TypeName : L"", (TypeName != NULL) ? (ULONG)((wcslen(TypeName) + 1) * sizeof(WCHAR)) : (ULONG)sizeof(L""));
-    EventDataDescCreate(&EventData[6], &HeapIndex, sizeof(UInt32));
+    EventDataDescCreate(&EventData[6], &HeapIndex, sizeof(uint32_t));
     EventDataDescCreate(&EventData[7], &Address, sizeof(void*));
     return PalEventWrite(RegHandle, Descriptor, 8, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCBulkEdge(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 Index, UInt32 Count, UInt16 ClrInstanceID, ULONG Values_Len_, const PVOID Values)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCBulkEdge(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t Index, uint32_t Count, uint16_t ClrInstanceID, ULONG Values_Len_, const PVOID Values)
 {
     EVENT_DATA_DESCRIPTOR EventData[6];
-    EventDataDescCreate(&EventData[0], &Index, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &Count, sizeof(UInt32));
-    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Index, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &Count, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(uint16_t));
     EventDataDescCreate(&EventData[3], Values, Count * Values_Len_);
     return PalEventWrite(RegHandle, Descriptor, 4, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCBulkMovedObjectRanges(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 Index, UInt32 Count, UInt16 ClrInstanceID, ULONG Values_Len_, const PVOID Values)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCBulkMovedObjectRanges(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t Index, uint32_t Count, uint16_t ClrInstanceID, ULONG Values_Len_, const PVOID Values)
 {
     EVENT_DATA_DESCRIPTOR EventData[7];
-    EventDataDescCreate(&EventData[0], &Index, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &Count, sizeof(UInt32));
-    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Index, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &Count, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(uint16_t));
     EventDataDescCreate(&EventData[3], Values, Count * Values_Len_);
     return PalEventWrite(RegHandle, Descriptor, 4, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCBulkNode(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 Index, UInt32 Count, UInt16 ClrInstanceID, ULONG Values_Len_, const PVOID Values)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCBulkNode(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t Index, uint32_t Count, uint16_t ClrInstanceID, ULONG Values_Len_, const PVOID Values)
 {
     EVENT_DATA_DESCRIPTOR EventData[8];
-    EventDataDescCreate(&EventData[0], &Index, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &Count, sizeof(UInt32));
-    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Index, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &Count, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(uint16_t));
     EventDataDescCreate(&EventData[3], Values, Count * Values_Len_);
     return PalEventWrite(RegHandle, Descriptor, 4, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCBulkRCW(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 Count, UInt16 ClrInstanceID, ULONG Values_Len_, const PVOID Values)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCBulkRCW(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t Count, uint16_t ClrInstanceID, ULONG Values_Len_, const PVOID Values)
 {
     EVENT_DATA_DESCRIPTOR EventData[9];
-    EventDataDescCreate(&EventData[0], &Count, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Count, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(uint16_t));
     EventDataDescCreate(&EventData[2], Values, Count * Values_Len_);
     return PalEventWrite(RegHandle, Descriptor, 3, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCBulkRootCCW(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 Count, UInt16 ClrInstanceID, ULONG Values_Len_, const PVOID Values)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCBulkRootCCW(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t Count, uint16_t ClrInstanceID, ULONG Values_Len_, const PVOID Values)
 {
     EVENT_DATA_DESCRIPTOR EventData[10];
-    EventDataDescCreate(&EventData[0], &Count, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Count, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(uint16_t));
     EventDataDescCreate(&EventData[2], Values, Count * Values_Len_);
     return PalEventWrite(RegHandle, Descriptor, 3, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCBulkRootConditionalWeakTableElementEdge(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 Index, UInt32 Count, UInt16 ClrInstanceID, ULONG Values_Len_, const PVOID Values)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCBulkRootConditionalWeakTableElementEdge(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t Index, uint32_t Count, uint16_t ClrInstanceID, ULONG Values_Len_, const PVOID Values)
 {
     EVENT_DATA_DESCRIPTOR EventData[7];
-    EventDataDescCreate(&EventData[0], &Index, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &Count, sizeof(UInt32));
-    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Index, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &Count, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(uint16_t));
     EventDataDescCreate(&EventData[3], Values, Count * Values_Len_);
     return PalEventWrite(RegHandle, Descriptor, 4, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCBulkRootEdge(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 Index, UInt32 Count, UInt16 ClrInstanceID, ULONG Values_Len_, const PVOID Values)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCBulkRootEdge(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t Index, uint32_t Count, uint16_t ClrInstanceID, ULONG Values_Len_, const PVOID Values)
 {
     EVENT_DATA_DESCRIPTOR EventData[8];
-    EventDataDescCreate(&EventData[0], &Index, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &Count, sizeof(UInt32));
-    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Index, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &Count, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(uint16_t));
     EventDataDescCreate(&EventData[3], Values, Count * Values_Len_);
     return PalEventWrite(RegHandle, Descriptor, 4, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCBulkSurvivingObjectRanges(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 Index, UInt32 Count, UInt16 ClrInstanceID, ULONG Values_Len_, const PVOID Values)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCBulkSurvivingObjectRanges(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t Index, uint32_t Count, uint16_t ClrInstanceID, ULONG Values_Len_, const PVOID Values)
 {
     EVENT_DATA_DESCRIPTOR EventData[6];
-    EventDataDescCreate(&EventData[0], &Index, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &Count, sizeof(UInt32));
-    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Index, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &Count, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(uint16_t));
     EventDataDescCreate(&EventData[3], Values, Count * Values_Len_);
     return PalEventWrite(RegHandle, Descriptor, 4, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCCreateConcurrentThread(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCCreateConcurrentThread(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[1];
-    EventDataDescCreate(&EventData[0], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 1, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCCreateSegment_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt64 Address, UInt64 Size, UInt32 Type, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCCreateSegment_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint64_t Address, uint64_t Size, uint32_t Type, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[4];
-    EventDataDescCreate(&EventData[0], &Address, sizeof(UInt64));
-    EventDataDescCreate(&EventData[1], &Size, sizeof(UInt64));
-    EventDataDescCreate(&EventData[2], &Type, sizeof(UInt32));
-    EventDataDescCreate(&EventData[3], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Address, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[1], &Size, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[2], &Type, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[3], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 4, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCEnd_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 Count, UInt32 Depth, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCEnd_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t Count, uint32_t Depth, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[3];
-    EventDataDescCreate(&EventData[0], &Count, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &Depth, sizeof(UInt32));
-    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Count, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &Depth, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 3, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCFreeSegment_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt64 Address, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCFreeSegment_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint64_t Address, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[2];
-    EventDataDescCreate(&EventData[0], &Address, sizeof(UInt64));
-    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Address, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 2, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCGenerationRange(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt8 Generation, void* RangeStart, UInt64 RangeUsedLength, UInt64 RangeReservedLength, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCGenerationRange(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint8_t Generation, void* RangeStart, uint64_t RangeUsedLength, uint64_t RangeReservedLength, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[5];
-    EventDataDescCreate(&EventData[0], &Generation, sizeof(UInt8));
+    EventDataDescCreate(&EventData[0], &Generation, sizeof(uint8_t));
     EventDataDescCreate(&EventData[1], &RangeStart, sizeof(void*));
-    EventDataDescCreate(&EventData[2], &RangeUsedLength, sizeof(UInt64));
-    EventDataDescCreate(&EventData[3], &RangeReservedLength, sizeof(UInt64));
-    EventDataDescCreate(&EventData[4], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[2], &RangeUsedLength, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[3], &RangeReservedLength, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[4], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 5, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCGlobalHeap_V2(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt64 FinalYoungestDesired, Int32 NumHeaps, UInt32 CondemnedGeneration, UInt32 Gen0ReductionCount, UInt32 Reason, UInt32 GlobalMechanisms, UInt16 ClrInstanceID, UInt32 PauseMode, UInt32 MemoryPressure)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCGlobalHeap_V2(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint64_t FinalYoungestDesired, int32_t NumHeaps, uint32_t CondemnedGeneration, uint32_t Gen0ReductionCount, uint32_t Reason, uint32_t GlobalMechanisms, uint16_t ClrInstanceID, uint32_t PauseMode, uint32_t MemoryPressure)
 {
     EVENT_DATA_DESCRIPTOR EventData[9];
-    EventDataDescCreate(&EventData[0], &FinalYoungestDesired, sizeof(UInt64));
-    EventDataDescCreate(&EventData[1], &NumHeaps, sizeof(Int32));
-    EventDataDescCreate(&EventData[2], &CondemnedGeneration, sizeof(UInt32));
-    EventDataDescCreate(&EventData[3], &Gen0ReductionCount, sizeof(UInt32));
-    EventDataDescCreate(&EventData[4], &Reason, sizeof(UInt32));
-    EventDataDescCreate(&EventData[5], &GlobalMechanisms, sizeof(UInt32));
-    EventDataDescCreate(&EventData[6], &ClrInstanceID, sizeof(UInt16));
-    EventDataDescCreate(&EventData[7], &PauseMode, sizeof(UInt32));
-    EventDataDescCreate(&EventData[8], &MemoryPressure, sizeof(UInt32));
+    EventDataDescCreate(&EventData[0], &FinalYoungestDesired, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[1], &NumHeaps, sizeof(int32_t));
+    EventDataDescCreate(&EventData[2], &CondemnedGeneration, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[3], &Gen0ReductionCount, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[4], &Reason, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[5], &GlobalMechanisms, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[6], &ClrInstanceID, sizeof(uint16_t));
+    EventDataDescCreate(&EventData[7], &PauseMode, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[8], &MemoryPressure, sizeof(uint32_t));
     return PalEventWrite(RegHandle, Descriptor, 9, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCHeapStats_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt64 GenerationSize0, UInt64 TotalPromotedSize0, UInt64 GenerationSize1, UInt64 TotalPromotedSize1, UInt64 GenerationSize2, UInt64 TotalPromotedSize2, UInt64 GenerationSize3, UInt64 TotalPromotedSize3, UInt64 FinalizationPromotedSize, UInt64 FinalizationPromotedCount, UInt32 PinnedObjectCount, UInt32 SinkBlockCount, UInt32 GCHandleCount, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCHeapStats_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint64_t GenerationSize0, uint64_t TotalPromotedSize0, uint64_t GenerationSize1, uint64_t TotalPromotedSize1, uint64_t GenerationSize2, uint64_t TotalPromotedSize2, uint64_t GenerationSize3, uint64_t TotalPromotedSize3, uint64_t FinalizationPromotedSize, uint64_t FinalizationPromotedCount, uint32_t PinnedObjectCount, uint32_t SinkBlockCount, uint32_t GCHandleCount, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[14];
-    EventDataDescCreate(&EventData[0], &GenerationSize0, sizeof(UInt64));
-    EventDataDescCreate(&EventData[1], &TotalPromotedSize0, sizeof(UInt64));
-    EventDataDescCreate(&EventData[2], &GenerationSize1, sizeof(UInt64));
-    EventDataDescCreate(&EventData[3], &TotalPromotedSize1, sizeof(UInt64));
-    EventDataDescCreate(&EventData[4], &GenerationSize2, sizeof(UInt64));
-    EventDataDescCreate(&EventData[5], &TotalPromotedSize2, sizeof(UInt64));
-    EventDataDescCreate(&EventData[6], &GenerationSize3, sizeof(UInt64));
-    EventDataDescCreate(&EventData[7], &TotalPromotedSize3, sizeof(UInt64));
-    EventDataDescCreate(&EventData[8], &FinalizationPromotedSize, sizeof(UInt64));
-    EventDataDescCreate(&EventData[9], &FinalizationPromotedCount, sizeof(UInt64));
-    EventDataDescCreate(&EventData[10], &PinnedObjectCount, sizeof(UInt32));
-    EventDataDescCreate(&EventData[11], &SinkBlockCount, sizeof(UInt32));
-    EventDataDescCreate(&EventData[12], &GCHandleCount, sizeof(UInt32));
-    EventDataDescCreate(&EventData[13], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &GenerationSize0, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[1], &TotalPromotedSize0, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[2], &GenerationSize1, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[3], &TotalPromotedSize1, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[4], &GenerationSize2, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[5], &TotalPromotedSize2, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[6], &GenerationSize3, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[7], &TotalPromotedSize3, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[8], &FinalizationPromotedSize, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[9], &FinalizationPromotedCount, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[10], &PinnedObjectCount, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[11], &SinkBlockCount, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[12], &GCHandleCount, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[13], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 14, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCJoin_V2(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 Heap, UInt32 JoinTime, UInt32 JoinType, UInt16 ClrInstanceID, UInt32 JoinID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCJoin_V2(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t Heap, uint32_t JoinTime, uint32_t JoinType, uint16_t ClrInstanceID, uint32_t JoinID)
 {
     EVENT_DATA_DESCRIPTOR EventData[5];
-    EventDataDescCreate(&EventData[0], &Heap, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &JoinTime, sizeof(UInt32));
-    EventDataDescCreate(&EventData[2], &JoinType, sizeof(UInt32));
-    EventDataDescCreate(&EventData[3], &ClrInstanceID, sizeof(UInt16));
-    EventDataDescCreate(&EventData[4], &JoinID, sizeof(UInt32));
+    EventDataDescCreate(&EventData[0], &Heap, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &JoinTime, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[2], &JoinType, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[3], &ClrInstanceID, sizeof(uint16_t));
+    EventDataDescCreate(&EventData[4], &JoinID, sizeof(uint32_t));
     return PalEventWrite(RegHandle, Descriptor, 5, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCMark(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 HeapNum, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCMark(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t HeapNum, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[2];
-    EventDataDescCreate(&EventData[0], &HeapNum, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &HeapNum, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 2, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCMarkWithType(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 HeapNum, UInt16 ClrInstanceID, UInt32 Type, UInt64 Bytes)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCMarkWithType(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t HeapNum, uint16_t ClrInstanceID, uint32_t Type, uint64_t Bytes)
 {
     EVENT_DATA_DESCRIPTOR EventData[4];
-    EventDataDescCreate(&EventData[0], &HeapNum, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(UInt16));
-    EventDataDescCreate(&EventData[2], &Type, sizeof(UInt32));
-    EventDataDescCreate(&EventData[3], &Bytes, sizeof(UInt64));
+    EventDataDescCreate(&EventData[0], &HeapNum, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(uint16_t));
+    EventDataDescCreate(&EventData[2], &Type, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[3], &Bytes, sizeof(uint64_t));
     return PalEventWrite(RegHandle, Descriptor, 4, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCNoUserData(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCNoUserData(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[1];
-    EventDataDescCreate(&EventData[0], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 1, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCPerHeapHistory_V3(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt16 ClrInstanceID, void* FreeListAllocated, void* FreeListRejected, void* EndOfSegAllocated, void* CondemnedAllocated, void* PinnedAllocated, void* PinnedAllocatedAdvance, UInt32 RunningFreeListEfficiency, UInt32 CondemnReasons0, UInt32 CondemnReasons1, UInt32 CompactMechanisms, UInt32 ExpandMechanisms, UInt32 HeapIndex, void* ExtraGen0Commit, UInt32 Count, ULONG Values_Len_, const PVOID Values)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCPerHeapHistory_V3(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint16_t ClrInstanceID, void* FreeListAllocated, void* FreeListRejected, void* EndOfSegAllocated, void* CondemnedAllocated, void* PinnedAllocated, void* PinnedAllocatedAdvance, uint32_t RunningFreeListEfficiency, uint32_t CondemnReasons0, uint32_t CondemnReasons1, uint32_t CompactMechanisms, uint32_t ExpandMechanisms, uint32_t HeapIndex, void* ExtraGen0Commit, uint32_t Count, ULONG Values_Len_, const PVOID Values)
 {
     EVENT_DATA_DESCRIPTOR EventData[26];
-    EventDataDescCreate(&EventData[0], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &ClrInstanceID, sizeof(uint16_t));
     EventDataDescCreate(&EventData[1], &FreeListAllocated, sizeof(void*));
     EventDataDescCreate(&EventData[2], &FreeListRejected, sizeof(void*));
     EventDataDescCreate(&EventData[3], &EndOfSegAllocated, sizeof(void*));
     EventDataDescCreate(&EventData[4], &CondemnedAllocated, sizeof(void*));
     EventDataDescCreate(&EventData[5], &PinnedAllocated, sizeof(void*));
     EventDataDescCreate(&EventData[6], &PinnedAllocatedAdvance, sizeof(void*));
-    EventDataDescCreate(&EventData[7], &RunningFreeListEfficiency, sizeof(UInt32));
-    EventDataDescCreate(&EventData[8], &CondemnReasons0, sizeof(UInt32));
-    EventDataDescCreate(&EventData[9], &CondemnReasons1, sizeof(UInt32));
-    EventDataDescCreate(&EventData[10], &CompactMechanisms, sizeof(UInt32));
-    EventDataDescCreate(&EventData[11], &ExpandMechanisms, sizeof(UInt32));
-    EventDataDescCreate(&EventData[12], &HeapIndex, sizeof(UInt32));
+    EventDataDescCreate(&EventData[7], &RunningFreeListEfficiency, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[8], &CondemnReasons0, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[9], &CondemnReasons1, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[10], &CompactMechanisms, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[11], &ExpandMechanisms, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[12], &HeapIndex, sizeof(uint32_t));
     EventDataDescCreate(&EventData[13], &ExtraGen0Commit, sizeof(void*));
-    EventDataDescCreate(&EventData[14], &Count, sizeof(UInt32));
+    EventDataDescCreate(&EventData[14], &Count, sizeof(uint32_t));
     EventDataDescCreate(&EventData[15], Values, Count * Values_Len_);
     return PalEventWrite(RegHandle, Descriptor, 16, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCStart_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 Count, UInt32 Depth, UInt32 Reason, UInt32 Type, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCStart_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t Count, uint32_t Depth, uint32_t Reason, uint32_t Type, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[5];
-    EventDataDescCreate(&EventData[0], &Count, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &Depth, sizeof(UInt32));
-    EventDataDescCreate(&EventData[2], &Reason, sizeof(UInt32));
-    EventDataDescCreate(&EventData[3], &Type, sizeof(UInt32));
-    EventDataDescCreate(&EventData[4], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Count, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &Depth, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[2], &Reason, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[3], &Type, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[4], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 5, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCStart_V2(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 Count, UInt32 Depth, UInt32 Reason, UInt32 Type, UInt16 ClrInstanceID, UInt64 ClientSequenceNumber)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCStart_V2(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t Count, uint32_t Depth, uint32_t Reason, uint32_t Type, uint16_t ClrInstanceID, uint64_t ClientSequenceNumber)
 {
     EVENT_DATA_DESCRIPTOR EventData[6];
-    EventDataDescCreate(&EventData[0], &Count, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &Depth, sizeof(UInt32));
-    EventDataDescCreate(&EventData[2], &Reason, sizeof(UInt32));
-    EventDataDescCreate(&EventData[3], &Type, sizeof(UInt32));
-    EventDataDescCreate(&EventData[4], &ClrInstanceID, sizeof(UInt16));
-    EventDataDescCreate(&EventData[5], &ClientSequenceNumber, sizeof(UInt64));
+    EventDataDescCreate(&EventData[0], &Count, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &Depth, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[2], &Reason, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[3], &Type, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[4], &ClrInstanceID, sizeof(uint16_t));
+    EventDataDescCreate(&EventData[5], &ClientSequenceNumber, sizeof(uint64_t));
     return PalEventWrite(RegHandle, Descriptor, 6, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCSuspendEE_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 Reason, UInt32 Count, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCSuspendEE_V1(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t Reason, uint32_t Count, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[3];
-    EventDataDescCreate(&EventData[0], &Reason, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &Count, sizeof(UInt32));
-    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Reason, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &Count, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[2], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 3, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCTerminateConcurrentThread(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCTerminateConcurrentThread(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[1];
-    EventDataDescCreate(&EventData[0], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 1, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCTriggered(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt32 Reason, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_GCTriggered(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint32_t Reason, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[2];
-    EventDataDescCreate(&EventData[0], &Reason, sizeof(UInt32));
-    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[0], &Reason, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[1], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 2, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_ModuleLoadUnload_V2(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, UInt64 ModuleID, UInt64 AssemblyID, UInt32 ModuleFlags, UInt32 Reserved1, LPCWSTR ModuleILPath, LPCWSTR ModuleNativePath, UInt16 ClrInstanceID, const GUID* ManagedPdbSignature, UInt32 ManagedPdbAge, LPCWSTR ManagedPdbBuildPath, const GUID* NativePdbSignature, UInt32 NativePdbAge, LPCWSTR NativePdbBuildPath)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_ModuleLoadUnload_V2(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, uint64_t ModuleID, uint64_t AssemblyID, uint32_t ModuleFlags, uint32_t Reserved1, LPCWSTR ModuleILPath, LPCWSTR ModuleNativePath, uint16_t ClrInstanceID, const GUID* ManagedPdbSignature, uint32_t ManagedPdbAge, LPCWSTR ManagedPdbBuildPath, const GUID* NativePdbSignature, uint32_t NativePdbAge, LPCWSTR NativePdbBuildPath)
 {
     EVENT_DATA_DESCRIPTOR EventData[13];
-    EventDataDescCreate(&EventData[0], &ModuleID, sizeof(UInt64));
-    EventDataDescCreate(&EventData[1], &AssemblyID, sizeof(UInt64));
-    EventDataDescCreate(&EventData[2], &ModuleFlags, sizeof(UInt32));
-    EventDataDescCreate(&EventData[3], &Reserved1, sizeof(UInt32));
+    EventDataDescCreate(&EventData[0], &ModuleID, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[1], &AssemblyID, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[2], &ModuleFlags, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[3], &Reserved1, sizeof(uint32_t));
     EventDataDescCreate(&EventData[4], (ModuleILPath != NULL) ? ModuleILPath : L"", (ModuleILPath != NULL) ? (ULONG)((wcslen(ModuleILPath) + 1) * sizeof(WCHAR)) : (ULONG)sizeof(L""));
     EventDataDescCreate(&EventData[5], (ModuleNativePath != NULL) ? ModuleNativePath : L"", (ModuleNativePath != NULL) ? (ULONG)((wcslen(ModuleNativePath) + 1) * sizeof(WCHAR)) : (ULONG)sizeof(L""));
-    EventDataDescCreate(&EventData[6], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[6], &ClrInstanceID, sizeof(uint16_t));
     EventDataDescCreate(&EventData[7], ManagedPdbSignature, sizeof(*(ManagedPdbSignature)));
-    EventDataDescCreate(&EventData[8], &ManagedPdbAge, sizeof(UInt32));
+    EventDataDescCreate(&EventData[8], &ManagedPdbAge, sizeof(uint32_t));
     EventDataDescCreate(&EventData[9], (ManagedPdbBuildPath != NULL) ? ManagedPdbBuildPath : L"", (ManagedPdbBuildPath != NULL) ? (ULONG)((wcslen(ManagedPdbBuildPath) + 1) * sizeof(WCHAR)) : (ULONG)sizeof(L""));
     EventDataDescCreate(&EventData[10], NativePdbSignature, sizeof(*(NativePdbSignature)));
-    EventDataDescCreate(&EventData[11], &NativePdbAge, sizeof(UInt32));
+    EventDataDescCreate(&EventData[11], &NativePdbAge, sizeof(uint32_t));
     EventDataDescCreate(&EventData[12], (NativePdbBuildPath != NULL) ? NativePdbBuildPath : L"", (NativePdbBuildPath != NULL) ? (ULONG)((wcslen(NativePdbBuildPath) + 1) * sizeof(WCHAR)) : (ULONG)sizeof(L""));
     return PalEventWrite(RegHandle, Descriptor, 13, EventData);
 }
 
-RH_ETW_INLINE UInt32
-Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_SetGCHandle(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, void* HandleID, void* ObjectID, UInt32 Kind, UInt32 Generation, UInt64 AppDomainID, UInt16 ClrInstanceID)
+RH_ETW_INLINE uint32_t
+Template_MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_SetGCHandle(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor, void* HandleID, void* ObjectID, uint32_t Kind, uint32_t Generation, uint64_t AppDomainID, uint16_t ClrInstanceID)
 {
     EVENT_DATA_DESCRIPTOR EventData[6];
     EventDataDescCreate(&EventData[0], &HandleID, sizeof(void*));
     EventDataDescCreate(&EventData[1], &ObjectID, sizeof(void*));
-    EventDataDescCreate(&EventData[2], &Kind, sizeof(UInt32));
-    EventDataDescCreate(&EventData[3], &Generation, sizeof(UInt32));
-    EventDataDescCreate(&EventData[4], &AppDomainID, sizeof(UInt64));
-    EventDataDescCreate(&EventData[5], &ClrInstanceID, sizeof(UInt16));
+    EventDataDescCreate(&EventData[2], &Kind, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[3], &Generation, sizeof(uint32_t));
+    EventDataDescCreate(&EventData[4], &AppDomainID, sizeof(uint64_t));
+    EventDataDescCreate(&EventData[5], &ClrInstanceID, sizeof(uint16_t));
     return PalEventWrite(RegHandle, Descriptor, 6, EventData);
 }
 
-RH_ETW_INLINE UInt32
+RH_ETW_INLINE uint32_t
 TemplateEventDescriptor(REGHANDLE RegHandle, const EVENT_DESCRIPTOR * Descriptor)
 {
     return PalEventWrite(RegHandle, Descriptor, 0, NULL);

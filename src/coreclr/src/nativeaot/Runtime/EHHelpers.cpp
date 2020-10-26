@@ -84,12 +84,12 @@ COOP_PINVOKE_HELPER(void, RhpSetThreadDoNotTriggerGC, ())
     pThisThread->SetDoNotTriggerGc();
 }
 
-COOP_PINVOKE_HELPER(Int32, RhGetModuleFileName, (HANDLE moduleHandle, _Out_ const TCHAR** pModuleNameOut))
+COOP_PINVOKE_HELPER(int32_t, RhGetModuleFileName, (HANDLE moduleHandle, _Out_ const TCHAR** pModuleNameOut))
 {
     return PalGetModuleFileName(pModuleNameOut, moduleHandle);
 }
 
-COOP_PINVOKE_HELPER(void, RhpCopyContextFromExInfo, (void * pOSContext, Int32 cbOSContext, PAL_LIMITED_CONTEXT * pPalContext))
+COOP_PINVOKE_HELPER(void, RhpCopyContextFromExInfo, (void * pOSContext, int32_t cbOSContext, PAL_LIMITED_CONTEXT * pPalContext))
 {
     UNREFERENCED_PARAMETER(cbOSContext);
     ASSERT(cbOSContext >= sizeof(CONTEXT));
@@ -166,26 +166,26 @@ COOP_PINVOKE_HELPER(void, RhpCopyContextFromExInfo, (void * pOSContext, Int32 cb
 #if defined(HOST_AMD64) || defined(HOST_ARM) || defined(HOST_X86) || defined(HOST_ARM64)
 struct DISPATCHER_CONTEXT
 {
-    UIntNative  ControlPc;
+    uintptr_t  ControlPc;
     // N.B. There is more here (so this struct isn't the right size), but we ignore everything else
 };
 
 #ifdef HOST_X86
 struct EXCEPTION_REGISTRATION_RECORD
 {
-    UIntNative Next;
-    UIntNative Handler;
+    uintptr_t Next;
+    uintptr_t Handler;
 };
 #endif // HOST_X86
 
-EXTERN_C void __cdecl RhpFailFastForPInvokeExceptionPreemp(IntNative PInvokeCallsiteReturnAddr,
+EXTERN_C void __cdecl RhpFailFastForPInvokeExceptionPreemp(intptr_t PInvokeCallsiteReturnAddr,
                                                            void* pExceptionRecord, void* pContextRecord);
-EXTERN_C void REDHAWK_CALLCONV RhpFailFastForPInvokeExceptionCoop(IntNative PInvokeCallsiteReturnAddr,
+EXTERN_C void REDHAWK_CALLCONV RhpFailFastForPInvokeExceptionCoop(intptr_t PInvokeCallsiteReturnAddr,
                                                                   void* pExceptionRecord, void* pContextRecord);
-Int32 __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs);
+int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs);
 
-EXTERN_C Int32 __stdcall RhpPInvokeExceptionGuard(PEXCEPTION_RECORD       pExceptionRecord,
-                                                  UIntNative              EstablisherFrame,
+EXTERN_C int32_t __stdcall RhpPInvokeExceptionGuard(PEXCEPTION_RECORD       pExceptionRecord,
+                                                  uintptr_t              EstablisherFrame,
                                                   PCONTEXT                pContextRecord,
                                                   DISPATCHER_CONTEXT *    pDispatcherContext)
 {
@@ -225,23 +225,23 @@ EXTERN_C Int32 __stdcall RhpPInvokeExceptionGuard(PEXCEPTION_RECORD       pExcep
         // in managed code.  But sometimes we AV on a bad call indirect or something similar.  In that situation, we can
         // use the dispatcher context or exception registration record to find the relevant classlib.
 #ifdef HOST_X86
-        IntNative classlibBreadcrumb = ((EXCEPTION_REGISTRATION_RECORD*)EstablisherFrame)->Handler;
+        intptr_t classlibBreadcrumb = ((EXCEPTION_REGISTRATION_RECORD*)EstablisherFrame)->Handler;
 #else
-        IntNative classlibBreadcrumb = pDispatcherContext->ControlPc;
+        intptr_t classlibBreadcrumb = pDispatcherContext->ControlPc;
 #endif
         RhpFailFastForPInvokeExceptionCoop(classlibBreadcrumb, pExceptionRecord, pContextRecord);
     }
     else
     {
         // Preemptive mode -- the classlib associated with the last pinvoke owns the fail fast behavior.
-        IntNative pinvokeCallsiteReturnAddr = (IntNative)pThread->GetCurrentThreadPInvokeReturnAddress();
+        intptr_t pinvokeCallsiteReturnAddr = (intptr_t)pThread->GetCurrentThreadPInvokeReturnAddress();
         RhpFailFastForPInvokeExceptionPreemp(pinvokeCallsiteReturnAddr, pExceptionRecord, pContextRecord);
     }
 
     return 0;
 }
 #else
-EXTERN_C Int32 RhpPInvokeExceptionGuard()
+EXTERN_C int32_t RhpPInvokeExceptionGuard()
 {
     ASSERT_UNCONDITIONALLY("RhpPInvokeExceptionGuard NYI for this architecture!");
     RhFailFast();
@@ -300,17 +300,17 @@ EXTERN_C void * RhpCopyMultibyteWithWriteBarrierSrcAVLocation;
 EXTERN_C void * RhpCopyAnyWithWriteBarrierDestAVLocation;
 EXTERN_C void * RhpCopyAnyWithWriteBarrierSrcAVLocation;
 
-static bool InWriteBarrierHelper(UIntNative faultingIP)
+static bool InWriteBarrierHelper(uintptr_t faultingIP)
 {
 #ifndef USE_PORTABLE_HELPERS
-    static UIntNative writeBarrierAVLocations[] =
+    static uintptr_t writeBarrierAVLocations[] =
     {
-        (UIntNative)&RhpAssignRefAVLocation,
-        (UIntNative)&RhpCheckedAssignRefAVLocation,
-        (UIntNative)&RhpCheckedLockCmpXchgAVLocation,
-        (UIntNative)&RhpCheckedXchgAVLocation,
-        (UIntNative)&RhpLockCmpXchg32AVLocation,
-        (UIntNative)&RhpLockCmpXchg64AVLocation,
+        (uintptr_t)&RhpAssignRefAVLocation,
+        (uintptr_t)&RhpCheckedAssignRefAVLocation,
+        (uintptr_t)&RhpCheckedLockCmpXchgAVLocation,
+        (uintptr_t)&RhpCheckedXchgAVLocation,
+        (uintptr_t)&RhpLockCmpXchg32AVLocation,
+        (uintptr_t)&RhpLockCmpXchg64AVLocation,
     };
 
     // compare the IP against the list of known possible AV locations in the write barrier helpers
@@ -319,7 +319,7 @@ static bool InWriteBarrierHelper(UIntNative faultingIP)
 #if defined(HOST_AMD64) || defined(HOST_X86)
         // Verify that the runtime is not linked with incremental linking enabled. Incremental linking
         // wraps every method symbol with a jump stub that breaks the following check.
-        ASSERT(*(UInt8*)writeBarrierAVLocations[i] != 0xE9); // jmp XXXXXXXX
+        ASSERT(*(uint8_t*)writeBarrierAVLocations[i] != 0xE9); // jmp XXXXXXXX
 #endif
 
         if (writeBarrierAVLocations[i] == faultingIP)
@@ -339,19 +339,19 @@ EXTERN_C void* RhpInterfaceDispatchAVLocation16;
 EXTERN_C void* RhpInterfaceDispatchAVLocation32;
 EXTERN_C void* RhpInterfaceDispatchAVLocation64;
 
-static bool InInterfaceDispatchHelper(UIntNative faultingIP)
+static bool InInterfaceDispatchHelper(uintptr_t faultingIP)
 {
 #ifndef USE_PORTABLE_HELPERS
-    static UIntNative interfaceDispatchAVLocations[] =
+    static uintptr_t interfaceDispatchAVLocations[] =
     {
-        (UIntNative)&RhpInitialInterfaceDispatch,
-        (UIntNative)&RhpInterfaceDispatchAVLocation1,
-        (UIntNative)&RhpInterfaceDispatchAVLocation2,
-        (UIntNative)&RhpInterfaceDispatchAVLocation4,
-        (UIntNative)&RhpInterfaceDispatchAVLocation8,
-        (UIntNative)&RhpInterfaceDispatchAVLocation16,
-        (UIntNative)&RhpInterfaceDispatchAVLocation32,
-        (UIntNative)&RhpInterfaceDispatchAVLocation64,
+        (uintptr_t)&RhpInitialInterfaceDispatch,
+        (uintptr_t)&RhpInterfaceDispatchAVLocation1,
+        (uintptr_t)&RhpInterfaceDispatchAVLocation2,
+        (uintptr_t)&RhpInterfaceDispatchAVLocation4,
+        (uintptr_t)&RhpInterfaceDispatchAVLocation8,
+        (uintptr_t)&RhpInterfaceDispatchAVLocation16,
+        (uintptr_t)&RhpInterfaceDispatchAVLocation32,
+        (uintptr_t)&RhpInterfaceDispatchAVLocation64,
     };
 
     // compare the IP against the list of known possible AV locations in the interface dispatch helpers
@@ -360,7 +360,7 @@ static bool InInterfaceDispatchHelper(UIntNative faultingIP)
 #if defined(HOST_AMD64) || defined(HOST_X86)
         // Verify that the runtime is not linked with incremental linking enabled. Incremental linking
         // wraps every method symbol with a jump stub that breaks the following check.
-        ASSERT(*(UInt8*)interfaceDispatchAVLocations[i] != 0xE9); // jmp XXXXXXXX
+        ASSERT(*(uint8_t*)interfaceDispatchAVLocations[i] != 0xE9); // jmp XXXXXXXX
 #endif
 
         if (interfaceDispatchAVLocations[i] == faultingIP)
@@ -371,7 +371,7 @@ static bool InInterfaceDispatchHelper(UIntNative faultingIP)
     return false;
 }
 
-static UIntNative UnwindSimpleHelperToCaller(
+static uintptr_t UnwindSimpleHelperToCaller(
 #ifdef TARGET_UNIX
     PAL_LIMITED_CONTEXT * pContext
 #else
@@ -380,18 +380,18 @@ static UIntNative UnwindSimpleHelperToCaller(
     )
 {
 #if defined(_DEBUG)
-    UIntNative faultingIP = pContext->GetIp();
+    uintptr_t faultingIP = pContext->GetIp();
     ASSERT(InWriteBarrierHelper(faultingIP) || InInterfaceDispatchHelper(faultingIP));
 #endif
 #if defined(HOST_AMD64) || defined(HOST_X86)
     // simulate a ret instruction
-    UIntNative sp = pContext->GetSp();
-    UIntNative adjustedFaultingIP = *(UIntNative *)sp;
-    pContext->SetSp(sp+sizeof(UIntNative)); // pop the stack
+    uintptr_t sp = pContext->GetSp();
+    uintptr_t adjustedFaultingIP = *(uintptr_t *)sp;
+    pContext->SetSp(sp+sizeof(uintptr_t)); // pop the stack
 #elif defined(HOST_ARM) || defined(HOST_ARM64)
-    UIntNative adjustedFaultingIP = pContext->GetLr();
+    uintptr_t adjustedFaultingIP = pContext->GetLr();
 #else
-    UIntNative adjustedFaultingIP = 0; // initializing to make the compiler happy
+    uintptr_t adjustedFaultingIP = 0; // initializing to make the compiler happy
     PORTABILITY_ASSERT("UnwindSimpleHelperToCaller");
 #endif
     return adjustedFaultingIP;
@@ -399,10 +399,10 @@ static UIntNative UnwindSimpleHelperToCaller(
 
 #ifdef TARGET_UNIX
 
-Int32 __stdcall RhpHardwareExceptionHandler(UIntNative faultCode, UIntNative faultAddress,
-    PAL_LIMITED_CONTEXT* palContext, UIntNative* arg0Reg, UIntNative* arg1Reg)
+int32_t __stdcall RhpHardwareExceptionHandler(uintptr_t faultCode, uintptr_t faultAddress,
+    PAL_LIMITED_CONTEXT* palContext, uintptr_t* arg0Reg, uintptr_t* arg1Reg)
 {
-    UIntNative faultingIP = palContext->GetIp();
+    uintptr_t faultingIP = palContext->GetIp();
 
     ICodeManager * pCodeManager = GetRuntimeInstance()->FindCodeManagerByAddress((PTR_VOID)faultingIP);
     bool translateToManagedException = false;
@@ -453,7 +453,7 @@ Int32 __stdcall RhpHardwareExceptionHandler(UIntNative faultCode, UIntNative fau
     {
         *arg0Reg = faultCode;
         *arg1Reg = faultingIP;
-        palContext->SetIp((UIntNative)&RhpThrowHwEx);
+        palContext->SetIp((uintptr_t)&RhpThrowHwEx);
 
         return EXCEPTION_CONTINUE_EXECUTION;
     }
@@ -463,12 +463,12 @@ Int32 __stdcall RhpHardwareExceptionHandler(UIntNative faultCode, UIntNative fau
 
 #else // TARGET_UNIX
 
-Int32 __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
+int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
 {
-    UIntNative faultingIP = pExPtrs->ContextRecord->GetIp();
+    uintptr_t faultingIP = pExPtrs->ContextRecord->GetIp();
 
     ICodeManager * pCodeManager = GetRuntimeInstance()->FindCodeManagerByAddress((PTR_VOID)faultingIP);
-    UIntNative faultCode = pExPtrs->ExceptionRecord->ExceptionCode;
+    uintptr_t faultCode = pExPtrs->ExceptionRecord->ExceptionCode;
     bool translateToManagedException = false;
     if (pCodeManager != NULL)
     {
@@ -515,7 +515,7 @@ Int32 __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
 
     if (translateToManagedException)
     {
-        pExPtrs->ContextRecord->SetIp((UIntNative)&RhpThrowHwEx);
+        pExPtrs->ContextRecord->SetIp((uintptr_t)&RhpThrowHwEx);
         pExPtrs->ContextRecord->SetArg0Reg(faultCode);
         pExPtrs->ContextRecord->SetArg1Reg(faultingIP);
 
@@ -523,8 +523,8 @@ Int32 __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
     }
 
     {
-        static UInt8 *s_pbRuntimeModuleLower = NULL;
-        static UInt8 *s_pbRuntimeModuleUpper = NULL;
+        static uint8_t *s_pbRuntimeModuleLower = NULL;
+        static uint8_t *s_pbRuntimeModuleUpper = NULL;
 
         // If this is the first time through this path then calculate the upper and lower bounds of the
         // runtime module. Note we could be racing to calculate this but it doesn't matter since the results
@@ -543,7 +543,7 @@ Int32 __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
             PalGetModuleBounds(hRuntimeModule, &s_pbRuntimeModuleLower, &s_pbRuntimeModuleUpper);
         }
 
-        if (((UInt8*)faultingIP >= s_pbRuntimeModuleLower) && ((UInt8*)faultingIP < s_pbRuntimeModuleUpper))
+        if (((uint8_t*)faultingIP >= s_pbRuntimeModuleLower) && ((uint8_t*)faultingIP < s_pbRuntimeModuleUpper))
         {
             // Generally any form of hardware exception within the runtime itself is considered a fatal error.
             // Note this includes the managed code within the runtime.

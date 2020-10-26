@@ -226,9 +226,9 @@ namespace rh { namespace std
 
     template<class _InIt, class _Ty>
     inline
-    UIntNative count(_InIt _First, _InIt _Last, const _Ty& _Val)
+    uintptr_t count(_InIt _First, _InIt _Last, const _Ty& _Val)
     {
-        UIntNative _Ret = 0;
+        uintptr_t _Ret = 0;
         for (; _First != _Last; _First++)
             if (*_First == _Val)
                 ++_Ret;
@@ -237,9 +237,9 @@ namespace rh { namespace std
 
     template<class _InIt, class _Pr>
     inline
-    UIntNative count_if(_InIt _First, _InIt _Last, _Pr _Pred)
+    uintptr_t count_if(_InIt _First, _InIt _Last, _Pr _Pred)
     {
-        UIntNative _Ret = 0;
+        uintptr_t _Ret = 0;
         for (; _First != _Last; _First++)
             if (_Pred(*_First))
                 ++_Ret;

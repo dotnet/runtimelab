@@ -10,7 +10,7 @@ class ICodeManager;
 struct StaticGcDesc;
 typedef SPTR(StaticGcDesc) PTR_StaticGcDesc;
 class TypeManager;
-enum GenericVarianceType : UInt8;
+enum GenericVarianceType : uint8_t;
 
 #include "ICodeManager.h"
 
@@ -44,7 +44,7 @@ private:
     {
         PTR_CodeManagerEntry    m_pNext;
         PTR_VOID                m_pvStartRange;
-        UInt32                  m_cbRange;
+        uint32_t                  m_cbRange;
         ICodeManager *          m_pCodeManager;
     };
 
@@ -68,7 +68,7 @@ private:
     struct  UnboxingStubsRegion
     {
         PTR_VOID                m_pRegionStart;
-        UInt32                  m_cbRegion;
+        uint32_t                  m_cbRegion;
         UnboxingStubsRegion*    m_pNextRegion;
 
         UnboxingStubsRegion() : m_pRegionStart(0), m_cbRegion(0), m_pNextRegion(NULL) { }
@@ -96,7 +96,7 @@ public:
     void EnableConservativeStackReporting();
     bool IsConservativeStackReportingEnabled() { return m_conservativeStackReportingEnabled; }
 
-    bool RegisterCodeManager(ICodeManager * pCodeManager, PTR_VOID pvStartRange, UInt32 cbRange);
+    bool RegisterCodeManager(ICodeManager * pCodeManager, PTR_VOID pvStartRange, uint32_t cbRange);
     void UnregisterCodeManager(ICodeManager * pCodeManager);
 
     ICodeManager * FindCodeManagerByAddress(PTR_VOID ControlPC);
@@ -107,17 +107,17 @@ public:
     OsModuleList* GetOsModuleList();
     ReaderWriterLock& GetTypeManagerLock();
 
-    bool RegisterUnboxingStubs(PTR_VOID pvStartRange, UInt32 cbRange);
-    bool IsUnboxingStub(UInt8* pCode);
+    bool RegisterUnboxingStubs(PTR_VOID pvStartRange, uint32_t cbRange);
+    bool IsUnboxingStub(uint8_t* pCode);
 
     static bool Initialize(HANDLE hPalInstance);
     void Destroy();
 
     void EnumAllStaticGCRefs(void * pfnCallback, void * pvCallbackData);
 
-    bool ShouldHijackCallsiteForGcStress(UIntNative CallsiteIP);
-    bool ShouldHijackLoopForGcStress(UIntNative CallsiteIP);
-    void SetLoopHijackFlags(UInt32 flag);
+    bool ShouldHijackCallsiteForGcStress(uintptr_t CallsiteIP);
+    bool ShouldHijackLoopForGcStress(uintptr_t CallsiteIP);
+    void SetLoopHijackFlags(uint32_t flag);
 };
 typedef DPTR(RuntimeInstance) PTR_RuntimeInstance;
 

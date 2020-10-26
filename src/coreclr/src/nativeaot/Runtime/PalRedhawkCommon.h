@@ -38,8 +38,8 @@ enum PalCapability
 #endif // HOST_AMD64
 
 struct AMD64_ALIGN_16 Fp128 {
-    UInt64 Low;
-    Int64 High;
+    uint64_t Low;
+    int64_t High;
 };
 
 
@@ -47,90 +47,90 @@ struct PAL_LIMITED_CONTEXT
 {
     // Includes special registers, callee saved registers and general purpose registers used to return values from functions (not floating point return registers)
 #ifdef TARGET_ARM
-    UIntNative  R0;
-    UIntNative  R4;
-    UIntNative  R5;
-    UIntNative  R6;
-    UIntNative  R7;
-    UIntNative  R8;
-    UIntNative  R9;
-    UIntNative  R10;
-    UIntNative  R11;
+    uintptr_t  R0;
+    uintptr_t  R4;
+    uintptr_t  R5;
+    uintptr_t  R6;
+    uintptr_t  R7;
+    uintptr_t  R8;
+    uintptr_t  R9;
+    uintptr_t  R10;
+    uintptr_t  R11;
 
-    UIntNative  IP;
-    UIntNative  SP;
-    UIntNative  LR;
+    uintptr_t  IP;
+    uintptr_t  SP;
+    uintptr_t  LR;
 
-    UInt64      D[16-8]; // D8 .. D15 registers (D16 .. D31 are volatile according to the ABI spec)
+    uint64_t      D[16-8]; // D8 .. D15 registers (D16 .. D31 are volatile according to the ABI spec)
 
-    UIntNative GetIp() const { return IP; }
-    UIntNative GetSp() const { return SP; }
-    UIntNative GetFp() const { return R7; }
-    UIntNative GetLr() const { return LR; }
-    void SetIp(UIntNative ip) { IP = ip; }
-    void SetSp(UIntNative sp) { SP = sp; }
+    uintptr_t GetIp() const { return IP; }
+    uintptr_t GetSp() const { return SP; }
+    uintptr_t GetFp() const { return R7; }
+    uintptr_t GetLr() const { return LR; }
+    void SetIp(uintptr_t ip) { IP = ip; }
+    void SetSp(uintptr_t sp) { SP = sp; }
 #elif defined(TARGET_ARM64)
-    UIntNative  FP;
-    UIntNative  LR;
+    uintptr_t  FP;
+    uintptr_t  LR;
 
-    UIntNative  X0;
-    UIntNative  X1;
-    UIntNative  X19;
-    UIntNative  X20;
-    UIntNative  X21;
-    UIntNative  X22;
-    UIntNative  X23;
-    UIntNative  X24;
-    UIntNative  X25;
-    UIntNative  X26;
-    UIntNative  X27;
-    UIntNative  X28;
+    uintptr_t  X0;
+    uintptr_t  X1;
+    uintptr_t  X19;
+    uintptr_t  X20;
+    uintptr_t  X21;
+    uintptr_t  X22;
+    uintptr_t  X23;
+    uintptr_t  X24;
+    uintptr_t  X25;
+    uintptr_t  X26;
+    uintptr_t  X27;
+    uintptr_t  X28;
 
-    UIntNative  SP;
-    UIntNative  IP;
+    uintptr_t  SP;
+    uintptr_t  IP;
 
-    UInt64      D[16 - 8];  // Only the bottom 64-bit value of the V registers V8..V15 needs to be preserved
+    uint64_t      D[16 - 8];  // Only the bottom 64-bit value of the V registers V8..V15 needs to be preserved
                             // (V0-V7 and V16-V31 are not preserved according to the ABI spec).
 
 
-    UIntNative GetIp() const { return IP; }
-    UIntNative GetSp() const { return SP; }
-    UIntNative GetFp() const { return FP; }
-    UIntNative GetLr() const { return LR; }
-    void SetIp(UIntNative ip) { IP = ip; }
-    void SetSp(UIntNative sp) { SP = sp; }
+    uintptr_t GetIp() const { return IP; }
+    uintptr_t GetSp() const { return SP; }
+    uintptr_t GetFp() const { return FP; }
+    uintptr_t GetLr() const { return LR; }
+    void SetIp(uintptr_t ip) { IP = ip; }
+    void SetSp(uintptr_t sp) { SP = sp; }
 #elif defined(UNIX_AMD64_ABI)
     // Param regs: rdi, rsi, rdx, rcx, r8, r9, scratch: rax, rdx (both return val), preserved: rbp, rbx, r12-r15
-    UIntNative  IP;
-    UIntNative  Rsp;
-    UIntNative  Rbp;
-    UIntNative  Rax;
-    UIntNative  Rbx;
-    UIntNative  Rdx;
-    UIntNative  R12;
-    UIntNative  R13;
-    UIntNative  R14;
-    UIntNative  R15;
+    uintptr_t  IP;
+    uintptr_t  Rsp;
+    uintptr_t  Rbp;
+    uintptr_t  Rax;
+    uintptr_t  Rbx;
+    uintptr_t  Rdx;
+    uintptr_t  R12;
+    uintptr_t  R13;
+    uintptr_t  R14;
+    uintptr_t  R15;
 
-    UIntNative GetIp() const { return IP; }
-    UIntNative GetSp() const { return Rsp; }
-    void SetIp(UIntNative ip) { IP = ip; }
-    void SetSp(UIntNative sp) { Rsp = sp; }
-    UIntNative GetFp() const { return Rbp; }
+    uintptr_t GetIp() const { return IP; }
+    uintptr_t GetSp() const { return Rsp; }
+    void SetIp(uintptr_t ip) { IP = ip; }
+    void SetSp(uintptr_t sp) { Rsp = sp; }
+    uintptr_t GetFp() const { return Rbp; }
 #elif defined(TARGET_X86) || defined(TARGET_AMD64)
-    UIntNative  IP;
-    UIntNative  Rsp;
-    UIntNative  Rbp;
-    UIntNative  Rdi;
-    UIntNative  Rsi;
-    UIntNative  Rax;
-    UIntNative  Rbx;
+    uintptr_t  IP;
+    uintptr_t  Rsp;
+    uintptr_t  Rbp;
+    uintptr_t  Rdi;
+    uintptr_t  Rsi;
+    uintptr_t  Rax;
+    uintptr_t  Rbx;
 #ifdef TARGET_AMD64
-    UIntNative  R12;
-    UIntNative  R13;
-    UIntNative  R14;
-    UIntNative  R15;
-    UIntNative  __explicit_padding__;
+    uintptr_t  R12;
+    uintptr_t  R13;
+    uintptr_t  R14;
+    uintptr_t  R15;
+    uintptr_t  __explicit_padding__;
     Fp128       Xmm6;
     Fp128       Xmm7;
     Fp128       Xmm8;
@@ -143,19 +143,19 @@ struct PAL_LIMITED_CONTEXT
     Fp128       Xmm15;
 #endif // TARGET_AMD64
 
-    UIntNative GetIp() const { return IP; }
-    UIntNative GetSp() const { return Rsp; }
-    UIntNative GetFp() const { return Rbp; }
-    void SetIp(UIntNative ip) { IP = ip; }
-    void SetSp(UIntNative sp) { Rsp = sp; }
+    uintptr_t GetIp() const { return IP; }
+    uintptr_t GetSp() const { return Rsp; }
+    uintptr_t GetFp() const { return Rbp; }
+    void SetIp(uintptr_t ip) { IP = ip; }
+    void SetSp(uintptr_t sp) { Rsp = sp; }
 #else // TARGET_ARM
-    UIntNative  IP;
+    uintptr_t  IP;
 
-    UIntNative GetIp() const { PORTABILITY_ASSERT("GetIp");  return 0; }
-    UIntNative GetSp() const { PORTABILITY_ASSERT("GetSp"); return 0; }
-    UIntNative GetFp() const { PORTABILITY_ASSERT("GetFp"); return 0; }
-    void SetIp(UIntNative ip) { PORTABILITY_ASSERT("SetIp"); }
-    void SetSp(UIntNative sp) { PORTABILITY_ASSERT("GetSp"); }
+    uintptr_t GetIp() const { PORTABILITY_ASSERT("GetIp");  return 0; }
+    uintptr_t GetSp() const { PORTABILITY_ASSERT("GetSp"); return 0; }
+    uintptr_t GetFp() const { PORTABILITY_ASSERT("GetFp"); return 0; }
+    void SetIp(uintptr_t ip) { PORTABILITY_ASSERT("SetIp"); }
+    void SetSp(uintptr_t sp) { PORTABILITY_ASSERT("GetSp"); }
 #endif // TARGET_ARM
 };
 
@@ -166,7 +166,7 @@ typedef void (*ThreadExitCallback)();
 extern ThreadExitCallback g_threadExitCallback;
 
 #ifdef TARGET_UNIX
-typedef Int32 (*PHARDWARE_EXCEPTION_HANDLER)(UIntNative faultCode, UIntNative faultAddress, PAL_LIMITED_CONTEXT* palContext, UIntNative* arg0Reg, UIntNative* arg1Reg);
+typedef int32_t (*PHARDWARE_EXCEPTION_HANDLER)(uintptr_t faultCode, uintptr_t faultAddress, PAL_LIMITED_CONTEXT* palContext, uintptr_t* arg0Reg, uintptr_t* arg1Reg);
 #endif
 
 #endif // __PAL_REDHAWK_COMMON_INCLUDED

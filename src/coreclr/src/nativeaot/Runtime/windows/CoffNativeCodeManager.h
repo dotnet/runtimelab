@@ -41,19 +41,19 @@ class CoffNativeCodeManager : public ICodeManager
     TADDR m_moduleBase;
 
     PTR_VOID m_pvManagedCodeStartRange;
-    UInt32 m_cbManagedCodeRange;
+    uint32_t m_cbManagedCodeRange;
 
     PTR_RUNTIME_FUNCTION m_pRuntimeFunctionTable;
-    UInt32 m_nRuntimeFunctionTable;
+    uint32_t m_nRuntimeFunctionTable;
 
     PTR_PTR_VOID m_pClasslibFunctions;
-    UInt32 m_nClasslibFunctions;
+    uint32_t m_nClasslibFunctions;
 
 public:
     CoffNativeCodeManager(TADDR moduleBase,
-                          PTR_VOID pvManagedCodeStartRange, UInt32 cbManagedCodeRange,
-                          PTR_RUNTIME_FUNCTION pRuntimeFunctionTable, UInt32 nRuntimeFunctionTable,
-                          PTR_PTR_VOID pClasslibFunctions, UInt32 nClasslibFunctions);
+                          PTR_VOID pvManagedCodeStartRange, uint32_t cbManagedCodeRange,
+                          PTR_RUNTIME_FUNCTION pRuntimeFunctionTable, uint32_t nRuntimeFunctionTable,
+                          PTR_PTR_VOID pClasslibFunctions, uint32_t nClasslibFunctions);
     ~CoffNativeCodeManager();
 
     //
@@ -79,7 +79,7 @@ public:
                           REGDISPLAY *    pRegisterSet,                 // in/out
                           PTR_VOID *      ppPreviousTransitionFrame);   // out
 
-    UIntNative GetConservativeUpperBoundForOutgoingArgs(MethodInfo *   pMethodInfo,
+    uintptr_t GetConservativeUpperBoundForOutgoingArgs(MethodInfo *   pMethodInfo,
                                                         REGDISPLAY *   pRegisterSet);
 
     bool GetReturnAddressHijackInfo(MethodInfo *    pMethodInfo,

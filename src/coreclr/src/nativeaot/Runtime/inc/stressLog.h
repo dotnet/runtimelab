@@ -289,9 +289,9 @@ public:
     unsigned levelToLog;                    // log level
     unsigned MaxSizePerThread;              // maximum number of bytes each thread should have before wrapping
     unsigned MaxSizeTotal;                  // maximum memory allowed for stress log
-    Int32 totalChunk;                       // current number of total chunks allocated
+    int32_t totalChunk;                       // current number of total chunks allocated
     PTR_ThreadStressLog logs;               // the list of logs for every thread.
-    Int32 deadCount;                        // count of dead threads in the log
+    int32_t deadCount;                        // count of dead threads in the log
     CrstStatic *pLock;                      // lock
     unsigned __int64 tickFrequency;         // number of ticks per second
     unsigned __int64 startTimeStamp;        // start time from when tick counter started
@@ -454,12 +454,12 @@ public:
 struct StressMsg {
     union {
         struct {
-            UInt32 numberOfArgs  : 3;   // at most 7 arguments
-            UInt32 formatOffset  : 29;  // offset of string in mscorwks
+            uint32_t numberOfArgs  : 3;   // at most 7 arguments
+            uint32_t formatOffset  : 29;  // offset of string in mscorwks
         };
-        UInt32 fmtOffsCArgs;            // for optimized access
+        uint32_t fmtOffsCArgs;            // for optimized access
     };
-    UInt32     facility;                // facility used to log the entry
+    uint32_t     facility;                // facility used to log the entry
     unsigned __int64 timeStamp;         // time when mssg was logged
     void*     args[0];                  // size given by numberOfArgs
 
@@ -489,8 +489,8 @@ struct StressLogChunk
     PTR_StressLogChunk prev;
     PTR_StressLogChunk next;
     char buf[STRESSLOG_CHUNK_SIZE];
-    UInt32 dwSig1;
-    UInt32 dwSig2;
+    uint32_t dwSig1;
+    uint32_t dwSig2;
 
 #ifndef DACCESS_COMPILE
 
@@ -554,14 +554,14 @@ public:
     inline ThreadStressLog ();
     inline ~ThreadStressLog ();
 
-    void LogMsg ( UInt32 facility, int cArgs, const char* format, ... )
+    void LogMsg ( uint32_t facility, int cArgs, const char* format, ... )
     {
         va_list Args;
         va_start(Args, format);
         LogMsg (facility, cArgs, format, Args);
     }
 
-    void LogMsg ( UInt32 facility, int cArgs, const char* format, va_list Args);
+    void LogMsg ( uint32_t facility, int cArgs, const char* format, va_list Args);
 
 private:
     FORCEINLINE StressMsg* AdvanceWrite(int cArgs);

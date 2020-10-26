@@ -25,12 +25,12 @@
 
 #include <string.h>
 
-UInt32 RhConfig::ReadConfigValue(_In_z_ const TCHAR *wszName, UInt32 uiDefaultValue)
+uint32_t RhConfig::ReadConfigValue(_In_z_ const TCHAR *wszName, uint32_t uiDefaultValue)
 {
     TCHAR wszBuffer[CONFIG_VAL_MAXLEN + 1]; // 8 hex digits plus a nul terminator.
-    const UInt32 cchBuffer = sizeof(wszBuffer) / sizeof(wszBuffer[0]);
+    const uint32_t cchBuffer = sizeof(wszBuffer) / sizeof(wszBuffer[0]);
 
-    UInt32 cchResult = 0;
+    uint32_t cchResult = 0;
 
 #ifdef FEATURE_ENVIRONMENT_VARIABLE_CONFIG
     cchResult = PalGetEnvironmentVariable(wszName, wszBuffer, cchBuffer);
@@ -49,9 +49,9 @@ UInt32 RhConfig::ReadConfigValue(_In_z_ const TCHAR *wszName, UInt32 uiDefaultVa
     if ((cchResult == 0) || (cchResult >= cchBuffer))
         return uiDefaultValue; // not found, return default
 
-    UInt32 uiResult = 0;
+    uint32_t uiResult = 0;
 
-    for (UInt32 i = 0; i < cchResult; i++)
+    for (uint32_t i = 0; i < cchResult; i++)
     {
         uiResult <<= 4;
 
@@ -74,7 +74,7 @@ UInt32 RhConfig::ReadConfigValue(_In_z_ const TCHAR *wszName, UInt32 uiDefaultVa
 //if the file is not avaliable, or unreadable zero will always be returned
 //cchOutputBuffer is the maximum number of characters to write to outputBuffer
 //cchOutputBuffer must be a size >= CONFIG_VAL_MAXLEN + 1
-UInt32 RhConfig::GetIniVariable(_In_z_ const TCHAR* configName, _Out_writes_all_(cchOutputBuffer) TCHAR* outputBuffer, _In_ UInt32 cchOutputBuffer)
+uint32_t RhConfig::GetIniVariable(_In_z_ const TCHAR* configName, _Out_writes_all_(cchOutputBuffer) TCHAR* outputBuffer, _In_ uint32_t cchOutputBuffer)
 {
     //the buffer needs to be big enough to read the value buffer + null terminator
     if (cchOutputBuffer < CONFIG_VAL_MAXLEN + 1)
@@ -98,7 +98,7 @@ UInt32 RhConfig::GetIniVariable(_In_z_ const TCHAR* configName, _Out_writes_all_
 }
 
 #ifdef FEATURE_EMBEDDED_CONFIG
-UInt32 RhConfig::GetEmbeddedVariable(_In_z_ const TCHAR* configName, _Out_writes_all_(cchOutputBuffer) TCHAR* outputBuffer, _In_ UInt32 cchOutputBuffer)
+uint32_t RhConfig::GetEmbeddedVariable(_In_z_ const TCHAR* configName, _Out_writes_all_(cchOutputBuffer) TCHAR* outputBuffer, _In_ uint32_t cchOutputBuffer)
 {
     //the buffer needs to be big enough to read the value buffer + null terminator
     if (cchOutputBuffer < CONFIG_VAL_MAXLEN + 1)
@@ -122,7 +122,7 @@ UInt32 RhConfig::GetEmbeddedVariable(_In_z_ const TCHAR* configName, _Out_writes
 }
 #endif // FEATURE_EMBEDDED_CONFIG
 
-UInt32 RhConfig::GetConfigVariable(_In_z_ const TCHAR* configName, const ConfigPair* configPairs, _Out_writes_all_(cchOutputBuffer) TCHAR* outputBuffer, _In_ UInt32 cchOutputBuffer)
+uint32_t RhConfig::GetConfigVariable(_In_z_ const TCHAR* configName, const ConfigPair* configPairs, _Out_writes_all_(cchOutputBuffer) TCHAR* outputBuffer, _In_ uint32_t cchOutputBuffer)
 {
     //find the first name which matches (case insensitive to be compat with environment variable counterpart)
     for (int iSettings = 0; iSettings < RCV_Count; iSettings++)
@@ -131,9 +131,9 @@ UInt32 RhConfig::GetConfigVariable(_In_z_ const TCHAR* configName, const ConfigP
         {
             bool nullTerm = FALSE;
 
-            UInt32 iValue;
+            uint32_t iValue;
 
-            for (iValue = 0; (iValue < CONFIG_VAL_MAXLEN + 1) && (iValue < (Int32)cchOutputBuffer); iValue++)
+            for (iValue = 0; (iValue < CONFIG_VAL_MAXLEN + 1) && (iValue < (int32_t)cchOutputBuffer); iValue++)
             {
                 outputBuffer[iValue] = configPairs[iSettings].Value[iValue];
 
@@ -176,7 +176,7 @@ void RhConfig::ReadConfigIni()
         char buff[CONFIG_FILE_MAXLEN + 1];
 
         //if the file read failed or the file is bigger than the specified buffer this will return zero
-        UInt32 fSize = PalReadFileContents(configPath, buff, CONFIG_FILE_MAXLEN);
+        uint32_t fSize = PalReadFileContents(configPath, buff, CONFIG_FILE_MAXLEN);
 
         //ensure the buffer is null terminated
         buff[fSize] = '\0';
@@ -202,8 +202,8 @@ void RhConfig::ReadConfigIni()
             return;
         }
 
-        UInt32 iBuff = 0;
-        UInt32 iIniBuff = 0;
+        uint32_t iBuff = 0;
+        uint32_t iIniBuff = 0;
         char* currLine;
 
         //while we haven't reached the max number of config pairs, or the end of the file, read the next line
@@ -255,7 +255,7 @@ void RhConfig::ReadConfigIni()
 #ifdef FEATURE_EMBEDDED_CONFIG
 struct CompilerEmbeddedSettingsBlob
 {
-    UInt32 Size;
+    uint32_t Size;
     char Data[1];
 };
 
@@ -283,8 +283,8 @@ void RhConfig::ReadEmbeddedSettings()
             return;
         }
 
-        UInt32 iBuff = 0;
-        UInt32 iIniBuff = 0;
+        uint32_t iBuff = 0;
+        uint32_t iIniBuff = 0;
         char* currLine;
 
         //while we haven't reached the max number of config pairs, or the end of the file, read the next line
@@ -335,15 +335,15 @@ _Ret_maybenull_z_ TCHAR* RhConfig::GetConfigPath()
     //get the path to rhconfig.ini, this file is expected to live along side the app
     //to build the path get the process executable module full path strip off the file name and
     //append rhconfig.ini
-    Int32 pathLen = PalGetModuleFileName(&exePathBuff, NULL);
+    int32_t pathLen = PalGetModuleFileName(&exePathBuff, NULL);
 
     if (pathLen <= 0)
     {
         return NULL;
     }
-    UInt32 iLastDirSeparator = 0;
+    uint32_t iLastDirSeparator = 0;
 
-    for (UInt32 iPath = pathLen - 1; iPath > 0; iPath--)
+    for (uint32_t iPath = pathLen - 1; iPath > 0; iPath--)
     {
         if (exePathBuff[iPath] == DIRECTORY_SEPARATOR_CHAR)
         {
@@ -361,12 +361,12 @@ _Ret_maybenull_z_ TCHAR* RhConfig::GetConfigPath()
     if (configPath != NULL)
     {
         //copy the path base and file name
-        for (UInt32 i = 0; i <= iLastDirSeparator; i++)
+        for (uint32_t i = 0; i <= iLastDirSeparator; i++)
         {
             configPath[i] = exePathBuff[i];
         }
 
-        for (UInt32 i = 0; i <= wcslen(CONFIG_INI_FILENAME); i++)
+        for (uint32_t i = 0; i <= wcslen(CONFIG_INI_FILENAME); i++)
         {
             configPath[i + iLastDirSeparator + 1] = CONFIG_INI_FILENAME[i];
         }
@@ -380,9 +380,9 @@ _Ret_maybenull_z_ TCHAR* RhConfig::GetConfigPath()
 //NOTE: if the method fails configPair is left in an unitialized state
 bool RhConfig::ParseConfigLine(_Out_ ConfigPair* configPair, _In_z_ const char * line)
 {
-    UInt32 iLine = 0;
-    UInt32 iKey = 0;
-    UInt32 iVal = 0;
+    uint32_t iLine = 0;
+    uint32_t iKey = 0;
+    uint32_t iVal = 0;
 
     //while we haven't reached the end of the key signalled by '=', or the end of the line, or the key maxlen
     while (line[iLine] != '=' && line[iLine] != '\0' && iKey < CONFIG_KEY_MAXLEN)

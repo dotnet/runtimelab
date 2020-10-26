@@ -28,7 +28,7 @@
 
 
 // Given the OS handle of a loaded module, compute the upper and lower virtual address bounds (inclusive).
-REDHAWK_PALEXPORT void REDHAWK_PALAPI PalGetModuleBounds(HANDLE hOsHandle, _Out_ UInt8 ** ppLowerBound, _Out_ UInt8 ** ppUpperBound)
+REDHAWK_PALEXPORT void REDHAWK_PALAPI PalGetModuleBounds(HANDLE hOsHandle, _Out_ uint8_t ** ppLowerBound, _Out_ uint8_t ** ppUpperBound)
 {
     BYTE *pbModule = (BYTE*)hOsHandle;
     DWORD cbModule;
@@ -59,7 +59,7 @@ REDHAWK_PALEXPORT void REDHAWK_PALAPI PalGetModuleBounds(HANDLE hOsHandle, _Out_
 //
 // This is a simplification of similar code in desktop CLR's GetCodeViewInfo
 // in eventtrace.cpp.
-REDHAWK_PALEXPORT void REDHAWK_PALAPI PalGetPDBInfo(HANDLE hOsHandle, _Out_ GUID * pGuidSignature, _Out_ UInt32 * pdwAge, _Out_writes_z_(cchPath) WCHAR * wszPath, Int32 cchPath)
+REDHAWK_PALEXPORT void REDHAWK_PALAPI PalGetPDBInfo(HANDLE hOsHandle, _Out_ GUID * pGuidSignature, _Out_ uint32_t * pdwAge, _Out_writes_z_(cchPath) WCHAR * wszPath, int32_t cchPath)
 {
     // Zero-init [out]-params
     ZeroMemory(pGuidSignature, sizeof(*pGuidSignature));
@@ -110,8 +110,8 @@ REDHAWK_PALEXPORT void REDHAWK_PALAPI PalGetPDBInfo(HANDLE hOsHandle, _Out_ GUID
 
     // Grab module bounds so we can do some rough sanity checking before we follow any
     // RVAs
-    UInt8 * pbModuleLowerBound = NULL;
-    UInt8 * pbModuleUpperBound = NULL;
+    uint8_t * pbModuleLowerBound = NULL;
+    uint8_t * pbModuleUpperBound = NULL;
     PalGetModuleBounds(hOsHandle, &pbModuleLowerBound, &pbModuleUpperBound);
 
     // Iterate through all debug directory entries. The convention is that debuggers &
@@ -121,7 +121,7 @@ REDHAWK_PALEXPORT void REDHAWK_PALAPI PalGetPDBInfo(HANDLE hOsHandle, _Out_ GUID
     int cEntries = cbDebugEntries / sizeof(IMAGE_DEBUG_DIRECTORY);
     for (int i = 0; i < cEntries; i++)
     {
-        if ((UInt8 *)(&rgDebugEntries[i]) + sizeof(rgDebugEntries[i]) >= pbModuleUpperBound)
+        if ((uint8_t *)(&rgDebugEntries[i]) + sizeof(rgDebugEntries[i]) >= pbModuleUpperBound)
         {
             // Bogus pointer
             return;
@@ -149,7 +149,7 @@ REDHAWK_PALEXPORT void REDHAWK_PALAPI PalGetPDBInfo(HANDLE hOsHandle, _Out_ GUID
         // Verify the magic number is as expected
         const DWORD CV_SIGNATURE_RSDS = 0x53445352;
         CV_INFO_PDB70 * pPdb70 = (CV_INFO_PDB70 *) (pbModule + rvaOfRawData);
-        if ((UInt8 *)(pPdb70) + cbDebugData >= pbModuleUpperBound)
+        if ((uint8_t *)(pPdb70) + cbDebugData >= pbModuleUpperBound)
         {
             // Bogus pointer
             return;
@@ -221,7 +221,7 @@ REDHAWK_PALEXPORT void REDHAWK_PALAPI PalGetPDBInfo(HANDLE hOsHandle, _Out_ GUID
     }
 }
 
-REDHAWK_PALEXPORT Int32 REDHAWK_PALAPI PalGetProcessCpuCount()
+REDHAWK_PALEXPORT int32_t REDHAWK_PALAPI PalGetProcessCpuCount()
 {
     static int CpuCount = 0;
 
@@ -245,7 +245,7 @@ REDHAWK_PALEXPORT Int32 REDHAWK_PALAPI PalGetProcessCpuCount()
 //Reads the entire contents of the file into the specified buffer, buff
 //returns the number of bytes read if the file is successfully read
 //returns 0 if the file is not found, size is greater than maxBytesToRead or the file couldn't be opened or read
-REDHAWK_PALEXPORT UInt32 REDHAWK_PALAPI PalReadFileContents(_In_z_ const TCHAR* fileName, _Out_writes_all_(maxBytesToRead) char* buff, _In_ UInt32 maxBytesToRead)
+REDHAWK_PALEXPORT uint32_t REDHAWK_PALAPI PalReadFileContents(_In_z_ const TCHAR* fileName, _Out_writes_all_(maxBytesToRead) char* buff, _In_ uint32_t maxBytesToRead)
 {
     WIN32_FILE_ATTRIBUTE_DATA attrData;
 
@@ -263,7 +263,7 @@ REDHAWK_PALEXPORT UInt32 REDHAWK_PALAPI PalReadFileContents(_In_z_ const TCHAR* 
         return 0;
     }
 
-    UInt32 bytesRead;
+    uint32_t bytesRead;
 
     BOOL readSuccess = ReadFile(hFile, buff, (DWORD)maxBytesToRead, (DWORD*)&bytesRead, NULL);
 
@@ -374,7 +374,7 @@ typedef struct _TEB {
 //NOTE:  This implementation exists because calling GetModuleFileName is not wack compliant.  if we later decide
 //       that the framework package containing mrt100_app no longer needs to be wack compliant, this should be
 //       removed and the windows implementation of GetModuleFileName should be substitued on windows.
-REDHAWK_PALEXPORT Int32 PalGetModuleFileName(_Out_ const TCHAR** pModuleNameOut, HANDLE moduleBase)
+REDHAWK_PALEXPORT int32_t PalGetModuleFileName(_Out_ const TCHAR** pModuleNameOut, HANDLE moduleBase)
 {
     TEB* pTEB = NtCurrentTeb();
     LIST_ENTRY* pStartLink = &(pTEB->ProcessEnvironmentBlock->Ldr->InMemoryOrderModuleList);
@@ -399,7 +399,7 @@ REDHAWK_PALEXPORT Int32 PalGetModuleFileName(_Out_ const TCHAR** pModuleNameOut,
     return 0;
 }
 
-REDHAWK_PALEXPORT UInt64 __cdecl PalGetTickCount64()
+REDHAWK_PALEXPORT uint64_t __cdecl PalGetTickCount64()
 {
     return GetTickCount64();
 }

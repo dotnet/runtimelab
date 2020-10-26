@@ -40,7 +40,7 @@ char (*COUNTOF_helper(_CountofType (&_Array)[_SizeOfArray]))[_SizeOfArray];
 #endif // COUNTOF
 
 #ifndef offsetof
-#define offsetof(s,m)   (UIntNative)( (IntNative)&reinterpret_cast<const volatile char&>((((s *)0)->m)) )
+#define offsetof(s,m)   (uintptr_t)( (intptr_t)&reinterpret_cast<const volatile char&>((((s *)0)->m)) )
 #endif // offsetof
 
 #ifndef FORCEINLINE
@@ -60,19 +60,19 @@ char (*COUNTOF_helper(_CountofType (&_Array)[_SizeOfArray]))[_SizeOfArray];
 //
 // This macro returns val rounded up as necessary to be a multiple of alignment; alignment must be a power of 2
 //
-inline UIntNative ALIGN_UP(UIntNative val, UIntNative alignment);
+inline uintptr_t ALIGN_UP(uintptr_t val, uintptr_t alignment);
 template <typename T>
-inline T* ALIGN_UP(T* val, UIntNative alignment);
+inline T* ALIGN_UP(T* val, uintptr_t alignment);
 
-inline UIntNative ALIGN_DOWN(UIntNative val, UIntNative alignment);
+inline uintptr_t ALIGN_DOWN(uintptr_t val, uintptr_t alignment);
 template <typename T>
-inline T* ALIGN_DOWN(T* val, UIntNative alignment);
+inline T* ALIGN_DOWN(T* val, uintptr_t alignment);
 
 #endif // !__GCENV_BASE_INCLUDED__
 
-inline bool IS_ALIGNED(UIntNative val, UIntNative alignment);
+inline bool IS_ALIGNED(uintptr_t val, uintptr_t alignment);
 template <typename T>
-inline bool IS_ALIGNED(T* val, UIntNative alignment);
+inline bool IS_ALIGNED(T* val, uintptr_t alignment);
 
 #ifndef DACCESS_COMPILE
 

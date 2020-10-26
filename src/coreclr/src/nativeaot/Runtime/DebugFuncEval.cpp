@@ -9,23 +9,23 @@
 #include "slist.h"
 #include "RuntimeInstance.h"
 
-GVAL_IMPL_INIT(UInt32, g_FuncEvalMode, 0);
-GVAL_IMPL_INIT(UInt32, g_FuncEvalParameterBufferSize, 0);
-GVAL_IMPL_INIT(UInt64, g_MostRecentFuncEvalHijackInstructionPointer, 0);
+GVAL_IMPL_INIT(uint32_t, g_FuncEvalMode, 0);
+GVAL_IMPL_INIT(uint32_t, g_FuncEvalParameterBufferSize, 0);
+GVAL_IMPL_INIT(uint64_t, g_MostRecentFuncEvalHijackInstructionPointer, 0);
 
 #ifndef DACCESS_COMPILE
 
-/* static */ UInt32 DebugFuncEval::GetFuncEvalParameterBufferSize()
+/* static */ uint32_t DebugFuncEval::GetFuncEvalParameterBufferSize()
 {
     return g_FuncEvalParameterBufferSize;
 }
 
-/* static */ UInt32 DebugFuncEval::GetFuncEvalMode()
+/* static */ uint32_t DebugFuncEval::GetFuncEvalMode()
 {
     return g_FuncEvalMode;
 }
 
-/* static */ UInt64 DebugFuncEval::GetMostRecentFuncEvalHijackInstructionPointer()
+/* static */ uint64_t DebugFuncEval::GetMostRecentFuncEvalHijackInstructionPointer()
 {
     return g_MostRecentFuncEvalHijackInstructionPointer;
 }
@@ -40,7 +40,7 @@ GVAL_IMPL_INIT(UInt64, g_MostRecentFuncEvalHijackInstructionPointer, 0);
 /// buffer size. By that time, the value should have been set through the UpdateFuncEvalParameterBufferSize()
 /// method on the ISosRedhawk7 interface.
 /// </remarks>
-EXTERN_C REDHAWK_API UInt32 __cdecl RhpGetFuncEvalParameterBufferSize()
+EXTERN_C REDHAWK_API uint32_t __cdecl RhpGetFuncEvalParameterBufferSize()
 {
     return DebugFuncEval::GetFuncEvalParameterBufferSize();
 }
@@ -54,7 +54,7 @@ EXTERN_C REDHAWK_API UInt32 __cdecl RhpGetFuncEvalParameterBufferSize()
 /// The C# supporting code will call this API to obtain the mode. By that time, the value
 /// should have been set through the UpdateFuncEvalMode() method on the ISosRedhawk7 interface.
 /// </remarks>
-EXTERN_C REDHAWK_API UInt32 __cdecl RhpGetFuncEvalMode()
+EXTERN_C REDHAWK_API uint32_t __cdecl RhpGetFuncEvalMode()
 {
     return DebugFuncEval::GetFuncEvalMode();
 }
@@ -70,12 +70,12 @@ EXTERN_C REDHAWK_API void __cdecl RhpInitiateFuncEvalAbort(void* pointerFromDebu
 {
     DebugFuncEvalAbortHelperFunctionType debugFuncEvalAbortHelperFunction = (DebugFuncEvalAbortHelperFunctionType)GetRuntimeInstance()->GetClasslibFunctionFromCodeAddress((void*)g_MostRecentFuncEvalHijackInstructionPointer, ClasslibFunctionId::DebugFuncEvalAbortHelper);
     ASSERT(debugFuncEvalAbortHelperFunction != nullptr);
-    debugFuncEvalAbortHelperFunction((Int64)pointerFromDebugger);
+    debugFuncEvalAbortHelperFunction((int64_t)pointerFromDebugger);
 }
 
 #else
 
-UInt64 DebugFuncEval::GetMostRecentFuncEvalHijackInstructionPointer()
+uint64_t DebugFuncEval::GetMostRecentFuncEvalHijackInstructionPointer()
 {
     return g_MostRecentFuncEvalHijackInstructionPointer;
 }

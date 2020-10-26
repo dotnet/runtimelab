@@ -38,7 +38,7 @@ struct InterfaceDispatchCache
         InterfaceDispatchCell  *    m_pCell;        // pointer back to interface dispatch cell - not used for AMD64
 #endif
     };
-    UInt32                      m_cEntries;
+    uint32_t                      m_cEntries;
     InterfaceDispatchCacheEntry m_rgEntries[];
 };
 #pragma warning(pop)

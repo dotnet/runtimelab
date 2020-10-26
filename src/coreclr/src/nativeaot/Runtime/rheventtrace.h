@@ -87,36 +87,36 @@ namespace ETW
             kTypeLogBehaviorAlwaysLog,
         };
 
-        static void LogTypeAndParametersIfNecessary(BulkTypeEventLogger * pLogger, UInt64 thAsAddr, TypeLogBehavior typeLogBehavior);
+        static void LogTypeAndParametersIfNecessary(BulkTypeEventLogger * pLogger, uint64_t thAsAddr, TypeLogBehavior typeLogBehavior);
     };
 };
 
 struct EventRCWEntry
 {
-    UInt64 ObjectID;
-    UInt64 TypeID;
-    UInt64 IUnk;
-    UInt64 VTable;
-    UInt32 RefCount;
-    UInt32 Flags;
+    uint64_t ObjectID;
+    uint64_t TypeID;
+    uint64_t IUnk;
+    uint64_t VTable;
+    uint32_t RefCount;
+    uint32_t Flags;
 };
 
 #pragma pack(push, 1)
 struct EventCCWEntry
 {
-    UInt64 RootID;
-    UInt64 ObjectID;
-    UInt64 TypeID;
-    UInt64 IUnk;
-    UInt32 RefCount;
-    UInt32 JupiterRefCount;
-    UInt32 Flags;
+    uint64_t RootID;
+    uint64_t ObjectID;
+    uint64_t TypeID;
+    uint64_t IUnk;
+    uint32_t RefCount;
+    uint32_t JupiterRefCount;
+    uint32_t Flags;
 };
 
 C_ASSERT(sizeof(EventCCWEntry) == 44);
 #pragma pack(pop)
 
-const UInt32 cbComMaxEtwEvent = 64 * 1024;
+const uint32_t cbComMaxEtwEvent = 64 * 1024;
 
 // Does all logging for RCWs and CCWs in the process.
 class BulkComLogger

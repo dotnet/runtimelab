@@ -68,8 +68,8 @@ public:
     //-------------------------------------------------------------------------
 protected:
 
-    void PrintLocalSlot(UInt32 slotNum, GCInfoHeader const * pHeader);
-    void DumpCallsiteString(UInt32 callsiteOffset, PTR_UInt8 pbCallsiteString, GCInfoHeader const * pHeader);
+    void PrintLocalSlot(uint32_t slotNum, GCInfoHeader const * pHeader);
+    void DumpCallsiteString(uint32_t callsiteOffset, PTR_UInt8 pbCallsiteString, GCInfoHeader const * pHeader);
 };
 
 /*****************************************************************************/

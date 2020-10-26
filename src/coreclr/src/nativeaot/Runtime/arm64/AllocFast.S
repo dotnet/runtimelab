@@ -84,7 +84,7 @@ RhpNewFast_RarePath:
         ldr         w2, [x0, #OFFSETOF__EEType__m_uBaseSize]
 
         // Call the rest of the allocation helper.
-        // void* RhpGcAlloc(EEType *pEEType, UInt32 uFlags, UIntNative cbSize, void * pTransitionFrame)
+        // void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
         bl          RhpGcAlloc
 
         // Set the new objects EEType pointer on success.
@@ -265,7 +265,7 @@ ArraySizeOverflow:
 
         mov         x1, #0
 
-        // void* RhpGcAlloc(EEType *pEEType, UInt32 uFlags, UIntNative cbSize, void * pTransitionFrame)
+        // void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
         bl          RhpGcAlloc
 
         // Set the new objects EEType pointer and length on success.

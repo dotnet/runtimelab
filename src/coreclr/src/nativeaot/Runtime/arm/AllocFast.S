@@ -73,7 +73,7 @@ NESTED_ENTRY RhpNewObject, _TEXT, NoHandler
 
         ldr         r2, [r0, #OFFSETOF__EEType__m_uBaseSize]    // cbSize
 
-        // void* RhpGcAlloc(EEType *pEEType, UInt32 uFlags, UIntNative cbSize, void * pTransitionFrame)
+        // void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
         blx         C_FUNC(RhpGcAlloc)
 
         // Set the new object's EEType pointer on success.
@@ -319,7 +319,7 @@ NESTED_ENTRY RhpNewArrayRare, _TEXT, NoHandler
 
         mov         r1, #0          // uFlags
 
-        // void* RhpGcAlloc(EEType *pEEType, UInt32 uFlags, UIntNative cbSize, void * pTransitionFrame)
+        // void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
         blx         C_FUNC(RhpGcAlloc)
 
         // Test for failure (NULL return).
@@ -498,7 +498,7 @@ NESTED_ENTRY RhpNewArrayAlign8, _TEXT, NoHandler
 
         mov         r1, #GC_ALLOC_ALIGN8    // uFlags
 
-        // void* RhpGcAlloc(EEType *pEEType, UInt32 uFlags, UIntNative cbSize, void * pTransitionFrame)
+        // void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
         blx         C_FUNC(RhpGcAlloc)
 
         // Test for failure (NULL return).

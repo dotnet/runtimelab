@@ -34,9 +34,9 @@ unsigned __int64 g_startupTimelineEvents[NUM_STARTUP_TIMELINE_EVENTS] = { 0 };
 #endif // PROFILE_STARTUP
 
 #ifdef TARGET_UNIX
-Int32 RhpHardwareExceptionHandler(UIntNative faultCode, UIntNative faultAddress, PAL_LIMITED_CONTEXT* palContext, UIntNative* arg0Reg, UIntNative* arg1Reg);
+int32_t RhpHardwareExceptionHandler(uintptr_t faultCode, uintptr_t faultAddress, PAL_LIMITED_CONTEXT* palContext, uintptr_t* arg0Reg, uintptr_t* arg1Reg);
 #else
-Int32 __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs);
+int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs);
 #endif
 
 static void CheckForPalFallback();
@@ -99,8 +99,8 @@ static bool InitDLL(HANDLE hPalInstance)
     STARTUP_TIMELINE_EVENT(GC_INIT_COMPLETE);
 
 #ifdef STRESS_LOG
-    UInt32 dwTotalStressLogSize = g_pRhConfig->GetTotalStressLogSize();
-    UInt32 dwStressLogLevel = g_pRhConfig->GetStressLogLevel();
+    uint32_t dwTotalStressLogSize = g_pRhConfig->GetTotalStressLogSize();
+    uint32_t dwStressLogLevel = g_pRhConfig->GetStressLogLevel();
 
     unsigned facility = (unsigned)LF_ALL;
     unsigned dwPerThreadChunks = (dwTotalStressLogSize / 24) / STRESSLOG_CHUNK_SIZE;
@@ -129,7 +129,7 @@ static bool InitDLL(HANDLE hPalInstance)
 static void CheckForPalFallback()
 {
 #ifdef _DEBUG
-    UInt32 disallowSetting = g_pRhConfig->GetDisallowRuntimeServicesFallback();
+    uint32_t disallowSetting = g_pRhConfig->GetDisallowRuntimeServicesFallback();
     if (disallowSetting == 0)
         return;
 
@@ -290,7 +290,7 @@ bool DetectCPUFeatures()
 #endif // !USE_PORTABLE_HELPERS
 
 #ifdef PROFILE_STARTUP
-#define STD_OUTPUT_HANDLE ((UInt32)-11)
+#define STD_OUTPUT_HANDLE ((uint32_t)-11)
 
 struct RegisterModuleTrace
 {
@@ -303,7 +303,7 @@ int g_registerModuleCount = 0;
 
 RegisterModuleTrace g_registerModuleTraces[NUM_REGISTER_MODULE_TRACES] = { 0 };
 
-static void AppendInt64(char * pBuffer, UInt32* pLen, UInt64 value)
+static void AppendInt64(char * pBuffer, uint32_t* pLen, uint64_t value)
 {
     char localBuffer[20];
     int cch = 0;
@@ -329,7 +329,7 @@ static void UninitDLL()
 #ifdef PROFILE_STARTUP
     char buffer[1024];
 
-    UInt32 len = 0;
+    uint32_t len = 0;
 
     AppendInt64(buffer, &len, g_startupTimelineEvents[PROCESS_ATTACH_BEGIN]);
     AppendInt64(buffer, &len, g_startupTimelineEvents[NONGC_INIT_COMPLETE]);
@@ -417,7 +417,7 @@ COOP_PINVOKE_HELPER(void, RhpShutdown, ())
 }
 
 #ifdef _WIN32
-EXTERN_C UInt32_BOOL WINAPI RtuDllMain(HANDLE hPalInstance, UInt32 dwReason, void* /*pvReserved*/)
+EXTERN_C UInt32_BOOL WINAPI RtuDllMain(HANDLE hPalInstance, uint32_t dwReason, void* /*pvReserved*/)
 {
     switch (dwReason)
     {

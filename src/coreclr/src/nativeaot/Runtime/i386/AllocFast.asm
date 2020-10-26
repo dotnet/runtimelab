@@ -45,7 +45,7 @@ FASTCALL_FUNC   RhpNewFast, 4
 AllocFailed:
 
         ;;
-        ;; SLOW PATH, call RhpGcAlloc(EEType *pEEType, UInt32 uFlags, UIntNative cbSize, void * pTransitionFrame)
+        ;; SLOW PATH, call RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
         ;;
         ;; ecx: EEType pointer
         ;;
@@ -63,7 +63,7 @@ AllocFailed:
         xor         edx, edx                                        ; Flags
         ;; Passing EEType in ecx
 
-        ;; void* RhpGcAlloc(EEType *pEEType, UInt32 uFlags, UIntNative cbSize, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
         call        RhpGcAlloc
 
         ;; Set the new object's EEType pointer on success.
@@ -120,7 +120,7 @@ FASTCALL_FUNC   RhpNewFinalizable, 4
         mov         edx, GC_ALLOC_FINALIZE                          ; Flags
         ;; Passing EEType in ecx
 
-        ;; void* RhpGcAlloc(EEType *pEEType, UInt32 uFlags, UIntNative cbSize, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
         call        RhpGcAlloc
 
         ;; Set the new object's EEType pointer on success.
@@ -236,7 +236,7 @@ StringAllocContextOverflow:
         xor         edx, edx                                        ; Flags
         ;; Passing EEType in ecx
 
-        ;; void* RhpGcAlloc(EEType *pEEType, UInt32 uFlags, UIntNative cbSize, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
         call        RhpGcAlloc
 
         ; Set the new object's EEType pointer and length on success.
@@ -383,7 +383,7 @@ ArrayAllocContextOverflow:
         xor         edx, edx                                        ; Flags
         ;; Passing EEType in ecx
 
-        ;; void* RhpGcAlloc(EEType *pEEType, UInt32 uFlags, UIntNative cbSize, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
         call        RhpGcAlloc
 
         ; Set the new object's EEType pointer and length on success.

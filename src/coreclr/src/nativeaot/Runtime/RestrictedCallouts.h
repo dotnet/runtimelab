@@ -57,7 +57,7 @@ public:
 
     // Invoke all the registered GC callouts of the given kind. The condemned generation of the current
     // collection is passed along to the callouts.
-    static void InvokeGcCallouts(GcRestrictedCalloutKind eKind, UInt32 uiCondemnedGeneration);
+    static void InvokeGcCallouts(GcRestrictedCalloutKind eKind, uint32_t uiCondemnedGeneration);
 
     // Invoke all the registered ref counted handle callouts for the given object extracted from the handle.
     // The result is the union of the results for all the handlers that matched the object type (i.e. if one
@@ -97,6 +97,6 @@ private:
     static CrstStatic s_sLock;
 
     // Prototypes for the callouts.
-    typedef void (REDHAWK_CALLCONV * GcRestrictedCallbackFunction)(UInt32 uiCondemnedGeneration);
+    typedef void (REDHAWK_CALLCONV * GcRestrictedCallbackFunction)(uint32_t uiCondemnedGeneration);
     typedef Boolean (REDHAWK_CALLCONV * HandleTableRestrictedCallbackFunction)(Object * pObject);
 };

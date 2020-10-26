@@ -45,8 +45,8 @@ AllocHeap::AllocHeap()
 #ifdef FEATURE_RWX_MEMORY
 //-------------------------------------------------------------------------------------------------
 AllocHeap::AllocHeap(
-    UInt32 rwProtectType,
-    UInt32 roProtectType,
+    uint32_t rwProtectType,
+    uint32_t roProtectType,
     MemAccessMgr* pAccessMgr)
     : m_blockList(),
       m_rwProtectType(rwProtectType),
@@ -79,9 +79,9 @@ bool AllocHeap::Init()
 // Should never use this more than once, and should always follow construction of heap.
 
 bool AllocHeap::Init(
-    UInt8 *    pbInitialMem,
-    UIntNative cbInitialMemCommit,
-    UIntNative cbInitialMemReserve,
+    uint8_t *    pbInitialMem,
+    uintptr_t cbInitialMemCommit,
+    uintptr_t cbInitialMemReserve,
     bool       fShouldFreeInitialMem)
 {
     ASSERT(!m_fIsInit);
@@ -126,9 +126,9 @@ AllocHeap::~AllocHeap()
 }
 
 //-------------------------------------------------------------------------------------------------
-UInt8 * AllocHeap::_Alloc(
-    UIntNative cbMem,
-    UIntNative alignment
+uint8_t * AllocHeap::_Alloc(
+    uintptr_t cbMem,
+    uintptr_t alignment
     WRITE_ACCESS_HOLDER_ARG
     )
 {
@@ -146,7 +146,7 @@ UInt8 * AllocHeap::_Alloc(
 
     CrstHolder lock(&m_lock);
 
-    UInt8 * pbMem = _AllocFromCurBlock(cbMem, alignment PASS_WRITE_ACCESS_HOLDER_ARG);
+    uint8_t * pbMem = _AllocFromCurBlock(cbMem, alignment PASS_WRITE_ACCESS_HOLDER_ARG);
     if (pbMem != NULL)
         return pbMem;
 
@@ -161,24 +161,24 @@ UInt8 * AllocHeap::_Alloc(
 }
 
 //-------------------------------------------------------------------------------------------------
-UInt8 * AllocHeap::Alloc(
-    UIntNative cbMem
+uint8_t * AllocHeap::Alloc(
+    uintptr_t cbMem
     WRITE_ACCESS_HOLDER_ARG)
 {
     return _Alloc(cbMem, 1 PASS_WRITE_ACCESS_HOLDER_ARG);
 }
 
 //-------------------------------------------------------------------------------------------------
-UInt8 * AllocHeap::AllocAligned(
-    UIntNative cbMem,
-    UIntNative alignment
+uint8_t * AllocHeap::AllocAligned(
+    uintptr_t cbMem,
+    uintptr_t alignment
     WRITE_ACCESS_HOLDER_ARG)
 {
     return _Alloc(cbMem, alignment PASS_WRITE_ACCESS_HOLDER_ARG);
 }
 
 //-------------------------------------------------------------------------------------------------
-bool AllocHeap::Contains(void* pvMem, UIntNative cbMem)
+bool AllocHeap::Contains(void* pvMem, uintptr_t cbMem)
 {
     MemRange range(pvMem, cbMem);
     for (BlockList::Iterator it = m_blockList.Begin(); it != m_blockList.End(); ++it)
@@ -194,8 +194,8 @@ bool AllocHeap::Contains(void* pvMem, UIntNative cbMem)
 #ifdef FEATURE_RWX_MEMORY
 //-------------------------------------------------------------------------------------------------
 bool AllocHeap::_AcquireWriteAccess(
-    UInt8* pvMem,
-    UIntNative cbMem,
+    uint8_t* pvMem,
+    uintptr_t cbMem,
     WriteAccessHolder* pHolder)
 {
     ASSERT(!_UseAccessManager() || m_pAccessMgr != NULL);
@@ -209,15 +209,15 @@ bool AllocHeap::_AcquireWriteAccess(
 //-------------------------------------------------------------------------------------------------
 bool AllocHeap::AcquireWriteAccess(
     void* pvMem,
-    UIntNative cbMem,
+    uintptr_t cbMem,
     WriteAccessHolder* pHolder)
 {
-    return _AcquireWriteAccess(static_cast<UInt8*>(pvMem), cbMem, pHolder);
+    return _AcquireWriteAccess(static_cast<uint8_t*>(pvMem), cbMem, pHolder);
 }
 #endif // FEATURE_RWX_MEMORY
 
 //-------------------------------------------------------------------------------------------------
-bool AllocHeap::_UpdateMemPtrs(UInt8* pNextFree, UInt8* pFreeCommitEnd, UInt8* pFreeReserveEnd)
+bool AllocHeap::_UpdateMemPtrs(uint8_t* pNextFree, uint8_t* pFreeCommitEnd, uint8_t* pFreeReserveEnd)
 {
     ASSERT(MemRange(pNextFree, pFreeReserveEnd).Contains(MemRange(pNextFree, pFreeCommitEnd)));
     ASSERT(ALIGN_DOWN(pFreeCommitEnd, OS_PAGE_SIZE) == pFreeCommitEnd);
@@ -262,23 +262,23 @@ bool AllocHeap::_UpdateMemPtrs(UInt8* pNextFree, UInt8* pFreeCommitEnd, UInt8* p
 }
 
 //-------------------------------------------------------------------------------------------------
-bool AllocHeap::_UpdateMemPtrs(UInt8* pNextFree, UInt8* pFreeCommitEnd)
+bool AllocHeap::_UpdateMemPtrs(uint8_t* pNextFree, uint8_t* pFreeCommitEnd)
 {
     return _UpdateMemPtrs(pNextFree, pFreeCommitEnd, m_pFreeReserveEnd);
 }
 
 //-------------------------------------------------------------------------------------------------
-bool AllocHeap::_UpdateMemPtrs(UInt8* pNextFree)
+bool AllocHeap::_UpdateMemPtrs(uint8_t* pNextFree)
 {
     return _UpdateMemPtrs(pNextFree, m_pFreeCommitEnd);
 }
 
 //-------------------------------------------------------------------------------------------------
-bool AllocHeap::_AllocNewBlock(UIntNative cbMem)
+bool AllocHeap::_AllocNewBlock(uintptr_t cbMem)
 {
     cbMem = ALIGN_UP(max(cbMem, s_minBlockSize), OS_PAGE_SIZE);;
 
-    UInt8 * pbMem = reinterpret_cast<UInt8*>
+    uint8_t * pbMem = reinterpret_cast<uint8_t*>
         (PalVirtualAlloc(NULL, cbMem, MEM_COMMIT, m_roProtectType));
 
     if (pbMem == NULL)
@@ -300,14 +300,14 @@ bool AllocHeap::_AllocNewBlock(UIntNative cbMem)
 }
 
 //-------------------------------------------------------------------------------------------------
-UInt8 * AllocHeap::_AllocFromCurBlock(
-    UIntNative cbMem,
-    UIntNative alignment
+uint8_t * AllocHeap::_AllocFromCurBlock(
+    uintptr_t cbMem,
+    uintptr_t alignment
     WRITE_ACCESS_HOLDER_ARG)
 {
-    UInt8 * pbMem = NULL;
+    uint8_t * pbMem = NULL;
 
-    cbMem += (UInt8 *)ALIGN_UP(m_pNextFree, alignment) - m_pNextFree;
+    cbMem += (uint8_t *)ALIGN_UP(m_pNextFree, alignment) - m_pNextFree;
 
     if (m_pNextFree + cbMem <= m_pFreeCommitEnd ||
         _CommitFromCurBlock(cbMem))
@@ -330,13 +330,13 @@ UInt8 * AllocHeap::_AllocFromCurBlock(
 }
 
 //-------------------------------------------------------------------------------------------------
-bool AllocHeap::_CommitFromCurBlock(UIntNative cbMem)
+bool AllocHeap::_CommitFromCurBlock(uintptr_t cbMem)
 {
     ASSERT(m_pFreeCommitEnd < m_pNextFree + cbMem);
 
     if (m_pNextFree + cbMem <= m_pFreeReserveEnd)
     {
-        UIntNative cbMemToCommit = ALIGN_UP(cbMem, OS_PAGE_SIZE);
+        uintptr_t cbMemToCommit = ALIGN_UP(cbMem, OS_PAGE_SIZE);
 
 #ifdef FEATURE_RWX_MEMORY
         if (_UseAccessManager())
@@ -346,7 +346,7 @@ bool AllocHeap::_CommitFromCurBlock(UIntNative cbMem)
         }
         else
         {
-            UInt32 oldProtectType;
+            uint32_t oldProtectType;
             if (!PalVirtualProtect(m_pFreeCommitEnd, cbMemToCommit, m_roProtectType, &oldProtectType))
                 return false;
         }

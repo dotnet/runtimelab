@@ -239,10 +239,10 @@ size_t FASTCALL   GCDump::DumpInfoHeader (PTR_UInt8      gcInfo,
 }
 
 // TODO: Can we unify this code with ReportLocalSlot in RHCodeMan.cpp?
-void GCDump::PrintLocalSlot(UInt32 slotNum, GCInfoHeader const * pHeader)
+void GCDump::PrintLocalSlot(uint32_t slotNum, GCInfoHeader const * pHeader)
 {
     char const * baseReg;
-    Int32 offset;
+    int32_t offset;
 
     if (pHeader->HasFramePointer())
     {
@@ -252,7 +252,7 @@ void GCDump::PrintLocalSlot(UInt32 slotNum, GCInfoHeader const * pHeader)
 #elif defined(TARGET_ARM64)
         if (pHeader->AreFPLROnTop())
         {
-            offset = -(Int32)((slotNum + 1) * POINTER_SIZE);
+            offset = -(int32_t)((slotNum + 1) * POINTER_SIZE);
         }
         else
         {
@@ -293,9 +293,9 @@ void GCDump::PrintLocalSlot(UInt32 slotNum, GCInfoHeader const * pHeader)
 // - 1RRRRRRR 0RRRRRRR for { x0-x13 } ARM64 registers
 // - 1RRRRRRR 1RRRRRRR 000RRRRR for { x0-x15, xip0, xip1, lr } ARM64 registers
 // Returns the number of bytes read.
-size_t ReadRegisterMaskBy7Bit(PTR_UInt8 pCursor, UInt32* pMask)
+size_t ReadRegisterMaskBy7Bit(PTR_UInt8 pCursor, uint32_t* pMask)
 {
-    UInt32 byte0 = *pCursor;
+    uint32_t byte0 = *pCursor;
     if (!(byte0 & 0x80))
     {
         *pMask = byte0;
@@ -303,7 +303,7 @@ size_t ReadRegisterMaskBy7Bit(PTR_UInt8 pCursor, UInt32* pMask)
     }
 
 #if defined(TARGET_ARM64)
-    UInt32 byte1 = *(pCursor + 1);
+    uint32_t byte1 = *(pCursor + 1);
     if (!(byte1 & 0x80))
     {
         // XOR with 0x80 discards the most significant bit of byte0
@@ -311,7 +311,7 @@ size_t ReadRegisterMaskBy7Bit(PTR_UInt8 pCursor, UInt32* pMask)
         return 2;
     }
 
-    UInt32 byte2 = *(pCursor + 2);
+    uint32_t byte2 = *(pCursor + 2);
     if (!(byte2 & 0x80))
     {
         // XOR with 0x4080 discards the most significant bits of byte0 and byte1
@@ -323,13 +323,13 @@ size_t ReadRegisterMaskBy7Bit(PTR_UInt8 pCursor, UInt32* pMask)
     UNREACHABLE_MSG("Register mask is too long");
 }
 
-void GCDump::DumpCallsiteString(UInt32 callsiteOffset, PTR_UInt8 pbCallsiteString,
+void GCDump::DumpCallsiteString(uint32_t callsiteOffset, PTR_UInt8 pbCallsiteString,
                                 GCInfoHeader const * pHeader)
 {
     gcPrintf("%04x: ", callsiteOffset);
 
     int count = 0;
-    UInt8 b;
+    uint8_t b;
     PTR_UInt8 pCursor = pbCallsiteString;
 
     bool last = false;
@@ -358,7 +358,7 @@ void GCDump::DumpCallsiteString(UInt32 callsiteOffset, PTR_UInt8 pbCallsiteStrin
                 if (b & CSR_MASK_R7) { gcPrintf("R7 "); count++; }
                 if (b & CSR_MASK_R8) { gcPrintf("R8 "); count++; }
 #elif defined(TARGET_ARM64)
-                UInt16 regs = (b & 0xF);
+                uint16_t regs = (b & 0xF);
                 if (b & 0x10) { regs |= (*pCursor++ << 4); }
 
                 ASSERT(!(regs & CSR_MASK_LR));
@@ -508,16 +508,16 @@ void GCDump::DumpCallsiteString(UInt32 callsiteOffset, PTR_UInt8 pbCallsiteStrin
                     // case 7 - live scratch regs
                     gcPrintf("%02x          | 7  ", b);
 
-                    UInt32 regs, byrefRegs = 0, pinnedRegs = 0;
+                    uint32_t regs, byrefRegs = 0, pinnedRegs = 0;
                     pCursor += ReadRegisterMaskBy7Bit(pCursor, &regs);
                     if (b & 0x10)
                         pCursor += ReadRegisterMaskBy7Bit(pCursor, &byrefRegs);
                     if (b & 0x08)
                         pCursor += ReadRegisterMaskBy7Bit(pCursor, &pinnedRegs);
 
-                    for (UInt32 reg = 0; ; reg++)
+                    for (uint32_t reg = 0; ; reg++)
                     {
-                        UInt32 regMask = (1 << reg);
+                        uint32_t regMask = (1 << reg);
                         if (regMask > regs)
                             break;
 
@@ -639,8 +639,8 @@ size_t   FASTCALL   GCDump::DumpGCTable (PTR_UInt8              gcInfo,
 
     if (header.HasCommonVars())
     {
-        UInt32 commonVarCount = VarInt::ReadUnsigned(pCursor);
-        for (UInt32 i = 0; i < commonVarCount; i++)
+        uint32_t commonVarCount = VarInt::ReadUnsigned(pCursor);
+        for (uint32_t i = 0; i < commonVarCount; i++)
         {
             VarInt::SkipUnsigned(pCursor);
         }
@@ -667,16 +667,16 @@ size_t   FASTCALL   GCDump::DumpGCTable (PTR_UInt8              gcInfo,
     // 11111111 -- STRING TERMINATOR
     //
 
-    UInt32 curOffset = 0;
+    uint32_t curOffset = 0;
 
     for (;;)
     {
-        UInt8 b = *pCursor++;
+        uint8_t b = *pCursor++;
         unsigned infoOffset;
 
         if (b & 0x80)
         {
-            UInt8 lowBits = (b & 0x7F);
+            uint8_t lowBits = (b & 0x7F);
             // FORWARDER
             if (lowBits == 0)
             {

@@ -6,7 +6,7 @@ struct ExInfo;
 typedef DPTR(ExInfo) PTR_ExInfo;
 typedef VPTR(ICodeManager) PTR_ICodeManager;
 
-enum ExKind : UInt8
+enum ExKind : uint8_t
 {
     EK_HardwareFault = 2,
     EK_SupersededFlag  = 8,
@@ -19,7 +19,7 @@ struct EHEnum
 };
 
 EXTERN_C Boolean FASTCALL RhpSfiInit(StackFrameIterator* pThis, PAL_LIMITED_CONTEXT* pStackwalkCtx, Boolean instructionFault);
-EXTERN_C Boolean FASTCALL RhpSfiNext(StackFrameIterator* pThis, UInt32* puExCollideClauseIdx, Boolean* pfUnwoundReversePInvoke);
+EXTERN_C Boolean FASTCALL RhpSfiNext(StackFrameIterator* pThis, uint32_t* puExCollideClauseIdx, Boolean* pfUnwoundReversePInvoke);
 
 struct PInvokeTransitionFrame;
 typedef DPTR(PInvokeTransitionFrame) PTR_PInvokeTransitionFrame;
@@ -29,7 +29,7 @@ class StackFrameIterator
 {
     friend class AsmOffsets;
     friend Boolean FASTCALL RhpSfiInit(StackFrameIterator* pThis, PAL_LIMITED_CONTEXT* pStackwalkCtx, Boolean instructionFault);
-    friend Boolean FASTCALL RhpSfiNext(StackFrameIterator* pThis, UInt32* puExCollideClauseIdx, Boolean* pfUnwoundReversePInvoke);
+    friend Boolean FASTCALL RhpSfiNext(StackFrameIterator* pThis, uint32_t* puExCollideClauseIdx, Boolean* pfUnwoundReversePInvoke);
 
 public:
     StackFrameIterator() {}
@@ -80,8 +80,8 @@ private:
 
     void EnterInitialInvalidState(Thread * pThreadToWalk);
 
-    void InternalInit(Thread * pThreadToWalk, PTR_PInvokeTransitionFrame pFrame, UInt32 dwFlags); // GC stackwalk
-    void InternalInit(Thread * pThreadToWalk, PTR_PAL_LIMITED_CONTEXT pCtx, UInt32 dwFlags);  // EH and hijack stackwalk, and collided unwind
+    void InternalInit(Thread * pThreadToWalk, PTR_PInvokeTransitionFrame pFrame, uint32_t dwFlags); // GC stackwalk
+    void InternalInit(Thread * pThreadToWalk, PTR_PAL_LIMITED_CONTEXT pCtx, uint32_t dwFlags);  // EH and hijack stackwalk, and collided unwind
     void InternalInitForEH(Thread * pThreadToWalk, PAL_LIMITED_CONTEXT * pCtx, bool instructionFault); // EH stackwalk
     void InternalInitForStackTrace();  // Environment.StackTrace
 
@@ -91,7 +91,7 @@ private:
     // This will walk m_pNextExInfo from its current value until it finds the next ExInfo at a higher address
     // than the SP reference value passed in.  This is useful when 'restarting' the stackwalk from a
     // particular PInvokeTransitionFrame or after we have a 'collided unwind' that may skip over ExInfos.
-    void ResetNextExInfoForSP(UIntNative SP);
+    void ResetNextExInfoForSP(uintptr_t SP);
 
     void UpdateFromExceptionDispatch(PTR_StackFrameIterator pSourceIterator);
 
@@ -199,7 +199,7 @@ protected:
     GCRefKind           m_HijackedReturnValueKind;
     PTR_UIntNative      m_pConservativeStackRangeLowerBound;
     PTR_UIntNative      m_pConservativeStackRangeUpperBound;
-    UInt32              m_dwFlags;
+    uint32_t              m_dwFlags;
     PTR_ExInfo          m_pNextExInfo;
     PTR_VOID            m_pendingFuncletFramePointer;
     PreservedRegPtrs    m_funcletPtrs;  // @TODO: Placing the 'scratch space' in the StackFrameIterator is not
