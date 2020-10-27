@@ -16,7 +16,7 @@ namespace System.Runtime.CompilerServices
         /// <summary>Sentinel object used to indicate that the builder completed synchronously and successfully.</summary>
         private static readonly object s_syncSuccessSentinel = AsyncValueTaskMethodBuilder<VoidTaskResult>.s_syncSuccessSentinel;
 
-        /// <summary>The wrapped state machine box or task, based on the value of <see cref="AsyncTaskCache.s_valueTaskPoolingEnabled"/>.</summary>
+        /// <summary>The wrapped state machine box or task, based on the value of s_valueTaskPoolingEnabled.</summary>
         /// <remarks>
         /// If the operation completed synchronously and successfully, this will be <see cref="s_syncSuccessSentinel"/>.
         /// </remarks>
@@ -46,10 +46,12 @@ namespace System.Runtime.CompilerServices
             {
                 m_task = s_syncSuccessSentinel;
             }
+#if FEATURE_POOLASYNCVALUETASKS
             else if (AsyncTaskCache.s_valueTaskPoolingEnabled)
             {
                 Unsafe.As<StateMachineBox>(m_task).SetResult(default);
             }
+#endif
             else
             {
                 AsyncTaskMethodBuilder<VoidTaskResult>.SetExistingTaskResult(Unsafe.As<Task<VoidTaskResult>>(m_task), default);
@@ -60,11 +62,13 @@ namespace System.Runtime.CompilerServices
         /// <param name="exception">The exception to bind to the task.</param>
         public void SetException(Exception exception)
         {
+#if FEATURE_POOLASYNCVALUETASKS
             if (AsyncTaskCache.s_valueTaskPoolingEnabled)
             {
                 AsyncValueTaskMethodBuilder<VoidTaskResult>.SetException(exception, ref Unsafe.As<object?, StateMachineBox?>(ref m_task));
             }
             else
+#endif
             {
                 AsyncTaskMethodBuilder<VoidTaskResult>.SetException(exception, ref Unsafe.As<object?, Task<VoidTaskResult>?>(ref m_task));
             }
@@ -88,6 +92,7 @@ namespace System.Runtime.CompilerServices
                 // "work" but in a degraded mode, as we don't know the TStateMachine type here, and thus we use a box around
                 // the interface instead.
 
+#if FEATURE_POOLASYNCVALUETASKS
                 if (AsyncTaskCache.s_valueTaskPoolingEnabled)
                 {
                     var box = Unsafe.As<StateMachineBox?>(m_task);
@@ -98,6 +103,7 @@ namespace System.Runtime.CompilerServices
                     return new ValueTask(box, box.Version);
                 }
                 else
+#endif
                 {
                     var task = Unsafe.As<Task<VoidTaskResult>?>(m_task);
                     if (task is null)
@@ -118,11 +124,13 @@ namespace System.Runtime.CompilerServices
             where TAwaiter : INotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
+#if FEATURE_POOLASYNCVALUETASKS
             if (AsyncTaskCache.s_valueTaskPoolingEnabled)
             {
                 AsyncValueTaskMethodBuilder<VoidTaskResult>.AwaitOnCompleted(ref awaiter, ref stateMachine, ref Unsafe.As<object?, StateMachineBox?>(ref m_task));
             }
             else
+#endif
             {
                 AsyncTaskMethodBuilder<VoidTaskResult>.AwaitOnCompleted(ref awaiter, ref stateMachine, ref Unsafe.As<object?, Task<VoidTaskResult>?>(ref m_task));
             }
@@ -138,11 +146,13 @@ namespace System.Runtime.CompilerServices
             where TAwaiter : ICriticalNotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
+#if FEATURE_POOLASYNCVALUETASKS
             if (AsyncTaskCache.s_valueTaskPoolingEnabled)
             {
                 AsyncValueTaskMethodBuilder<VoidTaskResult>.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine, ref Unsafe.As<object?, StateMachineBox?>(ref m_task));
             }
             else
+#endif
             {
                 AsyncTaskMethodBuilder<VoidTaskResult>.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine, ref Unsafe.As<object?, Task<VoidTaskResult>?>(ref m_task));
             }
@@ -162,8 +172,11 @@ namespace System.Runtime.CompilerServices
             {
                 if (m_task is null)
                 {
-                    m_task = AsyncTaskCache.s_valueTaskPoolingEnabled ? (object)
+                    m_task =
+#if FEATURE_POOLASYNCVALUETASKS
+                        AsyncTaskCache.s_valueTaskPoolingEnabled ? (object)
                         AsyncValueTaskMethodBuilder<VoidTaskResult>.CreateWeaklyTypedStateMachineBox() :
+#endif
                         AsyncTaskMethodBuilder<VoidTaskResult>.CreateWeaklyTypedStateMachineBox();
                 }
 

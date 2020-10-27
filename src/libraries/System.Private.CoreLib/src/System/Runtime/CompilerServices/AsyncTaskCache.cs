@@ -21,6 +21,7 @@ namespace System.Runtime.CompilerServices
         /// <summary>The maximum value, exclusive, for which we want a cached task.</summary>
         internal const int ExclusiveInt32Max = 9;
 
+#if FEATURE_POOLASYNCVALUETASKS
         /// <summary>true if we should use reusable boxes for async completions of ValueTask methods; false if we should use tasks.</summary>
         /// <remarks>
         /// We rely on tiered compilation turning this into a const and doing dead code elimination to make checks on this efficient.
@@ -40,6 +41,7 @@ namespace System.Runtime.CompilerServices
             int.TryParse(Environment.GetEnvironmentVariable("DOTNET_SYSTEM_THREADING_POOLASYNCVALUETASKSLIMIT"), out int result) && result > 0 ?
                 result :
                 Environment.ProcessorCount * 4; // arbitrary default value
+#endif
 
         /// <summary>Creates a non-disposable task.</summary>
         /// <typeparam name="TResult">Specifies the result type.</typeparam>

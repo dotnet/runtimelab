@@ -47,7 +47,7 @@
     <Nullable>enable</Nullable>
 
     <!-- Ignore all previous constants since SPCL is sensitive to what is defined and the Sdk adds some by default -->
-    <DefineConstants>CORECLR;NETCOREAPP;SYSTEM_PRIVATE_CORELIB</DefineConstants>
+    <DefineConstants>CORECLR;NETCOREAPP;SYSTEM_PRIVATE_CORELIB;FEATURE_POOLASYNCVALUETASKS</DefineConstants>
     <DisableImplicitConfigurationDefines>true</DisableImplicitConfigurationDefines>
 
     <SkipCommonResourcesIncludes>true</SkipCommonResourcesIncludes>
