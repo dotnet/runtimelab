@@ -113,7 +113,7 @@ public:
 
     static void EnumGcRef(PTR_RtuObjectRef pRef, GCRefKind kind, void * pfnEnumCallback, void * pvCallbackData);
 
-    static void BulkEnumGcObjRef(PTR_RtuObjectRef pRefs, UInt32 cRefs, void * pfnEnumCallback, void * pvCallbackData);
+    static void BulkEnumGcObjRef(PTR_RtuObjectRef pRefs, uint32_t cRefs, void * pfnEnumCallback, void * pvCallbackData);
 
     static void EnumGcRefs(ICodeManager * pCodeManager,
                            MethodInfo * pMethodInfo,
@@ -142,7 +142,7 @@ public:
     static void ScanHandleTableRoots(GcScanRootFunction pfnScanCallback, void *pContext);
 
     // Returns size GCDesc. Used by type cloning.
-    static UInt32 GetGCDescSize(void * pType);
+    static uint32_t GetGCDescSize(void * pType);
 
     // These methods are used to get and set the type information for the last allocation on each thread.
     static EEType * GetLastAllocEEType();

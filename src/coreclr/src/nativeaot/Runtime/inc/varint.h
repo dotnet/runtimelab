@@ -3,12 +3,12 @@
 class VarInt
 {
 public:
-    static UInt32 ReadUnsigned(PTR_UInt8 & pbEncoding)
+    static uint32_t ReadUnsigned(PTR_UInt8 & pbEncoding)
     {
-        UIntNative lengthBits = *pbEncoding & 0x0F;
+        uintptr_t lengthBits = *pbEncoding & 0x0F;
         size_t  negLength = s_negLengthTab[lengthBits];
-        UIntNative shift = s_shiftTab[lengthBits];
-        UInt32 result = *(PTR_UInt32)(pbEncoding - negLength - 4);
+        uintptr_t shift = s_shiftTab[lengthBits];
+        uint32_t result = *(PTR_UInt32)(pbEncoding - negLength - 4);
 
         result >>= shift;
         pbEncoding -= negLength;
@@ -25,15 +25,15 @@ public:
     // the negatives in the s_negLengthTable to avoid any additional operations in the body of the GC scan
     // loop.
     //
-    static IntNative SkipUnsigned(PTR_UInt8 & pbEncoding)
+    static intptr_t SkipUnsigned(PTR_UInt8 & pbEncoding)
     {
-        UIntNative lengthBits = *pbEncoding & 0x0F;
+        uintptr_t lengthBits = *pbEncoding & 0x0F;
         size_t negLength = s_negLengthTab[lengthBits];
         pbEncoding -= negLength;
         return negLength;
     }
 
-    static UIntNative WriteUnsigned(PTR_UInt8 pbDest, UInt32 value)
+    static uintptr_t WriteUnsigned(PTR_UInt8 pbDest, uint32_t value)
     {
         if (pbDest == NULL)
         {
@@ -54,49 +54,49 @@ public:
 
         if (value < 128)
         {
-            *pbDest++ = (UInt8)(value*2 + 0);
+            *pbDest++ = (uint8_t)(value*2 + 0);
             return 1;
         }
 
         if (value < 128*128)
         {
-            *pbDest++ = (UInt8)(value*4 + 1);
-            *pbDest++ = (UInt8)(value >> 6);
+            *pbDest++ = (uint8_t)(value*4 + 1);
+            *pbDest++ = (uint8_t)(value >> 6);
             return 2;
         }
 
         if (value < 128*128*128)
         {
-            *pbDest++ = (UInt8)(value*8 + 3);
-            *pbDest++ = (UInt8)(value >> 5);
-            *pbDest++ = (UInt8)(value >> 13);
+            *pbDest++ = (uint8_t)(value*8 + 3);
+            *pbDest++ = (uint8_t)(value >> 5);
+            *pbDest++ = (uint8_t)(value >> 13);
             return 3;
         }
 
         if (value < 128*128*128*128)
         {
-            *pbDest++ = (UInt8)(value*16 + 7);
-            *pbDest++ = (UInt8)(value >> 4);
-            *pbDest++ = (UInt8)(value >> 12);
-            *pbDest++ = (UInt8)(value >> 20);
+            *pbDest++ = (uint8_t)(value*16 + 7);
+            *pbDest++ = (uint8_t)(value >> 4);
+            *pbDest++ = (uint8_t)(value >> 12);
+            *pbDest++ = (uint8_t)(value >> 20);
             return 4;
         }
 
         *pbDest++ = 15;
-        *pbDest++ = (UInt8)value;
-        *pbDest++ = (UInt8)(value >> 8);
-        *pbDest++ = (UInt8)(value >> 16);
-        *pbDest++ = (UInt8)(value >> 24);
+        *pbDest++ = (uint8_t)value;
+        *pbDest++ = (uint8_t)(value >> 8);
+        *pbDest++ = (uint8_t)(value >> 16);
+        *pbDest++ = (uint8_t)(value >> 24);
         return 5;
     }
 
 private:
-    static Int8 s_negLengthTab[16];
-    static UInt8 s_shiftTab[16];
+    static int8_t s_negLengthTab[16];
+    static uint8_t s_shiftTab[16];
 };
 
 __declspec(selectany)
-Int8 VarInt::s_negLengthTab[16] =
+int8_t VarInt::s_negLengthTab[16] =
 {
     -1,    // 0
     -2,    // 1
@@ -120,7 +120,7 @@ Int8 VarInt::s_negLengthTab[16] =
 };
 
 __declspec(selectany)
-UInt8 VarInt::s_shiftTab[16] =
+uint8_t VarInt::s_shiftTab[16] =
 {
     32-7*1,    // 0
     32-7*2,    // 1

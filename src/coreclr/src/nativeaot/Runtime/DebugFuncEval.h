@@ -14,7 +14,7 @@
 
 #ifndef DACCESS_COMPILE
 
-typedef void(*DebugFuncEvalAbortHelperFunctionType)(UInt64);
+typedef void(*DebugFuncEvalAbortHelperFunctionType)(uint64_t);
 
 class DebugFuncEval
 {
@@ -29,7 +29,7 @@ public:
     /// buffer size. By that time, the value should have been set through the UpdateFuncEvalParameterSize()
     /// method on the ISosRedhawk7 interface.
     /// </remarks>
-    static UInt32 GetFuncEvalParameterBufferSize();
+    static uint32_t GetFuncEvalParameterBufferSize();
 
     /// <summary>
     /// Retrieve the global FuncEval mode.
@@ -40,7 +40,7 @@ public:
     /// The C# supporting code will call this API to obtain the mode. By that time, the value
     /// should have been set through the UpdateFuncEvalMode() method on the ISosRedhawk7 interface.
     /// </remarks>
-    static UInt32 GetFuncEvalMode();
+    static uint32_t GetFuncEvalMode();
 
     /// <summary>
     /// Retrieve the most recent FuncEval Hijack instruction pointer
@@ -49,7 +49,7 @@ public:
     /// The most recent FuncEval Hijack instruction pointer is set through the debugger
     /// It is used for the stack walker to understand the hijack frame
     /// </remarks>
-    static UInt64 GetMostRecentFuncEvalHijackInstructionPointer();
+    static uint64_t GetMostRecentFuncEvalHijackInstructionPointer();
 };
 
 #else
@@ -64,7 +64,7 @@ public:
     /// The most recent FuncEval Hijack instruction pointer is set through the debugger
     /// It is used for the stack walker to understand the hijack frame
     /// </remarks>
-    static UInt64 GetMostRecentFuncEvalHijackInstructionPointer();
+    static uint64_t GetMostRecentFuncEvalHijackInstructionPointer();
 };
 
 #endif //!DACCESS_COMPILE

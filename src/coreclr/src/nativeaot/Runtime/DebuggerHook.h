@@ -19,16 +19,16 @@
 
 struct DebuggerProtectedBufferListNode
 {
-    UInt64 address;
-    UInt16 size;
-    UInt32 identifier;
+    uint64_t address;
+    uint16_t size;
+    uint32_t identifier;
     struct DebuggerProtectedBufferListNode* next;
 };
 
 struct DebuggerOwnedHandleListNode
 {
     void* handle;
-    UInt32 identifier;
+    uint32_t identifier;
     struct DebuggerOwnedHandleListNode* next;
 };
 
@@ -36,7 +36,7 @@ class DebuggerHook
 {
 public:
     static void OnBeforeGcCollection();
-    static UInt32 RecordDebuggeeInitiatedHandle(void* handle);
+    static uint32_t RecordDebuggeeInitiatedHandle(void* handle);
     static DebuggerProtectedBufferListNode* s_debuggerProtectedBuffers;
     static DebuggerOwnedHandleListNode* s_debuggerOwnedHandles;
 private:
@@ -44,7 +44,7 @@ private:
     static void RemoveConservativeReporting(DebuggerGcProtectionRequest* request);
     static void EnsureHandle(DebuggerGcProtectionRequest* request);
     static void RemoveHandle(DebuggerGcProtectionRequest* request);
-    static UInt32 s_debuggeeInitiatedHandleIdentifier;
+    static uint32_t s_debuggeeInitiatedHandleIdentifier;
 };
 
 #endif //!DACCESS_COMPILE

@@ -429,49 +429,49 @@ enum ScratchRegMask
 struct GCInfoHeader
 {
 private:
-    UInt16  prologSize               : 6; // 0 [0:5]  // @TODO: define an 'overflow' encoding for big prologs?
-    UInt16  hasFunclets              : 1; // 0 [6]
-    UInt16  fixedEpilogSize          : 6; // 0 [7] + 1 [0:4]  '0' encoding implies that epilog size varies and is encoded for each epilog
-    UInt16  epilogCountSmall         : 2; // 1 [5:6] '3' encoding implies the number of epilogs is encoded separately
-    UInt16  hasExtraData             : 1; // 1 [7]  1: more data follows (dynamic alignment, GS cookie, common vars, etc.)
+    uint16_t  prologSize               : 6; // 0 [0:5]  // @TODO: define an 'overflow' encoding for big prologs?
+    uint16_t  hasFunclets              : 1; // 0 [6]
+    uint16_t  fixedEpilogSize          : 6; // 0 [7] + 1 [0:4]  '0' encoding implies that epilog size varies and is encoded for each epilog
+    uint16_t  epilogCountSmall         : 2; // 1 [5:6] '3' encoding implies the number of epilogs is encoded separately
+    uint16_t  hasExtraData             : 1; // 1 [7]  1: more data follows (dynamic alignment, GS cookie, common vars, etc.)
 
 #ifdef TARGET_ARM
-    UInt16  returnKind              : 2; // 2 [0:1] one of: MethodReturnKind enum
-    UInt16  ebpFrame                : 1; // 2 [2]   on x64, this means "has frame pointer and it is RBP", on ARM R7
-    UInt16  epilogAtEnd             : 1; // 2 [3]
-    UInt16  hasFrameSize            : 1; // 2 [4]   1: frame size is encoded below, 0: frame size is 0
-    UInt16 calleeSavedRegMask       : NUM_PRESERVED_REGS;   // 2 [5:7]    3 [0:5]
-    UInt16 arm_areParmOrVfpRegsPushed:1; // 3 [6]   1: pushed param reg set (R0-R3) and pushed fp reg start and count are encoded below, 0: no pushed param or fp registers
+    uint16_t  returnKind              : 2; // 2 [0:1] one of: MethodReturnKind enum
+    uint16_t  ebpFrame                : 1; // 2 [2]   on x64, this means "has frame pointer and it is RBP", on ARM R7
+    uint16_t  epilogAtEnd             : 1; // 2 [3]
+    uint16_t  hasFrameSize            : 1; // 2 [4]   1: frame size is encoded below, 0: frame size is 0
+    uint16_t calleeSavedRegMask       : NUM_PRESERVED_REGS;   // 2 [5:7]    3 [0:5]
+    uint16_t arm_areParmOrVfpRegsPushed:1; // 3 [6]   1: pushed param reg set (R0-R3) and pushed fp reg start and count are encoded below, 0: no pushed param or fp registers
 #elif defined (TARGET_ARM64)
-    UInt16  returnKind              : 2; // 2 [0:1] one of: MethodReturnKind enum
-    UInt16  ebpFrame                : 1; // 2 [2]   1: has frame pointer and it is FP
-    UInt16  epilogAtEnd             : 1; // 2 [3]
-    UInt16  hasFrameSize            : 1; // 2 [4]   1: frame size is encoded below, 0: frame size is 0
-    UInt16  arm64_longCsrMask            : 1; // 2 [5]  1: high bits of calleeSavedRegMask are encoded below
-    UInt16  arm64_areParmOrVfpRegsPushed : 1; // 2 [6]  1: pushed param reg count (X0-X7) and pushed fp reg set (D8-D15) are encoded below, 0: no pushed param or fp registers
-    UInt16  arm64_calleeSavedRegMaskLow  : NUM_PRESERVED_REGS_LOW;  // 2 [7]    3 [0:7]
+    uint16_t  returnKind              : 2; // 2 [0:1] one of: MethodReturnKind enum
+    uint16_t  ebpFrame                : 1; // 2 [2]   1: has frame pointer and it is FP
+    uint16_t  epilogAtEnd             : 1; // 2 [3]
+    uint16_t  hasFrameSize            : 1; // 2 [4]   1: frame size is encoded below, 0: frame size is 0
+    uint16_t  arm64_longCsrMask            : 1; // 2 [5]  1: high bits of calleeSavedRegMask are encoded below
+    uint16_t  arm64_areParmOrVfpRegsPushed : 1; // 2 [6]  1: pushed param reg count (X0-X7) and pushed fp reg set (D8-D15) are encoded below, 0: no pushed param or fp registers
+    uint16_t  arm64_calleeSavedRegMaskLow  : NUM_PRESERVED_REGS_LOW;  // 2 [7]    3 [0:7]
 #else
-    UInt8  returnKind               : 2; // 2 [0:1] one of: MethodReturnKind enum
-    UInt8  ebpFrame                 : 1; // 2 [2]   on x64, this means "has frame pointer and it is RBP", on ARM R7
-    UInt8  epilogAtEnd              : 1; // 2 [3]
+    uint8_t  returnKind               : 2; // 2 [0:1] one of: MethodReturnKind enum
+    uint8_t  ebpFrame                 : 1; // 2 [2]   on x64, this means "has frame pointer and it is RBP", on ARM R7
+    uint8_t  epilogAtEnd              : 1; // 2 [3]
 #ifdef TARGET_AMD64
-    UInt8  hasFrameSize             : 1; // 2 [4]   1: frame size is encoded below, 0: frame size is 0
-    UInt8  x64_framePtrOffsetSmall  : 2; // 2 [5:6] 00: framePtrOffset = 0x20
+    uint8_t  hasFrameSize             : 1; // 2 [4]   1: frame size is encoded below, 0: frame size is 0
+    uint8_t  x64_framePtrOffsetSmall  : 2; // 2 [5:6] 00: framePtrOffset = 0x20
                                          //         01: framePtrOffset = 0x30
                                          //         10: framePtrOffset = 0x40
                                          //         11: a variable-length integer 'x64_frameOffset' follows.
-    UInt8  x64_hasSavedXmmRegs      : 1; // 2 [7]   any saved xmm registers?
+    uint8_t  x64_hasSavedXmmRegs      : 1; // 2 [7]   any saved xmm registers?
 #endif
                                                             // X86        X64
-    UInt8  calleeSavedRegMask       : NUM_PRESERVED_REGS;   // 2 [4:7]    3 [0:7]
+    uint8_t  calleeSavedRegMask       : NUM_PRESERVED_REGS;   // 2 [4:7]    3 [0:7]
 
 #ifdef TARGET_X86
-    UInt8  x86_argCountLow          : 5; // 3 [0-4]  expressed in pointer-sized units    // @TODO: steal more bits here?
-    UInt8  x86_argCountIsLarge      : 1; // 3 [5]    if this bit is set, then the high 8 bits are encoded in x86_argCountHigh
-    UInt8  x86_hasStackChanges      : 1; // 3 [6]    x86-only, !ebpFrame-only, this method has pushes
+    uint8_t  x86_argCountLow          : 5; // 3 [0-4]  expressed in pointer-sized units    // @TODO: steal more bits here?
+    uint8_t  x86_argCountIsLarge      : 1; // 3 [5]    if this bit is set, then the high 8 bits are encoded in x86_argCountHigh
+    uint8_t  x86_hasStackChanges      : 1; // 3 [6]    x86-only, !ebpFrame-only, this method has pushes
                                          //          and pops in it, and a string follows this header
                                          //          which describes them
-    UInt8  hasFrameSize             : 1; // 3 [7]    1: frame size is encoded below, 0: frame size is 0
+    uint8_t  hasFrameSize             : 1; // 3 [7]    1: frame size is encoded below, 0: frame size is 0
 #endif
 #endif
 
@@ -483,9 +483,9 @@ private:
     //
 
     // For ARM and ARM64 this field stores the offset of the callee-saved area relative to FP/SP
-    UInt32  frameSize;                   // expressed in pointer-sized units, only encoded if hasFrameSize==1
+    uint32_t  frameSize;                   // expressed in pointer-sized units, only encoded if hasFrameSize==1
     // OPTIONAL: only encoded if returnKind = MRK_ReturnsToNative
-    UInt32  reversePinvokeFrameOffset;   // expressed in pointer-sized units away from the frame pointer
+    uint32_t  reversePinvokeFrameOffset;   // expressed in pointer-sized units away from the frame pointer
 
 #ifdef TARGET_AMD64
     // OPTIONAL: only encoded if x64_framePtrOffsetSmall = 11
@@ -495,7 +495,7 @@ private:
     //
     // In memory, this value will always be set and will always be the total number of 16-byte units that make
     // up the frame pointer offset.
-    UInt8   x64_framePtrOffset;       // expressed in 16-byte unit
+    uint8_t   x64_framePtrOffset;       // expressed in 16-byte unit
 
     // OPTIONAL: only encoded using a variable-sized unsigned if x64_hasSavedXmmRegs is set.
     //
@@ -507,25 +507,25 @@ private:
     // The shift applies to decoding/encoding only though - the actual header field below uses the
     // straightforward mapping where bit 0 corresponds to xmm0, bit 1 corresponds to xmm1 and so on.
     //
-    UInt16  x64_savedXmmRegMask;      // which xmm regs were saved
+    uint16_t  x64_savedXmmRegMask;      // which xmm regs were saved
 #elif defined(TARGET_X86)
     // OPTIONAL: only encoded if x86_argCountIsLarge = 1
     // NOTE: because we are using pointer-sized units, only 14 bits are required to represent the entire range
     // that can be expressed by a 'ret NNNN' instruction.  Therefore, with 6 in the 'low' field and 8 in the
     // 'high' field, we are not losing any range here.  (Although the need for that full range is debatable.)
-    UInt8   x86_argCountHigh;
+    uint8_t   x86_argCountHigh;
 #elif defined(TARGET_ARM)
     // OPTIONAL: only encoded if arm_areParmOrVfpRegsPushed = 1
-    UInt8   arm_parmRegsPushedSet;
-    UInt8   arm_vfpRegFirstPushed;
-    UInt8   arm_vfpRegPushedCount;
+    uint8_t   arm_parmRegsPushedSet;
+    uint8_t   arm_vfpRegFirstPushed;
+    uint8_t   arm_vfpRegPushedCount;
 #elif defined(TARGET_ARM64)
     // OPTIONAL: high bits of calleeSavedRegMask are encoded only if arm64_longCsrMask = 1; low bits equal to arm64_calleeSavedRegMaskLow
-    UInt16  calleeSavedRegMask;
+    uint16_t  calleeSavedRegMask;
 
     // OPTIONAL: only encoded if arm64_areParmOrVfpRegsPushed = 1
-    UInt8   arm64_parmRegsPushedCount;  // how many of X0-X7 registers are saved
-    UInt8   arm64_vfpRegsPushedMask;    // which of D8-D15 registers are saved
+    uint8_t   arm64_parmRegsPushedCount;  // how many of X0-X7 registers are saved
+    uint8_t   arm64_vfpRegsPushedMask;    // which of D8-D15 registers are saved
 #endif
 
     //
@@ -535,32 +535,32 @@ private:
         struct
         {
 #if defined(TARGET_ARM64)
-            UInt8 FPLRAreOnTop      : 1;    // [0]      1: FP and LR are saved on top of locals, not at the bottom (see MdmSaveFPAndLRAtTopOfLocalsArea)
-            UInt8 reg1ReturnKind    : 2;    // [1:2]    One of MRK_Returns{Scalar|Object|Byref} constants describing value returned in x1 if any
-            UInt8 hasGSCookie       : 1;    // [3]      1: frame uses GS cookie
-            UInt8 hasCommonVars     : 1;    // [4]      1: method has a list of "common vars"
+            uint8_t FPLRAreOnTop      : 1;    // [0]      1: FP and LR are saved on top of locals, not at the bottom (see MdmSaveFPAndLRAtTopOfLocalsArea)
+            uint8_t reg1ReturnKind    : 2;    // [1:2]    One of MRK_Returns{Scalar|Object|Byref} constants describing value returned in x1 if any
+            uint8_t hasGSCookie       : 1;    // [3]      1: frame uses GS cookie
+            uint8_t hasCommonVars     : 1;    // [4]      1: method has a list of "common vars"
                                             //          as an optimization for methods with many call sites and variables
-            UInt8                   : 3;    // [5:7]    unused bits
+            uint8_t                   : 3;    // [5:7]    unused bits
 #else
-            UInt8 logStackAlignment : 4;    // [0:3]    binary logarithm of frame alignment (3..15) or 0
-            UInt8 hasGSCookie       : 1;    // [4]      1: frame uses GS cookie
-            UInt8 hasCommonVars     : 1;    // [5]      1: method has a list of "common vars"
+            uint8_t logStackAlignment : 4;    // [0:3]    binary logarithm of frame alignment (3..15) or 0
+            uint8_t hasGSCookie       : 1;    // [4]      1: frame uses GS cookie
+            uint8_t hasCommonVars     : 1;    // [5]      1: method has a list of "common vars"
                                             //          as an optimization for methods with many call sites and variables
-            UInt8                   : 2;    // [6:7]    unused bits
+            uint8_t                   : 2;    // [6:7]    unused bits
 #endif
 #pragma warning(suppress:4201) // nameless struct
         };
-        UInt8 extraDataHeader;
+        uint8_t extraDataHeader;
     };
 
     // OPTIONAL: only encoded if logStackAlignment != 0
-    UInt8 paramPointerReg;
+    uint8_t paramPointerReg;
 
     // OPTIONAL: only encoded if epilogCountSmall = 3
-    UInt16 epilogCount;
+    uint16_t epilogCount;
 
     // OPTIONAL: only encoded if gsCookie = 1
-    UInt32 gsCookieOffset;      // expressed in pointer-sized units away from the frame pointer
+    uint32_t gsCookieOffset;      // expressed in pointer-sized units away from the frame pointer
 
     //
     // OPTIONAL: only encoded if hasFunclets = 1
@@ -589,7 +589,7 @@ private:
 
     // The following fields are not encoded in the file format, they are just used as convenience placeholders
     // for decode state.
-    UInt32 funcletOffset; // non-zero indicates that this GCInfoHeader is for a funclet
+    uint32_t funcletOffset; // non-zero indicates that this GCInfoHeader is for a funclet
 
 public:
     //
@@ -631,7 +631,7 @@ public:
         EC_SizeOfFixedHeader = 4,
         EC_MaxFrameByteSize                 = 10*1024*1024,
         EC_MaxReversePInvokeFrameByteOffset = 10*1024*1024,
-        EC_MaxX64FramePtrByteOffset         = UInt16_MAX * 0x10,
+        EC_MaxX64FramePtrByteOffset         = UINT16_MAX * 0x10,
         EC_MaxEpilogCountSmall              = 3,
         EC_MaxEpilogCount                   = 64*1024 - 1,
     };
@@ -649,7 +649,7 @@ public:
     // SETTERS
     //
 
-    void SetPrologSize(UInt32 sizeInBytes)
+    void SetPrologSize(uint32_t sizeInBytes)
     {
 #if defined (TARGET_ARM64)
         // For arm64 we encode multiples of 4, rather than raw bytes, since instructions are all same size.
@@ -667,7 +667,7 @@ public:
         hasFunclets = fHasFunclets ? 1 : 0;
     }
 
-    void PokeFixedEpilogSize(UInt32 sizeInBytes)
+    void PokeFixedEpilogSize(uint32_t sizeInBytes)
     {
 #if defined (TARGET_ARM64)
         // For arm64 we encode multiples of 4, rather than raw bytes, since instructions are all same size.
@@ -680,7 +680,7 @@ public:
 #endif
     }
 
-    void SetFixedEpilogSize(UInt32 sizeInBytes, bool varyingSizes)
+    void SetFixedEpilogSize(uint32_t sizeInBytes, bool varyingSizes)
     {
         if (varyingSizes)
             fixedEpilogSize = 0;
@@ -699,7 +699,7 @@ public:
         }
     }
 
-    void SetEpilogCount(UInt32 count, bool isAtEnd)
+    void SetEpilogCount(uint32_t count, bool isAtEnd)
     {
         epilogCount = ToUInt16(count);
         epilogAtEnd = isAtEnd ? 1 : 0;
@@ -716,7 +716,7 @@ public:
         returnKind = kind;
     }
 
-    void SetDynamicAlignment(UInt8 logByteAlignment)
+    void SetDynamicAlignment(uint8_t logByteAlignment)
     {
 #ifdef TARGET_X86
         ASSERT(logByteAlignment >= 3); // 4 byte aligned frames
@@ -739,7 +739,7 @@ public:
     }
 #endif
 
-    void SetGSCookieOffset(UInt32 offsetInBytes)
+    void SetGSCookieOffset(uint32_t offsetInBytes)
     {
         ASSERT(offsetInBytes != 0);
         ASSERT(0 == (offsetInBytes % POINTER_SIZE));
@@ -754,17 +754,17 @@ public:
         hasCommonVars = 1;
     }
 
-    void SetParamPointer(RegNumber regNum, UInt32 offsetInBytes, bool isOffsetFromSP = false)
+    void SetParamPointer(RegNumber regNum, uint32_t offsetInBytes, bool isOffsetFromSP = false)
     {
         UNREFERENCED_PARAMETER(offsetInBytes);
         UNREFERENCED_PARAMETER(isOffsetFromSP);
         ASSERT(HasDynamicAlignment()); // only expected for dynamic aligned frames
         ASSERT(offsetInBytes==0); // not yet supported
 
-        paramPointerReg = (UInt8)regNum;
+        paramPointerReg = (uint8_t)regNum;
     }
 
-    void SetFramePointer(RegNumber regNum, UInt32 offsetInBytes, bool isOffsetFromSP = false)
+    void SetFramePointer(RegNumber regNum, uint32_t offsetInBytes, bool isOffsetFromSP = false)
     {
         UNREFERENCED_PARAMETER(offsetInBytes);
         UNREFERENCED_PARAMETER(isOffsetFromSP);
@@ -793,7 +793,7 @@ public:
             offsetInBytes += SKEW_FOR_OFFSET_FROM_SP;
 
         ASSERT((offsetInBytes % 0x10) == 0);
-        UInt32 offsetInSlots = offsetInBytes / 0x10;
+        uint32_t offsetInSlots = offsetInBytes / 0x10;
         if (offsetInSlots >= 3 && offsetInSlots <= 3 + 2)
         {
             x64_framePtrOffsetSmall = offsetInSlots - 3;
@@ -802,14 +802,14 @@ public:
         {
             x64_framePtrOffsetSmall = 3;
         }
-        x64_framePtrOffset = (UInt8)offsetInSlots;
+        x64_framePtrOffset = (uint8_t)offsetInSlots;
         ASSERT(x64_framePtrOffset == offsetInSlots);
 #else
         ASSERT(offsetInBytes == 0 && !isOffsetFromSP);
 #endif // TARGET_AMD64
     }
 
-    void SetFrameSize(UInt32 frameSizeInBytes)
+    void SetFrameSize(uint32_t frameSizeInBytes)
     {
         ASSERT(0 == (frameSizeInBytes % POINTER_SIZE));
         frameSize = (frameSizeInBytes / POINTER_SIZE);
@@ -822,7 +822,7 @@ public:
 
     void SetSavedRegs(CalleeSavedRegMask regMask)
     {
-        calleeSavedRegMask = (UInt16)regMask;
+        calleeSavedRegMask = (uint16_t)regMask;
     }
 
     void SetRegSaved(CalleeSavedRegMask regMask)
@@ -839,8 +839,8 @@ public:
 #if defined(TARGET_ARM) || defined(TARGET_AMD64) || defined(TARGET_ARM64)
         // The offset can be either positive or negative on ARM and x64.
         bool isNeg = (offsetInBytes < 0);
-        UInt32 uOffsetInBytes = isNeg ? -offsetInBytes : offsetInBytes;
-        UInt32 uEncodedVal = ((uOffsetInBytes / POINTER_SIZE) << 1) | (isNeg ? 1 : 0);
+        uint32_t uOffsetInBytes = isNeg ? -offsetInBytes : offsetInBytes;
+        uint32_t uEncodedVal = ((uOffsetInBytes / POINTER_SIZE) << 1) | (isNeg ? 1 : 0);
         reversePinvokeFrameOffset = uEncodedVal;
         ASSERT(reversePinvokeFrameOffset == uEncodedVal);
 #elif defined (TARGET_X86)
@@ -848,24 +848,24 @@ public:
         // the offset is always negative on x86.
         ASSERT(offsetInBytes < 0);
         reversePinvokeFrameOffset = (-offsetInBytes / POINTER_SIZE);
-        ASSERT(reversePinvokeFrameOffset == (UInt32)(-offsetInBytes / POINTER_SIZE));
+        ASSERT(reversePinvokeFrameOffset == (uint32_t)(-offsetInBytes / POINTER_SIZE));
 #else
         ASSERT(!"NYI");
 #endif
     }
 
 #ifdef TARGET_X86
-    void SetReturnPopSize(UInt32 popSizeInBytes)
+    void SetReturnPopSize(uint32_t popSizeInBytes)
     {
         ASSERT(0 == (popSizeInBytes % POINTER_SIZE));
         ASSERT(GetReturnPopSize() == 0 || GetReturnPopSize() == (int)popSizeInBytes);
 
-        UInt32 argCount = popSizeInBytes / POINTER_SIZE;
+        uint32_t argCount = popSizeInBytes / POINTER_SIZE;
         x86_argCountLow = argCount & 0x1F;
         if (argCount != x86_argCountLow)
         {
             x86_argCountIsLarge = 1;
-            x86_argCountHigh = (UInt8)(argCount >> 5);
+            x86_argCountHigh = (uint8_t)(argCount >> 5);
         }
     }
 
@@ -881,10 +881,10 @@ public:
         // should be a subset of {RO-R3}
         ASSERT((pushedParmRegs & ~(SR_MASK_R0|SR_MASK_R1|SR_MASK_R2|SR_MASK_R3)) == 0);
         arm_areParmOrVfpRegsPushed = pushedParmRegs != 0 || arm_vfpRegPushedCount != 0;
-        arm_parmRegsPushedSet = (UInt8)pushedParmRegs;
+        arm_parmRegsPushedSet = (uint8_t)pushedParmRegs;
     }
 
-    void SetVfpRegsPushed(UInt8 vfpRegFirstPushed, UInt8 vfpRegPushedCount)
+    void SetVfpRegsPushed(uint8_t vfpRegFirstPushed, uint8_t vfpRegPushedCount)
     {
         // mrt100.dll really only supports pushing a subinterval of d8-d15
         // these are the preserved floating point registers according to the ABI spec
@@ -894,7 +894,7 @@ public:
         arm_areParmOrVfpRegsPushed = arm_parmRegsPushedSet != 0 || vfpRegPushedCount != 0;
     }
 #elif defined(TARGET_ARM64)
-    void SetParmRegsPushedCount(UInt8 parmRegsPushedCount)
+    void SetParmRegsPushedCount(uint8_t parmRegsPushedCount)
     {
         // pushed parameter registers are a subset of {R0-R7}
         ASSERT(parmRegsPushedCount <= 8);
@@ -902,22 +902,22 @@ public:
         arm64_areParmOrVfpRegsPushed = (arm64_parmRegsPushedCount != 0) || (arm64_vfpRegsPushedMask != 0);
     }
 
-    void SetVfpRegsPushed(UInt8 vfpRegsPushedMask)
+    void SetVfpRegsPushed(uint8_t vfpRegsPushedMask)
     {
         arm64_vfpRegsPushedMask = vfpRegsPushedMask;
         arm64_areParmOrVfpRegsPushed = (arm64_parmRegsPushedCount != 0) || (arm64_vfpRegsPushedMask != 0);
     }
 #elif defined(TARGET_AMD64)
-    void SetSavedXmmRegs(UInt32 savedXmmRegMask)
+    void SetSavedXmmRegs(uint32_t savedXmmRegMask)
     {
         // any subset of xmm6-xmm15 may be saved, but no registers in xmm0-xmm5 should be present
         ASSERT((savedXmmRegMask & 0xffff003f) == 0);
         x64_hasSavedXmmRegs = savedXmmRegMask != 0;
-        x64_savedXmmRegMask = (UInt16)savedXmmRegMask;
+        x64_savedXmmRegMask = (uint16_t)savedXmmRegMask;
     }
 #endif
 
-    void SetFuncletOffset(UInt32 offset)
+    void SetFuncletOffset(uint32_t offset)
     {
         funcletOffset = offset;
     }
@@ -925,7 +925,7 @@ public:
     //
     // GETTERS
     //
-    UInt32 GetPrologSize()
+    uint32_t GetPrologSize()
     {
 #if defined (TARGET_ARM64)
         return prologSize << 2;
@@ -944,7 +944,7 @@ public:
         return fixedEpilogSize == 0;
     }
 
-    UInt32 PeekFixedEpilogSize()
+    uint32_t PeekFixedEpilogSize()
     {
 #if defined (TARGET_ARM64)
         return fixedEpilogSize << 2;
@@ -953,7 +953,7 @@ public:
 #endif
     }
 
-    UInt32 GetFixedEpilogSize()
+    uint32_t GetFixedEpilogSize()
     {
         ASSERT(!HasVaryingEpilogSizes());
 #if defined (TARGET_ARM64)
@@ -963,7 +963,7 @@ public:
 #endif
     }
 
-    UInt32 GetEpilogCount()
+    uint32_t GetEpilogCount()
     {
         return epilogCount;
     }
@@ -997,15 +997,15 @@ public:
         return funcletOffset != 0;
     }
 
-    UInt32 GetFuncletOffset()
+    uint32_t GetFuncletOffset()
     {
         return funcletOffset;
     }
 
     int GetPreservedRegsSaveSize() const // returned in bytes
     {
-        UInt32 count = 0;
-        UInt32 mask = calleeSavedRegMask;
+        uint32_t count = 0;
+        uint32_t mask = calleeSavedRegMask;
         while (mask != 0)
         {
             count += mask & 1;
@@ -1029,7 +1029,7 @@ public:
 #endif
     }
 
-    UInt32 GetDynamicAlignment()
+    uint32_t GetDynamicAlignment()
     {
 #if defined(TARGET_ARM64)
         ASSERT(!"Not supported");
@@ -1051,7 +1051,7 @@ public:
     }
 #endif
 
-    UInt32 GetGSCookieOffset()
+    uint32_t GetGSCookieOffset()
     {
         ASSERT(hasGSCookie);
         return gsCookieOffset * POINTER_SIZE;
@@ -1063,7 +1063,7 @@ public:
     }
 
 #ifdef TARGET_AMD64
-    static const UInt32 SKEW_FOR_OFFSET_FROM_SP = 0x10;
+    static const uint32_t SKEW_FOR_OFFSET_FROM_SP = 0x10;
 
     int GetFramePointerOffset() const // returned in bytes
     {
@@ -1111,7 +1111,7 @@ public:
         return x64_hasSavedXmmRegs != 0;
     }
 
-    UInt16 GetSavedXmmRegMask()
+    uint16_t GetSavedXmmRegMask()
     {
         ASSERT(x64_hasSavedXmmRegs);
         return x64_savedXmmRegMask;
@@ -1142,8 +1142,8 @@ public:
     {
 #if defined(TARGET_ARM) || defined(TARGET_AMD64) || defined(TARGET_ARM64)
         // The offset can be either positive or negative on ARM.
-        Int32 offsetInBytes;
-        UInt32 uEncodedVal = reversePinvokeFrameOffset;
+        int32_t offsetInBytes;
+        uint32_t uEncodedVal = reversePinvokeFrameOffset;
         bool isNeg = ((uEncodedVal & 1) == 1);
         offsetInBytes = (uEncodedVal >> 1) * POINTER_SIZE;
         offsetInBytes = isNeg ? -offsetInBytes : offsetInBytes;
@@ -1174,10 +1174,10 @@ public:
         return arm_parmRegsPushedSet != 0;
     }
 
-    UInt16 ParmRegsPushedCount()
+    uint16_t ParmRegsPushedCount()
     {
-        UInt8 set = arm_parmRegsPushedSet;
-        UInt8 count = 0;
+        uint8_t set = arm_parmRegsPushedSet;
+        uint8_t count = 0;
         while (set != 0)
         {
             count += set & 1;
@@ -1186,22 +1186,22 @@ public:
         return count;
     }
 
-    UInt8 GetVfpRegFirstPushed()
+    uint8_t GetVfpRegFirstPushed()
     {
         return arm_vfpRegFirstPushed;
     }
 
-    UInt8 GetVfpRegPushedCount()
+    uint8_t GetVfpRegPushedCount()
     {
         return arm_vfpRegPushedCount;
     }
 #elif defined(TARGET_ARM64)
-    UInt8 ParmRegsPushedCount()
+    uint8_t ParmRegsPushedCount()
     {
         return arm64_parmRegsPushedCount;
     }
 
-    UInt8 GetVfpRegsPushedMask()
+    uint8_t GetVfpRegsPushedMask()
     {
         return arm64_vfpRegsPushedMask;
     }
@@ -1211,14 +1211,14 @@ public:
     // ENCODING HELPERS
     //
 #ifndef DACCESS_COMPILE
-    size_t EncodeHeader(UInt8 * & pDest)
+    size_t EncodeHeader(uint8_t * & pDest)
     {
 #ifdef _DEBUG
-        UInt8 * pStart = pDest;
+        uint8_t * pStart = pDest;
 #endif // _DEBUG
 
 #if defined(TARGET_ARM64)
-        UInt8 calleeSavedRegMaskHigh = calleeSavedRegMask >> NUM_PRESERVED_REGS_LOW;
+        uint8_t calleeSavedRegMaskHigh = calleeSavedRegMask >> NUM_PRESERVED_REGS_LOW;
         arm64_calleeSavedRegMaskLow = calleeSavedRegMask & MASK_PRESERVED_REGS_LOW;
         if (calleeSavedRegMaskHigh)
         {
@@ -1246,7 +1246,7 @@ public:
         if (x64_hasSavedXmmRegs)
         {
             ASSERT((x64_savedXmmRegMask & 0x3f) == 0);
-            UInt32 encodedValue = x64_savedXmmRegMask >> 6;
+            uint32_t encodedValue = x64_savedXmmRegMask >> 6;
             size += WriteUnsigned(pDest, encodedValue);
         }
 #elif defined(TARGET_X86)
@@ -1264,7 +1264,7 @@ public:
             // set, the next 8 bits are the number of pushed floating point registers, and the highest
             // bits are the first pushed floating point register plus 1.
             // The 0 encoding means the first floating point register is 8 as this is the most frequent.
-            UInt32 encodedValue = arm_parmRegsPushedSet | (arm_vfpRegPushedCount << 4);
+            uint32_t encodedValue = arm_parmRegsPushedSet | (arm_vfpRegPushedCount << 4);
             // usually, the first pushed floating point register is d8
             if (arm_vfpRegFirstPushed != 8)
                 encodedValue |= (arm_vfpRegFirstPushed+1) << (8+4);
@@ -1282,7 +1282,7 @@ public:
         if (arm64_areParmOrVfpRegsPushed)
         {
             // At present arm64_parmRegsPushedCount is non-zero only for variadic functions, so place this field higher
-            UInt32 encodedValue = arm64_vfpRegsPushedMask | (arm64_parmRegsPushedCount << 8);
+            uint32_t encodedValue = arm64_vfpRegsPushedMask | (arm64_parmRegsPushedCount << 8);
             size += WriteUnsigned(pDest, encodedValue);
         }
 #endif
@@ -1321,7 +1321,7 @@ public:
         return size;
     }
 
-    size_t WriteUnsigned(UInt8 * & pDest, UInt32 value)
+    size_t WriteUnsigned(uint8_t * & pDest, uint32_t value)
     {
         size_t size = (size_t)VarInt::WriteUnsigned(pDest, value);
         pDest = pDest ? (pDest + size) : pDest;
@@ -1329,16 +1329,16 @@ public:
     }
 #endif // DACCESS_COMPILE
 
-    UInt16 ToUInt16(UInt32 val)
+    uint16_t ToUInt16(uint32_t val)
     {
-        UInt16 result = (UInt16)val;
+        uint16_t result = (uint16_t)val;
         ASSERT(val == result);
         return result;
     }
 
-    UInt8 ToUInt8(UInt32 val)
+    uint8_t ToUInt8(uint32_t val)
     {
-        UInt8 result = (UInt8)val;
+        uint8_t result = (uint8_t)val;
         ASSERT(val == result);
         return result;
     }
@@ -1347,7 +1347,7 @@ public:
     // DECODING HELPERS
     //
     // Returns a pointer to the 'stack change string' on x86.
-    PTR_UInt8 DecodeHeader(UInt32 methodOffset, PTR_UInt8 pbHeaderEncoding, size_t* pcbHeader)
+    PTR_UInt8 DecodeHeader(uint32_t methodOffset, PTR_UInt8 pbHeaderEncoding, size_t* pcbHeader)
     {
         PTR_UInt8 pbStackChangeString = NULL;
 
@@ -1372,7 +1372,7 @@ public:
         x64_savedXmmRegMask = 0;
         if (x64_hasSavedXmmRegs)
         {
-            UInt32 encodedValue = VarInt::ReadUnsigned(pbDecode);
+            uint32_t encodedValue = VarInt::ReadUnsigned(pbDecode);
             ASSERT((encodedValue & ~0x3ff) == 0);
             x64_savedXmmRegMask = ToUInt16(encodedValue << 6);
         }
@@ -1390,7 +1390,7 @@ public:
             bool last = false;
             while (!last)
             {
-                UInt8 b = *pbDecode++;
+                uint8_t b = *pbDecode++;
                 // 00111111 {delta}     forwarder
                 // 00dddddd             push 1, dddddd = delta
                 // nnnldddd             pop nnn-1, l = last, dddd = delta (nnn=0 and nnn=1 are disallowed)
@@ -1412,14 +1412,14 @@ public:
         arm_vfpRegFirstPushed = 0;
         if (arm_areParmOrVfpRegsPushed)
         {
-            UInt32 encodedValue = VarInt::ReadUnsigned(pbDecode);
+            uint32_t encodedValue = VarInt::ReadUnsigned(pbDecode);
             arm_parmRegsPushedSet = encodedValue & 0x0f;
-            arm_vfpRegPushedCount = (UInt8)(encodedValue >> 4);
-            UInt32 vfpRegFirstPushed = encodedValue >> (8 + 4);
+            arm_vfpRegPushedCount = (uint8_t)(encodedValue >> 4);
+            uint32_t vfpRegFirstPushed = encodedValue >> (8 + 4);
             if (vfpRegFirstPushed == 0)
                 arm_vfpRegFirstPushed = 8;
             else
-                arm_vfpRegFirstPushed = (UInt8)(vfpRegFirstPushed - 1);
+                arm_vfpRegFirstPushed = (uint8_t)(vfpRegFirstPushed - 1);
         }
 #elif defined(TARGET_ARM64)
         calleeSavedRegMask = arm64_calleeSavedRegMaskLow;
@@ -1432,15 +1432,15 @@ public:
         arm64_vfpRegsPushedMask = 0;
         if (arm64_areParmOrVfpRegsPushed)
         {
-            UInt32 encodedValue = VarInt::ReadUnsigned(pbDecode);
-            arm64_vfpRegsPushedMask = (UInt8)encodedValue;
-            arm64_parmRegsPushedCount = (UInt8)(encodedValue >> 8);
+            uint32_t encodedValue = VarInt::ReadUnsigned(pbDecode);
+            arm64_vfpRegsPushedMask = (uint8_t)encodedValue;
+            arm64_parmRegsPushedCount = (uint8_t)(encodedValue >> 8);
             ASSERT(arm64_parmRegsPushedCount <= 8);
         }
 #endif
 
         extraDataHeader = hasExtraData ? ToUInt8(VarInt::ReadUnsigned(pbDecode)) : 0;
-        paramPointerReg = HasDynamicAlignment() ? ToUInt8(VarInt::ReadUnsigned(pbDecode)) : (UInt8)RN_NONE;
+        paramPointerReg = HasDynamicAlignment() ? ToUInt8(VarInt::ReadUnsigned(pbDecode)) : (uint8_t)RN_NONE;
         gsCookieOffset = hasGSCookie ? VarInt::ReadUnsigned(pbDecode) : 0;
 
         epilogCount = epilogCountSmall < EC_MaxEpilogCountSmall ? epilogCountSmall : ToUInt16(VarInt::ReadUnsigned(pbDecode));
@@ -1452,20 +1452,20 @@ public:
             //             them here.  So we will simply overwrite the funclet's epilogAtEnd and epilogCount
             //             with the values from the main code body -- these were the values used to generate
             //             the per-method epilog table, so at least we're consistent with what is encoded.
-            UInt8  mainEpilogAtEnd      = epilogAtEnd;
-            UInt16 mainEpilogCount      = epilogCount;
-            UInt16 mainFixedEpilogSize  = fixedEpilogSize;  // Either in bytes or in instructions
-            UInt8  mainHasCommonVars    = hasCommonVars;
+            uint8_t  mainEpilogAtEnd      = epilogAtEnd;
+            uint16_t mainEpilogCount      = epilogCount;
+            uint16_t mainFixedEpilogSize  = fixedEpilogSize;  // Either in bytes or in instructions
+            uint8_t  mainHasCommonVars    = hasCommonVars;
             // -------
 
             int nFunclets = (int)VarInt::ReadUnsigned(pbDecode);
             int idxFunclet = -2;
-            UInt32 offsetFunclet = 0;
+            uint32_t offsetFunclet = 0;
             // Decode the funclet start offsets, remembering which one is of interest.
-            UInt32 prevFuncletStart = 0;
+            uint32_t prevFuncletStart = 0;
             for (int i = 0; i < nFunclets; i++)
             {
-                UInt32 offsetThisFunclet = prevFuncletStart + VarInt::ReadUnsigned(pbDecode);
+                uint32_t offsetThisFunclet = prevFuncletStart + VarInt::ReadUnsigned(pbDecode);
                 if ((idxFunclet == -2) && (methodOffset < offsetThisFunclet))
                 {
                     idxFunclet = (i - 1);
@@ -1525,7 +1525,7 @@ public:
         return pbStackChangeString;
     }
 
-    void GetFuncletInfo(PTR_UInt8 pbHeaderEncoding, UInt32* pnFuncletsOut, PTR_UInt8* pEncodedFuncletStartOffsets)
+    void GetFuncletInfo(PTR_UInt8 pbHeaderEncoding, uint32_t* pnFuncletsOut, PTR_UInt8* pEncodedFuncletStartOffsets)
     {
         ASSERT(hasFunclets);
 
@@ -1547,7 +1547,7 @@ public:
             bool last = false;
             while (!last)
             {
-                UInt8 b = *pbDecode++;
+                uint8_t b = *pbDecode++;
                 // 00111111 {delta}     forwarder
                 // 00dddddd             push 1, dddddd = delta
                 // nnnldddd             pop nnn-1, l = last, dddd = delta (nnn=0 and nnn=1 are disallowed)
@@ -1574,7 +1574,7 @@ public:
         *pEncodedFuncletStartOffsets = pbDecode;
     }
 
-    bool IsValidEpilogOffset(UInt32 epilogOffset, UInt32 epilogSize)
+    bool IsValidEpilogOffset(uint32_t epilogOffset, uint32_t epilogSize)
     {
         if (!this->HasVaryingEpilogSizes())
             return (epilogOffset < this->GetFixedEpilogSize());

@@ -9,7 +9,7 @@
 #include "DebuggerHook.h"
 #include "DebugEventSource.h"
 
-GVAL_IMPL_INIT(UInt32, g_numGcProtectionRequests, 0);
+GVAL_IMPL_INIT(uint32_t, g_numGcProtectionRequests, 0);
 
 #ifndef DACCESS_COMPILE
 
@@ -17,7 +17,7 @@ GVAL_IMPL_INIT(UInt32, g_numGcProtectionRequests, 0);
 
 /* static */ DebuggerOwnedHandleListNode* DebuggerHook::s_debuggerOwnedHandles = nullptr;
 
-/* static */ UInt32 DebuggerHook::s_debuggeeInitiatedHandleIdentifier = 2;
+/* static */ uint32_t DebuggerHook::s_debuggeeInitiatedHandleIdentifier = 2;
 
 /* static */ void DebuggerHook::OnBeforeGcCollection()
 {
@@ -85,7 +85,7 @@ GVAL_IMPL_INIT(UInt32, g_numGcProtectionRequests, 0);
     }
 }
 
-/* static */ UInt32 DebuggerHook::RecordDebuggeeInitiatedHandle(void* objectHandle)
+/* static */ uint32_t DebuggerHook::RecordDebuggeeInitiatedHandle(void* objectHandle)
 {
     DebuggerOwnedHandleListNode* head = new (nothrow) DebuggerOwnedHandleListNode();
     if (head == nullptr)
@@ -221,7 +221,7 @@ GVAL_IMPL_INIT(UInt32, g_numGcProtectionRequests, 0);
     }
 }
 
-EXTERN_C REDHAWK_API UInt32 __cdecl RhpRecordDebuggeeInitiatedHandle(void* objectHandle)
+EXTERN_C REDHAWK_API uint32_t __cdecl RhpRecordDebuggeeInitiatedHandle(void* objectHandle)
 {
     return DebuggerHook::RecordDebuggeeInitiatedHandle(objectHandle);
 }

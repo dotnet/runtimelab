@@ -5,57 +5,57 @@
 
 EXTERN_C long __cdecl _InterlockedIncrement(long volatile *);
 #pragma intrinsic(_InterlockedIncrement)
-FORCEINLINE Int32 PalInterlockedIncrement(_Inout_ _Interlocked_operand_ Int32 volatile *pDst)
+FORCEINLINE int32_t PalInterlockedIncrement(_Inout_ _Interlocked_operand_ int32_t volatile *pDst)
 {
     return _InterlockedIncrement((long volatile *)pDst);
 }
 
 EXTERN_C long __cdecl _InterlockedDecrement(long volatile *);
 #pragma intrinsic(_InterlockedDecrement)
-FORCEINLINE Int32 PalInterlockedDecrement(_Inout_ _Interlocked_operand_ Int32 volatile *pDst)
+FORCEINLINE int32_t PalInterlockedDecrement(_Inout_ _Interlocked_operand_ int32_t volatile *pDst)
 {
     return _InterlockedDecrement((long volatile *)pDst);
 }
 
 EXTERN_C long _InterlockedOr(long volatile *, long);
 #pragma intrinsic(_InterlockedOr)
-FORCEINLINE UInt32 PalInterlockedOr(_Inout_ _Interlocked_operand_ UInt32 volatile *pDst, UInt32 iValue)
+FORCEINLINE uint32_t PalInterlockedOr(_Inout_ _Interlocked_operand_ uint32_t volatile *pDst, uint32_t iValue)
 {
     return _InterlockedOr((long volatile *)pDst, iValue);
 }
 
 EXTERN_C long _InterlockedAnd(long volatile *, long);
 #pragma intrinsic(_InterlockedAnd)
-FORCEINLINE UInt32 PalInterlockedAnd(_Inout_ _Interlocked_operand_ UInt32 volatile *pDst, UInt32 iValue)
+FORCEINLINE uint32_t PalInterlockedAnd(_Inout_ _Interlocked_operand_ uint32_t volatile *pDst, uint32_t iValue)
 {
     return _InterlockedAnd((long volatile *)pDst, iValue);
 }
 
 EXTERN_C long __PN__MACHINECALL_CDECL_OR_DEFAULT _InterlockedExchange(long volatile *, long);
 #pragma intrinsic(_InterlockedExchange)
-FORCEINLINE Int32 PalInterlockedExchange(_Inout_ _Interlocked_operand_ Int32 volatile *pDst, Int32 iValue)
+FORCEINLINE int32_t PalInterlockedExchange(_Inout_ _Interlocked_operand_ int32_t volatile *pDst, int32_t iValue)
 {
     return _InterlockedExchange((long volatile *)pDst, iValue);
 }
 
 EXTERN_C long __PN__MACHINECALL_CDECL_OR_DEFAULT _InterlockedCompareExchange(long volatile *, long, long);
 #pragma intrinsic(_InterlockedCompareExchange)
-FORCEINLINE Int32 PalInterlockedCompareExchange(_Inout_ _Interlocked_operand_ Int32 volatile *pDst, Int32 iValue, Int32 iComparand)
+FORCEINLINE int32_t PalInterlockedCompareExchange(_Inout_ _Interlocked_operand_ int32_t volatile *pDst, int32_t iValue, int32_t iComparand)
 {
     return _InterlockedCompareExchange((long volatile *)pDst, iValue, iComparand);
 }
 
-EXTERN_C Int64 _InterlockedCompareExchange64(Int64 volatile *, Int64, Int64);
+EXTERN_C int64_t _InterlockedCompareExchange64(int64_t volatile *, int64_t, int64_t);
 #pragma intrinsic(_InterlockedCompareExchange64)
-FORCEINLINE Int64 PalInterlockedCompareExchange64(_Inout_ _Interlocked_operand_ Int64 volatile *pDst, Int64 iValue, Int64 iComparand)
+FORCEINLINE int64_t PalInterlockedCompareExchange64(_Inout_ _Interlocked_operand_ int64_t volatile *pDst, int64_t iValue, int64_t iComparand)
 {
     return _InterlockedCompareExchange64(pDst, iValue, iComparand);
 }
 
 #if defined(HOST_AMD64) || defined(HOST_ARM64)
-EXTERN_C UInt8 _InterlockedCompareExchange128(Int64 volatile *, Int64, Int64, Int64 *);
+EXTERN_C uint8_t _InterlockedCompareExchange128(int64_t volatile *, int64_t, int64_t, int64_t *);
 #pragma intrinsic(_InterlockedCompareExchange128)
-FORCEINLINE UInt8 PalInterlockedCompareExchange128(_Inout_ _Interlocked_operand_ Int64 volatile *pDst, Int64 iValueHigh, Int64 iValueLow, Int64 *pComparandAndResult)
+FORCEINLINE uint8_t PalInterlockedCompareExchange128(_Inout_ _Interlocked_operand_ int64_t volatile *pDst, int64_t iValueHigh, int64_t iValueLow, int64_t *pComparandAndResult)
 {
     return _InterlockedCompareExchange128(pDst, iValueHigh, iValueLow, pComparandAndResult);
 }

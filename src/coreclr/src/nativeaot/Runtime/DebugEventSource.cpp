@@ -21,7 +21,7 @@
 
 #include "DebugEvents.h"
 
-GVAL_IMPL_INIT(UInt32, g_DebuggerEventsFilter, 0);
+GVAL_IMPL_INIT(uint32_t, g_DebuggerEventsFilter, 0);
 
 #ifndef DACCESS_COMPILE
 
@@ -115,10 +115,10 @@ void DebugEventSource::SendRawEvent(DebugEventPayload* pPayload)
 #ifdef _MSC_VER
     // We get to send an array of void* as data with the notification.
     // The debugger can then use ReadProcessMemory to read through this array.
-    UInt64 rgData [] = {
-        (UInt64) CLRDBG_EXCEPTION_DATA_CHECKSUM,
-        (UInt64) GetRuntimeInstance()->GetPalInstance(),
-        (UInt64) pPayload
+    uint64_t rgData [] = {
+        (uint64_t) CLRDBG_EXCEPTION_DATA_CHECKSUM,
+        (uint64_t) GetRuntimeInstance()->GetPalInstance(),
+        (uint64_t) pPayload
     };
 
     //
@@ -127,10 +127,10 @@ void DebugEventSource::SendRawEvent(DebugEventPayload* pPayload)
     //
     __try
     {
-        const UInt32 dwFlags = 0; // continuable (eg, Debugger can continue GH)
+        const uint32_t dwFlags = 0; // continuable (eg, Debugger can continue GH)
         // RaiseException treats arguments as pointer sized values, but we encoded 3 QWORDS.
         // On 32 bit platforms we have 6 elements, on 64 bit platforms we have 3 elements
-        RaiseException(CLRDBG_NOTIFICATION_EXCEPTION_CODE, dwFlags, 3*sizeof(UInt64)/sizeof(UInt32*), (UInt32*)rgData);
+        RaiseException(CLRDBG_NOTIFICATION_EXCEPTION_CODE, dwFlags, 3*sizeof(uint64_t)/sizeof(uint32_t*), (uint32_t*)rgData);
 
         // If debugger continues "GH" (DBG_CONTINUE), then we land here.
         // This is the expected path for a well-behaved ICorDebug debugger.

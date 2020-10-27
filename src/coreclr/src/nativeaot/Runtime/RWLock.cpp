@@ -31,10 +31,10 @@
 // These initial values were selected to match the defaults, but anything reasonable is close enough
 struct SpinConstants
 {
-    UInt32 uInitialDuration;
-    UInt32 uMaximumDuration;
-    UInt32 uBackoffFactor;
-    UInt32 uRepetitions;
+    uint32_t uInitialDuration;
+    uint32_t uMaximumDuration;
+    uint32_t uBackoffFactor;
+    uint32_t uRepetitions;
 } g_SpinConstants = {
     50,        // dwInitialDuration
     40000,     // dwMaximumDuration - ideally (20000 * max(2, numProc))
@@ -120,7 +120,7 @@ bool ReaderWriterLock::DangerousTryPulseReadLock()
 
 bool ReaderWriterLock::TryAcquireReadLock()
 {
-    Int32 RWLock;
+    int32_t RWLock;
 
     do
     {
@@ -144,7 +144,7 @@ void ReaderWriterLock::AcquireReadLock()
 
 void ReaderWriterLock::AcquireReadLockWorker()
 {
-    UInt32 uSwitchCount = 0;
+    uint32_t uSwitchCount = 0;
 
     for (;;)
     {
@@ -157,7 +157,7 @@ void ReaderWriterLock::AcquireReadLockWorker()
         // dont hold the lock for a long time.
         while (m_WriterWaiting)
         {
-            Int32 spinCount = m_spinCount;
+            int32_t spinCount = m_spinCount;
             while (spinCount > 0) {
                 spinCount--;
                 PalYieldProcessor();
@@ -169,7 +169,7 @@ void ReaderWriterLock::AcquireReadLockWorker()
         if (TryAcquireReadLock())
             return;
 
-        UInt32 uDelay = g_SpinConstants.uInitialDuration;
+        uint32_t uDelay = g_SpinConstants.uInitialDuration;
         do
         {
             if (TryAcquireReadLock())
@@ -192,7 +192,7 @@ void ReaderWriterLock::AcquireReadLockWorker()
 
 void ReaderWriterLock::ReleaseReadLock()
 {
-    Int32 RWLock;
+    int32_t RWLock;
     RWLock = PalInterlockedDecrement(&m_RWLock);
     ASSERT(RWLock >= 0);
 }
@@ -200,7 +200,7 @@ void ReaderWriterLock::ReleaseReadLock()
 
 bool ReaderWriterLock::TryAcquireWriteLock()
 {
-    Int32 RWLock = PalInterlockedCompareExchange(&m_RWLock, -1, 0);
+    int32_t RWLock = PalInterlockedCompareExchange(&m_RWLock, -1, 0);
 
     ASSERT(RWLock >= 0 || RWLock == -1);
 
@@ -216,7 +216,7 @@ bool ReaderWriterLock::TryAcquireWriteLock()
 
 void ReaderWriterLock::AcquireWriteLock()
 {
-    UInt32 uSwitchCount = 0;
+    uint32_t uSwitchCount = 0;
 
     for (;;)
     {
@@ -228,7 +228,7 @@ void ReaderWriterLock::AcquireWriteLock()
         m_WriterWaiting = true;
 #endif
 
-        UInt32 uDelay = g_SpinConstants.uInitialDuration;
+        uint32_t uDelay = g_SpinConstants.uInitialDuration;
         do
         {
             if (TryAcquireWriteLock())
@@ -260,7 +260,7 @@ void ReaderWriterLock::AcquireWriteLock()
 
 void ReaderWriterLock::ReleaseWriteLock()
 {
-    Int32 RWLock;
+    int32_t RWLock;
     RWLock = PalInterlockedExchange(&m_RWLock, 0);
     ASSERT(RWLock == -1);
 }

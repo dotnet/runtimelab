@@ -110,9 +110,9 @@ StackFrameIterator::StackFrameIterator(Thread * pThreadToWalk, PTR_PAL_LIMITED_C
     PrepareToYieldFrame();
 }
 
-void StackFrameIterator::ResetNextExInfoForSP(UIntNative SP)
+void StackFrameIterator::ResetNextExInfoForSP(uintptr_t SP)
 {
-    while (m_pNextExInfo && (SP > (UIntNative)dac_cast<TADDR>(m_pNextExInfo)))
+    while (m_pNextExInfo && (SP > (uintptr_t)dac_cast<TADDR>(m_pNextExInfo)))
         m_pNextExInfo = m_pNextExInfo->m_pPrevExInfo;
 }
 
@@ -142,7 +142,7 @@ void StackFrameIterator::EnterInitialInvalidState(Thread * pThreadToWalk)
 // NOTE: When the PC is in an assembly thunk, this function will unwind to the next managed
 // frame and may publish a conservative stack range (if and only if any of the unwound
 // thunks report a conservative range).
-void StackFrameIterator::InternalInit(Thread * pThreadToWalk, PTR_PInvokeTransitionFrame pFrame, UInt32 dwFlags)
+void StackFrameIterator::InternalInit(Thread * pThreadToWalk, PTR_PInvokeTransitionFrame pFrame, uint32_t dwFlags)
 {
     // EH stackwalks are always required to unwind non-volatile floating point state.  This
     // state is never carried by PInvokeTransitionFrames, implying that they can never be used
@@ -163,7 +163,7 @@ void StackFrameIterator::InternalInit(Thread * pThreadToWalk, PTR_PInvokeTransit
     // We need to walk the ExInfo chain in parallel with the stackwalk so that we know when we cross over
     // exception throw points.  So we must find our initial point in the ExInfo chain here so that we can
     // properly walk it in parallel.
-    ResetNextExInfoForSP((UIntNative)dac_cast<TADDR>(pFrame));
+    ResetNextExInfoForSP((uintptr_t)dac_cast<TADDR>(pFrame));
 
 #if !defined(USE_PORTABLE_HELPERS) // @TODO: CORERT: no portable version of regdisplay
     memset(&m_RegDisplay, 0, sizeof(m_RegDisplay));
@@ -361,7 +361,7 @@ void StackFrameIterator::InternalInitForStackTrace()
 // Prepare to start a stack walk from the context listed in the supplied PAL_LIMITED_CONTEXT.
 // The supplied context can describe a location in either managed or unmanaged code.  In the
 // latter case the iterator is left in an invalid state when this function returns.
-void StackFrameIterator::InternalInit(Thread * pThreadToWalk, PTR_PAL_LIMITED_CONTEXT pCtx, UInt32 dwFlags)
+void StackFrameIterator::InternalInit(Thread * pThreadToWalk, PTR_PAL_LIMITED_CONTEXT pCtx, uint32_t dwFlags)
 {
     ASSERT((dwFlags & MethodStateCalculated) == 0);
 
@@ -404,7 +404,7 @@ void StackFrameIterator::InternalInit(Thread * pThreadToWalk, PTR_PAL_LIMITED_CO
     //
     // preserved vfp regs
     //
-    for (Int32 i = 0; i < 16 - 8; i++)
+    for (int32_t i = 0; i < 16 - 8; i++)
     {
         m_RegDisplay.D[i] = pCtx->D[i];
     }
@@ -433,7 +433,7 @@ void StackFrameIterator::InternalInit(Thread * pThreadToWalk, PTR_PAL_LIMITED_CO
     //
     // preserved vfp regs
     //
-    for (Int32 i = 0; i < 16 - 8; i++)
+    for (int32_t i = 0; i < 16 - 8; i++)
     {
         m_RegDisplay.D[i] = pCtx->D[i];
     }
@@ -510,7 +510,7 @@ PTR_VOID StackFrameIterator::HandleExCollide(PTR_ExInfo pExInfo)
                 pExInfo->m_kind, pExInfo->m_passNumber, pExInfo->m_idxCurClause);
 
     PTR_VOID collapsingTargetFrame = NULL;
-    UInt32 curFlags = m_dwFlags;
+    uint32_t curFlags = m_dwFlags;
 
     // Capture and clear the pending funclet frame pointer (if any).  This field is only set
     // when stack walks collide with active exception dispatch, and only exists to save the
@@ -666,7 +666,7 @@ void StackFrameIterator::UnwindFuncletInvokeThunk()
     SP = (PTR_UIntNative)(m_RegDisplay.SP + 0x4);   // skip the saved assembly-routine-EBP
     m_RegDisplay.SetAddrOfIP(SP);
     m_RegDisplay.SetIP(*SP++);
-    m_RegDisplay.SetSP((UIntNative)dac_cast<TADDR>(SP));
+    m_RegDisplay.SetSP((uintptr_t)dac_cast<TADDR>(SP));
     SetControlPC(dac_cast<PTR_VOID>(*(m_RegDisplay.pIP)));
 
     ASSERT(
@@ -875,7 +875,7 @@ void StackFrameIterator::UnwindFuncletInvokeThunk()
     m_RegDisplay.SetIP(*SP++);
 #endif
 
-    m_RegDisplay.SetSP((UIntNative)dac_cast<TADDR>(SP));
+    m_RegDisplay.SetSP((uintptr_t)dac_cast<TADDR>(SP));
     SetControlPC(dac_cast<PTR_VOID>(*(m_RegDisplay.pIP)));
 
     // We expect to be called by the runtime's C# EH implementation, and since this function's notion of how
@@ -900,11 +900,11 @@ struct UniversalTransitionStackFrame
     // ReturnBlock and the top of the StackPassedArgs.
 private:
     Fp128 m_fpArgRegs[8];                   // ChildSP+000 CallerSP-0D0 (0x80 bytes)    (xmm0-xmm7)
-    UIntNative m_returnBlock[2];            // ChildSP+080 CallerSP-050 (0x10 bytes)
-    UIntNative m_intArgRegs[6];             // ChildSP+090 CallerSP-040 (0x30 bytes)    (rdi,rsi,rcx,rdx,r8,r9)
-    UIntNative m_alignmentPad;              // ChildSP+0C0 CallerSP-010 (0x8 bytes)
-    UIntNative m_callerRetaddr;             // ChildSP+0C8 CallerSP-008 (0x8 bytes)
-    UIntNative m_stackPassedArgs[1];        // ChildSP+0D0 CallerSP+000 (unknown size)
+    uintptr_t m_returnBlock[2];            // ChildSP+080 CallerSP-050 (0x10 bytes)
+    uintptr_t m_intArgRegs[6];             // ChildSP+090 CallerSP-040 (0x30 bytes)    (rdi,rsi,rcx,rdx,r8,r9)
+    uintptr_t m_alignmentPad;              // ChildSP+0C0 CallerSP-010 (0x8 bytes)
+    uintptr_t m_callerRetaddr;             // ChildSP+0C8 CallerSP-008 (0x8 bytes)
+    uintptr_t m_stackPassedArgs[1];        // ChildSP+0D0 CallerSP+000 (unknown size)
 
 public:
     PTR_UIntNative get_CallerSP() { return GET_POINTER_TO_FIELD(m_stackPassedArgs[0]); }
@@ -922,13 +922,13 @@ public:
     // Conservative GC reporting must be applied to everything between the base of the
     // ReturnBlock and the top of the StackPassedArgs.
 private:
-    UIntNative m_calleeArgumentHomes[4];    // ChildSP+000 CallerSP-080 (0x20 bytes)
+    uintptr_t m_calleeArgumentHomes[4];    // ChildSP+000 CallerSP-080 (0x20 bytes)
     Fp128 m_fpArgRegs[4];                   // ChildSP+020 CallerSP-060 (0x40 bytes)    (xmm0-xmm3)
-    UIntNative m_returnBlock[2];            // ChildSP+060 CallerSP-020 (0x10 bytes)
-    UIntNative m_alignmentPad;              // ChildSP+070 CallerSP-010 (0x8 bytes)
-    UIntNative m_callerRetaddr;             // ChildSP+078 CallerSP-008 (0x8 bytes)
-    UIntNative m_intArgRegs[4];             // ChildSP+080 CallerSP+000 (0x20 bytes)    (rcx,rdx,r8,r9)
-    UIntNative m_stackPassedArgs[1];        // ChildSP+0a0 CallerSP+020 (unknown size)
+    uintptr_t m_returnBlock[2];            // ChildSP+060 CallerSP-020 (0x10 bytes)
+    uintptr_t m_alignmentPad;              // ChildSP+070 CallerSP-010 (0x8 bytes)
+    uintptr_t m_callerRetaddr;             // ChildSP+078 CallerSP-008 (0x8 bytes)
+    uintptr_t m_intArgRegs[4];             // ChildSP+080 CallerSP+000 (0x20 bytes)    (rcx,rdx,r8,r9)
+    uintptr_t m_stackPassedArgs[1];        // ChildSP+0a0 CallerSP+020 (unknown size)
 
 public:
     PTR_UIntNative get_CallerSP() { return GET_POINTER_TO_FIELD(m_intArgRegs[0]); }
@@ -946,12 +946,12 @@ public:
     // Conservative GC reporting must be applied to everything between the base of the
     // ReturnBlock and the top of the StackPassedArgs.
 private:
-    UIntNative m_pushedR11;                 // ChildSP+000 CallerSP-078 (0x4 bytes)     (r11)
-    UIntNative m_pushedLR;                  // ChildSP+004 CallerSP-074 (0x4 bytes)     (lr)
-    UInt64 m_fpArgRegs[8];                  // ChildSP+008 CallerSP-070 (0x40 bytes)    (d0-d7)
-    UInt64 m_returnBlock[4];                // ChildSP+048 CallerSP-030 (0x20 bytes)
-    UIntNative m_intArgRegs[4];             // ChildSP+068 CallerSP-010 (0x10 bytes)    (r0-r3)
-    UIntNative m_stackPassedArgs[1];        // ChildSP+078 CallerSP+000 (unknown size)
+    uintptr_t m_pushedR11;                 // ChildSP+000 CallerSP-078 (0x4 bytes)     (r11)
+    uintptr_t m_pushedLR;                  // ChildSP+004 CallerSP-074 (0x4 bytes)     (lr)
+    uint64_t m_fpArgRegs[8];                  // ChildSP+008 CallerSP-070 (0x40 bytes)    (d0-d7)
+    uint64_t m_returnBlock[4];                // ChildSP+048 CallerSP-030 (0x20 bytes)
+    uintptr_t m_intArgRegs[4];             // ChildSP+068 CallerSP-010 (0x10 bytes)    (r0-r3)
+    uintptr_t m_stackPassedArgs[1];        // ChildSP+078 CallerSP+000 (unknown size)
 
 public:
     PTR_UIntNative get_CallerSP() { return GET_POINTER_TO_FIELD(m_stackPassedArgs[0]); }
@@ -968,11 +968,11 @@ public:
     // Conservative GC reporting must be applied to everything between the base of the
     // IntArgRegs and the top of the StackPassedArgs.
 private:
-    UIntNative m_intArgRegs[2];             // ChildSP+000 CallerSP-018 (0x8 bytes)     (edx,ecx)
-    UIntNative m_returnBlock[2];            // ChildSP+008 CallerSP-010 (0x8 bytes)
-    UIntNative m_pushedEBP;                 // ChildSP+010 CallerSP-008 (0x4 bytes)
-    UIntNative m_callerRetaddr;             // ChildSP+014 CallerSP-004 (0x4 bytes)
-    UIntNative m_stackPassedArgs[1];        // ChildSP+018 CallerSP+000 (unknown size)
+    uintptr_t m_intArgRegs[2];             // ChildSP+000 CallerSP-018 (0x8 bytes)     (edx,ecx)
+    uintptr_t m_returnBlock[2];            // ChildSP+008 CallerSP-010 (0x8 bytes)
+    uintptr_t m_pushedEBP;                 // ChildSP+010 CallerSP-008 (0x4 bytes)
+    uintptr_t m_callerRetaddr;             // ChildSP+014 CallerSP-004 (0x4 bytes)
+    uintptr_t m_stackPassedArgs[1];        // ChildSP+018 CallerSP+000 (unknown size)
 
 public:
     PTR_UIntNative get_CallerSP() { return GET_POINTER_TO_FIELD(m_stackPassedArgs[0]); }
@@ -989,13 +989,13 @@ public:
     // Conservative GC reporting must be applied to everything between the base of the
     // ReturnBlock and the top of the StackPassedArgs.
 private:
-    UIntNative m_pushedFP;                  // ChildSP+000     CallerSP-0C0 (0x08 bytes)    (fp)
-    UIntNative m_pushedLR;                  // ChildSP+008     CallerSP-0B8 (0x08 bytes)    (lr)
-    UInt64 m_fpArgRegs[8];                  // ChildSP+010     CallerSP-0B0 (0x40 bytes)    (d0-d7)
-    UIntNative m_returnBlock[4];            // ChildSP+050     CallerSP-070 (0x40 bytes)
-    UIntNative m_intArgRegs[9];             // ChildSP+070     CallerSP-050 (0x48 bytes)    (x0-x8)
-    UIntNative m_alignmentPad;              // ChildSP+0B8     CallerSP-008 (0x08 bytes)
-    UIntNative m_stackPassedArgs[1];        // ChildSP+0C0     CallerSP+000 (unknown size)
+    uintptr_t m_pushedFP;                  // ChildSP+000     CallerSP-0C0 (0x08 bytes)    (fp)
+    uintptr_t m_pushedLR;                  // ChildSP+008     CallerSP-0B8 (0x08 bytes)    (lr)
+    uint64_t m_fpArgRegs[8];                  // ChildSP+010     CallerSP-0B0 (0x40 bytes)    (d0-d7)
+    uintptr_t m_returnBlock[4];            // ChildSP+050     CallerSP-070 (0x40 bytes)
+    uintptr_t m_intArgRegs[9];             // ChildSP+070     CallerSP-050 (0x48 bytes)    (x0-x8)
+    uintptr_t m_alignmentPad;              // ChildSP+0B8     CallerSP-008 (0x08 bytes)
+    uintptr_t m_stackPassedArgs[1];        // ChildSP+0C0     CallerSP+000 (unknown size)
 
 public:
     PTR_UIntNative get_CallerSP() { return GET_POINTER_TO_FIELD(m_stackPassedArgs[0]); }
@@ -1009,7 +1009,7 @@ public:
 #elif defined(TARGET_WASM)
 private:
     // WASMTODO: #error NYI for this arch
-    UIntNative m_stackPassedArgs[1];        // Placeholder
+    uintptr_t m_stackPassedArgs[1];        // Placeholder
 public:
     PTR_UIntNative get_CallerSP() { PORTABILITY_ASSERT("@TODO: FIXME:WASM"); return NULL; }
     PTR_UIntNative get_AddressOfPushedCallerIP() { PORTABILITY_ASSERT("@TODO: FIXME:WASM"); return NULL; }
@@ -1057,7 +1057,7 @@ void StackFrameIterator::UnwindUniversalTransitionThunk()
     PTR_UIntNative addressOfPushedCallerIP = stackFrame->get_AddressOfPushedCallerIP();
     m_RegDisplay.SetAddrOfIP((PTR_PCODE)addressOfPushedCallerIP);
     m_RegDisplay.SetIP(*addressOfPushedCallerIP);
-    m_RegDisplay.SetSP((UIntNative)dac_cast<TADDR>(stackFrame->get_CallerSP()));
+    m_RegDisplay.SetSP((uintptr_t)dac_cast<TADDR>(stackFrame->get_CallerSP()));
     SetControlPC(dac_cast<PTR_VOID>(*(m_RegDisplay.pIP)));
 
     // All universal transition cases rely on conservative GC reporting being applied to the
@@ -1085,38 +1085,38 @@ void StackFrameIterator::UnwindUniversalTransitionThunk()
 #ifdef TARGET_AMD64
 struct CALL_DESCR_CONTEXT
 {
-    UIntNative  Rbp;
-    UIntNative  Rsi;
-    UIntNative  Rbx;
-    UIntNative  IP;
+    uintptr_t  Rbp;
+    uintptr_t  Rsi;
+    uintptr_t  Rbx;
+    uintptr_t  IP;
 };
 #elif defined(TARGET_ARM)
 struct CALL_DESCR_CONTEXT
 {
-    UIntNative  R4;
-    UIntNative  R5;
-    UIntNative  R7;
-    UIntNative  IP;
+    uintptr_t  R4;
+    uintptr_t  R5;
+    uintptr_t  R7;
+    uintptr_t  IP;
 };
 #elif defined(TARGET_ARM64)
 struct CALL_DESCR_CONTEXT
 {
-    UIntNative  FP;
-    UIntNative  IP;
-    UIntNative  X19;
-    UIntNative  X20;
+    uintptr_t  FP;
+    uintptr_t  IP;
+    uintptr_t  X19;
+    uintptr_t  X20;
 };
 #elif defined(TARGET_X86)
 struct CALL_DESCR_CONTEXT
 {
-    UIntNative  Rbx;
-    UIntNative  Rbp;
-    UIntNative  IP;
+    uintptr_t  Rbx;
+    uintptr_t  Rbp;
+    uintptr_t  IP;
 };
 #elif defined (TARGET_WASM)
 struct CALL_DESCR_CONTEXT
 {
-    UIntNative  IP;
+    uintptr_t  IP;
 };
 #else
 #error NYI - For this arch
@@ -1133,7 +1133,7 @@ void StackFrameIterator::UnwindCallDescrThunk()
 #else // defined(USE_PORTABLE_HELPERS)
     ASSERT(CategorizeUnadjustedReturnAddress(m_ControlPC) == InCallDescrThunk);
 
-    UIntNative newSP;
+    uintptr_t newSP;
 #ifdef TARGET_AMD64
     // RBP points to the SP that we want to capture. (This arrangement allows for
     // the arguments from this function to be loaded into memory with an adjustment
@@ -1215,11 +1215,11 @@ void StackFrameIterator::UnwindThrowSiteThunk()
 #else // defined(USE_PORTABLE_HELPERS)
     ASSERT(CategorizeUnadjustedReturnAddress(m_ControlPC) == InThrowSiteThunk);
 
-    const UIntNative STACKSIZEOF_ExInfo = ((sizeof(ExInfo) + (STACK_ALIGN_SIZE-1)) & ~(STACK_ALIGN_SIZE-1));
+    const uintptr_t STACKSIZEOF_ExInfo = ((sizeof(ExInfo) + (STACK_ALIGN_SIZE-1)) & ~(STACK_ALIGN_SIZE-1));
 #if defined(TARGET_AMD64) && !defined(UNIX_AMD64_ABI)
-    const UIntNative SIZEOF_OutgoingScratch = 0x20;
+    const uintptr_t SIZEOF_OutgoingScratch = 0x20;
 #else
-    const UIntNative SIZEOF_OutgoingScratch = 0;
+    const uintptr_t SIZEOF_OutgoingScratch = 0;
 #endif
 
     PTR_PAL_LIMITED_CONTEXT pContext = (PTR_PAL_LIMITED_CONTEXT)
@@ -1313,7 +1313,7 @@ UnwindOutOfCurrentManagedFrame:
     m_pConservativeStackRangeUpperBound = NULL;
 
 #if defined(_DEBUG) && !defined(DACCESS_COMPILE)
-    UIntNative DEBUG_preUnwindSP = m_RegDisplay.GetSP();
+    uintptr_t DEBUG_preUnwindSP = m_RegDisplay.GetSP();
 #endif
 
     PTR_VOID pPreviousTransitionFrame;
@@ -1429,9 +1429,9 @@ UnwindOutOfCurrentManagedFrame:
 
                 if (m_dwFlags & CollapseFunclets)
                 {
-                    UIntNative postUnwindSP = m_RegDisplay.SP;
+                    uintptr_t postUnwindSP = m_RegDisplay.SP;
 
-                    if (m_pNextExInfo && (postUnwindSP > ((UIntNative)dac_cast<TADDR>(m_pNextExInfo))))
+                    if (m_pNextExInfo && (postUnwindSP > ((uintptr_t)dac_cast<TADDR>(m_pNextExInfo))))
                     {
                         // This GC stack walk has processed all managed exception frames associated with the
                         // current throw site, meaning it has now collided with the associated ExInfo.
@@ -1455,7 +1455,7 @@ UnwindOutOfCurrentManagedFrame:
             // invoke ASM thunks.
 
             // Double-check that the ExInfo that is being consulted is at or below the 'current' stack pointer
-            ASSERT(DEBUG_preUnwindSP <= (UIntNative)m_pNextExInfo);
+            ASSERT(DEBUG_preUnwindSP <= (uintptr_t)m_pNextExInfo);
 
             ASSERT(collapsingTargetFrame == NULL);
 
@@ -1622,7 +1622,7 @@ void StackFrameIterator::PrepareToYieldFrame()
 
         if (!atDebuggerHijackSite)
         {
-            UIntNative rawUpperBound = GetCodeManager()->GetConservativeUpperBoundForOutgoingArgs(&m_methodInfo, &m_RegDisplay);
+            uintptr_t rawUpperBound = GetCodeManager()->GetConservativeUpperBoundForOutgoingArgs(&m_methodInfo, &m_RegDisplay);
             m_pConservativeStackRangeUpperBound = (PTR_UIntNative)rawUpperBound;
         }
         else
@@ -1878,7 +1878,7 @@ COOP_PINVOKE_HELPER(Boolean, RhpSfiInit, (StackFrameIterator* pThis, PAL_LIMITED
     return isValid ? Boolean_true : Boolean_false;
 }
 
-COOP_PINVOKE_HELPER(Boolean, RhpSfiNext, (StackFrameIterator* pThis, UInt32* puExCollideClauseIdx, Boolean* pfUnwoundReversePInvoke))
+COOP_PINVOKE_HELPER(Boolean, RhpSfiNext, (StackFrameIterator* pThis, uint32_t* puExCollideClauseIdx, Boolean* pfUnwoundReversePInvoke))
 {
     // The stackwalker is intolerant to hijacked threads, as it is largely expecting to be called from C++
     // where the hijack state of the thread is invariant.  Because we've exposed the iterator out to C#, we
@@ -1886,7 +1886,7 @@ COOP_PINVOKE_HELPER(Boolean, RhpSfiNext, (StackFrameIterator* pThis, UInt32* puE
     // time executing C#.
     ThreadStore::GetCurrentThread()->Unhijack();
 
-    const UInt32 MaxTryRegionIdx = 0xFFFFFFFF;
+    const uint32_t MaxTryRegionIdx = 0xFFFFFFFF;
 
     ExInfo * pCurExInfo = pThis->m_pNextExInfo;
     pThis->Next();

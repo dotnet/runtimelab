@@ -43,7 +43,7 @@ class EEInterfaceInfo
 //-------------------------------------------------------------------------------------------------
 // The subset of TypeFlags that Redhawk knows about at runtime
 // This should match the TypeFlags enum in the managed type system.
-enum EETypeElementType : UInt8
+enum EETypeElementType : uint8_t
 {
     // Primitive
     ElementType_Unknown = 0x00,
@@ -133,13 +133,13 @@ private:
         };
     };
 
-    UInt16              m_usComponentSize;
-    UInt16              m_usFlags;
-    UInt32              m_uBaseSize;
+    uint16_t              m_usComponentSize;
+    uint16_t              m_usFlags;
+    uint32_t              m_uBaseSize;
     RelatedTypeUnion    m_RelatedType;
-    UInt16              m_usNumVtableSlots;
-    UInt16              m_usNumInterfaces;
-    UInt32              m_uHashCode;
+    uint16_t              m_usNumVtableSlots;
+    uint16_t              m_usNumInterfaces;
+    uint32_t              m_uHashCode;
 
     TgtPTR_Void         m_VTable[];  // make this explicit so the binder gets the right alignment
 
@@ -250,15 +250,15 @@ public:
         GenericTypeDefEEType    = 0x0003,
     };
 
-    UInt32 get_BaseSize()
+    uint32_t get_BaseSize()
         { return m_uBaseSize; }
 
-    UInt16 get_ComponentSize()
+    uint16_t get_ComponentSize()
         { return m_usComponentSize; }
 
-    PTR_Code get_Slot(UInt16 slotNumber);
+    PTR_Code get_Slot(uint16_t slotNumber);
 
-    PTR_PTR_Code get_SlotPtr(UInt16 slotNumber);
+    PTR_PTR_Code get_SlotPtr(uint16_t slotNumber);
 
     Kinds get_Kind();
 
@@ -266,7 +266,7 @@ public:
         { return get_Kind() == ClonedEEType; }
 
     bool IsRelatedTypeViaIAT()
-        { return ((m_usFlags & (UInt16)RelatedTypeViaIATFlag) != 0); }
+        { return ((m_usFlags & (uint16_t)RelatedTypeViaIATFlag) != 0); }
 
     bool IsArray()
     {
@@ -293,7 +293,7 @@ public:
     // A parameterized type shape less than SZARRAY_BASE_SIZE indicates that this is not
     // an array but some other parameterized type (see: ParameterizedTypeShapeConstants)
     // For arrays, this number uniquely captures both Sz/Md array flavor and rank.
-    UInt32 get_ParameterizedTypeShape() { return m_uBaseSize; }
+    uint32_t get_ParameterizedTypeShape() { return m_uBaseSize; }
 
     bool get_IsValueType()
         { return GetElementType() < ElementType_Class; }
@@ -339,11 +339,11 @@ public:
     }
 
     // How many vtable slots are there?
-    UInt16 GetNumVtableSlots()
+    uint16_t GetNumVtableSlots()
         { return m_usNumVtableSlots; }
 
     // How many entries are in the interface map after the vtable slots?
-    UInt16 GetNumInterfaces()
+    uint16_t GetNumInterfaces()
         { return m_usNumInterfaces; }
 
     // Does this class (or its base classes) implement any interfaces?
@@ -389,13 +389,13 @@ public:
     bool IsDynamicType()
         { return (m_usFlags & IsDynamicTypeFlag) != 0; }
 
-    UInt32 GetHashCode();
+    uint32_t GetHashCode();
 
     // Retrieve optional fields associated with this EEType. May be NULL if no such fields exist.
     inline PTR_OptionalFields get_OptionalFields();
 
     // Get flags that are less commonly set on EETypes.
-    inline UInt32 get_RareFlags();
+    inline uint32_t get_RareFlags();
 
     // Helper methods that deal with EEType topology (size and field layout). These are useful since as we
     // optimize for pay-for-play we increasingly want to customize exactly what goes into an EEType on a
@@ -410,7 +410,7 @@ public:
     // instantly identify all the other parts of the binder and runtime that need to be updated.
 
     // Calculate the offset of a field of the EEType that has a variable offset.
-    inline UInt32 GetFieldOffset(EETypeField eField);
+    inline uint32_t GetFieldOffset(EETypeField eField);
 
     // Validate an EEType extracted from an object.
     bool Validate(bool assertOnFail = true);

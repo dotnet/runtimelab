@@ -30,10 +30,10 @@ inline Thread * ThreadStore::GetCurrentThreadIfAvailable()
     return NULL;
 }
 
-EXTERN_C volatile UInt32 RhpTrapThreads;
+EXTERN_C volatile uint32_t RhpTrapThreads;
 
 // static
 inline bool ThreadStore::IsTrapThreadsRequested()
 {
-    return (RhpTrapThreads & (UInt32)TrapThreadsFlags::TrapThreads) != 0;
+    return (RhpTrapThreads & (uint32_t)TrapThreadsFlags::TrapThreads) != 0;
 }

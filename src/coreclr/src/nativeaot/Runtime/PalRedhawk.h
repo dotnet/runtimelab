@@ -86,21 +86,21 @@ struct SYSTEM_INFO
 {
     union
     {
-        UInt32  dwOemId;
+        uint32_t  dwOemId;
         struct {
-            UInt16 wProcessorArchitecture;
-            UInt16 wReserved;
+            uint16_t wProcessorArchitecture;
+            uint16_t wReserved;
         } DUMMYSTRUCTNAME;
     } DUMMYUNIONNAME;
-    UInt32      dwPageSize;
+    uint32_t      dwPageSize;
     void *      lpMinimumApplicationAddress;
     void *      lpMaximumApplicationAddress;
-    UIntNative  dwActiveProcessorMask;
-    UInt32      dwNumberOfProcessors;
-    UInt32      dwProcessorType;
-    UInt32      dwAllocationGranularity;
-    UInt16      wProcessorLevel;
-    UInt16      wProcessorRevision;
+    uintptr_t  dwActiveProcessorMask;
+    uint32_t      dwNumberOfProcessors;
+    uint32_t      dwProcessorType;
+    uint32_t      dwAllocationGranularity;
+    uint16_t      wProcessorLevel;
+    uint16_t      wProcessorRevision;
 };
 
 // defined in gcrhenv.cpp
@@ -108,8 +108,8 @@ bool __SwitchToThread(uint32_t dwSleepMSec, uint32_t dwSwitchCount);
 
 struct FILETIME
 {
-    UInt32 dwLowDateTime;
-    UInt32 dwHighDateTime;
+    uint32_t dwLowDateTime;
+    uint32_t dwHighDateTime;
 };
 
 enum MEMORY_RESOURCE_NOTIFICATION_TYPE
@@ -138,56 +138,56 @@ enum PROCESSOR_CACHE_TYPE
 
 struct CACHE_DESCRIPTOR
 {
-    UInt8   Level;
-    UInt8   Associativity;
-    UInt16  LineSize;
-    UInt32  Size;
+    uint8_t   Level;
+    uint8_t   Associativity;
+    uint16_t  LineSize;
+    uint32_t  Size;
     PROCESSOR_CACHE_TYPE Type;
 };
 
 struct SYSTEM_LOGICAL_PROCESSOR_INFORMATION
 {
-    UIntNative   ProcessorMask;
+    uintptr_t   ProcessorMask;
     LOGICAL_PROCESSOR_RELATIONSHIP Relationship;
     union
     {
         struct
         {
-            UInt8  Flags;
+            uint8_t  Flags;
         } ProcessorCore;
         struct
         {
-            UInt32 NodeNumber;
+            uint32_t NodeNumber;
         } NumaNode;
         CACHE_DESCRIPTOR Cache;
-        UInt64  Reserved[2];
+        uint64_t  Reserved[2];
     };
 };
 
 #ifdef HOST_AMD64
 
 typedef struct DECLSPEC_ALIGN(16) _XSAVE_FORMAT {
-    UInt16  ControlWord;
-    UInt16  StatusWord;
-    UInt8   TagWord;
-    UInt8   Reserved1;
-    UInt16  ErrorOpcode;
-    UInt32  ErrorOffset;
-    UInt16  ErrorSelector;
-    UInt16  Reserved2;
-    UInt32  DataOffset;
-    UInt16  DataSelector;
-    UInt16  Reserved3;
-    UInt32  MxCsr;
-    UInt32  MxCsr_Mask;
+    uint16_t  ControlWord;
+    uint16_t  StatusWord;
+    uint8_t   TagWord;
+    uint8_t   Reserved1;
+    uint16_t  ErrorOpcode;
+    uint32_t  ErrorOffset;
+    uint16_t  ErrorSelector;
+    uint16_t  Reserved2;
+    uint32_t  DataOffset;
+    uint16_t  DataSelector;
+    uint16_t  Reserved3;
+    uint32_t  MxCsr;
+    uint32_t  MxCsr_Mask;
     Fp128   FloatRegisters[8];
 #if defined(HOST_64BIT)
     Fp128   XmmRegisters[16];
-    UInt8   Reserved4[96];
+    uint8_t   Reserved4[96];
 #else
     Fp128   XmmRegisters[8];
-    UInt8   Reserved4[220];
-    UInt32  Cr0NpxState;
+    uint8_t   Reserved4[220];
+    uint32_t  Cr0NpxState;
 #endif
 } XSAVE_FORMAT, *PXSAVE_FORMAT;
 
@@ -195,44 +195,44 @@ typedef struct DECLSPEC_ALIGN(16) _XSAVE_FORMAT {
 typedef XSAVE_FORMAT XMM_SAVE_AREA32, *PXMM_SAVE_AREA32;
 
 typedef struct DECLSPEC_ALIGN(16) _CONTEXT {
-    UInt64 P1Home;
-    UInt64 P2Home;
-    UInt64 P3Home;
-    UInt64 P4Home;
-    UInt64 P5Home;
-    UInt64 P6Home;
-    UInt32 ContextFlags;
-    UInt32 MxCsr;
-    UInt16 SegCs;
-    UInt16 SegDs;
-    UInt16 SegEs;
-    UInt16 SegFs;
-    UInt16 SegGs;
-    UInt16 SegSs;
-    UInt32 EFlags;
-    UInt64 Dr0;
-    UInt64 Dr1;
-    UInt64 Dr2;
-    UInt64 Dr3;
-    UInt64 Dr6;
-    UInt64 Dr7;
-    UInt64 Rax;
-    UInt64 Rcx;
-    UInt64 Rdx;
-    UInt64 Rbx;
-    UInt64 Rsp;
-    UInt64 Rbp;
-    UInt64 Rsi;
-    UInt64 Rdi;
-    UInt64 R8;
-    UInt64 R9;
-    UInt64 R10;
-    UInt64 R11;
-    UInt64 R12;
-    UInt64 R13;
-    UInt64 R14;
-    UInt64 R15;
-    UInt64 Rip;
+    uint64_t P1Home;
+    uint64_t P2Home;
+    uint64_t P3Home;
+    uint64_t P4Home;
+    uint64_t P5Home;
+    uint64_t P6Home;
+    uint32_t ContextFlags;
+    uint32_t MxCsr;
+    uint16_t SegCs;
+    uint16_t SegDs;
+    uint16_t SegEs;
+    uint16_t SegFs;
+    uint16_t SegGs;
+    uint16_t SegSs;
+    uint32_t EFlags;
+    uint64_t Dr0;
+    uint64_t Dr1;
+    uint64_t Dr2;
+    uint64_t Dr3;
+    uint64_t Dr6;
+    uint64_t Dr7;
+    uint64_t Rax;
+    uint64_t Rcx;
+    uint64_t Rdx;
+    uint64_t Rbx;
+    uint64_t Rsp;
+    uint64_t Rbp;
+    uint64_t Rsi;
+    uint64_t Rdi;
+    uint64_t R8;
+    uint64_t R9;
+    uint64_t R10;
+    uint64_t R11;
+    uint64_t R12;
+    uint64_t R13;
+    uint64_t R14;
+    uint64_t R15;
+    uint64_t Rip;
     union {
         XMM_SAVE_AREA32 FltSave;
         struct {
@@ -257,24 +257,24 @@ typedef struct DECLSPEC_ALIGN(16) _CONTEXT {
         } DUMMYSTRUCTNAME;
     } DUMMYUNIONNAME;
     Fp128 VectorRegister[26];
-    UInt64 VectorControl;
-    UInt64 DebugControl;
-    UInt64 LastBranchToRip;
-    UInt64 LastBranchFromRip;
-    UInt64 LastExceptionToRip;
-    UInt64 LastExceptionFromRip;
+    uint64_t VectorControl;
+    uint64_t DebugControl;
+    uint64_t LastBranchToRip;
+    uint64_t LastBranchFromRip;
+    uint64_t LastExceptionToRip;
+    uint64_t LastExceptionFromRip;
 
-    void SetIp(UIntNative ip) { Rip = ip; }
-    void SetSp(UIntNative sp) { Rsp = sp; }
+    void SetIp(uintptr_t ip) { Rip = ip; }
+    void SetSp(uintptr_t sp) { Rsp = sp; }
 #ifdef UNIX_AMD64_ABI
-    void SetArg0Reg(UIntNative val) { Rdi = val; }
-    void SetArg1Reg(UIntNative val) { Rsi = val; }
+    void SetArg0Reg(uintptr_t val) { Rdi = val; }
+    void SetArg1Reg(uintptr_t val) { Rsi = val; }
 #else // UNIX_AMD64_ABI
-    void SetArg0Reg(UIntNative val) { Rcx = val; }
-    void SetArg1Reg(UIntNative val) { Rdx = val; }
+    void SetArg0Reg(uintptr_t val) { Rcx = val; }
+    void SetArg1Reg(uintptr_t val) { Rdx = val; }
 #endif // UNIX_AMD64_ABI
-    UIntNative GetIp() { return Rip; }
-    UIntNative GetSp() { return Rsp; }
+    uintptr_t GetIp() { return Rip; }
+    uintptr_t GetSp() { return Rsp; }
 } CONTEXT, *PCONTEXT;
 #elif defined(HOST_ARM)
 
@@ -282,42 +282,42 @@ typedef struct DECLSPEC_ALIGN(16) _CONTEXT {
 #define ARM_MAX_WATCHPOINTS     1
 
 typedef struct DECLSPEC_ALIGN(8) _CONTEXT {
-    UInt32 ContextFlags;
-    UInt32 R0;
-    UInt32 R1;
-    UInt32 R2;
-    UInt32 R3;
-    UInt32 R4;
-    UInt32 R5;
-    UInt32 R6;
-    UInt32 R7;
-    UInt32 R8;
-    UInt32 R9;
-    UInt32 R10;
-    UInt32 R11;
-    UInt32 R12;
-    UInt32 Sp; // R13
-    UInt32 Lr; // R14
-    UInt32 Pc; // R15
-    UInt32 Cpsr;
-    UInt32 Fpscr;
-    UInt32 Padding;
+    uint32_t ContextFlags;
+    uint32_t R0;
+    uint32_t R1;
+    uint32_t R2;
+    uint32_t R3;
+    uint32_t R4;
+    uint32_t R5;
+    uint32_t R6;
+    uint32_t R7;
+    uint32_t R8;
+    uint32_t R9;
+    uint32_t R10;
+    uint32_t R11;
+    uint32_t R12;
+    uint32_t Sp; // R13
+    uint32_t Lr; // R14
+    uint32_t Pc; // R15
+    uint32_t Cpsr;
+    uint32_t Fpscr;
+    uint32_t Padding;
     union {
         Fp128  Q[16];
-        UInt64 D[32];
-        UInt32 S[32];
+        uint64_t D[32];
+        uint32_t S[32];
     } DUMMYUNIONNAME;
-    UInt32 Bvr[ARM_MAX_BREAKPOINTS];
-    UInt32 Bcr[ARM_MAX_BREAKPOINTS];
-    UInt32 Wvr[ARM_MAX_WATCHPOINTS];
-    UInt32 Wcr[ARM_MAX_WATCHPOINTS];
-    UInt32 Padding2[2];
+    uint32_t Bvr[ARM_MAX_BREAKPOINTS];
+    uint32_t Bcr[ARM_MAX_BREAKPOINTS];
+    uint32_t Wvr[ARM_MAX_WATCHPOINTS];
+    uint32_t Wcr[ARM_MAX_WATCHPOINTS];
+    uint32_t Padding2[2];
 
-    void SetIp(UIntNative ip) { Pc = ip; }
-    void SetArg0Reg(UIntNative val) { R0 = val; }
-    void SetArg1Reg(UIntNative val) { R1 = val; }
-    UIntNative GetIp() { return Pc; }
-    UIntNative GetLr() { return Lr; }
+    void SetIp(uintptr_t ip) { Pc = ip; }
+    void SetArg0Reg(uintptr_t val) { R0 = val; }
+    void SetArg1Reg(uintptr_t val) { R1 = val; }
+    uintptr_t GetIp() { return Pc; }
+    uintptr_t GetLr() { return Lr; }
 } CONTEXT, *PCONTEXT;
 
 #elif defined(HOST_X86)
@@ -325,51 +325,51 @@ typedef struct DECLSPEC_ALIGN(8) _CONTEXT {
 #define MAXIMUM_SUPPORTED_EXTENSION  512
 
 typedef struct _FLOATING_SAVE_AREA {
-    UInt32 ControlWord;
-    UInt32 StatusWord;
-    UInt32 TagWord;
-    UInt32 ErrorOffset;
-    UInt32 ErrorSelector;
-    UInt32 DataOffset;
-    UInt32 DataSelector;
-    UInt8  RegisterArea[SIZE_OF_80387_REGISTERS];
-    UInt32 Cr0NpxState;
+    uint32_t ControlWord;
+    uint32_t StatusWord;
+    uint32_t TagWord;
+    uint32_t ErrorOffset;
+    uint32_t ErrorSelector;
+    uint32_t DataOffset;
+    uint32_t DataSelector;
+    uint8_t  RegisterArea[SIZE_OF_80387_REGISTERS];
+    uint32_t Cr0NpxState;
 } FLOATING_SAVE_AREA;
 
 #include "pshpack4.h"
 typedef struct _CONTEXT {
-    UInt32 ContextFlags;
-    UInt32 Dr0;
-    UInt32 Dr1;
-    UInt32 Dr2;
-    UInt32 Dr3;
-    UInt32 Dr6;
-    UInt32 Dr7;
+    uint32_t ContextFlags;
+    uint32_t Dr0;
+    uint32_t Dr1;
+    uint32_t Dr2;
+    uint32_t Dr3;
+    uint32_t Dr6;
+    uint32_t Dr7;
     FLOATING_SAVE_AREA FloatSave;
-    UInt32 SegGs;
-    UInt32 SegFs;
-    UInt32 SegEs;
-    UInt32 SegDs;
-    UInt32 Edi;
-    UInt32 Esi;
-    UInt32 Ebx;
-    UInt32 Edx;
-    UInt32 Ecx;
-    UInt32 Eax;
-    UInt32 Ebp;
-    UInt32 Eip;
-    UInt32 SegCs;
-    UInt32 EFlags;
-    UInt32 Esp;
-    UInt32 SegSs;
-    UInt8  ExtendedRegisters[MAXIMUM_SUPPORTED_EXTENSION];
+    uint32_t SegGs;
+    uint32_t SegFs;
+    uint32_t SegEs;
+    uint32_t SegDs;
+    uint32_t Edi;
+    uint32_t Esi;
+    uint32_t Ebx;
+    uint32_t Edx;
+    uint32_t Ecx;
+    uint32_t Eax;
+    uint32_t Ebp;
+    uint32_t Eip;
+    uint32_t SegCs;
+    uint32_t EFlags;
+    uint32_t Esp;
+    uint32_t SegSs;
+    uint8_t  ExtendedRegisters[MAXIMUM_SUPPORTED_EXTENSION];
 
-    void SetIp(UIntNative ip) { Eip = ip; }
-    void SetSp(UIntNative sp) { Esp = sp; }
-    void SetArg0Reg(UIntNative val) { Ecx = val; }
-    void SetArg1Reg(UIntNative val) { Edx = val; }
-    UIntNative GetIp() { return Eip; }
-    UIntNative GetSp() { return Esp; }
+    void SetIp(uintptr_t ip) { Eip = ip; }
+    void SetSp(uintptr_t sp) { Esp = sp; }
+    void SetArg0Reg(uintptr_t val) { Ecx = val; }
+    void SetArg1Reg(uintptr_t val) { Edx = val; }
+    uintptr_t GetIp() { return Eip; }
+    uintptr_t GetSp() { return Esp; }
 } CONTEXT, *PCONTEXT;
 #include "poppack.h"
 
@@ -383,104 +383,104 @@ typedef struct _CONTEXT {
 #define ARM64_MAX_WATCHPOINTS     2
 
 typedef struct _NEON128 {
-    UInt64 Low;
-    Int64 High;
+    uint64_t Low;
+    int64_t High;
 } NEON128, *PNEON128;
 
 typedef struct DECLSPEC_ALIGN(16) _CONTEXT {
     //
     // Control flags.
     //
-    UInt32 ContextFlags;
+    uint32_t ContextFlags;
 
     //
     // Integer registers
     //
-    UInt32 Cpsr;       // NZVF + DAIF + CurrentEL + SPSel
+    uint32_t Cpsr;       // NZVF + DAIF + CurrentEL + SPSel
     union {
         struct {
-            UInt64 X0;
-            UInt64 X1;
-            UInt64 X2;
-            UInt64 X3;
-            UInt64 X4;
-            UInt64 X5;
-            UInt64 X6;
-            UInt64 X7;
-            UInt64 X8;
-            UInt64 X9;
-            UInt64 X10;
-            UInt64 X11;
-            UInt64 X12;
-            UInt64 X13;
-            UInt64 X14;
-            UInt64 X15;
-            UInt64 X16;
-            UInt64 X17;
-            UInt64 X18;
-            UInt64 X19;
-            UInt64 X20;
-            UInt64 X21;
-            UInt64 X22;
-            UInt64 X23;
-            UInt64 X24;
-            UInt64 X25;
-            UInt64 X26;
-            UInt64 X27;
-            UInt64 X28;
+            uint64_t X0;
+            uint64_t X1;
+            uint64_t X2;
+            uint64_t X3;
+            uint64_t X4;
+            uint64_t X5;
+            uint64_t X6;
+            uint64_t X7;
+            uint64_t X8;
+            uint64_t X9;
+            uint64_t X10;
+            uint64_t X11;
+            uint64_t X12;
+            uint64_t X13;
+            uint64_t X14;
+            uint64_t X15;
+            uint64_t X16;
+            uint64_t X17;
+            uint64_t X18;
+            uint64_t X19;
+            uint64_t X20;
+            uint64_t X21;
+            uint64_t X22;
+            uint64_t X23;
+            uint64_t X24;
+            uint64_t X25;
+            uint64_t X26;
+            uint64_t X27;
+            uint64_t X28;
 #pragma warning(push)
 #pragma warning(disable:4201) // nameless struct
         };
-        UInt64 X[29];
+        uint64_t X[29];
     };
 #pragma warning(pop)
-    UInt64 Fp; // X29
-    UInt64 Lr; // X30
-    UInt64 Sp;
-    UInt64 Pc;
+    uint64_t Fp; // X29
+    uint64_t Lr; // X30
+    uint64_t Sp;
+    uint64_t Pc;
 
     //
     // Floating Point/NEON Registers
     //
     NEON128 V[32];
-    UInt32 Fpcr;
-    UInt32 Fpsr;
+    uint32_t Fpcr;
+    uint32_t Fpsr;
 
     //
     // Debug registers
     //
-    UInt32 Bcr[ARM64_MAX_BREAKPOINTS];
-    UInt64 Bvr[ARM64_MAX_BREAKPOINTS];
-    UInt32 Wcr[ARM64_MAX_WATCHPOINTS];
-    UInt64 Wvr[ARM64_MAX_WATCHPOINTS];
+    uint32_t Bcr[ARM64_MAX_BREAKPOINTS];
+    uint64_t Bvr[ARM64_MAX_BREAKPOINTS];
+    uint32_t Wcr[ARM64_MAX_WATCHPOINTS];
+    uint64_t Wvr[ARM64_MAX_WATCHPOINTS];
 
-    void SetIp(UIntNative ip) { Pc = ip; }
-    void SetArg0Reg(UIntNative val) { X0 = val; }
-    void SetArg1Reg(UIntNative val) { X1 = val; }
-    UIntNative GetIp() { return Pc; }
-    UIntNative GetLr() { return Lr; }
+    void SetIp(uintptr_t ip) { Pc = ip; }
+    void SetArg0Reg(uintptr_t val) { X0 = val; }
+    void SetArg1Reg(uintptr_t val) { X1 = val; }
+    uintptr_t GetIp() { return Pc; }
+    uintptr_t GetLr() { return Lr; }
 } CONTEXT, *PCONTEXT;
 
 #elif defined(HOST_WASM)
 
 typedef struct DECLSPEC_ALIGN(8) _CONTEXT {
     // TODO: Figure out if WebAssembly has a meaningful context available
-    void SetIp(UIntNative ip) {  }
-    void SetArg0Reg(UIntNative val) {  }
-    void SetArg1Reg(UIntNative val) {  }
-    UIntNative GetIp() { return 0; }
+    void SetIp(uintptr_t ip) {  }
+    void SetArg0Reg(uintptr_t val) {  }
+    void SetArg1Reg(uintptr_t val) {  }
+    uintptr_t GetIp() { return 0; }
 } CONTEXT, *PCONTEXT;
 #endif
 
 #define EXCEPTION_MAXIMUM_PARAMETERS 15 // maximum number of exception parameters
 
 typedef struct _EXCEPTION_RECORD32 {
-    UInt32      ExceptionCode;
-    UInt32      ExceptionFlags;
-    UIntNative  ExceptionRecord;
-    UIntNative  ExceptionAddress;
-    UInt32      NumberParameters;
-    UIntNative  ExceptionInformation[EXCEPTION_MAXIMUM_PARAMETERS];
+    uint32_t      ExceptionCode;
+    uint32_t      ExceptionFlags;
+    uintptr_t  ExceptionRecord;
+    uintptr_t  ExceptionAddress;
+    uint32_t      NumberParameters;
+    uintptr_t  ExceptionInformation[EXCEPTION_MAXIMUM_PARAMETERS];
 } EXCEPTION_RECORD, *PEXCEPTION_RECORD;
 
 typedef struct _EXCEPTION_POINTERS {
@@ -488,7 +488,7 @@ typedef struct _EXCEPTION_POINTERS {
     PCONTEXT            ContextRecord;
 } EXCEPTION_POINTERS, *PEXCEPTION_POINTERS;
 
-typedef Int32 (__stdcall *PVECTORED_EXCEPTION_HANDLER)(
+typedef int32_t (__stdcall *PVECTORED_EXCEPTION_HANDLER)(
     PEXCEPTION_POINTERS ExceptionInfo
     );
 
@@ -503,10 +503,10 @@ typedef enum _EXCEPTION_DISPOSITION {
     ExceptionCollidedUnwind
 } EXCEPTION_DISPOSITION;
 
-#define STATUS_ACCESS_VIOLATION                        ((UInt32   )0xC0000005L)
-#define STATUS_STACK_OVERFLOW                          ((UInt32   )0xC00000FDL)
-#define STATUS_REDHAWK_NULL_REFERENCE                  ((UInt32   )0x00000000L)
-#define STATUS_REDHAWK_UNMANAGED_HELPER_NULL_REFERENCE ((UInt32   )0x00000042L)
+#define STATUS_ACCESS_VIOLATION                        ((uint32_t   )0xC0000005L)
+#define STATUS_STACK_OVERFLOW                          ((uint32_t   )0xC00000FDL)
+#define STATUS_REDHAWK_NULL_REFERENCE                  ((uint32_t   )0x00000000L)
+#define STATUS_REDHAWK_UNMANAGED_HELPER_NULL_REFERENCE ((uint32_t   )0x00000042L)
 
 #ifdef TARGET_UNIX
 #define NULL_AREA_SIZE                   (4*1024)
@@ -522,15 +522,15 @@ typedef enum _EXCEPTION_DISPOSITION {
 #ifndef DACCESS_COMPILE
 #ifndef _INC_WINDOWS
 
-typedef UInt32 (WINAPI *PTHREAD_START_ROUTINE)(_In_opt_ void* lpThreadParameter);
-typedef IntNative (WINAPI *FARPROC)();
+typedef uint32_t (WINAPI *PTHREAD_START_ROUTINE)(_In_opt_ void* lpThreadParameter);
+typedef intptr_t (WINAPI *FARPROC)();
 
 #ifndef __GCENV_BASE_INCLUDED__
 #define TRUE                    1
 #define FALSE                   0
 #endif // !__GCENV_BASE_INCLUDED__
 
-#define INVALID_HANDLE_VALUE    ((HANDLE)(IntNative)-1)
+#define INVALID_HANDLE_VALUE    ((HANDLE)(intptr_t)-1)
 
 #define DLL_PROCESS_ATTACH      1
 #define DLL_THREAD_ATTACH       2
@@ -625,41 +625,41 @@ typedef IntNative (WINAPI *FARPROC)();
 #endif // !_INC_WINDOWS
 #endif // !DACCESS_COMPILE
 
-typedef UInt64 REGHANDLE;
-typedef UInt64 TRACEHANDLE;
+typedef uint64_t REGHANDLE;
+typedef uint64_t TRACEHANDLE;
 
 #ifndef _EVNTPROV_H_
 struct EVENT_DATA_DESCRIPTOR
 {
-    UInt64  Ptr;
-    UInt32  Size;
-    UInt32  Reserved;
+    uint64_t  Ptr;
+    uint32_t  Size;
+    uint32_t  Reserved;
 };
 
 struct EVENT_DESCRIPTOR
 {
-    UInt16  Id;
-    UInt8   Version;
-    UInt8   Channel;
-    UInt8   Level;
-    UInt8   Opcode;
-    UInt16  Task;
-    UInt64  Keyword;
+    uint16_t  Id;
+    uint8_t   Version;
+    uint8_t   Channel;
+    uint8_t   Level;
+    uint8_t   Opcode;
+    uint16_t  Task;
+    uint64_t  Keyword;
 
 };
 
 struct EVENT_FILTER_DESCRIPTOR
 {
-    UInt64  Ptr;
-    UInt32  Size;
-    UInt32  Type;
+    uint64_t  Ptr;
+    uint32_t  Size;
+    uint32_t  Type;
 };
 
 __forceinline
 void
-EventDataDescCreate(_Out_ EVENT_DATA_DESCRIPTOR * EventDataDescriptor, _In_opt_ const void * DataPtr, UInt32 DataSize)
+EventDataDescCreate(_Out_ EVENT_DATA_DESCRIPTOR * EventDataDescriptor, _In_opt_ const void * DataPtr, uint32_t DataSize)
 {
-    EventDataDescriptor->Ptr = (UInt64)DataPtr;
+    EventDataDescriptor->Ptr = (uint64_t)DataPtr;
     EventDataDescriptor->Size = DataSize;
     EventDataDescriptor->Reserved = 0;
 }
@@ -699,18 +699,18 @@ REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalInit();
 REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalHasCapability(PalCapability capability);
 
 // Given the OS handle of a loaded module, compute the upper and lower virtual address bounds (inclusive).
-REDHAWK_PALIMPORT void REDHAWK_PALAPI PalGetModuleBounds(HANDLE hOsHandle, _Out_ UInt8 ** ppLowerBound, _Out_ UInt8 ** ppUpperBound);
+REDHAWK_PALIMPORT void REDHAWK_PALAPI PalGetModuleBounds(HANDLE hOsHandle, _Out_ uint8_t ** ppLowerBound, _Out_ uint8_t ** ppUpperBound);
 
 typedef struct _GUID GUID;
-REDHAWK_PALIMPORT void REDHAWK_PALAPI PalGetPDBInfo(HANDLE hOsHandle, _Out_ GUID * pGuidSignature, _Out_ UInt32 * pdwAge, _Out_writes_z_(cchPath) WCHAR * wszPath, Int32 cchPath);
+REDHAWK_PALIMPORT void REDHAWK_PALAPI PalGetPDBInfo(HANDLE hOsHandle, _Out_ GUID * pGuidSignature, _Out_ uint32_t * pdwAge, _Out_writes_z_(cchPath) WCHAR * wszPath, int32_t cchPath);
 
 #ifndef APP_LOCAL_RUNTIME
 REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalGetThreadContext(HANDLE hThread, _Out_ PAL_LIMITED_CONTEXT * pCtx);
 #endif
 
-REDHAWK_PALIMPORT Int32 REDHAWK_PALAPI PalGetProcessCpuCount();
+REDHAWK_PALIMPORT int32_t REDHAWK_PALAPI PalGetProcessCpuCount();
 
-REDHAWK_PALIMPORT UInt32 REDHAWK_PALAPI PalReadFileContents(_In_z_ const TCHAR *, _Out_writes_all_(maxBytesToRead) char * buff, _In_ UInt32 maxBytesToRead);
+REDHAWK_PALIMPORT uint32_t REDHAWK_PALAPI PalReadFileContents(_In_z_ const TCHAR *, _Out_writes_all_(maxBytesToRead) char * buff, _In_ uint32_t maxBytesToRead);
 
 // Retrieves the entire range of memory dedicated to the calling thread's stack.  This does
 // not get the current dynamic bounds of the stack, which can be significantly smaller than
@@ -718,7 +718,7 @@ REDHAWK_PALIMPORT UInt32 REDHAWK_PALAPI PalReadFileContents(_In_z_ const TCHAR *
 REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalGetMaximumStackBounds(_Out_ void** ppStackLowOut, _Out_ void** ppStackHighOut);
 
 // Return value:  number of characters in name string
-REDHAWK_PALIMPORT Int32 PalGetModuleFileName(_Out_ const TCHAR** pModuleNameOut, HANDLE moduleBase);
+REDHAWK_PALIMPORT int32_t PalGetModuleFileName(_Out_ const TCHAR** pModuleNameOut, HANDLE moduleBase);
 
 #if _WIN32
 
@@ -740,16 +740,16 @@ EXTERN_C unsigned __int64 __getReg(int);
 #endif
 
 // Retrieves the OS TEB for the current thread.
-inline UInt8 * PalNtCurrentTeb()
+inline uint8_t * PalNtCurrentTeb()
 {
 #if defined(HOST_X86)
-    return (UInt8*)__readfsdword(0x18);
+    return (uint8_t*)__readfsdword(0x18);
 #elif defined(HOST_AMD64)
-    return (UInt8*)__readgsqword(0x30);
+    return (uint8_t*)__readgsqword(0x30);
 #elif defined(HOST_ARM)
-    return (UInt8*)_MoveFromCoprocessor(15, 0, 13,  0, 2);
+    return (uint8_t*)_MoveFromCoprocessor(15, 0, 13,  0, 2);
 #elif defined(HOST_ARM64)
-    return (UInt8*)__getReg(18);
+    return (uint8_t*)__getReg(18);
 #else
 #error Unsupported architecture
 #endif
@@ -764,7 +764,7 @@ inline UInt8 * PalNtCurrentTeb()
 
 #else // _WIN32
 
-inline UInt8 * PalNtCurrentTeb()
+inline uint8_t * PalNtCurrentTeb()
 {
     // UNIXTODO: Implement PalNtCurrentTeb
     return NULL;
@@ -785,16 +785,16 @@ inline UInt8 * PalNtCurrentTeb()
 EXTERN_C void * __cdecl _alloca(size_t);
 #pragma intrinsic(_alloca)
 
-REDHAWK_PALIMPORT _Ret_maybenull_ _Post_writable_byte_size_(size) void* REDHAWK_PALAPI PalVirtualAlloc(_In_opt_ void* pAddress, UIntNative size, UInt32 allocationType, UInt32 protect);
-REDHAWK_PALIMPORT UInt32_BOOL REDHAWK_PALAPI PalVirtualFree(_In_ void* pAddress, UIntNative size, UInt32 freeType);
-REDHAWK_PALIMPORT UInt32_BOOL REDHAWK_PALAPI PalVirtualProtect(_In_ void* pAddress, UIntNative size, UInt32 protect);
-REDHAWK_PALIMPORT void REDHAWK_PALAPI PalSleep(UInt32 milliseconds);
+REDHAWK_PALIMPORT _Ret_maybenull_ _Post_writable_byte_size_(size) void* REDHAWK_PALAPI PalVirtualAlloc(_In_opt_ void* pAddress, uintptr_t size, uint32_t allocationType, uint32_t protect);
+REDHAWK_PALIMPORT UInt32_BOOL REDHAWK_PALAPI PalVirtualFree(_In_ void* pAddress, uintptr_t size, uint32_t freeType);
+REDHAWK_PALIMPORT UInt32_BOOL REDHAWK_PALAPI PalVirtualProtect(_In_ void* pAddress, uintptr_t size, uint32_t protect);
+REDHAWK_PALIMPORT void REDHAWK_PALAPI PalSleep(uint32_t milliseconds);
 REDHAWK_PALIMPORT UInt32_BOOL REDHAWK_PALAPI PalSwitchToThread();
 REDHAWK_PALIMPORT HANDLE REDHAWK_PALAPI PalCreateEventW(_In_opt_ LPSECURITY_ATTRIBUTES pEventAttributes, UInt32_BOOL manualReset, UInt32_BOOL initialState, _In_opt_z_ LPCWSTR pName);
-REDHAWK_PALIMPORT UInt64 REDHAWK_PALAPI PalGetTickCount64();
+REDHAWK_PALIMPORT uint64_t REDHAWK_PALAPI PalGetTickCount64();
 REDHAWK_PALIMPORT HANDLE REDHAWK_PALAPI PalCreateFileW(_In_z_ LPCWSTR pFileName, uint32_t desiredAccess, uint32_t shareMode, _In_opt_ void* pSecurityAttributes, uint32_t creationDisposition, uint32_t flagsAndAttributes, HANDLE hTemplateFile);
 REDHAWK_PALIMPORT HANDLE REDHAWK_PALAPI PalCreateLowMemoryNotification();
-REDHAWK_PALIMPORT void REDHAWK_PALAPI PalTerminateCurrentProcess(UInt32 exitCode);
+REDHAWK_PALIMPORT void REDHAWK_PALAPI PalTerminateCurrentProcess(uint32_t exitCode);
 REDHAWK_PALIMPORT HANDLE REDHAWK_PALAPI PalGetModuleHandleFromPointer(_In_ void* pointer);
 
 #ifndef APP_LOCAL_RUNTIME
@@ -802,18 +802,18 @@ REDHAWK_PALIMPORT HANDLE REDHAWK_PALAPI PalGetModuleHandleFromPointer(_In_ void*
 #ifdef TARGET_UNIX
 REDHAWK_PALIMPORT void REDHAWK_PALAPI PalSetHardwareExceptionHandler(PHARDWARE_EXCEPTION_HANDLER handler);
 #else
-REDHAWK_PALIMPORT void* REDHAWK_PALAPI PalAddVectoredExceptionHandler(UInt32 firstHandler, _In_ PVECTORED_EXCEPTION_HANDLER vectoredHandler);
+REDHAWK_PALIMPORT void* REDHAWK_PALAPI PalAddVectoredExceptionHandler(uint32_t firstHandler, _In_ PVECTORED_EXCEPTION_HANDLER vectoredHandler);
 #endif
 
 #endif
 
 
-typedef UInt32 (__stdcall *BackgroundCallback)(_In_opt_ void* pCallbackContext);
+typedef uint32_t (__stdcall *BackgroundCallback)(_In_opt_ void* pCallbackContext);
 REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalStartBackgroundGCThread(_In_ BackgroundCallback callback, _In_opt_ void* pCallbackContext);
 REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalStartFinalizerThread(_In_ BackgroundCallback callback, _In_opt_ void* pCallbackContext);
 
 typedef UInt32_BOOL (*PalHijackCallback)(HANDLE hThread, _In_ PAL_LIMITED_CONTEXT* pThreadContext, _In_opt_ void* pCallbackContext);
-REDHAWK_PALIMPORT UInt32 REDHAWK_PALAPI PalHijack(HANDLE hThread, _In_ PalHijackCallback callback, _In_opt_ void* pCallbackContext);
+REDHAWK_PALIMPORT uint32_t REDHAWK_PALAPI PalHijack(HANDLE hThread, _In_ PalHijackCallback callback, _In_opt_ void* pCallbackContext);
 
 #ifdef FEATURE_ETW
 REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalEventEnabled(REGHANDLE regHandle, _In_ const EVENT_DESCRIPTOR* eventDescriptor);
@@ -821,7 +821,7 @@ REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalEventEnabled(REGHANDLE regHandle, _In_ 
 
 REDHAWK_PALIMPORT _Ret_maybenull_ void* REDHAWK_PALAPI PalSetWerDataBuffer(_In_ void* pNewBuffer);
 
-REDHAWK_PALIMPORT UInt32_BOOL REDHAWK_PALAPI PalAllocateThunksFromTemplate(_In_ HANDLE hTemplateModule, UInt32 templateRva, size_t templateSize, _Outptr_result_bytebuffer_(templateSize) void** newThunksOut);
+REDHAWK_PALIMPORT UInt32_BOOL REDHAWK_PALAPI PalAllocateThunksFromTemplate(_In_ HANDLE hTemplateModule, uint32_t templateRva, size_t templateSize, _Outptr_result_bytebuffer_(templateSize) void** newThunksOut);
 REDHAWK_PALIMPORT UInt32_BOOL REDHAWK_PALAPI PalFreeThunksFromTemplate(_In_ void *pBaseAddress);
 
 REDHAWK_PALIMPORT UInt32_BOOL REDHAWK_PALAPI PalMarkThunksAsValidCallTargets(
@@ -831,17 +831,17 @@ REDHAWK_PALIMPORT UInt32_BOOL REDHAWK_PALAPI PalMarkThunksAsValidCallTargets(
     int thunkBlockSize,
     int thunkBlocksPerMapping);
 
-REDHAWK_PALIMPORT UInt32 REDHAWK_PALAPI PalCompatibleWaitAny(UInt32_BOOL alertable, UInt32 timeout, UInt32 count, HANDLE* pHandles, UInt32_BOOL allowReentrantWait);
+REDHAWK_PALIMPORT uint32_t REDHAWK_PALAPI PalCompatibleWaitAny(UInt32_BOOL alertable, uint32_t timeout, uint32_t count, HANDLE* pHandles, UInt32_BOOL allowReentrantWait);
 
 REDHAWK_PALIMPORT void REDHAWK_PALAPI PalAttachThread(void* thread);
 REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalDetachThread(void* thread);
 
-REDHAWK_PALIMPORT UInt64 PalGetCurrentThreadIdForLogging();
+REDHAWK_PALIMPORT uint64_t PalGetCurrentThreadIdForLogging();
 
 REDHAWK_PALIMPORT void PalPrintFatalError(const char* message);
 
 #ifdef TARGET_UNIX
-REDHAWK_PALIMPORT Int32 __cdecl _stricmp(const char *string1, const char *string2);
+REDHAWK_PALIMPORT int32_t __cdecl _stricmp(const char *string1, const char *string2);
 #endif // TARGET_UNIX
 
 #ifdef UNICODE

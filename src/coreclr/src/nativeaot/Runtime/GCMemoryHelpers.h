@@ -7,4 +7,4 @@
 
 void GCSafeCopyMemoryWithWriteBarrier(void * dest, const void *src, size_t len);
 
-EXTERN_C void REDHAWK_CALLCONV RhpBulkWriteBarrier(void* pMemStart, UInt32 cbMemSize);
+EXTERN_C void REDHAWK_CALLCONV RhpBulkWriteBarrier(void* pMemStart, uint32_t cbMemSize);

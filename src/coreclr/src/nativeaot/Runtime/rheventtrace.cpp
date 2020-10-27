@@ -39,7 +39,7 @@
 //      * typeLogBehavior - Ignored in Redhawk builds
 //
 
-void BulkTypeEventLogger::LogTypeAndParameters(UInt64 thAsAddr, ETW::TypeSystemLog::TypeLogBehavior typeLogBehavior)
+void BulkTypeEventLogger::LogTypeAndParameters(uint64_t thAsAddr, ETW::TypeSystemLog::TypeLogBehavior typeLogBehavior)
 {
     if (!ETW_TRACING_CATEGORY_ENABLED(
         MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_Context,
@@ -119,7 +119,7 @@ public:
     static count_t Hash(key_t k)
     {
         LIMITED_METHOD_CONTRACT;
-        return (count_t) (UIntNative) k;
+        return (count_t) (uintptr_t) k;
     }
 
     static bool IsNull(const element_t &e)
@@ -135,7 +135,7 @@ public:
     }
 };
 
-enum class CorElementType : UInt8
+enum class CorElementType : uint8_t
 {
     ELEMENT_TYPE_END = 0x0,
 
@@ -343,7 +343,7 @@ void BulkTypeEventLogger::Cleanup()
 //      * typeLogBehavior - Unused in Redhawk builds
 //
 
-void ETW::TypeSystemLog::LogTypeAndParametersIfNecessary(BulkTypeEventLogger * pLogger, UInt64 thAsAddr, ETW::TypeSystemLog::TypeLogBehavior typeLogBehavior)
+void ETW::TypeSystemLog::LogTypeAndParametersIfNecessary(BulkTypeEventLogger * pLogger, uint64_t thAsAddr, ETW::TypeSystemLog::TypeLogBehavior typeLogBehavior)
 {
 #if defined(FEATURE_EVENT_TRACE)
 
@@ -374,7 +374,7 @@ typedef enum
 
 
 
-COOP_PINVOKE_HELPER(void, RhpETWLogLiveCom, (Int32 eventType, void* CCWGCHandle, void* objectID, void* typeRawValue, void* IUnknown, void* VTable, Int32 comRefCount, Int32 jupiterRefCount, Int32 flags))
+COOP_PINVOKE_HELPER(void, RhpETWLogLiveCom, (int32_t eventType, void* CCWGCHandle, void* objectID, void* typeRawValue, void* IUnknown, void* VTable, int32_t comRefCount, int32_t jupiterRefCount, int32_t flags))
 {
     switch (eventType)
     {
@@ -447,10 +447,10 @@ void BulkComLogger::WriteCCW(void* CCWGCHandle, void* objectID, void* typeRawVal
 {
     EventCCWEntry ccwEntry;
 
-    ccwEntry.RootID = (UInt64)CCWGCHandle;
-    ccwEntry.ObjectID = (UInt64) objectID;
-    ccwEntry.TypeID = (UInt64) typeRawValue;
-    ccwEntry.IUnk = (UInt64) IUnknown;
+    ccwEntry.RootID = (uint64_t)CCWGCHandle;
+    ccwEntry.ObjectID = (uint64_t) objectID;
+    ccwEntry.TypeID = (uint64_t) typeRawValue;
+    ccwEntry.IUnk = (uint64_t) IUnknown;
     ccwEntry.RefCount = (ULONG) comRefCount;
     ccwEntry.JupiterRefCount = (ULONG) jupiterRefCount;
     ccwEntry.Flags = flags;
@@ -466,10 +466,10 @@ void BulkComLogger::WriteRCW(void* objectID, void* typeRawValue, void* IUnknown,
 {
     EventRCWEntry rcwEntry;
 
-    rcwEntry.ObjectID = (UInt64) objectID;
-    rcwEntry.TypeID = (UInt64) typeRawValue;
-    rcwEntry.IUnk = (UInt64) IUnknown;
-    rcwEntry.VTable = (UInt64) VTable;
+    rcwEntry.ObjectID = (uint64_t) objectID;
+    rcwEntry.TypeID = (uint64_t) typeRawValue;
+    rcwEntry.IUnk = (uint64_t) IUnknown;
+    rcwEntry.VTable = (uint64_t) VTable;
     rcwEntry.RefCount = comRefCount;
     rcwEntry.Flags = flags;
 

@@ -68,7 +68,7 @@ NESTED_ENTRY RhpNewObject, _TEXT
         mov         r8d, [rsi + OFFSETOF__EEType__m_uBaseSize]      ; cbSize
 
         ;; Call the rest of the allocation helper.
-        ;; void* RhpGcAlloc(EEType *pEEType, UInt32 uFlags, UIntNative cbSize, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
         call        RhpGcAlloc
 
         ;; Set the new object's EEType pointer on success.
@@ -237,7 +237,7 @@ NESTED_ENTRY RhpNewArrayRare, _TEXT
         ; pasing pTransitionFrame in r9
 
         ; Call the rest of the allocation helper.
-        ; void* RhpGcAlloc(EEType *pEEType, UInt32 uFlags, UIntNative cbSize, void * pTransitionFrame)
+        ; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
         call        RhpGcAlloc
 
         ; Set the new object's EEType pointer and length on success.

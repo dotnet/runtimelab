@@ -4,20 +4,20 @@
 #ifndef __eetype_inl__
 #define __eetype_inl__
 //-----------------------------------------------------------------------------------------------------------
-inline UInt32 EEType::GetHashCode()
+inline uint32_t EEType::GetHashCode()
 {
     return m_uHashCode;
 }
 
 //-----------------------------------------------------------------------------------------------------------
-inline PTR_Code EEType::get_Slot(UInt16 slotNumber)
+inline PTR_Code EEType::get_Slot(uint16_t slotNumber)
 {
     ASSERT(slotNumber < m_usNumVtableSlots);
     return *get_SlotPtr(slotNumber);
 }
 
 //-----------------------------------------------------------------------------------------------------------
-inline PTR_PTR_Code EEType::get_SlotPtr(UInt16 slotNumber)
+inline PTR_PTR_Code EEType::get_SlotPtr(uint16_t slotNumber)
 {
     ASSERT(slotNumber < m_usNumVtableSlots);
     return dac_cast<PTR_PTR_Code>(dac_cast<TADDR>(this) + offsetof(EEType, m_VTable)) + slotNumber;
@@ -77,9 +77,9 @@ inline bool EEType::DacVerifyWorker(EEType* pThis)
 #endif
 
 #if !defined(DACCESS_COMPILE)
-inline PTR_UInt8 FollowRelativePointer(const Int32* pDist)
+inline PTR_UInt8 FollowRelativePointer(const int32_t* pDist)
 {
-    Int32 dist = *pDist;
+    int32_t dist = *pDist;
 
     PTR_UInt8 result = (PTR_UInt8)pDist + dist;
 
@@ -92,22 +92,22 @@ inline PTR_OptionalFields EEType::get_OptionalFields()
     if ((m_usFlags & OptionalFieldsFlag) == 0)
         return NULL;
 
-    UInt32 cbOptionalFieldsOffset = GetFieldOffset(ETF_OptionalFieldsPtr);
+    uint32_t cbOptionalFieldsOffset = GetFieldOffset(ETF_OptionalFieldsPtr);
 
 #if !defined(USE_PORTABLE_HELPERS)
     if (!IsDynamicType())
     {
-        return (OptionalFields*)FollowRelativePointer((Int32*)((UInt8*)this + cbOptionalFieldsOffset));
+        return (OptionalFields*)FollowRelativePointer((int32_t*)((uint8_t*)this + cbOptionalFieldsOffset));
     }
     else
 #endif
     {
-        return *(OptionalFields**)((UInt8*)this + cbOptionalFieldsOffset);
+        return *(OptionalFields**)((uint8_t*)this + cbOptionalFieldsOffset);
     }
 }
 
 // Get flags that are less commonly set on EETypes.
-inline UInt32 EEType::get_RareFlags()
+inline uint32_t EEType::get_RareFlags()
 {
     OptionalFields * pOptFields = get_OptionalFields();
 
@@ -121,26 +121,26 @@ inline UInt32 EEType::get_RareFlags()
 
 inline TypeManagerHandle* EEType::GetTypeManagerPtr()
 {
-    UInt32 cbOffset = GetFieldOffset(ETF_TypeManagerIndirection);
+    uint32_t cbOffset = GetFieldOffset(ETF_TypeManagerIndirection);
 
 #if !defined(USE_PORTABLE_HELPERS)
     if (!IsDynamicType())
     {
-        return (TypeManagerHandle*)FollowRelativePointer((Int32*)((UInt8*)this + cbOffset));
+        return (TypeManagerHandle*)FollowRelativePointer((int32_t*)((uint8_t*)this + cbOffset));
     }
     else
 #endif
     {
-        return *(TypeManagerHandle**)((UInt8*)this + cbOffset);
+        return *(TypeManagerHandle**)((uint8_t*)this + cbOffset);
     }
 }
 #endif // !defined(DACCESS_COMPILE)
 
 // Calculate the offset of a field of the EEType that has a variable offset.
-__forceinline UInt32 EEType::GetFieldOffset(EETypeField eField)
+__forceinline uint32_t EEType::GetFieldOffset(EETypeField eField)
 {
     // First part of EEType consists of the fixed portion followed by the vtable.
-    UInt32 cbOffset = offsetof(EEType, m_VTable) + (sizeof(UIntTarget) * m_usNumVtableSlots);
+    uint32_t cbOffset = offsetof(EEType, m_VTable) + (sizeof(UIntTarget) * m_usNumVtableSlots);
 
     // Then we have the interface map.
     if (eField == ETF_InterfaceMap)
@@ -150,11 +150,11 @@ __forceinline UInt32 EEType::GetFieldOffset(EETypeField eField)
     }
     cbOffset += sizeof(EEInterfaceInfo) * GetNumInterfaces();
 
-    const UInt32 relativeOrFullPointerOffset =
+    const uint32_t relativeOrFullPointerOffset =
 #if USE_PORTABLE_HELPERS
         sizeof(UIntTarget);
 #else
-        IsDynamicType() ? sizeof(UIntTarget) : sizeof(UInt32);
+        IsDynamicType() ? sizeof(UIntTarget) : sizeof(uint32_t);
 #endif
 
     // Followed by the type manager indirection cell.
@@ -195,7 +195,7 @@ __forceinline UInt32 EEType::GetFieldOffset(EETypeField eField)
     if (eField == ETF_SealedVirtualSlots)
         return cbOffset;
 
-    UInt32 rareFlags = get_RareFlags();
+    uint32_t rareFlags = get_RareFlags();
 
     // in the case of sealed vtable entries on static types, we have a UInt sized relative pointer
     if (rareFlags & HasSealedVTableEntriesFlag)
@@ -264,7 +264,7 @@ __forceinline UInt32 EEType::GetFieldOffset(EETypeField eField)
         return cbOffset;
     }
     if ((rareFlags & IsDynamicTypeWithThreadStaticsFlag) != 0)
-        cbOffset += sizeof(UInt32);
+        cbOffset += sizeof(uint32_t);
 
     ASSERT(!"Unknown EEType field type");
     return 0;

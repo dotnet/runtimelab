@@ -25,30 +25,30 @@ void Object::InitEEType(EEType * pEEType)
 }
 #endif
 
-UInt32 Array::GetArrayLength()
+uint32_t Array::GetArrayLength()
 {
     return m_Length;
 }
 
 void* Array::GetArrayData()
 {
-    UInt8* pData = (UInt8*)this;
+    uint8_t* pData = (uint8_t*)this;
     pData += (get_EEType()->get_BaseSize() - sizeof(ObjHeader));
     return pData;
 }
 
 #ifndef DACCESS_COMPILE
-void Array::InitArrayLength(UInt32 length)
+void Array::InitArrayLength(uint32_t length)
 {
     m_Length = length;
 }
 
-void ObjHeader::SetBit(UInt32 uBit)
+void ObjHeader::SetBit(uint32_t uBit)
 {
     PalInterlockedOr(&m_uSyncBlockValue, uBit);
 }
 
-void ObjHeader::ClrBit(UInt32 uBit)
+void ObjHeader::ClrBit(uint32_t uBit)
 {
     PalInterlockedAnd(&m_uSyncBlockValue, ~uBit);
 }
@@ -61,7 +61,7 @@ size_t Object::GetSize()
     ASSERT(( pEEType->get_ComponentSize() <= 2) || pEEType->IsArray());
 
     size_t s = pEEType->get_BaseSize();
-    UInt16 componentSize = pEEType->get_ComponentSize();
+    uint16_t componentSize = pEEType->get_ComponentSize();
     if (componentSize > 0)
         s += ((Array*)this)->GetArrayLength() * componentSize;
     return s;

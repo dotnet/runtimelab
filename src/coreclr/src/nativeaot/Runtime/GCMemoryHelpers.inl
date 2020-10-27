@@ -27,24 +27,24 @@ static const int card_byte_shift = 10;
 // clearing them bytewise can result in a read on another thread getting incorrect data.
 FORCEINLINE void InlineGCSafeFillMemory(void * mem, size_t size, size_t pv)
 {
-    UInt8 * memBytes = (UInt8 *)mem;
-    UInt8 * endBytes = &memBytes[size];
+    uint8_t * memBytes = (uint8_t *)mem;
+    uint8_t * endBytes = &memBytes[size];
 
     // handle unaligned bytes at the beginning
     while (!IS_ALIGNED(memBytes, sizeof(void *)) && (memBytes < endBytes))
-        *memBytes++ = (UInt8)pv;
+        *memBytes++ = (uint8_t)pv;
 
     // now write pointer sized pieces
     // volatile ensures that this doesn't get optimized back into a memset call
     size_t nPtrs = (endBytes - memBytes) / sizeof(void *);
-    volatile UIntNative* memPtr = (UIntNative*)memBytes;
+    volatile uintptr_t* memPtr = (uintptr_t*)memBytes;
     for (size_t i = 0; i < nPtrs; i++)
         *memPtr++ = pv;
 
     // handle remaining bytes at the end
-    memBytes = (UInt8*)memPtr;
+    memBytes = (uint8_t*)memPtr;
     while (memBytes < endBytes)
-        *memBytes++ = (UInt8)pv;
+        *memBytes++ = (uint8_t)pv;
 }
 
 // These functions copy memory in a GC safe way.  They makes the guarantee
@@ -58,8 +58,8 @@ FORCEINLINE void InlineForwardGCSafeCopy(void * dest, const void *src, size_t le
     ASSERT(IS_ALIGNED(len, sizeof(size_t)));
 
     size_t size = len;
-    UInt8 * dmem = (UInt8 *)dest;
-    UInt8 * smem = (UInt8 *)src;
+    uint8_t * dmem = (uint8_t *)dest;
+    uint8_t * smem = (uint8_t *)src;
 
     // regions must be non-overlapping
     ASSERT(dmem <= smem || smem + size <= dmem);
@@ -100,8 +100,8 @@ FORCEINLINE void InlineBackwardGCSafeCopy(void * dest, const void *src, size_t l
     ASSERT(IS_ALIGNED(len, sizeof(size_t)));
 
     size_t size = len;
-    UInt8 * dmem = (UInt8 *)dest + len;
-    UInt8 * smem = (UInt8 *)src + len;
+    uint8_t * dmem = (uint8_t *)dest + len;
+    uint8_t * smem = (uint8_t *)src + len;
 
     // regions must be non-overlapping
     ASSERT(smem <= dmem || dmem + size <= smem);
@@ -152,7 +152,7 @@ typedef DPTR(uint32_t)   PTR_uint32_t;
 extern "C" {
     GPTR_DECL(uint32_t, g_card_table);
 }
-static const UInt32 INVALIDGCVALUE = 0xcccccccd;
+static const uint32_t INVALIDGCVALUE = 0xcccccccd;
 
 FORCEINLINE void InlineWriteBarrier(void * dst, void * ref)
 {
@@ -214,7 +214,7 @@ FORCEINLINE void InlinedBulkWriteBarrier(void* pMemStart, size_t cbMemSize)
     // Also if the size is smaller than a pointer, no write barrier is required.
     // This case can occur with universal shared generic code where the size
     // is not known at compile time.
-    if (pMemStart < g_lowest_address || (pMemStart >= g_highest_address) || (cbMemSize < sizeof(UIntNative)))
+    if (pMemStart < g_lowest_address || (pMemStart >= g_highest_address) || (cbMemSize < sizeof(uintptr_t)))
     {
         return;
     }
@@ -228,8 +228,8 @@ FORCEINLINE void InlinedBulkWriteBarrier(void* pMemStart, size_t cbMemSize)
     {
         // Compute the shadow heap address corresponding to the beginning of the range of heap addresses modified
         // and in the process range check it to make sure we have the shadow version allocated.
-        UIntNative* shadowSlot = (UIntNative*)(g_GCShadow + ((uint8_t*)pMemStart - g_lowest_address));
-        if (shadowSlot <= (UIntNative*)g_GCShadowEnd)
+        uintptr_t* shadowSlot = (uintptr_t*)(g_GCShadow + ((uint8_t*)pMemStart - g_lowest_address));
+        if (shadowSlot <= (uintptr_t*)g_GCShadowEnd)
         {
             // Iterate over every pointer sized slot in the range, copying data from the real heap to the shadow heap.
             // As we perform each copy we need to recheck the real heap contents with an ordered read to ensure we're
@@ -237,12 +237,12 @@ FORCEINLINE void InlinedBulkWriteBarrier(void* pMemStart, size_t cbMemSize)
             // slot using a special well-known value so that this location will not be tested during the next shadow
             // heap validation.
 
-            UIntNative* realSlot = (UIntNative*)pMemStart;
-            UIntNative slotCount = cbMemSize / sizeof(UIntNative);
+            uintptr_t* realSlot = (uintptr_t*)pMemStart;
+            uintptr_t slotCount = cbMemSize / sizeof(uintptr_t);
             do
             {
                 // Update shadow slot from real slot.
-                UIntNative realValue = *realSlot;
+                uintptr_t realValue = *realSlot;
                 *shadowSlot = realValue;
                 // Memory barrier to ensure the next read is ordered wrt to the shadow heap write we just made.
                 PalMemoryBarrier();

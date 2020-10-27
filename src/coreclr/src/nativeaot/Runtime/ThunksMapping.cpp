@@ -34,7 +34,7 @@ static_assert((THUNK_SIZE % 4) == 0, "Thunk stubs size not aligned correctly. Th
 //*****************************************************************************
 //  Encode a 16-bit immediate mov/movt in ARM Thumb2 Instruction (format T2_N)
 //*****************************************************************************
-void EncodeThumb2Mov16(UInt16 * pCode, UInt16 value, UInt8 rDestination, bool topWord)
+void EncodeThumb2Mov16(uint16_t * pCode, uint16_t value, uint8_t rDestination, bool topWord)
 {
     pCode[0] = ((topWord ? 0xf2c0 : 0xf240) |
         ((value >> 12) & 0x000f) |
@@ -47,10 +47,10 @@ void EncodeThumb2Mov16(UInt16 * pCode, UInt16 value, UInt8 rDestination, bool to
 //*****************************************************************************
 //  Encode a 32-bit immediate mov in ARM Thumb2 Instruction (format T2_N)
 //*****************************************************************************
-void EncodeThumb2Mov32(UInt16 * pCode, UInt32 value, UInt8 rDestination)
+void EncodeThumb2Mov32(uint16_t * pCode, uint32_t value, uint8_t rDestination)
 {
-    EncodeThumb2Mov16(pCode, (UInt16)(value & 0x0000ffff), rDestination, false);
-    EncodeThumb2Mov16(pCode + 2, (UInt16)(value >> 16), rDestination, true);
+    EncodeThumb2Mov16(pCode, (uint16_t)(value & 0x0000ffff), rDestination, false);
+    EncodeThumb2Mov16(pCode + 2, (uint16_t)(value >> 16), rDestination, true);
 }
 #endif
 
@@ -76,12 +76,12 @@ COOP_PINVOKE_HELPER(int, RhpGetThunkSize, ())
 
 COOP_PINVOKE_HELPER(void*, RhpGetThunkDataBlockAddress, (void* pThunkStubAddress))
 {
-    return (void*)(((UIntNative)pThunkStubAddress & ~(OS_PAGE_SIZE - 1)) + THUNKS_MAP_SIZE);
+    return (void*)(((uintptr_t)pThunkStubAddress & ~(OS_PAGE_SIZE - 1)) + THUNKS_MAP_SIZE);
 }
 
 COOP_PINVOKE_HELPER(void*, RhpGetThunkStubsBlockAddress, (void* pThunkDataAddress))
 {
-    return (void*)(((UIntNative)pThunkDataAddress & ~(OS_PAGE_SIZE - 1)) - THUNKS_MAP_SIZE);
+    return (void*)(((uintptr_t)pThunkDataAddress & ~(OS_PAGE_SIZE - 1)) - THUNKS_MAP_SIZE);
 }
 
 COOP_PINVOKE_HELPER(int, RhpGetThunkBlockSize, ())
@@ -98,7 +98,7 @@ EXTERN_C REDHAWK_API void* __cdecl RhAllocateThunksMapping()
         return NULL;
 
     void * pThunksSection = pNewMapping;
-    void * pDataSection = (UInt8*)pNewMapping + THUNKS_MAP_SIZE;
+    void * pDataSection = (uint8_t*)pNewMapping + THUNKS_MAP_SIZE;
 
 #else
 
@@ -112,7 +112,7 @@ EXTERN_C REDHAWK_API void* __cdecl RhAllocateThunksMapping()
         return NULL;
 
     void * pThunksSection = pNewMapping;
-    void * pDataSection = (UInt8*)pNewMapping + THUNKS_MAP_SIZE;
+    void * pDataSection = (uint8_t*)pNewMapping + THUNKS_MAP_SIZE;
 
     if (!PalVirtualProtect(pDataSection, THUNKS_MAP_SIZE, PAGE_READWRITE) ||
         !PalVirtualProtect(pThunksSection, THUNKS_MAP_SIZE, PAGE_EXECUTE_READWRITE))
@@ -128,27 +128,27 @@ EXTERN_C REDHAWK_API void* __cdecl RhAllocateThunksMapping()
 
     for (int m = 0; m < numBlocksPerMap; m++)
     {
-        UInt8* pDataBlockAddress = (UInt8*)pDataSection + m * OS_PAGE_SIZE;
-        UInt8* pThunkBlockAddress = (UInt8*)pThunksSection + m * OS_PAGE_SIZE;
+        uint8_t* pDataBlockAddress = (uint8_t*)pDataSection + m * OS_PAGE_SIZE;
+        uint8_t* pThunkBlockAddress = (uint8_t*)pThunksSection + m * OS_PAGE_SIZE;
 
         for (int i = 0; i < numThunksPerBlock; i++)
         {
-            UInt8* pCurrentThunkAddress = pThunkBlockAddress + THUNK_SIZE * i;
-            UInt8* pCurrentDataAddress = pDataBlockAddress + i * POINTER_SIZE * 2;
+            uint8_t* pCurrentThunkAddress = pThunkBlockAddress + THUNK_SIZE * i;
+            uint8_t* pCurrentDataAddress = pDataBlockAddress + i * POINTER_SIZE * 2;
 
 #ifdef TARGET_AMD64
 
             // mov r10,<thunk data address>
             // jmp [r10 + <delta to get to last qword in data page]
 
-            *((UInt16*)pCurrentThunkAddress) = 0xba49;
+            *((uint16_t*)pCurrentThunkAddress) = 0xba49;
             pCurrentThunkAddress += 2;
             *((void **)pCurrentThunkAddress) = (void *)pCurrentDataAddress;
             pCurrentThunkAddress += 8;
 
-            *((UInt32*)pCurrentThunkAddress) = 0x00a2ff41;
+            *((uint32_t*)pCurrentThunkAddress) = 0x00a2ff41;
             pCurrentThunkAddress += 3;
-            *((UInt32*)pCurrentThunkAddress) = OS_PAGE_SIZE - POINTER_SIZE - (i * POINTER_SIZE * 2);
+            *((uint32_t*)pCurrentThunkAddress) = OS_PAGE_SIZE - POINTER_SIZE - (i * POINTER_SIZE * 2);
             pCurrentThunkAddress += 4;
 
             // nops for alignment
@@ -165,9 +165,9 @@ EXTERN_C REDHAWK_API void* __cdecl RhAllocateThunksMapping()
             *((void **)pCurrentThunkAddress) = (void *)pCurrentDataAddress;
             pCurrentThunkAddress += 4;
 
-            *((UInt16*)pCurrentThunkAddress) = 0xa0ff;
+            *((uint16_t*)pCurrentThunkAddress) = 0xa0ff;
             pCurrentThunkAddress += 2;
-            *((UInt32*)pCurrentThunkAddress) = OS_PAGE_SIZE - POINTER_SIZE - (i * POINTER_SIZE * 2);
+            *((uint32_t*)pCurrentThunkAddress) = OS_PAGE_SIZE - POINTER_SIZE - (i * POINTER_SIZE * 2);
             pCurrentThunkAddress += 4;
 
             // nops for alignment
@@ -180,20 +180,20 @@ EXTERN_C REDHAWK_API void* __cdecl RhAllocateThunksMapping()
             // ldr r12,[r12, <delta to get to last dword in data page]
             // bx r12
 
-            EncodeThumb2Mov32((UInt16*)pCurrentThunkAddress, (UInt32)pCurrentDataAddress, 12);
+            EncodeThumb2Mov32((uint16_t*)pCurrentThunkAddress, (uint32_t)pCurrentDataAddress, 12);
             pCurrentThunkAddress += 8;
 
-            *((UInt32*)pCurrentThunkAddress) = 0xcc04f84d;
+            *((uint32_t*)pCurrentThunkAddress) = 0xcc04f84d;
             pCurrentThunkAddress += 4;
 
-            *((UInt32*)pCurrentThunkAddress) = 0xc000f8dc | ((OS_PAGE_SIZE - POINTER_SIZE - (i * POINTER_SIZE * 2)) << 16);
+            *((uint32_t*)pCurrentThunkAddress) = 0xc000f8dc | ((OS_PAGE_SIZE - POINTER_SIZE - (i * POINTER_SIZE * 2)) << 16);
             pCurrentThunkAddress += 4;
 
-            *((UInt16*)pCurrentThunkAddress) = 0x4760;
+            *((uint16_t*)pCurrentThunkAddress) = 0x4760;
             pCurrentThunkAddress += 2;
 
             // nops for alignment
-            *((UInt16*)pCurrentThunkAddress) = 0xbf00;
+            *((uint16_t*)pCurrentThunkAddress) = 0xbf00;
             pCurrentThunkAddress += 2;
 
 #elif TARGET_ARM64
@@ -204,16 +204,16 @@ EXTERN_C REDHAWK_API void* __cdecl RhAllocateThunksMapping()
             //brk      0xf000 //Stubs need to be 16 byte aligned therefore we fill with a break here
 
             int delta = pCurrentDataAddress - pCurrentThunkAddress;
-            *((UInt32*)pCurrentThunkAddress) = 0x10000010 | (((delta & 0x03) << 29) | (((delta & 0x1FFFFC) >> 2) << 5));
+            *((uint32_t*)pCurrentThunkAddress) = 0x10000010 | (((delta & 0x03) << 29) | (((delta & 0x1FFFFC) >> 2) << 5));
             pCurrentThunkAddress += 4;
 
-            *((UInt32*)pCurrentThunkAddress) = 0xF9400211 | (((OS_PAGE_SIZE - POINTER_SIZE - (i * POINTER_SIZE * 2)) / 8) << 10);
+            *((uint32_t*)pCurrentThunkAddress) = 0xF9400211 | (((OS_PAGE_SIZE - POINTER_SIZE - (i * POINTER_SIZE * 2)) / 8) << 10);
             pCurrentThunkAddress += 4;
 
-            *((UInt32*)pCurrentThunkAddress) = 0xD61F0220;
+            *((uint32_t*)pCurrentThunkAddress) = 0xD61F0220;
             pCurrentThunkAddress += 4;
 
-            *((UInt32*)pCurrentThunkAddress) = 0xD43E0000;
+            *((uint32_t*)pCurrentThunkAddress) = 0xD43E0000;
             pCurrentThunkAddress += 4;
 #else
             UNREFERENCED_PARAMETER(pCurrentDataAddress);
@@ -320,8 +320,8 @@ EXTERN_C REDHAWK_API void* __cdecl RhAllocateThunksMapping()
         // cannot reuse it here. Now we need to create a new mapping of the thunks section in order to have
         // more thunks
 
-        UInt8* pModuleBase = (UInt8*)PalGetModuleHandleFromPointer(pThunksTemplateAddress);
-        int templateRva = (int)((UInt8*)RhpGetThunksBase() - pModuleBase);
+        uint8_t* pModuleBase = (uint8_t*)PalGetModuleHandleFromPointer(pThunksTemplateAddress);
+        int templateRva = (int)((uint8_t*)RhpGetThunksBase() - pModuleBase);
 
         if (!PalAllocateThunksFromTemplate((HANDLE)pModuleBase, templateRva, templateSize, &pThunkMap))
             return NULL;

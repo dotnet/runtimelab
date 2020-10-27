@@ -83,9 +83,9 @@ namespace rh { namespace util
     //---------------------------------------------------------------------------------------------
     // Represents address range [a,b), and provides various convenience methods.
 
-    class MemRange : public Range<UInt8*, UIntNative>
+    class MemRange : public Range<uint8_t*, uintptr_t>
     {
-        typedef Range<UInt8*, UIntNative> BASE_T;
+        typedef Range<uint8_t*, uintptr_t> BASE_T;
 
     public:
         //-----------------------------------------------------------------------------------------
@@ -96,13 +96,13 @@ namespace rh { namespace util
             {}
 
         MemRange(void* pvMemStart,
-                 UIntNative cbMemLen)
-            : BASE_T(reinterpret_cast<UInt8*>(pvMemStart), reinterpret_cast<UInt8*>(pvMemStart) + cbMemLen)
+                 uintptr_t cbMemLen)
+            : BASE_T(reinterpret_cast<uint8_t*>(pvMemStart), reinterpret_cast<uint8_t*>(pvMemStart) + cbMemLen)
             {}
 
         MemRange(void* pvMemStart,
                  void* pvMemEnd)
-            : BASE_T(reinterpret_cast<UInt8*>(pvMemStart), reinterpret_cast<UInt8*>(pvMemEnd))
+            : BASE_T(reinterpret_cast<uint8_t*>(pvMemStart), reinterpret_cast<uint8_t*>(pvMemEnd))
             {}
 
         MemRange(MemRange const & range)
@@ -115,18 +115,18 @@ namespace rh { namespace util
         MemRange& operator=(MemRange const & range)
             { BASE_T::operator=(range); return *this; }
 
-        UIntNative GetPageCount() const
+        uintptr_t GetPageCount() const
         {
-            UInt8 *pCurPage = ALIGN_DOWN(GetStart(), OS_PAGE_SIZE);
-            UInt8 *pEndPage = ALIGN_UP(GetEnd(), OS_PAGE_SIZE);
+            uint8_t *pCurPage = ALIGN_DOWN(GetStart(), OS_PAGE_SIZE);
+            uint8_t *pEndPage = ALIGN_UP(GetEnd(), OS_PAGE_SIZE);
             return (pEndPage - pCurPage) / OS_PAGE_SIZE;
         }
 
-        UInt8* GetStartPage() const
+        uint8_t* GetStartPage() const
             { return ALIGN_DOWN(GetStart(), OS_PAGE_SIZE); }
 
         // The page immediately following the last page contained by this range.
-        UInt8* GetEndPage() const
+        uint8_t* GetEndPage() const
             { return ALIGN_UP(GetEnd(), OS_PAGE_SIZE); }
 
         MemRange GetPageRange() const

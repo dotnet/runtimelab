@@ -536,11 +536,11 @@
 #include "safemath.h"
 
 #if defined(TARGET_AMD64) || defined(TARGET_ARM64)
-typedef UInt64 UIntTarget;
+typedef uint64_t UIntTarget;
 #elif defined(TARGET_X86)
-typedef UInt32 UIntTarget;
+typedef uint32_t UIntTarget;
 #elif defined(TARGET_ARM)
-typedef UInt32 UIntTarget;
+typedef uint32_t UIntTarget;
 #else
 #error unexpected target architecture
 #endif
@@ -574,10 +574,10 @@ struct DacTableInfo
     // The remaining 3 DWORDS must all be 0.
     // On Mac, this is the 16-byte UUID of the runtime dll.
     // It is used to validate that mscorwks is the same version as mscordacwks
-    UInt32 dwID0;
-    UInt32 dwID1;
-    UInt32 dwID2;
-    UInt32 dwID3;
+    uint32_t dwID0;
+    uint32_t dwID1;
+    uint32_t dwID2;
+    uint32_t dwID3;
 };
 extern DacTableInfo g_dacTableInfo;
 
@@ -590,13 +590,13 @@ extern DacTableInfo g_dacTableInfo;
 typedef struct _DacGlobals
 {
 // These will define all of the dac related mscorwks static and global variables
-// TODO: update DacTableGen to parse "UInt32" instead of "ULONG32" for the ids
+// TODO: update DacTableGen to parse "uint32_t" instead of "ULONG32" for the ids
 #ifdef DAC_CLR_ENVIRONMENT
 #define DEFINE_DACVAR(id_type, size, id)                 id_type id;
 #define DEFINE_DACVAR_NO_DUMP(id_type, size, id)         id_type id;
 #else
-#define DEFINE_DACVAR(id_type, size, id)                 UInt32 id;
-#define DEFINE_DACVAR_NO_DUMP(id_type, size, id)         UInt32 id;
+#define DEFINE_DACVAR(id_type, size, id)                 uint32_t id;
+#define DEFINE_DACVAR_NO_DUMP(id_type, size, id)         uint32_t id;
 #endif
 #include "dacvars.h"
 #undef DEFINE_DACVAR_NO_DUMP
@@ -658,7 +658,7 @@ HRESULT DacFreeVirtual(TADDR mem, ULONG32 size, ULONG32 typeFlags,
    but rather the storage locations where registers were written.
       When the DAC runs the registers haven't been saved anywhere - there is no memory address
    that refers to them. It would be easy to store the registers in the debugger's memory space
-   but the Regdisplay is typed as PTR_UIntNative, not UIntNative*. We could change REGDISPLAY
+   but the Regdisplay is typed as PTR_UIntNative, not uintptr_t*. We could change REGDISPLAY
    to point at debugger local addresses, but then we would have the opposite problem, being unable
    to refer to stack addresses that are in the debuggee memory space. Options we could do:
    1) Add discriminant bits to REGDISPLAY fields to record whether the pointer is local or remote
@@ -685,20 +685,20 @@ HRESULT DacFreeVirtual(TADDR mem, ULONG32 size, ULONG32 typeFlags,
 
 // Sets the simulated debuggee memory region, or clears it if pSimulatedDebuggeeMemory = NULL
 // See large comment above for more details.
-void SetSimulatedDebuggeeMemory(void* pSimulatedDebuggeeMemory, UInt32 cbSimulatedDebuggeeMemory);
+void SetSimulatedDebuggeeMemory(void* pSimulatedDebuggeeMemory, uint32_t cbSimulatedDebuggeeMemory);
 
-void*    DacInstantiateTypeByAddress(TADDR addr, UInt32 size, bool throwEx);
-void*    DacInstantiateTypeByAddressNoReport(TADDR addr, UInt32 size, bool throwEx);
-void*    DacInstantiateClassByVTable(TADDR addr, UInt32 minSize, bool throwEx);
+void*    DacInstantiateTypeByAddress(TADDR addr, uint32_t size, bool throwEx);
+void*    DacInstantiateTypeByAddressNoReport(TADDR addr, uint32_t size, bool throwEx);
+void*    DacInstantiateClassByVTable(TADDR addr, uint32_t minSize, bool throwEx);
 
 // This method should not be used casually. Make sure simulatedTargetAddr does not cause collisions. See comment in dacfn.cpp for more details.
-void*    DacInstantiateTypeAtSimulatedAddress(TADDR simulatedTargetAddr, UInt32 size, void* pLocalBuffer, bool throwEx);
+void*    DacInstantiateTypeAtSimulatedAddress(TADDR simulatedTargetAddr, uint32_t size, void* pLocalBuffer, bool throwEx);
 
 // Copy a null-terminated ascii or unicode string from the target to the host.
 // Note that most of the work here is to find the null terminator.  If you know the exact length,
 // then you can also just call DacInstantiateTypebyAddress.
-char*    DacInstantiateStringA(TADDR addr, UInt32 maxChars, bool throwEx);
-wchar_t* DacInstantiateStringW(TADDR addr, UInt32 maxChars, bool throwEx);
+char*    DacInstantiateStringA(TADDR addr, uint32_t maxChars, bool throwEx);
+wchar_t* DacInstantiateStringW(TADDR addr, uint32_t maxChars, bool throwEx);
 
 TADDR    DacGetTargetAddrForHostAddr(const void* ptr, bool throwEx);
 TADDR    DacGetTargetAddrForHostInteriorAddr(const void* ptr, bool throwEx);
@@ -1058,7 +1058,7 @@ public:
     }
 #endif // !TARGET_UNIX // for now, everything else is 32 bit
 #if !defined(HOST_ARM) && !defined(HOST_X86)
-    DPtrType operator+(IntNative val)
+    DPtrType operator+(intptr_t val)
     {
         return DPtrType(m_addr + val * sizeof(type));
     }
@@ -1396,7 +1396,7 @@ public:
 #ifdef DAC_CLR_ENVIRONMENT
 template<typename type, ULONG32 maxChars = 32760>
 #else
-template<typename type, UInt32 maxChars = 32760>
+template<typename type, uint32_t maxChars = 32760>
 #endif
 class __Str8Ptr : public __DPtr<char>
 {
@@ -1453,7 +1453,7 @@ public:
 #ifdef DAC_CLR_ENVIRONMENT
 template<typename type, ULONG32 maxChars = 32760>
 #else
-template<typename type, UInt32 maxChars = 32760>
+template<typename type, uint32_t maxChars = 32760>
 #endif
 class __Str16Ptr : public __DPtr<wchar_t>
 {
@@ -1513,7 +1513,7 @@ public:
 #ifdef DAC_CLR_ENVIRONMENT
     __GlobalVal< type >(PULONG rvaPtr)
 #else
-    __GlobalVal< type >(UInt32* rvaPtr)
+    __GlobalVal< type >(uint32_t* rvaPtr)
 #endif
     {
         m_rvaPtr = rvaPtr;
@@ -1556,7 +1556,7 @@ private:
 #ifdef DAC_CLR_ENVIRONMENT
     PULONG m_rvaPtr;
 #else
-    UInt32* m_rvaPtr;
+    uint32_t* m_rvaPtr;
 #endif
 };
 
@@ -1567,7 +1567,7 @@ public:
 #ifdef DAC_CLR_ENVIRONMENT
     __GlobalArray< type, size >(PULONG rvaPtr)
 #else
-    __GlobalArray< type, size >(UInt32* rvaPtr)
+    __GlobalArray< type, size >(uint32_t* rvaPtr)
 #endif
     {
         m_rvaPtr = rvaPtr;
@@ -1597,7 +1597,7 @@ private:
 #ifdef DAC_CLR_ENVIRONMENT
     PULONG m_rvaPtr;
 #else
-    UInt32* m_rvaPtr;
+    uint32_t* m_rvaPtr;
 #endif
 };
 
@@ -1608,7 +1608,7 @@ public:
 #ifdef DAC_CLR_ENVIRONMENT
     __GlobalPtr< acc_type, store_type >(PULONG rvaPtr)
 #else
-    __GlobalPtr< acc_type, store_type >(UInt32* rvaPtr)
+    __GlobalPtr< acc_type, store_type >(uint32_t* rvaPtr)
 #endif
     {
         m_rvaPtr = rvaPtr;
@@ -1692,7 +1692,7 @@ public:
 #ifdef DAC_CLR_ENVIRONMENT
     PULONG m_rvaPtr;
 #else
-    UInt32* m_rvaPtr;
+    uint32_t* m_rvaPtr;
 #endif
 };
 
@@ -2146,7 +2146,7 @@ inline void DACCOP_IGNORE(DacCopWarningCode code, const char * szReasonString)
 // Declare TADDR as a non-pointer type so that arithmetic
 // can be done on it directly, as with the DACCESS_COMPILE definition.
 // This also helps expose pointer usage that may need to be changed.
-typedef UIntNative TADDR;
+typedef uintptr_t TADDR;
 
 typedef void* PTR_VOID;
 typedef void** PTR_PTR_VOID;
@@ -2320,21 +2320,21 @@ inline type* DacUnsafeMarshalSingleElement( ArrayDPTR(type) arrayPtr )
     return (DPTR(type))(arrayPtr);
 }
 
-typedef DPTR(Int8)          PTR_Int8;
-typedef DPTR(Int16)         PTR_Int16;
-typedef DPTR(Int32)         PTR_Int32;
-typedef DPTR(Int64)         PTR_Int64;
-typedef ArrayDPTR(UInt8)    PTR_UInt8;
+typedef DPTR(int8_t)          PTR_Int8;
+typedef DPTR(int16_t)         PTR_Int16;
+typedef DPTR(int32_t)         PTR_Int32;
+typedef DPTR(int64_t)         PTR_Int64;
+typedef ArrayDPTR(uint8_t)    PTR_UInt8;
 typedef DPTR(PTR_UInt8)     PTR_PTR_UInt8;
 typedef DPTR(PTR_PTR_UInt8) PTR_PTR_PTR_UInt8;
-typedef DPTR(UInt16)        PTR_UInt16;
-typedef DPTR(UInt32)        PTR_UInt32;
-typedef DPTR(UInt64)        PTR_UInt64;
-typedef DPTR(UIntNative)    PTR_UIntNative;
+typedef DPTR(uint16_t)        PTR_UInt16;
+typedef DPTR(uint32_t)        PTR_UInt32;
+typedef DPTR(uint64_t)        PTR_UInt64;
+typedef DPTR(uintptr_t)    PTR_UIntNative;
 
 typedef DPTR(size_t)  PTR_size_t;
 
-typedef UInt8               Code;
+typedef uint8_t               Code;
 typedef DPTR(Code)          PTR_Code;
 typedef DPTR(PTR_Code)      PTR_PTR_Code;
 

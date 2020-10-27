@@ -220,7 +220,7 @@ PTR_VOID Thread::GetThreadStressLog() const
 }
 
 #if defined(FEATURE_GC_STRESS) & !defined(DACCESS_COMPILE)
-void Thread::SetRandomSeed(UInt32 seed)
+void Thread::SetRandomSeed(uint32_t seed)
 {
     ASSERT(!IsStateSet(TSF_IsRandSeedSet));
     m_uRand = seed;
@@ -229,12 +229,12 @@ void Thread::SetRandomSeed(UInt32 seed)
 
 // Generates pseudo random numbers in the range [0, 2^31)
 // using only multiplication and addition
-UInt32 Thread::NextRand()
+uint32_t Thread::NextRand()
 {
     // Uses Carta's algorithm for Park-Miller's PRNG:
     // x_{k+1} = 16807 * x_{k} mod (2^31-1)
 
-    UInt32 hi,lo;
+    uint32_t hi,lo;
 
     // (high word of seed) * 16807 - at most 31 bits
     hi = 16807 * (m_uRand >> 16);
@@ -357,7 +357,7 @@ bool Thread::CatchAtSafePoint()
     return true;
 }
 
-UInt64 Thread::GetPalThreadIdForLogging()
+uint64_t Thread::GetPalThreadIdForLogging()
 {
     return m_uPalThreadIdForLogging;
 }
@@ -374,7 +374,7 @@ void Thread::Destroy()
 
     if (m_pDynamicTypesTlsCells != NULL)
     {
-        for (UInt32 i = 0; i < m_numDynamicTypesTlsCells; i++)
+        for (uint32_t i = 0; i < m_numDynamicTypesTlsCells; i++)
         {
             if (m_pDynamicTypesTlsCells[i] != NULL)
                 delete[] m_pDynamicTypesTlsCells[i];
@@ -384,7 +384,7 @@ void Thread::Destroy()
 
     if (m_pThreadLocalModuleStatics != NULL)
     {
-        for (UInt32 i = 0; i < m_numThreadLocalModuleStatics; i++)
+        for (uint32_t i = 0; i < m_numThreadLocalModuleStatics; i++)
         {
             if (m_pThreadLocalModuleStatics[i] != NULL)
             {
@@ -427,7 +427,7 @@ void Thread::GcScanRoots(void * pfnEnumCallback, void * pvCallbackData)
 
 #ifdef DACCESS_COMPILE
 // A trivial wrapper that unpacks the DacScanCallbackData and calls the callback provided to GcScanRoots
-void GcScanRootsCallbackWrapper(PTR_RtuObjectRef ppObject, DacScanCallbackData* callbackData, UInt32 flags)
+void GcScanRootsCallbackWrapper(PTR_RtuObjectRef ppObject, DacScanCallbackData* callbackData, uint32_t flags)
 {
     Thread::GcScanRootsCallbackFunc * pfnUserCallback = (Thread::GcScanRootsCallbackFunc *)callbackData->pfnUserCallback;
     pfnUserCallback(ppObject, callbackData->token, flags);
@@ -693,7 +693,7 @@ void Thread::HijackForGcStress(PAL_LIMITED_CONTEXT * pSuspendCtx)
 
     RuntimeInstance * pInstance = GetRuntimeInstance();
 
-    UIntNative ip = pSuspendCtx->GetIp();
+    uintptr_t ip = pSuspendCtx->GetIp();
 
     bool bForceGC = g_pRhConfig->GetGcStressThrottleMode() == 0;
     // we enable collecting statistics by callsite even for stochastic-only
@@ -832,7 +832,7 @@ bool Thread::DebugIsSuspended()
     ASSERT(ThreadStore::GetCurrentThread() != this);
 #if 0
     PalSuspendThread(m_hPalThread);
-    UInt32 suspendCount = PalResumeThread(m_hPalThread);
+    uint32_t suspendCount = PalResumeThread(m_hPalThread);
     return (suspendCount > 0);
 #else
     // @TODO: I don't trust the above implementation, so I want to implement this myself
@@ -903,7 +903,7 @@ void Thread::ClearState(ThreadStateFlags flags)
 
 bool Thread::IsStateSet(ThreadStateFlags flags)
 {
-    return ((m_ThreadStateFlags & flags) == (UInt32) flags);
+    return ((m_ThreadStateFlags & flags) == (uint32_t) flags);
 }
 
 bool Thread::IsSuppressGcStressSet()
@@ -952,7 +952,7 @@ EXTERN_C NOINLINE void FASTCALL RhpWaitForSuspend2()
 {
     // The wait operation below may trash the last win32 error. We save the error here so that it can be
     // restored after the wait operation;
-    Int32 lastErrorOnEntry = PalGetLastError();
+    int32_t lastErrorOnEntry = PalGetLastError();
 
     ThreadStore::GetCurrentThread()->WaitForSuspend();
 
@@ -971,7 +971,7 @@ EXTERN_C NOINLINE void FASTCALL RhpWaitForGC2(PInvokeTransitionFrame * pFrame)
 
     // The wait operation below may trash the last win32 error. We save the error here so that it can be
     // restored after the wait operation;
-    Int32 lastErrorOnEntry = PalGetLastError();
+    int32_t lastErrorOnEntry = PalGetLastError();
 
     pThread->WaitForGC(pFrame);
 
@@ -1071,16 +1071,16 @@ void Thread::ValidateExInfoStack()
 // Retrieve the start of the TLS storage block allocated for the given thread for a specific module identified
 // by the TLS slot index allocated to that module and the offset into the OS allocated block at which
 // Redhawk-specific data is stored.
-PTR_UInt8 Thread::GetThreadLocalStorage(UInt32 uTlsIndex, UInt32 uTlsStartOffset)
+PTR_UInt8 Thread::GetThreadLocalStorage(uint32_t uTlsIndex, uint32_t uTlsStartOffset)
 {
 #if 0
-    return (*(UInt8***)(m_pTEB + OFFSETOF__TEB__ThreadLocalStoragePointer))[uTlsIndex] + uTlsStartOffset;
+    return (*(uint8_t***)(m_pTEB + OFFSETOF__TEB__ThreadLocalStoragePointer))[uTlsIndex] + uTlsStartOffset;
 #else
     return (*dac_cast<PTR_PTR_PTR_UInt8>(dac_cast<TADDR>(m_pTEB) + OFFSETOF__TEB__ThreadLocalStoragePointer))[uTlsIndex] + uTlsStartOffset;
 #endif
 }
 
-PTR_UInt8 Thread::GetThreadLocalStorageForDynamicType(UInt32 uTlsTypeOffset)
+PTR_UInt8 Thread::GetThreadLocalStorageForDynamicType(uint32_t uTlsTypeOffset)
 {
     // Note: When called from GC root enumeration, no changes can be made by the AllocateThreadLocalStorageForDynamicType to
     // the 2 variables accessed here because AllocateThreadLocalStorageForDynamicType is called in cooperative mode.
@@ -1090,7 +1090,7 @@ PTR_UInt8 Thread::GetThreadLocalStorageForDynamicType(UInt32 uTlsTypeOffset)
 }
 
 #ifndef DACCESS_COMPILE
-PTR_UInt8 Thread::AllocateThreadLocalStorageForDynamicType(UInt32 uTlsTypeOffset, UInt32 tlsStorageSize, UInt32 numTlsCells)
+PTR_UInt8 Thread::AllocateThreadLocalStorageForDynamicType(uint32_t uTlsTypeOffset, uint32_t tlsStorageSize, uint32_t numTlsCells)
 {
     uTlsTypeOffset &= ~DYNAMIC_TYPE_TLS_OFFSET_FLAG;
 
@@ -1120,7 +1120,7 @@ PTR_UInt8 Thread::AllocateThreadLocalStorageForDynamicType(UInt32 uTlsTypeOffset
 
     if (m_pDynamicTypesTlsCells[uTlsTypeOffset] == NULL)
     {
-        UInt8* pTlsStorage = new (nothrow) UInt8[tlsStorageSize];
+        uint8_t* pTlsStorage = new (nothrow) uint8_t[tlsStorageSize];
         if (pTlsStorage == NULL)
             return NULL;
 
@@ -1134,7 +1134,7 @@ PTR_UInt8 Thread::AllocateThreadLocalStorageForDynamicType(UInt32 uTlsTypeOffset
 }
 
 #ifndef TARGET_UNIX
-EXTERN_C REDHAWK_API UInt32 __cdecl RhCompatibleReentrantWaitAny(UInt32_BOOL alertable, UInt32 timeout, UInt32 count, HANDLE* pHandles)
+EXTERN_C REDHAWK_API uint32_t __cdecl RhCompatibleReentrantWaitAny(UInt32_BOOL alertable, uint32_t timeout, uint32_t count, HANDLE* pHandles)
 {
     return PalCompatibleWaitAny(alertable, timeout, count, pHandles, /*allowReentrantWait:*/ TRUE);
 }
@@ -1297,7 +1297,7 @@ COOP_PINVOKE_HELPER(Object *, RhpGetThreadAbortException, ())
     return pCurThread->GetThreadAbortException();
 }
 
-Object* Thread::GetThreadStaticStorageForModule(UInt32 moduleIndex)
+Object* Thread::GetThreadStaticStorageForModule(uint32_t moduleIndex)
 {
     // Return a pointer to the TLS storage if it has already been
     // allocated for the specified module.
@@ -1313,12 +1313,12 @@ Object* Thread::GetThreadStaticStorageForModule(UInt32 moduleIndex)
     return NULL;
 }
 
-Boolean Thread::SetThreadStaticStorageForModule(Object * pStorage, UInt32 moduleIndex)
+Boolean Thread::SetThreadStaticStorageForModule(Object * pStorage, uint32_t moduleIndex)
 {
     // Grow thread local storage if needed.
     if (m_numThreadLocalModuleStatics <= moduleIndex)
     {
-        UInt32 newSize = moduleIndex + 1;
+        uint32_t newSize = moduleIndex + 1;
         if (newSize < moduleIndex)
         {
             return FALSE;
@@ -1359,30 +1359,30 @@ Boolean Thread::SetThreadStaticStorageForModule(Object * pStorage, UInt32 module
     return TRUE;
 }
 
-COOP_PINVOKE_HELPER(Object*, RhGetThreadStaticStorageForModule, (UInt32 moduleIndex))
+COOP_PINVOKE_HELPER(Object*, RhGetThreadStaticStorageForModule, (uint32_t moduleIndex))
 {
     Thread * pCurrentThread = ThreadStore::RawGetCurrentThread();
     return pCurrentThread->GetThreadStaticStorageForModule(moduleIndex);
 }
 
-COOP_PINVOKE_HELPER(Boolean, RhSetThreadStaticStorageForModule, (Array * pStorage, UInt32 moduleIndex))
+COOP_PINVOKE_HELPER(Boolean, RhSetThreadStaticStorageForModule, (Array * pStorage, uint32_t moduleIndex))
 {
     Thread * pCurrentThread = ThreadStore::RawGetCurrentThread();
     return pCurrentThread->SetThreadStaticStorageForModule((Object*)pStorage, moduleIndex);
 }
 
 // This is function is used to quickly query a value that can uniquely identify a thread
-COOP_PINVOKE_HELPER(UInt8*, RhCurrentNativeThreadId, ())
+COOP_PINVOKE_HELPER(uint8_t*, RhCurrentNativeThreadId, ())
 {
 #ifndef TARGET_UNIX
     return PalNtCurrentTeb();
 #else
-    return (UInt8*)ThreadStore::RawGetCurrentThread();
+    return (uint8_t*)ThreadStore::RawGetCurrentThread();
 #endif // TARGET_UNIX
 }
 
 // This function is used to get the OS thread identifier for the current thread.
-COOP_PINVOKE_HELPER(UInt64, RhCurrentOSThreadId, ())
+COOP_PINVOKE_HELPER(uint64_t, RhCurrentOSThreadId, ())
 {
     return PalGetCurrentThreadIdForLogging();
 }

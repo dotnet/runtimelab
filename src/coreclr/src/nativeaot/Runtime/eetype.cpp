@@ -141,7 +141,7 @@ bool EEType::Validate(bool assertOnFail /* default: true */)
 //-----------------------------------------------------------------------------------------------------------
 EEType::Kinds EEType::get_Kind()
 {
-	return (Kinds)(m_usFlags & (UInt16)EETypeKindMask);
+	return (Kinds)(m_usFlags & (uint16_t)EETypeKindMask);
 }
 
 //-----------------------------------------------------------------------------------------------------------

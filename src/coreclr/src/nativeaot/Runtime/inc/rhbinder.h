@@ -9,36 +9,36 @@
 class GcPollInfo
 {
 public:
-    static const UInt32 indirCellsPerBitmapBit  = 64 / POINTER_SIZE;    // one cache line per bit
+    static const uint32_t indirCellsPerBitmapBit  = 64 / POINTER_SIZE;    // one cache line per bit
 
-    static const UInt32 cbChunkCommonCode_X64   = 17;
-    static const UInt32 cbChunkCommonCode_X86   = 16;
-    static const UInt32 cbChunkCommonCode_ARM   = 32;
+    static const uint32_t cbChunkCommonCode_X64   = 17;
+    static const uint32_t cbChunkCommonCode_X86   = 16;
+    static const uint32_t cbChunkCommonCode_ARM   = 32;
 #ifdef TARGET_ARM
     // on ARM, the index of the indirection cell can be computed
     // from the pointer to the indirection cell left in R12,
     // thus we need only one entry point on ARM,
     // thus entries take no space, and you can have as many as you want
-    static const UInt32 cbEntry                 = 0;
-    static const UInt32 cbBundleCommonCode      = 0;
-    static const UInt32 entriesPerBundle        = 0x7fffffff;
-    static const UInt32 bundlesPerChunk         = 0x7fffffff;
-    static const UInt32 entriesPerChunk         = 0x7fffffff;
+    static const uint32_t cbEntry                 = 0;
+    static const uint32_t cbBundleCommonCode      = 0;
+    static const uint32_t entriesPerBundle        = 0x7fffffff;
+    static const uint32_t bundlesPerChunk         = 0x7fffffff;
+    static const uint32_t entriesPerChunk         = 0x7fffffff;
 #else
-    static const UInt32 cbEntry                 = 4;    // push imm8 / jmp rel8
-    static const UInt32 cbBundleCommonCode      = 5;    // jmp rel32
+    static const uint32_t cbEntry                 = 4;    // push imm8 / jmp rel8
+    static const uint32_t cbBundleCommonCode      = 5;    // jmp rel32
 
-    static const UInt32 entriesPerSubBundlePos  = 32;   // for the half with forward jumps
-    static const UInt32 entriesPerSubBundleNeg  = 30;   // for the half with negative jumps
-    static const UInt32 entriesPerBundle        = entriesPerSubBundlePos + entriesPerSubBundleNeg;
-    static const UInt32 bundlesPerChunk         = 4;
-    static const UInt32 entriesPerChunk         = bundlesPerChunk * entriesPerBundle;
+    static const uint32_t entriesPerSubBundlePos  = 32;   // for the half with forward jumps
+    static const uint32_t entriesPerSubBundleNeg  = 30;   // for the half with negative jumps
+    static const uint32_t entriesPerBundle        = entriesPerSubBundlePos + entriesPerSubBundleNeg;
+    static const uint32_t bundlesPerChunk         = 4;
+    static const uint32_t entriesPerChunk         = bundlesPerChunk * entriesPerBundle;
 #endif
 
-    static const UInt32 cbFullBundle            = cbBundleCommonCode +
+    static const uint32_t cbFullBundle            = cbBundleCommonCode +
                                                   (entriesPerBundle * cbEntry);
 
-    static UInt32 EntryIndexToStubOffset(UInt32 entryIndex)
+    static uint32_t EntryIndexToStubOffset(uint32_t entryIndex)
     {
 # if defined(TARGET_ARM)
         return EntryIndexToStubOffset(entryIndex, cbChunkCommonCode_ARM);
@@ -49,7 +49,7 @@ public:
 # endif
     }
 
-    static UInt32 EntryIndexToStubOffset(UInt32 entryIndex, UInt32 cbChunkCommonCode)
+    static uint32_t EntryIndexToStubOffset(uint32_t entryIndex, uint32_t cbChunkCommonCode)
     {
 # if defined(TARGET_ARM)
         UNREFERENCED_PARAMETER(entryIndex);
@@ -57,17 +57,17 @@ public:
 
         return 0;
 # else
-        UInt32 cbFullChunk              = cbChunkCommonCode +
+        uint32_t cbFullChunk              = cbChunkCommonCode +
                                           (bundlesPerChunk * cbBundleCommonCode) +
                                           (entriesPerChunk * cbEntry);
 
-        UInt32 numFullChunks             = entryIndex / entriesPerChunk;
-        UInt32 numEntriesInLastChunk     = entryIndex - (numFullChunks * entriesPerChunk);
+        uint32_t numFullChunks             = entryIndex / entriesPerChunk;
+        uint32_t numEntriesInLastChunk     = entryIndex - (numFullChunks * entriesPerChunk);
 
-        UInt32 numFullBundles            = numEntriesInLastChunk / entriesPerBundle;
-        UInt32 numEntriesInLastBundle    = numEntriesInLastChunk - (numFullBundles * entriesPerBundle);
+        uint32_t numFullBundles            = numEntriesInLastChunk / entriesPerBundle;
+        uint32_t numEntriesInLastBundle    = numEntriesInLastChunk - (numFullBundles * entriesPerBundle);
 
-        UInt32 offset                    = (numFullChunks * cbFullChunk) +
+        uint32_t offset                    = (numFullChunks * cbFullChunk) +
                                           cbChunkCommonCode +
                                           (numFullBundles * cbFullBundle) +
                                           (numEntriesInLastBundle * cbEntry);
@@ -84,20 +84,20 @@ struct StaticGcDesc
 {
     struct GCSeries
     {
-        UInt32 m_size;
-        UInt32 m_startOffset;
+        uint32_t m_size;
+        uint32_t m_startOffset;
     };
 
-    UInt32   m_numSeries;
+    uint32_t   m_numSeries;
     GCSeries m_series[1];
 
-    UInt32 GetSize()
+    uint32_t GetSize()
     {
-        return (UInt32)(offsetof(StaticGcDesc, m_series) + (m_numSeries * sizeof(GCSeries)));
+        return (uint32_t)(offsetof(StaticGcDesc, m_series) + (m_numSeries * sizeof(GCSeries)));
     }
 
 #ifdef DACCESS_COMPILE
-    static UInt32 DacSize(TADDR addr);
+    static uint32_t DacSize(TADDR addr);
 #endif
 };
 
@@ -119,10 +119,10 @@ struct DispatchCellInfo
 {
     DispatchCellType CellType;
     EEType *InterfaceType = nullptr;
-    UInt16 InterfaceSlot = 0;
-    UInt8 HasCache = 0;
-    UInt32 MetadataToken = 0;
-    UInt32 VTableOffset = 0;
+    uint16_t InterfaceSlot = 0;
+    uint8_t HasCache = 0;
+    uint32_t MetadataToken = 0;
+    uint32_t VTableOffset = 0;
 };
 
 struct InterfaceDispatchCacheHeader
@@ -137,13 +137,13 @@ private:
     };
 
 public:
-    void Initialize(EEType *pInterfaceType, UInt16 interfaceSlot, UInt32 metadataToken)
+    void Initialize(EEType *pInterfaceType, uint16_t interfaceSlot, uint32_t metadataToken)
     {
         if (pInterfaceType != nullptr)
         {
             ASSERT(metadataToken == 0);
             m_pInterfaceType = pInterfaceType;
-            m_slotIndexOrMetadataTokenEncoded = CH_TypeAndSlotIndex | (((UInt32)interfaceSlot) << CH_Shift);
+            m_slotIndexOrMetadataTokenEncoded = CH_TypeAndSlotIndex | (((uint32_t)interfaceSlot) << CH_Shift);
         }
         else
         {
@@ -178,7 +178,7 @@ public:
         if ((m_slotIndexOrMetadataTokenEncoded & CH_Mask) == CH_TypeAndSlotIndex)
         {
             cellInfo.InterfaceType = m_pInterfaceType;
-            cellInfo.InterfaceSlot = (UInt16)(m_slotIndexOrMetadataTokenEncoded >> CH_Shift);
+            cellInfo.InterfaceSlot = (uint16_t)(m_slotIndexOrMetadataTokenEncoded >> CH_Shift);
             cellInfo.CellType = DispatchCellType::InterfaceAndSlot;
         }
         else
@@ -192,7 +192,7 @@ public:
 
 private:
     EEType *    m_pInterfaceType;   // EEType of interface to dispatch on
-    UInt32      m_slotIndexOrMetadataTokenEncoded;
+    uint32_t      m_slotIndexOrMetadataTokenEncoded;
 };
 
 // One of these is allocated per interface call site. It holds the stub to call, data to pass to that stub
@@ -242,7 +242,7 @@ struct InterfaceDispatchCell
 
         if ((cachePointerValue < IDC_MaxVTableOffsetPlusOne) && ((cachePointerValue & IDC_CachePointerMask) == IDC_CachePointerPointsAtCache))
         {
-            cellInfo.VTableOffset = (UInt32)cachePointerValue;
+            cellInfo.VTableOffset = (uint32_t)cachePointerValue;
             cellInfo.CellType = DispatchCellType::VTableOffset;
             cellInfo.HasCache = 1;
             return cellInfo;
@@ -270,7 +270,7 @@ struct InterfaceDispatchCell
 
         if (cellType == DispatchCellType::InterfaceAndSlot)
         {
-            cellInfo.InterfaceSlot = (UInt16)cachePointerValueFlags;
+            cellInfo.InterfaceSlot = (uint16_t)cachePointerValueFlags;
 
             switch (cachePointerValue & IDC_CachePointerMask)
             {
@@ -281,7 +281,7 @@ struct InterfaceDispatchCell
             case IDC_CachePointerIsInterfaceRelativePointer:
             case IDC_CachePointerIsIndirectedInterfaceRelativePointer:
                 {
-                    UIntTarget interfacePointerValue = (UIntTarget)&m_pCache + (Int32)cachePointerValue;
+                    UIntTarget interfacePointerValue = (UIntTarget)&m_pCache + (int32_t)cachePointerValue;
                     interfacePointerValue &= ~IDC_CachePointerMask;
                     if ((cachePointerValue & IDC_CachePointerMask) == IDC_CachePointerIsInterfaceRelativePointer)
                     {
@@ -297,7 +297,7 @@ struct InterfaceDispatchCell
         }
         else
         {
-            cellInfo.MetadataToken = (UInt32)(cachePointerValue >> IDC_CachePointerMaskShift);
+            cellInfo.MetadataToken = (uint32_t)(cachePointerValue >> IDC_CachePointerMaskShift);
         }
 
         return cellInfo;
@@ -372,7 +372,7 @@ enum PInvokeTransitionFrameFlags
     PTFF_THREAD_ABORT   = 0x00010000,   // indicates that ThreadAbortException should be thrown when returning from the transition
 };
 #elif defined(TARGET_ARM64)
-enum PInvokeTransitionFrameFlags : UInt64
+enum PInvokeTransitionFrameFlags : uint64_t
 {
     // NOTE: Keep in sync with ndp\FxCore\CoreRT\src\Native\Runtime\arm64\AsmMacros.h
 
@@ -436,20 +436,20 @@ enum PInvokeTransitionFrameFlags : UInt64
 // TODO: Consider moving the PInvokeTransitionFrameFlags definition to a separate file to simplify header dependencies
 #ifdef ICODEMANAGER_INCLUDED
 // Verify that we can use bitwise shifts to convert from GCRefKind to PInvokeTransitionFrameFlags and back
-C_ASSERT(PTFF_X0_IS_GCREF == ((UInt64)GCRK_Object << 32));
-C_ASSERT(PTFF_X0_IS_BYREF == ((UInt64)GCRK_Byref << 32));
-C_ASSERT(PTFF_X1_IS_GCREF == ((UInt64)GCRK_Scalar_Obj << 32));
-C_ASSERT(PTFF_X1_IS_BYREF == ((UInt64)GCRK_Scalar_Byref << 32));
+C_ASSERT(PTFF_X0_IS_GCREF == ((uint64_t)GCRK_Object << 32));
+C_ASSERT(PTFF_X0_IS_BYREF == ((uint64_t)GCRK_Byref << 32));
+C_ASSERT(PTFF_X1_IS_GCREF == ((uint64_t)GCRK_Scalar_Obj << 32));
+C_ASSERT(PTFF_X1_IS_BYREF == ((uint64_t)GCRK_Scalar_Byref << 32));
 
-inline UInt64 ReturnKindToTransitionFrameFlags(GCRefKind returnKind)
+inline uint64_t ReturnKindToTransitionFrameFlags(GCRefKind returnKind)
 {
     if (returnKind == GCRK_Scalar)
         return 0;
 
-    return PTFF_SAVE_X0 | PTFF_SAVE_X1 | ((UInt64)returnKind << 32);
+    return PTFF_SAVE_X0 | PTFF_SAVE_X1 | ((uint64_t)returnKind << 32);
 }
 
-inline GCRefKind TransitionFrameFlagsToReturnKind(UInt64 transFrameFlags)
+inline GCRefKind TransitionFrameFlagsToReturnKind(uint64_t transFrameFlags)
 {
     GCRefKind returnKind = (GCRefKind)((transFrameFlags & (PTFF_X0_IS_GCREF | PTFF_X0_IS_BYREF | PTFF_X1_IS_GCREF | PTFF_X1_IS_BYREF)) >> 32);
     ASSERT((returnKind == GCRK_Scalar) || ((transFrameFlags & PTFF_SAVE_X0) && (transFrameFlags & PTFF_SAVE_X1)));
@@ -529,9 +529,9 @@ struct PInvokeTransitionFrame
     TgtPTR_Thread   m_pThread;  // unused by stack crawler, this is so GetThread is only called once per method
                                 // can be an invalid pointer in universal transition cases (which never need to call GetThread)
 #ifdef TARGET_ARM64
-    UInt64          m_Flags;  // PInvokeTransitionFrameFlags
+    uint64_t          m_Flags;  // PInvokeTransitionFrameFlags
 #else
-    UInt32          m_Flags;  // PInvokeTransitionFrameFlags
+    uint32_t          m_Flags;  // PInvokeTransitionFrameFlags
 #endif
     UIntTarget      m_PreservedRegs[];
 };
@@ -569,7 +569,7 @@ struct EETypeRef
     {
         EEType *    pEEType;
         EEType **   ppEEType;
-        UInt8 *     rawPtr;
+        uint8_t *     rawPtr;
         UIntTarget  rawTargetPtr; // x86_amd64: keeps union big enough for target-platform pointer
     };
 
@@ -590,10 +590,10 @@ struct EETypeRef
 // having the following header.
 struct BlobHeader
 {
-    UInt32 m_flags;  // Flags describing the blob (used by the binder only at the moment)
-    UInt32 m_id;     // Unique identifier of the blob (used to access the blob at runtime)
+    uint32_t m_flags;  // Flags describing the blob (used by the binder only at the moment)
+    uint32_t m_id;     // Unique identifier of the blob (used to access the blob at runtime)
                      // also used by BlobTypeFieldPreInit to identify (at bind time) which field to pre-init.
-    UInt32 m_size;   // Size of the individual blob excluding this header (DWORD aligned)
+    uint32_t m_size;   // Size of the individual blob excluding this header (DWORD aligned)
 };
 
 // Structure used in the runtime initialization of deferred static class constructors. Deferred here means
@@ -610,15 +610,15 @@ struct StaticClassConstructionContext
     // cctor state the runtime will call the classlibrary's CheckStaticClassConstruction with this context
     // structure unless initialized == 1. This check is specific to allow the classlibrary to store more
     // than a binary state for each cctor if it so desires.
-    Int32       m_initialized;
+    int32_t       m_initialized;
 };
 
 #ifdef FEATURE_CUSTOM_IMPORTS
 struct CustomImportDescriptor
 {
-    UInt32  RvaEATAddr;  // RVA of the indirection cell of the address of the EAT for that module
-    UInt32  RvaIAT;      // RVA of IAT array for that module
-    UInt32  CountIAT;    // Count of entries in the above array
+    uint32_t  RvaEATAddr;  // RVA of the indirection cell of the address of the EAT for that module
+    uint32_t  RvaIAT;      // RVA of IAT array for that module
+    uint32_t  CountIAT;    // Count of entries in the above array
 };
 #endif // FEATURE_CUSTOM_IMPORTS
 
@@ -651,14 +651,14 @@ enum RhEHClauseKind
 // for large modules with > 16 MB of code
 struct SubSectionDesc
 {
-    UInt32          hotMethodCount;
-    UInt32          coldMethodCount;
+    uint32_t          hotMethodCount;
+    uint32_t          coldMethodCount;
 };
 
 // this is the structure describing the cold to hot mapping info
 struct ColdToHotMapping
 {
-    UInt32          subSectionCount;
+    uint32_t          subSectionCount;
     SubSectionDesc  subSection[/*subSectionCount*/1];
     //  UINT32   hotRVAofColdMethod[/*coldMethodCount*/];
 };

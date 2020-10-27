@@ -37,7 +37,7 @@ extern "C" void __cdecl ProcessFinalizers();
 // successfully (in particular module initialization code has not run for RedhawkM). Instead this method waits
 // for the first finalization request (by which time everything must be up and running) and kicks off the
 // managed portion of the thread at that point.
-UInt32 WINAPI FinalizerStart(void* pContext)
+uint32_t WINAPI FinalizerStart(void* pContext)
 {
     HANDLE hFinalizerEvent = (HANDLE)pContext;
 
@@ -54,7 +54,7 @@ UInt32 WINAPI FinalizerStart(void* pContext)
     EnsureYieldProcessorNormalizedInitialized();
 
     // Wait for a finalization request.
-    UInt32 uResult = PalWaitForSingleObjectEx(hFinalizerEvent, INFINITE, FALSE);
+    uint32_t uResult = PalWaitForSingleObjectEx(hFinalizerEvent, INFINITE, FALSE);
     ASSERT(uResult == WAIT_OBJECT_0);
 
     // Since we just consumed the request (and the event is auto-reset) we must set the event again so the
@@ -82,7 +82,7 @@ bool RhStartFinalizerThread()
     // successfully created the finalizer thread yet, and also as a sort of lock to make sure two threads don't try
     // to create the finalizer thread at the same time.
     //
-    static volatile Int32 fFinalizerThreadCreated;
+    static volatile int32_t fFinalizerThreadCreated;
 
     if (Interlocked::Exchange(&fFinalizerThreadCreated, 1) != 1)
     {
@@ -192,12 +192,12 @@ EXTERN_C REDHAWK_API UInt32_BOOL __cdecl RhpWaitForFinalizerRequest()
 #if 0 // TODO: hook up low memory notification
         lowMemEvent = pHeap->GetLowMemoryNotificationEvent();
         HANDLE  rgWaitHandles[] = { g_FinalizerEvent.GetOSEvent(), lowMemEvent };
-        UInt32  cWaitHandles = (fLastEventWasLowMemory || (lowMemEvent == NULL)) ? 1 : 2;
-        UInt32  uTimeout = fLastEventWasLowMemory ? 2000 : INFINITE;
+        uint32_t  cWaitHandles = (fLastEventWasLowMemory || (lowMemEvent == NULL)) ? 1 : 2;
+        uint32_t  uTimeout = fLastEventWasLowMemory ? 2000 : INFINITE;
 
-        UInt32 uResult = PalWaitForMultipleObjectsEx(cWaitHandles, rgWaitHandles, FALSE, uTimeout, FALSE);
+        uint32_t uResult = PalWaitForMultipleObjectsEx(cWaitHandles, rgWaitHandles, FALSE, uTimeout, FALSE);
 #else
-        UInt32 uResult = PalWaitForSingleObjectEx(g_FinalizerEvent.GetOSEvent(), INFINITE, FALSE);
+        uint32_t uResult = PalWaitForSingleObjectEx(g_FinalizerEvent.GetOSEvent(), INFINITE, FALSE);
 #endif
 
         switch (uResult)

@@ -5,7 +5,7 @@
 
 
 enum HijackType { htLoop, htCallsite };
-bool ShouldHijackForGcStress(UIntNative CallsiteIP, HijackType ht);
+bool ShouldHijackForGcStress(uintptr_t CallsiteIP, HijackType ht);
 
 
 enum GcStressThrottleMode {
@@ -16,9 +16,9 @@ enum GcStressThrottleMode {
 
 struct CallsiteCountEntry
 {
-    UIntNative callsiteIP;
-    UIntNative countHit;
-    UIntNative countForced;
+    uintptr_t callsiteIP;
+    uintptr_t countHit;
+    uintptr_t countForced;
     HijackType ht;
 };
 
@@ -27,14 +27,14 @@ typedef DPTR(CallsiteCountEntry) PTR_CallsiteCountEntry;
 class CallsiteCountTraits: public NoRemoveSHashTraits< DefaultSHashTraits < CallsiteCountEntry > >
 {
 public:
-    typedef UIntNative key_t;
+    typedef uintptr_t key_t;
 
-    static UIntNative GetKey(const CallsiteCountEntry & e) { return e.callsiteIP; }
+    static uintptr_t GetKey(const CallsiteCountEntry & e) { return e.callsiteIP; }
 
-    static count_t Hash(UIntNative k)
+    static count_t Hash(uintptr_t k)
     { return (count_t) k; }
 
-    static bool Equals(UIntNative k1, UIntNative k2)
+    static bool Equals(uintptr_t k1, uintptr_t k2)
     { return k1 == k2; }
 
     static CallsiteCountEntry Null()

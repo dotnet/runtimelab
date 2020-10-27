@@ -21,7 +21,7 @@
 // field.
 /*static*/ OptionalFieldTag OptionalFields::DecodeFieldTag(PTR_UInt8 * ppFields, bool *pfLastField)
 {
-    UInt8 tagByte;
+    uint8_t tagByte;
     tagByte = **ppFields;
 
     // The last field has the most significant bit of the byte set.
@@ -38,13 +38,13 @@
 
 // Reads a field value (or the basis for an out-of-line record delta) starting from the first byte after the
 // field header. Advances the field location to the start of the next field.
-UInt32 OptionalFields::DecodeFieldValue(PTR_UInt8 * ppFields)
+uint32_t OptionalFields::DecodeFieldValue(PTR_UInt8 * ppFields)
 {
     // VarInt is used to encode the field value (and updates the field pointer in doing so).
     return VarInt::ReadUnsigned(*ppFields);
 }
 
-/*static*/ UInt32 OptionalFields::GetInlineField(OptionalFieldTag eTag, UInt32 uiDefaultValue)
+/*static*/ uint32_t OptionalFields::GetInlineField(OptionalFieldTag eTag, uint32_t uiDefaultValue)
 {
     // Point at start of encoding stream.
     PTR_UInt8 pFields = dac_cast<PTR_UInt8>(this);
@@ -56,7 +56,7 @@ UInt32 OptionalFields::DecodeFieldValue(PTR_UInt8 * ppFields)
         // the next field).
         bool fLastField;
         OptionalFieldTag eCurrentTag = DecodeFieldTag(&pFields, &fLastField);
-        UInt32 uiCurrentValue = DecodeFieldValue(&pFields);
+        uint32_t uiCurrentValue = DecodeFieldValue(&pFields);
 
         // If we found a tag match return the current value.
         if (eCurrentTag == eTag)

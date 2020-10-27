@@ -22,7 +22,7 @@
 #include "TypeManager.h"
 
 /* static */
-TypeManager * TypeManager::Create(HANDLE osModule, void * pModuleHeader, void** pClasslibFunctions, UInt32 nClasslibFunctions)
+TypeManager * TypeManager::Create(HANDLE osModule, void * pModuleHeader, void** pClasslibFunctions, uint32_t nClasslibFunctions)
 {
     ReadyToRunHeader * pReadyToRunHeader = (ReadyToRunHeader *)pModuleHeader;
 
@@ -39,17 +39,17 @@ TypeManager * TypeManager::Create(HANDLE osModule, void * pModuleHeader, void** 
     return new (nothrow) TypeManager(osModule, pReadyToRunHeader, pClasslibFunctions, nClasslibFunctions);
 }
 
-TypeManager::TypeManager(HANDLE osModule, ReadyToRunHeader * pHeader, void** pClasslibFunctions, UInt32 nClasslibFunctions)
+TypeManager::TypeManager(HANDLE osModule, ReadyToRunHeader * pHeader, void** pClasslibFunctions, uint32_t nClasslibFunctions)
     : m_osModule(osModule), m_pHeader(pHeader),
       m_pClasslibFunctions(pClasslibFunctions), m_nClasslibFunctions(nClasslibFunctions)
 {
     int length;
-    m_pStaticsGCDataSection = (UInt8*)GetModuleSection(ReadyToRunSectionType::GCStaticRegion, &length);
+    m_pStaticsGCDataSection = (uint8_t*)GetModuleSection(ReadyToRunSectionType::GCStaticRegion, &length);
     m_pStaticsGCInfo = (StaticGcDesc*)GetModuleSection(ReadyToRunSectionType::GCStaticDesc, &length);
-    m_pThreadStaticsDataSection = (UInt8*)GetModuleSection(ReadyToRunSectionType::ThreadStaticRegion, &length);
+    m_pThreadStaticsDataSection = (uint8_t*)GetModuleSection(ReadyToRunSectionType::ThreadStaticRegion, &length);
     m_pThreadStaticsGCInfo = (StaticGcDesc*)GetModuleSection(ReadyToRunSectionType::ThreadStaticGCDescRegion, &length);
-    m_pTlsIndex = (UInt32*)GetModuleSection(ReadyToRunSectionType::ThreadStaticIndex, &length);
-    m_pLoopHijackFlag = (UInt32*)GetModuleSection(ReadyToRunSectionType::LoopHijackFlag, &length);
+    m_pTlsIndex = (uint32_t*)GetModuleSection(ReadyToRunSectionType::ThreadStaticIndex, &length);
+    m_pLoopHijackFlag = (uint32_t*)GetModuleSection(ReadyToRunSectionType::LoopHijackFlag, &length);
     m_pDispatchMapTable = (DispatchMap **)GetModuleSection(ReadyToRunSectionType::InterfaceDispatchTable, &length);
 }
 
@@ -93,7 +93,7 @@ int TypeManager::ModuleInfoRow::GetLength()
 {
     if (HasEndPointer())
     {
-        return (int)((UInt8*)End - (UInt8*)Start);
+        return (int)((uint8_t*)End - (uint8_t*)Start);
     }
     else
     {
@@ -106,34 +106,34 @@ void TypeManager::EnumStaticGCRefsBlock(void * pfnCallback, void * pvCallbackDat
     if (pStaticGcInfo == NULL)
         return;
 
-    for (UInt32 idxSeries = 0; idxSeries < pStaticGcInfo->m_numSeries; idxSeries++)
+    for (uint32_t idxSeries = 0; idxSeries < pStaticGcInfo->m_numSeries; idxSeries++)
     {
         PTR_StaticGcDescGCSeries pSeries = dac_cast<PTR_StaticGcDescGCSeries>(dac_cast<TADDR>(pStaticGcInfo) +
             offsetof(StaticGcDesc, m_series) + (idxSeries * sizeof(StaticGcDesc::GCSeries)));
 
         // The m_startOffset field is really 32-bit relocation (IMAGE_REL_BASED_RELPTR32) to the GC static base of the type
         // the GCSeries is describing for. This makes it tolerable to the symbol sorting that the linker conducts.
-        PTR_RtuObjectRef    pRefLocation = dac_cast<PTR_RtuObjectRef>(dac_cast<PTR_UInt8>(&pSeries->m_startOffset) + (Int32)pSeries->m_startOffset);
-        UInt32              numObjects = pSeries->m_size;
+        PTR_RtuObjectRef    pRefLocation = dac_cast<PTR_RtuObjectRef>(dac_cast<PTR_UInt8>(&pSeries->m_startOffset) + (int32_t)pSeries->m_startOffset);
+        uint32_t              numObjects = pSeries->m_size;
 
         RedhawkGCInterface::BulkEnumGcObjRef(pRefLocation, numObjects, pfnCallback, pvCallbackData);
     }
 }
 
-void TypeManager::EnumThreadStaticGCRefsBlock(void * pfnCallback, void * pvCallbackData, StaticGcDesc* pStaticGcInfo, UInt8* pbThreadStaticData)
+void TypeManager::EnumThreadStaticGCRefsBlock(void * pfnCallback, void * pvCallbackData, StaticGcDesc* pStaticGcInfo, uint8_t* pbThreadStaticData)
 {
     if (pStaticGcInfo == NULL)
         return;
 
-    for (UInt32 idxSeries = 0; idxSeries < pStaticGcInfo->m_numSeries; idxSeries++)
+    for (uint32_t idxSeries = 0; idxSeries < pStaticGcInfo->m_numSeries; idxSeries++)
     {
         PTR_StaticGcDescGCSeries pSeries = dac_cast<PTR_StaticGcDescGCSeries>(dac_cast<TADDR>(pStaticGcInfo) +
             offsetof(StaticGcDesc, m_series) + (idxSeries * sizeof(StaticGcDesc::GCSeries)));
 
         // The m_startOffset field is really a 32-bit relocation (IMAGE_REL_SECREL) to the TLS section.
-        UInt8* pTlsObject = pbThreadStaticData + pSeries->m_startOffset;
+        uint8_t* pTlsObject = pbThreadStaticData + pSeries->m_startOffset;
         PTR_RtuObjectRef    pRefLocation = dac_cast<PTR_RtuObjectRef>(pTlsObject);
-        UInt32              numObjects = pSeries->m_size;
+        uint32_t              numObjects = pSeries->m_size;
 
         RedhawkGCInterface::BulkEnumGcObjRef(pRefLocation, numObjects, pfnCallback, pvCallbackData);
     }
@@ -154,7 +154,7 @@ void TypeManager::EnumStaticGCRefs(void * pfnCallback, void * pvCallbackData)
             //     value in the module header.
             //  2) The offset into the TLS block at which managed data begins.
             EnumThreadStaticGCRefsBlock(pfnCallback, pvCallbackData, m_pThreadStaticsGCInfo,
-                dac_cast<UInt8*>(pThread->GetThreadLocalStorage(*m_pTlsIndex, 0)));
+                dac_cast<uint8_t*>(pThread->GetThreadLocalStorage(*m_pTlsIndex, 0)));
         }
         END_FOREACH_THREAD
     }

@@ -104,7 +104,7 @@ using std::nullptr_t;
     } \
     while(0)
 
-#define INVALID_HANDLE_VALUE    ((HANDLE)(IntNative)-1)
+#define INVALID_HANDLE_VALUE    ((HANDLE)(intptr_t)-1)
 
 #define PAGE_NOACCESS           0x01
 #define PAGE_READWRITE          0x04
@@ -127,11 +127,11 @@ static const int tccMilliSecondsToNanoSeconds = 1000000;
 static const int tccMicroSecondsToNanoSeconds = 1000;
 
 static uint32_t g_dwPALCapabilities;
-static UInt32 g_cNumProcs = 0;
+static uint32_t g_cNumProcs = 0;
 
 bool QueryLogicalProcessorCount();
 
-extern "C" void RaiseFailFastException(PEXCEPTION_RECORD arg1, PCONTEXT arg2, UInt32 arg3)
+extern "C" void RaiseFailFastException(PEXCEPTION_RECORD arg1, PCONTEXT arg2, uint32_t arg3)
 {
     // Abort aborts the process and causes creation of a crash dump
     abort();
@@ -581,7 +581,7 @@ REDHAWK_PALEXPORT HANDLE REDHAWK_PALAPI PalCreateEventW(_In_opt_ LPSECURITY_ATTR
     return handle;
 }
 
-typedef UInt32(__stdcall *BackgroundCallback)(_In_opt_ void* pCallbackContext);
+typedef uint32_t(__stdcall *BackgroundCallback)(_In_opt_ void* pCallbackContext);
 
 REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalStartBackgroundWork(_In_ BackgroundCallback callback, _In_opt_ void* pCallbackContext, UInt32_BOOL highPriority)
 {
@@ -641,9 +641,9 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalStartFinalizerThread(_In_ BackgroundCal
 // to return monotonically increasing counts and avoid being affected by changes
 // to the system clock (either due to drift or due to explicit changes to system
 // time).
-REDHAWK_PALEXPORT UInt64 REDHAWK_PALAPI PalGetTickCount64()
+REDHAWK_PALEXPORT uint64_t REDHAWK_PALAPI PalGetTickCount64()
 {
-    UInt64 retval = 0;
+    uint64_t retval = 0;
 
 #if HAVE_CLOCK_GETTIME_NSEC_NP
     {
@@ -863,9 +863,9 @@ extern "C" UInt32_BOOL DuplicateHandle(
     HANDLE hSourceHandle,
     HANDLE hTargetProcessHandle,
     HANDLE * lpTargetHandle,
-    UInt32 dwDesiredAccess,
+    uint32_t dwDesiredAccess,
     UInt32_BOOL bInheritHandle,
-    UInt32 dwOptions)
+    uint32_t dwOptions)
 {
     // We can only duplicate the current thread handle. That is all that the MRT uses.
     ASSERT(hSourceProcessHandle == GetCurrentProcess());
@@ -881,7 +881,7 @@ extern "C" UInt32_BOOL InitializeCriticalSection(CRITICAL_SECTION * lpCriticalSe
     return pthread_mutex_init(&lpCriticalSection->mutex, NULL) == 0;
 }
 
-extern "C" UInt32_BOOL InitializeCriticalSectionEx(CRITICAL_SECTION * lpCriticalSection, UInt32 arg2, UInt32 arg3)
+extern "C" UInt32_BOOL InitializeCriticalSectionEx(CRITICAL_SECTION * lpCriticalSection, uint32_t arg2, uint32_t arg3)
 {
     return InitializeCriticalSection(lpCriticalSection);
 }
@@ -913,7 +913,7 @@ extern "C" UInt32_BOOL IsDebuggerPresent()
 #endif
 }
 
-extern "C" void TerminateProcess(HANDLE arg1, UInt32 arg2)
+extern "C" void TerminateProcess(HANDLE arg1, uint32_t arg2)
 {
     // TODO: change it to TerminateCurrentProcess
     // Then if we modified the signature of the DuplicateHandle too, we can
@@ -937,7 +937,7 @@ extern "C" UInt32_BOOL ResetEvent(HANDLE event)
     return UInt32_TRUE;
 }
 
-extern "C" UInt32 GetEnvironmentVariableA(const char * name, char * buffer, UInt32 size)
+extern "C" uint32_t GetEnvironmentVariableA(const char * name, char * buffer, uint32_t size)
 {
     // Using std::getenv instead of getenv since it is guaranteed to be thread safe w.r.t. other
     // std::getenv calls in C++11
@@ -955,25 +955,25 @@ extern "C" UInt32 GetEnvironmentVariableA(const char * name, char * buffer, UInt
         return valueLen;
     }
 
-    // return required size including the null character or 0 if the size doesn't fit into UInt32
+    // return required size including the null character or 0 if the size doesn't fit into uint32_t
     return (valueLen < UINT32_MAX) ? (valueLen + 1) : 0;
 }
 
-extern "C" UInt16 RtlCaptureStackBackTrace(UInt32 arg1, UInt32 arg2, void* arg3, UInt32* arg4)
+extern "C" uint16_t RtlCaptureStackBackTrace(uint32_t arg1, uint32_t arg2, void* arg3, uint32_t* arg4)
 {
     // UNIXTODO: Implement this function
     return 0;
 }
 
-typedef UInt32 (__stdcall *HijackCallback)(HANDLE hThread, _In_ PAL_LIMITED_CONTEXT* pThreadContext, _In_opt_ void* pCallbackContext);
+typedef uint32_t (__stdcall *HijackCallback)(HANDLE hThread, _In_ PAL_LIMITED_CONTEXT* pThreadContext, _In_opt_ void* pCallbackContext);
 
-REDHAWK_PALEXPORT UInt32 REDHAWK_PALAPI PalHijack(HANDLE hThread, _In_ HijackCallback callback, _In_opt_ void* pCallbackContext)
+REDHAWK_PALEXPORT uint32_t REDHAWK_PALAPI PalHijack(HANDLE hThread, _In_ HijackCallback callback, _In_opt_ void* pCallbackContext)
 {
     // UNIXTODO: Implement PalHijack
     return E_FAIL;
 }
 
-extern "C" UInt32 WaitForSingleObjectEx(HANDLE handle, UInt32 milliseconds, UInt32_BOOL alertable)
+extern "C" uint32_t WaitForSingleObjectEx(HANDLE handle, uint32_t milliseconds, UInt32_BOOL alertable)
 {
     // The handle can only represent an event here
     // TODO: encapsulate this stuff
@@ -1006,12 +1006,12 @@ extern "C" void _mm_pause()
 }
 #endif
 
-extern "C" Int32 _stricmp(const char *string1, const char *string2)
+extern "C" int32_t _stricmp(const char *string1, const char *string2)
 {
     return strcasecmp(string1, string2);
 }
 
-REDHAWK_PALEXPORT Int32 PalGetProcessCpuCount()
+REDHAWK_PALEXPORT int32_t PalGetProcessCpuCount()
 {
     return g_cNumProcs;
 }
@@ -1019,7 +1019,7 @@ REDHAWK_PALEXPORT Int32 PalGetProcessCpuCount()
 //Reads the entire contents of the file into the specified buffer, buff
 //returns the number of bytes read if the file is successfully read
 //returns 0 if the file is not found, size is greater than maxBytesToRead or the file couldn't be opened or read
-REDHAWK_PALEXPORT UInt32 PalReadFileContents(_In_z_ const TCHAR* fileName, _Out_writes_all_(maxBytesToRead) char* buff, _In_ UInt32 maxBytesToRead)
+REDHAWK_PALEXPORT uint32_t PalReadFileContents(_In_z_ const TCHAR* fileName, _Out_writes_all_(maxBytesToRead) char* buff, _In_ uint32_t maxBytesToRead)
 {
     int fd = open(fileName, O_RDONLY);
     if (fd < 0)
@@ -1028,7 +1028,7 @@ REDHAWK_PALEXPORT UInt32 PalReadFileContents(_In_z_ const TCHAR* fileName, _Out_
     }
 
 
-    UInt32 bytesRead = 0;
+    uint32_t bytesRead = 0;
     struct stat fileStats;
     if ((fstat(fd, &fileStats) == 0) && (fileStats.st_size <= maxBytesToRead))
     {
@@ -1094,7 +1094,7 @@ REDHAWK_PALEXPORT bool PalGetMaximumStackBounds(_Out_ void** ppStackLowOut, _Out
 //
 // Return value:  number of characters in name string
 //
-REDHAWK_PALEXPORT Int32 PalGetModuleFileName(_Out_ const TCHAR** pModuleNameOut, HANDLE moduleBase)
+REDHAWK_PALEXPORT int32_t PalGetModuleFileName(_Out_ const TCHAR** pModuleNameOut, HANDLE moduleBase)
 {
 #if defined(HOST_WASM)
     // Emscripten's implementation of dladdr corrupts memory and doesn't have the real name, so make up a name instead
@@ -1191,7 +1191,7 @@ extern "C" UInt32_BOOL QueryPerformanceFrequency(LARGE_INTEGER *lpFrequency)
     return UInt32_TRUE;
 }
 
-extern "C" UInt64 PalGetCurrentThreadIdForLogging()
+extern "C" uint64_t PalGetCurrentThreadIdForLogging()
 {
 #if defined(__linux__)
     return (uint64_t)syscall(SYS_gettid);

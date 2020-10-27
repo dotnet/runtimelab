@@ -19,16 +19,16 @@ class AllocHeap
 
 #ifdef FEATURE_RWX_MEMORY
     // If pAccessMgr is non-NULL, it will be used to manage R/W access to the memory allocated.
-    AllocHeap(UInt32 rwProtectType = PAGE_READWRITE,
-              UInt32 roProtectType = 0, // 0 indicates "same as rwProtectType"
+    AllocHeap(uint32_t rwProtectType = PAGE_READWRITE,
+              uint32_t roProtectType = 0, // 0 indicates "same as rwProtectType"
               rh::util::MemAccessMgr* pAccessMgr = NULL);
 #endif // FEATURE_RWX_MEMORY
 
     bool Init();
 
-    bool Init(UInt8 *    pbInitialMem,
-              UIntNative cbInitialMemCommit,
-              UIntNative cbInitialMemReserve,
+    bool Init(uint8_t *    pbInitialMem,
+              uintptr_t cbInitialMemCommit,
+              uintptr_t cbInitialMemReserve,
               bool       fShouldFreeInitialMem);
 
     ~AllocHeap();
@@ -36,45 +36,45 @@ class AllocHeap
     // If AllocHeap was created with a MemAccessMgr, pRWAccessHolder must be non-NULL.
     // On return, the holder will permit R/W access to the allocated memory until it
     // is destructed.
-    UInt8 * Alloc(UIntNative cbMem WRITE_ACCESS_HOLDER_ARG_NULL_DEFAULT);
+    uint8_t * Alloc(uintptr_t cbMem WRITE_ACCESS_HOLDER_ARG_NULL_DEFAULT);
 
     // If AllocHeap was created with a MemAccessMgr, pRWAccessHolder must be non-NULL.
     // On return, the holder will permit R/W access to the allocated memory until it
     // is destructed.
-    UInt8 * AllocAligned(UIntNative cbMem,
-                         UIntNative alignment
+    uint8_t * AllocAligned(uintptr_t cbMem,
+                         uintptr_t alignment
                          WRITE_ACCESS_HOLDER_ARG_NULL_DEFAULT);
 
     // Returns true if this AllocHeap owns the memory range [pvMem, pvMem+cbMem)
     bool Contains(void * pvMem,
-                  UIntNative cbMem);
+                  uintptr_t cbMem);
 
 #ifdef FEATURE_RWX_MEMORY
     // Used with previously-allocated memory for which RW access is needed again.
     // Returns true on success. R/W access will be granted until the holder is
     // destructed.
     bool AcquireWriteAccess(void* pvMem,
-                            UIntNative cbMem,
+                            uintptr_t cbMem,
                             rh::util::WriteAccessHolder* pHolder);
 #endif // FEATURE_RWX_MEMORY
 
   private:
     // Allocation Helpers
-    UInt8* _Alloc(UIntNative cbMem, UIntNative alignment WRITE_ACCESS_HOLDER_ARG);
-    bool _AllocNewBlock(UIntNative cbMem);
-    UInt8* _AllocFromCurBlock(UIntNative cbMem, UIntNative alignment WRITE_ACCESS_HOLDER_ARG);
-    bool _CommitFromCurBlock(UIntNative cbMem);
+    uint8_t* _Alloc(uintptr_t cbMem, uintptr_t alignment WRITE_ACCESS_HOLDER_ARG);
+    bool _AllocNewBlock(uintptr_t cbMem);
+    uint8_t* _AllocFromCurBlock(uintptr_t cbMem, uintptr_t alignment WRITE_ACCESS_HOLDER_ARG);
+    bool _CommitFromCurBlock(uintptr_t cbMem);
 
     // Access protection helpers
 #ifdef FEATURE_RWX_MEMORY
-    bool _AcquireWriteAccess(UInt8* pvMem, UIntNative cbMem, rh::util::WriteAccessHolder* pHolder);
+    bool _AcquireWriteAccess(uint8_t* pvMem, uintptr_t cbMem, rh::util::WriteAccessHolder* pHolder);
 #endif // FEATURE_RWX_MEMORY
-    bool _UpdateMemPtrs(UInt8* pNextFree, UInt8* pFreeCommitEnd, UInt8* pFreeReserveEnd);
-    bool _UpdateMemPtrs(UInt8* pNextFree, UInt8* pFreeCommitEnd);
-    bool _UpdateMemPtrs(UInt8* pNextFree);
+    bool _UpdateMemPtrs(uint8_t* pNextFree, uint8_t* pFreeCommitEnd, uint8_t* pFreeReserveEnd);
+    bool _UpdateMemPtrs(uint8_t* pNextFree, uint8_t* pFreeCommitEnd);
+    bool _UpdateMemPtrs(uint8_t* pNextFree);
     bool _UseAccessManager() { return m_rwProtectType != m_roProtectType; }
 
-    static const UIntNative s_minBlockSize = OS_PAGE_SIZE;
+    static const uintptr_t s_minBlockSize = OS_PAGE_SIZE;
 
     typedef rh::util::MemRange Block;
     typedef DPTR(Block) PTR_Block;
@@ -84,7 +84,7 @@ class AllocHeap
             : Block(block)
             {}
 
-        BlockListElem(UInt8 * pbMem, UIntNative  cbMem)
+        BlockListElem(uint8_t * pbMem, uintptr_t  cbMem)
             : Block(pbMem, cbMem)
             {}
 
@@ -95,19 +95,19 @@ class AllocHeap
     typedef SList<BlockListElem>    BlockList;
     BlockList                       m_blockList;
 
-    UInt32                          m_rwProtectType; // READ/WRITE/EXECUTE/etc
-    UInt32                          m_roProtectType; // What to do with fully allocated and initialized pages.
+    uint32_t                          m_rwProtectType; // READ/WRITE/EXECUTE/etc
+    uint32_t                          m_roProtectType; // What to do with fully allocated and initialized pages.
 
 #ifdef FEATURE_RWX_MEMORY
     rh::util::MemAccessMgr*         m_pAccessMgr;
     rh::util::WriteAccessHolder     m_hCurPageRW;   // Used to hold RW access to the current allocation page
                                                     // Passed as pHint to MemAccessMgr::AcquireWriteAccess.
 #endif // FEATURE_RWX_MEMORY
-    UInt8 *                         m_pNextFree;
-    UInt8 *                         m_pFreeCommitEnd;
-    UInt8 *                         m_pFreeReserveEnd;
+    uint8_t *                         m_pNextFree;
+    uint8_t *                         m_pFreeCommitEnd;
+    uint8_t *                         m_pFreeReserveEnd;
 
-    UInt8 *                         m_pbInitialMem;
+    uint8_t *                         m_pbInitialMem;
     bool                            m_fShouldFreeInitialMem;
 
     Crst                            m_lock;

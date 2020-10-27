@@ -33,7 +33,7 @@
 
 #define YIELD_WHILE(condition)                                          \
     {                                                                   \
-        UInt32 __dwSwitchCount = 0;                                     \
+        uint32_t __dwSwitchCount = 0;                                     \
         while (condition)                                               \
         {                                                               \
             __SwitchToThread(0, ++__dwSwitchCount);                     \
@@ -49,7 +49,7 @@ private:
         LOCKED = 1
     };
 
-    volatile Int32 m_lock;
+    volatile int32_t m_lock;
 
     static void Lock(SpinLock& lock)
         { YIELD_WHILE (PalInterlockedExchange(&lock.m_lock, LOCKED) == LOCKED); }

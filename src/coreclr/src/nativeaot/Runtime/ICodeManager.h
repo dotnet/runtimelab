@@ -16,7 +16,7 @@ struct REGDISPLAY;
 typedef void (*GCEnumCallback)(
     void *              hCallback,      // callback data
     PTR_PTR_VOID        pObject,        // address of object-reference we are reporting
-    UInt32              flags           // is this a pinned and/or interior pointer
+    uint32_t              flags           // is this a pinned and/or interior pointer
 );
 
 struct GCEnumContext
@@ -69,13 +69,13 @@ inline GCRefKind ExtractReg1ReturnKind(GCRefKind returnKind)
 class MethodInfo
 {
     TADDR dummyPtrs[5];
-    Int32 dummyInts[8];
+    int32_t dummyInts[8];
 };
 
 class EHEnumState
 {
     TADDR dummyPtrs[2];
-    Int32 dummyInts[2];
+    int32_t dummyInts[2];
 };
 
 enum EHClauseKind
@@ -89,10 +89,10 @@ enum EHClauseKind
 struct EHClause
 {
     EHClauseKind m_clauseKind;
-    UInt32 m_tryStartOffset;
-    UInt32 m_tryEndOffset;
-    UInt8* m_filterAddress;
-    UInt8* m_handlerAddress;
+    uint32_t m_tryStartOffset;
+    uint32_t m_tryEndOffset;
+    uint8_t* m_filterAddress;
+    uint8_t* m_handlerAddress;
     void* m_pTargetType;
 };
 
@@ -136,7 +136,7 @@ public:
                                   REGDISPLAY *    pRegisterSet,                     // in/out
                                   PTR_VOID *      ppPreviousTransitionFrame) = 0;   // out
 
-    virtual UIntNative GetConservativeUpperBoundForOutgoingArgs(MethodInfo *   pMethodInfo,
+    virtual uintptr_t GetConservativeUpperBoundForOutgoingArgs(MethodInfo *   pMethodInfo,
                                                                 REGDISPLAY *   pRegisterSet) = 0;
 
     virtual bool GetReturnAddressHijackInfo(MethodInfo *    pMethodInfo,

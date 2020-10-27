@@ -24,7 +24,7 @@ struct REGDISPLAY
     PTR_UIntNative pR15;
 #endif // TARGET_AMD64
 
-    UIntNative   SP;
+    uintptr_t   SP;
     PTR_PCODE    pIP;
     PCODE        IP;
 
@@ -37,13 +37,13 @@ struct REGDISPLAY
 
     inline PCODE GetIP() { return IP; }
     inline PTR_PCODE GetAddrOfIP() { return pIP; }
-    inline UIntNative GetSP() { return SP; }
-    inline UIntNative GetFP() { return *pRbp; }
-    inline UIntNative GetPP() { return *pRbx; }
+    inline uintptr_t GetSP() { return SP; }
+    inline uintptr_t GetFP() { return *pRbp; }
+    inline uintptr_t GetPP() { return *pRbx; }
 
     inline void SetIP(PCODE IP) { this->IP = IP; }
     inline void SetAddrOfIP(PTR_PCODE pIP) { this->pIP = pIP; }
-    inline void SetSP(UIntNative SP) { this->SP = SP; }
+    inline void SetSP(uintptr_t SP) { this->SP = SP; }
 };
 
 #elif defined(TARGET_ARM)
@@ -65,22 +65,22 @@ struct REGDISPLAY
     PTR_UIntNative pR12;
     PTR_UIntNative pLR;
 
-    UIntNative   SP;
+    uintptr_t   SP;
     PTR_PCODE    pIP;
     PCODE        IP;
 
-    UInt64       D[16-8]; // preserved D registers D8..D15 (note that D16-D31 are not preserved according to the ABI spec)
+    uint64_t       D[16-8]; // preserved D registers D8..D15 (note that D16-D31 are not preserved according to the ABI spec)
                           // these need to be unwound during a stack walk
                           // for EH, but not adjusted, so we only need
                           // their values, not their addresses
 
     inline PCODE GetIP() { return IP; }
     inline PTR_PCODE GetAddrOfIP() { return pIP; }
-    inline UIntNative GetSP() { return SP; }
-    inline UIntNative GetFP() { return *pR11; }
+    inline uintptr_t GetSP() { return SP; }
+    inline uintptr_t GetFP() { return *pR11; }
     inline void SetIP(PCODE IP) { this->IP = IP; }
     inline void SetAddrOfIP(PTR_PCODE pIP) { this->pIP = pIP; }
-    inline void SetSP(UIntNative SP) { this->SP = SP; }
+    inline void SetSP(uintptr_t SP) { this->SP = SP; }
 };
 
 #elif defined(TARGET_ARM64)
@@ -119,11 +119,11 @@ struct REGDISPLAY
     PTR_UIntNative pFP; // X29
     PTR_UIntNative pLR; // X30
 
-    UIntNative   SP;
+    uintptr_t   SP;
     PTR_PCODE    pIP;
     PCODE        IP;
 
-    UInt64       D[16-8]; // Only the bottom 64-bit value of the V registers V8..V15 needs to be preserved
+    uint64_t       D[16-8]; // Only the bottom 64-bit value of the V registers V8..V15 needs to be preserved
                           // (V0-V7 and V16-V31 are not preserved according to the ABI spec).
                           // These need to be unwound during a stack walk
                           // for EH, but not adjusted, so we only need
@@ -131,12 +131,12 @@ struct REGDISPLAY
 
     inline PCODE GetIP() { return IP; }
     inline PTR_PCODE GetAddrOfIP() { return pIP; }
-    inline UIntNative GetSP() { return SP; }
-    inline UIntNative GetFP() { return *pFP; }
+    inline uintptr_t GetSP() { return SP; }
+    inline uintptr_t GetFP() { return *pFP; }
 
     inline void SetIP(PCODE IP) { this->IP = IP; }
     inline void SetAddrOfIP(PTR_PCODE pIP) { this->pIP = pIP; }
-    inline void SetSP(UIntNative SP) { this->SP = SP; }
+    inline void SetSP(uintptr_t SP) { this->SP = SP; }
 };
 #elif defined(TARGET_WASM)
 
@@ -144,18 +144,18 @@ struct REGDISPLAY
 {
     // TODO: WebAssembly doesn't really have registers. What exactly do we need here?
 
-    UIntNative   SP;
+    uintptr_t   SP;
     PTR_PCODE    pIP;
     PCODE        IP;
 
     inline PCODE GetIP() { return NULL; }
     inline PTR_PCODE GetAddrOfIP() { return NULL; }
-    inline UIntNative GetSP() { return 0; }
-    inline UIntNative GetFP() { return 0; }
+    inline uintptr_t GetSP() { return 0; }
+    inline uintptr_t GetFP() { return 0; }
 
     inline void SetIP(PCODE IP) { }
     inline void SetAddrOfIP(PTR_PCODE pIP) { }
-    inline void SetSP(UIntNative SP) { }
+    inline void SetSP(uintptr_t SP) { }
 };
 #endif // HOST_X86 || HOST_AMD64 || HOST_ARM || HOST_ARM64 || HOST_WASM
 

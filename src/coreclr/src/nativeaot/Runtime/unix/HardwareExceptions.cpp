@@ -504,7 +504,7 @@ bool HardwareExceptionHandler(int code, siginfo_t *siginfo, void *context, void*
 {
     if (g_hardwareExceptionHandler != NULL)
     {
-        UIntNative faultCode = GetExceptionCodeForSignal(siginfo, context);
+        uintptr_t faultCode = GetExceptionCodeForSignal(siginfo, context);
 
 #ifdef HOST_AMD64
         // It is possible that an overflow was mapped to a divide-by-zero exception.
@@ -523,9 +523,9 @@ bool HardwareExceptionHandler(int code, siginfo_t *siginfo, void *context, void*
         PAL_LIMITED_CONTEXT palContext;
         NativeContextToPalContext(context, &palContext);
 
-        UIntNative arg0Reg;
-        UIntNative arg1Reg;
-        Int32 disposition = g_hardwareExceptionHandler(faultCode, (UIntNative)faultAddress, &palContext, &arg0Reg, &arg1Reg);
+        uintptr_t arg0Reg;
+        uintptr_t arg1Reg;
+        int32_t disposition = g_hardwareExceptionHandler(faultCode, (uintptr_t)faultAddress, &palContext, &arg0Reg, &arg1Reg);
         if (disposition == EXCEPTION_CONTINUE_EXECUTION)
         {
             // TODO: better name

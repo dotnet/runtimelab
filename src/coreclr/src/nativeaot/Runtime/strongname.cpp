@@ -20,7 +20,7 @@
 
 #define PUBLIC_KEY_TOKEN_LEN 8
 
-COOP_PINVOKE_HELPER(void, RhConvertPublicKeyToPublicKeyToken, (const UInt8* pbPublicKey, int cbPublicKey, UInt8 *pbPublicKeyTokenOut, int cbPublicKeyTokenOut))
+COOP_PINVOKE_HELPER(void, RhConvertPublicKeyToPublicKeyToken, (const uint8_t* pbPublicKey, int cbPublicKey, uint8_t *pbPublicKeyTokenOut, int cbPublicKeyTokenOut))
 {
     ASSERT(pbPublicKey != NULL);
     ASSERT(pbPublicKeyTokenOut != NULL);
@@ -32,7 +32,7 @@ COOP_PINVOKE_HELPER(void, RhConvertPublicKeyToPublicKeyToken, (const UInt8* pbPu
 
     SHA1Hash sha1;
     sha1.AddData(pbPublicKey, cbPublicKey);
-    UInt8* pHash = sha1.GetHash();
+    uint8_t* pHash = sha1.GetHash();
 
     for (int i = 0; i < PUBLIC_KEY_TOKEN_LEN; i++)
     {

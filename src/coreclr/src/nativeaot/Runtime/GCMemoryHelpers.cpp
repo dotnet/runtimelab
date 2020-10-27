@@ -26,8 +26,8 @@ COOP_PINVOKE_CDECL_HELPER(void *, RhpInitMultibyte, (void * mem, int c, size_t s
     // The caller must do the null-check because we cannot take an AV in the runtime and translate it to managed.
     ASSERT(mem != nullptr);
 
-    UIntNative  bv = (UInt8)c;
-    UIntNative  pv = 0;
+    uintptr_t  bv = (uint8_t)c;
+    uintptr_t  pv = 0;
 
     if (bv != 0)
     {
@@ -125,7 +125,7 @@ void GCSafeCopyMemoryWithWriteBarrier(void * dest, const void *src, size_t len)
     InlinedBulkWriteBarrier(dest, len);
 }
 
-void REDHAWK_CALLCONV RhpBulkWriteBarrier(void* pMemStart, UInt32 cbMemSize)
+void REDHAWK_CALLCONV RhpBulkWriteBarrier(void* pMemStart, uint32_t cbMemSize)
 {
     InlinedBulkWriteBarrier(pMemStart, cbMemSize);
 }

@@ -61,11 +61,11 @@ private:
 public:
 
 #define DEFINE_VALUE_ACCESSOR(_name, defaultVal)        \
-    UInt32 Get##_name()                                 \
+    uint32_t Get##_name()                                 \
     {                                                   \
         if (m_uiConfigValuesRead & (1 << RCV_##_name))  \
             return m_uiConfigValues[RCV_##_name];       \
-        UInt32 uiValue = ReadConfigValue(_T("RH_") _T(#_name), defaultVal); \
+        uint32_t uiValue = ReadConfigValue(_T("RH_") _T(#_name), defaultVal); \
         m_uiConfigValues[RCV_##_name] = uiValue;        \
         m_uiConfigValuesRead |= 1 << RCV_##_name;       \
         return uiValue;                                 \
@@ -89,7 +89,7 @@ public:
 
 private:
 
-    UInt32 ReadConfigValue(_In_z_ const TCHAR *wszName, UInt32 uiDefault);
+    uint32_t ReadConfigValue(_In_z_ const TCHAR *wszName, uint32_t uiDefault);
 
     enum RhConfigValue
     {
@@ -126,15 +126,15 @@ private:
     //lazily reads the file so if the file is not yet read, it will read it on first called
     //if the file is not avaliable, or unreadable zero will always be returned
     //cchOutputBuffer is the maximum number of characters to write to outputBuffer
-    UInt32 GetIniVariable(_In_z_ const TCHAR* configName, _Out_writes_all_(cchOutputBuffer) TCHAR* outputBuffer, _In_ UInt32 cchOutputBuffer);
+    uint32_t GetIniVariable(_In_z_ const TCHAR* configName, _Out_writes_all_(cchOutputBuffer) TCHAR* outputBuffer, _In_ uint32_t cchOutputBuffer);
 
 #ifdef FEATURE_EMBEDDED_CONFIG
     void ReadEmbeddedSettings();
 
-    UInt32 GetEmbeddedVariable(_In_z_ const TCHAR* configName, _Out_writes_all_(cchOutputBuffer) TCHAR* outputBuffer, _In_ UInt32 cchOutputBuffer);
+    uint32_t GetEmbeddedVariable(_In_z_ const TCHAR* configName, _Out_writes_all_(cchOutputBuffer) TCHAR* outputBuffer, _In_ uint32_t cchOutputBuffer);
 #endif // FEATURE_EMBEDDED_CONFIG
 
-    UInt32 GetConfigVariable(_In_z_ const TCHAR* configName, const ConfigPair* configPairs, _Out_writes_all_(cchOutputBuffer) TCHAR* outputBuffer, _In_ UInt32 cchOutputBuffer);
+    uint32_t GetConfigVariable(_In_z_ const TCHAR* configName, const ConfigPair* configPairs, _Out_writes_all_(cchOutputBuffer) TCHAR* outputBuffer, _In_ uint32_t cchOutputBuffer);
 
     static bool priv_isspace(char c)
     {
@@ -142,8 +142,8 @@ private:
     }
 
 
-    UInt32  m_uiConfigValuesRead;
-    UInt32  m_uiConfigValues[RCV_Count];
+    uint32_t  m_uiConfigValuesRead;
+    uint32_t  m_uiConfigValues[RCV_Count];
 };
 
 extern RhConfig * g_pRhConfig;

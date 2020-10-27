@@ -175,7 +175,7 @@ void RestrictedCallouts::UnregisterRefCountedHandleCallback(void * pCalloutMetho
 
 // Invoke all the registered GC callouts of the given kind. The condemned generation of the current collection
 // is passed along to the callouts.
-void RestrictedCallouts::InvokeGcCallouts(GcRestrictedCalloutKind eKind, UInt32 uiCondemnedGeneration)
+void RestrictedCallouts::InvokeGcCallouts(GcRestrictedCalloutKind eKind, uint32_t uiCondemnedGeneration)
 {
     ASSERT(eKind < GCRC_Count);
 
