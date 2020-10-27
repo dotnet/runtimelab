@@ -4,8 +4,13 @@
 //On unix make sure to compile using -ldl flag.
 
 //Set this value accordingly to your workspace settings
-#define PathToLibrary "./bin/Debug/netstandard2.0/linux-x64/native/NativeLibrary.so"
-
+#if defined(_WIN32)
+#define PathToLibrary "bin\\Debug\\net5.0\\win-x64\\native\\NativeLibrary.dll"
+#elf defined(__APPLE__)
+#define PathToLibrary "./bin/Debug/net5.0/linux-x64/native/NativeLibrary.dylib"
+#else
+#define PathToLibrary "./bin/Debug/net5.0/linux-x64/native/NativeLibrary.so"
+#endif
 
 #ifdef _WIN32
 #include "windows.h"
@@ -57,7 +62,7 @@ int callSumFunc(char *path, char *funcName, int firstInt, int secondInt)
     #endif
 
     typedef int(*myFunc)();
-    myFunc MyImport = symLoad(handle, funcName);
+    myFunc MyImport = (myFunc)symLoad(handle, funcName);
 
     int result = MyImport(firstInt, secondInt);
 
@@ -79,7 +84,7 @@ char *callSumStringFunc(char *path, char *funcName, char *firstString, char *sec
     typedef char *(*myFunc)();
 
     // Import Symbol named funcName
-    myFunc MyImport = symLoad(handle, funcName);
+    myFunc MyImport = (myFunc)symLoad(handle, funcName);
 
     // The C# function will return a pointer
     char *result = MyImport(firstString, secondString);

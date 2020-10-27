@@ -378,12 +378,22 @@ void RuntimeThreadShutdown(void* thread)
 
     UNREFERENCED_PARAMETER(thread);
 
-    ASSERT((Thread*)thread == ThreadStore::GetCurrentThread());
-
-    if (!g_processShutdownHasStarted)
+#ifdef TARGET_UNIX
+    // Some Linux toolset versions call thread-local destructors during shutdown on a wrong thread.
+    if ((Thread*)thread != ThreadStore::GetCurrentThread())
     {
-        ThreadStore::DetachCurrentThread();
+        return;
     }
+#else
+    ASSERT((Thread*)thread == ThreadStore::GetCurrentThread());
+#endif
+
+    if (g_processShutdownHasStarted)
+    {
+        return;
+    }
+
+    ThreadStore::DetachCurrentThread();
 }
 
 extern "C" bool RhInitialize()

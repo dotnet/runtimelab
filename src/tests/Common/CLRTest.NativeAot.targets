@@ -82,11 +82,18 @@ fi
         ]]>
       </NativeAotMultimoduleIncompatibleScript>
 
-      <NativeAotBatchScript Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(NativeAotTest)' != 'false'">
+      <NativeAotCleanupBatchScript Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(NativeAotTest)' != 'false'">
         <![CDATA[
 if defined RunNativeAot (
     rem Delete any leftover native compilation bits
     IF EXIST native rmdir /s /q native
+)
+        ]]>
+    </NativeAotCleanupBatchScript>
+
+    <NativeAotBatchScript Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(NativeAotTest)' != 'false'">
+        <![CDATA[
+if defined RunNativeAot (
 
     set __Command=!_DebuggerFullPath!
     REM Tests run locally need __TestDotNetCmd (set by runtest.py) or a compatible 5.0 dotnet runtime in the path
@@ -118,7 +125,7 @@ if defined RunNativeAot (
         ]]>
       </NativeAotBatchScript>
 
-      <CLRTestBatchPreCommands>$(CLRTestBatchPreCommands);$(NativeAotBatchScript)</CLRTestBatchPreCommands>
+      <CLRTestBatchPreCommands>$(NativeAotCleanupBatchScript);$(CLRTestBatchPreCommands);$(NativeAotBatchScript)</CLRTestBatchPreCommands>
     </PropertyGroup>
   </Target>
 

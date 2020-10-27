@@ -199,4 +199,11 @@ static struct InitializeRuntimePointerHelper
         RhSetRuntimeInitializationCallback(&InitializeRuntime);
     }
 } initializeRuntimePointerHelper;
+
+extern "C" void* CoreRT_StaticInitialization();
+
+void* CoreRT_StaticInitialization()
+{
+    return &initializeRuntimePointerHelper;
+}
 #endif // CORERT_DLL
