@@ -11,6 +11,8 @@ namespace Microsoft.Interop
     {
         public static ForStatementSyntax GetForLoop(string collectionIdentifier, string indexerIdentifier)
         {
+            // for(int <indexerIdentifier> = 0; <indexerIdentifier> < <collectionIdentifier>.Length; ++<indexerIdentifier>)
+            //      ;
             return ForStatement(EmptyStatement())
             .WithDeclaration(
                 VariableDeclaration(

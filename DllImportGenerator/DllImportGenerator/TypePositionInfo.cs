@@ -164,7 +164,7 @@ namespace Microsoft.Interop
                 {
                     diagnostics.ReportConfigurationNotSupported(attrData, nameof(UnmanagedType), unmanagedType.ToString());
                 }
-                UnmanagedType unmanagedArraySubType = 0;
+                UnmanagedType unmanagedArraySubType = (UnmanagedType)MarshalAsInfo.UnspecifiedData;
                 int arraySizeConst = MarshalAsInfo.UnspecifiedData;
                 short arraySizeParamIndex = MarshalAsInfo.UnspecifiedData;
 

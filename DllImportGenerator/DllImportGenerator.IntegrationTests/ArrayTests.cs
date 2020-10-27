@@ -14,7 +14,10 @@ namespace DllImportGenerator.IntegrationTests
         {
             [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "sum_int_array")]
             public static partial int Sum(int[] values, int numValues);
-            
+
+            [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "sum_int_array_ref")]
+            public static partial int SumInArray(in int[] values, int numValues);
+
             [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "duplicate_int_array")]
             public static partial void Duplicate([MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] ref int[] values, int numValues);
 
@@ -26,7 +29,7 @@ namespace DllImportGenerator.IntegrationTests
             public static partial void ReverseStrings([MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPWStr, SizeParamIndex = 1)] ref string[] strArray, out int numElements);
 
             [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "get_long_bytes")]
-            [return:MarshalAs(UnmanagedType.LPArray, SizeConst = 8)]
+            [return:MarshalAs(UnmanagedType.LPArray, SizeConst = sizeof(long))]
             public static partial byte[] GetLongBytes(long l);
 
             [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "append_int_to_array")]
@@ -48,6 +51,13 @@ namespace DllImportGenerator.IntegrationTests
         {
             var array = new int[0];
             Assert.Equal(0, NativeExportsNE.Arrays.Sum(array, array.Length));
+        }
+
+        [Fact]
+        public void IntArrayInParameter()
+        {
+            var array = new[] { 1, 5, 79, 165, 32, 3 };
+            Assert.Equal(array.Sum(), NativeExportsNE.Arrays.SumInArray(array, array.Length));
         }
 
         [Fact]
@@ -101,7 +111,7 @@ namespace DllImportGenerator.IntegrationTests
         [Fact]
         public void ConstantSizeArray()
         {
-            var longVal = 0x12345678L;
+            var longVal = 0x12345678ABCDEF10L;
 
             Assert.Equal(longVal, MemoryMarshal.Read<long>(NativeExportsNE.Arrays.GetLongBytes(longVal)));
         }

@@ -275,27 +275,32 @@ namespace Microsoft.Interop
 
             throw new MarshallingNotSupportedException(info, context);
         }
-
         
         private static ExpressionSyntax GetNumElementsExpressionFromMarshallingInfo(TypePositionInfo info, StubCodeContext context)
         {
             ExpressionSyntax numElementsExpression;
-            if (info.MarshallingAttributeInfo is MarshalAsInfo { ArraySizeParamIndex: short index, ArraySizeConst: int constSize })
+            if (info.MarshallingAttributeInfo is MarshalAsInfo marshalAsInfo)
             {
-                LiteralExpressionSyntax? constSizeExpression = constSize != MarshalAsInfo.UnspecifiedData
-                    ? LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(constSize))
+                LiteralExpressionSyntax? constSizeExpression = marshalAsInfo.ArraySizeConst != MarshalAsInfo.UnspecifiedData
+                    ? LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(marshalAsInfo.ArraySizeConst))
                     : null;
                 ExpressionSyntax? sizeParamIndexExpression = null;
-                if (index != MarshalAsInfo.UnspecifiedData)
+                if (marshalAsInfo.ArraySizeParamIndex != MarshalAsInfo.UnspecifiedData)
                 {
-                    TypePositionInfo? paramIndexInfo = context.GetTypePositionInfoForManagedIndex(index);
+                    TypePositionInfo? paramIndexInfo = context.GetTypePositionInfoForManagedIndex(marshalAsInfo.ArraySizeParamIndex);
                     if (paramIndexInfo is null)
                     {
-                        throw new MarshallingNotSupportedException(info, context);
+                        throw new MarshallingNotSupportedException(info, context)
+                        {
+                            NotSupportedDetails = Resources.ArraySizeParamIndexOutOfRange
+                        };
                     }
                     else if (!paramIndexInfo.ManagedType.IsIntegralType())
                     {
-                        throw new MarshallingNotSupportedException(info, context);
+                        throw new MarshallingNotSupportedException(info, context)
+                        {
+                            NotSupportedDetails = Resources.ArraySizeParamTypeMustBeIntegral
+                        };
                     }
                     else
                     {
@@ -308,7 +313,10 @@ namespace Microsoft.Interop
                 }
                 numElementsExpression = (constSizeExpression, sizeParamIndexExpression) switch
                 {
-                    (null, null) => throw new MarshallingNotSupportedException(info, context),
+                    (null, null) => throw new MarshallingNotSupportedException(info, context)
+                        {
+                            NotSupportedDetails = Resources.ArraySizeMustBeSpecified
+                        },
                     (not null, null) => constSizeExpression!,
                     (null, not null) => CheckedExpression(SyntaxKind.CheckedExpression, sizeParamIndexExpression!),
                     (not null, not null) => CheckedExpression(SyntaxKind.CheckedExpression, BinaryExpression(SyntaxKind.AddExpression, constSizeExpression!, sizeParamIndexExpression!))
@@ -332,7 +340,9 @@ namespace Microsoft.Interop
                 numElementsExpression = GetNumElementsExpressionFromMarshallingInfo(info, context);
             }
             
-            return elementMarshaller == Blittable ? new BlittableArrayMarshaller(numElementsExpression) : new NonBlittableArrayMarshaller(elementMarshaller, numElementsExpression);
+            return elementMarshaller == Blittable
+                ? new BlittableArrayMarshaller(numElementsExpression)
+                : new NonBlittableArrayMarshaller(elementMarshaller, numElementsExpression);
         }
     }
 }

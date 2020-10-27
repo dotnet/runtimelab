@@ -22,6 +22,22 @@ namespace NativeExports
             return sum;
         }
 
+        [UnmanagedCallersOnly(EntryPoint = "sum_int_array_ref")]
+        public static int SumInArray(int** values, int numValues)
+        {
+            if (values == null)
+            {
+                return -1;
+            }
+
+            int sum = 0;
+            for (int i = 0; i < numValues; i++)
+            {
+                sum += (*values)[i];
+            }
+            return sum;
+        }
+
         [UnmanagedCallersOnly(EntryPoint = "duplicate_int_array")]
         public static void Duplicate(int** values, int numValues)
         {
@@ -68,7 +84,7 @@ namespace NativeExports
         [UnmanagedCallersOnly(EntryPoint = "get_long_bytes")]
         public static byte* GetLongBytes(long l)
         {
-            const int NumBytesInLong = 8;
+            const int NumBytesInLong = sizeof(long);
 
             byte* bytes = (byte*)Marshal.AllocCoTaskMem(NumBytesInLong);
             MemoryMarshal.Write(new Span<byte>(bytes, NumBytesInLong), ref l);

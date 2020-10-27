@@ -51,14 +51,14 @@ namespace Microsoft.Interop
         CharEncoding CharEncoding) : MarshallingInfoStringSupport(CharEncoding)
     {
         public MarshalAsInfo(UnmanagedType unmanagedType, CharEncoding charEncoding)
-            :this(unmanagedType, 0, 0, 0, charEncoding)
+            :this(unmanagedType, (UnmanagedType)UnspecifiedData, UnspecifiedData, UnspecifiedData, charEncoding)
         {
         }
 
         public MarshallingInfo CreateArraySubTypeMarshalAsInfo()
         {
             Debug.Assert(UnmanagedType is UnmanagedType.LPArray or UnmanagedType.ByValArray or UnmanagedType.SafeArray);
-            if (UnmanagedArraySubType == 0)
+            if (UnmanagedArraySubType == (UnmanagedType)UnspecifiedData)
             {
                 return NoMarshallingInfo.Instance;
             }

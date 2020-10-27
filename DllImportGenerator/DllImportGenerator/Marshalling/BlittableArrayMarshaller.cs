@@ -9,6 +9,11 @@ namespace Microsoft.Interop
 {
     internal class BlittableArrayMarshaller : ConditionalStackallocMarshallingGenerator
     {
+        /// <summary>
+        /// Stack-alloc threshold set to 256 bytes to enable small arrays to be passed on the stack.
+        /// Number kept small to ensure that P/Invokes with a lot of small array parameters doesn't
+        /// blow the stack since this is a new optimization in the code-generated interop.
+        /// </summary>
         private const int StackAllocBytesThreshold = 0x200;
         private readonly ExpressionSyntax _numElementsExpr;
 
