@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/01/nuspec.xsd">
+    <metadata minClientVersion="2.12">
+        <id>System.Net.Experimental.MsQuic</id>
+        <version>5.0.0.2</version>
+        <description>Contains native MsQuic binaries for use with SocketsHttpHandler and Kestrel in .NET 5</description>
+        <authors>Microsoft</authors>
+        <owners>microsoft,dotnetframework</owners>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <license type="expression">MIT</license>
+        <projectUrl>https://github.com/dotnet/runtime</projectUrl>
+        <icon>icon.png</icon>
+        <iconUrl>http://go.microsoft.com/fwlink/?LinkID=288859</iconUrl>
+        <copyright>© Microsoft Corporation. All rights reserved.</copyright>
+        <serviceable>true</serviceable>
+        <repository type="git" url="git://github.com/scalablecory/msquic" commit="c39d1e56456db5ed1fc8e7ca5f17aa8eabdf5378" />
+    </metadata>
+    <files>
+        <file src="icon.png" target="" />
+	
+        <file src="..\artifacts\bin\windows\x86_Release_schannel\msquic.dll" target="runtimes/win10-x86/native/msquic.dll"/>
+        <file src="..\artifacts\bin\windows\x86_Release_schannel\msquic.pdb" target="runtimes/win10-x86/native/msquic.pdb"/>
+	
+        <file src="..\artifacts\bin\windows\x64_Release_schannel\msquic.dll" target="runtimes/win10-x64/native/msquic.dll"/>
+        <file src="..\artifacts\bin\windows\x64_Release_schannel\msquic.pdb" target="runtimes/win10-x64/native/msquic.pdb"/>
+    </files>
+</package>

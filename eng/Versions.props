@@ -2,9 +2,9 @@
 <Project>
   <PropertyGroup>
     <!-- Experiment package versions properties -->
-    <VersionPrefix>1.0.0</VersionPrefix>
+    <VersionPrefix>5.0.0</VersionPrefix>
     <!-- File version numbers -->
-    <MajorVersion>1</MajorVersion>
+    <MajorVersion>5</MajorVersion>
     <MinorVersion>0</MinorVersion>
     <PatchVersion>0</PatchVersion>
     <PreReleaseVersionLabel>alpha</PreReleaseVersionLabel>
