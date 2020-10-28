@@ -160,13 +160,15 @@ namespace Microsoft.Interop
                     ? (UnmanagedType)(short)unmanagedTypeObj
                     : (UnmanagedType)unmanagedTypeObj;
                 if (!Enum.IsDefined(typeof(UnmanagedType), unmanagedType)
-                    || unmanagedType == UnmanagedType.CustomMarshaler)
+                    || unmanagedType == UnmanagedType.CustomMarshaler
+                    || unmanagedType == UnmanagedType.SafeArray)
                 {
                     diagnostics.ReportConfigurationNotSupported(attrData, nameof(UnmanagedType), unmanagedType.ToString());
                 }
-                UnmanagedType unmanagedArraySubType = (UnmanagedType)MarshalAsInfo.UnspecifiedData;
-                int arraySizeConst = MarshalAsInfo.UnspecifiedData;
-                short arraySizeParamIndex = MarshalAsInfo.UnspecifiedData;
+                bool isArrayType = unmanagedType == UnmanagedType.LPArray || unmanagedType == UnmanagedType.ByValArray;
+                UnmanagedType unmanagedArraySubType = (UnmanagedType)ArrayMarshalAsInfo.UnspecifiedData;
+                int arraySizeConst = ArrayMarshalAsInfo.UnspecifiedData;
+                short arraySizeParamIndex = ArrayMarshalAsInfo.UnspecifiedData;
 
                 // All other data on attribute is defined as NamedArguments.
                 foreach (var namedArg in attrData.NamedArguments)
@@ -185,24 +187,38 @@ namespace Microsoft.Interop
                             diagnostics.ReportConfigurationNotSupported(attrData, $"{attrData.AttributeClass!.Name}{Type.Delimiter}{namedArg.Key}");
                             break;
                         case nameof(MarshalAsAttribute.ArraySubType):
+                            if (!isArrayType)
+                            {
+                                diagnostics.ReportConfigurationNotSupported(attrData, $"{attrData.AttributeClass!.Name}{Type.Delimiter}{namedArg.Key}");
+                            }
                             unmanagedArraySubType = (UnmanagedType)namedArg.Value.Value!;
                             break;
                         case nameof(MarshalAsAttribute.SizeConst):
+                            if (!isArrayType)
+                            {
+                                diagnostics.ReportConfigurationNotSupported(attrData, $"{attrData.AttributeClass!.Name}{Type.Delimiter}{namedArg.Key}");
+                            }
                             arraySizeConst = (int)namedArg.Value.Value!;
                             break;
                         case nameof(MarshalAsAttribute.SizeParamIndex):
+                            if (!isArrayType)
+                            {
+                                diagnostics.ReportConfigurationNotSupported(attrData, $"{attrData.AttributeClass!.Name}{Type.Delimiter}{namedArg.Key}");
+                            }
                             arraySizeParamIndex = (short)namedArg.Value.Value!;
                             break;
                     }
                 }
 
-                return new MarshalAsInfo(
-                    UnmanagedType: unmanagedType,
-                    UnmanagedArraySubType: unmanagedArraySubType,
-                    ArraySizeConst: arraySizeConst,
-                    ArraySizeParamIndex: arraySizeParamIndex,
-                    CharEncoding: defaultInfo.CharEncoding
-                );
+                return isArrayType
+                    ? new ArrayMarshalAsInfo(
+                        UnmanagedArrayType: (UnmanagedArrayType)unmanagedType,
+                        UnmanagedArraySubType: unmanagedArraySubType,
+                        ArraySizeConst: arraySizeConst,
+                        ArraySizeParamIndex: arraySizeParamIndex,
+                        CharEncoding: defaultInfo.CharEncoding
+                    )
+                    : new MarshalAsInfo(unmanagedType, defaultInfo.CharEncoding);
             }
 
             static NativeMarshallingAttributeInfo CreateNativeMarshallingInfo(ITypeSymbol type, Compilation compilation, AttributeData attrData, bool allowGetPinnableReference)

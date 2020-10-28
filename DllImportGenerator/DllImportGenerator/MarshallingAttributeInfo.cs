@@ -41,36 +41,39 @@ namespace Microsoft.Interop
     ) : MarshallingInfo;
 
     /// <summary>
-    /// User-applied System.Runtime.InteropServices.MarshalAsAttribute
+    /// Simple User-application of System.Runtime.InteropServices.MarshalAsAttribute
     /// </summary>
-    internal sealed record MarshalAsInfo(
+    internal record MarshalAsInfo(
         UnmanagedType UnmanagedType,
+        CharEncoding CharEncoding) : MarshallingInfoStringSupport(CharEncoding)
+    {
+    }
+
+    enum UnmanagedArrayType
+    {
+        LPArray = UnmanagedType.LPArray,
+        ByValArray = UnmanagedType.ByValArray
+    }
+
+    /// <summary>
+    /// User-applied System.Runtime.InteropServices.MarshalAsAttribute with array marshalling info
+    /// </summary>
+    internal sealed record ArrayMarshalAsInfo(
+        UnmanagedArrayType UnmanagedArrayType,
         UnmanagedType UnmanagedArraySubType,
         int ArraySizeConst,
         short ArraySizeParamIndex,
-        CharEncoding CharEncoding) : MarshallingInfoStringSupport(CharEncoding)
+        CharEncoding CharEncoding) : MarshalAsInfo((UnmanagedType)UnmanagedArrayType, CharEncoding)
     {
-        public MarshalAsInfo(UnmanagedType unmanagedType, CharEncoding charEncoding)
-            :this(unmanagedType, (UnmanagedType)UnspecifiedData, UnspecifiedData, UnspecifiedData, charEncoding)
-        {
-        }
-
         public MarshallingInfo CreateArraySubTypeMarshalAsInfo()
         {
-            Debug.Assert(UnmanagedType is UnmanagedType.LPArray or UnmanagedType.ByValArray or UnmanagedType.SafeArray);
             if (UnmanagedArraySubType == (UnmanagedType)UnspecifiedData)
             {
                 return NoMarshallingInfo.Instance;
             }
             return new MarshalAsInfo(UnmanagedArraySubType, CharEncoding);
         }
-
-        /// <summary>
-        /// Helper method to enable cleaner pattern matching for the common case of
-        /// a MarshalAs attribute that just uses the constructor parameter and no additional properties.
-        /// </summary>
-        public void Deconstruct(out UnmanagedType unmanagedType) => unmanagedType = UnmanagedType;
-
+        
         public const short UnspecifiedData = -1;
     }
 
