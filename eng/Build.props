@@ -1,0 +1,5 @@
+<Project>
+  <ItemGroup>
+    <ProjectToBuild Include="$(RepoRoot)src\System.Net.Experimental.MsQuic\System.Net.Experimental.MsQuic.csproj" />
+  </ItemGroup>
+</Project>

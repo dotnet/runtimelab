@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>Library</OutputType>
-        <TargetFrameworks>netcoreapp5.0</TargetFrameworks>
+        <TargetFramework>netcoreapp5.0</TargetFramework>
         <IncludeBuildOutput>false</IncludeBuildOutput>
         <IsPackable>true</IsPackable>
         <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
@@ -31,10 +31,10 @@
 
     <Target Name="Build-native" AfterTargets="Build">
         <Exec
-            Command="pwsh scripts\build.ps1 -Config Release -Arch x86"
+            Command="pwsh scripts\build.ps1 -Config Release -Arch x64"
             WorkingDirectory="..\msquic"/>
         <Exec
-            Command="pwsh scripts\build.ps1 -Config Release -Arch x64"
+            Command="pwsh scripts\build.ps1 -Config Release -Arch x86"
             WorkingDirectory="..\msquic"/>
     </Target>
 </Project>
