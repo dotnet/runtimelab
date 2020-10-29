@@ -13,6 +13,17 @@ namespace System.Runtime.CompilerServices
     [StructLayout(LayoutKind.Auto)]
     public struct AsyncValueTaskMethodBuilder
     {
+#if FEATURE_POOLASYNCVALUETASKS
+        /// <summary>true if we should use reusable boxes for async completions of ValueTask methods; false if we should use tasks.</summary>
+        /// <remarks>
+        /// We rely on tiered compilation turning this into a const and doing dead code elimination to make checks on this efficient.
+        /// It's also required for safety that this value never changes once observed, as Unsafe.As casts are employed based on its value.
+        /// </remarks>
+        internal static readonly bool s_valueTaskPoolingEnabled = GetPoolAsyncValueTasksSwitch();
+        /// <summary>Maximum number of boxes that are allowed to be cached per state machine type.</summary>
+        internal static readonly int s_valueTaskPoolingCacheSize = GetPoolAsyncValueTasksLimitValue();
+#endif
+
         /// <summary>Sentinel object used to indicate that the builder completed synchronously and successfully.</summary>
         private static readonly object s_syncSuccessSentinel = AsyncValueTaskMethodBuilder<VoidTaskResult>.s_syncSuccessSentinel;
 
@@ -47,7 +58,7 @@ namespace System.Runtime.CompilerServices
                 m_task = s_syncSuccessSentinel;
             }
 #if FEATURE_POOLASYNCVALUETASKS
-            else if (AsyncTaskCache.s_valueTaskPoolingEnabled)
+            else if (s_valueTaskPoolingEnabled)
             {
                 Unsafe.As<StateMachineBox>(m_task).SetResult(default);
             }
@@ -63,7 +74,7 @@ namespace System.Runtime.CompilerServices
         public void SetException(Exception exception)
         {
 #if FEATURE_POOLASYNCVALUETASKS
-            if (AsyncTaskCache.s_valueTaskPoolingEnabled)
+            if (s_valueTaskPoolingEnabled)
             {
                 AsyncValueTaskMethodBuilder<VoidTaskResult>.SetException(exception, ref Unsafe.As<object?, StateMachineBox?>(ref m_task));
             }
@@ -93,7 +104,7 @@ namespace System.Runtime.CompilerServices
                 // the interface instead.
 
 #if FEATURE_POOLASYNCVALUETASKS
-                if (AsyncTaskCache.s_valueTaskPoolingEnabled)
+                if (s_valueTaskPoolingEnabled)
                 {
                     var box = Unsafe.As<StateMachineBox?>(m_task);
                     if (box is null)
@@ -125,7 +136,7 @@ namespace System.Runtime.CompilerServices
             where TStateMachine : IAsyncStateMachine
         {
 #if FEATURE_POOLASYNCVALUETASKS
-            if (AsyncTaskCache.s_valueTaskPoolingEnabled)
+            if (s_valueTaskPoolingEnabled)
             {
                 AsyncValueTaskMethodBuilder<VoidTaskResult>.AwaitOnCompleted(ref awaiter, ref stateMachine, ref Unsafe.As<object?, StateMachineBox?>(ref m_task));
             }
@@ -147,7 +158,7 @@ namespace System.Runtime.CompilerServices
             where TStateMachine : IAsyncStateMachine
         {
 #if FEATURE_POOLASYNCVALUETASKS
-            if (AsyncTaskCache.s_valueTaskPoolingEnabled)
+            if (s_valueTaskPoolingEnabled)
             {
                 AsyncValueTaskMethodBuilder<VoidTaskResult>.AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine, ref Unsafe.As<object?, StateMachineBox?>(ref m_task));
             }
@@ -174,7 +185,7 @@ namespace System.Runtime.CompilerServices
                 {
                     m_task =
 #if FEATURE_POOLASYNCVALUETASKS
-                        AsyncTaskCache.s_valueTaskPoolingEnabled ? (object)
+                        s_valueTaskPoolingEnabled ? (object)
                         AsyncValueTaskMethodBuilder<VoidTaskResult>.CreateWeaklyTypedStateMachineBox() :
 #endif
                         AsyncTaskMethodBuilder<VoidTaskResult>.CreateWeaklyTypedStateMachineBox();
@@ -183,5 +194,16 @@ namespace System.Runtime.CompilerServices
                 return m_task;
             }
         }
+
+#if FEATURE_POOLASYNCVALUETASKS
+        private static bool GetPoolAsyncValueTasksSwitch() =>
+            Environment.GetEnvironmentVariable("DOTNET_SYSTEM_THREADING_POOLASYNCVALUETASKS") is string value &&
+            (bool.IsTrueStringIgnoreCase(value) || value == "1");
+
+        private static int GetPoolAsyncValueTasksLimitValue() =>
+            int.TryParse(Environment.GetEnvironmentVariable("DOTNET_SYSTEM_THREADING_POOLASYNCVALUETASKSLIMIT"), out int result) && result > 0 ?
+                result :
+                Environment.ProcessorCount * 4; // arbitrary default value
+#endif
     }
 }

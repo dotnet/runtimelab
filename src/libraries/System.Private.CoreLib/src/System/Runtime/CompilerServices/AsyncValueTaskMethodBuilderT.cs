@@ -24,7 +24,7 @@ namespace System.Runtime.CompilerServices
         /// </remarks>
         internal static readonly object s_syncSuccessSentinel =
 #if FEATURE_POOLASYNCVALUETASKS
-            AsyncTaskCache.s_valueTaskPoolingEnabled ? (object)new SyncSuccessSentinelStateMachineBox() :
+            s_valueTaskPoolingEnabled ? (object)new SyncSuccessSentinelStateMachineBox() :
 #endif
             new Task<TResult>(default(TResult)!);
 
@@ -59,7 +59,7 @@ namespace System.Runtime.CompilerServices
                 m_task = s_syncSuccessSentinel;
             }
 #if FEATURE_POOLASYNCVALUETASKS
-            else if (AsyncTaskCache.s_valueTaskPoolingEnabled)
+            else if (s_valueTaskPoolingEnabled)
             {
                 Unsafe.As<StateMachineBox>(m_task).SetResult(result);
             }
@@ -75,7 +75,7 @@ namespace System.Runtime.CompilerServices
         public void SetException(Exception exception)
         {
 #if FEATURE_POOLASYNCVALUETASKS
-            if (AsyncTaskCache.s_valueTaskPoolingEnabled)
+            if (s_valueTaskPoolingEnabled)
             {
                 SetException(exception, ref Unsafe.As<object?, StateMachineBox?>(ref m_task));
             }
@@ -115,7 +115,7 @@ namespace System.Runtime.CompilerServices
                 // the interface instead.
 
 #if FEATURE_POOLASYNCVALUETASKS
-                if (AsyncTaskCache.s_valueTaskPoolingEnabled)
+                if (s_valueTaskPoolingEnabled)
                 {
                     var box = Unsafe.As<StateMachineBox?>(m_task);
                     if (box is null)
@@ -147,7 +147,7 @@ namespace System.Runtime.CompilerServices
             where TStateMachine : IAsyncStateMachine
         {
 #if FEATURE_POOLASYNCVALUETASKS
-            if (AsyncTaskCache.s_valueTaskPoolingEnabled)
+            if (s_valueTaskPoolingEnabled)
             {
                 AwaitOnCompleted(ref awaiter, ref stateMachine, ref Unsafe.As<object?, StateMachineBox?>(ref m_task));
             }
@@ -184,7 +184,7 @@ namespace System.Runtime.CompilerServices
             where TStateMachine : IAsyncStateMachine
         {
 #if FEATURE_POOLASYNCVALUETASKS
-            if (AsyncTaskCache.s_valueTaskPoolingEnabled)
+            if (s_valueTaskPoolingEnabled)
             {
                 AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine, ref Unsafe.As<object?, StateMachineBox?>(ref m_task));
             }
@@ -300,7 +300,7 @@ namespace System.Runtime.CompilerServices
                 {
                     m_task =
 #if FEATURE_POOLASYNCVALUETASKS
-                        AsyncTaskCache.s_valueTaskPoolingEnabled ? (object)CreateWeaklyTypedStateMachineBox() :
+                        s_valueTaskPoolingEnabled ? (object)CreateWeaklyTypedStateMachineBox() :
 #endif
                         AsyncTaskMethodBuilder<TResult>.CreateWeaklyTypedStateMachineBox();
                 }
@@ -448,13 +448,13 @@ namespace System.Runtime.CompilerServices
                 // Try to acquire the cache lock.  If there's any contention, or if the cache is full, we just throw away the object.
                 if (Interlocked.CompareExchange(ref s_cacheLock, 1, 0) == 0)
                 {
-                    if (s_cacheSize < AsyncTaskCache.s_valueTaskPoolingCacheSize)
+                    if (s_cacheSize < AsyncValueTaskMethodBuilder.s_valueTaskPoolingCacheSize)
                     {
                         // Push the box onto the cache stack for subsequent reuse.
                         _next = s_cache;
                         s_cache = this;
                         s_cacheSize++;
-                        Debug.Assert(s_cacheSize > 0 && s_cacheSize <= AsyncTaskCache.s_valueTaskPoolingCacheSize, "Expected cache size to be within bounds.");
+                        Debug.Assert(s_cacheSize > 0 && s_cacheSize <= AsyncValueTaskMethodBuilder.s_valueTaskPoolingCacheSize, "Expected cache size to be within bounds.");
                     }
 
                     // Release the lock.

@@ -1014,6 +1014,8 @@ def setup_args(args):
         location using the build type and the arch.
     """
 
+    # Workaround for https://github.com/dotnet/runtime/issues/43984
+    # requires_coreroot = args.host_os.lower() != "browser" and args.host_os.lower() != "android"
     requires_coreroot = args.arch.lower() != "wasm"
     coreclr_setup_args = CoreclrArguments(args, 
                                           require_built_test_dir=True,
