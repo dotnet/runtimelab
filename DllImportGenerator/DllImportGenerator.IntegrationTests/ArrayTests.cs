@@ -25,6 +25,9 @@ namespace DllImportGenerator.IntegrationTests
             [return:MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 2)]
             public static partial int[] CreateRange(int start, int end, out int numValues);
 
+            [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "sum_string_lengths")]
+            public static partial int SumStringLengths([MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPWStr)] string[] strArray);
+
             [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "reverse_strings")]
             public static partial void ReverseStrings([MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPWStr, SizeParamIndex = 1)] ref string[] strArray, out int numElements);
 
@@ -97,9 +100,16 @@ namespace DllImportGenerator.IntegrationTests
                 null
             };
         }
+        
+        [Fact]
+        public void ByValueArrayWithElementMarshalling()
+        {
+            var strings = GetStringArray();
+            Assert.Equal(strings.Sum(str => str?.Length ?? 0), NativeExportsNE.Arrays.SumStringLengths(strings));
+        }
 
         [Fact]
-        public void ArrayWithElementMarshalling()
+        public void ByRefArrayWithElementMarshalling()
         {
             var strings = GetStringArray();
             var expectedStrings = strings.Select(s => ReverseChars(s)).ToArray();

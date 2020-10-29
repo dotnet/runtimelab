@@ -66,6 +66,17 @@ namespace NativeExports
 
             return retVal;
         }
+        
+        [UnmanagedCallersOnly(EntryPoint = "sum_string_lengths")]
+        public static int SumStringLengths(ushort** strArray)
+        {
+            int length = 0;
+            for (int i = 0; (nint)strArray[i] != 0; i++)
+            {
+                length += new string((char*)strArray[i]).Length;
+            }
+            return length;
+        }
 
         [UnmanagedCallersOnly(EntryPoint = "reverse_strings")]
         public static void ReverseStrings(ushort*** strArray, int* numValues)
