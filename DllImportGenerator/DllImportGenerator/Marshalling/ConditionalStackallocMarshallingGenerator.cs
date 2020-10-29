@@ -61,7 +61,7 @@ namespace Microsoft.Interop
 
                 yield return byteLenAssignment;
 
-                // Code block for stackalloc if string is below threshold size
+                // Code block for stackalloc if number of bytes is below threshold size
                 var marshalOnStack = Block(
                     // byte* <stackAllocPtr> = stackalloc byte[<byteLen>];
                     LocalDeclarationStatement(
@@ -154,34 +154,67 @@ namespace Microsoft.Interop
             }
         }
 
+        /// <summary>
+        /// Generate an expression that allocates memory for the native representation of the object.
+        /// </summary>
+        /// <param name="info">Object to marshal</param>
+        /// <param name="context">Code generation context</param>
+        /// <param name="byteLengthIdentifier">An identifier that represents how many bytes must be allocated.</param>
+        /// <param name="allocationRequiresByteLength">If the allocation expression uses <paramref name="byteLengthIdentifier"/>, true; otherwise false.</param>
+        /// <returns>An expression that allocates memory for the native representation of the object.</returns>
         protected abstract ExpressionSyntax GenerateAllocationExpression(
             TypePositionInfo info,
             StubCodeContext context,
             SyntaxToken byteLengthIdentifier,
             out bool allocationRequiresByteLength);
 
+        /// <summary>
+        /// Generates an expression that represents the number of bytes that need to be allocated.
+        /// </summary>
+        /// <param name="info">Object to marshal</param>
+        /// <param name="context">Code generation context</param>
+        /// <returns>An expression that results in the number of bytes to allocate as a C# int.</returns>
         protected abstract ExpressionSyntax GenerateByteLengthCalculationExpression(
             TypePositionInfo info,
             StubCodeContext context);
 
+        /// <summary>
+        /// Generate a statement that is only executed when memory is stack allocated.
+        /// </summary>
+        /// <param name="info">Object to marshal</param>
+        /// <param name="context">Code generation context</param>
+        /// <param name="byteLengthIdentifier">An identifier that represents the number of bytes allocated.</param>
+        /// <param name="stackAllocPtrIdentifier">An identifier that represents a pointer to the stack allocated memory (of type byte*).</param>
+        /// <returns>A statement that is only executed when memory is stack allocated.</returns>
         protected abstract StatementSyntax GenerateStackallocOnlyValueMarshalling(
             TypePositionInfo info,
             StubCodeContext context,
             SyntaxToken byteLengthIdentifier,
             SyntaxToken stackAllocPtrIdentifier);
 
+        /// <summary>
+        /// Generate code to free native allocated memory used during marshalling.
+        /// </summary>
+        /// <param name="info">Object to marshal</param>
+        /// <param name="context">Code generation context</param>
+        /// <returns>An expression that frees allocated memory.</returns>
         protected abstract ExpressionSyntax GenerateFreeExpression(
             TypePositionInfo info,
             StubCodeContext context);
 
+        /// <inheritdoc/>
         public abstract TypeSyntax AsNativeType(TypePositionInfo info);
 
+        /// <inheritdoc/>
         public abstract ParameterSyntax AsParameter(TypePositionInfo info);
 
+        /// <inheritdoc/>
         public abstract ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context);
 
+        /// <inheritdoc/>
         public abstract IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context);
 
+        /// <inheritdoc/>
         public abstract bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context);
     }
 }
