@@ -2,8 +2,6 @@
     <PropertyGroup>
         <OutputType>Library</OutputType>
         <TargetFrameworks>netcoreapp5.0</TargetFrameworks>
-        <ExcludeFromSourceBuild>true</ExcludeFromSourceBuild>
-        <PackageType>MSBuildSdk</PackageType>
         <IncludeBuildOutput>false</IncludeBuildOutput>
         <IsPackable>true</IsPackable>
         <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
@@ -29,5 +27,14 @@
                 Include="..\msquic\artifacts\bin\windows\x64_Release_schannel\msquic.pdb" 
                 PackagePath="runtimes/win10-x64/native/"/>
         </ItemGroup>   
+    </Target>
+
+    <Target Name="Build-native" AfterTargets="Build">
+        <Exec
+            Command="pwsh scripts\build.ps1 -Config Release -Arch x86"
+            WorkingDirectory="..\msquic"/>
+        <Exec
+            Command="pwsh scripts\build.ps1 -Config Release -Arch x64"
+            WorkingDirectory="..\msquic"/>
     </Target>
 </Project>
