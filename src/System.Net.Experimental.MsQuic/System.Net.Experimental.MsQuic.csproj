@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+        <TargetFrameworks>netcoreapp5.0</TargetFrameworks>
+        <ExcludeFromSourceBuild>true</ExcludeFromSourceBuild>
+        <PackageType>MSBuildSdk</PackageType>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <IsPackable>true</IsPackable>
+        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);_AddBuildOutputToPackageCore</TargetsForTfmSpecificContentInPackage>
+    </PropertyGroup>
+
+    <Target Name="_AddBuildOutputToPackageCore" DependsOnTargets="Publish" Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp'">
+        <ItemGroup>
+            <TfmSpecificPackageFile
+                Include="..\msquic\artifacts\bin\windows\x86_Release_schannel\msquic.dll" 
+                PackagePath="runtimes/win10-x86/native/"/>
+            <TfmSpecificPackageFile
+                Include="..\msquic\artifacts\bin\windows\x86_Release_schannel\msquic.pdb" 
+                PackagePath="runtimes/win10-x86/native/"/>
+                
+            <TfmSpecificPackageFile
+                Include="..\msquic\artifacts\bin\windows\x64_Release_schannel\msquic.dll" 
+                PackagePath="runtimes/win10-x64/native/"/>
+            <TfmSpecificPackageFile
+                Include="..\msquic\artifacts\bin\windows\x64_Release_schannel\msquic.pdb" 
+                PackagePath="runtimes/win10-x64/native/"/>
+        </ItemGroup>   
+    </Target>
+</Project>
