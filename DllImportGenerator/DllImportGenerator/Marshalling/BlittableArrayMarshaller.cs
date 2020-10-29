@@ -96,16 +96,19 @@ namespace Microsoft.Interop
                             yield return statement;
                         }
 
-                        // managedIdentifier.AsSpan().CopyTo(new Span<T>(nativeIdentifier, managedIdentifier.Length));
+                        // new Span<T>(managedIdentifier).CopyTo(new Span<T>(nativeIdentifier, managedIdentifier.Length));
                         yield return ExpressionStatement(
                             InvocationExpression(
                                 MemberAccessExpression(
                                     SyntaxKind.SimpleMemberAccessExpression,
-                                    InvocationExpression(
-                                        MemberAccessExpression(
-                                            SyntaxKind.SimpleMemberAccessExpression,
-                                            IdentifierName(managedIdentifer),
-                                            IdentifierName("AsSpan"))),
+                                        ObjectCreationExpression(
+                                                        GenericName(Identifier(TypeNames.System_Span),
+                                                            TypeArgumentList(
+                                                                SingletonSeparatedList(
+                                                                    GetElementTypeSyntax(info)))))
+                                                    .WithArgumentList(
+                                                        ArgumentList(SingletonSeparatedList(
+                                                            Argument(IdentifierName(managedIdentifer))))),
                                     IdentifierName("CopyTo")))
                             .WithArgumentList(
                                 ArgumentList(
@@ -152,8 +155,7 @@ namespace Microsoft.Interop
                                         MemberAccessExpression(
                                             SyntaxKind.SimpleMemberAccessExpression,
                                             ObjectCreationExpression(
-                                                        GenericName(TypeNames.System_Span)
-                                                        .WithTypeArgumentList(
+                                                        GenericName(Identifier(TypeNames.System_Span),
                                                             TypeArgumentList(
                                                                 SingletonSeparatedList(
                                                                     GetElementTypeSyntax(info)))))

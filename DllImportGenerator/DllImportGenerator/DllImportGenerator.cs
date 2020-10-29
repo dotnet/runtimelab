@@ -40,9 +40,6 @@ namespace Microsoft.Interop
             var generatorDiagnostics = new GeneratorDiagnostics(context);
 
             var generatedDllImports = new StringBuilder();
-            generatedDllImports.AppendLine("#pragma warning disable CS8019");
-            generatedDllImports.AppendLine("using System;");
-            generatedDllImports.AppendLine("#pragma warning restore");
             foreach (SyntaxReference synRef in synRec.Methods)
             {
                 var methodSyntax = (MethodDeclarationSyntax)synRef.GetSyntax(context.CancellationToken);
