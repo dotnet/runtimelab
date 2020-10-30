@@ -25,7 +25,7 @@ namespace Microsoft.Interop
         public void Execute(GeneratorExecutionContext context)
         {
             var synRec = context.SyntaxReceiver as SyntaxReceiver;
-            if (synRec is null)
+            if (synRec is null || !synRec.Methods.Any())
             {
                 return;
             }
@@ -40,7 +40,7 @@ namespace Microsoft.Interop
             var syntaxToModel = new Dictionary<SyntaxTree, SemanticModel>();
 
             var generatorDiagnostics = new GeneratorDiagnostics(context);
-            if (synRec.Methods.Any() && !IsSupportedTargetFramework(context.Compilation))
+            if (!IsSupportedTargetFramework(context.Compilation))
             {
                 generatorDiagnostics.ReportTargetFrameworkNotSupported(MinimumSupportedFrameworkVersion);
             }
