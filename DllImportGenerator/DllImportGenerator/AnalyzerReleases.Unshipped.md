@@ -4,6 +4,7 @@ Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
 DLLIMPORTGEN001         | SourceGeneration | Error    | TypeNotSupported
 DLLIMPORTGEN002         | SourceGeneration | Error    | ConfigurationNotSupported
+DLLIMPORTGEN003         | SourceGeneration | Error    | TargetFrameworkNotSupported
 DLLIMPORTGENANALYZER001 | Usage            | Error    | BlittableTypeMustBeBlittable
 DLLIMPORTGENANALYZER002 | Usage            | Error    | CannotHaveMultipleMarshallingAttributes
 DLLIMPORTGENANALYZER003 | Usage            | Error    | NativeTypeMustBeNonNull
