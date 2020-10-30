@@ -151,6 +151,7 @@ namespace Microsoft.Interop.Analyzers
 
         public override void Initialize(AnalysisContext context)
         {
+            // Don't analyze generated code
             context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
             context.EnableConcurrentExecution();
             context.RegisterCompilationStartAction(PrepareForAnalysis);

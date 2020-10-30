@@ -29,8 +29,9 @@ namespace Microsoft.Interop.Analyzers
 
         public override void Initialize(AnalysisContext context)
         {
-            context.EnableConcurrentExecution();
+            // Don't analyze generated code
             context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
+            context.EnableConcurrentExecution();
             context.RegisterCompilationStartAction(
                 compilationContext =>
                 {
@@ -58,6 +59,8 @@ namespace Microsoft.Interop.Analyzers
             }
             else
             {
+                // Make sure declarations are marked partial. Technically, we can just check one
+                // declaration, since Roslyn would error on inconsistent partial declarations.
                 foreach (var reference in methodSymbol.DeclaringSyntaxReferences)
                 {
                     var syntax = reference.GetSyntax(context.CancellationToken);
