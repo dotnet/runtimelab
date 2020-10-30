@@ -42,6 +42,9 @@ namespace Microsoft.Interop
             var generatorDiagnostics = new GeneratorDiagnostics(context);
             if (!IsSupportedTargetFramework(context.Compilation))
             {
+                // We don't return early here, letting the source generation continue.
+                // This allows a user to copy generated source and use it as a starting point
+                // for manual marshalling if desired.
                 generatorDiagnostics.ReportTargetFrameworkNotSupported(MinimumSupportedFrameworkVersion);
             }
 
