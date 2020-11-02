@@ -25,7 +25,7 @@ namespace NativeExports
         [UnmanagedCallersOnly(EntryPoint = "sum_int_array_ref")]
         public static int SumInArray(int** values, int numValues)
         {
-            if (values == null)
+            if (*values == null)
             {
                 return -1;
             }
@@ -70,6 +70,10 @@ namespace NativeExports
         [UnmanagedCallersOnly(EntryPoint = "sum_string_lengths")]
         public static int SumStringLengths(ushort** strArray)
         {
+            if (strArray == null)
+            {
+                return 0;
+            }
             int length = 0;
             for (int i = 0; (nint)strArray[i] != 0; i++)
             {
@@ -81,12 +85,18 @@ namespace NativeExports
         [UnmanagedCallersOnly(EntryPoint = "reverse_strings")]
         public static void ReverseStrings(ushort*** strArray, int* numValues)
         {
+            if (*strArray == null)
+            {
+                *numValues = 0;
+                return;
+            }
             List<IntPtr> newStrings = new List<IntPtr>();
             for (int i = 0; (nint)(*strArray)[i] != 0; i++)
             {
                 newStrings.Add((IntPtr)Strings.Reverse((*strArray)[i]));
             }
             newStrings.Add(IntPtr.Zero);
+            Marshal.FreeCoTaskMem((IntPtr)(*strArray));
             *strArray = (ushort**)Marshal.AllocCoTaskMem(sizeof(ushort*) * newStrings.Count);
             CollectionsMarshal.AsSpan(newStrings).CopyTo(new Span<IntPtr>((IntPtr*)(*strArray), newStrings.Count));
             *numValues = newStrings.Count;

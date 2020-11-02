@@ -17,8 +17,7 @@ namespace Microsoft.Interop
         protected IEnumerable<StatementSyntax> GenerateConditionalAllocationSyntax(
             TypePositionInfo info, 
             StubCodeContext context,
-            int stackallocMaxSize,
-            bool checkForNull)
+            int stackallocMaxSize)
         {
             (string managedIdentifier, string nativeIdentifier) = context.GetIdentifiers(info);
             
@@ -43,93 +42,91 @@ namespace Microsoft.Interop
             
             if (!context.CanUseAdditionalTemporaryState || !context.StackSpaceUsable || (info.IsByRef && info.RefKind != RefKind.In))
             {
+                List<StatementSyntax> statements = new List<StatementSyntax>();
                 if (allocationRequiresByteLength)
                 {
-                    yield return byteLenAssignment;
+                    statements.Add(byteLenAssignment);
                 }
-                yield return allocationStatement;
+                statements.Add(allocationStatement);
+                yield return ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                    IdentifierName(nativeIdentifier),
+                    LiteralExpression(SyntaxKind.NullLiteralExpression)));
+                yield return IfStatement(
+                    BinaryExpression(SyntaxKind.NotEqualsExpression,
+                        IdentifierName(managedIdentifier),
+                        LiteralExpression(SyntaxKind.NullLiteralExpression)),
+                    Block(statements));
+                yield break;
             }
-            else
-            {
-                // <allocationMarkerIdentifier> = false;
-                yield return LocalDeclarationStatement(
+            // <allocationMarkerIdentifier> = false;
+            yield return LocalDeclarationStatement(
+                VariableDeclaration(
+                    PredefinedType(Token(SyntaxKind.BoolKeyword)),
+                    SingletonSeparatedList(
+                        VariableDeclarator(allocationMarkerIdentifier)
+                            .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.FalseLiteralExpression))))));
+
+            // Code block for stackalloc if number of bytes is below threshold size
+            var marshalOnStack = Block(
+                // byte* <stackAllocPtr> = stackalloc byte[<byteLen>];
+                LocalDeclarationStatement(
                     VariableDeclaration(
-                        PredefinedType(Token(SyntaxKind.BoolKeyword)),
+                        PointerType(PredefinedType(Token(SyntaxKind.ByteKeyword))),
                         SingletonSeparatedList(
-                            VariableDeclarator(allocationMarkerIdentifier)
-                                .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.FalseLiteralExpression))))));
+                            VariableDeclarator(stackAllocPtrIdentifier)
+                                .WithInitializer(EqualsValueClause(
+                                    StackAllocArrayCreationExpression(
+                                        ArrayType(
+                                            PredefinedType(Token(SyntaxKind.ByteKeyword)),
+                                            SingletonList<ArrayRankSpecifierSyntax>(
+                                                ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(
+                                                    IdentifierName(byteLenIdentifier))))))))))),
+                GenerateStackallocOnlyValueMarshalling(info, context, Identifier(byteLenIdentifier), Identifier(stackAllocPtrIdentifier)),
+                // <nativeIdentifier> = <stackAllocPtr>;
+                ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        IdentifierName(nativeIdentifier),
+                        CastExpression(
+                            AsNativeType(info),
+                            IdentifierName(stackAllocPtrIdentifier)))));
 
-                yield return byteLenAssignment;
+            //   if (<byteLen> > <StackAllocBytesThreshold>)
+            //   {
+            //       <allocationStatement>;
+            //   }
+            //   else
+            //   {
+            //       byte* <stackAllocPtr> = stackalloc byte[<byteLen>];
+            //       <marshalValueOnStackStatement>;
+            //       <native> = (<nativeType>)<stackAllocPtr>;
+            //   }
+            var allocBlock = IfStatement(
+                BinaryExpression(
+                    SyntaxKind.GreaterThanExpression,
+                    IdentifierName(byteLenIdentifier),
+                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(stackallocMaxSize))),
+                Block(
+                    allocationStatement,
+                    ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            IdentifierName(allocationMarkerIdentifier),
+                            LiteralExpression(SyntaxKind.TrueLiteralExpression)))),
+                ElseClause(marshalOnStack));
 
-                // Code block for stackalloc if number of bytes is below threshold size
-                var marshalOnStack = Block(
-                    // byte* <stackAllocPtr> = stackalloc byte[<byteLen>];
-                    LocalDeclarationStatement(
-                        VariableDeclaration(
-                            PointerType(PredefinedType(Token(SyntaxKind.ByteKeyword))),
-                            SingletonSeparatedList(
-                                VariableDeclarator(stackAllocPtrIdentifier)
-                                    .WithInitializer(EqualsValueClause(
-                                        StackAllocArrayCreationExpression(
-                                            ArrayType(
-                                                PredefinedType(Token(SyntaxKind.ByteKeyword)),
-                                                SingletonList<ArrayRankSpecifierSyntax>(
-                                                    ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(
-                                                        IdentifierName(byteLenIdentifier))))))))))),
-                    GenerateStackallocOnlyValueMarshalling(info, context, Identifier(byteLenIdentifier), Identifier(stackAllocPtrIdentifier)),
-                    // <nativeIdentifier> = <stackAllocPtr>;
+            yield return IfStatement(
+                BinaryExpression(
+                    SyntaxKind.EqualsExpression,
+                    IdentifierName(managedIdentifier),
+                    LiteralExpression(SyntaxKind.NullLiteralExpression)),
+                Block(
                     ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
                             IdentifierName(nativeIdentifier),
-                            CastExpression(
-                                AsNativeType(info),
-                                IdentifierName(stackAllocPtrIdentifier)))));
-
-                //   if (<byteLen> > <StackAllocBytesThreshold>)
-                //   {
-                //       <allocationStatement>;
-                //   }
-                //   else
-                //   {
-                //       byte* <stackAllocPtr> = stackalloc byte[<byteLen>];
-                //       <marshalValueOnStackStatement>;
-                //       <native> = (<nativeType>)<stackAllocPtr>;
-                //   }
-                var allocBlock = IfStatement(
-                        BinaryExpression(
-                            SyntaxKind.GreaterThanExpression,
-                            IdentifierName(byteLenIdentifier),
-                            LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(stackallocMaxSize))),
-                        Block(
-                            allocationStatement,
-                            ExpressionStatement(
-                                AssignmentExpression(
-                                    SyntaxKind.SimpleAssignmentExpression,
-                                    IdentifierName(allocationMarkerIdentifier),
-                                    LiteralExpression(SyntaxKind.TrueLiteralExpression)))),
-                        ElseClause(marshalOnStack));
-
-                if (checkForNull)
-                {
-                    yield return IfStatement(
-                                BinaryExpression(
-                                    SyntaxKind.EqualsExpression,
-                                    IdentifierName(managedIdentifier),
-                                    LiteralExpression(SyntaxKind.NullLiteralExpression)),
-                                Block(
-                                    ExpressionStatement(
-                                        AssignmentExpression(
-                                            SyntaxKind.SimpleAssignmentExpression,
-                                            IdentifierName(nativeIdentifier),
-                                            LiteralExpression(SyntaxKind.NullLiteralExpression)))),
-                                ElseClause(Block(allocBlock)));
-                }
-                else
-                {
-                    yield return allocBlock;
-                }
-            }
+                            LiteralExpression(SyntaxKind.NullLiteralExpression)))),
+                ElseClause(Block(byteLenAssignment, allocBlock)));
         }
 
         protected StatementSyntax GenerateConditionalAllocationFreeSyntax(

@@ -107,6 +107,12 @@ namespace DllImportGenerator.IntegrationTests
             var strings = GetStringArray();
             Assert.Equal(strings.Sum(str => str?.Length ?? 0), NativeExportsNE.Arrays.SumStringLengths(strings));
         }
+        
+        [Fact]
+        public void ByValueNullArrayWithElementMarshalling()
+        {
+            Assert.Equal(0, NativeExportsNE.Arrays.SumStringLengths(null));
+        }
 
         [Fact]
         public void ByRefArrayWithElementMarshalling()
@@ -116,6 +122,15 @@ namespace DllImportGenerator.IntegrationTests
             NativeExportsNE.Arrays.ReverseStrings(ref strings, out _);
             
             Assert.Equal((IEnumerable<string>)expectedStrings, strings);
+        }
+
+        [Fact]
+        public void ByRefNullArrayWithElementMarshalling()
+        {
+            string[] strings = null;
+            NativeExportsNE.Arrays.ReverseStrings(ref strings, out _);
+            
+            Assert.Null(strings);
         }
 
         [Fact]

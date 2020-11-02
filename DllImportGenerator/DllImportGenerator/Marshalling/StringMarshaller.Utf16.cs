@@ -93,8 +93,7 @@ namespace Microsoft.Interop
                         foreach (var statement in GenerateConditionalAllocationSyntax(
                             info,
                             context,
-                            StackAllocBytesThreshold,
-                            checkForNull: true))
+                            StackAllocBytesThreshold))
                         {
                             yield return statement;
                         }

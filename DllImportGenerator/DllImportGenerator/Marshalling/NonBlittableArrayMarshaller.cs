@@ -77,16 +77,20 @@ namespace Microsoft.Interop
                         foreach (var statement in GenerateConditionalAllocationSyntax(
                             info,
                             context,
-                            StackAllocBytesThreshold,
-                            checkForNull: true))
+                            StackAllocBytesThreshold))
                         {
                             yield return statement;
                         }
 
+                        // Iterate through the elements of the array to marshal them
                         string indexerIdentifier = "i";
                         var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, indexerIdentifier, context);
-                        yield return MarshallerHelpers.GetForLoop(managedIdentifer, indexerIdentifier)
-                            .WithStatement(Block(List(_elementMarshaller.Generate(info with { ManagedType = GetElementTypeSymbol(info) }, arraySubContext))));
+                        yield return IfStatement(BinaryExpression(SyntaxKind.NotEqualsExpression,
+                            IdentifierName(managedIdentifer),
+                            LiteralExpression(SyntaxKind.NullLiteralExpression)),
+                            MarshallerHelpers.GetForLoop(managedIdentifer, indexerIdentifier)
+                                .WithStatement(Block(
+                                    List(_elementMarshaller.Generate(info with { ManagedType = GetElementTypeSymbol(info) }, arraySubContext)))));
                     }
                     break;
                 case StubCodeContext.Stage.Unmarshal:
@@ -108,6 +112,7 @@ namespace Microsoft.Interop
                                         ArrayType(GetElementTypeSymbol(info).AsTypeSyntax(),
                                             SingletonList(ArrayRankSpecifier(
                                                 SingletonSeparatedList(_numElementsExpr))))))),
+                                // Iterate through the elements of the native array to unmarshal them
                                 MarshallerHelpers.GetForLoop(managedIdentifer, indexerIdentifier)
                                     .WithStatement(Block(
                                         List(_elementMarshaller.Generate(
@@ -126,8 +131,13 @@ namespace Microsoft.Interop
                         var elementCleanup = List(_elementMarshaller.Generate(info with { ManagedType = GetElementTypeSymbol(info) }, arraySubContext));
                         if (elementCleanup.Count != 0)
                         {
-                            yield return MarshallerHelpers.GetForLoop(managedIdentifer, indexerIdentifier)
-                                .WithStatement(Block(elementCleanup));
+                            // Iterate through the elements of the native array to clean up any unmanaged resources.
+                            yield return IfStatement(
+                                BinaryExpression(SyntaxKind.NotEqualsExpression,
+                                    IdentifierName(managedIdentifer),
+                                    LiteralExpression(SyntaxKind.NullLiteralExpression)),
+                                MarshallerHelpers.GetForLoop(managedIdentifer, indexerIdentifier)
+                                    .WithStatement(Block(elementCleanup)));
                         }
                         yield return GenerateConditionalAllocationFreeSyntax(info, context);
                     }
