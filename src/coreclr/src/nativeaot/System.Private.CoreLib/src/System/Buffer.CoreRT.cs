@@ -24,12 +24,6 @@ namespace System
         internal static void BulkMoveWithWriteBarrier(ref byte dmem, ref byte smem, nuint size)
             => RuntimeImports.RhBulkMoveWithWriteBarrier(ref dmem, ref smem, size);
 
-        internal static unsafe void Memcpy(byte* dest, byte* src, int len)
-        {
-            Debug.Assert(len >= 0, "Negative length in memcpy!");
-            Memmove(dest, src, (nuint)len);
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static unsafe void __Memmove(byte* dest, byte* src, nuint len) =>
             RuntimeImports.memmove(dest, src, len);

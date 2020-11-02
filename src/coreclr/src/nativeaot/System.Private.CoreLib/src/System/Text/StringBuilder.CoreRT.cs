@@ -37,7 +37,7 @@ namespace System.Text
             // CLR had '\0'
             char[] chunkChars = new char[GetAllocationLength(len + 1)];
 
-            ThreadSafeCopy(newBuffer, chunkChars, 0, len);
+            new ReadOnlySpan<char>(newBuffer, len).CopyTo(chunkChars);
 
             ReplaceBufferInternal(chunkChars, len);
         }
@@ -58,7 +58,8 @@ namespace System.Text
             else
             {
                 char[] chunkChars = new char[GetAllocationLength(len + 1)];
-                ThreadSafeCopy(chunkCharsCandidate, 0, chunkChars, 0, len);
+
+                new ReadOnlySpan<char>(chunkCharsCandidate, 0, len).CopyTo(chunkChars);
 
                 ReplaceBufferInternal(chunkChars, len);
             }
@@ -92,71 +93,6 @@ namespace System.Text
             else
             {
                 return null;
-            }
-        }
-
-        /// <summary>
-        /// Copy StringBuilder's contents to the char*, and appending a '\0'
-        /// The destination buffer must be big enough, and include space for '\0'
-        /// NOTE: There is no guarantee the destination pointer has enough size, but we have no choice
-        /// because the pointer might come from native code.
-        /// </summary>
-        internal unsafe void UnsafeCopyTo(char* destination)
-        {
-            if (destination == null)
-            {
-                throw new ArgumentNullException(nameof(destination));
-            }
-
-            int count = Length;
-
-            destination[count] = '\0';
-
-            StringBuilder chunk = this;
-            int sourceEndIndex = count;
-            int curDestIndex = count;
-            while (count > 0)
-            {
-                int chunkEndIndex = sourceEndIndex - chunk.m_ChunkOffset;
-                if (chunkEndIndex >= 0)
-                {
-                    if (chunkEndIndex > chunk.m_ChunkLength)
-                        chunkEndIndex = chunk.m_ChunkLength;
-
-                    int chunkCount = count;
-                    int chunkStartIndex = chunkEndIndex - count;
-                    if (chunkStartIndex < 0)
-                    {
-                        chunkCount += chunkStartIndex;
-                        chunkStartIndex = 0;
-                    }
-                    curDestIndex -= chunkCount;
-                    count -= chunkCount;
-
-                    // SafeCritical: we ensure that chunkStartIndex + chunkCount are within range of m_chunkChars
-                    // as well as ensuring that curDestIndex + chunkCount are within range of destination
-                    ThreadSafeCopy(chunk.m_ChunkChars, chunkStartIndex, destination + curDestIndex, chunkCount);
-                }
-                chunk = chunk.m_ChunkPrevious;
-            }
-        }
-
-        private static unsafe void ThreadSafeCopy(char[] source, int sourceIndex, char* destinationPtr, int count)
-        {
-            if (count > 0)
-            {
-                if ((uint)sourceIndex <= (uint)source.Length && (sourceIndex + count) <= source.Length)
-                {
-                    unsafe
-                    {
-                        fixed (char* sourcePtr = &source[sourceIndex])
-                            string.wstrcpy(destinationPtr, sourcePtr, count);
-                    }
-                }
-                else
-                {
-                    throw new ArgumentOutOfRangeException(nameof(sourceIndex), SR.ArgumentOutOfRange_Index);
-                }
             }
         }
     }
