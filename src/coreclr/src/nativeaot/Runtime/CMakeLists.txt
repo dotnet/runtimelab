@@ -194,7 +194,7 @@ else()
 endif()
 
 if (CLR_CMAKE_TARGET_ARCH_AMD64 AND CLR_CMAKE_TARGET_WIN32)
-  set (APPEND COMMON_RUNTIME_SOURCES
+  list(APPEND COMMON_RUNTIME_SOURCES
     ${GC_DIR}/vxsort/isa_detection.cpp
     ${GC_DIR}/vxsort/do_vxsort_avx2.cpp
     ${GC_DIR}/vxsort/do_vxsort_avx512.cpp
