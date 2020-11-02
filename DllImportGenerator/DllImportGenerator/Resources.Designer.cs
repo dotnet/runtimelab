@@ -178,6 +178,33 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Methods marked with &apos;GeneratedDllImportAttribute&apos; should be &apos;static&apos; and &apos;partial&apos;. P/Invoke source generation will ignore methods that are not &apos;static&apos; and &apos;partial&apos;..
+        /// </summary>
+        internal static string GeneratedDllImportMissingModifiersDescription {
+            get {
+                return ResourceManager.GetString("GeneratedDllImportMissingModifiersDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Method &apos;{0}&apos; should be &apos;static&apos; and &apos;partial&apos; when marked with &apos;GeneratedDllImportAttribute&apos;. P/Invoke source generation will ignore methods that are not &apos;static&apos; and &apos;partial&apos;..
+        /// </summary>
+        internal static string GeneratedDllImportMissingModifiersMessage {
+            get {
+                return ResourceManager.GetString("GeneratedDllImportMissingModifiersMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Method marked with &apos;GeneratedDllImportAttribute&apos; should be &apos;static&apos; and &apos;partial&apos;.
+        /// </summary>
+        internal static string GeneratedDllImportMissingModifiersTitle {
+            get {
+                return ResourceManager.GetString("GeneratedDllImportMissingModifiersTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The return type of &apos;GetPinnableReference&apos; (after accounting for &apos;ref&apos;) must be blittable..
         /// </summary>
         internal static string GetPinnableReferenceReturnTypeBlittableDescription {
@@ -336,6 +363,33 @@ namespace Microsoft.Interop {
         internal static string StackallocMarshallingShouldSupportAllocatingMarshallingFallbackMessage {
             get {
                 return ResourceManager.GetString("StackallocMarshallingShouldSupportAllocatingMarshallingFallbackMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to P/Invoke source generation is only supported on .NET {0} or above. The generated source will not be compatible with other frameworks..
+        /// </summary>
+        internal static string TargetFrameworkNotSupportedDescription {
+            get {
+                return ResourceManager.GetString("TargetFrameworkNotSupportedDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &apos;GeneratedDllImportAttribute&apos; cannot be used for source-generated P/Invokes on the current target framework. Source-generated P/Invokes require .NET {0} or above..
+        /// </summary>
+        internal static string TargetFrameworkNotSupportedMessage {
+            get {
+                return ResourceManager.GetString("TargetFrameworkNotSupportedMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Current target framework is not supported by source-generated P/Invokes.
+        /// </summary>
+        internal static string TargetFrameworkNotSupportedTitle {
+            get {
+                return ResourceManager.GetString("TargetFrameworkNotSupportedTitle", resourceCulture);
             }
         }
         
