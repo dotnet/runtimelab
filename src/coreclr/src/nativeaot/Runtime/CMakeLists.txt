@@ -193,6 +193,20 @@ else()
   )
 endif()
 
+if (CLR_CMAKE_TARGET_ARCH_AMD64 AND CLR_CMAKE_TARGET_WIN32)
+  set (APPEND COMMON_RUNTIME_SOURCES
+    ${GC_DIR}/vxsort/isa_detection.cpp
+    ${GC_DIR}/vxsort/do_vxsort_avx2.cpp
+    ${GC_DIR}/vxsort/do_vxsort_avx512.cpp
+    ${GC_DIR}/vxsort/machine_traits.avx2.cpp
+    ${GC_DIR}/vxsort/smallsort/bitonic_sort.AVX2.int64_t.generated.cpp
+    ${GC_DIR}/vxsort/smallsort/bitonic_sort.AVX2.int32_t.generated.cpp
+    ${GC_DIR}/vxsort/smallsort/bitonic_sort.AVX512.int64_t.generated.cpp
+    ${GC_DIR}/vxsort/smallsort/bitonic_sort.AVX512.int32_t.generated.cpp
+    ${GC_DIR}/vxsort/smallsort/avx2_load_mask_tables.cpp
+)
+endif (CLR_CMAKE_TARGET_ARCH_AMD64 AND CLR_CMAKE_TARGET_WIN32)
+
 list(APPEND RUNTIME_SOURCES_ARCH_ASM
   ${ARCH_SOURCES_DIR}/AllocFast.${ASM_SUFFIX}
   ${ARCH_SOURCES_DIR}/CallDescrWorker.${ASM_SUFFIX}
