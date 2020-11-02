@@ -24,7 +24,7 @@ namespace System.Runtime.CompilerServices
         /// </remarks>
         internal static readonly object s_syncSuccessSentinel =
 #if FEATURE_POOLASYNCVALUETASKS
-            s_valueTaskPoolingEnabled ? (object)new SyncSuccessSentinelStateMachineBox() :
+            AsyncValueTaskMethodBuilder.s_valueTaskPoolingEnabled ? (object)new SyncSuccessSentinelStateMachineBox() :
 #endif
             new Task<TResult>(default(TResult)!);
 
@@ -59,7 +59,7 @@ namespace System.Runtime.CompilerServices
                 m_task = s_syncSuccessSentinel;
             }
 #if FEATURE_POOLASYNCVALUETASKS
-            else if (s_valueTaskPoolingEnabled)
+            else if (AsyncValueTaskMethodBuilder.s_valueTaskPoolingEnabled)
             {
                 Unsafe.As<StateMachineBox>(m_task).SetResult(result);
             }
@@ -75,7 +75,7 @@ namespace System.Runtime.CompilerServices
         public void SetException(Exception exception)
         {
 #if FEATURE_POOLASYNCVALUETASKS
-            if (s_valueTaskPoolingEnabled)
+            if (AsyncValueTaskMethodBuilder.s_valueTaskPoolingEnabled)
             {
                 SetException(exception, ref Unsafe.As<object?, StateMachineBox?>(ref m_task));
             }
@@ -115,7 +115,7 @@ namespace System.Runtime.CompilerServices
                 // the interface instead.
 
 #if FEATURE_POOLASYNCVALUETASKS
-                if (s_valueTaskPoolingEnabled)
+                if (AsyncValueTaskMethodBuilder.s_valueTaskPoolingEnabled)
                 {
                     var box = Unsafe.As<StateMachineBox?>(m_task);
                     if (box is null)
@@ -147,7 +147,7 @@ namespace System.Runtime.CompilerServices
             where TStateMachine : IAsyncStateMachine
         {
 #if FEATURE_POOLASYNCVALUETASKS
-            if (s_valueTaskPoolingEnabled)
+            if (AsyncValueTaskMethodBuilder.s_valueTaskPoolingEnabled)
             {
                 AwaitOnCompleted(ref awaiter, ref stateMachine, ref Unsafe.As<object?, StateMachineBox?>(ref m_task));
             }
@@ -184,7 +184,7 @@ namespace System.Runtime.CompilerServices
             where TStateMachine : IAsyncStateMachine
         {
 #if FEATURE_POOLASYNCVALUETASKS
-            if (s_valueTaskPoolingEnabled)
+            if (AsyncValueTaskMethodBuilder.s_valueTaskPoolingEnabled)
             {
                 AwaitUnsafeOnCompleted(ref awaiter, ref stateMachine, ref Unsafe.As<object?, StateMachineBox?>(ref m_task));
             }
@@ -300,7 +300,7 @@ namespace System.Runtime.CompilerServices
                 {
                     m_task =
 #if FEATURE_POOLASYNCVALUETASKS
-                        s_valueTaskPoolingEnabled ? (object)CreateWeaklyTypedStateMachineBox() :
+                        AsyncValueTaskMethodBuilder.s_valueTaskPoolingEnabled ? (object)CreateWeaklyTypedStateMachineBox() :
 #endif
                         AsyncTaskMethodBuilder<TResult>.CreateWeaklyTypedStateMachineBox();
                 }

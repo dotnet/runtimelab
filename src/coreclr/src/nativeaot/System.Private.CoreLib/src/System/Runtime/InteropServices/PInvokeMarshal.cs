@@ -315,7 +315,9 @@ namespace System.Runtime.InteropServices
         #region String marshalling
         public static unsafe void StringBuilderToUnicodeString(System.Text.StringBuilder stringBuilder, ushort* destination)
         {
-            stringBuilder.UnsafeCopyTo((char*)destination);
+            int length = stringBuilder.Length;
+            stringBuilder.CopyTo(0, new Span<char>((char*)destination, length), length);
+            destination[length] = '\0';
         }
 
         public static unsafe void UnicodeStringToStringBuilder(ushort* newBuffer, System.Text.StringBuilder stringBuilder)

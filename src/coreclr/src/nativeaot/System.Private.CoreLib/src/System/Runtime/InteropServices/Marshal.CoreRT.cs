@@ -94,10 +94,8 @@ namespace System.Runtime.InteropServices
             else
             {
                 nuint size = (nuint)RuntimeAugments.InteropCallbacks.GetStructUnsafeStructSize(structureTypeHandle);
-                fixed (byte* pDest = &structure.GetRawData())
-                {
-                    Buffer.Memmove(pDest, (byte*)ptr, size);
-                }
+
+                Buffer.Memmove(ref structure.GetRawData(), ref *(byte*)ptr, size);
             }
         }
 
@@ -184,10 +182,8 @@ namespace System.Runtime.InteropServices
             else
             {
                 nuint size = (nuint)RuntimeAugments.InteropCallbacks.GetStructUnsafeStructSize(structureTypeHandle);
-                fixed (byte* pSrc = &structure.GetRawData())
-                {
-                    Buffer.Memmove((byte*)ptr, pSrc, size);
-                }
+
+                Buffer.Memmove(ref *(byte*)ptr, ref structure.GetRawData(), size);
             }
         }
 
