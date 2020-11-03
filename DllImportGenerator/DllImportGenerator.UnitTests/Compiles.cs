@@ -82,7 +82,7 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.ArrayParameterWithNestedMarshalInfo<string>(UnmanagedType.LPWStr) };
             yield return new[] { CodeSnippets.ArrayParameterWithNestedMarshalInfo<string>(UnmanagedType.LPUTF8Str) };
             yield return new[] { CodeSnippets.ArrayParameterWithNestedMarshalInfo<string>(UnmanagedType.LPStr) };
-            //yield return new[] { CodeSnippets.EnumParameters };
+            yield return new[] { CodeSnippets.EnumParameters };
             yield return new[] { CodeSnippets.PreserveSigFalseVoidReturn };
             yield return new[] { CodeSnippets.PreserveSigFalse<byte>() };
             yield return new[] { CodeSnippets.PreserveSigFalse<sbyte>() };
@@ -140,8 +140,6 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.ArrayParameterWithSizeParam<float>(isByRef: false) };
             yield return new[] { CodeSnippets.ArrayParameterWithSizeParam<double>(isByRef: false) };
             yield return new[] { CodeSnippets.ArrayParameterWithSizeParam<bool>(isByRef: false) };
-
-            yield return new[] { CodeSnippets.EnumParameters };
 
             yield return new[] { CodeSnippets.PreserveSigFalse<byte[]>() };
             yield return new[] { CodeSnippets.PreserveSigFalse<sbyte[]>() };
