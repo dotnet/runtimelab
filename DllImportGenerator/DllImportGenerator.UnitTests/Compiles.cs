@@ -121,6 +121,7 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.CustomStructMarshallingStackallocValuePropertyParametersAndModifiers };
             yield return new[] { CodeSnippets.CustomStructMarshallingValuePropertyParametersAndModifiers };
             yield return new[] { CodeSnippets.CustomStructMarshallingPinnableParametersAndModifiers };
+            yield return new[] { CodeSnippets.CustomStructMarshallingByRefValuePropertyIn };
         }
 
         public static IEnumerable<object[]> CodeSnippetsToCompile_WithDiagnostics()
@@ -168,6 +169,7 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.PreserveSigFalse<string[]>() };
             yield return new[] { CodeSnippets.PreserveSigFalse<IntPtr[]>() };
             yield return new[] { CodeSnippets.PreserveSigFalse<UIntPtr[]>() };
+            yield return new[] { CodeSnippets.CustomStructMarshallingByRefValuePropertyRefOutReturn };
         }
 
         [Theory]

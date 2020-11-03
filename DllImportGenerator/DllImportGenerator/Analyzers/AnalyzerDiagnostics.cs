@@ -17,7 +17,7 @@ namespace Microsoft.Interop.Analyzers
             public const string NativeTypeMustBeNonNull = Prefix + "003";
             public const string NativeTypeMustBeBlittable = Prefix + "004";
             public const string GetPinnableReferenceReturnTypeBlittable = Prefix + "005";
-            public const string NativeTypeMustBePointerSized = Prefix + "006";
+            public const string NativeTypeMustBePointerSizedOrByRef = Prefix + "006";
             public const string NativeTypeMustHaveRequiredShape = Prefix + "007";
             public const string ValuePropertyMustHaveSetter = Prefix + "008";
             public const string ValuePropertyMustHaveGetter = Prefix + "009";

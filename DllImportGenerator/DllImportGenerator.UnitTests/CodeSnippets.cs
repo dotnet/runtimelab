@@ -552,5 +552,65 @@ unsafe struct Native
     }
 }
 ";
+
+        public static string CustomStructMarshallingByRefValuePropertyIn = @"
+using System.Runtime.InteropServices;
+
+[NativeMarshalling(typeof(Native))]
+class S
+{
+    public byte c;
+}
+
+unsafe struct Native
+{
+    private S value;
+
+    public Native(S s) : this()
+    {
+        value = s;
+    }
+
+    public ref byte Value { get => ref value.c; }
+}
+
+partial class Test
+{
+    [GeneratedDllImport(""DoesNotExist"")]
+    public static partial void Method(
+        S s,
+        in S sIn);
+}
+";
+
+        public static string CustomStructMarshallingByRefValuePropertyRefOutReturn = @"
+using System.Runtime.InteropServices;
+
+[NativeMarshalling(typeof(Native))]
+class S
+{
+    public byte c;
+}
+
+unsafe struct Native
+{
+    private S value;
+
+    public Native(S s) : this()
+    {
+        value = s;
+    }
+
+    public ref byte Value { get => ref value.c; }
+}
+
+partial class Test
+{
+    [GeneratedDllImport(""DoesNotExist"")]
+    public static partial S Method(
+        ref S sRef,
+        out S sOut);
+}
+";
     }
 }

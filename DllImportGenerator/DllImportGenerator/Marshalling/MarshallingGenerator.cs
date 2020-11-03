@@ -348,6 +348,13 @@ namespace Microsoft.Interop
 
         private static IMarshallingGenerator CreateCustomNativeTypeMarshaller(TypePositionInfo info, StubCodeContext context, NativeMarshallingAttributeInfo marshalInfo)
         {
+            if (marshalInfo.ValuePropertyRequiresPinning &&
+                (!context.PinningSupported ||
+                    info.IsManagedReturnPosition ||
+                    (info.IsByRef && info.RefKind != RefKind.In)))
+            {
+                throw new MarshallingNotSupportedException(info, context);
+            }
 
             // The marshalling method for this type doesn't support marshalling from native to managed,
             // but our scenario requires marshalling from native to managed.

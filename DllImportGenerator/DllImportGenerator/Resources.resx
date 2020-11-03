@@ -195,11 +195,11 @@
   <data name="NativeTypeMustBeNonNullMessage" xml:space="preserve">
     <value>The native type for the type '{0}' is null</value>
   </data>
-  <data name="NativeTypeMustBePointerSizedDescription" xml:space="preserve">
-    <value>The native type must be pointer sized so the pinned result of 'GetPinnableReference' can be cast to the native type.</value>
+  <data name="NativeTypeMustBePointerSizedOrByRefDescription" xml:space="preserve">
+    <value>The native type must be pointer sized or a byref with the same return type as 'GetPinnableReference' so the pinned result of 'GetPinnableReference' can be cast to the native type.</value>
   </data>
-  <data name="NativeTypeMustBePointerSizedMessage" xml:space="preserve">
-    <value>The native type '{0}' must be pointer sized because the managed type '{1}' has a 'GetPinnableReference' method</value>
+  <data name="NativeTypeMustBePointerSizedOrByRefMessage" xml:space="preserve">
+    <value>The native type '{0}' must be pointer sized or have the same return type as the 'GetPinnableReference' method on '{1}' because the managed type '{1}' has a 'GetPinnableReference' method</value>
   </data>
   <data name="NativeTypeMustHaveRequiredShapeDescription" xml:space="preserve">
     <value>The native type must have at least one of the two marshalling methods to enable marshalling the managed type.</value>

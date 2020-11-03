@@ -297,18 +297,18 @@ namespace Microsoft.Interop {
         /// <summary>
         ///   Looks up a localized string similar to The native type must be pointer sized so the pinned result of &apos;GetPinnableReference&apos; can be cast to the native type..
         /// </summary>
-        internal static string NativeTypeMustBePointerSizedDescription {
+        internal static string NativeTypeMustBePointerSizedOrByRefDescription {
             get {
-                return ResourceManager.GetString("NativeTypeMustBePointerSizedDescription", resourceCulture);
+                return ResourceManager.GetString("NativeTypeMustBePointerSizedOrByRefDescription", resourceCulture);
             }
         }
         
         /// <summary>
         ///   Looks up a localized string similar to The native type &apos;{0}&apos; must be pointer sized because the managed type &apos;{1}&apos; has a &apos;GetPinnableReference&apos; method.
         /// </summary>
-        internal static string NativeTypeMustBePointerSizedMessage {
+        internal static string NativeTypeMustBePointerSizedOrByRefMessage {
             get {
-                return ResourceManager.GetString("NativeTypeMustBePointerSizedMessage", resourceCulture);
+                return ResourceManager.GetString("NativeTypeMustBePointerSizedOrByRefMessage", resourceCulture);
             }
         }
         

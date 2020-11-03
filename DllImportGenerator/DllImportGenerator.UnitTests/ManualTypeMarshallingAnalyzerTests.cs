@@ -432,7 +432,7 @@ unsafe struct Native
 
             await VerifyCS.VerifyAnalyzerAsync(source);
         }
-        
+
         [Fact]
         public async Task TypeWithGetPinnableReferenceNonPointerReturnType_ReportsDiagnostic()
         {
@@ -463,7 +463,69 @@ unsafe struct Native
 }";
 
             await VerifyCS.VerifyAnalyzerAsync(source,
-                VerifyCS.Diagnostic(NativeTypeMustBePointerSizedRule).WithSpan(24, 5, 24, 42).WithArguments("int", "S"));
+                VerifyCS.Diagnostic(NativeTypeMustBePointerSizedOrByRefRule).WithSpan(24, 5, 24, 42).WithArguments("int", "S"));
+        }
+
+        [Fact]
+        public async Task TypeWithGetPinnableReferencePointerReturnType_DoesNotReportDiagnostic()
+        {
+            string source = @"
+using System;
+using System.Runtime.InteropServices;
+
+[NativeMarshalling(typeof(Native))]
+class S
+{
+    public byte c;
+
+    public ref byte GetPinnableReference() => ref c;
+}
+
+unsafe struct Native
+{
+    private IntPtr value;
+
+    public Native(S s) : this()
+    {
+        value = IntPtr.Zero;
+    }
+
+    public S ToManaged() => new S();
+
+    public int* Value { get => null; set {} }
+}";
+
+            await VerifyCS.VerifyAnalyzerAsync(source);
+        }
+    
+        [Fact]
+        public async Task TypeWithGetPinnableReferenceByRefReturnType_DoesNotReportDiagnostic()
+        {
+            string source = @"
+using System;
+using System.Runtime.InteropServices;
+
+[NativeMarshalling(typeof(Native))]
+class S
+{
+    public byte c;
+
+    public ref byte GetPinnableReference() => ref c;
+}
+
+unsafe struct Native
+{
+    private S value;
+
+    public Native(S s) : this()
+    {
+        value = s;
+    }
+
+    public ref byte Value { get => ref value.GetPinnableReference(); }
+}";
+
+            await VerifyCS.VerifyAnalyzerAsync(source);
         }
 
         [Fact]

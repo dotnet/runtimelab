@@ -64,15 +64,15 @@ namespace Microsoft.Interop.Analyzers
                 isEnabledByDefault: true,
                 description: GetResourceString(nameof(Resources.GetPinnableReferenceReturnTypeBlittableDescription)));
     
-        public readonly static DiagnosticDescriptor NativeTypeMustBePointerSizedRule =
+        public readonly static DiagnosticDescriptor NativeTypeMustBePointerSizedOrByRefRule =
             new DiagnosticDescriptor(
-                Ids.NativeTypeMustBePointerSized,
-                "NativeTypeMustBePointerSized",
-                GetResourceString(nameof(Resources.NativeTypeMustBePointerSizedMessage)),
+                Ids.NativeTypeMustBePointerSizedOrByRef,
+                "NativeTypeMustBePointerSizedOrByRef",
+                GetResourceString(nameof(Resources.NativeTypeMustBePointerSizedOrByRefMessage)),
                 Category,
                 DiagnosticSeverity.Error,
                 isEnabledByDefault: true,
-                description: GetResourceString(nameof(Resources.NativeTypeMustBePointerSizedDescription)));
+                description: GetResourceString(nameof(Resources.NativeTypeMustBePointerSizedOrByRefDescription)));
 
         public readonly static DiagnosticDescriptor NativeTypeMustHaveRequiredShapeRule =
             new DiagnosticDescriptor(
@@ -141,7 +141,7 @@ namespace Microsoft.Interop.Analyzers
                 NativeTypeMustBeNonNullRule,
                 NativeTypeMustBeBlittableRule,
                 GetPinnableReferenceReturnTypeBlittableRule,
-                NativeTypeMustBePointerSizedRule,
+                NativeTypeMustBePointerSizedOrByRefRule,
                 NativeTypeMustHaveRequiredShapeRule,
                 ValuePropertyMustHaveSetterRule,
                 ValuePropertyMustHaveGetterRule,
@@ -379,14 +379,17 @@ namespace Microsoft.Interop.Analyzers
                     {
                         context.ReportDiagnostic(Diagnostic.Create(GetPinnableReferenceReturnTypeBlittableRule, getPinnableReferenceMethod.DeclaringSyntaxReferences[0].GetSyntax().GetLocation()));
                     }
-                    // Validate that the Value property is a pointer-sized primitive type.
+                    // Validate that the Value property is a pointer-sized primitive type
+                    // or a byref to the same type as GetPinnableReference returns.
                     if (valueProperty is null ||
-                        valueProperty.Type is not (
+                        (valueProperty.Type is not (
                             IPointerTypeSymbol _ or
                             { SpecialType: SpecialType.System_IntPtr } or
-                            { SpecialType: SpecialType.System_UIntPtr }))
+                            { SpecialType: SpecialType.System_UIntPtr }) &&
+                        ((valueProperty.ReturnsByRef || valueProperty.ReturnsByRefReadonly) &&
+                            !SymbolEqualityComparer.Default.Equals(getPinnableReferenceMethod.ReturnType, valueProperty.Type))))
                     {
-                        context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustBePointerSizedRule,
+                        context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustBePointerSizedOrByRefRule,
                             valueProperty is not null
                             ? GetSyntaxReferenceForDiagnostic(valueProperty).GetSyntax().GetLocation()
                             : GetSyntaxReferenceForDiagnostic(nativeType).GetSyntax().GetLocation(),
