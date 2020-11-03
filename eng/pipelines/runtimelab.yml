@@ -192,6 +192,7 @@ stages:
       parameters:
         jobTemplate: /eng/pipelines/libraries/run-test-job.yml
         buildConfig: Release
+        runtimeFlavor: mono
         platforms:
         - Linux_s390x
         # - Linux_x64
