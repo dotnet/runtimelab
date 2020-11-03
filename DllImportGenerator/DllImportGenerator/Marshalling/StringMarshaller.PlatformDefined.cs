@@ -125,7 +125,6 @@ namespace Microsoft.Interop
 
         protected override ExpressionSyntax GenerateFreeExpression(TypePositionInfo info, StubCodeContext context)
         {
-            // Marshal.FreeCoTaskMem((IntPtr)<nativeIdentifier>)
             return StringMarshaller.FreeExpression(context.GetIdentifiers(info).native);
         }
 

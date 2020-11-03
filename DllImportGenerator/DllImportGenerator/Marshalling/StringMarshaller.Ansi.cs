@@ -13,9 +13,9 @@ namespace Microsoft.Interop
     {
         private static readonly TypeSyntax NativeType = PointerType(PredefinedType(Token(SyntaxKind.ByteKeyword)));
 
-        private readonly IMarshallingGenerator utf8StringMarshaller;
+        private readonly Utf8StringMarshaller utf8StringMarshaller;
 
-        public AnsiStringMarshaller(IMarshallingGenerator utf8StringMarshaller)
+        public AnsiStringMarshaller(Utf8StringMarshaller utf8StringMarshaller)
         {
             this.utf8StringMarshaller = utf8StringMarshaller;
         }
@@ -162,7 +162,6 @@ namespace Microsoft.Interop
 
         protected override ExpressionSyntax GenerateFreeExpression(TypePositionInfo info, StubCodeContext context)
         {
-            // Marshal.FreeCoTaskMem((IntPtr)<nativeIdentifier>)
             return StringMarshaller.FreeExpression(context.GetIdentifiers(info).native);
         }
     }

@@ -146,7 +146,6 @@ namespace Microsoft.Interop
             out bool allocationRequiresByteLength)
         {
             allocationRequiresByteLength = false;
-            // (ushort*)Marshal.StringToCoTaskMemUni(<managed>)
             return CastExpression(
                 AsNativeType(info),
                 StringMarshaller.AllocationExpression(CharEncoding.Utf16, context.GetIdentifiers(info).managed));
@@ -208,7 +207,6 @@ namespace Microsoft.Interop
             TypePositionInfo info,
             StubCodeContext context)
         {
-            // Marshal.FreeCoTaskMem((IntPtr)<nativeIdentifier>)
             return StringMarshaller.FreeExpression(context.GetIdentifiers(info).native);
         }
     }
