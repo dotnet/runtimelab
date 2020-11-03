@@ -60,22 +60,21 @@ stages:
   #
   # Build with Debug config and Checked runtimeConfiguration
   #
-  - ${{ if ne(variables.isOfficialBuild, true) }}:
-    - template: /eng/pipelines/common/platform-matrix.yml
-      parameters:
-        jobTemplate: /eng/pipelines/common/global-build-job.yml
-        buildConfig: Checked
-        platforms:
-        - Linux_s390x
+#  - ${{ if ne(variables.isOfficialBuild, true) }}:
+#    - template: /eng/pipelines/common/platform-matrix.yml
+#      parameters:
+#        jobTemplate: /eng/pipelines/common/global-build-job.yml
+#        buildConfig: Checked
+#        platforms:
 #        - Linux_x64
 #        - windows_x64
-        jobParameters:
-          timeoutInMinutes: 100
-          testGroup: innerloop
-          buildArgs: -s clr+libs+installer -c debug -runtimeConfiguration Checked
-          extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-          extraStepsParameters:
-            uploadRuntimeTests: true
+#        jobParameters:
+#          timeoutInMinutes: 100
+#          testGroup: innerloop
+#          buildArgs: -s clr+libs+installer -c debug -runtimeConfiguration Checked
+#          extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+#          extraStepsParameters:
+#            uploadRuntimeTests: true
 
   #
   # Build with Release config and Release runtimeConfiguration
@@ -96,9 +95,9 @@ stages:
           uploadLibrariesTests: ${{ eq(variables.isOfficialBuild, false) }}
           uploadUnsignedArtifacts: false
         ${{ if eq(variables.isOfficialBuild, false) }}:
-          buildArgs: -s clr+libs+libs.tests+installer -c $(_BuildConfig) /p:ArchiveTests=true
+          buildArgs: -s mono+libs+libs.tests+installer -c $(_BuildConfig) /p:ArchiveTests=true
         ${{ if eq(variables.isOfficialBuild, true) }}:
-          buildArgs: -s clr+libs -c $(_BuildConfig)
+          buildArgs: -s mono+libs -c $(_BuildConfig)
 
   #
   # Build with Release allConfigurations to produce packages
