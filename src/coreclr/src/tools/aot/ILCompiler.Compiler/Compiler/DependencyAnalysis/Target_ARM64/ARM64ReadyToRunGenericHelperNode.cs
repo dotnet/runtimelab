@@ -78,7 +78,7 @@ namespace ILCompiler.DependencyAnalysis
                         else
                         {
                             // We need to trigger the cctor before returning the base. It is stored at the beginning of the non-GC statics region.
-                            encoder.EmitSUB(encoder.TargetRegister.Arg3, encoder.TargetRegister.Arg0, NonGCStaticsNode.GetClassConstructorContextStorageSize(factory.Target, target));
+                            encoder.EmitSUB(encoder.TargetRegister.Arg3, encoder.TargetRegister.Arg0, NonGCStaticsNode.GetClassConstructorContextSize(factory.Target, target));
                             encoder.EmitLDR(encoder.TargetRegister.Arg2, encoder.TargetRegister.Arg3, (short)factory.Target.PointerSize);
                             encoder.EmitCMP(encoder.TargetRegister.Arg2, 1);
                             encoder.EmitRETIfEqual();
@@ -111,7 +111,7 @@ namespace ILCompiler.DependencyAnalysis
                             GenericLookupResult nonGcRegionLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
                             EmitDictionaryLookup(factory, ref encoder, encoder.TargetRegister.Arg1, encoder.TargetRegister.Arg2, nonGcRegionLookup, relocsOnly);
 
-                            encoder.EmitSUB(encoder.TargetRegister.Arg2, NonGCStaticsNode.GetClassConstructorContextStorageSize(factory.Target, target));
+                            encoder.EmitSUB(encoder.TargetRegister.Arg2, NonGCStaticsNode.GetClassConstructorContextSize(factory.Target, target));
                             encoder.EmitLDR(encoder.TargetRegister.Arg3, encoder.TargetRegister.Arg2, (short)factory.Target.PointerSize);
                             encoder.EmitCMP(encoder.TargetRegister.Arg3, 1);
                             encoder.EmitRETIfEqual();
@@ -140,7 +140,7 @@ namespace ILCompiler.DependencyAnalysis
                             // class constructor context lives.
                             GenericLookupResult nonGcRegionLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
                             EmitDictionaryLookup(factory, ref encoder, encoder.TargetRegister.Arg0, encoder.TargetRegister.Arg2, nonGcRegionLookup, relocsOnly);
-                            int cctorContextSize = NonGCStaticsNode.GetClassConstructorContextStorageSize(factory.Target, target);
+                            int cctorContextSize = NonGCStaticsNode.GetClassConstructorContextSize(factory.Target, target);
                             encoder.EmitSUB(encoder.TargetRegister.Arg2, cctorContextSize);
 
                             helperEntrypoint = factory.HelperEntrypoint(HelperEntrypoint.EnsureClassConstructorRunAndReturnThreadStaticBase);
