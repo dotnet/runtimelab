@@ -67,6 +67,8 @@ jobs:
                                 /p:DotNetSymbolServerTokenSymWeb=$(symweb-symbol-server-pat)
 
       steps:
+      - checkout: self
+        submodules: recursive
       - script: $(_buildScript)
                 -ci
                 -pack
