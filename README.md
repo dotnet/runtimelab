@@ -1,8 +1,65 @@
 # .NET Runtime - Managed QUIC implementation
 
-This feature branch contains a prototype for a fully managed implementation of the QUIC protocol, in System.Net.Quic.
+## Supported QUIC Protocol Features
 
-TODO: Instructions for using, etc.
+This implementation is highly in WIP state. The features are at the draft-27 version. The goal was
+to obtain a minimal working implementation able to reliably transmit data between client and server.
+This can be used to evaluate the viability of purely C# implementation for production releases. Some
+transport-unrelated features are left unimplemented.
+
+Currently implemented:
+
+- Basic connection establishment
+- Encryption
+- TLS integration backed by [modified OpenSSL](https://github.com/openssl/openssl/pull/8797)
+- Sending data, flow control, loss recovery, congestion control
+- Stream/Connection termination
+- Coalescing packets into a single UDP datagram
+
+## Unsupported QUIC Protocol Features
+
+A list of highlights of unimplemented protocol features follows:
+
+- Connection migration
+- Stateless reset
+- 0-RTT data
+- Server Preferred Address
+- Version Negotiation
+- Address Validation
+- Encryption key updates
+
+## OpenSSL integration
+
+To function correctly, the implementation requires a custom branch of OpenSSL from Akamai
+https://github.com/akamai/openssl/tree/OpenSSL_1_1_1g-quic. The implementation tries to detect that
+a QUIC-supporting OpenSSL is present in the path. If not, then a mock implementation is used
+instead.
+
+The mock implementation can be used for trying the implementation locally, but interoperation with
+other QUIC implementations is, of course, possible only with the OpenSSL-based TLS. If you want to
+make sure your implementation runs with OpenSSL, define the `DOTNETQUIC_OPENSSL` environment
+variable. This will cause the implementation to throw if proper OpenSSL version cannot be loaded.
+
+## Tracing and qvis
+
+To simplify debugging, this implementation can emit traces that can be analyzed. Note that emiting
+traces has negative impact on the performance of the implementation.
+
+### Console
+
+To get traces printed to the console, define `DOTNETQUIC_TRACE` environment variable to `console`.
+
+### qlog and qvis
+
+The implementation can produce traces that can be consumed by https://qvis.edm.uhasselt.be
+visualizer. To collect traces, define `DOTNETQUIC_TRACE` environment variable to `qlog`.
+The traces will be saved in the working directory in a file named
+_[timestamp]-[server|client].qvis_.
+
+## Disabling encryption
+
+Regardless of the TLS used, you can circumvent the encryption by defining the `DOTNETQUIC_NOENCRYPT`
+environment variable to something nonempty.
 
 # .NET Runtime
 
