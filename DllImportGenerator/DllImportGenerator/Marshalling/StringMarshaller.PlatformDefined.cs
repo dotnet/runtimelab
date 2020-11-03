@@ -25,11 +25,19 @@ namespace Microsoft.Interop
 
         public override ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context)
         {
+            var windowsExpr = this.windowsMarshaller.AsArgument(info, context).Expression;
+            var nonWindowsExpr = this.nonWindowsMarshaller.AsArgument(info, context).Expression;
+
+            // If the Windows and non-Windows syntax are equivalent, just return one of them.
+            if (windowsExpr.IsEquivalentTo(nonWindowsExpr))
+                return Argument(windowsExpr);
+
+            // OperatingSystem.IsWindows() ? << Windows code >> : << non-Windows code >> 
             return Argument(
                 ConditionalExpression(
                     IsWindows,
-                    this.windowsMarshaller.AsArgument(info, context).Expression,
-                    this.nonWindowsMarshaller.AsArgument(info, context).Expression));
+                    windowsExpr,
+                    nonWindowsExpr));
         }
 
         public override TypeSyntax AsNativeType(TypePositionInfo info)
