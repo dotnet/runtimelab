@@ -30,6 +30,7 @@ namespace Microsoft.Interop
                 return;
             }
 
+            // Get the symbol for GeneratedDllImportAttribute. If it doesn't exist in the compilation, the generator has nothing to do.
             INamedTypeSymbol? generatedDllImportAttrType = context.Compilation.GetTypeByMetadataName(TypeNames.GeneratedDllImportAttribute);
             if (generatedDllImportAttrType == null)
                 return;
@@ -69,7 +70,21 @@ namespace Microsoft.Interop
                 // Process the method syntax and get its SymbolInfo.
                 var methodSymbolInfo = sm.GetDeclaredSymbol(methodSyntax, context.CancellationToken)!;
 
-                var generatedDllImportAttr = methodSymbolInfo.GetAttributes().FirstOrDefault(attr => SymbolEqualityComparer.Default.Equals(attr.AttributeClass, generatedDllImportAttrType));
+                // Get any attributes of interest on the method
+                AttributeData? generatedDllImportAttr = null;
+                AttributeData? lcidConversionAttr = null;
+                foreach (var attr in methodSymbolInfo.GetAttributes())
+                {
+                    if (SymbolEqualityComparer.Default.Equals(attr.AttributeClass, generatedDllImportAttrType))
+                    {
+                        generatedDllImportAttr = attr;
+                    }
+                    else if (lcidConversionAttrType != null && SymbolEqualityComparer.Default.Equals(attr.AttributeClass, lcidConversionAttrType))
+                    {
+                        lcidConversionAttr = attr;
+                    }
+                }
+
                 if (generatedDllImportAttr == null)
                     continue;
 
@@ -88,13 +103,10 @@ namespace Microsoft.Interop
                     generatorDiagnostics.ReportConfigurationNotSupported(generatedDllImportAttr, nameof(DllImportStub.GeneratedDllImportData.ThrowOnUnmappableChar));
                 }
 
-                if (lcidConversionAttrType != null)
+                if (lcidConversionAttr != null)
                 {
-                    var lcidConversionAttr = methodSymbolInfo.GetAttributes().FirstOrDefault(attr => SymbolEqualityComparer.Default.Equals(attr.AttributeClass, lcidConversionAttrType));
-                    if (lcidConversionAttr != null)
-                    {
-                        generatorDiagnostics.ReportConfigurationNotSupported(lcidConversionAttr, nameof(TypeNames.LCIDConversionAttribute));
-                    }
+                    // Using LCIDConversion with GeneratedDllImport is not supported
+                    generatorDiagnostics.ReportConfigurationNotSupported(lcidConversionAttr, nameof(TypeNames.LCIDConversionAttribute));
                 }
 
                 // Create the stub.
