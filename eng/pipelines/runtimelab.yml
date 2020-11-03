@@ -204,7 +204,7 @@ stages:
           liveRuntimeBuildConfig: Release
           dependsOnTestBuildConfiguration: Release
 #         dependsOnTestArchitecture: x64
-         dependsOnTestArchitecture: s390x
+          dependsOnTestArchitecture: s390x
           dependsOn:
           - build_Linux_s390x_Release_
 #          - build_Linux_x64_Release_
