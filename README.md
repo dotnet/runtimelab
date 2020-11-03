@@ -1,3 +1,9 @@
+# .NET Runtime - Managed QUIC implementation
+
+This feature branch contains a prototype for a fully managed implementation of the QUIC protocol, in System.Net.Quic.
+
+TODO: Instructions for using, etc.
+
 # .NET Runtime
 
 [![Build Status](https://dnceng.visualstudio.com/public/_apis/build/status/dotnet/runtime/runtime?branchName=master)](https://dnceng.visualstudio.com/public/_build/latest?definitionId=686&branchName=master)
