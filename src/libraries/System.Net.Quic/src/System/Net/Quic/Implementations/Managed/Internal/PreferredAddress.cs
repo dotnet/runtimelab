@@ -3,8 +3,6 @@
 
 using System.Buffers.Binary;
 using System.Diagnostics;
-using System.Diagnostics.Tracing;
-using System.Runtime.InteropServices;
 
 namespace System.Net.Quic.Implementations.Managed.Internal
 {

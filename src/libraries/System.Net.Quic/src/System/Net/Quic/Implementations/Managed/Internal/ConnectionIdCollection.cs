@@ -5,7 +5,6 @@
 
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Threading;
 
 namespace System.Net.Quic.Implementations.Managed.Internal
 {

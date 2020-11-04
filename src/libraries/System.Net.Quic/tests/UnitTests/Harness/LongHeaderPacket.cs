@@ -3,7 +3,6 @@
 
 using System.Net.Quic.Implementations.Managed.Internal;
 using System.Net.Quic.Implementations.Managed.Internal.Headers;
-using System.Security.Cryptography;
 
 namespace System.Net.Quic.Tests.Harness
 {

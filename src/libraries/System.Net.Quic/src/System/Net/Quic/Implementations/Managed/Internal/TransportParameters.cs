@@ -6,7 +6,6 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Quic.Implementations.Managed.Internal.Headers;
-using System.Numerics;
 
 namespace System.Net.Quic.Implementations.Managed.Internal
 {

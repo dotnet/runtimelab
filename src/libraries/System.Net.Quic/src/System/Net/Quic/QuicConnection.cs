@@ -3,7 +3,6 @@
 
 #nullable enable
 using System.Net.Quic.Implementations;
-using System.Net.Quic.Implementations.MsQuic.Internal;
 using System.Net.Security;
 using System.Threading;
 using System.Threading.Tasks;

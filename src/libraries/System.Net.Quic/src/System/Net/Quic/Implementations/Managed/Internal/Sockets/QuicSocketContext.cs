@@ -9,7 +9,6 @@ using System.Net.Quic.Implementations.Managed.Internal.Headers;
 using System.Net.Quic.Implementations.MsQuic.Internal;
 using System.Net.Sockets;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
 {

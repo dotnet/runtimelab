@@ -3,7 +3,6 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Net.Quic.Implementations.Managed.Internal.Headers;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;

@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Net.Sockets;
-using System.Runtime.InteropServices;
 using static System.Net.Quic.Implementations.MsQuic.Internal.MsQuicNativeMethods;
 
 namespace System.Net.Quic.Implementations.MsQuic.Internal
