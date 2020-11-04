@@ -187,12 +187,11 @@ stages:
             isOfficialBuild: false
             testScope: innerloop
             liveRuntimeBuildConfig: Release
-            dependsOnTestBuildConfiguration: Release
+            dependsOnTestBuildConfiguration: Debug
             dependsOnTestArchitecture: x64
             dependsOn:
             - build_Linux_x64_Debug_
 
-    - ${{ if eq(variables.isOfficialBuild, false) }}:
       - template: /eng/pipelines/common/platform-matrix.yml
         parameters:
           jobTemplate: /eng/pipelines/libraries/run-test-job.yml
@@ -205,7 +204,7 @@ stages:
             isOfficialBuild: false
             testScope: innerloop
             liveRuntimeBuildConfig: Release
-            dependsOnTestBuildConfiguration: Release
+            dependsOnTestBuildConfiguration: Debug
             dependsOnTestArchitecture: x64
             dependsOn:
             - build_windows_x64_Debug_
