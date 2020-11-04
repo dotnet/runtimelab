@@ -311,6 +311,20 @@ partial class Test
         out {typeName} pOut);
 }}";
 
+        /// <summary>
+        /// Declaration with parameters.
+        /// </summary>
+        public static string BasicParametersAndModifiersNoRef(string typeName) => @$"
+using System.Runtime.InteropServices;
+partial class Test
+{{
+    [GeneratedDllImport(""DoesNotExist"")]
+    public static partial {typeName} Method(
+        {typeName} p,
+        in {typeName} pIn,
+        out {typeName} pOut);
+}}";
+
         public static string BasicParametersAndModifiers<T>() => BasicParametersAndModifiers(typeof(T).ToString());
 
         /// <summary>
@@ -465,7 +479,7 @@ struct Native
 }
 ";
 
-        public static string CustomStructMarshallingStackallocParametersAndModifiers = BasicParametersAndModifiers("S") + @"
+        public static string CustomStructMarshallingStackallocParametersAndModifiersNoRef = BasicParametersAndModifiersNoRef("S") + @"
 [NativeMarshalling(typeof(Native))]
 struct S
 {
@@ -485,7 +499,52 @@ struct Native
     public const int StackBufferSize = 1;
 }
 ";
-        public static string CustomStructMarshallingStackallocValuePropertyParametersAndModifiers = BasicParametersAndModifiers("S") + @"
+        public static string CustomStructMarshallingStackallocOnlyRefParameter = BasicParameterWithByRefModifier("ref", "S") + @"
+[NativeMarshalling(typeof(Native))]
+struct S
+{
+    public bool b;
+}
+
+struct Native
+{
+    private int i;
+    public Native(S s, System.Span<byte> b)
+    {
+        i = s.b ? 1 : 0;
+    }
+
+    public S ToManaged() => new S { b = i != 0 };
+
+    public const int StackBufferSize = 1;
+}
+";
+        public static string CustomStructMarshallingOptionalStackallocParametersAndModifiers = BasicParametersAndModifiers("S") + @"
+[NativeMarshalling(typeof(Native))]
+struct S
+{
+    public bool b;
+}
+
+struct Native
+{
+    private int i;
+    public Native(S s, System.Span<byte> b)
+    {
+        i = s.b ? 1 : 0;
+    }
+    public Native(S s)
+    {
+        i = s.b ? 1 : 0;
+    }
+
+    public S ToManaged() => new S { b = i != 0 };
+
+    public const int StackBufferSize = 1;
+}
+";
+
+        public static string CustomStructMarshallingStackallocValuePropertyParametersAndModifiersNoRef = BasicParametersAndModifiersNoRef("S") + @"
 [NativeMarshalling(typeof(Native))]
 struct S
 {

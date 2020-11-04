@@ -386,8 +386,8 @@ namespace Microsoft.Interop.Analyzers
                             IPointerTypeSymbol _ or
                             { SpecialType: SpecialType.System_IntPtr } or
                             { SpecialType: SpecialType.System_UIntPtr }) &&
-                        ((valueProperty.ReturnsByRef || valueProperty.ReturnsByRefReadonly) &&
-                            !SymbolEqualityComparer.Default.Equals(getPinnableReferenceMethod.ReturnType, valueProperty.Type))))
+                        !((valueProperty.ReturnsByRef || valueProperty.ReturnsByRefReadonly) &&
+                            SymbolEqualityComparer.Default.Equals(getPinnableReferenceMethod.ReturnType, valueProperty.Type))))
                     {
                         context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustBePointerSizedOrByRefRule,
                             valueProperty is not null
