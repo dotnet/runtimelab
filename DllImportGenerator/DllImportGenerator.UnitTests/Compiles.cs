@@ -170,6 +170,9 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.PreserveSigFalse<IntPtr[]>() };
             yield return new[] { CodeSnippets.PreserveSigFalse<UIntPtr[]>() };
             yield return new[] { CodeSnippets.CustomStructMarshallingByRefValuePropertyRefOutReturn };
+            yield return new[] { CodeSnippets.CustomStructMarshallingManagedToNativeOnlyOutParameter };
+            yield return new[] { CodeSnippets.CustomStructMarshallingManagedToNativeOnlyReturnValue };;
+            yield return new[] { CodeSnippets.CustomStructMarshallingNativeToManagedOnlyInParameter };
         }
 
         [Theory]

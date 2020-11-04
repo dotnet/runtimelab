@@ -358,7 +358,7 @@ namespace Microsoft.Interop
 
             // The marshalling method for this type doesn't support marshalling from native to managed,
             // but our scenario requires marshalling from native to managed.
-            if ((info.RefKind == RefKind.Ref || info.RefKind == RefKind.Out) &&
+            if ((info.RefKind == RefKind.Ref || info.RefKind == RefKind.Out || info.IsManagedReturnPosition) &&
                 (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.NativeToManaged) == 0)
             {
                 throw new MarshallingNotSupportedException(info, context);

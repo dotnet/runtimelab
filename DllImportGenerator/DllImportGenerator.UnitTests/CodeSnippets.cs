@@ -612,5 +612,74 @@ partial class Test
         out S sOut);
 }
 ";
+
+        public static string BasicParameterWithByRefModifier(string byRefKind, string typeName) => @$"
+using System.Runtime.InteropServices;
+partial class Test
+{{
+    [GeneratedDllImport(""DoesNotExist"")]
+    public static partial void Method(
+        {byRefKind} {typeName} p);
+}}";
+
+        public static string BasicReturnType(string typeName) => @$"
+using System.Runtime.InteropServices;
+partial class Test
+{{
+    [GeneratedDllImport(""DoesNotExist"")]
+    public static partial {typeName} Method();
+}}";
+
+        public static string CustomStructMarshallingManagedToNativeOnlyOutParameter => BasicParameterWithByRefModifier("out", "S")  + @"
+[NativeMarshalling(typeof(Native))]
+[StructLayout(LayoutKind.Sequential)]
+struct S
+{
+    public bool b;
+}
+
+struct Native
+{
+    private int i;
+    public Native(S s)
+    {
+        i = s.b ? 1 : 0;
+    }
+}
+";
+
+        public static string CustomStructMarshallingManagedToNativeOnlyReturnValue => BasicReturnType("S")  + @"
+[NativeMarshalling(typeof(Native))]
+[StructLayout(LayoutKind.Sequential)]
+struct S
+{
+    public bool b;
+}
+
+struct Native
+{
+    private int i;
+    public Native(S s)
+    {
+        i = s.b ? 1 : 0;
+    }
+}
+";
+
+        public static string CustomStructMarshallingNativeToManagedOnlyInParameter => BasicParameterWithByRefModifier("in", "S")  + @"
+[NativeMarshalling(typeof(Native))]
+struct S
+{
+    public bool b;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+struct Native
+{
+    private int i;
+    public S ToManaged() => new S { b = i != 0 };
+}
+";
+
     }
 }
