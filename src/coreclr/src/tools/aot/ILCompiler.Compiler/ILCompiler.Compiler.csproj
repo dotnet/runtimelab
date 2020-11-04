@@ -167,10 +167,16 @@
     <Compile Include="Compiler\CompilerTypeSystemContext.Sorting.cs" />
     <Compile Include="Compiler\CompilerGeneratedInteropStubManager.cs" />
     <Compile Include="Compiler\Dataflow\DisplayNameHelpers.cs" />
+    <Compile Include="Compiler\Dataflow\DynamicallyAccessedMembersBinder.cs" />
+    <Compile Include="Compiler\Dataflow\EcmaExtensions.cs" />
     <Compile Include="Compiler\Dataflow\FlowAnnotations.cs" />
     <Compile Include="Compiler\Dataflow\MethodBodyScanner.cs" />
-    <Compile Include="Compiler\Dataflow\MethodReturnType.cs" />
+    <Compile Include="Compiler\Dataflow\DiagnosticUtilities.cs" />
+    <Compile Include="Compiler\Dataflow\Origin.cs" />
+    <Compile Include="Compiler\Dataflow\ReflectionMethodBodyScanner.cs" />
+    <Compile Include="Compiler\Dataflow\ReflectionPatternContext.cs" />
     <Compile Include="Compiler\Dataflow\ScannerExtensions.cs" />
+    <Compile Include="Compiler\Dataflow\TypeExtensions.cs" />
     <Compile Include="Compiler\Dataflow\ValueNode.cs" />
     <Compile Include="Compiler\DebugInformationProvider.cs" />
     <Compile Include="Compiler\DependencyAnalysis\DefaultConstructorMapNode.cs" />
@@ -206,6 +212,7 @@
     <Compile Include="Compiler\DynamicInvokeThunkGenerationPolicy.cs" />
     <Compile Include="Compiler\EmptyInteropStubManager.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ImportedNodeProvider.cs" />
+    <Compile Include="Compiler\EventPseudoDesc.cs" />
     <Compile Include="Compiler\ExpectedIsaFeaturesRootProvider.cs" />
     <Compile Include="Compiler\ExternSymbolMappedField.cs" />
     <Compile Include="Compiler\FrameworkStringResourceBlockingPolicy.cs" />

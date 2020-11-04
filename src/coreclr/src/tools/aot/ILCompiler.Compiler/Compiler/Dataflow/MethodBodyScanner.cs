@@ -899,6 +899,7 @@ namespace ILCompiler.Dataflow
                 callingMethodBody,
                 calledMethod,
                 opcode,
+                offset,
                 methodParams,
                 out methodReturnValue);
 
@@ -929,6 +930,7 @@ namespace ILCompiler.Dataflow
             MethodIL callingMethodBody,
             MethodDesc calledMethod,
             ILOpcode operation,
+            int offset,
             ValueNodeList methodParams,
             out ValueNode methodReturnValue);
     }

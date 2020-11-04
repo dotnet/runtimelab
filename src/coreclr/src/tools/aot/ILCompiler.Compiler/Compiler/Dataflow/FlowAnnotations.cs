@@ -28,13 +28,13 @@ namespace ILCompiler.Dataflow
 
         public bool RequiresDataflowAnalysis(MethodDesc method)
         {
-            Debug.Assert(method.IsTypicalMethodDefinition);
+            method = method.GetTypicalMethodDefinition();
             return GetAnnotations(method.OwningType).TryGetAnnotation(method, out _);
         }
 
         public bool RequiresDataflowAnalysis(FieldDesc field)
         {
-            Debug.Assert(field.IsTypicalFieldDefinition);
+            field = field.GetTypicalFieldDefinition();
             return GetAnnotations(field.OwningType).TryGetAnnotation(field, out _);
         }
 
@@ -49,7 +49,7 @@ namespace ILCompiler.Dataflow
         /// <param name="parameterIndex">Parameter index in the IL sense. Parameter 0 on instance methods is `this`.</param>
         public DynamicallyAccessedMemberTypes GetParameterAnnotation(MethodDesc method, int parameterIndex)
         {
-            Debug.Assert(method.IsTypicalMethodDefinition);
+            method = method.GetTypicalMethodDefinition();
 
             if (GetAnnotations(method.OwningType).TryGetAnnotation(method, out var annotation) && annotation.ParameterAnnotations != null)
             {
@@ -61,7 +61,7 @@ namespace ILCompiler.Dataflow
 
         public DynamicallyAccessedMemberTypes GetReturnParameterAnnotation(MethodDesc method)
         {
-            Debug.Assert(method.IsTypicalMethodDefinition);
+            method = method.GetTypicalMethodDefinition();
 
             if (GetAnnotations(method.OwningType).TryGetAnnotation(method, out var annotation))
             {
@@ -73,7 +73,7 @@ namespace ILCompiler.Dataflow
 
         public DynamicallyAccessedMemberTypes GetFieldAnnotation(FieldDesc field)
         {
-            Debug.Assert(field.IsTypicalFieldDefinition);
+            field = field.GetTypicalFieldDefinition();
 
             if (GetAnnotations(field.OwningType).TryGetAnnotation(field, out var annotation))
             {
@@ -249,7 +249,7 @@ namespace ILCompiler.Dataflow
                             if (pa == DynamicallyAccessedMemberTypes.None)
                                 continue;
 
-                            if (!IsTypeInterestingForDataflow(method.Signature[parameter.SequenceNumber]))
+                            if (!IsTypeInterestingForDataflow(method.Signature[parameter.SequenceNumber - 1]))
                             {
                                 _logger.LogWarning(
                                     $"Parameter #{parameter.SequenceNumber} of method '{method.GetDisplayName()}' has 'DynamicallyAccessedMembersAttribute', but that attribute can only be applied to parameters of type 'System.Type' or 'System.String'",
@@ -318,7 +318,7 @@ namespace ILCompiler.Dataflow
                     FieldDesc backingFieldFromSetter = null;
 
                     // Propagate the annotation to the setter method
-                    MethodDesc setMethod = property.Setter;
+                    MethodDesc setMethod = property.SetMethod;
                     if (setMethod != null)
                     {
 
@@ -355,7 +355,7 @@ namespace ILCompiler.Dataflow
                     FieldDesc backingFieldFromGetter = null;
 
                     // Propagate the annotation to the getter method
-                    MethodDesc getMethod = property.Getter;
+                    MethodDesc getMethod = property.GetMethod;
                     if (getMethod != null)
                     {
 

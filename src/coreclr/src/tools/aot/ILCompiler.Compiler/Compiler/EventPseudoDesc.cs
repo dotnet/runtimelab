@@ -10,34 +10,30 @@ using Internal.TypeSystem.Ecma;
 namespace ILCompiler
 {
     /// <summary>
-    /// A "PropertyDesc" to describe properties. Represents a property within the compiler.
+    /// An "EventDesc" to describe events. Represents an event within the compiler.
     /// This is not a real type system entity. In particular, these are not interned.
     /// </summary>
-    public class PropertyPseudoDesc : TypeSystemEntity
+    public class EventPseudoDesc : TypeSystemEntity
     {
         private readonly EcmaType _type;
-        private readonly PropertyDefinitionHandle _handle;
+        private readonly EventDefinitionHandle _handle;
 
-        private PropertyDefinition Definition => _type.MetadataReader.GetPropertyDefinition(_handle);
+        private EventDefinition Definition => _type.MetadataReader.GetEventDefinition(_handle);
 
-        public PropertySignature Signature =>
-            new EcmaSignatureParser(_type.EcmaModule, _type.MetadataReader.GetBlobReader(Definition.Signature))
-            .ParsePropertySignature();
-
-        public MethodDesc GetMethod
+        public MethodDesc AddMethod
         {
             get
             {
-                MethodDefinitionHandle getter = Definition.GetAccessors().Getter;
-                return getter.IsNil ? null : _type.EcmaModule.GetMethod(getter);
+                MethodDefinitionHandle adder = Definition.GetAccessors().Adder;
+                return adder.IsNil ? null : _type.EcmaModule.GetMethod(adder);
             }
         }
 
-        public MethodDesc SetMethod
+        public MethodDesc RemoveMethod
         {
             get
             {
-                MethodDefinitionHandle setter = Definition.GetAccessors().Setter;
+                MethodDefinitionHandle setter = Definition.GetAccessors().Remover;
                 return setter.IsNil ? null : _type.EcmaModule.GetMethod(setter);
             }
         }
@@ -58,7 +54,7 @@ namespace ILCompiler
             }
         }
 
-        public PropertyPseudoDesc(EcmaType type, PropertyDefinitionHandle handle)
+        public EventPseudoDesc(EcmaType type, EventDefinitionHandle handle)
         {
             _type = type;
             _handle = handle;
@@ -69,8 +65,8 @@ namespace ILCompiler
         #region Do not use these
         public override bool Equals(object obj) => throw new NotImplementedException();
         public override int GetHashCode() => throw new NotImplementedException();
-        public static bool operator ==(PropertyPseudoDesc a, PropertyPseudoDesc b) => throw new NotImplementedException();
-        public static bool operator !=(PropertyPseudoDesc a, PropertyPseudoDesc b) => throw new NotImplementedException();
+        public static bool operator ==(EventPseudoDesc a, EventPseudoDesc b) => throw new NotImplementedException();
+        public static bool operator !=(EventPseudoDesc a, EventPseudoDesc b) => throw new NotImplementedException();
         #endregion
     }
 }

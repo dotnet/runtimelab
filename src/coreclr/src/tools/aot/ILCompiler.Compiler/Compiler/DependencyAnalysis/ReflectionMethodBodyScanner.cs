@@ -120,7 +120,7 @@ namespace ILCompiler.DependencyAnalysis
                         string name = tracker.GetLastString();
                         if (name != null
                             && methodIL.OwningMethod.OwningType is MetadataType mdType
-                            && ResolveType(name, mdType.Module, out TypeDesc type, out ModuleDesc referenceModule)
+                            && ResolveType(name, mdType.Module, mdType.Context, out TypeDesc type, out ModuleDesc referenceModule)
                             && !factory.MetadataManager.IsReflectionBlocked(type))
                         {
                             const string reason = "Type.GetType";
@@ -240,7 +240,7 @@ namespace ILCompiler.DependencyAnalysis
             return type != null && !type.IsGenericDefinition && !type.IsCanonicalSubtype(CanonicalFormKind.Any) && type.IsDefType;
         }
 
-        private static bool ResolveType(string name, ModuleDesc callingModule, out TypeDesc type, out ModuleDesc referenceModule)
+        public static bool ResolveType(string name, ModuleDesc callingModule, TypeSystemContext context, out TypeDesc type, out ModuleDesc referenceModule)
         {
             // This can do enough resolution to resolve "Foo" or "Foo, Assembly, PublicKeyToken=...".
             // The reflection resolution rules are complicated. This is only needed for a heuristic,
@@ -284,18 +284,17 @@ namespace ILCompiler.DependencyAnalysis
                 i++;
             }
 
-            TypeSystemContext context = callingModule.Context;
-
             // If the name was assembly-qualified, resolve the assembly
             // If it wasn't qualified, we resolve in the calling assembly
 
             referenceModule = callingModule;
             if (assemblyName.Length > 0)
             {
-                referenceModule = context.ResolveAssembly(new AssemblyName(assemblyName.ToString()), false);
-                if (referenceModule == null)
-                    return false;
+                referenceModule = context.ResolveAssembly(new AssemblyName(assemblyName.ToString()), false);    
             }
+
+            if (referenceModule == null)
+                return false;
 
             // Resolve type in the assembly
             type = referenceModule.GetType(typeNamespace.ToString(), typeName.ToString(), false);
