@@ -4,10 +4,9 @@
 
 using System;
 using System.Diagnostics;
-using Mono.Cecil;
-using Mono.Cecil.Cil;
+using Internal.TypeSystem;
 
-namespace Mono.Linker.Dataflow
+namespace ILCompiler.Dataflow
 {
     /// <summary>
     /// Helper struct to pass around context information about reflection pattern
@@ -19,29 +18,30 @@ namespace Mono.Linker.Dataflow
     /// </summary>
     struct ReflectionPatternContext : IDisposable
     {
-        readonly LinkContext _context;
+        readonly Logger _logger;
+        readonly int? _ilOffset;
+
 #if DEBUG
         bool _patternAnalysisAttempted;
         bool _patternReported;
 #endif
 
-        public IMemberDefinition Source { get; private set; }
-        public IMetadataTokenProvider MemberWithRequirements { get; private set; }
-        public Instruction Instruction { get; private set; }
+        public TypeSystemEntity Source { get; private set; }
+        public Origin MemberWithRequirements { get; private set; }
         public bool ReportingEnabled { get; private set; }
 
         public ReflectionPatternContext(
-            LinkContext context,
+            Logger logger,
             bool reportingEnabled,
-            IMemberDefinition source,
-            IMetadataTokenProvider memberWithRequirements,
-            Instruction instruction = null)
+            TypeSystemEntity source,
+            Origin memberWithRequirements,
+            int? ilOffset = null)
         {
-            _context = context;
+            _logger = logger;
             ReportingEnabled = reportingEnabled;
             Source = source;
             MemberWithRequirements = memberWithRequirements;
-            Instruction = instruction;
+            _ilOffset = ilOffset;
 
 #if DEBUG
             _patternAnalysisAttempted = false;
@@ -67,7 +67,7 @@ namespace Mono.Linker.Dataflow
         }
 #pragma warning restore CA1822
 
-        public void RecordRecognizedPattern(IMemberDefinition accessedItem, Action mark)
+        public void RecordRecognizedPattern(Action mark)
         {
 #if DEBUG
             if (!_patternAnalysisAttempted)
@@ -77,9 +77,6 @@ namespace Mono.Linker.Dataflow
 #endif
 
             mark();
-
-            if (ReportingEnabled)
-                _context.ReflectionPatternRecorder.RecognizedReflectionAccessPattern(Source, Instruction, accessedItem);
         }
 
         public void RecordUnrecognizedPattern(int messageCode, string message)
@@ -92,7 +89,9 @@ namespace Mono.Linker.Dataflow
 #endif
 
             if (ReportingEnabled)
-                _context.ReflectionPatternRecorder.UnrecognizedReflectionAccessPattern(Source, Instruction, MemberWithRequirements, message, messageCode);
+            {
+                _logger.LogWarning(message, messageCode, Source, _ilOffset, MessageSubCategory.TrimAnalysis);
+            }
         }
 
         public void Dispose()

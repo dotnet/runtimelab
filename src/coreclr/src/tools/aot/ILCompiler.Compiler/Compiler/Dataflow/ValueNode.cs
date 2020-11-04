@@ -638,7 +638,7 @@ namespace ILCompiler.Dataflow
             Kind = ValueNodeKind.SystemTypeForGenericParameter;
             GenericParameter = genericParameter;
             DynamicallyAccessedMemberTypes = dynamicallyAccessedMemberTypes;
-            SourceContext = genericParameter;
+            SourceContext = new GenericParameterOrigin(genericParameter);
         }
 
         public GenericParameterDesc GenericParameter { get; }
@@ -738,7 +738,7 @@ namespace ILCompiler.Dataflow
     /// </summary>
     abstract class LeafValueWithDynamicallyAccessedMemberNode : LeafValueNode
     {
-        public object SourceContext { get; protected set; }
+        public Origin SourceContext { get; protected set; }
 
         /// <summary>
         /// The bitfield of dynamically accessed member types the node guarantees
@@ -751,12 +751,12 @@ namespace ILCompiler.Dataflow
     /// </summary>
     class MethodParameterValue : LeafValueWithDynamicallyAccessedMemberNode
     {
-        public MethodParameterValue(int parameterIndex, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes, object sourceContext)
+        public MethodParameterValue(MethodDesc method, int parameterIndex, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes)
         {
             Kind = ValueNodeKind.MethodParameter;
             ParameterIndex = parameterIndex;
             DynamicallyAccessedMemberTypes = dynamicallyAccessedMemberTypes;
-            SourceContext = sourceContext;
+            SourceContext = new ParameterOrigin(method, parameterIndex);
         }
 
         public int ParameterIndex { get; }
@@ -788,7 +788,7 @@ namespace ILCompiler.Dataflow
     /// </summary>
     class AnnotatedStringValue : LeafValueWithDynamicallyAccessedMemberNode
     {
-        public AnnotatedStringValue(object sourceContext, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes)
+        public AnnotatedStringValue(Origin sourceContext, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes)
         {
             Kind = ValueNodeKind.AnnotatedString;
             DynamicallyAccessedMemberTypes = dynamicallyAccessedMemberTypes;
@@ -822,11 +822,11 @@ namespace ILCompiler.Dataflow
     /// </summary>
     class MethodReturnValue : LeafValueWithDynamicallyAccessedMemberNode
     {
-        public MethodReturnValue(MethodReturnType methodReturnType, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes)
+        public MethodReturnValue(MethodDesc method, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes)
         {
             Kind = ValueNodeKind.MethodReturn;
             DynamicallyAccessedMemberTypes = dynamicallyAccessedMemberTypes;
-            SourceContext = methodReturnType;
+            SourceContext = new MethodReturnOrigin(method);
         }
 
         public override bool Equals(ValueNode other)
@@ -1087,7 +1087,7 @@ namespace ILCompiler.Dataflow
             Kind = ValueNodeKind.LoadField;
             Field = fieldToLoad;
             DynamicallyAccessedMemberTypes = dynamicallyAccessedMemberTypes;
-            SourceContext = fieldToLoad;
+            SourceContext = new FieldOrigin(fieldToLoad);
         }
 
         public FieldDesc Field { get; private set; }
