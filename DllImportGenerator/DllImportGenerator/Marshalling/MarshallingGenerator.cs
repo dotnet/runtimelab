@@ -374,9 +374,18 @@ namespace Microsoft.Interop
             }
             // The marshalling method for this type doesn't support marshalling from managed to native by reference,
             // but our scenario requires marshalling from managed to native by reference.
-            else if ((info.RefKind == RefKind.In || info.RefKind == RefKind.Ref) &&
+            // "in" byref supports stack marshalling.
+            else if (info.RefKind == RefKind.In &&
                 (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNative) == 0 &&
                 (!context.StackSpaceUsable || (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNativeStackalloc) == 0))
+            {
+                throw new MarshallingNotSupportedException(info, context);
+            }
+            // The marshalling method for this type doesn't support marshalling from managed to native by reference,
+            // but our scenario requires marshalling from managed to native by reference.
+            // "ref" byref marshalling doesn't support stack marshalling
+            else if (info.RefKind == RefKind.Ref &&
+                (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNative) == 0)
             {
                 throw new MarshallingNotSupportedException(info, context);
             }

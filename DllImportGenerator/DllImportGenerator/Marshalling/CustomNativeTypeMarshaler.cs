@@ -122,24 +122,20 @@ namespace Microsoft.Interop
                     }
                     break;
                 case StubCodeContext.Stage.Marshal:
-                    if (info.RefKind != RefKind.Out)
+                    if (!info.IsManagedReturnPosition && info.RefKind != RefKind.Out)
                     {
-                        // If stack space is usable
-                        // <marshalerIdentifier> = new <_nativeLocalType>(<managedIdentifier>, stackalloc byte[<_nativeLocalType>.StackBufferSize]);
-                        // Otherwise
-                        // <marshalerIdentifier> = new <_nativeLocalType>(<managedIdentifier>);
-                        yield return ExpressionStatement(
-                            AssignmentExpression(
-                                SyntaxKind.SimpleAssignmentExpression,
-                                IdentifierName(marshalerIdentifier),
-                                ObjectCreationExpression(_nativeLocalTypeSyntax)
-                                    .WithArgumentList(ArgumentList(
-                                        context.StackSpaceUsable && (_marshallingMethods & SupportedMarshallingMethods.ManagedToNativeStackalloc) != 0
-                                        ? SeparatedList(
-                                            new [] 
-                                            {
-                                            Argument(IdentifierName(managedIdentifier)),
-                                            Argument(
+                        bool scenarioSupportsStackalloc = context.StackSpaceUsable &&
+                            (_marshallingMethods & SupportedMarshallingMethods.ManagedToNativeStackalloc) != 0;
+
+                        List<ArgumentSyntax> arguments = new List<ArgumentSyntax>
+                        {
+                            Argument(IdentifierName(managedIdentifier))
+                        };
+
+                        if (scenarioSupportsStackalloc && (!info.IsByRef || info.RefKind == RefKind.In))
+                        {
+                            // stackalloc byte[<_nativeLocalType>.StackBufferSize]
+                            arguments.Add(Argument(
                                                 StackAllocArrayCreationExpression(
                                                     ArrayType(
                                                         PredefinedType(Token(SyntaxKind.ByteKeyword)),
@@ -147,13 +143,16 @@ namespace Microsoft.Interop
                                                             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                                                                 _nativeLocalTypeSyntax,
                                                                 IdentifierName(ManualTypeMarshallingHelper.StackBufferSizeFieldName))
-                                                        ))))))
-                                            })
-                                        : SingletonSeparatedList(Argument(IdentifierName(managedIdentifier)))
-                                    )
-                                )
-                            )
-                        );
+                                                        )))))));
+                        }
+
+                        // <marshalerIdentifier> = new <_nativeLocalType>(<arguments>);
+                        yield return ExpressionStatement(
+                            AssignmentExpression(
+                                SyntaxKind.SimpleAssignmentExpression,
+                                IdentifierName(marshalerIdentifier),
+                                ObjectCreationExpression(_nativeLocalTypeSyntax)
+                                    .WithArgumentList(ArgumentList(SeparatedList(arguments)))));
 
                         if (_useValueProperty && !_valuePropertyRequiresPinning)
                         {
@@ -164,9 +163,7 @@ namespace Microsoft.Interop
                                     IdentifierName(nativeIdentifier),
                                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                                         IdentifierName(marshalerIdentifier),
-                                        IdentifierName(ManualTypeMarshallingHelper.ValuePropertyName))
-                                )
-                            );
+                                        IdentifierName(ManualTypeMarshallingHelper.ValuePropertyName))));
                         }
                     }
                     break;
@@ -174,7 +171,7 @@ namespace Microsoft.Interop
                     if (_valuePropertyRequiresPinning)
                     {
                         // A value property that requires pinning can only be used as a by value or in parameter.
-                        Debug.Assert(info.RefKind != RefKind.Out);
+                        Debug.Assert(info.RefKind != RefKind.Out && !info.IsManagedReturnPosition);
 
                         // fixed (<_nativeTypeSyntax> <nativeIdentifier> = &<marshalerIdentifier>.Value)
                         yield return FixedStatement(
@@ -202,9 +199,7 @@ namespace Microsoft.Interop
                                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                                         IdentifierName(marshalerIdentifier),
                                         IdentifierName(ManualTypeMarshallingHelper.ValuePropertyName)),
-                                    IdentifierName(nativeIdentifier)
-                                )
-                            );
+                                    IdentifierName(nativeIdentifier)));
                         }
 
                         // <managedIdentifier> = <marshalerIdentifier>.ToManaged();
@@ -226,8 +221,7 @@ namespace Microsoft.Interop
                             InvocationExpression(
                                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                                         IdentifierName(marshalerIdentifier),
-                                        IdentifierName(ManualTypeMarshallingHelper.FreeNativeMethodName)))
-                        );
+                                        IdentifierName(ManualTypeMarshallingHelper.FreeNativeMethodName))));
                     }
                     break;
                 // TODO: Determine how to keep alive delegates that are in struct fields.
