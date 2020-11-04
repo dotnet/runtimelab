@@ -1,0 +1,40 @@
+<Project InitialTargets="GenerateRunSettingsFile">
+
+  <PropertyGroup>
+    <RunSettingsInputFilePath>$(MSBuildThisFileDirectory).runsettings</RunSettingsInputFilePath>
+    <RunSettingsAppOutputFilePath>$(OutDir).runsettings</RunSettingsAppOutputFilePath>
+
+    <RunSettingsOutputFilePath>$(RunSettingsAppOutputFilePath)</RunSettingsOutputFilePath>
+
+    <ResultsFileName>$(MSBuildProjectName)_$(TargetFramework)_$(TargetPlatform)</ResultsFileName>
+
+    <RunSettingsFilePath Condition="Exists('$(RunSettingsOutputFilePath)')">$(RunSettingsOutputFilePath)</RunSettingsFilePath>
+    <VSTestRunSettingsFile Condition="'$(RunSettingsFilePath)' != ''">$(RunSettingsFilePath)</VSTestRunSettingsFile>
+  </PropertyGroup>
+
+  <Target Name="GenerateRunSettingsFile"
+          Inputs="$(RunSettingsInputFilePath)"
+          Outputs="$(RunSettingsOutputFilePath)">
+
+    <PropertyGroup>
+      <RunSettingsFileContent>$([System.IO.File]::ReadAllText('$(RunSettingsInputFilePath)'))</RunSettingsFileContent>
+      <RunSettingsFileContent>$(RunSettingsFileContent.Replace('$$RESULTSDIRECTORY$$', '$(ArtifactsTestResultsDir)')
+                                                      .Replace('$$SOLUTIONDIRECTORY$$', '$(RepoRoot)')
+                                                      .Replace('$$TARGETPLATFORM$$', '$(TargetPlatform)')
+                                                      .Replace('$$TRXRESULTSNAME$$', '$(ResultsFileName).trx')
+                                                      .Replace('$$HTMLRESULTSNAME$$', '$(ResultsFileName).html')
+                                                      .Replace('$$DOTNETHOSTPATH$$', '$(DotNetTool)'))</RunSettingsFileContent>
+    </PropertyGroup>
+
+    <WriteLinesToFile File="$(RunSettingsOutputFilePath)"
+                      Lines="$(RunSettingsFileContent)"
+                      WriteOnlyWhenDifferent="true"
+                      Overwrite="true" />
+    
+    <!-- Set RunSettingsFilePath property which is read by VSTest. -->
+    <PropertyGroup>
+      <RunSettingsFilePath>$(RunSettingsOutputFilePath)</RunSettingsFilePath>
+      <VSTestRunSettingsFile>$(RunSettingsFilePath)</VSTestRunSettingsFile>
+    </PropertyGroup>
+  </Target>
+</Project>

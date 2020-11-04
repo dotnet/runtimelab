@@ -1,0 +1,88 @@
+# Setting batch to true, triggers one build at a time.
+# if there is a push while a build in progress, it will wait,
+# until the running build finishes, and produce a build with all the changes
+# that happened during the last build.
+trigger:
+  batch: true
+  branches:
+    include:
+    - feature/*
+    - standalone-template
+  paths:
+    include:
+    - '*'
+    exclude:
+    - eng/Version.Details.xml
+    - .github/*
+    - docs/*
+    - CODE-OF-CONDUCT.md
+    - LICENSE.TXT
+    - PATENTS.TXT
+    - README.md
+    - SECURITY.md
+    - THIRD-PARTY-NOTICES.TXT
+
+pr:
+  branches:
+    include:
+    - feature/*
+    - standalone-template
+  paths:
+    include:
+    - '*'
+    exclude:
+    - eng/Version.Details.xml
+    - .github/*
+    - docs/*
+    - CODE-OF-CONDUCT.md
+    - LICENSE.TXT
+    - PATENTS.TXT
+    - README.md
+    - SECURITY.md
+    - THIRD-PARTY-NOTICES.TXT
+
+variables:
+  - name: _TeamName
+    value: dotnet-core
+
+stages:
+- stage: build
+  displayName: Build
+  jobs:
+  - template: /eng/pipelines/templates/build-job.yml
+    parameters:
+      osGroup: Windows_NT
+      archType: x64
+      ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
+        isOfficialBuild: true
+        runTests: false
+        pool:
+          name: NetCoreInternal-Pool
+          queue: BuildPool.Windows.10.Amd64.VS2019
+      ${{ if or(eq(variables['System.TeamProject'], 'public'), in(variables['Build.Reason'], 'PullRequest')) }}:
+        pool:
+          vmImage: 'windows-latest'
+
+  - ${{ if or(eq(variables['System.TeamProject'], 'public'), in(variables['Build.Reason'], 'PullRequest')) }}:
+    - template: /eng/pipelines/templates/build-job.yml
+      parameters:
+        osGroup: OSX
+        archType: x64
+        pool:
+          vmImage: 'macOS-latest'
+
+    - template: /eng/pipelines/templates/build-job.yml
+      parameters:
+        osGroup: Linux
+        archType: x64
+        pool:
+          vmImage: 'ubuntu-latest'
+
+# Publish and validation steps. Only run in official builds
+- ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
+  - template: \eng\common\templates\post-build\post-build.yml
+    parameters:
+      publishingInfraVersion: 3
+      validateDependsOn:
+        - build
+      enableSourceLinkValidation: true
