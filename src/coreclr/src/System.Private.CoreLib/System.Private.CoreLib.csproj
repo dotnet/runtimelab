@@ -72,6 +72,10 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DefineConstants>TARGET_64BIT;TARGET_ARM64;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Platform)' == 's390x'">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DefineConstants>TARGET_64BIT;TARGET_S390X;$(DefineConstants)</DefineConstants>
+  </PropertyGroup>
 
   <!-- Configuration specific properties -->
   <PropertyGroup Condition="'$(Configuration)' == 'Debug' or '$(Configuration)' == 'Checked'">

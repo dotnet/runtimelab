@@ -349,6 +349,10 @@ case "$host" in
 			RID="linux-x64"
 			COREARCH="x64"
 			;;
+		s390x-*)
+			RID="linux-s390x"
+			COREARCH="s390x"
+			;;
 		arm-*)
 			# deal with this in the FPU detection section, since
 			# we cannot determine FPU from triplet and don't want
@@ -4781,6 +4785,9 @@ if test "x$host" != "x$target"; then
    arm*-netbsd*-eabi*)
 		TARGET=ARM;
 		CPPFLAGS="$CPPFLAGS -D__ARM_EABI__"
+		;;
+   s390x*)
+		TARGET=S390X
 		;;
    i686*-linux-*)
 		TARGET=X86;

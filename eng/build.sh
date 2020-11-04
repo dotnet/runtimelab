@@ -205,7 +205,7 @@ while [[ $# > 0 ]]; do
       fi
       passedArch="$(echo "$2" | awk '{print tolower($0)}')"
       case "$passedArch" in
-        x64|x86|arm|armel|arm64|wasm)
+        x64|x86|arm|armel|arm64|wasm|s390x)
           arch=$passedArch
           ;;
         *)

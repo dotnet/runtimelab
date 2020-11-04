@@ -39,6 +39,8 @@
   <PropertyGroup>
     <DefaultSubsets>clr+mono+libs+installer</DefaultSubsets>
     <DefaultSubsets Condition="'$(TargetsMobile)' == 'true'">mono+libs+installer</DefaultSubsets>
+    <!-- s390x does not support CoreCLR -->
+    <DefaultSubsets Condition="'$(TargetArchitecture)' == 's390x'">mono+libs+installer</DefaultSubsets>
   </PropertyGroup>
 
   <!-- Init _subset here in to allow RuntimeFlavor to be set as early as possible -->
@@ -64,8 +66,7 @@
     <DefaultLibrariesSubsets>libs.native+libs.ref+libs.src+libs.pretest+libs.packages</DefaultLibrariesSubsets>
 
     <DefaultInstallerSubsets>corehost+installer.managed+installer.depprojs+installer.pkgprojs+bundles+installers+installer.tests</DefaultInstallerSubsets>
-    <DefaultInstallerSubsets Condition="'$(RuntimeFlavor)' == 'Mono'">installer.pkgprojs</DefaultInstallerSubsets>
-    <DefaultInstallerSubsets Condition="'$(RuntimeFlavor)' == 'Mono' and '$(TargetsMobile)' != 'true'">corehost+$(DefaultInstallerSubsets)</DefaultInstallerSubsets>
+    <DefaultInstallerSubsets Condition="'$(RuntimeFlavor)' == 'Mono' and '$(TargetsMobile)' == 'true'">installer.pkgprojs</DefaultInstallerSubsets>
   </PropertyGroup>
 
   <PropertyGroup>

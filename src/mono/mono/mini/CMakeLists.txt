@@ -196,6 +196,13 @@ set(wasm_sources
     wasm_m2n_invoke.g.h
     cpu-wasm.h)
 
+set(s390x_sources
+    mini-s390x.c
+    mini-s390x.h
+    exceptions-s390x.c
+    tramp-s390x.c
+    cpu-s390x.h)
+
 if(TARGET_AMD64)
 set(arch_sources ${amd64_sources})
 elseif(TARGET_X86)
@@ -206,6 +213,8 @@ elseif(TARGET_ARM)
 set(arch_sources ${arm_sources})
 elseif(TARGET_WASM)
 set(arch_sources ${wasm_sources})
+elseif(TARGET_S390X)
+set(arch_sources ${s390x_sources})
 endif()
 
 set(darwin_sources
@@ -360,6 +369,12 @@ add_custom_command(
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cpu-wasm.h
   COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/genmdesc.py TARGET_WASM ${CMAKE_CURRENT_SOURCE_DIR} cpu-wasm.h wasm_desc ${CMAKE_CURRENT_SOURCE_DIR}/cpu-wasm.md
+  VERBATIM
+)
+
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cpu-s390x.h
+  COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/genmdesc.py TARGET_S390X ${CMAKE_CURRENT_SOURCE_DIR} cpu-s390x.h s390x_cpu_desc ${CMAKE_CURRENT_SOURCE_DIR}/cpu-s390x.md
   VERBATIM
 )
 

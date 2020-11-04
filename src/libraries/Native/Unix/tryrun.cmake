@@ -20,7 +20,7 @@ elseif(EXISTS ${CROSS_ROOTFS}/usr/platform/i86pc)
   set(CLR_CMAKE_TARGET_OS SunOS)
 endif()
 
-if(TARGET_ARCH_NAME MATCHES "^(armel|arm|arm64|x86)$" OR FREEBSD OR ILLUMOS)
+if(TARGET_ARCH_NAME MATCHES "^(armel|arm|arm64|s390x|x86)$" OR FREEBSD OR ILLUMOS)
   set_cache_value(HAVE_CLOCK_MONOTONIC_EXITCODE 0)
   set_cache_value(HAVE_CLOCK_REALTIME_EXITCODE 0)
 
