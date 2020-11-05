@@ -32,7 +32,7 @@ function LocateCMake
 {
   $errorMsg = "CMake is a pre-requisite to build this repository but it was not found on the path. Please install CMake from https://cmake.org/download/ and ensure it is on your path."
   $inPathPath = (get-command cmake.exe -All -ErrorAction SilentlyContinue)
-  if ($inPathPath -ne $null || $inPathPath.Length -ge 1) {
+  if ($inPathPath -ne $null -or $inPathPath.Length -ge 1) {
     # Resolve the first version of CMake if multiple commands are found
     if ($inPathPath.Length -gt 1) {
       return $inPathPath[0].Path
