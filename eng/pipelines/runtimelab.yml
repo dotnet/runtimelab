@@ -116,7 +116,7 @@ stages:
         ${{ if eq(variables.isOfficialBuild, true) }}:
           extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
           extraStepsParameters:
-            uploadUnsignedArtifacts: true
+            uploadUnsignedArtifacts: false
             isOfficialBuild: true
             librariesBinArtifactName: libraries_bin_official_allconfigurations
 
