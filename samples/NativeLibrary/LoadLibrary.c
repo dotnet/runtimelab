@@ -6,7 +6,7 @@
 //Set this value accordingly to your workspace settings
 #if defined(_WIN32)
 #define PathToLibrary "bin\\Debug\\net5.0\\win-x64\\native\\NativeLibrary.dll"
-#elf defined(__APPLE__)
+#elif defined(__APPLE__)
 #define PathToLibrary "./bin/Debug/net5.0/osx-x64/native/NativeLibrary.dylib"
 #else
 #define PathToLibrary "./bin/Debug/net5.0/linux-x64/native/NativeLibrary.so"
@@ -25,14 +25,25 @@
 #include <stdio.h>
 
 #ifndef F_OK
-#define F_OK    0
+#define F_OK 0
 #endif
 
-int callSumFunc(char *path, char *funcName, int a, int b);
-char *callSumStringFunc(char *path, char *funcName, char *a, char *b);
+int callSumFunc(int a, int b);
+char *callSumStringFunc(char *a, char *b);
+char *callMergeStrArray(char **array, int count);
+void *callPopulateStruct(void*);
+
+static void** handle;
 
 int main()
 {
+    #ifdef _WIN32
+        HINSTANCE hdl = LoadLibraryA(PathToLibrary);
+    #else
+        void *hdl = dlopen(PathToLibrary, RTLD_LAZY);
+    #endif
+    handle = &hdl;
+
     // Check if the library file exists
     if (access(PathToLibrary, F_OK) == -1)
     {
@@ -41,28 +52,40 @@ int main()
     }
 
     // Sum two integers
-    int sum = callSumFunc(PathToLibrary, "add", 2, 8);
-    printf("The sum is %d \n", sum);
+    int sum = callSumFunc(2, 8);
+    printf("The sum is %d \n\n", sum);
 
     // Concatenate two strings
-    char *sumstring = callSumStringFunc(PathToLibrary, "sumstring", "ok", "ko");
-    printf("The concatenated string is %s \n", sumstring);
+    char *sumstring = callSumStringFunc("ok", "ko");
+    printf("The concatenated string is %s \n\n", sumstring);
 
-    // Free string
+    // Concatenate x strings stored in an array
+    char *strArray[4] = {"tragedy", "of", "the", "wise"};
+    char *mergedString = callMergeStrArray(strArray, 4);
+    printf("The merged string is:\n%s\n\n", mergedString);
+
+    // Populate a struct
+    typedef struct myStruct
+    {
+        char* name;
+        int value;
+    } t_myStruct;
+    t_myStruct* newStruct = malloc(sizeof(t_myStruct));
+    callPopulateStruct(newStruct);
+    puts("---Struct Data---");
+    printf("struct.name:\n%s\n", newStruct->name);
+    printf("struct.value:\n%d\n", newStruct->value);
+
+    // Free strings
     free(sumstring);
+    free(mergedString);
 }
 
-int callSumFunc(char *path, char *funcName, int firstInt, int secondInt)
+int callSumFunc(int firstInt, int secondInt)
 {
-    // Call sum function defined in C# shared library
-    #ifdef _WIN32
-        HINSTANCE handle = LoadLibraryA(path);
-    #else
-        void *handle = dlopen(path, RTLD_LAZY);
-    #endif
-
-    typedef int(*myFunc)();
-    myFunc MyImport = (myFunc)symLoad(handle, funcName);
+    const char* funcName = "add";
+    typedef int (*myFunc)();
+    myFunc MyImport = (myFunc)symLoad(*handle, funcName);
 
     int result = MyImport(firstInt, secondInt);
 
@@ -71,20 +94,15 @@ int callSumFunc(char *path, char *funcName, int firstInt, int secondInt)
     return result;
 }
 
-char *callSumStringFunc(char *path, char *funcName, char *firstString, char *secondString)
+char *callSumStringFunc(char *firstString, char *secondString)
 {
-    // Library loading
-    #ifdef _WIN32
-        HINSTANCE handle = LoadLibraryA(path);
-    #else
-        void *handle = dlopen(path, RTLD_LAZY);
-    #endif
+    const char* funcName = "sumstring";
 
     // Declare a typedef
     typedef char *(*myFunc)();
 
     // Import Symbol named funcName
-    myFunc MyImport = (myFunc)symLoad(handle, funcName);
+    myFunc MyImport = (myFunc)symLoad(*handle, funcName);
 
     // The C# function will return a pointer
     char *result = MyImport(firstString, secondString);
@@ -92,4 +110,32 @@ char *callSumStringFunc(char *path, char *funcName, char *firstString, char *sec
     // CoreRT libraries do not support unloading
     // See https://github.com/dotnet/corert/issues/7887
     return result;
+}
+
+char *callMergeStrArray( char **array, int srcCount)
+{
+    const char* funcName = "mergestrings";
+    const int tgtSize = 128;
+    char *oput = malloc(tgtSize * sizeof(char));
+    // Declare a typedef
+    typedef void (*myFunc)();
+
+    // Import Symbol named funcName
+    myFunc MyImport = (myFunc)symLoad(*handle, funcName);
+
+    MyImport(oput, array, srcCount, tgtSize);
+    
+    return oput;
+}
+
+void *callPopulateStruct(void *structure)
+{
+    const char *funcName = "popstruct";
+    // Declare a typedef
+    typedef void (*myFunc)();
+
+    // Import Symbol named funcName
+    myFunc MyImport = (myFunc)symLoad(*handle, funcName);
+
+    MyImport(structure);
 }

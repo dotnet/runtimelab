@@ -3,6 +3,7 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace NativeLibrary
 {
@@ -50,6 +51,42 @@ namespace NativeLibrary
 
             // Return pointer
             return sumPointer;
+        }
+
+        [UnmanagedCallersOnly(EntryPoint = "mergestrings")]
+        public static void MergeStrings(IntPtr oput, IntPtr strArr, int srcCount,int tgtSize)
+        {
+            string mainString = String.Empty;
+            for (int i = 0; i < srcCount; i++)
+            {
+                int currentOffset = i * IntPtr.Size;
+                IntPtr curPtr = Marshal.ReadIntPtr(strArr, currentOffset);
+                string curString = Marshal.PtrToStringAnsi(curPtr);
+                mainString += $"String number {i} : {curString} \n";
+            }
+
+            //As we are not using Marshal.StringToHGlobalAnsi, we need to manually add the null character
+            mainString += '\0';
+
+            // Let's 'send back' our string to the C program
+            // We need to convert it to an array of ASCII representations of our characters
+            // After that,we'll copy the bytes array to the 'oput' memory location
+            byte[] bytesFinalString = Encoding.ASCII.GetBytes(mainString);
+            Marshal.Copy(bytesFinalString, 0, oput, mainString.Length > tgtSize-1 ? tgtSize-1 : mainString.Length);
+        }
+
+        public struct myStruct
+        {
+            public IntPtr name;
+            public int value;
+            public IntPtr secName;
+        }
+
+        [UnmanagedCallersOnly(EntryPoint = "popstruct")]
+        public static unsafe void PopulateStruct(myStruct* structure)
+        {
+            structure->name = Marshal.StringToHGlobalAnsi(Guid.NewGuid().ToString());
+            structure->value = new Random().Next();
         }
     }
 }
