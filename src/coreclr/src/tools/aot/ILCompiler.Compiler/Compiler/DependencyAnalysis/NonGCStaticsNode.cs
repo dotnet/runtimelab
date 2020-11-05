@@ -68,7 +68,7 @@ namespace ILCompiler.DependencyAnalysis
                 // Make sure the NonGCStatics symbol always points to the beginning of the data.
                 if (_preinitializationManager.HasLazyStaticConstructor(_type))
                 {
-                    return GetClassConstructorContextSize(_type.Context.Target, _type);
+                    return GetClassConstructorContextStorageSize(_type.Context.Target, _type);
                 }
                 else
                 {
@@ -90,7 +90,7 @@ namespace ILCompiler.DependencyAnalysis
             return factory.CompilationModuleGroup.GetExportTypeForm(Type);
         }
 
-        public static int GetClassConstructorContextSize(TargetDetails target, MetadataType type)
+        public static int GetClassConstructorContextSize(TargetDetails target)
         {
             // TODO: Assert that StaticClassConstructionContext type has the expected size
             //       (need to make it a well known type?)
@@ -100,7 +100,7 @@ namespace ILCompiler.DependencyAnalysis
         private static int GetClassConstructorContextStorageSize(TargetDetails target, MetadataType type)
         {
             int alignmentRequired = Math.Max(type.NonGCStaticFieldAlignment.AsInt, GetClassConstructorContextAlignment(target));
-            return AlignmentHelper.AlignUp(GetClassConstructorContextSize(type.Context.Target, type), alignmentRequired);
+            return AlignmentHelper.AlignUp(GetClassConstructorContextSize(type.Context.Target), alignmentRequired);
         }        
 
         private static int GetClassConstructorContextAlignment(TargetDetails target)
@@ -136,7 +136,7 @@ namespace ILCompiler.DependencyAnalysis
             if (factory.PreinitializationManager.HasLazyStaticConstructor(_type))
             {
                 int alignmentRequired = Math.Max(_type.NonGCStaticFieldAlignment.AsInt, GetClassConstructorContextAlignment(_type.Context.Target));
-                int classConstructorContextStorageSize = GetClassConstructorContextSize(factory.Target, _type);
+                int classConstructorContextStorageSize = GetClassConstructorContextStorageSize(factory.Target, _type);
                 builder.RequireInitialAlignment(alignmentRequired);
                 
                 Debug.Assert(classConstructorContextStorageSize >= GetClassConstructorContextStorageSize(_type.Context.Target, _type));

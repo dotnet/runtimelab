@@ -55,7 +55,7 @@ namespace ILCompiler.DependencyAnalysis
                         else
                         {
                             // We need to trigger the cctor before returning the base. It is stored at the beginning of the non-GC statics region.
-                            encoder.EmitSUB(encoder.TargetRegister.Arg3, encoder.TargetRegister.Result, NonGCStaticsNode.GetClassConstructorContextSize(factory.Target, target));
+                            encoder.EmitSUB(encoder.TargetRegister.Arg3, encoder.TargetRegister.Result, NonGCStaticsNode.GetClassConstructorContextSize(factory.Target));
                             encoder.EmitLDR(encoder.TargetRegister.Arg2, encoder.TargetRegister.Arg3, (short)factory.Target.PointerSize);
                             encoder.EmitCMP(encoder.TargetRegister.Arg2, 1);
                             encoder.EmitRETIfEqual();
@@ -88,7 +88,7 @@ namespace ILCompiler.DependencyAnalysis
                         else
                         {
                             encoder.EmitMOV(encoder.TargetRegister.Arg2, factory.TypeNonGCStaticsSymbol(target));
-                            encoder.EmitSUB(encoder.TargetRegister.Arg2, NonGCStaticsNode.GetClassConstructorContextSize(factory.Target, target));
+                            encoder.EmitSUB(encoder.TargetRegister.Arg2, NonGCStaticsNode.GetClassConstructorContextSize(factory.Target));
 
                             encoder.EmitLDR(encoder.TargetRegister.Arg3, encoder.TargetRegister.Arg2, (short)factory.Target.PointerSize);
                             encoder.EmitCMP(encoder.TargetRegister.Arg3, 1);
@@ -115,7 +115,7 @@ namespace ILCompiler.DependencyAnalysis
                         {
                             // We need to trigger the cctor before returning the base. It is stored at the beginning of the non-GC statics region.
                             encoder.EmitMOV(encoder.TargetRegister.Arg2, factory.TypeNonGCStaticsSymbol(target));
-                            encoder.EmitSUB(encoder.TargetRegister.Arg2, NonGCStaticsNode.GetClassConstructorContextSize(factory.Target, target));
+                            encoder.EmitSUB(encoder.TargetRegister.Arg2, NonGCStaticsNode.GetClassConstructorContextSize(factory.Target));
                             encoder.EmitLDR(encoder.TargetRegister.Arg3, encoder.TargetRegister.Arg2, (short)factory.Target.PointerSize);
                             encoder.EmitCMP(encoder.TargetRegister.Arg3, 1);
                             encoder.EmitRETIfEqual();
