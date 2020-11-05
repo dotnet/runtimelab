@@ -51,7 +51,7 @@ jobs:
         
         - _testBuildArg: ''
         - ${{ if eq(parameters.runTests, true) }}:
-          - _testBuildArg: -test
+          - _testBuildArg: -test -integrationTest
 
         - _officialBuildArgs: ''
         - ${{ if eq(parameters.isOfficialBuild, true) }}:

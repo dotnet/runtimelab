@@ -12,9 +12,11 @@
     <UseVSTestRunner>true</UseVSTestRunner>
     <UsingToolXliff>false</UsingToolXliff>
     <!-- Libs -->
-    <MicrosoftNETCoreAppVersion>6.0.0-alpha.1.20514.9</MicrosoftNETCoreAppVersion>
+    <MicrosoftNETCoreAppVersion>6.0.0-alpha.1.20554.9</MicrosoftNETCoreAppVersion>
     <MicrosoftNETTestSdkVersion>16.7.1</MicrosoftNETTestSdkVersion>
     <XUnitVersion>2.4.1</XUnitVersion>
     <XUnitRunnerVisualStudioVersion>2.4.3</XUnitRunnerVisualStudioVersion>
+    <!-- Roslyn dependencies -->
+    <CompilerPlatformVersion>3.8.0-3.final</CompilerPlatformVersion>
   </PropertyGroup>
 </Project>
