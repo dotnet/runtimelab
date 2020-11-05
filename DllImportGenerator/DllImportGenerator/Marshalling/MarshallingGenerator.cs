@@ -149,6 +149,12 @@ namespace Microsoft.Interop
 
                 // Enum with no marshalling info
                 case { ManagedType: { TypeKind: TypeKind.Enum }, MarshallingAttributeInfo: NoMarshallingInfo }:
+                    // Check that the underlying type is not bool or char. C# does not allow this, but ECMA-335 does.
+                    var underlyingSpecialType = ((INamedTypeSymbol)info.ManagedType).EnumUnderlyingType!.SpecialType;
+                    if (underlyingSpecialType == SpecialType.System_Boolean || underlyingSpecialType == SpecialType.System_Char)
+                    {
+                        throw new MarshallingNotSupportedException(info, context);
+                    }
                     return Blittable;
 
                 // Pointer with no marshalling info
