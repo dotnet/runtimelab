@@ -7,7 +7,7 @@
   <Target Name="InstallDependencies"
           AfterTargets="Restore">
 
-    <Exec Command="pwsh install-dependencies.ps1"
-          WorkingDirectory="$(RepoRoot)src" />
+    <Exec Command="pwsh $(RepoRoot)src\install-dependencies.ps1"
+          WorkingDirectory="$(RepoRoot)src\msquic" />
   </Target>
 </Project>

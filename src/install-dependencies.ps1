@@ -9,6 +9,7 @@ $NuGetPath = Join-Path $RootDir "nuget"
 # Well-known location for clog packages.
 $ClogDownloadUrl = "https://github.com/microsoft/CLOG/releases/download/v0.1.2"
 $ClogVersion = "0.1.2"
+$toolsLocation = "$RootDir\src\msquic\artifacts\dotnet-tools"
 
 function Install-ClogTool {
     param($ToolName)
@@ -20,16 +21,10 @@ function Install-ClogTool {
             Write-Host "Downloading $NuGetName"
             Invoke-WebRequest -Uri "$ClogDownloadUrl/$NuGetName" -OutFile $NuGetFile
         }
-        $listOfTools = (dotnet tool list -g | findstr /spin /c:"$ToolName ")
-        if ($null -eq $listOfTools)
-        {
-            Write-Host "Installing: $NuGetName"
-            dotnet tool install --global --add-source $NuGetPath $ToolName
-        }
-        elseif ($null -eq ($listOfTools | findstr /spin /c:"$ClogVersion")){
-            Write-Host "Updating: $NuGetName"
-            dotnet tool update --global --add-source $NuGetPath $ToolName
-        }
+        
+        
+        dotnet tool update --tool-path $toolsLocation --add-source $NuGetPath $ToolName
+        
         if (!$?) { exit 1 }
 
     } catch {
@@ -40,3 +35,5 @@ function Install-ClogTool {
 
 Install-ClogTool "Microsoft.Logging.CLOG"
 Install-ClogTool "Microsoft.Logging.CLOG2Text.Windows"
+
+echo "##vso[task.prependpath]$toolsLocation"
