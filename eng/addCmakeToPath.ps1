@@ -34,7 +34,7 @@ function DownloadCMake
   $downloadDir = (Split-Path $PSScriptRoot -Parent) + "\artifacts\download"
   $cmakeExtractPath = $downloadDir + "\cmake"
 
-  $cmakeSearch = (Get-ChildItem -Path $cmakeExtractPath -Filter cmake.exe -Recurse)
+  $cmakeSearch = (Get-ChildItem -Path $cmakeExtractPath -Filter cmake.exe -Recurse -ErrorAction SilentlyContinue)
   $cmakePath = ''
   if ($null -eq $cmakeSearch -or $cmakeSearch.Length -eq 0)
   {
