@@ -35,25 +35,25 @@ function DownloadCMake
   $cmakeExtractPath = $downloadDir + "\cmake"
 
   $cmakeSearch = (Get-ChildItem -Path $cmakeExtractPath -Filter cmake.exe -Recurse -ErrorAction SilentlyContinue)
-  $cmakePath = ''
   if ($null -eq $cmakeSearch -or $cmakeSearch.Length -eq 0)
   {
     Write-Host "Downloading CMake"
     $cmakeZip = $downloadDir + "\cmake.zip"
     $cmakeUrl = "https://github.com/Kitware/CMake/releases/download/v3.18.4/cmake-3.18.4-win64-x64.zip"
     if (!(Test-Path $downloadDir)) { mkdir $downloadDir }
-    Invoke-WebRequest -Uri $cmakeUrl -OutFile $cmakeZip
+    if (!(Test-Path $cmakeZip))
+    {
+      Invoke-WebRequest -Uri $cmakeUrl -OutFile $cmakeZip
+    }
 
     Write-Host "Extracting Cmake"
     if (!(Test-Path $cmakeExtractPath)) { mkdir $cmakeExtractPath }
-    Expand-Archive -Path $cmakeZip -DestinationPath $cmakeExtractPath -Force
-    $cmakePath = (Get-ChildItem -Path $cmakeExtractPath -Filter cmake.exe -Recurse).FullName
-  }
-  else {
-    $cmakePath = $cmakeSearch.FullName
+    [System.IO.Compression.ZipFile]::ExtractToDirectory($cmakeZip, $cmakeExtractPath)
+    Write-Host "Downloaded to:" + (Get-ChildItem -Path $cmakeExtractPath -Filter cmake.exe -Recurse).FullName
+    return (Get-ChildItem -Path $cmakeExtractPath -Filter cmake.exe -Recurse).FullName
   }
   
-  return $cmakePath
+  return $cmakeSearch.FullName
 }
 
 function LocateCMake
