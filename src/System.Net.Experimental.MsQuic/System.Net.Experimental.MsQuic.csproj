@@ -31,6 +31,9 @@
 
     <Target Name="Build-native" AfterTargets="Build">
         <Exec
+            Command="pwsh install-dependencies.ps1"
+            WorkingDirectory="..\"/>
+        <Exec
             Command="pwsh scripts\build.ps1 -Config Release -Arch x64"
             WorkingDirectory="..\msquic"/>
         <Exec

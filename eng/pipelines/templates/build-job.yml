@@ -67,6 +67,12 @@ jobs:
                                 /p:DotNetSymbolServerTokenSymWeb=$(symweb-symbol-server-pat)
 
       steps:
+      - checkout: self
+        submodules: recursive
+      
+      - powershell: .\eng\addCmakeToPath.ps1
+        displayName: Add CMake to path
+
       - script: $(_buildScript)
                 -ci
                 -pack
