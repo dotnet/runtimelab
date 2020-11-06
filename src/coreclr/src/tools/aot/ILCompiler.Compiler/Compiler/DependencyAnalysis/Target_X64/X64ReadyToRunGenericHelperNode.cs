@@ -84,7 +84,7 @@ namespace ILCompiler.DependencyAnalysis
                             encoder.EmitMOV(encoder.TargetRegister.Result, encoder.TargetRegister.Arg0);
 
                             // We need to trigger the cctor before returning the base. It is stored at the beginning of the non-GC statics region.
-                            int cctorContextSize = NonGCStaticsNode.GetClassConstructorContextStorageSize(factory.Target, target);
+                            int cctorContextSize = NonGCStaticsNode.GetClassConstructorContextSize(factory.Target);
                             AddrMode initialized = new AddrMode(encoder.TargetRegister.Arg0, null, factory.Target.PointerSize - cctorContextSize, 0, AddrModeSize.Int32);
                             encoder.EmitCMP(ref initialized, 1);
                             encoder.EmitRETIfEqual();
@@ -119,7 +119,7 @@ namespace ILCompiler.DependencyAnalysis
                             GenericLookupResult nonGcRegionLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
                             EmitDictionaryLookup(factory, ref encoder, encoder.TargetRegister.Arg0, encoder.TargetRegister.Arg0, nonGcRegionLookup, relocsOnly);
 
-                            int cctorContextSize = NonGCStaticsNode.GetClassConstructorContextStorageSize(factory.Target, target);
+                            int cctorContextSize = NonGCStaticsNode.GetClassConstructorContextSize(factory.Target);
                             AddrMode initialized = new AddrMode(encoder.TargetRegister.Arg0, null, factory.Target.PointerSize - cctorContextSize, 0, AddrModeSize.Int32);
                             encoder.EmitCMP(ref initialized, 1);
                             encoder.EmitRETIfEqual();
@@ -149,7 +149,7 @@ namespace ILCompiler.DependencyAnalysis
                             // class constructor context lives.
                             GenericLookupResult nonGcRegionLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
                             EmitDictionaryLookup(factory, ref encoder, encoder.TargetRegister.Arg0, encoder.TargetRegister.Arg2, nonGcRegionLookup, relocsOnly);
-                            int cctorContextSize = NonGCStaticsNode.GetClassConstructorContextStorageSize(factory.Target, target);
+                            int cctorContextSize = NonGCStaticsNode.GetClassConstructorContextSize(factory.Target);
                             AddrMode loadCctor = new AddrMode(encoder.TargetRegister.Arg2, null, -cctorContextSize, 0, AddrModeSize.Int64);
                             encoder.EmitLEA(encoder.TargetRegister.Arg2, ref loadCctor);
 

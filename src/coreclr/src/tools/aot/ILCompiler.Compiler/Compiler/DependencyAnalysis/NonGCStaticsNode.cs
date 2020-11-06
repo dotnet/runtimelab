@@ -53,7 +53,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             return nameMangler.NodeMangler.NonGCStatics(type);
         }
- 
+
         public void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
         {
             sb.Append(nameMangler.NodeMangler.NonGCStatics(_type));
@@ -90,14 +90,14 @@ namespace ILCompiler.DependencyAnalysis
             return factory.CompilationModuleGroup.GetExportTypeForm(Type);
         }
 
-        private static int GetClassConstructorContextSize(TargetDetails target)
+        public static int GetClassConstructorContextSize(TargetDetails target)
         {
             // TODO: Assert that StaticClassConstructionContext type has the expected size
             //       (need to make it a well known type?)
             return target.PointerSize * 2;
         }
 
-        public static int GetClassConstructorContextStorageSize(TargetDetails target, MetadataType type)
+        private static int GetClassConstructorContextStorageSize(TargetDetails target, MetadataType type)
         {
             int alignmentRequired = Math.Max(type.NonGCStaticFieldAlignment.AsInt, GetClassConstructorContextAlignment(target));
             return AlignmentHelper.AlignUp(GetClassConstructorContextSize(type.Context.Target), alignmentRequired);
@@ -138,7 +138,7 @@ namespace ILCompiler.DependencyAnalysis
                 int alignmentRequired = Math.Max(_type.NonGCStaticFieldAlignment.AsInt, GetClassConstructorContextAlignment(_type.Context.Target));
                 int classConstructorContextStorageSize = GetClassConstructorContextStorageSize(factory.Target, _type);
                 builder.RequireInitialAlignment(alignmentRequired);
-                
+
                 Debug.Assert(classConstructorContextStorageSize >= GetClassConstructorContextSize(_type.Context.Target));
 
                 // Add padding before the context if alignment forces us to do so

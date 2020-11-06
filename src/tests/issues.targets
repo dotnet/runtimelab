@@ -1164,30 +1164,6 @@
         <ExcludeList Include="$(XunitTestBinBase)/JIT/HardwareIntrinsics/General/Vector256_1/Vector256_1_ro/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/184</Issue>
         </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/JIT/HardwareIntrinsics/X86/Avx/Avx_r/*">
-            <Issue>https://github.com/dotnet/runtimelab/issues/187</Issue>
-        </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/JIT/HardwareIntrinsics/X86/Avx/Avx_ro/*">
-            <Issue>https://github.com/dotnet/runtimelab/issues/187</Issue>
-        </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/JIT/HardwareIntrinsics/X86/Avx/ConvertToVector_r/*">
-            <Issue>https://github.com/dotnet/runtimelab/issues/187</Issue>
-        </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/JIT/HardwareIntrinsics/X86/Avx/ConvertToVector_ro/*">
-            <Issue>https://github.com/dotnet/runtimelab/issues/187</Issue>
-        </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/JIT/HardwareIntrinsics/X86/Avx2/Avx2_r/*">
-            <Issue>https://github.com/dotnet/runtimelab/issues/187</Issue>
-        </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/JIT/HardwareIntrinsics/X86/Avx2/Avx2_ro/*">
-            <Issue>https://github.com/dotnet/runtimelab/issues/187</Issue>
-        </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/JIT/HardwareIntrinsics/X86/Fma_Vector256/Fma_r/*">
-            <Issue>https://github.com/dotnet/runtimelab/issues/187</Issue>
-        </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/JIT/HardwareIntrinsics/X86/Fma_Vector256/Fma_ro/*">
-            <Issue>https://github.com/dotnet/runtimelab/issues/187</Issue>
-        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Intrinsics/TypeIntrinsics_r/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/189</Issue>
         </ExcludeList>
