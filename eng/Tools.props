@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <MSBuildTreatWarningsAsErrors>false</MSBuildTreatWarningsAsErrors>
+    <Language>C#</Language>
+  </PropertyGroup>
+
+  <Target Name="InstallDependencies"
+          AfterTargets="Restore">
+
+    <Exec Command="pwsh install-dependencies.ps1"
+          WorkingDirectory="$(RepoRoot)src" />
+  </Target>
+</Project>
