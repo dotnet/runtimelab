@@ -21,7 +21,7 @@ function Install-ClogTool {
             Invoke-WebRequest -Uri "$ClogDownloadUrl/$NuGetName" -OutFile $NuGetFile
         }
         Write-Host "Installing: $NuGetName"
-        dotnet tool update --global --add-source $NuGetPath $ToolName
+        dotnet tool install --global --add-source $NuGetPath $ToolName
         if (!$?) { exit 1 }
 
     } catch {
