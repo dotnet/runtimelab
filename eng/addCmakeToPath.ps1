@@ -28,6 +28,34 @@ function GetCMakeInfo($regKey)
   return @{'version' = $version; 'path' = $cmakePath}
 }
 
+function DownloadCMake
+{
+  
+  $downloadDir = (Split-Path $PSScriptRoot -Parent) + "\artifacts\download"
+  $cmakeExtractPath = $downloadDir + "\cmake"
+
+  $cmakeSearch = (Get-ChildItem -Path $cmakeExtractPath -Filter cmake.exe -Recurse)
+  $cmakePath = ''
+  if ($null -eq $cmakeSearch -or $cmakeSearch.Length -eq 0)
+  {
+    Write-Host "Downloading CMake"
+    $cmakeZip = $downloadDir + "\cmake.zip"
+    $cmakeUrl = "https://github.com/Kitware/CMake/releases/download/v3.18.4/cmake-3.18.4-win64-x64.zip"
+    if (!(Test-Path $downloadDir)) { mkdir $downloadDir }
+    Invoke-WebRequest -Uri $cmakeUrl -OutFile $cmakeZip
+
+    Write-Host "Extracting Cmake"
+    if (!(Test-Path $cmakeExtractPath)) { mkdir $cmakeExtractPath }
+    Expand-Archive -Path $cmakeZip -OutputPath $cmakeExtractPath -ShowProgress
+    $cmakePath = (Get-ChildItem -Path $cmakeExtractPath -Filter cmake.exe -Recurse).FullName
+  }
+  else {
+    $cmakePath = $cmakeSearch.FullName
+  }
+  
+  return $cmakePath
+}
+
 function LocateCMake
 {
   $errorMsg = "CMake is a pre-requisite to build this repository but it was not found on the path. Please install CMake from https://cmake.org/download/ and ensure it is on your path."
@@ -51,8 +79,9 @@ function LocateCMake
     Sort-Object -property @{Expression={$_.version}; Ascending=$false} |
     select -first 1).path
   if ($newestCMakePath -eq $null) {
-    Throw $errorMsg
+    return DownloadCMake
   }
+
   return $newestCMakePath
 }
 
