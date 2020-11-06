@@ -309,7 +309,10 @@ namespace Microsoft.Interop
             ExpressionSyntax numElementsExpression;
             if (info.MarshallingAttributeInfo is not ArrayMarshalAsInfo marshalAsInfo)
             {
-                throw new MarshallingNotSupportedException(info, context);
+                throw new MarshallingNotSupportedException(info, context)
+                {
+                    NotSupportedDetails = Resources.ArraySizeMustBeSpecified
+                };
             }
 
             LiteralExpressionSyntax? constSizeExpression = marshalAsInfo.ArraySizeConst != ArrayMarshalAsInfo.UnspecifiedData
