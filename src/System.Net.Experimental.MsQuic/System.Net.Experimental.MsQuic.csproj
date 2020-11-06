@@ -31,8 +31,8 @@
 
     <Target Name="Install-dependencies" BeforeTargets="BeforeBuild">
         <Exec
-            Command="pwsh ..\install-dependencies.ps1"
-            WorkingDirectory="..\msquic" />
+            Command="pwsh install-dependencies.ps1"
+            WorkingDirectory="..\" />
     </Target>
 
     <Target Name="Build-native" AfterTargets="Build">
