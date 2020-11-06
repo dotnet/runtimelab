@@ -70,7 +70,7 @@ jobs:
       - checkout: self
         submodules: recursive
       
-      - powershell: .\eng\addCmakeToPath.ps1
+      - pwsh: .\eng\addCmakeToPath.ps1
         displayName: Add CMake to path
 
       - script: $(_buildScript)

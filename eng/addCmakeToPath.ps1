@@ -46,7 +46,7 @@ function DownloadCMake
 
     Write-Host "Extracting Cmake"
     if (!(Test-Path $cmakeExtractPath)) { mkdir $cmakeExtractPath }
-    Expand-Archive -Path $cmakeZip -OutputPath $cmakeExtractPath -ShowProgress
+    Expand-Archive -Path $cmakeZip -OutputPath $cmakeExtractPath -ShowProgress -Verbose
     $cmakePath = (Get-ChildItem -Path $cmakeExtractPath -Filter cmake.exe -Recurse).FullName
   }
   else {
