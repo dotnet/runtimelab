@@ -20,16 +20,9 @@ function Install-ClogTool {
             Write-Host "Downloading $NuGetName"
             Invoke-WebRequest -Uri "$ClogDownloadUrl/$NuGetName" -OutFile $NuGetFile
         }
-        $listOfTools = (dotnet tool list -g | findstr /spin /c:"$ToolName ")
-        if ($null -eq $listOfTools)
-        {
-            Write-Host "Installing: $NuGetName"
-            dotnet tool install --global --add-source $NuGetPath $ToolName
-        }
-        elseif ($null -eq ($listOfTools | findstr /spin /c:"$ClogVersion")){
-            Write-Host "Updating: $NuGetName"
-            dotnet tool update --global --add-source $NuGetPath $ToolName
-        }
+        Write-Host "Installing: $NuGetName"
+        dotnet tool update --local --add-source $NuGetPath $ToolName
+        
         if (!$?) { exit 1 }
 
     } catch {

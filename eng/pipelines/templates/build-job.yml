@@ -75,7 +75,6 @@ jobs:
 
       - script: $(_buildScript)
                 -ci
-                -pack
                 -c $(_BuildConfig)
                 $(_testBuildArg)
                 $(_officialBuildArgs)

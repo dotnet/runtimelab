@@ -29,10 +29,14 @@
         </ItemGroup>   
     </Target>
 
-    <Target Name="Build-native" AfterTargets="Build">
+    <Target Name="Install-dependencies" BeforeTargets="BeforeBuild">
         <Exec
-            Command="pwsh install-dependencies.ps1"
-            WorkingDirectory="..\"/>
+            Command="pwsh ..\install-dependencies.ps1"
+            WorkingDirectory="..\msquic" />
+    </Target>
+
+    <Target Name="Build-native" AfterTargets="Build">
+        
         <Exec
             Command="pwsh scripts\build.ps1 -Config Release -Arch x64"
             WorkingDirectory="..\msquic"/>
