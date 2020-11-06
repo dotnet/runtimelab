@@ -1,0 +1,5 @@
+<Project>
+   <ItemGroup>
+       <ProjectToBuild Include="$(RepoRoot)DllImportGenerator/DllImportGenerator.sln" />
+   </ItemGroup>
+</Project>
