@@ -30,26 +30,25 @@ function GetCMakeInfo($regKey)
 
 function DownloadCMake
 {
-  
   $downloadDir = (Split-Path $PSScriptRoot -Parent) + "\artifacts\download"
   $cmakeExtractPath = $downloadDir + "\cmake"
 
   $cmakeSearch = (Get-ChildItem -Path $cmakeExtractPath -Filter cmake.exe -Recurse -ErrorAction SilentlyContinue)
-  if ($null -eq $cmakeSearch -or $cmakeSearch.Length -eq 0)
+  if ($null -eq $cmakeSearch -or $cmakeSearch.Count -eq 0)
   {
     Write-Host "Downloading CMake"
     $cmakeZip = $downloadDir + "\cmake.zip"
     $cmakeUrl = "https://github.com/Kitware/CMake/releases/download/v3.18.4/cmake-3.18.4-win64-x64.zip"
-    if (!(Test-Path $downloadDir)) { mkdir $downloadDir }
+    if (!(Test-Path $downloadDir)) { $throwAway = mkdir $downloadDir }
     if (!(Test-Path $cmakeZip))
     {
       Invoke-WebRequest -Uri $cmakeUrl -OutFile $cmakeZip
     }
 
     Write-Host "Extracting Cmake"
-    if (!(Test-Path $cmakeExtractPath)) { mkdir $cmakeExtractPath }
+    if (!(Test-Path $cmakeExtractPath)) { $throwAway = mkdir $cmakeExtractPath }
     [System.IO.Compression.ZipFile]::ExtractToDirectory($cmakeZip, $cmakeExtractPath)
-    return (Get-ChildItem -Path $cmakeExtractPath -Filter cmake.exe -Recurse).FullName
+    return (Get-ChildItem -Path $cmakeExtractPath -Filter cmake.exe -Recurse -ErrorAction SilentlyContinue).FullName
   }
   
   return $cmakeSearch.FullName
@@ -86,9 +85,8 @@ function LocateCMake
 
 function SetCMakePath
 {
-  $path = LocateCMake
-  Write-Host "Resolved: $path"
-  $directory = [System.IO.Path]::GetDirectoryName($path)
+  $cmakePath = DownloadCMake
+  $directory = Split-Path -Path $cmakePath
   Write-Host $directory
   Write-Host "##vso[task.prependpath]$directory"
   &{ cmake.exe -version }
