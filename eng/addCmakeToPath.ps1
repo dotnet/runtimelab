@@ -85,7 +85,7 @@ function LocateCMake
 
 function SetCMakePath
 {
-  $cmakePath = DownloadCMake
+  $cmakePath = LocateCMake
   $directory = Split-Path -Path $cmakePath
   Write-Host $directory
   Write-Host "##vso[task.prependpath]$directory"
