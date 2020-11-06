@@ -49,7 +49,6 @@ function DownloadCMake
     Write-Host "Extracting Cmake"
     if (!(Test-Path $cmakeExtractPath)) { mkdir $cmakeExtractPath }
     [System.IO.Compression.ZipFile]::ExtractToDirectory($cmakeZip, $cmakeExtractPath)
-    Write-Host "Downloaded to:" + (Get-ChildItem -Path $cmakeExtractPath -Filter cmake.exe -Recurse).FullName
     return (Get-ChildItem -Path $cmakeExtractPath -Filter cmake.exe -Recurse).FullName
   }
   
@@ -88,9 +87,10 @@ function LocateCMake
 function SetCMakePath
 {
   $path = LocateCMake
-  $path = Split-Path -Path $path
-  Write-Host $path
-  Write-Host "##vso[task.prependpath]$path"
+  Write-Host "Resolved: $path"
+  $directory = [System.IO.Path]::GetDirectoryName($path)
+  Write-Host $directory
+  Write-Host "##vso[task.prependpath]$directory"
   &{ cmake.exe -version }
 }
 
