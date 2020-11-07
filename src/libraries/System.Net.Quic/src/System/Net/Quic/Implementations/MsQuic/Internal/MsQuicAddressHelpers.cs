@@ -9,13 +9,7 @@ namespace System.Net.Quic.Implementations.MsQuic.Internal
     internal static class MsQuicAddressHelpers
     {
         internal const ushort IPv4 = 2;
-
-#if WINDOWS
         internal const ushort IPv6 = 23;
-#else // Assume Linux
-        internal const ushort IPv6 = 10;
-#endif
-
 
         internal static IPEndPoint INetToIPEndPoint(ref SOCKADDR_INET inetAddress)
         {
