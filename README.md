@@ -22,6 +22,7 @@ There are a few prerequisites that need to be done before starting to use HTTP/3
     ```
 4. Add the package System.Net.Experimental.MsQuic to your project.
     ```
+    dotnet nuget add source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-experimental/nuget/v3/index.json --name dotnet-experimental
     dotnet add package System.Net.Experimental.MsQuic --version 5.0.0-alpha*
     ```
 
@@ -44,6 +45,7 @@ There are a few prerequisites that need to be done before starting to use HTTP/3
 
 1. Add the package Microsoft.AspNetCore.Server.Kestrel.Transport.Experimental.Quic to your project.
     ```
+    dotnet nuget add source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet5/nuget/v3/index.json --name dotnet5
     dotnet add package Microsoft.AspNetCore.Server.Kestrel.Transport.Experimental.Quic --version 5.0.0-rc*
     ```
 2. You will probably need to regenerate the ASP.NET Core Dev Cert as it needs to be able to support TLS 1.3. You can do this by running:
