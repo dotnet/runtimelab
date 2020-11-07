@@ -29,7 +29,7 @@ namespace Microsoft.Interop
             {
                 return Argument(IdentifierName(info.InstanceIdentifier));
             }
-            else if (context.PinningSupported)
+            else if (context.PinningSupported && !info.IsManagedReturnPosition)
             {
                 return Argument(IdentifierName(context.GetIdentifiers(info).native));
                 

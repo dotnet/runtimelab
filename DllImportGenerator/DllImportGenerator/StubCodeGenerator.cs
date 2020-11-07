@@ -138,10 +138,18 @@ namespace Microsoft.Interop
             // Stub return is not the same as invoke return
             if (!stubReturnsVoid && !retMarshaller.TypeInfo.IsManagedReturnPosition)
             {
+                // Stub return should be the last parameter for the invoke
                 Debug.Assert(paramMarshallers.Any() && paramMarshallers.Last().TypeInfo.IsManagedReturnPosition);
 
+                var stubRetMarshaller = paramMarshallers.Last();
+                if (stubRetMarshaller.Generator.UsesNativeIdentifier(stubRetMarshaller.TypeInfo, this))
+                {
+                    // Update the native identifier for the return value
+                    ReturnNativeIdentifier = $"{ReturnIdentifier}{GeneratedNativeIdentifierSuffix}";
+                }
+
                 // Declare variable for stub return value
-                TypePositionInfo info = paramMarshallers.Last().TypeInfo;
+                TypePositionInfo info = stubRetMarshaller.TypeInfo;
                 statements.Add(LocalDeclarationStatement(
                     VariableDeclaration(
                         info.ManagedType.AsTypeSyntax(),

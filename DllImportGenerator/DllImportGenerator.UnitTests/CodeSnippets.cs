@@ -501,5 +501,20 @@ partial class Test
 }}";
 
         public static string ArrayParameterWithNestedMarshalInfo<T>(UnmanagedType nestedMarshalType) => ArrayParameterWithNestedMarshalInfo(typeof(T).ToString(), nestedMarshalType);
+
+        public static string ArrayPreserveSigFalse(string elementType) => $@"
+using System.Runtime.InteropServices;
+partial class Test
+{{
+    [GeneratedDllImport(""DoesNotExist"")]
+    [return:MarshalAs(UnmanagedType.LPArray, SizeConst=10)]
+    public static partial {elementType}[] Method1();
+
+    [GeneratedDllImport(""DoesNotExist"")]
+    [return:MarshalAs(UnmanagedType.LPArray, SizeParamIndex=0)]
+    public static partial {elementType}[] Method2(int i);
+}}";
+
+        public static string ArrayPreserveSigFalse<T>() => ArrayParametersAndModifiers(typeof(T).ToString());
     }
 }
