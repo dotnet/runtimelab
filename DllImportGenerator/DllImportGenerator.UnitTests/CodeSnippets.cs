@@ -206,8 +206,8 @@ partial class Test
         CharSet = (CharSet)2,
         EntryPoint = EntryPointName,
         ExactSpelling = 0 != 1,
-        PreserveSig = IsFalse,
-        SetLastError = IsTrue)]
+        PreserveSig = IsTrue,
+        SetLastError = IsFalse)]
     public static partial void Method1();
 
     [GeneratedDllImport(nameof(Test),
