@@ -57,7 +57,7 @@ namespace System.Net.Quic.Tests
             return listener;
         }
 
-        internal async Task RunClientServer(Func<QuicConnection, Task> clientFunction, Func<QuicConnection, Task> serverFunction, int millisecondsTimeout = 10_000_000)
+        internal async Task RunClientServer(Func<QuicConnection, Task> clientFunction, Func<QuicConnection, Task> serverFunction, int millisecondsTimeout = 10_000)
         {
             using QuicListener listener = CreateQuicListener();
 
