@@ -108,68 +108,75 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
 
         private async Task Run()
         {
-            while (Connection.ConnectionState != QuicConnectionState.Closed)
+            try
             {
-                if (Timestamp.Now >= _timer)
+                while (Connection.ConnectionState != QuicConnectionState.Closed)
                 {
-                    QuicConnectionState previousState = Connection.ConnectionState;
-                    Connection.OnTimeout(Timestamp.Now);
-                    QuicConnectionState newState = Connection.ConnectionState;
-                    if (newState != previousState)
+                    if (Timestamp.Now >= _timer)
                     {
-                        _parent.OnConnectionStateChanged(Connection, newState);
-                    }
-                }
-
-                while (_recvQueue.Reader.TryRead(out DatagramInfo datagram))
-                {
-                    DoReceiveDatagram(datagram);
-                }
-
-                if (Connection.GetWriteLevel(Timestamp.Now) != EncryptionLevel.None)
-                {
-                    _needsUpdate = false;
-                    // TODO: discover path MTU
-                    byte[]? buffer = ArrayPool.Rent(QuicConstants.MaximumAllowedDatagramSize);
-                    _writer.Reset(buffer);
-                    _sendContext.Timestamp = Timestamp.Now;
-                    Connection.SendData(_writer, out var receiver, _sendContext);
-
-                    _parent.SendDatagram(new DatagramInfo(buffer, _writer.BytesWritten, receiver));
-
-                    ArrayPool.Return(buffer);
-                }
-
-                long now = Timestamp.Now;
-                _timer = Connection.GetNextTimerTimestamp();
-                if (now < _timer)
-                {
-                    // asynchronously wait until either the timer expires or we receive a new datagram
-                    if (_waitCompletionSource.Task.IsCompleted)
-                    {
-                        _waitCompletionSource =
-                            new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                        QuicConnectionState previousState = Connection.ConnectionState;
+                        Connection.OnTimeout(Timestamp.Now);
+                        QuicConnectionState newState = Connection.ConnectionState;
+                        if (newState != previousState)
+                        {
+                            _parent.OnConnectionStateChanged(Connection, newState);
+                        }
                     }
 
-                    // protection against race conditions (flag set just after last update finished)
-                    if (!_needsUpdate)
+                    while (_recvQueue.Reader.TryRead(out DatagramInfo datagram))
                     {
-                        CancellationTokenSource cts = new CancellationTokenSource();
-                        Task<bool>? read = _recvQueue.Reader.WaitToReadAsync(cts.Token).AsTask();
-                        await using CancellationTokenRegistration registration = cts.Token.Register(static s =>
-                        {
-                            ((TaskCompletionSource?)s)?.TrySetResult();
-                        }, _waitCompletionSource);
+                        DoReceiveDatagram(datagram);
+                    }
 
-                        if (_timer < long.MaxValue)
+                    if (Connection.GetWriteLevel(Timestamp.Now) != EncryptionLevel.None)
+                    {
+                        _needsUpdate = false;
+                        // TODO: discover path MTU
+                        byte[]? buffer = ArrayPool.Rent(QuicConstants.MaximumAllowedDatagramSize);
+                        _writer.Reset(buffer);
+                        _sendContext.Timestamp = Timestamp.Now;
+                        Connection.SendData(_writer, out var receiver, _sendContext);
+
+                        _parent.SendDatagram(new DatagramInfo(buffer, _writer.BytesWritten, receiver));
+
+                        ArrayPool.Return(buffer);
+                    }
+
+                    long now = Timestamp.Now;
+                    _timer = Connection.GetNextTimerTimestamp();
+                    if (now < _timer)
+                    {
+                        // asynchronously wait until either the timer expires or we receive a new datagram
+                        if (_waitCompletionSource.Task.IsCompleted)
                         {
-                            cts.CancelAfter((int)Timestamp.GetMilliseconds(_timer - now));
+                            _waitCompletionSource =
+                                new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                         }
 
-                        await Task.WhenAny(read, _waitCompletionSource.Task).ConfigureAwait(false);
-                        cts.Cancel();
+                        // protection against race conditions (flag set just after last update finished)
+                        if (!_needsUpdate)
+                        {
+                            CancellationTokenSource cts = new CancellationTokenSource();
+                            Task<bool>? read = _recvQueue.Reader.WaitToReadAsync(cts.Token).AsTask();
+                            await using CancellationTokenRegistration registration = cts.Token.Register(static s =>
+                            {
+                                ((TaskCompletionSource?)s)?.TrySetResult();
+                            }, _waitCompletionSource);
+
+                            if (_timer < long.MaxValue)
+                            {
+                                cts.CancelAfter((int)Timestamp.GetMilliseconds(_timer - now));
+                            }
+
+                            var task = await Task.WhenAny(read, _waitCompletionSource.Task).ConfigureAwait(false);
+                            cts.Cancel();
+                        }
                     }
                 }
+            }
+            catch (Exception e)
+            {
+                Connection.OnSocketContextException(e);
             }
         }
     }

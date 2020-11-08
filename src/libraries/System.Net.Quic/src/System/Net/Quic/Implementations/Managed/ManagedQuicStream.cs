@@ -90,7 +90,7 @@ namespace System.Net.Quic.Implementations.Managed
 
         #region Public API
         internal override long StreamId { get; }
-        internal override bool CanRead => ReceiveStream != null;
+        internal override bool CanRead => !_disposed && ReceiveStream != null;
 
         internal override int Read(Span<byte> buffer)
         {
@@ -145,7 +145,7 @@ namespace System.Net.Quic.Implementations.Managed
             _connection.OnStreamStateUpdated(this);
         }
 
-        internal override bool CanWrite => SendStream != null;
+        internal override bool CanWrite => !_disposed && SendStream != null;
         internal override void Write(ReadOnlySpan<byte> buffer) => Write(buffer, false);
 
         internal void Write(ReadOnlySpan<byte> buffer, bool endStream)
@@ -323,7 +323,6 @@ namespace System.Net.Quic.Implementations.Managed
                 return;
             }
 
-            _disposed = true;
             if (CanWrite)
             {
                 SendStream!.MarkEndOfData();
@@ -337,6 +336,7 @@ namespace System.Net.Quic.Implementations.Managed
                 ReceiveStream!.RequestAbort(0);
                 _connection.OnStreamStateUpdated(this);
             }
+            _disposed = true;
         }
 
         #endregion
