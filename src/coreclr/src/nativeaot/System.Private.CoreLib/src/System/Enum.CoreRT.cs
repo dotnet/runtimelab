@@ -185,6 +185,9 @@ namespace System
             }
         }
 
+        public static string? GetName<TEnum>(TEnum value) where TEnum : struct, Enum
+            => GetEnumName(typeof(TEnum), ToUInt64(value));
+
         public static string GetName(Type enumType, object value)
         {
             if (enumType == null)
@@ -205,6 +208,9 @@ namespace System
 
             return GetEnumName(enumType, rawValue);
         }
+
+        public static string[] GetNames<TEnum>() where TEnum : struct, Enum
+            => new ReadOnlySpan<string>(GetEnumInfo(typeof(TEnum)).Names).ToArray();
 
         public static string[] GetNames(Type enumType)
         {
