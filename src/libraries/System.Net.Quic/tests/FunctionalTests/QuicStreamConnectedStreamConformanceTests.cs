@@ -21,6 +21,27 @@ namespace System.Net.Quic.Tests
     {
         protected override QuicImplementationProvider Provider => QuicImplementationProviders.MsQuic;
 
+    public abstract class ManagedQuicStreamConformanceTestsBase : QuicStreamConformanceTests
+    {
+        protected override bool FlushRequiredToWriteData => true;
+        protected override bool FlushGuaranteesAllDataWritten => false;
+        protected override bool BlocksOnZeroByteReads => true;
+    }
+
+    [ConditionalClass(typeof(QuicTestBase<ManagedProviderFactory>), nameof(QuicTestBase<ManagedProviderFactory>.IsSupported))]
+    public sealed class ManagedQuicStreamConformanceTests : ManagedQuicStreamConformanceTestsBase
+    {
+        protected override QuicImplementationProvider Provider => QuicImplementationProviders.Managed;
+    }
+
+    [ConditionalClass(typeof(QuicTestBase<ManagedMockTlsProviderFactory>), nameof(QuicTestBase<ManagedMockTlsProviderFactory>.IsSupported))]
+    public sealed class ManagedMockTlsQuicQuicStreamConformanceTests : ManagedQuicStreamConformanceTestsBase
+    {
+        protected override QuicImplementationProvider Provider => QuicImplementationProviders.ManagedMockTls;
+    }
+
+    public abstract class QuicStreamConformanceTests : ConnectedStreamConformanceTests
+    {
         // TODO: These are all hanging, likely due to Stream close behavior.
         [ActiveIssue("https://github.com/dotnet/runtime/issues/756")]
         public override Task Read_Eof_Returns0(ReadWriteMode mode, bool dataAvailableFirst) => base.Read_Eof_Returns0(mode, dataAvailableFirst);
@@ -46,10 +67,14 @@ namespace System.Net.Quic.Tests
             QuicImplementationProvider provider = Provider;
             var protocol = new SslApplicationProtocol("quictest");
 
-            var listener = new QuicListener(
-                provider,
-                new IPEndPoint(IPAddress.Loopback, 0),
-                new SslServerAuthenticationOptions { ApplicationProtocols = new List<SslApplicationProtocol> { protocol } });
+            QuicListener listener = new QuicListener(provider, new QuicListenerOptions()
+            {
+                ListenEndPoint = new IPEndPoint(IPAddress.Loopback, 0),
+                ServerAuthenticationOptions = new SslServerAuthenticationOptions { ApplicationProtocols = new List<SslApplicationProtocol> { protocol } },
+                CertificateFilePath = "Certs/cert.crt",
+                PrivateKeyFilePath = "Certs/cert.key"
+            });
+
             listener.Start();
 
             QuicConnection connection1 = null, connection2 = null;
