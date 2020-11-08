@@ -40,11 +40,6 @@ internal static partial class Interop
             // propagate the exception if the user explicitly states to use the OpenSSL based implementation
             catch (Exception e) when (e is DllNotFoundException || e is EntryPointNotFoundException)
             {
-                if (Environment.GetEnvironmentVariable("DOTNETQUIC_OPENSSL") != null)
-                {
-                    throw new NotSupportedException(
-                        "QUIC via OpenSSL is not available. Make sure the appropriate OpenSSL version is in PATH", e);
-                }
                 // nope
                 IsSupported = false;
             }

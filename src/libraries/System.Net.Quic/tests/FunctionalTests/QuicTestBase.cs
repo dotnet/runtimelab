@@ -97,4 +97,9 @@ namespace System.Net.Quic.Tests
     {
         public QuicImplementationProvider GetProvider() => QuicImplementationProviders.Managed;
     }
+
+    public sealed class ManagedMockTlsProviderFactory : IQuicImplProviderFactory
+    {
+        public QuicImplementationProvider GetProvider() => QuicImplementationProviders.ManagedMockTls;
+    }
 }

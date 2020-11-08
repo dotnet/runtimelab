@@ -5,13 +5,15 @@ using System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl;
 
 namespace System.Net.Quic.Implementations.Managed.Internal.Tls
 {
-    internal abstract class TlsFactory
+    internal abstract class QuicTlsProvider
     {
-        internal static readonly TlsFactory Instance =
-            Interop.OpenSslQuic.IsSupported
-                ? (TlsFactory)new OpenSslTlsFactory()
-                : (TlsFactory) new MockTlsFactory();
-                // new OpenSslTlsFactory();
+        internal static readonly QuicTlsProvider Openssl = OpenSslQuicTlsProvider.Instance;
+        internal static readonly QuicTlsProvider Mock = MockQuicTlsProvider.Instance;
+
+        internal static readonly QuicTlsProvider Default =
+            OpenSslQuicTlsProvider.IsSupported
+                ? Openssl
+                : Mock;
 
         internal abstract ITls CreateClient(ManagedQuicConnection connection, QuicClientConnectionOptions options,
             TransportParameters localTransportParams);

@@ -3,6 +3,7 @@
 
 using System.Buffers;
 using System.Net.Quic.Implementations.Managed.Internal.Headers;
+using System.Net.Quic.Implementations.Managed.Internal.Tls;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -37,10 +38,10 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
 
         private readonly QuicWriter _writer = new QuicWriter(Memory<byte>.Empty);
 
-        public QuicConnectionContext(QuicServerSocketContext parent, EndPoint remoteEndpoint, ReadOnlySpan<byte> odcid)
+        public QuicConnectionContext(QuicTlsProvider tlsProvider, QuicServerSocketContext parent, EndPoint remoteEndpoint, ReadOnlySpan<byte> odcid)
         {
             _parent = parent;
-            Connection = new ManagedQuicConnection(parent.ListenerOptions, this, remoteEndpoint, odcid);
+            Connection = new ManagedQuicConnection(tlsProvider, parent.ListenerOptions, this, remoteEndpoint, odcid);
             Connection.SetSocketContext(this);
 
             ObjectPool<SentPacket>? sentPacketPool = new ObjectPool<SentPacket>(256);

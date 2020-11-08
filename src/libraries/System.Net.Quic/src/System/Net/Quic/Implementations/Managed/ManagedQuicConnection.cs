@@ -222,7 +222,7 @@ namespace System.Net.Quic.Implementations.Managed
         internal EndPoint UnsafeRemoteEndPoint => _remoteEndpoint;
 
         // client constructor
-        public ManagedQuicConnection(QuicClientConnectionOptions options)
+        internal ManagedQuicConnection(QuicTlsProvider tlsProvider, QuicClientConnectionOptions options)
         {
             IsServer = false;
             _remoteEndpoint = options.RemoteEndPoint!;
@@ -230,7 +230,7 @@ namespace System.Net.Quic.Implementations.Managed
             _socketContext = new SingleConnectionSocketContext(options.LocalEndPoint, _remoteEndpoint, this)
                 .ConnectionContext;
             _localTransportParameters = TransportParameters.FromClientConnectionOptions(options);
-            Tls = TlsFactory.Instance.CreateClient(this, options, _localTransportParameters);
+            Tls = tlsProvider.CreateClient(this, options, _localTransportParameters);
 
             // init random connection ids for the client
             SourceConnectionId = ConnectionId.Random(ConnectionId.DefaultCidSize);
@@ -249,7 +249,7 @@ namespace System.Net.Quic.Implementations.Managed
         }
 
         // server constructor
-        public ManagedQuicConnection(QuicListenerOptions options, QuicConnectionContext socketContext,
+        internal ManagedQuicConnection(QuicTlsProvider tlsProvider, QuicListenerOptions options, QuicConnectionContext socketContext,
             EndPoint remoteEndpoint, ReadOnlySpan<byte> odcid)
         {
             IsServer = true;
@@ -257,7 +257,7 @@ namespace System.Net.Quic.Implementations.Managed
             _remoteEndpoint = remoteEndpoint;
             _localTransportParameters = TransportParameters.FromListenerOptions(options);
 
-            Tls = TlsFactory.Instance.CreateServer(this, options, _localTransportParameters);
+            Tls = tlsProvider.CreateServer(this, options, _localTransportParameters);
             _trace = InitTrace(IsServer, odcid);
             Recovery = new RecoveryController(_trace);
 

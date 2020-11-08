@@ -3,6 +3,7 @@
 
 using System.IO;
 using System.Net.Quic.Implementations.Managed.Internal.Sockets;
+using System.Net.Quic.Implementations.Managed.Internal.Tls;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -16,7 +17,7 @@ namespace System.Net.Quic.Implementations.Managed
         private readonly ChannelReader<ManagedQuicConnection> _acceptQueue;
         private readonly QuicServerSocketContext _socketContext;
 
-        public ManagedQuicListener(QuicListenerOptions options)
+        public ManagedQuicListener(QuicTlsProvider tlsProvider, QuicListenerOptions options)
         {
             if (options.ServerAuthenticationOptions?.ServerCertificate == null)
             {
@@ -34,7 +35,7 @@ namespace System.Net.Quic.Implementations.Managed
             });
 
             _acceptQueue = channel.Reader;
-            _socketContext = new QuicServerSocketContext(listenEndPoint, options, channel.Writer);
+            _socketContext = new QuicServerSocketContext(tlsProvider, listenEndPoint, options, channel.Writer);
         }
 
         internal override IPEndPoint ListenEndPoint

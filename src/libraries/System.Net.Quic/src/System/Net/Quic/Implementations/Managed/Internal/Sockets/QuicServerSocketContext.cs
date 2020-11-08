@@ -4,12 +4,15 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Net.Quic.Implementations.Managed.Internal.Headers;
+using System.Net.Quic.Implementations.Managed.Internal.Tls;
 using System.Threading.Channels;
 
 namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
 {
     internal sealed class QuicServerSocketContext : QuicSocketContext
     {
+        private readonly QuicTlsProvider _tlsProvider;
+
         private readonly ChannelWriter<ManagedQuicConnection> _newConnections;
         internal QuicListenerOptions ListenerOptions { get; }
 
@@ -17,10 +20,12 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
 
         private bool _acceptNewConnections;
 
-        internal QuicServerSocketContext(IPEndPoint localEndPoint, QuicListenerOptions listenerOptions,
+        internal QuicServerSocketContext(QuicTlsProvider tlsProvider, IPEndPoint localEndPoint,
+            QuicListenerOptions listenerOptions,
             ChannelWriter<ManagedQuicConnection> newConnectionsWriter)
             : base(localEndPoint, null, true)
         {
+            _tlsProvider = tlsProvider;
             _newConnections = newConnectionsWriter;
             ListenerOptions = listenerOptions;
 
@@ -49,7 +54,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
 
                 // TODO-RZ: handle connection failures when the initial packet is discarded (e.g. because connection id is
                 // too long). This likely will need moving header parsing from Connection to socket context.
-                connectionCtx = new QuicConnectionContext(this, datagram.RemoteEndpoint, dcid);
+                connectionCtx = new QuicConnectionContext(_tlsProvider, this, datagram.RemoteEndpoint, dcid);
                 ImmutableInterlocked.TryAdd(ref _connectionsByEndpoint, datagram.RemoteEndpoint, connectionCtx);
 
                 isNewConnection = true;

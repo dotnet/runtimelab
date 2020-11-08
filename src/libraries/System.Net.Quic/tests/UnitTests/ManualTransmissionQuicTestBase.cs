@@ -9,6 +9,7 @@ using System.Net.Quic.Implementations.Managed.Internal;
 using System.Net.Quic.Implementations.Managed.Internal.Crypto;
 using System.Net.Quic.Implementations.Managed.Internal.Recovery;
 using System.Net.Quic.Implementations.Managed.Internal.Sockets;
+using System.Net.Quic.Implementations.Managed.Internal.Tls;
 using System.Net.Quic.Tests.Harness;
 using System.Net.Security;
 using System.Threading.Channels;
@@ -122,15 +123,15 @@ namespace System.Net.Quic.Tests
         private static ManagedQuicConnection CreateClient(QuicClientConnectionOptions options)
         {
             options.RemoteEndPoint = _dummyServerEndpoint;
-            return new ManagedQuicConnection(options);
+            return new ManagedQuicConnection(QuicTlsProvider.Default, options);
         }
 
         private static ManagedQuicConnection CreateServer(QuicListenerOptions options)
         {
-            var ctx = new QuicServerSocketContext(new IPEndPoint(IPAddress.Any, 0),
+            var ctx = new QuicServerSocketContext(QuicTlsProvider.Default, new IPEndPoint(IPAddress.Any, 0),
                 options, Channel.CreateUnbounded<ManagedQuicConnection>().Writer);
             Span<byte> odcid = stackalloc byte[20];
-            return new ManagedQuicConnection(options, new QuicConnectionContext(ctx, _dummyListenEndpoint, odcid), _dummyListenEndpoint, odcid);
+            return new ManagedQuicConnection(QuicTlsProvider.Default, options, new QuicConnectionContext(QuicTlsProvider.Default, ctx, _dummyListenEndpoint, odcid), _dummyListenEndpoint, odcid);
         }
 
         /// <summary>

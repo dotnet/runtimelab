@@ -68,4 +68,7 @@ namespace System.Net.Quic.Tests
 
     [ConditionalClass(typeof(QuicTestBase<ManagedProviderFactory>), nameof(QuicTestBase<ManagedProviderFactory>.IsSupported))]
     public sealed class QuicConnectionTests_ManagedProvider : QuicConnectionTests<ManagedProviderFactory> { }
+
+    [ConditionalClass(typeof(QuicTestBase<ManagedMockTlsProviderFactory>), nameof(QuicTestBase<ManagedMockTlsProviderFactory>.IsSupported))]
+    public sealed class QuicConnectionTests_ManagedMockTlsProvider : QuicConnectionTests<ManagedMockTlsProviderFactory> { }
 }
