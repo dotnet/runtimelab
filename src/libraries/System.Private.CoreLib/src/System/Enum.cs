@@ -276,10 +276,10 @@ namespace System
         #endregion
 
         #region Public Static Methods
+#if !CORERT
         public static string? GetName<TEnum>(TEnum value) where TEnum : struct, Enum
             => GetEnumName((RuntimeType)typeof(TEnum), ToUInt64(value));
 
-#if !CORERT
         public static string? GetName(Type enumType, object value)
         {
             if (enumType is null)
@@ -287,12 +287,10 @@ namespace System
 
             return enumType.GetEnumName(value);
         }
-#endif
 
         public static string[] GetNames<TEnum>() where TEnum : struct, Enum
             => new ReadOnlySpan<string>(InternalGetNames((RuntimeType)typeof(TEnum))).ToArray();
 
-#if !CORERT
         public static string[] GetNames(Type enumType)
         {
             if (enumType is null)
