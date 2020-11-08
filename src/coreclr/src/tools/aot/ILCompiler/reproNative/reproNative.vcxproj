@@ -125,6 +125,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="$(NativeAotSourceRoot)\Bootstrap\main.cpp" />
+    <None Include="..\repro\Program.cs" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="$(NativeAotSourceRoot)\BuildIntegration\CoreRTNatVis.natvis" />
