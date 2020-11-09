@@ -413,8 +413,8 @@ namespace Internal.IL.Stubs
                 {
                     argSetupStream.Emit(ILOpcode.call, tokDynamicInvokeParamHelperIn);
 
-                    thisCallSiteSetupStream.Emit(ILOpcode.ldobj, tokParamType);
-                    staticCallSiteSetupStream.Emit(ILOpcode.ldobj, tokParamType);
+                    thisCallSiteSetupStream.EmitLdInd(paramType);
+                    staticCallSiteSetupStream.EmitLdInd(paramType);
 
                     targetMethodSignature[paramIndex] = paramType;
                 }
