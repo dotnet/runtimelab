@@ -21,7 +21,7 @@ namespace System.Text.Json.SourceGeneration
     {
         public Dictionary<string, Type> FoundTypes = new Dictionary<string, Type>();
 
-        public void Execute(SourceGeneratorContext context)
+        public void Execute(GeneratorExecutionContext context)
         {
             JsonSerializableSyntaxReceiver receiver = (JsonSerializableSyntaxReceiver)context.SyntaxReceiver;
             MetadataLoadContext metadataLoadContext = new MetadataLoadContext(context.Compilation);
@@ -93,7 +93,7 @@ namespace System.Text.Json.SourceGeneration
             }
         }
 
-        public void Initialize(InitializationContext context)
+        public void Initialize(GeneratorInitializationContext context)
         {
             context.RegisterForSyntaxNotifications(() => new JsonSerializableSyntaxReceiver());
         }
