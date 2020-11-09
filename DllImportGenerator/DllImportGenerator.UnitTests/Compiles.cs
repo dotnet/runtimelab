@@ -17,7 +17,7 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.NestedNamespace };
             yield return new[] { CodeSnippets.NestedTypes };
             yield return new[] { CodeSnippets.UserDefinedEntryPoint };
-            yield return new[] { CodeSnippets.AllDllImportNamedArguments };
+            yield return new[] { CodeSnippets.AllSupportedDllImportNamedArguments };
             yield return new[] { CodeSnippets.DefaultParameters };
             yield return new[] { CodeSnippets.UseCSharpFeaturesForConstants };
             yield return new[] { CodeSnippets.BasicParametersAndModifiers<byte>() };
@@ -68,8 +68,8 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.ArrayParameterWithSizeParam<UIntPtr>(isByRef: true) };
             yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<char>(CharSet.Unicode) };
             yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<string>(CharSet.Unicode) };
-            //yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<string>(CharSet.Ansi) };
-            //yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<string>(CharSet.Auto) };
+            yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<string>(CharSet.Ansi) };
+            yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<string>(CharSet.Auto) };
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<bool>(UnmanagedType.Bool) };
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<bool>(UnmanagedType.VariantBool) };
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<bool>(UnmanagedType.I1) };
@@ -78,10 +78,24 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<string>(UnmanagedType.LPWStr) };
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<string>(UnmanagedType.LPTStr) };
             yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<string>(UnmanagedType.LPUTF8Str) };
-            //yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<string>(UnmanagedType.LPStr) };
+            yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<string>(UnmanagedType.LPStr) };
             yield return new[] { CodeSnippets.ArrayParameterWithNestedMarshalInfo<string>(UnmanagedType.LPWStr) };
             yield return new[] { CodeSnippets.ArrayParameterWithNestedMarshalInfo<string>(UnmanagedType.LPUTF8Str) };
-            //yield return new[] { CodeSnippets.EnumParameters };
+            yield return new[] { CodeSnippets.ArrayParameterWithNestedMarshalInfo<string>(UnmanagedType.LPStr) };
+            yield return new[] { CodeSnippets.EnumParameters };
+            yield return new[] { CodeSnippets.PointerParameters<byte>() };
+            yield return new[] { CodeSnippets.PointerParameters<sbyte>() };
+            yield return new[] { CodeSnippets.PointerParameters<short>() };
+            yield return new[] { CodeSnippets.PointerParameters<ushort>() };
+            yield return new[] { CodeSnippets.PointerParameters<int>() };
+            yield return new[] { CodeSnippets.PointerParameters<uint>() };
+            yield return new[] { CodeSnippets.PointerParameters<long>() };
+            yield return new[] { CodeSnippets.PointerParameters<ulong>() };
+            yield return new[] { CodeSnippets.PointerParameters<float>() };
+            yield return new[] { CodeSnippets.PointerParameters<double>() };
+            yield return new[] { CodeSnippets.PointerParameters<bool>() };
+            yield return new[] { CodeSnippets.PointerParameters<IntPtr>() };
+            yield return new[] { CodeSnippets.PointerParameters<UIntPtr>() };
             yield return new[] { CodeSnippets.PreserveSigFalseVoidReturn };
             yield return new[] { CodeSnippets.PreserveSigFalse<byte>() };
             yield return new[] { CodeSnippets.PreserveSigFalse<sbyte>() };
@@ -142,18 +156,10 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.BasicParametersAndModifiers<string[]>() };
             yield return new[] { CodeSnippets.BasicParametersAndModifiers<IntPtr[]>() };
             yield return new[] { CodeSnippets.BasicParametersAndModifiers<UIntPtr[]>() };
-            
+
             yield return new[] { CodeSnippets.ArrayParameterWithSizeParam<float>(isByRef: false) };
             yield return new[] { CodeSnippets.ArrayParameterWithSizeParam<double>(isByRef: false) };
             yield return new[] { CodeSnippets.ArrayParameterWithSizeParam<bool>(isByRef: false) };
-
-            yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<string>(CharSet.Ansi) };
-            yield return new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<string>(CharSet.Auto) };
-            
-            yield return new[] { CodeSnippets.MarshalAsParametersAndModifiers<string>(UnmanagedType.LPStr) };
-            yield return new[] { CodeSnippets.ArrayParameterWithNestedMarshalInfo<string>(UnmanagedType.LPStr) };
-
-            yield return new[] { CodeSnippets.EnumParameters };
 
             yield return new[] { CodeSnippets.PreserveSigFalse<byte[]>() };
             yield return new[] { CodeSnippets.PreserveSigFalse<sbyte[]>() };
