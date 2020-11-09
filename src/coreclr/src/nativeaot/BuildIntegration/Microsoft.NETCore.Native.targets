@@ -20,8 +20,9 @@ The .NET Foundation licenses this file to you under the MIT license.
     <NativeOutputPath Condition="'$(NativeOutputPath)' == ''">$(OutputPath)native\</NativeOutputPath>
     <NativeCompilationDuringPublish Condition="'$(NativeCompilationDuringPublish)' == ''">true</NativeCompilationDuringPublish>
     <IlcBuildTasksPath Condition="'$(IlcBuildTasksPath)' == ''">$(MSBuildThisFileDirectory)..\tools\netstandard\ILCompiler.Build.Tasks.dll</IlcBuildTasksPath>
+    <TargetOS Condition="'$([MSBuild]::IsOSPlatform(Windows))' == 'true'">windows</TargetOS>
     <TargetOS Condition="'$([MSBuild]::IsOSPlatform(OSX))' == 'true'">OSX</TargetOS>
-    <TargetOS Condition="'$(TargetOS)' == ''">$(OS)</TargetOS>
+    <TargetOS Condition="'$(TargetOS)' == ''">$(TargetOS)</TargetOS>
     <NativeDebugSymbols Condition="$(DebugSymbols) == 'true' or ($(DebugType) != 'none' and $(DebugType) != '')">true</NativeDebugSymbols>
   </PropertyGroup>
 
@@ -36,12 +37,12 @@ The .NET Foundation licenses this file to you under the MIT license.
   </PropertyGroup>
 
   <PropertyGroup>
-    <NativeObjectExt Condition="'$(TargetOS)' == 'Windows_NT'">.obj</NativeObjectExt>
-    <NativeObjectExt Condition="'$(TargetOS)' != 'Windows_NT' or '$(NativeCodeGen)' == 'wasm'">.o</NativeObjectExt>
+    <NativeObjectExt Condition="'$(TargetOS)' == 'windows'">.obj</NativeObjectExt>
+    <NativeObjectExt Condition="'$(TargetOS)' != 'windows' or '$(NativeCodeGen)' == 'wasm'">.o</NativeObjectExt>
     <LlvmObjectExt Condition="'$(NativeCodeGen)' == 'wasm'">.bc</LlvmObjectExt>
 
-    <LibFileExt Condition="'$(TargetOS)' == 'Windows_NT'">.lib</LibFileExt>
-    <LibFileExt Condition="'$(TargetOS)' != 'Windows_NT'">.a</LibFileExt>
+    <LibFileExt Condition="'$(TargetOS)' == 'windows'">.lib</LibFileExt>
+    <LibFileExt Condition="'$(TargetOS)' != 'windows'">.a</LibFileExt>
 
     <IlcOutputFileExt Condition="$(IlcOutputFileExt) == ''">$(NativeObjectExt)</IlcOutputFileExt>
     <IlcOutputFileExt Condition="$(NativeCodeGen) == 'cpp'">.cpp</IlcOutputFileExt>
@@ -49,17 +50,17 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <IsNativeExecutable Condition="'$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe'">true</IsNativeExecutable>
 
-    <NativeBinaryExt Condition="'$(IsNativeExecutable)' == 'true' and '$(TargetOS)' == 'Windows_NT'">.exe</NativeBinaryExt>
-    <NativeBinaryExt Condition="'$(IsNativeExecutable)' == 'true' and '$(TargetOS)' != 'Windows_NT'"></NativeBinaryExt>
-    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' == 'Windows_NT' and $(NativeLib) == 'Shared'">.dll</NativeBinaryExt>
+    <NativeBinaryExt Condition="'$(IsNativeExecutable)' == 'true' and '$(TargetOS)' == 'windows'">.exe</NativeBinaryExt>
+    <NativeBinaryExt Condition="'$(IsNativeExecutable)' == 'true' and '$(TargetOS)' != 'windows'"></NativeBinaryExt>
+    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' == 'windows' and $(NativeLib) == 'Shared'">.dll</NativeBinaryExt>
     <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' == 'OSX' and $(NativeLib) == 'Shared'">.dylib</NativeBinaryExt>
-    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' != 'Windows_NT' and '$(TargetOS)' != 'OSX' and $(NativeLib) == 'Shared'">.so</NativeBinaryExt>
-    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' == 'Windows_NT' and $(NativeLib) == 'Static'">.lib</NativeBinaryExt>
-    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' != 'Windows_NT' and $(NativeLib) == 'Static'">.a</NativeBinaryExt>
+    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' != 'windows' and '$(TargetOS)' != 'OSX' and $(NativeLib) == 'Shared'">.so</NativeBinaryExt>
+    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' == 'windows' and $(NativeLib) == 'Static'">.lib</NativeBinaryExt>
+    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' != 'windows' and $(NativeLib) == 'Static'">.a</NativeBinaryExt>
     <NativeBinaryExt Condition="'$(NativeCodeGen)' == 'wasm'">.html</NativeBinaryExt>
 
-    <ExportsFileExt Condition="'$(TargetOS)' == 'Windows_NT'">.def</ExportsFileExt>
-    <ExportsFileExt Condition="'$(TargetOS)' != 'Windows_NT'">.exports</ExportsFileExt>
+    <ExportsFileExt Condition="'$(TargetOS)' == 'windows'">.def</ExportsFileExt>
+    <ExportsFileExt Condition="'$(TargetOS)' != 'windows'">.exports</ExportsFileExt>
 
     <LlvmObject Condition="'$(NativeCodeGen)' == 'wasm'">$(NativeIntermediateOutputPath)$(TargetName)$(LlvmObjectExt)</LlvmObject>
     <NativeObject>$(NativeIntermediateOutputPath)$(TargetName)$(NativeObjectExt)</NativeObject>
@@ -78,8 +79,8 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <ExperimentalDynamicCodeSupport Condition="'$(ExperimentalInterpreterSupport)' == 'true' or '$(ExperimentalJitSupport)' == 'true'">true</ExperimentalDynamicCodeSupport>
 
-    <SharedLibrary Condition="'$(OS)' == 'Windows_NT'">$(FrameworkLibPath)\Framework$(LibFileExt)</SharedLibrary>
-    <SharedLibrary Condition="'$(OS)' != 'Windows_NT'">$(FrameworkLibPath)\libframework$(LibFileExt)</SharedLibrary>
+    <SharedLibrary Condition="'$(TargetOS)' == 'windows'">$(FrameworkLibPath)\Framework$(LibFileExt)</SharedLibrary>
+    <SharedLibrary Condition="'$(TargetOS)' != 'windows'">$(FrameworkLibPath)\libframework$(LibFileExt)</SharedLibrary>
     <IlcDynamicBuildPropertyDependencies Condition="'$(IlcCalledViaPackage)' == 'true'">SetupProperties</IlcDynamicBuildPropertyDependencies>
   </PropertyGroup>
 
@@ -234,8 +235,8 @@ The .NET Foundation licenses this file to you under the MIT license.
     <Exec Command="&quot;$(IlcPath)\tools\ilc&quot; @&quot;$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).ilc.rsp&quot;" />
   </Target>
 
-  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Windows.props" Condition="'$(TargetOS)' == 'Windows_NT'" />
-  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Unix.props" Condition="'$(TargetOS)' != 'Windows_NT'" />
+  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Windows.props" Condition="'$(TargetOS)' == 'windows'" />
+  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Unix.props" Condition="'$(TargetOS)' != 'windows'" />
 
   <Target Name="CppCompile"
       Inputs="$(IlcCompileOutput)"
@@ -244,15 +245,15 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <ItemGroup>
       <CompilerArg Include="&quot;$(IlcCompileOutput)&quot;" />
-      <CompilerArg Include="/Fo&quot;$(NativeObject)&quot;" Condition="'$(OS)' == 'Windows_NT'" />
-      <CompilerArg Include="-o &quot;$(NativeObject)&quot;" Condition="'$(OS)' != 'Windows_NT'" />
+      <CompilerArg Include="/Fo&quot;$(NativeObject)&quot;" Condition="'$(TargetOS)' == 'windows'" />
+      <CompilerArg Include="-o &quot;$(NativeObject)&quot;" Condition="'$(TargetOS)' != 'windows'" />
       <CompilerArg Include="@(CppCompilerAndLinkerArg)" />
     </ItemGroup>
 
     <MakeDir Directories="$(NativeIntermediateOutputPath)" />
-    <Exec Command="$(CppCompiler) @(CompilerArg, ' ')" Condition="'$(OS)' != 'Windows_NT'" />
-    <WriteLinesToFile File="$(NativeIntermediateOutputPath)cl.rsp" Lines="@(CompilerArg)" Overwrite="true"  Condition="'$(OS)' == 'Windows_NT'"/>
-    <Exec Command="$(CppCompiler) @&quot;$(NativeIntermediateOutputPath)cl.rsp&quot;" Condition="'$(OS)' == 'Windows_NT'" />
+    <Exec Command="$(CppCompiler) @(CompilerArg, ' ')" Condition="'$(TargetOS)' != 'windows'" />
+    <WriteLinesToFile File="$(NativeIntermediateOutputPath)cl.rsp" Lines="@(CompilerArg)" Overwrite="true"  Condition="'$(TargetOS)' == 'windows'"/>
+    <Exec Command="$(CppCompiler) @&quot;$(NativeIntermediateOutputPath)cl.rsp&quot;" Condition="'$(TargetOS)' == 'windows'" />
   </Target>
 
   <Target Name="MultiFileCopyNative"
@@ -271,7 +272,7 @@ The .NET Foundation licenses this file to you under the MIT license.
   <Target Name="GenerateResFile"
       Inputs="$(IntermediateOutputPath)$(TargetName)$(TargetExt)"
       Outputs="$(_Win32ResFile)"
-      Condition="'$(OS)' == 'Windows_NT'">
+      Condition="'$(TargetOS)' == 'windows'">
 
     <DumpNativeResources
         MainAssembly="$(IntermediateOutputPath)$(TargetName)$(TargetExt)"
@@ -293,8 +294,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <EmccArgs Condition="'$(Configuration)'=='Debug'">$(EmccArgs) -g3</EmccArgs>
     </PropertyGroup>
 
-    <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc.bat&quot; $(EmccArgs)" Condition="'$(EMSDK)' != '' and '$(OS)' == 'Windows_NT'" />
-    <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc&quot; $(EmccArgs)" Condition="'$(EMSDK)' != '' and '$(OS)' != 'Windows_NT'" />
+    <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc.bat&quot; $(EmccArgs)" Condition="'$(EMSDK)' != '' and '$(TargetOS)' == 'windows'" />
+    <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc&quot; $(EmccArgs)" Condition="'$(EMSDK)' != '' and '$(TargetOS)' != 'windows'" />
     <Message Text="Emscripten not found, not linking WebAssembly. To enable WebAssembly linking, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"
              Condition="'$(EMSDK)' == ''" />
   </Target>
@@ -306,34 +307,34 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <ItemGroup>
       <CustomLinkerArg Include="&quot;$(NativeObject)&quot;" />
-      <CustomLinkerArg Include="-o &quot;$(NativeBinary)&quot;" Condition="'$(OS)' != 'Windows_NT'" />
-      <CustomLinkerArg Include="/OUT:&quot;$(NativeBinary)&quot;" Condition="'$(OS)' == 'Windows_NT'" />
-      <CustomLinkerArg Include="/DEF:&quot;$(ExportsFile)&quot;" Condition="'$(OS)' == 'Windows_NT' and $(ExportsFile) != ''" />
-      <CustomLinkerArg Include="/LIBPATH:&quot;%(AdditionalNativeLibraryDirectories.Identity)&quot;" Condition="'$(OS)' == 'Windows_NT' and '@(AdditionalNativeLibraryDirectories->Count())' &gt; 0" />
+      <CustomLinkerArg Include="-o &quot;$(NativeBinary)&quot;" Condition="'$(TargetOS)' != 'windows'" />
+      <CustomLinkerArg Include="/OUT:&quot;$(NativeBinary)&quot;" Condition="'$(TargetOS)' == 'windows'" />
+      <CustomLinkerArg Include="/DEF:&quot;$(ExportsFile)&quot;" Condition="'$(TargetOS)' == 'windows' and $(ExportsFile) != ''" />
+      <CustomLinkerArg Include="/LIBPATH:&quot;%(AdditionalNativeLibraryDirectories.Identity)&quot;" Condition="'$(TargetOS)' == 'windows' and '@(AdditionalNativeLibraryDirectories->Count())' &gt; 0" />
       <CustomLinkerArg Include="-exported_symbols_list &quot;$(ExportsFile)&quot;" Condition="'$(TargetOS)' == 'OSX' and $(ExportsFile) != ''" />
-      <CustomLinkerArg Include="-Wl,--version-script=$(ExportsFile)" Condition="'$(OS)' != 'Windows_NT' and '$(TargetOS)' != 'OSX' and $(ExportsFile) != ''"/>
+      <CustomLinkerArg Include="-Wl,--version-script=$(ExportsFile)" Condition="'$(TargetOS)' != 'windows' and '$(TargetOS)' != 'OSX' and $(ExportsFile) != ''"/>
       <CustomLinkerArg Condition="Exists('$(_Win32ResFile)')" Include="&quot;$(_Win32ResFile)&quot;" />
       <CustomLinkerArg Include="@(LinkerArg)" />
     </ItemGroup>
-    <ItemGroup Condition="'$(TargetOS)' != 'Windows_NT' and '$(TargetOS)' != 'OSX'">
+    <ItemGroup Condition="'$(TargetOS)' != 'windows' and '$(TargetOS)' != 'OSX'">
 		<CustomLinkerArg Include="-Wl,--discard-all" />
 		<CustomLinkerArg Include="-Wl,--gc-sections" />
 	</ItemGroup>
     <ItemGroup>
-      <CustomLibArg Include="-crs &quot;$(NativeBinary)&quot;" Condition="'$(OS)' != 'Windows_NT'" />
-      <CustomLibArg Include="/OUT:&quot;$(NativeBinary)&quot;" Condition="'$(OS)' == 'Windows_NT'" />
+      <CustomLibArg Include="-crs &quot;$(NativeBinary)&quot;" Condition="'$(TargetOS)' != 'windows'" />
+      <CustomLibArg Include="/OUT:&quot;$(NativeBinary)&quot;" Condition="'$(TargetOS)' == 'windows'" />
       <CustomLibArg Include="&quot;$(NativeObject)&quot;" />
     </ItemGroup>
 
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(NativeBinary)))" />
 
-    <Exec Command="$(CppLinker) @(CustomLinkerArg, ' ')" Condition="'$(OS)' != 'Windows_NT' and '$(NativeLib)' != 'Static' and '$(NativeCodeGen)' != 'wasm'" />
-    <Exec Command="$(CppLibCreator) @(CustomLibArg, ' ')" Condition="'$(OS)' != 'Windows_NT' and '$(NativeLib)' == 'Static' and '$(NativeCodeGen)' != 'wasm'" />
+    <Exec Command="$(CppLinker) @(CustomLinkerArg, ' ')" Condition="'$(TargetOS)' != 'windows' and '$(NativeLib)' != 'Static' and '$(NativeCodeGen)' != 'wasm'" />
+    <Exec Command="$(CppLibCreator) @(CustomLibArg, ' ')" Condition="'$(TargetOS)' != 'windows' and '$(NativeLib)' == 'Static' and '$(NativeCodeGen)' != 'wasm'" />
 
-    <WriteLinesToFile File="$(NativeIntermediateOutputPath)link.rsp" Lines="@(CustomLinkerArg)" Overwrite="true" Condition="'$(OS)' == 'Windows_NT' and '$(NativeLib)' != 'Static'" />
-    <Exec Command="$(CppLinker)  @&quot;$(NativeIntermediateOutputPath)link.rsp&quot;" Condition="'$(OS)' == 'Windows_NT' and '$(NativeLib)' != 'Static' and '$(NativeCodeGen)' != 'wasm'" />
-    <WriteLinesToFile File="$(NativeIntermediateOutputPath)lib.rsp" Lines="@(CustomLibArg)" Overwrite="true" Condition="'$(OS)' == 'Windows_NT' and '$(NativeLib)' == 'Static'" />
-    <Exec Command="$(CppLibCreator)  @&quot;$(NativeIntermediateOutputPath)lib.rsp&quot;" Condition="'$(OS)' == 'Windows_NT' and '$(NativeLib)' == 'Static' and '$(NativeCodeGen)' != 'wasm'" />
+    <WriteLinesToFile File="$(NativeIntermediateOutputPath)link.rsp" Lines="@(CustomLinkerArg)" Overwrite="true" Condition="'$(TargetOS)' == 'windows' and '$(NativeLib)' != 'Static'" />
+    <Exec Command="$(CppLinker)  @&quot;$(NativeIntermediateOutputPath)link.rsp&quot;" Condition="'$(TargetOS)' == 'windows' and '$(NativeLib)' != 'Static' and '$(NativeCodeGen)' != 'wasm'" />
+    <WriteLinesToFile File="$(NativeIntermediateOutputPath)lib.rsp" Lines="@(CustomLibArg)" Overwrite="true" Condition="'$(TargetOS)' == 'windows' and '$(NativeLib)' == 'Static'" />
+    <Exec Command="$(CppLibCreator)  @&quot;$(NativeIntermediateOutputPath)lib.rsp&quot;" Condition="'$(TargetOS)' == 'windows' and '$(NativeLib)' == 'Static' and '$(NativeCodeGen)' != 'wasm'" />
 
     <PropertyGroup>
       <EmccArgs>&quot;$(NativeObject)&quot; -o &quot;$(NativeBinary)&quot; -s ALLOW_MEMORY_GROWTH=1 -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s DISABLE_EXCEPTION_CATCHING=0 --emrun </EmccArgs>
@@ -342,8 +343,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <EmccArgs Condition="'$(Configuration)'=='Debug'">$(EmccArgs) -g3</EmccArgs>
     </PropertyGroup>
 
-    <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc.bat&quot; $(EmccArgs)" Condition="'$(NativeCodeGen)' == 'wasm' and '$(EMSDK)' != '' and '$(OS)' == 'Windows_NT'" />
-    <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc&quot; $(EmccArgs)" Condition="'$(NativeCodeGen)' == 'wasm' and '$(EMSDK)' != '' and '$(OS)' != 'Windows_NT'" />
+    <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc.bat&quot; $(EmccArgs)" Condition="'$(NativeCodeGen)' == 'wasm' and '$(EMSDK)' != '' and '$(TargetOS)' == 'windows'" />
+    <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc&quot; $(EmccArgs)" Condition="'$(NativeCodeGen)' == 'wasm' and '$(EMSDK)' != '' and '$(TargetOS)' != 'windows'" />
     <Message Text="Emscripten not found, not linking WebAssembly. To enable WebAssembly linking, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"
              Condition="'$(NativeCodeGen)' == 'wasm' and '$(EMSDK)' == ''" />
   </Target>
@@ -355,15 +356,15 @@ The .NET Foundation licenses this file to you under the MIT license.
     >
 
     <ItemGroup>
-      <CustomLibArg Include="/out:$(SharedLibrary)" Condition="'$(OS)' == 'Windows_NT'" />
-      <CustomLibArg Include="-crs $(SharedLibrary)" Condition="'$(OS)' != 'Windows_NT'" />
+      <CustomLibArg Include="/out:$(SharedLibrary)" Condition="'$(TargetOS)' == 'windows'" />
+      <CustomLibArg Include="-crs $(SharedLibrary)" Condition="'$(TargetOS)' != 'windows'" />
       <CustomLibArg Include="@(LibInputs->'%(Identity)')" />
     </ItemGroup>
     <MakeDir Directories="$(NativeIntermediateOutputPath)" />
-    <WriteLinesToFile File="$(NativeIntermediateOutputPath)lib.rsp" Lines="@(CustomLibArg)" Overwrite="true" Condition="'$(OS)' == 'Windows_NT'" />
+    <WriteLinesToFile File="$(NativeIntermediateOutputPath)lib.rsp" Lines="@(CustomLibArg)" Overwrite="true" Condition="'$(TargetOS)' == 'windows'" />
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(SharedLibrary)))" />
-    <Exec Command="$(CppLibCreator) @&quot;$(NativeIntermediateOutputPath)lib.rsp&quot;" Condition="'$(OS)' == 'Windows_NT'" />
-    <Exec Command="$(CppLibCreator) @(CustomLibArg, ' ')" Condition="'$(OS)' != 'Windows_NT'" />
+    <Exec Command="$(CppLibCreator) @&quot;$(NativeIntermediateOutputPath)lib.rsp&quot;" Condition="'$(TargetOS)' == 'windows'" />
+    <Exec Command="$(CppLibCreator) @(CustomLibArg, ' ')" Condition="'$(TargetOS)' != 'windows'" />
   </Target>
 
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Publish.targets" Condition="'$(NativeCompilationDuringPublish)' != 'false'" />
