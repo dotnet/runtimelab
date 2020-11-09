@@ -123,9 +123,9 @@
     <optimizationlinuxx64IBCCoreCLRVersion>99.99.99-master-20200806.6</optimizationlinuxx64IBCCoreCLRVersion>
     <optimizationPGOCoreCLRVersion>99.99.99-master-20200806.6</optimizationPGOCoreCLRVersion>
     <!-- Roslyn dependencies for source generation -->
-    <MicrosoftCodeAnalysisCSharpWorkspacesVersion>3.6.0-3.20207.2</MicrosoftCodeAnalysisCSharpWorkspacesVersion>
-    <MicrosoftCodeAnalysisAnalyzersVersion>3.0.0-beta2.final</MicrosoftCodeAnalysisAnalyzersVersion>
-    <MicrosoftCodeAnalysisVersion>3.6.0.0</MicrosoftCodeAnalysisVersion>
+    <MicrosoftCodeAnalysisCSharpWorkspacesVersion>3.8.0-5.final</MicrosoftCodeAnalysisCSharpWorkspacesVersion>
+    <MicrosoftCodeAnalysisAnalyzersVersion>3.3.1</MicrosoftCodeAnalysisAnalyzersVersion>
+    <MicrosoftCodeAnalysisVersion>3.8.0-5.final</MicrosoftCodeAnalysisVersion>
     <!-- Not auto-updated. -->
     <MicrosoftDiaSymReaderNativeVersion>1.7.0</MicrosoftDiaSymReaderNativeVersion>
     <SystemCommandLineVersion>2.0.0-beta1.20253.1</SystemCommandLineVersion>
