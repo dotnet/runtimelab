@@ -277,10 +277,10 @@ namespace System.Net.Quic.Implementations.Managed
 
             // TODO-RZ: Return control flow budget
 
-            Debug.Assert(stream!.CanRead);
+            //Debug.Assert(stream!.CanRead);
 
             // duplicate receipt is handled internally (guarded state transitions)
-            stream.ReceiveStream!.OnResetStream(frame.ApplicationErrorCode);
+            stream!.ReceiveStream!.OnResetStream(frame.ApplicationErrorCode);
             return ProcessPacketResult.Ok;
         }
 
@@ -312,10 +312,10 @@ namespace System.Net.Quic.Implementations.Managed
                     QuicError.StreamsLimitViolated,
                     FrameType.StopSending);
 
-            Debug.Assert(stream!.CanWrite);
+            //Debug.Assert(stream!.CanWrite);
 
             // duplicate receipt is handled internally (guarded state transitions)
-            stream.SendStream!.RequestAbort(frame.ApplicationErrorCode);
+            stream!.SendStream!.RequestAbort(frame.ApplicationErrorCode);
             _streams.MarkForUpdate(stream);
 
             return ProcessPacketResult.Ok;
@@ -597,9 +597,9 @@ namespace System.Net.Quic.Implementations.Managed
                     QuicError.StreamsLimitViolated,
                     frameType);
 
-            Debug.Assert(stream!.CanRead);
+            //Debug.Assert(stream!.CanRead);
 
-            var buffer = stream.ReceiveStream!;
+            var buffer = stream!.ReceiveStream!;
             long writtenOffset = frame.Offset + frame.StreamData.Length;
 
             if (writtenOffset > buffer.Size)

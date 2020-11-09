@@ -81,6 +81,10 @@ namespace System.Net.Quic.Tests
                 {
                     connection1 = await listener.AcceptConnectionAsync();
                     stream1 = await connection1.AcceptStreamAsync();
+
+                    // Hack to force stream creation
+                    byte[] buffer = new byte[1];
+                    await stream1.ReadAsync(buffer);
                 }),
                 Task.Run(async () =>
                 {
@@ -90,6 +94,11 @@ namespace System.Net.Quic.Tests
                         new SslClientAuthenticationOptions() { ApplicationProtocols = new List<SslApplicationProtocol>() { protocol } });
                     await connection2.ConnectAsync();
                     stream2 = connection2.OpenBidirectionalStream();
+
+                    // Hack to force stream creation
+                    byte[] buffer = new byte[1];
+                    await stream2.WriteAsync(buffer);
+                    await stream2.FlushAsync();
                 }));
 
             var result = new StreamPairWithOtherDisposables(stream1, stream2);
