@@ -29,9 +29,10 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using System.Text.Json.Serialization;
             using ReferencedAssembly;
 
-              namespace JsonSourceGenerator
-              {
-                [JsonSerializable]
+            [module: JsonSerializable(typeof(JsonSourceGenerator.IndexViewModel)]
+
+            namespace JsonSourceGenerator
+            {
                 public class IndexViewModel
                 {
                     public List<ActiveOrUpcomingEvent> ActiveOrUpcomingEvents { get; set; }
@@ -39,7 +40,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
                     public bool IsNewAccount { get; set; }
                     public bool HasFeaturedCampaign => FeaturedCampaign != null;
                 }
-              }";
+            }";
 
             MetadataReference[] additionalReferences = {
                 MetadataReference.CreateFromImage(campaignImage),
@@ -81,9 +82,10 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using System.Collections.Generic;
             using ReferencedAssembly;
 
-              namespace JsonSourceGenerator
-              {
-                [JsonSerializable]
+            [module: JsonSerializable(typeof(JsonSourceGenerator.IndexViewModel)]
+
+            namespace JsonSourceGenerator
+            {
                 public class IndexViewModel
                 {
                     public ISet<ActiveOrUpcomingEvent> ActiveOrUpcomingEvents { get; set; }
@@ -91,7 +93,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
                     public bool IsNewAccount { get; set; }
                     public bool HasFeaturedCampaign => FeaturedCampaign != null;
                 }
-              }";
+            }";
 
             MetadataReference[] additionalReferences = {
                 MetadataReference.CreateFromImage(campaignImage),

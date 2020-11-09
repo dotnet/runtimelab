@@ -12,14 +12,13 @@ namespace System.Text.Json.SourceGeneration
 {
         public class JsonSerializableSyntaxReceiver : ISyntaxReceiver
         {
-            public List<TypeDeclarationSyntax> TypesWithAttributes = new List<TypeDeclarationSyntax>();
+            public List<CompilationUnitSyntax> CompilationUnits { get; } = new();
 
             public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
             {
-                if(syntaxNode is TypeDeclarationSyntax typeDeclarationNode
-                   && typeDeclarationNode.AttributeLists.Count > 0)
+                if (syntaxNode is CompilationUnitSyntax compilationUnit)
                 {
-                    TypesWithAttributes.Add(typeDeclarationNode);
+                    CompilationUnits.Add(compilationUnit);
                 }
             }
         }

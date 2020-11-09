@@ -18,11 +18,11 @@ namespace System.Text.Json.SourceGeneration.UnitTests
         {
             // Create a MetadataReference from new code.
             string referencedSource = @"
-              namespace ReferencedAssembly
-              {
+            namespace ReferencedAssembly
+            {
                 public class ReferencedType
                 {
-                    public int ReferencedPublicInt;     
+                    public int ReferencedPublicInt;
                     public double ReferencedPublicDouble;     
                 }
             }";
@@ -46,16 +46,17 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using System.Text.Json.Serialization;
             using ReferencedAssembly;
 
-              namespace HelloWorld
-              {
-                [JsonSerializable]
-                public class MyType {
+            [module: JsonSerializable(typeof(HelloWorld.MyType))]
+            [module: JsonSerializable(typeof(ReferencedAssembly.ReferencedType))]
+
+            namespace HelloWorld
+            {
+                public class MyType
+                {
                     public void MyMethod() { }
                     public void MySecondMethod() { }
                 }
-                [JsonSerializable(typeof(ReferencedType))]
-                public static partial class ExternType { }
-              }";
+            }";
 
             MetadataReference[] additionalReferences = { MetadataReference.CreateFromImage(referencedImage) };
 
@@ -81,36 +82,45 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using System;
             using System.Text.Json.Serialization;
 
-              namespace HelloWorld
-              {
-                [JsonSerializable]
-                public class MyType {
+            [module: JsonSerializable(typeof(HelloWorld.MyType))]
 
+            namespace HelloWorld
+            {
+                public class MyType
+                {
                     [JsonInclude]
                     public double PublicDouble;
+
                     [JsonPropertyName(""PPublicDouble"")]
                     public char PublicChar;
+
                     [JsonIgnore]
                     private double PrivateDouble;
+
                     private char PrivateChar;
 
                     public MyType() {{ }}
+
                     [JsonConstructor]
                     public MyType(double d) {{ PrivateDouble = d; }}
 
                     [JsonPropertyName(""TestName"")]
                     public int PublicPropertyInt { get; set; }
+
                     [JsonExtensionData]
                     public string PublicPropertyString { get; set; }
+
                     [JsonIgnore]
                     private int PrivatePropertyInt { get; set; }
+
                     private string PrivatePropertyString { get; set; }
 
                     [Obsolete(""Testing"", true)]
                     public void MyMethod() { }
+
                     public void MySecondMethod() { }
                 }
-              }";
+            }";
 
             Compilation compilation = CompilationHelper.CreateCompilation(source);
 
