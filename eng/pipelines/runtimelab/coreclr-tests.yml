@@ -14,7 +14,7 @@ jobs:
     jobTemplate: /eng/pipelines/common/global-build-job.yml
     buildConfig: Checked
     platforms:
-    - Windows_NT_x64
+    - windows_x64
     jobParameters:
       timeoutInMinutes: 720
       testGroup: innerloop
@@ -33,7 +33,7 @@ jobs:
     jobTemplate: /eng/pipelines/common/global-build-job.yml
     buildConfig: Release
     platforms:
-    - Windows_NT_x64
+    - windows_x64
     jobParameters:
       timeoutInMinutes: 720
       testGroup: innerloop

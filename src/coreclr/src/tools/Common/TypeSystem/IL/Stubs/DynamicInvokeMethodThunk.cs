@@ -413,8 +413,8 @@ namespace Internal.IL.Stubs
                 {
                     argSetupStream.Emit(ILOpcode.call, tokDynamicInvokeParamHelperIn);
 
-                    thisCallSiteSetupStream.Emit(ILOpcode.ldobj, tokParamType);
-                    staticCallSiteSetupStream.Emit(ILOpcode.ldobj, tokParamType);
+                    thisCallSiteSetupStream.EmitLdInd(paramType);
+                    staticCallSiteSetupStream.EmitLdInd(paramType);
 
                     targetMethodSignature[paramIndex] = paramType;
                 }
@@ -464,7 +464,7 @@ namespace Internal.IL.Stubs
                     lByRefReturnNull = emitter.NewCodeLabel();
                     returnCodeStream.Emit(ILOpcode.dup);
                     returnCodeStream.Emit(ILOpcode.brfalse, lByRefReturnNull);
-                    returnCodeStream.Emit(ILOpcode.ldobj, emitter.NewToken(returnTypeForBoxing));
+                    returnCodeStream.EmitLdInd(returnTypeForBoxing);
                 }
 
                 if (returnTypeForBoxing.IsPointer)
