@@ -464,7 +464,7 @@ namespace Internal.IL.Stubs
                     lByRefReturnNull = emitter.NewCodeLabel();
                     returnCodeStream.Emit(ILOpcode.dup);
                     returnCodeStream.Emit(ILOpcode.brfalse, lByRefReturnNull);
-                    returnCodeStream.Emit(ILOpcode.ldobj, emitter.NewToken(returnTypeForBoxing));
+                    returnCodeStream.EmitLdInd(returnTypeForBoxing);
                 }
 
                 if (returnTypeForBoxing.IsPointer)
