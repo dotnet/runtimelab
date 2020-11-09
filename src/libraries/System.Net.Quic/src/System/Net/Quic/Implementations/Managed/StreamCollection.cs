@@ -181,7 +181,7 @@ namespace System.Net.Quic.Implementations.Managed
 
         internal bool MarkFlushable(ManagedQuicStream stream)
         {
-            Debug.Assert(stream.CanWrite);
+            Debug.Assert(stream.SendStream != null);
 
             return AddToListSynchronized(_flushable, stream._flushableListNode);
         }
