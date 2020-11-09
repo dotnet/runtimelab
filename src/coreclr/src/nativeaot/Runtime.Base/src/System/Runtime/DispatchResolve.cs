@@ -19,7 +19,7 @@ namespace System.Runtime
             // Use the dynamic module resolver if it's present
             if ((dynamicModule != null) && (dynamicModule->DynamicTypeSlotDispatchResolve != null))
             {
-                return dynamicModule->DynamicTypeSlotDispatchResolve((IntPtr)pTgtType, (IntPtr)pItfType, itfSlotNumber);
+                return dynamicModule->DynamicTypeSlotDispatchResolve(pTgtType, pItfType, itfSlotNumber);
             }
 
             // Start at the current type and work up the inheritance chain

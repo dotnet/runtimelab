@@ -75,10 +75,10 @@ namespace Internal.Runtime.TypeLoader
             DynamicModulePtr = dynamicModulePtr;
         }
 
-        internal static unsafe IntPtr ResolveTypeSlotDispatch(IntPtr targetTypeAsIntPtr, IntPtr interfaceTypeAsIntPtr, ushort slot)
+        internal static unsafe IntPtr ResolveTypeSlotDispatch(EEType* targetType, EEType* interfaceType, ushort slot)
         {
             IntPtr methodAddress;
-            if (!TypeLoaderEnvironment.Instance.TryResolveTypeSlotDispatch(targetTypeAsIntPtr, interfaceTypeAsIntPtr, slot, out methodAddress))
+            if (!TypeLoaderEnvironment.Instance.TryResolveTypeSlotDispatch(targetType, interfaceType, slot, out methodAddress))
             {
                 throw new BadImageFormatException();
             }

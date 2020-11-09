@@ -229,7 +229,7 @@ namespace Internal.Runtime.TypeLoader
         /// <summary>
         /// Resolve a dispatch on an interface EEType/slot index pair to a function pointer
         /// </summary>
-        private bool TryResolveTypeSlotDispatch_Inner(IntPtr targetTypeAsIntPtr, IntPtr interfaceTypeAsIntPtr, ushort slot, out IntPtr methodAddress)
+        private unsafe bool TryResolveTypeSlotDispatch_Inner(EEType* pTargetType, EEType* pInterfaceType, ushort slot, out IntPtr methodAddress)
         {
             methodAddress = IntPtr.Zero;
 
@@ -239,11 +239,8 @@ namespace Internal.Runtime.TypeLoader
             TypeDesc targetType;
             TypeDesc interfaceType;
 
-            unsafe
-            {
-                targetType = context.ResolveRuntimeTypeHandle(((EEType*)targetTypeAsIntPtr.ToPointer())->ToRuntimeTypeHandle());
-                interfaceType = context.ResolveRuntimeTypeHandle(((EEType*)interfaceTypeAsIntPtr.ToPointer())->ToRuntimeTypeHandle());
-            }
+            targetType = context.ResolveRuntimeTypeHandle(pTargetType->ToRuntimeTypeHandle());
+            interfaceType = context.ResolveRuntimeTypeHandle(pInterfaceType->ToRuntimeTypeHandle());
 
             if (!(interfaceType.GetTypeDefinition() is MetadataType))
             {
