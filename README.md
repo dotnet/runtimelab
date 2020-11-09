@@ -31,14 +31,10 @@ A list of highlights of unimplemented protocol features follows:
 ## OpenSSL integration
 
 To function correctly, the implementation requires a custom branch of OpenSSL from Akamai
-https://github.com/akamai/openssl/tree/OpenSSL_1_1_1g-quic. The implementation tries to detect that
-a QUIC-supporting OpenSSL is present in the path. If not, then a mock implementation is used
-instead.
+https://github.com/akamai/openssl/tree/OpenSSL_1_1_1g-quic to be present in the path. See
+instructions in the OpenSSL readme on how to build the library.
 
-The mock implementation can be used for trying the implementation locally, but interoperation with
-other QUIC implementations is, of course, possible only with the OpenSSL-based TLS. If you want to
-make sure your implementation runs with OpenSSL, define the `DOTNETQUIC_OPENSSL` environment
-variable. This will cause the implementation to throw if proper OpenSSL version cannot be loaded.
+Alternatively, you can try using the mock tls, see Switching the implementation below
 
 ## Tracing and qvis
 
@@ -56,10 +52,22 @@ visualizer. To collect traces, define `DOTNETQUIC_TRACE` environment variable to
 The traces will be saved in the working directory in a file named
 _[timestamp]-[server|client].qvis_.
 
+## Switching the implementation
+
+The internal implementation of `QuicConnection` and related types allows switching the underlying
+implementation provider. This can be done either by explicitly passing the provider into the 
+`QuicConnection` and `QuicListener` constructors, or overriding the default provider by setting the
+`DOTNETQUIC_PROVIDER` to one of the following values:
+
+- `managed` - (default), managed implementation with TLS backed by modified OpenSSL.
+- `managedmocktls` - managed implementation with mocked TLS. This works without additional
+  dependencies, but does not interop with other implementations.
+- `msquic` - uses the `MsQuic` library. Needs msquic.dll to be in path.
+
 ## Disabling encryption
 
-Regardless of the TLS used, you can circumvent the encryption by defining the `DOTNETQUIC_NOENCRYPT`
-environment variable to something nonempty.
+Regardless of the provider used, you can circumvent the encryption by defining the
+`DOTNETQUIC_NOENCRYPT` environment variable to something nonempty.
 
 # .NET Runtime
 
