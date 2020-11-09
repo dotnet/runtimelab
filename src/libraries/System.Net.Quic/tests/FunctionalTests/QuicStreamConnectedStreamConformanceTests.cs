@@ -21,27 +21,6 @@ namespace System.Net.Quic.Tests
     {
         protected override QuicImplementationProvider Provider => QuicImplementationProviders.MsQuic;
 
-    public abstract class ManagedQuicStreamConformanceTestsBase : QuicStreamConformanceTests
-    {
-        protected override bool FlushRequiredToWriteData => true;
-        protected override bool FlushGuaranteesAllDataWritten => false;
-        protected override bool BlocksOnZeroByteReads => true;
-    }
-
-    [ConditionalClass(typeof(QuicTestBase<ManagedProviderFactory>), nameof(QuicTestBase<ManagedProviderFactory>.IsSupported))]
-    public sealed class ManagedQuicStreamConformanceTests : ManagedQuicStreamConformanceTestsBase
-    {
-        protected override QuicImplementationProvider Provider => QuicImplementationProviders.Managed;
-    }
-
-    [ConditionalClass(typeof(QuicTestBase<ManagedMockTlsProviderFactory>), nameof(QuicTestBase<ManagedMockTlsProviderFactory>.IsSupported))]
-    public sealed class ManagedMockTlsQuicQuicStreamConformanceTests : ManagedQuicStreamConformanceTestsBase
-    {
-        protected override QuicImplementationProvider Provider => QuicImplementationProviders.ManagedMockTls;
-    }
-
-    public abstract class QuicStreamConformanceTests : ConnectedStreamConformanceTests
-    {
         // TODO: These are all hanging, likely due to Stream close behavior.
         [ActiveIssue("https://github.com/dotnet/runtime/issues/756")]
         public override Task Read_Eof_Returns0(ReadWriteMode mode, bool dataAvailableFirst) => base.Read_Eof_Returns0(mode, dataAvailableFirst);
@@ -55,7 +34,24 @@ namespace System.Net.Quic.Tests
         public override Task Write_DataReadFromDesiredOffset(ReadWriteMode mode) => base.Write_DataReadFromDesiredOffset(mode);
         [ActiveIssue("https://github.com/dotnet/runtime/issues/756")]
         public override Task Parallel_ReadWriteMultipleStreamsConcurrently() => base.Parallel_ReadWriteMultipleStreamsConcurrently();
+    }
 
+    public abstract class ManagedQuicStreamConformanceTestsBase : QuicStreamConformanceTests
+    {
+        protected override bool FlushRequiredToWriteData => true;
+        protected override bool BlocksOnZeroByteReads => true;
+    }
+
+    [ConditionalClass(typeof(QuicTestBase<ManagedProviderFactory>), nameof(QuicTestBase<ManagedProviderFactory>.IsSupported))]
+    public sealed class ManagedQuicStreamConformanceTests : ManagedQuicStreamConformanceTestsBase
+    {
+        protected override QuicImplementationProvider Provider => QuicImplementationProviders.Managed;
+    }
+
+    [ConditionalClass(typeof(QuicTestBase<ManagedMockTlsProviderFactory>), nameof(QuicTestBase<ManagedMockTlsProviderFactory>.IsSupported))]
+    public sealed class ManagedMockTlsQuicQuicStreamConformanceTests : ManagedQuicStreamConformanceTestsBase
+    {
+        protected override QuicImplementationProvider Provider => QuicImplementationProviders.ManagedMockTls;
     }
 
     public abstract class QuicStreamConformanceTests : ConnectedStreamConformanceTests

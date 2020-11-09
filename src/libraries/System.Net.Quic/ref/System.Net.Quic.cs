@@ -20,7 +20,6 @@ namespace System.Net.Quic
         public QuicListener(QuicListenerOptions options) { throw null; }
         public QuicListener(Implementations.QuicImplementationProvider implementationProvider, IPEndPoint listenEndPoint, System.Net.Security.SslServerAuthenticationOptions sslServerAuthenticationOptions) { throw null; }
         public QuicListener(Implementations.QuicImplementationProvider implementationProvider, QuicListenerOptions options) { throw null; }
-        public QuicListener(QuicListenerOptions options) { throw null; }
         public IPEndPoint ListenEndPoint => throw null;
         public System.Threading.Tasks.ValueTask<QuicConnection> AcceptConnectionAsync(System.Threading.CancellationToken cancellationToken = default) => throw null;
         public void Start() => throw null;
@@ -44,7 +43,6 @@ namespace System.Net.Quic
         public QuicConnection(QuicClientConnectionOptions options) { throw null; }
         public QuicConnection(Implementations.QuicImplementationProvider implementationProvider, System.Net.EndPoint remoteEndPoint, System.Net.Security.SslClientAuthenticationOptions? sslClientAuthenticationOptions, System.Net.IPEndPoint? localEndPoint = null) { throw null; }
         public QuicConnection(Implementations.QuicImplementationProvider implementationProvider, QuicClientConnectionOptions options) { throw null; }
-        public QuicConnection(QuicClientConnectionOptions options) { throw null; }
         public bool Connected => throw null;
         public System.Net.IPEndPoint LocalEndPoint => throw null;
         public System.Net.EndPoint RemoteEndPoint => throw null;
