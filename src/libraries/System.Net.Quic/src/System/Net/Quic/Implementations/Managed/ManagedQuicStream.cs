@@ -109,6 +109,7 @@ namespace System.Net.Quic.Implementations.Managed
 
         internal override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
             ThrowIfConnectionError();
             ThrowIfNotReadable();
@@ -174,6 +175,7 @@ namespace System.Net.Quic.Implementations.Managed
 
         internal override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, bool endStream, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
             ThrowIfConnectionError();
             ThrowIfNotWritable();
@@ -184,6 +186,7 @@ namespace System.Net.Quic.Implementations.Managed
 
         internal override async ValueTask WriteAsync(ReadOnlySequence<byte> buffers, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
             ThrowIfConnectionError();
             ThrowIfNotWritable();
@@ -196,6 +199,7 @@ namespace System.Net.Quic.Implementations.Managed
 
         internal override async ValueTask WriteAsync(ReadOnlySequence<byte> buffers, bool endStream, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
             ThrowIfConnectionError();
             ThrowIfNotWritable();
@@ -215,6 +219,7 @@ namespace System.Net.Quic.Implementations.Managed
 
         internal override async ValueTask WriteAsync(ReadOnlyMemory<ReadOnlyMemory<byte>> buffers, bool endStream, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
             ThrowIfConnectionError();
             ThrowIfNotWritable();
@@ -227,6 +232,7 @@ namespace System.Net.Quic.Implementations.Managed
 
         internal override async ValueTask ShutdownWriteCompleted(CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
             ThrowIfConnectionError();
             ThrowIfNotWritable();
@@ -284,6 +290,7 @@ namespace System.Net.Quic.Implementations.Managed
 
         internal override async Task FlushAsync(CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
             ThrowIfConnectionError();
             ThrowIfNotWritable();
