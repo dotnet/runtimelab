@@ -19,7 +19,7 @@ elseif(EXISTS ${CROSS_ROOTFS}/usr/platform/i86pc)
   set(ILLUMOS 1)
 endif()
 
-if(TARGET_ARCH_NAME MATCHES "^(armel|arm|arm64|x86)$" OR FREEBSD OR ILLUMOS)
+if(TARGET_ARCH_NAME MATCHES "^(armel|arm|arm64|x86|s390x)$" OR FREEBSD OR ILLUMOS)
   if(ILLUMOS)
     set_cache_value(COMPILER_SUPPORTS_W_CLASS_MEMACCESS 0)
   endif()

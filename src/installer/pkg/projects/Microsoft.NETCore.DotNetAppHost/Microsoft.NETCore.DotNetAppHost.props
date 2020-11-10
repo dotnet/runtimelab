@@ -3,12 +3,15 @@
 
   <ItemGroup>
     <NativeBinary Include="$(DotNetHostBinDir)/apphost$(ApplicationFileExtension)" />
-    <NativeBinary Include="$(DotNetHostBinDir)/singlefilehost$(ApplicationFileExtension)" />
     <NativeBinary Include="$(DotNetHostBinDir)/$(LibraryFilePrefix)nethost$(LibraryFileExtension)" />
     <NativeBinary Include="$(DotNetHostBinDir)/$(LibraryFilePrefix)nethost$(StaticLibraryFileExtension)" />
     <NativeBinary Include="$(DotNetHostBinDir)/coreclr_delegates.h" />
     <NativeBinary Include="$(DotNetHostBinDir)/hostfxr.h" />
     <NativeBinary Include="$(DotNetHostBinDir)/nethost.h" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(RuntimeFlavor)' != 'Mono'">
+    <!-- FIXME: See src/installer/corehost/cli/apphost/CMakeLists.txt -->
+    <NativeBinary Include="$(DotNetHostBinDir)/singlefilehost$(ApplicationFileExtension)" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetOS)' == 'windows'">
     <NativeBinary Include="$(DotNetHostBinDir)/comhost.dll" />
