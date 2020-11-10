@@ -247,8 +247,8 @@ namespace System.Runtime
 
             try
             {
-                ((delegate*<RhFailFastReason, object, IntPtr, IntPtr, void>)pFailFastFunction)
-                    (reason, unhandledException, exInfo._pExContext->IP, (IntPtr)pContext);
+                ((delegate*<RhFailFastReason, object, IntPtr, void*, void>)pFailFastFunction)
+                    (reason, unhandledException, exInfo._pExContext->IP, pContext);
             }
             catch when (true)
             {

@@ -17,9 +17,11 @@ namespace System.Runtime
             DynamicModule* dynamicModule = pTgtType->DynamicModule;
 
             // Use the dynamic module resolver if it's present
-            if ((dynamicModule != null) && (dynamicModule->DynamicTypeSlotDispatchResolve != null))
+            if (dynamicModule != null)
             {
-                return dynamicModule->DynamicTypeSlotDispatchResolve((IntPtr)pTgtType, (IntPtr)pItfType, itfSlotNumber);
+                delegate*<EEType*, EEType*, ushort, IntPtr> resolver = dynamicModule->DynamicTypeSlotDispatchResolve;
+                if (resolver != null)
+                    return resolver(pTgtType, pItfType, itfSlotNumber);
             }
 
             // Start at the current type and work up the inheritance chain

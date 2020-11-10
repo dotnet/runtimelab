@@ -769,11 +769,11 @@ namespace Internal.Runtime.TypeLoader
         }
 #endif
 
-        internal bool TryResolveTypeSlotDispatch(IntPtr targetTypeAsIntPtr, IntPtr interfaceTypeAsIntPtr, ushort slot, out IntPtr methodAddress)
+        internal unsafe bool TryResolveTypeSlotDispatch(EEType* targetType, EEType* interfaceType, ushort slot, out IntPtr methodAddress)
         {
             using (LockHolder.Hold(_typeLoaderLock))
             {
-                return TryResolveTypeSlotDispatch_Inner(targetTypeAsIntPtr, interfaceTypeAsIntPtr, slot, out methodAddress);
+                return TryResolveTypeSlotDispatch_Inner(targetType, interfaceType, slot, out methodAddress);
             }
         }
 
