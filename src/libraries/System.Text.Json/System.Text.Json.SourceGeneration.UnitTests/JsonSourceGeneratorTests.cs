@@ -17,10 +17,12 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             string source = @"
             using System.Text.Json.Serialization;
 
-              namespace HelloWorld
-              {
-                [JsonSerializable]
-                public class MyType {
+            [module: JsonSerializable(typeof(HelloWorld.MyType))]
+
+            namespace HelloWorld
+            {
+                public class MyType
+                {
                     public int PublicPropertyInt { get; set; }
                     public string PublicPropertyString { get; set; }
                     private int PrivatePropertyInt { get; set; }
@@ -42,7 +44,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
                         char c = PrivateChar;
                     }
                 }
-              }";
+            }";
 
             Compilation compilation = CompilationHelper.CreateCompilation(source);
 
@@ -79,10 +81,13 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using System.Text.Json.Serialization;
             using ReferencedAssembly;
 
-              namespace HelloWorld
-              {
-                [JsonSerializable]
-                public class MyType {
+            [module: JsonSerializable(typeof(HelloWorld.MyType))]
+            [module: JsonSerializable(typeof(ReferencedAssembly.Location))]
+
+            namespace HelloWorld
+            {
+                public class MyType
+                {
                     public int PublicPropertyInt { get; set; }
                     public string PublicPropertyString { get; set; }
                     private int PrivatePropertyInt { get; set; }
@@ -103,10 +108,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
                         string s = PrivateChar.ToString();
                     }
                 }
-
-                [JsonSerializable(typeof(Location))]
-                public class NotMyType { }
-              }";
+            }";
 
             MetadataReference[] additionalReferences = { MetadataReference.CreateFromImage(referencedImage) };
 
@@ -153,17 +155,23 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             // Emit the image of the referenced assembly.
             byte[] referencedImage = CompilationHelper.CreateAssemblyImage(referencedCompilation);
+            MetadataReference[] additionalReferences = { MetadataReference.CreateFromImage(referencedImage) };
 
             string source = @"
             using System.Text.Json.Serialization;
             using ReferencedAssembly;
-            using @JsonSerializable = System.ObsoleteAttribute;
+
+            using @JsonSerializable = System.Runtime.Serialization.ContractNamespaceAttribute;
             using AliasedAttribute = System.Text.Json.Serialization.JsonSerializableAttribute;
 
-              namespace HelloWorld
-              {
-                [AliasedAttribute]
-                public class MyType {
+            [module: AliasedAttribute(typeof(HelloWorld.MyType))]
+            [module: AliasedAttribute(typeof(ReferencedAssembly.Location))]
+            [module: @JsonSerializable(""my namespace"")]
+
+            namespace HelloWorld
+            {
+                public class MyType
+                {
                     public int PublicPropertyInt { get; set; }
                     public string PublicPropertyString { get; set; }
                     private int PrivatePropertyInt { get; set; }
@@ -184,16 +192,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
                         char c = PrivateChar;
                     }
                 }
-
-                [AliasedAttribute(typeof(Location))]
-                public class NotMyType { }
-
-                [@JsonSerializable(""Testing"", true)]
-                public class ShouldNotFind { }
-
-              }";
-
-            MetadataReference[] additionalReferences = { MetadataReference.CreateFromImage(referencedImage) };
+            }";
 
             Compilation compilation = CompilationHelper.CreateCompilation(source, additionalReferences);
 
@@ -228,6 +227,8 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             CheckFieldsPropertiesMethods("ReferencedAssembly.Location", ref generator, expectedFieldNamesNotMyType, expectedPropertyNamesNotMyType, expectedMethodNamesNotMyType );
         }
 
+        // TODO: add test where there is a local invalid System.Text.Json.JsonSerializableAttribute (https://github.com/dotnet/runtimelab/issues/29)
+
         [Fact]
         public void NameClashCompilation()
         {
@@ -258,9 +259,10 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using System.Text.Json.Serialization;
             using ReferencedAssembly;
 
-              namespace HelloWorld
-              {
-                [JsonSerializable]
+            [module: JsonSerializable(typeof(HelloWorld.WeatherForecastWithPOCOs))]
+    
+            namespace HelloWorld
+            {
                 public class WeatherForecastWithPOCOs
                 {
                     public DateTimeOffset Date { get; set; }
@@ -271,7 +273,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
                     public Dictionary<string, HighLowTemps> TemperatureRanges { get; set; }
                     public string[] SummaryWords { get; set; }
                 }
-              }";
+            }";
 
             MetadataReference[] additionalReferences = { MetadataReference.CreateFromImage(referencedImage) };
 
