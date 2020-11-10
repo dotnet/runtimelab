@@ -51,14 +51,13 @@ namespace System.Text.Json.SourceGeneration.UnitTests
         }
 
         private static GeneratorDriver CreateDriver(Compilation compilation, params ISourceGenerator[] generators)
-            => new CSharpGeneratorDriver(
-                new CSharpParseOptions(kind: SourceCodeKind.Regular, documentationMode: DocumentationMode.Parse),
-                ImmutableArray.Create(generators),
-                ImmutableArray<AdditionalText>.Empty);
+            => CSharpGeneratorDriver.Create(
+                generators: ImmutableArray.Create(generators),
+                parseOptions: new CSharpParseOptions(kind: SourceCodeKind.Regular, documentationMode: DocumentationMode.Parse));
 
         public static Compilation RunGenerators(Compilation compilation, out ImmutableArray<Diagnostic> diagnostics, params ISourceGenerator[] generators)
         {
-            CreateDriver(compilation, generators).RunFullGeneration(compilation, out Compilation outCompilation, out diagnostics);
+            CreateDriver(compilation, generators).RunGeneratorsAndUpdateCompilation(compilation, out Compilation outCompilation, out diagnostics);
             return outCompilation;
         }
 
