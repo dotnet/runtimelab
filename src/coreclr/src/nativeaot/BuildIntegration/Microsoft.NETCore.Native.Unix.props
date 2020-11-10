@@ -23,29 +23,16 @@ The .NET Foundation licenses this file to you under the MIT license.
   <Target Name="SetupOSSpecificProps" DependsOnTargets="$(IlcDynamicBuildPropertyDependencies)">
 
     <PropertyGroup>
-      <NativeLibraryExtension Condition="'$(NativeCodeGen)' != 'wasm'">.a</NativeLibraryExtension>
-      <NativeLibraryExtension Condition="'$(NativeCodeGen)' == 'wasm'">.bc</NativeLibraryExtension>
+      <NativeLibraryExtension>.a</NativeLibraryExtension>
       <FullRuntimeName>libRuntime</FullRuntimeName>
       <FullRuntimeName Condition="'$(ServerGarbageCollection)' != ''">libRuntime.ServerGC</FullRuntimeName>
     </PropertyGroup>
 
     <ItemGroup>
-      <CppCompilerAndLinkerArg Include="-I $(IlcPath)/inc" />
-      <CppCompilerAndLinkerArg Condition="'$(Configuration)' == 'Debug'" Include="-g -O0" />
-      <CppCompilerAndLinkerArg Condition="'$(Configuration)' != 'Debug'" Include="-O2" />
-      <CppCompilerAndLinkerArg Include="-c -Wno-invalid-offsetof" />
-      <CppCompilerAndLinkerArg Include="$(AdditionalCppCompilerFlags)" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <NativeLibrary Condition="'$(IlcMultiModule)' == 'true' and $(NativeCodeGen) == ''" Include="$(SharedLibrary)" />
-      <NativeLibrary Condition="$(NativeCodeGen) == '' and $(NativeLib) == ''" Include="$(IlcPath)/sdk/libbootstrapper.a" />
-      <NativeLibrary Condition="$(NativeCodeGen) == '' and $(NativeLib) != ''" Include="$(IlcPath)/sdk/libbootstrapperdll.a" />
-      <NativeLibrary Condition="$(NativeCodeGen) == ''" Include="$(IlcPath)/sdk/$(FullRuntimeName).a" />
-      <NativeLibrary Condition="$(NativeCodeGen) == 'cpp'" Include="$(IlcPath)/sdk/libbootstrappercpp.a" />
-      <NativeLibrary Condition="$(NativeCodeGen) == 'cpp'" Include="$(IlcPath)/sdk/libPortableRuntime.a" />
-      <NativeLibrary Condition="$(NativeCodeGen) == 'wasm'" Include="$(IlcPath)/sdk/libbootstrappercpp.bc" />
-      <NativeLibrary Condition="$(NativeCodeGen) == 'wasm'" Include="$(IlcPath)/sdk/libPortableRuntime.bc" />
+      <NativeLibrary Condition="'$(IlcMultiModule)' == 'true'" Include="$(SharedLibrary)" />
+      <NativeLibrary Condition="$(NativeLib) == ''" Include="$(IlcPath)/sdk/libbootstrapper.a" />
+      <NativeLibrary Condition="$(NativeLib) != ''" Include="$(IlcPath)/sdk/libbootstrapperdll.a" />
+      <NativeLibrary Include="$(IlcPath)/sdk/$(FullRuntimeName).a" />
     </ItemGroup>
 
     <ItemGroup>
