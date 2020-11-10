@@ -181,7 +181,6 @@
     <Compile Include="src\System\Diagnostics\StackFrame.CoreRT.cs" />
     <Compile Include="src\System\Diagnostics\StackFrameExtensions.cs" />
     <Compile Include="src\System\Diagnostics\StackTrace.CoreRT.cs" />
-    <Compile Include="src\System\Diagnostics\StackTrace.CoreRT.Wasm.cs" Condition="'$(Platform)'=='wasm'"/>
     <Compile Include="src\System\Enum.CoreRT.cs" />
     <Compile Include="src\System\Environment.CoreRT.cs" />
     <Compile Include="src\System\GC.cs" />
@@ -469,12 +468,6 @@
     </Compile>
     <Compile Include="$(AotCommonPath)\Internal\Runtime\TransitionBlock.cs">
       <Link>Common\TransitionBlock.cs</Link>
-    </Compile>
-    <Compile Include="..\Runtime.Base\src\System\Runtime\ExceptionHandling.wasm.cs" Condition="'$(Platform)'=='wasm'">
-      <Link>Runtime.Base\src\System\Runtime\ExceptionHandling.wasm.cs</Link>
-    </Compile>
-    <Compile Include="..\Runtime.Base\src\System\Runtime\StackFrameIterator.wasm.cs" Condition="'$(Platform)'=='wasm'">
-      <Link>Runtime.Base\src\System\Runtime\StackFrameIterator.wasm.cs</Link>
     </Compile>
   </ItemGroup>
   <ItemGroup Condition="'$(InPlaceRuntime)' == 'true'">
