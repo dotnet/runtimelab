@@ -349,10 +349,6 @@ case "$host" in
 			RID="linux-x64"
 			COREARCH="x64"
 			;;
-		s390x-*)
-			RID="linux-s390x"
-			COREARCH="s390x"
-			;;
 		arm-*)
 			# deal with this in the FPU detection section, since
 			# we cannot determine FPU from triplet and don't want
