@@ -37,19 +37,19 @@ static void** handle;
 
 int main()
 {
-    #ifdef _WIN32
-        HINSTANCE hdl = LoadLibraryA(PathToLibrary);
-    #else
-        void *hdl = dlopen(PathToLibrary, RTLD_LAZY);
-    #endif
-    handle = &hdl;
-
     // Check if the library file exists
     if (access(PathToLibrary, F_OK) == -1)
     {
         puts("Couldn't find library at the specified path");
         return 0;
     }
+    
+    #ifdef _WIN32
+        HINSTANCE hdl = LoadLibraryA(PathToLibrary);
+    #else
+        void *hdl = dlopen(PathToLibrary, RTLD_LAZY);
+    #endif
+    handle = &hdl;
 
     // Sum two integers
     int sum = callSumFunc(2, 8);
