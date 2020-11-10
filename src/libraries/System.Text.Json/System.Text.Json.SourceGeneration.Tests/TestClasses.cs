@@ -1,13 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 using System.Text.Json.Serialization;
+
+using TestsNamespace = System.Text.Json.SourceGeneration.Tests;
+
+[module: JsonSerializable(typeof(TestsNamespace.RepeatedTypes.Location))]
+[module: JsonSerializable(typeof(TestsNamespace.Location))]
+[module: JsonSerializable(typeof(TestsNamespace.ActiveOrUpcomingEvent))]
+[module: JsonSerializable(typeof(TestsNamespace.CampaignSummaryViewModel))]
+[module: JsonSerializable(typeof(TestsNamespace.IndexViewModel))]
+[module: JsonSerializable(typeof(TestsNamespace.WeatherForecastWithPOCOs))]
+
+// TODO: fix bug where ArgumentException is thrown because HighLowTemps already exists in object graph of previously type
+// (https://github.com/dotnet/runtimelab/issues/329).
+// [module: JsonSerializable(typeof(TestsNamespace.HighLowTemps))]
 
 namespace System.Text.Json.SourceGeneration.Tests.RepeatedTypes
 {
-    [JsonSerializable]
+
     public class Location
     {
         public int FakeId { get; set; }
@@ -24,7 +33,6 @@ namespace System.Text.Json.SourceGeneration.Tests.RepeatedTypes
 
 namespace System.Text.Json.SourceGeneration.Tests
 {
-    [JsonSerializable]
     public class Location
     {
         public int Id { get; set; }
@@ -38,7 +46,6 @@ namespace System.Text.Json.SourceGeneration.Tests
         public string Country { get; set; }
     }
 
-    [JsonSerializable]
     public class ActiveOrUpcomingEvent
     {
         public int Id { get; set; }
@@ -51,7 +58,6 @@ namespace System.Text.Json.SourceGeneration.Tests
         public DateTimeOffset EndDate { get; set; }
     }
 
-    [JsonSerializable]
     public class CampaignSummaryViewModel
     {
         public int Id { get; set; }
@@ -62,7 +68,6 @@ namespace System.Text.Json.SourceGeneration.Tests
         public string Headline { get; set; }
     }
 
-    [JsonSerializable]
     public class IndexViewModel
     {
         public List<ActiveOrUpcomingEvent> ActiveOrUpcomingEvents { get; set; }
@@ -71,7 +76,6 @@ namespace System.Text.Json.SourceGeneration.Tests
         public bool HasFeaturedCampaign => FeaturedCampaign != null;
     }
 
-    [JsonSerializable]
     public class WeatherForecastWithPOCOs
     {
         public DateTimeOffset Date { get; set; }

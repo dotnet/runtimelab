@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Reflection;
+using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -29,6 +30,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
                 MetadataReference.CreateFromFile(typeof(JsonSerializerOptions).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(Type).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(KeyValuePair).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(ContractNamespaceAttribute).Assembly.Location),
                 MetadataReference.CreateFromFile(systemRuntimeAssemblyPath),
                 MetadataReference.CreateFromFile(systemCollecitonsAssemblyPath),
             };
@@ -158,9 +160,11 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using System.Collections.Generic;
             using System.Text.Json.Serialization;
 
-              namespace Fake
-              {
-                [JsonSerializable]
+            [module: JsonSerializable(typeof(Fake.Location))]
+            [module: JsonSerializable(typeof(HelloWorld.Location))]
+
+            namespace Fake
+            {
                 public class Location
                 {
                     public int FakeId { get; set; }
@@ -173,11 +177,10 @@ namespace System.Text.Json.SourceGeneration.UnitTests
                     public string FakePhoneNumber { get; set; }
                     public string FakeCountry { get; set; }
                 }
-              }
+            }
 
-              namespace HelloWorld
-              {
-                [JsonSerializable]
+            namespace HelloWorld
+            {                
                 public class Location
                 {
                     public int Id { get; set; }
@@ -190,7 +193,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
                     public string PhoneNumber { get; set; }
                     public string Country { get; set; }
                 }
-              }";
+            }";
 
             return CreateCompilation(source);
         }
