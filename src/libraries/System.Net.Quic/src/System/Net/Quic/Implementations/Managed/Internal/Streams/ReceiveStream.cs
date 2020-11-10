@@ -362,14 +362,15 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
         /// <returns></returns>
         internal async ValueTask<int> DeliverAsync(Memory<byte> destination, CancellationToken token)
         {
-            int delivered = Deliver(destination.Span);
+            // dont sync block, instead, the async waiting is done via WaitToReadAsync on the _deliverableChannel
+            int delivered = DeliverInternal(destination.Span, false);
 
             if (delivered > 0)
                 return delivered;
 
             if (StreamState != RecvStreamState.DataRead && await _deliverableChannel.Reader.WaitToReadAsync(token).ConfigureAwait(false))
             {
-                return Deliver(destination.Span);
+                return DeliverInternal(destination.Span, false);
             }
 
             return 0;
@@ -381,6 +382,11 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
         /// <param name="destination"></param>
         internal int Deliver(Span<byte> destination)
         {
+            return DeliverInternal(destination, true);
+        }
+
+        internal int DeliverInternal(Span<byte> destination, bool blockUntilDataAvailable)
+        {
             int delivered = 0;
 
             do
@@ -388,6 +394,12 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
                 if (_deliveryLeftoverChunk.Memory.IsEmpty)
                 {
                     ReturnMemory(_deliveryLeftoverChunk);
+
+                    if (blockUntilDataAvailable)
+                    {
+                        // TODO: use ResettableValueTaskSource from StreamBuffer to handle this better
+                        _deliverableChannel.Reader.WaitToReadAsync().AsTask().GetAwaiter().GetResult();
+                    }
 
                     if (!_deliverableChannel.Reader.TryRead(out _deliveryLeftoverChunk))
                     {
