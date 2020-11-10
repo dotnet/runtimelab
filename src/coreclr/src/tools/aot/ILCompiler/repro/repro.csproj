@@ -18,7 +18,7 @@
       <ReproResponseLines Include="$(OutputPath)$(AssemblyName)$(TargetExt)" />
       <ReproResponseLines Include="-o:$(OutputPath)$(AssemblyName).obj" />
       <ReproResponseLines Include="-r:$(RuntimeBinDir)aotsdk\*.dll" />
-      <ReproResponseLines Include="-r:$(ArtifactsDir)bin\pkg\$(BuildTargetFramework)\runtime\Windows_NT-$(LibrariesConfiguration)-$(TargetArchitecture)\*.dll" />
+      <ReproResponseLines Include="-r:$(ArtifactsDir)bin\pkg\$(BuildTargetFramework)\runtime\windows-$(LibrariesConfiguration)-$(TargetArchitecture)\*.dll" />
       <ReproResponseLines Include="-g" />
       <ReproResponseLines Include="--initassembly:System.Private.CoreLib" />
       <ReproResponseLines Include="--initassembly:System.Private.StackTraceMetadata" />
