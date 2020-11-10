@@ -108,7 +108,7 @@ namespace Microsoft.Interop
         public (BlockSyntax Code, MethodDeclarationSyntax DllImport) GenerateSyntax()
         {
             string dllImportName = stubMethod.Name + "__PInvoke__";
-            var statements = new List<StatementSyntax>();
+            var setupStatements = new List<StatementSyntax>();
 
             if (retMarshaller.Generator.UsesNativeIdentifier(retMarshaller.TypeInfo, this))
             {
@@ -123,7 +123,7 @@ namespace Microsoft.Interop
                     continue;
 
                 // Assign out params to default
-                statements.Add(ExpressionStatement(
+                setupStatements.Add(ExpressionStatement(
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
                         IdentifierName(info.InstanceIdentifier),
@@ -150,27 +150,37 @@ namespace Microsoft.Interop
 
                 // Declare variable for stub return value
                 TypePositionInfo info = stubRetMarshaller.TypeInfo;
-                statements.Add(LocalDeclarationStatement(
-                    VariableDeclaration(
-                        info.ManagedType.AsTypeSyntax(),
-                        SingletonSeparatedList(
-                            VariableDeclarator(this.GetIdentifiers(info).managed)))));
+                setupStatements.Add(MarshallerHelpers.DeclareWithDefault(
+                    info.ManagedType.AsTypeSyntax(),
+                    this.GetIdentifiers(info).managed));
             }
 
             if (!invokeReturnsVoid)
             {
                 // Declare variable for invoke return value
-                statements.Add(LocalDeclarationStatement(
-                    VariableDeclaration(
-                        retMarshaller.TypeInfo.ManagedType.AsTypeSyntax(),
-                        SingletonSeparatedList(
-                            VariableDeclarator(this.GetIdentifiers(retMarshaller.TypeInfo).managed)))));
+                setupStatements.Add(MarshallerHelpers.DeclareWithDefault(
+                    retMarshaller.TypeInfo.ManagedType.AsTypeSyntax(),
+                    this.GetIdentifiers(retMarshaller.TypeInfo).managed));
+            }
+
+            var tryStatements = new List<StatementSyntax>();
+            var finallyStatements = new List<StatementSyntax>();
+            List<StatementSyntax> GetStatements(Stage stage)
+            {
+                return stage switch
+                {
+                    Stage.Setup => setupStatements,
+                    Stage.Marshal or Stage.Pin or Stage.Invoke or Stage.KeepAlive or Stage.Unmarshal => tryStatements,
+                    Stage.GuaranteedUnmarshal or Stage.Cleanup => finallyStatements,
+                    _ => throw new ArgumentOutOfRangeException(nameof(stage))
+                };
             }
 
             var invoke = InvocationExpression(IdentifierName(dllImportName));
             var fixedStatements = new List<FixedStatementSyntax>();
             foreach (var stage in Stages)
             {
+                var statements = GetStatements(stage);
                 int initialCount = statements.Count;
                 this.CurrentStage = stage;
 
@@ -256,12 +266,24 @@ namespace Microsoft.Interop
                 }
             }
 
+            List<StatementSyntax> allStatements = setupStatements;
+            if (finallyStatements.Count > 0)
+            {
+                // Add try-finally block if there are any statements in the finally block
+                allStatements.Add(
+                    TryStatement(Block(tryStatements), default, FinallyClause(Block(finallyStatements))));
+            }
+            else
+            {
+                allStatements.AddRange(tryStatements);
+            }
+
             // Return
             if (!stubReturnsVoid)
-                statements.Add(ReturnStatement(IdentifierName(ReturnIdentifier)));
+                allStatements.Add(ReturnStatement(IdentifierName(ReturnIdentifier)));
 
             // Wrap all statements in an unsafe block
-            var codeBlock = Block(UnsafeStatement(Block(statements)));
+            var codeBlock = Block(UnsafeStatement(Block(allStatements)));
 
             // Define P/Invoke declaration
             var dllImport = MethodDeclaration(retMarshaller.Generator.AsNativeType(retMarshaller.TypeInfo), dllImportName)

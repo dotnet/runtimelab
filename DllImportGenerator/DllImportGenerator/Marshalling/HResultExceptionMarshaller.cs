@@ -35,7 +35,7 @@ namespace Microsoft.Interop
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         MarshallerHelpers.InteropServicesMarshalType,
-                        IdentifierName("ThrowExceptionForHR")),
+                        IdentifierName(nameof(System.Runtime.InteropServices.Marshal.ThrowExceptionForHR))),
                     ArgumentList(SingletonSeparatedList(
                         Argument(IdentifierName(identifier))))));
         }

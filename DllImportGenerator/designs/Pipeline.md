@@ -48,6 +48,26 @@ Generation of the stub code happens in stages. The marshalling generator for eac
 1. `Cleanup`: free any allocated resources
     - Call `Generate` on the marshalling generator for every parameter
 
+Generated P/Invoke structure (if no code is generated for `GuaranteedUnmarshal` and `Cleanup`, the `try-finally` is omitted):
+```C#
+<< Setup >>
+try
+{
+    << Marshal >>
+    << Pin >> (fixed)
+    {
+        << Invoke >>
+    }
+    << Keep Alive >>
+    << Unmarshal >>
+}
+finally
+{
+    << GuaranteedUnmarshal >>
+    << Cleanup >>
+}
+```
+
 ### Stub conditional features
 
 Some marshalling optimizations are only available in specific scenarios. Generally, there are 4 basic marshalling contexts:

@@ -9,9 +9,11 @@ namespace Microsoft.Interop
 {
     internal class SafeHandleMarshaller : IMarshallingGenerator
     {
+        private static readonly TypeSyntax NativeType = ParseTypeName("global::System.IntPtr");
+
         public TypeSyntax AsNativeType(TypePositionInfo info)
         {
-            return ParseTypeName("global::System.IntPtr");
+            return NativeType;
         }
 
         public ParameterSyntax AsParameter(TypePositionInfo info)
@@ -64,11 +66,8 @@ namespace Microsoft.Interop
             switch (context.CurrentStage)
             {
                 case StubCodeContext.Stage.Setup:
-                    yield return LocalDeclarationStatement(
-                        VariableDeclaration(
-                            AsNativeType(info),
-                            SingletonSeparatedList(
-                                VariableDeclarator(nativeIdentifier))));
+                    yield return MarshallerHelpers.DeclareWithDefault(AsNativeType(info), nativeIdentifier);
+
                     if (!info.IsManagedReturnPosition && info.RefKind != RefKind.Out)
                     {
                         yield return LocalDeclarationStatement(
