@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -12,7 +13,10 @@ namespace System.Reflection
     public class MetadataLoadContext
     {
         private readonly Dictionary<string, IAssemblySymbol> _assemblies = new Dictionary<string, IAssemblySymbol>(StringComparer.OrdinalIgnoreCase);
+
         private readonly Compilation _compilation;
+
+        private IAssemblySymbol? _collectionsAssemblySymbol;
 
         public MetadataLoadContext(Compilation compilation)
         {
@@ -26,7 +30,13 @@ namespace System.Reflection
 
             foreach (var item in assemblies)
             {
-                _assemblies[item.Key.Name] = item.Value!;
+                string key = item.Key.Name;
+                _assemblies[key] = item.Value!;
+
+                if (_collectionsAssemblySymbol == null && key == "System.Collections")
+                {
+                    _collectionsAssemblySymbol = item.Value!;
+                }
             }
 
             CoreAssembly = new AssemblyWrapper(compilation.GetTypeByMetadataName("System.Object")!.ContainingAssembly, this);
@@ -35,31 +45,45 @@ namespace System.Reflection
 
         public Type Resolve<T>() => Resolve(typeof(T));
 
-        public Type Resolve(Type type)
+        public Type? Resolve(Type type)
         {
-            string asmName = type.Assembly.GetName().Name;
-
+            string assemblyName = type.Assembly.GetName().Name;
             IAssemblySymbol assemblySymbol;
 
-            if (asmName == "System.Private.CoreLib" || asmName == "mscorlib" || asmName == "System.Runtime")
+            if (assemblyName == "System.Private.CoreLib" || assemblyName == "mscorlib" || assemblyName == "System.Runtime" || assemblyName == "System.Private.Uri")
             {
-                assemblySymbol = CoreAssembly.Symbol;
-            }
-            else
-            {
-                var typeForwardedFrom = type.GetCustomAttributeData(typeof(TypeForwardedFromAttribute));
-
-                if (typeForwardedFrom != null)
+                Type resolvedType = ResolveFromAssembly(type, CoreAssembly.Symbol);
+                if (resolvedType != null)
                 {
-                    asmName = typeForwardedFrom.GetConstructorArgument<string>(0);
+                    return resolvedType;
                 }
 
-                if (!_assemblies.TryGetValue(new AssemblyName(asmName).Name, out assemblySymbol))
+                if (_collectionsAssemblySymbol != null && typeof(IEnumerable).IsAssignableFrom(type))
                 {
-                    return null!;
+                    resolvedType = ResolveFromAssembly(type, _collectionsAssemblySymbol);
+                    if (resolvedType != null)
+                    {
+                        return resolvedType;
+                    }
                 }
             }
 
+            CustomAttributeData? typeForwardedFrom = type.GetCustomAttributeData(typeof(TypeForwardedFromAttribute));
+            if (typeForwardedFrom != null)
+            {
+                assemblyName = typeForwardedFrom.GetConstructorArgument<string>(0);
+            }
+
+            if (!_assemblies.TryGetValue(new AssemblyName(assemblyName).Name, out assemblySymbol))
+            {
+                return null;
+            }
+
+            return ResolveFromAssembly(type, assemblySymbol);
+        }
+
+        private Type? ResolveFromAssembly(Type type, IAssemblySymbol assemblySymbol)
+        {
             if (type.IsArray)
             {
                 var typeSymbol = assemblySymbol.GetTypeByMetadataName(type.GetElementType().FullName);
@@ -75,6 +99,7 @@ namespace System.Reflection
             return assemblySymbol.GetTypeByMetadataName(type.FullName)!.AsType(this);
         }
 
+        // TODO: this should be Assembly.
         private AssemblyWrapper CoreAssembly { get; }
         public Assembly MainAssembly { get; }
 

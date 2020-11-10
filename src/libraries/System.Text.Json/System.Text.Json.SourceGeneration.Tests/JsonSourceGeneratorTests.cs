@@ -4,7 +4,6 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json.Serialization;
 using JsonCodeGeneration;
 using Xunit;
 
@@ -70,6 +69,17 @@ namespace System.Text.Json.SourceGeneration.Tests
         }
 
         [Fact]
+        public static void RoundTripEmptyPoco()
+        {
+            EmptyPoco expected = CreateEmptyPoco();
+
+            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.EmptyPoco);
+            EmptyPoco obj = JsonSerializer.Deserialize(json, JsonContext.Instance.EmptyPoco);
+
+            VerifyEmptyPoco(expected, obj);
+        }
+
+        [Fact]
         public static void RoundTripTypeNameClash()
         {
             RepeatedTypes.Location expected = CreateRepeatedLocation();
@@ -80,7 +90,7 @@ namespace System.Text.Json.SourceGeneration.Tests
             VerifyRepeatedLocation(expected, obj);
         }
 
-        internal static Location CreateLocation()
+        private static Location CreateLocation()
         {
             return new Location
             {
@@ -96,7 +106,7 @@ namespace System.Text.Json.SourceGeneration.Tests
             };
         }
 
-        internal static void VerifyLocation(Location expected, Location obj)
+        private static void VerifyLocation(Location expected, Location obj)
         {
             Assert.Equal(expected.Address1, obj.Address1);
             Assert.Equal(expected.Address2, obj.Address2);
@@ -108,7 +118,7 @@ namespace System.Text.Json.SourceGeneration.Tests
             Assert.Equal(expected.Country, obj.Country);
         }
 
-        internal static ActiveOrUpcomingEvent CreateActiveOrUpcomingEvent()
+        private static ActiveOrUpcomingEvent CreateActiveOrUpcomingEvent()
         {
             return new ActiveOrUpcomingEvent
             {
@@ -123,7 +133,7 @@ namespace System.Text.Json.SourceGeneration.Tests
             };
         }
 
-        internal static void VerifyActiveOrUpcomingEvent(ActiveOrUpcomingEvent expected, ActiveOrUpcomingEvent obj)
+        private static void VerifyActiveOrUpcomingEvent(ActiveOrUpcomingEvent expected, ActiveOrUpcomingEvent obj)
         {
             Assert.Equal(expected.CampaignManagedOrganizerName, obj.CampaignManagedOrganizerName);
             Assert.Equal(expected.CampaignName, obj.CampaignName);
@@ -135,7 +145,7 @@ namespace System.Text.Json.SourceGeneration.Tests
             Assert.Equal(expected.StartDate, obj.StartDate);
         }
 
-        internal static CampaignSummaryViewModel CreateCampaignSummaryViewModel()
+        private static CampaignSummaryViewModel CreateCampaignSummaryViewModel()
         {
             return new CampaignSummaryViewModel
             {
@@ -148,7 +158,7 @@ namespace System.Text.Json.SourceGeneration.Tests
             };
         }
 
-        internal static void VerifyCampaignSummaryViewModel(CampaignSummaryViewModel expected, CampaignSummaryViewModel obj)
+        private static void VerifyCampaignSummaryViewModel(CampaignSummaryViewModel expected, CampaignSummaryViewModel obj)
         {
             Assert.Equal(expected.Description, obj.Description);
             Assert.Equal(expected.Headline, obj.Headline);
@@ -158,7 +168,7 @@ namespace System.Text.Json.SourceGeneration.Tests
             Assert.Equal(expected.Title, obj.Title);
         }
 
-        internal static IndexViewModel CreateIndexViewModel()
+        private static IndexViewModel CreateIndexViewModel()
         {
             return new IndexViewModel
             {
@@ -188,7 +198,7 @@ namespace System.Text.Json.SourceGeneration.Tests
             };
         }
 
-        internal static void VerifyIndexViewModel(IndexViewModel expected, IndexViewModel obj)
+        private static void VerifyIndexViewModel(IndexViewModel expected, IndexViewModel obj)
         {
             Assert.Equal(expected.ActiveOrUpcomingEvents.Count, obj.ActiveOrUpcomingEvents.Count);
             for (int i = 0; i < expected.ActiveOrUpcomingEvents.Count; i++)
@@ -201,7 +211,7 @@ namespace System.Text.Json.SourceGeneration.Tests
             Assert.Equal(expected.IsNewAccount, obj.IsNewAccount);
         }
 
-        internal static WeatherForecastWithPOCOs CreateWeatherForecastWithPOCOs()
+        private static WeatherForecastWithPOCOs CreateWeatherForecastWithPOCOs()
         {
             return new WeatherForecastWithPOCOs
             {
@@ -235,7 +245,7 @@ namespace System.Text.Json.SourceGeneration.Tests
             };
         }
 
-        internal static void VerifyWeatherForecastWithPOCOs(WeatherForecastWithPOCOs expected, WeatherForecastWithPOCOs obj)
+        private static void VerifyWeatherForecastWithPOCOs(WeatherForecastWithPOCOs expected, WeatherForecastWithPOCOs obj)
         {
             Assert.Equal(expected.Date, obj.Date);
             Assert.Equal(expected.TemperatureCelsius, obj.TemperatureCelsius);
@@ -261,7 +271,7 @@ namespace System.Text.Json.SourceGeneration.Tests
             }
         }
 
-        internal static RepeatedTypes.Location CreateRepeatedLocation()
+        private static RepeatedTypes.Location CreateRepeatedLocation()
         {
             return new RepeatedTypes.Location
             {
@@ -276,7 +286,7 @@ namespace System.Text.Json.SourceGeneration.Tests
                 FakeCountry = "The Greatest"
             };
         }
-        internal static void VerifyRepeatedLocation(RepeatedTypes.Location expected, RepeatedTypes.Location obj)
+        private static void VerifyRepeatedLocation(RepeatedTypes.Location expected, RepeatedTypes.Location obj)
         {
             Assert.Equal(expected.FakeAddress1, obj.FakeAddress1);
             Assert.Equal(expected.FakeAddress2, obj.FakeAddress2);
@@ -286,6 +296,14 @@ namespace System.Text.Json.SourceGeneration.Tests
             Assert.Equal(expected.FakeName, obj.FakeName);
             Assert.Equal(expected.FakePhoneNumber, obj.FakePhoneNumber);
             Assert.Equal(expected.FakeCountry, obj.FakeCountry);
+        }
+
+        private static EmptyPoco CreateEmptyPoco() => new EmptyPoco();
+
+        private static void VerifyEmptyPoco(EmptyPoco expected, EmptyPoco obj)
+        {
+            Assert.NotNull(expected);
+            Assert.NotNull(obj);
         }
     }
 }

@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics.CodeAnalysis;
-
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 
@@ -97,16 +96,71 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(jsonTypeInfo));
             }
 
-            WriteStack state = default;
-            state.Initialize(jsonTypeInfo);
+            return SerializeUsingMetadata(value, jsonTypeInfo);
+        }
 
-            JsonSerializerOptions options = jsonTypeInfo.Options;
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="inputType"></param>
+        /// <param name="jsonSerializerContext"></param>
+        /// <returns></returns>
+        public static string Serialize(
+            object? value,
+            [DynamicallyAccessedMembers(MembersAccessedOnWrite)] Type inputType,
+            JsonSerializerContext jsonSerializerContext)
+        {
+            if (inputType == null)
+            {
+                throw new ArgumentNullException(nameof(inputType));
+            }
+
+            if (value != null && !inputType.IsAssignableFrom(value.GetType()))
+            {
+                ThrowHelper.ThrowArgumentException_DeserializeWrongType(inputType, value);
+            }
+
+            return SerializeUsingMetadata(value, jsonSerializerContext.GetJsonClassInfo(inputType));
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <typeparam name="TValue"></typeparam>
+        /// <param name="value"></param>
+        /// <param name="jsonSerializerContext"></param>
+        /// <returns></returns>
+        public static string Serialize<TValue>(in TValue value, JsonSerializerContext jsonSerializerContext)
+        {
+            if (jsonSerializerContext == null)
+            {
+                throw new ArgumentNullException(nameof(jsonSerializerContext));
+            }
+
+            return SerializeUsingMetadata(value, jsonSerializerContext.GetJsonClassInfo(typeof(TValue)));
+        }
+
+        private static string SerializeUsingMetadata<TValue>(in TValue value, JsonClassInfo? jsonClassInfo)
+        {
+            WriteStack state = default;
+
+            // TODO: this would be when to fallback to regular warm-up code-paths.
+            // For validation during development, we don't expect this to be null.
+            if (jsonClassInfo == null)
+            {
+                throw new ArgumentNullException(nameof(jsonClassInfo));
+            }
+
+            state.Initialize(jsonClassInfo);
+
+            JsonSerializerOptions options = jsonClassInfo.Options;
 
             using (var output = new PooledByteBufferWriter(options.DefaultBufferSize))
             {
                 using (var writer = new Utf8JsonWriter(output, options.GetWriterOptions()))
                 {
-                    JsonConverter? jsonConverter = jsonTypeInfo.PropertyInfoForClassInfo.ConverterBase as JsonConverter<TValue>;
+                    JsonConverter? jsonConverter = jsonClassInfo.PropertyInfoForClassInfo.ConverterBase as JsonConverter<TValue>;
                     if (jsonConverter == null)
                     {
                         throw new InvalidOperationException("todo: classInfo not compatible");

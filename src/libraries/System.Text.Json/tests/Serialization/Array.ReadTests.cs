@@ -4,14 +4,42 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Tests;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class ArrayTests
+#if !GENERATE_JSON_METADATA
+    public class ArrayTests_DynamicSerializer : ArrayTests
     {
+        public ArrayTests_DynamicSerializer() : base(SerializationWrapper.StringSerializer, DeserializationWrapper.StringDeserializer) { }
+    }
+#else
+    public class ArrayTests_MetadataBasedSerializer : ArrayTests
+    {
+        public ArrayTests_MetadataBasedSerializer() : base(SerializationWrapper.StringMetadataSerializer, DeserializationWrapper.StringMetadataDeserialzer) { }
+    }
+#endif
+
+    public abstract partial class ArrayTests
+    {
+        private SerializationWrapper Serializer { get; }
+
+        private DeserializationWrapper Deserializer { get; }
+
+        public ArrayTests(SerializationWrapper serializer, DeserializationWrapper deserializer)
+        {
+            Serializer = serializer;
+            Deserializer = deserializer;
+        }
+
         [Fact]
-        public static void ReadObjectArray()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadObjectArray()
         {
             string data =
                 "[" +
@@ -20,33 +48,33 @@ namespace System.Text.Json.Serialization.Tests
                 SimpleTestClass.s_json +
                 "]";
 
-            SimpleTestClass[] i = JsonSerializer.Deserialize<SimpleTestClass[]>(Encoding.UTF8.GetBytes(data));
+            SimpleTestClass[] i = await Deserializer.DeserializeWrapper<SimpleTestClass[]>(data);
 
             i[0].Verify();
             i[1].Verify();
         }
 
         [Fact]
-        public static void ReadNullByteArray()
+        public async Task ReadNullByteArray()
         {
             string json = @"null";
-            byte[] arr = JsonSerializer.Deserialize<byte[]>(json);
+            byte[] arr = await Deserializer.DeserializeWrapper<byte[]>(json);
             Assert.Null(arr);
         }
 
         [Fact]
-        public static void ReadEmptyByteArray()
+        public async Task ReadEmptyByteArray()
         {
             string json = @"""""";
-            byte[] arr = JsonSerializer.Deserialize<byte[]>(json);
+            byte[] arr = await Deserializer.DeserializeWrapper<byte[]>(json);
             Assert.Equal(0, arr.Length);
         }
 
         [Fact]
-        public static void ReadByteArray()
+        public async Task ReadByteArray()
         {
             string json = $"\"{Convert.ToBase64String(new byte[] { 1, 2 })}\"";
-            byte[] arr = JsonSerializer.Deserialize<byte[]>(json);
+            byte[] arr = await Deserializer.DeserializeWrapper<byte[]>(json);
 
             Assert.Equal(2, arr.Length);
             Assert.Equal(1, arr[0]);
@@ -54,13 +82,13 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Read2dByteArray()
+        public async Task Read2dByteArray()
         {
             // Baseline for comparison.
             Assert.Equal("AQI=", Convert.ToBase64String(new byte[] { 1, 2 }));
 
             string json = "[\"AQI=\",\"AQI=\"]";
-            byte[][] arr = JsonSerializer.Deserialize<byte[][]>(json);
+            byte[][] arr = await Deserializer.DeserializeWrapper<byte[][]>(json);
             Assert.Equal(2, arr.Length);
 
             Assert.Equal(2, arr[0].Length);
@@ -76,16 +104,16 @@ namespace System.Text.Json.Serialization.Tests
         [InlineData(@"""1""")]
         [InlineData(@"""A===""")]
         [InlineData(@"[1, 2]")]  // Currently not support deserializing JSON arrays as byte[] - only Base64 string.
-        public static void ReadByteArrayFail(string json)
+        public async Task ReadByteArrayFail(string json)
         {
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<byte[]>(json));
+            await Assert.ThrowsAsync<JsonException>(() => Deserializer.DeserializeWrapper<byte[]>(json));
         }
 
         [Fact]
-        public static void ReadByteListAsJsonArray()
+        public async Task ReadByteListAsJsonArray()
         {
             string json = $"[1, 2]";
-            List<byte> list = JsonSerializer.Deserialize<List<byte>>(json);
+            List<byte> list = await Deserializer.DeserializeWrapper<List<byte>>(json);
 
             Assert.Equal(2, list.Count);
             Assert.Equal(1, list[0]);
@@ -93,27 +121,33 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void DeserializeObjectArray()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task DeserializeObjectArray()
         {
             // https://github.com/dotnet/runtime/issues/29019
-            object[] data = JsonSerializer.Deserialize<object[]>("[1]");
+            object[] data = await Deserializer.DeserializeWrapper<object[]>("[1]");
             Assert.Equal(1, data.Length);
             Assert.IsType<JsonElement>(data[0]);
             Assert.Equal(1, ((JsonElement)data[0]).GetInt32());
         }
 
         [Fact]
-        public static void ReadEmptyObjectArray()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadEmptyObjectArray()
         {
-            SimpleTestClass[] data = JsonSerializer.Deserialize<SimpleTestClass[]>("[{}]");
+            SimpleTestClass[] data = await Deserializer.DeserializeWrapper<SimpleTestClass[]>("[{}]");
             Assert.Equal(1, data.Length);
             Assert.NotNull(data[0]);
         }
 
         [Fact]
-        public static void ReadPrimitiveJagged2dArray()
+        public async Task ReadPrimitiveJagged2dArray()
         {
-            int[][] i = JsonSerializer.Deserialize<int[][]>(Encoding.UTF8.GetBytes(@"[[1,2],[3,4]]"));
+            int[][] i = await Deserializer.DeserializeWrapper<int[][]>(Encoding.UTF8.GetBytes(@"[[1,2],[3,4]]"));
             Assert.Equal(1, i[0][0]);
             Assert.Equal(2, i[0][1]);
             Assert.Equal(3, i[1][0]);
@@ -121,9 +155,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ReadPrimitiveJagged3dArray()
+        public async Task ReadPrimitiveJagged3dArray()
         {
-            int[][][] i = JsonSerializer.Deserialize<int[][][]>(Encoding.UTF8.GetBytes(@"[[[11,12],[13,14]], [[21,22],[23,24]]]"));
+            int[][][] i = await Deserializer.DeserializeWrapper<int[][][]>(Encoding.UTF8.GetBytes(@"[[[11,12],[13,14]], [[21,22],[23,24]]]"));
             Assert.Equal(11, i[0][0][0]);
             Assert.Equal(12, i[0][0][1]);
             Assert.Equal(13, i[0][1][0]);
@@ -136,12 +170,15 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ReadArrayWithInterleavedComments()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadArrayWithInterleavedComments()
         {
             var options = new JsonSerializerOptions();
             options.ReadCommentHandling = JsonCommentHandling.Skip;
 
-            int[][] i = JsonSerializer.Deserialize<int[][]>(Encoding.UTF8.GetBytes("[[1,2] // Inline [\n,[3, /* Multi\n]] Line*/4]]"), options);
+            int[][] i = await Deserializer.DeserializeWrapper<int[][]>(Encoding.UTF8.GetBytes("[[1,2] // Inline [\n,[3, /* Multi\n]] Line*/4]]"), options);
             Assert.Equal(1, i[0][0]);
             Assert.Equal(2, i[0][1]);
             Assert.Equal(3, i[1][0]);
@@ -149,31 +186,34 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ReadEmpty()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif        
+        public async Task ReadEmpty()
         {
-            SimpleTestClass[] arr = JsonSerializer.Deserialize<SimpleTestClass[]>("[]");
+            SimpleTestClass[] arr = await Deserializer.DeserializeWrapper<SimpleTestClass[]>("[]");
             Assert.Equal(0, arr.Length);
 
-            List<SimpleTestClass> list = JsonSerializer.Deserialize<List<SimpleTestClass>>("[]");
+            List<SimpleTestClass> list = await Deserializer.DeserializeWrapper<List<SimpleTestClass>>("[]");
             Assert.Equal(0, list.Count);
         }
 
         [Fact]
-        public static void ReadPrimitiveArray()
+        public async Task ReadPrimitiveArray()
         {
-            int[] i = JsonSerializer.Deserialize<int[]>(Encoding.UTF8.GetBytes(@"[1,2]"));
+            int[] i = await Deserializer.DeserializeWrapper<int[]>(Encoding.UTF8.GetBytes(@"[1,2]"));
             Assert.Equal(1, i[0]);
             Assert.Equal(2, i[1]);
 
-            i = JsonSerializer.Deserialize<int[]>(Encoding.UTF8.GetBytes(@"[]"));
+            i = await Deserializer.DeserializeWrapper<int[]>(Encoding.UTF8.GetBytes(@"[]"));
             Assert.Equal(0, i.Length);
         }
 
         [Fact]
-        public static void ReadInitializedArrayTest()
+        public async Task ReadInitializedArrayTest()
         {
             string serialized = "{\"Values\":[1,2,3]}";
-            TestClassWithInitializedArray testClassWithInitializedArray = JsonSerializer.Deserialize<TestClassWithInitializedArray>(serialized);
+            TestClassWithInitializedArray testClassWithInitializedArray = await Deserializer.DeserializeWrapper<TestClassWithInitializedArray>(serialized);
 
             Assert.Equal(1, testClassWithInitializedArray.Values[0]);
             Assert.Equal(2, testClassWithInitializedArray.Values[1]);
@@ -181,24 +221,30 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ReadArrayWithEnums()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadArrayWithEnums()
         {
-            SampleEnum[] i = JsonSerializer.Deserialize<SampleEnum[]>(Encoding.UTF8.GetBytes(@"[1,2]"));
+            SampleEnum[] i = await Deserializer.DeserializeWrapper<SampleEnum[]>(Encoding.UTF8.GetBytes(@"[1,2]"));
             Assert.Equal(SampleEnum.One, i[0]);
             Assert.Equal(SampleEnum.Two, i[1]);
         }
 
         [Fact]
-        public static void ReadPrimitiveArrayFail()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadPrimitiveArrayFail()
         {
             // Invalid data
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<int[]>(Encoding.UTF8.GetBytes(@"[1,""a""]")));
+            await Assert.ThrowsAsync<JsonException>(() => Deserializer.DeserializeWrapper<int[]>(Encoding.UTF8.GetBytes(@"[1,""a""]")));
 
             // Invalid data
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<List<int?>>(Encoding.UTF8.GetBytes(@"[1,""a""]")));
+            await Assert.ThrowsAsync<JsonException>(() => Deserializer.DeserializeWrapper<List<int?>>(Encoding.UTF8.GetBytes(@"[1,""a""]")));
 
             // Multidimensional arrays currently not supported
-            Assert.Throws<NotSupportedException>(() => JsonSerializer.Deserialize<int[,]>(Encoding.UTF8.GetBytes(@"[[1,2],[3,4]]")));
+            await Assert.ThrowsAsync<NotSupportedException>(() => Deserializer.DeserializeWrapper<int[,]>(Encoding.UTF8.GetBytes(@"[[1,2],[3,4]]")));
         }
 
         public static IEnumerable<object[]> ReadNullJson
@@ -218,15 +264,18 @@ namespace System.Text.Json.Serialization.Tests
 
         [Theory]
         [MemberData(nameof(ReadNullJson))]
-        public static void ReadNull(string json, bool element0Null, bool element1Null, bool element2Null)
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadNull(string json, bool element0Null, bool element1Null, bool element2Null)
         {
-            SimpleTestClass[] arr = JsonSerializer.Deserialize<SimpleTestClass[]>(json);
+            SimpleTestClass[] arr = await Deserializer.DeserializeWrapper<SimpleTestClass[]>(json);
             Assert.Equal(3, arr.Length);
             VerifyReadNull(arr[0], element0Null);
             VerifyReadNull(arr[1], element1Null);
             VerifyReadNull(arr[2], element2Null);
 
-            List<SimpleTestClass> list = JsonSerializer.Deserialize<List<SimpleTestClass>>(json);
+            List<SimpleTestClass> list = await Deserializer.DeserializeWrapper<List<SimpleTestClass>>(json);
             Assert.Equal(3, list.Count);
             VerifyReadNull(list[0], element0Null);
             VerifyReadNull(list[1], element1Null);
@@ -246,169 +295,208 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ReadClassWithStringArray()
+        public async Task ReadClassWithStringArray()
         {
-            TestClassWithStringArray obj = JsonSerializer.Deserialize<TestClassWithStringArray>(TestClassWithStringArray.s_data);
+            TestClassWithStringArray obj = await Deserializer.DeserializeWrapper<TestClassWithStringArray>(TestClassWithStringArray.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithObjectList()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadClassWithObjectList()
         {
-            TestClassWithObjectList obj = JsonSerializer.Deserialize<TestClassWithObjectList>(TestClassWithObjectList.s_data);
+            TestClassWithObjectList obj = await Deserializer.DeserializeWrapper<TestClassWithObjectList>(TestClassWithObjectList.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithObjectArray()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadClassWithObjectArray()
         {
-            TestClassWithObjectArray obj = JsonSerializer.Deserialize<TestClassWithObjectArray>(TestClassWithObjectArray.s_data);
+            TestClassWithObjectArray obj = await Deserializer.DeserializeWrapper<TestClassWithObjectArray>(TestClassWithObjectArray.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithGenericList()
+        public async Task ReadClassWithGenericList()
         {
-            TestClassWithGenericList obj = JsonSerializer.Deserialize<TestClassWithGenericList>(TestClassWithGenericList.s_data);
+            TestClassWithGenericList obj = await Deserializer.DeserializeWrapper<TestClassWithGenericList>(TestClassWithGenericList.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithObjectIEnumerable()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadClassWithObjectIEnumerable()
         {
-            TestClassWithObjectIEnumerable obj = JsonSerializer.Deserialize<TestClassWithObjectIEnumerable>(TestClassWithObjectIEnumerable.s_data);
+            TestClassWithObjectIEnumerable obj = await Deserializer.DeserializeWrapper<TestClassWithObjectIEnumerable>(TestClassWithObjectIEnumerable.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithObjectIList()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadClassWithObjectIList()
         {
-            TestClassWithObjectIList obj = JsonSerializer.Deserialize<TestClassWithObjectIList>(TestClassWithObjectIList.s_data);
+            TestClassWithObjectIList obj = await Deserializer.DeserializeWrapper<TestClassWithObjectIList>(TestClassWithObjectIList.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithObjectICollection()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadClassWithObjectICollection()
         {
-            TestClassWithObjectICollection obj = JsonSerializer.Deserialize<TestClassWithObjectICollection>(TestClassWithObjectICollection.s_data);
+            TestClassWithObjectICollection obj = await Deserializer.DeserializeWrapper<TestClassWithObjectICollection>(TestClassWithObjectICollection.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithObjectIEnumerableT()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadClassWithObjectIEnumerableT()
         {
-            TestClassWithObjectIEnumerableT obj = JsonSerializer.Deserialize<TestClassWithObjectIEnumerableT>(TestClassWithObjectIEnumerableT.s_data);
+            TestClassWithObjectIEnumerableT obj = await Deserializer.DeserializeWrapper<TestClassWithObjectIEnumerableT>(TestClassWithObjectIEnumerableT.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithObjectIListT()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadClassWithObjectIListT()
         {
-            TestClassWithObjectIListT obj = JsonSerializer.Deserialize<TestClassWithObjectIListT>(TestClassWithObjectIListT.s_data);
+            TestClassWithObjectIListT obj = await Deserializer.DeserializeWrapper<TestClassWithObjectIListT>(TestClassWithObjectIListT.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithObjectICollectionT()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadClassWithObjectICollectionT()
         {
-            TestClassWithObjectICollectionT obj = JsonSerializer.Deserialize<TestClassWithObjectICollectionT>(TestClassWithObjectICollectionT.s_data);
+            TestClassWithObjectICollectionT obj = await Deserializer.DeserializeWrapper<TestClassWithObjectICollectionT>(TestClassWithObjectICollectionT.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithObjectIReadOnlyCollectionT()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadClassWithObjectIReadOnlyCollectionT()
         {
-            TestClassWithObjectIReadOnlyCollectionT obj = JsonSerializer.Deserialize<TestClassWithObjectIReadOnlyCollectionT>(TestClassWithObjectIReadOnlyCollectionT.s_data);
+            TestClassWithObjectIReadOnlyCollectionT obj = await Deserializer.DeserializeWrapper<TestClassWithObjectIReadOnlyCollectionT>(TestClassWithObjectIReadOnlyCollectionT.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithObjectIReadOnlyListT()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadClassWithObjectIReadOnlyListT()
         {
-            TestClassWithObjectIReadOnlyListT obj = JsonSerializer.Deserialize<TestClassWithObjectIReadOnlyListT>(TestClassWithObjectIReadOnlyListT.s_data);
+            TestClassWithObjectIReadOnlyListT obj = await Deserializer.DeserializeWrapper<TestClassWithObjectIReadOnlyListT>(TestClassWithObjectIReadOnlyListT.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithGenericIEnumerable()
+        public async Task ReadClassWithGenericIEnumerable()
         {
-            TestClassWithGenericIEnumerable obj = JsonSerializer.Deserialize<TestClassWithGenericIEnumerable>(TestClassWithGenericIEnumerable.s_data);
+            TestClassWithGenericIEnumerable obj = await Deserializer.DeserializeWrapper<TestClassWithGenericIEnumerable>(TestClassWithGenericIEnumerable.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithGenericIList()
+        public async Task ReadClassWithGenericIList()
         {
-            TestClassWithGenericIList obj = JsonSerializer.Deserialize<TestClassWithGenericIList>(TestClassWithGenericIList.s_data);
+            TestClassWithGenericIList obj = await Deserializer.DeserializeWrapper<TestClassWithGenericIList>(TestClassWithGenericIList.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithGenericICollection()
+        public async Task ReadClassWithGenericICollection()
         {
-            TestClassWithGenericICollection obj = JsonSerializer.Deserialize<TestClassWithGenericICollection>(TestClassWithGenericICollection.s_data);
+            TestClassWithGenericICollection obj = await Deserializer.DeserializeWrapper<TestClassWithGenericICollection>(TestClassWithGenericICollection.s_data);
         }
 
         [Fact]
-        public static void ReadClassWithObjectISetT()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadClassWithObjectISetT()
         {
-            TestClassWithObjectISetT obj = JsonSerializer.Deserialize<TestClassWithObjectISetT>(TestClassWithObjectISetT.s_data);
+            TestClassWithObjectISetT obj = await Deserializer.DeserializeWrapper<TestClassWithObjectISetT>(TestClassWithObjectISetT.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithGenericIEnumerableT()
+        public async Task ReadClassWithGenericIEnumerableT()
         {
-            TestClassWithGenericIEnumerableT obj = JsonSerializer.Deserialize<TestClassWithGenericIEnumerableT>(TestClassWithGenericIEnumerableT.s_data);
+            TestClassWithGenericIEnumerableT obj = await Deserializer.DeserializeWrapper<TestClassWithGenericIEnumerableT>(TestClassWithGenericIEnumerableT.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithGenericIListT()
+        public async Task ReadClassWithGenericIListT()
         {
-            TestClassWithGenericIListT obj = JsonSerializer.Deserialize<TestClassWithGenericIListT>(TestClassWithGenericIListT.s_data);
+            TestClassWithGenericIListT obj = await Deserializer.DeserializeWrapper<TestClassWithGenericIListT>(TestClassWithGenericIListT.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithGenericICollectionT()
+        public async Task ReadClassWithGenericICollectionT()
         {
-            TestClassWithGenericICollectionT obj = JsonSerializer.Deserialize<TestClassWithGenericICollectionT>(TestClassWithGenericICollectionT.s_data);
+            TestClassWithGenericICollectionT obj = await Deserializer.DeserializeWrapper<TestClassWithGenericICollectionT>(TestClassWithGenericICollectionT.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithGenericIReadOnlyCollectionT()
+        public async Task ReadClassWithGenericIReadOnlyCollectionT()
         {
-            TestClassWithGenericIReadOnlyCollectionT obj = JsonSerializer.Deserialize<TestClassWithGenericIReadOnlyCollectionT>(TestClassWithGenericIReadOnlyCollectionT.s_data);
+            TestClassWithGenericIReadOnlyCollectionT obj = await Deserializer.DeserializeWrapper<TestClassWithGenericIReadOnlyCollectionT>(TestClassWithGenericIReadOnlyCollectionT.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithGenericIReadOnlyListT()
+        public async Task ReadClassWithGenericIReadOnlyListT()
         {
-            TestClassWithGenericIReadOnlyListT obj = JsonSerializer.Deserialize<TestClassWithGenericIReadOnlyListT>(TestClassWithGenericIReadOnlyListT.s_data);
+            TestClassWithGenericIReadOnlyListT obj = await Deserializer.DeserializeWrapper<TestClassWithGenericIReadOnlyListT>(TestClassWithGenericIReadOnlyListT.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithGenericISetT()
+        public async Task ReadClassWithGenericISetT()
         {
-            TestClassWithGenericISetT obj = JsonSerializer.Deserialize<TestClassWithGenericISetT>(TestClassWithGenericISetT.s_data);
+            TestClassWithGenericISetT obj = await Deserializer.DeserializeWrapper<TestClassWithGenericISetT>(TestClassWithGenericISetT.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithObjectIEnumerableConstructibleTypes()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadClassWithObjectIEnumerableConstructibleTypes()
         {
-            TestClassWithObjectIEnumerableConstructibleTypes obj = JsonSerializer.Deserialize<TestClassWithObjectIEnumerableConstructibleTypes>(TestClassWithObjectIEnumerableConstructibleTypes.s_data);
+            TestClassWithObjectIEnumerableConstructibleTypes obj = await Deserializer.DeserializeWrapper<TestClassWithObjectIEnumerableConstructibleTypes>(TestClassWithObjectIEnumerableConstructibleTypes.s_data);
             obj.Verify();
         }
 
         [Fact]
-        public static void ReadClassWithObjectImmutableTypes()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ReadClassWithObjectImmutableTypes()
         {
-            TestClassWithObjectImmutableTypes obj = JsonSerializer.Deserialize<TestClassWithObjectImmutableTypes>(TestClassWithObjectImmutableTypes.s_data);
+            TestClassWithObjectImmutableTypes obj = await Deserializer.DeserializeWrapper<TestClassWithObjectImmutableTypes>(TestClassWithObjectImmutableTypes.s_data);
             obj.Verify();
         }
 
@@ -418,11 +506,14 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ClassWithNoSetter()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ClassWithNoSetter()
         {
             // We replace the contents of this collection; we don't attempt to add items to the existing collection instance.
             string json = @"{""MyList"":[1,2]}";
-            ClassWithPopulatedListAndNoSetter obj = JsonSerializer.Deserialize<ClassWithPopulatedListAndNoSetter>(json);
+            ClassWithPopulatedListAndNoSetter obj = await Deserializer.DeserializeWrapper<ClassWithPopulatedListAndNoSetter>(json);
             Assert.Equal(1, obj.MyList.Count);
         }
 
@@ -432,11 +523,14 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ClassWithPopulatedList()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ClassWithPopulatedList()
         {
             // We replace the contents of this collection; we don't attempt to add items to the existing collection instance.
             string json = @"{""MyList"":[2,3]}";
-            ClassWithPopulatedListAndSetter obj = JsonSerializer.Deserialize<ClassWithPopulatedListAndSetter>(json);
+            ClassWithPopulatedListAndSetter obj = await Deserializer.DeserializeWrapper<ClassWithPopulatedListAndSetter>(json);
             Assert.Equal(2, obj.MyList.Count);
         }
 
@@ -469,9 +563,13 @@ namespace System.Text.Json.Serialization.Tests
                 ""ParsedChild2"": [2,2],
                 ""SkippedChild3"": null,
                 ""ParsedChild3"": [3,3]}")]
-        public static void ClassWithMixedSettersIsParsed(string json)
+
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ClassWithMixedSettersIsParsed(string json)
         {
-            ClassWithMixedSetters parsedObject = JsonSerializer.Deserialize<ClassWithMixedSetters>(json);
+            ClassWithMixedSetters parsedObject = await Deserializer.DeserializeWrapper<ClassWithMixedSetters>(json);
 
             Assert.Null(parsedObject.SkippedChild1);
 
@@ -535,11 +633,14 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ClassWithNonNullEnumerableGettersIsParsed()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ClassWithNonNullEnumerableGettersIsParsed()
         {
-            static void TestRoundTrip(ClassWithNonNullEnumerableGetters obj)
+            async Task TestRoundTrip(ClassWithNonNullEnumerableGetters obj)
             {
-                ClassWithNonNullEnumerableGetters roundtrip = JsonSerializer.Deserialize<ClassWithNonNullEnumerableGetters>(JsonSerializer.Serialize(obj));
+                ClassWithNonNullEnumerableGetters roundtrip = await Deserializer.DeserializeWrapper<ClassWithNonNullEnumerableGetters>(JsonSerializer.Serialize(obj));
 
                 if (obj.Array != null)
                 {
@@ -581,7 +682,7 @@ namespace System.Text.Json.Serialization.Tests
                     ""MyImmutableList"":[""5""]
                 }";
 
-            ClassWithNonNullEnumerableGetters obj = JsonSerializer.Deserialize<ClassWithNonNullEnumerableGetters>(inputJsonWithCollectionElements);
+            ClassWithNonNullEnumerableGetters obj = await Deserializer.DeserializeWrapper<ClassWithNonNullEnumerableGetters>(inputJsonWithCollectionElements);
             Assert.Equal(1, obj.Array.Length);
             Assert.Equal("1", obj.Array[0]);
 
@@ -597,7 +698,7 @@ namespace System.Text.Json.Serialization.Tests
             Assert.Equal(1, obj.MyImmutableList.Count);
             Assert.Equal("5", obj.MyImmutableList[0]);
 
-            TestRoundTrip(obj);
+            await TestRoundTrip(obj);
 
             const string inputJsonWithoutCollectionElements =
                 @"{
@@ -608,13 +709,13 @@ namespace System.Text.Json.Serialization.Tests
                     ""MyImmutableList"":[]
                 }";
 
-            obj = JsonSerializer.Deserialize<ClassWithNonNullEnumerableGetters>(inputJsonWithoutCollectionElements);
+            obj = await Deserializer.DeserializeWrapper<ClassWithNonNullEnumerableGetters>(inputJsonWithoutCollectionElements);
             Assert.Equal(0, obj.Array.Length);
             Assert.Equal(0, obj.List.Count);
             Assert.Equal(0, obj.ListWrapper.Count);
             Assert.Equal(0, obj.MyImmutableArray.Length);
             Assert.Equal(0, obj.MyImmutableList.Count);
-            TestRoundTrip(obj);
+            await TestRoundTrip(obj);
 
             string inputJsonWithNullCollections =
                 @"{
@@ -624,23 +725,26 @@ namespace System.Text.Json.Serialization.Tests
                     ""MyImmutableList"":null
                 }";
 
-            obj = JsonSerializer.Deserialize<ClassWithNonNullEnumerableGetters>(inputJsonWithNullCollections);
-            TestRoundTrip(obj);
+            obj = await Deserializer.DeserializeWrapper<ClassWithNonNullEnumerableGetters>(inputJsonWithNullCollections);
+            await TestRoundTrip(obj);
 
             // ImmutableArray<T> is a struct and cannot be null.
             inputJsonWithNullCollections = @"{""MyImmutableArray"":null}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ClassWithNonNullEnumerableGetters>(inputJsonWithNullCollections));
+            await Assert.ThrowsAsync<JsonException>(() => Deserializer.DeserializeWrapper<ClassWithNonNullEnumerableGetters>(inputJsonWithNullCollections));
         }
 
         [Fact]
-        public static void DoNotDependOnPropertyGetterWhenDeserializingCollections()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task DoNotDependOnPropertyGetterWhenDeserializingCollections()
         {
             Dealer dealer = new Dealer { NetworkCodeList = new List<string> { "Network1", "Network2" } };
 
             string serialized = JsonSerializer.Serialize(dealer);
             Assert.Equal(@"{""NetworkCodeList"":[""Network1"",""Network2""]}", serialized);
 
-            dealer = JsonSerializer.Deserialize<Dealer>(serialized);
+            dealer = await Deserializer.DeserializeWrapper<Dealer>(serialized);
 
             List<string> expected = new List<string> { "Network1", "Network2" };
             int i = 0;

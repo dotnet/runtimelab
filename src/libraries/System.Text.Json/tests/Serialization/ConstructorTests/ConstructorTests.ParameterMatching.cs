@@ -20,7 +20,7 @@ namespace System.Text.Json.Serialization.Tests
 
     public class ConstructorTests_Span : ConstructorTests
     {
-        public ConstructorTests_Span() : base(DeserializationWrapper.SpanDeserializer) { }
+        public ConstructorTests_Span() : base(DeserializationWrapper.CharSpanDeserializer) { }
     }
 
     public abstract partial class ConstructorTests

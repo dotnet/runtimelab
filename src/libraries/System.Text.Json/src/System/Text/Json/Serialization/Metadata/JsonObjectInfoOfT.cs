@@ -79,7 +79,16 @@ namespace System.Text.Json.Serialization.Metadata
                 jsonPropertyInfo.ShouldDeserialize = true;
             }
 
-            jsonPropertyInfo.Converter = (JsonConverter<TProperty>)classInfo.ConverterBase;
+            if (classInfo == null)
+            {
+                jsonPropertyInfo.Converter = (JsonConverter<TProperty>)Options.DetermineConverter(typeof(T), typeof(TProperty), memberInfo: null);
+            }
+            else
+            {
+                jsonPropertyInfo.Converter = (JsonConverter<TProperty>)classInfo.ConverterBase;
+                jsonPropertyInfo.RuntimeClassInfo = classInfo;
+            }
+
             jsonPropertyInfo.ClassType = jsonPropertyInfo.Converter!.ClassType;
 
             jsonPropertyInfo.NameAsString = propertyName;
@@ -88,7 +97,6 @@ namespace System.Text.Json.Serialization.Metadata
 
             jsonPropertyInfo.DeclaredPropertyType = typeof(TProperty);
             jsonPropertyInfo.Options = Options;
-            jsonPropertyInfo.RuntimeClassInfo = classInfo;
             jsonPropertyInfo.RuntimePropertyType = typeof(TProperty);
 
             PropertyCache!.Add(jsonPropertyInfo.NameAsString, jsonPropertyInfo);

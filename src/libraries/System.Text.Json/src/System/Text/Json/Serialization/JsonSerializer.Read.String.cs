@@ -100,15 +100,51 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(jsonTypeInfo));
             }
 
-            ReadStack state = default;
-            state.Initialize(jsonTypeInfo);
+            return DeserializeUsingMetadata<TValue?>(json, jsonTypeInfo);
+        }
 
-            return Deserialize<TValue>(
-                jsonTypeInfo.PropertyInfoForClassInfo.ConverterBase,
-                json.AsSpan(),
-                typeof(TValue),
-                jsonTypeInfo.Options,
-                ref state);
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <typeparam name="TValue"></typeparam>
+        /// <param name="json"></param>
+        /// <param name="jsonSerializerContext"></param>
+        /// <returns></returns>
+        public static TValue? Deserialize<[DynamicallyAccessedMembers(MembersAccessedOnRead)] TValue>(string json, JsonSerializerContext jsonSerializerContext)
+        {
+            if (json == null)
+            {
+                throw new ArgumentNullException(nameof(json));
+            }
+
+            if (jsonSerializerContext == null)
+            {
+                throw new ArgumentNullException(nameof(jsonSerializerContext));
+            }
+
+            return DeserializeUsingMetadata<TValue?>(json, jsonSerializerContext.GetJsonClassInfo(typeof(TValue)));
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="json"></param>
+        /// <param name="jsonSerializerContext"></param>
+        /// <returns></returns>
+        public static object? Deserialize(string json, [DynamicallyAccessedMembers(MembersAccessedOnRead)] Type type, JsonSerializerContext jsonSerializerContext)
+        {
+            if (json == null)
+            {
+                throw new ArgumentNullException(nameof(json));
+            }
+
+            if (jsonSerializerContext == null)
+            {
+                throw new ArgumentNullException(nameof(jsonSerializerContext));
+            }
+
+            return DeserializeUsingMetadata<object?>(json, jsonSerializerContext.GetJsonClassInfo(type));
         }
 
         /// <summary>
@@ -208,6 +244,27 @@ namespace System.Text.Json
 
             JsonConverter jsonConverter = state.Current.JsonPropertyInfo!.ConverterBase;
             return Deserialize<TValue>(jsonConverter, json, returnType, options, ref state);
+        }
+
+        private static TValue? DeserializeUsingMetadata<TValue>(string json, JsonClassInfo? jsonClassInfo)
+        {
+            ReadStack state = default;
+
+            // TODO: this would be when to fallback to regular warm-up code-paths.
+            // For validation during development, we don't expect this to be null.
+            if (jsonClassInfo == null)
+            {
+                throw new ArgumentNullException(nameof(jsonClassInfo));
+            }
+
+            state.Initialize(jsonClassInfo);
+
+            return Deserialize<TValue>(
+                jsonClassInfo.PropertyInfoForClassInfo.ConverterBase,
+                json.AsSpan(),
+                typeof(TValue),
+                jsonClassInfo.Options,
+                ref state);
         }
 
         private static TValue? Deserialize<TValue>(

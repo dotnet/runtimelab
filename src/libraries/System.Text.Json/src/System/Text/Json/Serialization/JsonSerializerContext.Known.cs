@@ -36,28 +36,78 @@ namespace System.Text.Json.Serialization
             }
         }
 
-        private JsonTypeInfo<DateTimeOffset>? _dateTimeOffset;
-        private static JsonTypeInfo<DateTimeOffset>? s_dateTimeOffset;
+        private JsonTypeInfo<byte[]>? _byteArray;
+        private static JsonTypeInfo<byte[]>? s_byteArray;
         /// <summary>
         /// todo
         /// </summary>
-        public JsonTypeInfo<DateTimeOffset> DateTimeOffset
+        public JsonTypeInfo<byte[]> ByteArray
         {
             get
             {
-                if (_dateTimeOffset == null)
+                if (_byteArray == null)
                 {
                     {
-                        if (s_dateTimeOffset == null)
+                        if (s_byteArray == null)
                         {
-                            s_dateTimeOffset = new JsonValueInfo<DateTimeOffset>(new DateTimeOffsetConverter(), _options);
+                            s_byteArray = new JsonValueInfo<byte[]>(new ByteArrayConverter(), _options);
                         }
 
-                        _dateTimeOffset = s_dateTimeOffset;
+                        _byteArray = s_byteArray;
                     }
                 }
 
-                return _dateTimeOffset;
+                return _byteArray;
+            }
+        }
+
+        private JsonTypeInfo<byte>? _byte;
+        private static JsonTypeInfo<byte>? s_byte;
+        /// <summary>
+        /// todo
+        /// </summary>
+        public JsonTypeInfo<byte> Byte
+        {
+            get
+            {
+                if (_byte == null)
+                {
+                    {
+                        if (s_byte == null)
+                        {
+                            s_byte = new JsonValueInfo<byte>(new ByteConverter(), _options);
+                        }
+
+                        _byte = s_byte;
+                    }
+                }
+
+                return _byte;
+            }
+        }
+
+        private JsonTypeInfo<char>? _char;
+        private static JsonTypeInfo<char>? s_char;
+        /// <summary>
+        /// todo
+        /// </summary>
+        public JsonTypeInfo<char> Char
+        {
+            get
+            {
+                if (_char == null)
+                {
+                    {
+                        if (s_char == null)
+                        {
+                            s_char = new JsonValueInfo<char>(new CharConverter(), _options);
+                        }
+
+                        _char = s_char;
+                    }
+                }
+
+                return _char;
             }
         }
 
@@ -83,6 +133,131 @@ namespace System.Text.Json.Serialization
                 }
 
                 return _dateTime;
+            }
+        }
+
+        private JsonTypeInfo<DateTimeOffset>? _dateTimeOffset;
+        private static JsonTypeInfo<DateTimeOffset>? s_dateTimeOffset;
+        /// <summary>
+        /// todo
+        /// </summary>
+        public JsonTypeInfo<DateTimeOffset> DateTimeOffset
+        {
+            get
+            {
+                if (_dateTimeOffset == null)
+                {
+                    {
+                        if (s_dateTimeOffset == null)
+                        {
+                            s_dateTimeOffset = new JsonValueInfo<DateTimeOffset>(new DateTimeOffsetConverter(), _options);
+                        }
+
+                        _dateTimeOffset = s_dateTimeOffset;
+                    }
+                }
+
+                return _dateTimeOffset;
+            }
+        }
+
+        private JsonTypeInfo<decimal>? _decimal;
+        private static JsonTypeInfo<decimal>? s_decimal;
+        /// <summary>
+        /// todo
+        /// </summary>
+        public JsonTypeInfo<decimal> Decimal
+        {
+            get
+            {
+                if (_decimal == null)
+                {
+                    {
+                        if (s_decimal == null)
+                        {
+                            s_decimal = new JsonValueInfo<decimal>(new DecimalConverter(), _options);
+                        }
+
+                        _decimal = s_decimal;
+                    }
+                }
+
+                return _decimal;
+            }
+        }
+
+        private JsonTypeInfo<double>? _double;
+        private static JsonTypeInfo<double>? s_double;
+        /// <summary>
+        /// todo
+        /// </summary>
+        public JsonTypeInfo<double> Double
+        {
+            get
+            {
+                if (_double == null)
+                {
+                    {
+                        if (s_double == null)
+                        {
+                            s_double = new JsonValueInfo<double>(new DoubleConverter(), _options);
+                        }
+
+                        _double = s_double;
+                    }
+                }
+
+                return _double;
+            }
+        }
+
+        private JsonTypeInfo<Guid>? _guid;
+        private static JsonTypeInfo<Guid>? s_guid;
+        /// <summary>
+        /// todo
+        /// </summary>
+        public JsonTypeInfo<Guid> Guid
+        {
+            get
+            {
+                if (_guid == null)
+                {
+                    {
+                        if (s_guid == null)
+                        {
+                            s_guid = new JsonValueInfo<Guid>(new GuidConverter(), _options);
+                        }
+
+                        _guid = s_guid;
+                    }
+                }
+
+                return _guid;
+            }
+        }
+
+        private JsonTypeInfo<short>? _int16;
+        private static JsonTypeInfo<short>? s_int16;
+        /// <summary>
+        /// todo
+        /// </summary>
+        public JsonTypeInfo<short> Int16
+        {
+            get
+            {
+                if (_int16 == null)
+                {
+                    {
+                        if (s_int16 == null)
+                        {
+                            s_int16 = new JsonValueInfo<short>(new Int16Converter(), _options);
+                        }
+
+                        _int16 = s_int16;
+                    }
+                }
+
+                return _int16;
             }
         }
 
@@ -161,53 +336,29 @@ namespace System.Text.Json.Serialization
             }
         }
 
-        private JsonTypeInfo<double>? _double;
-        private static JsonTypeInfo<double>? s_double;
+        private JsonTypeInfo<sbyte>? _sbyte;
+        private static JsonTypeInfo<sbyte>? s_sbyte;
         /// <summary>
         /// todo
         /// </summary>
-        public JsonTypeInfo<double> Double
+        [CLSCompliant(false)]
+        public JsonTypeInfo<sbyte> SByte
         {
             get
             {
-                if (_double == null)
+                if (_sbyte == null)
                 {
                     {
-                        if (s_double == null)
+                        if (s_sbyte == null)
                         {
-                            s_double = new JsonValueInfo<double>(new DoubleConverter(), _options);
+                            s_sbyte = new JsonValueInfo<sbyte>(new SByteConverter(), _options);
                         }
 
-                        _double = s_double;
+                        _sbyte = s_sbyte;
                     }
                 }
 
-                return _double;
-            }
-        }
-
-        private JsonTypeInfo<char>? _char;
-        private static JsonTypeInfo<char>? s_char;
-        /// <summary>
-        /// todo
-        /// </summary>
-        public JsonTypeInfo<char> Char
-        {
-            get
-            {
-                if (_char == null)
-                {
-                    {
-                        if (s_char == null)
-                        {
-                            s_char = new JsonValueInfo<char>(new CharConverter(), _options);
-                        }
-
-                        _char = s_char;
-                    }
-                }
-
-                return _char;
+                return _sbyte;
             }
         }
 
@@ -235,5 +386,114 @@ namespace System.Text.Json.Serialization
                 return _string;
             }
         }
+
+        private JsonTypeInfo<ushort>? _uint16;
+        private static JsonTypeInfo<ushort>? s_uint16;
+        /// <summary>
+        /// todo
+        /// </summary>
+        [CLSCompliant(false)]
+        public JsonTypeInfo<ushort> UInt16
+        {
+            get
+            {
+                if (_uint16 == null)
+                {
+                    {
+                        if (s_uint16 == null)
+                        {
+                            s_uint16 = new JsonValueInfo<ushort>(new UInt16Converter(), _options);
+                        }
+
+                        _uint16 = s_uint16;
+                    }
+                }
+
+                return _uint16;
+            }
+        }
+
+        private JsonTypeInfo<uint>? _uint32;
+        private static JsonTypeInfo<uint>? s_uint32;
+        /// <summary>
+        /// todo
+        /// </summary>
+        [CLSCompliant(false)]
+        public JsonTypeInfo<uint> UInt32
+        {
+            get
+            {
+                if (_uint32 == null)
+                {
+                    {
+                        if (s_uint32 == null)
+                        {
+                            s_uint32 = new JsonValueInfo<uint>(new UInt32Converter(), _options);
+                        }
+
+                        _uint32 = s_uint32;
+                    }
+                }
+
+                return _uint32;
+            }
+        }
+
+        private JsonTypeInfo<ulong>? _uint64;
+        private static JsonTypeInfo<ulong>? s_uint64;
+        /// <summary>
+        /// todo
+        /// </summary>
+        [CLSCompliant(false)]
+        public JsonTypeInfo<ulong> UInt64
+        {
+            get
+            {
+                if (_uint64 == null)
+                {
+                    {
+                        if (s_uint64 == null)
+                        {
+                            s_uint64 = new JsonValueInfo<ulong>(new UInt64Converter(), _options);
+                        }
+
+                        _uint64 = s_uint64;
+                    }
+                }
+
+                return _uint64;
+            }
+        }
+
+        private JsonTypeInfo<Uri>? _uri;
+        private static JsonTypeInfo<Uri>? s_uri;
+        /// <summary>
+        /// todo
+        /// </summary>
+        public JsonTypeInfo<Uri> Uri
+        {
+            get
+            {
+                if (_uri == null)
+                {
+                    {
+                        if (s_uri == null)
+                        {
+                            s_uri = new JsonValueInfo<Uri>(new UriConverter(), _options);
+                        }
+
+                        _uri = s_uri;
+                    }
+                }
+
+                return _uri;
+            }
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="type"></param>
+        public virtual JsonClassInfo? GetJsonClassInfo(Type type) => throw new NotImplementedException();
     }
 }

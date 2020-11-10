@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <CLSCompliant>false</CLSCompliant>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,6 +15,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="ClassType.cs" />
+    <Compile Include="CollectionType.cs" />
+    <Compile Include="IsExternalInit.cs" />
+    <Compile Include="JsonSourceGenerator.cs" />
+    <Compile Include="JsonSourceGenerator.Diagnostics.cs" />
+    <Compile Include="JsonSourceGeneratorHelper.cs" />
+    <Compile Include="JsonSerializableSyntaxReceiver.cs" />
+    <Compile Include="PropertyMetadata.cs" />
     <Compile Include="ReflectionUtils\AssemblyWrapper.cs" />
     <Compile Include="ReflectionUtils\TypeExtensions.cs" />
     <Compile Include="ReflectionUtils\FieldInfoWrapper.cs" />
@@ -27,10 +36,12 @@
     <Compile Include="ReflectionUtils\ReflectionExtensions.cs" />
     <Compile Include="ReflectionUtils\RoslynExtensions.cs" />
     <Compile Include="ReflectionUtils\TypeWrapper.cs" />
-    <Compile Include="JsonSourceGenerator.cs" />
-    <Compile Include="JsonSourceGeneratorDiagnostics.cs" />
-    <Compile Include="JsonSourceGeneratorHelper.cs" />
-    <Compile Include="JsonSerializableSyntaxReceiver.cs" />
+    <Compile Include="TypeMetadata.cs" />
   </ItemGroup>
+
+  <!-- TODO: remove this helper to launch debugger when shipping. -->
+  <PropertyGroup Condition="'$(LaunchDebugger)' == 'true'">
+    <DefineConstants>$(DefineConstants);LAUNCH_DEBUGGER_ON_EXECUTE</DefineConstants>
+  </PropertyGroup>
 
 </Project>

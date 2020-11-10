@@ -3,6 +3,10 @@
 
 using System.IO;
 using System.Threading.Tasks;
+using Xunit;
+#if GENERATE_JSON_METADATA
+using JsonCodeGeneration;
+#endif
 
 namespace System.Text.Json.Serialization.Tests
 {
@@ -18,6 +22,7 @@ namespace System.Text.Json.Serialization.Tests
         public static SerializationWrapper StreamSerializer => new StreamSerializerWrapper();
         public static SerializationWrapper StreamSerializerWithSmallBuffer => new StreamSerializerWrapperWithSmallBuffer();
         public static SerializationWrapper WriterSerializer => new WriterSerializerWrapper();
+        public static SerializationWrapper StringMetadataSerializer => new StringMetadataSerializerWrapper();
 
         protected internal abstract Task<string> SerializeWrapper(object value, Type inputType, JsonSerializerOptions options = null);
 
@@ -104,6 +109,33 @@ namespace System.Text.Json.Serialization.Tests
                 JsonSerializer.Serialize<T>(writer, value, options);
                 return Task.FromResult(Encoding.UTF8.GetString(stream.ToArray()));
             }
+        }
+
+        private class StringMetadataSerializerWrapper : SerializationWrapper
+        {
+#if GENERATE_JSON_METADATA
+            protected internal override Task<string> SerializeWrapper(object value, Type inputType, JsonSerializerOptions options = null)
+            {
+                return Task.FromResult(JsonSerializer.Serialize(value, inputType, new JsonContext(options)));
+            }
+
+            protected internal override Task<string> SerializeWrapper<T>(T value, JsonSerializerOptions options = null)
+            {
+                return Task.FromResult(JsonSerializer.Serialize<T>(value, new JsonContext(options)));
+            }
+#else
+            protected internal override Task<string> SerializeWrapper(object value, Type inputType, JsonSerializerOptions options = null)
+            {
+                Assert.True(false, "This overload is not supported without JSON metadata generation.");
+                throw new NotSupportedException();
+            }
+
+            protected internal override Task<string> SerializeWrapper<T>(T value, JsonSerializerOptions options = null)
+            {
+                Assert.True(false, "This overload is not supported without JSON metadata generation.");
+                throw new NotSupportedException();
+            }
+#endif
         }
     }
 }

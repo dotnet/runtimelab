@@ -72,7 +72,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             Assert.Empty(newCompilation.GetDiagnostics().Where(diag => diag.Severity.Equals(DiagnosticSeverity.Error)));
 
             // Should find both types since compilation above was successful.
-            Assert.Equal(2, generator.FoundTypes.Count);
+            Assert.Equal(2, generator.SerializableTypes.Count);
         }
 
         [Fact]
@@ -129,8 +129,8 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             Compilation outCompilation = CompilationHelper.RunGenerators(compilation, out ImmutableArray<Diagnostic> generatorDiags, generator);
 
             // Check base functionality of found types.
-            Assert.Equal(1, generator.FoundTypes.Count);
-            Type foundType = generator.FoundTypes.First().Value;
+            Assert.Equal(1, generator.SerializableTypes.Count);
+            Type foundType = generator.SerializableTypes.First().Value;
 
             Assert.Equal("HelloWorld.MyType", foundType.FullName);
 

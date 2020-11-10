@@ -3,6 +3,8 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
 
@@ -10,104 +12,39 @@ namespace System.Reflection
 {
     public static class TypeExtensions 
     {
-        public static bool IsIList(this Type type)
+        public static string GetUniqueCompilableTypeName(this Type type) => GetCompilableTypeName(type, type.FullName);
+
+        public static string GetCompilableTypeName(this Type type) => GetCompilableTypeName(type, type.Name);
+
+        private static string GetCompilableTypeName(Type type, string name)
         {
-            if (type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(List<>)))
+            if (!type.IsGenericType)
             {
-                return true;
+                return name;
             }
-            if (type is TypeWrapper typeWrapper)
-            {
-                foreach (Type t in typeWrapper.GetInterfaces())
-                {
-                    if (t.IsGenericType && (t.GetGenericTypeDefinition().Equals(typeof(IList<>))))
-                    {
-                        return true;
-                    }
-                }
-                return false;
-            }
-            return type.IsAssignableFrom(typeof(List<>));
+
+            // TODO: Guard upstream against open generics.
+            Debug.Assert(!type.ContainsGenericParameters);
+
+            int backTickIndex = name.IndexOf('`');
+            string baseName = name.Substring(0, backTickIndex);
+
+            return $"{baseName}<{string.Join(",", type.GetGenericArguments().Select(arg => GetUniqueCompilableTypeName(arg)))}>";
         }
 
-        public static bool IsIEnumerable(this Type type)
+        public static string GetUniqueFriendlyTypeName(this Type type)
         {
-            if (type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(IEnumerable<>)))
-            {
-                return true;
-            }
-            if (type is TypeWrapper typeWrapper)
-            {
-                foreach (Type t in typeWrapper.GetInterfaces())
-                {
-                    if (t.IsGenericType && (t.GetGenericTypeDefinition().Equals(typeof(IEnumerable<>))))
-                    {
-                        return true;
-                    }    
-                }
-                return false;
-            }
-            return type.IsAssignableFrom(typeof(IEnumerable<>));
+            return GetFriendlyTypeName(type.GetUniqueCompilableTypeName());
         }
 
-        public static bool IsIDictionary(this Type type)
+        public static string GetFriendlyTypeName(this Type type)
         {
-            if (type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(Dictionary<,>)))
-            {
-                return true;
-            }
-            if (type is TypeWrapper typeWrapper)
-            {
-                foreach (Type t in typeWrapper.GetInterfaces())
-                {
-                    if (t.IsGenericType && (t.GetGenericTypeDefinition().Equals(typeof(IDictionary<,>))))
-                    {
-                        return true;
-                    }
-                }
-                return false;
-            }
-            return type.IsAssignableFrom(typeof(Dictionary<,>));
+            return GetFriendlyTypeName(type.GetCompilableTypeName());
         }
 
-        public static string GetFullNamespace(this Type type)
+        private static string GetFriendlyTypeName(string compilableName)
         {
-            if (type is TypeWrapper typeWrapper)
-            {
-                INamespaceSymbol root = typeWrapper.GetNamespaceSymbol;
-                if (root == null)
-                {
-                    return "";
-                }
-
-                StringBuilder fullNamespace = new StringBuilder();
-                GetFullNamespace(root);
-                return fullNamespace.ToString();
-
-                void GetFullNamespace(INamespaceSymbol current)
-                {
-                    if (current.IsGlobalNamespace || current.ContainingNamespace.IsGlobalNamespace)
-                    {
-                        fullNamespace.Append(current.Name);
-                        return;
-                    }
-
-                    GetFullNamespace(current.ContainingNamespace);
-
-                    fullNamespace.Append("." + current.Name);
-                }
-            }
-            return type.Namespace;
-        }
-
-        public static string GetCompilableUniqueName(this Type type)
-        {
-            if (type is TypeWrapper typeWrapper)
-            {
-                return string.Join("", $"{type.Assembly.FullName}.{type.Name}".Split('.', '`'));
-            }
-
-            return type.Name;
+            return compilableName.Replace(".", "").Replace("<", "").Replace(">", "").Replace(",", "").Replace("[]", "Array");
         }
     }
 }

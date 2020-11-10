@@ -9,10 +9,10 @@ using TestsNamespace = System.Text.Json.SourceGeneration.Tests;
 [module: JsonSerializable(typeof(TestsNamespace.CampaignSummaryViewModel))]
 [module: JsonSerializable(typeof(TestsNamespace.IndexViewModel))]
 [module: JsonSerializable(typeof(TestsNamespace.WeatherForecastWithPOCOs))]
+[module: JsonSerializable(typeof(TestsNamespace.EmptyPoco))]
 
-// TODO: fix bug where ArgumentException is thrown because HighLowTemps already exists in object graph of previously type
-// (https://github.com/dotnet/runtimelab/issues/329).
-// [module: JsonSerializable(typeof(TestsNamespace.HighLowTemps))]
+// Ensure no errors when type of member in previously specified object graph is passed as input type to generator.
+[module: JsonSerializable(typeof(TestsNamespace.HighLowTemps))]
 
 namespace System.Text.Json.SourceGeneration.Tests.RepeatedTypes
 {
@@ -93,4 +93,7 @@ namespace System.Text.Json.SourceGeneration.Tests
         public int Low { get; set; }
     }
 
+    public class EmptyPoco
+    {
+    }
 }

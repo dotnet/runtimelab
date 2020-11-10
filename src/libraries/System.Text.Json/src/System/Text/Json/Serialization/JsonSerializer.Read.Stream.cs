@@ -86,14 +86,82 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(jsonTypeInfo));
             }
 
+            return DeserializeUsingMetadataAsync<TValue?>(utf8Json, jsonTypeInfo, cancellationToken);
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <typeparam name="TValue"></typeparam>
+        /// <param name="utf8Json"></param>
+        /// <param name="jsonSerializerContext"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public static ValueTask<TValue?> DeserializeAsync<TValue>(
+            Stream utf8Json,
+            JsonSerializerContext jsonSerializerContext,
+            CancellationToken cancellationToken = default)
+        {
+            if (utf8Json == null)
+            {
+                throw new ArgumentNullException(nameof(utf8Json));
+            }
+
+            if (jsonSerializerContext == null)
+            {
+                throw new ArgumentNullException(nameof(jsonSerializerContext));
+            }
+
+            return DeserializeUsingMetadataAsync<TValue?>(utf8Json, jsonSerializerContext.GetJsonClassInfo(typeof(TValue)), cancellationToken);
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="utf8Json"></param>
+        /// /// <param name="returnType"></param>
+        /// <param name="jsonSerializerContext"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public static ValueTask<object?> DeserializeAsync(
+            Stream utf8Json,
+            Type returnType,
+            JsonSerializerContext jsonSerializerContext,
+            CancellationToken cancellationToken = default)
+        {
+            if (utf8Json == null)
+                throw new ArgumentNullException(nameof(utf8Json));
+
+            if (returnType == null)
+                throw new ArgumentNullException(nameof(returnType));
+
+            if (jsonSerializerContext == null)
+                throw new ArgumentNullException(nameof(jsonSerializerContext));
+
+            return DeserializeUsingMetadataAsync<object?>(utf8Json, jsonSerializerContext.GetJsonClassInfo(returnType), cancellationToken);
+        }
+
+        private static ValueTask<TValue?> DeserializeUsingMetadataAsync<TValue>(
+            Stream utf8Json,
+            JsonClassInfo? jsonClassInfo,
+            CancellationToken cancellationToken)
+        {
             ReadStack state = default;
-            state.Initialize(jsonTypeInfo, supportContinuation: true);
-            JsonConverter converter = jsonTypeInfo.PropertyInfoForClassInfo.ConverterBase;
+
+            // TODO: this would be when to fallback to regular warm-up code-paths.
+            // For validation during development, we don't expect this to be null.
+            if (jsonClassInfo == null)
+            {
+                throw new ArgumentNullException(nameof(jsonClassInfo));
+            }
+
+            state.Initialize(jsonClassInfo, supportContinuation: true);
+            JsonConverter converter = jsonClassInfo.PropertyInfoForClassInfo.ConverterBase;
 
             return ReadAsync<TValue>(
                 converter,
                 utf8Json,
-                jsonTypeInfo.Options,
+                jsonClassInfo.Options,
                 cancellationToken,
                 state);
         }

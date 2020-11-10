@@ -286,7 +286,7 @@ namespace System.Text.Json.Serialization.Tests
             MyStringToStringIImmutableDict = ImmutableDictionary.CreateRange(MyStringToStringGenericDict);
             MyStringToStringImmutableSortedDict = ImmutableSortedDictionary.CreateRange(MyStringToStringGenericDict);
 
-            MyStringStackT = new Stack<string>(new List<string>() { "Hello", "World" } );
+            MyStringStackT = new Stack<string>(new List<string>() { "Hello", "World" });
             MyStringQueueT = new Queue<string>(new List<string>() { "Hello", "World" });
             MyStringHashSetT = new HashSet<string>(new List<string>() { "Hello" });
             MyStringLinkedListT = new LinkedList<string>(new List<string>() { "Hello" });
