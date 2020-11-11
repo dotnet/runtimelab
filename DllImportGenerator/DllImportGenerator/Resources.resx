@@ -238,12 +238,16 @@
   </data>
   <data name="TypeNotSupportedMessageParameterWithDetails" xml:space="preserve">
     <value>{0} The generated source will not handle marshalling of parameter '{1}'.</value>
+    <comment>{0} is a message containing additional details about what is not supported
+{1} is the name of the parameter</comment>
   </data>
   <data name="TypeNotSupportedMessageReturn" xml:space="preserve">
     <value>The type '{0}' is not supported by source-generated P/Invokes. The generated source will not handle marshalling of the return value of method '{1}'.</value>
   </data>
   <data name="TypeNotSupportedMessageReturnWithDetails" xml:space="preserve">
     <value>{0} The generated source will not handle marshalling of the return value of method '{1}'.</value>
+    <comment>{0} is a message containing additional details about what is not supported
+{1} is the name of the method</comment>
   </data>
   <data name="TypeNotSupportedTitle" xml:space="preserve">
     <value>Specified type is not supported by source-generated P/Invokes</value>

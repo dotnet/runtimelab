@@ -84,7 +84,7 @@ namespace Microsoft.Interop
         public TypePositionInfo TypePositionInfo { get; private init; }
 
         /// <summary>
-        /// Context the marshalling is taking place.
+        /// Context in which the marshalling is taking place.
         /// </summary>
         public StubCodeContext StubCodeContext { get; private init; }
 
