@@ -4,6 +4,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 
 using Internal.Reflection.Tracing;
 
@@ -83,6 +84,8 @@ namespace System.Reflection.Runtime.CustomAttributes
             }
         }
 
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+            Justification = "Metadata generation ensures custom attribute constructors are resolvable.")]
         protected static ConstructorInfo ResolveAttributeConstructor(Type attributeType, Type[] parameterTypes)
         {
             int parameterCount = parameterTypes.Length;

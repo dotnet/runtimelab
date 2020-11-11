@@ -4,6 +4,7 @@
 using Internal.Reflection.Augments;
 using Internal.Reflection.Core.NonPortable;
 using Internal.Runtime.Augments;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime;
 using System.Runtime.Serialization;
 using System.Runtime.InteropServices;
@@ -283,6 +284,10 @@ namespace System.Runtime.CompilerServices
                 throw new ArgumentNullException(nameof(d));
         }
 
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2059:UnrecognizedReflectionPattern",
+            Justification = "We keep class constructors of all types with an EEType")]
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072:UnrecognizedReflectionPattern",
+            Justification = "Constructed EEType of a Nullable forces a constructed EEType of the element type")]
         private static object GetUninitializedObjectInternal(Type type)
         {
             if (type.HasElementType || type.IsGenericParameter)

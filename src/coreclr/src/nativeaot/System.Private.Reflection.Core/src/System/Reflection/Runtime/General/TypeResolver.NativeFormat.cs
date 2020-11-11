@@ -5,6 +5,7 @@ using System;
 using System.Text;
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 
 using System.Reflection.Runtime.General;
@@ -154,6 +155,8 @@ namespace System.Reflection.Runtime.General
         //
         // Main routine to resolve a typeReference.
         //
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2075:UnrecognizedReflectionPattern",
+            Justification = "Resolves type references within metadata. We ensure metadata is consistent.")]
         private static RuntimeTypeInfo TryResolveTypeReference(this TypeReferenceHandle typeReferenceHandle, MetadataReader reader, ref Exception exception)
         {
             RuntimeTypeHandle resolvedRuntimeTypeHandle;

@@ -20,6 +20,7 @@
 using System;
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
 using EETypeElementType = Internal.Runtime.EETypeElementType;
@@ -140,7 +141,9 @@ namespace Internal.Reflection.Augments
         public abstract MethodInfo GetImplicitlyOverriddenBaseClassMethod(MethodInfo m);
         public abstract PropertyInfo GetImplicitlyOverriddenBaseClassProperty(PropertyInfo p);
 
-        public abstract object ActivatorCreateInstance(Type type, bool nonPublic);
+        public abstract object ActivatorCreateInstance(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
+            Type type, bool nonPublic);
         public abstract object ActivatorCreateInstance(Type type, BindingFlags bindingAttr, Binder binder, object[] args, CultureInfo culture, object[] activationAttributes);
 
         // V2 api: Creates open or closed delegates to static or instance methods - relaxed signature checking allowed.
