@@ -86,29 +86,28 @@ namespace System.Text.Json
         /// </summary>
         /// <typeparam name="TValue"></typeparam>
         /// <param name="json"></param>
-        /// <param name="jsonClassInfo"></param>
+        /// <param name="jsonTypeInfo"></param>
         /// <returns></returns>
-        [return: MaybeNull]
-        public static TValue Deserialize<TValue>(string json, JsonTypeInfo<TValue> jsonClassInfo)
+        public static TValue? Deserialize<[DynamicallyAccessedMembers(MembersAccessedOnRead)] TValue>(string json, JsonTypeInfo<TValue> jsonTypeInfo)
         {
             if (json == null)
             {
                 throw new ArgumentNullException(nameof(json));
             }
 
-            if (jsonClassInfo == null)
+            if (jsonTypeInfo == null)
             {
-                throw new ArgumentNullException(nameof(jsonClassInfo));
+                throw new ArgumentNullException(nameof(jsonTypeInfo));
             }
 
             ReadStack state = default;
-            state.Initialize(jsonClassInfo);
+            state.Initialize(jsonTypeInfo);
 
             return Deserialize<TValue>(
-                jsonClassInfo.PropertyInfoForClassInfo.ConverterBase,
-                json,
+                jsonTypeInfo.PropertyInfoForClassInfo.ConverterBase,
+                json.AsSpan(),
                 typeof(TValue),
-                jsonClassInfo.Options,
+                jsonTypeInfo.Options,
                 ref state);
         }
 
@@ -211,10 +210,9 @@ namespace System.Text.Json
             return Deserialize<TValue>(jsonConverter, json, returnType, options, ref state);
         }
 
-        [return: MaybeNull]
-        private static TValue Deserialize<TValue>(
+        private static TValue? Deserialize<TValue>(
             JsonConverter jsonConverter,
-            string json,
+            ReadOnlySpan<char> json,
             Type returnType,
             JsonSerializerOptions options,
             ref ReadStack state)
@@ -239,7 +237,7 @@ namespace System.Text.Json
                 var readerState = new JsonReaderState(options.GetReaderOptions());
                 var reader = new Utf8JsonReader(utf8, isFinalBlock: true, readerState);
 
-                TValue? value = ReadCore<TValue>(jsonConverter, ref reader, options, ref state);
+                TValue? value = ReadCore<TValue>(ref reader, returnType, options);
 
                 // The reader should have thrown if we have remaining bytes.
                 Debug.Assert(reader.BytesConsumed == actualByteCount);

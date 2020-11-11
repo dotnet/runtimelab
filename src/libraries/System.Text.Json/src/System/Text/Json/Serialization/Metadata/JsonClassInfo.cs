@@ -187,10 +187,11 @@ namespace System.Text.Json.Serialization.Metadata
         internal JsonPropertyInfo PropertyInfoForClassInfo { get; set; }
 
         private GenericMethodHolder? _genericMethods;
+
         /// <summary>
         /// Returns a helper class used when generic methods need to be invoked on Type.
         /// </summary>
-        public GenericMethodHolder GenericMethods
+        internal GenericMethodHolder GenericMethods
         {
             get
             {
@@ -230,7 +231,7 @@ namespace System.Text.Json.Serialization.Metadata
             ClassType = classType;
         }
 
-        internal JsonClassInfo(Type type, JsonSerializerOptions options, bool partial = false)
+        internal JsonClassInfo(Type type, JsonSerializerOptions options)
         {
             Type = type;
             Options = options;

@@ -15,6 +15,8 @@ namespace System.Text.Json.Serialization.Metadata
     /// or a type's converter, if the current instance is a <see cref="JsonClassInfo.PropertyInfoForClassInfo"/>.
     public sealed class JsonPropertyInfo<T> : JsonPropertyInfo
     {
+        private static readonly T s_defaultValue = default!;
+
         /// <summary>
         /// Returns true if the property's converter is external (a user's custom converter)
         /// and the type to convert is not the same as the declared property type (polymorphic).
@@ -26,12 +28,6 @@ namespace System.Text.Json.Serialization.Metadata
         // Since a converter's TypeToConvert (which is the T value in this type) can be different than
         // the property's type, we track that and whether the property type can be null.
         private bool _propertyTypeEqualsTypeToConvert;
-
-        public Func<object, T>? Get { get; private set; }
-        public Action<object, T>? Set { get; private set; }
-        private static readonly T s_defaultValue = default!;
-
-        internal JsonPropertyInfo() { }
 
         /// <summary>
         /// todo
@@ -47,6 +43,8 @@ namespace System.Text.Json.Serialization.Metadata
         /// todo
         /// </summary>
         public JsonConverter<T> Converter { get; internal set; } = null!;
+
+        internal JsonPropertyInfo() { }
 
         internal override void Initialize(
             Type parentClassType,

@@ -4,7 +4,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
-using System.Text.Json.Serialization;
 
 namespace System.Text.Json.Serialization.Metadata
 {
@@ -447,7 +446,6 @@ namespace System.Text.Json.Serialization.Metadata
 
         internal JsonNumberHandling? NumberHandling { get; private set; }
 
-
         internal abstract void SetExtensionDictionaryAsObject(object obj, object? extensionDict);
 
         /// <summary>
@@ -460,11 +458,9 @@ namespace System.Text.Json.Serialization.Metadata
         /// </summary>
         public bool ShouldDeserialize { get; internal set; }
 
-        public JsonNumberHandling? NumberHandling { get; private set; }
+        internal bool IsIgnored { get; private set; }
 
         //  Whether the property type can be null.
-        public bool PropertyTypeCanBeNull { get; protected set; }
-
-        internal bool IsIgnored { get; private set; }
+        internal bool PropertyTypeCanBeNull { get; set; }
     }
 }
