@@ -397,7 +397,7 @@ static Array* AllocateNewArrayImpl(Thread* pThread, EEType* pArrayEEType, uint32
         }
     }
 
-    if (size > RH_LARGE_OBJECT_SIZE)
+    if (size >= RH_LARGE_OBJECT_SIZE)
         flags |= GC_ALLOC_LARGE_OBJECT_HEAP;
 
     // Save the EEType for instrumentation purposes.
@@ -412,7 +412,7 @@ static Array* AllocateNewArrayImpl(Thread* pThread, EEType* pArrayEEType, uint32
     pArray->set_EEType(pArrayEEType);
     pArray->InitArrayLength(numElements);
 
-    if (size >= RH_LARGE_OBJECT_SIZE)
+    if (flags & GC_ALLOC_USER_OLD_HEAP)
         GCHeapUtilities::GetGCHeap()->PublishObject((uint8_t*)pArray);
 
     return pArray;
