@@ -279,7 +279,7 @@ COOP_PINVOKE_HELPER(void*, RhpGcAlloc, (EEType *pEEType, uint32_t uFlags, uintpt
         }
     }
 
-    if (cbSize > RH_LARGE_OBJECT_SIZE)
+    if (cbSize >= RH_LARGE_OBJECT_SIZE)
         uFlags |= GC_ALLOC_LARGE_OBJECT_HEAP;
 
     // Save the EEType for instrumentation purposes.
