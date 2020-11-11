@@ -5,6 +5,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Runtime.Versioning;
@@ -114,7 +115,7 @@ namespace System.IO
         // given by the specified path exists; otherwise, the result is
         // false.  Note that if path describes a directory,
         // Exists will return true.
-        public static bool Exists(string? path)
+        public static bool Exists([NotNullWhen(true)] string? path)
         {
             try
             {
@@ -328,7 +329,7 @@ namespace System.IO
         public static byte[] ReadAllBytes(string path)
         {
             // bufferSize == 1 used to avoid unnecessary buffer in FileStream
-            using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 1))
+            using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 1, FileOptions.SequentialScan))
             {
                 long fileLength = fs.Length;
                 if (fileLength > int.MaxValue)
@@ -646,13 +647,13 @@ namespace System.IO
             FileSystem.MoveFile(fullSourceFileName, fullDestFileName, overwrite);
         }
 
-        [MinimumOSPlatform("windows7.0")]
+        [SupportedOSPlatform("windows")]
         public static void Encrypt(string path)
         {
             FileSystem.Encrypt(path ?? throw new ArgumentNullException(nameof(path)));
         }
 
-        [MinimumOSPlatform("windows7.0")]
+        [SupportedOSPlatform("windows")]
         public static void Decrypt(string path)
         {
             FileSystem.Decrypt(path ?? throw new ArgumentNullException(nameof(path)));

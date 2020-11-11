@@ -235,7 +235,7 @@ typedef enum CorElementTypeZapSig
     // where the encoding/decoding takes place.
     ELEMENT_TYPE_NATIVE_VALUETYPE_ZAPSIG = 0x3d,
 
-    ELEMENT_TYPE_CANON_ZAPSIG            = 0x3e,     // zapsig encoding for [mscorlib]System.__Canon
+    ELEMENT_TYPE_CANON_ZAPSIG            = 0x3e,     // zapsig encoding for System.__Canon
     ELEMENT_TYPE_MODULE_ZAPSIG           = 0x3f,     // zapsig encoding for external module id#
 
 } CorElementTypeZapSig;
@@ -381,21 +381,6 @@ struct CORCOMPILE_ASSEMBLY_SIGNATURE;
 struct CORCOMPILE_VERSION_INFO;
 struct CORCOMPILE_DEPENDENCY;
 typedef GUID CORCOMPILE_NGEN_SIGNATURE;
-
-
-//**********************************************************************
-// Internal versions of shim functions for use by the CLR.
-
-STDAPI GetCORSystemDirectoryInternaL(
-    SString& pBuffer
-      );
-
-//LONGPATH:TODO: Remove this once Desktop usage has been removed
-STDAPI GetCORSystemDirectoryInternal(
-    __out_ecount_part_opt(cchBuffer, *pdwLength) LPWSTR pBuffer,
-    DWORD  cchBuffer,
-    __out_opt DWORD* pdwLength
-    );
 
 #endif  // _CORPRIV_H_
 // EOF =======================================================================

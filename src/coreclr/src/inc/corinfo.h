@@ -208,11 +208,11 @@ TODO: Talk about initializing strutures before use
 //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-constexpr GUID JITEEVersionIdentifier = { /* 7af97117-55be-4c76-afb2-e26261cb140e */
-    0x7af97117,
-    0x55be,
-    0x4c76,
-    { 0xaf, 0xb2, 0xe2, 0x62, 0x61, 0xcb, 0x14, 0x0e }
+constexpr GUID JITEEVersionIdentifier = { /* a0184d06-a562-43f6-94ad-44627db87310 */
+    0xa0184d06,
+    0xa562,
+    0x43f6,
+    {0x94, 0xad, 0x44, 0x62, 0x7d, 0xb8, 0x73, 0x10}
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -431,9 +431,7 @@ enum CorInfoHelpFunc
     CORINFO_HELP_THROWDIVZERO,      // throw a divide by zero exception
     CORINFO_HELP_THROWNULLREF,      // throw a null reference exception
 
-    CORINFO_HELP_INTERNALTHROW,     // Support for really fast jit
     CORINFO_HELP_VERIFICATION,      // Throw a VerificationException
-    CORINFO_HELP_SEC_UNMGDCODE_EXCPT, // throw a security unmanaged code exception
     CORINFO_HELP_FAIL_FAST,         // Kill the process avoiding any exceptions or stack and data dependencies (use for GuardStack unsafe buffer checks)
 
     CORINFO_HELP_METHOD_ACCESS_EXCEPTION,//Throw an access exception due to a failed member/class access check.
@@ -891,28 +889,6 @@ enum CorInfoException
 
 enum CorInfoIntrinsics
 {
-    CORINFO_INTRINSIC_Sin,
-    CORINFO_INTRINSIC_Cos,
-    CORINFO_INTRINSIC_Cbrt,
-    CORINFO_INTRINSIC_Sqrt,
-    CORINFO_INTRINSIC_Abs,
-    CORINFO_INTRINSIC_Round,
-    CORINFO_INTRINSIC_Cosh,
-    CORINFO_INTRINSIC_Sinh,
-    CORINFO_INTRINSIC_Tan,
-    CORINFO_INTRINSIC_Tanh,
-    CORINFO_INTRINSIC_Asin,
-    CORINFO_INTRINSIC_Asinh,
-    CORINFO_INTRINSIC_Acos,
-    CORINFO_INTRINSIC_Acosh,
-    CORINFO_INTRINSIC_Atan,
-    CORINFO_INTRINSIC_Atan2,
-    CORINFO_INTRINSIC_Atanh,
-    CORINFO_INTRINSIC_Log10,
-    CORINFO_INTRINSIC_Pow,
-    CORINFO_INTRINSIC_Exp,
-    CORINFO_INTRINSIC_Ceiling,
-    CORINFO_INTRINSIC_Floor,
     CORINFO_INTRINSIC_GetChar,              // fetch character out of string
     CORINFO_INTRINSIC_Array_GetDimLength,   // Get number of elements in a given dimension of an array
     CORINFO_INTRINSIC_Array_Get,            // Get the value of an element in an array
@@ -940,8 +916,6 @@ enum CorInfoIntrinsics
     CORINFO_INTRINSIC_InterlockedCmpXchg64,
     CORINFO_INTRINSIC_MemoryBarrier,
     CORINFO_INTRINSIC_MemoryBarrierLoad,
-    CORINFO_INTRINSIC_GetCurrentManagedThread,
-    CORINFO_INTRINSIC_GetManagedThreadId,
     CORINFO_INTRINSIC_ByReference_Ctor,
     CORINFO_INTRINSIC_ByReference_Value,
     CORINFO_INTRINSIC_Span_GetItem,

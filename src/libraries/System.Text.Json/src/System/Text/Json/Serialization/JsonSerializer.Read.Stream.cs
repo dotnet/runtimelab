@@ -36,7 +36,7 @@ namespace System.Text.Json
         /// There is no compatible <see cref="System.Text.Json.Serialization.JsonConverter"/>
         /// for <typeparamref name="TValue"/> or its serializable members.
         /// </exception>
-        public static ValueTask<TValue> DeserializeAsync<[DynamicallyAccessedMembers(MembersAccessedOnRead)] TValue>(
+        public static ValueTask<TValue?> DeserializeAsync<[DynamicallyAccessedMembers(MembersAccessedOnRead)] TValue>(
             Stream utf8Json,
             JsonSerializerOptions? options = null,
             CancellationToken cancellationToken = default)
@@ -288,7 +288,7 @@ namespace System.Text.Json
             state.ReadAhead = !isFinalBlock;
             state.BytesConsumed = 0;
 
-            TValue value = ReadCore<TValue>(converterBase, ref reader, options, ref state);
+            TValue? value = ReadCore<TValue>(converterBase, ref reader, options, ref state);
 
             readerState = reader.CurrentState;
             return value!;
