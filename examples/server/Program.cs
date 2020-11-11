@@ -32,7 +32,7 @@ namespace server
                             var basePort = 5557;
                             options.EnableAltSvc = true;
 
-                            options.Listen(IPAddress.Any, basePort, listenOptions =>
+                            options.Listen(IPAddress.IPv6Loopback, basePort, listenOptions =>
                             {
                                 listenOptions.UseHttps(httpsOptions =>
                                 {

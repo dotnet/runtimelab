@@ -28,7 +28,7 @@ namespace server
             {
                 endpoints.MapGet("/", async context =>
                 {
-                    await context.Response.WriteAsync("Hello HTTP/3!");
+                    await context.Response.WriteAsync($"Hello {context.Request.Protocol}!");
                 });
             });
         }

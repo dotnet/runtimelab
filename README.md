@@ -8,7 +8,7 @@ This branch contains sources for the System.Net.Experimental.MsQuic package whic
 
 There are a few prerequisites that need to be done before starting to use HTTP/3.
 
-1. Download the latest 5.0 build of .NET from <https://github.com/dotnet/installer>.
+1. Download the latest 5.0 build of .NET from <https://dotnet.microsoft.com/download/dotnet/5.0>.
 2. Latest [Windows Insider Builds](https://insider.windows.com/en-us/), Insiders Fast build. This is required for Schannel support for QUIC.
     To confirm you have a new enough build, run winver on command line and confirm you version is greater than Version 2004 (OS Build 20145.1000).
     Support for Linux will come in .NET 6.
@@ -28,6 +28,8 @@ There are a few prerequisites that need to be done before starting to use HTTP/3
 
 ### Usage for HttpClient
 
+> See an [example app for HttpClient](examples/client/).
+
 1. Set the app context switch to enable draft HTTP/3.
     ```c#
     AppContext.SetSwitch("System.Net.SocketsHttpHandler.Http3DraftSupport", isEnabled: true);
@@ -43,10 +45,12 @@ There are a few prerequisites that need to be done before starting to use HTTP/3
 
 ### Usage for ASP.NET Core
 
+> See an [example app for ASP.NET Core](examples/server/).
+
 1. Add the package Microsoft.AspNetCore.Server.Kestrel.Transport.Experimental.Quic to your project.
     ```
     dotnet nuget add source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet5/nuget/v3/index.json --name dotnet5
-    dotnet add package Microsoft.AspNetCore.Server.Kestrel.Transport.Experimental.Quic --version 5.0.0-rc*
+    dotnet add package Microsoft.AspNetCore.Server.Kestrel.Transport.Experimental.Quic --version 5.0.0
     ```
 2. You will probably need to regenerate the ASP.NET Core Dev Cert as it needs to be able to support TLS 1.3. You can do this by running:
     ```
@@ -74,7 +78,7 @@ There are a few prerequisites that need to be done before starting to use HTTP/3
                         var basePort = 5557;
                         options.EnableAltSvc = true;
 
-                        options.Listen(IPAddress.Any, basePort, listenOptions =>
+                        options.Listen(IPAddress.IPv6Loopback, basePort, listenOptions =>
                         {
                             listenOptions.UseHttps(httpsOptions =>
                             {
