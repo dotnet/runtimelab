@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
 
@@ -246,6 +247,8 @@ namespace Internal.Reflection.Execution
             return object.ReferenceEquals(CommonRuntimeTypes.Void, type);
         }
 
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+            Justification = "Default constructors of types that could be arguments to MakeGenericType are preserved.")]
         private static bool HasExplicitOrImplicitPublicDefaultConstructor(this Type type)
         {
             // Strip InstantiatedTypeInfo - GetConstructors is not implemented on InstantiatedTypeInfo

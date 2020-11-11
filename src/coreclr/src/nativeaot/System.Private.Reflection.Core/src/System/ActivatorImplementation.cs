@@ -3,6 +3,7 @@
 
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection.Runtime.General;
 using System.Reflection.Runtime.BindingFlagSupport;
@@ -14,7 +15,9 @@ namespace System
     internal static class ActivatorImplementation
     {
         [DebuggerGuidedStepThrough]
-        public static object CreateInstance(Type type, bool nonPublic)
+        public static object CreateInstance(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
+            Type type, bool nonPublic)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -39,7 +42,9 @@ namespace System
         }
 
         [DebuggerGuidedStepThrough]
-        public static object CreateInstance(Type type, BindingFlags bindingAttr, Binder binder, object[] args, CultureInfo culture, object[] activationAttributes)
+        public static object CreateInstance(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
+            Type type, BindingFlags bindingAttr, Binder binder, object[] args, CultureInfo culture, object[] activationAttributes)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));

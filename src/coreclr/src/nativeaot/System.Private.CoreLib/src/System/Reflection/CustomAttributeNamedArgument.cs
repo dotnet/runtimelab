@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Globalization;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using Internal.Runtime.Augments;
 using Internal.Runtime.CompilerServices;
@@ -63,6 +64,8 @@ namespace System.Reflection
 
         public MemberInfo MemberInfo
         {
+            [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2080:UnrecognizedReflectionPattern",
+                Justification = "Metadata generation ensures fields/properties referenced from attributes are preserved.")]
             get
             {
                 MemberInfo memberInfo = _lazyMemberInfo;

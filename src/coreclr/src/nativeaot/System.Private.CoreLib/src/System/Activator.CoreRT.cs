@@ -7,6 +7,7 @@
 //
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -109,7 +110,7 @@ namespace System
 
         [DebuggerHidden]
         [DebuggerStepThrough]
-        public static object CreateInstance(Type type, bool nonPublic)
+        public static object CreateInstance([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type type, bool nonPublic)
             => ReflectionAugments.ReflectionCoreCallbacks.ActivatorCreateInstance(type, nonPublic);
 
         [DebuggerHidden]

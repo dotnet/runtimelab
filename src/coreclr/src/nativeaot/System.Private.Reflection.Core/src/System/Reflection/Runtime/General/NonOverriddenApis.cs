@@ -21,6 +21,7 @@
 //
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Reflection;
 using System.Globalization;
@@ -148,20 +149,54 @@ namespace System.Reflection.Runtime.TypeInfos
         public sealed override bool IsEquivalentTo(Type other) => base.IsEquivalentTo(other); // Note: If we enable COM type equivalence, this is no longer the correct implementation.
         public sealed override bool IsSignatureType => base.IsSignatureType;
 
-        public sealed override IEnumerable<ConstructorInfo> DeclaredConstructors => base.DeclaredConstructors;
-        public sealed override IEnumerable<EventInfo> DeclaredEvents => base.DeclaredEvents;
-        public sealed override IEnumerable<FieldInfo> DeclaredFields => base.DeclaredFields;
-        public sealed override IEnumerable<MemberInfo> DeclaredMembers => base.DeclaredMembers;
-        public sealed override IEnumerable<MethodInfo> DeclaredMethods => base.DeclaredMethods;
-        public sealed override IEnumerable<TypeInfo> DeclaredNestedTypes => base.DeclaredNestedTypes;
-        public sealed override IEnumerable<PropertyInfo> DeclaredProperties => base.DeclaredProperties;
+        public sealed override IEnumerable<ConstructorInfo> DeclaredConstructors
+        {
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
+            get => base.DeclaredConstructors;
+        }
+        public sealed override IEnumerable<EventInfo> DeclaredEvents
+        {
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicEvents | DynamicallyAccessedMemberTypes.NonPublicEvents)]
+            get => base.DeclaredEvents;
+        }
+        public sealed override IEnumerable<FieldInfo> DeclaredFields
+        {
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)]
+            get => base.DeclaredFields;
+        }
+        public sealed override IEnumerable<MemberInfo> DeclaredMembers
+        {
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+            get => base.DeclaredMembers;
+        }
+        public sealed override IEnumerable<MethodInfo> DeclaredMethods
+        {
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods)]
+            get => base.DeclaredMethods;
+        }
+        public sealed override IEnumerable<TypeInfo> DeclaredNestedTypes
+        {
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicNestedTypes | DynamicallyAccessedMemberTypes.NonPublicNestedTypes)]
+            get => base.DeclaredNestedTypes;
+        }
+        public sealed override IEnumerable<PropertyInfo> DeclaredProperties
+        {
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            get => base.DeclaredProperties;
+        }
 
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicEvents | DynamicallyAccessedMemberTypes.NonPublicEvents)]
         public sealed override EventInfo GetDeclaredEvent(string name) => base.GetDeclaredEvent(name);
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)]
         public sealed override FieldInfo GetDeclaredField(string name) => base.GetDeclaredField(name);
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods)]
         public sealed override MethodInfo GetDeclaredMethod(string name) => base.GetDeclaredMethod(name);
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicNestedTypes | DynamicallyAccessedMemberTypes.NonPublicNestedTypes)]
         public sealed override TypeInfo GetDeclaredNestedType(string name) => base.GetDeclaredNestedType(name);
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
         public sealed override PropertyInfo GetDeclaredProperty(string name) => base.GetDeclaredProperty(name);
 
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods)]
         public sealed override IEnumerable<MethodInfo> GetDeclaredMethods(string name) => base.GetDeclaredMethods(name);
 #endif //DEBUG
     }
