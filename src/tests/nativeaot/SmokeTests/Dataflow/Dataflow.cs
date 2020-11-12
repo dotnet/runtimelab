@@ -9,10 +9,12 @@ using System.Diagnostics.CodeAnalysis;
 
 class Program
 {
-    static void Main()
+    static int Main()
     {
         TestReturnValue.Run();
         TestGetMethodEventFieldPropertyConstructor.Run();
+
+        return 100;
     }
 
     class TestReturnValue
