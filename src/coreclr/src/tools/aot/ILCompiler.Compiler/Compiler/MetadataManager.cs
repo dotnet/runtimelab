@@ -237,7 +237,7 @@ namespace ILCompiler
                 && IsMethodSupportedInReflectionInvoke(method);
         }
 
-        protected bool IsMethodSupportedInReflectionInvoke(MethodDesc method)
+        public static bool IsMethodSupportedInReflectionInvoke(MethodDesc method)
         {
             TypeDesc owningType = method.OwningType;
 

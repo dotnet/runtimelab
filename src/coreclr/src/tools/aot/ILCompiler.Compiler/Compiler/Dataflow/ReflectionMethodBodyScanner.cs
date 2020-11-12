@@ -1877,6 +1877,12 @@ namespace ILCompiler.Dataflow
                 if (_logger.IsVerbose)
                     _logger.Writer.WriteLine($"Would mark {method} but it's generic");
             }
+            else if (!MetadataManager.IsMethodSupportedInReflectionInvoke(method))
+            {
+                if (_logger.IsVerbose)
+                    _logger.Writer.WriteLine($"Would mark {method} but it's not usable for reflection invoke");
+                // TODO: do we need to drop a MethodMetadata node into the dependencies here?
+            }
             else
             {
                 string reason = reflectionContext.MemberWithRequirements.ToString();
