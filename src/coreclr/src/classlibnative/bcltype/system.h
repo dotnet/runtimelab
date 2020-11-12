@@ -73,13 +73,12 @@ public:
 
     static FCDECL0(FC_BOOL_RET, IsServerGC);
 
-#ifdef FEATURE_COMINTEROP
-    static
-    BOOL QCALLTYPE WinRTSupported();
-#endif // FEATURE_COMINTEROP
-
     // Return a method info for the method were the exception was thrown
     static FCDECL1(ReflectMethodObject*, GetMethodFromStackTrace, ArrayBase* pStackTraceUNSAFE);
+
+#if defined(TARGET_X86) || defined(TARGET_AMD64)
+    static void QCALLTYPE X86BaseCpuId(int cpuInfo[4], int functionId, int subFunctionId);
+#endif // defined(TARGET_X86) || defined(TARGET_AMD64)
 
 private:
     // Common processing code for FailFast

@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
@@ -19,68 +20,58 @@ namespace System.Text.Json.SourceGeneration
     [Generator]
     public class JsonSourceGenerator : ISourceGenerator
     {
-        public Dictionary<string, Type> FoundTypes = new Dictionary<string, Type>();
+        public Dictionary<string, Type>? FoundTypes { get; private set; }
 
-        public void Execute(SourceGeneratorContext context)
+        public void Execute(GeneratorExecutionContext context)
         {
             JsonSerializableSyntaxReceiver receiver = (JsonSerializableSyntaxReceiver)context.SyntaxReceiver;
             MetadataLoadContext metadataLoadContext = new MetadataLoadContext(context.Compilation);
 
-            // Filter classes and structs with JsonSerializable attribute semantically.
-            INamedTypeSymbol jsonSerializableAttributeSymbol = context.Compilation.GetTypeByMetadataName("System.Text.Json.Serialization.JsonSerializableAttribute");
+            // Discover serializable types indicated by JsonSerializableAttribute.
+            foreach (CompilationUnitSyntax compilationUnit in receiver.CompilationUnits)
+            {
+                SemanticModel compilationSemanticModel = context.Compilation.GetSemanticModel(compilationUnit.SyntaxTree);
 
-            if (jsonSerializableAttributeSymbol == null)
+                foreach (AttributeListSyntax attributeListSyntax in compilationUnit.AttributeLists)
+                {
+                    AttributeSyntax attributeSyntax = attributeListSyntax.Attributes.Single();
+                    IMethodSymbol attributeSymbol = compilationSemanticModel.GetSymbolInfo(attributeSyntax).Symbol as IMethodSymbol;
+
+                    if (attributeSymbol?.ToString().StartsWith("System.Text.Json.Serialization.JsonSerializableAttribute") == true)
+                    {
+                        // Get JsonSerializableAttribute arguments.
+                        AttributeArgumentSyntax attributeArgumentNode = (AttributeArgumentSyntax)attributeSyntax.DescendantNodes().Where(node => node is AttributeArgumentSyntax).SingleOrDefault();
+
+                        // There should be one `Type` parameter in the constructor of the attribute.
+                        TypeOfExpressionSyntax typeNode = (TypeOfExpressionSyntax)attributeArgumentNode.ChildNodes().Single();
+                        QualifiedNameSyntax typeQualifiedNameSyntax = (QualifiedNameSyntax)typeNode.ChildNodes().Single();
+
+                        INamedTypeSymbol typeSymbol = (INamedTypeSymbol)compilationSemanticModel.GetTypeInfo(typeQualifiedNameSyntax).ConvertedType;
+                        Type type = new TypeWrapper(typeSymbol, metadataLoadContext);
+                        (FoundTypes ??= new Dictionary<string, Type>())[type.FullName] = type;
+                    }
+                }
+            }
+
+            if (FoundTypes == null)
             {
                 return;
             }
 
-            // Find classes with JsonSerializable Attributes.
-            foreach (TypeDeclarationSyntax typeDeclarationNode in receiver.TypesWithAttributes)
-            {
-                SemanticModel model = context.Compilation.GetSemanticModel(typeDeclarationNode.SyntaxTree);
-
-                // Check if it contains a JsonSerializableAttribute.
-                INamedTypeSymbol typeSymbol = (INamedTypeSymbol)model.GetDeclaredSymbol(typeDeclarationNode);
-                if(typeSymbol.GetAttributes().Any(attr => attr.AttributeClass.Equals(jsonSerializableAttributeSymbol, SymbolEqualityComparer.Default)))
-                {
-                    // JsonSerializableAttribute has AllowMultiple as False, should have a single attribute.
-                    AttributeListSyntax attributeList = typeDeclarationNode.AttributeLists.Single();
-                    IEnumerable<AttributeSyntax> serializableAttributes = attributeList.Attributes.Where(node => node is AttributeSyntax).Cast<AttributeSyntax>();
-                    AttributeSyntax attributeNode = serializableAttributes.First();
-                    Debug.Assert(serializableAttributes.Count() == 1);
-
-                    // Check if the attribute is being passed a type.
-                    if (attributeNode.DescendantNodes().Where(node => node is TypeOfExpressionSyntax).Any())
-                    {
-                        // Get JsonSerializable attribute arguments.
-                        AttributeArgumentSyntax attributeArgumentNode = (AttributeArgumentSyntax)attributeNode.DescendantNodes().Where(node => node is AttributeArgumentSyntax).SingleOrDefault();
-                        // Get external class token from arguments.
-                        IdentifierNameSyntax externalTypeNode = (IdentifierNameSyntax)attributeArgumentNode?.DescendantNodes().Where(node => node is IdentifierNameSyntax).SingleOrDefault();
-
-                        // Get non-user owned typeSymbol from IdentifierNameSyntax and add to found types.
-                        INamedTypeSymbol externalTypeSymbol = model.GetTypeInfo(externalTypeNode).ConvertedType as INamedTypeSymbol;
-                        FoundTypes[externalTypeSymbol.ToString()] = new TypeWrapper(externalTypeSymbol, metadataLoadContext);
-                    }
-                    else
-                    {
-                        // Add user owned type into found types.
-                        FoundTypes[typeSymbol.ToString()] = new TypeWrapper(typeSymbol, metadataLoadContext);
-                    }
-                }
-            }
+            Debug.Assert(FoundTypes.Count >= 1);
 
             JsonSourceGeneratorHelper codegen = new JsonSourceGeneratorHelper();
 
             // Add base default instance source.
             context.AddSource("BaseClassInfo.g.cs", SourceText.From(codegen.GenerateHelperContextInfo(), Encoding.UTF8));
 
-            // Run type discovery generation for each root type.
+            // Run ClassInfo generation for the object graphs of each root type.
             foreach (KeyValuePair<string, Type> entry in FoundTypes)
             {
                 codegen.GenerateClassInfo(entry.Value);
             }
 
-            // Generate sources for each type.
+            // Add sources for each type to context.
             foreach (KeyValuePair<Type, Tuple<string, string>> entry in codegen.Types)
             {
                 context.AddSource($"{entry.Value.Item1}ClassInfo.g.cs", SourceText.From(entry.Value.Item2, Encoding.UTF8));
@@ -93,7 +84,7 @@ namespace System.Text.Json.SourceGeneration
             }
         }
 
-        public void Initialize(InitializationContext context)
+        public void Initialize(GeneratorInitializationContext context)
         {
             context.RegisterForSyntaxNotifications(() => new JsonSerializableSyntaxReceiver());
         }

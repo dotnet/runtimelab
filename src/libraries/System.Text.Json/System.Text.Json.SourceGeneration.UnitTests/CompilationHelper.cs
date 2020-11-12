@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Reflection;
+using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -29,6 +30,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
                 MetadataReference.CreateFromFile(typeof(JsonSerializerOptions).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(Type).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(KeyValuePair).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(ContractNamespaceAttribute).Assembly.Location),
                 MetadataReference.CreateFromFile(systemRuntimeAssemblyPath),
                 MetadataReference.CreateFromFile(systemCollecitonsAssemblyPath),
             };
@@ -51,14 +53,13 @@ namespace System.Text.Json.SourceGeneration.UnitTests
         }
 
         private static GeneratorDriver CreateDriver(Compilation compilation, params ISourceGenerator[] generators)
-            => new CSharpGeneratorDriver(
-                new CSharpParseOptions(kind: SourceCodeKind.Regular, documentationMode: DocumentationMode.Parse),
-                ImmutableArray.Create(generators),
-                ImmutableArray<AdditionalText>.Empty);
+            => CSharpGeneratorDriver.Create(
+                generators: ImmutableArray.Create(generators),
+                parseOptions: new CSharpParseOptions(kind: SourceCodeKind.Regular, documentationMode: DocumentationMode.Parse));
 
         public static Compilation RunGenerators(Compilation compilation, out ImmutableArray<Diagnostic> diagnostics, params ISourceGenerator[] generators)
         {
-            CreateDriver(compilation, generators).RunFullGeneration(compilation, out Compilation outCompilation, out diagnostics);
+            CreateDriver(compilation, generators).RunGeneratorsAndUpdateCompilation(compilation, out Compilation outCompilation, out diagnostics);
             return outCompilation;
         }
 
@@ -159,9 +160,11 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using System.Collections.Generic;
             using System.Text.Json.Serialization;
 
-              namespace Fake
-              {
-                [JsonSerializable]
+            [module: JsonSerializable(typeof(Fake.Location))]
+            [module: JsonSerializable(typeof(HelloWorld.Location))]
+
+            namespace Fake
+            {
                 public class Location
                 {
                     public int FakeId { get; set; }
@@ -174,11 +177,10 @@ namespace System.Text.Json.SourceGeneration.UnitTests
                     public string FakePhoneNumber { get; set; }
                     public string FakeCountry { get; set; }
                 }
-              }
+            }
 
-              namespace HelloWorld
-              {
-                [JsonSerializable]
+            namespace HelloWorld
+            {                
                 public class Location
                 {
                     public int Id { get; set; }
@@ -191,7 +193,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
                     public string PhoneNumber { get; set; }
                     public string Country { get; set; }
                 }
-              }";
+            }";
 
             return CreateCompilation(source);
         }

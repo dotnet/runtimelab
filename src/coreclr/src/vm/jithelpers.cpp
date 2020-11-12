@@ -4399,21 +4399,6 @@ HCIMPL1(void, IL_VerificationError,  int ilOffset)
 HCIMPLEND
 
 /*********************************************************************/
-HCIMPL1(void, JIT_SecurityUnmanagedCodeException, CORINFO_CLASS_HANDLE typeHnd_)
-{
-    FCALL_CONTRACT;
-
-    FC_GC_POLL_NOT_NEEDED();    // throws always open up for GC
-
-    HELPER_METHOD_FRAME_BEGIN_ATTRIB_NOPOLL(Frame::FRAME_ATTR_EXCEPTION);    // Set up a frame
-
-    COMPlusThrow(kSecurityException);
-
-    HELPER_METHOD_FRAME_END();
-}
-HCIMPLEND
-
-/*********************************************************************/
 static RuntimeExceptionKind MapCorInfoExceptionToRuntimeExceptionKind(unsigned exceptNum)
 {
     LIMITED_METHOD_CONTRACT;
@@ -4601,17 +4586,8 @@ HCIMPLEND;
 //========================================================================
 
 /*********************************************************************/
-// JIT_UserBreakpoint
 // Called by the JIT whenever a cee_break instruction should be executed.
-// This ensures that enough info will be pushed onto the stack so that
-// we can continue from the exception w/o having special code elsewhere.
-// Body of function is written by debugger team
-// Args: None
 //
-// <TODO> make sure this actually gets called by all JITters</TODO>
-// Note: this code is duplicated in the ecall in VM\DebugDebugger:Break,
-// so propogate changes to there
-
 HCIMPL0(void, JIT_UserBreakpoint)
 {
     FCALL_CONTRACT;
@@ -4621,12 +4597,9 @@ HCIMPL0(void, JIT_UserBreakpoint)
 #ifdef DEBUGGING_SUPPORTED
     FrameWithCookie<DebuggerExitFrame> __def;
 
-    MethodDescCallSite breakCanThrow(METHOD__DEBUGGER__BREAK_CAN_THROW);
+    MethodDescCallSite debuggerBreak(METHOD__DEBUGGER__BREAK);
 
-    // Call Diagnostic.Debugger.BreakCanThrow instead. This will make us demand
-    // UnmanagedCode permission if debugger is not attached.
-    //
-    breakCanThrow.Call((ARG_SLOT*)NULL);
+    debuggerBreak.Call((ARG_SLOT*)NULL);
 
     __def.Pop();
 #else // !DEBUGGING_SUPPORTED
@@ -4648,7 +4621,6 @@ extern "C" void * _ReturnAddress(void);
 //  if (*pFlag != 0) call JIT_DbgIsJustMyCode
 // So this is only called if the flag (obtained by GetJMCFlagAddr) is
 // non-zero.
-// Body of this function is maintained by the debugger people.
 HCIMPL0(void, JIT_DbgIsJustMyCode)
 {
     FCALL_CONTRACT;
@@ -4945,7 +4917,7 @@ HCIMPLEND
 
 
 
-HCIMPL0(INT32, JIT_GetCurrentManagedThreadId)
+FCIMPL0(INT32, JIT_GetCurrentManagedThreadId)
 {
     FCALL_CONTRACT;
 
@@ -4954,7 +4926,7 @@ HCIMPL0(INT32, JIT_GetCurrentManagedThreadId)
     Thread * pThread = GetThread();
     return pThread->GetThreadId();
 }
-HCIMPLEND
+FCIMPLEND
 
 
 /*********************************************************************/
@@ -5637,10 +5609,10 @@ void InitJitHelperLogging()
     {
 
 #ifdef TARGET_X86
-        IMAGE_DOS_HEADER *pDOS = (IMAGE_DOS_HEADER *)g_hThisInst;
+        IMAGE_DOS_HEADER *pDOS = (IMAGE_DOS_HEADER *)GetClrModuleBase();
         _ASSERTE(pDOS->e_magic == VAL16(IMAGE_DOS_SIGNATURE) && pDOS->e_lfanew != 0);
 
-        IMAGE_NT_HEADERS *pNT = (IMAGE_NT_HEADERS*)((LPBYTE)g_hThisInst + VAL32(pDOS->e_lfanew));
+        IMAGE_NT_HEADERS *pNT = (IMAGE_NT_HEADERS*)((LPBYTE)GetClrModuleBase() + VAL32(pDOS->e_lfanew));
 #ifdef HOST_64BIT
         _ASSERTE(pNT->Signature == VAL32(IMAGE_NT_SIGNATURE)
             && pNT->FileHeader.SizeOfOptionalHeader == VAL16(sizeof(IMAGE_OPTIONAL_HEADER64))
@@ -5744,7 +5716,7 @@ void InitJitHelperLogging()
 #else // TARGET_X86
                     // Is the address in mscoree.dll at all? (All helpers are in
                     // mscoree.dll)
-                    if (dynamicHlpFunc->pfnHelper >= (LPBYTE*)g_hThisInst && dynamicHlpFunc->pfnHelper < (LPBYTE*)g_hThisInst + VAL32(pNT->OptionalHeader.SizeOfImage))
+                    if (dynamicHlpFunc->pfnHelper >= (LPBYTE*)GetClrModuleBase() && dynamicHlpFunc->pfnHelper < (LPBYTE*)GetClrModuleBase() + VAL32(pNT->OptionalHeader.SizeOfImage))
                     {
                         // See note above. How do I get the size on x86 for a static method?
                         hlpFuncCount->helperSize = 0;
