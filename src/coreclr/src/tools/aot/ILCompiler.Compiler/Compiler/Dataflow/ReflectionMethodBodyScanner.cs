@@ -11,6 +11,8 @@ using Internal.IL;
 using Internal.TypeSystem;
 
 using BindingFlags = System.Reflection.BindingFlags;
+using NodeFactory = ILCompiler.DependencyAnalysis.NodeFactory;
+using DependencyList = ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.DependencyList;
 
 namespace ILCompiler.Dataflow
 {
@@ -18,6 +20,8 @@ namespace ILCompiler.Dataflow
     {
         private readonly FlowAnnotations _flowAnnotations;
         private readonly Logger _logger;
+        private readonly NodeFactory _factory;
+        private readonly DependencyList _dependencies = new DependencyList();
 
         public static bool RequiresReflectionMethodBodyScannerForCallSite(FlowAnnotations flowAnnotations, MethodDesc methodDefinition)
         {
@@ -44,28 +48,33 @@ namespace ILCompiler.Dataflow
             return !method.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresUnreferencedCodeAttribute");
         }
 
-        public ReflectionMethodBodyScanner(FlowAnnotations flowAnnotations, Logger logger)
+        private ReflectionMethodBodyScanner(NodeFactory factory, FlowAnnotations flowAnnotations, Logger logger)
         {
             _flowAnnotations = flowAnnotations;
             _logger = logger;
+            _factory = factory;
         }
 
-        public void ScanAndProcessReturnValue(MethodIL methodBody)
+        public static DependencyList ScanAndProcessReturnValue(NodeFactory factory, FlowAnnotations flowAnnotations, Logger logger, MethodIL methodBody)
         {
-            Scan(methodBody);
+            var scanner = new ReflectionMethodBodyScanner(factory, flowAnnotations, logger);
+
+            scanner.Scan(methodBody);
 
             if (!methodBody.OwningMethod.Signature.ReturnType.IsVoid)
             {
                 var method = methodBody.OwningMethod;
-                var requiredMemberTypes = _flowAnnotations.GetReturnParameterAnnotation(method);
+                var requiredMemberTypes = scanner._flowAnnotations.GetReturnParameterAnnotation(method);
                 if (requiredMemberTypes != 0)
                 {
                     var targetContext = new MethodOrigin(method);
-                    var reflectionContext = new ReflectionPatternContext(_logger, ShouldEnableReflectionPatternReporting(method), method, targetContext);
+                    var reflectionContext = new ReflectionPatternContext(scanner._logger, scanner.ShouldEnableReflectionPatternReporting(method), method, targetContext);
                     reflectionContext.AnalyzingPattern();
-                    RequireDynamicallyAccessedMembers(ref reflectionContext, requiredMemberTypes, MethodReturnValue, targetContext);
+                    scanner.RequireDynamicallyAccessedMembers(ref reflectionContext, requiredMemberTypes, scanner.MethodReturnValue, targetContext);
                 }
             }
+
+            return scanner._dependencies;
         }
 
 #if false
@@ -886,7 +895,7 @@ namespace ILCompiler.Dataflow
                                     }
                                     else
                                     {
-                                        reflectionContext.RecordRecognizedPattern(() => _logger.Writer.WriteLine($"Marking {foundType.GetDisplayName()}"));
+                                        reflectionContext.RecordRecognizedPattern(() => _dependencies.Add(_factory.MaximallyConstructableType(foundType), "Type.GetType reference"));
                                         methodReturnValue = MergePointValue.MergeValues(methodReturnValue, new SystemTypeValue(foundType));
                                     }
                                 }
@@ -1377,7 +1386,12 @@ namespace ILCompiler.Dataflow
                             {
                                 if (typeHandleValue is RuntimeTypeHandleValue runtimeTypeHandleValue)
                                 {
-                                    _logger.Writer.WriteLine($"Marking static constructor of {runtimeTypeHandleValue.TypeRepresented.GetDisplayName()}");
+                                    TypeDesc typeRepresented = runtimeTypeHandleValue.TypeRepresented;
+                                    if (!typeRepresented.IsGenericDefinition && !typeRepresented.ContainsSignatureVariables() && typeRepresented.HasStaticConstructor)
+                                    {
+                                        _dependencies.Add(_factory.CanonicalEntrypoint(typeRepresented.GetStaticConstructor()), "RunClassConstructor reference");
+                                    }
+
                                     reflectionContext.RecordHandledPattern();
                                 }
                                 else if (typeHandleValue == NullValue.Instance)
@@ -1858,36 +1872,75 @@ namespace ILCompiler.Dataflow
 
         void MarkMethod(ref ReflectionPatternContext reflectionContext, MethodDesc method)
         {
-            var source = reflectionContext.Source;
-            reflectionContext.RecordRecognizedPattern(() => _logger.Writer.WriteLine($"Marking {method.GetDisplayName()}"));
+            if (method.HasInstantiation || method.OwningType.IsGenericDefinition || method.OwningType.ContainsSignatureVariables())
+            {
+                if (_logger.IsVerbose)
+                    _logger.Writer.WriteLine($"Would mark {method} but it's generic");
+            }
+            else
+            {
+                string reason = reflectionContext.MemberWithRequirements.ToString();
+
+                if (method.IsVirtual)
+                {
+                    if (method.HasInstantiation)
+                    {
+                        _dependencies.Add(_factory.GVMDependencies(method), reason);
+                    }
+                    else
+                    {
+                        // Virtual method use is tracked on the slot defining method only.
+                        MethodDesc slotDefiningMethod = MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(method);
+                        if (!_factory.VTable(slotDefiningMethod.OwningType).HasFixedSlots)
+                            _dependencies.Add(_factory.VirtualMethodUse(slotDefiningMethod), reason);
+                    }
+
+                    if (method.IsAbstract)
+                    {
+                        _dependencies.Add(_factory.ReflectableMethod(method), reason);
+                    }
+                }
+
+                if (!method.IsAbstract)
+                {
+                    _dependencies.Add(_factory.CanonicalEntrypoint(method), reason);
+                    if (method.HasInstantiation
+                        && method != method.GetCanonMethodTarget(CanonicalFormKind.Specific))
+                        _dependencies.Add(_factory.MethodGenericDictionary(method), reason);
+                }
+            }
+
+            reflectionContext.RecordHandledPattern();
         }
 
         void MarkNestedType(ref ReflectionPatternContext reflectionContext, MetadataType nestedType)
-        {
-            var source = reflectionContext.Source;
+        {   
             reflectionContext.RecordRecognizedPattern(() => _logger.Writer.WriteLine($"Marking {nestedType.GetDisplayName()}"));
         }
 
         void MarkField(ref ReflectionPatternContext reflectionContext, FieldDesc field)
         {
-            var source = reflectionContext.Source;
             reflectionContext.RecordRecognizedPattern(() => _logger.Writer.WriteLine($"Marking {field.GetDisplayName()}"));
         }
 
         void MarkProperty(ref ReflectionPatternContext reflectionContext, PropertyPseudoDesc property)
         {
-            reflectionContext.RecordRecognizedPattern(() => {
-                // Marking the property itself actually doesn't keep it (it only marks its attributes and records the dependency), we have to mark the methods on it
-                _logger.Writer.WriteLine($"Marking {property.GetDisplayName()}");
-            });
+            if (property.GetMethod != null)
+                MarkMethod(ref reflectionContext, property.GetMethod);
+            if (property.SetMethod != null)
+                MarkMethod(ref reflectionContext, property.SetMethod);
+
+            reflectionContext.RecordHandledPattern();
         }
 
         void MarkEvent(ref ReflectionPatternContext reflectionContext, EventPseudoDesc @event)
         {
-            reflectionContext.RecordRecognizedPattern(() => {
-                // MarkEvent actually marks the add/remove/invoke methods as well, so no need to mark those explicitly
-                _logger.Writer.WriteLine($"Marking an event");
-            });
+            if (@event.AddMethod != null)
+                MarkMethod(ref reflectionContext, @event.AddMethod);
+            if (@event.RemoveMethod != null)
+                MarkMethod(ref reflectionContext, @event.RemoveMethod);
+
+            reflectionContext.RecordHandledPattern();
         }
 
         void MarkConstructorsOnType(ref ReflectionPatternContext reflectionContext, TypeDesc type, Func<MethodDesc, bool> filter, BindingFlags? bindingFlags = null)

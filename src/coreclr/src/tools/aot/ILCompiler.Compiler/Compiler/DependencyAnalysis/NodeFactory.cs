@@ -358,6 +358,11 @@ namespace ILCompiler.DependencyAnalysis
                 return new RuntimeFieldHandleNode(field);
             });
 
+            _dataflowAnalyzedMethods = new NodeCache<MethodILKey, DataflowAnalyzedMethodNode>((MethodILKey il) =>
+            {
+                return new DataflowAnalyzedMethodNode(il.MethodIL);
+            });
+
             _interfaceDispatchMapIndirectionNodes = new NodeCache<TypeDesc, EmbeddedObjectNode>((TypeDesc type) =>
             {
                 return DispatchMapTable.NewNodeWithSymbol(InterfaceDispatchMap(type));
@@ -652,6 +657,13 @@ namespace ILCompiler.DependencyAnalysis
         public RuntimeFieldHandleNode RuntimeFieldHandle(FieldDesc field)
         {
             return _runtimeFieldHandles.GetOrAdd(field);
+        }
+
+        private NodeCache<MethodILKey, DataflowAnalyzedMethodNode> _dataflowAnalyzedMethods;
+
+        public DataflowAnalyzedMethodNode DataflowAnalyzedMethod(MethodIL methodIL)
+        {
+            return _dataflowAnalyzedMethods.GetOrAdd(new MethodILKey(methodIL));
         }
 
         private NodeCache<GCPointerMap, GCStaticEETypeNode> _GCStaticEETypes;
@@ -1232,6 +1244,17 @@ namespace ILCompiler.DependencyAnalysis
             public override bool Equals(object obj) => obj is SerializedFrozenObjectKey && Equals((SerializedFrozenObjectKey)obj);
             public bool Equals(SerializedFrozenObjectKey other) => Owner == other.Owner;
             public override int GetHashCode() => Owner.GetHashCode();
+        }
+
+        private struct MethodILKey : IEquatable<MethodILKey>
+        {
+            public readonly MethodIL MethodIL;
+
+            public MethodILKey(MethodIL methodIL) => MethodIL = methodIL;
+            public override bool Equals(object obj) => obj is MethodILKey other && Equals(other);
+            public bool Equals(MethodILKey other) => other.MethodIL.OwningMethod == this.MethodIL.OwningMethod;
+            public override int GetHashCode() => MethodIL.OwningMethod.GetHashCode();
+
         }
     }
 }

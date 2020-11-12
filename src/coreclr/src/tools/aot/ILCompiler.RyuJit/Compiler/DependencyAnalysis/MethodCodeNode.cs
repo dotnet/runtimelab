@@ -19,6 +19,7 @@ namespace ILCompiler.DependencyAnalysis
         private DebugLocInfo[] _debugLocInfos;
         private DebugVarInfo[] _debugVarInfos;
         private DebugEHClauseInfo[] _debugEHClauseInfos;
+        private DependencyList _nonRelocationDependencies;
         private bool _isFoldable;
 
         public MethodCodeNode(MethodDesc method)
@@ -60,7 +61,7 @@ namespace ILCompiler.DependencyAnalysis
 
         protected override DependencyList ComputeNonRelocationBasedDependencies(NodeFactory factory)
         {
-            DependencyList dependencies = null;
+            DependencyList dependencies = _nonRelocationDependencies != null ? new DependencyList(_nonRelocationDependencies) : null;
 
             TypeDesc owningType = _method.OwningType;
             if (factory.PreinitializationManager.HasEagerStaticConstructor(owningType))
@@ -157,6 +158,11 @@ namespace ILCompiler.DependencyAnalysis
         {
             Debug.Assert(_debugEHClauseInfos == null);
             _debugEHClauseInfos = debugEHClauseInfos;
+        }
+
+        public void InitializeNonRelocationDependencies(DependencyList dependencies)
+        {
+            _nonRelocationDependencies = dependencies;
         }
 
         public override int ClassCode => 788492407;

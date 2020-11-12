@@ -580,6 +580,8 @@ namespace ILCompiler
             if (removedFeatures != 0)
                 ilProvider = new RemovingILProvider(ilProvider, removedFeatures);
 
+            var logger = new Logger(Console.Out, _isVerbose);
+
             var stackTracePolicy = _emitStackTraceData ?
                 (StackTraceEmissionPolicy)new EcmaMethodStackTraceEmissionPolicy() : new NoStackTraceEmissionPolicy();
 
@@ -621,7 +623,8 @@ namespace ILCompiler
                     stackTracePolicy,
                     invokeThunkGenerationPolicy,
                     ilProvider,
-                    metadataGenerationOptions);
+                    metadataGenerationOptions,
+                    logger);
 
             InteropStateManager interopStateManager = new InteropStateManager(typeSystemContext.GeneratedAssembly);
             InteropStubManager interopStubManager = new UsageBasedInteropStubManager(interopStateManager, pinvokePolicy);
@@ -665,8 +668,6 @@ namespace ILCompiler
 
                 interopStubManager = scanResults.GetInteropStubManager(interopStateManager, pinvokePolicy);
             }
-
-            var logger = new Logger(Console.Out, _isVerbose);
 
             DebugInformationProvider debugInfoProvider = _enableDebugInfo ?
                 (_ilDump == null ? new DebugInformationProvider() : new ILAssemblyGeneratingMethodDebugInfoProvider(_ilDump, new EcmaOnlyDebugInformationProvider())) :
