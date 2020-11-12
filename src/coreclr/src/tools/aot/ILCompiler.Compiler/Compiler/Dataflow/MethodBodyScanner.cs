@@ -393,10 +393,10 @@ namespace ILCompiler.Dataflow
                     case ILOpcode.ldloca_s:
                         ScanLdloc(methodBody, offset, opcode, opcode switch
                         {
-                            ILOpcode.ldloc => (int)reader.ReadILUInt32(),
-                            ILOpcode.ldloca => (int)reader.ReadILUInt32(),
-                            ILOpcode.ldloc_s => (sbyte)reader.ReadILByte(),
-                            ILOpcode.ldloca_s => (sbyte)reader.ReadILByte(),
+                            ILOpcode.ldloc => reader.ReadILUInt16(),
+                            ILOpcode.ldloca => reader.ReadILUInt16(),
+                            ILOpcode.ldloc_s => reader.ReadILByte(),
+                            ILOpcode.ldloca_s => reader.ReadILByte(),
                             _ => opcode - ILOpcode.ldloc_0
                         }, currentStack, locals);
                         break;
@@ -556,8 +556,8 @@ namespace ILCompiler.Dataflow
                     case ILOpcode.stloc_2:
                     case ILOpcode.stloc_3:
                         ScanStloc(methodBody, offset, opcode switch {
-                            ILOpcode.stloc => (int)reader.ReadILUInt32(),
-                            ILOpcode.stloc_s => (sbyte)reader.ReadILByte(),
+                            ILOpcode.stloc => reader.ReadILUInt16(),
+                            ILOpcode.stloc_s => reader.ReadILByte(),
                             _ => opcode - ILOpcode.stloc_0,
                         }, currentStack, locals, curBasicBlock);
                         break;
