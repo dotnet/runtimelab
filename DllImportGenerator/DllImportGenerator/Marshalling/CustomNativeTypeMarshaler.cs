@@ -18,7 +18,7 @@ namespace Microsoft.Interop
         private readonly SupportedMarshallingMethods _marshallingMethods;
         private readonly bool _hasFreeNative;
         private readonly bool _useValueProperty;
-        private readonly bool _valuePropertyRequiresPinning;
+        private readonly bool _marshalerTypePinnable;
 
         public CustomNativeTypeMarshaler(NativeMarshallingAttributeInfo marshallingInfo)
         {
@@ -28,7 +28,7 @@ namespace Microsoft.Interop
             _marshallingMethods = marshallingInfo.MarshallingMethods;
             _hasFreeNative = ManualTypeMarshallingHelper.HasFreeNativeMethod(marshallingInfo.NativeMarshallingType);
             _useValueProperty = marshallingInfo.ValuePropertyType != null;
-            _valuePropertyRequiresPinning = marshallingInfo.ValuePropertyRequiresPinning;
+            _marshalerTypePinnable = marshallingInfo.NativeTypePinnable;
         }
 
         public CustomNativeTypeMarshaler(GeneratedNativeMarshallingAttributeInfo marshallingInfo)
@@ -37,7 +37,7 @@ namespace Microsoft.Interop
             _marshallingMethods = SupportedMarshallingMethods.ManagedToNative | SupportedMarshallingMethods.NativeToManaged;
             _hasFreeNative = true;
             _useValueProperty = false;
-            _valuePropertyRequiresPinning = false;
+            _marshalerTypePinnable = false;
         }
 
         public TypeSyntax AsNativeType(TypePositionInfo info)
@@ -102,7 +102,7 @@ namespace Microsoft.Interop
             switch (context.CurrentStage)
             {
                 case StubCodeContext.Stage.Setup:
-                    if (!_valuePropertyRequiresPinning)
+                    if (!_marshalerTypePinnable || info.IsByRef && info.RefKind != RefKind.In)
                     {
                         yield return LocalDeclarationStatement(
                         VariableDeclaration(
@@ -154,7 +154,7 @@ namespace Microsoft.Interop
                                 ObjectCreationExpression(_nativeLocalTypeSyntax)
                                     .WithArgumentList(ArgumentList(SeparatedList(arguments)))));
 
-                        if (_useValueProperty && !_valuePropertyRequiresPinning)
+                        if (_useValueProperty && !_marshalerTypePinnable)
                         {
                             // <nativeIdentifier> = <marshalerIdentifier>.Value;
                             yield return ExpressionStatement(
@@ -168,12 +168,9 @@ namespace Microsoft.Interop
                     }
                     break;
                 case StubCodeContext.Stage.Pin:
-                    if (_valuePropertyRequiresPinning)
+                    if (_marshalerTypePinnable && (!info.IsByRef || info.RefKind == RefKind.In))
                     {
-                        // A value property that requires pinning can only be used as a by value or in parameter.
-                        Debug.Assert(info.RefKind != RefKind.Out && !info.IsManagedReturnPosition);
-
-                        // fixed (<_nativeTypeSyntax> <nativeIdentifier> = &<marshalerIdentifier>.Value)
+                        // fixed (<_nativeTypeSyntax> <nativeIdentifier> = &<marshalerIdentifier>)
                         yield return FixedStatement(
                             VariableDeclaration(
                             _nativeTypeSyntax,
@@ -181,9 +178,7 @@ namespace Microsoft.Interop
                                 VariableDeclarator(nativeIdentifier)
                                     .WithInitializer(EqualsValueClause(
                                         PrefixUnaryExpression(SyntaxKind.AddressOfExpression,
-                                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                                IdentifierName(marshalerIdentifier),
-                                                IdentifierName(ManualTypeMarshallingHelper.ValuePropertyName))))))),
+                                            IdentifierName(marshalerIdentifier)))))),
                             EmptyStatement());
                     }
                     break;
@@ -232,9 +227,22 @@ namespace Microsoft.Interop
 
         public bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context)
         {
-            return info.IsManagedReturnPosition
-                || !(context.PinningSupported && (_marshallingMethods & SupportedMarshallingMethods.Pinning) != 0)
-                || !_valuePropertyRequiresPinning;
+            if (info.IsManagedReturnPosition || info.IsByRef && info.RefKind != RefKind.In)
+            {
+                return true;
+            }
+            if (context.PinningSupported)
+            {
+                if (!info.IsByRef && (_marshallingMethods & SupportedMarshallingMethods.Pinning) == 0)
+                {
+                    return false;
+                }
+                else if (_marshalerTypePinnable)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 }

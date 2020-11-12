@@ -667,8 +667,9 @@ unsafe struct Native
 }
 ";
 
-        public static string CustomStructMarshallingByRefValuePropertyIn = @"
+        public static string CustomStructMarshallingNativeTypePinnable = @"
 using System.Runtime.InteropServices;
+using System;
 
 [NativeMarshalling(typeof(Native))]
 class S
@@ -676,16 +677,45 @@ class S
     public byte c;
 }
 
-unsafe struct Native
+unsafe ref struct Native
 {
-    private S value;
+    private byte* ptr;
+    private Span<byte> stackBuffer;
 
     public Native(S s) : this()
     {
-        value = s;
+        ptr = (byte*)Marshal.AllocCoTaskMem(sizeof(byte));
+        *ptr = s.c;
     }
 
-    public ref byte Value { get => ref value.c; }
+    public Native(S s, Span<byte> buffer) : this()
+    {
+        stackBuffer = buffer;
+        stackBuffer[0] = s.c;
+    }
+
+    public ref byte GetPinnableReference() => ref (ptr != null ? ref *ptr : ref stackBuffer.GetPinnableReference());
+
+    public S ToManaged()
+    {
+        return new S { c = *ptr };
+    }
+
+    public byte* Value
+    {
+        get => ptr != null ? ptr : throw new InvalidOperationException();
+        set => ptr = value;
+    }
+
+    public void FreeNative()
+    {
+        if (ptr != null)
+        {
+            Marshal.FreeCoTaskMem(ptr);
+        }
+    }
+
+    public const int StackBufferSize = 1;
 }
 
 partial class Test
@@ -697,13 +727,11 @@ partial class Test
 }
 ";
 
-        public static string CustomStructMarshallingByRefValuePropertyRefOutReturn = @"
-using System.Runtime.InteropServices;
-
+        public static string CustomStructMarshallingByRefValueProperty = BasicParametersAndModifiers("S") + @"
 [NativeMarshalling(typeof(Native))]
 class S
 {
-    public byte c;
+    public byte c = 0;
 }
 
 unsafe struct Native
@@ -716,14 +744,6 @@ unsafe struct Native
     }
 
     public ref byte Value { get => ref value.c; }
-}
-
-partial class Test
-{
-    [GeneratedDllImport(""DoesNotExist"")]
-    public static partial S Method(
-        ref S sRef,
-        out S sOut);
 }
 ";
 

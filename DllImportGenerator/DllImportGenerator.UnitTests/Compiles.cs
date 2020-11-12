@@ -136,7 +136,7 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.CustomStructMarshallingOptionalStackallocParametersAndModifiers };
             yield return new[] { CodeSnippets.CustomStructMarshallingValuePropertyParametersAndModifiers };
             yield return new[] { CodeSnippets.CustomStructMarshallingPinnableParametersAndModifiers };
-            yield return new[] { CodeSnippets.CustomStructMarshallingByRefValuePropertyIn };
+            yield return new[] { CodeSnippets.CustomStructMarshallingNativeTypePinnable };
         }
 
         public static IEnumerable<object[]> CodeSnippetsToCompile_WithDiagnostics()
@@ -176,7 +176,7 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.PreserveSigFalse<string[]>() };
             yield return new[] { CodeSnippets.PreserveSigFalse<IntPtr[]>() };
             yield return new[] { CodeSnippets.PreserveSigFalse<UIntPtr[]>() };
-            yield return new[] { CodeSnippets.CustomStructMarshallingByRefValuePropertyRefOutReturn };
+            yield return new[] { CodeSnippets.CustomStructMarshallingByRefValueProperty };
             yield return new[] { CodeSnippets.CustomStructMarshallingManagedToNativeOnlyOutParameter };
             yield return new[] { CodeSnippets.CustomStructMarshallingManagedToNativeOnlyReturnValue };
             yield return new[] { CodeSnippets.CustomStructMarshallingNativeToManagedOnlyInParameter };

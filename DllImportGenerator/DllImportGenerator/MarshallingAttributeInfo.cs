@@ -100,7 +100,7 @@ namespace Microsoft.Interop
         ITypeSymbol NativeMarshallingType,
         ITypeSymbol? ValuePropertyType,
         SupportedMarshallingMethods MarshallingMethods,
-        bool ValuePropertyRequiresPinning) : MarshallingInfo;
+        bool NativeTypePinnable) : MarshallingInfo;
 
     /// <summary>
     /// User-applied System.Runtime.InteropServices.GeneratedMarshallingAttribute

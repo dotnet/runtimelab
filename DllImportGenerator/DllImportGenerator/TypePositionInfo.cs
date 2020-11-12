@@ -225,7 +225,6 @@ namespace Microsoft.Interop
                 INamedTypeSymbol nativeType = (INamedTypeSymbol)attrData.ConstructorArguments[0].Value!;
                 SupportedMarshallingMethods methods = 0;
                 IPropertySymbol? valueProperty = ManualTypeMarshallingHelper.FindValueProperty(nativeType);
-                bool valuePropertyReturnsByRef = valueProperty is { ReturnsByRef : true } or { ReturnsByRefReadonly : true };
                 foreach (var ctor in nativeType.Constructors)
                 {
                     if (ManualTypeMarshallingHelper.IsManagedToNativeConstructor(ctor, type)
@@ -256,20 +255,11 @@ namespace Microsoft.Interop
                     // TODO: Diagnostic since no marshalling methods are supported.
                 }
 
-                ITypeSymbol? valuePropertyType = null;
-
-                if (valueProperty is not null)
-                {
-                    valuePropertyType = valuePropertyReturnsByRef
-                        ? compilation.CreatePointerTypeSymbol(valueProperty.Type)
-                        : valueProperty.Type;
-                }
-
                 return new NativeMarshallingAttributeInfo(
                     nativeType,
-                    valuePropertyType,
+                    valueProperty?.Type,
                     methods,
-                    ValuePropertyRequiresPinning: valuePropertyReturnsByRef);
+                    NativeTypePinnable: ManualTypeMarshallingHelper.FindGetPinnableReference(nativeType) is not null);
             }
 
             static bool TryCreateTypeBasedMarshallingInfo(ITypeSymbol type, Compilation compilation, out MarshallingInfo marshallingInfo)
