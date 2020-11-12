@@ -4,6 +4,7 @@
 using System;
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Collections.Generic;
 using System.Reflection.Runtime.General;
@@ -172,14 +173,18 @@ namespace System.Reflection.Runtime.General
 
         [DebuggerHidden]
         [DebuggerStepThrough]
-        public sealed override object ActivatorCreateInstance(Type type, bool nonPublic)
+        public sealed override object ActivatorCreateInstance(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
+            Type type, bool nonPublic)
         {
             return ActivatorImplementation.CreateInstance(type, nonPublic);
         }
 
         [DebuggerHidden]
         [DebuggerStepThrough]
-        public sealed override object ActivatorCreateInstance(Type type, BindingFlags bindingAttr, Binder binder, object[] args, CultureInfo culture, object[] activationAttributes)
+        public sealed override object ActivatorCreateInstance(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
+            Type type, BindingFlags bindingAttr, Binder binder, object[] args, CultureInfo culture, object[] activationAttributes)
         {
             return ActivatorImplementation.CreateInstance(type, bindingAttr, binder, args, culture, activationAttributes);
         }

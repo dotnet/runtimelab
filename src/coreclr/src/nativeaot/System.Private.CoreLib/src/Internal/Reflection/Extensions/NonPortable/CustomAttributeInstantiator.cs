@@ -4,6 +4,7 @@
 using System;
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -25,6 +26,10 @@ namespace Internal.Reflection.Extensions.NonPortable
         // however, it is included as a concession to that the fact the Reflection.Execution which implements this contract
         // also needs this functionality to implement default values, and we don't want to duplicate this code.
         //
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2075:UnrecognizedReflectionPattern",
+            Justification = "property setters and fiels which are accessed by any attribute instantiation which is present in the code linker has analyzed." +
+                            "As such enumerating all fields and properties may return different results after trimming" +
+                            "but all those which are needed to actually have data should be there.")]
         public static Attribute Instantiate(this CustomAttributeData cad)
         {
             if (cad == null)
