@@ -101,7 +101,8 @@ stages:
             isOfficialBuild: true
             librariesBinArtifactName: libraries_bin_official_allconfigurations
 
+
 - ${{ if eq(variables.isOfficialBuild, true) }}:
   - template: /eng/pipelines/official/stages/publish.yml
-      parameters:
-            isOfficialBuild: ${{ variables.isOfficialBuild }}
+    parameters:
+      isOfficialBuild: ${{ variables.isOfficialBuild }}
