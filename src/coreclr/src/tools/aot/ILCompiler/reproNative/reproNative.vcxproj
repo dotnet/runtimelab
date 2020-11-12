@@ -80,7 +80,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(ArtifactsRoot)bin\repro\x64\Debug\repro.obj;kernel32.lib;user32.lib;gdi32.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;bcrypt.lib;%(AdditionalDependencies);$(ArtifactsRoot)bin\coreclr\Windows_NT.x64.Debug\aotsdk\Runtime.lib</AdditionalDependencies>
+      <AdditionalDependencies>$(ArtifactsRoot)bin\repro\x64\Debug\repro.obj;kernel32.lib;user32.lib;gdi32.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;bcrypt.lib;%(AdditionalDependencies);$(ArtifactsRoot)bin\coreclr\windows.x64.Debug\aotsdk\Runtime.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Checked|x64'">
@@ -100,7 +100,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>$(ArtifactsRoot)bin\repro\x64\Checked\repro.obj;kernel32.lib;user32.lib;gdi32.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;bcrypt.lib;%(AdditionalDependencies);$(ArtifactsRoot)bin\coreclr\Windows_NT.x64.Checked\aotsdk\Runtime.lib</AdditionalDependencies>
+      <AdditionalDependencies>$(ArtifactsRoot)bin\repro\x64\Checked\repro.obj;kernel32.lib;user32.lib;gdi32.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;bcrypt.lib;%(AdditionalDependencies);$(ArtifactsRoot)bin\coreclr\windows.x64.Checked\aotsdk\Runtime.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -120,7 +120,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>$(ArtifactsRoot)bin\repro\x64\Release\repro.obj;kernel32.lib;user32.lib;gdi32.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;bcrypt.lib;%(AdditionalDependencies);$(ArtifactsRoot)bin\coreclr\Windows_NT.x64.Release\aotsdk\Runtime.lib</AdditionalDependencies>
+      <AdditionalDependencies>$(ArtifactsRoot)bin\repro\x64\Release\repro.obj;kernel32.lib;user32.lib;gdi32.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;bcrypt.lib;%(AdditionalDependencies);$(ArtifactsRoot)bin\coreclr\windows.x64.Release\aotsdk\Runtime.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
