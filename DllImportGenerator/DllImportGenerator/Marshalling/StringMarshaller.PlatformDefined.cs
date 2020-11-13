@@ -63,8 +63,6 @@ namespace Microsoft.Interop
             switch (context.CurrentStage)
             {
                 case StubCodeContext.Stage.Setup:
-                    yield return MarshallerHelpers.DeclareWithDefault(AsNativeType(info), context.GetIdentifiers(info).native);
-
                     if (TryGenerateSetupSyntax(info, context, out StatementSyntax conditionalAllocSetup))
                         yield return conditionalAllocSetup;
 

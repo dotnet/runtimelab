@@ -66,8 +66,6 @@ namespace Microsoft.Interop
             switch (context.CurrentStage)
             {
                 case StubCodeContext.Stage.Setup:
-                    yield return MarshallerHelpers.DeclareWithDefault(AsNativeType(info), nativeIdentifier);
-
                     if (!info.IsManagedReturnPosition && info.RefKind != RefKind.Out)
                     {
                         yield return LocalDeclarationStatement(

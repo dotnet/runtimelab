@@ -119,17 +119,23 @@ namespace Microsoft.Interop
             foreach (var marshaller in paramMarshallers)
             {
                 TypePositionInfo info = marshaller.TypeInfo;
-                if (info.RefKind != RefKind.Out || info.IsManagedReturnPosition)
+                if (info.IsManagedReturnPosition)
                     continue;
 
-                // Assign out params to default
-                setupStatements.Add(ExpressionStatement(
-                    AssignmentExpression(
-                        SyntaxKind.SimpleAssignmentExpression,
-                        IdentifierName(info.InstanceIdentifier),
-                        LiteralExpression(
-                            SyntaxKind.DefaultLiteralExpression,
-                            Token(SyntaxKind.DefaultKeyword)))));
+                if (info.RefKind == RefKind.Out)
+                {
+                    // Assign out params to default
+                    setupStatements.Add(ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            IdentifierName(info.InstanceIdentifier),
+                            LiteralExpression(
+                                SyntaxKind.DefaultLiteralExpression,
+                                Token(SyntaxKind.DefaultKeyword)))));
+                }
+
+                // Declare variables for parameters
+                AddVariableDeclations(setupStatements, info, marshaller.Generator);
             }
 
             bool invokeReturnsVoid = retMarshaller.TypeInfo.ManagedType.SpecialType == SpecialType.System_Void;
@@ -141,26 +147,21 @@ namespace Microsoft.Interop
                 // Stub return should be the last parameter for the invoke
                 Debug.Assert(paramMarshallers.Any() && paramMarshallers.Last().TypeInfo.IsManagedReturnPosition);
 
-                var stubRetMarshaller = paramMarshallers.Last();
-                if (stubRetMarshaller.Generator.UsesNativeIdentifier(stubRetMarshaller.TypeInfo, this))
+                (TypePositionInfo stubRetTypeInfo, IMarshallingGenerator stubRetGenerator) = paramMarshallers.Last();
+                if (stubRetGenerator.UsesNativeIdentifier(stubRetTypeInfo, this))
                 {
                     // Update the native identifier for the return value
                     ReturnNativeIdentifier = $"{ReturnIdentifier}{GeneratedNativeIdentifierSuffix}";
                 }
 
-                // Declare variable for stub return value
-                TypePositionInfo info = stubRetMarshaller.TypeInfo;
-                setupStatements.Add(MarshallerHelpers.DeclareWithDefault(
-                    info.ManagedType.AsTypeSyntax(),
-                    this.GetIdentifiers(info).managed));
+                // Declare variables for stub return value
+                AddVariableDeclations(setupStatements, stubRetTypeInfo, stubRetGenerator);
             }
 
             if (!invokeReturnsVoid)
             {
-                // Declare variable for invoke return value
-                setupStatements.Add(MarshallerHelpers.DeclareWithDefault(
-                    retMarshaller.TypeInfo.ManagedType.AsTypeSyntax(),
-                    this.GetIdentifiers(retMarshaller.TypeInfo).managed));
+                // Declare variables for invoke return value
+                AddVariableDeclations(setupStatements, retMarshaller.TypeInfo, retMarshaller.Generator);
             }
 
             var tryStatements = new List<StatementSyntax>();
@@ -312,6 +313,27 @@ namespace Microsoft.Interop
                 }
             }
             return null;
+        }
+
+        private void AddVariableDeclations(List<StatementSyntax> statementsToUpdate, TypePositionInfo info, IMarshallingGenerator generator)
+        {
+            var (managed, native) = GetIdentifiers(info);
+
+            // Declare variable for return value
+            if (info.IsManagedReturnPosition || info.IsNativeReturnPosition)
+            {
+                statementsToUpdate.Add(MarshallerHelpers.DeclareWithDefault(
+                    info.ManagedType.AsTypeSyntax(),
+                    managed));
+            }
+
+            // Declare variable with native type for parameter or return value
+            if (generator.UsesNativeIdentifier(info, this))
+            {
+                statementsToUpdate.Add(MarshallerHelpers.DeclareWithDefault(
+                    generator.AsNativeType(info),
+                    native));
+            }
         }
     }
 }
