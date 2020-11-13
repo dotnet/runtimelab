@@ -178,7 +178,11 @@ namespace Microsoft.Interop
                                 VariableDeclarator(nativeIdentifier)
                                     .WithInitializer(EqualsValueClause(
                                         PrefixUnaryExpression(SyntaxKind.AddressOfExpression,
-                                            IdentifierName(marshalerIdentifier)))))),
+                                            InvocationExpression(
+                                                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                                    IdentifierName(marshalerIdentifier),
+                                                    IdentifierName(ManualTypeMarshallingHelper.GetPinnableReferenceName)),
+                                                ArgumentList())))))),
                             EmptyStatement());
                     }
                     break;
