@@ -711,7 +711,7 @@ unsafe ref struct Native
     {
         if (ptr != null)
         {
-            Marshal.FreeCoTaskMem(ptr);
+            Marshal.FreeCoTaskMem((IntPtr)ptr);
         }
     }
 
