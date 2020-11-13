@@ -124,8 +124,13 @@ namespace Microsoft.Interop
                 case StubCodeContext.Stage.Marshal:
                     if (!info.IsManagedReturnPosition && info.RefKind != RefKind.Out)
                     {
+                        // Stack space must be usable and the marshaler must support stackalloc to use stackalloc.
+                        // We also require pinning to be supported to enable users to pass the stackalloc'd Span
+                        // to native code by having the marshaler type return a byref to the Span's elements
+                        // in its GetPinnableReference method.
                         bool scenarioSupportsStackalloc = context.StackSpaceUsable &&
-                            (_marshallingMethods & SupportedMarshallingMethods.ManagedToNativeStackalloc) != 0;
+                            (_marshallingMethods & SupportedMarshallingMethods.ManagedToNativeStackalloc) != 0 &&
+                            context.PinningSupported;
 
                         List<ArgumentSyntax> arguments = new List<ArgumentSyntax>
                         {
@@ -134,16 +139,36 @@ namespace Microsoft.Interop
 
                         if (scenarioSupportsStackalloc && (!info.IsByRef || info.RefKind == RefKind.In))
                         {
-                            // stackalloc byte[<_nativeLocalType>.StackBufferSize]
-                            arguments.Add(Argument(
-                                                StackAllocArrayCreationExpression(
+                            string stackallocIdentifier = $"{managedIdentifier}__stackptr";
+                            yield return LocalDeclarationStatement(
+                            VariableDeclaration(
+                                PointerType(PredefinedType(Token(SyntaxKind.ByteKeyword))),
+                                SingletonSeparatedList(
+                                    VariableDeclarator(stackallocIdentifier)
+                                        .WithInitializer(EqualsValueClause(
+                                            StackAllocArrayCreationExpression(
                                                     ArrayType(
                                                         PredefinedType(Token(SyntaxKind.ByteKeyword)),
                                                         SingletonList(ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(
                                                             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                                                                 _nativeLocalTypeSyntax,
                                                                 IdentifierName(ManualTypeMarshallingHelper.StackBufferSizeFieldName))
-                                                        )))))));
+                                                        ))))))))));
+
+                            // stackalloc byte[<_nativeLocalType>.StackBufferSize]
+                            arguments.Add(Argument(
+                                                ObjectCreationExpression(
+                                                    GenericName(Identifier(TypeNames.System_Span),
+                                                        TypeArgumentList(SingletonSeparatedList<TypeSyntax>(
+                                                            PredefinedType(Token(SyntaxKind.ByteKeyword))))))
+                                                .WithArgumentList(
+                                                    ArgumentList(SeparatedList(new ArgumentSyntax[]
+                                                    {
+                                                        Argument(IdentifierName(stackallocIdentifier)),
+                                                        Argument(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                                                _nativeLocalTypeSyntax,
+                                                                IdentifierName(ManualTypeMarshallingHelper.StackBufferSizeFieldName)))
+                                                    })))));
                         }
 
                         // <marshalerIdentifier> = new <_nativeLocalType>(<arguments>);
