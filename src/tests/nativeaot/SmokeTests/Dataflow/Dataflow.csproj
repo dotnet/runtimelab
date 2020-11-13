@@ -4,6 +4,9 @@
     <CLRTestKind>BuildAndRun</CLRTestKind>
     <CLRTestPriority>0</CLRTestPriority>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- We don't run the scanner in optimized builds -->
+    <NativeAotMultimoduleIncompatible>true</NativeAotMultimoduleIncompatible>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Dataflow.cs" />
