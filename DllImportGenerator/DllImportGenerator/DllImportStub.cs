@@ -199,7 +199,7 @@ namespace Microsoft.Interop
             }
 
             // Generate stub code
-            var stubGenerator = new StubCodeGenerator(method, paramsTypeInfo, retTypeInfo, diagnostics);
+            var stubGenerator = new StubCodeGenerator(method, dllImportData, paramsTypeInfo, retTypeInfo, diagnostics);
             var (code, dllImport) = stubGenerator.GenerateSyntax();
 
             return new DllImportStub()

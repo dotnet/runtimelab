@@ -46,12 +46,14 @@ namespace Microsoft.Interop
         private readonly GeneratorDiagnostics diagnostics;
 
         private readonly IMethodSymbol stubMethod;
+        private readonly DllImportStub.GeneratedDllImportData dllImportData;
         private readonly IEnumerable<TypePositionInfo> paramsTypeInfo;
         private readonly List<(TypePositionInfo TypeInfo, IMarshallingGenerator Generator)> paramMarshallers;
         private readonly (TypePositionInfo TypeInfo, IMarshallingGenerator Generator) retMarshaller;
 
         public StubCodeGenerator(
             IMethodSymbol stubMethod,
+            DllImportStub.GeneratedDllImportData dllImportData,
             IEnumerable<TypePositionInfo> paramsTypeInfo,
             TypePositionInfo retTypeInfo,
             GeneratorDiagnostics generatorDiagnostics)
@@ -59,6 +61,7 @@ namespace Microsoft.Interop
             Debug.Assert(retTypeInfo.IsNativeReturnPosition);
 
             this.stubMethod = stubMethod;
+            this.dllImportData = dllImportData;
             this.paramsTypeInfo = paramsTypeInfo.ToList();
             this.diagnostics = generatorDiagnostics;
 
@@ -135,7 +138,7 @@ namespace Microsoft.Interop
                 }
 
                 // Declare variables for parameters
-                AddVariableDeclations(setupStatements, info, marshaller.Generator);
+                AppendVariableDeclations(setupStatements, info, marshaller.Generator);
             }
 
             bool invokeReturnsVoid = retMarshaller.TypeInfo.ManagedType.SpecialType == SpecialType.System_Void;
@@ -144,8 +147,11 @@ namespace Microsoft.Interop
             // Stub return is not the same as invoke return
             if (!stubReturnsVoid && !retMarshaller.TypeInfo.IsManagedReturnPosition)
             {
+                // Should only happen when PreserveSig=false
+                Debug.Assert(!dllImportData.PreserveSig, "Expected PreserveSig=false when invoke return is not the stub return");
+
                 // Stub return should be the last parameter for the invoke
-                Debug.Assert(paramMarshallers.Any() && paramMarshallers.Last().TypeInfo.IsManagedReturnPosition);
+                Debug.Assert(paramMarshallers.Any() && paramMarshallers.Last().TypeInfo.IsManagedReturnPosition, "Expected stub return to be the last parameter for the invoke");
 
                 (TypePositionInfo stubRetTypeInfo, IMarshallingGenerator stubRetGenerator) = paramMarshallers.Last();
                 if (stubRetGenerator.UsesNativeIdentifier(stubRetTypeInfo, this))
@@ -155,28 +161,17 @@ namespace Microsoft.Interop
                 }
 
                 // Declare variables for stub return value
-                AddVariableDeclations(setupStatements, stubRetTypeInfo, stubRetGenerator);
+                AppendVariableDeclations(setupStatements, stubRetTypeInfo, stubRetGenerator);
             }
 
             if (!invokeReturnsVoid)
             {
                 // Declare variables for invoke return value
-                AddVariableDeclations(setupStatements, retMarshaller.TypeInfo, retMarshaller.Generator);
+                AppendVariableDeclations(setupStatements, retMarshaller.TypeInfo, retMarshaller.Generator);
             }
 
             var tryStatements = new List<StatementSyntax>();
             var finallyStatements = new List<StatementSyntax>();
-            List<StatementSyntax> GetStatements(Stage stage)
-            {
-                return stage switch
-                {
-                    Stage.Setup => setupStatements,
-                    Stage.Marshal or Stage.Pin or Stage.Invoke or Stage.KeepAlive or Stage.Unmarshal => tryStatements,
-                    Stage.GuaranteedUnmarshal or Stage.Cleanup => finallyStatements,
-                    _ => throw new ArgumentOutOfRangeException(nameof(stage))
-                };
-            }
-
             var invoke = InvocationExpression(IdentifierName(dllImportName));
             var fixedStatements = new List<FixedStatementSyntax>();
             foreach (var stage in Stages)
@@ -301,6 +296,17 @@ namespace Microsoft.Interop
             }
 
             return (codeBlock, dllImport);
+
+            List<StatementSyntax> GetStatements(Stage stage)
+            {
+                return stage switch
+                {
+                    Stage.Setup => setupStatements,
+                    Stage.Marshal or Stage.Pin or Stage.Invoke or Stage.KeepAlive or Stage.Unmarshal => tryStatements,
+                    Stage.GuaranteedUnmarshal or Stage.Cleanup => finallyStatements,
+                    _ => throw new ArgumentOutOfRangeException(nameof(stage))
+                };
+            }
         }
 
         public override TypePositionInfo? GetTypePositionInfoForManagedIndex(int index)
@@ -315,7 +321,7 @@ namespace Microsoft.Interop
             return null;
         }
 
-        private void AddVariableDeclations(List<StatementSyntax> statementsToUpdate, TypePositionInfo info, IMarshallingGenerator generator)
+        private void AppendVariableDeclations(List<StatementSyntax> statementsToUpdate, TypePositionInfo info, IMarshallingGenerator generator)
         {
             var (managed, native) = GetIdentifiers(info);
 

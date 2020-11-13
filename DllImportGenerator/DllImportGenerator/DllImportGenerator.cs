@@ -286,7 +286,7 @@ namespace Microsoft.Interop
 
                 Debug.Assert(expSyntaxMaybe is not null);
 
-                if (IncludeArgInDllImportAttribute(namedArg.Key))
+                if (PassThroughToDllImportAttribute(namedArg.Key))
                 {
                     // Defer the name equals syntax till we know the value means something. If we created
                     // an expression we know the key value was valid.
@@ -337,8 +337,11 @@ namespace Microsoft.Interop
                     SyntaxFactory.IdentifierName(value.ToString()));
             }
 
-            static bool IncludeArgInDllImportAttribute(string argName)
+            static bool PassThroughToDllImportAttribute(string argName)
             {
+#if GENERATE_FORWARDER
+                return true;
+#else
                 // Certain fields on DllImport will prevent inlining. Their functionality should be handled by the
                 // generated source, so the generated DllImport declaration should not include these fields.
                 return argName switch
@@ -351,6 +354,7 @@ namespace Microsoft.Interop
                     nameof(DllImportStub.GeneratedDllImportData.SetLastError) => false,
                     _ => true
                 };
+#endif
             }
         }
 
