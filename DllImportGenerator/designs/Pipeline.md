@@ -13,7 +13,41 @@ The pipeline uses the Roslyn [Syntax APIs](https://docs.microsoft.com/dotnet/api
 
 The generator processes the method's `GeneratedDllImportAttribute` data, the method's parameter and return types, and the metadata on them (e.g. [`LCIDConversionAttribute`](https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.lcidconversionattribute), [`MarshalAsAttribute`](https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.marshalasattribute), [struct marshalling attributes](StructMarshalling.md)). This information is used to determine the corresponding native type for each managed parameter/return type and how they will be marshalled.
 
-A [`TypePositionInfo`](../DllImportGenerator/TypePositionInfo.cs) is created for each type that needs to be marshalled. This includes any implicit parameter/return types that are required for the P/Invoke, but not part of the managed method signature; for example, a method with `PreserveSig=false` requires an HRESULT return type and potentially an out parameter matching the managed method's return type.
+A [`TypePositionInfo`](../DllImportGenerator/TypePositionInfo.cs) is created for each type that needs to be marshalled. For each parameter and return type, this captures the managed type, managed and native positions (return or index in parameter list), and marshalling information.
+
+The marshalling information is represented by various subclasses of [`MarshallingInfo`](../DllImportGenerator/MarshallingAttributeInfo.cs) and represents all user-defined marshalling information for the specific parameter or return type. These classes are intended to simply capture any specified marshalling information, not interpret what that information means in terms of marshalling behaviour; that is handled when determining the [marshalling generator](#marshalling-generators) for each `TypePositionInfo`.
+
+The processing step also includes handling any implicit parameter/return types that are required for the P/Invoke, but not part of the managed method signature; for example, a method with `PreserveSig=false` requires an HRESULT return type and potentially an out parameter matching the managed method's return type. 
+
+### `PreserveSig=false`
+
+The below signature indicates that the native function returns an HRESULT, but has no other return value (out parameter).
+
+```C#
+[GeneratedDllImport("Lib", PreserveSig = false)]
+static partial void Method();
+```
+Processing the above signature would create a `TypePositionInfo` for the HRESULT return type for native call, with properties indicating that it is in the native return position and has no managed position. The actual P/Invoke would be:
+
+```C#
+[DllImport("Lib", EntryPoint = "Method")]
+static partial int Method__PInvoke__();
+```
+
+The below signature indicates that the native function returns an HRESULT and also has an out parameter to be used as the managed return value.
+
+```C#
+[GeneratedDllImport("Lib", PreserveSig = false)]
+[return: MarshalAs(UnmanagedType.U1)]
+static partial bool MethodWithReturn();
+```
+
+Processing the above signature would create a `TypePositionInfo` for the HRESULT return type for native call, with properties indicating that it is in the native return position and has no managed position. The `TypePositionInfo` representing the `bool` return on the managed method would have properties indicating it is the last parameter for the native call and is in the managed return position. The actual P/Invoke would be:
+
+```C#
+[DllImport("Lib", EntryPoint = "MethodWithReturn")]
+static partial int MethodWithReturn__PInvoke__(byte* retVal);
+```
 
 ## Marshalling generators
 
@@ -24,6 +58,11 @@ The marshalling generators are responsible for generating the code for each [sta
 ## Stub code generation
 
 Generation of the stub code happens in stages. The marshalling generator for each parameter and return is called to generate code for each stage of the stub. The statements and syntax provided by each marshalling generator for each stage combine to form the full stub implementation.
+
+The stub code generator itself will handle some initial setup and variable declarations:
+- Assign `out` parameters to `default`
+- Declare variable for managed representation of return value
+- Declare variables for native representation of parameters and return value (if necessary)
 
 ### Stages
 
@@ -50,6 +89,7 @@ Generation of the stub code happens in stages. The marshalling generator for eac
 
 Generated P/Invoke structure (if no code is generated for `GuaranteedUnmarshal` and `Cleanup`, the `try-finally` is omitted):
 ```C#
+<< Variable Declarations >>
 << Setup >>
 try
 {
