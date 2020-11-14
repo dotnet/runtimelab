@@ -13,6 +13,7 @@ using Debug = System.Diagnostics.Debug;
 using ReadyToRunSectionType = Internal.Runtime.ReadyToRunSectionType;
 using ReflectionMapBlob = Internal.Runtime.ReflectionMapBlob;
 using DependencyList = ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.DependencyList;
+using MethodIL = Internal.IL.MethodIL;
 
 using MetadataRecord = Internal.Metadata.NativeFormat.Writer.MetadataRecord;
 using MemberReference = Internal.Metadata.NativeFormat.Writer.MemberReference;
@@ -236,7 +237,7 @@ namespace ILCompiler
                 && IsMethodSupportedInReflectionInvoke(method);
         }
 
-        protected bool IsMethodSupportedInReflectionInvoke(MethodDesc method)
+        public static bool IsMethodSupportedInReflectionInvoke(MethodDesc method)
         {
             TypeDesc owningType = method.OwningType;
 
@@ -764,6 +765,14 @@ namespace ILCompiler
         /// </summary>
         protected abstract MetadataCategory GetMetadataCategory(TypeDesc type);
         protected abstract MetadataCategory GetMetadataCategory(FieldDesc field);
+
+        public virtual void GetDependenciesDueToAccess(ref DependencyList dependencies, NodeFactory factory, MethodIL methodIL, MethodDesc calledMethod)
+        {
+        }
+
+        public virtual void GetDependenciesDueToAccess(ref DependencyList dependencies, NodeFactory factory, MethodIL methodIL, FieldDesc writtenField)
+        {
+        }
     }
 
     public struct MetadataMapping<TEntity>

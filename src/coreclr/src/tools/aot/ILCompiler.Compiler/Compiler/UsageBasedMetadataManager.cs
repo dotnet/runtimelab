@@ -11,6 +11,7 @@ using ILCompiler.Metadata;
 using ILCompiler.DependencyAnalysis;
 using ILCompiler.DependencyAnalysisFramework;
 
+using FlowAnnotations = ILCompiler.Dataflow.FlowAnnotations;
 using DependencyList = ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.DependencyList;
 using Debug = System.Diagnostics.Debug;
 
@@ -38,6 +39,10 @@ namespace ILCompiler
 
         private readonly MetadataType _serializationInfoType;
 
+        internal FlowAnnotations FlowAnnotations { get; }
+
+        internal Logger Logger { get; }
+
         public UsageBasedMetadataManager(
             CompilationModuleGroup group,
             CompilerTypeSystemContext typeSystemContext,
@@ -47,7 +52,8 @@ namespace ILCompiler
             StackTraceEmissionPolicy stackTracePolicy,
             DynamicInvokeThunkGenerationPolicy invokeThunkGenerationPolicy,
             ILProvider ilProvider,
-            UsageBasedMetadataGenerationOptions generationOptions)
+            UsageBasedMetadataGenerationOptions generationOptions,
+            Logger logger)
             : base(typeSystemContext, blockingPolicy, resourceBlockingPolicy, logFile, stackTracePolicy, invokeThunkGenerationPolicy)
         {
             // We use this to mark places that would behave differently if we tracked exact fields used. 
@@ -57,6 +63,9 @@ namespace ILCompiler
             _ilProvider = ilProvider;
 
             _serializationInfoType = typeSystemContext.SystemModule.GetType("System.Runtime.Serialization", "SerializationInfo", false);
+
+            FlowAnnotations = new FlowAnnotations(logger, ilProvider);
+            Logger = logger;
         }
 
         protected override void Graph_NewMarkedNode(DependencyNodeCore<NodeFactory> obj)
@@ -371,6 +380,12 @@ namespace ILCompiler
                 {
                     // A problem with the IL - we just don't scan it...
                 }
+
+                if (scanReflection && FlowAnnotations.RequiresDataflowAnalysis(method))
+                {
+                    dependencies = dependencies ?? new DependencyList();
+                    dependencies.Add(factory.DataflowAnalyzedMethod(methodIL.GetMethodILDefinition()), "Method has annotated parameters");
+                }
             }
         }
 
@@ -419,6 +434,26 @@ namespace ILCompiler
                 if (!ConstructedEETypeNode.CreationAllowed(necessaryType) &&
                     !IsReflectionBlocked(necessaryType))
                     yield return necessaryType;
+            }
+        }
+
+        public override void GetDependenciesDueToAccess(ref DependencyList dependencies, NodeFactory factory, MethodIL methodIL, FieldDesc writtenField)
+        {
+            bool scanReflection = (_generationOptions & UsageBasedMetadataGenerationOptions.ReflectionILScanning) != 0;
+            if (scanReflection && FlowAnnotations.RequiresDataflowAnalysis(writtenField))
+            {
+                dependencies = dependencies ?? new DependencyList();
+                dependencies.Add(factory.DataflowAnalyzedMethod(methodIL.GetMethodILDefinition()), "Access to interesting field");
+            }
+        }
+
+        public override void GetDependenciesDueToAccess(ref DependencyList dependencies, NodeFactory factory, MethodIL methodIL, MethodDesc calledMethod)
+        {
+            bool scanReflection = (_generationOptions & UsageBasedMetadataGenerationOptions.ReflectionILScanning) != 0;
+            if (scanReflection && FlowAnnotations.RequiresDataflowAnalysis(calledMethod))
+            {
+                dependencies = dependencies ?? new DependencyList();
+                dependencies.Add(factory.DataflowAnalyzedMethod(methodIL.GetMethodILDefinition()), "Call to interesting method");
             }
         }
 

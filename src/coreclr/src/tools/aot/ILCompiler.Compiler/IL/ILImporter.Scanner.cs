@@ -28,7 +28,7 @@ namespace Internal.IL
 
         private readonly MethodDesc _canonMethod;
 
-        private readonly DependencyList _dependencies = new DependencyList();
+        private DependencyList _dependencies = new DependencyList();
 
         private readonly byte[] _ilBytes;
         
@@ -250,6 +250,8 @@ namespace Internal.IL
             // on the canonical form.
             var runtimeDeterminedMethod = (MethodDesc)_methodIL.GetObject(token);
             var method = (MethodDesc)_canonMethodIL.GetObject(token);
+
+            _compilation.NodeFactory.MetadataManager.GetDependenciesDueToAccess(ref _dependencies, _compilation.NodeFactory, _canonMethodIL, method);
 
             if (method.IsRawPInvoke())
             {
@@ -903,6 +905,8 @@ namespace Internal.IL
         private void ImportFieldAccess(int token, bool isStatic, string reason)
         {
             var field = (FieldDesc)_methodIL.GetObject(token);
+
+            _compilation.NodeFactory.MetadataManager.GetDependenciesDueToAccess(ref _dependencies, _compilation.NodeFactory, _canonMethodIL, field);
 
             // Covers both ldsfld/ldsflda and ldfld/ldflda with a static field
             if (isStatic || field.IsStatic)

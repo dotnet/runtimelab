@@ -28,14 +28,28 @@ namespace ILCompiler.Dataflow
 
         public bool RequiresDataflowAnalysis(MethodDesc method)
         {
-            method = method.GetTypicalMethodDefinition();
-            return GetAnnotations(method.OwningType).TryGetAnnotation(method, out _);
+            try
+            {
+                method = method.GetTypicalMethodDefinition();
+                return GetAnnotations(method.OwningType).TryGetAnnotation(method, out _);
+            }
+            catch (TypeSystemException)
+            {
+                return false;
+            }
         }
 
         public bool RequiresDataflowAnalysis(FieldDesc field)
         {
-            field = field.GetTypicalFieldDefinition();
-            return GetAnnotations(field.OwningType).TryGetAnnotation(field, out _);
+            try
+            {
+                field = field.GetTypicalFieldDefinition();
+                return GetAnnotations(field.OwningType).TryGetAnnotation(field, out _);
+            }
+            catch (TypeSystemException)
+            {
+                return false;
+            }
         }
 
         public bool RequiresDataflowAnalysis(GenericParameterDesc genericParameter)

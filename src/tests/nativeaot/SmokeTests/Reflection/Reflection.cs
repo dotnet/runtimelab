@@ -1138,6 +1138,8 @@ internal class ReflectionTest
             return (int)typeof(PartialCanonTestType<object, T>).GetMethod("TestMethod").Invoke(new PartialCanonTestType<object, T>(), Array.Empty<object>());
         }
 
+        static MethodInfo GetTotallyUnreferencedMethod(Type t) => t.GetMethod(String.Format("Totally{0}", "UnreferencedMethod"));
+
         public static void Run()
         {
             Console.WriteLine(nameof(TestILScanner));
@@ -1163,7 +1165,7 @@ internal class ReflectionTest
                         throw new Exception(nameof(MyUnusedClass));
 
                     Console.WriteLine("Totally unreferenced method on a non-generic type (we should not find it)");
-                    MethodInfo mi = t.GetMethod(String.Format("Totally{0}", "UnreferencedMethod"));
+                    MethodInfo mi = GetTotallyUnreferencedMethod(t);
                     if (mi != null)
                         throw new Exception("UnreferencedMethod");
                 }

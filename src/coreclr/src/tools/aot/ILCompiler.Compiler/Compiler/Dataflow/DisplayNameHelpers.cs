@@ -128,13 +128,13 @@ namespace ILCompiler.Dataflow
 
             public override Unit AppendName(StringBuilder sb, SignatureMethodVariable type, FormatOptions options)
             {
-                Debug.Fail("Unexpected");
+                sb.Append("!!" + type.Index);
                 return default;
             }
 
             public override Unit AppendName(StringBuilder sb, SignatureTypeVariable type, FormatOptions options)
             {
-                Debug.Fail("Unexpected");
+                sb.Append("!" + type.Index);
                 return default;
             }
 
