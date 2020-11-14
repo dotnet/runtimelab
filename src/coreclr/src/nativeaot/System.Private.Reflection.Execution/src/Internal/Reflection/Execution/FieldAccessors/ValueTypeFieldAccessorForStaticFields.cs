@@ -18,39 +18,39 @@ namespace Internal.Reflection.Execution.FieldAccessors
 
         protected unsafe sealed override object GetFieldBypassCctor()
         {
-            if (FieldBase == FieldTableFlags.GCStatic)
+            if (StrippedFieldBase == FieldTableFlags.GCStatic)
             {
                 // The _staticsBase variable points to a GC handle, which points at the GC statics base of the type.
                 // We need to perform a double indirection in a GC-safe manner.
                 object gcStaticsRegion = RuntimeAugments.LoadReferenceTypeField(*(IntPtr*)StaticsBase);
                 return RuntimeAugments.LoadValueTypeField(gcStaticsRegion, FieldOffset, FieldTypeHandle);
             }
-            else if (FieldBase == FieldTableFlags.NonGCStatic)
+            else if (StrippedFieldBase == FieldTableFlags.NonGCStatic)
             {
                 return RuntimeAugments.LoadValueTypeField(StaticsBase + FieldOffset, FieldTypeHandle);
             }
 
-            Debug.Assert(FieldBase == FieldTableFlags.ThreadStatic);
+            Debug.Assert(StrippedFieldBase == FieldTableFlags.ThreadStatic);
             object threadStaticRegion = RuntimeAugments.GetThreadStaticBase(StaticsBase);
             return RuntimeAugments.LoadValueTypeField(threadStaticRegion, FieldOffset, FieldTypeHandle);
         }
 
         protected unsafe sealed override void UncheckedSetFieldBypassCctor(object value)
         {
-            if (FieldBase == FieldTableFlags.GCStatic)
+            if (StrippedFieldBase == FieldTableFlags.GCStatic)
             {
                 // The _staticsBase variable points to a GC handle, which points at the GC statics base of the type.
                 // We need to perform a double indirection in a GC-safe manner.
                 object gcStaticsRegion = RuntimeAugments.LoadReferenceTypeField(*(IntPtr*)StaticsBase);
                 RuntimeAugments.StoreValueTypeField(gcStaticsRegion, FieldOffset, value, FieldTypeHandle);
             }
-            else if (FieldBase == FieldTableFlags.NonGCStatic)
+            else if (StrippedFieldBase == FieldTableFlags.NonGCStatic)
             {
                 RuntimeAugments.StoreValueTypeField(StaticsBase + FieldOffset, value, FieldTypeHandle);
             }
             else
             {
-                Debug.Assert(FieldBase == FieldTableFlags.ThreadStatic);
+                Debug.Assert(StrippedFieldBase == FieldTableFlags.ThreadStatic);
                 object threadStaticsRegion = RuntimeAugments.GetThreadStaticBase(StaticsBase);
                 RuntimeAugments.StoreValueTypeField(threadStaticsRegion, FieldOffset, value, FieldTypeHandle);
             }

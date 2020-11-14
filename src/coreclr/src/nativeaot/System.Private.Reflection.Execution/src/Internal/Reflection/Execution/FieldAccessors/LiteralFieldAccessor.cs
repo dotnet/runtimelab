@@ -26,6 +26,8 @@ namespace Internal.Reflection.Execution.FieldAccessors
             throw new FieldAccessException(SR.Acc_ReadOnly);
         }
 
+        protected sealed override bool IsFieldInitOnly => false;
+
         private readonly object _value;
     }
 }

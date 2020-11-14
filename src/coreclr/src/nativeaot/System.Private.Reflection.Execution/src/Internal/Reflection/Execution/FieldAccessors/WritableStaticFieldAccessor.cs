@@ -16,6 +16,8 @@ namespace Internal.Reflection.Execution.FieldAccessors
 
         protected abstract override object GetFieldBypassCctor();
 
+        protected abstract override bool IsFieldInitOnly { get; }
+
         protected sealed override void SetFieldBypassCctor(object value, BinderBundle binderBundle)
         {
             value = RuntimeAugments.CheckArgument(value, FieldTypeHandle, binderBundle);

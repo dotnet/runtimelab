@@ -1374,10 +1374,10 @@ namespace Internal.Reflection.Execution
                         IntPtr cctorContext = TryGetStaticClassConstructionContext(declaringTypeHandle);
 
                         return RuntimeAugments.IsValueType(fieldTypeHandle) ?
-                            (FieldAccessor)new ValueTypeFieldAccessorForStaticFields(cctorContext, staticsBase, fieldOffset, fieldBase, fieldTypeHandle) :
+                            (FieldAccessor)new ValueTypeFieldAccessorForStaticFields(cctorContext, staticsBase, fieldOffset, fieldAccessMetadata.Flags, fieldTypeHandle) :
                             RuntimeAugments.IsUnmanagedPointerType(fieldTypeHandle) ?
-                                (FieldAccessor)new PointerTypeFieldAccessorForStaticFields(cctorContext, staticsBase, fieldOffset, fieldBase, fieldTypeHandle) :
-                                (FieldAccessor)new ReferenceTypeFieldAccessorForStaticFields(cctorContext, staticsBase, fieldOffset, fieldBase, fieldTypeHandle);
+                                (FieldAccessor)new PointerTypeFieldAccessorForStaticFields(cctorContext, staticsBase, fieldOffset, fieldAccessMetadata.Flags, fieldTypeHandle) :
+                                (FieldAccessor)new ReferenceTypeFieldAccessorForStaticFields(cctorContext, staticsBase, fieldOffset, fieldAccessMetadata.Flags, fieldTypeHandle);
                     }
             }
 

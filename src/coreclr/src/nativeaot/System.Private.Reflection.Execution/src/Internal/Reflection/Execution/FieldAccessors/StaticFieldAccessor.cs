@@ -40,6 +40,11 @@ namespace Internal.Reflection.Execution.FieldAccessors
             {
                 RuntimeAugments.EnsureClassConstructorRun(_cctorContext);
             }
+            if (IsFieldInitOnly)
+            {
+                Debug.Fail("Cannot set field with InitOnly flag set.");
+                throw new InvalidOperationException();
+            }
             SetFieldBypassCctor(value, binderBundle);
         }
 
@@ -50,6 +55,11 @@ namespace Internal.Reflection.Execution.FieldAccessors
             if (_cctorContext != IntPtr.Zero)
             {
                 RuntimeAugments.EnsureClassConstructorRun(_cctorContext);
+            }
+            if (IsFieldInitOnly)
+            {
+                Debug.Fail("Cannot set field with InitOnly flag set.");
+                throw new InvalidOperationException();
             }
             SetFieldDirectBypassCctor(value);
         }
@@ -66,5 +76,6 @@ namespace Internal.Reflection.Execution.FieldAccessors
         protected abstract object GetFieldBypassCctor();
         protected abstract void SetFieldBypassCctor(object value, BinderBundle binderBundle);
         protected abstract void SetFieldDirectBypassCctor(object value);
+        protected abstract bool IsFieldInitOnly { get; }
     }
 }
