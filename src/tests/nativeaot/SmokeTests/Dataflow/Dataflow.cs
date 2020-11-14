@@ -13,6 +13,7 @@ class Program
     {
         TestReturnValue.Run();
         TestGetMethodEventFieldPropertyConstructor.Run();
+        TestInGenericCode.Run();
 
         return 100;
     }
@@ -85,6 +86,38 @@ class Program
 
             Assert.NotNull(typeof(TestType3).GetConstructor(new Type[] { typeof(int) }));
             Assert.Equal(1, typeof(TestType3).CountConstructors());
+        }
+    }
+
+    class TestInGenericCode
+    {
+        class MyGenericType<T>
+        {
+            public static void MyGenericMethod<U>(T param1, U param2)
+            {
+
+            }
+        }
+
+        static void GenericMethod<T, U>()
+        {
+            // Ensure this method body is looked at by dataflow analysis
+            Assert.NotNull(typeof(TestType).GetConstructor(new Type[] { typeof(double) }));
+
+            // Regression test for a bug where we would try to resolve !1 (the U parameter)
+            // within the signature of MyGenericMethod (that doesn't have a second generic parameter
+            // and would cause an out-of-bounds array access at analysis time)
+            MyGenericType<U>.MyGenericMethod<U>(default, default);
+        }
+
+        class TestType
+        {
+            public TestType(double c) { }
+        }
+
+        public static void Run()
+        {
+            GenericMethod<object, object>();
         }
     }
 }

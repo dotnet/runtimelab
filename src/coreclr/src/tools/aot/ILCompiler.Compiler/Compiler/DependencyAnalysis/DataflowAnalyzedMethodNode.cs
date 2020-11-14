@@ -29,7 +29,16 @@ namespace ILCompiler.DependencyAnalysis
         public override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory factory)
         {
             var mdManager = (UsageBasedMetadataManager)factory.MetadataManager;
-            return Dataflow.ReflectionMethodBodyScanner.ScanAndProcessReturnValue(factory, mdManager.FlowAnnotations, mdManager.Logger, _methodIL);
+            try
+            {
+                return Dataflow.ReflectionMethodBodyScanner.ScanAndProcessReturnValue(factory, mdManager.FlowAnnotations, mdManager.Logger, _methodIL);
+            }
+            catch (TypeSystemException)
+            {
+                // Something wrong with the input - missing references, etc.
+                // The method body likely won't compile either, so we don't care.
+                return Array.Empty<DependencyListEntry>();
+            }
         }
 
         protected override string GetName(NodeFactory factory)
