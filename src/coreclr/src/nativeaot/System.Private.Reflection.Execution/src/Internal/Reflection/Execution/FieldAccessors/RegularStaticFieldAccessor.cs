@@ -12,14 +12,14 @@ namespace Internal.Reflection.Execution.FieldAccessors
             : base(cctorContext, fieldTypeHandle)
         {
             StaticsBase = staticsBase;
-            _fieldBase = fieldBase;
+            _fieldFlags = fieldBase;
             FieldOffset = fieldOffset;
         }
 
         protected IntPtr StaticsBase { get; }
-        private readonly FieldTableFlags _fieldBase;
+        private readonly FieldTableFlags _fieldFlags;
         protected int FieldOffset { get; }
-        protected FieldTableFlags StrippedFieldBase => _fieldBase & FieldTableFlags.StorageClass;
-        protected sealed override bool IsFieldInitOnly => _fieldBase == FieldTableFlags.IsInitOnly;
+        protected FieldTableFlags FieldBase => _fieldFlags & FieldTableFlags.StorageClass;
+        protected sealed override bool IsFieldInitOnly => (_fieldFlags & FieldTableFlags.IsInitOnly) == FieldTableFlags.IsInitOnly;
     }
 }

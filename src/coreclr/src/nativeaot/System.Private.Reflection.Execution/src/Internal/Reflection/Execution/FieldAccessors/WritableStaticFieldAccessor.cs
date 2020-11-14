@@ -20,12 +20,22 @@ namespace Internal.Reflection.Execution.FieldAccessors
 
         protected sealed override void SetFieldBypassCctor(object value, BinderBundle binderBundle)
         {
+            if (IsFieldInitOnly)
+            {
+                throw new FieldAccessException(SR.Acc_InitOnlyStatic);
+            }
+
             value = RuntimeAugments.CheckArgument(value, FieldTypeHandle, binderBundle);
             UncheckedSetFieldBypassCctor(value);
         }
 
         protected sealed override void SetFieldDirectBypassCctor(object value)
         {
+            if (IsFieldInitOnly)
+            {
+                throw new FieldAccessException(SR.Acc_InitOnlyStatic);
+            }
+
             value = RuntimeAugments.CheckArgumentForDirectFieldAccess(value, FieldTypeHandle);
             UncheckedSetFieldBypassCctor(value);
         }

@@ -222,4 +222,7 @@
   <data name="Arg_InterfaceMapMustNotBeAbstract" xml:space="preserve">
     <value>Could not retrieve the mapping of the interface '{0}' on type '{1}' because the type implements the interface abstractly.</value>
   </data>
+  <data name="Acc_InitOnlyStatic" xml:space="preserve">
+    <value>Cannot set initonly static field after its owning type is initialized.</value>
+  </data>
 </root>
