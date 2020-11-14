@@ -59,6 +59,26 @@ namespace ILCompiler.Dataflow
         {
             var scanner = new ReflectionMethodBodyScanner(factory, flowAnnotations, logger);
 
+            Debug.Assert(methodBody.GetMethodILDefinition() == methodBody);
+            if (methodBody.OwningMethod.HasInstantiation || methodBody.OwningMethod.OwningType.HasInstantiation)
+            {
+                // We instantiate the body over the generic parameters.
+                //
+                // This will transform references like "call Foo<!0>.Method(!0 arg)" into
+                // "call Foo<T>.Method(T arg)". We do this to avoid getting confused about what
+                // context the generic variables refer to - in the above example, we would see
+                // two !0's - one refers to the generic parameter of the type that owns the method with
+                // the call, but the other one (in the signature of "Method") actually refers to
+                // the generic parameter of Foo.
+                //
+                // If we don't do this translation, retrieving the signature of the called method
+                // would attempt to do bogus substitutions.
+                //
+                // By doing the following transformation, we ensure we don't see the generic variables
+                // that need to be bound to the context of the currently analyzed method.
+                methodBody = new InstantiatedMethodIL(methodBody.OwningMethod, methodBody);
+            }
+
             scanner.Scan(methodBody);
 
             if (!methodBody.OwningMethod.Signature.ReturnType.IsVoid)
@@ -1387,7 +1407,7 @@ namespace ILCompiler.Dataflow
                                 if (typeHandleValue is RuntimeTypeHandleValue runtimeTypeHandleValue)
                                 {
                                     TypeDesc typeRepresented = runtimeTypeHandleValue.TypeRepresented;
-                                    if (!typeRepresented.IsGenericDefinition && !typeRepresented.ContainsSignatureVariables() && typeRepresented.HasStaticConstructor)
+                                    if (!typeRepresented.IsGenericDefinition && !typeRepresented.ContainsSignatureVariables(treatGenericParameterLikeSignatureVariable: true) && typeRepresented.HasStaticConstructor)
                                     {
                                         _dependencies.Add(_factory.CanonicalEntrypoint(typeRepresented.GetStaticConstructor()), "RunClassConstructor reference");
                                     }
@@ -1872,7 +1892,7 @@ namespace ILCompiler.Dataflow
 
         void MarkMethod(ref ReflectionPatternContext reflectionContext, MethodDesc method)
         {
-            if (method.HasInstantiation || method.OwningType.IsGenericDefinition || method.OwningType.ContainsSignatureVariables())
+            if (method.HasInstantiation || method.OwningType.IsGenericDefinition || method.OwningType.ContainsSignatureVariables(treatGenericParameterLikeSignatureVariable: true))
             {
                 if (_logger.IsVerbose)
                     _logger.Writer.WriteLine($"Would mark {method} but it's generic");
