@@ -506,15 +506,15 @@ partial class Test
 using System.Runtime.InteropServices;
 partial class Test
 {{
-    [GeneratedDllImport(""DoesNotExist"")]
+    [GeneratedDllImport(""DoesNotExist"", PreserveSig = false)]
     [return:MarshalAs(UnmanagedType.LPArray, SizeConst=10)]
     public static partial {elementType}[] Method1();
 
-    [GeneratedDllImport(""DoesNotExist"")]
+    [GeneratedDllImport(""DoesNotExist"", PreserveSig = false)]
     [return:MarshalAs(UnmanagedType.LPArray, SizeParamIndex=0)]
     public static partial {elementType}[] Method2(int i);
 }}";
 
-        public static string ArrayPreserveSigFalse<T>() => ArrayParametersAndModifiers(typeof(T).ToString());
+        public static string ArrayPreserveSigFalse<T>() => ArrayPreserveSigFalse(typeof(T).ToString());
     }
 }
