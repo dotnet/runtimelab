@@ -156,6 +156,12 @@
   <data name="ConfigurationNotSupportedTitle" xml:space="preserve">
     <value>Specified configuration is not supported by source-generated P/Invokes.</value>
   </data>
+  <data name="CustomTypeMarshallingManagedToNativeUnsupported" xml:space="preserve">
+    <value>The specified parameter needs to be marshalled from managed to native, but the native type '{0}' does not support it.</value>
+  </data>
+  <data name="CustomTypeMarshallingNativeToManagedUnsupported" xml:space="preserve">
+    <value>The specified parameter needs to be marshalled from native to managed, but the native type '{0}' does not support it.</value>
+  </data>
   <data name="GeneratedDllImportMissingModifiersDescription" xml:space="preserve">
     <value>Methods marked with 'GeneratedDllImportAttribute' should be 'static' and 'partial'. P/Invoke source generation will ignore methods that are not 'static' and 'partial'.</value>
   </data>

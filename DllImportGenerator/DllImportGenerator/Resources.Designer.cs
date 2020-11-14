@@ -178,6 +178,24 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The specified parameter needs to be marshalled from managed to native, but the native type &apos;{0}&apos; does not support it..
+        /// </summary>
+        internal static string CustomTypeMarshallingManagedToNativeUnsupported {
+            get {
+                return ResourceManager.GetString("CustomTypeMarshallingManagedToNativeUnsupported", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The specified parameter needs to be marshalled from native to managed, but the native type &apos;{0}&apos; does not support it..
+        /// </summary>
+        internal static string CustomTypeMarshallingNativeToManagedUnsupported {
+            get {
+                return ResourceManager.GetString("CustomTypeMarshallingNativeToManagedUnsupported", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Methods marked with &apos;GeneratedDllImportAttribute&apos; should be &apos;static&apos; and &apos;partial&apos;. P/Invoke source generation will ignore methods that are not &apos;static&apos; and &apos;partial&apos;..
         /// </summary>
         internal static string GeneratedDllImportMissingModifiersDescription {

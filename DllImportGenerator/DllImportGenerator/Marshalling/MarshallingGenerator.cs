@@ -380,25 +380,37 @@ namespace Microsoft.Interop
             if ((info.RefKind == RefKind.Ref || info.RefKind == RefKind.Out || info.IsManagedReturnPosition) &&
                 (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.NativeToManaged) == 0)
             {
-                throw new MarshallingNotSupportedException(info, context);
+                throw new MarshallingNotSupportedException(info, context)
+                {
+                    NotSupportedDetails = string.Format(Resources.CustomTypeMarshallingNativeToManagedUnsupported, marshalInfo.NativeMarshallingType.ToDisplayString())
+                };
             }
             // The marshalling method for this type doesn't support marshalling from managed to native by value,
-            // but our scneario requires marshalling from managed to native by value.
+            // but our scenario requires marshalling from managed to native by value.
+            // Pinning is required for the stackalloc marshalling to enable users to safely pass the stackalloc Span's byref
+            // to native if we ever start using a conditional stackalloc method and cannot guarantee that the Span we provide
+            // the user with is backed by stack allocated memory.
             else if (!info.IsByRef &&
-                ((marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNative) == 0 &&
-                (!context.PinningSupported || (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.Pinning) != 0) &&
-                (!context.StackSpaceUsable || (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNativeStackalloc) != 0)))
+                (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNative) == 0 &&
+                !(context.PinningSupported && (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.Pinning) == 0) &&
+                !(context.StackSpaceUsable && context.PinningSupported && (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNativeStackalloc) == 0))
             {
-                throw new MarshallingNotSupportedException(info, context);
+                throw new MarshallingNotSupportedException(info, context)
+                {
+                    NotSupportedDetails = string.Format(Resources.CustomTypeMarshallingManagedToNativeUnsupported, marshalInfo.NativeMarshallingType.ToDisplayString())
+                };
             }
             // The marshalling method for this type doesn't support marshalling from managed to native by reference,
             // but our scenario requires marshalling from managed to native by reference.
             // "in" byref supports stack marshalling.
             else if (info.RefKind == RefKind.In &&
                 (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNative) == 0 &&
-                (!context.StackSpaceUsable || (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNativeStackalloc) == 0))
+                !(context.StackSpaceUsable && context.PinningSupported && (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNativeStackalloc) != 0))
             {
-                throw new MarshallingNotSupportedException(info, context);
+                throw new MarshallingNotSupportedException(info, context)
+                {
+                    NotSupportedDetails = string.Format(Resources.CustomTypeMarshallingManagedToNativeUnsupported, marshalInfo.NativeMarshallingType.ToDisplayString())
+                };
             }
             // The marshalling method for this type doesn't support marshalling from managed to native by reference,
             // but our scenario requires marshalling from managed to native by reference.
@@ -406,7 +418,10 @@ namespace Microsoft.Interop
             else if (info.RefKind == RefKind.Ref &&
                 (marshalInfo.MarshallingMethods & SupportedMarshallingMethods.ManagedToNative) == 0)
             {
-                throw new MarshallingNotSupportedException(info, context);
+                throw new MarshallingNotSupportedException(info, context)
+                {
+                    NotSupportedDetails = string.Format(Resources.CustomTypeMarshallingManagedToNativeUnsupported, marshalInfo.NativeMarshallingType.ToDisplayString())
+                };
             }
             
             return new CustomNativeTypeMarshaler(marshalInfo);
