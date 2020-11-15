@@ -1,5 +1,4 @@
-<Project>
-  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <BuildRuntimePackages>true</BuildRuntimePackages>
@@ -7,18 +6,11 @@
   </PropertyGroup>
 
   <Target Name="GetIlcCompilerFiles"
-          DependsOnTargets="ConvertItems"
+          DependsOnTargets="ResolveLibrariesFromLocalBuild"
           BeforeTargets="GetPackageFiles">
-    <ItemGroup>
-      <RuntimeFile Include="@(File->HasMetadata('TargetPath'))" Exclude="$(PackageIconFullPath)" />
-      <File Remove="@(RuntimeFile)" />
-    </ItemGroup>
 
     <ItemGroup Condition="'$(PackageTargetRuntime)' != ''">
-      <File Include="@(RuntimeFile)" Condition="'%(RuntimeFile.TargetPath)' == 'runtimes/$(PackageRID)/lib/$(NetCoreAppCurrent)'">
-        <TargetPath>framework</TargetPath>
-      </File>
-      <File Include="@(RuntimeFile)" Condition="'%(RuntimeFile.TargetPath)' == 'runtimes/$(PackageRID)/native' and '%(RuntimeFile.Extension)' == '.a'">
+      <File Include="@(LibrariesRuntimeFiles)">
         <TargetPath>framework</TargetPath>
       </File>
       <File Include="$(CoreCLRILCompilerDir)*">
@@ -39,5 +31,4 @@
     </ItemGroup>
   </Target>
 
-  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
 </Project>
