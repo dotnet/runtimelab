@@ -40,8 +40,8 @@ namespace System
 
         public static Attribute[] GetCustomAttributes(MemberInfo element) => CustomAttributeExtensions.GetCustomAttributes(element).ToArray();
         public static Attribute[] GetCustomAttributes(MemberInfo element, bool inherit) => CustomAttributeExtensions.GetCustomAttributes(element, inherit).ToArray();
-        public static Attribute[] GetCustomAttributes(MemberInfo element, Type type) => CustomAttributeExtensions.GetCustomAttributes(element, type).AsAttributeArray();
-        public static Attribute[] GetCustomAttributes(MemberInfo element, Type type, bool inherit) => CustomAttributeExtensions.GetCustomAttributes(element, type, inherit).AsAttributeArray();
+        public static Attribute[] GetCustomAttributes(MemberInfo element, Type attributeType) => CustomAttributeExtensions.GetCustomAttributes(element, attributeType).AsAttributeArray();
+        public static Attribute[] GetCustomAttributes(MemberInfo element, Type attributeType, bool inherit) => CustomAttributeExtensions.GetCustomAttributes(element, attributeType, inherit).AsAttributeArray();
 
         public static Attribute[] GetCustomAttributes(Module element) => CustomAttributeExtensions.GetCustomAttributes(element).ToArray();
         public static Attribute[] GetCustomAttributes(Module element, bool inherit) => CustomAttributeExtensions.GetCustomAttributes(element).ToArray(); // "inherit" is meaningless for assemblies
