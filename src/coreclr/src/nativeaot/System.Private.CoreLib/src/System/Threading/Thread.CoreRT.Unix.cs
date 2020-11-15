@@ -117,9 +117,19 @@ namespace System.Threading
             return ApartmentState.Unknown;
         }
 
-        private bool TrySetApartmentStateUnchecked(ApartmentState state)
+        private static bool SetApartmentStateUnchecked(ApartmentState state, bool throwOnError)
         {
-            return state == GetApartmentState();
+            if (state != ApartmentState.Unknown)
+            {
+                if (throwOnError)
+                {
+                    throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+                }
+
+                return false;
+            }
+
+            return true;
         }
 
         private void InitializeComOnNewThread()
