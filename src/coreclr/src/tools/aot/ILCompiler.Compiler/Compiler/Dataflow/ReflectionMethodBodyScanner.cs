@@ -160,7 +160,7 @@ namespace ILCompiler.Dataflow
             var annotation = _context.Annotations.FlowAnnotations.GetGenericParameterAnnotation(genericParameter);
             Debug.Assert(annotation != DynamicallyAccessedMemberTypes.None);
 
-            ValueNode valueNode = GetValueNodeFromGenericArgument(genericArgument);
+            ValueNode valueNode = GetTypeValueNodeFromGenericArgument(genericArgument);
             bool enableReflectionPatternReporting = !(source is MethodDefinition sourceMethod) || ShouldEnableReflectionPatternReporting(sourceMethod);
 
             var reflectionContext = new ReflectionPatternContext(_context, enableReflectionPatternReporting, source, genericParameter);
@@ -168,7 +168,7 @@ namespace ILCompiler.Dataflow
             RequireDynamicallyAccessedMembers(ref reflectionContext, annotation, valueNode, genericParameter);
         }
 
-        ValueNode GetValueNodeFromGenericArgument(TypeReference genericArgument)
+        ValueNode GetTypeValueNodeFromGenericArgument(TypeReference genericArgument)
         {
             if (genericArgument is GenericParameter inputGenericParameter)
             {
@@ -958,7 +958,7 @@ namespace ILCompiler.Dataflow
                             int? ctorParameterCount = parameters.Length switch
                             {
                                 1 => (methodParams[1] as ArrayValue)?.Size.AsConstInt(),
-                                2 => (methodParams[3] as ArrayValue)?.Size.AsConstInt(),
+                                4 => (methodParams[3] as ArrayValue)?.Size.AsConstInt(),
                                 5 => (methodParams[4] as ArrayValue)?.Size.AsConstInt(),
                                 _ => null,
                             };
@@ -1344,7 +1344,7 @@ namespace ILCompiler.Dataflow
                             RequireDynamicallyAccessedMembers(
                                 ref reflectionContext,
                                 DynamicallyAccessedMemberTypes.PublicParameterlessConstructor,
-                                GetValueNodeFromGenericArgument(genericCalledMethod.GenericArguments[0]),
+                                GetTypeValueNodeFromGenericArgument(genericCalledMethod.GenericArguments[0]),
                                 calledMethodDefinition.GenericParameters[0]);
                         }
                         break;
@@ -1811,6 +1811,7 @@ namespace ILCompiler.Dataflow
                     }
                     else
                     {
+                        MarkType(ref reflectionContext, foundType);
                         MarkTypeForDynamicallyAccessedMembers(ref reflectionContext, foundType, requiredMemberTypes);
                     }
                 }
@@ -1888,6 +1889,12 @@ namespace ILCompiler.Dataflow
                         break;
                 }
             }
+        }
+
+        void MarkType(ref ReflectionPatternContext reflectionContext, TypeDesc type)
+        {
+            _dependencies.Add(_factory.MaximallyConstructableType(type), reflectionContext.MemberWithRequirements.ToString());
+            reflectionContext.RecordHandledPattern();
         }
 
         void MarkMethod(ref ReflectionPatternContext reflectionContext, MethodDesc method)
