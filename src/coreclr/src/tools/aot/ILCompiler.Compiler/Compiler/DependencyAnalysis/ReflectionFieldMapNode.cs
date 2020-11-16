@@ -92,6 +92,9 @@ namespace ILCompiler.DependencyAnalysis
                 if (field.OwningType.IsCanonicalSubtype(CanonicalFormKind.Universal))
                     flags |= FieldTableFlags.IsUniversalCanonicalEntry;
 
+                if (field.IsInitOnly)
+                    flags |= FieldTableFlags.IsInitOnly;
+
                 // Grammar of a hash table entry:
                 // Flags + DeclaringType + MdHandle or Name + Cookie or Ordinal or Offset
 
