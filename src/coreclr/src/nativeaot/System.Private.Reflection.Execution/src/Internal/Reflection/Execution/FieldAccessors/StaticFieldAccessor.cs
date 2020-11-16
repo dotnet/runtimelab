@@ -66,6 +66,5 @@ namespace Internal.Reflection.Execution.FieldAccessors
         protected abstract object GetFieldBypassCctor();
         protected abstract void SetFieldBypassCctor(object value, BinderBundle binderBundle);
         protected abstract void SetFieldDirectBypassCctor(object value);
-        protected abstract bool IsFieldInitOnly { get; }
     }
 }

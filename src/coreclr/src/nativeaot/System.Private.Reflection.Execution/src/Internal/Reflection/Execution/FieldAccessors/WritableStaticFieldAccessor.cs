@@ -16,27 +16,29 @@ namespace Internal.Reflection.Execution.FieldAccessors
 
         protected abstract override object GetFieldBypassCctor();
 
-        protected abstract override bool IsFieldInitOnly { get; }
+        protected abstract bool IsFieldInitOnly { get; }
 
         protected sealed override void SetFieldBypassCctor(object value, BinderBundle binderBundle)
         {
+            value = RuntimeAugments.CheckArgument(value, FieldTypeHandle, binderBundle);
+
             if (IsFieldInitOnly)
             {
                 throw new FieldAccessException(SR.Acc_InitOnlyStatic);
             }
 
-            value = RuntimeAugments.CheckArgument(value, FieldTypeHandle, binderBundle);
             UncheckedSetFieldBypassCctor(value);
         }
 
         protected sealed override void SetFieldDirectBypassCctor(object value)
         {
+            value = RuntimeAugments.CheckArgumentForDirectFieldAccess(value, FieldTypeHandle);
+
             if (IsFieldInitOnly)
             {
                 throw new FieldAccessException(SR.Acc_InitOnlyStatic);
             }
 
-            value = RuntimeAugments.CheckArgumentForDirectFieldAccess(value, FieldTypeHandle);
             UncheckedSetFieldBypassCctor(value);
         }
 
