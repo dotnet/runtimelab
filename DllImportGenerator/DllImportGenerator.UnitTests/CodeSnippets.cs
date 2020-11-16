@@ -206,8 +206,8 @@ partial class Test
         CharSet = (CharSet)2,
         EntryPoint = EntryPointName,
         ExactSpelling = 0 != 1,
-        PreserveSig = IsFalse,
-        SetLastError = IsTrue)]
+        PreserveSig = IsTrue,
+        SetLastError = IsFalse)]
     public static partial void Method1();
 
     [GeneratedDllImport(nameof(Test),
@@ -515,6 +515,22 @@ partial class Test
 }}";
 
         public static string ArrayParameterWithNestedMarshalInfo<T>(UnmanagedType nestedMarshalType) => ArrayParameterWithNestedMarshalInfo(typeof(T).ToString(), nestedMarshalType);
+        
+        public static string ArrayPreserveSigFalse(string elementType) => $@"
+using System.Runtime.InteropServices;
+partial class Test
+{{
+    [GeneratedDllImport(""DoesNotExist"", PreserveSig = false)]
+    [return:MarshalAs(UnmanagedType.LPArray, SizeConst=10)]
+    public static partial {elementType}[] Method1();
+
+    [GeneratedDllImport(""DoesNotExist"", PreserveSig = false)]
+    [return:MarshalAs(UnmanagedType.LPArray, SizeParamIndex=0)]
+    public static partial {elementType}[] Method2(int i);
+}}";
+
+        public static string ArrayPreserveSigFalse<T>() => ArrayPreserveSigFalse(typeof(T).ToString());
+
         public static string CustomStructMarshallingParametersAndModifiers = BasicParametersAndModifiers("S") + @"
 [NativeMarshalling(typeof(Native))]
 struct S
@@ -814,6 +830,5 @@ struct Native
     public S ToManaged() => new S { b = i != 0 };
 }
 ";
-
     }
 }
