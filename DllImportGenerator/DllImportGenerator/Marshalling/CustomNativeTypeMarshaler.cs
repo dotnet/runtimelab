@@ -101,16 +101,7 @@ namespace Microsoft.Interop
             }
             switch (context.CurrentStage)
             {
-                case StubCodeContext.Stage.Setup:
-                    if (!_marshalerTypePinnable || info.IsByRef && info.RefKind != RefKind.In)
-                    {
-                        yield return LocalDeclarationStatement(
-                        VariableDeclaration(
-                            _nativeTypeSyntax,
-                            SingletonSeparatedList(
-                                VariableDeclarator(nativeIdentifier))));
-                    }
-                    
+                case StubCodeContext.Stage.Setup:                    
                     if (_useValueProperty)
                     {
                         yield return LocalDeclarationStatement(
@@ -262,7 +253,7 @@ namespace Microsoft.Interop
             }
             if (context.PinningSupported)
             {
-                if (!info.IsByRef && (_marshallingMethods & SupportedMarshallingMethods.Pinning) == 0)
+                if (!info.IsByRef && (_marshallingMethods & SupportedMarshallingMethods.Pinning) != 0)
                 {
                     return false;
                 }
