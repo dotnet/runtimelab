@@ -1368,6 +1368,9 @@
         <ExcludeList Include="$(XunitTestBinBase)/reflection/Modifiers/modifiers/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/201</Issue>
         </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/reflection/SetValue/TrySetReadonlyStaticField/*">
+            <Issue>https://github.com/dotnet/runtimelab/issues/200</Issue>
+        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/tracing/**/*">
             <Issue>EventPipe</Issue>
         </ExcludeList>
