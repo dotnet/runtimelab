@@ -155,14 +155,11 @@ namespace System.Net.Quic.Implementations.Managed
         internal void OnStreamDataWritten(ManagedQuicStream stream)
         {
             // no need to ping if the thread is already spinning
-            if (stream.SendStream!.IsFlushable)
-            {
-                var doPing = _streams.MarkFlushable(stream);
+            var doPing = _streams.MarkFlushable(stream);
 
-                if (doPing)
-                {
-                    _socketContext!.WakeUp();
-                }
+            if (doPing)
+            {
+                _socketContext!.WakeUp();
             }
         }
 

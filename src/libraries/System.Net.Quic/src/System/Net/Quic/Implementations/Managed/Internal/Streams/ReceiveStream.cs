@@ -248,10 +248,12 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
                     if (StreamState == RecvStreamState.SizeKnown)
                     {
                         StreamState = RecvStreamState.DataReceived;
-                        _deliverableChannel.Writer.TryComplete();
                     }
                 }
             }
+
+            // completing the channel is threadsafe
+            _deliverableChannel.Writer.TryComplete();
         }
 
         private void OnAllRead()
@@ -365,7 +367,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
             // dont sync block, instead, the async waiting is done via WaitToReadAsync on the _deliverableChannel
             int delivered = DeliverInternal(destination.Span, false);
 
-            if (delivered > 0)
+            if (delivered > 0 || destination.Length == 0)
                 return delivered;
 
             if (StreamState != RecvStreamState.DataRead && await _deliverableChannel.Reader.WaitToReadAsync(token).ConfigureAwait(false))
@@ -389,13 +391,13 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
         {
             int delivered = 0;
 
-            do
+            while (destination.Length > 0)
             {
                 if (_deliveryLeftoverChunk.Memory.IsEmpty)
                 {
                     ReturnMemory(_deliveryLeftoverChunk);
 
-                    if (blockUntilDataAvailable)
+                    if (blockUntilDataAvailable && delivered == 0)
                     {
                         // TODO: use ResettableValueTaskSource from StreamBuffer to handle this better
                         _deliverableChannel.Reader.WaitToReadAsync().AsTask().GetAwaiter().GetResult();
@@ -417,10 +419,9 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
 
                 destination = destination.Slice(len);
                 delivered += len;
+            }
 
-                // allow sender send more data
-            } while (destination.Length > 0);
-
+            // allow sender send more data
             UpdateMaxData(MaxData + delivered);
             BytesRead += delivered;
             if (FinalSizeKnown && BytesRead == Size)

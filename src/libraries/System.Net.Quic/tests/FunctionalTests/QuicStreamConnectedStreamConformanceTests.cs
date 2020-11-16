@@ -39,7 +39,12 @@ namespace System.Net.Quic.Tests
     public abstract class ManagedQuicStreamConformanceTestsBase : QuicStreamConformanceTests
     {
         protected override bool FlushRequiredToWriteData => true;
-        protected override bool BlocksOnZeroByteReads => true;
+
+        [ActiveIssue("Not implemented")]
+        public override Task ReadAsync_DuringReadAsync_ThrowsIfUnsupported() => base.ReadAsync_DuringReadAsync_ThrowsIfUnsupported();
+
+        [ActiveIssue("Test does not call flush")]
+        public override Task ConcurrentBidirectionalReadsWrites_Success() => base.ConcurrentBidirectionalReadsWrites_Success();
     }
 
     [ConditionalClass(typeof(QuicTestBase<ManagedProviderFactory>), nameof(QuicTestBase<ManagedProviderFactory>.IsSupported))]

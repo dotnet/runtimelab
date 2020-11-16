@@ -69,16 +69,25 @@ namespace System.Net.Quic.Implementations.Managed
         private async ValueTask WriteAsyncInternal(ReadOnlyMemory<byte> buffer, bool endStream,
             CancellationToken cancellationToken)
         {
-            await SendStream!.EnqueueAsync(buffer, cancellationToken).ConfigureAwait(false);
+            Debug.Assert(SendStream != null);
+
+            while (!buffer.IsEmpty)
+            {
+                int written = await SendStream!.EnqueueAsync(buffer, cancellationToken).ConfigureAwait(false);
+                Debug.Assert(written > 0);
+
+                if (SendStream.WrittenBytes - written< SendStream.MaxData)
+                {
+                    _connection.OnStreamDataWritten(this);
+                }
+
+                buffer = buffer.Slice(written);
+            }
 
             if (endStream)
             {
                 SendStream.MarkEndOfData();
                 await SendStream.FlushChunkAsync(cancellationToken).ConfigureAwait(false);
-            }
-
-            if (SendStream.WrittenBytes - buffer.Length < SendStream.MaxData)
-            {
                 _connection.OnStreamDataWritten(this);
             }
         }
@@ -154,16 +163,26 @@ namespace System.Net.Quic.Implementations.Managed
             ThrowIfDisposed();
             ThrowIfConnectionError();
             ThrowIfNotWritable();
-            SendStream!.Enqueue(buffer);
+
+            Debug.Assert(SendStream != null);
+
+            while (!buffer.IsEmpty)
+            {
+                int written = SendStream!.Enqueue(buffer);
+                Debug.Assert(written > 0);
+
+                if (SendStream.WrittenBytes - written < SendStream.MaxData)
+                {
+                    _connection.OnStreamDataWritten(this);
+                }
+
+                buffer = buffer.Slice(written);
+            }
 
             if (endStream)
             {
                 SendStream.MarkEndOfData();
                 SendStream.FlushChunk();
-            }
-
-            if (SendStream.WrittenBytes - buffer.Length < SendStream.MaxData)
-            {
                 _connection.OnStreamDataWritten(this);
             }
         }

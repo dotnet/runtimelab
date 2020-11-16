@@ -167,7 +167,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tracing
 
         public void OnStreamFrame(in StreamFrame frame)
         {
-            LogFrame($"Stream[{frame.StreamId}, {frame.Offset}, {frame.StreamData.Length}]");
+            LogFrame($"Stream[{frame.StreamId}, {frame.Offset}, {frame.StreamData.Length}{(frame.Fin ? ", FIN": "")}]");
         }
 
         public void OnMaxDataFrame(in MaxDataFrame frame)
