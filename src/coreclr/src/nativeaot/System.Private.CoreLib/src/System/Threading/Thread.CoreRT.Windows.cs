@@ -248,7 +248,7 @@ namespace System.Threading
             }
         }
 
-        private bool TrySetApartmentStateUnchecked(ApartmentState state)
+        private bool SetApartmentStateUnchecked(ApartmentState state, bool throwOnError)
         {
             if (this != CurrentThread)
             {
@@ -275,7 +275,21 @@ namespace System.Threading
 
             // Clear the cache and check whether new state matches the desired state
             t_apartmentType = ApartmentType.Unknown;
-            return state == GetApartmentState();
+
+            ApartmentState retState = GetApartmentState();
+
+            if (retState != state)
+            {
+                if (throwOnError)
+                {
+                    string msg = SR.Format(SR.Thread_ApartmentState_ChangeFailed, retState);
+                    throw new InvalidOperationException(msg);
+                }
+
+                return false;
+            }
+
+            return true;
         }
 
         private void InitializeComOnNewThread()
