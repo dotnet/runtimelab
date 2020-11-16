@@ -13,6 +13,9 @@ using Internal.TypeSystem;
 using BindingFlags = System.Reflection.BindingFlags;
 using NodeFactory = ILCompiler.DependencyAnalysis.NodeFactory;
 using DependencyList = ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.DependencyList;
+using CustomAttributeValue = System.Reflection.Metadata.CustomAttributeValue<Internal.TypeSystem.TypeDesc>;
+using CustomAttributeTypedArgument = System.Reflection.Metadata.CustomAttributeTypedArgument<Internal.TypeSystem.TypeDesc>;
+using CustomAttributeNamedArgumentKind = System.Reflection.Metadata.CustomAttributeNamedArgumentKind;
 
 namespace ILCompiler.Dataflow
 {
@@ -97,63 +100,116 @@ namespace ILCompiler.Dataflow
             return scanner._dependencies;
         }
 
-#if false
-        // TODO: Data flow from custom attributes
-        public void ProcessAttributeDataflow(IMemberDefinition source, MethodDefinition method, IList<CustomAttributeArgument> arguments)
+        public static DependencyList ProcessAttributeDataflow(NodeFactory factory, FlowAnnotations flowAnnotations, Logger logger, MethodDesc method, CustomAttributeValue arguments)
         {
-            int paramOffset = method.HasImplicitThis() ? 1 : 0;
+            DependencyList result = null;
 
-            for (int i = 0; i < method.Parameters.Count; i++)
+            // First do the dataflow for the constructor parameters if necessary.
+            if (flowAnnotations.RequiresDataflowAnalysis(method))
             {
-                var annotation = _context.Annotations.FlowAnnotations.GetParameterAnnotation(method, i + paramOffset);
-                if (annotation != DynamicallyAccessedMemberTypes.None)
+                for (int i = 0; i < method.Signature.Length; i++)
                 {
-                    ValueNode valueNode = GetValueNodeForCustomAttributeArgument(arguments[i]);
-                    if (valueNode != null)
+                    DynamicallyAccessedMemberTypes annotation = flowAnnotations.GetParameterAnnotation(method, i + 1);
+                    if (annotation != DynamicallyAccessedMemberTypes.None)
                     {
-                        var reflectionContext = new ReflectionPatternContext(_context, true, source, method.Parameters[i]);
-                        reflectionContext.AnalyzingPattern();
-                        RequireDynamicallyAccessedMembers(ref reflectionContext, annotation, valueNode, method);
+                        ValueNode valueNode = GetValueNodeForCustomAttributeArgument(arguments.FixedArguments[i].Value);
+                        if (valueNode != null)
+                        {
+                            var targetContext = new ParameterOrigin(method, i);
+                            var reflectionContext = new ReflectionPatternContext(logger, true, method, targetContext);
+                            try
+                            {
+                                reflectionContext.AnalyzingPattern();
+                                var scanner = new ReflectionMethodBodyScanner(factory, flowAnnotations, logger);
+                                scanner.RequireDynamicallyAccessedMembers(ref reflectionContext, annotation, valueNode, targetContext);
+                                result = scanner._dependencies;
+                            }
+                            finally
+                            {
+                                reflectionContext.Dispose();
+                            }
+                        }
                     }
                 }
             }
+
+            // Named arguments next
+            TypeDesc attributeType = method.OwningType;
+            foreach (var namedArgument in arguments.NamedArguments)
+            {
+                TypeSystemEntity entity = null;
+                DynamicallyAccessedMemberTypes annotation = DynamicallyAccessedMemberTypes.None;
+                Origin targetContext = null;
+                if (namedArgument.Kind == CustomAttributeNamedArgumentKind.Field)
+                {
+                    FieldDesc field = attributeType.GetField(namedArgument.Name);
+                    if (field != null)
+                    {
+                        annotation = flowAnnotations.GetFieldAnnotation(field);
+                        entity = field;
+                        targetContext = new FieldOrigin(field);
+                    }
+                }
+                else
+                {
+                    Debug.Assert(namedArgument.Kind == CustomAttributeNamedArgumentKind.Property);
+                    PropertyPseudoDesc property = ((MetadataType)attributeType).GetProperty(namedArgument.Name, null);
+                    MethodDesc setter = property.SetMethod;
+                    if (setter != null && setter.Signature.Length > 0 && !setter.Signature.IsStatic)
+                    {
+                        annotation = flowAnnotations.GetParameterAnnotation(setter, 1);
+                        entity = property;
+                        targetContext = new ParameterOrigin(setter, 1);
+                    }
+                }
+
+                if (annotation != DynamicallyAccessedMemberTypes.None)
+                {
+                    ValueNode valueNode = GetValueNodeForCustomAttributeArgument(namedArgument.Value);
+                    if (valueNode != null)
+                    {
+                        var reflectionContext = new ReflectionPatternContext(logger, true, method, targetContext);
+                        try
+                        {
+                            reflectionContext.AnalyzingPattern();
+                            var scanner = new ReflectionMethodBodyScanner(factory, flowAnnotations, logger);
+                            scanner.RequireDynamicallyAccessedMembers(ref reflectionContext, annotation, valueNode, targetContext);
+                            if (result == null)
+                            {
+                                result = scanner._dependencies;
+                            }
+                            else
+                            {
+                                result.AddRange(scanner._dependencies);
+                            }
+                        }
+                        finally
+                        {
+                            reflectionContext.Dispose();
+                        }
+                    }
+                }
+            }
+
+            return result;
         }
 
-        public void ProcessAttributeDataflow(FieldDefinition field, CustomAttributeArgument value)
+        static ValueNode GetValueNodeForCustomAttributeArgument(object argument)
         {
-            var annotation = _context.Annotations.FlowAnnotations.GetFieldAnnotation(field);
-            Debug.Assert(annotation != DynamicallyAccessedMemberTypes.None);
-
-            ValueNode valueNode = GetValueNodeForCustomAttributeArgument(value);
-            if (valueNode != null)
+            if (argument is TypeDesc td)
             {
-                var reflectionContext = new ReflectionPatternContext(_context, true, field.DeclaringType.Methods[0], field);
-                reflectionContext.AnalyzingPattern();
-                RequireDynamicallyAccessedMembers(ref reflectionContext, annotation, valueNode, field);
+                return new SystemTypeValue(td);
             }
+            else if (argument is string str)
+            {
+                return new KnownStringValue(str);
+            }
+
+            Debug.Assert(argument == null);
+            return null;
         }
 
-        static ValueNode GetValueNodeForCustomAttributeArgument(CustomAttributeArgument argument)
-        {
-            ValueNode valueNode;
-            if (argument.Type.Name == "Type")
-            {
-                TypeDefinition referencedType = ((TypeReference)argument.Value).Resolve();
-                valueNode = referencedType == null ? null : new SystemTypeValue(referencedType);
-            }
-            else if (argument.Type.MetadataType == MetadataType.String)
-            {
-                valueNode = new KnownStringValue((string)argument.Value);
-            }
-            else
-            {
-                // We shouldn't have gotten a non-null annotation for this from GetParameterAnnotation
-                throw new InvalidOperationException();
-            }
-
-            return valueNode;
-        }
-
+#if false
         // TODO: data flow between generic things
         public void ProcessGenericArgumentDataFlow(GenericParameter genericParameter, TypeReference genericArgument, IMemberDefinition source)
         {

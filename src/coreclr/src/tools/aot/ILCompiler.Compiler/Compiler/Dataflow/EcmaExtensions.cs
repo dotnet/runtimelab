@@ -7,6 +7,7 @@ using Internal.TypeSystem.Ecma;
 using MethodAttributes = System.Reflection.MethodAttributes;
 using FieldAttributes = System.Reflection.FieldAttributes;
 using TypeAttributes = System.Reflection.TypeAttributes;
+using Debug = System.Diagnostics.Debug;
 
 namespace ILCompiler.Dataflow
 {
@@ -40,6 +41,27 @@ namespace ILCompiler.Dataflow
         {
             return mdType.GetTypeDefinition() is EcmaType ecmaType
                 && (ecmaType.Attributes & TypeAttributes.VisibilityMask) == TypeAttributes.NestedPublic;
+        }
+
+        public static PropertyPseudoDesc GetProperty(this MetadataType mdType, string name, PropertySignature? signature)
+        {
+            Debug.Assert(signature == null);
+
+            var type = (EcmaType)mdType.GetTypeDefinition();
+            var reader = type.MetadataReader;
+            foreach (var propertyHandle in reader.GetTypeDefinition(type.Handle).GetProperties())
+            {
+                if (reader.StringComparer.Equals(reader.GetPropertyDefinition(propertyHandle).Name, name))
+                {
+                    return new PropertyPseudoDesc(type, propertyHandle);
+                }
+            }
+
+            mdType = mdType.MetadataBaseType;
+            if (mdType != null)
+                return GetProperty(mdType, name, signature);
+
+            return null;
         }
     }
 }

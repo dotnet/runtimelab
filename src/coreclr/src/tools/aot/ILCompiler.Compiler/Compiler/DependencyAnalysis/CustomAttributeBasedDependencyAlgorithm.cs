@@ -106,13 +106,13 @@ namespace ILCompiler.DependencyAnalysis
                     if (mdManager.IsReflectionBlocked(constructor))
                         continue;
 
+                    CustomAttributeValue<TypeDesc> decodedValue = attribute.DecodeValue(attributeTypeProvider);
+
                     // Make a new list in case we need to abort.
-                    var caDependencies = new DependencyList();
+                    var caDependencies = factory.MetadataManager.GetDependenciesForCustomAttribute(factory, constructor, decodedValue) ?? new DependencyList();
 
                     caDependencies.Add(factory.CanonicalEntrypoint(constructor), "Attribute constructor");
                     caDependencies.Add(factory.ConstructedTypeSymbol(constructor.OwningType), "Attribute type");
-
-                    CustomAttributeValue<TypeDesc> decodedValue = attribute.DecodeValue(attributeTypeProvider);
 
                     if (AddDependenciesFromCustomAttributeBlob(caDependencies, factory, constructor.OwningType, decodedValue))
                     {

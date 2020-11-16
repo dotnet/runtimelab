@@ -14,6 +14,7 @@ using ReadyToRunSectionType = Internal.Runtime.ReadyToRunSectionType;
 using ReflectionMapBlob = Internal.Runtime.ReflectionMapBlob;
 using DependencyList = ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.DependencyList;
 using MethodIL = Internal.IL.MethodIL;
+using CustomAttributeValue = System.Reflection.Metadata.CustomAttributeValue<Internal.TypeSystem.TypeDesc>;
 
 using MetadataRecord = Internal.Metadata.NativeFormat.Writer.MetadataRecord;
 using MemberReference = Internal.Metadata.NativeFormat.Writer.MemberReference;
@@ -772,6 +773,11 @@ namespace ILCompiler
 
         public virtual void GetDependenciesDueToAccess(ref DependencyList dependencies, NodeFactory factory, MethodIL methodIL, FieldDesc writtenField)
         {
+        }
+
+        public virtual DependencyList GetDependenciesForCustomAttribute(NodeFactory factory, MethodDesc attributeCtor, CustomAttributeValue decodedValue)
+        {
+            return null;
         }
     }
 

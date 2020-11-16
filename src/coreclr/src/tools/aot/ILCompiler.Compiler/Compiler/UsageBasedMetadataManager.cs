@@ -14,6 +14,7 @@ using ILCompiler.DependencyAnalysisFramework;
 using FlowAnnotations = ILCompiler.Dataflow.FlowAnnotations;
 using DependencyList = ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.DependencyList;
 using Debug = System.Diagnostics.Debug;
+using CustomAttributeValue = System.Reflection.Metadata.CustomAttributeValue<Internal.TypeSystem.TypeDesc>;
 
 namespace ILCompiler
 {
@@ -455,6 +456,17 @@ namespace ILCompiler
                 dependencies = dependencies ?? new DependencyList();
                 dependencies.Add(factory.DataflowAnalyzedMethod(methodIL.GetMethodILDefinition()), "Call to interesting method");
             }
+        }
+
+        public override DependencyList GetDependenciesForCustomAttribute(NodeFactory factory, MethodDesc attributeCtor, CustomAttributeValue decodedValue)
+        {
+            bool scanReflection = (_generationOptions & UsageBasedMetadataGenerationOptions.ReflectionILScanning) != 0;
+            if (scanReflection)
+            {
+                return Dataflow.ReflectionMethodBodyScanner.ProcessAttributeDataflow(factory, FlowAnnotations, Logger, attributeCtor, decodedValue);
+            }
+
+            return null;
         }
 
         public MetadataManager ToAnalysisBasedMetadataManager()

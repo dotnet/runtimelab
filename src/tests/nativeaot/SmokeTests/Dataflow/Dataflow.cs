@@ -14,6 +14,7 @@ class Program
         TestReturnValue.Run();
         TestGetMethodEventFieldPropertyConstructor.Run();
         TestInGenericCode.Run();
+        TestAttributeDataflow.Run();
 
         return 100;
     }
@@ -118,6 +119,52 @@ class Program
         public static void Run()
         {
             GenericMethod<object, object>();
+        }
+    }
+
+    class TestAttributeDataflow
+    {
+        class RequiresNonPublicMethods : Attribute
+        {
+            public RequiresNonPublicMethods([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.NonPublicMethods)] Type needed)
+            {
+            }
+
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.NonPublicMethods | DynamicallyAccessedMemberTypes.PublicMethods)]
+            public Type AlsoNeeded { get; set; }
+
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods)]
+            public Type AndAlsoNeeded;
+        }
+
+        static class Type1WithNonPublicKept
+        {
+            private static void KeptMethod() { }
+            public static void RemovedMethod() { }
+        }
+
+        static class Type2WithAllKept
+        {
+            private static void KeptMethod() { }
+            public static void AlsoKeptMethod() { }
+        }
+
+        static class Type3WithPublicKept
+        {
+            public static void KeptMethod() { }
+            private static void RemovedMethod() { }
+        }
+
+        [RequiresNonPublicMethods(typeof(Type1WithNonPublicKept), AlsoNeeded = typeof(Type2WithAllKept), AndAlsoNeeded = typeof(Type3WithPublicKept))]
+        public static void Run()
+        {
+            Assert.Equal(0, typeof(Type1WithNonPublicKept).CountPublicMethods());
+            Assert.Equal(1, typeof(Type1WithNonPublicKept).CountMethods());
+
+            Assert.Equal(2, typeof(Type2WithAllKept).CountMethods());
+
+            Assert.Equal(1, typeof(Type3WithPublicKept).CountPublicMethods());
+            Assert.Equal(1, typeof(Type3WithPublicKept).CountMethods());
         }
     }
 }
