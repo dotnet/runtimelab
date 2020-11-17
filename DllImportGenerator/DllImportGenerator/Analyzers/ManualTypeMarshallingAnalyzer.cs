@@ -134,6 +134,16 @@ namespace Microsoft.Interop.Analyzers
                 isEnabledByDefault: true,
                 description: GetResourceString(nameof(Resources.StackallocConstructorMustHaveStackBufferSizeConstantDescription)));
 
+        public readonly static DiagnosticDescriptor RefValuePropertyUnsupportedRule =
+            new DiagnosticDescriptor(
+                Ids.RefValuePropertyUnsupported,
+                "RefValuePropertyUnsupported",
+                GetResourceString(nameof(Resources.RefValuePropertyUnsupportedMessage)),
+                Category,
+                DiagnosticSeverity.Error,
+                isEnabledByDefault: true,
+                description: GetResourceString(nameof(Resources.RefValuePropertyUnsupportedDescription)));
+
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => 
             ImmutableArray.Create(
                 BlittableTypeMustBeBlittableRule,
@@ -147,7 +157,8 @@ namespace Microsoft.Interop.Analyzers
                 ValuePropertyMustHaveGetterRule,
                 GetPinnableReferenceShouldSupportAllocatingMarshallingFallbackRule,
                 StackallocMarshallingShouldSupportAllocatingMarshallingFallbackRule,
-                StackallocConstructorMustHaveStackBufferSizeConstantRule);
+                StackallocConstructorMustHaveStackBufferSizeConstantRule,
+                RefValuePropertyUnsupportedRule);
 
         public override void Initialize(AnalysisContext context)
         {
@@ -342,6 +353,14 @@ namespace Microsoft.Interop.Analyzers
                 }
 
                 IPropertySymbol? valueProperty = ManualTypeMarshallingHelper.FindValueProperty(nativeType);
+                bool valuePropertyIsRefReturn = valueProperty is { ReturnsByRef : true } or { ReturnsByRefReadonly: true };
+
+                if (valuePropertyIsRefReturn)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(RefValuePropertyUnsupportedRule, GetSyntaxReferenceForDiagnostic(valueProperty!).GetSyntax().GetLocation(),
+                        marshalerType.ToDisplayString()));
+                }
+
                 if (valueProperty is not null)
                 {
                     nativeType = valueProperty.Type;
@@ -398,7 +417,6 @@ namespace Microsoft.Interop.Analyzers
                             ? type
                             : marshalerType;
 
-                        bool valuePropertyIsRefReturn = valueProperty is { ReturnsByRef : true } or { ReturnsByRefReadonly: true };
                         context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustBePointerSizedRule,
                             valueProperty is not null
                                 ? GetSyntaxReferenceForDiagnostic(valueProperty).GetSyntax().GetLocation()

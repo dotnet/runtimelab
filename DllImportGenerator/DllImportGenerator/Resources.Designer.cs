@@ -349,6 +349,24 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The &apos;Value&apos; property must not be a &apos;ref&apos; or &apos;readonly ref&apos; property..
+        /// </summary>
+        internal static string RefValuePropertyUnsupportedDescription {
+            get {
+                return ResourceManager.GetString("RefValuePropertyUnsupportedDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The &apos;Value&apos; property on the native type &apos;{0}&apos; must not be a &apos;ref&apos; or &apos;readonly ref&apos; property..
+        /// </summary>
+        internal static string RefValuePropertyUnsupportedMessage {
+            get {
+                return ResourceManager.GetString("RefValuePropertyUnsupportedMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to When constructor taking a Span&lt;byte&gt; is specified on the native type, the type must also have a public integer constant named StackBufferSize to provide the size of the stack-allocated buffer..
         /// </summary>
         internal static string StackallocConstructorMustHaveStackBufferSizeConstantDescription {

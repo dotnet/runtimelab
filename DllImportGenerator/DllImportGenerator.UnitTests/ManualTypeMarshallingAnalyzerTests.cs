@@ -526,7 +526,8 @@ unsafe struct Native
 }";
 
             await VerifyCS.VerifyAnalyzerAsync(source,
-                VerifyCS.Diagnostic(NativeTypeMustBePointerSizedRule).WithSpan(22, 5, 22, 71).WithArguments("ref byte", "S"));
+                VerifyCS.Diagnostic(NativeTypeMustBePointerSizedRule).WithSpan(22, 5, 22, 71).WithArguments("ref byte", "S"),
+                VerifyCS.Diagnostic(RefValuePropertyUnsupportedRule).WithSpan(22, 5, 22, 71).WithArguments("Native"));
         }
 
         [Fact]
@@ -557,7 +558,8 @@ unsafe struct Native
 }";
 
             await VerifyCS.VerifyAnalyzerAsync(source,
-                VerifyCS.Diagnostic(NativeTypeMustBePointerSizedRule).WithSpan(22, 5, 22, 65).WithArguments("ref byte", "Native"));
+                VerifyCS.Diagnostic(NativeTypeMustBePointerSizedRule).WithSpan(22, 5, 22, 65).WithArguments("ref byte", "Native"),
+                VerifyCS.Diagnostic(RefValuePropertyUnsupportedRule).WithSpan(22, 5, 22, 65).WithArguments("Native"));
         }
 
         [Fact]

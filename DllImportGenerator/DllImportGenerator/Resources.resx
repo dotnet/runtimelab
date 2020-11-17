@@ -213,6 +213,12 @@
   <data name="NativeTypeMustHaveRequiredShapeMessage" xml:space="preserve">
     <value>The native type '{0}' must be a value type and have a constructor that takes one parameter of type '{1}' or a parameterless instance method named 'ToManaged' that returns '{1}'</value>
   </data>
+  <data name="RefValuePropertyUnsupportedDescription" xml:space="preserve">
+    <value>The 'Value' property must not be a 'ref' or 'readonly ref' property.</value>
+  </data>
+  <data name="RefValuePropertyUnsupportedMessage" xml:space="preserve">
+    <value>The 'Value' property on the native type '{0}' must not be a 'ref' or 'readonly ref' property.</value>
+  </data>
   <data name="StackallocConstructorMustHaveStackBufferSizeConstantDescription" xml:space="preserve">
     <value>When constructor taking a Span&lt;byte&gt; is specified on the native type, the type must also have a public integer constant named StackBufferSize to provide the size of the stack-allocated buffer.</value>
   </data>
