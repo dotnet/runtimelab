@@ -137,7 +137,10 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
                         _sendContext.Timestamp = Timestamp.Now;
                         Connection.SendData(_writer, out var receiver, _sendContext);
 
-                        _parent.SendDatagram(new DatagramInfo(buffer, _writer.BytesWritten, receiver));
+                        if (_writer.BytesWritten > 0)
+                        {
+                            _parent.SendDatagram(new DatagramInfo(buffer, _writer.BytesWritten, receiver));
+                        }
 
                         ArrayPool.Return(buffer);
                     }

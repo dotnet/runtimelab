@@ -465,6 +465,12 @@ namespace System.Net.Quic.Implementations.Managed
         /// </summary>
         internal EncryptionLevel GetWriteLevel(long timestamp)
         {
+            if (_closeTcs.IsSet)
+            {
+                // if connection closed, we are not sending any data
+                return EncryptionLevel.None;
+            }
+
             // if there is a probe waiting to be sent on any level, send it.
             // Because probe packets are not limited by congestion window, this avoids a live-lock in
             // scenario where there is a pending ack in e.g. Initial epoch, but the connection cannot
