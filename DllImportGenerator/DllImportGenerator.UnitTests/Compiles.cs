@@ -149,11 +149,8 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.ArrayPreserveSigFalse<bool>() };
             yield return new[] { CodeSnippets.ArrayPreserveSigFalse<IntPtr>() };
             yield return new[] { CodeSnippets.ArrayPreserveSigFalse<UIntPtr>() };
-            yield return new[] { CodeSnippets.DelegateParametersAndModifiers };
-            yield return new[] { CodeSnippets.DelegateMarshalAsParametersAndModifiers };
-            yield return new[] { CodeSnippets.BlittableStructParametersAndModifiers };
-            yield return new[] { CodeSnippets.GenericBlittableStructParametersAndModifiers };
-            yield return new[] { CodeSnippets.BasicParametersAndModifiers("Microsoft.Win32.SafeHandles.SafeFileHandle") };
+            
+            // Custom type marshalling
             yield return new[] { CodeSnippets.CustomStructMarshallingParametersAndModifiers };
             yield return new[] { CodeSnippets.CustomStructMarshallingStackallocParametersAndModifiersNoRef };
             yield return new[] { CodeSnippets.CustomStructMarshallingStackallocValuePropertyParametersAndModifiersNoRef };
@@ -165,11 +162,6 @@ namespace DllImportGenerator.UnitTests
 
         public static IEnumerable<object[]> CodeSnippetsToCompile_WithDiagnostics()
         {
-            yield return new[] { CodeSnippets.CustomStructMarshallingByRefValueProperty };
-            yield return new[] { CodeSnippets.CustomStructMarshallingManagedToNativeOnlyOutParameter };
-            yield return new[] { CodeSnippets.CustomStructMarshallingManagedToNativeOnlyReturnValue };
-            yield return new[] { CodeSnippets.CustomStructMarshallingNativeToManagedOnlyInParameter };
-            yield return new[] { CodeSnippets.CustomStructMarshallingStackallocOnlyRefParameter };
             yield return new[] { CodeSnippets.AllSupportedDllImportNamedArguments };
         }
 
