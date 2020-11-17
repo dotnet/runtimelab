@@ -89,12 +89,12 @@ jobs:
 - template: /eng/pipelines/installer/installer-matrix.yml
   parameters:
     buildConfig: Release
+    runtimeFlavor: mono
     platforms:
       - Linux_s390x
     jobParameters:
       liveRuntimeBuildConfig: release
       liveLibrariesBuildConfig: Release
-      runtimeFlavor: mono
 
 #
 # Libraries Release Test Execution against a release mono runtime.
