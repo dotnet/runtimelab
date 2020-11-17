@@ -46,7 +46,7 @@ namespace NativeExports
 
         [UnmanagedCallersOnly(EntryPoint = "and_bools_ref")]
         public static byte AndBoolsRef(
-            [DNNE.C99Type("struct bool_struct")] BoolStructNative* boolStruct)
+            [DNNE.C99Type("struct bool_struct*")] BoolStructNative* boolStruct)
         {
             return boolStruct->b1 != 0 && boolStruct->b2 != 0 && boolStruct->b3 != 0 ? 1 : 0;
         }
