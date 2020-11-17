@@ -13,8 +13,8 @@ namespace SharedTypes
     [BlittableType]
     public struct StringContainerNative
     {
-        private IntPtr str1;
-        private IntPtr str2;
+        public IntPtr str1;
+        public IntPtr str2;
 
         public StringContainerNative(StringContainer managed)
         {
@@ -112,5 +112,89 @@ namespace SharedTypes
         {
             Marshal.FreeCoTaskMem((IntPtr)Value);
         }
+    }
+
+    public unsafe ref struct Utf16StringMarshaler
+    {
+        private ushort* ptr;
+        private Span<ushort> span;
+
+        public Utf16StringMarshaler(string str)
+        {
+            ptr = str is null ? null : (ushort*)Marshal.StringToCoTaskMemUni(str);
+            span = default;
+        }
+
+        public Utf16StringMarshaler(string str, Span<byte> buffer)
+        {
+            if (str is null)
+            {
+                ptr = null;
+                span = default;
+            }
+            else if (str.Length < StackBufferSize)
+            {
+                span = MemoryMarshal.Cast<byte, ushort>(buffer);
+                str.AsSpan().CopyTo(MemoryMarshal.Cast<byte, char>(buffer));
+                ptr = null;
+            }
+            else
+            {
+                span = default;
+                ptr = (ushort*)Marshal.StringToCoTaskMemUni(str);
+            }
+        }
+
+        public ref ushort GetPinnableReference()
+        {
+            if (ptr != null)
+            {
+                return ref *ptr;
+            }
+            return ref span.GetPinnableReference();
+        }
+
+        public ushort* Value
+        {
+            get
+            {
+                if (ptr == null && span != default)
+                {
+                    throw new InvalidOperationException();
+                }
+                return ptr;
+            }
+            set
+            {
+                ptr = value;
+                span = default;
+            }
+        }
+
+        public string ToManaged()
+        {
+            if (ptr == null && span == default)
+            {
+                return null;
+            }
+            else if (ptr != null)
+            {
+                return Marshal.PtrToStringUni((IntPtr)ptr);
+            }
+            else
+            {
+                return MemoryMarshal.Cast<ushort, char>(span).ToString();
+            }
+        }
+
+        public void FreeNative()
+        {
+            if (ptr != null)
+            {
+                Marshal.FreeCoTaskMem((IntPtr)ptr);
+            }
+        }
+
+        public const int StackBufferSize = 0x100;
     }
 }

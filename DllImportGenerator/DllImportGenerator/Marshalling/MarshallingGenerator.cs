@@ -172,25 +172,8 @@ namespace Microsoft.Interop
                 case { ManagedType: { SpecialType: SpecialType.System_Boolean }, MarshallingAttributeInfo: MarshalAsInfo(UnmanagedType.VariantBool, _) }:
                     return VariantBool;
 
-                case { ManagedType: { SpecialType: SpecialType.System_Char } }:
-                    return CreateCharMarshaller(info, context);
-
-                case { ManagedType: { SpecialType: SpecialType.System_String } }:
-                    return CreateStringMarshaller(info, context);
-
                 case { ManagedType: { TypeKind: TypeKind.Delegate }, MarshallingAttributeInfo: NoMarshallingInfo or MarshalAsInfo(UnmanagedType.FunctionPtr, _) }:
                     return Delegate;
-
-                case { MarshallingAttributeInfo: BlittableTypeAttributeInfo }:
-                    return Blittable;
-
-                // Marshalling in new model
-                case { MarshallingAttributeInfo: NativeMarshallingAttributeInfo marshalInfo }:
-                    return CreateCustomNativeTypeMarshaller(info, context, marshalInfo);
-
-                // Simple marshalling with new attribute model, only have type name.
-                case { MarshallingAttributeInfo: GeneratedNativeMarshallingAttributeInfo(string nativeTypeName) }:
-                    return Forwarder;
 
                 case { MarshallingAttributeInfo: SafeHandleMarshallingInfo }:
                     if (!context.CanUseAdditionalTemporaryState)
@@ -199,15 +182,34 @@ namespace Microsoft.Interop
                     }
                     return SafeHandle;
 
-                case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType : ITypeSymbol elementType } , MarshallingAttributeInfo: NoMarshallingInfo}:
+                case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType: ITypeSymbol elementType }, MarshallingAttributeInfo: NoMarshallingInfo }:
                     return CreateArrayMarshaller(info, context, elementType, NoMarshallingInfo.Instance);
 
-                case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType : ITypeSymbol elementType } , MarshallingAttributeInfo: ArrayMarshalAsInfo marshalAsInfo }:
+                case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType: ITypeSymbol elementType }, MarshallingAttributeInfo: ArrayMarshalAsInfo marshalAsInfo }:
                     if (marshalAsInfo.UnmanagedArrayType != UnmanagedArrayType.LPArray)
                     {
                         throw new MarshallingNotSupportedException(info, context);
                     }
                     return CreateArrayMarshaller(info, context, elementType, marshalAsInfo.CreateArraySubTypeMarshalAsInfo());
+
+                // Marshalling in new model.
+                // Must go before the cases that do not explicitly check for marshalling info to support
+                // the user overridding the default marshalling rules with a MarshalUsing attribute.
+                case { MarshallingAttributeInfo: NativeMarshallingAttributeInfo marshalInfo }:
+                    return CreateCustomNativeTypeMarshaller(info, context, marshalInfo);
+
+                case { MarshallingAttributeInfo: BlittableTypeAttributeInfo }:
+                    return Blittable;
+
+                // Simple generated marshalling with new attribute model, only have type name.
+                case { MarshallingAttributeInfo: GeneratedNativeMarshallingAttributeInfo(string nativeTypeName) }:
+                    return Forwarder;
+
+                case { ManagedType: { SpecialType: SpecialType.System_Char } }:
+                    return CreateCharMarshaller(info, context);
+
+                case { ManagedType: { SpecialType: SpecialType.System_String } }:
+                    return CreateStringMarshaller(info, context);
 
                 case { ManagedType: { SpecialType: SpecialType.System_Void } }:
                     return Forwarder;

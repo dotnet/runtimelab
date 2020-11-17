@@ -1,5 +1,6 @@
-﻿using System.Runtime.InteropServices;
-
+﻿using System;
+using System.Runtime.InteropServices;
+using System.Text;
 using SharedTypes;
 
 using Xunit;
@@ -11,6 +12,9 @@ namespace DllImportGenerator.IntegrationTests
         [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "stringcontainer_deepduplicate")]
         public static partial void DeepDuplicateStrings(StringContainer strings, out StringContainer pStringsOut);
 
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "stringcontainer_reverse_strings")]
+        public static partial void ReverseStrings(ref StringContainer strings);
+
         [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "get_long_bytes_as_double")]
         public static partial double GetLongBytesAsDouble([MarshalUsing(typeof(DoubleToLongMarshaler))] double d);
 
@@ -19,8 +23,18 @@ namespace DllImportGenerator.IntegrationTests
             BoolStruct boolStruct,
             out BoolStruct pBoolStructOut);
 
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "and_bools_ref")]
+        [return: MarshalAs(UnmanagedType.U1)]
+        public static partial bool AndBoolsRef(in BoolStruct boolStruct);
+
         [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "double_int_ref")]
         public static partial IntWrapper DoubleIntRef(IntWrapper pInt);
+
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "reverse_replace_ref_ushort")]
+        public static partial void ReverseReplaceString([MarshalUsing(typeof(Utf16StringMarshaler))] ref string s);
+
+        [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "return_length_ushort")]
+        public static partial int ReturnStringLength([MarshalUsing(typeof(Utf16StringMarshaler))] string s);
     }
 
     public class NonBlittableStructTests
@@ -74,6 +88,85 @@ namespace DllImportGenerator.IntegrationTests
 
             Assert.Equal(originalValue * 2, wrapper.i);
             Assert.Equal(originalValue * 2, retVal.i);
+        }
+
+        [Fact]
+        public void NonBlittableStructRef()
+        {
+            var stringContainer = new StringContainer
+            {
+                str1 = "Foo",
+                str2 = "Bar"
+            };
+
+            var expected = new StringContainer 
+            {
+                str1 = ReverseUTF8Bytes(stringContainer.str1),
+                str2 = ReverseUTF8Bytes(stringContainer.str2)
+            };
+
+            var stringContainerCopy = stringContainer;
+
+            NativeExportsNE.ReverseStrings(ref stringContainerCopy);
+
+            Assert.Equal(expected, stringContainerCopy);
+        }
+
+        [Theory]
+        [InlineData(true, true, true)]
+        [InlineData(true, true, false)]
+        [InlineData(true, false, true)]
+        [InlineData(true, false, false)]
+        [InlineData(false, true, true)]
+        [InlineData(false, true, false)]
+        [InlineData(false, false, true)]
+        [InlineData(false, false, false)]
+        public void NonBlittableStructIn(bool b1, bool b2, bool b3)
+        {
+            var container = new BoolStruct
+            {
+                b1 = b1,
+                b2 = b2,
+                b3 = b3
+            };
+
+            Assert.Equal(b1 && b2 && b3, NativeExportsNE.AndBoolsRef(container));
+        }
+
+        [Fact]
+        public void NonBlittableStructStackallocPinnableNativeMarshalling()
+        {
+            string str = "Hello world!";
+            Assert.Equal(str.Length, NativeExportsNE.ReturnStringLength(str));
+        }
+
+        [Fact]
+        public void NonBlittableStructPinnableMarshalerPassByRef()
+        {
+            string str = "Hello world!";
+            string expected = ReverseChars(str);
+            NativeExportsNE.ReverseReplaceString(ref str);
+            Assert.Equal(expected, str);
+        }
+
+        private static string ReverseChars(string value)
+        {
+            if (value == null)
+                return null;
+
+            var chars = value.ToCharArray();
+            Array.Reverse(chars);
+            return new string(chars);
+        }
+
+        private static string ReverseUTF8Bytes(string value)
+        {
+            if (value == null)
+                return null;
+
+            byte[] bytes = Encoding.UTF8.GetBytes(value);
+            Array.Reverse(bytes);
+            return Encoding.UTF8.GetString(bytes);
         }
     }
 }

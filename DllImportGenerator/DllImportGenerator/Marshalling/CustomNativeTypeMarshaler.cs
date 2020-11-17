@@ -99,6 +99,7 @@ namespace Microsoft.Interop
                 }
                 yield break;
             }
+
             switch (context.CurrentStage)
             {
                 case StubCodeContext.Stage.Setup:                    
@@ -171,7 +172,9 @@ namespace Microsoft.Interop
                                 ObjectCreationExpression(_nativeLocalTypeSyntax)
                                     .WithArgumentList(ArgumentList(SeparatedList(arguments)))));
 
-                        if (_useValueProperty && !_marshalerTypePinnable)
+                        bool skipValueProperty = _marshalerTypePinnable && (!info.IsByRef || info.RefKind == RefKind.In);
+
+                        if (_useValueProperty && !skipValueProperty)
                         {
                             // <nativeIdentifier> = <marshalerIdentifier>.Value;
                             yield return ExpressionStatement(

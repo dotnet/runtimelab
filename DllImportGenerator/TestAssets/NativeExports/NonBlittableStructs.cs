@@ -1,5 +1,5 @@
-﻿using System.Runtime.InteropServices;
-
+﻿using System;
+using System.Runtime.InteropServices;
 using SharedTypes;
 
 namespace NativeExports
@@ -14,6 +14,14 @@ namespace NativeExports
         {
             // Round trip through the managed view to allocate a new native instance.
             *pStringsOut = new StringContainerNative(strings.ToManaged());
+        }
+
+        [UnmanagedCallersOnly(EntryPoint = "stringcontainer_reverse_strings")]
+        public static void ReverseStrings(
+            [DNNE.C99Type("struct string_container*")] StringContainerNative* strings)
+        {
+            strings->str1 = (IntPtr)Strings.Reverse((byte*)strings->str1);
+            strings->str2 = (IntPtr)Strings.Reverse((byte*)strings->str2);
         }
 
         [UnmanagedCallersOnly(EntryPoint = "get_long_bytes_as_double")]
@@ -34,6 +42,13 @@ namespace NativeExports
                 b2 = boolStruct.b2 != 0 ? 0 : 1,
                 b3 = boolStruct.b3 != 0 ? 0 : 1,
             };
+        }
+
+        [UnmanagedCallersOnly(EntryPoint = "and_bools_ref")]
+        public static byte AndBoolsRef(
+            [DNNE.C99Type("struct bool_struct")] BoolStructNative* boolStruct)
+        {
+            return boolStruct->b1 != 0 && boolStruct->b2 != 0 && boolStruct->b3 != 0 ? 1 : 0;
         }
 
         [UnmanagedCallersOnly(EntryPoint = "double_int_ref")]
