@@ -5,6 +5,8 @@ using System.Diagnostics;
 using System.Net.Quic.Implementations.Managed.Internal;
 using System.Net.Quic.Implementations.Managed.Internal.Crypto;
 using System.Net.Quic.Implementations.Managed.Internal.Headers;
+using System.Net.Quic.Implementations.Managed.Internal.Packets;
+using System.Net.Quic.Implementations.Managed.Internal.Parsing;
 using System.Net.Quic.Implementations.Managed.Internal.Sockets;
 
 namespace System.Net.Quic.Implementations.Managed

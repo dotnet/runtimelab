@@ -4,9 +4,10 @@
 #nullable enable
 
 using System.Net.Quic.Implementations.Managed.Internal.Crypto;
+using System.Net.Quic.Implementations.Managed.Internal.Parsing;
 using System.Net.Quic.Implementations.Managed.Internal.Streams;
 
-namespace System.Net.Quic.Implementations.Managed.Internal
+namespace System.Net.Quic.Implementations.Managed.Internal.Packets
 {
     /// <summary>
     ///     Class for aggregating all connection data for a single packet number space.

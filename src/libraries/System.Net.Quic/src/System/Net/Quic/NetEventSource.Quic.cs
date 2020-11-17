@@ -3,6 +3,7 @@
 
 using System.Diagnostics.Tracing;
 using System.Net.Quic.Implementations.Managed;
+using System.Net.Quic.Implementations.Managed.Internal.Packets;
 using System.Net.Security;
 
 namespace System.Net

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Quic.Implementations.Managed.Internal;
 using System.Net.Quic.Implementations.Managed.Internal.Crypto;
 using System.Net.Quic.Implementations.Managed.Internal.Headers;
+using System.Net.Quic.Implementations.Managed.Internal.Parsing;
 using Xunit;
 
 namespace System.Net.Quic.Tests

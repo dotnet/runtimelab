@@ -7,11 +7,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Net.Quic.Implementations.Managed.Internal;
-using System.Net.Quic.Implementations.Managed.Internal.Streams;
+using System.Net.Quic.Implementations.Managed.Internal.Tls;
 using System.Threading.Channels;
 
-namespace System.Net.Quic.Implementations.Managed
+namespace System.Net.Quic.Implementations.Managed.Internal.Streams
 {
     /// <summary>
     ///     Collection of Quic streams.

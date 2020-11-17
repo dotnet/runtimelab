@@ -6,6 +6,7 @@ using System.Net.Quic.Implementations.Managed.Internal;
 using System.Net.Quic.Implementations.Managed.Internal.Frames;
 using System.Net.Quic.Implementations.Managed.Internal.Recovery;
 using System.Net.Quic.Implementations.Managed.Internal.Streams;
+using System.Net.Quic.Implementations.Managed.Internal.Tls;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;

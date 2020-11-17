@@ -4,7 +4,7 @@
 using System.Buffers.Binary;
 using System.Diagnostics;
 
-namespace System.Net.Quic.Implementations.Managed.Internal
+namespace System.Net.Quic.Implementations.Managed.Internal.Tls
 {
     /// <summary>
     ///     Structure representing servers preferred address.

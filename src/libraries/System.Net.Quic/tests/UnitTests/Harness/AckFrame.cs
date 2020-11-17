@@ -4,6 +4,8 @@
 using System.Collections.Generic;
 using System.Net.Quic.Implementations.Managed.Internal;
 using System.Net.Quic.Implementations.Managed.Internal.Frames;
+using System.Net.Quic.Implementations.Managed.Internal.Parsing;
+using System.Net.Quic.Implementations.Managed.Internal.Tls;
 using System.Text;
 
 namespace System.Net.Quic.Tests.Harness

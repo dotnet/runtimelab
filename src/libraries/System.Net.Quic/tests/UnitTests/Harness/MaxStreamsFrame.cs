@@ -3,6 +3,7 @@
 
 using System.Net.Quic.Implementations.Managed.Internal;
 using System.Net.Quic.Implementations.Managed.Internal.Frames;
+using System.Net.Quic.Implementations.Managed.Internal.Parsing;
 
 namespace System.Net.Quic.Tests.Harness
 {

@@ -4,7 +4,7 @@
 using System.Collections.Generic;
 using System.Net.Quic.Implementations.Managed.Internal.Frames;
 
-namespace System.Net.Quic.Implementations.Managed.Internal
+namespace System.Net.Quic.Implementations.Managed.Internal.Packets
 {
     /// <summary>
     ///      Contains data about what all was sent in an outbound packet for packet loss recovery purposes.

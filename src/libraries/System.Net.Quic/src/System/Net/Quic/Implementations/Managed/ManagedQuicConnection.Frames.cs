@@ -6,6 +6,8 @@
 using System.Diagnostics;
 using System.Net.Quic.Implementations.Managed.Internal;
 using System.Net.Quic.Implementations.Managed.Internal.Frames;
+using System.Net.Quic.Implementations.Managed.Internal.Packets;
+using System.Net.Quic.Implementations.Managed.Internal.Parsing;
 using System.Net.Quic.Implementations.Managed.Internal.Recovery;
 using System.Net.Quic.Implementations.Managed.Internal.Sockets;
 using System.Net.Quic.Implementations.Managed.Internal.Streams;

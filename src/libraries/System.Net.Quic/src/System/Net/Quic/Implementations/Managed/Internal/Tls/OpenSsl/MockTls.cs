@@ -3,11 +3,12 @@
 
 using System.Collections.Generic;
 using System.Net.Quic.Implementations.Managed.Internal.Headers;
+using System.Net.Quic.Implementations.Managed.Internal.Packets;
 using System.Net.Security;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace System.Net.Quic.Implementations.Managed.Internal.Tls
+namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
 {
     internal sealed class MockTls : ITls
     {

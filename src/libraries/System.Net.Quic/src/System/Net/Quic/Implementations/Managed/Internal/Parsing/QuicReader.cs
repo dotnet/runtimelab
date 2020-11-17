@@ -4,7 +4,7 @@
 using System.Buffers.Binary;
 using System.Diagnostics;
 
-namespace System.Net.Quic.Implementations.Managed.Internal
+namespace System.Net.Quic.Implementations.Managed.Internal.Parsing
 {
     /// <summary>
     ///     Helper class for reading QUIC primitives from a byte array.

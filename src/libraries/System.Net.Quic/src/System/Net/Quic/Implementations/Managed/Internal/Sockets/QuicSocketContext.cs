@@ -6,6 +6,7 @@
 using System.Buffers;
 using System.Diagnostics;
 using System.Net.Quic.Implementations.Managed.Internal.Headers;
+using System.Net.Quic.Implementations.Managed.Internal.Packets;
 using System.Net.Quic.Implementations.MsQuic.Internal;
 using System.Net.Sockets;
 using System.Threading;

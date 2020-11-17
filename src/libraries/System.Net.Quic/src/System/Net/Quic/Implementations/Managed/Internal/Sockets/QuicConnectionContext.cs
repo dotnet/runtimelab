@@ -3,6 +3,8 @@
 
 using System.Buffers;
 using System.Net.Quic.Implementations.Managed.Internal.Headers;
+using System.Net.Quic.Implementations.Managed.Internal.Packets;
+using System.Net.Quic.Implementations.Managed.Internal.Parsing;
 using System.Net.Quic.Implementations.Managed.Internal.Tls;
 using System.Threading;
 using System.Threading.Channels;

@@ -3,7 +3,9 @@
 
 using System.IO;
 using System.Net.Quic.Implementations.Managed.Internal.Frames;
+using System.Net.Quic.Implementations.Managed.Internal.Packets;
 using System.Net.Quic.Implementations.Managed.Internal.Recovery;
+using System.Net.Quic.Implementations.Managed.Internal.Tls;
 using System.Text;
 
 namespace System.Net.Quic.Implementations.Managed.Internal.Tracing

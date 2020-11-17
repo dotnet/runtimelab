@@ -4,6 +4,7 @@
 #nullable enable
 
 using System.Diagnostics;
+using System.Net.Quic.Implementations.Managed.Internal.Parsing;
 using System.Text;
 
 namespace System.Net.Quic.Implementations.Managed.Internal.Frames

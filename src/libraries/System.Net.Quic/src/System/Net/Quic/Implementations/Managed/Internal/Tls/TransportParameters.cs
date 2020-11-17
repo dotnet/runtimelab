@@ -6,8 +6,9 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Quic.Implementations.Managed.Internal.Headers;
+using System.Net.Quic.Implementations.Managed.Internal.Parsing;
 
-namespace System.Net.Quic.Implementations.Managed.Internal
+namespace System.Net.Quic.Implementations.Managed.Internal.Tls
 {
     /// <summary>
     ///     Wrapper around the currently used QUIC transport parameters.
@@ -272,7 +273,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal
                         break;
                     case TransportParameterName.PreferredAddress:
                         // HACK: move back a bit and read the data inside PreferredAddress.Read
-                        if (!Internal.PreferredAddress.Read(data, out var addr))
+                        if (!Tls.PreferredAddress.Read(data, out var addr))
                             goto Error;
                         parameters.PreferredAddress = addr;
                         break;
@@ -363,7 +364,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal
                 written += QuicPrimitives.WriteVarInt(buffer.Slice(written), (long)TransportParameterName.PreferredAddress);
                 // the only non-fixed length field is the connection id the rest of the parameter is 41 bytes
                 written += QuicPrimitives.WriteVarInt(buffer.Slice(written), 41 + parameters.PreferredAddress.Value.ConnectionId.Length);
-                written += Internal.PreferredAddress.Write(buffer, parameters.PreferredAddress.Value);
+                written += Tls.PreferredAddress.Write(buffer, parameters.PreferredAddress.Value);
             }
 
             // TODO-RZ: don't send this if zero length connection id is used

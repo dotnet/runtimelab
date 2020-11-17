@@ -3,6 +3,7 @@
 
 using System.Diagnostics;
 using System.Net.Quic.Implementations.Managed.Internal.Headers;
+using System.Net.Quic.Implementations.Managed.Internal.Parsing;
 
 namespace System.Net.Quic.Implementations.Managed.Internal.Frames
 {

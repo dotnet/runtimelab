@@ -2,6 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Net.Quic.Implementations.Managed.Internal.Parsing;
+using System.Net.Quic.Implementations.Managed.Internal.Tls;
 
 namespace System.Net.Quic.Implementations.Managed.Internal.Frames
 {

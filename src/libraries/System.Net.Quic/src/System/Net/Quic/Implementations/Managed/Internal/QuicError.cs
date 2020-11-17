@@ -4,10 +4,9 @@
 #nullable enable
 
 using System.Diagnostics;
-using System.Net.Quic.Implementations.Managed.Internal;
 using System.Net.Quic.Implementations.Managed.Internal.Frames;
 
-namespace System.Net.Quic.Implementations.Managed
+namespace System.Net.Quic.Implementations.Managed.Internal
 {
     [DebuggerDisplay("[$ErrorCode] $ReasonPhrase ($FrameType)")]
     internal class QuicError

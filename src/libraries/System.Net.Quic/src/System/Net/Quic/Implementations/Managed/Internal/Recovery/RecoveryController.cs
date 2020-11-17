@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Quic.Implementations.Managed.Internal.Frames;
 using System.Net.Quic.Implementations.Managed.Internal.Headers;
+using System.Net.Quic.Implementations.Managed.Internal.Packets;
 using System.Net.Quic.Implementations.Managed.Internal.Tracing;
 
 namespace System.Net.Quic.Implementations.Managed.Internal.Recovery

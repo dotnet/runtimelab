@@ -3,7 +3,7 @@
 
 using System.Numerics;
 
-namespace System.Net.Quic.Implementations.Managed.Internal
+namespace System.Net.Quic.Implementations.Managed.Internal.Packets
 {
     /// <summary>
     ///     Struct for efficient representation of received packet numbers in a window of 64.
