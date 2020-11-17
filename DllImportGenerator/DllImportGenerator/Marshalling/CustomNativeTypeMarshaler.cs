@@ -131,6 +131,7 @@ namespace Microsoft.Interop
                         if (scenarioSupportsStackalloc && (!info.IsByRef || info.RefKind == RefKind.In))
                         {
                             string stackallocIdentifier = $"{managedIdentifier}__stackptr";
+                            // byte* <managedIdentifier>__stackptr = stackalloc byte[<_nativeLocalType>.StackBufferSize];
                             yield return LocalDeclarationStatement(
                             VariableDeclaration(
                                 PointerType(PredefinedType(Token(SyntaxKind.ByteKeyword))),
@@ -146,7 +147,7 @@ namespace Microsoft.Interop
                                                                 IdentifierName(ManualTypeMarshallingHelper.StackBufferSizeFieldName))
                                                         ))))))))));
 
-                            // stackalloc byte[<_nativeLocalType>.StackBufferSize]
+                            // new Span<byte>(<managedIdentifier>__stackptr, <_nativeLocalType>.StackBufferSize)
                             arguments.Add(Argument(
                                                 ObjectCreationExpression(
                                                     GenericName(Identifier(TypeNames.System_Span),
