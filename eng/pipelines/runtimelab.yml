@@ -45,17 +45,12 @@ pr:
 
 variables:
   - template: /eng/pipelines/common/variables.yml
-  - ${{ if and(ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest')) }}:
-    - name: TeamName
-      value: dotnet-core
 
-stages:
-- stage: Build
-  jobs:
-  #
-  # Checkout repository
-  #
-  - template: /eng/pipelines/common/checkout-job.yml
+jobs:
+#
+# Checkout repository
+#
+- template: /eng/pipelines/common/checkout-job.yml
 
 #
 # Build Mono release
