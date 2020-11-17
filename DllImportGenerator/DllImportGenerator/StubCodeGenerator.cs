@@ -235,11 +235,41 @@ namespace Microsoft.Interop
                                 invoke));
                     }
 
+                    if (this.dllImportData.SetLastError)
+                    {
+                        // Marshal.SetLastSystemError(0);
+                        var clearLastError = ExpressionStatement(
+                            InvocationExpression(
+                                MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    ParseName(TypeNames.System_Runtime_InteropServices_MarshalEx),
+                                    IdentifierName("SetLastSystemError")),
+                                ArgumentList(SingletonSeparatedList(
+                                    Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)))))));
+
+                        // Marshal.SetLastWin32Error(Marshal.GetLastSystemError());
+                        var updateLastError = ExpressionStatement(
+                            InvocationExpression(
+                                MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    ParseName(TypeNames.System_Runtime_InteropServices_MarshalEx),
+                                    IdentifierName("SetLastWin32Error")),
+                            ArgumentList(SingletonSeparatedList(
+                                Argument(
+                                    InvocationExpression(
+                                         MemberAccessExpression(
+                                            SyntaxKind.SimpleMemberAccessExpression,
+                                            ParseName(TypeNames.System_Runtime_InteropServices_MarshalEx),
+                                            IdentifierName("GetLastSystemError"))))))));
+
+                        invokeStatement = Block(clearLastError, invokeStatement, updateLastError);
+                    }
+
                     // Nest invocation in fixed statements
                     if (fixedStatements.Any())
                     {
                         fixedStatements.Reverse();
-                        invokeStatement = fixedStatements.First().WithStatement(Block(invokeStatement));
+                        invokeStatement = fixedStatements.First().WithStatement(invokeStatement);
                         foreach (var fixedStatement in fixedStatements.Skip(1))
                         {
                             invokeStatement = fixedStatement.WithStatement(Block(invokeStatement));
