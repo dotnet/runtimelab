@@ -531,8 +531,43 @@ partial class Test
 
         public static string ArrayPreserveSigFalse<T>() => ArrayPreserveSigFalse(typeof(T).ToString());
 
+        /// <summary>
+        /// Declaration with parameters with MarshalAs.
+        /// </summary>
+        public static string MarshalUsingParametersAndModifiers(string typeName, string nativeTypeName) => @$"
+using System.Runtime.InteropServices;
+partial class Test
+{{
+    [GeneratedDllImport(""DoesNotExist"")]
+    [return: MarshalUsing(typeof({nativeTypeName}))]
+    public static partial {typeName} Method(
+        [MarshalUsing(typeof({nativeTypeName}))] {typeName} p,
+        [MarshalUsing(typeof({nativeTypeName}))] in {typeName} pIn,
+        [MarshalUsing(typeof({nativeTypeName}))] ref {typeName} pRef,
+        [MarshalUsing(typeof({nativeTypeName}))] out {typeName} pOut);
+}}
+";
+
         public static string CustomStructMarshallingParametersAndModifiers = BasicParametersAndModifiers("S") + @"
 [NativeMarshalling(typeof(Native))]
+struct S
+{
+    public bool b;
+}
+
+struct Native
+{
+    private int i;
+    public Native(S s)
+    {
+        i = s.b ? 1 : 0;
+    }
+
+    public S ToManaged() => new S { b = i != 0 };
+}
+";
+
+        public static string CustomStructMarshallingMarshalUsingParametersAndModifiers = MarshalUsingParametersAndModifiers("S", "Native") + @"
 struct S
 {
     public bool b;

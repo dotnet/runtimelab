@@ -158,6 +158,7 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.CustomStructMarshallingValuePropertyParametersAndModifiers };
             yield return new[] { CodeSnippets.CustomStructMarshallingPinnableParametersAndModifiers };
             yield return new[] { CodeSnippets.CustomStructMarshallingNativeTypePinnable };
+            yield return new[] { CodeSnippets.CustomStructMarshallingMarshalUsingParametersAndModifiers };
         }
 
         public static IEnumerable<object[]> CodeSnippetsToCompile_WithDiagnostics()
