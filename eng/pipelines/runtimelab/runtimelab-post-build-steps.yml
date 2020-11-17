@@ -7,7 +7,7 @@ parameters:
   uploadTests: false
   smokeTestsOnly: true
   runSingleFileTests: true
-  uploadUnsignedArtifacts: false
+  uploadIntermediateArtifacts: false
 
 steps:
   # Build coreclr native test output
@@ -31,7 +31,7 @@ steps:
       displayName: Run tests in multifile mode
 
     # Upload unsigned artifacts
-  - ${{ if eq(parameters.uploadUnsignedArtifacts, true) }}:
-    - template: /eng/pipelines/common/upload-unsigned-artifacts-step.yml
+  - ${{ if eq(parameters.uploadIntermediateArtifacts, true) }}:
+    - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
       parameters:
         name: ${{ parameters.platform }}
