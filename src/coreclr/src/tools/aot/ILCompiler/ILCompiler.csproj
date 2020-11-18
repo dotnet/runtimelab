@@ -15,6 +15,7 @@
     <RuntimeIdentifiers>linux-x64;win-x64;osx-x64</RuntimeIdentifiers>
     <Configurations>Debug;Release;Checked</Configurations>
     <UseAppHost>true</UseAppHost>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
   </PropertyGroup>
 
   <PropertyGroup>
