@@ -294,7 +294,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="$(_subset.Contains('+host.pkg+'))">
-    <PkgprojProjectToBuild Include="$(InstallerProjectRoot)pkg\projects\**\*.pkgproj" SignPhase="MsiFiles" BuildInParallel="false" />
+    <PkgprojProjectToBuild Include="$(InstallerProjectRoot)pkg\projects\host-packages.proj" SignPhase="MsiFiles" BuildInParallel="false" />
     <ProjectToBuild Include="@(PkgprojProjectToBuild)" Pack="true" Category="host" />
   </ItemGroup>
   
@@ -336,7 +336,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="$(_subset.Contains('+nativeaot.packages+'))">
-    <ProjectToBuild Include="$(InstallerProjectRoot)\pkg\projects\Microsoft.DotNet.ILCompiler\Microsoft.DotNet.ILCompiler.pkgproj" Category="packs" />
+    <ProjectToBuild Include="$(InstallerProjectRoot)\pkg\projects\nativeaot-packages.proj" Category="packs" />
   </ItemGroup>
 
   <!-- Utility -->

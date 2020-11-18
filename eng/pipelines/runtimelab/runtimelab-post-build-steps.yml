@@ -7,15 +7,15 @@ parameters:
   uploadTests: false
   smokeTestsOnly: true
   runSingleFileTests: true
-  uploadUnsignedArtifacts: false
+  uploadIntermediateArtifacts: false
 
 steps:
   # Build coreclr native test output
   - ${{ if eq(parameters.osGroup, 'windows') }}:
-    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot skipstressdependencies $(buildConfigUpper) ${{ parameters.archType }} /p:NativeAotMultimodule=true /p:SmokeTestsOnly=${{ parameters.smokeTestsOnly }}
+    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} /p:NativeAotMultimodule=true /p:SmokeTestsOnly=${{ parameters.smokeTestsOnly }}
       displayName: Build tests
   - ${{ if ne(parameters.osGroup, 'windows') }}:
-    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot skipstressdependencies $(buildConfigUpper) ${{ parameters.archType }} /p:SmokeTestsOnly=true
+    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} /p:SmokeTestsOnly=true
       displayName: Build tests
 
   - ${{ if eq(parameters.runSingleFileTests, true) }}:
@@ -31,7 +31,7 @@ steps:
       displayName: Run tests in multifile mode
 
     # Upload unsigned artifacts
-  - ${{ if eq(parameters.uploadUnsignedArtifacts, true) }}:
-    - template: /eng/pipelines/common/upload-unsigned-artifacts-step.yml
+  - ${{ if eq(parameters.uploadIntermediateArtifacts, true) }}:
+    - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
       parameters:
         name: ${{ parameters.platform }}
