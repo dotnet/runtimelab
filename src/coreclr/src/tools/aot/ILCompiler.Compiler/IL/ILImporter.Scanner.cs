@@ -489,21 +489,23 @@ namespace Internal.IL
                 // Static methods are always direct calls
                 directCall = true;
             }
-            else if (targetMethod.OwningType.IsInterface)
-            {
-                // Force all interface calls to be interpreted as if they are virtual.
-                directCall = false;
-            }
             else if ((opcode != ILOpcode.callvirt && opcode != ILOpcode.ldvirtftn) || resolvedConstraint)
             {
                 directCall = true;
             }
             else
             {
-                if (!targetMethod.IsVirtual || targetMethod.IsFinal || targetMethod.OwningType.IsSealed())
+                if (!targetMethod.IsVirtual ||
+                    // Final/sealed has no meaning for interfaces, but lets us devirtualize otherwise
+                    (!targetMethod.OwningType.IsInterface && (targetMethod.IsFinal || targetMethod.OwningType.IsSealed())))
                 {
                     directCall = true;
                 }
+            }
+
+            if (directCall && targetMethod.IsAbstract)
+            {
+                ThrowHelper.ThrowInvalidProgramException(ExceptionStringID.InvalidProgramCallAbstractMethod);
             }
 
             bool allowInstParam = opcode != ILOpcode.ldvirtftn && opcode != ILOpcode.ldftn;
