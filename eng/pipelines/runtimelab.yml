@@ -45,76 +45,39 @@ pr:
 
 variables:
   - template: /eng/pipelines/common/variables.yml
+  - ${{ if and(ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest')) }}:
+    - name: TeamName
+      value: dotnet-core
 
-jobs:
-#
-# Checkout repository
-#
-- template: /eng/pipelines/common/checkout-job.yml
+stages:
+- stage: Build
+  jobs:
+  #
+  # Checkout repository
+  #
+  - template: /eng/pipelines/common/checkout-job.yml
 
-#
-# Build Mono release
-#
-- template: /eng/pipelines/common/platform-matrix.yml
-  parameters:
-    jobTemplate: /eng/pipelines/mono/templates/build-job.yml
-    runtimeFlavor: mono
-    buildConfig: release
-    platforms:
-    - Linux_s390x
-
-#
-# Build libraries using live CoreLib
-# These set of libraries are built always no matter what changed
-# The reason for that is because Corelib and Installer needs it and
-# These are part of the test matrix for Libraries changes.
-#
-- template: /eng/pipelines/common/platform-matrix.yml
-  parameters:
-    jobTemplate: /eng/pipelines/libraries/build-job.yml
-    buildConfig: Release
-    platforms:
-    - Linux_s390x
-    jobParameters:
-      testScope: innerloop
-      testBuildPlatforms:
+  #
+  # Build the whole product using Mono and run libraries tests
+  #
+  - template: /eng/pipelines/common/platform-matrix.yml
+    parameters:
+      jobTemplate: /eng/pipelines/common/global-build-job.yml
+      helixQueuesTemplate: /eng/pipelines/libraries/helix-queues-setup.yml
+      buildConfig: Release
+      runtimeFlavor: mono
+      platforms:
       - Linux_s390x
-      liveRuntimeBuildConfig: release
-
-#
-# Installer Build and Test
-# These are always built since they only take like 15 minutes
-# we expect these to be done before we finish libraries or coreclr testing.
-#
-- template: /eng/pipelines/installer/installer-matrix.yml
-  parameters:
-    buildConfig: Release
-    runtimeFlavor: mono
-    platforms:
-      - Linux_s390x
-    jobParameters:
-      liveRuntimeBuildConfig: release
-      liveLibrariesBuildConfig: Release
-
-#
-# Libraries Release Test Execution against a release mono runtime.
-#
-- template: /eng/pipelines/common/platform-matrix.yml
-  parameters:
-    jobTemplate: /eng/pipelines/libraries/run-test-job.yml
-    runtimeFlavor: mono
-    buildConfig: Release
-    platforms:
-    - Linux_s390x
-    helixQueuesTemplate: /eng/pipelines/libraries/helix-queues-setup.yml
-    jobParameters:
-      isOfficialBuild: false
-      isFullMatrix: false
-      runtimeDisplayName: mono
-      testScope: innerloop
-      liveRuntimeBuildConfig: release
-      dependsOnTestBuildConfiguration: Release
-      dependsOnTestArchitecture: s390x
+      jobParameters:
+        testGroup: innerloop
+        nameSuffix: AllSubsets_Mono
+        buildArgs: -s mono+libs+installer+libs.tests -c $(_BuildConfig) /p:ArchiveTests=true
+        timeoutInMinutes: 120
+        # extra steps, run tests
+        extraStepsTemplate: /eng/pipelines/libraries/helix.yml
+        extraStepsParameters:
+          creator: dotnet-bot
+          testRunNamePrefixSuffix: Mono_$(_BuildConfig)
 
 - ${{ if eq(variables.isOfficialBuild, true) }}:
   - template: /eng/pipelines/official/stages/publish.yml
