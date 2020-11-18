@@ -265,10 +265,10 @@ namespace Microsoft.Interop
             static bool TryCreateTypeBasedMarshallingInfo(ITypeSymbol type, Compilation compilation, out MarshallingInfo marshallingInfo)
             {
                 var conversion = compilation.ClassifyCommonConversion(type, compilation.GetTypeByMetadataName(TypeNames.System_Runtime_InteropServices_SafeHandle)!);
-                if (conversion.Exists &&
-                    conversion.IsImplicit &&
-                    conversion.IsReference &&
-                    !type.IsAbstract)
+                if (conversion.Exists 
+                    && conversion.IsImplicit 
+                    && conversion.IsReference 
+                    && !type.IsAbstract)
                 {
                     marshallingInfo = new SafeHandleMarshallingInfo();
                     return true;

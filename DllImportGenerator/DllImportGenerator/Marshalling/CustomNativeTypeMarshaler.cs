@@ -77,10 +77,10 @@ namespace Microsoft.Interop
         {
             (string managedIdentifier, string nativeIdentifier) = context.GetIdentifiers(info);
             string marshalerIdentifier = _useValueProperty ? nativeIdentifier + MarshalerLocalSuffix  : nativeIdentifier;
-            if (!info.IsManagedReturnPosition &&
-                !info.IsByRef &&
-                context.PinningSupported &&
-                (_marshallingMethods & SupportedMarshallingMethods.Pinning) != 0)
+            if (!info.IsManagedReturnPosition 
+                && !info.IsByRef 
+                && context.PinningSupported 
+                && (_marshallingMethods & SupportedMarshallingMethods.Pinning) != 0)
             {
                 if (context.CurrentStage == StubCodeContext.Stage.Pin)
                 {
@@ -120,9 +120,9 @@ namespace Microsoft.Interop
                         // We also require pinning to be supported to enable users to pass the stackalloc'd Span
                         // to native code by having the marshaler type return a byref to the Span's elements
                         // in its GetPinnableReference method.
-                        bool scenarioSupportsStackalloc = context.StackSpaceUsable &&
-                            (_marshallingMethods & SupportedMarshallingMethods.ManagedToNativeStackalloc) != 0 &&
-                            context.PinningSupported;
+                        bool scenarioSupportsStackalloc = context.StackSpaceUsable 
+                            && (_marshallingMethods & SupportedMarshallingMethods.ManagedToNativeStackalloc) != 0 
+                            && context.PinningSupported;
 
                         List<ArgumentSyntax> arguments = new List<ArgumentSyntax>
                         {

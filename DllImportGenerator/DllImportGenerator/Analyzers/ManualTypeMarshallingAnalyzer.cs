@@ -403,12 +403,12 @@ namespace Microsoft.Interop.Analyzers
                     }
                 }
 
-                if ((validateManagedGetPinnableReference && managedGetPinnableReferenceMethod is not null) ||
-                    ManualTypeMarshallingHelper.FindGetPinnableReference(marshalerType) is not null)
+                if ((validateManagedGetPinnableReference && managedGetPinnableReferenceMethod is not null) 
+                    || ManualTypeMarshallingHelper.FindGetPinnableReference(marshalerType) is not null)
                 {
                     // Validate that the Value property is a pointer-sized primitive type.
-                    if (valueProperty is null ||
-                        (valueProperty.Type is not (
+                    if (valueProperty is null 
+                        || (valueProperty.Type is not (
                             IPointerTypeSymbol _ or
                             { SpecialType: SpecialType.System_IntPtr } or
                             { SpecialType: SpecialType.System_UIntPtr })))

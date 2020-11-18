@@ -128,14 +128,14 @@ namespace DllImportGenerator.Tools
             rootCommand.Description = "Read P/Invoke information from assembly metadata";
             rootCommand.AddValidator(result =>
             {
-                if (result.Children.Contains("--assembly") &&
-                    result.Children.Contains("--directory"))
+                if (result.Children.Contains("--assembly") 
+                    && result.Children.Contains("--directory"))
                 {
                     return "Options '--assembly' and '--directory' cannot be used together.";
                 }
 
-                if (!result.Children.Contains("--assembly") &&
-                    !result.Children.Contains("--directory"))
+                if (!result.Children.Contains("--assembly") 
+                    && !result.Children.Contains("--directory"))
                 {
                     return "Either '--assembly' or '--directory' must be specified.";
                 }
