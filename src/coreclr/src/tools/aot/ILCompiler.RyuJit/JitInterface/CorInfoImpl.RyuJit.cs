@@ -1184,11 +1184,6 @@ namespace Internal.JitInterface
                 // Static methods are always direct calls
                 directCall = true;
             }
-            else if (targetMethod.OwningType.IsInterface)
-            {
-                // Force all interface calls to be interpreted as if they are virtual.
-                directCall = false;
-            }
             else if ((flags & CORINFO_CALLINFO_FLAGS.CORINFO_CALLINFO_CALLVIRT) == 0 || resolvedConstraint)
             {
                 directCall = true;
@@ -1205,6 +1200,11 @@ namespace Internal.JitInterface
             pResult->codePointerOrStubLookup.lookupKind.needsRuntimeLookup = false;
 
             bool allowInstParam = (flags & CORINFO_CALLINFO_FLAGS.CORINFO_CALLINFO_ALLOWINSTPARAM) != 0;
+
+            if (directCall && targetMethod.IsAbstract)
+            {
+                ThrowHelper.ThrowInvalidProgramException(ExceptionStringID.InvalidProgramCallAbstractMethod);
+            }
 
             if (directCall && !allowInstParam && targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific).RequiresInstArg())
             {
