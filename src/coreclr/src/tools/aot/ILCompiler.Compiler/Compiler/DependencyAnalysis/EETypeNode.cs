@@ -57,9 +57,10 @@ namespace ILCompiler.DependencyAnalysis
     /// </summary>
     public partial class EETypeNode : ObjectNode, IExportableSymbolNode, IEETypeNode, ISymbolDefinitionNode, ISymbolNodeWithLinkage
     {
-        protected TypeDesc _type;
-        internal EETypeOptionalFieldsBuilder _optionalFieldsBuilder = new EETypeOptionalFieldsBuilder();
-        internal EETypeOptionalFieldsNode _optionalFieldsNode;
+        protected readonly TypeDesc _type;
+        internal readonly EETypeOptionalFieldsBuilder _optionalFieldsBuilder = new EETypeOptionalFieldsBuilder();
+        internal readonly EETypeOptionalFieldsNode _optionalFieldsNode;
+        protected readonly bool _mightHaveInterfaceDispatchMap;
 
         public EETypeNode(NodeFactory factory, TypeDesc type)
         {
@@ -71,6 +72,8 @@ namespace ILCompiler.DependencyAnalysis
             Debug.Assert(!type.IsRuntimeDeterminedSubtype);
             _type = type;
             _optionalFieldsNode = new EETypeOptionalFieldsNode(this);
+
+            _mightHaveInterfaceDispatchMap = EmitVirtualSlotsAndInterfaces && InterfaceDispatchMapNode.MightHaveInterfaceDispatchMap(type, factory);
 
             factory.TypeSystemContext.EnsureLoadableType(type);
         }
@@ -882,7 +885,7 @@ namespace ILCompiler.DependencyAnalysis
         /// </summary>
         protected internal virtual void ComputeOptionalEETypeFields(NodeFactory factory, bool relocsOnly)
         {
-            if (!relocsOnly && EmitVirtualSlotsAndInterfaces && InterfaceDispatchMapNode.MightHaveInterfaceDispatchMap(_type, factory))
+            if (!relocsOnly && _mightHaveInterfaceDispatchMap)
             {
                 _optionalFieldsBuilder.SetFieldValue(EETypeOptionalFieldTag.DispatchMap, checked((uint)factory.InterfaceDispatchMapIndirection(Type).IndexFromBeginningOfArray));
             }

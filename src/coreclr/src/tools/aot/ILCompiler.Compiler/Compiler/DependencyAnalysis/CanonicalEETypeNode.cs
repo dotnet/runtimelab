@@ -44,7 +44,7 @@ namespace ILCompiler.DependencyAnalysis
 
             DefType closestDefType = _type.GetClosestDefType();
 
-            if (InterfaceDispatchMapNode.MightHaveInterfaceDispatchMap(_type, factory))
+            if (_mightHaveInterfaceDispatchMap)
                 dependencyList.Add(factory.InterfaceDispatchMap(_type), "Canonical interface dispatch map");
 
             dependencyList.Add(factory.VTable(closestDefType), "VTable");
