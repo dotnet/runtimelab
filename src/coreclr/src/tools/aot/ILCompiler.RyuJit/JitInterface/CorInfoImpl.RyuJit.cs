@@ -1190,7 +1190,9 @@ namespace Internal.JitInterface
             }
             else
             {
-                if (!targetMethod.IsVirtual || targetMethod.IsFinal || targetMethod.OwningType.IsSealed())
+                if (!targetMethod.IsVirtual ||
+                    // Final/sealed has no meaning for interfaces, but lets us devirtualize otherwise
+                    !targetMethod.OwningType.IsInterface && (targetMethod.IsFinal || targetMethod.OwningType.IsSealed()))
                 {
                     resolvedCallVirt = true;
                     directCall = true;
