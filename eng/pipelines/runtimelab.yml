@@ -45,9 +45,6 @@ pr:
 
 variables:
   - template: /eng/pipelines/common/variables.yml
-  - ${{ if and(ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest')) }}:
-    - name: TeamName
-      value: dotnet-core
 
 stages:
 - stage: Build
@@ -76,6 +73,7 @@ stages:
         # extra steps, run tests
         extraStepsTemplate: /eng/pipelines/libraries/helix.yml
         extraStepsParameters:
+          condition: ne(variables.isOfficialBuild, true)
           creator: dotnet-bot
           testRunNamePrefixSuffix: Mono_$(_BuildConfig)
 
