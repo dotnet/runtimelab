@@ -5,48 +5,48 @@
 
 #include <errno.h>
 
-FORCEINLINE int32_t PalInterlockedIncrement(_Inout_ _Interlocked_operand_ int32_t volatile *pDst)
+FORCEINLINE int32_t PalInterlockedIncrement(_Inout_ int32_t volatile *pDst)
 {
     return __sync_add_and_fetch(pDst, 1);
 }
 
-FORCEINLINE int32_t PalInterlockedDecrement(_Inout_ _Interlocked_operand_ int32_t volatile *pDst)
+FORCEINLINE int32_t PalInterlockedDecrement(_Inout_ int32_t volatile *pDst)
 {
     return __sync_sub_and_fetch(pDst, 1);
 }
 
-FORCEINLINE uint32_t PalInterlockedOr(_Inout_ _Interlocked_operand_ uint32_t volatile *pDst, uint32_t iValue)
+FORCEINLINE uint32_t PalInterlockedOr(_Inout_ uint32_t volatile *pDst, uint32_t iValue)
 {
     return __sync_or_and_fetch(pDst, iValue);
 }
 
-FORCEINLINE uint32_t PalInterlockedAnd(_Inout_ _Interlocked_operand_ uint32_t volatile *pDst, uint32_t iValue)
+FORCEINLINE uint32_t PalInterlockedAnd(_Inout_ uint32_t volatile *pDst, uint32_t iValue)
 {
     return __sync_and_and_fetch(pDst, iValue);
 }
 
-FORCEINLINE int32_t PalInterlockedExchange(_Inout_ _Interlocked_operand_ int32_t volatile *pDst, int32_t iValue)
+FORCEINLINE int32_t PalInterlockedExchange(_Inout_ int32_t volatile *pDst, int32_t iValue)
 {
     return __sync_swap(pDst, iValue);
 }
 
-FORCEINLINE int64_t PalInterlockedExchange64(_Inout_ _Interlocked_operand_ int64_t volatile *pDst, int64_t iValue)
+FORCEINLINE int64_t PalInterlockedExchange64(_Inout_ int64_t volatile *pDst, int64_t iValue)
 {
     return __sync_swap(pDst, iValue);
 }
 
-FORCEINLINE int32_t PalInterlockedCompareExchange(_Inout_ _Interlocked_operand_ int32_t volatile *pDst, int32_t iValue, int32_t iComparand)
+FORCEINLINE int32_t PalInterlockedCompareExchange(_Inout_ int32_t volatile *pDst, int32_t iValue, int32_t iComparand)
 {
     return __sync_val_compare_and_swap(pDst, iComparand, iValue);
 }
 
-FORCEINLINE int64_t PalInterlockedCompareExchange64(_Inout_ _Interlocked_operand_ int64_t volatile *pDst, int64_t iValue, int64_t iComparand)
+FORCEINLINE int64_t PalInterlockedCompareExchange64(_Inout_ int64_t volatile *pDst, int64_t iValue, int64_t iComparand)
 {
     return __sync_val_compare_and_swap(pDst, iComparand, iValue);
 }
 
 #if defined(HOST_AMD64) || defined(HOST_ARM64)
-FORCEINLINE uint8_t PalInterlockedCompareExchange128(_Inout_ _Interlocked_operand_ int64_t volatile *pDst, int64_t iValueHigh, int64_t iValueLow, int64_t *pComparandAndResult)
+FORCEINLINE uint8_t PalInterlockedCompareExchange128(_Inout_ int64_t volatile *pDst, int64_t iValueHigh, int64_t iValueLow, int64_t *pComparandAndResult)
 {
     __int128_t iComparand = ((__int128_t)pComparandAndResult[1] << 64) + (uint64_t)pComparandAndResult[0];
     __int128_t iResult = __sync_val_compare_and_swap((__int128_t volatile*)pDst, iComparand, ((__int128_t)iValueHigh << 64) + (uint64_t)iValueLow);
