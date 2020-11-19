@@ -147,7 +147,8 @@ namespace ILCompiler
         /// </summary>
         public static bool CanMethodBeInSealedVTable(this MethodDesc method)
         {
-            return method.IsFinal && method.IsNewSlot;
+            // The sealed vtable optimization doesn't make sense for interfaces since the slots are not inherited by anyone.
+            return method.IsFinal && method.IsNewSlot && !method.OwningType.IsInterface;
         }
     }
 }
