@@ -4,7 +4,7 @@ using SharedTypes;
 
 namespace NativeExports
 {
-    public static unsafe class NonBlittableStructs
+    public static unsafe class CustomMarshalling
     {
         [UnmanagedCallersOnly(EntryPoint = "stringcontainer_deepduplicate")]
         [DNNE.C99DeclCode("struct string_container { char* str1; char* str2; };")]

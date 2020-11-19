@@ -37,7 +37,7 @@ namespace DllImportGenerator.IntegrationTests
         public static partial int ReturnStringLength([MarshalUsing(typeof(Utf16StringMarshaler))] string s);
     }
 
-    public class NonBlittableStructTests
+    public class CustomMarshallingTests
     {
         [Fact]
         public void NonBlittableStructWithFree()
