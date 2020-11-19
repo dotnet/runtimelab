@@ -6,11 +6,9 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-#nullable enable
-
 namespace Microsoft.Interop
 {
-    class CustomNativeTypeMarshaler : IMarshallingGenerator
+    class CustomNativeTypeMarshaller : IMarshallingGenerator
     {
         private const string MarshalerLocalSuffix = "__marshaler";
         private readonly TypeSyntax _nativeTypeSyntax;
@@ -20,7 +18,7 @@ namespace Microsoft.Interop
         private readonly bool _useValueProperty;
         private readonly bool _marshalerTypePinnable;
 
-        public CustomNativeTypeMarshaler(NativeMarshallingAttributeInfo marshallingInfo)
+        public CustomNativeTypeMarshaller(NativeMarshallingAttributeInfo marshallingInfo)
         {
             ITypeSymbol nativeType = marshallingInfo.ValuePropertyType ?? marshallingInfo.NativeMarshallingType;
             _nativeTypeSyntax = ParseTypeName(nativeType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
@@ -31,7 +29,7 @@ namespace Microsoft.Interop
             _marshalerTypePinnable = marshallingInfo.NativeTypePinnable;
         }
 
-        public CustomNativeTypeMarshaler(GeneratedNativeMarshallingAttributeInfo marshallingInfo)
+        public CustomNativeTypeMarshaller(GeneratedNativeMarshallingAttributeInfo marshallingInfo)
         {
             _nativeTypeSyntax = _nativeLocalTypeSyntax = ParseTypeName(marshallingInfo.NativeMarshallingFullyQualifiedTypeName);
             _marshallingMethods = SupportedMarshallingMethods.ManagedToNative | SupportedMarshallingMethods.NativeToManaged;

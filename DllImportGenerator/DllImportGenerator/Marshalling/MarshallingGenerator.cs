@@ -428,7 +428,7 @@ namespace Microsoft.Interop
                 };
             }
             
-            return new CustomNativeTypeMarshaler(marshalInfo);
+            return new CustomNativeTypeMarshaller(marshalInfo);
         }
     }
 }
