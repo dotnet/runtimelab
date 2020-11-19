@@ -44,7 +44,7 @@ namespace Microsoft.Interop
             return true;
         }
 
-        internal static bool IsSpecialTypeBlittable(SpecialType specialType)
+        private static bool IsSpecialTypeBlittable(SpecialType specialType)
          => specialType switch
          {
             SpecialType.System_SByte

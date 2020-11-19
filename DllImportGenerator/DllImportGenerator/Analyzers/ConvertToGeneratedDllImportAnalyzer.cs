@@ -119,7 +119,7 @@ namespace Microsoft.Interop.Analyzers
             if (typeSymbol.TypeKind == TypeKind.Pointer)
                 return false;
 
-            return !TypeSymbolExtensions.IsSpecialTypeBlittable(typeSymbol.SpecialType);
+            return !typeSymbol.IsConsideredBlittable();
         }
     }
 }
