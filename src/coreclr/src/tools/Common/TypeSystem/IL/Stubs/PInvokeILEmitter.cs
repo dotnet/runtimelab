@@ -203,8 +203,12 @@ namespace Internal.IL.Stubs
                     nativeParameterTypes[i - 1] = _marshallers[i].NativeParameterType;
                 }
 
+                MethodSignatureFlags unmanagedCallingConvention = _flags.UnmanagedCallingConvention;
+                if (unmanagedCallingConvention == MethodSignatureFlags.None)
+                    unmanagedCallingConvention = MethodSignatureFlags.UnmanagedCallingConvention;
+ 
                 MethodSignature nativeSig = new MethodSignature(
-                    MethodSignatureFlags.Static | _flags.UnmanagedCallingConvention, 0, nativeReturnType, nativeParameterTypes);
+                    MethodSignatureFlags.Static | unmanagedCallingConvention, 0, nativeReturnType, nativeParameterTypes);
 
                 callsiteSetupCodeStream.Emit(ILOpcode.calli, emitter.NewToken(nativeSig));
 
@@ -258,10 +262,12 @@ namespace Internal.IL.Stubs
                 fnptrLoadStream.Emit(ILOpcode.call, emitter.NewToken(lazyHelperType
                     .GetKnownMethod("ResolvePInvoke", null)));
 
-                MethodSignatureFlags unmanagedCallConv = _flags.UnmanagedCallingConvention;
+                MethodSignatureFlags unmanagedCallingConvention = _flags.UnmanagedCallingConvention;
+                if (unmanagedCallingConvention == MethodSignatureFlags.None)
+                    unmanagedCallingConvention = MethodSignatureFlags.UnmanagedCallingConvention;
 
                 MethodSignature nativeSig = new MethodSignature(
-                    _targetMethod.Signature.Flags | unmanagedCallConv, 0, nativeReturnType,
+                    _targetMethod.Signature.Flags | unmanagedCallingConvention, 0, nativeReturnType,
                     nativeParameterTypes);
 
                 ILLocalVariable vNativeFunctionPointer = emitter.NewLocal(context
