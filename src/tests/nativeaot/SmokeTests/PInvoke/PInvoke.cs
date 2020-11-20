@@ -289,17 +289,17 @@ namespace PInvokeTests
             TestSafeHandle();
             TestStringArray();
             TestSizeParamIndex();
-#if !CODEGEN_CPP
             TestDelegate();
             TestStruct();
             TestLayoutClassPtr();
             TestLayoutClass();
             TestAsAny();
             TestMarshalStructAPIs();
+            TestForwardDelegateWithUnmanagedCallersOnly();
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 TestComInteropNullPointers();
-#endif
+
             return 100;
         }
 
@@ -997,6 +997,19 @@ namespace PInvokeTests
 
             int cftf_size = Marshal.SizeOf(typeof(ClassForTestingFlowAnalysis));
             ThrowIfNotEquals(4, cftf_size, "ClassForTestingFlowAnalysis marshalling Marshal API failed");
+        }
+
+        [UnmanagedCallersOnly]
+        static void UnmanagedCallback()
+        {
+            GC.Collect();
+        }
+
+        public static unsafe void TestForwardDelegateWithUnmanagedCallersOnly()
+        {
+            Console.WriteLine("Testing Forward Delegate with UnmanagedCallersOnly");
+            Action a = Marshal.GetDelegateForFunctionPointer<Action>((IntPtr)(void*)(delegate* unmanaged<void>)&UnmanagedCallback);
+            a();
         }
 
         public static void TestComInteropNullPointers()
