@@ -1,4 +1,5 @@
 
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace System.Runtime.InteropServices
@@ -9,7 +10,7 @@ namespace System.Runtime.InteropServices
     /// </summary>
     public static class MarshalEx
     {
-        public static TSafeHandle CreateSafeHandle<TSafeHandle>()
+        public static TSafeHandle CreateSafeHandle<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.NonPublicConstructors)]TSafeHandle>()
             where TSafeHandle : SafeHandle
         {
             if (typeof(TSafeHandle).IsAbstract || typeof(TSafeHandle).GetConstructor(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.CreateInstance | BindingFlags.Instance, null, Type.EmptyTypes, null) == null)
