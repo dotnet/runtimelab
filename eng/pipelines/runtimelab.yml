@@ -93,7 +93,7 @@ stages:
         buildArgs: -s nativeaot+libs+nativeaot.packages -c $(_BuildConfig)
         extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
         extraStepsParameters:
-          uploadUnsignedArtifacts: ${{ variables.isOfficialBuild }}
+          uploadIntermediateArtifacts: ${{ variables.isOfficialBuild }}
 
 - ${{ if eq(variables.isOfficialBuild, true) }}:
   - template: /eng/pipelines/official/stages/publish.yml
