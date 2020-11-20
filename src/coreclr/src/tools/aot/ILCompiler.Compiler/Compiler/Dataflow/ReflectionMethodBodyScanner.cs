@@ -209,43 +209,22 @@ namespace ILCompiler.Dataflow
             return null;
         }
 
-#if false
-        // TODO: data flow between generic things
-        public void ProcessGenericArgumentDataFlow(GenericParameter genericParameter, TypeReference genericArgument, IMemberDefinition source)
+        public static DependencyList ProcessGenericArgumentDataFlow(NodeFactory factory, FlowAnnotations flowAnnotations, Logger logger, GenericParameterDesc genericParameter, TypeDesc genericArgument, TypeSystemEntity source)
         {
-            var annotation = _context.Annotations.FlowAnnotations.GetGenericParameterAnnotation(genericParameter);
+            var scanner = new ReflectionMethodBodyScanner(factory, flowAnnotations, logger);
+
+            var annotation = flowAnnotations.GetGenericParameterAnnotation(genericParameter);
             Debug.Assert(annotation != DynamicallyAccessedMemberTypes.None);
 
-            ValueNode valueNode = GetTypeValueNodeFromGenericArgument(genericArgument);
-            bool enableReflectionPatternReporting = !(source is MethodDefinition sourceMethod) || ShouldEnableReflectionPatternReporting(sourceMethod);
+            ValueNode valueNode = new SystemTypeValue(genericArgument);
 
-            var reflectionContext = new ReflectionPatternContext(_context, enableReflectionPatternReporting, source, genericParameter);
+            var origin = new GenericParameterOrigin(genericParameter);
+            var reflectionContext = new ReflectionPatternContext(logger, reportingEnabled: true, source, origin);
             reflectionContext.AnalyzingPattern();
-            RequireDynamicallyAccessedMembers(ref reflectionContext, annotation, valueNode, genericParameter);
-        }
+            scanner.RequireDynamicallyAccessedMembers(ref reflectionContext, annotation, valueNode, origin);
 
-        ValueNode GetTypeValueNodeFromGenericArgument(TypeReference genericArgument)
-        {
-            if (genericArgument is GenericParameter inputGenericParameter)
-            {
-                // Technically this should be a new value node type as it's not a System.Type instance representation, but just the generic parameter
-                // That said we only use it to perform the dynamically accessed members checks and for that purpose treating it as System.Type is perfectly valid.
-                return new SystemTypeForGenericParameterValue(inputGenericParameter, _context.Annotations.FlowAnnotations.GetGenericParameterAnnotation(inputGenericParameter));
-            }
-            else
-            {
-                TypeDefinition genericArgumentTypeDef = genericArgument.Resolve();
-                if (genericArgumentTypeDef != null)
-                {
-                    return new SystemTypeValue(genericArgumentTypeDef);
-                }
-                else
-                {
-                    throw new InvalidOperationException();
-                }
-            }
+            return scanner._dependencies;
         }
-#endif
 
         protected override void WarnAboutInvalidILInMethod(MethodIL method, int ilOffset)
         {

@@ -52,9 +52,16 @@ namespace ILCompiler.Dataflow
             }
         }
 
-        public bool RequiresDataflowAnalysis(GenericParameterDesc genericParameter)
+        public bool HasAnyAnnotations(TypeDesc type)
         {
-            return GetGenericParameterAnnotation(genericParameter) != DynamicallyAccessedMemberTypes.None;
+            try
+            {
+                return !GetAnnotations(type.GetTypeDefinition()).IsDefault;
+            }
+            catch (TypeSystemException)
+            {
+                return false;
+            }
         }
 
         /// <summary>
@@ -532,6 +539,8 @@ namespace ILCompiler.Dataflow
             private readonly MethodAnnotations[] _annotatedMethods;
             private readonly FieldAnnotation[] _annotatedFields;
             private readonly DynamicallyAccessedMemberTypes[] _genericParameterAnnotations;
+
+            public bool IsDefault => _annotatedFields == null && _annotatedFields == null && _genericParameterAnnotations == null;
 
             public TypeAnnotations(
                 TypeDesc type,

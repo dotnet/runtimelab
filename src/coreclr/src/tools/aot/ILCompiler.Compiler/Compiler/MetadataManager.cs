@@ -779,6 +779,14 @@ namespace ILCompiler
         {
             return null;
         }
+
+        public virtual void GetDependenciesForGenericDictionary(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
+        {
+        }
+
+        public virtual void GetDependenciesForGenericDictionary(ref DependencyList dependencies, NodeFactory factory, TypeDesc type)
+        {
+        }
     }
 
     public struct MetadataMapping<TEntity>
