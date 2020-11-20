@@ -234,5 +234,8 @@ namespace Microsoft.Interop
 
         /// <inheritdoc/>
         public abstract bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context);
+
+        /// <inheritdoc />
+        public abstract bool SupportsByValueMarshalKind(ByValueContentsMarshalKind marshalKind, StubCodeContext context);
     }
 }

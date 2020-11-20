@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SharedTypes;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -37,6 +38,13 @@ namespace DllImportGenerator.IntegrationTests
 
             [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "append_int_to_array")]
             public static partial void Append([MarshalAs(UnmanagedType.LPArray, SizeConst = 1, SizeParamIndex = 1)] ref int[] values, int numOriginalValues, int newValue);
+
+            [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "fill_range_array")]
+            [return: MarshalAs(UnmanagedType.U1)]
+            public static partial bool FillRangeArray([Out] IntStructWrapper[] array, int length, int start);
+
+            [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "double_values")]
+            public static partial bool DoubleValues([In, Out] IntStructWrapper[] array, int length);
         }
     }
 
@@ -149,6 +157,27 @@ namespace DllImportGenerator.IntegrationTests
             var newArray = array;
             NativeExportsNE.Arrays.Append(ref newArray, array.Length, newValue);
             Assert.Equal(array.Concat(new [] { newValue }), newArray);
+        }
+
+        [Fact]
+        public void ArrayByValueOutParameter()
+        {
+            var testArray = new IntStructWrapper[10];
+            int start = 5;
+
+            NativeExportsNE.Arrays.FillRangeArray(testArray, testArray.Length, start);
+
+            Assert.Equal(Enumerable.Range(start, 10), testArray.Select(wrapper => wrapper.Value));
+        }
+
+        [Fact]
+        public void ArrayByValueInOutParameter()
+        {
+            var testArray = Enumerable.Range(42, 15).Select(i => new IntStructWrapper { Value = i }).ToArray();
+
+            NativeExportsNE.Arrays.DoubleValues(testArray, testArray.Length);
+
+            Assert.Equal(testArray.Select(wrapper => wrapper.Value * 2), testArray.Select(wrapper => wrapper.Value));
         }
 
         private static string ReverseChars(string value)

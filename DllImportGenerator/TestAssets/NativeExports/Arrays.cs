@@ -66,7 +66,32 @@ namespace NativeExports
 
             return retVal;
         }
-        
+
+        [UnmanagedCallersOnly(EntryPoint = "fill_range_array")]
+        public static byte FillRange(int* numValues, int length, int start)
+        {
+            if (numValues == null)
+            {
+                return 0;
+            }
+
+            for (int i = 0; i < length; i++, start++)
+            {
+                numValues[i] = start;
+            }
+
+            return 1;
+        }
+
+        [UnmanagedCallersOnly(EntryPoint = "double_values")]
+        public static void DoubleValues(int* numValues, int length)
+        {
+            for (int i = 0; i < length; i++)
+            {
+                numValues[i] *= 2;
+            }
+        }
+
         [UnmanagedCallersOnly(EntryPoint = "sum_string_lengths")]
         public static int SumStringLengths(ushort** strArray)
         {
