@@ -2003,13 +2003,13 @@ namespace ILCompiler.Dataflow
         }
 
         void MarkNestedType(ref ReflectionPatternContext reflectionContext, MetadataType nestedType)
-        {   
-            reflectionContext.RecordRecognizedPattern(() => _logger.Writer.WriteLine($"Marking {nestedType.GetDisplayName()}"));
+        {
+            reflectionContext.RecordRecognizedPattern(() => { if (_logger.IsVerbose) _logger.Writer.WriteLine($"Marking {nestedType.GetDisplayName()}"); });
         }
 
         void MarkField(ref ReflectionPatternContext reflectionContext, FieldDesc field)
         {
-            reflectionContext.RecordRecognizedPattern(() => _logger.Writer.WriteLine($"Marking {field.GetDisplayName()}"));
+            reflectionContext.RecordRecognizedPattern(() => { if (_logger.IsVerbose) _logger.Writer.WriteLine($"Marking {field.GetDisplayName()}"); });
         }
 
         void MarkProperty(ref ReflectionPatternContext reflectionContext, PropertyPseudoDesc property)
