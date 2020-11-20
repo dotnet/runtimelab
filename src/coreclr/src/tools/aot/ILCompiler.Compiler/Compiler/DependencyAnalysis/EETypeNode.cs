@@ -772,7 +772,17 @@ namespace ILCompiler.DependencyAnalysis
                 if (!implMethod.IsAbstract)
                 {
                     MethodDesc canonImplMethod = implMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
-                    objData.EmitPointerReloc(factory.MethodEntrypoint(canonImplMethod, implMethod.OwningType.IsValueType));
+
+                    if (canonImplMethod != implMethod && implMethod.OwningType.IsInterface)
+                    {
+                        // We need an instantiating stub here. For now, pretend this was a reabstraction or that there's no default
+                        // implementation.
+                        objData.EmitZeroPointer();
+                    }
+                    else
+                    {
+                        objData.EmitPointerReloc(factory.MethodEntrypoint(canonImplMethod, implMethod.OwningType.IsValueType));
+                    }
                 }
                 else
                 {
