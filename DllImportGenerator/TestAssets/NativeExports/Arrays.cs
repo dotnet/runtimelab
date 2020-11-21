@@ -1,3 +1,4 @@
+using SharedTypes;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -68,7 +69,8 @@ namespace NativeExports
         }
 
         [UnmanagedCallersOnly(EntryPoint = "fill_range_array")]
-        public static byte FillRange(int* numValues, int length, int start)
+        [DNNE.C99DeclCode("struct int_struct_wrapper;")]
+        public static byte FillRange([DNNE.C99Type("int_struct_wrapper*")] IntStructWrapperNative* numValues, int length, int start)
         {
             if (numValues == null)
             {
@@ -77,18 +79,19 @@ namespace NativeExports
 
             for (int i = 0; i < length; i++, start++)
             {
-                numValues[i] = start;
+                numValues[i] = new IntStructWrapperNative { value = start };
             }
 
             return 1;
         }
 
         [UnmanagedCallersOnly(EntryPoint = "double_values")]
-        public static void DoubleValues(int* numValues, int length)
+        [DNNE.C99DeclCode("struct int_struct_wrapper { int value; };")]
+        public static void DoubleValues([DNNE.C99Type("int_struct_wrapper*")] IntStructWrapperNative* numValues, int length)
         {
             for (int i = 0; i < length; i++)
             {
-                numValues[i] *= 2;
+                numValues[i].value *= 2;
             }
         }
 

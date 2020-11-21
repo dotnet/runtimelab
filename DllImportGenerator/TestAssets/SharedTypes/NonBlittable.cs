@@ -206,13 +206,12 @@ namespace SharedTypes
 
     public struct IntStructWrapperNative
     {
+        public int value;
         public IntStructWrapperNative(IntStructWrapper managed)
         {
-            Value = managed.Value;
+            value = managed.Value;
         }
 
-        public int Value { get; set; }
-
-        public IntStructWrapper ToManaged() => new IntStructWrapper { Value = Value };
+        public IntStructWrapper ToManaged() => new IntStructWrapper { Value = value };
     }
 }
