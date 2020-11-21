@@ -996,7 +996,7 @@ def run_tests(args,
     urlretrieve(url, zipfilename)
 
     with zipfile.ZipFile(zipfilename,"r") as ziparch:
-        ziparch.extractall(args.core_root)
+        ziparch.extractall(os.path.join(args.core_root, "xunit"))
 
     os.remove(zipfilename)
     assert not os.path.isfile(zipfilename)
