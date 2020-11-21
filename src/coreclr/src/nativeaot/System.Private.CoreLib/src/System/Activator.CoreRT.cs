@@ -110,12 +110,12 @@ namespace System
 
         [DebuggerHidden]
         [DebuggerStepThrough]
-        public static object CreateInstance([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type type, bool nonPublic)
+        public static object? CreateInstance([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type type, bool nonPublic)
             => ReflectionAugments.ReflectionCoreCallbacks.ActivatorCreateInstance(type, nonPublic);
 
         [DebuggerHidden]
         [DebuggerStepThrough]
-        public static object CreateInstance(Type type, BindingFlags bindingAttr, Binder binder, object[] args, CultureInfo culture, object[] activationAttributes)
+        public static object? CreateInstance(Type type, BindingFlags bindingAttr, Binder? binder, object?[]? args, CultureInfo? culture, object?[]? activationAttributes)
             => ReflectionAugments.ReflectionCoreCallbacks.ActivatorCreateInstance(type, bindingAttr, binder, args, culture, activationAttributes);
 
         public static ObjectHandle CreateInstance(string assemblyName, string typeName)

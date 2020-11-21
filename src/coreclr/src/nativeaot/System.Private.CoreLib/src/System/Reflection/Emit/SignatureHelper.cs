@@ -30,7 +30,7 @@ namespace System.Reflection.Emit
         {
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return default;
         }

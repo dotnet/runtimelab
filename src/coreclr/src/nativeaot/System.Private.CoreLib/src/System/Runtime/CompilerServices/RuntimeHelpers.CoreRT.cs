@@ -50,7 +50,7 @@ namespace System.Runtime.CompilerServices
             ReflectionAugments.ReflectionCoreCallbacks.RunModuleConstructor(module.AssociatedModule);
         }
 
-        public static object GetObjectValue(object obj)
+        public static object GetObjectValue(object? obj)
         {
             if (obj == null)
                 return null;
@@ -62,7 +62,7 @@ namespace System.Runtime.CompilerServices
             return RuntimeImports.RhMemberwiseClone(obj);
         }
 
-        public static new bool Equals(object o1, object o2)
+        public static new bool Equals(object? o1, object? o2)
         {
             if (o1 == o2)
                 return true;

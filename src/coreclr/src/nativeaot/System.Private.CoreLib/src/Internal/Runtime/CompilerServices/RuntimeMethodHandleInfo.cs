@@ -20,7 +20,7 @@ namespace Internal.Runtime.CompilerServices
             Signature = signature;
         }
 
-        public override bool Equals(object compare)
+        public override bool Equals(object? compare)
         {
             if (compare == null)
                 return false;

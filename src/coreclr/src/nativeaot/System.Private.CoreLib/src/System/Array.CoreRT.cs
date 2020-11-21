@@ -1007,7 +1007,7 @@ namespace System
             return Length - 1;
         }
 
-        public unsafe object GetValue(int index)
+        public unsafe object? GetValue(int index)
         {
             if (!IsSzArray)
             {
@@ -1026,7 +1026,7 @@ namespace System
             return GetValueWithFlattenedIndex_NoErrorCheck(index);
         }
 
-        public unsafe object GetValue(int index1, int index2)
+        public unsafe object? GetValue(int index1, int index2)
         {
             if (Rank != 2)
                 throw new ArgumentException(SR.Arg_Need2DArray);
@@ -1037,7 +1037,7 @@ namespace System
             return GetValue(pIndices, 2);
         }
 
-        public unsafe object GetValue(int index1, int index2, int index3)
+        public unsafe object? GetValue(int index1, int index2, int index3)
         {
             if (Rank != 3)
                 throw new ArgumentException(SR.Arg_Need3DArray);
@@ -1049,7 +1049,7 @@ namespace System
             return GetValue(pIndices, 3);
         }
 
-        public unsafe object GetValue(params int[] indices)
+        public unsafe object? GetValue(params int[] indices)
         {
             if (indices is null)
                 throw new ArgumentNullException(nameof(indices));
@@ -1067,7 +1067,7 @@ namespace System
                 return GetValue(pIndices, length);
         }
 
-        private unsafe object GetValue(int* pIndices, int rank)
+        private unsafe object? GetValue(int* pIndices, int rank)
         {
             Debug.Assert(Rank == rank);
             Debug.Assert(!IsSzArray);
@@ -1093,7 +1093,7 @@ namespace System
             return GetValueWithFlattenedIndex_NoErrorCheck(flattenedIndex);
         }
 
-        private object GetValueWithFlattenedIndex_NoErrorCheck(int flattenedIndex)
+        private object? GetValueWithFlattenedIndex_NoErrorCheck(int flattenedIndex)
         {
             ref byte element = ref Unsafe.AddByteOffset(ref GetRawArrayData(), (nuint)flattenedIndex * ElementSize);
 
@@ -1109,7 +1109,7 @@ namespace System
             }
         }
 
-        public unsafe void SetValue(object value, int index)
+        public unsafe void SetValue(object? value, int index)
         {
             if (!IsSzArray)
             {
@@ -1154,7 +1154,7 @@ namespace System
             }
         }
 
-        public unsafe void SetValue(object value, int index1, int index2)
+        public unsafe void SetValue(object? value, int index1, int index2)
         {
             if (Rank != 2)
                 throw new ArgumentException(SR.Arg_Need2DArray);
@@ -1165,7 +1165,7 @@ namespace System
             SetValue(value, pIndices, 2);
         }
 
-        public unsafe void SetValue(object value, int index1, int index2, int index3)
+        public unsafe void SetValue(object? value, int index1, int index2, int index3)
         {
             if (Rank != 3)
                 throw new ArgumentException(SR.Arg_Need3DArray);
@@ -1177,7 +1177,7 @@ namespace System
             SetValue(value, pIndices, 3);
         }
 
-        public unsafe void SetValue(object value, params int[] indices)
+        public unsafe void SetValue(object? value, params int[] indices)
         {
             if (indices is null)
                 throw new ArgumentNullException(nameof(indices));
@@ -1201,7 +1201,7 @@ namespace System
             }
         }
 
-        private unsafe void SetValue(object value, int* pIndices, int rank)
+        private unsafe void SetValue(object? value, int* pIndices, int rank)
         {
             Debug.Assert(Rank == rank);
             Debug.Assert(!IsSzArray);
