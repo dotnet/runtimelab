@@ -24,10 +24,12 @@ namespace NativeExports
         }
 
         [UnmanagedCallersOnly(EntryPoint = "set_error")]
-        public static void SetError(int error, byte shouldSetError)
+        public static int SetError(int error, byte shouldSetError)
         {
             if (shouldSetError != 0)
                 SetLastError(error);
+
+            return error;
         }
 
         [UnmanagedCallersOnly(EntryPoint = "set_error_return_string")]

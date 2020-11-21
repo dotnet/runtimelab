@@ -30,6 +30,7 @@ namespace Microsoft.Interop
         public string ReturnNativeIdentifier { get; private set; } = ReturnIdentifier;
 
         private const string InvokeReturnIdentifier = "__invokeRetVal";
+        private const string LastErrorIdentifier = "__lastError";
 
         private static readonly Stage[] Stages = new Stage[]
         {
@@ -170,6 +171,14 @@ namespace Microsoft.Interop
                 AppendVariableDeclations(setupStatements, retMarshaller.TypeInfo, retMarshaller.Generator);
             }
 
+            if (this.dllImportData.SetLastError)
+            {
+                // Declare variable for last error
+                setupStatements.Add(MarshallerHelpers.DeclareWithDefault(
+                    PredefinedType(Token(SyntaxKind.IntKeyword)),
+                    LastErrorIdentifier));
+            }
+
             var tryStatements = new List<StatementSyntax>();
             var finallyStatements = new List<StatementSyntax>();
             var invoke = InvocationExpression(IdentifierName(dllImportName));
@@ -247,22 +256,18 @@ namespace Microsoft.Interop
                                 ArgumentList(SingletonSeparatedList(
                                     Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)))))));
 
-                        // Marshal.SetLastWin32Error(Marshal.GetLastSystemError());
-                        var updateLastError = ExpressionStatement(
-                            InvocationExpression(
-                                MemberAccessExpression(
+                        // <lastError> = Marshal.GetLastSystemError();
+                        var getLastError = ExpressionStatement(
+                            AssignmentExpression(
+                                SyntaxKind.SimpleAssignmentExpression,
+                                IdentifierName(LastErrorIdentifier),
+                                InvocationExpression(
+                                    MemberAccessExpression(
                                     SyntaxKind.SimpleMemberAccessExpression,
                                     ParseName(TypeNames.System_Runtime_InteropServices_MarshalEx),
-                                    IdentifierName("SetLastWin32Error")),
-                            ArgumentList(SingletonSeparatedList(
-                                Argument(
-                                    InvocationExpression(
-                                         MemberAccessExpression(
-                                            SyntaxKind.SimpleMemberAccessExpression,
-                                            ParseName(TypeNames.System_Runtime_InteropServices_MarshalEx),
-                                            IdentifierName("GetLastSystemError"))))))));
+                                    IdentifierName("GetLastSystemError")))));
 
-                        invokeStatement = Block(clearLastError, invokeStatement, updateLastError);
+                        invokeStatement = Block(clearLastError, invokeStatement, getLastError);
                     }
 
                     // Nest invocation in fixed statements
@@ -302,6 +307,19 @@ namespace Microsoft.Interop
             else
             {
                 allStatements.AddRange(tryStatements);
+            }
+
+            if (this.dllImportData.SetLastError)
+            {
+                // Marshal.SetLastWin32Error(<lastError>);
+                allStatements.Add(ExpressionStatement(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            ParseName(TypeNames.System_Runtime_InteropServices_MarshalEx),
+                            IdentifierName("SetLastWin32Error")),
+                        ArgumentList(SingletonSeparatedList(
+                            Argument(IdentifierName(LastErrorIdentifier)))))));
             }
 
             // Return

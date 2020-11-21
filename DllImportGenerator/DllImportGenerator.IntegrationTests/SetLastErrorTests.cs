@@ -5,12 +5,34 @@ using Xunit;
 
 namespace DllImportGenerator.IntegrationTests
 {
+    [BlittableType]
+    public struct SetLastErrorMarshaller
+    {
+        public int val;
+
+        public SetLastErrorMarshaller(int i)
+        {
+            val = i;
+        }
+
+        public int ToManaged()
+        {
+            // Explicity set the last error to something else on unmarshalling
+            MarshalEx.SetLastWin32Error(val * 2);
+            return val;
+        }
+    }
+
     partial class NativeExportsNE
     {
         public partial class SetLastError
         {
             [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "set_error", SetLastError = true)]
-            public static partial void SetError(int error, byte shouldSetError);
+            public static partial int SetError(int error, byte shouldSetError);
+
+            [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "set_error_return_string", SetLastError = true)]
+            [return: MarshalUsing(typeof(SetLastErrorMarshaller))]
+            public static partial int SetError_CustomMarshallingSetsError(int error, byte shouldSetError);
 
             [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "set_error_return_string", SetLastError = true)]
             [return: MarshalAs(UnmanagedType.LPWStr)]
@@ -36,6 +58,13 @@ namespace DllImportGenerator.IntegrationTests
 
             NativeExportsNE.SetLastError.SetError(error, shouldSetError: 1);
             Assert.Equal(error, Marshal.GetLastWin32Error());
+
+            MarshalEx.SetLastWin32Error(0);
+
+            // Custom marshalling sets the last error on unmarshalling.
+            // Last error should reflect error from native call, not unmarshalling.
+            NativeExportsNE.SetLastError.SetError_CustomMarshallingSetsError(error, shouldSetError: 1);
+            Assert.Equal(error, Marshal.GetLastWin32Error());
         }
 
         [Fact]
@@ -54,6 +83,11 @@ namespace DllImportGenerator.IntegrationTests
 
             // Don't actually set the error in the native call. SetLastError=true should clear any existing error.
             NativeExportsNE.SetLastError.SetError(error, shouldSetError: 0);
+            Assert.Equal(0, Marshal.GetLastWin32Error());
+
+            // Don't actually set the error in the native call. Custom marshalling still sets the last error.
+            // SetLastError=true should clear any existing error and ignore error set by custom marshalling.
+            NativeExportsNE.SetLastError.SetError_CustomMarshallingSetsError(error, shouldSetError: 0);
             Assert.Equal(0, Marshal.GetLastWin32Error());
         }
     }
