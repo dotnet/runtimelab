@@ -182,15 +182,15 @@ namespace Microsoft.Interop
                     }
                     return SafeHandle;
 
-                case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType: ITypeSymbol elementType }, MarshallingAttributeInfo: NoMarshallingInfo }:
-                    return CreateArrayMarshaller(info, context, elementType, NoMarshallingInfo.Instance);
+                case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType: ITypeSymbol elementType }, MarshallingAttributeInfo: ArrayMarshallingInfo(MarshallingInfo elementMarshallingInfo) }:
+                    return CreateArrayMarshaller(info, context, elementType, elementMarshallingInfo);
 
                 case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType: ITypeSymbol elementType }, MarshallingAttributeInfo: ArrayMarshalAsInfo marshalAsInfo }:
                     if (marshalAsInfo.UnmanagedArrayType != UnmanagedArrayType.LPArray)
                     {
                         throw new MarshallingNotSupportedException(info, context);
                     }
-                    return CreateArrayMarshaller(info, context, elementType, marshalAsInfo.CreateArraySubTypeMarshalAsInfo());
+                    return CreateArrayMarshaller(info, context, elementType, marshalAsInfo.ElementMarshallingInfo);
 
                 // Marshalling in new model.
                 // Must go before the cases that do not explicitly check for marshalling info to support
@@ -364,7 +364,7 @@ namespace Microsoft.Interop
 
         private static IMarshallingGenerator CreateArrayMarshaller(TypePositionInfo info, StubCodeContext context, ITypeSymbol elementType, MarshallingInfo elementMarshallingInfo)
         {
-            var elementMarshaller = Create(TypePositionInfo.CreateForType(elementType, elementMarshallingInfo), context);
+            var elementMarshaller = Create(TypePositionInfo.CreateForType(elementType, elementMarshallingInfo), new ArrayMarshallingCodeContext(StubCodeContext.Stage.Setup, string.Empty, context));
             ExpressionSyntax numElementsExpression = LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0));
             if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
             {
@@ -379,6 +379,14 @@ namespace Microsoft.Interop
 
         private static IMarshallingGenerator CreateCustomNativeTypeMarshaller(TypePositionInfo info, StubCodeContext context, NativeMarshallingAttributeInfo marshalInfo)
         {
+            if (marshalInfo.ValuePropertyType is not null && !context.CanUseAdditionalTemporaryState)
+            {
+                throw new MarshallingNotSupportedException(info, context)
+                {
+                    NotSupportedDetails = Resources.ValuePropertyMarshallingRequiresAdditionalState
+                };
+            }
+
             // The marshalling method for this type doesn't support marshalling from native to managed,
             // but our scenario requires marshalling from native to managed.
             if ((info.RefKind == RefKind.Ref || info.RefKind == RefKind.Out || info.IsManagedReturnPosition) 
