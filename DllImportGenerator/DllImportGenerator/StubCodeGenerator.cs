@@ -32,6 +32,9 @@ namespace Microsoft.Interop
         private const string InvokeReturnIdentifier = "__invokeRetVal";
         private const string LastErrorIdentifier = "__lastError";
 
+        // Error code representing success. This maps to S_OK for Windows HRESULT semantics and 0 for POSIX errno semantics.
+        private const int SuccessErrorCode = 0;
+
         private static readonly Stage[] Stages = new Stage[]
         {
             Stage.Setup,
@@ -254,7 +257,7 @@ namespace Microsoft.Interop
                                     ParseName(TypeNames.System_Runtime_InteropServices_MarshalEx),
                                     IdentifierName("SetLastSystemError")),
                                 ArgumentList(SingletonSeparatedList(
-                                    Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0)))))));
+                                    Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(SuccessErrorCode)))))));
 
                         // <lastError> = Marshal.GetLastSystemError();
                         var getLastError = ExpressionStatement(
