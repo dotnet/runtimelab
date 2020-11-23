@@ -165,7 +165,6 @@ namespace DllImportGenerator.UnitTests
         public static IEnumerable<object[]> CodeSnippetsToCompile_WithDiagnostics()
         {
             yield return new[] { CodeSnippets.AllSupportedDllImportNamedArguments };
-            yield return new[] { CodeSnippets.ArrayMarshallingWithCustomStructElementWithValueProperty };
         }
 
         [Theory]

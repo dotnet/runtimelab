@@ -182,16 +182,6 @@ namespace Microsoft.Interop
                     }
                     return SafeHandle;
 
-                case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType: ITypeSymbol elementType }, MarshallingAttributeInfo: ArrayMarshallingInfo(MarshallingInfo elementMarshallingInfo) }:
-                    return CreateArrayMarshaller(info, context, elementType, elementMarshallingInfo);
-
-                case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType: ITypeSymbol elementType }, MarshallingAttributeInfo: ArrayMarshalAsInfo marshalAsInfo }:
-                    if (marshalAsInfo.UnmanagedArrayType != UnmanagedArrayType.LPArray)
-                    {
-                        throw new MarshallingNotSupportedException(info, context);
-                    }
-                    return CreateArrayMarshaller(info, context, elementType, marshalAsInfo.ElementMarshallingInfo);
-
                 // Marshalling in new model.
                 // Must go before the cases that do not explicitly check for marshalling info to support
                 // the user overridding the default marshalling rules with a MarshalUsing attribute.
@@ -205,11 +195,15 @@ namespace Microsoft.Interop
                 case { MarshallingAttributeInfo: GeneratedNativeMarshallingAttributeInfo(string nativeTypeName) }:
                     return Forwarder;
 
+                // Cases that just match on type must come after the checks for the new marshalling model.
                 case { ManagedType: { SpecialType: SpecialType.System_Char } }:
                     return CreateCharMarshaller(info, context);
 
                 case { ManagedType: { SpecialType: SpecialType.System_String } }:
                     return CreateStringMarshaller(info, context);
+                    
+                case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType: ITypeSymbol elementType } }:
+                    return CreateArrayMarshaller(info, context, elementType);
 
                 case { ManagedType: { SpecialType: SpecialType.System_Void } }:
                     return Forwarder;
@@ -362,8 +356,16 @@ namespace Microsoft.Interop
             return numElementsExpression;
         }
 
-        private static IMarshallingGenerator CreateArrayMarshaller(TypePositionInfo info, StubCodeContext context, ITypeSymbol elementType, MarshallingInfo elementMarshallingInfo)
+        private static IMarshallingGenerator CreateArrayMarshaller(TypePositionInfo info, StubCodeContext context, ITypeSymbol elementType)
         {
+            var elementMarshallingInfo = info.MarshallingAttributeInfo switch
+            {
+                ArrayMarshalAsInfo(UnmanagedType.LPArray, _) marshalAs => marshalAs.ElementMarshallingInfo,
+                ArrayMarshallingInfo marshalInfo => marshalInfo.ElementMarshallingInfo,
+                NoMarshallingInfo _ => NoMarshallingInfo.Instance,
+                _ => throw new MarshallingNotSupportedException(info, context)
+            };
+
             var elementMarshaller = Create(TypePositionInfo.CreateForType(elementType, elementMarshallingInfo), new ArrayMarshallingCodeContext(StubCodeContext.Stage.Setup, string.Empty, context));
             ExpressionSyntax numElementsExpression = LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0));
             if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
