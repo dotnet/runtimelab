@@ -540,7 +540,7 @@ namespace ILCompiler.Dataflow
             private readonly FieldAnnotation[] _annotatedFields;
             private readonly DynamicallyAccessedMemberTypes[] _genericParameterAnnotations;
 
-            public bool IsDefault => _annotatedFields == null && _annotatedFields == null && _genericParameterAnnotations == null;
+            public bool IsDefault => _annotatedMethods == null && _annotatedFields == null && _genericParameterAnnotations == null;
 
             public TypeAnnotations(
                 TypeDesc type,
