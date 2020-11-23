@@ -15,6 +15,7 @@ class Program
         TestGetMethodEventFieldPropertyConstructor.Run();
         TestInGenericCode.Run();
         TestAttributeDataflow.Run();
+        TestGenericDataflow.Run();
 
         return 100;
     }
@@ -165,6 +166,82 @@ class Program
 
             Assert.Equal(1, typeof(Type3WithPublicKept).CountPublicMethods());
             Assert.Equal(1, typeof(Type3WithPublicKept).CountMethods());
+        }
+    }
+
+    class TestGenericDataflow
+    {
+        class Type1WithNonPublicKept
+        {
+            private static void KeptMethod() { }
+            private static void AlsoKeptMethod() { }
+            public static void RemovedMethod() { }
+        }
+
+        class Type2WithPublicKept
+        {
+            public static void KeptMethod() { }
+            public static void AlsoKeptMethod() { }
+            private static void RemovedMethod() { }
+        }
+
+        class Type3WithPublicKept
+        {
+            public static void KeptMethod() { }
+            public static void AlsoKeptMethod() { }
+            private static void RemovedMethod() { }
+        }
+
+        struct Struct1WithPublicKept
+        {
+            public static void KeptMethod() { }
+            public static void AlsoKeptMethod() { }
+            private static void RemovedMethod() { }
+        }
+
+
+        class KeepsNonPublic<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.NonPublicMethods)] T>
+        {
+            public KeepsNonPublic()
+            {
+                Assert.NotNull(typeof(T).GetMethod("KeptMethod", BindingFlags.NonPublic | BindingFlags.Static));
+            }
+        }
+
+        class KeepsNonPublic : KeepsNonPublic<Type1WithNonPublicKept>
+        {
+        }
+
+        static void KeepPublic<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods)] T>()
+        {
+            Assert.NotNull(typeof(T).GetMethod("KeptMethod", BindingFlags.Public | BindingFlags.Static));
+        }
+
+        class KeepsPublic<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods)] T>
+        {
+            public static void Keep<U>()
+            {
+                Assert.NotNull(typeof(T).GetMethod("KeptMethod", BindingFlags.Public | BindingFlags.Static));
+            }
+        }
+
+        public static void Run()
+        {
+            new KeepsNonPublic();
+            Assert.Equal(2, typeof(Type1WithNonPublicKept).CountMethods());
+            Assert.Equal(0, typeof(Type1WithNonPublicKept).CountPublicMethods());
+
+            KeepPublic<Type2WithPublicKept>();
+            Assert.Equal(2, typeof(Type2WithPublicKept).CountMethods());
+            Assert.Equal(2, typeof(Type2WithPublicKept).CountPublicMethods());
+
+            KeepPublic<Struct1WithPublicKept>();
+            Assert.Equal(2, typeof(Struct1WithPublicKept).CountMethods());
+            Assert.Equal(2, typeof(Struct1WithPublicKept).CountPublicMethods());
+
+            KeepsPublic<Type3WithPublicKept>.Keep<object>();
+            Assert.Equal(2, typeof(Type3WithPublicKept).CountMethods());
+            Assert.Equal(2, typeof(Type3WithPublicKept).CountPublicMethods());
         }
     }
 }
