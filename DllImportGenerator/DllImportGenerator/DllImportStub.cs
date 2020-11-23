@@ -206,20 +206,20 @@ namespace Microsoft.Interop
             var stubGenerator = new StubCodeGenerator(method, dllImportData, paramsTypeInfo, retTypeInfo, diagnostics);
             var (code, dllImport) = stubGenerator.GenerateSyntax();
 
-            var additionalAttrs = Array.Empty<AttributeListSyntax>();
+            var additionalAttrs = new List<AttributeListSyntax>();
 
             // Define additional attributes for the stub definition.
-            if (env.SupportedTargetFramework)
+            if (env.TargetFrameworkVersion >= new Version(5, 0))
             {
-                var attrs = new AttributeSyntax[]
-                {
-                    // Adding the skip locals init indiscriminately since the source generator is
-                    // targeted at non-blittable method signatures which typically will contain locals
-                    // in the generated code.
-                    Attribute(ParseName(TypeNames.System_Runtime_CompilerServices_SkipLocalsInitAttribute))
-                };
-
-                additionalAttrs = new[] { AttributeList(SeparatedList(attrs)) };
+                additionalAttrs.Add(
+                    AttributeList(
+                        SeparatedList(new []
+                        {
+                            // Adding the skip locals init indiscriminately since the source generator is
+                            // targeted at non-blittable method signatures which typically will contain locals
+                            // in the generated code.
+                            Attribute(ParseName(TypeNames.System_Runtime_CompilerServices_SkipLocalsInitAttribute))
+                        })));
             }
 
             return new DllImportStub()
@@ -230,7 +230,7 @@ namespace Microsoft.Interop
                 StubContainingTypes = containingTypes,
                 StubCode = code,
                 DllImportDeclaration = dllImport,
-                AdditionalAttributes = additionalAttrs,
+                AdditionalAttributes = additionalAttrs.ToArray(),
             };
         }
     }
