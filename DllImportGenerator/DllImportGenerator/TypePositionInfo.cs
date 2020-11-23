@@ -208,29 +208,28 @@ namespace Microsoft.Interop
                     }
                 }
 
-                if (isArrayType)
+                if (!isArrayType)
                 {
-                    MarshallingInfo elementMarshallingInfo = NoMarshallingInfo.Instance;
-
-                    if (unmanagedArraySubType != (UnmanagedType)ArrayMarshalAsInfo.UnspecifiedData)
-                    {
-                        elementMarshallingInfo = new MarshalAsInfo(unmanagedArraySubType, defaultInfo.CharEncoding);
-                    }
-                    else if (type is IArrayTypeSymbol { ElementType: ITypeSymbol elementType })
-                    {
-                         elementMarshallingInfo = GetMarshallingInfo(elementType, Array.Empty<AttributeData>(), defaultInfo, compilation, diagnostics);
-                    }
-
-                    return new ArrayMarshalAsInfo(
-                        UnmanagedArrayType: (UnmanagedArrayType)unmanagedType,
-                        ArraySizeConst: arraySizeConst,
-                        ArraySizeParamIndex: arraySizeParamIndex,
-                        CharEncoding: defaultInfo.CharEncoding,
-                        ElementMarshallingInfo: elementMarshallingInfo
-                    );
+                    return new MarshalAsInfo(unmanagedType, defaultInfo.CharEncoding);
                 }
 
-                return new MarshalAsInfo(unmanagedType, defaultInfo.CharEncoding);
+                MarshallingInfo elementMarshallingInfo = NoMarshallingInfo.Instance;
+                if (unmanagedArraySubType != (UnmanagedType)ArrayMarshalAsInfo.UnspecifiedData)
+                {
+                    elementMarshallingInfo = new MarshalAsInfo(unmanagedArraySubType, defaultInfo.CharEncoding);
+                }
+                else if (type is IArrayTypeSymbol { ElementType: ITypeSymbol elementType })
+                {
+                    elementMarshallingInfo = GetMarshallingInfo(elementType, Array.Empty<AttributeData>(), defaultInfo, compilation, diagnostics);
+                }
+
+                return new ArrayMarshalAsInfo(
+                    UnmanagedArrayType: (UnmanagedArrayType)unmanagedType,
+                    ArraySizeConst: arraySizeConst,
+                    ArraySizeParamIndex: arraySizeParamIndex,
+                    CharEncoding: defaultInfo.CharEncoding,
+                    ElementMarshallingInfo: elementMarshallingInfo
+                );
             }
 
             static NativeMarshallingAttributeInfo CreateNativeMarshallingInfo(ITypeSymbol type, Compilation compilation, AttributeData attrData, bool allowGetPinnableReference)
