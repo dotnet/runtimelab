@@ -130,7 +130,7 @@ namespace Microsoft.Interop
                                                         new []{
                                                             Argument(
                                                                 CastExpression(
-                                                                    spanElementTypeSyntax,
+                                                                    PointerType(spanElementTypeSyntax),
                                                                     IdentifierName(nativeIdentifier))),
                                                             Argument(
                                                                 MemberAccessExpression(
@@ -171,7 +171,7 @@ namespace Microsoft.Interop
                                                                 new[]{
                                                                     Argument(
                                                                         CastExpression(
-                                                                            spanElementTypeSyntax,
+                                                                            PointerType(spanElementTypeSyntax),
                                                                             IdentifierName(nativeIdentifier))),
                                                                     Argument(
                                                                         MemberAccessExpression(

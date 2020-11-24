@@ -90,40 +90,40 @@ namespace Microsoft.Interop
                             spanElementTypeSyntax = ParseTypeName("System.IntPtr");
                         }
 
-                        // new Span<T>(<nativeIdentifier>, <managedIdentifier>.Length).Clear();
-                        yield return ExpressionStatement(
-                            InvocationExpression(
-                                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                    ObjectCreationExpression(
-                                                GenericName(TypeNames.System_Span)
-                                                .WithTypeArgumentList(
-                                                    TypeArgumentList(
-                                                        SingletonSeparatedList(spanElementTypeSyntax))))
-                                            .WithArgumentList(
-                                                ArgumentList(
-                                                    SeparatedList(
-                                                        new []{
-                                                            Argument(
-                                                                CastExpression(
-                                                                    spanElementTypeSyntax,
-                                                                    IdentifierName(nativeIdentifier))),
-                                                            Argument(
-                                                                MemberAccessExpression(
-                                                                    SyntaxKind.SimpleMemberAccessExpression,
-                                                                    IdentifierName(managedIdentifer),
-                                                                    IdentifierName("Length")))
-                                                        }))),
-                                    IdentifierName("Clear")),
-                                    ArgumentList()));
-
                         // Iterate through the elements of the array to marshal them
                         var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, IndexerIdentifier, context);
                         yield return IfStatement(BinaryExpression(SyntaxKind.NotEqualsExpression,
                             IdentifierName(managedIdentifer),
                             LiteralExpression(SyntaxKind.NullLiteralExpression)),
+                            Block(
+                                // new Span<T>(<nativeIdentifier>, <managedIdentifier>.Length).Clear();
+                                ExpressionStatement(
+                                    InvocationExpression(
+                                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                            ObjectCreationExpression(
+                                                        GenericName(TypeNames.System_Span)
+                                                        .WithTypeArgumentList(
+                                                            TypeArgumentList(
+                                                                SingletonSeparatedList(spanElementTypeSyntax))))
+                                                    .WithArgumentList(
+                                                        ArgumentList(
+                                                            SeparatedList(
+                                                                new []{
+                                                                    Argument(
+                                                                        CastExpression(
+                                                                            PointerType(spanElementTypeSyntax),
+                                                                            IdentifierName(nativeIdentifier))),
+                                                                    Argument(
+                                                                        MemberAccessExpression(
+                                                                            SyntaxKind.SimpleMemberAccessExpression,
+                                                                            IdentifierName(managedIdentifer),
+                                                                            IdentifierName("Length")))
+                                                                }))),
+                                            IdentifierName("Clear")),
+                                        ArgumentList())),
                             MarshallerHelpers.GetForLoop(managedIdentifer, IndexerIdentifier)
                                 .WithStatement(Block(
-                                    List(_elementMarshaller.Generate(info with { ManagedType = GetElementTypeSymbol(info) }, arraySubContext)))));
+                                    List(_elementMarshaller.Generate(info with { ManagedType = GetElementTypeSymbol(info) }, arraySubContext))))));
                     }
                     break;
                 case StubCodeContext.Stage.Unmarshal:
