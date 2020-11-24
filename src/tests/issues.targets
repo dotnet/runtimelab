@@ -1263,6 +1263,12 @@
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Regression/CLR-x86-JIT/V1-M12-Beta2/b68872/b68872/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/188</Issue>
         </ExcludeList>
+        <ExcludeList Include = "$(XunitTestBinBase)/JIT/Regression/CLR-x86-JIT/V1-M12-Beta2/b71120/b71120/**">
+            <Issue>https://github.com/dotnet/runtimelab/issues/155: Varargs</Issue>
+        </ExcludeList>
+        <ExcludeList Include = "$(XunitTestBinBase)/JIT/Regression/CLR-x86-JIT/V2.0-Beta2/b353858/b353858/**">
+            <Issue>https://github.com/dotnet/runtimelab/issues/155: Thorough checking of invalid inputs</Issue>
+        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Regression/CLR-x86-JIT/v2.2/ddb/b429039/b429039/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/155: RuntimeHelpers.InitializeArray</Issue>
         </ExcludeList>
@@ -1279,7 +1285,7 @@
             <Issue>https://github.com/dotnet/runtimelab/issues/154</Issue>
         </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Regression/JitBlue/GitHub_25027/GitHub_25027/*">
-            <Issue>Internal error in JIT, lets try this later. There might be fix in dotnet/runtime</Issue>
+            <Issue>https://github.com/dotnet/runtimelab/issues/155: Thorough checking of invalid inputs</Issue>
         </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Regression/JitBlue/GitHub_35384/GitHub_35384/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/198</Issue>
@@ -1474,6 +1480,7 @@
         <ExcludeList Include="$(XunitTestBinBase)/Loader\classloader\MethodImpl\CovariantReturns\UnitTest\UnitTest\*" />
         <ExcludeList Include="$(XunitTestBinBase)/Loader\classloader\MethodImpl\CovariantReturns\UnitTest\UnitTest_GVM\*" />
         <ExcludeList Include="$(XunitTestBinBase)/Loader\classloader\MethodImpl\CovariantReturns\UnitTest\UnitTestDelegates\*" />
+        <ExcludeList Include="$(XunitTestBinBase)/Loader\classloader\MethodImpl\CovariantReturns\UnitTest\OverrideMoreDerivedReturn\*" />
     </ItemGroup>
 
     <!-- run.proj finds all the *.cmd/*.sh scripts in a test folder and creates corresponding test methods.
