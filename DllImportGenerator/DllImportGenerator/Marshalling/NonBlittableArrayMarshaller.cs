@@ -163,13 +163,13 @@ namespace Microsoft.Interop
 
         protected override ExpressionSyntax GenerateByteLengthCalculationExpression(TypePositionInfo info, StubCodeContext context)
         {
-            // sizeof(<nativeElementType>) * <managedIdentifier>.Length
-            return BinaryExpression(SyntaxKind.MultiplyExpression,
-                SizeOfExpression(GetNativeElementTypeSyntax(info)),
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName(context.GetIdentifiers(info).managed),
-                    IdentifierName("Length")
-                ));
+            // checked(sizeof(<nativeElementType>) * <managedIdentifier>.Length)
+            return CheckedExpression(SyntaxKind.CheckedExpression,
+                BinaryExpression(SyntaxKind.MultiplyExpression,
+                    SizeOfExpression(GetNativeElementTypeSyntax(info)),
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(context.GetIdentifiers(info).managed),
+                        IdentifierName("Length"))));
         }
 
         protected override StatementSyntax GenerateStackallocOnlyValueMarshalling(TypePositionInfo info, StubCodeContext context, SyntaxToken byteLengthIdentifier, SyntaxToken stackAllocPtrIdentifier)
