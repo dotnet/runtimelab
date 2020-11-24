@@ -18,7 +18,7 @@ namespace Microsoft.Interop
 
         private const string IndexerIdentifier = "__i";
 
-        private IMarshallingGenerator _elementMarshaller;
+        private readonly IMarshallingGenerator _elementMarshaller;
         private readonly ExpressionSyntax _numElementsExpr;
 
         public NonBlittableArrayMarshaller(IMarshallingGenerator elementMarshaller, ExpressionSyntax numElementsExpr)
@@ -82,6 +82,39 @@ namespace Microsoft.Interop
                         {
                             yield return statement;
                         }
+
+                        TypeSyntax spanElementTypeSyntax = GetNativeElementTypeSyntax(info);
+                        if (spanElementTypeSyntax is PointerTypeSyntax)
+                        {
+                            // Pointers cannot be passed to generics, so use IntPtr for this case.
+                            spanElementTypeSyntax = ParseTypeName("System.IntPtr");
+                        }
+
+                        // new Span<T>(<nativeIdentifier>, <managedIdentifier>.Length).Clear();
+                        yield return ExpressionStatement(
+                            InvocationExpression(
+                                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                    ObjectCreationExpression(
+                                                GenericName(TypeNames.System_Span)
+                                                .WithTypeArgumentList(
+                                                    TypeArgumentList(
+                                                        SingletonSeparatedList(spanElementTypeSyntax))))
+                                            .WithArgumentList(
+                                                ArgumentList(
+                                                    SeparatedList(
+                                                        new []{
+                                                            Argument(
+                                                                CastExpression(
+                                                                    spanElementTypeSyntax,
+                                                                    IdentifierName(nativeIdentifier))),
+                                                            Argument(
+                                                                MemberAccessExpression(
+                                                                    SyntaxKind.SimpleMemberAccessExpression,
+                                                                    IdentifierName(managedIdentifer),
+                                                                    IdentifierName("Length")))
+                                                        }))),
+                                    IdentifierName("Clear")),
+                                    ArgumentList()));
 
                         // Iterate through the elements of the array to marshal them
                         var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, IndexerIdentifier, context);
