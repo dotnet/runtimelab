@@ -138,16 +138,10 @@ namespace Microsoft.Interop
 
             yield return IfStatement(
                 BinaryExpression(
-                    SyntaxKind.EqualsExpression,
+                    SyntaxKind.NotEqualsExpression,
                     IdentifierName(managedIdentifier),
                     LiteralExpression(SyntaxKind.NullLiteralExpression)),
-                Block(
-                    ExpressionStatement(
-                        AssignmentExpression(
-                            SyntaxKind.SimpleAssignmentExpression,
-                            IdentifierName(nativeIdentifier),
-                            LiteralExpression(SyntaxKind.NullLiteralExpression)))),
-                ElseClause(Block(byteLenAssignment, allocBlock)));
+                Block(byteLenAssignment, allocBlock));
         }
 
         protected StatementSyntax GenerateConditionalAllocationFreeSyntax(
