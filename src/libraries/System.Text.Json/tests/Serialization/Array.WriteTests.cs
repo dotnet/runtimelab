@@ -2,22 +2,23 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class ArrayTests
+    public abstract partial class ArrayTests
     {
         [Fact]
-        public static void WritePrimitiveArray()
+        public async Task WritePrimitiveArray()
         {
             var input = new int[] { 0, 1 };
-            string json = JsonSerializer.Serialize(input);
+            string json = await Serializer.SerializeWrapper(input);
             Assert.Equal("[0,1]", json);
         }
 
         [Fact]
-        public static void WriteArrayWithEnums()
+        public void WriteArrayWithEnums()
         {
             var input = new SampleEnum[] { SampleEnum.One, SampleEnum.Two };
             string json = JsonSerializer.Serialize(input);
@@ -25,7 +26,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteNullByteArray()
+        public void WriteNullByteArray()
         {
             byte[] input = null;
             string json = JsonSerializer.Serialize(input);
@@ -33,7 +34,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteEmptyByteArray()
+        public void WriteEmptyByteArray()
         {
             var input = new byte[] {};
             string json = JsonSerializer.Serialize(input);
@@ -41,7 +42,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteByteArray()
+        public void WriteByteArray()
         {
             var input = new byte[] { 1, 2 };
             string json = JsonSerializer.Serialize(input);
@@ -49,7 +50,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteTwo2dByteArray()
+        public void WriteTwo2dByteArray()
         {
             var inner = new byte[] { 1, 2 };
             var outer = new byte[2][] { inner, inner };
@@ -58,7 +59,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteObjectArray()
+        public void WriteObjectArray()
         {
             string json;
 
@@ -82,7 +83,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteEmptyObjectArray()
+        public void WriteEmptyObjectArray()
         {
             object[] arr = new object[] { new object() };
 
@@ -91,7 +92,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WritePrimitiveJaggedArray()
+        public void WritePrimitiveJaggedArray()
         {
             var input = new int[2][];
             input[0] = new int[] { 1, 2 };
@@ -102,7 +103,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteEmpty()
+        public void WriteEmpty()
         {
             string json = JsonSerializer.Serialize(new SimpleTestClass[] { });
             Assert.Equal("[]", json);
@@ -112,7 +113,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteClassWithStringArray()
+        public void WriteClassWithStringArray()
         {
             string json;
 
@@ -135,7 +136,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteClassWithObjectArray()
+        public void WriteClassWithObjectArray()
         {
             string json;
 
@@ -158,7 +159,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteClassWithGenericList()
+        public void WriteClassWithGenericList()
         {
             string json;
 
@@ -181,7 +182,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteClassWithGenericIEnumerableT()
+        public void WriteClassWithGenericIEnumerableT()
         {
             string json;
 
@@ -204,7 +205,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteClassWithGenericIListT()
+        public void WriteClassWithGenericIListT()
         {
             string json;
 
@@ -227,7 +228,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteClassWithGenericICollectionT()
+        public void WriteClassWithGenericICollectionT()
         {
             string json;
 
@@ -250,7 +251,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteClassWithGenericIReadOnlyCollectionT()
+        public void WriteClassWithGenericIReadOnlyCollectionT()
         {
             string json;
 
@@ -273,7 +274,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteClassWithGenericIReadOnlyListT()
+        public void WriteClassWithGenericIReadOnlyListT()
         {
             string json;
 
@@ -296,7 +297,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteClassWithObjectIEnumerableT()
+        public void WriteClassWithObjectIEnumerableT()
         {
             string json;
 
@@ -319,7 +320,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteClassWithObjectIListT()
+        public void WriteClassWithObjectIListT()
         {
             string json;
 
@@ -342,7 +343,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteClassWithObjectICollectionT()
+        public void WriteClassWithObjectICollectionT()
         {
             string json;
 
@@ -365,7 +366,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteClassWithObjectIReadOnlyCollectionT()
+        public void WriteClassWithObjectIReadOnlyCollectionT()
         {
             string json;
 
@@ -388,7 +389,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteClassWithObjectIReadOnlyListT()
+        public void WriteClassWithObjectIReadOnlyListT()
         {
             string json;
 
@@ -411,7 +412,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteClassWithObjectIEnumerableConstructibleTypes()
+        public void WriteClassWithObjectIEnumerableConstructibleTypes()
         {
             string json;
 
@@ -434,7 +435,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void WriteClassWithObjectImmutableTypes()
+        public void WriteClassWithObjectImmutableTypes()
         {
             string json;
 

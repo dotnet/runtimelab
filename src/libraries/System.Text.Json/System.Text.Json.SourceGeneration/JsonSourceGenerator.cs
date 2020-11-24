@@ -18,19 +18,22 @@ namespace System.Text.Json.SourceGeneration
     /// to generate wanted output code for JsonSerializers.
     /// </summary>
     [Generator]
-    public class JsonSourceGenerator : ISourceGenerator
+    public sealed class JsonSourceGenerator : ISourceGenerator
     {
-        public Dictionary<string, Type>? FoundTypes { get; private set; }
+        public Dictionary<string, Type>? SerializableTypes { get; private set; }
 
-        public void Execute(GeneratorExecutionContext context)
+        public void Execute(GeneratorExecutionContext executionContext)
         {
-            JsonSerializableSyntaxReceiver receiver = (JsonSerializableSyntaxReceiver)context.SyntaxReceiver;
-            MetadataLoadContext metadataLoadContext = new MetadataLoadContext(context.Compilation);
+#if LAUNCH_DEBUGGER_ON_EXECUTE
+            Debugger.Launch();
+#endif
+            JsonSerializableSyntaxReceiver receiver = (JsonSerializableSyntaxReceiver)executionContext.SyntaxReceiver;
+            MetadataLoadContext metadataLoadContext = new(executionContext.Compilation);
 
             // Discover serializable types indicated by JsonSerializableAttribute.
             foreach (CompilationUnitSyntax compilationUnit in receiver.CompilationUnits)
             {
-                SemanticModel compilationSemanticModel = context.Compilation.GetSemanticModel(compilationUnit.SyntaxTree);
+                SemanticModel compilationSemanticModel = executionContext.Compilation.GetSemanticModel(compilationUnit.SyntaxTree);
 
                 foreach (AttributeListSyntax attributeListSyntax in compilationUnit.AttributeLists)
                 {
@@ -44,49 +47,31 @@ namespace System.Text.Json.SourceGeneration
 
                         // There should be one `Type` parameter in the constructor of the attribute.
                         TypeOfExpressionSyntax typeNode = (TypeOfExpressionSyntax)attributeArgumentNode.ChildNodes().Single();
-                        QualifiedNameSyntax typeQualifiedNameSyntax = (QualifiedNameSyntax)typeNode.ChildNodes().Single();
 
-                        INamedTypeSymbol typeSymbol = (INamedTypeSymbol)compilationSemanticModel.GetTypeInfo(typeQualifiedNameSyntax).ConvertedType;
+                        ExpressionSyntax typeNameSyntax = (ExpressionSyntax)typeNode.ChildNodes().Single();
+
+                        ITypeSymbol typeSymbol = (ITypeSymbol)compilationSemanticModel.GetTypeInfo(typeNameSyntax).ConvertedType;
+
                         Type type = new TypeWrapper(typeSymbol, metadataLoadContext);
-                        (FoundTypes ??= new Dictionary<string, Type>())[type.FullName] = type;
+                        (SerializableTypes ??= new Dictionary<string, Type>())[type.FullName] = type;
                     }
                 }
             }
 
-            if (FoundTypes == null)
+            if (SerializableTypes == null)
             {
                 return;
             }
 
-            Debug.Assert(FoundTypes.Count >= 1);
+            Debug.Assert(SerializableTypes.Count >= 1);
 
-            JsonSourceGeneratorHelper codegen = new JsonSourceGeneratorHelper();
-
-            // Add base default instance source.
-            context.AddSource("BaseClassInfo.g.cs", SourceText.From(codegen.GenerateHelperContextInfo(), Encoding.UTF8));
-
-            // Run ClassInfo generation for the object graphs of each root type.
-            foreach (KeyValuePair<string, Type> entry in FoundTypes)
-            {
-                codegen.GenerateClassInfo(entry.Value);
-            }
-
-            // Add sources for each type to context.
-            foreach (KeyValuePair<Type, Tuple<string, string>> entry in codegen.Types)
-            {
-                context.AddSource($"{entry.Value.Item1}ClassInfo.g.cs", SourceText.From(entry.Value.Item2, Encoding.UTF8));
-            }
-
-            // For each diagnostic, report to the user.
-            foreach (Diagnostic diagnostic in codegen.Diagnostics)
-            {
-                context.ReportDiagnostic(diagnostic);
-            }
+            JsonSourceGeneratorHelper helper = new(executionContext, metadataLoadContext);
+            helper.GenerateSerializationMetadata(SerializableTypes);
         }
 
-        public void Initialize(GeneratorInitializationContext context)
+        public void Initialize(GeneratorInitializationContext executionContext)
         {
-            context.RegisterForSyntaxNotifications(() => new JsonSerializableSyntaxReceiver());
+            executionContext.RegisterForSyntaxNotifications(() => new JsonSerializableSyntaxReceiver());
         }
     }
 }

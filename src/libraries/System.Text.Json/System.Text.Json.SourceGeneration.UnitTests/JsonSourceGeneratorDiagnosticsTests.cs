@@ -3,7 +3,6 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Collections.Immutable;
-using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Xunit;
@@ -55,9 +54,9 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             // Expected info logs.
             string[] expectedInfoDiagnostics = new string[] {
-                "Generated type class ActiveOrUpcomingEvent for root type IndexViewModel",
-                "Generated type class CampaignSummaryViewModel for root type IndexViewModel",
-                "Generated type class IndexViewModel for root type IndexViewModel",
+                "Generated serialization metadata for type ActiveOrUpcomingEvent",
+                "Generated serialization metadata for type CampaignSummaryViewModel",
+                "Generated serialization metadata for type IndexViewModel",
             };
 
             CheckDiagnosticMessages(generatorDiags, DiagnosticSeverity.Info, expectedInfoDiagnostics);
@@ -66,7 +65,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
         }
 
         [Fact]
-        public void UnSuccessfulSourceGeneration()
+        public void UnsuccessfulSourceGeneration()
         {
             // Compile the referenced assembly first.
             Compilation campaignCompilation = CompilationHelper.CreateCampaignSummaryViewModelCompilation();
@@ -106,10 +105,16 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             CompilationHelper.RunGenerators(compilation, out var generatorDiags, generator);
 
-            // Expected warning logs.
-            string[] expectedWarningDiagnostics = new string[] { "Failed in sourcegenerating nested type ISet`1 for root type IndexViewModel" };
+            // Expected success info logs.
+            string[] expectedInfoDiagnostics = new string[] {
+                "Generated serialization metadata for type IndexViewModel",
+                "Generated serialization metadata for type CampaignSummaryViewModel"
+            };
 
-            CheckDiagnosticMessages(generatorDiags, DiagnosticSeverity.Info, new string[] { });
+            // Expected warning logs.
+            string[] expectedWarningDiagnostics = new string[] { "Did not generate serialization metadata for type ISet<ReferencedAssembly.ActiveOrUpcomingEvent>" };
+
+            CheckDiagnosticMessages(generatorDiags, DiagnosticSeverity.Info, expectedInfoDiagnostics);
             CheckDiagnosticMessages(generatorDiags, DiagnosticSeverity.Warning, expectedWarningDiagnostics);
             CheckDiagnosticMessages(generatorDiags, DiagnosticSeverity.Error, new string[] { });
         }
@@ -125,11 +130,12 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             // Expected info logs.
             string[] expectedInfoDiagnostics = new string[] {
-                "Generated type class Location for root type Location",
-                "Generated type class TestAssemblyLocation for root type Location",
+                "Generated serialization metadata for type Location",
+                "Generated serialization metadata for type HelloWorld.Location",
             };
             // Expected warning logs.
-            string[] expectedWarningDiagnostics = new string[] { "Changed name type Location to TestAssemblyLocation. To use please call `JsonContext.Instance.TestAssemblyLocation`" };
+            string[] expectedWarningDiagnostics = new string[] {
+                "Duplicate type name detected. Setting the JsonTypeInfo<T> property for type HelloWorld.Location in assembly TestAssembly to HelloWorldLocation. To use please call JsonContext.Instance.HelloWorldLocation" };
 
             CheckDiagnosticMessages(generatorDiags, DiagnosticSeverity.Info, expectedInfoDiagnostics);
             CheckDiagnosticMessages(generatorDiags, DiagnosticSeverity.Warning, expectedWarningDiagnostics);
@@ -138,7 +144,13 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
         private void CheckDiagnosticMessages(ImmutableArray<Diagnostic> diagnostics, DiagnosticSeverity level, string[] expectedMessages)
         {
-            Assert.Equal(expectedMessages, diagnostics.Where(diagnostic => diagnostic.Severity == level ).Select(diagnostic => diagnostic.GetMessage()).ToArray());
+            string[] actualMessages = diagnostics.Where(diagnostic => diagnostic.Severity == level).Select(diagnostic => diagnostic.GetMessage()).ToArray();
+
+            // Can't depending on reflection order when generating type metadata.
+            Array.Sort(actualMessages);
+            Array.Sort(expectedMessages);
+
+            Assert.Equal(expectedMessages, actualMessages);
         }
     }
 }

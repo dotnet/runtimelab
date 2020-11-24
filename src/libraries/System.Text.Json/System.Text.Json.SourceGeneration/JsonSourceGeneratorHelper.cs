@@ -2,87 +2,457 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Text;
 
 namespace System.Text.Json.SourceGeneration
 {
     internal sealed partial class JsonSourceGeneratorHelper
     {
-        // Simple handled types with typeinfo.
-        private static readonly HashSet<Type> s_simpleTypes = new HashSet<Type>
-        {
-            typeof(bool),
-            typeof(int),
-            typeof(double),
-            typeof(long),
-            typeof(string),
-            typeof(char),
-            typeof(DateTime),
-            typeof(DateTimeOffset),
-        };
+        private readonly Type _ienumerableType;
+        private readonly Type _listOfTType;
+        private readonly Type _ienumerableOfTType;
+        private readonly Type _dictionaryType;
+        private readonly Type _nullableOfTType;
 
         // Generation namespace for source generation code.
         const string GenerationNamespace = "JsonCodeGeneration";
 
-        // TypeWrapper for key and <TypeInfoIdentifier, Source> for value.
-        public Dictionary<Type, Tuple<string, string>> Types { get; }
+        private readonly HashSet<Type> _knownTypes = new();
 
-        // Contains types that failed to be generated.
-        private HashSet<Type> _failedTypes = new HashSet<Type>();
+        private Dictionary<Type, TypeMetadata> _handledTypes = new();
 
-        // Contains used typeinfo identifiers.
-        private HashSet<string> _usedTypeInfoIdentifiers = new HashSet<string>();
+        // Contains used JsonTypeInfo<T> identifiers.
+        private HashSet<string> _usedCompilableTypeNames = new();
 
-        // Contains list of diagnostics for the code generator.
-        public List<Diagnostic> Diagnostics { get; }
+        private Dictionary<Type, TypeMetadata> _typeMetadataCache = new();
 
-        public JsonSourceGeneratorHelper()
+        private readonly GeneratorExecutionContext _executionContext;
+
+        public JsonSourceGeneratorHelper(GeneratorExecutionContext executionContext, MetadataLoadContext metadataLoadContext)
         {
-            // Initialize auto properties.
-            Types = new Dictionary<Type, Tuple<string, string>>();
-            Diagnostics = new List<Diagnostic>();
+            _executionContext = executionContext;
+
+            _ienumerableType = metadataLoadContext.Resolve(typeof(IEnumerable));
+            _listOfTType = metadataLoadContext.Resolve(typeof(List<>));
+            _ienumerableOfTType = metadataLoadContext.Resolve(typeof(IEnumerable<>));
+            _dictionaryType = metadataLoadContext.Resolve(typeof(Dictionary<,>));
+            _nullableOfTType = metadataLoadContext.Resolve(typeof(Nullable<>));
+
+            PopulateSimpleTypes(metadataLoadContext);
 
             // Initiate diagnostic descriptors.
             InitializeDiagnosticDescriptors();
         }
 
-        public class GenerationClassFrame
+        public void GenerateSerializationMetadata(Dictionary<string, Type> serializableTypes)
         {
-            public Type RootType;
-            public Type CurrentType;
-            public string ClassName;
-            public StringBuilder Source;
+            // Add base default instance source.
+            _executionContext.AddSource("JsonContext.g.cs", SourceText.From(BaseJsonContextImplementation, Encoding.UTF8));
 
-            public PropertyInfo[] Properties;
-            public FieldInfo[] Fields;
-
-            public bool IsSuccessful; 
-
-            public GenerationClassFrame(Type rootType, Type currentType, HashSet<string> usedTypeInfoIdentifiers)
+#if LAUNCH_DEBUGGER_ON_EXECUTE
+            try
             {
-                RootType = rootType;
-                CurrentType = currentType;
-                Source = new StringBuilder();
-                Properties = CurrentType.GetProperties();
-                Fields = CurrentType.GetFields();
-                IsSuccessful = true;
+#endif
+                foreach (KeyValuePair<string, Type> pair in serializableTypes)
+                {
+                    TypeMetadata typeMetadata = GetOrAddTypeMetadata(pair.Value);
+                    GenerateMetadataForType(typeMetadata);
+                }
+#if LAUNCH_DEBUGGER_ON_EXECUTE
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+#endif
 
-                // If typename was already used, use unique name instead.
-                ClassName = usedTypeInfoIdentifiers.Contains(currentType.Name) ?
-                    currentType.GetCompilableUniqueName() : currentType.Name;
+            // Add GetJsonClassInfo override implementation.
+            _executionContext.AddSource("JsonContext.GetJsonClassInfo.cs", SourceText.From(Get_GetClassInfo_Implementation(), Encoding.UTF8));
+        }
 
-                // Register new ClassName.
-                usedTypeInfoIdentifiers.Add(ClassName);
+        public void GenerateMetadataForType(TypeMetadata typeMetadata)
+        {
+            if (_handledTypes.ContainsKey(typeMetadata.Type))
+            {
+                return;
+            }
+
+            _handledTypes.Add(typeMetadata.Type, typeMetadata);
+
+            string metadataFileName = $"{typeMetadata.FriendlyName}.g.cs";
+
+            switch (typeMetadata.ClassType)
+            {
+                case ClassType.KnownType:
+                    {
+                        // Generate nothing. Default `JsonSerializerContext.GetClassInfo()` implementation will provide the metadata.
+                        return;
+                    }
+                case ClassType.TypeWithCustomConverter:
+                    {
+                        // TODO: Generate code similar to ClassInfo for known types.
+                        return;
+                    }
+                case ClassType.Enumerable:
+                    {
+                        _executionContext.AddSource(
+                            metadataFileName,
+                            SourceText.From(GenerateForEnumerable(typeMetadata, collectionType: typeMetadata.CollectionType), Encoding.UTF8));
+
+                        GenerateMetadataForType(typeMetadata.CollectionValueTypeMetadata);
+                    }
+                    break;
+                case ClassType.Dictionary:
+                    {
+                        _executionContext.AddSource(
+                            metadataFileName,
+                            SourceText.From(GenerateForDictionary(typeMetadata, collectionType: typeMetadata.CollectionType), Encoding.UTF8));
+
+                        GenerateMetadataForType(typeMetadata.CollectionKeyTypeMetadata);
+                        GenerateMetadataForType(typeMetadata.CollectionValueTypeMetadata);
+                    }
+                    break;
+                case ClassType.Object:
+                    {
+                        // TODO: this codepath assumes deserialization with a public parameterless ctor.
+                        // Add mechanism to detect otherwise and opt-in for runtime metadata generation and/or serialization
+                        // with JsonSerializer's dynamic code paths.
+
+                        StringBuilder sb = new();
+
+                        // Add using statements.
+                        sb.Append(GetUsingStatementsString(typeMetadata));
+
+                        // Add declarations for JsonContext and the JsonTypeInfo<T> property for the type.
+                        sb.Append(Get_ContextClass_And_TypeInfoProperty_Declarations(typeMetadata));
+
+                        // Add declarations for the JsonTypeInfo<T> wrapper and nested property.
+                        sb.Append(Get_TypeInfoClassWrapper_And_TypeInfoProperty_Declarations(typeMetadata));
+
+                        // Add declarations for JsonPropertyInfo<T>s for each property.
+                        // TODO: Add declarations for JsonPropertyInfo<T>s for each field.
+                        foreach (PropertyMetadata propertyMetadata in typeMetadata.PropertiesMetadata)
+                        {
+                            sb.Append($@"
+            private JsonPropertyInfo<{propertyMetadata.TypeMetadata.CompilableName}> _property_{propertyMetadata.Name};
+");
+                        }
+
+                        // Add constructor which initializers the JsonPropertyInfo<T>s for the type.
+                        sb.Append(GetTypeInfoConstructor(typeMetadata));
+
+                        // Add CreateObjectFunc.
+                        sb.Append($@"
+            private object CreateObjectFunc()
+            {{
+                return new {typeMetadata.CompilableName}();
+            }}
+");
+                        // Add Serialize func.
+                        sb.Append(GenerateSerializeFunc(typeMetadata));
+
+                        // Add DeserializeFunc.
+                        sb.Append(GenerateDeserializeFunc(typeMetadata));
+
+                        // Add end braces.
+                        sb.Append($@"
+        }} // End of {typeMetadata.FriendlyName}TypeInfo class.
+    }} // End of JsonContext class.
+}} // End of {GenerationNamespace} namespace.
+");
+
+                        _executionContext.AddSource(
+                            metadataFileName,
+                            SourceText.From(sb.ToString(), Encoding.UTF8));
+
+                        _executionContext.ReportDiagnostic(Diagnostic.Create(_generatedTypeClass, Location.None, new string[] { typeMetadata.CompilableName }));
+
+                        // If type had its JsonTypeInfo name changed, report to the user.
+                        if (typeMetadata.Type.Name != typeMetadata.CompilableName)
+                        {
+                            //"Duplicate type name detected. Setting the JsonTypeInfo<T> property for type {0} in assembly {1} to {2}. To use please call JsonContext.Instance.{2}",
+                            _executionContext.ReportDiagnostic(Diagnostic.Create(
+                                _typeNameClash,
+                                Location.None,
+                                new string[] { typeMetadata.CompilableName, typeMetadata.Type.Assembly.FullName, typeMetadata.FriendlyName }));
+                        }
+
+                        // Generate serialization metadata for each property type.
+                        // TODO: Generate serialization metadata for each field type.
+                        foreach (PropertyMetadata propertyMetadata in typeMetadata.PropertiesMetadata)
+                        {
+                            GenerateMetadataForType(propertyMetadata.TypeMetadata);
+                        }
+                    }
+                    break;
+                case ClassType.TypeUnsupportedBySourceGen:
+                    {
+                        _executionContext.ReportDiagnostic(
+                            Diagnostic.Create(_failedToGenerateTypeClass, Location.None, new string[] { typeMetadata.CompilableName }));
+                        return;
+                    }
+                default:
+                    {
+                        throw new InvalidOperationException();
+                    }
             }
         }
 
-        // Base source generation context partial class.
-        public string GenerateHelperContextInfo()
+        private static string GenerateForEnumerable(TypeMetadata typeMetadata, CollectionType collectionType)
         {
-            return @$"
+            string typeCompilableName = typeMetadata.CompilableName;
+            string typeFriendlyName = typeMetadata.FriendlyName;
+
+            TypeMetadata? collectionValueTypeMetadata = typeMetadata.CollectionValueTypeMetadata;
+            Debug.Assert(collectionValueTypeMetadata != null);
+
+            string valueTypeCompilableName = collectionValueTypeMetadata.CompilableName;
+            string valueTypeReadableName = collectionValueTypeMetadata.FriendlyName;
+
+            string elementClassInfo = collectionValueTypeMetadata.ClassType == ClassType.TypeUnsupportedBySourceGen
+                ? "null"
+                : $"this.{valueTypeReadableName}";
+
+            return @$"{GetUsingStatementsString(typeMetadata)}
+
+namespace {GenerationNamespace}
+{{
+    public partial class JsonContext : JsonSerializerContext
+    {{
+        private JsonTypeInfo<{typeCompilableName}> _{typeFriendlyName};
+        public JsonTypeInfo<{typeCompilableName}> {typeFriendlyName}
+        {{
+            get
+            {{
+                _{typeFriendlyName} ??= KnownCollectionTypeInfos<{valueTypeCompilableName}>.Get{collectionType}({elementClassInfo}, this);
+                return _{typeFriendlyName};
+            }}
+        }}
+    }}
+}}
+            ";
+        }
+
+        private static string GenerateForDictionary(TypeMetadata typeMetadata, CollectionType collectionType)
+        {
+            string typeCompilableName = typeMetadata.CompilableName;
+            string typeFriendlyName = typeMetadata.FriendlyName;
+
+            // Key metadata
+            TypeMetadata? collectionKeyTypeMetadata = typeMetadata.CollectionKeyTypeMetadata;
+            Debug.Assert(collectionKeyTypeMetadata != null);
+
+            string keyTypeCompilableName = collectionKeyTypeMetadata.CompilableName;
+            string keyTypeReadableName = collectionKeyTypeMetadata.FriendlyName;
+
+            // Value metadata
+            TypeMetadata? collectionValueTypeMetadata = typeMetadata.CollectionValueTypeMetadata;
+            Debug.Assert(collectionValueTypeMetadata != null);
+
+            string valueTypeCompilableName = collectionValueTypeMetadata.CompilableName;
+            string valueTypeReadableName = collectionValueTypeMetadata.FriendlyName;
+
+            string elementClassInfo = collectionValueTypeMetadata.ClassType == ClassType.TypeUnsupportedBySourceGen
+                ? "null"
+                : $"this.{valueTypeReadableName}";
+
+            return @$"{GetUsingStatementsString(typeMetadata)}
+
+namespace {GenerationNamespace}
+{{
+    public partial class JsonContext : JsonSerializerContext
+    {{
+        private JsonTypeInfo<{typeCompilableName}> _{typeFriendlyName};
+        public JsonTypeInfo<{typeCompilableName}> {typeFriendlyName}
+        {{
+            get
+            {{
+                _{typeFriendlyName} ??= KnownDictionaryTypeInfos<{keyTypeCompilableName}, {valueTypeCompilableName}>.Get{collectionType}({elementClassInfo}, this);
+                return _{typeFriendlyName};
+            }}
+        }}
+    }}
+}}
+            ";
+        }
+
+        public TypeMetadata GetOrAddTypeMetadata(Type type)
+        {
+            if (_typeMetadataCache.TryGetValue(type, out TypeMetadata? typeMetadata))
+            {
+                return typeMetadata!;
+            }
+
+            ClassType classType;
+            Type? collectionKeyType = null;
+            Type? collectionValueType = null;
+            List<PropertyMetadata>? propertiesMetadata = null;
+            List<PropertyMetadata>? fieldsMetadata = null;
+            CollectionType collectionType = CollectionType.NotApplicable;
+
+            // TODO: first check for custom converter.
+            if (_knownTypes.Contains(type))
+            {
+                classType = ClassType.KnownType;
+            }
+            else if (type.IsEnum || IsNullableValueType(type))
+            {
+                classType = ClassType.TypeUnsupportedBySourceGen;
+            }
+            else if (_ienumerableType.IsAssignableFrom(type))
+            {
+                // Only T[], List<T>, Dictionary<Tkey, TValue>, and IEnumerable<T> are supported.
+
+                if (type.IsArray)
+                {
+                    classType = ClassType.Enumerable;
+                    collectionType = CollectionType.Array;
+                    collectionValueType = type.GetElementType();
+                }
+                else if (!type.IsGenericType)
+                {
+                    classType = ClassType.TypeUnsupportedBySourceGen;
+                }
+                else
+                {
+                    Type genericTypeDef = type.GetGenericTypeDefinition();
+                    Type[] genericTypeArgs = type.GetGenericArguments();
+
+                    if (genericTypeDef == _listOfTType)
+                    {
+                        classType = ClassType.Enumerable;
+                        collectionType = CollectionType.List;
+                        collectionValueType = genericTypeArgs[0];
+                    }
+                    else if (genericTypeDef == _ienumerableOfTType)
+                    {
+                        classType = ClassType.Enumerable;
+                        collectionType = CollectionType.IEnumerable;
+                        collectionValueType = genericTypeArgs[0];
+                    }
+                    else if (genericTypeDef == _dictionaryType)
+                    {
+                        classType = ClassType.Dictionary;
+                        collectionType = CollectionType.Dictionary;
+                        collectionKeyType = genericTypeArgs[0];
+                        collectionValueType = genericTypeArgs[1];
+                    }
+                    else
+                    {
+                        classType = ClassType.TypeUnsupportedBySourceGen;
+                    }
+                }
+            }
+            else
+            {
+                classType = ClassType.Object;
+
+                // TODO: support for non-public members.
+                PropertyInfo[] properties = type.GetProperties();
+                FieldInfo[] fields = type.GetFields();
+
+                propertiesMetadata = new List<PropertyMetadata>(properties.Length);
+                fieldsMetadata = new List<PropertyMetadata>(fields.Length);
+
+                foreach (PropertyInfo property in properties)
+                {
+                    PropertyMetadata propMetadata = new()
+                    {
+                        Name = property.Name,
+                        TypeMetadata = GetOrAddTypeMetadata(property.PropertyType)
+                    };
+                    propertiesMetadata.Add(propMetadata);
+                }
+
+                foreach (FieldInfo field in fields)
+                {
+                    fieldsMetadata.Add(new PropertyMetadata
+                    {
+                        Name = field.Name,
+                        TypeMetadata = GetOrAddTypeMetadata(field.FieldType)
+                    });
+                }
+            }
+
+            string compilableName = type.GetCompilableTypeName();
+            string friendlyName = type.GetFriendlyTypeName();
+
+            if (_usedCompilableTypeNames.Contains(type.Name))
+            {
+                compilableName = type.GetUniqueCompilableTypeName();
+                friendlyName = type.GetUniqueFriendlyTypeName();
+            }
+            else
+            {
+                _usedCompilableTypeNames.Add(compilableName);
+            }
+
+            typeMetadata = new TypeMetadata
+            {
+                CompilableName = compilableName,
+                FriendlyName = friendlyName,
+                Type = type,
+                ClassType = classType,
+                CollectionType = collectionType,
+                CollectionKeyTypeMetadata = collectionKeyType != null ? GetOrAddTypeMetadata(collectionKeyType) : null,
+                CollectionValueTypeMetadata = collectionValueType != null ? GetOrAddTypeMetadata(collectionValueType) : null,
+                PropertiesMetadata = propertiesMetadata,
+                FieldsMetadata = fieldsMetadata,
+                IsValueType = type.IsValueType
+            };
+
+            _typeMetadataCache[type] = typeMetadata;
+            return typeMetadata;
+        }
+
+        public bool IsNullableValueType(Type type)
+        {
+            return type.IsGenericType && type.GetGenericTypeDefinition() == _nullableOfTType;
+        }
+
+        private void PopulateSimpleTypes(MetadataLoadContext metadataLoadContext)
+        {
+            Debug.Assert(_knownTypes != null);
+
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(bool)));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(byte[])));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(byte)));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(char)));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(DateTime)));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(DateTimeOffset)));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(Decimal)));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(double)));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(Guid)));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(short)));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(int)));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(long)));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(sbyte)));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(float)));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(string)));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(ushort)));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(uint)));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(ulong)));
+
+            // TODO: confirm that this is true.
+            // System.Private.Uri may not be loaded in input compilation.
+            Type? uriType = metadataLoadContext.Resolve(typeof(Uri));
+            if (uriType != null)
+            {
+                _knownTypes.Add(uriType);
+            }
+
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(Version)));
+        }
+
+        // Base source generation context partial class.
+        private string BaseJsonContextImplementation => @$"
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace {GenerationNamespace}
@@ -102,401 +472,268 @@ namespace {GenerationNamespace}
                 return s_instance;
             }}
         }}
+
+        private JsonContext()
+        {{
+        }}
+
+        public JsonContext(JsonSerializerOptions options) : base(options)
+        {{
+        }}
     }}
 }}
-            ";
-        }
+";
 
-        // Generates metadata for type and returns if it was successful.
-        private bool GenerateClassInfo(GenerationClassFrame currentFrame, Dictionary<Type, string> seenTypes)
+        private string Get_GetClassInfo_Implementation()
         {
-            // Add current type to seen types along with its className..
-            seenTypes[currentFrame.CurrentType] = currentFrame.ClassName;
+            StringBuilder sb = new();
 
-            // Try to recursively generate necessary field and property types.
-            foreach (FieldInfo field in currentFrame.Fields)
+            HashSet<string> usingStatements = new();
+
+            // TODO: should these already be cached somewhere?
+            foreach (TypeMetadata typeMetadata in _handledTypes.Values)
             {
-                if (!IsSupportedType(field.FieldType))
-                {
-                    Diagnostics.Add(Diagnostic.Create(_notSupported, Location.None, new string[] { currentFrame.RootType.Name, field.FieldType.Name }));
-                    return false;
-                }
-                foreach (Type handlingType in GetTypesToGenerate(field.FieldType))
-                {
-                    GenerateForMembers(currentFrame, handlingType, seenTypes);
-                }
+                usingStatements.UnionWith(GetUsingStatements(typeMetadata));
             }
 
-            foreach (PropertyInfo property in currentFrame.Properties)
-            {
-                if (!IsSupportedType(property.PropertyType))
-                {
-                    Diagnostics.Add(Diagnostic.Create(_notSupported, Location.None, new string[] { currentFrame.RootType.Name, property.PropertyType.Name }));
-                    return false;
-                }
-                foreach (Type handlingType in GetTypesToGenerate(property.PropertyType))
-                {
-                    GenerateForMembers(currentFrame, handlingType, seenTypes);
-                }
-            }
-
-            // Try to generate current type info now that fields and property types have been resolved.
-            AddImportsToTypeClass(currentFrame);
-            InitializeContextClass(currentFrame);
-            InitializeTypeClass(currentFrame);
-            TypeInfoGetterSetter(currentFrame);
-            currentFrame.IsSuccessful &= InitializeTypeInfoProperties(currentFrame);
-            currentFrame.IsSuccessful &= GenerateTypeInfoConstructor(currentFrame, seenTypes);
-            GenerateCreateObject(currentFrame);
-            GenerateSerialize(currentFrame);
-            GenerateDeserialize(currentFrame);
-            FinalizeTypeAndContextClasses(currentFrame);
-
-            if (currentFrame.IsSuccessful)
-            {
-                Diagnostics.Add(Diagnostic.Create(_generatedTypeClass, Location.None, new string[] { currentFrame.RootType.Name, currentFrame.ClassName }));
-
-                // Add generated typeinfo for current traversal.
-                Types.Add(currentFrame.CurrentType, new Tuple<string, string>(currentFrame.ClassName, currentFrame.Source.ToString()));
-                // If added type had its typeinfo name changed, report to the user.
-                if (currentFrame.CurrentType.Name != currentFrame.ClassName)
-                {
-                    Diagnostics.Add(Diagnostic.Create(_typeNameClash, Location.None, new string[] { currentFrame.CurrentType.Name, currentFrame.ClassName }));
-                }
-            }
-            else
-            {
-                Diagnostics.Add(Diagnostic.Create(_failedToGenerateTypeClass, Location.None, new string[] { currentFrame.RootType.Name, currentFrame.ClassName }));
-
-                // If not successful remove it from found types hashset and add to failed types list.
-                seenTypes.Remove(currentFrame.CurrentType);
-                _failedTypes.Add(currentFrame.CurrentType);
-
-                // Unregister typeinfo identifier since typeinfo will not be saved.
-                _usedTypeInfoIdentifiers.Remove(currentFrame.ClassName);
-            }
-
-            return currentFrame.IsSuccessful;
-        }
-
-        // Call recursive type generation if unseen type and check for success and cycles.
-        void GenerateForMembers(GenerationClassFrame currentFrame, Type newType, Dictionary<Type, string> seenTypes)
-        {
-            // If new type, recurse.
-            if (IsNewType(newType, seenTypes))
-            {
-                bool isMemberSuccessful = GenerateClassInfo(new GenerationClassFrame(currentFrame.RootType, newType, _usedTypeInfoIdentifiers), seenTypes);
-                currentFrame.IsSuccessful &= isMemberSuccessful;
-
-                if (!isMemberSuccessful)
-                {
-                    Diagnostics.Add(Diagnostic.Create(_failedToAddNewTypesFromMembers, Location.None, new string[] { currentFrame.RootType.Name, currentFrame.CurrentType.Name }));
-                }
-            }
-        }
-
-        // Check if current type is supported to be iterated over.
-        private bool IsSupportedType(Type type)
-        {
-            if (type.IsArray)
-            {
-                return true;
-            }
-            if (type.IsIEnumerable())
-            {
-                // todo: Add more support to collections.
-                if (!type.IsIList() && !type.IsIDictionary())
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        // Returns name of types traversed that can be looked up in the dictionary.
-        public void GenerateClassInfo(Type type)
-        {
-            Dictionary<Type, string> foundTypes = new Dictionary<Type, string>();
-            GenerateClassInfo(new GenerationClassFrame(rootType: type, currentType: type, _usedTypeInfoIdentifiers), foundTypes);
-        }
-
-        private Type[] GetTypesToGenerate(Type type)
-        {
-            if (type.IsArray)
-            {
-                return new Type[] { type.GetElementType() };
-            }
-            if (type.IsGenericType)
-            {
-                return type.GetGenericArguments();
-            }
-
-            return new Type[] { type };
-        }
-
-        private bool IsNewType(Type type, Dictionary<Type, string> foundTypes) => (
-            !Types.ContainsKey(type) &&
-            !foundTypes.ContainsKey(type) &&
-            !s_simpleTypes.Contains(type));
-
-        private string GetTypeInfoIdentifier(Type type, Dictionary<Type, string> seenTypes)
-        {
-            if (s_simpleTypes.Contains(type))
-            {
-                return type.Name;
-            }
-            if (Types.ContainsKey(type))
-            {
-                return Types[type].Item1;
-            }
-
-            return seenTypes[type];
-        }
-
-        private void AddImportsToTypeClass(GenerationClassFrame currentFrame)
-        {
-            HashSet<string> imports = new HashSet<string>();
-
-            // Add base imports.
-            imports.Add("System");
-            imports.Add("System.Collections");
-            imports.Add("System.Collections.Generic");
-            imports.Add("System.Text.Json");
-            imports.Add("System.Text.Json.Serialization");
-            imports.Add("System.Text.Json.Serialization.Metadata");
-
-            // Add imports to root type.
-            imports.Add(currentFrame.CurrentType.GetFullNamespace());
-
-            foreach (PropertyInfo property in currentFrame.Properties)
-            {
-                foreach (Type handlingType in GetTypesToGenerate(property.PropertyType))
-                {
-                    imports.Add(property.PropertyType.GetFullNamespace());
-                    imports.Add(handlingType.GetFullNamespace());
-                }
-            }
-            foreach (FieldInfo field in currentFrame.Fields)
-            {
-                foreach (Type handlingType in GetTypesToGenerate(field.FieldType))
-                {
-                    imports.Add(field.FieldType.GetFullNamespace());
-                    imports.Add(handlingType.GetFullNamespace());
-                }
-            }
-
-            foreach (string import in imports)
-            {
-                if (import.Length > 0)
-                {
-                    currentFrame.Source.Append($@"
-using {import};");
-                }
-            }
-        }
-
-        // Includes necessary imports, namespace decl and initializes class.
-        private void InitializeContextClass(GenerationClassFrame currentFrame)
-        {
-            currentFrame.Source.Append($@"
+            sb.Append(@$"{GetUsingStatementsString(usingStatements)}
 
 namespace {GenerationNamespace}
 {{
     public partial class JsonContext : JsonSerializerContext
     {{
-        private {currentFrame.ClassName}TypeInfo _{currentFrame.ClassName};
-        public JsonTypeInfo<{currentFrame.CurrentType.FullName}> {currentFrame.ClassName}
+        public override JsonClassInfo GetJsonClassInfo(Type type)
+        {{");
+
+            // TODO: Make this Dictionary-lookup-based if _handledType.Count > 64.
+            foreach (TypeMetadata typeMetadata in _handledTypes.Values)
+            {
+                if (typeMetadata.ClassType != ClassType.TypeUnsupportedBySourceGen)
+                {
+                    sb.Append($@"
+            if (type == typeof({typeMetadata.Type.GetUniqueCompilableTypeName()}))
+            {{
+                return this.{typeMetadata.FriendlyName};
+            }}
+");
+                }
+            }
+
+            sb.Append(@$"
+            return null;
+        }}
+    }}
+}}
+");
+
+            return sb.ToString();
+        }
+
+        private static string GetUsingStatementsString(TypeMetadata typeMetadata)
+        {
+            HashSet<string> usingStatements = GetUsingStatements(typeMetadata);
+            return GetUsingStatementsString(usingStatements);
+        }
+
+        private static string GetUsingStatementsString(HashSet<string> usingStatements)
+        {
+            string[] usingsArr = usingStatements.ToArray();
+            Array.Sort(usingsArr);
+            return string.Join("\n", usingsArr);
+        }
+
+        private static HashSet<string> GetUsingStatements(TypeMetadata typeMetadata)
+        {
+            HashSet<string> usingStatements = new();
+
+            // Add library usings.
+            usingStatements.Add(FormatAsUsingStatement("System"));
+            usingStatements.Add(FormatAsUsingStatement("System.Runtime.CompilerServices"));
+            usingStatements.Add(FormatAsUsingStatement("System.Text.Json"));
+            usingStatements.Add(FormatAsUsingStatement("System.Text.Json.Serialization"));
+            usingStatements.Add(FormatAsUsingStatement("System.Text.Json.Serialization.Metadata"));
+
+            // Add imports to root type.
+            usingStatements.Add(FormatAsUsingStatement(typeMetadata.Type.Namespace));
+
+            switch (typeMetadata.ClassType)
+            {
+                case ClassType.Enumerable:
+                    {
+                        AddUsingStatementsForType(typeMetadata.CollectionValueTypeMetadata);
+                    }
+                    break;
+                case ClassType.Dictionary:
+                    {
+                        AddUsingStatementsForType(typeMetadata.CollectionKeyTypeMetadata);
+                        AddUsingStatementsForType(typeMetadata.CollectionValueTypeMetadata);
+                    }
+                    break;
+                case ClassType.Object:
+                    {
+                        foreach (PropertyMetadata property in typeMetadata.PropertiesMetadata)
+                        {
+                            AddUsingStatementsForType(property.TypeMetadata);
+                        }
+
+                        foreach (PropertyMetadata property in typeMetadata.FieldsMetadata)
+                        {
+                            AddUsingStatementsForType(property.TypeMetadata);
+                        }
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+            void AddUsingStatementsForType(TypeMetadata typeMetadata)
+            {
+                usingStatements.Add(FormatAsUsingStatement(typeMetadata.Type.Namespace));
+
+                if (typeMetadata.CollectionKeyTypeMetadata != null)
+                {
+                    Debug.Assert(typeMetadata.CollectionValueTypeMetadata != null);
+                    usingStatements.Add(FormatAsUsingStatement(typeMetadata.CollectionKeyTypeMetadata.Type.Namespace));
+                }
+
+                if (typeMetadata.CollectionValueTypeMetadata != null)
+                {
+                    usingStatements.Add(FormatAsUsingStatement(typeMetadata.CollectionValueTypeMetadata.Type.Namespace));
+                }
+            }
+
+            return usingStatements;
+        }
+
+        private static string FormatAsUsingStatement(string @namespace) => $"using {@namespace};";
+
+        // Includes necessary imports, namespace decl and initializes class.
+        private static string Get_ContextClass_And_TypeInfoProperty_Declarations(TypeMetadata typeMetadata)
+        {
+            string typeCompilableName = typeMetadata.CompilableName;
+            string typeFriendlyName = typeMetadata.FriendlyName;
+
+            return $@"
+
+namespace {GenerationNamespace}
+{{
+    public partial class JsonContext : JsonSerializerContext
+    {{
+        private {typeFriendlyName}TypeInfo _{typeFriendlyName};
+        public JsonTypeInfo<{typeCompilableName}> {typeFriendlyName}
         {{
             get
             {{
-                if (_{currentFrame.ClassName} == null)
+                if (_{typeFriendlyName} == null)
                 {{
-                    _{currentFrame.ClassName} = new {currentFrame.ClassName}TypeInfo(this);
+                    _{typeFriendlyName} = new {typeFriendlyName}TypeInfo(this);
                 }}
 
-                return _{currentFrame.ClassName}.TypeInfo;
+                return _{typeFriendlyName}.TypeInfo;
             }}
         }}
-        ");
+";
         }
 
-        private void InitializeTypeClass(GenerationClassFrame currentFrame) {
-            currentFrame.Source.Append($@"
-        private class {currentFrame.ClassName}TypeInfo 
+        private static string Get_TypeInfoClassWrapper_And_TypeInfoProperty_Declarations (TypeMetadata typeMetadata) {
+            return $@"
+        private class {typeMetadata.FriendlyName}TypeInfo 
         {{
-        ");
+            public JsonTypeInfo<{typeMetadata.CompilableName}> TypeInfo {{ get; private set; }}
+        ";
         }
 
-        private void TypeInfoGetterSetter(GenerationClassFrame currentFrame)
+        private static string GetTypeInfoConstructor(TypeMetadata typeMetadata)
         {
-            currentFrame.Source.Append($@"
-            public JsonTypeInfo<{currentFrame.CurrentType.FullName}> TypeInfo {{ get; private set; }}
-            ");
-        }
+            string typeCompilableName = typeMetadata.CompilableName;
+            string typeFriendlyName = typeMetadata.FriendlyName;
 
-        private bool InitializeTypeInfoProperties(GenerationClassFrame currentFrame)
-        {
-            Type propertyType;
-            Type[] genericTypes;
-            string typeName;
-            string propertyName;
+            StringBuilder sb = new();
 
-            foreach (PropertyInfo property in currentFrame.Properties)
-            {
-                // Find type and property name to use for property definition.
-                propertyType = property.PropertyType;
-                propertyName = property.Name;
-                typeName = propertyType.FullName;
-
-                genericTypes = GetTypesToGenerate(propertyType);
-
-                // Check if Array.
-                if (propertyType.IsArray)
-                {
-                    typeName = $"{genericTypes[0].FullName}[]";
-                }
-
-                // Check if IEnumerable.
-                if (propertyType.IsIEnumerable())
-                {
-                    if (propertyType.IsIList())
-                    {
-                        typeName = $"List<{genericTypes[0].FullName}>";
-                    }
-                    else if (propertyType.IsIDictionary())
-                    {
-                        typeName = $"Dictionary<{genericTypes[0].FullName}, {genericTypes[1].FullName}>";
-                    }
-                    else
-                    {
-                        // todo: Add support for rest of the IEnumerables.
-                        return false;
-                    }
-                }
-
-                currentFrame.Source.Append($@"
-            private JsonPropertyInfo<{typeName}> _property_{propertyName};
-                ");
-            }
-
-            return true;
-        }
-
-        private bool GenerateTypeInfoConstructor(GenerationClassFrame currentFrame, Dictionary<Type, string> seenTypes)
-        {
-            Type currentType = currentFrame.CurrentType;
-
-            currentFrame.Source.Append($@"
-            public {currentFrame.ClassName}TypeInfo(JsonContext context)
+            sb.Append($@"
+            public {typeMetadata.FriendlyName}TypeInfo(JsonContext context)
             {{
-                var typeInfo = new JsonObjectInfo<{currentType.FullName}>(CreateObjectFunc, SerializeFunc, DeserializeFunc, context.GetOptions());
+                JsonObjectInfo<{typeMetadata.CompilableName}> typeInfo = new(CreateObjectFunc, SerializeFunc, DeserializeFunc, context.GetOptions());
             ");
 
-
-            Type[] genericTypes;
-            Type propertyType;
-            string typeClassInfoCall;
-            string typeInfoIdentifier;
-
-            foreach (PropertyInfo property in currentFrame.Properties)
+            foreach (PropertyMetadata propertyMetadata in typeMetadata.PropertiesMetadata)
             {
-                propertyType = property.PropertyType;
-                genericTypes = GetTypesToGenerate(propertyType);
+                string propertyName = propertyMetadata.Name;
 
-                if (propertyType.IsArray)
-                {
-                    typeInfoIdentifier = GetTypeInfoIdentifier(genericTypes[0], seenTypes);
-                    typeClassInfoCall = $"KnownCollectionTypeInfos<{genericTypes[0].FullName}>.GetArray(context.{typeInfoIdentifier}, context)";
-                }
-                else if (propertyType.IsIEnumerable())
-                {
-                    if (propertyType.IsIList())
-                    {
-                        typeInfoIdentifier = GetTypeInfoIdentifier(genericTypes[0], seenTypes);
-                        typeClassInfoCall = $"KnownCollectionTypeInfos<{genericTypes[0].FullName}>.GetList(context.{typeInfoIdentifier}, context)";
-                    }
-                    else if (propertyType.IsIDictionary())
-                    {
-                        typeInfoIdentifier = GetTypeInfoIdentifier(genericTypes[1], seenTypes);
-                        typeClassInfoCall = $"KnownDictionaryTypeInfos<{genericTypes[0].FullName}, {genericTypes[1].FullName}>.GetDictionary(context.{typeInfoIdentifier}, context)";
-                    }
-                    else
-                    {
-                        // todo: Add support for rest of the IEnumerables.
-                        return false;
-                    }
-                }
-                else
-                {
-                    // Default classtype for values.
-                    typeInfoIdentifier = GetTypeInfoIdentifier(propertyType, seenTypes);
-                    typeClassInfoCall = $"context.{typeInfoIdentifier}";
-                }
+                TypeMetadata propertyTypeMetadata = propertyMetadata.TypeMetadata;
 
+                string typeClassInfo = propertyTypeMetadata.ClassType == ClassType.TypeUnsupportedBySourceGen
+                    ? "null"
+                    : $"context.{propertyTypeMetadata.FriendlyName}";
 
-                currentFrame.Source.Append($@"
-                _property_{property.Name} = typeInfo.AddProperty(nameof({currentType.FullName}.{property.Name}),
-                    (obj) => {{ return (({currentType.FullName})obj).{property.Name}; }},
-                    (obj, value) => {{ (({currentType.FullName})obj).{property.Name} = value; }},
-                    {typeClassInfoCall});
+                string propMutation = typeMetadata.IsValueType
+                    ? @$"{{ Unsafe.Unbox<{typeCompilableName}>(obj).{propertyName} = value; }}"
+                    : $@"{{ (({typeCompilableName})obj).{propertyName} = value; }}";
+
+                sb.Append($@"
+                _property_{propertyName} = typeInfo.AddProperty(
+                    ""{propertyName}"",
+                    (obj) => {{ return (({typeCompilableName})obj).{propertyName}; }},
+                    (obj, value) => {propMutation},
+                    {typeClassInfo});
                 ");
             }
 
             // Finalize constructor.
-            currentFrame.Source.Append($@"
+            sb.Append($@"
                 typeInfo.CompleteInitialization();
                 TypeInfo = typeInfo;
             }}
             ");
 
-            return true;
+            return sb.ToString();
         }
 
-        private void GenerateCreateObject(GenerationClassFrame currentFrame)
+        private static string GenerateSerializeFunc(TypeMetadata typeMetadata)
         {
-            currentFrame.Source.Append($@"
-            private object CreateObjectFunc()
-            {{
-                return new {currentFrame.CurrentType.FullName}();
-            }}
-            ");
-        }
+            StringBuilder sb = new();
 
-        private void GenerateSerialize(GenerationClassFrame currentFrame)
-        {
             // Start function.
-            currentFrame.Source.Append($@"
+            sb.Append($@"
             private void SerializeFunc(Utf8JsonWriter writer, object value, ref WriteStack writeStack, JsonSerializerOptions options)
             {{");
 
             // Create base object.
-            currentFrame.Source.Append($@"
-                {currentFrame.CurrentType.FullName} obj = ({currentFrame.CurrentType.FullName})value;
+            // TODO: avoid copy here?
+            sb.Append($@"
+                {typeMetadata.CompilableName} obj = ({typeMetadata.CompilableName})value;
             ");
 
-            foreach (PropertyInfo property in currentFrame.Properties)
+            foreach (PropertyMetadata propertyMetadata in typeMetadata.PropertiesMetadata)
             {
-                currentFrame.Source.Append($@"
-                _property_{property.Name}.WriteValue(obj.{property.Name}, ref writeStack, writer);");
+                sb.Append($@"
+                _property_{propertyMetadata.Name}.WriteValue(obj.{propertyMetadata.Name}, ref writeStack, writer);");
             }
 
             // End function.
-            currentFrame.Source.Append($@"
+            sb.Append($@"
             }}
-            ");
+");
+
+            return sb.ToString();
         }
 
-        private void GenerateDeserialize(GenerationClassFrame currentFrame)
+        private static string GenerateDeserializeFunc(TypeMetadata typeMetadata)
         {
+            StringBuilder sb = new();
+
+            string typeCompilableName = typeMetadata.CompilableName;
+
+            // TODO: investigate why this is necessary. Could this simply be typeCompilableName?
+            string returnType = typeMetadata.IsValueType ? "object" : typeCompilableName;
+
             // Start deserialize function.
-            currentFrame.Source.Append($@"
-            private {currentFrame.CurrentType.FullName} DeserializeFunc(ref Utf8JsonReader reader, ref ReadStack readStack, JsonSerializerOptions options)
-            {{
-            ");
+            sb.Append($@"
+            private {returnType} DeserializeFunc(ref Utf8JsonReader reader, ref ReadStack readStack, JsonSerializerOptions options)
+            {{");
 
             // Create helper function to check for property name.
-            currentFrame.Source.Append($@"
+            sb.Append($@"
                 bool ReadPropertyName(ref Utf8JsonReader reader)
                 {{
                     return reader.Read() && reader.TokenType == JsonTokenType.PropertyName;
@@ -504,30 +741,43 @@ namespace {GenerationNamespace}
             ");
 
             // Start loop to read properties.
-            currentFrame.Source.Append($@"
+            sb.Append($@"
                 ReadOnlySpan<byte> propertyName;
-                {currentFrame.CurrentType.FullName} obj = new {currentFrame.CurrentType.FullName}();
+                {typeCompilableName} obj = new {typeCompilableName}();
 
-                while(ReadPropertyName(ref reader))
+                while (ReadPropertyName(ref reader))
                 {{
                     propertyName = reader.ValueSpan;
             ");
 
             // Read and set each property.
-            foreach ((PropertyInfo property, int i) in currentFrame.Properties.Select((p, i) => (p, i)))
+            bool isFirstProperty = true;
+
+            foreach (PropertyMetadata propertyMetadata in typeMetadata.PropertiesMetadata)
             {
-                currentFrame.Source.Append($@"
-                    {((i == 0) ? "" : "else ")}if (propertyName.SequenceEqual(_property_{property.Name}.NameAsUtf8Bytes))
+                string ifCheckPrefix;
+                if (isFirstProperty)
+                {
+                    ifCheckPrefix = "";
+                    isFirstProperty = false;
+                }
+                else
+                {
+                    ifCheckPrefix = "else ";
+                }
+
+                sb.Append($@"
+                    {ifCheckPrefix}if (propertyName.SequenceEqual(_property_{propertyMetadata.Name}.NameAsUtf8Bytes))
                     {{
                         reader.Read();
-                        _property_{property.Name}.ReadValueAndSetMember(ref reader, ref readStack, obj);
+                        _property_{propertyMetadata.Name}.ReadValueAndSetMember(ref reader, ref readStack, obj);
                     }}");
             }
 
             // Base condition for unhandled properties.
-            if (currentFrame.Properties.Length > 0)
+            if (typeMetadata.PropertiesMetadata.Count > 0)
             {
-                currentFrame.Source.Append($@"
+                sb.Append($@"
                     else
                     {{
                         reader.Read();
@@ -535,37 +785,30 @@ namespace {GenerationNamespace}
             }
             else
             {
-                currentFrame.Source.Append($@"
+                sb.Append($@"
                     reader.Read();");
             }
 
             // Finish property reading loops.
-            currentFrame.Source.Append($@"
+            sb.Append($@"
                 }}
             ");
 
             // Verify the final received token and return object.
-            currentFrame.Source.Append($@"
+            sb.Append($@"
                 if (reader.TokenType != JsonTokenType.EndObject)
                 {{
                     throw new JsonException(""todo"");
                 }}
-                return obj;
-            ");
+
+                return obj;");
 
             // End deserialize function.
-            currentFrame.Source.Append($@"
+            sb.Append($@"
             }}
             ");
-        }
 
-        private void FinalizeTypeAndContextClasses(GenerationClassFrame currentFrame)
-        {
-            currentFrame.Source.Append($@"
-        }} // End of typeinfo class.
-    }} // End of context class.
-}} // End of namespace.
-            ");
+            return sb.ToString();
         }
     }
 }
