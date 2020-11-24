@@ -19,7 +19,7 @@ namespace Internal.Runtime.CompilerServices
 
         private struct GenericMethodDescriptorInfo : IEquatable<GenericMethodDescriptorInfo>
         {
-            public override bool Equals(object obj)
+            public override bool Equals(object? obj)
             {
                 if (!(obj is GenericMethodDescriptorInfo))
                     return false;

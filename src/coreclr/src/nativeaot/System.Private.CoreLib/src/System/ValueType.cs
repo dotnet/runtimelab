@@ -25,13 +25,13 @@ namespace System
     [System.Runtime.CompilerServices.TypeForwardedFrom("mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089")]
     public abstract class ValueType
     {
-        public override string ToString()
+        public override string? ToString()
         {
             return this.GetType().ToString();
         }
 
 #if PROJECTN
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return RuntimeAugments.Callbacks.ValueTypeEqualsUsingReflection(this, obj);
         }
@@ -57,7 +57,7 @@ namespace System
             return UseFastHelper;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj == null || obj.EETypePtr != this.EETypePtr)
                 return false;

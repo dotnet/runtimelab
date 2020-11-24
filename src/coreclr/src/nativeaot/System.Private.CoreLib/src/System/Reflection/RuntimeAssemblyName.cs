@@ -100,7 +100,7 @@ namespace System.Reflection
             return true;
         }
 
-        public sealed override bool Equals(object obj)
+        public sealed override bool Equals(object? obj)
         {
             RuntimeAssemblyName other = obj as RuntimeAssemblyName;
             if (other == null)

@@ -18,7 +18,7 @@ namespace Internal.Reflection
             _moduleType = moduleType;
         }
 
-        public override bool Equals(object o)
+        public override bool Equals(object? o)
         {
             return o is RuntimeAssembly other && other._moduleType.Equals(_moduleType);
         }

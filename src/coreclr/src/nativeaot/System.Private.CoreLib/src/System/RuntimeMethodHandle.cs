@@ -19,7 +19,7 @@ namespace System
 
         public unsafe IntPtr Value => _value;
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (!(obj is RuntimeMethodHandle))
                 return false;
