@@ -57,9 +57,10 @@ namespace ILCompiler.DependencyAnalysis
     /// </summary>
     public partial class EETypeNode : ObjectNode, IExportableSymbolNode, IEETypeNode, ISymbolDefinitionNode, ISymbolNodeWithLinkage
     {
-        protected TypeDesc _type;
-        internal EETypeOptionalFieldsBuilder _optionalFieldsBuilder = new EETypeOptionalFieldsBuilder();
-        internal EETypeOptionalFieldsNode _optionalFieldsNode;
+        protected readonly TypeDesc _type;
+        internal readonly EETypeOptionalFieldsBuilder _optionalFieldsBuilder = new EETypeOptionalFieldsBuilder();
+        internal readonly EETypeOptionalFieldsNode _optionalFieldsNode;
+        protected bool? _mightHaveInterfaceDispatchMap;
 
         public EETypeNode(NodeFactory factory, TypeDesc type)
         {
@@ -73,6 +74,16 @@ namespace ILCompiler.DependencyAnalysis
             _optionalFieldsNode = new EETypeOptionalFieldsNode(this);
 
             factory.TypeSystemContext.EnsureLoadableType(type);
+        }
+        
+        protected bool MightHaveInterfaceDispatchMap(NodeFactory factory)
+        {
+            if (!_mightHaveInterfaceDispatchMap.HasValue)
+            {
+                _mightHaveInterfaceDispatchMap = EmitVirtualSlotsAndInterfaces && InterfaceDispatchMapNode.MightHaveInterfaceDispatchMap(_type, factory);
+            }
+            
+            return _mightHaveInterfaceDispatchMap.Value;
         }
 
         protected override string GetName(NodeFactory factory) => this.GetMangledName(factory.NameMangler);
@@ -909,7 +920,7 @@ namespace ILCompiler.DependencyAnalysis
         /// </summary>
         protected internal virtual void ComputeOptionalEETypeFields(NodeFactory factory, bool relocsOnly)
         {
-            if (!relocsOnly && EmitVirtualSlotsAndInterfaces && InterfaceDispatchMapNode.MightHaveInterfaceDispatchMap(_type, factory))
+            if (!relocsOnly && MightHaveInterfaceDispatchMap(factory))
             {
                 _optionalFieldsBuilder.SetFieldValue(EETypeOptionalFieldTag.DispatchMap, checked((uint)factory.InterfaceDispatchMapIndirection(Type).IndexFromBeginningOfArray));
             }
