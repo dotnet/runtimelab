@@ -231,6 +231,23 @@ namespace ILCompiler.DependencyAnalysis
                     }
                 }
 
+                // Add conditional dependencies for interface methods with default implementations
+                if (defType.IsInterface)
+                {
+                    foreach (MethodDesc method in defType.GetAllMethods())
+                    {
+                        // Generic virtual methods are tracked by an orthogonal mechanism.
+                        if (method.HasInstantiation)
+                            continue;
+
+                        if (method.IsVirtual && !method.IsAbstract)
+                        {
+                            MethodDesc canonMethod = method.GetCanonMethodTarget(CanonicalFormKind.Specific);
+                            yield return new CombinedDependencyListEntry(factory.MethodEntrypoint(canonMethod), factory.VirtualMethodUse(method), "Default interface method");
+                        }
+                    }
+                }
+
                 Debug.Assert(
                     _type == defType ||
                     ((System.Collections.IStructuralEquatable)defType.RuntimeInterfaces).Equals(_type.RuntimeInterfaces,
@@ -245,7 +262,7 @@ namespace ILCompiler.DependencyAnalysis
 
                     foreach (MethodDesc interfaceMethod in interfaceType.GetAllMethods())
                     {
-                        if (interfaceMethod.Signature.IsStatic)
+                        if (interfaceMethod.Signature.IsStatic || !interfaceMethod.IsVirtual)
                             continue;
 
                         // Generic virtual methods are tracked by an orthogonal mechanism.
@@ -755,7 +772,17 @@ namespace ILCompiler.DependencyAnalysis
                 if (!implMethod.IsAbstract)
                 {
                     MethodDesc canonImplMethod = implMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
-                    objData.EmitPointerReloc(factory.MethodEntrypoint(canonImplMethod, implMethod.OwningType.IsValueType));
+
+                    if (canonImplMethod != implMethod && implMethod.OwningType.IsInterface)
+                    {
+                        // We need an instantiating stub here. For now, pretend this was a reabstraction or that there's no default
+                        // implementation.
+                        objData.EmitZeroPointer();
+                    }
+                    else
+                    {
+                        objData.EmitPointerReloc(factory.MethodEntrypoint(canonImplMethod, implMethod.OwningType.IsValueType));
+                    }
                 }
                 else
                 {
