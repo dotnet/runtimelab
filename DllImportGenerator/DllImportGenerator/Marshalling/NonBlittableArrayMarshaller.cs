@@ -83,49 +83,93 @@ namespace Microsoft.Interop
                             yield return statement;
                         }
 
+                        BlockSyntax marshalBlock = Block();
+
+                        string managedLocal = managedIdentifer;
+
+                        if (info.IsByRef)
+                        {
+                            managedLocal = managedIdentifer + ArrayMarshallingCodeContext.LocalManagedIdentifierSuffix;
+                            marshalBlock = marshalBlock.AddStatements(LocalDeclarationStatement(
+                                VariableDeclaration(
+                                    info.ManagedType.AsTypeSyntax(),
+                                    SingletonSeparatedList(
+                                        VariableDeclarator(managedLocal)
+                                            .WithInitializer(EqualsValueClause(
+                                                IdentifierName(managedIdentifer)))))));
+                        }
+
                         // Iterate through the elements of the array to marshal them
-                        var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, IndexerIdentifier, context);
-                        yield return IfStatement(BinaryExpression(SyntaxKind.NotEqualsExpression,
-                            IdentifierName(managedIdentifer),
+                        var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, IndexerIdentifier, context, stripLocalManagedIdentifierSuffix: info.IsByRef);
+                        marshalBlock = marshalBlock.AddStatements(IfStatement(BinaryExpression(SyntaxKind.NotEqualsExpression,
+                            IdentifierName(managedLocal),
                             LiteralExpression(SyntaxKind.NullLiteralExpression)),
-                            MarshallerHelpers.GetForLoop(managedIdentifer, IndexerIdentifier)
+                            MarshallerHelpers.GetForLoop(managedLocal, IndexerIdentifier)
                                 .WithStatement(Block(
-                                    List(_elementMarshaller.Generate(info with { ManagedType = GetElementTypeSymbol(info) }, arraySubContext)))));
+                                    List(_elementMarshaller.Generate(
+                                        info with { ManagedType = GetElementTypeSymbol(info), InstanceIdentifier = managedLocal },
+                                        arraySubContext))))));
+                        yield return marshalBlock.Statements.Count == 1 ? marshalBlock.Statements[0] : marshalBlock;
                     }
                     break;
                 case StubCodeContext.Stage.Unmarshal:
                     if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
                     {
-                        var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, IndexerIdentifier, context);
+                        BlockSyntax unmarshalBlock = Block();
+
+                        string managedLocal = managedIdentifer;
+
+                        if (info.IsByRef)
+                        {
+                            managedLocal = managedIdentifer + ArrayMarshallingCodeContext.LocalManagedIdentifierSuffix;
+                            unmarshalBlock = unmarshalBlock.AddStatements(LocalDeclarationStatement(
+                                VariableDeclaration(
+                                    info.ManagedType.AsTypeSyntax(),
+                                    SingletonSeparatedList(
+                                        VariableDeclarator(managedLocal)))));
+                        }
+
+                        var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, IndexerIdentifier, context, stripLocalManagedIdentifierSuffix: info.IsByRef);
                         
-                        yield return IfStatement(
+                        unmarshalBlock = unmarshalBlock.AddStatements(IfStatement(
                             BinaryExpression(SyntaxKind.NotEqualsExpression,
                             IdentifierName(nativeIdentifier),
                             LiteralExpression(SyntaxKind.NullLiteralExpression)),
                             Block(
-                                // <managedIdentifier> = new <managedElementType>[<numElementsExpression>];
+                                // <managedLocal> = new <managedElementType>[<numElementsExpression>];
                                 ExpressionStatement(
                                     AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
-                                        IdentifierName(managedIdentifer),
+                                        IdentifierName(managedLocal),
                                         ArrayCreationExpression(
                                         ArrayType(GetElementTypeSymbol(info).AsTypeSyntax(),
                                             SingletonList(ArrayRankSpecifier(
                                                 SingletonSeparatedList(_numElementsExpr))))))),
                                 // Iterate through the elements of the native array to unmarshal them
-                                MarshallerHelpers.GetForLoop(managedIdentifer, IndexerIdentifier)
+                                MarshallerHelpers.GetForLoop(managedLocal, IndexerIdentifier)
                                     .WithStatement(Block(
                                         List(_elementMarshaller.Generate(
-                                            info with { ManagedType = GetElementTypeSymbol(info) },
+                                            info with { ManagedType = GetElementTypeSymbol(info), InstanceIdentifier = managedLocal },
                                             arraySubContext))))),
                             ElseClause(
                                 ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                                    IdentifierName(managedLocal),
+                                    LiteralExpression(SyntaxKind.NullLiteralExpression))))));
+
+                        if (managedLocal != managedIdentifer)
+                        {
+                            unmarshalBlock = unmarshalBlock.AddStatements(ExpressionStatement(
+                                AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
                                     IdentifierName(managedIdentifer),
-                                    LiteralExpression(SyntaxKind.NullLiteralExpression)))));
+                                    IdentifierName(managedLocal))
+                            ));
+                        }
+
+                        yield return unmarshalBlock.Statements.Count == 1 ? unmarshalBlock.Statements[0] : unmarshalBlock;
                     }
                     break;
                 case StubCodeContext.Stage.Cleanup:
                     {
-                        var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, IndexerIdentifier, context);
+                        var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, IndexerIdentifier, context, stripLocalManagedIdentifierSuffix: false);
                         var elementCleanup = List(_elementMarshaller.Generate(info with { ManagedType = GetElementTypeSymbol(info) }, arraySubContext));
                         if (elementCleanup.Count != 0)
                         {
