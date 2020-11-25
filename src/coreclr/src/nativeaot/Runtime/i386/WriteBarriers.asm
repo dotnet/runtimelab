@@ -195,7 +195,7 @@ DEFINE_CHECKED_WRITE_BARRIER macro DESTREG, REFREG
 
 ;; WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 ;; - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen on the first instruction
-;; - Function "UnwindWriteBarrierToCaller" assumes the stack contains just the pushed return address
+;; - Function "UnwindSimpleHelperToCaller" assumes the stack contains just the pushed return address
 FASTCALL_FUNC RhpCheckedAssignRef&REFREG&, 0
 
     ;; Export the canonical write barrier under unqualified name as well
@@ -237,7 +237,7 @@ DEFINE_WRITE_BARRIER ECX, EDX
 
 ;; WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 ;; - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at @RhpCheckedLockCmpXchgAVLocation@0
-;; - Function "UnwindWriteBarrierToCaller" assumes the stack contains just the pushed return address
+;; - Function "UnwindSimpleHelperToCaller" assumes the stack contains just the pushed return address
 ;; pass third argument in EAX
 FASTCALL_FUNC RhpCheckedLockCmpXchg
 ALTERNATE_ENTRY RhpCheckedLockCmpXchgAVLocation
@@ -250,7 +250,7 @@ FASTCALL_ENDFUNC
 
 ;; WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 ;; - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at @RhpCheckedXchgAVLocation@0
-;; - Function "UnwindWriteBarrierToCaller" assumes the stack contains just the pushed return address
+;; - Function "UnwindSimpleHelperToCaller" assumes the stack contains just the pushed return address
 FASTCALL_FUNC RhpCheckedXchg, 0
 
     ;; Setup eax with the new object for the exchange, that way it will automatically hold the correct result

@@ -230,7 +230,7 @@ LEAF_END RhpAssignRef, _TEXT
 
 // WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 // - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at RhpCheckedLockCmpXchgAVLocation
-// - Function "UnwindWriteBarrierToCaller" assumes no registers where pushed and LR contains the return address
+// - Function "UnwindSimpleHelperToCaller" assumes no registers were pushed and LR contains the return address
 
 // RhpCheckedLockCmpXchg(Object** dest, Object* value, Object* comparand)
 //
@@ -275,7 +275,7 @@ CmpXchgNoUpdate:
 
 // WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 // - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen within at RhpCheckedXchgAVLocation
-// - Function "UnwindWriteBarrierToCaller" assumes no registers where pushed and LR contains the return address
+// - Function "UnwindSimpleHelperToCaller" assumes no registers were pushed and LR contains the return address
 
 // RhpCheckedXchg(Object** destination, Object* value)
 //
