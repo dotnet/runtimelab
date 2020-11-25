@@ -266,7 +266,7 @@ namespace ILCompiler.Dataflow
             if (requiredMemberTypes != 0)
             {
                 var origin = new FieldOrigin(field);
-                var reflectionContext = new ReflectionPatternContext(_logger, ShouldEnableReflectionPatternReporting(methodBody.OwningMethod), methodBody.OwningMethod, origin, offset);
+                var reflectionContext = new ReflectionPatternContext(_logger, ShouldEnableReflectionPatternReporting(methodBody.OwningMethod), methodBody, offset, origin);
                 reflectionContext.AnalyzingPattern();
                 RequireDynamicallyAccessedMembers(ref reflectionContext, requiredMemberTypes, valueToStore, origin);
             }
@@ -278,7 +278,7 @@ namespace ILCompiler.Dataflow
             if (requiredMemberTypes != 0)
             {
                 Origin parameter = DiagnosticUtilities.GetMethodParameterFromIndex(method.OwningMethod, index);
-                var reflectionContext = new ReflectionPatternContext(_logger, ShouldEnableReflectionPatternReporting(method.OwningMethod), method.OwningMethod, parameter, offset);
+                var reflectionContext = new ReflectionPatternContext(_logger, ShouldEnableReflectionPatternReporting(method.OwningMethod), method, offset, parameter);
                 reflectionContext.AnalyzingPattern();
                 RequireDynamicallyAccessedMembers(ref reflectionContext, requiredMemberTypes, valueToStore, parameter);
             }
@@ -569,7 +569,7 @@ namespace ILCompiler.Dataflow
 
             var callingMethodDefinition = callingMethodBody.OwningMethod;
             bool shouldEnableReflectionWarnings = ShouldEnableReflectionPatternReporting(callingMethodDefinition);
-            var reflectionContext = new ReflectionPatternContext(_logger, shouldEnableReflectionWarnings, callingMethodDefinition, new MethodOrigin(calledMethod), offset);
+            var reflectionContext = new ReflectionPatternContext(_logger, shouldEnableReflectionWarnings, callingMethodBody, offset, new MethodOrigin(calledMethod));
 
             DynamicallyAccessedMemberTypes returnValueDynamicallyAccessedMemberTypes = 0;
 
@@ -1504,7 +1504,7 @@ namespace ILCompiler.Dataflow
                             //    message += " " + requiresUnreferencedCode.Url;
                             //}
 
-                            _logger.LogWarning(message, 2026, callingMethodDefinition, offset, MessageSubCategory.TrimAnalysis);
+                            _logger.LogWarning(message, 2026, callingMethodBody, offset, MessageSubCategory.TrimAnalysis);
                         }
 
                         // To get good reporting of errors we need to track the origin of the value for all method calls
