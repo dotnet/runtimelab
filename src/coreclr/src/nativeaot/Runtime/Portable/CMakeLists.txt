@@ -17,7 +17,7 @@ if(WIN32)
     set(ASM_OFFSETS_CPP ${RUNTIME_DIR}/windows/AsmOffsets.cpp)
 else()
     set(COMPILER_LANGUAGE -x c++)
-    set(PREPROCESSOR_FLAGS -E -P)
+    set(PREPROCESSOR_FLAGS -E -P -C) # include license for code cop
     set(ASM_OFFSETS_CPP ${RUNTIME_DIR}/unix/AsmOffsets.cpp)
 endif()
 

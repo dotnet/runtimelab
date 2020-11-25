@@ -58,6 +58,7 @@ set __BuildArchX64=0
 set __BuildArchX86=0
 set __BuildArchArm=0
 set __BuildArchArm64=0
+set __BuildArchWasm=0
 
 set __BuildTypeDebug=0
 set __BuildTypeChecked=0
@@ -117,6 +118,7 @@ if /i "%1" == "-x64"                 (set __BuildArchX64=1&set processedArgs=!pr
 if /i "%1" == "-x86"                 (set __BuildArchX86=1&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "-arm"                 (set __BuildArchArm=1&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "-arm64"               (set __BuildArchArm64=1&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
+if /i "%1" == "-wasm"                (set __BuildArchWasm=1&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 
 if /i "%1" == "-debug"               (set __BuildTypeDebug=1&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "-checked"             (set __BuildTypeChecked=1&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
@@ -232,6 +234,11 @@ if %__BuildArchArm%==1 (
 if %__BuildArchArm64%==1 (
     set __BuildArch=arm64
     set __CrossArch=x64
+)
+if %__BuildArchWasm%==1 (
+    set __TargetOS=browser
+    set __BuildArch=wasm
+    set __BuildJit=0
 )
 
 set /A __TotalSpecifiedBuildType=__BuildTypeDebug + __BuildTypeChecked + __BuildTypeRelease
@@ -581,6 +588,14 @@ if %__BuildCrossArchNative% EQU 1 (
     )
 )
 
+if "%__BuildArch%" == "wasm" (
+    echo Creating wasm verison.h/c
+    set __versionSourceFile="%__IntermediatesDir%"\version.c
+    set runtimeVersionHeaderFile="%__IntermediatesDir%"\version.h
+    REM Use Powershell due to difficulty in quoting the c code in .cmd file
+    PowerShell -NoProfile -ExecutionPolicy Bypass -Command "& '%__RepoRootDir%\eng\native\build-commons.ps1'"
+)
+
 REM =========================================================================================
 REM ===
 REM === Build the CLR VM
@@ -622,6 +637,9 @@ if %__BuildNative% EQU 1 (
     if %__Ninja% EQU 1 (
         set __ExtraCmakeArgs="-DCMAKE_BUILD_TYPE=!__BuildType!" 
     )
+    if "%__BuildArch%" == "wasm" (
+        set __ExtraCmakeArgs="-DCMAKE_BUILD_TYPE=!__BuildType!" 
+    )
 
     set __ExtraCmakeArgs=!__ExtraCmakeArgs! !___CrossBuildDefine! %__CMakeClrBuildSubsetArgs% "-DCLR_CMAKE_PGO_INSTRUMENT=%__PgoInstrument%" "-DCLR_CMAKE_OPTDATA_PATH=%__PgoOptDataPath%" "-DCLR_CMAKE_PGO_OPTIMIZE=%__PgoOptimize%" "-DCLR_ENG_NATIVE_DIR=%__RepoRootDir%/eng/native" "-DCLR_REPO_ROOT_DIR=%__RepoRootDir%" %__CMakeArgs%
     call "%__RepoRootDir%\eng\native\gen-buildsys.cmd" "%__ProjectDir%" "%__IntermediatesDir%" %__VSVersion% %__BuildArch% !__ExtraCmakeArgs!
@@ -656,7 +674,10 @@ if %__BuildNative% EQU 1 (
         set __CmakeBuildToolArgs=
     ) else (
         REM We pass the /m flag directly to MSBuild so that we can get both MSBuild and CL parallelism, which is fastest for our builds.
-        set __CmakeBuildToolArgs=/nologo /m !__Logging!
+        REM wasm uses nmake which does not support /m
+        if not "%__BuildArch%" == "wasm" (
+            set __CmakeBuildToolArgs=/nologo /m !__Logging!
+        )
     )
 
     "%CMakePath%" --build %__IntermediatesDir% --target install --config %__BuildType% -- !__CmakeBuildToolArgs!
@@ -671,6 +692,7 @@ if %__BuildNative% EQU 1 (
     )
 
     if /i "%__BuildArch%" == "arm64" goto SkipCopyUcrt
+    if /i "%__BuildArch%" == "wasm" goto SkipCopyUcrt
 
     if not defined UCRTVersion (
         echo %__ErrMsgPrefix%%__MsgPrefix%Error: Please install Windows 10 SDK.

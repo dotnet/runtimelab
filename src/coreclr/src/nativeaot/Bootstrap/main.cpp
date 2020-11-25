@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+#if defined HOST_WASM
+#include <exception>
+#endif // HOST_WASM
+
 //
 // This is the mechanism whereby multiple linked modules contribute their global data for initialization at
 // startup of the application.
@@ -143,13 +147,58 @@ extern "C" int __managed__Main(int argc, char* argv[]);
 extern "C" void __managed__Startup();
 #endif // !CORERT_DLL
 
+#if defined HOST_WASM
+// Exception wrapper type that allows us to differentiate managed and native exceptions
+class ManagedExceptionWrapper : std::exception
+{
+public:
+    ManagedExceptionWrapper(void* pManagedException)
+    {
+        m_pManagedException = pManagedException;
+    }
+
+public:
+    void* m_pManagedException;
+};
+
+extern "C" void RhpThrowEx(void * pEx)
+{
+    throw ManagedExceptionWrapper(pEx);
+}
+
+extern "C" void RhpThrowHwEx()
+{
+    throw "RhpThrowHwEx";
+}
+
+// returns the Leave target
+extern "C" uint32_t LlvmCatchFunclet(void* pHandlerIP, void* pvRegDisplay); 
+extern "C" uint32_t RhpCallCatchFunclet(void * exceptionObj, void* pHandlerIP, void* pvRegDisplay, void *exInfo)
+{
+    return LlvmCatchFunclet(pHandlerIP, pvRegDisplay);
+}
+
+extern "C" uint32_t LlvmFilterFunclet(void* pHandlerIP, void* pvRegDisplay);
+extern "C" uint32_t RhpCallFilterFunclet(void* exceptionObj, void * pHandlerIP, void* shadowStack)
+{
+    return LlvmFilterFunclet(pHandlerIP, shadowStack);
+}
+extern "C" void LlvmFinallyFunclet(void *finallyHandler, void *shadowStack);
+extern "C" void RhpCallFinallyFunclet(void *finallyHandler, void *shadowStack)
+{
+    LlvmFinallyFunclet(finallyHandler, shadowStack);
+}
+extern "C" void* RtRHeaderWrapper();
+#endif // HOST_WASM
+
 static int InitializeRuntime()
 {
     if (!RhInitialize())
         return -1;
 
-    // RhpEnableConservativeStackReporting();
-
+#if defined HOST_WASM
+    RhpEnableConservativeStackReporting();
+#else
     void * osModule = PalGetModuleHandleFromPointer((void*)&CORERT_ENTRYPOINT);
 
     // TODO: pass struct with parameters instead of the large signature of RhRegisterOSModule
@@ -161,8 +210,13 @@ static int InitializeRuntime()
     {
         return -1;
     }
+#endif // HOST_WASM
 
+#if defined HOST_WASM
+    InitializeModules(nullptr, (void**)RtRHeaderWrapper(), 1, (void **)&c_classlibFunctions, _countof(c_classlibFunctions));
+#else // !HOST_WASM
     InitializeModules(osModule, __modules_a, (int)((__modules_z - __modules_a)), (void **)&c_classlibFunctions, _countof(c_classlibFunctions));
+#endif
 
 #ifdef CORERT_DLL
     // Run startup method immediately for a native library
