@@ -1448,6 +1448,7 @@
         <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\16355\variance\*" />
         <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\16775\sharedinterfacemethod\*" />
         <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\20452\twopassvariance\*" />
+        <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\22021\consumer\*" />
         <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\22386\debug3\*" />
         <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\22407\abstractcalls\*" />
 
