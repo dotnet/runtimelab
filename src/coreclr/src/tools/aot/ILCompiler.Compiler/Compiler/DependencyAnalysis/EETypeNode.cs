@@ -60,7 +60,7 @@ namespace ILCompiler.DependencyAnalysis
         protected readonly TypeDesc _type;
         internal readonly EETypeOptionalFieldsBuilder _optionalFieldsBuilder = new EETypeOptionalFieldsBuilder();
         internal readonly EETypeOptionalFieldsNode _optionalFieldsNode;
-        protected readonly bool _mightHaveInterfaceDispatchMap;
+        protected bool? _mightHaveInterfaceDispatchMap;
 
         public EETypeNode(NodeFactory factory, TypeDesc type)
         {
@@ -73,9 +73,17 @@ namespace ILCompiler.DependencyAnalysis
             _type = type;
             _optionalFieldsNode = new EETypeOptionalFieldsNode(this);
 
-            _mightHaveInterfaceDispatchMap = EmitVirtualSlotsAndInterfaces && InterfaceDispatchMapNode.MightHaveInterfaceDispatchMap(type, factory);
-
             factory.TypeSystemContext.EnsureLoadableType(type);
+        }
+        
+        protected bool MightHaveInterfaceDispatchMap(NodeFactory factory)
+        {
+            if (!_mightHaveInterfaceDispatchMap.HasValue)
+            {
+                _mightHaveInterfaceDispatchMap = EmitVirtualSlotsAndInterfaces && InterfaceDispatchMapNode.MightHaveInterfaceDispatchMap(_type, factory);
+            }
+            
+            return _mightHaveInterfaceDispatchMap.Value;
         }
 
         protected override string GetName(NodeFactory factory) => this.GetMangledName(factory.NameMangler);
@@ -885,7 +893,7 @@ namespace ILCompiler.DependencyAnalysis
         /// </summary>
         protected internal virtual void ComputeOptionalEETypeFields(NodeFactory factory, bool relocsOnly)
         {
-            if (!relocsOnly && _mightHaveInterfaceDispatchMap)
+            if (!relocsOnly && MightHaveInterfaceDispatchMap(factory))
             {
                 _optionalFieldsBuilder.SetFieldValue(EETypeOptionalFieldTag.DispatchMap, checked((uint)factory.InterfaceDispatchMapIndirection(Type).IndexFromBeginningOfArray));
             }
