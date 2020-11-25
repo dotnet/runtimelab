@@ -89,6 +89,8 @@ namespace Microsoft.Interop
 
                         if (info.IsByRef)
                         {
+                            // Copy the managed object to a local to avoid the caller modifing the managed value on another thread
+                            // while we marshal the contents.
                             managedLocal = managedIdentifer + ArrayMarshallingCodeContext.LocalManagedIdentifierSuffix;
                             marshalBlock = marshalBlock.AddStatements(LocalDeclarationStatement(
                                 VariableDeclaration(
@@ -121,6 +123,8 @@ namespace Microsoft.Interop
 
                         if (info.IsByRef)
                         {
+                            // Unmarshal the values to a local to avoid the caller modifing the managed value on another thread
+                            // while we unmarshal the contents.
                             managedLocal = managedIdentifer + ArrayMarshallingCodeContext.LocalManagedIdentifierSuffix;
                             unmarshalBlock = unmarshalBlock.AddStatements(LocalDeclarationStatement(
                                 VariableDeclaration(
