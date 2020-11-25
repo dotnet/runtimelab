@@ -1,24 +1,23 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-// See the LICENSE file in the project root for more information.
 
 using System;
-using System.Linq;
 using System.Text;
-using Mono.Cecil;
-using Mono.Cecil.Cil;
 
-namespace Mono.Linker
+using Internal.TypeSystem;
+
+namespace ILCompiler.Compiler.Logging
 {
-    public readonly struct MessageOrigin : IComparable<MessageOrigin>, IEquatable<MessageOrigin>
+    public struct MessageOrigin
+#if false
+        : IComparable<MessageOrigin>, IEquatable<MessageOrigin>
+#endif
     {
-#nullable enable
-        public string? FileName { get; }
-        public IMemberDefinition? MemberDefinition { get; }
-#nullable disable
-        public int SourceLine { get; }
-        public int SourceColumn { get; }
-        public int? ILOffset { get; }
+        public string FileName { get; }
+        public TypeSystemEntity MemberDefinition { get; }
+
+        public int? SourceLine { get; }
+        public int? SourceColumn { get; }
 
         public MessageOrigin(string fileName, int sourceLine = 0, int sourceColumn = 0)
         {
@@ -26,45 +25,27 @@ namespace Mono.Linker
             SourceLine = sourceLine;
             SourceColumn = sourceColumn;
             MemberDefinition = null;
-            ILOffset = null;
         }
 
-        public MessageOrigin(IMemberDefinition memberDefinition, int? ilOffset = null)
+        public MessageOrigin(TypeSystemEntity memberDefinition, string fileName = null, int? sourceLine = 0, int? sourceColumn = 0)
         {
-            FileName = null;
+            FileName = fileName;
             MemberDefinition = memberDefinition;
-            SourceLine = 0;
-            SourceColumn = 0;
-            ILOffset = ilOffset;
+            SourceLine = sourceLine;
+            SourceColumn = sourceColumn;
         }
 
         public override string ToString()
         {
-            int sourceLine = SourceLine, sourceColumn = SourceColumn;
-            string fileName = FileName;
-            if (MemberDefinition is MethodDefinition method &&
-                method.DebugInformation.HasSequencePoints)
-            {
-                var offset = ILOffset ?? 0;
-                SequencePoint correspondingSequencePoint = method.DebugInformation.SequencePoints
-                    .Where(s => s.Offset <= offset)?.Last();
-                if (correspondingSequencePoint != null)
-                {
-                    fileName = correspondingSequencePoint.Document.Url;
-                    sourceLine = correspondingSequencePoint.StartLine;
-                    sourceColumn = correspondingSequencePoint.StartColumn;
-                }
-            }
-
-            if (fileName == null)
+            if (FileName == null)
                 return null;
 
-            StringBuilder sb = new StringBuilder(fileName);
-            if (sourceLine != 0)
+            StringBuilder sb = new StringBuilder(FileName);
+            if (SourceLine.HasValue)
             {
-                sb.Append("(").Append(sourceLine);
-                if (sourceColumn != 0)
-                    sb.Append(",").Append(sourceColumn);
+                sb.Append("(").Append(SourceLine);
+                if (SourceColumn.HasValue)
+                    sb.Append(",").Append(SourceColumn);
 
                 sb.Append(")");
             }
@@ -72,6 +53,7 @@ namespace Mono.Linker
             return sb.ToString();
         }
 
+#if false
         public bool Equals(MessageOrigin other) =>
             (FileName, MemberDefinition, SourceLine, SourceColumn) == (other.FileName, other.MemberDefinition, other.SourceLine, other.SourceColumn);
 
@@ -103,5 +85,6 @@ namespace Mono.Linker
 
             return (MemberDefinition == null) ? 1 : -1;
         }
+#endif
     }
 }

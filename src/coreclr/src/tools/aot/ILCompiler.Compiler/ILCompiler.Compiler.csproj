@@ -23,6 +23,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\Common\Compiler\Logging\MessageContainer.cs">
+      <Link>Compiler\Logging\MessageContainer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Common\Compiler\Logging\MessageOrigin.cs">
+      <Link>Compiler\Logging\MessageOrigin.cs</Link>
+    </Compile>
     <Compile Include="..\..\Common\Internal\Runtime\GCDescEncoder.cs">
       <Link>Common\GCDescEncoder.cs</Link>
     </Compile>

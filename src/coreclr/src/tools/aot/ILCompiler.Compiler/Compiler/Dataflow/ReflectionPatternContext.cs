@@ -4,6 +4,7 @@
 
 using System;
 using System.Diagnostics;
+using Internal.IL;
 using Internal.TypeSystem;
 
 namespace ILCompiler.Dataflow
@@ -19,7 +20,8 @@ namespace ILCompiler.Dataflow
     struct ReflectionPatternContext : IDisposable
     {
         readonly Logger _logger;
-        readonly int? _ilOffset;
+        readonly int _ilOffset;
+        readonly MethodIL _sourceIL;
 
 #if DEBUG
         bool _patternAnalysisAttempted;
@@ -34,19 +36,31 @@ namespace ILCompiler.Dataflow
             Logger logger,
             bool reportingEnabled,
             TypeSystemEntity source,
-            Origin memberWithRequirements,
-            int? ilOffset = null)
+            Origin memberWithRequirements)
         {
             _logger = logger;
             ReportingEnabled = reportingEnabled;
             Source = source;
             MemberWithRequirements = memberWithRequirements;
-            _ilOffset = ilOffset;
+            _ilOffset = 0;
+            _sourceIL = null;
 
 #if DEBUG
             _patternAnalysisAttempted = false;
             _patternReported = false;
 #endif
+        }
+
+        public ReflectionPatternContext(
+            Logger logger,
+            bool reportingEnabled,
+            MethodIL source,
+            int offset,
+            Origin memberWithRequirements)
+            : this(logger, reportingEnabled, source.OwningMethod, memberWithRequirements)
+        {
+            _sourceIL = source;
+            _ilOffset = offset;
         }
 
 #pragma warning disable CA1822
@@ -90,7 +104,10 @@ namespace ILCompiler.Dataflow
 
             if (ReportingEnabled)
             {
-                _logger.LogWarning(message, messageCode, Source, _ilOffset, MessageSubCategory.TrimAnalysis);
+                if (_sourceIL != null)
+                    _logger.LogWarning(message, messageCode, _sourceIL, _ilOffset, MessageSubCategory.TrimAnalysis);
+                else
+                    _logger.LogWarning(message, messageCode, Source, MessageSubCategory.TrimAnalysis);
             }
         }
 
