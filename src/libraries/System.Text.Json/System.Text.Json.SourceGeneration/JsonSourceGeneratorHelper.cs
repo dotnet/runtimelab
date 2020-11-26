@@ -25,12 +25,18 @@ namespace System.Text.Json.SourceGeneration
 
         private readonly HashSet<Type> _knownTypes = new();
 
-        private Dictionary<Type, TypeMetadata> _handledTypes = new();
-
         // Contains used JsonTypeInfo<T> identifiers.
         private HashSet<string> _usedCompilableTypeNames = new();
 
+        /// <summary>
+        /// TypeInfo for serializable types.
+        /// </summary>
         private Dictionary<Type, TypeMetadata> _typeMetadataCache = new();
+
+        /// <summary>
+        /// Types that we have initiated metadata generation for.
+        /// </summary>
+        private HashSet<Type> _typesWithMetadataGenerated = new();
 
         private readonly GeneratorExecutionContext _executionContext;
 
@@ -62,7 +68,7 @@ namespace System.Text.Json.SourceGeneration
                 foreach (KeyValuePair<string, Type> pair in serializableTypes)
                 {
                     TypeMetadata typeMetadata = GetOrAddTypeMetadata(pair.Value);
-                    GenerateMetadataForType(typeMetadata);
+                    GenerateSerializationMetadataForType(typeMetadata);
                 }
 #if LAUNCH_DEBUGGER_ON_EXECUTE
             }
@@ -76,14 +82,16 @@ namespace System.Text.Json.SourceGeneration
             _executionContext.AddSource("JsonContext.GetJsonClassInfo.cs", SourceText.From(Get_GetClassInfo_Implementation(), Encoding.UTF8));
         }
 
-        public void GenerateMetadataForType(TypeMetadata typeMetadata)
+        public void GenerateSerializationMetadataForType(TypeMetadata typeMetadata)
         {
-            if (_handledTypes.ContainsKey(typeMetadata.Type))
+            Type type = typeMetadata.Type;
+
+            if (_typesWithMetadataGenerated.Contains(type))
             {
                 return;
             }
 
-            _handledTypes.Add(typeMetadata.Type, typeMetadata);
+            _typesWithMetadataGenerated.Add(type);
 
             string metadataFileName = $"{typeMetadata.FriendlyName}.g.cs";
 
@@ -105,7 +113,7 @@ namespace System.Text.Json.SourceGeneration
                             metadataFileName,
                             SourceText.From(GenerateForEnumerable(typeMetadata, collectionType: typeMetadata.CollectionType), Encoding.UTF8));
 
-                        GenerateMetadataForType(typeMetadata.CollectionValueTypeMetadata);
+                        GenerateSerializationMetadataForType(typeMetadata.CollectionValueTypeMetadata);
                     }
                     break;
                 case ClassType.Dictionary:
@@ -114,8 +122,8 @@ namespace System.Text.Json.SourceGeneration
                             metadataFileName,
                             SourceText.From(GenerateForDictionary(typeMetadata, collectionType: typeMetadata.CollectionType), Encoding.UTF8));
 
-                        GenerateMetadataForType(typeMetadata.CollectionKeyTypeMetadata);
-                        GenerateMetadataForType(typeMetadata.CollectionValueTypeMetadata);
+                        GenerateSerializationMetadataForType(typeMetadata.CollectionKeyTypeMetadata);
+                        GenerateSerializationMetadataForType(typeMetadata.CollectionValueTypeMetadata);
                     }
                     break;
                 case ClassType.Object:
@@ -145,7 +153,7 @@ namespace System.Text.Json.SourceGeneration
                         }
 
                         // Add constructor which initializers the JsonPropertyInfo<T>s for the type.
-                        sb.Append(GetTypeInfoConstructor(typeMetadata));
+                        sb.Append(GetTypeInfoConstructorAndInitializeMethod(typeMetadata));
 
                         // Add CreateObjectFunc.
                         sb.Append($@"
@@ -174,20 +182,20 @@ namespace System.Text.Json.SourceGeneration
                         _executionContext.ReportDiagnostic(Diagnostic.Create(_generatedTypeClass, Location.None, new string[] { typeMetadata.CompilableName }));
 
                         // If type had its JsonTypeInfo name changed, report to the user.
-                        if (typeMetadata.Type.Name != typeMetadata.CompilableName)
+                        if (type.Name != typeMetadata.CompilableName)
                         {
                             //"Duplicate type name detected. Setting the JsonTypeInfo<T> property for type {0} in assembly {1} to {2}. To use please call JsonContext.Instance.{2}",
                             _executionContext.ReportDiagnostic(Diagnostic.Create(
                                 _typeNameClash,
                                 Location.None,
-                                new string[] { typeMetadata.CompilableName, typeMetadata.Type.Assembly.FullName, typeMetadata.FriendlyName }));
+                                new string[] { typeMetadata.CompilableName, type.Assembly.FullName, typeMetadata.FriendlyName }));
                         }
 
                         // Generate serialization metadata for each property type.
                         // TODO: Generate serialization metadata for each field type.
                         foreach (PropertyMetadata propertyMetadata in typeMetadata.PropertiesMetadata)
                         {
-                            GenerateMetadataForType(propertyMetadata.TypeMetadata);
+                            GenerateSerializationMetadataForType(propertyMetadata.TypeMetadata);
                         }
                     }
                     break;
@@ -288,6 +296,10 @@ namespace {GenerationNamespace}
             {
                 return typeMetadata!;
             }
+
+            // Add metadata to cache now to prevent stack overflow when the same type is found somewhere else in the object graph.
+            typeMetadata = new();
+            _typeMetadataCache[type] = typeMetadata;
 
             ClassType classType;
             Type? collectionKeyType = null;
@@ -393,21 +405,16 @@ namespace {GenerationNamespace}
                 _usedCompilableTypeNames.Add(compilableName);
             }
 
-            typeMetadata = new TypeMetadata
-            {
-                CompilableName = compilableName,
-                FriendlyName = friendlyName,
-                Type = type,
-                ClassType = classType,
-                CollectionType = collectionType,
-                CollectionKeyTypeMetadata = collectionKeyType != null ? GetOrAddTypeMetadata(collectionKeyType) : null,
-                CollectionValueTypeMetadata = collectionValueType != null ? GetOrAddTypeMetadata(collectionValueType) : null,
-                PropertiesMetadata = propertiesMetadata,
-                FieldsMetadata = fieldsMetadata,
-                IsValueType = type.IsValueType
-            };
-
-            _typeMetadataCache[type] = typeMetadata;
+            typeMetadata.CompilableName = compilableName;
+            typeMetadata.FriendlyName = friendlyName;
+            typeMetadata.Type = type;
+            typeMetadata.ClassType = classType;
+            typeMetadata.CollectionType = collectionType;
+            typeMetadata.CollectionKeyTypeMetadata = collectionKeyType != null ? GetOrAddTypeMetadata(collectionKeyType) : null;
+            typeMetadata.CollectionValueTypeMetadata = collectionValueType != null ? GetOrAddTypeMetadata(collectionValueType) : null;
+            typeMetadata.PropertiesMetadata = propertiesMetadata;
+            typeMetadata.FieldsMetadata = fieldsMetadata;
+            typeMetadata.IsValueType = type.IsValueType;
             return typeMetadata;
         }
 
@@ -491,7 +498,7 @@ namespace {GenerationNamespace}
             HashSet<string> usingStatements = new();
 
             // TODO: should these already be cached somewhere?
-            foreach (TypeMetadata typeMetadata in _handledTypes.Values)
+            foreach (TypeMetadata typeMetadata in _typeMetadataCache.Values)
             {
                 usingStatements.UnionWith(GetUsingStatements(typeMetadata));
             }
@@ -506,7 +513,7 @@ namespace {GenerationNamespace}
         {{");
 
             // TODO: Make this Dictionary-lookup-based if _handledType.Count > 64.
-            foreach (TypeMetadata typeMetadata in _handledTypes.Values)
+            foreach (TypeMetadata typeMetadata in _typeMetadataCache.Values)
             {
                 if (typeMetadata.ClassType != ClassType.TypeUnsupportedBySourceGen)
                 {
@@ -626,7 +633,8 @@ namespace {GenerationNamespace}
             {{
                 if (_{typeFriendlyName} == null)
                 {{
-                    _{typeFriendlyName} = new {typeFriendlyName}TypeInfo(this);
+                    _{typeFriendlyName} = new {typeFriendlyName}TypeInfo();
+                    _{typeFriendlyName}.Initialize(this);
                 }}
 
                 return _{typeFriendlyName}.TypeInfo;
@@ -643,7 +651,7 @@ namespace {GenerationNamespace}
         ";
         }
 
-        private static string GetTypeInfoConstructor(TypeMetadata typeMetadata)
+        private static string GetTypeInfoConstructorAndInitializeMethod(TypeMetadata typeMetadata)
         {
             string typeCompilableName = typeMetadata.CompilableName;
             string typeFriendlyName = typeMetadata.FriendlyName;
@@ -651,7 +659,11 @@ namespace {GenerationNamespace}
             StringBuilder sb = new();
 
             sb.Append($@"
-            public {typeMetadata.FriendlyName}TypeInfo(JsonContext context)
+            internal {typeMetadata.FriendlyName}TypeInfo()
+            {{
+            }}
+
+            public void Initialize(JsonContext context)
             {{
                 JsonObjectInfo<{typeMetadata.CompilableName}> typeInfo = new(CreateObjectFunc, SerializeFunc, DeserializeFunc, context.GetOptions());
             ");

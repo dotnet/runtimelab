@@ -10,25 +10,27 @@ namespace System.Text.Json.SourceGeneration
     [DebuggerDisplay("Type={Type}, ClassType={ClassType}")]
     internal class TypeMetadata
     {
-        public string CompilableName { get; init; }
+        // TODO: should we verify these are set only once?
 
-        public string FriendlyName { get; init; }
+        public string CompilableName { get; set; }
 
-        public Type Type { get; init; }
+        public string FriendlyName { get; set; }
 
-        public ClassType ClassType { get; init; }
+        public Type Type { get; set; }
 
-        public CollectionType CollectionType { get; init; }
+        public ClassType ClassType { get; set; }
 
-        public TypeMetadata? CollectionKeyTypeMetadata { get; init; }
+        public CollectionType CollectionType { get; set; }
 
-        public TypeMetadata? CollectionValueTypeMetadata { get; init; }
+        public TypeMetadata? CollectionKeyTypeMetadata { get; set; }
 
-        public List<PropertyMetadata>? PropertiesMetadata { get; init; }
+        public TypeMetadata? CollectionValueTypeMetadata { get; set; }
+
+        public List<PropertyMetadata>? PropertiesMetadata { get; set; }
 
         // TODO: perhaps this can be consolidated to PropertiesMetadata above, even when field support is added.
-        public List<PropertyMetadata>? FieldsMetadata { get; init; }
+        public List<PropertyMetadata>? FieldsMetadata { get; set; }
 
-        public bool IsValueType { get; init; }
+        public bool IsValueType { get; set; }
     }
 }
