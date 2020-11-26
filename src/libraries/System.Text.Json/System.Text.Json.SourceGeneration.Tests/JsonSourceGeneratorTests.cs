@@ -16,8 +16,10 @@ namespace System.Text.Json.SourceGeneration.Tests
         {
             Location expected = CreateLocation();
 
-            // Location is renamed to SystemTextJsonSourceGenerationTestsLocation given there is another type with the name Location.
-            // Warning to the user is displayed with this detailed at compile time.
+            // Location is renamed to SystemTextJsonSourceGenerationTestsLocation given there
+            // is another type with the name Location,  that the generator processed first
+            // (in this case due to JsonSerializableAttribute ordering).
+            // A warning to the user is displayed with this detail at compile time.
             string json = JsonSerializer.Serialize(expected, JsonContext.Instance.SystemTextJsonSourceGenerationTestsLocation);
             Location obj = JsonSerializer.Deserialize(json, JsonContext.Instance.SystemTextJsonSourceGenerationTestsLocation);
 
@@ -286,6 +288,7 @@ namespace System.Text.Json.SourceGeneration.Tests
                 FakeCountry = "The Greatest"
             };
         }
+
         private static void VerifyRepeatedLocation(RepeatedTypes.Location expected, RepeatedTypes.Location obj)
         {
             Assert.Equal(expected.FakeAddress1, obj.FakeAddress1);
@@ -304,6 +307,20 @@ namespace System.Text.Json.SourceGeneration.Tests
         {
             Assert.NotNull(expected);
             Assert.NotNull(obj);
+        }
+
+        [Fact]
+        public static void NestedSameTypeWorks()
+        {
+            MyType myType = new() { Type = new() };
+            string json = JsonSerializer.Serialize(myType, JsonContext.Instance.MyType);
+            myType = JsonSerializer.Deserialize(json, JsonContext.Instance.MyType);
+            Assert.Equal(json, JsonSerializer.Serialize(myType, JsonContext.Instance.MyType));
+
+            MyType2 myType2 = new() { Type = new MyIntermediateType() { Type = myType } };
+            json = JsonSerializer.Serialize(myType2, JsonContext.Instance.MyType2);
+            myType2 = JsonSerializer.Deserialize(json, JsonContext.Instance.MyType2);
+            Assert.Equal(json, JsonSerializer.Serialize(myType2, JsonContext.Instance.MyType2));
         }
     }
 }
