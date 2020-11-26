@@ -1,18 +1,19 @@
 ﻿using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using System.Text.Json.SourceGeneration.Tests;
 
-using TestsNamespace = System.Text.Json.SourceGeneration.Tests;
-
-[module: JsonSerializable(typeof(TestsNamespace.RepeatedTypes.Location))]
-[module: JsonSerializable(typeof(TestsNamespace.Location))]
-[module: JsonSerializable(typeof(TestsNamespace.ActiveOrUpcomingEvent))]
-[module: JsonSerializable(typeof(TestsNamespace.CampaignSummaryViewModel))]
-[module: JsonSerializable(typeof(TestsNamespace.IndexViewModel))]
-[module: JsonSerializable(typeof(TestsNamespace.WeatherForecastWithPOCOs))]
-[module: JsonSerializable(typeof(TestsNamespace.EmptyPoco))]
-
+[module: JsonSerializable(typeof(System.Text.Json.SourceGeneration.Tests.RepeatedTypes.Location))]
+[module: JsonSerializable(typeof(System.Text.Json.SourceGeneration.Tests.Location))]
+[module: JsonSerializable(typeof(ActiveOrUpcomingEvent))]
+[module: JsonSerializable(typeof(CampaignSummaryViewModel))]
+[module: JsonSerializable(typeof(IndexViewModel))]
+[module: JsonSerializable(typeof(WeatherForecastWithPOCOs))]
+[module: JsonSerializable(typeof(EmptyPoco))]
 // Ensure no errors when type of member in previously specified object graph is passed as input type to generator.
-[module: JsonSerializable(typeof(TestsNamespace.HighLowTemps))]
+[module: JsonSerializable(typeof(HighLowTemps))]
+[module: JsonSerializable(typeof(MyType))]
+[module: JsonSerializable(typeof(MyType2))]
+[module: JsonSerializable(typeof(MyIntermediateType))]
 
 namespace System.Text.Json.SourceGeneration.Tests.RepeatedTypes
 {
@@ -95,5 +96,20 @@ namespace System.Text.Json.SourceGeneration.Tests
 
     public class EmptyPoco
     {
+    }
+
+    public class MyType
+    {
+        public MyType Type;
+    }
+
+    public class MyType2
+    {
+        public MyIntermediateType Type = new();
+    }
+
+    public class MyIntermediateType
+    {
+        public MyType Type = new();
     }
 }
