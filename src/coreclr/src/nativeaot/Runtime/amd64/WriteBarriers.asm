@@ -138,7 +138,7 @@ DEFINE_UNCHECKED_WRITE_BARRIER macro REFREG, EXPORT_REG_NAME
 
 ;; WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 ;; - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen on the first instruction
-;; - Function "UnwindWriteBarrierToCaller" assumes the stack contains just the pushed return address
+;; - Function "UnwindSimpleHelperToCaller" assumes the stack contains just the pushed return address
 LEAF_ENTRY RhpAssignRef&EXPORT_REG_NAME&, _TEXT
 
     ;; Export the canonical write barrier under unqualified name as well
@@ -192,7 +192,7 @@ DEFINE_CHECKED_WRITE_BARRIER macro REFREG, EXPORT_REG_NAME
 
 ;; WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 ;; - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen on the first instruction
-;; - Function "UnwindWriteBarrierToCaller" assumes the stack contains just the pushed return address
+;; - Function "UnwindSimpleHelperToCaller" assumes the stack contains just the pushed return address
 LEAF_ENTRY RhpCheckedAssignRef&EXPORT_REG_NAME&, _TEXT
 
     ;; Export the canonical write barrier under unqualified name as well
@@ -216,7 +216,7 @@ DEFINE_CHECKED_WRITE_BARRIER RDX, EDX
 
 ;; WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 ;; - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at RhpCheckedLockCmpXchgAVLocation
-;; - Function "UnwindWriteBarrierToCaller" assumes the stack contains just the pushed return address
+;; - Function "UnwindSimpleHelperToCaller" assumes the stack contains just the pushed return address
 LEAF_ENTRY RhpCheckedLockCmpXchg, _TEXT
     mov             rax, r8
 ALTERNATE_ENTRY RhpCheckedLockCmpXchgAVLocation
@@ -229,7 +229,7 @@ LEAF_END RhpCheckedLockCmpXchg, _TEXT
 
 ;; WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 ;; - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at RhpCheckedXchgAVLocation
-;; - Function "UnwindWriteBarrierToCaller" assumes the stack contains just the pushed return address
+;; - Function "UnwindSimpleHelperToCaller" assumes the stack contains just the pushed return address
 LEAF_ENTRY RhpCheckedXchg, _TEXT
 
     ;; Setup rax with the new object for the exchange, that way it will automatically hold the correct result
