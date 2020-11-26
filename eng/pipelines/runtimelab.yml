@@ -58,13 +58,13 @@ stages:
   - template: /eng/pipelines/common/checkout-job.yml
 
   #
-  # Build with Debug config and Checked runtimeConfiguration
+  # Build with Release config and Debug runtimeConfiguration
   #
   - ${{ if ne(variables.isOfficialBuild, true) }}:
     - template: /eng/pipelines/common/platform-matrix.yml
       parameters:
         jobTemplate: /eng/pipelines/common/global-build-job.yml
-        buildConfig: Checked
+        buildConfig: Debug
         platforms:
         - Linux_x64
         - windows_x64
@@ -72,7 +72,7 @@ stages:
         jobParameters:
           timeoutInMinutes: 90
           testGroup: innerloop
-          buildArgs: -s nativeaot+libs+nativeaot.packages -lc release -rc checked
+          buildArgs: -s nativeaot+libs+nativeaot.packages -lc release -rc debug
           extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
 
   #
