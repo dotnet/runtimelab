@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Buffers.Binary;
 using System.Runtime;
 using System.Security;
 
@@ -19,7 +20,17 @@ namespace System.Reflection
             if (!IsValidPublicKey(publicKey))
                 throw new SecurityException(SR.Security_InvalidAssemblyPublicKey);
 
-            return RuntimeImports.ConvertPublicKeyToPublicKeyToken(publicKey);
+            Span<byte> hash = stackalloc byte[20];
+
+            Sha1ForNonSecretPurposes sha1 = default;
+            sha1.Start();
+            sha1.Append(publicKey);
+            sha1.Finish(hash);
+
+            byte[] publicKeyToken = new byte[PublicKeyTokenLength];
+            for (int i = 0; i < publicKeyToken.Length; i++)
+                publicKeyToken[i] = hash[hash.Length - 1 - i];
+            return publicKeyToken;
         }
 
         //
@@ -33,12 +44,11 @@ namespace System.Reflection
             if (publicKeyLength < SizeOfPublicKeyBlob + 4)
                 return false;
 
-
             // Poor man's reinterpret_cast into the PublicKeyBlob structure.
             ReadOnlySpan<byte> publicKeyBlob = new ReadOnlySpan<byte>(publicKey);
-            uint sigAlgID = BitConverter.ToUInt32(publicKeyBlob);
-            uint hashAlgID = BitConverter.ToUInt32(publicKeyBlob.Slice(4));
-            uint cbPublicKey = BitConverter.ToUInt32(publicKeyBlob.Slice(8));
+            uint sigAlgID = BinaryPrimitives.ReadUInt32LittleEndian(publicKeyBlob);
+            uint hashAlgID = BinaryPrimitives.ReadUInt32LittleEndian(publicKeyBlob.Slice(4));
+            uint cbPublicKey = BinaryPrimitives.ReadUInt32LittleEndian(publicKeyBlob.Slice(8));
 
             // The buffer must be the same size as the structure header plus the trailing key data
             if (cbPublicKey != publicKeyLength - SizeOfPublicKeyBlob)
@@ -48,7 +58,7 @@ namespace System.Reflection
 
             // The ECMA key doesn't look like a valid key so it will fail the below checks. If we were passed that
             // key, then we can skip them.
-            if (ByteArrayEquals(publicKey, s_ecmaKey))
+            if (EcmaKey.SequenceEqual(publicKeyBlob))
                 return true;
 
             // If a hash algorithm is specified, it must be a sensible value
@@ -65,18 +75,6 @@ namespace System.Reflection
             if (publicKey[SizeOfPublicKeyBlob] != PUBLICKEYBLOB)
                 return false;
 
-            return true;
-        }
-
-        private static bool ByteArrayEquals(byte[] b1, byte[] b2)
-        {
-            if (b1.Length != b2.Length)
-                return false;
-            for (int i = 0; i < b1.Length; i++)
-            {
-                if (b1[i] != b2[i])
-                    return false;
-            }
             return true;
         }
 
@@ -99,9 +97,8 @@ namespace System.Reflection
 
         private const uint SizeOfPublicKeyBlob = 12;
 
-        private static byte[] s_ecmaKey =
-        {
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        };
+        private const int PublicKeyTokenLength = 8;
+
+        private static ReadOnlySpan<byte> EcmaKey => new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
     }
 }

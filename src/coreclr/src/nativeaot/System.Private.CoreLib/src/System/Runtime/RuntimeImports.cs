@@ -712,40 +712,8 @@ namespace System.Runtime
         internal static extern unsafe void RhDisableConservativeReportingRegion(ConservativelyReportedRegionDesc* regionDesc);
 
         //
-        // Strong name helpers
-        //
-        internal static byte[] ConvertPublicKeyToPublicKeyToken(byte[] publicKey)
-        {
-            const int PUBLIC_KEY_TOKEN_LEN = 8;
-            byte[] publicKeyToken = new byte[PUBLIC_KEY_TOKEN_LEN];
-            unsafe
-            {
-                fixed (byte* pPublicKey = publicKey)
-                {
-                    fixed (byte* pPublicKeyToken = &publicKeyToken[0])
-                    {
-                        RhConvertPublicKeyToPublicKeyToken(pPublicKey, publicKey.Length, pPublicKeyToken, publicKeyToken.Length);
-                    }
-                }
-            }
-            return publicKeyToken;
-        }
-
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "RhConvertPublicKeyToPublicKeyToken")]
-        private static extern unsafe void RhConvertPublicKeyToPublicKeyToken(byte* pbPublicKey, int cbPublicKey, byte* pbPublicKeyTokenOut, int cbPublicKeyTokenOut);
-
-        //
         // ETW helpers.
         //
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "RhpETWLogLiveCom")]
-        internal static extern void RhpETWLogLiveCom(int eventType, IntPtr CCWHandle, IntPtr objectID, IntPtr typeRawValue, IntPtr IUnknown, IntPtr VTable, int comRefCount, int jupiterRefCount, int flags);
-
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "RhpETWShouldWalkCom")]
-        internal static extern bool RhpETWShouldWalkCom();
-
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpEtwExceptionThrown")]
         internal static extern unsafe void RhpEtwExceptionThrown(char* exceptionTypeName, char* exceptionMessage, IntPtr faultingIP, long hresult);
