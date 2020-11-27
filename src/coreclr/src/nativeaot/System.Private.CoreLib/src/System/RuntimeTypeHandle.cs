@@ -25,7 +25,7 @@ namespace System
             _value = pEEType.RawValue;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is RuntimeTypeHandle)
             {
@@ -60,28 +60,28 @@ namespace System
             }
         }
 
-        public static bool operator ==(object left, RuntimeTypeHandle right)
+        public static bool operator ==(object? left, RuntimeTypeHandle right)
         {
             if (left is RuntimeTypeHandle)
                 return right.Equals((RuntimeTypeHandle)left);
             return false;
         }
 
-        public static bool operator ==(RuntimeTypeHandle left, object right)
+        public static bool operator ==(RuntimeTypeHandle left, object? right)
         {
             if (right is RuntimeTypeHandle)
                 return left.Equals((RuntimeTypeHandle)right);
             return false;
         }
 
-        public static bool operator !=(object left, RuntimeTypeHandle right)
+        public static bool operator !=(object? left, RuntimeTypeHandle right)
         {
             if (left is RuntimeTypeHandle)
                 return !right.Equals((RuntimeTypeHandle)left);
             return true;
         }
 
-        public static bool operator !=(RuntimeTypeHandle left, object right)
+        public static bool operator !=(RuntimeTypeHandle left, object? right)
         {
             if (right is RuntimeTypeHandle)
                 return !left.Equals((RuntimeTypeHandle)right);

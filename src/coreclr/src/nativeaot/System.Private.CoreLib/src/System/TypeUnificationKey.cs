@@ -22,7 +22,7 @@ namespace System
             Type = type;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (!(obj is TypeUnificationKey))
                 return false;

@@ -91,13 +91,6 @@ namespace ILCompiler
             if (!(_debugInformationProvider is NullDebugInformationProvider))
                 jitFlagBuilder.Add(CorJitFlag.CORJIT_FLAG_DEBUG_INFO);
 
-            if (_context.Target.MaximumSimdVectorLength != SimdVectorLength.None)
-            {
-                // TODO: AVX
-                Debug.Assert(_context.Target.MaximumSimdVectorLength == SimdVectorLength.Vector128Bit);
-                jitFlagBuilder.Add(CorJitFlag.CORJIT_FLAG_FEATURE_SIMD);
-            }
-
             RyuJitCompilationOptions options = 0;
             if (_methodBodyFolding)
                 options |= RyuJitCompilationOptions.MethodBodyFolding;

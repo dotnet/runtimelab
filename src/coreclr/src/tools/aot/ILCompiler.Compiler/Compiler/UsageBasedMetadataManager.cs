@@ -382,10 +382,30 @@ namespace ILCompiler
                     // A problem with the IL - we just don't scan it...
                 }
 
-                if (scanReflection && FlowAnnotations.RequiresDataflowAnalysis(method))
+                if (scanReflection)
                 {
-                    dependencies = dependencies ?? new DependencyList();
-                    dependencies.Add(factory.DataflowAnalyzedMethod(methodIL.GetMethodILDefinition()), "Method has annotated parameters");
+                    if (FlowAnnotations.RequiresDataflowAnalysis(method))
+                    {
+                        dependencies = dependencies ?? new DependencyList();
+                        dependencies.Add(factory.DataflowAnalyzedMethod(methodIL.GetMethodILDefinition()), "Method has annotated parameters");
+                    }
+
+                    if ((method.HasInstantiation && !method.IsCanonicalMethod(CanonicalFormKind.Any)))
+                    {
+                        MethodDesc typicalMethod = method.GetTypicalMethodDefinition();
+                        Debug.Assert(typicalMethod != method);
+
+                        GetFlowDependenciesForInstantiation(ref dependencies, factory, method.Instantiation, typicalMethod.Instantiation, method);
+                    }
+
+                    TypeDesc owningType = method.OwningType;
+                    if (owningType.HasInstantiation && !owningType.IsCanonicalSubtype(CanonicalFormKind.Any))
+                    {
+                        TypeDesc owningTypeDefinition = owningType.GetTypeDefinition();
+                        Debug.Assert(owningType != owningTypeDefinition);
+
+                        GetFlowDependenciesForInstantiation(ref dependencies, factory, owningType.Instantiation, owningTypeDefinition.Instantiation, owningType);
+                    }
                 }
             }
         }
@@ -467,6 +487,55 @@ namespace ILCompiler
             }
 
             return null;
+        }
+
+        private void GetFlowDependenciesForInstantiation(ref DependencyList dependencies, NodeFactory factory, Instantiation instantiation, Instantiation typicalInstantiation, TypeSystemEntity source)
+        {
+            for (int i = 0; i < instantiation.Length; i++)
+            {
+                var genericParameter = (GenericParameterDesc)typicalInstantiation[i];
+                if (FlowAnnotations.GetGenericParameterAnnotation(genericParameter) != default)
+                {
+                    var deps = ILCompiler.Dataflow.ReflectionMethodBodyScanner.ProcessGenericArgumentDataFlow(factory, FlowAnnotations, Logger, genericParameter, instantiation[i], source);
+                    if (deps.Count > 0)
+                    {
+                        if (dependencies == null)
+                            dependencies = deps;
+                        else
+                            dependencies.AddRange(deps);
+                    }
+                }
+            }
+        }
+
+        public override void GetDependenciesForGenericDictionary(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
+        {
+            TypeDesc owningType = method.OwningType;
+
+            if (FlowAnnotations.HasAnyAnnotations(owningType))
+            {
+                MethodDesc typicalMethod = method.GetTypicalMethodDefinition();
+                Debug.Assert(typicalMethod != method);
+
+                GetFlowDependenciesForInstantiation(ref dependencies, factory, method.Instantiation, typicalMethod.Instantiation, method);
+
+                if (owningType.HasInstantiation)
+                {
+                    // Since this also introduces a new type instantiation into the system, collect the dependencies for that too.
+                    // We might not see the instantiated type elsewhere.
+                    GetFlowDependenciesForInstantiation(ref dependencies, factory, owningType.Instantiation, owningType.GetTypeDefinition().Instantiation, method);
+                }
+            }
+        }
+
+        public override void GetDependenciesForGenericDictionary(ref DependencyList dependencies, NodeFactory factory, TypeDesc type)
+        {
+            if (FlowAnnotations.HasAnyAnnotations(type))
+            {
+                TypeDesc typeDefinition = type.GetTypeDefinition();
+                Debug.Assert(type != typeDefinition);
+                GetFlowDependenciesForInstantiation(ref dependencies, factory, type.Instantiation, typeDefinition.Instantiation, type);
+            }
         }
 
         public MetadataManager ToAnalysisBasedMetadataManager()

@@ -604,7 +604,7 @@ namespace System
             return RuntimeAugments.Callbacks.GetDelegateMethod(this);
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             // It is expected that all real uses of the Equals method will hit the MulticastDelegate.Equals logic instead of this
             // therefore, instead of duplicating the desktop behavior where direct calls to this Equals function do not behave

@@ -25,7 +25,7 @@ namespace Internal.Runtime.Augments
         //
         // Helper to create a interpreted delegate for LINQ and DLR expression trees
         //
-        public static Delegate CreateObjectArrayDelegate(Type delegateType, Func<object[], object> invoker)
+        public static Delegate CreateObjectArrayDelegate(Type delegateType, Func<object?[], object?> invoker)
         {
             return Delegate.CreateObjectArrayDelegate(delegateType, invoker);
         }

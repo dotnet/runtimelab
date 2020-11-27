@@ -103,6 +103,12 @@ namespace System
                     case ExceptionIDs.DataMisaligned:
                         return new DataMisalignedException();
 
+                    case ExceptionIDs.EntrypointNotFound:
+                        return new EntryPointNotFoundException();
+
+                    case ExceptionIDs.AmbiguousImplementation:
+                        return new AmbiguousImplementationException();
+
                     default:
                         FailFast("The runtime requires an exception for a case that this class library does not understand.");
                         return null;

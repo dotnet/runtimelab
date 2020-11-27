@@ -223,7 +223,7 @@
 
         ;; WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
         ;; - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at WriteBarrierFunctionAvLocation
-        ;; - Function "UnwindWriteBarrierToCaller" assumes no registers where pushed and LR contains the return address
+        ;; - Function "UnwindSimpleHelperToCaller" assumes no registers were pushed and LR contains the return address
 
         DEFINE_CHECKED_WRITE_BARRIER  $DESTREG, $REFREG
 
@@ -273,7 +273,7 @@ $WriteBarrierFunction
 
         ;; WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
         ;; - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at WriteBarrierFunctionAvLocation
-        ;; - Function "UnwindWriteBarrierToCaller" assumes no registers where pushed and LR contains the return address
+        ;; - Function "UnwindSimpleHelperToCaller" assumes no registers were pushed and LR contains the return address
 
         DEFINE_UNCHECKED_WRITE_BARRIER  $DESTREG, $REFREG
 
@@ -326,7 +326,7 @@ $WriteBarrierFunction
 
 ;; WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 ;; - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at RhpCheckedLockCmpXchgAVLocation
-;; - Function "UnwindWriteBarrierToCaller" assumes no registers where pushed and LR contains the return address
+;; - Function "UnwindSimpleHelperToCaller" assumes no registers were pushed and LR contains the return address
 
         ;; Interlocked compare exchange on objectref.
         ;;
@@ -388,7 +388,7 @@ CX_NoUpdate
 
         ;; WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
         ;; - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen within at RhpCheckedXchgAVLocation
-        ;; - Function "UnwindWriteBarrierToCaller" assumes no registers where pushed and LR contains the return address
+        ;; - Function "UnwindSimpleHelperToCaller" assumes no registers were pushed and LR contains the return address
 
         LEAF_ENTRY RhpCheckedXchg
 
