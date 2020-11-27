@@ -1,6 +1,6 @@
 # .NET Runtime - Native AOT
 
-This branch contains experimental fork of CoreCLR [.NET runtime](http://github.com/dotnet/runtime) optimized for the [Native AOT Form factor](https://github.com/dotnet/designs/blob/main/accepted/2020/form-factors.md#native-aot-form-factors). The ahead-of-time (AOT) toolchain can compile .NET application into a native (architecture specific) single-file executable. It can also produce standalone dynamic or static libraries that can be consumed by applications written in other programming languages.
+This branch contains experimental fork of CoreCLR [.NET runtime](http://github.com/dotnet/runtime) optimized for the [Native AOT Form factor](https://github.com/dotnet/designs/blob/main/accepted/2020/form-factors.md#native-aot-form-factors). The ahead-of-time (AOT) toolchain can compile .NET application into a native (architecture specific) single-file executable. It can also produce standalone dynamic or static libraries that can be consumed by applications written in other programming languages.  This branch contains the experimental feature of compiling to LLVM to target Web Assembly at present and other LLVM targets in the future.
 
 ## Samples
 

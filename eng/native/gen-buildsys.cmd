@@ -24,7 +24,6 @@ set __Arch=%4
 set __CmakeGenerator=Visual Studio
 set __UseEmcmake=0
 if /i "%__Ninja%" == "1" (
-	echo using Ninja
     set __CmakeGenerator=Ninja
 ) else (
     if /i NOT "%__Arch%" == "wasm" (

@@ -588,14 +588,6 @@ if %__BuildCrossArchNative% EQU 1 (
     )
 )
 
-if "%__BuildArch%" == "wasm" (
-    echo Creating wasm verison.h/c
-    set __versionSourceFile="%__IntermediatesDir%"\version.c
-    set runtimeVersionHeaderFile="%__IntermediatesDir%"\version.h
-    REM Use Powershell due to difficulty in quoting the c code in .cmd file
-    PowerShell -NoProfile -ExecutionPolicy Bypass -Command "& '%__RepoRootDir%\eng\native\build-commons.ps1'"
-)
-
 REM =========================================================================================
 REM ===
 REM === Build the CLR VM
