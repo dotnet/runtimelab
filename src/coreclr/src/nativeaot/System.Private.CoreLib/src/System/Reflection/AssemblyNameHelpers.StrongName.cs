@@ -20,13 +20,16 @@ namespace System.Reflection
             if (!IsValidPublicKey(publicKey))
                 throw new SecurityException(SR.Security_InvalidAssemblyPublicKey);
 
+            Span<byte> hash = stackalloc byte[20];
+
+            Sha1ForNonSecretPurposes sha1 = default;
+            sha1.Start();
+            sha1.Append(publicKey);
+            sha1.Finish(hash);
+
             byte[] publicKeyToken = new byte[PublicKeyTokenLength];
-
-            Sha1ForNonSecretPurposes hash = default;
-            hash.Start();
-            hash.Append(publicKey);
-            hash.Finish(publicKeyToken);
-
+            for (int i = 0; i < publicKeyToken.Length; i++)
+                publicKeyToken[i] = hash[hash.Length - 1 - i];
             return publicKeyToken;
         }
 
