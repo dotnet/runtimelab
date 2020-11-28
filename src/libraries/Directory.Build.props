@@ -255,8 +255,4 @@
     <CLSCompliant Condition="'$(CLSCompliant)' == '' and ('$(IsTestProject)' == 'true' or '$(IsTestSupportProject)' == 'true')">false</CLSCompliant>
     <CLSCompliant Condition="'$(CLSCompliant)' == ''">true</CLSCompliant>
   </PropertyGroup>
-
-  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('windows')) and '$(TargetOS)' == 'Browser'"> <!-- the Unix versions are used without this override -->
-    <MicrosoftNetCoreIlasmPackageRuntimeId>win-x64</MicrosoftNetCoreIlasmPackageRuntimeId>
-  </PropertyGroup>
 </Project>

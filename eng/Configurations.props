@@ -123,9 +123,9 @@
     <_toolRuntimeRID Condition="'$(_runtimeOS)' == 'linux-musl' and $(TargetArchitecture.StartsWith('arm')) and !$(_hostArch.StartsWith('arm'))">linux-x64</_toolRuntimeRID>
 
     <!-- There are no WebAssembly tools, so use the default ones -->
-    <_toolRuntimeRID Condition="'$(_runtimeOS)' == 'browser' and '$(TargetOS)' == 'windows'">win-x64</_toolRuntimeRID>
-    <_toolRuntimeRID Condition="'$(_runtimeOS)' == 'browser' and '$(TargetOS)' != 'windows' and $(_buildingInOSX)">osx-x64</_toolRuntimeRID>
-    <_toolRuntimeRID Condition="'$(_runtimeOS)' == 'browser' and '$(TargetOS)' != 'windows' and !$(_buildingInOSX)">linux-x64</_toolRuntimeRID>
+    <_toolRuntimeRID Condition="'$(_runtimeOS)' == 'browser'">linux-x64</_toolRuntimeRID>
+    <_toolRuntimeRID Condition="'$(_runtimeOS)' == 'browser' and $([MSBuild]::IsOSPlatform('WINDOWS'))">win-x64</_toolRuntimeRID>
+    <_toolRuntimeRID Condition="'$(_runtimeOS)' == 'browser' and $([MSBuild]::IsOSPlatform('OSX'))">osx-x64</_toolRuntimeRID>
 
     <!-- There are no Android tools, so use the default ones -->
     <_toolRuntimeRID Condition="'$(_runtimeOS)' == 'android' and '$(TargetOS)' == 'windows'">win-x64</_toolRuntimeRID>
