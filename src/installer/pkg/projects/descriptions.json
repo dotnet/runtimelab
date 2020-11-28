@@ -10,7 +10,7 @@
        "CommonTypes": [ ]
     },
     {
-        "Name": "Microsoft.DotNet.ILCompiler",
+        "Name": "Microsoft.DotNet.ILCompiler.LLVM",
         "Description": "Provides a native AOT compiler and runtime for .NET",
         "CommonTypes": [ ]
     },

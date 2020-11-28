@@ -10,7 +10,7 @@
     <PortableRuntimeIdentifier Condition="$(RuntimeIdentifier.StartsWith('browser-wasm'))">browser-wasm</PortableRuntimeIdentifier>
     <PortableRuntimeIdentifier Condition="'$(PortableRuntimeIdentifier)' == ''">linux</PortableRuntimeIdentifier>
     <PortableRuntimeIdentifier Condition="!($(RuntimeIdentifier.StartsWith('browser-wasm')))">$(PortableRuntimeIdentifier)-$(PlatformTarget)</PortableRuntimeIdentifier>
-    <RuntimeIlcPackageName>runtime.$(PortableRuntimeIdentifier).Microsoft.DotNet.ILCompiler</RuntimeIlcPackageName>
+    <RuntimeIlcPackageName>runtime.$(PortableRuntimeIdentifier).Microsoft.DotNet.ILCompiler.LLVM</RuntimeIlcPackageName>
     <IlcCalledViaPackage>true</IlcCalledViaPackage>
 
   </PropertyGroup>
