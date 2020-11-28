@@ -158,7 +158,7 @@ set __generatorArgs=
 if [%__Ninja%] == [1] (
     set __generatorArgs=
 ) else if [%__BuildArch%] == [wasm] (
-    rem nmake does support -j
+    rem nmake does not support -j
     set __generatorArgs=
 ) else (
     set __generatorArgs=/p:Platform=%__BuildArch% /p:PlatformToolset="%__PlatformToolset%" -noWarn:MSB8065
