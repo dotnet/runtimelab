@@ -142,6 +142,8 @@ namespace ILCompiler.DependencyAnalysis
                 }
             }
 
+            factory.MetadataManager.GetDependenciesForGenericDictionary(ref result, factory, _owningType);
+
             return result;
         }
 
@@ -239,6 +241,8 @@ namespace ILCompiler.DependencyAnalysis
 
             // Make sure the dictionary can also be populated
             dependencies.Add(factory.ShadowConcreteMethod(_owningMethod), "Dictionary contents");
+
+            factory.MetadataManager.GetDependenciesForGenericDictionary(ref dependencies, factory, _owningMethod);
 
             return dependencies;
         }

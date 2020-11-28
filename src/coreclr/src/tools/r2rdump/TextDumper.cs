@@ -161,7 +161,7 @@ namespace R2RDump
 
                 if (_options.Raw)
                 {
-                    DumpBytes(gcInfo.Offset, (uint)gcInfo.Size, "", false);
+                    DumpBytes(method.GcInfoRva, (uint)gcInfo.Size);
                 }
             }
             SkipLine();

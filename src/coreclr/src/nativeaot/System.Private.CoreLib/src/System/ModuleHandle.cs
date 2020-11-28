@@ -24,7 +24,7 @@ namespace System
             return _ptr != null ? _ptr.GetHashCode() : 0;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (!(obj is ModuleHandle))
                 return false;

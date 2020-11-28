@@ -1055,7 +1055,7 @@ namespace Internal.JitInterface
         private MethodSignatureFlags PlatformDefaultUnmanagedCallingConvention()
         {
             return _compilation.TypeSystemContext.Target.IsWindows ?
-                MethodSignatureFlags.UnmanagedCallingConventionCdecl : MethodSignatureFlags.UnmanagedCallingConventionCdecl;
+                MethodSignatureFlags.UnmanagedCallingConventionStdCall : MethodSignatureFlags.UnmanagedCallingConventionCdecl;
         }
 
         private CorInfoUnmanagedCallConv getUnmanagedCallConv(CORINFO_METHOD_STRUCT_* method)

@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Numerics;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
@@ -20,6 +21,8 @@ unsafe class Program
         // The test is compiled with multiple defines to test this.
 
 #if BASELINE_INTRINSICS
+        bool vectorsAccelerated = true;
+        int byteVectorLength = 16;
         bool? Sse2AndBelow = true;
         bool? Sse3Group = null;
         bool? AesLzPcl = null;
@@ -28,6 +31,8 @@ unsafe class Program
         bool? Avx12 = false;
         bool? FmaBmi12 = false;
 #elif NON_VEX_INTRINSICS
+        bool vectorsAccelerated = true;
+        int byteVectorLength = 16;
         bool? Sse2AndBelow = true;
         bool? Sse3Group = true;
         bool? AesLzPcl = null;
@@ -36,6 +41,8 @@ unsafe class Program
         bool? Avx12 = false;
         bool? FmaBmi12 = false;
 #elif VEX_INTRINSICS
+        bool vectorsAccelerated = true;
+        int byteVectorLength = 32;
         bool? Sse2AndBelow = true;
         bool? Sse3Group = true;
         bool? AesLzPcl = null;
@@ -46,6 +53,16 @@ unsafe class Program
 #else
 #error Who dis?
 #endif
+
+        if (vectorsAccelerated != Vector.IsHardwareAccelerated)
+        {
+            throw new Exception($"Vectors HW acceleration state unexpected - expected {vectorsAccelerated}, got {Vector.IsHardwareAccelerated}");
+        }
+
+        if (byteVectorLength != Vector<byte>.Count)
+        {
+            throw new Exception($"Unexpected vector length - expected {byteVectorLength}, got {Vector<byte>.Count}");
+        }
 
         Check("Sse", Sse2AndBelow, &SseIsSupported, Sse.IsSupported, () => Sse.Subtract(Vector128<float>.Zero, Vector128<float>.Zero).Equals(Vector128<float>.Zero));
         Check("Sse.X64", Sse2AndBelow, &SseX64IsSupported, Sse.X64.IsSupported, () => Sse.X64.ConvertToInt64WithTruncation(Vector128<float>.Zero) == 0);

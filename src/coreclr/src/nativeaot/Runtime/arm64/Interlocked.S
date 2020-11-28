@@ -5,7 +5,7 @@
 
 // WARNING: Code in EHHelpers.cpp makes assumptions about this helper, in particular:
 // - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at RhpLockCmpXchg32AVLocation
-// - Function "UnwindWriteBarrierToCaller" assumes the stack contains just the pushed return address
+// - Function "UnwindSimpleHelperToCaller" assumes no registers were pushed and LR contains the return address
 // x0 = destination address
 // w1 = value
 // w2 = comparand
@@ -26,7 +26,7 @@ LEAF_END RhpLockCmpXchg32, _TEXT
 
 // WARNING: Code in EHHelpers.cpp makes assumptions about this helper, in particular:
 // - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at RhpLockCmpXchg64AVLocation
-// - Function "UnwindWriteBarrierToCaller" assumes the stack contains just the pushed return address
+// - Function "UnwindSimpleHelperToCaller" assumes no registers were pushed and LR contains the return address
 // x0 = destination address
 // x1 = value
 // x2 = comparand

@@ -150,7 +150,7 @@ LOCAL_LABEL(\BASENAME\()_EXIT_\REFREG):
 
 // WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 // - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at WriteBarrierFunctionAvLOC
-// - Function "UnwindWriteBarrierToCaller" assumes the stack contains just the pushed return address
+// - Function "UnwindSimpleHelperToCaller" assumes no registers were pushed and LR contains the return address
 LEAF_ENTRY RhpAssignRef\EXPORT_REG_NAME, _TEXT
 
 // Export the canonical write barrier under unqualified name as well
@@ -223,7 +223,7 @@ DEFINE_UNCHECKED_WRITE_BARRIER r1, r1
 
 // WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 // - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen on the first instruction
-// - Function "UnwindWriteBarrierToCaller" assumes the stack contains just the pushed return address
+// - Function "UnwindSimpleHelperToCaller" assumes no registers were pushed and LR contains the return address
 LEAF_ENTRY RhpCheckedAssignRef\EXPORT_REG_NAME, _TEXT
 
 // Export the canonical write barrier under unqualified name as well
@@ -261,7 +261,7 @@ DEFINE_CHECKED_WRITE_BARRIER r1, r1
 
 // WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 // - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at RhpCheckedLockCmpXchgAVLocation
-// - Function "UnwindWriteBarrierToCaller" assumes the stack contains just the pushed return address
+// - Function "UnwindSimpleHelperToCaller" assumes no registers were pushed and LR contains the return address
 // r0 = destination address
 // r1 = value
 // r2 = comparand
@@ -288,7 +288,7 @@ LEAF_END RhpCheckedLockCmpXchg, _TEXT
 
 // WARNING: Code in EHHelpers.cpp makes assumptions about write barrier code, in particular:
 // - Function "InWriteBarrierHelper" assumes an AV due to passed in null pointer will happen at RhpCheckedXchgAVLocation
-// - Function "UnwindWriteBarrierToCaller" assumes the stack contains just the pushed return address
+// - Function "UnwindSimpleHelperToCaller" assumes no registers were pushed and LR contains the return address
 // r0 = destination address
 // r1 = value
 LEAF_ENTRY RhpCheckedXchg, _TEXT

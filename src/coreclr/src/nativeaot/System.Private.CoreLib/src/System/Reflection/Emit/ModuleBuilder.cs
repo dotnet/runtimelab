@@ -115,7 +115,7 @@ namespace System.Reflection.Emit
             return default;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return default;
         }

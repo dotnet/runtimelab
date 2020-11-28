@@ -57,9 +57,10 @@ namespace ILCompiler.DependencyAnalysis
     /// </summary>
     public partial class EETypeNode : ObjectNode, IExportableSymbolNode, IEETypeNode, ISymbolDefinitionNode, ISymbolNodeWithLinkage
     {
-        protected TypeDesc _type;
-        internal EETypeOptionalFieldsBuilder _optionalFieldsBuilder = new EETypeOptionalFieldsBuilder();
-        internal EETypeOptionalFieldsNode _optionalFieldsNode;
+        protected readonly TypeDesc _type;
+        internal readonly EETypeOptionalFieldsBuilder _optionalFieldsBuilder = new EETypeOptionalFieldsBuilder();
+        internal readonly EETypeOptionalFieldsNode _optionalFieldsNode;
+        protected bool? _mightHaveInterfaceDispatchMap;
 
         public EETypeNode(NodeFactory factory, TypeDesc type)
         {
@@ -73,6 +74,16 @@ namespace ILCompiler.DependencyAnalysis
             _optionalFieldsNode = new EETypeOptionalFieldsNode(this);
 
             factory.TypeSystemContext.EnsureLoadableType(type);
+        }
+        
+        protected bool MightHaveInterfaceDispatchMap(NodeFactory factory)
+        {
+            if (!_mightHaveInterfaceDispatchMap.HasValue)
+            {
+                _mightHaveInterfaceDispatchMap = EmitVirtualSlotsAndInterfaces && InterfaceDispatchMapNode.MightHaveInterfaceDispatchMap(_type, factory);
+            }
+            
+            return _mightHaveInterfaceDispatchMap.Value;
         }
 
         protected override string GetName(NodeFactory factory) => this.GetMangledName(factory.NameMangler);
@@ -231,6 +242,23 @@ namespace ILCompiler.DependencyAnalysis
                     }
                 }
 
+                // Add conditional dependencies for interface methods with default implementations
+                if (defType.IsInterface)
+                {
+                    foreach (MethodDesc method in defType.GetAllMethods())
+                    {
+                        // Generic virtual methods are tracked by an orthogonal mechanism.
+                        if (method.HasInstantiation)
+                            continue;
+
+                        if (method.IsVirtual && !method.IsAbstract)
+                        {
+                            MethodDesc canonMethod = method.GetCanonMethodTarget(CanonicalFormKind.Specific);
+                            yield return new CombinedDependencyListEntry(factory.MethodEntrypoint(canonMethod), factory.VirtualMethodUse(method), "Default interface method");
+                        }
+                    }
+                }
+
                 Debug.Assert(
                     _type == defType ||
                     ((System.Collections.IStructuralEquatable)defType.RuntimeInterfaces).Equals(_type.RuntimeInterfaces,
@@ -245,7 +273,7 @@ namespace ILCompiler.DependencyAnalysis
 
                     foreach (MethodDesc interfaceMethod in interfaceType.GetAllMethods())
                     {
-                        if (interfaceMethod.Signature.IsStatic)
+                        if (interfaceMethod.Signature.IsStatic || !interfaceMethod.IsVirtual)
                             continue;
 
                         // Generic virtual methods are tracked by an orthogonal mechanism.
@@ -755,7 +783,17 @@ namespace ILCompiler.DependencyAnalysis
                 if (!implMethod.IsAbstract)
                 {
                     MethodDesc canonImplMethod = implMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
-                    objData.EmitPointerReloc(factory.MethodEntrypoint(canonImplMethod, implMethod.OwningType.IsValueType));
+
+                    if (canonImplMethod != implMethod && implMethod.OwningType.IsInterface)
+                    {
+                        // We need an instantiating stub here. For now, pretend this was a reabstraction or that there's no default
+                        // implementation.
+                        objData.EmitZeroPointer();
+                    }
+                    else
+                    {
+                        objData.EmitPointerReloc(factory.MethodEntrypoint(canonImplMethod, implMethod.OwningType.IsValueType));
+                    }
                 }
                 else
                 {
@@ -882,7 +920,7 @@ namespace ILCompiler.DependencyAnalysis
         /// </summary>
         protected internal virtual void ComputeOptionalEETypeFields(NodeFactory factory, bool relocsOnly)
         {
-            if (!relocsOnly && EmitVirtualSlotsAndInterfaces && InterfaceDispatchMapNode.MightHaveInterfaceDispatchMap(_type, factory))
+            if (!relocsOnly && MightHaveInterfaceDispatchMap(factory))
             {
                 _optionalFieldsBuilder.SetFieldValue(EETypeOptionalFieldTag.DispatchMap, checked((uint)factory.InterfaceDispatchMapIndirection(Type).IndexFromBeginningOfArray));
             }

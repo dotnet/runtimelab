@@ -43,7 +43,7 @@ namespace System
             return true;
         }
 
-        public override sealed bool Equals(object obj)
+        public override sealed bool Equals(object? obj)
         {
             if (obj == null)
                 return false;
@@ -107,7 +107,7 @@ namespace System
 
         // Force inline as the true/false ternary takes it above ALWAYS_INLINE size even though the asm ends up smaller
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool operator ==(MulticastDelegate d1, MulticastDelegate d2)
+        public static bool operator ==(MulticastDelegate? d1, MulticastDelegate? d2)
         {
             // Test d2 first to allow branch elimination when inlined for null checks (== null)
             // so it can become a simple test
@@ -122,7 +122,7 @@ namespace System
 
         // Force inline as the true/false ternary takes it above ALWAYS_INLINE size even though the asm ends up smaller
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool operator !=(MulticastDelegate d1, MulticastDelegate d2)
+        public static bool operator !=(MulticastDelegate? d1, MulticastDelegate? d2)
         {
             // Can't call the == operator as it will call object==
 

@@ -77,6 +77,8 @@ namespace ILCompiler
 
         private IReadOnlyList<string> _removedFeatures = Array.Empty<string>();
 
+        private IReadOnlyList<string> _suppressedWarnings = Array.Empty<string>();
+
         private bool _help;
 
         private Program()
@@ -191,6 +193,7 @@ namespace ILCompiler
                 syntax.DefineOption("instructionset", ref _instructionSet, "Instruction set to allow or disallow");
                 syntax.DefineOption("preinitstatics", ref _preinitStatics, "Interpret static constructors at compile time if possible (implied by -O)");
                 syntax.DefineOption("nopreinitstatics", ref _noPreinitStatics, "Do not interpret static constructors at compile time");
+                syntax.DefineOptionList("nowarn", ref _suppressedWarnings, "Disable specific warning messages");
 
                 syntax.DefineOption("targetarch", ref _targetArchitectureStr, "Target architecture for cross compilation");
                 syntax.DefineOption("targetos", ref _targetOSStr, "Target OS for cross compilation");
@@ -598,7 +601,7 @@ namespace ILCompiler
             if (removedFeatures != 0)
                 ilProvider = new RemovingILProvider(ilProvider, removedFeatures);
 
-            var logger = new Logger(Console.Out, _isVerbose);
+            var logger = new Logger(Console.Out, _isVerbose, ProcessWarningCodes(_suppressedWarnings));
 
             var stackTracePolicy = _emitStackTraceData ?
                 (StackTraceEmissionPolicy)new EcmaMethodStackTraceEmissionPolicy() : new NoStackTraceEmissionPolicy();
@@ -880,6 +883,21 @@ namespace ILCompiler
                 Console.Write($" --singlemethodgenericarg \"{formatter.FormatName(failingMethod.Instantiation[i], true)}\"");
 
             return false;
+        }
+
+        private static IEnumerable<int> ProcessWarningCodes(IEnumerable<string> warningCodes)
+        {
+            foreach (string value in warningCodes)
+            {
+                string[] values = value.Split(",; ", StringSplitOptions.RemoveEmptyEntries);
+                foreach (string id in values)
+                {
+                    if (!id.StartsWith("IL", StringComparison.Ordinal) || !ushort.TryParse(id.Substring(2), out ushort code))
+                        continue;
+
+                    yield return code;
+                }
+            }
         }
 
         private static int Main(string[] args)

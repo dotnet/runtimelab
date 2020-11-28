@@ -977,7 +977,7 @@ namespace Internal.Runtime.Augments
             RuntimeImports.RhCallDescrWorkerNative(callDescr);
         }
 
-        public static Delegate CreateObjectArrayDelegate(Type delegateType, Func<object[], object> invoker)
+        public static Delegate CreateObjectArrayDelegate(Type delegateType, Func<object?[], object?> invoker)
         {
             return Delegate.CreateObjectArrayDelegate(delegateType, invoker);
         }

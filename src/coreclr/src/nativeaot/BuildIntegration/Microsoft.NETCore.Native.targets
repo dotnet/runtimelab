@@ -40,6 +40,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <IlcGenerateCompleteTypeMetadata Condition="$(IlcGenerateCompleteTypeMetadata) == ''">true</IlcGenerateCompleteTypeMetadata>
     <IlcGenerateStackTraceData Condition="$(IlcGenerateStackTraceData) == ''">true</IlcGenerateStackTraceData>
     <IlcScanReflection Condition="$(IlcScanReflection) == ''">true</IlcScanReflection>
+    <SuppressTrimAnalysisWarnings Condition="$(SuppressTrimAnalysisWarnings) == ''">true</SuppressTrimAnalysisWarnings>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -103,6 +104,30 @@ The .NET Foundation licenses this file to you under the MIT license.
   <ItemGroup Condition="$(IlcSystemModule) == ''">
     <AutoInitializedAssemblies Include="System.Private.DeveloperExperience.Console" Condition="$(IlcDisableUnhandledExceptionExperience) != 'true'"  />
   </ItemGroup>
+
+  <!-- Keep the list of default warning suppressions in sync with Microsoft.NET.ILLink.targets -->
+  <PropertyGroup Condition="$(SuppressTrimAnalysisWarnings) == 'true'">
+    <!-- RequiresUnreferenceCodeAttribute method called -->
+    <NoWarn>$(NoWarn);IL2026</NoWarn>
+    <!-- Invalid use of DynamicallyAccessedMembersAttribute -->
+    <NoWarn>$(NoWarn);IL2041;IL2042;IL2043;IL2056</NoWarn>
+    <!-- Reference to removed attribute type -->
+    <NoWarn>$(NoWarn);IL2045</NoWarn>
+    <!-- RequiresUnreferencedCodeAttribute mismatch on virtual override -->
+    <NoWarn>$(NoWarn);IL2046</NoWarn>
+    <!-- COM marshalling warning -->
+    <NoWarn>$(NoWarn);IL2050</NoWarn>
+    <!-- Reflection intrinsics with unknown arguments -->
+    <NoWarn>$(NoWarn);IL2032;IL2055;IL2057;IL2058;IL2059;IL2060;IL2061;IL2096</NoWarn>
+    <!-- Unknown values passed to locations with DynamicallyAccessedMemberTypes -->
+    <NoWarn>$(NoWarn);IL2062;IL2063;IL2064;IL2065;IL2066</NoWarn>
+    <!-- Unsatisfied DynamicallyAccessedMembers requirements -->
+    <NoWarn>$(NoWarn);IL2067;IL2068;IL2069;IL2070;IL2071;IL2072;IL2073;IL2074;IL2075;IL2076;IL2077;IL2078;IL2079;IL2080;IL2081;IL2082;IL2083;IL2084;IL2085;IL2086;IL2087;IL2088;IL2089;IL2090;IL2091</NoWarn>
+    <!-- DynamicallyAccessedMembersAttribute mismatch on virtual override -->
+    <NoWarn>$(NoWarn);IL2092;IL2093;IL2094;IL2095</NoWarn>
+    <!-- DynamicallyAccessedMembersAttribute used on unsupported member -->
+    <NoWarn>$(NoWarn);IL2097;IL2098;IL2099</NoWarn>
+  </PropertyGroup>
 
   <ItemGroup>
     <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll" />
@@ -206,6 +231,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Condition="$(IlcInvariantGlobalization) == 'true'" Include="--removefeature:Globalization" />
       <IlcArg Condition="$(IlcSystemModule) != ''" Include="--systemmodule:$(IlcSystemModule)" />
       <IlcArg Condition="$(IlcDumpIL) == 'true'" Include="--ildump:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).il" />
+      <IlcArg Condition="$(NoWarn) != ''" Include='--nowarn:"$([MSBuild]::Escape($(NoWarn)))"' />
 
       <!-- Workaround for https://github.com/dotnet/corefx/issues/36723 -->
       <IlcArg Include="--removefeature:SerializationGuard" />

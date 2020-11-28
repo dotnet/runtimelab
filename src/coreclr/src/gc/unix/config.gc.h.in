@@ -30,6 +30,7 @@
 #cmakedefine01 HAVE_SYSINFO_WITH_MEM_UNIT
 #cmakedefine01 HAVE_XSW_USAGE
 #cmakedefine01 HAVE_XSWDEV
-
-
+#if !TARGET_WASM // emscripten configure test passes for this, but the f_type on the statfs is not recognized and fails https://github.com/dotnet/runtimelab/blob/e5c4d674afdf758adf12052d64c120ce9030048b/src/coreclr/src/gc/unix/cgroup.cpp#L152
+#cmakedefine01 HAVE_NON_LEGACY_STATFS 
+#endif
 #endif // __CONFIG_H__

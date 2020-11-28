@@ -226,7 +226,7 @@ namespace Internal.Runtime.CompilerServices
             return other._declaringType.Equals(_declaringType);
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (!(obj is OpenMethodResolver))
             {

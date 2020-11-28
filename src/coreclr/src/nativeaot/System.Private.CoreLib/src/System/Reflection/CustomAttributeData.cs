@@ -22,7 +22,7 @@ namespace System.Reflection
         public virtual IList<CustomAttributeTypedArgument> ConstructorArguments { get { throw new NullReferenceException(); } }
         public virtual IList<CustomAttributeNamedArgument> NamedArguments => null;
 
-        public override bool Equals(object obj) => obj == (object)this;
+        public override bool Equals(object? obj) => obj == (object)this;
         public override int GetHashCode() => base.GetHashCode();
 
         public override string ToString()
