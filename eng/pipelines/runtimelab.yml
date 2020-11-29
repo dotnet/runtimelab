@@ -78,10 +78,27 @@ stages:
   #
   # Build with Release config and Checked runtimeConfiguration
   #
+  - ${{ if ne(variables.isOfficialBuild, true) }}:
+    - template: /eng/pipelines/common/platform-matrix.yml
+      parameters:
+        jobTemplate: /eng/pipelines/common/global-build-job.yml
+        buildConfig: Checked
+        platforms:
+        - Linux_x64
+        - windows_x64
+        jobParameters:
+          timeoutInMinutes: 90
+          testGroup: innerloop
+          buildArgs: -s nativeaot+libs+nativeaot.packages -lc release -rc checked
+          extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+
+  #
+  # Build with Release config and Release runtimeConfiguration (used for official builds)
+  #
   - template: /eng/pipelines/common/platform-matrix.yml
     parameters:
       jobTemplate: /eng/pipelines/common/global-build-job.yml
-      buildConfig: Checked
+      buildConfig: Release
       platforms:
       - Linux_x64
       - windows_x64
@@ -90,7 +107,7 @@ stages:
         isOfficialBuild: ${{ variables.isOfficialBuild }}
         timeoutInMinutes: 90
         testGroup: innerloop
-        buildArgs: -s nativeaot+libs+nativeaot.packages -lc release -rc checked
+        buildArgs: -s nativeaot+libs+nativeaot.packages -c release
         extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
         extraStepsParameters:
           uploadIntermediateArtifacts: ${{ variables.isOfficialBuild }}
