@@ -53,9 +53,9 @@
     <Error Condition="'$(OutputType)' != 'Library' and '$(NativeLib)' != ''" Text="NativeLib requires OutputType=Library." />
 
     <!-- Fail with descriptive error message for common unsupported cases. -->
-    <Error Condition="'$(DisableUnsupportedError)' != 'true' and '$(OS)' == 'Windows_NT' and !$(RuntimeIdentifier.StartsWith('win'))" Text="Cross-compilation is not supported yet. https://github.com/dotnet/corert/issues/5458" />
-    <Error Condition="'$(DisableUnsupportedError)' != 'true' and '$(OS)' != 'Windows_NT' and $(RuntimeIdentifier.StartsWith('win'))" Text="Cross-compilation is not supported yet. https://github.com/dotnet/corert/issues/5458" />
-    <Error Condition="'$(DisableUnsupportedError)' != 'true' and !$(RuntimeIdentifier.EndsWith('x64'))" Text="$(RuntimeIdentifier) not supported yet. https://github.com/dotnet/corert/issues/4589" />
+    <Error Condition="'$(DisableUnsupportedError)' != 'true' and '$(OS)' == 'Windows_NT' and !$(RuntimeIdentifier.StartsWith('win')) and !$(RuntimeIdentifier.EndsWith('wasm'))" Text="Cross-compilation is not supported yet. https://github.com/dotnet/corert/issues/5458" />
+    <Error Condition="'$(DisableUnsupportedError)' != 'true' and '$(OS)' != 'Windows_NT' and $(RuntimeIdentifier.StartsWith('win')) and !$(RuntimeIdentifier.EndsWith('wasm'))" Text="Cross-compilation is not supported yet. https://github.com/dotnet/corert/issues/5458" />
+    <Error Condition="'$(DisableUnsupportedError)' != 'true' and !$(RuntimeIdentifier.EndsWith('x64')) and !$(RuntimeIdentifier.EndsWith('wasm'))" Text="$(RuntimeIdentifier) not supported yet. https://github.com/dotnet/corert/issues/4589" />
 
     <!-- CoreRT SDK and Framework Assemblies need to be defined to avoid CoreCLR implementations being set as compiler inputs -->
     <Error Condition="'@(PrivateSdkAssemblies)' == ''" Text="The PrivateSdkAssemblies ItemGroup is required for _ComputeAssembliesToCompileToNative" />
@@ -74,6 +74,13 @@
     <!-- override apphost with binary we generated during native compilation -->
     <Delete Files="$(PublishDir)\$(TargetName)$(NativeBinaryExt)"/>
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName)$(NativeBinaryExt)" DestinationFolder="$(PublishDir)" />
+
+    <Delete Files="$(PublishDir)\$(TargetName).js" Condition="'$(Platform)'=='wasm'"/>
+    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).js" DestinationFolder="$(PublishDir)" Condition="'$(Platform)'=='wasm'"/>
+
+    <Delete Files="$(PublishDir)\$(TargetName).wasm" Condition="'$(Platform)'=='wasm'"/>
+    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(Platform)'=='wasm'"/>
+
   </Target>
 
   <Target Name="CopyNativePdb" Condition="'$(DebugType)' != 'None' and '$(TargetOS)' == 'windows' and '$(NativeLib)' != 'Static'" AfterTargets="Publish">

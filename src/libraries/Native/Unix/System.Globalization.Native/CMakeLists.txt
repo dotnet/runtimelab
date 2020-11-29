@@ -13,7 +13,11 @@ if(CLR_CMAKE_TARGET_UNIX)
     add_compile_options(-Wno-extra-semi-stmt)
     add_compile_options(-Wno-unknown-warning-option)
 
-    if (NOT CLR_CMAKE_TARGET_ANDROID)
+    if (CLR_CMAKE_TARGET_UNIX_WASM)
+	    message("including ICU")
+	    # add ICU support to emscripten and workaround https://github.com/emscripten-core/emscripten/issues/9302
+	    add_compile_options(-s USE_ICU=1 -I$ENV{EMSDK}/upstream/emscripten/cache/ports/icu/icu/source/i18n)
+    elseif (NOT CLR_CMAKE_TARGET_ANDROID)
         set(ICU_HOMEBREW_INC_PATH "/usr/local/opt/icu4c/include")
 
         find_path(UTYPES_H "unicode/utypes.h" PATHS ${ICU_HOMEBREW_INC_PATH})

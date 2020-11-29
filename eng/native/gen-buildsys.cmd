@@ -29,7 +29,7 @@ if /i "%__Ninja%" == "1" (
     if /i NOT "%__Arch%" == "wasm" (
         if /i "%__VSVersion%" == "vs2019" (set __CmakeGenerator=%__CmakeGenerator% 16 2019)
         if /i "%__VSVersion%" == "vs2017" (set __CmakeGenerator=%__CmakeGenerator% 15 2017)
-        
+
         if /i "%__Arch%" == "x64" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A x64)
         if /i "%__Arch%" == "arm" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A ARM)
         if /i "%__Arch%" == "arm64" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A ARM64)
@@ -38,17 +38,17 @@ if /i "%__Ninja%" == "1" (
         set __CmakeGenerator=NMake Makefiles
     )
 )
-
+echo gen-buildsys %__Arch%
 if /i "%__Arch%" == "wasm" (
-    if "%EMSDK_PATH%" == "" (
-       echo Error: Should set EMSDK_PATH environment variable pointing to emsdk root.
+    if "%EMSDK%" == "" (
+       echo Error: Should set EMSDK environment variable pointing to emsdk root.
        exit /B 1
     )
 
-    if "%EMSCRIPTEN_ROOT%" == "" (
-      set EMSCRIPTEN_ROOT="%EMSDK_PATH/upstream/emscripten%"
+    if /i "%CMAKE_BUILD_TYPE%" == "debug" (
+        set __ExtraCmakeParams=%__ExtraCmakeParams% -g -O0
     )
-    set __ExtraCmakeParams=%__ExtraCmakeParams% "-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=1" "-DCMAKE_TOOLCHAIN_FILE=%EMSCRIPTEN%/cmake/Modules/Platform/Emscripten.cmake"
+    set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE%" "-DCMAKE_TOOLCHAIN_FILE=%EMSDK%/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" -DCLR_CMAKE_TARGET_ARCH=wasm -DCLR_CMAKE_TARGET_ARCH_WASM=1 -DCLR_CMAKE_HOST_ARCH=Windows_NT -DCLR_CMAKE_HOST_OS=Emscripten -DRUNTIME_FLAVOR=CoreClr -DCLR_CMAKE_HOST_UNIX_WASM=1 "-DCLR_ENG_NATIVE_DIR=%__repoRoot%\eng\native" "-DCMAKE_REPO_ROOT=%__repoRoot%" -DCLR_CMAKE_KEEP_NATIVE_SYMBOLS=1
     set __UseEmcmake=1
 ) else (
     set __ExtraCmakeParams=%__ExtraCmakeParams%  "-DCMAKE_SYSTEM_VERSION=10.0"

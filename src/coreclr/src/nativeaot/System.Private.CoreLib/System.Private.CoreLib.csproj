@@ -26,15 +26,19 @@
   </PropertyGroup>
   <PropertyGroup>
     <FeaturePortableThreadPool Condition="'$(FeaturePortableThreadPool)' == ''">false</FeaturePortableThreadPool>
-    <FeaturePortableThreadPool Condition="'$(TargetsUnix)' == 'true'">true</FeaturePortableThreadPool>
+    <FeaturePortableThreadPool Condition="'$(TargetsUnix)' == 'true' or '$(TargetsBrowser)'=='true'">true</FeaturePortableThreadPool>
   </PropertyGroup>
   <PropertyGroup>
     <FeaturePortableTimer Condition="'$(FeaturePortableTimer)' == ''">false</FeaturePortableTimer>
-    <FeaturePortableTimer Condition="'$(TargetsUnix)' == 'true'">true</FeaturePortableTimer>
+    <FeaturePortableTimer Condition="'$(TargetsUnix)' == 'true' or '$(TargetsBrowser)'=='true'">true</FeaturePortableTimer>
   </PropertyGroup>
   <PropertyGroup>
     <FeatureHardwareIntrinsics>true</FeatureHardwareIntrinsics>
     <FeatureSharedLowLevelLock>true</FeatureSharedLowLevelLock>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetsBrowser)' == 'true'">
+    <DefineConstants >TARGET_UNIX;TARGET_WASM;TARGET_32BIT;FEATURE_64BIT_ALIGNMENT;$(DefineConstants)</DefineConstants>
+    <Platform>llvm</Platform>
   </PropertyGroup>
 
   <!-- Sources -->
@@ -168,7 +172,7 @@
     <Compile Include="src\System\Collections\Generic\EqualOnlyComparer.cs" />
     <Compile Include="src\System\Globalization\GlobalizationMode.cs" />
     <Compile Include="src\System\Globalization\GlobalizationMode.Windows.cs" Condition="'$(TargetsWindows)'=='true'" />
-    <Compile Include="src\System\Globalization\GlobalizationMode.Unix.cs" Condition="'$(TargetsUnix)'=='true'" />
+    <Compile Include="src\System\Globalization\GlobalizationMode.Unix.cs" Condition="'$(TargetsUnix)'=='true' or '$(TargetsBrowser)'=='true'" />
     <Compile Include="src\System\InvokeUtils.cs" />
     <Compile Include="src\System\IO\FileLoadException.CoreRT.cs" />
     <Compile Include="src\System\IO\Stream.CoreRT.cs" />
@@ -181,6 +185,7 @@
     <Compile Include="src\System\Diagnostics\StackFrame.CoreRT.cs" />
     <Compile Include="src\System\Diagnostics\StackFrameExtensions.cs" />
     <Compile Include="src\System\Diagnostics\StackTrace.CoreRT.cs" />
+    <Compile Include="src\System\Diagnostics\StackTrace.CoreRT.Wasm.cs" Condition="'$(TargetsBrowser)'=='true'"/>
     <Compile Include="src\System\Enum.CoreRT.cs" />
     <Compile Include="src\System\Environment.CoreRT.cs" />
     <Compile Include="src\System\GC.cs" />
@@ -224,6 +229,7 @@
     <Compile Include="src\System\Delegate.DefaultParameters.cs" />
     <Compile Include="src\System\RuntimeTypeHandle.cs" />
     <Compile Include="src\System\Exception.CoreRT.cs" />
+    <Compile Include="src\System\Exception.CoreRT.LLVM.cs" Condition="'$(Platform)'=='llvm'"/>
     <Compile Include="src\System\RuntimeExceptionHelpers.cs" />
     <Compile Include="src\System\EETypePtr.cs" />
     <Compile Include="src\System\Runtime\RuntimeImports.cs" />
@@ -323,7 +329,7 @@
       <Link>Interop\Windows\Kernel32\Interop.GetLastError.cs</Link>
     </Compile>
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetsUnix)'=='true'">
+  <ItemGroup Condition="'$(TargetsUnix)'=='true' or '$(TargetsBrowser)'=='true'">
     <Compile Include="src\Microsoft\Win32\SafeHandles\SafeWaitHandle.Unix.cs" />
     <Compile Include="src\System\Environment.CoreRT.Unix.cs" />
     <Compile Include="src\System\Runtime\InteropServices\PInvokeMarshal.Unix.cs" />
@@ -469,9 +475,17 @@
     <Compile Include="$(AotCommonPath)\Internal\Runtime\TransitionBlock.cs">
       <Link>Common\TransitionBlock.cs</Link>
     </Compile>
+    <Compile Include="..\Runtime.Base\src\System\Runtime\ExceptionHandling.wasm.cs" Condition="'$(Platform)'=='llvm'">
+      <Link>Runtime.Base\src\System\Runtime\ExceptionHandling.wasm.cs</Link>
+    </Compile>
+    <Compile Include="..\Runtime.Base\src\System\Runtime\StackFrameIterator.wasm.cs" Condition="'$(Platform)'=='llvm'">
+      <Link>Runtime.Base\src\System\Runtime\StackFrameIterator.wasm.cs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup Condition="'$(InPlaceRuntime)' == 'true'">
-    <Compile Include="$(BaseIntermediateOutputPath)..\..\$(PlatformConfigPathPart)\src\nativeaot\Runtime\Full\AsmOffsets.cs" />
+    <!-- For LLVM I imagine we want the final target version -->
+    <Compile Include="$(BaseIntermediateOutputPath)..\..\$(PlatformConfigPathPart)\src\nativeaot\Runtime\Full\AsmOffsets.cs" Condition="'$(Platform)'!='llvm'"/>
+    <Compile Include="$(BaseIntermediateOutputPath)..\..\$(PlatformConfigPathPart)\src\nativeaot\Runtime\Portable\AsmOffsetsPortable.cs" Condition="'$(Platform)'=='llvm'"/>
   </ItemGroup>
 
   <Import Project="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System.Private.CoreLib.Shared.projitems" Label="Shared" />

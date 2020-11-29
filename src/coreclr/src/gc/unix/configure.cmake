@@ -1,3 +1,10 @@
+# Emscripten cmake requires these includes
+include(CheckCXXSourceRuns)
+include(CheckCXXSymbolExists)
+include(CheckStructHasMember)
+include(CheckFunctionExists)
+include(CheckPrototypeDefinition)
+
 check_include_files(sys/time.h HAVE_SYS_TIME_H)
 check_include_files(sys/mman.h HAVE_SYS_MMAN_H)
 check_include_files(numa.h HAVE_NUMA_H)

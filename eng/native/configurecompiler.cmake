@@ -218,6 +218,10 @@ elseif (CLR_CMAKE_HOST_ARCH_ARM64)
   set(ARCH_HOST_NAME arm64)
   add_definitions(-DHOST_ARM64)
   add_definitions(-DHOST_64BIT)
+elseif (CLR_CMAKE_TARGET_ARCH_WASM)
+  set(ARCH_HOST_NAME wasm)
+  add_definitions(-DHOST_WASM=1)
+  add_definitions(-DFEATURE_64BIT_ALIGNMENT=1)
 else ()
   clr_unknown_arch()
 endif ()
@@ -287,6 +291,10 @@ elseif (CLR_CMAKE_TARGET_ARCH_I386)
     set(ARCH_TARGET_NAME x86)
     set(ARCH_SOURCES_DIR i386)
     add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_ARCH>>>:TARGET_X86>)
+elseif (CLR_CMAKE_TARGET_ARCH_WASM)
+    set(ARCH_TARGET_NAME wasm) 
+    set(ARCH_SOURCES_DIR wasm)
+    add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_ARCH>>>:TARGET_WASM>)
 else ()
     clr_unknown_arch()
 endif ()
@@ -294,14 +302,25 @@ endif ()
 #--------------------------------------
 # Compile Options
 #--------------------------------------
-if (CLR_CMAKE_HOST_UNIX)
-  # Disable frame pointer optimizations so profilers can get better call stacks
-  add_compile_options(-fno-omit-frame-pointer)
-
+if (NOT(MSVC))
   # The -fms-extensions enable the stuff like __if_exists, __declspec(uuid()), etc.
   add_compile_options(-fms-extensions)
   #-fms-compatibility      Enable full Microsoft Visual C++ compatibility
   #-fms-extensions         Accept some non-standard constructs supported by the Microsoft compiler
+
+  # Disabled common warnings
+  add_compile_options(-Wno-unused-variable)
+  add_compile_options(-Wno-unused-value)
+  add_compile_options(-Wno-unused-function)
+  add_compile_options(-Wno-tautological-compare)
+ 
+  #These seem to indicate real issues
+  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-invalid-offsetof>)
+endif (NOT(MSVC))
+
+if (CLR_CMAKE_HOST_UNIX)
+  # Disable frame pointer optimizations so profilers can get better call stacks
+  add_compile_options(-fno-omit-frame-pointer)
 
   # Make signed arithmetic overflow of addition, subtraction, and multiplication wrap around
   # using twos-complement representation (this is normally undefined according to the C++ spec).
@@ -322,19 +341,10 @@ if (CLR_CMAKE_HOST_UNIX)
     add_compile_options(-Werror)
   endif(PRERELEASE)
 
-  # Disabled common warnings
-  add_compile_options(-Wno-unused-variable)
-  add_compile_options(-Wno-unused-value)
-  add_compile_options(-Wno-unused-function)
-  add_compile_options(-Wno-tautological-compare)
-
   check_cxx_compiler_flag(-Wimplicit-fallthrough COMPILER_SUPPORTS_W_IMPLICIT_FALLTHROUGH)
   if (COMPILER_SUPPORTS_W_IMPLICIT_FALLTHROUGH)
     add_compile_options(-Wimplicit-fallthrough)
   endif()
-
-  #These seem to indicate real issues
-  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-invalid-offsetof>)
 
   if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     # The -ferror-limit is helpful during the porting, it makes sure the compiler doesn't stop
@@ -639,6 +649,8 @@ if (CLR_CMAKE_HOST_WIN32)
         message(FATAL_ERROR "MC not found")
     endif()
 
+elseif(CLR_CMAKE_TARGET_ARCH_WASM)
+    # No other tools required, emcmake is already running this script
 else (CLR_CMAKE_HOST_WIN32)
     enable_language(ASM)
 

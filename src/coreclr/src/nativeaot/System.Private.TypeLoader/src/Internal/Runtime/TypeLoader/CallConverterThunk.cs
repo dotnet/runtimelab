@@ -102,7 +102,9 @@ namespace Internal.Runtime.TypeLoader
                                                                       out IntPtr commonStub
 #if CALLDESCR_FPARGREGSARERETURNREGS
 #else
+#pragma warning disable SA1001,SA1115,SA1113
                                                                      , out IntPtr returnFloatingPointReturn4Thunk,
+#pragma warning restore SA10011,SA1115,SA1113
                                                                        out IntPtr returnFloatingPointReturn8Thunk
 #endif
                                                                      );
