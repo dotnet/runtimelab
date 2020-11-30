@@ -16,7 +16,7 @@ namespace Microsoft.Interop
 
         private readonly string indexerIdentifier;
         private readonly StubCodeContext parentContext;
-        private readonly bool stripLocalManagedIdentifierSuffix;
+        private readonly bool appendLocalManagedIdentifierSuffix;
 
         public override bool PinningSupported => false;
 
@@ -28,12 +28,12 @@ namespace Microsoft.Interop
             Stage currentStage,
             string indexerIdentifier,
             StubCodeContext parentContext,
-            bool stripLocalManagedIdentifierSuffix)
+            bool appendLocalManagedIdentifierSuffix)
         {
             CurrentStage = currentStage;
             this.indexerIdentifier = indexerIdentifier;
             this.parentContext = parentContext;
-            this.stripLocalManagedIdentifierSuffix = stripLocalManagedIdentifierSuffix;
+            this.appendLocalManagedIdentifierSuffix = appendLocalManagedIdentifierSuffix;
         }
 
         /// <summary>
@@ -43,16 +43,10 @@ namespace Microsoft.Interop
         /// <returns>Managed and native identifiers</returns>
         public override (string managed, string native) GetIdentifiers(TypePositionInfo info)
         {
-            bool strippedSuffix = false;
-            if (stripLocalManagedIdentifierSuffix && info.InstanceIdentifier.EndsWith(LocalManagedIdentifierSuffix))
-            {
-                strippedSuffix = true;
-                info = info with { InstanceIdentifier = info.InstanceIdentifier.Substring(0, info.InstanceIdentifier.Length - LocalManagedIdentifierSuffix.Length) };
-            }
             var (managed, native) = parentContext.GetIdentifiers(info);
-            if (strippedSuffix)
+            if (appendLocalManagedIdentifierSuffix)
             {
-                return ($"{managed}{LocalManagedIdentifierSuffix}[{indexerIdentifier}]", $"{native}[{indexerIdentifier}]");
+                managed += LocalManagedIdentifierSuffix;
             }
             return ($"{managed}[{indexerIdentifier}]", $"{native}[{indexerIdentifier}]");
         }

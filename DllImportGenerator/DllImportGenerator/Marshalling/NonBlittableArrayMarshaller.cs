@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -18,7 +18,7 @@ namespace Microsoft.Interop
 
         private const string IndexerIdentifier = "__i";
 
-        private IMarshallingGenerator _elementMarshaller;
+        private readonly IMarshallingGenerator _elementMarshaller;
         private readonly ExpressionSyntax _numElementsExpr;
 
         public NonBlittableArrayMarshaller(IMarshallingGenerator elementMarshaller, ExpressionSyntax numElementsExpr)
@@ -75,21 +75,13 @@ namespace Microsoft.Interop
                 case StubCodeContext.Stage.Marshal:
                     if (info.RefKind != RefKind.Out)
                     {
-                        foreach (var statement in GenerateConditionalAllocationSyntax(
-                            info,
-                            context,
-                            StackAllocBytesThreshold))
-                        {
-                            yield return statement;
-                        }
-
                         BlockSyntax marshalBlock = Block();
 
                         string managedLocal = managedIdentifer;
 
                         if (info.IsByRef)
                         {
-                            // Copy the managed object to a local to avoid the caller modifing the managed value on another thread
+                            // Copy the managed object to a local to avoid the caller modifying the managed value on another thread
                             // while we marshal the contents.
                             managedLocal = managedIdentifer + ArrayMarshallingCodeContext.LocalManagedIdentifierSuffix;
                             marshalBlock = marshalBlock.AddStatements(LocalDeclarationStatement(
@@ -101,15 +93,21 @@ namespace Microsoft.Interop
                                                 IdentifierName(managedIdentifer)))))));
                         }
 
+                        marshalBlock = marshalBlock.AddStatements(
+                            GenerateConditionalAllocationSyntax(
+                                info,
+                                context,
+                                StackAllocBytesThreshold).ToArray());
+
                         // Iterate through the elements of the array to marshal them
-                        var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, IndexerIdentifier, context, stripLocalManagedIdentifierSuffix: info.IsByRef);
+                        var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, IndexerIdentifier, context, appendLocalManagedIdentifierSuffix: info.IsByRef);
                         marshalBlock = marshalBlock.AddStatements(IfStatement(BinaryExpression(SyntaxKind.NotEqualsExpression,
                             IdentifierName(managedLocal),
                             LiteralExpression(SyntaxKind.NullLiteralExpression)),
                             MarshallerHelpers.GetForLoop(managedLocal, IndexerIdentifier)
                                 .WithStatement(Block(
                                     List(_elementMarshaller.Generate(
-                                        info with { ManagedType = GetElementTypeSymbol(info), InstanceIdentifier = managedLocal },
+                                        info with { ManagedType = GetElementTypeSymbol(info) },
                                         arraySubContext))))));
                         yield return marshalBlock.Statements.Count == 1 ? marshalBlock.Statements[0] : marshalBlock;
                     }
@@ -133,7 +131,7 @@ namespace Microsoft.Interop
                                         VariableDeclarator(managedLocal)))));
                         }
 
-                        var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, IndexerIdentifier, context, stripLocalManagedIdentifierSuffix: info.IsByRef);
+                        var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, IndexerIdentifier, context, appendLocalManagedIdentifierSuffix: info.IsByRef);
                         
                         unmarshalBlock = unmarshalBlock.AddStatements(IfStatement(
                             BinaryExpression(SyntaxKind.NotEqualsExpression,
@@ -152,7 +150,7 @@ namespace Microsoft.Interop
                                 MarshallerHelpers.GetForLoop(managedLocal, IndexerIdentifier)
                                     .WithStatement(Block(
                                         List(_elementMarshaller.Generate(
-                                            info with { ManagedType = GetElementTypeSymbol(info), InstanceIdentifier = managedLocal },
+                                            info with { ManagedType = GetElementTypeSymbol(info) },
                                             arraySubContext))))),
                             ElseClause(
                                 ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
@@ -173,7 +171,7 @@ namespace Microsoft.Interop
                     break;
                 case StubCodeContext.Stage.Cleanup:
                     {
-                        var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, IndexerIdentifier, context, stripLocalManagedIdentifierSuffix: false);
+                        var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, IndexerIdentifier, context, appendLocalManagedIdentifierSuffix: false);
                         var elementCleanup = List(_elementMarshaller.Generate(info with { ManagedType = GetElementTypeSymbol(info) }, arraySubContext));
                         if (elementCleanup.Count != 0)
                         {
@@ -211,12 +209,17 @@ namespace Microsoft.Interop
 
         protected override ExpressionSyntax GenerateByteLengthCalculationExpression(TypePositionInfo info, StubCodeContext context)
         {
+            string managedIdentifier = context.GetIdentifiers(info).managed;
+            if (info.IsByRef)
+            {
+                managedIdentifier += ArrayMarshallingCodeContext.LocalManagedIdentifierSuffix;
+            }
             // checked(sizeof(<nativeElementType>) * <managedIdentifier>.Length)
             return CheckedExpression(SyntaxKind.CheckedExpression,
                 BinaryExpression(SyntaxKind.MultiplyExpression,
                     SizeOfExpression(GetNativeElementTypeSyntax(info)),
                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName(context.GetIdentifiers(info).managed),
+                        IdentifierName(managedIdentifier),
                         IdentifierName("Length"))));
         }
 
