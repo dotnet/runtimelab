@@ -394,7 +394,7 @@ add_custom_command(
 
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cpu-s390x.h
-  COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/genmdesc.py TARGET_S390X ${CMAKE_CURRENT_SOURCE_DIR} cpu-s390x.h s390x_cpu_desc ${CMAKE_CURRENT_SOURCE_DIR}/cpu-s390x.md
+  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/genmdesc.py TARGET_S390X ${CMAKE_CURRENT_SOURCE_DIR} cpu-s390x.h s390x_cpu_desc ${CMAKE_CURRENT_SOURCE_DIR}/cpu-s390x.md
   VERBATIM
 )
 
