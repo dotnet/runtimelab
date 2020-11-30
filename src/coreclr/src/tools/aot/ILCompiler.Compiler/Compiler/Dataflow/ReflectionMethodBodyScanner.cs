@@ -306,6 +306,7 @@ namespace ILCompiler.Dataflow
             Type_GetEvent,
             Type_GetNestedType,
             Type_get_AssemblyQualifiedName,
+            Type_get_UnderlyingSystemType,
             Expression_Call,
             Expression_Field,
             Expression_Property,
@@ -449,6 +450,12 @@ namespace ILCompiler.Dataflow
                     && calledMethod.Signature.Length == 0
                     && !calledMethod.Signature.IsStatic
                     => IntrinsicId.Type_get_AssemblyQualifiedName,
+
+                // System.Type.UnderlyingSystemType
+                "get_UnderlyingSystemType" when calledMethod.IsDeclaredOnType("System", "Type")
+                    && calledMethod.Signature.Length == 0
+                    && !calledMethod.Signature.IsStatic
+                    => IntrinsicId.Type_get_UnderlyingSystemType,
 
                 // System.Type.GetProperty (string)
                 // System.Type.GetProperty (string, BindingFlags)
@@ -1156,6 +1163,16 @@ namespace ILCompiler.Dataflow
                             {
                                 methodReturnValue = transformedResult;
                             }
+                        }
+                        break;
+
+                    //
+                    // UnderlyingSystemType
+                    //
+                    case IntrinsicId.Type_get_UnderlyingSystemType:
+                        {
+                            // This is identity for the purposes of the analysis.
+                            methodReturnValue = methodParams[0];
                         }
                         break;
 
