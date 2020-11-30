@@ -4782,9 +4782,6 @@ if test "x$host" != "x$target"; then
 		TARGET=ARM;
 		CPPFLAGS="$CPPFLAGS -D__ARM_EABI__"
 		;;
-   s390x*)
-		TARGET=S390X
-		;;
    i686*-linux-*)
 		TARGET=X86;
 		;;
