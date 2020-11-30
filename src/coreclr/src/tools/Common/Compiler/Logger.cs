@@ -99,7 +99,7 @@ namespace ILCompiler
                         || suppression.FixedArguments[1].Value is not string warningId
                         || warningId.Length < 6
                         || !warningId.StartsWith("IL")
-                        || (warningId.Length > 6 && warningId[5] != ':')
+                        || (warningId.Length > 6 && warningId[6] != ':')
                         || !int.TryParse(warningId.Substring(2, 4), out int suppressedCode))
                     {
                         continue;
