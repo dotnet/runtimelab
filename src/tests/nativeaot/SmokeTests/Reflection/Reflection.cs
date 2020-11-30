@@ -49,6 +49,7 @@ internal class ReflectionTest
         // Mostly functionality tests
         //
         TestCreateDelegate.Run();
+        TestGetUninitializedObject.Run();
         TestInstanceFields.Run();
         TestReflectionInvoke.Run();
 #if !CODEGEN_CPP
@@ -484,6 +485,35 @@ internal class ReflectionTest
                 if (d(new Greeter("pop")) != "Hello pop")
                     throw new Exception();
             }
+        }
+    }
+
+    class TestGetUninitializedObject
+    {
+        struct NeverAllocated
+        {
+            public override int GetHashCode() => 800;
+        }
+
+        struct AlsoNeverAllocated
+        {
+            public override int GetHashCode() => 500;
+        }
+
+        public static void Run()
+        {
+            Console.WriteLine(nameof(TestGetUninitializedObject));
+
+            // Check that the vtable of a type passed to GetUninitializedObject
+            // as a Nullable is intact.
+            var obj1 = RuntimeHelpers.GetUninitializedObject(typeof(NeverAllocated?));
+            if (obj1.GetHashCode() != 800)
+                throw new Exception();
+
+            // Check that the vtable of a type passed to GetUninitializedObject is intact.
+            var obj2 = RuntimeHelpers.GetUninitializedObject(typeof(AlsoNeverAllocated));
+            if (obj2.GetHashCode() != 500)
+                throw new Exception();
         }
     }
 
