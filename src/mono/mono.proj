@@ -178,7 +178,6 @@
       <_MonoCPPFLAGS Include="-DFD_SETSIZE=1024" />
       <_MonoCPPFLAGS Include="-DNVALGRIND" />
     </ItemGroup>
-
     <!-- OSX specific options -->
     <ItemGroup Condition="'$(TargetsOSX)' == 'true'">
       <_MonoCMakeArgs Include="-DCMAKE_OSX_DEPLOYMENT_TARGET=$(macOSVersionMin)" />
