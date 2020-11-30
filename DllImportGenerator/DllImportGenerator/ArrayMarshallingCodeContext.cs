@@ -24,6 +24,18 @@ namespace Microsoft.Interop
 
         public override bool CanUseAdditionalTemporaryState => false;
 
+        /// <summary>
+        /// Create a <see cref="StubCodeContext"/> for marshalling elements of an array.
+        /// </summary>
+        /// <param name="currentStage">The current marshalling stage.</param>
+        /// <param name="indexerIdentifier">The indexer in the loop to get the element to marshal from the array.</param>
+        /// <param name="parentContext">The parent context.</param>
+        /// <param name="appendLocalManagedIdentifierSuffix">
+        /// For array marshalling, we sometimes cache the array in a local to avoid multithreading issues.
+        /// Set this to <c>true</c> to add the <see cref="LocalManagedIdentifierSuffix"/> to the managed identifier when
+        /// marshalling the array elements to ensure that we use the local copy instead of the managed identifier
+        /// when marshalling elements.
+        /// </param>
         public ArrayMarshallingCodeContext(
             Stage currentStage,
             string indexerIdentifier,
