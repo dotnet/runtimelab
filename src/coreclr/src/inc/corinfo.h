@@ -208,11 +208,11 @@ TODO: Talk about initializing strutures before use
 //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-constexpr GUID JITEEVersionIdentifier = { /* a0184d06-a562-43f6-94ad-44627db87310 */
-    0xa0184d06,
-    0xa562,
-    0x43f6,
-    {0x94, 0xad, 0x44, 0x62, 0x7d, 0xb8, 0x73, 0x10}
+constexpr GUID JITEEVersionIdentifier = { /* 0d235fe4-65a1-487a-8553-c845496da901 */
+    0x0d235fe4,
+    0x65a1,
+    0x487a,
+    {0x85, 0x53, 0xc8, 0x45, 0x49, 0x6d, 0xa9, 0x01}
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -623,6 +623,7 @@ enum CorInfoHelpFunc
     CORINFO_HELP_STACK_PROBE,               // Probes each page of the allocated stack frame
 
     CORINFO_HELP_PATCHPOINT,                // Notify runtime that code has reached a patchpoint
+    CORINFO_HELP_CLASSPROFILE,              // Update class profile for a call site
 
     CORINFO_HELP_COUNT,
 };
@@ -1454,7 +1455,7 @@ struct CORINFO_HELPER_DESC
 //  CORINFO_DEREF_THIS        --> Deref the byref to get an object reference
 //
 // In addition, the "kind" field will be set as follows for constraint calls:
-
+//
 //    CORINFO_CALL              --> the call was resolved at compile time, and
 //                                  can be compiled like a normal call.
 //    CORINFO_CALL_CODE_POINTER --> the call was resolved, but the target address will be
