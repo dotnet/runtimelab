@@ -28,7 +28,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using System.Text.Json.Serialization;
             using ReferencedAssembly;
 
-            [module: JsonSerializable(typeof(JsonSourceGenerator.IndexViewModel)]
+            [assembly: JsonSerializable(typeof(JsonSourceGenerator.IndexViewModel)]
 
             namespace JsonSourceGenerator
             {
@@ -81,7 +81,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using System.Collections.Generic;
             using ReferencedAssembly;
 
-            [module: JsonSerializable(typeof(JsonSourceGenerator.IndexViewModel)]
+            [assembly: JsonSerializable(typeof(JsonSourceGenerator.IndexViewModel)]
 
             namespace JsonSourceGenerator
             {

@@ -570,7 +570,7 @@ namespace System.Text.Json.Serialization
         public JsonPropertyNameAttribute(string name) { }
         public string Name { get { throw null; } }
     }
-    [System.AttributeUsageAttribute(System.AttributeTargets.Module, AllowMultiple=true)]
+    [System.AttributeUsageAttribute(System.AttributeTargets.Assembly, AllowMultiple=true)]
     public sealed partial class JsonSerializableAttribute : System.Text.Json.Serialization.JsonAttribute
     {
         public JsonSerializableAttribute(System.Type type) { }
