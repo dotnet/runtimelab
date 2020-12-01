@@ -220,6 +220,20 @@ namespace Microsoft.Interop
                             ParseTypeName("System.IntPtr"),
                             IdentifierName(context.GetIdentifiers(info).native))))));
         }
+
+        protected override ExpressionSyntax GenerateNullCheckExpression(TypePositionInfo info, StubCodeContext context)
+        {
+            string managedIdentifier = context.GetIdentifiers(info).managed;
+            if (info.IsByRef && context.CanUseAdditionalTemporaryState)
+            {
+                managedIdentifier += ArrayMarshallingCodeContext.LocalManagedIdentifierSuffix;
+            }
+
+            return BinaryExpression(
+                    SyntaxKind.NotEqualsExpression,
+                    IdentifierName(managedIdentifier),
+                    LiteralExpression(SyntaxKind.NullLiteralExpression));
+        }
     }
 
 }
