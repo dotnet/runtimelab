@@ -16,15 +16,18 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
     /// <summary>
     ///     Class encapsulating TLS related logic and interop.
     /// </summary>
-    internal sealed class OpenSslTls : ITls
+    internal sealed unsafe class OpenSslTls : ITls
     {
         // keep static reference to the delegates passed to native code to prevent their deallocation
-        private static readonly IntPtr _sslCtxGlobal = Interop.OpenSslQuic.SslCtxNew(Interop.OpenSslQuic.TlsMethod());
-        private static readonly unsafe Interop.OpenSslQuic.AlpnSelectCb AlpnSelectCbDelegate = AlpnSelectCbImpl;
-        private static readonly unsafe OpenSslQuicMethods.AddHandshakeDataFunc AddHandshakeDelegate = AddHandshakeDataImpl;
-        private static readonly unsafe OpenSslQuicMethods.SetEncryptionSecretsFunc SetEncryptionSecretsDelegate = SetEncryptionSecretsImpl;
-        private static readonly OpenSslQuicMethods.FlushFlightFunc FlushFlightDelegate = FlushFlightImpl;
-        private static readonly OpenSslQuicMethods.SendAlertFunc SendAlertDelegate = SendAlertImpl;
+        private static readonly IntPtr _sslCtxGlobal = CreateSslCtx();
+
+        private static IntPtr CreateSslCtx()
+        {
+            IntPtr sslctx = Interop.OpenSslQuic.SslCtxNew(Interop.OpenSslQuic.TlsMethod());
+            Interop.OpenSslQuic.SslCtxSetAlpnSelectCb(sslctx, &AlpnSelectCbImpl, IntPtr.Zero);
+
+            return sslctx;
+        }
 
         // private static readonly Interop.OpenSslQuic.TlsExtServernameCallback tlsExtServernameCallbackDelegate =
         //     TlsExtCallbackImpl;
@@ -56,32 +59,23 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
             // TlsCipherSuite.TLS_CHACHA20_POLY1305_SHA256
         };
 
-        private static readonly IntPtr _callbacksPtr;
+        // static callbacks structure stored on the unmanaged heap
+        private static readonly Interop.OpenSslQuic.QuicMethodCallbacks* _callbacksPtr = AllocateCallbacks();
 
-        // this initialization actually cannot be done in a field initializer
-#pragma warning disable CA1810
-        static unsafe OpenSslTls()
+        private static Interop.OpenSslQuic.QuicMethodCallbacks* AllocateCallbacks()
         {
-            _callbacksPtr = Marshal.AllocHGlobal(sizeof(OpenSslQuicMethods.NativeCallbacks));
-            *(OpenSslQuicMethods.NativeCallbacks*)_callbacksPtr.ToPointer() = new OpenSslQuicMethods.NativeCallbacks
+            Interop.OpenSslQuic.QuicMethodCallbacks* callbacks = (Interop.OpenSslQuic.QuicMethodCallbacks*) Marshal.AllocHGlobal(sizeof(Interop.OpenSslQuic.QuicMethodCallbacks));
+
+            *callbacks = new Interop.OpenSslQuic.QuicMethodCallbacks
             {
-                setEncryptionSecrets =
-                    Marshal.GetFunctionPointerForDelegate(SetEncryptionSecretsDelegate),
-                addHandshakeData =
-                    Marshal.GetFunctionPointerForDelegate(AddHandshakeDelegate),
-                flushFlight =
-                    Marshal.GetFunctionPointerForDelegate(FlushFlightDelegate),
-                sendAlert = Marshal.GetFunctionPointerForDelegate(SendAlertDelegate)
+                setEncryptionSecrets = &SetEncryptionSecrets,
+                addHandshakeData = &AddHandshakeData,
+                flushFlight = &FlushFlight,
+                sendAlert = &SendAlert
             };
 
-            Interop.OpenSslQuic.SslCtxSetAlpnSelectCb(_sslCtxGlobal,
-                Marshal.GetFunctionPointerForDelegate(AlpnSelectCbDelegate), IntPtr.Zero);
-
-            // Interop.OpenSslQuic.SslCtxSetTlsExtServernameCallback(
-            //     Interop.OpenSslQuic.__globalSslCtx,
-            //     tlsExtServernameCallbackDelegate);
+            return callbacks;
         }
-#pragma warning restore CA1810
 
         internal OpenSslTls(ManagedQuicConnection connection, QuicClientConnectionOptions options, TransportParameters localTransportParams)
             : this(connection,
@@ -127,7 +121,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
                 options.ServerAuthenticationOptions?.ServerCertificateSelectionCallback;
         }
 
-        private unsafe OpenSslTls(ManagedQuicConnection connection,
+        private OpenSslTls(ManagedQuicConnection connection,
             bool isServer,
             TransportParameters localTransportParams,
             List<SslApplicationProtocol>? applicationProtocols,
@@ -140,7 +134,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
             _isServer = isServer;
 
             _ssl = Interop.OpenSslQuic.SslNew(_sslCtxGlobal);
-            Interop.OpenSslQuic.SslSetQuicMethod(_ssl, _callbacksPtr);
+            Interop.OpenSslQuic.SslSetQuicMethod(_ssl, (Interop.OpenSslQuic.QuicMethodCallbacks*)_callbacksPtr);
 
             // add the current instance as contextual data so we can retrieve it inside the callback
             Interop.OpenSslQuic.SslSetExData(_ssl, _tlsInstanceIndex, GCHandle.ToIntPtr(_gcHandle));
@@ -170,7 +164,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
             SetAlpn(applicationProtocols);
         }
 
-        private unsafe void SetServerCertificate(X509Certificate serverCertificate)
+        private void SetServerCertificate(X509Certificate serverCertificate)
         {
             var cert = (serverCertificate as X509Certificate2) ?? new X509Certificate2(serverCertificate.Handle);
             if (!cert.HasPrivateKey)
@@ -274,7 +268,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
             Interop.OpenSslQuic.SslSetCiphersuites(_ssl, ciphersString);
         }
 
-        private unsafe void SetAlpn(List<SslApplicationProtocol> protos)
+        private void SetAlpn(List<SslApplicationProtocol> protos)
         {
             int totalLength = 0;
             for (int i = 0; i < protos.Count; i++)
@@ -373,7 +367,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
             return Interop.OpenSslQuic.SslGetCipherId(_ssl);
         }
 
-        public unsafe TransportParameters? GetPeerTransportParameters()
+        public TransportParameters? GetPeerTransportParameters()
         {
             if (Interop.OpenSslQuic.SslGetPeerQuicTransportParams(_ssl, out byte* data, out IntPtr length) == 0 ||
                 length.ToInt32() == 0)
@@ -411,7 +405,11 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
             return 3; // SSL_TLSEXT_ERR_NOACK
         }
 
-        private static unsafe int SetEncryptionSecretsImpl(IntPtr ssl, OpenSslEncryptionLevel level, byte* readSecret,
+// these are on private methods, so CLS-compliance is not required
+// [CS3016] Arrays as attribute arguments is not CLS-compliant;
+#pragma warning disable CS3016
+        [UnmanagedCallersOnly(CallConvs = new[] {typeof(CallConvCdecl)})]
+        private static int SetEncryptionSecrets(IntPtr ssl, OpenSslEncryptionLevel level, byte* readSecret,
             byte* writeSecret, UIntPtr secretLen)
         {
             var tls = GetTlsInstance(ssl);
@@ -423,7 +421,8 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
             return 1;
         }
 
-        private static unsafe int AddHandshakeDataImpl(IntPtr ssl, OpenSslEncryptionLevel level, byte* data,
+        [UnmanagedCallersOnly(CallConvs = new[] {typeof(CallConvCdecl)})]
+        private static int AddHandshakeData(IntPtr ssl, OpenSslEncryptionLevel level, byte* data,
             UIntPtr len)
         {
             var tls = GetTlsInstance(ssl);
@@ -434,7 +433,8 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
             return 1;
         }
 
-        private static int FlushFlightImpl(IntPtr ssl)
+        [UnmanagedCallersOnly(CallConvs = new[] {typeof(CallConvCdecl)})]
+        private static int FlushFlight(IntPtr ssl)
         {
             var tls = GetTlsInstance(ssl);
 
@@ -442,7 +442,8 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
             return 1;
         }
 
-        private static int SendAlertImpl(IntPtr ssl, OpenSslEncryptionLevel level, byte alert)
+        [UnmanagedCallersOnly(CallConvs = new[] {typeof(CallConvCdecl)})]
+        private static int SendAlert(IntPtr ssl, OpenSslEncryptionLevel level, byte alert)
         {
             var tls = GetTlsInstance(ssl);
 
@@ -450,7 +451,8 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
             return 1;
         }
 
-        private static unsafe int AlpnSelectCbImpl(IntPtr ssl, ref byte* pOut, ref byte outLen, byte* pIn, int inLen, IntPtr arg)
+        [UnmanagedCallersOnly(CallConvs = new[] {typeof(CallConvCdecl)})]
+        private static int AlpnSelectCbImpl(IntPtr ssl, byte** pOut, byte* outLen, byte* pIn, int inLen, IntPtr arg)
         {
             var tls = GetTlsInstance(ssl);
             var localProtocols = tls._alpnProtocols;
@@ -474,8 +476,8 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
                     if (localProtocols[i].Protocol.Span.SequenceEqual(remoteProtocol))
                     {
                         // accept the protocol
-                        outLen = (byte) length;
-                        pOut = (byte*) Unsafe.AsPointer(ref MemoryMarshal.GetReference(remoteProtocol));
+                        *outLen = (byte) length;
+                        *pOut = (byte*) Unsafe.AsPointer(ref MemoryMarshal.GetReference(remoteProtocol));
 
                         return Interop.OpenSslQuic.SSL_TLSEXT_ERR_OK;
                     }
@@ -487,5 +489,6 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
             // no protocol negotiated
             return Interop.OpenSslQuic.SSL_TLSEXT_ERR_NOACK;
         }
+#pragma warning restore CS3016
     }
 }

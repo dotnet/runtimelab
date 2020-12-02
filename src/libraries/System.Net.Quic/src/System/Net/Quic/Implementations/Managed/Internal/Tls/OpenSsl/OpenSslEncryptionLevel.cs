@@ -3,7 +3,7 @@
 
 namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
 {
-    internal enum OpenSslEncryptionLevel
+    internal enum OpenSslEncryptionLevel : int
     {
         Initial = 0,
         EarlyData,

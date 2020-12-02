@@ -33,7 +33,7 @@ internal static partial class Interop
                 ssl = SslNew(ctx);
 
                 // this function is present only in the modified OpenSSL library
-                SslSetQuicMethod(ssl, IntPtr.Zero);
+                SslSetQuicMethod(ssl, (QuicMethodCallbacks*) IntPtr.Zero);
 
                 IsSupported = true;
             }
@@ -99,7 +99,23 @@ internal static partial class Interop
         internal static extern byte* SslGetVersion(IntPtr ssl);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_set_quic_method")]
-        internal static extern int SslSetQuicMethod(IntPtr ssl, IntPtr methods);
+        internal static extern int SslSetQuicMethod(IntPtr ssl, QuicMethodCallbacks* methods);
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct QuicMethodCallbacks
+        {
+            //int (*)(IntPtr ssl, OpenSslEncryptionLevel level, byte* readSecret, byte* writeSecret, UIntPtr secretLen)
+            internal delegate* unmanaged[Cdecl]<IntPtr, OpenSslEncryptionLevel, byte*, byte*, UIntPtr, int> setEncryptionSecrets;
+
+            //int (*)(IntPtr ssl, OpenSslEncryptionLevel level, byte* data, UIntPtr len)
+            internal delegate* unmanaged[Cdecl]<IntPtr, OpenSslEncryptionLevel, byte*, UIntPtr, int> addHandshakeData;
+
+            //int (*)(IntPtr ssl)
+            internal delegate* unmanaged[Cdecl]<IntPtr, int> flushFlight;
+
+            //int (*)(IntPtr ssl, OpenSslEncryptionLevel level, byte alert)
+            internal delegate* unmanaged[Cdecl]<IntPtr, OpenSslEncryptionLevel, byte, int> sendAlert;
+        }
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_set_accept_state")]
         internal static extern int SslSetAcceptState(IntPtr ssl);
@@ -228,10 +244,7 @@ internal static partial class Interop
         internal static extern int SslGet0AlpnSelected(IntPtr ssl, out IntPtr data, out int len);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_CTX_set_alpn_select_cb")]
-        internal static extern int SslCtxSetAlpnSelectCb(IntPtr ctx, IntPtr cb, IntPtr arg);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate int AlpnSelectCb(IntPtr ssl, ref byte* pOut, ref byte outLen, byte* pIn, int inLen, IntPtr arg);
+        internal static extern int SslCtxSetAlpnSelectCb(IntPtr ctx, delegate* unmanaged[Cdecl]<IntPtr /*ssl*/, byte** /*pOut*/, byte* /*outLen*/, byte* /*pIn*/, int /*inLen*/, IntPtr /*arg*/, /*->*/ int> cb, IntPtr arg);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_get_peer_certificate")]
         internal static extern IntPtr SslGetPeerCertificate(IntPtr ssl);
