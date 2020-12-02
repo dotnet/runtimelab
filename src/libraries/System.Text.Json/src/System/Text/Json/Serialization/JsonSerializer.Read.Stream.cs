@@ -48,7 +48,7 @@ namespace System.Text.Json
 
             if (options == null)
             {
-                options = JsonSerializerOptions.s_defaultOptions;
+                options = JsonSerializerOptions.DefaultOptions;
             }
 
             ReadStack state = default;
@@ -201,7 +201,7 @@ namespace System.Text.Json
             if (returnType == null)
                 throw new ArgumentNullException(nameof(returnType));
 
-            options ??= JsonSerializerOptions.s_defaultOptions;
+            options ??= JsonSerializerOptions.DefaultOptions;
 
             ReadStack state = default;
             state.Initialize(returnType, options, supportContinuation: true);

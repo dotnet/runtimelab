@@ -120,6 +120,7 @@ namespace System.Text.Json.Serialization.Metadata
             JsonConverter converter,
             JsonSerializerOptions options)
         {
+            // todo: avoid this reflection-based code-path for codegen scenarios
             JsonNumberHandling? numberHandling = GetNumberHandlingForType(declaredPropertyType);
 
             JsonPropertyInfo jsonPropertyInfo = CreateProperty(

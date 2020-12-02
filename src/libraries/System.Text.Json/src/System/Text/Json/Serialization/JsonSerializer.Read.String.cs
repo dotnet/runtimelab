@@ -236,14 +236,14 @@ namespace System.Text.Json
         {
             if (options == null)
             {
-                options = JsonSerializerOptions.s_defaultOptions;
+                options = JsonSerializerOptions.DefaultOptions;
             }
 
             ReadStack state = default;
             state.Initialize(returnType, options, supportContinuation: false);
 
             JsonConverter jsonConverter = state.Current.JsonPropertyInfo!.ConverterBase;
-            return Deserialize<TValue>(jsonConverter, json, returnType, options, ref state);
+            return Deserialize<TValue>(jsonConverter, json, options, ref state);
         }
 
         private static TValue? DeserializeUsingMetadata<TValue>(string json, JsonClassInfo? jsonClassInfo)
@@ -262,7 +262,6 @@ namespace System.Text.Json
             return Deserialize<TValue>(
                 jsonClassInfo.PropertyInfoForClassInfo.ConverterBase,
                 json.AsSpan(),
-                typeof(TValue),
                 jsonClassInfo.Options,
                 ref state);
         }
@@ -270,7 +269,6 @@ namespace System.Text.Json
         private static TValue? Deserialize<TValue>(
             JsonConverter jsonConverter,
             ReadOnlySpan<char> json,
-            Type returnType,
             JsonSerializerOptions options,
             ref ReadStack state)
         {
@@ -294,7 +292,7 @@ namespace System.Text.Json
                 var readerState = new JsonReaderState(options.GetReaderOptions());
                 var reader = new Utf8JsonReader(utf8, isFinalBlock: true, readerState);
 
-                TValue? value = ReadCore<TValue>(ref reader, returnType, options);
+                TValue? value = ReadCore<TValue>(jsonConverter, ref reader, options, ref state);
 
                 // The reader should have thrown if we have remaining bytes.
                 Debug.Assert(reader.BytesConsumed == actualByteCount);

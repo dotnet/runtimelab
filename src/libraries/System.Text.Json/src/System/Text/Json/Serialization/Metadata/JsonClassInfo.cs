@@ -211,7 +211,7 @@ namespace System.Text.Json.Serialization.Metadata
 
             if (options == null)
             {
-                options = JsonSerializerOptions.s_defaultOptions;
+                options = JsonSerializerOptions.DefaultCodeGenOptions;
             }
 
             Options = options;
@@ -577,7 +577,7 @@ namespace System.Text.Json.Serialization.Metadata
                 if (typeof(IDictionary<string, object>).IsAssignableFrom(declaredPropertyType) ||
                     typeof(IDictionary<string, JsonElement>).IsAssignableFrom(declaredPropertyType))
                 {
-                    JsonConverter converter = Options.GetConverter(declaredPropertyType);
+                    JsonConverter converter = Options.GetConverter(declaredPropertyType)!;
                     Debug.Assert(converter != null);
                 }
                 else
@@ -652,7 +652,12 @@ namespace System.Text.Json.Serialization.Metadata
             Debug.Assert(type != null);
             ValidateType(type, parentClassType, memberInfo, options);
 
-            JsonConverter converter = options.DetermineConverter(parentClassType, type, memberInfo);
+            JsonConverter? converter = options.DetermineConverter(parentClassType, type, memberInfo);
+            if (converter == null)
+            {
+                Debug.Assert(!options._initializeDefaultConverters);
+                throw new NotSupportedException("Built-in converters not initialized; thus no converter found for type.");
+            }
 
             // The runtimeType is the actual value being assigned to the property.
             // There are three types to consider for the runtimeType:

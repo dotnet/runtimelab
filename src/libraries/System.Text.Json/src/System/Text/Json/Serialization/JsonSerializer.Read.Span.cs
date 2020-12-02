@@ -26,7 +26,7 @@ namespace System.Text.Json
         {
             if (options == null)
             {
-                options = JsonSerializerOptions.s_defaultOptions;
+                options = JsonSerializerOptions.DefaultOptions;
             }
 
             var readerState = new JsonReaderState(options.GetReaderOptions());
@@ -63,7 +63,7 @@ namespace System.Text.Json
 
             if (options == null)
             {
-                options = JsonSerializerOptions.s_defaultOptions;
+                options = JsonSerializerOptions.DefaultOptions;
             }
 
             var readerState = new JsonReaderState(options.GetReaderOptions());

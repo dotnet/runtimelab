@@ -10,15 +10,14 @@ namespace System.Text.Json.Serialization
     /// </summary>
     public partial class JsonSerializerContext : IDisposable
     {
-        private JsonSerializerOptions? _userSpecifiedOptions;
-        internal JsonSerializerOptions _options;
+        internal readonly JsonSerializerOptions? _options;
 
         /// <summary>
         /// todo
         /// </summary>
         public JsonSerializerContext()
         {
-            _options = JsonSerializerOptions.s_defaultOptions;
+            _options = JsonSerializerOptions.DefaultCodeGenOptions;
         }
 
         /// <summary>
@@ -27,7 +26,7 @@ namespace System.Text.Json.Serialization
         /// <param name="options"></param>
         public JsonSerializerContext(JsonSerializerOptions options)
         {
-            _userSpecifiedOptions = _options = options;
+            _options = options;
         }
 
         /// <summary>
@@ -35,7 +34,7 @@ namespace System.Text.Json.Serialization
         /// </summary>
         public JsonSerializerOptions? GetOptions()
         {
-            return _userSpecifiedOptions;
+            return _options;
         }
 
         /// <summary>

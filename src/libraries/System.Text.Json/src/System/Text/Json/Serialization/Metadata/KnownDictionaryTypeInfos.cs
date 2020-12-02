@@ -17,6 +17,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
+        // TODO: Should this return JsonCollectionTypeInfo<T>?
         public static JsonTypeInfo<Dictionary<TKey, TValue>> GetDictionary(JsonClassInfo elementInfo, JsonSerializerContext context)
         {
             if (s_dictionaryOfTKeyTValue == null)

@@ -541,10 +541,9 @@ namespace System.Text.Json.Serialization.Tests
         [Theory]
         [InlineData(-1)]
         [InlineData(2)]
-        public static void PredefinedSerializerOptions_UnhandledDefaults(int enumValue)
+        public static void PredefinedSerializerOptions_UnhandledDefaults(int outOfRangeEnumValue)
         {
-            var outOfRangeSerializerDefaults = (JsonSerializerDefaults)enumValue;
-            Assert.Throws<ArgumentOutOfRangeException>(() => new JsonSerializerOptions(outOfRangeSerializerDefaults));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new JsonSerializerOptions((JsonSerializerDefaults)outOfRangeEnumValue));
         }
 
         private static JsonSerializerOptions GetFullyPopulatedOptionsInstance()

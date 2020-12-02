@@ -26,7 +26,7 @@ namespace System.Text.Json.Serialization.Metadata
             ConstructorDelegate createObjectFunc,
             SerializeDelegate serializeFunc,
             DeserializeDelegate deserializeFunc,
-            JsonSerializerOptions? options) : base(typeof(T), options, ClassType.Object)
+            JsonSerializerOptions options) : base(typeof(T), options, ClassType.Object)
         {
             if (createObjectFunc == null)
             {
@@ -81,7 +81,8 @@ namespace System.Text.Json.Serialization.Metadata
 
             if (classInfo == null)
             {
-                jsonPropertyInfo.Converter = (JsonConverter<TProperty>)Options.DetermineConverter(typeof(T), typeof(TProperty), memberInfo: null);
+                JsonConverter? converter = Options.DetermineConverter(typeof(T), typeof(TProperty), memberInfo: null);
+                jsonPropertyInfo.Converter = (JsonConverter<TProperty>)converter! ?? throw new NotSupportedException("No registered converter for the type");
             }
             else
             {

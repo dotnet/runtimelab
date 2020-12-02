@@ -11,6 +11,8 @@ namespace System.Text.Json.Serialization
     /// </summary>
     public partial class JsonSerializerContext
     {
+        // TODO: do we need to call CompleteInitialization for each TypeInfo here (to add them to the class info cache)
+
         private JsonTypeInfo<bool>? _boolean;
         private static JsonTypeInfo<bool>? s_boolean;
         /// <summary>
@@ -376,7 +378,9 @@ namespace System.Text.Json.Serialization
                     {
                         if (s_string == null)
                         {
-                            s_string = new JsonValueInfo<string>(new StringConverter(), _options);
+                            var valueInfo = new JsonValueInfo<string>(new StringConverter(), _options);
+                            valueInfo.CompleteInitialization();
+                            s_string = valueInfo;
                         }
 
                         _string = s_string;

@@ -238,7 +238,13 @@ namespace {GenerationNamespace}
         {{
             get
             {{
-                _{typeFriendlyName} ??= KnownCollectionTypeInfos<{valueTypeCompilableName}>.Get{collectionType}({elementClassInfo}, this);
+                if (_{typeFriendlyName} == null)
+                {{
+                    var typeInfo = (JsonCollectionTypeInfo<{typeCompilableName}>)KnownCollectionTypeInfos<{valueTypeCompilableName}>.Get{collectionType}({elementClassInfo}, this);
+                    typeInfo.CompleteInitialization();
+                    _{typeFriendlyName} = typeInfo;
+                }}
+                
                 return _{typeFriendlyName};
             }}
         }}
@@ -281,7 +287,13 @@ namespace {GenerationNamespace}
         {{
             get
             {{
-                _{typeFriendlyName} ??= KnownDictionaryTypeInfos<{keyTypeCompilableName}, {valueTypeCompilableName}>.Get{collectionType}({elementClassInfo}, this);
+                if (_{typeFriendlyName} == null)
+                {{
+                    var typeInfo = (JsonCollectionTypeInfo<{typeCompilableName}>)KnownDictionaryTypeInfos<{keyTypeCompilableName}, {valueTypeCompilableName}>.Get{collectionType}({elementClassInfo}, this);
+                    typeInfo.CompleteInitialization();
+                    _{typeFriendlyName} = typeInfo;
+                }}
+                
                 return _{typeFriendlyName};
             }}
         }}
@@ -691,7 +703,7 @@ namespace {GenerationNamespace}
                 ");
             }
 
-            // Finalize constructor.
+            // Finalize initialize method.
             sb.Append($@"
                 typeInfo.CompleteInitialization();
                 TypeInfo = typeInfo;
