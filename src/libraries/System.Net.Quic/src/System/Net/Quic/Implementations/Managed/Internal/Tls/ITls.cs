@@ -13,7 +13,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls
         void OnHandshakeDataReceived(EncryptionLevel level, ReadOnlySpan<byte> data);
         bool TryAdvanceHandshake();
         TlsCipherSuite GetNegotiatedCipher();
-        TransportParameters? GetPeerTransportParameters(bool isServer);
+        TransportParameters? GetPeerTransportParameters();
         SslApplicationProtocol GetNegotiatedProtocol();
     }
 }

@@ -223,7 +223,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
 
         public TlsCipherSuite GetNegotiatedCipher() => QuicConstants.InitialCipherSuite;
 
-        public TransportParameters? GetPeerTransportParameters(bool isServer) => _remoteTransportParams;
+        public TransportParameters? GetPeerTransportParameters() => _remoteTransportParams;
 
         public SslApplicationProtocol GetNegotiatedProtocol() => _alpn[0];
 

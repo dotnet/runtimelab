@@ -373,7 +373,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
             return Interop.OpenSslQuic.SslGetCipherId(_ssl);
         }
 
-        public unsafe TransportParameters? GetPeerTransportParameters(bool isServer)
+        public unsafe TransportParameters? GetPeerTransportParameters()
         {
             if (Interop.OpenSslQuic.SslGetPeerQuicTransportParams(_ssl, out byte* data, out IntPtr length) == 0 ||
                 length.ToInt32() == 0)
@@ -383,7 +383,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
             }
 
             var dataSpan = new Span<byte>(data, length.ToInt32());
-            TransportParameters.Read(dataSpan, !isServer, out var parameters);
+            TransportParameters.Read(dataSpan, !_isServer, out var parameters);
 
             return parameters;
         }

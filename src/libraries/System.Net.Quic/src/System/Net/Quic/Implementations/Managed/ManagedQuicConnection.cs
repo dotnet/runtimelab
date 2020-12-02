@@ -228,7 +228,7 @@ namespace System.Net.Quic.Implementations.Managed
             IsServer = false;
             _remoteEndpoint = options.RemoteEndPoint!;
 
-            _socketContext = new SingleConnectionSocketContext(options.LocalEndPoint, _remoteEndpoint, this)
+            _socketContext = new QuicClientSocketContext(options.LocalEndPoint, _remoteEndpoint, this)
                 .ConnectionContext;
             _localTransportParameters = TransportParameters.FromClientConnectionOptions(options);
             Tls = tlsProvider.CreateClient(this, options, _localTransportParameters);
@@ -396,7 +396,7 @@ namespace System.Net.Quic.Implementations.Managed
                 return;
             }
 
-            var param = Tls.GetPeerTransportParameters(IsServer);
+            var param = Tls.GetPeerTransportParameters();
 
             if (param == null)
             {

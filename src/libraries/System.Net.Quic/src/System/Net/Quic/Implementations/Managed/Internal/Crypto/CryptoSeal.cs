@@ -90,14 +90,14 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Crypto
             }
         }
 
-        public int UnprotectHeader(Span<byte> buffer, int pnOffset)
+        public void UnprotectHeader(Span<byte> buffer, int pnOffset)
         {
             // remove header protection
             Span<byte> protectionMask = stackalloc byte[5];
             _algorithm.CreateHeaderProtectionMask(buffer.Slice(pnOffset + 4, _algorithm.SampleLength), protectionMask);
 
             // pass header span as if packet number had the maximum 4 bytes
-            return UnprotectHeader(buffer.Slice(0, pnOffset + 4), protectionMask);
+            UnprotectHeader(buffer.Slice(0, pnOffset + 4), protectionMask);
         }
 
         public bool UnprotectPacket(Span<byte> buffer, int pnOffset, int payloadLength, long largestAckedPn)

@@ -10,10 +10,9 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls
         internal static readonly QuicTlsProvider Openssl = OpenSslQuicTlsProvider.Instance;
         internal static readonly QuicTlsProvider Mock = MockQuicTlsProvider.Instance;
 
-        internal static readonly QuicTlsProvider Default =
-            OpenSslQuicTlsProvider.IsSupported
-                ? Openssl
-                : Mock;
+        internal static readonly QuicTlsProvider Default = Openssl.IsSupported ? Openssl : Mock;
+
+        internal abstract bool IsSupported { get; }
 
         internal abstract ITls CreateClient(ManagedQuicConnection connection, QuicClientConnectionOptions options,
             TransportParameters localTransportParams);

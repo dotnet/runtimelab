@@ -51,7 +51,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
             _recvContext = new QuicSocketContext.RecvContext(sentPacketPool);
         }
 
-        public QuicConnectionContext(SingleConnectionSocketContext parent, ManagedQuicConnection connection)
+        public QuicConnectionContext(QuicClientSocketContext parent, ManagedQuicConnection connection)
         {
             _parent = parent;
             Connection = connection;

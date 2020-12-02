@@ -5,12 +5,12 @@ using System.Diagnostics;
 
 namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
 {
-    internal sealed class SingleConnectionSocketContext : QuicSocketContext
+    internal sealed class QuicClientSocketContext : QuicSocketContext
     {
         private readonly EndPoint _remoteEndPoint;
         internal QuicConnectionContext ConnectionContext { get; }
 
-        internal SingleConnectionSocketContext(EndPoint? localEndpoint, EndPoint remoteEndPoint,
+        internal QuicClientSocketContext(EndPoint? localEndpoint, EndPoint remoteEndPoint,
             ManagedQuicConnection connection)
             : base(localEndpoint, remoteEndPoint, connection.IsServer)
         {

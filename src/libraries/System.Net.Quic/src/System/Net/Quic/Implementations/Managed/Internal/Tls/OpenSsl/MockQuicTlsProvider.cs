@@ -9,6 +9,8 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
 
         private MockQuicTlsProvider() {}
 
+        internal override bool IsSupported => true;
+
         internal override ITls CreateClient(ManagedQuicConnection connection, QuicClientConnectionOptions options,
             TransportParameters localTransportParams) => new MockTls(connection, options, localTransportParams);
 
