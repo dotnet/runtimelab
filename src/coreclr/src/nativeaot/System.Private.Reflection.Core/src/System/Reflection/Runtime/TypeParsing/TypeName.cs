@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections;
 using System.Reflection;
 using System.Collections.Generic;
@@ -113,6 +114,8 @@ namespace System.Reflection.Runtime.TypeParsing
             return _declaringType + "+" + _nestedTypeName.EscapeTypeNameIdentifier();
         }
 
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+            Justification = "Reflection implementation")]
         public sealed override Type ResolveType(Assembly containingAssemblyIfAny, GetTypeOptions getTypeOptions)
         {
             Type declaringType = _declaringType.ResolveType(containingAssemblyIfAny, getTypeOptions);
