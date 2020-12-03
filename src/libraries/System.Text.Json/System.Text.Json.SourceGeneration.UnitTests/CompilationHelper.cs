@@ -160,8 +160,8 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using System.Collections.Generic;
             using System.Text.Json.Serialization;
 
-            [module: JsonSerializable(typeof(Fake.Location))]
-            [module: JsonSerializable(typeof(HelloWorld.Location))]
+            [assembly: JsonSerializable(typeof(Fake.Location))]
+            [assembly: JsonSerializable(typeof(HelloWorld.Location))]
 
             namespace Fake
             {

@@ -4,8 +4,13 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
+using System.Text.Json.SourceGeneration.Tests;
 using JsonCodeGeneration;
 using Xunit;
+
+// Specify a type that was already specified in TestClasses.cs to test that the generator handles this scenario well.
+[assembly: JsonSerializable(typeof(CampaignSummaryViewModel))]
 
 namespace System.Text.Json.SourceGeneration.Tests
 {

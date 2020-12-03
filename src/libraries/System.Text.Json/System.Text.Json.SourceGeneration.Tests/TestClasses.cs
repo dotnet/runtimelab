@@ -2,22 +2,24 @@
 using System.Text.Json.Serialization;
 using System.Text.Json.SourceGeneration.Tests;
 
-[module: JsonSerializable(typeof(System.Text.Json.SourceGeneration.Tests.RepeatedTypes.Location))]
-[module: JsonSerializable(typeof(System.Text.Json.SourceGeneration.Tests.Location))]
-[module: JsonSerializable(typeof(ActiveOrUpcomingEvent))]
-[module: JsonSerializable(typeof(CampaignSummaryViewModel))]
-[module: JsonSerializable(typeof(IndexViewModel))]
-[module: JsonSerializable(typeof(WeatherForecastWithPOCOs))]
-[module: JsonSerializable(typeof(EmptyPoco))]
+[assembly: JsonSerializable(typeof(System.Text.Json.SourceGeneration.Tests.RepeatedTypes.Location))]
+[assembly: JsonSerializable(typeof(System.Text.Json.SourceGeneration.Tests.Location))]
+[assembly: JsonSerializable(typeof(ActiveOrUpcomingEvent))]
+[assembly: JsonSerializable(typeof(CampaignSummaryViewModel))]
+[assembly: JsonSerializable(typeof(IndexViewModel))]
+[assembly: JsonSerializable(typeof(WeatherForecastWithPOCOs))]
+[assembly: JsonSerializable(typeof(EmptyPoco))]
 // Ensure no errors when type of member in previously specified object graph is passed as input type to generator.
-[module: JsonSerializable(typeof(HighLowTemps))]
-[module: JsonSerializable(typeof(MyType))]
-[module: JsonSerializable(typeof(MyType2))]
-[module: JsonSerializable(typeof(MyIntermediateType))]
+[assembly: JsonSerializable(typeof(HighLowTemps))]
+[assembly: JsonSerializable(typeof(MyType))]
+[assembly: JsonSerializable(typeof(MyType2))]
+[assembly: JsonSerializable(typeof(MyIntermediateType))]
+// TODO: add tests for when an invalid namespace is specified. In this case, the generated code should not contain
+// things like "using <global namespace>;" or "<invalid global code>". For example:
+//[assembly: JsonSerializable(typeof(TestsNamespace.ActiveOrUpcomingEvent))]
 
 namespace System.Text.Json.SourceGeneration.Tests.RepeatedTypes
 {
-
     public class Location
     {
         public int FakeId { get; set; }

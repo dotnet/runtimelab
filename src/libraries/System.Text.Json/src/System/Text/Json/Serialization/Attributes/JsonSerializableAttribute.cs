@@ -11,7 +11,7 @@ namespace System.Text.Json.Serialization
     /// <remarks>
     /// Must take into account that type discovery using this attribute is at compile time.
     /// </remarks>
-    [AttributeUsage(AttributeTargets.Module, AllowMultiple = true)]
+    [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
     public sealed class JsonSerializableAttribute : JsonAttribute
     {
         /// <summary>
