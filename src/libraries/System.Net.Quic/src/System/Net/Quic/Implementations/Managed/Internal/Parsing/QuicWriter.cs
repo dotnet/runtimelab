@@ -27,6 +27,8 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Parsing
 
         internal Memory<byte> Buffer => _buffer;
 
+        internal Span<byte> WrittenSpan => Buffer.Span.Slice(0, _written);
+
         internal void Reset(Memory<byte> buffer, int offset = 0)
         {
             _buffer = buffer;

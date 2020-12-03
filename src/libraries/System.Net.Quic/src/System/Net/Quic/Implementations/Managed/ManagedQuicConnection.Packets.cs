@@ -230,7 +230,7 @@ namespace System.Net.Quic.Implementations.Managed
                 PacketType packetType = PacketType.OneRtt;
                 int payloadLength = reader.BytesLeft;
 
-                if (!recvSeal.UnprotectPacket(reader.Buffer.Span, pnOffset, payloadLength,
+                if (!recvSeal.UnprotectPacket(reader.Buffer.Span, pnOffset,
                     pnSpace.LargestReceivedPacketNumber))
                 {
                     // decryption failed, drop the packet.
@@ -322,7 +322,7 @@ namespace System.Net.Quic.Implementations.Managed
             PacketType packetType = header.PacketType;
             var seal = pnSpace.RecvCryptoSeal!;
 
-            if (!seal.UnprotectPacket(reader.Buffer.Span, pnOffset, payloadLength,
+            if (!seal.UnprotectPacket(reader.Buffer.Span, pnOffset,
                 pnSpace.LargestReceivedPacketNumber))
             {
                 // decryption failed, drop the packet.
@@ -518,7 +518,7 @@ namespace System.Net.Quic.Implementations.Managed
             // ensuring that we can even send something should be handled by GetWriteLevel function
             Debug.Assert(maxPacketLength > seal.TagLength);
 
-            (int truncatedPn, int pnLength) = pnSpace.GetNextPacketNumber(recoverySpace.LargestTransportedPacketNumber);
+            int pnLength = QuicPrimitives.GetPacketNumberEncodingLength(recoverySpace.LargestTransportedPacketNumber, pnSpace.NextPacketNumber);
             WritePacketHeader(writer, packetType, pnLength);
             _trace?.OnPacketSendStart();
 
@@ -526,7 +526,7 @@ namespace System.Net.Quic.Implementations.Managed
             var payloadLengthSpan = writer.Buffer.Span.Slice(writer.BytesWritten - 2, 2);
 
             int pnOffset = writer.BytesWritten;
-            writer.WriteTruncatedPacketNumber(pnLength, truncatedPn);
+            writer.WriteTruncatedPacketNumber(pnLength, (int) pnSpace.NextPacketNumber);
 
             int written = writer.BytesWritten;
             var origBuffer = writer.Buffer;
@@ -580,8 +580,8 @@ namespace System.Net.Quic.Implementations.Managed
                 QuicPrimitives.WriteVarInt(payloadLengthSpan, payloadLength, 2);
             }
 
-            seal.ProtectPacket(writer.Buffer.Span, pnOffset, payloadLength, truncatedPn);
-            seal.ProtectHeader(writer.Buffer.Span, pnOffset);
+            seal.ProtectPacket(writer.WrittenSpan, pnOffset, pnSpace.NextPacketNumber);
+            seal.ProtectHeader(writer.WrittenSpan, pnOffset);
 
             // remember what we sent in this packet
             context.SentPacket.PacketNumber = pnSpace.NextPacketNumber;

@@ -163,6 +163,7 @@ namespace System.Net.Quic.Implementations.Managed
             ThrowIfDisposed();
             ThrowIfConnectionError();
             ThrowIfNotWritable();
+            ThrowIfWriteAborted();
 
             Debug.Assert(SendStream != null);
 
@@ -198,6 +199,7 @@ namespace System.Net.Quic.Implementations.Managed
             ThrowIfDisposed();
             ThrowIfConnectionError();
             ThrowIfNotWritable();
+            ThrowIfWriteAborted();
 
             // TODO-RZ: optimize away some of the copying
             return WriteAsyncInternal(buffer, endStream, cancellationToken);
@@ -209,6 +211,7 @@ namespace System.Net.Quic.Implementations.Managed
             ThrowIfDisposed();
             ThrowIfConnectionError();
             ThrowIfNotWritable();
+            ThrowIfWriteAborted();
 
             foreach (ReadOnlyMemory<byte> buffer in buffers)
             {
@@ -222,6 +225,7 @@ namespace System.Net.Quic.Implementations.Managed
             ThrowIfDisposed();
             ThrowIfConnectionError();
             ThrowIfNotWritable();
+            ThrowIfWriteAborted();
 
             foreach (ReadOnlyMemory<byte> buffer in buffers)
             {
@@ -242,6 +246,7 @@ namespace System.Net.Quic.Implementations.Managed
             ThrowIfDisposed();
             ThrowIfConnectionError();
             ThrowIfNotWritable();
+            ThrowIfWriteAborted();
 
             for (int i = 0; i < buffers.Span.Length; i++)
             {
@@ -381,8 +386,12 @@ namespace System.Net.Quic.Implementations.Managed
             {
                 throw new InvalidOperationException("Writing is not allowed on this stream.");
             }
+        }
 
-            // SendStream not null is implied by CanWrite
+        private void ThrowIfWriteAborted()
+        {
+            Debug.Assert(SendStream != null);
+
             if (SendStream!.Error != null)
             {
                 throw new QuicStreamAbortedException("Writing was aborted on the stream",  SendStream.Error.Value);

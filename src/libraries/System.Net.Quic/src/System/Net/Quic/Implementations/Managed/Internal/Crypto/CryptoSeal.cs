@@ -42,17 +42,22 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Crypto
             return new CryptoSeal(seal._algorithm.CipherSuite, KeyDerivation.UpdateSecret(seal._secret), seal._headerKey);
         }
 
-        public void ProtectPacket(Span<byte> buffer, int pnOffset, int payloadLength, long packetNumber)
+        private static void SplitPacket(Span<byte> buffer, int headerLength, int tagLength, out Span<byte> header, out Span<byte> payload, out Span<byte> tag)
+        {
+            // split packet buffer into spans
+            header = buffer.Slice(0, headerLength);
+            payload = buffer.Slice(headerLength, buffer.Length - headerLength - tagLength);
+            tag = buffer.Slice(buffer.Length - tagLength, tagLength);
+        }
+
+        public void ProtectPacket(Span<byte> buffer, int pnOffset, long packetNumber)
         {
             int pnLength = HeaderHelpers.GetPacketNumberLength(buffer[0]);
 
             Span<byte> nonce = stackalloc byte[_iv.Length];
             MakeNonce(_iv, packetNumber, nonce);
 
-            // split packet buffer into spans
-            var header = buffer.Slice(0, pnOffset + pnLength);
-            var payload = buffer.Slice(pnOffset + pnLength, payloadLength - pnLength - _algorithm.TagLength);
-            var tag = buffer.Slice(pnOffset + payloadLength - _algorithm.TagLength, _algorithm.TagLength);
+            SplitPacket(buffer, pnOffset + pnLength, _algorithm.TagLength, out var header, out var payload, out var tag);
 
             // encrypt payload in-place
             _algorithm.Protect(nonce, payload, tag, header);
@@ -100,13 +105,10 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Crypto
             UnprotectHeader(buffer.Slice(0, pnOffset + 4), protectionMask);
         }
 
-        public bool UnprotectPacket(Span<byte> buffer, int pnOffset, int payloadLength, long largestAckedPn)
+        public bool UnprotectPacket(Span<byte> buffer, int pnOffset, long largestAckedPn)
         {
             // we expect the header protection to be already removed.
             int pnLength = HeaderHelpers.GetPacketNumberLength(buffer[0]);
-
-            // now we can get correct span size after establishing the packet number length
-            var header = buffer.Slice(0, pnOffset + pnLength);
 
             // read the actual packet number
             long packetNumber = 0;
@@ -114,13 +116,12 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Crypto
             {
                 packetNumber = (packetNumber << 8) | buffer[pnOffset + i];
             }
-            packetNumber = QuicPrimitives.DecodePacketNumber(largestAckedPn, packetNumber, pnLength);
+            packetNumber = QuicPrimitives.DecodePacketNumber(largestAckedPn, (int) packetNumber, pnLength);
 
             Span<byte> nonce = stackalloc byte[_iv.Length];
             MakeNonce(_iv, packetNumber, nonce);
 
-            var ciphertext = buffer.Slice(header.Length, payloadLength - pnLength - _algorithm.TagLength);
-            var tag = buffer.Slice(header.Length + ciphertext.Length, _algorithm.TagLength);
+            SplitPacket(buffer, pnOffset + pnLength, _algorithm.TagLength, out var header, out var ciphertext, out var tag);
 
             return _algorithm.Unprotect(nonce, ciphertext, tag, header);
         }

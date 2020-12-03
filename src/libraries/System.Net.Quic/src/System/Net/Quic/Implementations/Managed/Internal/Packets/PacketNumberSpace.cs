@@ -76,15 +76,6 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Packets
         internal ReceiveStream CryptoReceiveStream { get; } = new ReceiveStream(long.MaxValue);
 
         /// <summary>
-        ///     Gets packet number and it's minimum safe encoding length for the next packet sent.
-        /// </summary>
-        /// <returns>Truncated packet number and it's length.</returns>
-        internal (int truncatedPn, int pnLength) GetNextPacketNumber(long largestAcked)
-        {
-            return QuicPrimitives.EncodePacketNumber(largestAcked, NextPacketNumber);
-        }
-
-        /// <summary>
         ///     Timestamp when last ack frame was sent.
         /// </summary>
         internal long LastAckSentTimestamp { get; set; }

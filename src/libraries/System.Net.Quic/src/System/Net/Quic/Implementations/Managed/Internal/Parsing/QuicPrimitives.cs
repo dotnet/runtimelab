@@ -148,7 +148,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Parsing
         /// <param name="largestAckedPn">Largest packet number acknowledged by the peer.</param>
         /// <param name="currentPn">Packet number to be encoded.</param>
         /// <returns></returns>
-        internal static (int truncatedPn, int pnLength) EncodePacketNumber(long largestAckedPn, long currentPn)
+        internal static int GetPacketNumberEncodingLength(long largestAckedPn, long currentPn)
         {
             // The sender MUST use a packet number size able to represent more than
             // twice as large a range than the difference between the largest
@@ -161,17 +161,17 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Parsing
             int length = BitOperations.Log2((ulong)range) / 8 + 1;
             Debug.Assert(length <= 4);
 
-            return ((int) currentPn, length);
+            return length;
         }
 
         /// <summary>
         ///     Decodes packet number using the algorithm defined in Appendix A of QUIC-TRANSPORT RFC.
         /// </summary>
         /// <param name="largestAckedPn">Largest packet number acknowledged by the peer.</param>
-        /// <param name="truncatedPn">Packet number to be decoded.</param>
+        /// <param name="truncatedPn">Truncated packet number from the packet header to be decoded.</param>
         /// <param name="pnLength">Length of the <paramref name="truncatedPn" /> in bytes.</param>
         /// <returns></returns>
-        internal static long DecodePacketNumber(long largestAckedPn, long truncatedPn, int pnLength)
+        internal static long DecodePacketNumber(long largestAckedPn, int truncatedPn, int pnLength)
         {
             int pnNbits = 8 * pnLength;
 
@@ -193,7 +193,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Parsing
             // makes sure it's within the packet number window.
             // Note the extra checks to prevent overflow and underflow.
 
-            long candidatePn = (expectedPn & ~pnMask) | truncatedPn;
+            long candidatePn = (expectedPn & ~pnMask) | (uint) truncatedPn;
 
             if (candidatePn + pnHwin <= expectedPn &&
                 candidatePn < (1L << 62) - pnWin)

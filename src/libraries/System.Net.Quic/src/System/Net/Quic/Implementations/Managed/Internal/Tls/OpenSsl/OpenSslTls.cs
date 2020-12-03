@@ -68,10 +68,10 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
 
             *callbacks = new Interop.OpenSslQuic.QuicMethodCallbacks
             {
-                setEncryptionSecrets = &SetEncryptionSecrets,
-                addHandshakeData = &AddHandshakeData,
-                flushFlight = &FlushFlight,
-                sendAlert = &SendAlert
+                SetEncryptionSecrets = &SetEncryptionSecrets,
+                AddHandshakeData = &AddHandshakeData,
+                FlushFlight = &FlushFlight,
+                SendAlert = &SendAlert
             };
 
             return callbacks;

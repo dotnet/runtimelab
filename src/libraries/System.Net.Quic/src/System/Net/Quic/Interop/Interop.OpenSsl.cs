@@ -105,16 +105,16 @@ internal static partial class Interop
         internal struct QuicMethodCallbacks
         {
             //int (*)(IntPtr ssl, OpenSslEncryptionLevel level, byte* readSecret, byte* writeSecret, UIntPtr secretLen)
-            internal delegate* unmanaged[Cdecl]<IntPtr, OpenSslEncryptionLevel, byte*, byte*, UIntPtr, int> setEncryptionSecrets;
+            internal delegate* unmanaged[Cdecl]<IntPtr, OpenSslEncryptionLevel, byte*, byte*, UIntPtr, int> SetEncryptionSecrets;
 
             //int (*)(IntPtr ssl, OpenSslEncryptionLevel level, byte* data, UIntPtr len)
-            internal delegate* unmanaged[Cdecl]<IntPtr, OpenSslEncryptionLevel, byte*, UIntPtr, int> addHandshakeData;
+            internal delegate* unmanaged[Cdecl]<IntPtr, OpenSslEncryptionLevel, byte*, UIntPtr, int> AddHandshakeData;
 
             //int (*)(IntPtr ssl)
-            internal delegate* unmanaged[Cdecl]<IntPtr, int> flushFlight;
+            internal delegate* unmanaged[Cdecl]<IntPtr, int> FlushFlight;
 
             //int (*)(IntPtr ssl, OpenSslEncryptionLevel level, byte alert)
-            internal delegate* unmanaged[Cdecl]<IntPtr, OpenSslEncryptionLevel, byte, int> sendAlert;
+            internal delegate* unmanaged[Cdecl]<IntPtr, OpenSslEncryptionLevel, byte, int> SendAlert;
         }
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_set_accept_state")]

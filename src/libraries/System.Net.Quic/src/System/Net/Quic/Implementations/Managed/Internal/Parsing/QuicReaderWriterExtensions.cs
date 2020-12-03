@@ -130,7 +130,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Parsing
                     throw new ArgumentOutOfRangeException(nameof(length));
             }
 
-            packetNumber = QuicPrimitives.DecodePacketNumber(largestAcked, truncatedPn, length);
+            packetNumber = QuicPrimitives.DecodePacketNumber(largestAcked, (int)truncatedPn, length);
             return success;
         }
 
