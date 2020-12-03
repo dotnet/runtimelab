@@ -17,7 +17,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             string source = @"
             using System.Text.Json.Serialization;
 
-            [module: JsonSerializable(typeof(HelloWorld.MyType))]
+            [assembly: JsonSerializable(typeof(HelloWorld.MyType))]
 
             namespace HelloWorld
             {
@@ -81,8 +81,8 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using System.Text.Json.Serialization;
             using ReferencedAssembly;
 
-            [module: JsonSerializable(typeof(HelloWorld.MyType))]
-            [module: JsonSerializable(typeof(ReferencedAssembly.Location))]
+            [assembly: JsonSerializable(typeof(HelloWorld.MyType))]
+            [assembly: JsonSerializable(typeof(ReferencedAssembly.Location))]
 
             namespace HelloWorld
             {
@@ -164,8 +164,8 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using @JsonSerializable = System.Runtime.Serialization.ContractNamespaceAttribute;
             using AliasedAttribute = System.Text.Json.Serialization.JsonSerializableAttribute;
 
-            [module: AliasedAttribute(typeof(HelloWorld.MyType))]
-            [module: AliasedAttribute(typeof(ReferencedAssembly.Location))]
+            [assembly: AliasedAttribute(typeof(HelloWorld.MyType))]
+            [assembly: AliasedAttribute(typeof(ReferencedAssembly.Location))]
             [module: @JsonSerializable(""my namespace"")]
 
             namespace HelloWorld
@@ -259,7 +259,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using System.Text.Json.Serialization;
             using ReferencedAssembly;
 
-            [module: JsonSerializable(typeof(HelloWorld.WeatherForecastWithPOCOs))]
+            [assembly: JsonSerializable(typeof(HelloWorld.WeatherForecastWithPOCOs))]
     
             namespace HelloWorld
             {

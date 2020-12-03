@@ -46,8 +46,8 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using System.Text.Json.Serialization;
             using ReferencedAssembly;
 
-            [module: JsonSerializable(typeof(HelloWorld.MyType))]
-            [module: JsonSerializable(typeof(ReferencedAssembly.ReferencedType))]
+            [assembly: JsonSerializable(typeof(HelloWorld.MyType))]
+            [assembly: JsonSerializable(typeof(ReferencedAssembly.ReferencedType))]
 
             namespace HelloWorld
             {
@@ -82,7 +82,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using System;
             using System.Text.Json.Serialization;
 
-            [module: JsonSerializable(typeof(HelloWorld.MyType))]
+            [assembly: JsonSerializable(typeof(HelloWorld.MyType))]
 
             namespace HelloWorld
             {

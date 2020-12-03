@@ -53,6 +53,9 @@ namespace System.Text.Json.SourceGeneration
                         ITypeSymbol typeSymbol = (ITypeSymbol)compilationSemanticModel.GetTypeInfo(typeNameSyntax).ConvertedType;
 
                         Type type = new TypeWrapper(typeSymbol, metadataLoadContext);
+                        // Non-unique type.FullName either means the same type was specified across multiple files,
+                        // are there is a likely malicious attempt to cause a bug by creating a type with the same FullName,
+                        // e.g. some user-defined System.Collections.IEnumerable. // In either case, the last discovered type wins.
                         (SerializableTypes ??= new Dictionary<string, Type>())[type.FullName] = type;
                     }
                 }
