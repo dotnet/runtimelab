@@ -53,7 +53,8 @@
       <!-- Color output doesn't work well when capturing the output in the CI system -->
       <XunitArgs>$(XunitArgs) -nocolor</XunitArgs>
 
-      <CorerunExecutable>$(DotnetRoot)/dotnet</CorerunExecutable>
+      <CorerunExecutable Condition="'$(CorerunExecutable)'=='' and '$(DotnetRoot)'!=''">$(DotnetRoot)/dotnet</CorerunExecutable>
+      <CorerunExecutable Condition="'$(CorerunExecutable)'==''">dotnet</CorerunExecutable>
     </PropertyGroup>
 
     <!-- Work around cmd command length limit by using relative paths
@@ -66,7 +67,7 @@
     </ItemGroup>
 
     <PropertyGroup>
-      <XunitCommandLine>$(CorerunExecutable) $(XunitConsoleRunner) @(TestAssemblies->'%(Identity)', ' ') $(XunitArgs)</XunitCommandLine>
+      <XunitCommandLine>$(CorerunExecutable) --roll-forward LatestMajor $(XunitConsoleRunner) @(TestAssemblies->'%(Identity)', ' ') $(XunitArgs)</XunitCommandLine>
     </PropertyGroup>
 
     <Exec Command="$(XunitCommandLine)"
