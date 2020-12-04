@@ -9,6 +9,10 @@
   </ItemGroup>
 
   <PropertyGroup>
+    <ILLinkTrimAssembly>false</ILLinkTrimAssembly>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <DefineConstants>SYSTEM_PRIVATE_CORELIB;FEATURE_MANAGED_ETW_CHANNELS;FEATURE_MANAGED_ETW;$(DefineConstants)</DefineConstants>
     <TargetsCoreRT>true</TargetsCoreRT>
     <UseSyncTable>true</UseSyncTable>
