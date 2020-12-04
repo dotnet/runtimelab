@@ -4,6 +4,8 @@
 using System;
 using Internal.TypeSystem;
 
+using Debug = System.Diagnostics.Debug;
+
 namespace Internal.IL
 {
     internal struct ILReader
@@ -35,10 +37,10 @@ namespace Internal.IL
             }
         }
 
-        public ILReader(byte[] ilBytes)
+        public ILReader(byte[] ilBytes, int currentOffset = 0)
         {
             _ilBytes = ilBytes;
-            _currentOffset = 0;
+            _currentOffset = currentOffset;
         }
 
         //
@@ -142,6 +144,21 @@ namespace Internal.IL
         public void Seek(int offset)
         {
             _currentOffset = offset;
+        }
+
+        public int ReadBranchDestination(ILOpcode currentOpcode)
+        {
+            if ((currentOpcode >= ILOpcode.br_s && currentOpcode <= ILOpcode.blt_un_s)
+                || currentOpcode == ILOpcode.leave_s)
+            {
+                return (sbyte)ReadILByte() + Offset;
+            }
+            else
+            {
+                Debug.Assert((currentOpcode >= ILOpcode.br && currentOpcode <= ILOpcode.blt_un)
+                    || currentOpcode == ILOpcode.leave);
+                return (int)ReadILUInt32() + Offset;
+            }
         }
     }
 }
