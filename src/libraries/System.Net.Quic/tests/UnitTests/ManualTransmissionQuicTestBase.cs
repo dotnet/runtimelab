@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Quic.Implementations;
 using System.Net.Quic.Implementations.Managed;
 using System.Net.Quic.Implementations.Managed.Internal;
 using System.Net.Quic.Implementations.Managed.Internal.Crypto;
@@ -131,7 +132,7 @@ namespace System.Net.Quic.Tests
         private static ManagedQuicConnection CreateServer(QuicListenerOptions options)
         {
             var ctx = new QuicServerSocketContext(QuicTlsProvider.Default, new IPEndPoint(IPAddress.Any, 0),
-                options, Channel.CreateUnbounded<ManagedQuicConnection>().Writer);
+                options, Channel.CreateUnbounded<QuicConnectionProvider>().Writer);
             Span<byte> odcid = stackalloc byte[20];
             return new ManagedQuicConnection(QuicTlsProvider.Default, options, new QuicConnectionContext(QuicTlsProvider.Default, ctx, _dummyListenEndpoint, odcid), _dummyListenEndpoint, odcid);
         }

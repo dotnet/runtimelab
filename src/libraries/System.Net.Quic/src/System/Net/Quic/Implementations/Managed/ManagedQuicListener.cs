@@ -14,7 +14,7 @@ namespace System.Net.Quic.Implementations.Managed
     {
         private bool _disposed;
 
-        private readonly ChannelReader<ManagedQuicConnection> _acceptQueue;
+        private readonly ChannelReader<QuicConnectionProvider> _acceptQueue;
         private readonly QuicServerSocketContext _socketContext;
 
         public ManagedQuicListener(QuicTlsProvider tlsProvider, QuicListenerOptions options)
@@ -29,7 +29,7 @@ namespace System.Net.Quic.Implementations.Managed
 
             var listenEndPoint = options.ListenEndPoint ?? new IPEndPoint(IPAddress.Any, 0);
 
-            var channel = Channel.CreateBounded<ManagedQuicConnection>(new BoundedChannelOptions(options.ListenBacklog)
+            var channel = Channel.CreateBounded<QuicConnectionProvider>(new BoundedChannelOptions(options.ListenBacklog)
             {
                 SingleReader = true, SingleWriter = true, FullMode = BoundedChannelFullMode.DropWrite
             });
@@ -47,12 +47,11 @@ namespace System.Net.Quic.Implementations.Managed
             }
         }
 
-        internal override async ValueTask<QuicConnectionProvider> AcceptConnectionAsync(
+        internal override ValueTask<QuicConnectionProvider> AcceptConnectionAsync(
             CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            // TODO-RZ: make this non-async when the cast is no longer needed
-            return await _acceptQueue.ReadAsync(cancellationToken).ConfigureAwait(false);
+            return _acceptQueue.ReadAsync(cancellationToken);
         }
 
         internal override void Start()

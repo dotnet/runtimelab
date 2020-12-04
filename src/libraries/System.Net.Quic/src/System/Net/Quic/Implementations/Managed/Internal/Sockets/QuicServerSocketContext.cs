@@ -13,7 +13,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
     {
         private readonly QuicTlsProvider _tlsProvider;
 
-        private readonly ChannelWriter<ManagedQuicConnection> _newConnections;
+        private readonly ChannelWriter<QuicConnectionProvider> _newConnections;
         internal QuicListenerOptions ListenerOptions { get; }
 
         private ImmutableDictionary<EndPoint, QuicConnectionContext> _connectionsByEndpoint;
@@ -22,7 +22,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
 
         internal QuicServerSocketContext(QuicTlsProvider tlsProvider, IPEndPoint localEndPoint,
             QuicListenerOptions listenerOptions,
-            ChannelWriter<ManagedQuicConnection> newConnectionsWriter)
+            ChannelWriter<QuicConnectionProvider> newConnectionsWriter)
             : base(localEndPoint, null, true)
         {
             _tlsProvider = tlsProvider;
