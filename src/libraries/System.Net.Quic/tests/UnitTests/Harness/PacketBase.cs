@@ -111,7 +111,7 @@ namespace System.Net.Quic.Tests.Harness
             // guess largest acked packet number to make deserialization work
             seal.UnprotectHeader(reader.Buffer.Span, pnOffset);
             int packetLength = payloadLength + pnOffset + PacketNumberLength;
-            Assert.True(seal.UnprotectPacket(reader.Buffer.Span.Slice(0, packetLength), pnOffset, Math.Max(0, (int) expectedPn - 3)));
+            Assert.True(seal.UnprotectPacket(reader.Buffer.Span.Slice(0, packetLength), pnOffset, expectedPn));
 
             int pnLength = HeaderHelpers.GetPacketNumberLength(reader.Buffer.Span[0]);
             reader.TryReadPacketNumber(pnLength,expectedPn, out long packetNumber);

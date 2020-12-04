@@ -231,7 +231,7 @@ namespace System.Net.Quic.Implementations.Managed
                 int payloadLength = reader.BytesLeft;
 
                 if (!recvSeal.UnprotectPacket(reader.Buffer.Span, pnOffset,
-                    pnSpace.LargestReceivedPacketNumber))
+                    pnSpace.LargestReceivedPacketNumber + 1))
                 {
                     // decryption failed, drop the packet.
                     reader.Advance(payloadLength);
@@ -323,7 +323,7 @@ namespace System.Net.Quic.Implementations.Managed
             var seal = pnSpace.RecvCryptoSeal!;
 
             if (!seal.UnprotectPacket(reader.Buffer.Span, pnOffset,
-                pnSpace.LargestReceivedPacketNumber))
+                pnSpace.LargestReceivedPacketNumber + 1))
             {
                 // decryption failed, drop the packet.
                 _trace?.OnPacketDropped(header.PacketType, reader.Buffer.Length);

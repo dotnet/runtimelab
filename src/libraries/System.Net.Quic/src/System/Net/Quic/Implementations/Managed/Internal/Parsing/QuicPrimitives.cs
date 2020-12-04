@@ -167,16 +167,15 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Parsing
         /// <summary>
         ///     Decodes packet number using the algorithm defined in Appendix A of QUIC-TRANSPORT RFC.
         /// </summary>
-        /// <param name="largestAckedPn">Largest packet number acknowledged by the peer.</param>
+        /// <param name="expectedPn">Packet number which is expected to be in the packet.</param>
         /// <param name="truncatedPn">Truncated packet number from the packet header to be decoded.</param>
         /// <param name="pnLength">Length of the <paramref name="truncatedPn" /> in bytes.</param>
         /// <returns></returns>
-        internal static long DecodePacketNumber(long largestAckedPn, int truncatedPn, int pnLength)
+        internal static long DecodePacketNumber(long expectedPn, int truncatedPn, int pnLength)
         {
             int pnNbits = 8 * pnLength;
 
             // following code has been copied and adapted from the RFC.
-            long expectedPn = largestAckedPn + 1;
             long pnWin = 1L << pnNbits;
             long pnHwin = pnWin / 2;
             long pnMask = pnWin - 1;

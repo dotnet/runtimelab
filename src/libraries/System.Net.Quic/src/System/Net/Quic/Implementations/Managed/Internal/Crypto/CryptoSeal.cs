@@ -105,7 +105,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Crypto
             UnprotectHeader(buffer.Slice(0, pnOffset + 4), protectionMask);
         }
 
-        public bool UnprotectPacket(Span<byte> buffer, int pnOffset, long largestAckedPn)
+        public bool UnprotectPacket(Span<byte> buffer, int pnOffset, long expectedPn)
         {
             // we expect the header protection to be already removed.
             int pnLength = HeaderHelpers.GetPacketNumberLength(buffer[0]);
@@ -116,7 +116,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Crypto
             {
                 packetNumber = (packetNumber << 8) | buffer[pnOffset + i];
             }
-            packetNumber = QuicPrimitives.DecodePacketNumber(largestAckedPn, (int) packetNumber, pnLength);
+            packetNumber = QuicPrimitives.DecodePacketNumber(expectedPn, (int) packetNumber, pnLength);
 
             Span<byte> nonce = stackalloc byte[_iv.Length];
             MakeNonce(_iv, packetNumber, nonce);
