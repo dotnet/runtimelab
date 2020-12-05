@@ -64,8 +64,7 @@ namespace Microsoft.Interop
         public override IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context)
         {
             var (managedIdentifer, nativeIdentifier) = context.GetIdentifiers(info);
-
-            bool cacheManagedValue = info.IsByRef && context.CanUseAdditionalTemporaryState;
+            bool cacheManagedValue = ShouldCacheManagedValue(info, context);
             string managedLocal = !cacheManagedValue ? managedIdentifer : managedIdentifer + ArrayMarshallingCodeContext.LocalManagedIdentifierSuffix;
 
             switch (context.CurrentStage)
@@ -112,7 +111,7 @@ namespace Microsoft.Interop
                     if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
                     {
                         var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, IndexerIdentifier, context, appendLocalManagedIdentifierSuffix: cacheManagedValue);
-                        
+
                         yield return IfStatement(
                             BinaryExpression(SyntaxKind.NotEqualsExpression,
                             IdentifierName(nativeIdentifier),
@@ -167,6 +166,11 @@ namespace Microsoft.Interop
             }
         }
 
+        private static bool ShouldCacheManagedValue(TypePositionInfo info, StubCodeContext context)
+        {
+            return info.IsByRef && context.CanUseAdditionalTemporaryState;
+        }
+
         public override bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context)
         {
             return true;
@@ -188,7 +192,7 @@ namespace Microsoft.Interop
         protected override ExpressionSyntax GenerateByteLengthCalculationExpression(TypePositionInfo info, StubCodeContext context)
         {
             string managedIdentifier = context.GetIdentifiers(info).managed;
-            if (info.IsByRef && context.CanUseAdditionalTemporaryState)
+            if (ShouldCacheManagedValue(info, context))
             {
                 managedIdentifier += ArrayMarshallingCodeContext.LocalManagedIdentifierSuffix;
             }
@@ -224,7 +228,7 @@ namespace Microsoft.Interop
         protected override ExpressionSyntax GenerateNullCheckExpression(TypePositionInfo info, StubCodeContext context)
         {
             string managedIdentifier = context.GetIdentifiers(info).managed;
-            if (info.IsByRef && context.CanUseAdditionalTemporaryState)
+            if (ShouldCacheManagedValue(info, context))
             {
                 managedIdentifier += ArrayMarshallingCodeContext.LocalManagedIdentifierSuffix;
             }
@@ -235,5 +239,4 @@ namespace Microsoft.Interop
                     LiteralExpression(SyntaxKind.NullLiteralExpression));
         }
     }
-
 }

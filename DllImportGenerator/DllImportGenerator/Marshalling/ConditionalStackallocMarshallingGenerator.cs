@@ -225,8 +225,6 @@ namespace Microsoft.Interop
                     LiteralExpression(SyntaxKind.NullLiteralExpression));
         }
 
-        
-
         /// <inheritdoc/>
         public abstract TypeSyntax AsNativeType(TypePositionInfo info);
 
