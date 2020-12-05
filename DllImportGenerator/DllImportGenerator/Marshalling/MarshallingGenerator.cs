@@ -366,7 +366,7 @@ namespace Microsoft.Interop
                 _ => throw new MarshallingNotSupportedException(info, context)
             };
 
-            var elementMarshaller = Create(TypePositionInfo.CreateForType(elementType, elementMarshallingInfo), new ArrayMarshallingCodeContext(StubCodeContext.Stage.Setup, string.Empty, context));
+            var elementMarshaller = Create(TypePositionInfo.CreateForType(elementType, elementMarshallingInfo), new ArrayMarshallingCodeContext(StubCodeContext.Stage.Setup, string.Empty, context, false));
             ExpressionSyntax numElementsExpression = LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0));
             if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
             {
