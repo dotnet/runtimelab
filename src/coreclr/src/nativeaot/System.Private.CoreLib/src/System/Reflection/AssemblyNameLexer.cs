@@ -85,18 +85,28 @@ namespace System.Reflection
                 if (c == '\\')
                 {
                     c = _chars[_index++];
-                    bool matched = false;
-                    foreach (KeyValuePair<char, string> kv in AssemblyNameFormatter.EscapeSequences)
+
+                    switch (c)
                     {
-                        if (c == kv.Key)
-                        {
-                            matched = true;
-                            sb.Append(kv.Value);
+                        case '\\':
+                        case ',':
+                        case '=':
+                        case '\'':
+                        case '"':
+                            sb.Append(c);
                             break;
-                        }
+                        case 't':
+                            sb.Append('\t');
+                            break;
+                        case 'r':
+                            sb.Append('\r');
+                            break;
+                        case 'n':
+                            sb.Append('\n');
+                            break;
+                        default:
+                            throw new FileLoadException();  // Unrecognized escape
                     }
-                    if (!matched)
-                        throw new FileLoadException();  // Unrecognized escape
                 }
                 else
                 {
