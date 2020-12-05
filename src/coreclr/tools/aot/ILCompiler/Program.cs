@@ -78,6 +78,10 @@ namespace ILCompiler
 
         private IReadOnlyList<string> _suppressedWarnings = Array.Empty<string>();
 
+        private IReadOnlyList<string> _directPInvokes = Array.Empty<string>();
+
+        private IReadOnlyList<string> _directPInvokeLists = Array.Empty<string>();
+
         private bool _help;
 
         private Program()
@@ -191,6 +195,8 @@ namespace ILCompiler
                 syntax.DefineOption("preinitstatics", ref _preinitStatics, "Interpret static constructors at compile time if possible (implied by -O)");
                 syntax.DefineOption("nopreinitstatics", ref _noPreinitStatics, "Do not interpret static constructors at compile time");
                 syntax.DefineOptionList("nowarn", ref _suppressedWarnings, "Disable specific warning messages");
+                syntax.DefineOptionList("directpinvoke", ref _directPInvokes, "PInvoke to call directly");
+                syntax.DefineOptionList("directpinvokelist", ref _directPInvokeLists, "File with list of PInvokes to call directly");
 
                 syntax.DefineOption("targetarch", ref _targetArchitectureStr, "Target architecture for cross compilation");
                 syntax.DefineOption("targetos", ref _targetOSStr, "Target OS for cross compilation");
@@ -552,7 +558,7 @@ namespace ILCompiler
             string compilationUnitPrefix = _multiFile ? System.IO.Path.GetFileNameWithoutExtension(_outputFilePath) : "";
             builder.UseCompilationUnitPrefix(compilationUnitPrefix);
 
-            PInvokeILEmitterConfiguration pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target);
+            PInvokeILEmitterConfiguration pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target, _directPInvokes, _directPInvokeLists);
 
             RemovedFeature removedFeatures = 0;
             foreach (string feature in _removedFeatures)

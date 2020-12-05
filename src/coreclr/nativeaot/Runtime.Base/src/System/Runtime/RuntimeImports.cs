@@ -11,7 +11,7 @@ namespace System.Runtime
 {
     internal static class RuntimeImports
     {
-        private const string RuntimeLibrary = "[MRT]";
+        private const string RuntimeLibrary = "*";
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpRegisterFrozenSegment")]

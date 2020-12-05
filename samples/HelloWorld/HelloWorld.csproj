@@ -9,4 +9,13 @@
     <PackageReference Include="Microsoft.DotNet.ILCompiler" Version="6.0.0-*" />
   </ItemGroup>
 
+  <ItemGroup>
+  <!-- Generate direct PInvoke calls for everything in libc --> 
+  <DirectPInvoke Include="libc" />
+  <!-- Generate direct PInvoke calls for Sleep in kernel32 -->
+  <DirectPInvoke Include="kernel32!Sleep" />
+  <!-- Generate direct PInvoke for all APIs listed in DirectXAPIs.txt -->
+  <DirectPInvokeList Include="DirectXAPIs.txt" />
+  </ItemGroup>
+
 </Project>

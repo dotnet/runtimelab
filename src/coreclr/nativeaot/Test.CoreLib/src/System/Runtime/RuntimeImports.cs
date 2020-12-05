@@ -20,7 +20,7 @@ namespace System.Runtime
 
     public static class RuntimeImports
     {
-        private const string RuntimeLibrary = "[MRT]";
+        private const string RuntimeLibrary = "*";
 
         //
         // calls for GCHandle.
