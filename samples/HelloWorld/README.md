@@ -50,6 +50,20 @@ where `<Configuration>` is your project configuration (such as Debug or Release)
 > dotnet publish -r win-x64 -c release
 ```
 
-Once completed, you can find the native executable in the root folder of your project under `/bin/x64/<Configuration>/netcoreapp2.1/publish/`. Navigate to `/bin/x64/<Configuration>/netcoreapp2.1/publish/` in your project folder and run the produced native executable.
+Once completed, you can find the native executable in the root folder of your project under `/bin/<Configuration>/net5.0/<RID>/publish/`. Navigate to `/bin/<Configuration>/net5.0/<RID>/publish/` in your project folder and run the produced native executable.
 
 Feel free to modify the sample application and experiment. However, keep in mind some functionality might not yet be supported in CoreRT. Let us know on the [Issues page](https://github.com/dotnet/corert/issues/).
+
+## Know Issues
+
+It's recommended to target `net5.0` or newer when building CoreRT apps. However, if for some reason you have to stay with older .NET Core version like `netcoreapp2.1`, you might get the following error:
+
+```log
+Project is targeting runtime 'win-x64' but did not resolve any runtime-specific packages for the 'Microsoft.NETCore.App' package.  This runtime may not be supported by .NET Core. 
+```
+
+In such case, you need to add following setting to your project file:
+
+```xml
+<EnsureNETCoreAppRuntime>false</EnsureNETCoreAppRuntime>
+```

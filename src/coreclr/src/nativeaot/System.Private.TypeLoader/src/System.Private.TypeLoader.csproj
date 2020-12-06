@@ -298,7 +298,7 @@
     <Compile Include="Internal\Runtime\TypeLoader\ExternalReferencesTable.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\FixupCellMetadataResolver.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\GenericDictionary.cs" />
-    <Compile Include="Internal\Runtime\TypeLoader\genericdictionarycell.cs" />
+    <Compile Include="Internal\Runtime\TypeLoader\GenericDictionaryCell.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\LazyVtableResolverThunk.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\LockFreeObjectInterner.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\LowLevelStringConverter.cs" />
