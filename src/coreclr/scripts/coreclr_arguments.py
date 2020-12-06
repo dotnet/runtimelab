@@ -50,6 +50,7 @@ class CoreclrArguments:
 
         # Default values. Note that these are extensible.
         self.host_os = None
+        self.target_os = None
         self.arch = None
         self.build_type = None
         self.core_root = None
@@ -222,8 +223,8 @@ class CoreclrArguments:
             return (arch is not None) and (arch in self.valid_arches)
 
         def check_and_return_test_location(test_location):
-            default_test_location = os.path.join(self.artifacts_location, "tests", "coreclr", "%s.%s.%s" % (self.host_os, self.arch, self.build_type))
 
+            default_test_location = os.path.join(self.artifacts_location, "tests", "coreclr", "%s.%s.%s" % (self.target_os, self.arch, self.build_type))
             if os.path.isdir(default_test_location) or not self.require_built_test_dir:
                 return default_test_location
 
@@ -245,7 +246,7 @@ class CoreclrArguments:
             return False
 
         def check_and_return_default_product_location(product_location):
-            default_product_location = os.path.join(self.artifacts_location, "bin", "coreclr", "%s.%s.%s" % (self.host_os, self.arch, self.build_type))
+            default_product_location = os.path.join(self.artifacts_location, "bin", "coreclr", "%s.%s.%s" % (self.target_os, self.arch, self.build_type))
 
             if os.path.isdir(default_product_location) or not self.require_built_product_dir:
                 return default_product_location
@@ -269,6 +270,10 @@ class CoreclrArguments:
                     check_arch,
                     lambda arch: "Unknown arch {}.\nSupported architectures: {}".format(arch, (", ".join(self.valid_arches))),
                     modify_arg=lambda arch: CoreclrArguments.provide_default_arch() if arch is None else arch)
+        
+        self.target_os = self.host_os
+        if self.arch == "wasm":
+            self.target_os = "Browser" # assume we need to differentiate between running wasm tests on Windows and *nix so leave host_os as the os where the tests are running
 
         self.verify(args,
                     "build_type",

@@ -182,7 +182,7 @@ jobs:
 
 # WebAssembly
 
-- ${{ if containsValue(parameters.platforms, 'Browser_wasm') }}:
+- ${{ if and(containsValue(parameters.platforms, 'Browser_wasm'), ne(parameters.runtimeFlavor, 'coreclr')) }}:
   - template: xplat-setup.yml
     parameters:
       jobTemplate: ${{ parameters.jobTemplate }}
@@ -195,6 +195,24 @@ jobs:
       container:
         image: ubuntu-18.04-webassembly-20201123165548-d7d1dfe
         registry: mcr
+      jobParameters:
+        runtimeFlavor: ${{ parameters.runtimeFlavor }}
+        stagedBuild: ${{ parameters.stagedBuild }}
+        buildConfig: ${{ parameters.buildConfig }}
+        ${{ if eq(parameters.passPlatforms, true) }}:
+          platforms: ${{ parameters.platforms }}
+        ${{ insert }}: ${{ parameters.jobParameters }}
+
+- ${{ if and(containsValue(parameters.platforms, 'Browser_wasm'), eq(parameters.runtimeFlavor, 'coreclr')) }}:
+  - template: xplat-setup.yml
+    parameters:
+      jobTemplate: ${{ parameters.jobTemplate }}
+      helixQueuesTemplate: ${{ parameters.helixQueuesTemplate }}
+      variables: ${{ parameters.variables }}
+      osGroup: windows
+      archType: wasm
+      targetRid: browser-wasm
+      platform: Browser_wasm
       jobParameters:
         runtimeFlavor: ${{ parameters.runtimeFlavor }}
         stagedBuild: ${{ parameters.stagedBuild }}

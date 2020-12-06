@@ -87,6 +87,7 @@ if /i "%1" == "x64"                   (set __BuildArch=x64&set processedArgs=!pr
 if /i "%1" == "x86"                   (set __BuildArch=x86&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "arm"                   (set __BuildArch=arm&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "arm64"                 (set __BuildArch=arm64&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
+if /i "%1" == "wasm"                  (set __BuildArch=wasm&set __TargetOS=Browser&set __DistroRid=browser-wasm&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 
 if /i "%1" == "debug"                 (set __BuildType=Debug&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "release"               (set __BuildType=Release&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
@@ -225,6 +226,10 @@ if not defined VSINSTALLDIR (
 if not exist "%VSINSTALLDIR%DIA SDK" goto NoDIA
 
 set __ExtraCmakeArgs="-DCMAKE_SYSTEM_VERSION=10.0"
+if /i "%__BuildArch%" == "wasm" (
+    set __ExtraCmakeArgs="-DCMAKE_SYSTEM_VERSION=10.0 -DCLR_CMAKE_BUILD_SUBSET_JIT=0 -DCLR_CMAKE_BUILD_SUBSET_ALLJITS=0"
+)
+
 call "%__RepoRootDir%\eng\native\gen-buildsys.cmd" "%__ProjectFilesDir%" "%__NativeTestIntermediatesDir%" %__VSVersion% %__BuildArch% !__ExtraCmakeArgs!
 
 if not !errorlevel! == 0 (
@@ -251,7 +256,11 @@ set __MsbuildErr=/flp2:ErrorsOnly;LogFile=!__BuildErr!
 set __Logging=!__MsbuildLog! !__MsbuildWrn! !__MsbuildErr!
 
 REM We pass the /m flag directly to MSBuild so that we can get both MSBuild and CL parallelism, which is fastest for our builds.
+if /i "%__BuildArch%" == "wasm" (
+"%CMakePath%" --build %__NativeTestIntermediatesDir% --target install --config %__BuildType% -- /nologo
+) else (
 "%CMakePath%" --build %__NativeTestIntermediatesDir% --target install --config %__BuildType% -- /nologo /m !__Logging!
+)
 
 if errorlevel 1 (
     echo %__ErrMsgPrefix%%__MsgPrefix%Error: native test build failed.

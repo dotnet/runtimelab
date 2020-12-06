@@ -99,6 +99,7 @@ standard please pass the -test_native_bin_location flag to the script.""")
 parser = argparse.ArgumentParser(description=description)
 
 parser.add_argument("-os", dest="host_os", nargs='?', default=None)
+parser.add_argument("-target_os", dest="target_os", nargs='?', default=None)
 parser.add_argument("-arch", dest="arch", nargs='?', default="x64")
 parser.add_argument("-build_type", dest="build_type", nargs='?', default="Debug")
 parser.add_argument("-test_location", dest="test_location", nargs="?", default=None)
@@ -625,7 +626,7 @@ def call_msbuild(args):
     if args.limited_core_dumps:
         command += ["/p:LimitedCoreDumps=true"]
 
-    log_path = os.path.join(args.logs_dir, "TestRunResults_%s_%s_%s" % (args.host_os, args.arch, args.build_type))
+    log_path = os.path.join(args.logs_dir, "TestRunResults_%s_%s_%s" % (args.target_os, args.arch, args.build_type))
     build_log = log_path + ".log"
     wrn_log = log_path + ".wrn"
     err_log = log_path + ".err"
@@ -638,7 +639,7 @@ def call_msbuild(args):
     if g_verbose:
         command += ["/verbosity:diag"]
 
-    command += ["/p:TargetOS=%s" % args.host_os,
+    command += ["/p:TargetOS=%s" % args.target_os,
                 "/p:TargetArchitecture=%s" % args.arch,
                 "/p:Configuration=%s" % args.build_type,
                 "/p:__LogsDir=%s" % args.logs_dir]
@@ -1020,7 +1021,11 @@ def setup_args(args):
                                           require_built_core_root=requires_coreroot,
                                           require_built_product_dir=False)
 
-    normal_location = os.path.join(coreclr_setup_args.artifacts_location, "tests", "coreclr", "%s.%s.%s" % (coreclr_setup_args.host_os, coreclr_setup_args.arch, coreclr_setup_args.build_type))
+    target_os = coreclr_setup_args.host_os
+    if coreclr_setup_args.arch == "wasm":
+        target_os = "Browser"
+
+    normal_location = os.path.join(coreclr_setup_args.artifacts_location, "tests", "coreclr", "%s.%s.%s" % (target_os, coreclr_setup_args.arch, coreclr_setup_args.build_type))
 
     # If we have supplied our own test location then we need to create a test location
     # that the scripting will expect. As it is now, there is a dependency on the
@@ -1662,4 +1667,6 @@ def main(args):
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    if args.target_os is None:
+        args.target_os = args.host_os
     sys.exit(main(args))

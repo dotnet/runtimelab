@@ -42,6 +42,10 @@ jobs:
         - name: _osParameter
           value: /p:RuntimeOS=linux-musl /p:OutputRid=linux-musl-${{ parameters.archType }}
 
+      - ${{ if and(eq(parameters.archType, 'wasm'), eq(parameters.runtimeFlavor, 'coreclr')) }}:
+        - name: _osParameter
+          value: -os Browser
+
       # Do not rename as it clashes with MSBuild property in libraries/build-native.proj
       - name: _crossBuildPropertyArg
         value: /p:CrossBuild=${{ parameters.crossBuild }}
@@ -79,6 +83,11 @@ jobs:
           du -sh $(Build.SourcesDirectory)/*
           df -h
         displayName: Disk Usage before Build
+
+    - ${{ if and(eq(parameters.runtimeFlavor, 'coreclr'), and(eq(parameters.osGroup, 'windows'), eq(parameters.platform, 'Browser_wasm'))) }}:
+      # Install Wasm dependencies: emscripten
+      - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-emscripten.cmd $(Build.SourcesDirectory)\wasm-tools
+        displayName: Install/activate emscripten
 
     # Build
     - script: $(Build.SourcesDirectory)$(dir)build$(scriptExt) -ci -arch ${{ parameters.archType }} $(_osParameter) ${{ parameters.buildArgs }} $(_officialBuildParameter) $(_crossBuildPropertyArg) $(_cxx11Parameter)
