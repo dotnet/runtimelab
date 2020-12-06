@@ -250,7 +250,8 @@ The .NET Foundation licenses this file to you under the MIT license.
   </Target>
 
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Windows.props" Condition="'$(TargetOS)' == 'windows'" />
-  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Unix.props" Condition="'$(TargetOS)' != 'windows'" />
+  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Unix.props" Condition="'$(TargetOS)' != 'windows' and '$(TargetOS)' != 'browser'" />
+  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Browser.props" Condition="'$(TargetOS)' == 'browser'" />
 
   <Target Name="MultiFileCopyNative"
       Inputs="@(NativeObjects)"
@@ -329,8 +330,6 @@ The .NET Foundation licenses this file to you under the MIT license.
     <Message Text="Emscripten not found, not linking WebAssembly. To enable WebAssembly linking, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"
              Condition="'$(NativeCodeGen)' == 'wasm' and '$(EMSDK)' == ''" />
   </Target>
-
-  <Target Name="SetupOSSpecificProps" Condition="'$(NativeCodeGen)' == 'wasm'"></Target>
 
   <Target Name="CreateLib"
     Inputs="@(LibInputs)"
