@@ -16,21 +16,10 @@ namespace System.Text.Json
     public sealed partial class JsonSerializerOptions
     {
         // The global list of built-in simple converters.
-        private static readonly Dictionary<Type, JsonConverter> s_defaultSimpleConverters = GetDefaultSimpleConverters();
+        private static Dictionary<Type, JsonConverter>? s_defaultSimpleConverters;
 
         // The global list of built-in converters that override CanConvert().
-        private static readonly JsonConverter[] s_defaultFactoryConverters = new JsonConverter[]
-        {
-            // Check for disallowed types.
-            new DisallowedTypeConverterFactory(),
-            // Nullable converter should always be next since it forwards to any nullable type.
-            new NullableConverterFactory(),
-            new EnumConverterFactory(),
-            // IEnumerable should always be second to last since they can convert any IEnumerable.
-            new IEnumerableConverterFactory(),
-            // Object should always be last since it converts any type.
-            new ObjectConverterFactory()
-        };
+        private static JsonConverter[]? s_defaultFactoryConverters;
 
         // The cached converters (custom or built-in).
         private readonly ConcurrentDictionary<Type, JsonConverter?> _converters = new ConcurrentDictionary<Type, JsonConverter?>();
@@ -76,6 +65,17 @@ namespace System.Text.Json
 
         internal JsonConverter GetDictionaryKeyConverter(Type keyType)
         {
+            if (!_initializeDefaultConverters)
+            {
+                if (keyType != typeof(string))
+                {
+                    throw new NotSupportedException("Only typeof(string) is allowed as a dictionary key in code-gen mode");
+                }
+
+                // Temporary: based on code-gen type discovery, there should be a string converter in the class info cache.
+                return _classes[typeof(string)].PropertyInfoForClassInfo.ConverterBase;
+            }
+
             _dictionaryKeyConverters ??= GetDictionaryKeyConverters();
 
             if (!_dictionaryKeyConverters.TryGetValue(keyType, out JsonConverter? converter))
@@ -110,6 +110,9 @@ namespace System.Text.Json
         {
             const int NumberOfConverters = 18;
             var converters = new ConcurrentDictionary<Type, JsonConverter>(Environment.ProcessorCount, NumberOfConverters);
+
+            // For us to be here, we must be in a non-codegen scenario.
+            Debug.Assert(s_defaultSimpleConverters != null);
 
             // When adding to this, update NumberOfConverters above.
             Add(s_defaultSimpleConverters[typeof(bool)]);
@@ -147,9 +150,9 @@ namespace System.Text.Json
         /// </remarks>
         public IList<JsonConverter> Converters { get; }
 
-        internal JsonConverter DetermineConverter(Type? parentClassType, Type runtimePropertyType, MemberInfo? memberInfo)
+        internal JsonConverter? DetermineConverter(Type? parentClassType, Type runtimePropertyType, MemberInfo? memberInfo)
         {
-            JsonConverter converter = null!;
+            JsonConverter? converter = null;
 
             // Priority 1: attempt to get converter from JsonConverterAttribute on property.
             if (memberInfo != null)
@@ -165,10 +168,11 @@ namespace System.Text.Json
                 }
             }
 
+            converter ??= GetConverter(runtimePropertyType);
+
             if (converter == null)
             {
-                converter = GetConverter(runtimePropertyType);
-                Debug.Assert(converter != null);
+                return null;
             }
 
             if (converter is JsonConverterFactory factory)
@@ -205,10 +209,10 @@ namespace System.Text.Json
         /// The configured <see cref="JsonConverter"/> for <paramref name="typeToConvert"/> returned an invalid converter.
         /// </exception>
         /// <exception cref="NotSupportedException">
-        /// There is no compatible <see cref="System.Text.Json.Serialization.JsonConverter"/>
-        /// for <paramref name="typeToConvert"/> or its serializable members.
+        /// Built in converters were included in the lookup, and there is no compatible <see cref="System.Text.Json.Serialization.JsonConverter"/>
+        /// for <paramref name="typeToConvert"/> or its serializable members among them.
         /// </exception>
-        public JsonConverter GetConverter(Type typeToConvert)
+        public JsonConverter? GetConverter(Type typeToConvert)
         {
             if (_converters.TryGetValue(typeToConvert, out JsonConverter? converter))
             {
@@ -242,6 +246,14 @@ namespace System.Text.Json
             // Priority 4: Attempt to get built-in converter.
             if (converter == null)
             {
+                if (!_initializeDefaultConverters)
+                {
+                    return null;
+                }
+
+                Debug.Assert(s_defaultSimpleConverters != null);
+                Debug.Assert(s_defaultFactoryConverters != null);
+
                 if (s_defaultSimpleConverters.TryGetValue(typeToConvert, out JsonConverter? foundConverter))
                 {
                     Debug.Assert(foundConverter != null);
@@ -290,6 +302,23 @@ namespace System.Text.Json
             }
 
             return converter;
+        }
+
+        private static void EnsureDefaultConvertersInitialized()
+        {
+            s_defaultSimpleConverters ??= GetDefaultSimpleConverters();
+            s_defaultFactoryConverters ??= new JsonConverter[]
+            {
+                // Check for disallowed types.
+                new DisallowedTypeConverterFactory(),
+                // Nullable converter should always be next since it forwards to any nullable type.
+                new NullableConverterFactory(),
+                new EnumConverterFactory(),
+                // IEnumerable should always be second to last since they can convert any IEnumerable.
+                new IEnumerableConverterFactory(),
+                // Object should always be last since it converts any type.
+                new ObjectConverterFactory()
+            };
         }
 
         private JsonConverter GetConverterFromAttribute(JsonConverterAttribute converterAttribute, Type typeToConvert, Type classTypeAttributeIsOn, MemberInfo? memberInfo)

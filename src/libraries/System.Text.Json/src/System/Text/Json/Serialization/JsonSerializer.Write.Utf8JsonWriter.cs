@@ -91,13 +91,13 @@ namespace System.Text.Json
 
             if (options == null)
             {
-                options = JsonSerializerOptions.s_defaultOptions;
+                options = JsonSerializerOptions.DefaultCodeGenOptions;
             }
 
             using (var output = new PooledByteBufferWriter(options.DefaultBufferSize))
             {
                 JsonConverter jsonConverter = jsonTypeInfo.PropertyInfoForClassInfo.ConverterBase;
-                bool success = WriteCore<TValue>(jsonConverter, writer, value, ref state, options);
+                bool success = WriteCore(jsonConverter, writer, value, ref state, options);
                 Debug.Assert(success);
             }
         }
@@ -106,7 +106,7 @@ namespace System.Text.Json
         {
             if (options == null)
             {
-                options = JsonSerializerOptions.s_defaultOptions;
+                options = JsonSerializerOptions.DefaultOptions;
             }
 
             if (writer == null)

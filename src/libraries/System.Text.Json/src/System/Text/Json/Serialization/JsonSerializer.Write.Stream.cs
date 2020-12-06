@@ -100,7 +100,7 @@ namespace System.Text.Json
 
             if (options == null)
             {
-                options = JsonSerializerOptions.s_defaultOptions;
+                options = JsonSerializerOptions.DefaultOptions;
             }
 
             JsonWriterOptions writerOptions = options.GetWriterOptions();

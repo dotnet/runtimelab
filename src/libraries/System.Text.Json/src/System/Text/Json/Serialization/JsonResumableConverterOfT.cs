@@ -21,6 +21,7 @@ namespace System.Text.Json.Serialization
             }
 
             ReadStack state = default;
+            // TODO: improve throughput for code-gen scenarios by avoiding dictionary lookup here?
             state.Initialize(typeToConvert, options, supportContinuation: false);
             TryRead(ref reader, typeToConvert, options, ref state, out T? value);
             return value;
@@ -35,6 +36,7 @@ namespace System.Text.Json.Serialization
             }
 
             WriteStack state = default;
+            // TODO: improve throughput for code-gen scenarios by avoiding dictionary lookup here?
             state.Initialize(typeof(T), options, supportContinuation: false);
             TryWrite(writer, value, options, ref state);
         }

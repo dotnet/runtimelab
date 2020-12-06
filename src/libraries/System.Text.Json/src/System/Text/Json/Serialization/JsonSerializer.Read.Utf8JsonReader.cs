@@ -56,7 +56,7 @@ namespace System.Text.Json
         {
             if (options == null)
             {
-                options = JsonSerializerOptions.s_defaultOptions;
+                options = JsonSerializerOptions.DefaultOptions;
             }
 
             ReadStack state = default;
@@ -119,7 +119,7 @@ namespace System.Text.Json
 
             if (options == null)
             {
-                options = JsonSerializerOptions.s_defaultOptions;
+                options = JsonSerializerOptions.DefaultOptions;
             }
 
             ReadStack state = default;

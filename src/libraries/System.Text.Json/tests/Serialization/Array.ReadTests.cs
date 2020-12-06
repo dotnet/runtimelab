@@ -3,10 +3,7 @@
 
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
-using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Tests;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -37,6 +34,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadObjectArray()
         {
             string data =
@@ -135,6 +135,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadEmptyObjectArray()
         {
             SimpleTestClass[] data = await Deserializer.DeserializeWrapper<SimpleTestClass[]>("[{}]");
@@ -184,6 +187,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadEmpty()
         {
             SimpleTestClass[] arr = await Deserializer.DeserializeWrapper<SimpleTestClass[]>("[]");
@@ -259,6 +265,9 @@ namespace System.Text.Json.Serialization.Tests
 
         [Theory]
         [MemberData(nameof(ReadNullJson))]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadNull(string json, bool element0Null, bool element1Null, bool element2Null)
         {
             SimpleTestClass[] arr = await Deserializer.DeserializeWrapper<SimpleTestClass[]>(json);
@@ -294,6 +303,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithObjectList()
         {
             TestClassWithObjectList obj = await Deserializer.DeserializeWrapper<TestClassWithObjectList>(TestClassWithObjectList.s_data);
@@ -301,6 +313,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithObjectArray()
         {
             TestClassWithObjectArray obj = await Deserializer.DeserializeWrapper<TestClassWithObjectArray>(TestClassWithObjectArray.s_data);
@@ -308,6 +323,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithGenericList()
         {
             TestClassWithGenericList obj = await Deserializer.DeserializeWrapper<TestClassWithGenericList>(TestClassWithGenericList.s_data);
@@ -345,6 +363,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithObjectIEnumerableT()
         {
             TestClassWithObjectIEnumerableT obj = await Deserializer.DeserializeWrapper<TestClassWithObjectIEnumerableT>(TestClassWithObjectIEnumerableT.s_data);
@@ -352,6 +373,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithObjectIListT()
         {
             TestClassWithObjectIListT obj = await Deserializer.DeserializeWrapper<TestClassWithObjectIListT>(TestClassWithObjectIListT.s_data);
@@ -359,6 +383,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithObjectICollectionT()
         {
             TestClassWithObjectICollectionT obj = await Deserializer.DeserializeWrapper<TestClassWithObjectICollectionT>(TestClassWithObjectICollectionT.s_data);
@@ -366,6 +393,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithObjectIReadOnlyCollectionT()
         {
             TestClassWithObjectIReadOnlyCollectionT obj = await Deserializer.DeserializeWrapper<TestClassWithObjectIReadOnlyCollectionT>(TestClassWithObjectIReadOnlyCollectionT.s_data);
@@ -373,6 +403,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithObjectIReadOnlyListT()
         {
             TestClassWithObjectIReadOnlyListT obj = await Deserializer.DeserializeWrapper<TestClassWithObjectIReadOnlyListT>(TestClassWithObjectIReadOnlyListT.s_data);
@@ -380,6 +413,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithGenericIEnumerable()
         {
             TestClassWithGenericIEnumerable obj = await Deserializer.DeserializeWrapper<TestClassWithGenericIEnumerable>(TestClassWithGenericIEnumerable.s_data);
@@ -387,6 +423,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithGenericIList()
         {
             TestClassWithGenericIList obj = await Deserializer.DeserializeWrapper<TestClassWithGenericIList>(TestClassWithGenericIList.s_data);
@@ -394,12 +433,18 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithGenericICollection()
         {
             TestClassWithGenericICollection obj = await Deserializer.DeserializeWrapper<TestClassWithGenericICollection>(TestClassWithGenericICollection.s_data);
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithObjectISetT()
         {
             TestClassWithObjectISetT obj = await Deserializer.DeserializeWrapper<TestClassWithObjectISetT>(TestClassWithObjectISetT.s_data);
@@ -407,6 +452,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithGenericIEnumerableT()
         {
             TestClassWithGenericIEnumerableT obj = await Deserializer.DeserializeWrapper<TestClassWithGenericIEnumerableT>(TestClassWithGenericIEnumerableT.s_data);
@@ -414,6 +462,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithGenericIListT()
         {
             TestClassWithGenericIListT obj = await Deserializer.DeserializeWrapper<TestClassWithGenericIListT>(TestClassWithGenericIListT.s_data);
@@ -421,6 +472,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithGenericICollectionT()
         {
             TestClassWithGenericICollectionT obj = await Deserializer.DeserializeWrapper<TestClassWithGenericICollectionT>(TestClassWithGenericICollectionT.s_data);
@@ -428,6 +482,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithGenericIReadOnlyCollectionT()
         {
             TestClassWithGenericIReadOnlyCollectionT obj = await Deserializer.DeserializeWrapper<TestClassWithGenericIReadOnlyCollectionT>(TestClassWithGenericIReadOnlyCollectionT.s_data);
@@ -435,6 +492,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithGenericIReadOnlyListT()
         {
             TestClassWithGenericIReadOnlyListT obj = await Deserializer.DeserializeWrapper<TestClassWithGenericIReadOnlyListT>(TestClassWithGenericIReadOnlyListT.s_data);
@@ -442,6 +502,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithGenericISetT()
         {
             TestClassWithGenericISetT obj = await Deserializer.DeserializeWrapper<TestClassWithGenericISetT>(TestClassWithGenericISetT.s_data);
@@ -449,6 +512,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithObjectIEnumerableConstructibleTypes()
         {
             TestClassWithObjectIEnumerableConstructibleTypes obj = await Deserializer.DeserializeWrapper<TestClassWithObjectIEnumerableConstructibleTypes>(TestClassWithObjectIEnumerableConstructibleTypes.s_data);
@@ -456,6 +522,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
         public async Task ReadClassWithObjectImmutableTypes()
         {
             TestClassWithObjectImmutableTypes obj = await Deserializer.DeserializeWrapper<TestClassWithObjectImmutableTypes>(TestClassWithObjectImmutableTypes.s_data);
