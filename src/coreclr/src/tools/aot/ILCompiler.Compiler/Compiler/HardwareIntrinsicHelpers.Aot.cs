@@ -19,32 +19,6 @@ namespace ILCompiler
             return method.Name == "get_IsSupported";
         }
 
-        public static MethodIL GetUnsupportedImplementationIL(MethodDesc method)
-        {
-            // The implementation of IsSupported for codegen backends that don't support hardware intrinsics
-            // at all is to return 0.
-            if (IsIsSupportedMethod(method))
-            {
-                return new ILStubMethodIL(method,
-                    new byte[] {
-                        (byte)ILOpcode.ldc_i4_0,
-                        (byte)ILOpcode.ret
-                    },
-                    Array.Empty<LocalVariableDefinition>(), null);
-            }
-
-            // Other methods throw PlatformNotSupportedException
-            MethodDesc throwPnse = method.Context.GetHelperEntryPoint("ThrowHelpers", "ThrowPlatformNotSupportedException");
-
-            return new ILStubMethodIL(method,
-                    new byte[] {
-                        (byte)ILOpcode.call, 1, 0, 0, 0,
-                        (byte)ILOpcode.br_s, unchecked((byte)-7),
-                    },
-                    Array.Empty<LocalVariableDefinition>(),
-                    new object[] { throwPnse });
-        }
-
         /// <summary>
         /// Generates IL for the IsSupported property that reads this information from a field initialized by the runtime
         /// at startup. Only works for intrinsics that the code generator can generate detection code for.

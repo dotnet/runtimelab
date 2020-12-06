@@ -189,19 +189,6 @@ namespace ILCompiler
 
             return base.GetMethodIL(method);
         }
-
-        public bool IsHardwareIntrinsicWithRuntimeDeterminedSupport(MethodDesc method)
-        {
-            string intrinsicId = InstructionSetSupport.GetHardwareIntrinsicId(TypeSystemContext.Target.Architecture, method.OwningType);
-            if (!string.IsNullOrEmpty(intrinsicId))
-            {
-                InstructionSet instructionSet = _instructionSetMap[intrinsicId];
-                return !InstructionSetSupport.IsInstructionSetSupported(instructionSet)
-                    && InstructionSetSupport.OptimisticFlags.HasInstructionSet(instructionSet);
-            }
-
-            return false;
-        }
     }
 
     [Flags]

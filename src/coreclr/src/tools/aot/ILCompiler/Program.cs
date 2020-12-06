@@ -369,13 +369,12 @@ namespace ILCompiler
                 // support AVX instructions.
                 //
                 // The compiler is able to generate runtime IsSupported checks for the following instruction sets.
+                optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("sse4.1");
+                optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("sse4.2");
                 optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("ssse3");
                 optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("aes");
                 optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("pclmul");
                 optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("lzcnt");
-
-                // NOTE: we don't optimistically enable SSE4.1/SSE4.2 because RyuJIT can opportunistically use
-                // these instructions in e.g. optimizing Math.Round or Vector<T> operations without IsSupported guards.
 
                 // If SSE4.2 was enabled, we can also opportunistically enable POPCNT
                 Debug.Assert(InstructionSet.X64_SSE42 == InstructionSet.X86_SSE42);
