@@ -1001,12 +1001,19 @@ namespace Internal.JitInterface
                 return false;
             }
 
-            if (impl.OwningType.IsValueType)
-            {
-                impl = getUnboxingThunk(impl);
-            }
+            MethodDesc exactImpl = impl;
 
-            MethodDesc exactImpl = TypeSystemHelpers.FindMethodOnTypeWithMatchingTypicalMethod(objType, impl);
+            // Implementations of the special Array generic interface methods are not in the regular type hiearchy.
+            // FindMethodOnTypeWithMatchingTypicalMethod below would fail to find them.
+            if (!objType.IsArray)
+            {
+                if (impl.OwningType.IsValueType)
+                {
+                    impl = getUnboxingThunk(impl);
+                }
+
+                exactImpl = TypeSystemHelpers.FindMethodOnTypeWithMatchingTypicalMethod(objType, exactImpl);
+            }
 
             info->devirtualizedMethod = ObjectToHandle(impl);
             info->requiresInstMethodTableArg = false;
