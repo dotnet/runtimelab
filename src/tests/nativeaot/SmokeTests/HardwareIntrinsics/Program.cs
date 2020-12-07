@@ -27,7 +27,7 @@ unsafe class Program
         bool? Sse3Group = null;
         bool? AesLzPcl = null;
         bool? Sse4142 = null;
-        bool? PopCnt = false;
+        bool? PopCnt = null;
         bool? Avx12 = false;
         bool? FmaBmi12 = false;
 #elif NON_VEX_INTRINSICS
