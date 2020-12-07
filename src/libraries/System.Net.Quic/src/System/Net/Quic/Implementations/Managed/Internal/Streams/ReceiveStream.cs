@@ -59,7 +59,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
         ///     Updates the <see cref="MaxData"/> parameter to the maximum of current and new values.
         /// </summary>
         /// <param name="value">Value of the parameter.</param>
-        internal void UpdateMaxData(long value)
+        private void UpdateMaxData(long value)
         {
             MaxData = Math.Max(MaxData, value);
         }
@@ -252,7 +252,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
                 }
             }
 
-            // completing the channel is threadsafe
+            // completing the channel is thread-safe
             _deliverableChannel.Writer.TryComplete();
         }
 
@@ -387,7 +387,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
             return DeliverInternal(destination, true);
         }
 
-        internal int DeliverInternal(Span<byte> destination, bool blockUntilDataAvailable)
+        private int DeliverInternal(Span<byte> destination, bool blockUntilDataAvailable)
         {
             int delivered = 0;
 
@@ -481,7 +481,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
             QuicBufferPool.Return(buffer);
         }
 
-        internal void DropAllBufferedData()
+        private void DropAllBufferedData()
         {
             for (int i = 0; i < _receivingBuffers.Count; i++)
             {

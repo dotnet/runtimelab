@@ -76,7 +76,7 @@ namespace System.Net.Quic.Implementations.Managed
                 int written = await SendStream!.EnqueueAsync(buffer, cancellationToken).ConfigureAwait(false);
                 Debug.Assert(written > 0);
 
-                if (SendStream.WrittenBytes - written< SendStream.MaxData)
+                if (SendStream.WrittenBytes - written < SendStream.MaxData)
                 {
                     _connection.OnStreamDataWritten(this);
                 }
@@ -172,12 +172,12 @@ namespace System.Net.Quic.Implementations.Managed
                 int written = SendStream!.Enqueue(buffer);
                 Debug.Assert(written > 0);
 
+                buffer = buffer.Slice(written);
+
                 if (SendStream.WrittenBytes - written < SendStream.MaxData)
                 {
                     _connection.OnStreamDataWritten(this);
                 }
-
-                buffer = buffer.Slice(written);
             }
 
             if (endStream)
@@ -221,18 +221,12 @@ namespace System.Net.Quic.Implementations.Managed
 
         internal override async ValueTask WriteAsync(ReadOnlySequence<byte> buffers, bool endStream, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            ThrowIfDisposed();
-            ThrowIfConnectionError();
-            ThrowIfNotWritable();
-            ThrowIfWriteAborted();
+            await WriteAsync(buffers, cancellationToken).ConfigureAwait(false);
 
-            foreach (ReadOnlyMemory<byte> buffer in buffers)
+            if (endStream)
             {
-                await WriteAsyncInternal(buffer, false, cancellationToken).ConfigureAwait(false);
+                SendStream!.MarkEndOfData();
             }
-
-            SendStream!.MarkEndOfData();
         }
 
         internal override ValueTask WriteAsync(ReadOnlyMemory<ReadOnlyMemory<byte>> buffers, CancellationToken cancellationToken = default)

@@ -103,7 +103,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
             if (_socketTaskCts.IsCancellationRequested)
                 return;
 
-            bool pending = false;
+            bool pending;
             do
             {
                 DatagramInfo datagram = ExtractDatagram(args);
