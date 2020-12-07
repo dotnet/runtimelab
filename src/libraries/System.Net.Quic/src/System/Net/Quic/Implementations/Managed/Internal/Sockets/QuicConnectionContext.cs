@@ -2,13 +2,17 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Buffers;
+using System.Diagnostics;
 using System.Net.Quic.Implementations.Managed.Internal.Headers;
 using System.Net.Quic.Implementations.Managed.Internal.Packets;
 using System.Net.Quic.Implementations.Managed.Internal.Parsing;
 using System.Net.Quic.Implementations.Managed.Internal.Tls;
+using System.Net.Quic.Implementations.MsQuic.Internal;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Sources;
 
 namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
 {
@@ -32,11 +36,12 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
 
         private Task _backgroundWorkerTask = Task.CompletedTask;
         private bool _needsUpdate;
+        private bool _waiting;
         private readonly QuicReader _reader = new QuicReader(Memory<byte>.Empty);
 
         private long _timer = long.MaxValue;
 
-        private TaskCompletionSource _waitCompletionSource = new TaskCompletionSource();
+        private ResettableValueTaskSource _waitCompletionSource = new ResettableValueTaskSource();
 
         private readonly QuicWriter _writer = new QuicWriter(Memory<byte>.Empty);
 
@@ -104,8 +109,8 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
         /// </summary>
         public void WakeUp()
         {
-            _waitCompletionSource.TrySetResult();
-            _needsUpdate = true;
+            Volatile.Write(ref _needsUpdate, true);
+            _waitCompletionSource.SignalWaiter();
         }
 
         private async Task Run()
@@ -151,21 +156,18 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
                     _timer = Connection.GetNextTimerTimestamp();
                     if (now < _timer)
                     {
+                        Volatile.Write(ref _waiting, true);
                         // asynchronously wait until either the timer expires or we receive a new datagram
-                        if (_waitCompletionSource.Task.IsCompleted)
-                        {
-                            _waitCompletionSource =
-                                new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                        }
+                        _waitCompletionSource.Reset();
 
-                        // protection against race conditions (flag set just after last update finished)
-                        if (!_needsUpdate)
+                        if (!Volatile.Read(ref _needsUpdate))
                         {
                             CancellationTokenSource cts = new CancellationTokenSource();
-                            Task<bool>? read = _recvQueue.Reader.WaitToReadAsync(cts.Token).AsTask();
+                            Task<bool> read = _recvQueue.Reader.WaitToReadAsync(cts.Token).AsTask();
+                            Task wait = _waitCompletionSource.WaitAsync(CancellationToken.None).AsTask();
                             await using CancellationTokenRegistration registration = cts.Token.Register(static s =>
                             {
-                                ((TaskCompletionSource?)s)?.TrySetResult();
+                                ((ResettableValueTaskSource?)s)?.SignalWaiter();
                             }, _waitCompletionSource);
 
                             if (_timer < long.MaxValue)
@@ -173,15 +175,99 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
                                 cts.CancelAfter((int)Timestamp.GetMilliseconds(_timer - now));
                             }
 
-                            var task = await Task.WhenAny(read, _waitCompletionSource.Task).ConfigureAwait(false);
+                            var task = await Task.WhenAny(read, wait).ConfigureAwait(false);
                             cts.Cancel();
+                            _waitCompletionSource.SignalWaiter();
+                            await wait.ConfigureAwait(false);
                         }
+                        else
+                        {
+                            _waitCompletionSource.SignalWaiter();
+                            await _waitCompletionSource.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+                        }
+
+
+
+                        Volatile.Write(ref _waiting, false);
                     }
                 }
             }
             catch (Exception e)
             {
+                Console.WriteLine(e);
                 Connection.OnSocketContextException(e);
+            }
+        }
+
+        // TODO-RZ: this has been copied from StreamBuffer class, perhaps we should make it public and make it reuseable?
+        private sealed class ResettableValueTaskSource : IValueTaskSource
+        {
+            // This object is used as the backing source for ValueTask.
+            // There should only ever be one awaiter at a time; users of this object must ensure this themselves.
+            // We use _hasWaiter to ensure mutual exclusion between successful completion and cancellation,
+            // and dispose/clear the cancellation registration in GetResult to guarantee it will not affect subsequent waiters.
+            // The rest of the logic is deferred to ManualResetValueTaskSourceCore.
+
+            private ManualResetValueTaskSourceCore<bool> _waitSource; // mutable struct, do not make this readonly
+            private CancellationTokenRegistration _waitSourceCancellation;
+            private int _hasWaiter;
+
+            ValueTaskSourceStatus IValueTaskSource.GetStatus(short token) => _waitSource.GetStatus(token);
+
+            void IValueTaskSource.OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _waitSource.OnCompleted(continuation, state, token, flags);
+
+            void IValueTaskSource.GetResult(short token)
+            {
+                Debug.Assert(_hasWaiter == 0);
+
+                // Clean up the registration.  This will wait for any in-flight cancellation to complete.
+                _waitSourceCancellation.Dispose();
+                _waitSourceCancellation = default;
+
+                // Propagate any exceptions if there were any.
+                _waitSource.GetResult(token);
+            }
+
+            public void SignalWaiter()
+            {
+                if (Interlocked.Exchange(ref _hasWaiter, 0) == 1)
+                {
+                    _waitSource.SetResult(true);
+                }
+            }
+
+            private void CancelWaiter(CancellationToken cancellationToken)
+            {
+                if (Interlocked.Exchange(ref _hasWaiter, 0) == 1)
+                {
+                    _waitSource.SetException(ExceptionDispatchInfo.SetCurrentStackTrace(new OperationCanceledException(cancellationToken)));
+                }
+            }
+
+            public void Reset()
+            {
+                if (_hasWaiter != 0)
+                {
+                    throw new InvalidOperationException("Concurrent use is not supported");
+                }
+
+                _waitSource.Reset();
+                Volatile.Write(ref _hasWaiter, 1);
+            }
+
+            public void Wait()
+            {
+                _waitSource.RunContinuationsAsynchronously = false;
+                new ValueTask(this, _waitSource.Version).AsTask().GetAwaiter().GetResult();
+            }
+
+            public ValueTask WaitAsync(CancellationToken cancellationToken)
+            {
+                _waitSource.RunContinuationsAsynchronously = true;
+
+                _waitSourceCancellation = cancellationToken.UnsafeRegister(static (s, token) => ((ResettableValueTaskSource)s!).CancelWaiter(token), this);
+
+                return new ValueTask(this, _waitSource.Version);
             }
         }
     }

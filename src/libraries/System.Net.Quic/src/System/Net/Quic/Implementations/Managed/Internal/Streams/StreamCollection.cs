@@ -57,19 +57,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
         /// <summary>
         ///     Returns true if the stream collection has streams to be flushed.
         /// </summary>
-        internal bool HasFlushableStreams
-        {
-            get
-            {
-                // if it is false, then it surely is not-null
-                while (_flushable.First?.Value.SendStream?.IsFlushable == false)
-                {
-                    GetFirstFlushableStream();
-                }
-
-                return _flushable.First != null;
-            }
-        }
+        internal bool HasFlushableStreams => _flushable.First != null;
 
         /// <summary>
         ///     Removes first flushable stream from the queue and returns it. Returns null if no
