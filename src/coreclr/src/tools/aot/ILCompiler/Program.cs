@@ -374,14 +374,8 @@ namespace ILCompiler
                 optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("ssse3");
                 optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("aes");
                 optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("pclmul");
+                optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("popcnt");
                 optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("lzcnt");
-
-                // If SSE4.2 was enabled, we can also opportunistically enable POPCNT
-                Debug.Assert(InstructionSet.X64_SSE42 == InstructionSet.X86_SSE42);
-                if (supportedInstructionSet.HasInstructionSet(InstructionSet.X64_SSE42))
-                {
-                    optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("popcnt");
-                }
 
                 // If AVX was enabled, we can opportunistically enable FMA/BMI
                 Debug.Assert(InstructionSet.X64_AVX == InstructionSet.X86_AVX);
