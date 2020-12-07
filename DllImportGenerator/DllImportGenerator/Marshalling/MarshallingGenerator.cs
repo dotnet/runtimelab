@@ -195,7 +195,8 @@ namespace Microsoft.Interop
                 case { MarshallingAttributeInfo: GeneratedNativeMarshallingAttributeInfo(string nativeTypeName) }:
                     return Forwarder;
 
-                // Cases that just match on type must come after the checks for the new marshalling model.
+                // Cases that just match on type must come after the checks that match only on marshalling attribute info.
+                // The checks below do not account for generic marshalling overrides like [MarshalUsing], so those checks must come first.
                 case { ManagedType: { SpecialType: SpecialType.System_Char } }:
                     return CreateCharMarshaller(info, context);
 
