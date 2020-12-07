@@ -626,7 +626,7 @@ bool convertPInvokeCalliToCall(
           CORINFO_RESOLVED_TOKEN* pResolvedToken,
           bool mustConvert);
 
-void notifyInstructionSetUsage(
+bool notifyInstructionSetUsage(
           CORINFO_InstructionSet instructionSet,
           bool supportEnabled);
 
