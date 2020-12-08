@@ -995,16 +995,13 @@ namespace Internal.JitInterface
             return helper;
         }
 
-        private CorInfoHelpFunc getNewHelper(ref CORINFO_RESOLVED_TOKEN pResolvedToken, CORINFO_METHOD_STRUCT_* callerHandle, byte* pHasSideEffects = null)
+        private CorInfoHelpFunc getNewHelper(ref CORINFO_RESOLVED_TOKEN pResolvedToken, CORINFO_METHOD_STRUCT_* callerHandle, ref bool pHasSideEffects)
         {
             TypeDesc type = HandleToObject(pResolvedToken.hClass);
 
             Debug.Assert(!type.IsString && !type.IsArray && !type.IsCanonicalDefinitionType(CanonicalFormKind.Any));
             
-            if (pHasSideEffects != null)
-            {
-                *pHasSideEffects = (byte)(type.HasFinalizer ? 1 : 0);
-            }
+            pHasSideEffects = type.HasFinalizer;
 
             if (type.RequiresAlign8())
             {
