@@ -23,7 +23,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test.CoreLib", "Test.CoreLi
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
-		..\..\..\libraries\System.Private.CoreLib\src\System.Private.CoreLib.Shared.projitems*{e4bc768b-f97d-4a8f-9391-b65df3eb47c6}*SharedItemsImports = 5
+		..\..\libraries\System.Private.CoreLib\src\System.Private.CoreLib.Shared.projitems*{e4bc768b-f97d-4a8f-9391-b65df3eb47c6}*SharedItemsImports = 5
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Checked|arm = Checked|arm

@@ -99,7 +99,7 @@ endif()
 add_subdirectory(tools/aot/jitinterface)
 
 if(NOT CLR_CROSS_COMPONENTS_BUILD)
-  add_subdirectory(src/nativeaot)
+  add_subdirectory(nativeaot)
 endif(NOT CLR_CROSS_COMPONENTS_BUILD)
 
 # Above projects do not build with these compile options

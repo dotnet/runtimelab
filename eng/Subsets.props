@@ -218,22 +218,22 @@
 
   <!-- CoreClr Native AOT sets -->
   <ItemGroup Condition="$(_subset.Contains('+nativeaot.libs+'))">
-    <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.CoreLib\System.Private.CoreLib.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.Reflection.Metadata\System.Private.Reflection.Metadata.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.TypeLoader\src\System.Private.TypeLoader.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.Interop\src\System.Private.Interop.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.Reflection.Core\src\System.Private.Reflection.Core.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.Reflection.Execution\src\System.Private.Reflection.Execution.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.DisabledReflection\src\System.Private.DisabledReflection.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\System.Private.StackTraceMetadata\src\System.Private.StackTraceMetadata.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\Test.CoreLib\src\Test.CoreLib.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.CoreLib\System.Private.CoreLib.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.Reflection.Metadata\System.Private.Reflection.Metadata.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.TypeLoader\src\System.Private.TypeLoader.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.Interop\src\System.Private.Interop.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.Reflection.Core\src\System.Private.Reflection.Core.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.Reflection.Execution\src\System.Private.Reflection.Execution.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.DisabledReflection\src\System.Private.DisabledReflection.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.StackTraceMetadata\src\System.Private.StackTraceMetadata.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\Test.CoreLib\src\Test.CoreLib.csproj" Category="clr" />
   </ItemGroup>
 
   <ItemGroup Condition="$(_subset.Contains('+nativeaot.tools+'))">
-    <ProjectToBuild Include="$(CoreClrProjectRoot)src\tools\aot\ILCompiler.Build.Tasks\ILCompiler.Build.Tasks.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)src\tools\aot\ILCompiler\ILCompiler.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)src\tools\aot\ILCompiler\repro\repro.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)src\nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler.Build.Tasks\ILCompiler.Build.Tasks.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler\ILCompiler.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler\repro\repro.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" />
   </ItemGroup>
 
   <!-- Mono sets -->
