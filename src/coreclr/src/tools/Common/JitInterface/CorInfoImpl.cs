@@ -956,22 +956,27 @@ namespace Internal.JitInterface
             return (CORINFO_MODULE_STRUCT_*)ObjectToHandle(methodIL);
         }
 
-        private CORINFO_METHOD_STRUCT_* resolveVirtualMethod(CORINFO_METHOD_STRUCT_* baseMethod, CORINFO_CLASS_STRUCT_* derivedClass, CORINFO_CONTEXT_STRUCT* ownerType)
+        private bool resolveVirtualMethod(CORINFO_DEVIRTUALIZATION_INFO* info)
         {
-            TypeDesc implType = HandleToObject(derivedClass);
+            // Initialize OUT fields
+            info->devirtualizedMethod = null;
+            info->requiresInstMethodTableArg = false;
+            info->exactContext = null;
+
+            TypeDesc objType = HandleToObject(info->objClass);
 
             // __Canon cannot be devirtualized
-            if (implType.IsCanonicalDefinitionType(CanonicalFormKind.Any))
+            if (objType.IsCanonicalDefinitionType(CanonicalFormKind.Any))
             {
-                return null;
+                return false;
             }
 
-            MethodDesc decl = HandleToObject(baseMethod);
+            MethodDesc decl = HandleToObject(info->virtualMethod);
             Debug.Assert(!decl.HasInstantiation);
 
-            if (ownerType != null)
+            if (info->context != null)
             {
-                TypeDesc ownerTypeDesc = typeFromContext(ownerType);
+                TypeDesc ownerTypeDesc = typeFromContext(info->context);
                 if (decl.OwningType != ownerTypeDesc)
                 {
                     Debug.Assert(ownerTypeDesc is InstantiatedType);
@@ -979,19 +984,32 @@ namespace Internal.JitInterface
                 }
             }
 
-            MethodDesc impl = _compilation.ResolveVirtualMethod(decl, implType);
+            MethodDesc impl = _compilation.ResolveVirtualMethod(decl, objType);
 
-            if (impl != null)
+            if (impl == null)
+            {
+                return false;
+            }
+
+            MethodDesc exactImpl = impl;
+
+            // Implementations of the special Array generic interface methods are not in the regular type hiearchy.
+            // FindMethodOnTypeWithMatchingTypicalMethod below would fail to find them.
+            if (!objType.IsArray)
             {
                 if (impl.OwningType.IsValueType)
                 {
                     impl = getUnboxingThunk(impl);
                 }
 
-                return ObjectToHandle(impl);
+                exactImpl = TypeSystemHelpers.FindMethodOnTypeWithMatchingTypicalMethod(objType, exactImpl);
             }
 
-            return null;
+            info->devirtualizedMethod = ObjectToHandle(impl);
+            info->requiresInstMethodTableArg = false;
+            info->exactContext = contextFromType(exactImpl.OwningType);
+
+            return true;
         }
 
         private CORINFO_METHOD_STRUCT_* getUnboxedEntry(CORINFO_METHOD_STRUCT_* ftn, byte* requiresInstMethodTableArg)
