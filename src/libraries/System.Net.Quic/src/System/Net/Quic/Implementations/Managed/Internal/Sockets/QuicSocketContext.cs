@@ -177,25 +177,35 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
             if (_socketTaskCts.IsCancellationRequested)
                 return true;
 
-            // we need a new buffer, because the one which was received into last time may be still read from by the
-            // connection
-            var buffer = ArrayPool.Rent(QuicConstants.MaximumAllowedDatagramSize);
-            args.SetBuffer(buffer, 0, buffer.Length);
-
-            if (_remoteEndPoint != null)
+            try
             {
-                // we are using connected sockets -> use Receive(...). We also have to set the expected
-                // receiver address so that the receiving code later uses it
+                // we need a new buffer, because the one which was received into last time may be still read from by the
+                // connection
+                var buffer = ArrayPool.Rent(QuicConstants.MaximumAllowedDatagramSize);
+                args.SetBuffer(buffer, 0, buffer.Length);
 
-                args.RemoteEndPoint = _remoteEndPoint!;
-                return _socket.ReceiveAsync(args);
+                if (_remoteEndPoint != null)
+                {
+                    // we are using connected sockets -> use Receive(...). We also have to set the expected
+                    // receiver address so that the receiving code later uses it
+
+                    args.RemoteEndPoint = _remoteEndPoint!;
+                    return _socket.ReceiveAsync(args);
+                }
+
+                Debug.Assert(_isServer);
+                Debug.Assert(_localEndPoint != null);
+
+                args.RemoteEndPoint = _localEndPoint!;
+                return _socket.ReceiveFromAsync(args);
             }
-
-            Debug.Assert(_isServer);
-            Debug.Assert(_localEndPoint != null);
-
-            args.RemoteEndPoint = _localEndPoint!;
-            return _socket.ReceiveFromAsync(args);
+            catch (ObjectDisposedException)
+            {
+                // do nothing, there is a data race between cancellation _socketTaskCts cancellation
+                // (and therefore disposing the _socket). Once the overload with CancellationToken is made publicly
+                // available, this try-catch is no longer needed.
+                return true;
+            }
         }
 
         protected abstract void OnException(Exception e);
