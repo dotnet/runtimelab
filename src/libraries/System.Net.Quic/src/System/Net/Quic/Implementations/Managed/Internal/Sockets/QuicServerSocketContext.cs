@@ -104,17 +104,20 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
 
                     // this means that we need to keep the connection in the map until the timer runs out, closing event
                     // will be already signaled to user.
-                    if (!_acceptNewConnections)
+                    if (_acceptNewConnections)
                     {
-                        DetachConnection(connection);
+                        return true;
                     }
 
-                    return false;
-                case QuicConnectionState.Closed:
-                    // draining timer elapsed, discard the state
+                    // if not accepting new connections, we can close straight away
+                    connection.LocalClose();
+                    goto case QuicConnectionState.BeforeClosed;
+                case QuicConnectionState.BeforeClosed:
+                    // draining timer elapsed, remove the connection
                     DetachConnection(connection);
                     return true;
 
+                case QuicConnectionState.Closed: // We should not get there in a closed state
                 default:
                     throw new ArgumentOutOfRangeException(nameof(newState), newState, null);
             }
@@ -136,7 +139,6 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
                 SignalStop();
             }
 
-            connection.DoCleanup();
             Debug.Assert(removed);
         }
     }

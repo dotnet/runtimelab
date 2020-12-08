@@ -26,6 +26,12 @@ namespace System.Net.Quic.Implementations.Managed
 
         internal void ReceiveData(QuicReader reader, EndPoint sender, QuicSocketContext.RecvContext ctx)
         {
+            if (_readyToClose)
+            {
+                // do nothing when connection already closed
+                return;
+            }
+
             if (_isDraining)
             {
                 // discard any incoming data
@@ -536,7 +542,10 @@ namespace System.Net.Quic.Implementations.Managed
             writer.Reset(origBuffer, writer.BytesWritten);
 
             // If we still managed to write nothing, then there there is something wrong with the logic
-            Debug.Assert(writer.BytesWritten != written);
+            if (writer.BytesWritten == written)
+            {
+                Debugger.Launch();
+            }
 
             // by this point it is certain that the packet will be sent, commit pending key update
             if (_doKeyUpdate)

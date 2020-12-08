@@ -80,17 +80,10 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
         {
             _reader.Reset(datagram.Buffer.AsMemory(0, datagram.Length));
 
-            QuicConnectionState previousState = Connection.ConnectionState;
             _recvContext.Timestamp = Timestamp.Now;
             Connection.ReceiveData(_reader, datagram.RemoteEndpoint, _recvContext);
             // the array pools are shared
             ArrayPool.Return(datagram.Buffer);
-
-            QuicConnectionState newState = Connection.ConnectionState;
-            if (newState != previousState)
-            {
-                _parent.OnConnectionStateChanged(Connection, newState);
-            }
         }
 
         /// <summary>
@@ -115,24 +108,32 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
 
         private async Task Run()
         {
+            void CheckForStateChange(ref QuicConnectionState oldState)
+            {
+                QuicConnectionState newState = Connection.ConnectionState;
+                if (oldState != newState)
+                {
+                    _parent.OnConnectionStateChanged(Connection, newState);
+                    oldState = newState;
+                }
+            }
+
             try
             {
-                while (Connection.ConnectionState != QuicConnectionState.Closed)
+                while (Connection.ConnectionState != QuicConnectionState.BeforeClosed)
                 {
+                    QuicConnectionState previousState = Connection.ConnectionState;
+
                     if (Timestamp.Now >= _timer)
                     {
-                        QuicConnectionState previousState = Connection.ConnectionState;
                         Connection.OnTimeout(Timestamp.Now);
-                        QuicConnectionState newState = Connection.ConnectionState;
-                        if (newState != previousState)
-                        {
-                            _parent.OnConnectionStateChanged(Connection, newState);
-                        }
+                        CheckForStateChange(ref previousState);
                     }
 
                     while (_recvQueue.Reader.TryRead(out DatagramInfo datagram))
                     {
                         DoReceiveDatagram(datagram);
+                        CheckForStateChange(ref previousState);
                     }
 
                     if (Connection.GetWriteLevel(Timestamp.Now) != EncryptionLevel.None)
@@ -150,7 +151,12 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
                         }
 
                         ArrayPool.Return(buffer);
+                        CheckForStateChange(ref previousState);
                     }
+
+                    // previous action may have caused the connection to close
+                    if (Connection.ConnectionState == QuicConnectionState.BeforeClosed)
+                        break;
 
                     long now = Timestamp.Now;
                     _timer = Connection.GetNextTimerTimestamp();
@@ -167,12 +173,12 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
                             Task wait = _waitCompletionSource.WaitAsync(CancellationToken.None).AsTask();
                             await using CancellationTokenRegistration registration = cts.Token.Register(static s =>
                             {
-                                ((ResettableValueTaskSource?)s)?.SignalWaiter();
+                                ((ResettableValueTaskSource?) s)?.SignalWaiter();
                             }, _waitCompletionSource);
 
                             if (_timer < long.MaxValue)
                             {
-                                cts.CancelAfter((int)Timestamp.GetMilliseconds(_timer - now));
+                                cts.CancelAfter((int) Timestamp.GetMilliseconds(_timer - now));
                             }
 
                             var task = await Task.WhenAny(read, wait).ConfigureAwait(false);
@@ -186,16 +192,17 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
                             await _waitCompletionSource.WaitAsync(CancellationToken.None).ConfigureAwait(false);
                         }
 
-
-
                         Volatile.Write(ref _waiting, false);
                     }
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
                 Connection.OnSocketContextException(e);
+            }
+            finally
+            {
+                Connection.DoCleanup();
             }
         }
 

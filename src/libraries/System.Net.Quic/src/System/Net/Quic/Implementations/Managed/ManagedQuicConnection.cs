@@ -62,6 +62,11 @@ namespace System.Net.Quic.Implementations.Managed
         private bool _isDraining;
 
         /// <summary>
+        ///     The connection is ready to be closed.
+        /// </summary>
+        private bool _readyToClose;
+
+        /// <summary>
         ///     If true, the connection is in closing or draining state and will be considered close at
         ///     <see cref="_closingPeriodEndTimestamp"/> at the latest.
         /// </summary>
@@ -83,18 +88,14 @@ namespace System.Net.Quic.Implementations.Managed
         private long? _closingPeriodEndTimestamp;
 
         /// <summary>
-        ///     True if the connection is in closed state.
-        /// </summary>
-        internal bool IsClosed => _closeTcs.IsSet;
-
-        /// <summary>
         ///     Gets the current state of the connection.
         /// </summary>
         internal QuicConnectionState ConnectionState
         {
             get
             {
-                if (IsClosed) return QuicConnectionState.Closed;
+                if (_closeTcs.IsSet) return QuicConnectionState.Closed;
+                if (_readyToClose) return QuicConnectionState.BeforeClosed;
                 if (_isDraining) return QuicConnectionState.Draining;
                 if (IsClosing) return QuicConnectionState.Closing;
                 if (Connected) return QuicConnectionState.Connected;
@@ -317,7 +318,7 @@ namespace System.Net.Quic.Implementations.Managed
         /// <returns>Timestamp in ticks of the next timer or long.MaxValue if no timer is needed.</returns>
         internal long GetNextTimerTimestamp()
         {
-            if (_closeTcs.IsSet)
+            if (_readyToClose)
             {
                 // connection already closed, no timer needed
                 return long.MaxValue;
@@ -359,7 +360,7 @@ namespace System.Net.Quic.Implementations.Managed
             {
                 if (timestamp >= _closingPeriodEndTimestamp)
                 {
-                    SignalConnectionClose();
+                    LocalClose();
                 }
                 return;
             }
@@ -368,7 +369,7 @@ namespace System.Net.Quic.Implementations.Managed
             {
                 // TODO-RZ: Force close the connection with error
                 CloseConnection(TransportErrorCode.NoError);
-                SignalConnectionClose();
+                LocalClose();
             }
 
             if (timestamp >= Recovery.LossRecoveryTimer)
@@ -466,7 +467,7 @@ namespace System.Net.Quic.Implementations.Managed
         /// </summary>
         internal EncryptionLevel GetWriteLevel(long timestamp)
         {
-            if (_closeTcs.IsSet)
+            if (_readyToClose)
             {
                 // if connection closed, we are not sending any data
                 return EncryptionLevel.None;
@@ -521,12 +522,14 @@ namespace System.Net.Quic.Implementations.Managed
             {
                 var level = (EncryptionLevel)i;
                 var pnSpace = _pnSpaces[i];
+                var recoverySpace = Recovery.GetPacketNumberSpace((PacketSpace) i);
 
                 // to advance handshake
                 if (pnSpace.CryptoSendStream.IsFlushable ||
                     // send acknowledgement if needed, prefer sending acks in Initial and Handshake
                     // immediately since there is a great chance of coalescing with next level
-                    (i < 2 ? pnSpace.AckElicited : pnSpace.NextAckTimer <= timestamp))
+                    (i < 2 ? pnSpace.AckElicited : pnSpace.NextAckTimer <= timestamp) ||
+                    recoverySpace.LostPackets.Count > 0)
                     return level;
             }
 
@@ -607,11 +610,11 @@ namespace System.Net.Quic.Implementations.Managed
             {
                 return;
             }
+
+            // TODO-RZ: QUIC should not use default error for closing, they are defined solely by application layer
             var task =  CloseAsync((long)TransportErrorCode.NoError);
             _disposed = true;
             await task.ConfigureAwait(false);
-
-            Tls.Dispose();
         }
 
         public override void Dispose()
@@ -775,14 +778,14 @@ namespace System.Net.Quic.Implementations.Managed
             {
                 // abandon connection attempt
                 _connectTcs.TryCompleteException(new QuicConnectionAbortedException(errorCode));
-                _closeTcs.TryComplete();
+                DoCleanup();
                 return default;
             }
 
-            if (IsClosed) return default;
             _outboundError = new QuicError((TransportErrorCode)errorCode, null, FrameType.Padding, false);
             _socketContext.WakeUp();
 
+            // the connection will be closed and disposed from the background thread
             return _closeTcs.GetTask();
         }
 
@@ -830,8 +833,6 @@ namespace System.Net.Quic.Implementations.Managed
             ResetAckTimer();
         }
 
-        internal void SignalConnectionClose() => _closeTcs.TryComplete();
-
         /// <summary>
         ///     Starts closing period.
         /// </summary>
@@ -867,9 +868,6 @@ namespace System.Net.Quic.Implementations.Managed
         private void StartDraining()
         {
             _isDraining = true;
-
-            // for all user's purposes, the connection is closed.
-            SignalConnectionClose();
         }
 
         /// <summary>
@@ -922,7 +920,7 @@ namespace System.Net.Quic.Implementations.Managed
             CloseConnection(TransportErrorCode.InternalError);
 
             _connectTcs.TryCompleteException(e);
-            _closeTcs.TryCompleteException(e);
+            LocalClose();
 
             foreach (var stream in _streams)
             {
@@ -935,7 +933,17 @@ namespace System.Net.Quic.Implementations.Managed
         /// </summary>
         internal void DoCleanup()
         {
+            Tls.Dispose();
             _trace?.Dispose();
+            _closeTcs.TryComplete();
+        }
+
+        /// <summary>
+        ///     Forcibly closes the connection on this side.
+        /// </summary>
+        internal void LocalClose()
+        {
+            _readyToClose = true;
         }
     }
 }
