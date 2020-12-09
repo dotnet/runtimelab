@@ -39,7 +39,7 @@ namespace DllImportGenerator.IntegrationTests
             [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = "append_int_to_array")]
             public static partial void Append([MarshalAs(UnmanagedType.LPArray, SizeConst = 1, SizeParamIndex = 1)] ref int[] values, int numOriginalValues, int newValue);
 
-            [GeneratedDllImport(nameof(NativeExportsNE), EntryPoint = "and_all_members")]
+            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = "and_all_members")]
             [return:MarshalAs(UnmanagedType.U1)]
             public static partial bool AndAllMembers(BoolStruct[] pArray, int length);
         }
