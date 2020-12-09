@@ -4,7 +4,7 @@ Author: Michal Strehovsky ([@MichalStrehovsky](https://github.com/MichalStrehovs
 
 ## Introduction
 
-The managed type system is a major component of CoreRT. It represents the modules, types, methods, and fields within a program and provides higher level services to the type system users that lets them get answers to various interesting questions.
+The managed type system is a major component of new generation of .NET tools for AOT and IL verification. It represents the modules, types, methods, and fields within a program and provides higher level services to the type system users that lets them get answers to various interesting questions.
 
 The managed type system is equivalent of [CoreCLR type system](type-system.md) rewritten in C#. We've always wanted to implement runtime functionality in C#. The managed type system is the infrastructure that allows us to do that.
 
@@ -71,7 +71,7 @@ Note the distinction between multidimensional arrays of rank 1 and vectors is a 
 
 Represents a generic parameter, along with its constraints. Generic definitions are represented as instantiations over generic parameters.
 
-Note for readers familiar with the .NET reflection type system: while the .NET reflection type system doesn't distinguish between a generic definition (e.g. `List<T>`) and an open instantiation of a generic type (e.g. `List<!0>`), the CoreRT type system draws a distinction between those two. This distinction is important when representing member references from within IL method bodies - e.g. an IL reference using an LDTOKEN instruction to `List<T>.Add` should always refer to the uninstantiated definition, while a reference to `List<!0>.Add` will refer to a concrete method after substituting the signature variable.
+Note for readers familiar with the .NET reflection type system: while the .NET reflection type system doesn't distinguish between a generic definition (e.g. `List<T>`) and an open instantiation of a generic type (e.g. `List<!0>`), the managed type system draws a distinction between those two. This distinction is important when representing member references from within IL method bodies - e.g. an IL reference using an LDTOKEN instruction to `List<T>.Add` should always refer to the uninstantiated definition, while a reference to `List<!0>.Add` will refer to a concrete method after substituting the signature variable.
 
 ### SignatureVariable (SignatureTypeVariable, SignatureMethodVariable)
 
@@ -91,7 +91,7 @@ The algorithms are used as an extensibility mechanism in places where partial cl
 
 ## Hash codes within the type system
 
-An interesting property of the type system lays in its ability to compute hash codes that can be reliably computed for any type or method represented within the system at compile time and at runtime. Having the same hash code available at both compile time and runtime is leveraged to build high performance lookup tables used by the CoreRT runtime. The hash code is computed from type names and gets preserved as part of the runtime data structures so that it's available in situations when the type name has been optimized away by the compiler.
+An interesting property of the type system lays in its ability to compute hash codes that can be reliably computed for any type or method represented within the system at compile time and at runtime. Having the same hash code available at both compile time and runtime is leveraged to build high performance lookup tables in AOT compiled code. The hash code is computed from type names and gets preserved as part of the runtime data structures so that it's available in situations when the type name has been optimized away by the compiler.
 
 ## Throwing exceptions from the type system
 
@@ -106,6 +106,10 @@ The exception messages are assigned string IDs and get consumed by the throw hel
 ## Physical architecture
 
 The type system implementation is found in:
-* `src/Common/src/TypeSystem/Common`: most of the common type system is here
-* `src/Common/src/TypeSystem/Ecma`: concrete implementations of `MetadataType`, `MethodDesc`, `FieldDesc` etc. that read metadata from ECMA-335 module files is here
-* `src/ILCompiler.TypeSystem/tests`: unit tests that shed some light into the operation and features of the type system. This is a good starting point to learn about the code.
+* `src/coreclr/tools/Common/TypeSystem/Common`: most of the common type system is here
+* `src/coreclr/tools/Common/TypeSystem/Ecma`: concrete implementations of `MetadataType`, `MethodDesc`, `FieldDesc` etc. that read metadata from ECMA-335 module files is here
+* `src/coreclr/tools/aot/ILCompiler.TypeSystem.ReadyToRun.Tests`: unit tests that shed some light into the operation and features of the type system. This is a good starting point to learn about the code.
+
+## Notable differences from CoreCLR type system
+
+* `MethodDesc` has exact generic instantations where possible in managed type system. The code sharing policy in managed type system is one of the pluggable algorithms and it does not affect `MethodDesc` identity. The code sharing policy in the CoreCLR type system is coupled with `MethodDesc` identity. See https://github.com/dotnet/runtime/pull/45744 for an example how this difference manifests itself.
