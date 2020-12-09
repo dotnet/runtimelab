@@ -226,12 +226,13 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
             // and we use this rate to gauge how much can we send now
             long elapsed = timestamp - LastLargeDatagramSentTimestamp;
 
-            int allowance = (int) (elapsed * GetCurrentPacingRate());
+            // use long to avoid overflow
+            long allowance = (long) (elapsed * GetCurrentPacingRate());
             allowance = Math.Min(allowance, GetAvailableCongestionWindowBytes());
             // do not send more than half the current congestion window
             allowance = Math.Min(allowance, CongestionWindow / 2);
 
-            return _allowance = allowance;
+            return _allowance = (int) allowance;
         }
 
         internal int _allowance;
