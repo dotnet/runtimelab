@@ -23,6 +23,8 @@ namespace System.Net.Quic
                     return MsQuic;
                 case "managedmocktls":
                     return ManagedMockTls;
+                case "mock":
+                    return Mock;
                 case "managed":
                     if (!Managed.IsSupported)
                     {

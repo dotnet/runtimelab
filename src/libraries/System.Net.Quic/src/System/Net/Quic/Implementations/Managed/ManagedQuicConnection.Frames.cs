@@ -193,7 +193,7 @@ namespace System.Net.Quic.Implementations.Managed
 
         private ProcessPacketResult ProcessPingFrame(QuicReader reader)
         {
-            _trace?.OnPingFrame();
+            Trace?.OnPingFrame();
 
             // just discard the frame
             reader.ReadFrameType();
@@ -214,7 +214,7 @@ namespace System.Net.Quic.Implementations.Managed
             }
 
             reader.Advance(paddingLength);
-            _trace?.OnPaddingFrame(paddingLength);
+            Trace?.OnPaddingFrame(paddingLength);
 
             return ProcessPacketResult.Ok;
         }
@@ -247,7 +247,7 @@ namespace System.Net.Quic.Implementations.Managed
 
             var space = GetPacketSpace(packetType);
             Recovery.OnAckReceived(space, ranges, ackDelay, frame, context.Timestamp, Tls.IsHandshakeComplete);
-            _trace?.OnAckFrame(frame, ackDelay);
+            Trace?.OnAckFrame(frame, ackDelay);
 
             var ackedPackets = Recovery.GetPacketNumberSpace(space).AckedPackets;
             while (ackedPackets.TryDequeue(out var packet))
@@ -263,7 +263,7 @@ namespace System.Net.Quic.Implementations.Managed
         {
             if (!ResetStreamFrame.Read(reader, out var frame))
                 return ProcessPacketResult.Error;
-            _trace?.OnResetStreamFrame(frame);
+            Trace?.OnResetStreamFrame(frame);
 
             if (IsClosing) return ProcessPacketResult.Ok;
 
@@ -290,7 +290,7 @@ namespace System.Net.Quic.Implementations.Managed
         {
             if (!StopSendingFrame.Read(reader, out var frame))
                 return ProcessPacketResult.Error;
-            _trace?.OnStopSendingFrame(frame);
+            Trace?.OnStopSendingFrame(frame);
 
             if (IsClosing) return ProcessPacketResult.Ok;
 
@@ -326,7 +326,7 @@ namespace System.Net.Quic.Implementations.Managed
         private ProcessPacketResult ProcessCryptoFrame(QuicReader reader, PacketType packetType, QuicSocketContext.RecvContext context)
         {
             if (!CryptoFrame.Read(reader, out var frame)) return ProcessPacketResult.Error;
-            _trace?.OnCryptoFrame(frame);
+            Trace?.OnCryptoFrame(frame);
 
             if (IsClosing) return ProcessPacketResult.Ok;
 
@@ -351,7 +351,7 @@ namespace System.Net.Quic.Implementations.Managed
         {
             if (!NewTokenFrame.Read(reader, out var frame))
                 return ProcessPacketResult.Error;
-            _trace?.OnNewTokenFrame(frame);
+            Trace?.OnNewTokenFrame(frame);
 
             if (IsClosing) return ProcessPacketResult.Ok;
 
@@ -363,7 +363,7 @@ namespace System.Net.Quic.Implementations.Managed
         {
             if (!MaxDataFrame.Read(reader, out var frame))
                 return ProcessPacketResult.Error;
-            _trace?.OnMaxDataFrame(frame);
+            Trace?.OnMaxDataFrame(frame);
 
             _sendLimits.UpdateMaxData(frame.MaximumData);
             return ProcessPacketResult.Ok;
@@ -373,7 +373,7 @@ namespace System.Net.Quic.Implementations.Managed
         {
             if (!MaxStreamDataFrame.Read(reader, out var frame))
                 return ProcessPacketResult.Error;
-            _trace?.OnMaxStreamDataFrame(frame);
+            Trace?.OnMaxStreamDataFrame(frame);
 
             if (IsClosing) return ProcessPacketResult.Ok;
 
@@ -402,7 +402,7 @@ namespace System.Net.Quic.Implementations.Managed
         {
             if (!MaxStreamsFrame.Read(reader, out var frame))
                 return ProcessPacketResult.Error;
-            _trace?.OnMaxStreamsFrame(frame);
+            Trace?.OnMaxStreamsFrame(frame);
 
             if (IsClosing) return ProcessPacketResult.Ok;
 
@@ -418,7 +418,7 @@ namespace System.Net.Quic.Implementations.Managed
         {
             if (!DataBlockedFrame.Read(reader, out var frame))
                 return ProcessPacketResult.Error;
-            _trace?.OnDataBlockedFrame(frame);
+            Trace?.OnDataBlockedFrame(frame);
 
             if (IsClosing) return ProcessPacketResult.Ok;
 
@@ -430,7 +430,7 @@ namespace System.Net.Quic.Implementations.Managed
         {
             if (!StreamDataBlockedFrame.Read(reader, out var frame))
                 return ProcessPacketResult.Error;
-            _trace?.OnStreamDataBlockedFrame(frame);
+            Trace?.OnStreamDataBlockedFrame(frame);
 
             if (IsClosing) return ProcessPacketResult.Ok;
 
@@ -447,7 +447,7 @@ namespace System.Net.Quic.Implementations.Managed
         {
             if (!StreamsBlockedFrame.Read(reader, out var frame))
                 return ProcessPacketResult.Error;
-            _trace?.OnStreamsBlockedFrame(frame);
+            Trace?.OnStreamsBlockedFrame(frame);
 
             if (IsClosing) return ProcessPacketResult.Ok;
 
@@ -461,7 +461,7 @@ namespace System.Net.Quic.Implementations.Managed
         {
             if (!NewConnectionIdFrame.Read(reader, out var frame))
                 return ProcessPacketResult.Error;
-            _trace?.OnNewConnectionIdFrame(frame);
+            Trace?.OnNewConnectionIdFrame(frame);
 
             if (IsClosing) return ProcessPacketResult.Ok;
 
@@ -508,7 +508,7 @@ namespace System.Net.Quic.Implementations.Managed
         {
             if (!RetireConnectionIdFrame.Read(reader, out var frame))
                 return ProcessPacketResult.Error;
-            _trace?.OnRetireConnectionIdFrame(frame);
+            Trace?.OnRetireConnectionIdFrame(frame);
 
             if (IsClosing) return ProcessPacketResult.Ok;
 
@@ -520,7 +520,7 @@ namespace System.Net.Quic.Implementations.Managed
         {
             if (!PathChallengeFrame.Read(reader, out var frame))
                 return ProcessPacketResult.Error;
-            _trace?.OnPathChallengeFrame(frame);
+            Trace?.OnPathChallengeFrame(frame);
 
             if (IsClosing) return ProcessPacketResult.Ok;
 
@@ -532,7 +532,7 @@ namespace System.Net.Quic.Implementations.Managed
         {
             if (!PathChallengeFrame.Read(reader, out var frame))
                 return ProcessPacketResult.Error;
-            _trace?.OnPathChallengeFrame(frame);
+            Trace?.OnPathChallengeFrame(frame);
 
             if (IsClosing) return ProcessPacketResult.Ok;
 
@@ -544,7 +544,7 @@ namespace System.Net.Quic.Implementations.Managed
         {
             if (!ConnectionCloseFrame.Read(reader, out var frame))
                 return ProcessPacketResult.Error;
-            _trace?.OnConnectionCloseFrame(frame);
+            Trace?.OnConnectionCloseFrame(frame);
 
             // keep only the first error
             if (_inboundError == null)
@@ -585,7 +585,7 @@ namespace System.Net.Quic.Implementations.Managed
             var frameType = reader.PeekFrameType();
             if (!StreamFrame.Read(reader, out var frame))
                 return ProcessPacketResult.Error;
-            _trace?.OnStreamFrame(frame);
+            Trace?.OnStreamFrame(frame);
 
             if (IsClosing) return ProcessPacketResult.Ok;
 
@@ -652,7 +652,7 @@ namespace System.Net.Quic.Implementations.Managed
 
         private ProcessPacketResult ProcessHandshakeDoneFrame(QuicReader reader, QuicSocketContext.RecvContext context)
         {
-            _trace?.OnHandshakeDoneFrame();
+            Trace?.OnHandshakeDoneFrame();
 
             // frame not being allowed to be sent by client is handled in IsPacketAllowed
             Debug.Assert(!IsServer);
@@ -673,7 +673,7 @@ namespace System.Net.Quic.Implementations.Managed
         {
             int length = reader.BytesLeft;
             FrameType frameType = reader.ReadFrameType();
-            _trace?.OnUnknownFrame((long) frameType, length);
+            Trace?.OnUnknownFrame((long) frameType, length);
             return CloseConnection(TransportErrorCode.FrameEncodingError, QuicError.UnknownFrameType, frameType);
         }
 
@@ -694,7 +694,7 @@ namespace System.Net.Quic.Implementations.Managed
             if (writer.BytesAvailable > 0 && IsServer && packetType == PacketType.OneRtt &&
                 Tls.IsHandshakeComplete && !_handshakeDoneReceived)
             {
-                _trace?.OnHandshakeDoneFrame();
+                Trace?.OnHandshakeDoneFrame();
                 writer.WriteFrameType(FrameType.HandshakeDone);
                 // no data
 
@@ -707,7 +707,7 @@ namespace System.Net.Quic.Implementations.Managed
 
             if (writer.BytesAvailable > 0 && _pingWanted)
             {
-                _trace?.OnPingFrame();
+                Trace?.OnPingFrame();
                 writer.WriteFrameType(FrameType.Ping);
                 // no data
                 _pingWanted = false;
@@ -769,7 +769,7 @@ namespace System.Net.Quic.Implementations.Managed
             }
 
             ConnectionCloseFrame.Write(writer, frame);
-            _trace?.OnConnectionCloseFrame(frame);
+            Trace?.OnConnectionCloseFrame(frame);
             _lastConnectionCloseSentTimestamp = context.Timestamp;
 
             if (_inboundError != null)
@@ -794,7 +794,7 @@ namespace System.Net.Quic.Implementations.Managed
                 count = Math.Min(count, (long)writer.BytesAvailable - minSize);
                 var destination = CryptoFrame.ReservePayloadBuffer(writer, offset, count);
                 pnSpace.CryptoSendStream.CheckOut(destination);
-                _trace?.OnCryptoFrame(new CryptoFrame(offset, destination));
+                Trace?.OnCryptoFrame(new CryptoFrame(offset, destination));
 
                 context.SentPacket.StreamFrames.Add(
                     SentPacket.StreamFrameHeader.ForCryptoStream(offset, (int) count));
@@ -878,7 +878,7 @@ namespace System.Net.Quic.Implementations.Managed
                     firstRange.Length - 1, ackRangesRaw.Slice(0, written),
                     false, 0, 0, 0);
                 AckFrame.Write(writer, frame);
-                _trace?.OnAckFrame(frame, ackDelayMicroSeconds);
+                Trace?.OnAckFrame(frame, ackDelayMicroSeconds);
 
                 pnSpace.AckElicited = false;
             }
@@ -921,7 +921,7 @@ namespace System.Net.Quic.Implementations.Managed
             }
 
             MaxStreamDataFrame.Write(writer, frame);
-            _trace?.OnMaxStreamDataFrame(frame);
+            Trace?.OnMaxStreamDataFrame(frame);
             context.SentPacket.MaxStreamDataFrames.Add(frame);
 
             return true;
@@ -946,7 +946,7 @@ namespace System.Net.Quic.Implementations.Managed
             }
 
             StopSendingFrame.Write(writer, frame);
-            _trace?.OnStopSendingFrame(frame);
+            Trace?.OnStopSendingFrame(frame);
             context.SentPacket.StreamsStopped.Add(frame.StreamId);
             buffer.OnStopSendingSent();
 
@@ -972,7 +972,7 @@ namespace System.Net.Quic.Implementations.Managed
             }
 
             ResetStreamFrame.Write(writer, frame);
-            _trace?.OnResetStreamFrame(frame);
+            Trace?.OnResetStreamFrame(frame);
             context.SentPacket.StreamsReset.Add(stream.StreamId);
             buffer.OnResetSent();
 
@@ -996,7 +996,7 @@ namespace System.Net.Quic.Implementations.Managed
             }
 
             MaxDataFrame.Write(writer, frame);
-            _trace?.OnMaxDataFrame(frame);
+            Trace?.OnMaxDataFrame(frame);
             context.SentPacket.MaxDataFrame = frame;
             MaxDataFrameSent = true;
         }
@@ -1032,7 +1032,7 @@ namespace System.Net.Quic.Implementations.Managed
                 if (count > 0 || fin && !buffer.FinAcked)
                 {
                     var payloadDestination = StreamFrame.ReservePayloadBuffer(writer, stream!.StreamId, offset, (int)count, fin);
-                    _trace?.OnStreamFrame(new StreamFrame(stream!.StreamId, offset, fin, payloadDestination));
+                    Trace?.OnStreamFrame(new StreamFrame(stream!.StreamId, offset, fin, payloadDestination));
 
                     // add the newly sent data to the flow control counter
                     SentData += Math.Max(0, offset + count - buffer.UnsentOffset);

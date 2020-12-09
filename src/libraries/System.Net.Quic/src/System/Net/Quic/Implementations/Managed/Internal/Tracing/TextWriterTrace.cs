@@ -235,6 +235,10 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tracing
         {
         }
 
+        public void OnStartingWait(int milliseconds)
+        {
+        }
+
         public void OnLossTimerUpdated()
         {
         }

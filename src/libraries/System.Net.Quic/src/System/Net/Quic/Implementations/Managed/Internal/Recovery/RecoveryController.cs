@@ -193,16 +193,16 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
         internal long MaxAckDelay { get; set; }
 
         /// <summary>
-        ///     Timestamp of the last time a packet was sent. Used for pacing.
+        ///     Timestamp of the last time a full-sized datagram was sent. Used for pacing.
         /// </summary>
-        internal long LastDatagramSentTimestamp { get; set; }
+        internal long LastLargeDatagramSentTimestamp { get; set; }
 
         /// <summary>
         ///     Congestion controller algorithm used.
         /// </summary>
         internal ICongestionController CongestionController { get; }
 
-        internal bool IsPacing => LastDatagramSentTimestamp != long.MinValue && SmoothedRtt != 0;
+        internal bool IsPacing => LastLargeDatagramSentTimestamp != long.MinValue && SmoothedRtt != 0;
 
         /// <summary>
         ///     Returns bytes available with respect to the current congestion window
@@ -223,18 +223,10 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
                 return GetAvailableCongestionWindowBytes();
             }
 
-            // use pacing, ideal pacer would spread the entire width of congestion window over the
-            // RTT period.
-
-            // we will approximate the pacer by calculating the sending rate based on the current
-            // RTT and congestion window width
-
-            _rate = CongestionWindow / (double) SmoothedRtt;
-
             // and we use this rate to gauge how much can we send now
-            long elapsed = timestamp - LastDatagramSentTimestamp;
+            long elapsed = timestamp - LastLargeDatagramSentTimestamp;
 
-            int allowance = (int) (CongestionWindow * elapsed / SmoothedRtt);
+            int allowance = (int) (elapsed * GetCurrentPacingRate());
             allowance = Math.Min(allowance, GetAvailableCongestionWindowBytes());
             // do not send more than half the current congestion window
             allowance = Math.Min(allowance, CongestionWindow / 2);
@@ -245,6 +237,8 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
         internal int _allowance;
         internal double _rate;
         internal long _nextPacing;
+        internal long _nextPacingDelay;
+
 
         /// <summary>
         ///     Returns timestamp when the pacer will allow sending next full packet
@@ -254,8 +248,23 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
         {
             Debug.Assert(IsPacing);
 
-            // double rate = CongestionWindow / (double) SmoothedRtt;
-            return _nextPacing = LastDatagramSentTimestamp + (QuicConstants.MaximumAllowedDatagramSize * SmoothedRtt / CongestionWindow);
+            _rate = GetCurrentPacingRate();
+
+            _nextPacingDelay = (long) (QuicConstants.MaximumAllowedDatagramSize / _rate);
+            return _nextPacing = LastLargeDatagramSentTimestamp + _nextPacingDelay;
+        }
+
+        private double GetCurrentPacingRate()
+        {
+            // use pacing, ideal pacer would spread the entire width of congestion window over the
+            // RTT period.
+
+            // we will approximate the pacer by calculating the sending rate based on the current
+            // RTT and congestion window width
+
+            // use N = 1.25, See RFC (QUIC-RECOVERY) for more info about pacing
+            const double N = 1.25;
+            return N * CongestionWindow / SmoothedRtt;
         }
 
 
@@ -310,7 +319,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
             SlowStartThreshold = int.MaxValue;
             LossRecoveryTimer = long.MaxValue;
             MaxAckDelay = Timestamp.FromMilliseconds(25);
-            LastDatagramSentTimestamp = long.MinValue;
+            LastLargeDatagramSentTimestamp = long.MinValue;
             BytesInFlight = 0;
 
             foreach (PacketNumberSpace space in _pnSpaces)
@@ -348,7 +357,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
                 SetLossDetectionTimer(isHandshakeComplete);
 
                 Trace?.OnRecoveryMetricsUpdated(this);
-                Trace?.OnCongestionStateUpdated(CongestionState);
+                Trace?.OnCongestionStateUpdated(IsApplicationLimited ? CongestionState.ApplicationLimited : CongestionState);
             }
         }
 

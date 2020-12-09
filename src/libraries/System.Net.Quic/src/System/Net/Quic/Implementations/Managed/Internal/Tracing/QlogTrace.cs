@@ -62,6 +62,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tracing
             internal static readonly byte[] Transport = GetBytesHelper("transport");
             internal static readonly byte[] Security = GetBytesHelper("security");
             internal static readonly byte[] Recovery = GetBytesHelper("recovery");
+            internal static readonly byte[] Custom = GetBytesHelper("custom");
         }
 
         private static class Event
@@ -806,6 +807,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tracing
             _writer.WriteNumber("pacer_allowance", recovery._allowance);
             _writer.WriteNumber("pacer_rate", recovery._rate);
             _writer.WriteNumber("pacer_timer", recovery._nextPacing);
+            _writer.WriteNumber("pacer_delay", Timestamp.GetMicroseconds(recovery._nextPacingDelay));
 
             // TODO: total packets in flight?
             // _Writer.WriteNumber(Field.packets_in_flight, ???);
@@ -831,6 +833,13 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tracing
 
             _writer.WriteString(Field.@new, _congestionStateNames[state]);
 
+            WriteEventEpilog();
+        }
+
+        public void OnStartingWait(int milliseconds)
+        {
+            WriteEventProlog(Category.Recovery, Event.parameters_set);
+            _writer.WriteNumber("wait", milliseconds);
             WriteEventEpilog();
         }
 

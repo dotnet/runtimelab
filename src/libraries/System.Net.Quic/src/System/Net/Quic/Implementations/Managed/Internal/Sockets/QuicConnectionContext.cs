@@ -40,6 +40,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
         private readonly QuicReader _reader = new QuicReader(Memory<byte>.Empty);
 
         private long _timer = long.MaxValue;
+        private int _delay = int.MaxValue;
 
         private ResettableValueTaskSource _waitCompletionSource = new ResettableValueTaskSource();
 
@@ -160,7 +161,8 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
 
                     long now = Timestamp.Now;
                     _timer = Connection.GetNextTimerTimestamp();
-                    if (now < _timer)
+                    _delay = _timer < long.MaxValue ? (int) Timestamp.GetMilliseconds(_timer - now) : int.MaxValue;
+                    if (_timer == long.MaxValue || _delay > 0)
                     {
                         Volatile.Write(ref _waiting, true);
                         // asynchronously wait until either the timer expires or we receive a new datagram
@@ -178,7 +180,8 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
 
                             if (_timer < long.MaxValue)
                             {
-                                cts.CancelAfter((int) Timestamp.GetMilliseconds(_timer - now));
+                                cts.CancelAfter(_delay);
+                                Connection.Trace?.OnStartingWait(_delay);
                             }
 
                             var task = await Task.WhenAny(read, wait).ConfigureAwait(false);

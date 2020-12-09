@@ -53,6 +53,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tracing
         void OnPacketLost(PacketType packetType, long packetNumber, PacketLossTrigger trigger);
         void OnRecoveryMetricsUpdated(RecoveryController recovery);
         void OnCongestionStateUpdated(CongestionState state);
+        void OnStartingWait(int milliseconds);
         void OnLossTimerUpdated();
         void OnRecoveryParametersSet(RecoveryController recovery);
         void Dispose();

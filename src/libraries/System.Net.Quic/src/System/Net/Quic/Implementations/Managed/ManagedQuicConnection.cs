@@ -33,7 +33,7 @@ namespace System.Net.Quic.Implementations.Managed
         /// <summary>
         ///     Object for creating a trace of this connection.
         /// </summary>
-        private readonly IQuicTrace? _trace;
+        public IQuicTrace? Trace { get; }
 
         /// <summary>
         ///     Timestamp when last <see cref="ConnectionCloseFrame"/> was sent, or 0 if no such frame was sent yet.
@@ -237,8 +237,8 @@ namespace System.Net.Quic.Implementations.Managed
             // init random connection ids for the client
             SourceConnectionId = ConnectionId.Random(ConnectionId.DefaultCidSize);
             DestinationConnectionId = ConnectionId.Random(ConnectionId.DefaultCidSize);
-            _trace = InitTrace(IsServer, DestinationConnectionId.Data);
-            Recovery = new RecoveryController(_trace);
+            Trace = InitTrace(IsServer, DestinationConnectionId.Data);
+            Recovery = new RecoveryController(Trace);
             _localConnectionIdCollection.Add(SourceConnectionId);
 
             // derive also clients initial secrets.
@@ -260,8 +260,8 @@ namespace System.Net.Quic.Implementations.Managed
             _localTransportParameters = TransportParameters.FromListenerOptions(options);
 
             Tls = tlsProvider.CreateServer(this, options, _localTransportParameters);
-            _trace = InitTrace(IsServer, odcid);
-            Recovery = new RecoveryController(_trace);
+            Trace = InitTrace(IsServer, odcid);
+            Recovery = new RecoveryController(Trace);
 
             CoreInit();
         }
@@ -284,7 +284,7 @@ namespace System.Net.Quic.Implementations.Managed
 
         private void CoreInit()
         {
-            _trace?.OnTransportParametersSet(_localTransportParameters);
+            Trace?.OnTransportParametersSet(_localTransportParameters);
 
             _receiveLimits.UpdateMaxData(_localTransportParameters.InitialMaxData);
             _receiveLimits.UpdateMaxStreamsBidi(_localTransportParameters.InitialMaxStreamsBidi);
@@ -636,8 +636,8 @@ namespace System.Net.Quic.Implementations.Managed
             pnSpace.RecvCryptoSeal = CryptoSeal.Create(algorithm, readSecret);
             pnSpace.SendCryptoSeal = CryptoSeal.Create(algorithm, writeSecret);
 
-            _trace?.OnKeyUpdated(readSecret, level, !IsServer, KeyUpdateTrigger.Tls, null);
-            _trace?.OnKeyUpdated(writeSecret, level, IsServer, KeyUpdateTrigger.Tls, null);
+            Trace?.OnKeyUpdated(readSecret, level, !IsServer, KeyUpdateTrigger.Tls, null);
+            Trace?.OnKeyUpdated(writeSecret, level, IsServer, KeyUpdateTrigger.Tls, null);
         }
 
         internal void SetEncryptionSecrets(EncryptionLevel level, ReadOnlySpan<byte> readSecret,
@@ -934,7 +934,7 @@ namespace System.Net.Quic.Implementations.Managed
         internal void DoCleanup()
         {
             Tls.Dispose();
-            _trace?.Dispose();
+            Trace?.Dispose();
             _closeTcs.TryComplete();
         }
 

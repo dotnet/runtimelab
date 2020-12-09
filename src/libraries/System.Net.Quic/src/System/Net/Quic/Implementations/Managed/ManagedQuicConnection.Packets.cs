@@ -35,12 +35,12 @@ namespace System.Net.Quic.Implementations.Managed
             if (_isDraining)
             {
                 // discard any incoming data
-                _trace?.OnDatagramDropped(reader.BytesLeft);
+                Trace?.OnDatagramDropped(reader.BytesLeft);
                 return;
             }
 
             var buffer = reader.Buffer;
-            _trace?.OnDatagramReceived(reader.BytesLeft);
+            Trace?.OnDatagramReceived(reader.BytesLeft);
 
             while (reader.BytesLeft > 0)
             {
@@ -137,7 +137,7 @@ namespace System.Net.Quic.Implementations.Managed
                             // Note: reserved bits can be validated only if decryption succeeds
                             if (headerData.Length > reader.BytesLeft)
                             {
-                                _trace?.OnPacketDropped(header.PacketType, reader.Buffer.Length);
+                                Trace?.OnPacketDropped(header.PacketType, reader.Buffer.Length);
                                 return ProcessPacketResult.DropPacket;
                             }
 
@@ -332,7 +332,7 @@ namespace System.Net.Quic.Implementations.Managed
                 pnSpace.LargestReceivedPacketNumber + 1))
             {
                 // decryption failed, drop the packet.
-                _trace?.OnPacketDropped(header.PacketType, reader.Buffer.Length);
+                Trace?.OnPacketDropped(header.PacketType, reader.Buffer.Length);
                 reader.Advance(payloadLength);
                 return ProcessPacketResult.DropPacket;
             }
@@ -366,7 +366,7 @@ namespace System.Net.Quic.Implementations.Managed
 
             // TODO-RZ: use the actual Id's from the packet for tracing. This will be important once we start supporting
             // multiple connection ids
-            _trace?.OnPacketReceiveStart(DestinationConnectionId!.Data, SourceConnectionId!.Data, packetType, packetNumber, reader.BytesLeft, reader.Buffer.Length);
+            Trace?.OnPacketReceiveStart(DestinationConnectionId!.Data, SourceConnectionId!.Data, packetType, packetNumber, reader.BytesLeft, reader.Buffer.Length);
 
             if (pnSpace.LargestReceivedPacketNumber < packetNumber)
             {
@@ -386,7 +386,7 @@ namespace System.Net.Quic.Implementations.Managed
             reader.Reset(originalSegment.Slice(originalBytesRead, length));
 
             var result = ProcessFrames(reader, packetType, context);
-            _trace?.OnPacketReceiveEnd();
+            Trace?.OnPacketReceiveEnd();
 
             // we may have new lost packets because of received ACK frame
             var packetPool = context.SentPacketPool;
@@ -452,9 +452,12 @@ namespace System.Net.Quic.Implementations.Managed
             writer.Reset(origMemory, written);
             if (written > 0)
             {
-                _trace?.OnDatagramSent(written);
-                Debug.Assert(Recovery.LastDatagramSentTimestamp <= ctx.Timestamp);
-                Recovery.LastDatagramSentTimestamp = ctx.Timestamp;
+                Trace?.OnDatagramSent(written);
+                Debug.Assert(Recovery.LastLargeDatagramSentTimestamp <= ctx.Timestamp);
+                if (written > 1200)
+                {
+                    Recovery.LastLargeDatagramSentTimestamp = ctx.Timestamp;
+                }
             }
         }
 
@@ -471,7 +474,7 @@ namespace System.Net.Quic.Implementations.Managed
             var lostPackets = Recovery.GetPacketNumberSpace(pnSpace.PacketSpace).LostPackets;
             while (lostPackets.TryDequeue(out var i))
             {
-                _trace?.OnPacketLost(pnSpace.PacketType, i.packet.PacketNumber, i.trigger);
+                Trace?.OnPacketLost(pnSpace.PacketType, i.packet.PacketNumber, i.trigger);
                 OnPacketLost(i.packet, pnSpace);
                 packetPool.Return(i.packet);
             }
@@ -526,7 +529,7 @@ namespace System.Net.Quic.Implementations.Managed
 
             int pnLength = QuicPrimitives.GetPacketNumberEncodingLength(recoverySpace.LargestTransportedPacketNumber, pnSpace.NextPacketNumber);
             WritePacketHeader(writer, packetType, pnLength);
-            _trace?.OnPacketSendStart();
+            Trace?.OnPacketSendStart();
 
             // for non 1-RTT packets, we reserve 2 bytes which we will overwrite once total payload length is known
             var payloadLengthSpan = writer.Buffer.Span.Slice(writer.BytesWritten - 2, 2);
@@ -602,7 +605,7 @@ namespace System.Net.Quic.Implementations.Managed
                 recoverySpace.RemainingLossProbes--;
             }
 
-            _trace?.OnPacketSendEnd(SourceConnectionId!.Data, DestinationConnectionId!.Data, packetType, pnSpace.NextPacketNumber, payloadLength, writer.BytesWritten);
+            Trace?.OnPacketSendEnd(SourceConnectionId!.Data, DestinationConnectionId!.Data, packetType, pnSpace.NextPacketNumber, payloadLength, writer.BytesWritten);
             Recovery.OnPacketSent(GetPacketSpace(packetType), context.SentPacket, Tls.IsHandshakeComplete);
             pnSpace.NextPacketNumber++;
             NetEventSource.PacketSent(this, context.SentPacket.BytesSent);
