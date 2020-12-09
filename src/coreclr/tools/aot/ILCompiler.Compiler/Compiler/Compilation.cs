@@ -37,6 +37,8 @@ namespace ILCompiler
         private readonly AssemblyGetExecutingAssemblyMethodThunkCache _assemblyGetExecutingAssemblyMethodThunks;
         private readonly MethodBaseGetCurrentMethodThunkCache _methodBaseGetCurrentMethodThunks;
 
+        private readonly FeatureSwitchManager mgr;
+
         protected Compilation(
             DependencyAnalyzerBase<NodeFactory> dependencyGraph,
             NodeFactory nodeFactory,
@@ -70,7 +72,9 @@ namespace ILCompiler
                 ilProvider = new CombinedILProvider(ilProvider, PInvokeILProvider);
             }
 
-            _methodILCache = new ILCache(ilProvider);
+            mgr = new FeatureSwitchManager(ilProvider, new Dictionary<string, bool>());
+
+            _methodILCache = new ILCache(mgr);
         }
 
         private ILCache _methodILCache;
@@ -81,7 +85,20 @@ namespace ILCompiler
             if (_methodILCache.Count > 1000)
                 _methodILCache = new ILCache(_methodILCache.ILProvider);
 
-            return _methodILCache.GetOrCreateValue(method).MethodIL;
+            var aa = _methodILCache.GetOrCreateValue(method).MethodIL;
+            if (aa != null)
+            {
+                var aadef = aa.GetMethodILDefinition();
+                if (aadef != aa)
+                {
+                    aa = new InstantiatedMethodIL(method, mgr.GetMethodILWithInlinedSubstitutions(aadef));
+                }
+                else
+                {
+                    aa = mgr.GetMethodILWithInlinedSubstitutions(aadef);
+                }
+            }
+            return aa;
         }
 
         protected abstract void ComputeDependencyNodeDependencies(List<DependencyNodeCore<NodeFactory>> obj);
