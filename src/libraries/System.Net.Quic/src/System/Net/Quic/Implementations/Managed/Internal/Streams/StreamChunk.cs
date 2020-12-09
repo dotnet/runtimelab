@@ -29,7 +29,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
         /// <summary>
         ///     Source buffer for <see cref="Memory"/>, if the backing array was pooled. Null if the memory came from user.
         /// </summary>
-        internal readonly byte[]? Buffer;
+        internal readonly byte[] Buffer;
 
         /// <summary>
         ///     Length of the chunk and number of bytes actually stored in the <see cref="Buffer"/>.
@@ -40,7 +40,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
         {
             StreamOffset = streamOffset;
             Memory = memory;
-            Buffer = buffer;
+            Buffer = buffer ?? Array.Empty<byte>();
         }
     }
 }

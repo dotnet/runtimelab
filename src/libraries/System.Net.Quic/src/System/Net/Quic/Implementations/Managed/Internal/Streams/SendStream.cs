@@ -193,19 +193,25 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
         private async ValueTask FlushChunkInternalAsync(bool blockUntilNextBufferAvailable,
             CancellationToken cancellationToken = default)
         {
+            var newBuffer = Array.Empty<byte>();
+
             if (_toBeQueuedChunk.Length > 0)
             {
                 _toSendChannel.Writer.TryWrite(_toBeQueuedChunk);
                 Interlocked.Add(ref _bytesInChannel, _toBeQueuedChunk.Length);
             }
-
-            var buffer = Array.Empty<byte>();
-            if (blockUntilNextBufferAvailable || _bufferLimitSemaphore.CurrentCount > 0)
+            else if (_toBeQueuedChunk.Buffer.Length > 0)
             {
-                buffer = await RentBufferAsync(cancellationToken).ConfigureAwait(false);
+                // if nothing got written, reuse the existing buffer
+                newBuffer = _toBeQueuedChunk.Buffer;
             }
 
-            _toBeQueuedChunk = new StreamChunk(WrittenBytes, Memory<byte>.Empty, buffer);
+            if (newBuffer.Length == 0 && (blockUntilNextBufferAvailable || _bufferLimitSemaphore.CurrentCount > 0))
+            {
+                newBuffer = await RentBufferAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            _toBeQueuedChunk = new StreamChunk(WrittenBytes, Memory<byte>.Empty, newBuffer);
         }
 
         /// <summary>
@@ -219,19 +225,25 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
 
         private void FlushChunkInternal(bool blockUntilNextBufferAvailable)
         {
+            var newBuffer = Array.Empty<byte>();
+
             if (_toBeQueuedChunk.Length > 0)
             {
                 _toSendChannel.Writer.TryWrite(_toBeQueuedChunk);
                 Interlocked.Add(ref _bytesInChannel, _toBeQueuedChunk.Length);
             }
-
-            var buffer = Array.Empty<byte>();
-            if (blockUntilNextBufferAvailable || _bufferLimitSemaphore.CurrentCount > 0)
+            else if (_toBeQueuedChunk.Buffer.Length > 0)
             {
-                buffer = RentBuffer();
+                // if nothing got written, reuse the existing buffer
+                newBuffer = _toBeQueuedChunk.Buffer;
             }
 
-            _toBeQueuedChunk = new StreamChunk(WrittenBytes, Memory<byte>.Empty, buffer);
+            if (newBuffer.Length == 0 && (blockUntilNextBufferAvailable || _bufferLimitSemaphore.CurrentCount > 0))
+            {
+                newBuffer = RentBuffer();
+            }
+
+            _toBeQueuedChunk = new StreamChunk(WrittenBytes, Memory<byte>.Empty, newBuffer);
         }
 
         /// <summary>
