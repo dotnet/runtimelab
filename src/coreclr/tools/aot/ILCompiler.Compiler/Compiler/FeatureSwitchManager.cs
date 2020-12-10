@@ -485,6 +485,16 @@ namespace ILCompiler
 
                     argIndex--;
                 }
+                else if (opcode == ILOpcode.ldc_i4_s)
+                {
+                    if (argIndex == 0)
+                    {
+                        constant = (int)(sbyte)reader.ReadILByte();
+                        return true;
+                    }
+
+                    argIndex--;
+                }
                 else if ((opcode == ILOpcode.ldloc || opcode == ILOpcode.ldloc_s ||
                     (opcode >= ILOpcode.ldloc_0 && opcode <= ILOpcode.ldloc_3)) &&
                     ((flags[currentOffset] & OpcodeFlags.BasicBlockStart) == 0))
