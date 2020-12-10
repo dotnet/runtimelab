@@ -61,6 +61,13 @@ namespace Microsoft.Interop
         /// </remarks>
         bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context);
 
+        /// <summary>
+        /// Returns if the given ByValueContentsMarshalKind is supported in the current marshalling context.
+        /// A supported marshal kind has a different behavior than the default behavior.
+        /// </summary>
+        /// <param name="marshalKind">The marshal kind.</param>
+        /// <param name="context">The marshalling context.</param>
+        /// <returns></returns>
         bool SupportsByValueMarshalKind(ByValueContentsMarshalKind marshalKind, StubCodeContext context);
     }
 
@@ -115,7 +122,7 @@ namespace Microsoft.Interop
         public static readonly HResultExceptionMarshaller HResultException = new HResultExceptionMarshaller();
 
         /// <summary>
-        /// Create an <see cref="IMarshallingGenerator"/> instance to marshalling the supplied type in the given position.
+        /// Create an <see cref="IMarshallingGenerator"/> instance for marshalling the supplied type in the given position.
         /// </summary>
         /// <param name="info">Type details</param>
         /// <param name="context">Metadata about the stub the type is associated with</param>
@@ -125,11 +132,10 @@ namespace Microsoft.Interop
             StubCodeContext context)
         {
             IMarshallingGenerator generator = CreateCore(info, context);
-            ValidateByValueMarshalKind(context, info, generator);
-            return generator;
+            return ValidateByValueMarshalKind(context, info, CreateCore(info, context));
         }
 
-        private static void ValidateByValueMarshalKind(StubCodeContext context, TypePositionInfo info, IMarshallingGenerator generator)
+        private static IMarshallingGenerator ValidateByValueMarshalKind(StubCodeContext context, TypePositionInfo info, IMarshallingGenerator generator)
         {
             if (info.IsByRef && info.ByValueContentsMarshalKind != ByValueContentsMarshalKind.Default)
             {
@@ -153,6 +159,7 @@ namespace Microsoft.Interop
                     NotSupportedDetails = Resources.InOutAttributeMarshalerNotSupported
                 };
             }
+            return generator;
         }
 
         /// <summary>

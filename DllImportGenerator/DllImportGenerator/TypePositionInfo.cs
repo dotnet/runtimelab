@@ -23,7 +23,7 @@ namespace Microsoft.Interop
     /// contents of the managed array.
     /// </summary>
     [Flags]
-    enum ByValueContentsMarshalKind
+    internal enum ByValueContentsMarshalKind
     {
         /// <summary>
         /// Marshal contents from managed to native only.
