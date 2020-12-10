@@ -125,8 +125,8 @@ The .NET Foundation licenses this file to you under the MIT license.
     <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Exclude clrcompression.dll for now https://github.com/dotnet/corert/issues/5496 -->
-    <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\clrcompression.dll" />
+    <!-- Exclude System.IO.Compression.Native.dll for now https://github.com/dotnet/corert/issues/5496 -->
+    <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\System.IO.Compression.Native.dll" />
   </ItemGroup>
 
   <ItemGroup>
