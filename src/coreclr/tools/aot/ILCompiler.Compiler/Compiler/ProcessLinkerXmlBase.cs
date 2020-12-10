@@ -17,12 +17,14 @@ namespace ILCompiler
     internal abstract class ProcessLinkerXmlBase
     {
         private readonly XmlReader _reader;
+        private readonly ModuleDesc _owningModule;
         private readonly IReadOnlyDictionary<string, bool> _featureSwitchValues;
         protected readonly TypeSystemContext _context;
 
-        public ProcessLinkerXmlBase(TypeSystemContext context, XmlReader reader, IReadOnlyDictionary<string, bool> featureSwitchValues)
+        public ProcessLinkerXmlBase(TypeSystemContext context, XmlReader reader, ModuleDesc owningModule, IReadOnlyDictionary<string, bool> featureSwitchValues)
         {
             _reader = reader;
+            _owningModule = owningModule;
             _featureSwitchValues = featureSwitchValues;
             _context = context;
         }
@@ -78,6 +80,10 @@ namespace ILCompiler
                     _reader.Read();
 
                     ProcessAssembly(assembly);
+                }
+                else if (_reader.Name == "type")
+                {
+                    ProcessType(_owningModule);
                 }
                 else
                 {

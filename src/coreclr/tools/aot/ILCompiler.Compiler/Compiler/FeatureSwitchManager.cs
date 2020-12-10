@@ -636,7 +636,7 @@ namespace ILCompiler
                             ms = new UnmanagedMemoryStream(reader.CurrentPointer, length);
                         }
 
-                        (BodySubstitutions, FieldSubstitutions) = SubstitutionsReader.GetSubstitutions(module.Context, XmlReader.Create(ms), featureSwitchValues);
+                        (BodySubstitutions, FieldSubstitutions) = SubstitutionsReader.GetSubstitutions(module.Context, XmlReader.Create(ms), module, featureSwitchValues);
                     }
                 }
             }
@@ -692,8 +692,8 @@ namespace ILCompiler
             private readonly Dictionary<MethodDesc, BodySubstitution> _methodSubstitutions;
             private readonly Dictionary<FieldDesc, object> _fieldSubstitutions;
 
-            private SubstitutionsReader(TypeSystemContext context, XmlReader reader, IReadOnlyDictionary<string, bool> featureSwitchValues)
-                : base(context, reader, featureSwitchValues)
+            private SubstitutionsReader(TypeSystemContext context, XmlReader reader, ModuleDesc module, IReadOnlyDictionary<string, bool> featureSwitchValues)
+                : base(context, reader, module, featureSwitchValues)
             {
                 _methodSubstitutions = new Dictionary<MethodDesc, BodySubstitution>();
                 _fieldSubstitutions = new Dictionary<FieldDesc, object>();
@@ -795,9 +795,9 @@ namespace ILCompiler
                 return null;
             }
 
-            public static (Dictionary<MethodDesc, BodySubstitution>, Dictionary<FieldDesc, object>) GetSubstitutions(TypeSystemContext context, XmlReader reader, IReadOnlyDictionary<string, bool> featureSwitchValues)
+            public static (Dictionary<MethodDesc, BodySubstitution>, Dictionary<FieldDesc, object>) GetSubstitutions(TypeSystemContext context, XmlReader reader, ModuleDesc module, IReadOnlyDictionary<string, bool> featureSwitchValues)
             {
-                var rdr = new SubstitutionsReader(context, reader, featureSwitchValues);
+                var rdr = new SubstitutionsReader(context, reader, module, featureSwitchValues);
                 rdr.ProcessXml();
                 return (rdr._methodSubstitutions, rdr._fieldSubstitutions);
             }
