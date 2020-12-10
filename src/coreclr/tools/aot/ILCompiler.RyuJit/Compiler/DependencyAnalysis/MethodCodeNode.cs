@@ -88,8 +88,6 @@ namespace ILCompiler.DependencyAnalysis
                 dependencies.Add(new DependencyListEntry(factory.MethodAssociatedData(this), "Method associated data"));
             }
 
-            CodeBasedDependencyAlgorithm.AddDependenciesDueToMethodCodePresence(ref dependencies, factory, _method);
-
             return dependencies;
         }
 

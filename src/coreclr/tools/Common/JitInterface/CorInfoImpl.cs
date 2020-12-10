@@ -303,6 +303,8 @@ namespace Internal.JitInterface
                 _methodCodeNode.Fixups.Add(node);
             }
 #else
+            MethodIL methodIL = (MethodIL)HandleToObject((IntPtr)_methodScope);
+            CodeBasedDependencyAlgorithm.AddDependenciesDueToMethodCodePresence(ref _additionalDependencies, _compilation.NodeFactory, MethodBeingCompiled, methodIL);
             _methodCodeNode.InitializeNonRelocationDependencies(_additionalDependencies);
 #endif
 

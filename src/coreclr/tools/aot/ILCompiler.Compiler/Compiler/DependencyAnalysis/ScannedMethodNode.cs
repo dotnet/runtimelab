@@ -40,7 +40,6 @@ namespace ILCompiler.DependencyAnalysis
         public void InitializeDependencies(NodeFactory factory, IEnumerable<DependencyListEntry> dependencies)
         {
             _dependencies = new DependencyList(dependencies);
-            CodeBasedDependencyAlgorithm.AddDependenciesDueToMethodCodePresence(ref _dependencies, factory, _method);
 
             if (factory.TypeSystemContext.IsSpecialUnboxingThunk(_method))
             {

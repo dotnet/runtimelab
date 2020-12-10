@@ -299,14 +299,14 @@ namespace ILCompiler
         /// <summary>
         /// This method is an extension point that can provide additional metadata-based dependencies to compiled method bodies.
         /// </summary>
-        public void GetDependenciesDueToReflectability(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
+        public void GetDependenciesDueToReflectability(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)
         {
             if (method.HasInstantiation)
             {
                 ExactMethodInstantiationsNode.GetExactMethodInstantiationDependenciesForMethod(ref dependencies, factory, method);
             }
 
-            GetDependenciesDueToMethodCodePresence(ref dependencies, factory, method);
+            GetDependenciesDueToMethodCodePresence(ref dependencies, factory, method, methodIL);
 
             MetadataCategory category = GetMetadataCategory(method);
 
@@ -410,7 +410,7 @@ namespace ILCompiler
         /// <summary>
         /// This method is an extension point that can provide additional metadata-based dependencies to generated method bodies.
         /// </summary>
-        protected virtual void GetDependenciesDueToMethodCodePresence(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
+        protected virtual void GetDependenciesDueToMethodCodePresence(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)
         {
             // MetadataManagers can override this to provide additional dependencies caused by the presence of a
             // compiled method body.
