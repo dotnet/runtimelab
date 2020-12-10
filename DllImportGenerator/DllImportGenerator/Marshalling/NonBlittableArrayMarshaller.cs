@@ -133,7 +133,7 @@ namespace Microsoft.Interop
                                                                 }))),
                                             IdentifierName("Clear")),
                                         ArgumentList())),
-                            MarshallerHelpers.GetForLoop(managedIdentifer, IndexerIdentifier)
+                            MarshallerHelpers.GetForLoop(managedLocal, IndexerIdentifier)
                                 .WithStatement(Block(
                                     List(_elementMarshaller.Generate(info with { ManagedType = GetElementTypeSymbol(info) }, arraySubContext))))));
                     }
