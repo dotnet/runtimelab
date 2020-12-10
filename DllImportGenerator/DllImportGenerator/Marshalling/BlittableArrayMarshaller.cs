@@ -75,6 +75,13 @@ namespace Microsoft.Interop
                 }
                 yield break;
             }
+            
+            TypeSyntax spanElementTypeSyntax = GetElementTypeSyntax(info);
+            if (spanElementTypeSyntax is PointerTypeSyntax)
+            {
+                // Pointers cannot be passed to generics, so use IntPtr for this case.
+                spanElementTypeSyntax = ParseTypeName("System.IntPtr");
+            }
 
             switch (context.CurrentStage)
             {
@@ -94,42 +101,49 @@ namespace Microsoft.Interop
                             yield return statement;
                         }
 
-                        // new Span<T>(managedIdentifier).CopyTo(new Span<T>(nativeIdentifier, managedIdentifier.Length));
-                        yield return ExpressionStatement(
-                            InvocationExpression(
-                                MemberAccessExpression(
-                                    SyntaxKind.SimpleMemberAccessExpression,
-                                        ObjectCreationExpression(
-                                                        GenericName(Identifier(TypeNames.System_Span),
-                                                            TypeArgumentList(
-                                                                SingletonSeparatedList(
-                                                                    GetElementTypeSyntax(info)))))
-                                                    .WithArgumentList(
-                                                        ArgumentList(SingletonSeparatedList(
-                                                            Argument(IdentifierName(managedIdentifer))))),
-                                    IdentifierName("CopyTo")))
-                            .WithArgumentList(
-                                ArgumentList(
-                                    SingletonSeparatedList(
+                        // new Span<T>(nativeIdentifier, managedIdentifier.Length)
+                        var nativeSpan = ObjectCreationExpression(
+                            GenericName(TypeNames.System_Span)
+                            .WithTypeArgumentList(
+                                TypeArgumentList(
+                                    SingletonSeparatedList(spanElementTypeSyntax))))
+                        .WithArgumentList(
+                            ArgumentList(
+                                SeparatedList(
+                                    new []{
                                         Argument(
-                                            ObjectCreationExpression(
-                                                GenericName(TypeNames.System_Span)
-                                                .WithTypeArgumentList(
-                                                    TypeArgumentList(
-                                                        SingletonSeparatedList(
-                                                            GetElementTypeSyntax(info)))))
-                                            .WithArgumentList(
-                                                ArgumentList(
-                                                    SeparatedList(
-                                                        new[]{
-                                                        Argument(
-                                                            IdentifierName(nativeIdentifier)),
-                                                        Argument(
-                                                            MemberAccessExpression(
-                                                                SyntaxKind.SimpleMemberAccessExpression,
-                                                                IdentifierName(managedIdentifer),
-                                                                IdentifierName("Length")))
-                                                        }))))))));
+                                            CastExpression(
+                                                PointerType(spanElementTypeSyntax),
+                                                IdentifierName(nativeIdentifier))),
+                                        Argument(
+                                            MemberAccessExpression(
+                                                SyntaxKind.SimpleMemberAccessExpression,
+                                                IdentifierName(managedIdentifer),
+                                                IdentifierName("Length")))
+                                    })));
+
+                        // new Span<T>(managedIdentifier).CopyTo(<nativeSpan>);
+                        yield return IfStatement(
+                                BinaryExpression(SyntaxKind.NotEqualsExpression,
+                                    IdentifierName(managedIdentifer),
+                                    LiteralExpression(SyntaxKind.NullLiteralExpression)),
+                                ExpressionStatement(
+                                    InvocationExpression(
+                                        MemberAccessExpression(
+                                            SyntaxKind.SimpleMemberAccessExpression,
+                                                ObjectCreationExpression(
+                                                                GenericName(Identifier(TypeNames.System_Span),
+                                                                    TypeArgumentList(
+                                                                        SingletonSeparatedList(
+                                                                            spanElementTypeSyntax))))
+                                                            .WithArgumentList(
+                                                                ArgumentList(SingletonSeparatedList(
+                                                                    Argument(IdentifierName(managedIdentifer))))),
+                                            IdentifierName("CopyTo")))
+                                    .WithArgumentList(
+                                        ArgumentList(
+                                            SingletonSeparatedList(
+                                                Argument(nativeSpan))))));
                     }
                     break;
                 case StubCodeContext.Stage.Unmarshal:
@@ -147,18 +161,20 @@ namespace Microsoft.Interop
                                                     GenericName(Identifier(TypeNames.System_Span),
                                                         TypeArgumentList(
                                                             SingletonSeparatedList(
-                                                                GetElementTypeSyntax(info)))))
+                                                                spanElementTypeSyntax))))
                                                 .WithArgumentList(
                                                     ArgumentList(
                                                         SeparatedList(
                                                             new[]{
-                                                                Argument(
-                                                                    IdentifierName(nativeIdentifier)),
+                                                                Argument(CastExpression(
+                                                                    PointerType(spanElementTypeSyntax),
+                                                                    IdentifierName(nativeIdentifier))),
                                                                 Argument(
                                                                     MemberAccessExpression(
                                                                         SyntaxKind.SimpleMemberAccessExpression,
                                                                         IdentifierName(managedIdentifer),
-                                                                        IdentifierName("Length")))}))),
+                                                                        IdentifierName("Length")))
+                                                            }))),
                                         IdentifierName("CopyTo")))
                                 .WithArgumentList(
                                     ArgumentList(
@@ -188,7 +204,11 @@ namespace Microsoft.Interop
                         }
                         else
                         {
-                            yield return unmarshalContentsStatement;
+                            yield return IfStatement(
+                                BinaryExpression(SyntaxKind.NotEqualsExpression,
+                                    IdentifierName(managedIdentifer),
+                                    LiteralExpression(SyntaxKind.NullLiteralExpression)),
+                                unmarshalContentsStatement);
                         }
 
                     }
@@ -218,13 +238,13 @@ namespace Microsoft.Interop
 
         protected override ExpressionSyntax GenerateByteLengthCalculationExpression(TypePositionInfo info, StubCodeContext context)
         {
-            // sizeof(<nativeElementType>) * <managedIdentifier>.Length
-            return BinaryExpression(SyntaxKind.MultiplyExpression,
-                SizeOfExpression(GetElementTypeSyntax(info)),
-                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName(context.GetIdentifiers(info).managed),
-                    IdentifierName("Length")
-                ));
+            // checked(sizeof(<nativeElementType>) * <managedIdentifier>.Length)
+            return CheckedExpression(SyntaxKind.CheckedExpression,
+                BinaryExpression(SyntaxKind.MultiplyExpression,
+                    SizeOfExpression(GetElementTypeSyntax(info)),
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(context.GetIdentifiers(info).managed),
+                        IdentifierName("Length"))));
         }
 
         protected override StatementSyntax GenerateStackallocOnlyValueMarshalling(TypePositionInfo info, StubCodeContext context, SyntaxToken byteLengthIdentifier, SyntaxToken stackAllocPtrIdentifier)

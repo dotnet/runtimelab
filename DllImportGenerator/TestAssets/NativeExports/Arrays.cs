@@ -70,7 +70,7 @@ namespace NativeExports
 
         [UnmanagedCallersOnly(EntryPoint = "fill_range_array")]
         [DNNE.C99DeclCode("struct int_struct_wrapper;")]
-        public static byte FillRange([DNNE.C99Type("int_struct_wrapper*")] IntStructWrapperNative* numValues, int length, int start)
+        public static byte FillRange([DNNE.C99Type("struct int_struct_wrapper*")] IntStructWrapperNative* numValues, int length, int start)
         {
             if (numValues == null)
             {
@@ -87,7 +87,7 @@ namespace NativeExports
 
         [UnmanagedCallersOnly(EntryPoint = "double_values")]
         [DNNE.C99DeclCode("struct int_struct_wrapper { int value; };")]
-        public static void DoubleValues([DNNE.C99Type("int_struct_wrapper*")] IntStructWrapperNative* numValues, int length)
+        public static void DoubleValues([DNNE.C99Type("struct int_struct_wrapper*")] IntStructWrapperNative* numValues, int length)
         {
             for (int i = 0; i < length; i++)
             {
@@ -147,6 +147,19 @@ namespace NativeExports
             new Span<int>(*values, numOriginalValues).CopyTo(new Span<int>(newArray, numOriginalValues));
             newArray[numOriginalValues] = newValue;
             *values = newArray;
+        }
+
+        [UnmanagedCallersOnly(EntryPoint = "and_all_members")]
+        [DNNE.C99DeclCode("struct bool_struct;")]
+        public static byte AndAllMembers([DNNE.C99Type("struct bool_struct*")] BoolStructNative* pArray, int length)
+        {
+            bool result = true;
+            for (int i = 0; i < length; i++)
+            {
+                BoolStruct managed = pArray[i].ToManaged();
+                result &= managed.b1 && managed.b2 && managed.b3;
+            }
+            return result ? 1 : 0;
         }
     }
 }
