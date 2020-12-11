@@ -148,10 +148,10 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
             }
 
             _toSendChannel.Writer.TryComplete();
-            if (_toBeQueuedChunk.Buffer != null)
+            if (_toBeQueuedChunk.Buffer.Length > 0)
             {
                 ReturnBuffer(_toBeQueuedChunk.Buffer);
-                _toBeQueuedChunk = default;
+                _toBeQueuedChunk = new StreamChunk(0, ReadOnlyMemory<byte>.Empty, Array.Empty<byte>());
             }
 
             // we need to release once more to make sure writers are not blocked on the semaphore
