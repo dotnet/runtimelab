@@ -71,7 +71,28 @@ namespace ILCompiler
                 return substitution.EmitIL(method);
             }
 
-            return _nestedILProvider.GetMethodIL(method);
+            // BEGIN TEMPORARY WORKAROUND
+            //
+            // The following lines should just be:
+            // return _nestedILProvider.GetMethodIL(method);
+            // But we want to allow this to be used as a general-purpose IL provider.
+            //
+            // Rewriting all IL has compilation throughput hit we don't want.
+            MethodIL result = _nestedILProvider.GetMethodIL(method);
+            if (result != null)
+            {
+                var resultDef = result.GetMethodILDefinition();
+                if (resultDef != result)
+                {
+                    result = new InstantiatedMethodIL(method, GetMethodILWithInlinedSubstitutions(resultDef));
+                }
+                else
+                {
+                    result = GetMethodILWithInlinedSubstitutions(result);
+                }
+            }
+            return result;
+            // END TEMPORARY WORKAROUND
         }
 
         // Flags that we track for each byte of the IL instruction stream.
