@@ -576,9 +576,9 @@ namespace System.Net.Quic.Implementations.Managed
             }
 
             // pad the packet payload so that it can always be sampled for header protection
-            if (writer.BytesWritten - pnOffset < seal.PayloadSampleLength + 4)
+            if (writer.BytesWritten - pnOffset < seal.PayloadSampleLength - seal.TagLength + 4)
             {
-                writer.GetWritableSpan(seal.PayloadSampleLength + 4 - writer.BytesWritten + pnOffset).Clear();
+                writer.GetWritableSpan(seal.PayloadSampleLength + 4 - seal.TagLength - writer.BytesWritten + pnOffset).Clear();
                 context.SentPacket.InFlight = true; // padding implies InFlight
             }
 
