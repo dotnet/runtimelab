@@ -6,6 +6,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Text;
 
+using Internal.IL;
 using Internal.IL.Stubs;
 using Internal.TypeSystem;
 using Internal.Metadata.NativeFormat.Writer;
@@ -205,13 +206,13 @@ namespace ILCompiler
             return InstantiateCanonicalDynamicInvokeMethodForMethod(thunk, method);
         }
 
-        protected sealed override void GetDependenciesDueToMethodCodePresence(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
+        protected sealed override void GetDependenciesDueToMethodCodePresence(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)
         {
             GetDependenciesDueToTemplateTypeLoader(ref dependencies, factory, method);
-            GetDependenciesDueToMethodCodePresenceInternal(ref dependencies, factory, method);
+            GetDependenciesDueToMethodCodePresenceInternal(ref dependencies, factory, method, methodIL);
         }
 
-        protected virtual void GetDependenciesDueToMethodCodePresenceInternal(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
+        protected virtual void GetDependenciesDueToMethodCodePresenceInternal(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)
         {
         }
 

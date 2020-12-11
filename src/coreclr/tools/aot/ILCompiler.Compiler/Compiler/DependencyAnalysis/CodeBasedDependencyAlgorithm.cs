@@ -3,6 +3,7 @@
 
 using System.Diagnostics;
 
+using Internal.IL;
 using Internal.Text;
 using Internal.TypeSystem;
 using ILCompiler.DependencyAnalysisFramework;
@@ -56,9 +57,9 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        public static void AddDependenciesDueToMethodCodePresence(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
+        public static void AddDependenciesDueToMethodCodePresence(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)
         {
-            factory.MetadataManager.GetDependenciesDueToReflectability(ref dependencies, factory, method);
+            factory.MetadataManager.GetDependenciesDueToReflectability(ref dependencies, factory, method, methodIL);
 
             factory.InteropStubManager.AddDependeciesDueToPInvoke(ref dependencies, factory, method);
 

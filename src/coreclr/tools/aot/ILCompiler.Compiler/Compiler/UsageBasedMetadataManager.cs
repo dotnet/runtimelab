@@ -29,8 +29,6 @@ namespace ILCompiler
         internal readonly UsageBasedMetadataGenerationOptions _generationOptions;
         private readonly bool _hasPreciseFieldUsageInformation;
 
-        private readonly ILProvider _ilProvider;
-
         private readonly List<ModuleDesc> _modulesWithMetadata = new List<ModuleDesc>();
         private readonly List<FieldDesc> _fieldsWithMetadata = new List<FieldDesc>();
         private readonly List<MethodDesc> _methodsWithMetadata = new List<MethodDesc>();
@@ -52,7 +50,7 @@ namespace ILCompiler
             string logFile,
             StackTraceEmissionPolicy stackTracePolicy,
             DynamicInvokeThunkGenerationPolicy invokeThunkGenerationPolicy,
-            ILProvider ilProvider,
+            FlowAnnotations flowAnnotations,
             UsageBasedMetadataGenerationOptions generationOptions,
             Logger logger)
             : base(typeSystemContext, blockingPolicy, resourceBlockingPolicy, logFile, stackTracePolicy, invokeThunkGenerationPolicy)
@@ -61,11 +59,10 @@ namespace ILCompiler
             _hasPreciseFieldUsageInformation = false;
             _compilationModuleGroup = group;
             _generationOptions = generationOptions;
-            _ilProvider = ilProvider;
 
             _serializationInfoType = typeSystemContext.SystemModule.GetType("System.Runtime.Serialization", "SerializationInfo", false);
 
-            FlowAnnotations = new FlowAnnotations(logger, ilProvider);
+            FlowAnnotations = flowAnnotations;
             Logger = logger;
         }
 
@@ -355,7 +352,7 @@ namespace ILCompiler
             return false;
         }
 
-        protected override void GetDependenciesDueToMethodCodePresenceInternal(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
+        protected override void GetDependenciesDueToMethodCodePresenceInternal(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)
         {
             bool scanReflection = (_generationOptions & UsageBasedMetadataGenerationOptions.ReflectionILScanning) != 0;
             bool scanInterop = (_generationOptions & UsageBasedMetadataGenerationOptions.IteropILScanning) != 0;
@@ -369,7 +366,7 @@ namespace ILCompiler
             if (scanInterop)
                 modes |= ReflectionMethodBodyScanner.ScanModes.Interop;
 
-            MethodIL methodIL = _ilProvider.GetMethodIL(method);
+            Debug.Assert(methodIL != null || method.IsAbstract || method.IsPInvoke || method.IsInternalCall);
 
             if (methodIL != null)
             {

@@ -610,6 +610,8 @@ namespace ILCompiler
 
             DynamicInvokeThunkGenerationPolicy invokeThunkGenerationPolicy = new DefaultDynamicInvokeThunkGenerationPolicy();
 
+            var flowAnnotations = new Dataflow.FlowAnnotations(logger, ilProvider);
+
             MetadataManager metadataManager = new UsageBasedMetadataManager(
                     compilationGroup,
                     typeSystemContext,
@@ -618,7 +620,7 @@ namespace ILCompiler
                     _metadataLogFileName,
                     stackTracePolicy,
                     invokeThunkGenerationPolicy,
-                    ilProvider,
+                    flowAnnotations,
                     metadataGenerationOptions,
                     logger);
 
