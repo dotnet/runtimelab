@@ -112,7 +112,6 @@
     <Compile Include="src\Internal\Runtime\Augments\StackTraceMetadataCallbacks.cs" />
     <Compile Include="src\Internal\Runtime\Augments\DynamicDelegateAugments.cs" />
     <Compile Include="src\Internal\Runtime\Augments\EnumInfo.cs" />
-    <Compile Include="src\Internal\Runtime\Augments\EnvironmentAugments.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="src\Internal\Reflection\Core\NonPortable\IRuntimeImplemented.cs" />
