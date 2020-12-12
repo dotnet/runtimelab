@@ -17,6 +17,7 @@ using System.Net.Quic.Implementations.Managed.Internal.Tracing;
 using System.Net.Quic.Implementations.Managed.Internal.Tls;
 using System.Net.Security;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace System.Net.Quic.Implementations.Managed
@@ -343,7 +344,7 @@ namespace System.Net.Quic.Implementations.Managed
             {
                 timer = Math.Min(timer, _nextAckTimer);
 
-                if (Recovery.IsPacing && _streams.HasFlushableStreams)
+                if (Recovery.IsPacing && !Recovery.IsApplicationLimited)
                 {
                     timer = Math.Min(timer, Recovery.GetPacingTimerForNextFullPacket());
                 }
@@ -753,7 +754,16 @@ namespace System.Net.Quic.Implementations.Managed
             ThrowIfDisposed();
             ThrowIfError();
 
-            return await _streams.IncomingStreams.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return await _streams.IncomingStreams.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (ChannelClosedException e)
+            {
+                Debug.Assert(e.InnerException is QuicException);
+                // TODO-RZ Consider returning null from there
+                throw e.InnerException!;
+            }
         }
 
         internal override SslApplicationProtocol NegotiatedApplicationProtocol
@@ -850,14 +860,9 @@ namespace System.Net.Quic.Implementations.Managed
             // disable ack timer
             _nextAckTimer = long.MaxValue;
 
-            if (error.ErrorCode == TransportErrorCode.NoError)
-            {
-                _streams.IncomingStreams.Writer.TryComplete();
-            }
-            else
-            {
-                _streams.IncomingStreams.Writer.TryComplete(MakeAbortedException(error));
-            }
+            // close the incoming streams channel with exception
+            // TODO-RZ: maybe we should return null from the AcceptStreamMethod?
+            _streams.IncomingStreams.Writer.TryComplete(MakeAbortedException(error));
 
             foreach (var stream in _streams.AllStreams)
             {
