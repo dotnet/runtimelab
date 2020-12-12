@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Text;
 
@@ -251,9 +252,9 @@ namespace ILCompiler.DependencyAnalysis
                 return new PInvokeModuleFixupNode(moduleData);
             });
 
-            _pInvokeMethodFixups = new NodeCache<Tuple<PInvokeModuleData, string, PInvokeFlags>, PInvokeMethodFixupNode>((Tuple<PInvokeModuleData, string, PInvokeFlags> key) =>
+            _pInvokeMethodFixups = new NodeCache<Tuple<PInvokeModuleData, string, CharSet>, PInvokeMethodFixupNode>((Tuple<PInvokeModuleData, string, CharSet> key) =>
             {
-                return new PInvokeMethodFixupNode(key.Item1, key.Item2, key.Item3, Target);
+                return new PInvokeMethodFixupNode(key.Item1, key.Item2, key.Item3);
             });
 
             _methodEntrypoints = new NodeCache<MethodDesc, IMethodNode>(CreateMethodEntrypointNode);
@@ -728,11 +729,11 @@ namespace ILCompiler.DependencyAnalysis
             return _pInvokeModuleFixups.GetOrAdd(moduleData);
         }
 
-        private NodeCache<Tuple<PInvokeModuleData, string, PInvokeFlags>, PInvokeMethodFixupNode> _pInvokeMethodFixups;
+        private NodeCache<Tuple<PInvokeModuleData, string, CharSet>, PInvokeMethodFixupNode> _pInvokeMethodFixups;
 
-        public PInvokeMethodFixupNode PInvokeMethodFixup(PInvokeModuleData moduleData, string entryPointName, PInvokeFlags flags)
+        public PInvokeMethodFixupNode PInvokeMethodFixup(PInvokeModuleData moduleData, string entryPointName, CharSet charSetMangling)
         {
-            return _pInvokeMethodFixups.GetOrAdd(Tuple.Create(moduleData, entryPointName, flags));
+            return _pInvokeMethodFixups.GetOrAdd(Tuple.Create(moduleData, entryPointName, charSetMangling));
         }
 
         private NodeCache<TypeDesc, VTableSliceNode> _vTableNodes;

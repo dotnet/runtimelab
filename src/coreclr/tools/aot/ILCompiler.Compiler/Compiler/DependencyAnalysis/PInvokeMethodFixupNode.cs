@@ -18,24 +18,11 @@ namespace ILCompiler.DependencyAnalysis
         private readonly string _entryPointName;
         private readonly CharSet _charSetMangling;
 
-        public PInvokeMethodFixupNode(PInvokeModuleData moduleData, string entryPointName, PInvokeFlags flags, TargetDetails target)
+        public PInvokeMethodFixupNode(PInvokeModuleData moduleData, string entryPointName, CharSet charSetMangling)
         {
             _moduleData = moduleData;
             _entryPointName = entryPointName;
-
-            if (target.IsWindows && !flags.ExactSpelling)
-            {
-                // Mirror CharSet normalization from Marshaller.CreateMarshaller
-                bool isAnsi = flags.CharSet switch
-                {
-                    CharSet.Ansi => true,
-                    CharSet.Unicode => false,
-                    CharSet.Auto => false,
-                    _ => true
-                };
-
-                _charSetMangling = isAnsi ? CharSet.Ansi : CharSet.Unicode;
-            }
+            _charSetMangling = charSetMangling;
         }
 
         public void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)

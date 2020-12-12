@@ -132,8 +132,23 @@ namespace ILCompiler
                     }
                 }
 
+                CharSet charSetMangling = default;
+                if (_nodeFactory.Target.IsWindows && !metadata.Flags.ExactSpelling)
+                {
+                    // Mirror CharSet normalization from Marshaller.CreateMarshaller
+                    bool isAnsi = metadata.Flags.CharSet switch
+                    {
+                        CharSet.Ansi => true,
+                        CharSet.Unicode => false,
+                        CharSet.Auto => false,
+                        _ => true
+                    };
+
+                    charSetMangling = isAnsi ? CharSet.Ansi : CharSet.Unicode;
+                }
+
                 PInvokeModuleData moduleData = new PInvokeModuleData(metadata.Module, dllImportSearchPath, callingModule);
-                return NodeFactory.PInvokeMethodFixup(moduleData, metadata.Name, metadata.Flags);
+                return NodeFactory.PInvokeMethodFixup(moduleData, metadata.Name, charSetMangling);
             }
             else if (field is ExternSymbolMappedField externField)
             {
