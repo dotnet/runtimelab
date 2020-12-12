@@ -252,9 +252,9 @@ namespace ILCompiler.DependencyAnalysis
                 return new PInvokeModuleFixupNode(moduleData);
             });
 
-            _pInvokeMethodFixups = new NodeCache<Tuple<PInvokeModuleData, string, CharSet>, PInvokeMethodFixupNode>((Tuple<PInvokeModuleData, string, CharSet> key) =>
+            _pInvokeMethodFixups = new NodeCache<PInvokeMethodData, PInvokeMethodFixupNode>((PInvokeMethodData methodData) =>
             {
-                return new PInvokeMethodFixupNode(key.Item1, key.Item2, key.Item3);
+                return new PInvokeMethodFixupNode(methodData);
             });
 
             _methodEntrypoints = new NodeCache<MethodDesc, IMethodNode>(CreateMethodEntrypointNode);
@@ -729,11 +729,11 @@ namespace ILCompiler.DependencyAnalysis
             return _pInvokeModuleFixups.GetOrAdd(moduleData);
         }
 
-        private NodeCache<Tuple<PInvokeModuleData, string, CharSet>, PInvokeMethodFixupNode> _pInvokeMethodFixups;
+        private NodeCache<PInvokeMethodData, PInvokeMethodFixupNode> _pInvokeMethodFixups;
 
-        public PInvokeMethodFixupNode PInvokeMethodFixup(PInvokeModuleData moduleData, string entryPointName, CharSet charSetMangling)
+        public PInvokeMethodFixupNode PInvokeMethodFixup(PInvokeMethodData methodData)
         {
-            return _pInvokeMethodFixups.GetOrAdd(Tuple.Create(moduleData, entryPointName, charSetMangling));
+            return _pInvokeMethodFixups.GetOrAdd(methodData);
         }
 
         private NodeCache<TypeDesc, VTableSliceNode> _vTableNodes;

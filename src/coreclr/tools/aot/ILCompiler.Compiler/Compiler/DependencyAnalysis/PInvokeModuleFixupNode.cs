@@ -76,7 +76,7 @@ namespace ILCompiler.DependencyAnalysis
         }
     }
 
-    public struct PInvokeModuleData : IEquatable<PInvokeModuleData>
+    public readonly struct PInvokeModuleData : IEquatable<PInvokeModuleData>
     {
         public readonly string ModuleName;
         public readonly DllImportSearchPath? DllImportSearchPath;

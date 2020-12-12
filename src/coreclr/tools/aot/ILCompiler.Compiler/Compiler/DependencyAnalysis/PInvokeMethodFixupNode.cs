@@ -4,8 +4,10 @@
 using System;
 using System.Runtime.InteropServices;
 
+using Internal.IL.Stubs;
 using Internal.Text;
 using Internal.TypeSystem;
+using Internal.TypeSystem.Ecma;
 
 namespace ILCompiler.DependencyAnalysis
 {
@@ -14,28 +16,17 @@ namespace ILCompiler.DependencyAnalysis
     /// </summary>
     public class PInvokeMethodFixupNode : ObjectNode, ISymbolDefinitionNode
     {
-        private readonly PInvokeModuleData _moduleData;
-        private readonly string _entryPointName;
-        private readonly CharSet _charSetMangling;
+        private readonly PInvokeMethodData _pInvokeMethodData;
 
-        public PInvokeMethodFixupNode(PInvokeModuleData moduleData, string entryPointName, CharSet charSetMangling)
+        public PInvokeMethodFixupNode(PInvokeMethodData pInvokeMethodData)
         {
-            _moduleData = moduleData;
-            _entryPointName = entryPointName;
-            _charSetMangling = charSetMangling;
+            _pInvokeMethodData = pInvokeMethodData;
         }
 
         public void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
         {
             sb.Append("__pinvoke_");
-            _moduleData.AppendMangledName(nameMangler, sb);
-            sb.Append("__");
-            sb.Append(_entryPointName);
-            if(_charSetMangling != default)
-            {
-                sb.Append("__");
-                sb.Append(_charSetMangling.ToString());
-            }
+            _pInvokeMethodData.AppendMangledName(nameMangler, sb);
         }
         public int Offset => 0;
         public override bool IsShareable => true;
@@ -61,12 +52,13 @@ namespace ILCompiler.DependencyAnalysis
             builder.EmitZeroPointer();
 
             // Entry point name
-            if (factory.Target.IsWindows && _entryPointName.StartsWith("#", StringComparison.OrdinalIgnoreCase))
+            string entryPointName = _pInvokeMethodData.EntryPointName;
+            if (factory.Target.IsWindows && entryPointName.StartsWith("#", StringComparison.OrdinalIgnoreCase))
             {
                 // Windows-specific ordinal import
                 // CLR-compatible behavior: Strings that can't be parsed as a signed integer are treated as zero.
                 int entrypointOrdinal;
-                if (!int.TryParse(_entryPointName.Substring(1), out entrypointOrdinal))
+                if (!int.TryParse(entryPointName.Substring(1), out entrypointOrdinal))
                     entrypointOrdinal = 0;
 
                 // CLR-compatible behavior: Ordinal imports are 16-bit on Windows. Discard rest of the bits.
@@ -75,13 +67,13 @@ namespace ILCompiler.DependencyAnalysis
             else
             {
                 // Import by name
-                builder.EmitPointerReloc(factory.ConstantUtf8String(_entryPointName));
+                builder.EmitPointerReloc(factory.ConstantUtf8String(entryPointName));
             }
 
             // Module fixup cell
-            builder.EmitPointerReloc(factory.PInvokeModuleFixup(_moduleData));
+            builder.EmitPointerReloc(factory.PInvokeModuleFixup(_pInvokeMethodData.ModuleData));
 
-            builder.EmitInt((int)_charSetMangling);
+            builder.EmitInt((int)_pInvokeMethodData.CharSetMangling);
 
             return builder.ToObjectData();
         }
@@ -90,15 +82,99 @@ namespace ILCompiler.DependencyAnalysis
 
         public override int CompareToImpl(ISortableNode other, CompilerComparer comparer)
         {
-            var charSetCompare = _charSetMangling.CompareTo(((PInvokeMethodFixupNode)other)._charSetMangling);
-            if (charSetCompare != 0)
-                return charSetCompare;
+            return _pInvokeMethodData.CompareTo(((PInvokeMethodFixupNode)other)._pInvokeMethodData, comparer);
+        }
+    }
 
-            var moduleCompare = _moduleData.CompareTo(((PInvokeMethodFixupNode)other)._moduleData, comparer);
+    public readonly struct PInvokeMethodData : IEquatable<PInvokeMethodData>
+    {
+        public readonly PInvokeModuleData ModuleData;
+        public readonly string EntryPointName;
+        public readonly CharSet CharSetMangling;
+
+        public PInvokeMethodData(PInvokeLazyFixupField pInvokeLazyFixupField)
+        {
+            PInvokeMetadata metadata = pInvokeLazyFixupField.PInvokeMetadata;
+            ModuleDesc declaringModule = ((MetadataType)pInvokeLazyFixupField.TargetMethod.OwningType).Module;
+
+            DllImportSearchPath? dllImportSearchPath = default;
+            if (declaringModule.Assembly is EcmaAssembly asm)
+            {
+                // We look for [assembly:DefaultDllImportSearchPaths(...)]
+                var attrHandle = asm.MetadataReader.GetCustomAttributeHandle(asm.AssemblyDefinition.GetCustomAttributes(),
+                    "System.Runtime.InteropServices", "DefaultDllImportSearchPathsAttribute");
+                if (!attrHandle.IsNil)
+                {
+                    var attr = asm.MetadataReader.GetCustomAttribute(attrHandle);
+                    var decoded = attr.DecodeValue(new CustomAttributeTypeProvider(asm));
+                    if (decoded.FixedArguments.Length == 1 &&
+                        decoded.FixedArguments[0].Value is int searchPath)
+                    {
+                        dllImportSearchPath = (DllImportSearchPath)searchPath;
+                    }
+                }
+            }
+            ModuleData = new PInvokeModuleData(metadata.Module, dllImportSearchPath, declaringModule);
+
+            EntryPointName = metadata.Name;
+
+            CharSet charSetMangling = default;
+            if (declaringModule.Context.Target.IsWindows && !metadata.Flags.ExactSpelling)
+            {
+                // Mirror CharSet normalization from Marshaller.CreateMarshaller
+                bool isAnsi = metadata.Flags.CharSet switch
+                {
+                    CharSet.Ansi => true,
+                    CharSet.Unicode => false,
+                    CharSet.Auto => false,
+                    _ => true
+                };
+
+                charSetMangling = isAnsi ? CharSet.Ansi : CharSet.Unicode;
+            }
+            CharSetMangling = charSetMangling;
+        }
+
+        public bool Equals(PInvokeMethodData other)
+        {
+            return ModuleData.Equals(other.ModuleData) &&
+                EntryPointName == other.EntryPointName &&
+                CharSetMangling == other.CharSetMangling;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is PInvokeMethodData other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return ModuleData.GetHashCode() ^ EntryPointName.GetHashCode();
+        }
+
+        public int CompareTo(PInvokeMethodData other, CompilerComparer comparer)
+        {
+            var entryPointCompare = StringComparer.Ordinal.Compare(EntryPointName, other.EntryPointName);
+            if (entryPointCompare != 0)
+                return entryPointCompare;
+
+            var moduleCompare = ModuleData.CompareTo(other.ModuleData, comparer);
             if (moduleCompare != 0)
                 return moduleCompare;
 
-            return string.Compare(_entryPointName, ((PInvokeMethodFixupNode)other)._entryPointName);
+            return CharSetMangling.CompareTo(other.CharSetMangling);
+        }
+
+        public void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
+        {
+            ModuleData.AppendMangledName(nameMangler, sb);
+            sb.Append("__");
+            sb.Append(EntryPointName);
+            if (CharSetMangling != default)
+            {
+                sb.Append("__");
+                sb.Append(CharSetMangling.ToString());
+            }
         }
     }
 }
