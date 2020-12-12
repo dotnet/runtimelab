@@ -1004,9 +1004,8 @@ namespace System.Net.Quic.Implementations.Managed
         private void WriteStreamFrames(QuicWriter writer, QuicSocketContext.SendContext context)
         {
             ManagedQuicStream? stream;
-            bool written = false;
 
-            while (writer.BytesAvailable > StreamFrame.MinSize && (stream = _streams.GetFirstFlushableStream()) != null)
+            while (writer.BytesAvailable >= StreamFrame.MinSize && (stream = _streams.GetFirstFlushableStream()) != null)
             {
                 var buffer = stream!.SendStream!;
 
@@ -1041,8 +1040,6 @@ namespace System.Net.Quic.Implementations.Managed
                     // record sent data
                     context.SentPacket.StreamFrames.Add(
                         new SentPacket.StreamFrameHeader(stream!.StreamId, offset, (int) count, fin));
-
-                    written = true;
                 }
 
                 // if there is more data to sent, put the stream back to queue
@@ -1058,8 +1055,7 @@ namespace System.Net.Quic.Implementations.Managed
                 }
             }
 
-            // TODO-RZ: This may not be as precise as RFC requires
-            Recovery.IsApplicationLimited = !written;
+            Recovery.IsApplicationLimited = writer.BytesAvailable > StreamFrame.MinSize;
         }
     }
 }
