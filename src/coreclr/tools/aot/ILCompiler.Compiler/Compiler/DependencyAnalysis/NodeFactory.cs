@@ -253,7 +253,7 @@ namespace ILCompiler.DependencyAnalysis
 
             _pInvokeMethodFixups = new NodeCache<Tuple<PInvokeModuleData, string, PInvokeFlags>, PInvokeMethodFixupNode>((Tuple<PInvokeModuleData, string, PInvokeFlags> key) =>
             {
-                return new PInvokeMethodFixupNode(key.Item1, key.Item2, key.Item3);
+                return new PInvokeMethodFixupNode(key.Item1, key.Item2, key.Item3, Target);
             });
 
             _methodEntrypoints = new NodeCache<MethodDesc, IMethodNode>(CreateMethodEntrypointNode);

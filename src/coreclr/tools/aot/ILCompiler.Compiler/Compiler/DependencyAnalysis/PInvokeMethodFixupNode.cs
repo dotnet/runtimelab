@@ -16,13 +16,26 @@ namespace ILCompiler.DependencyAnalysis
     {
         private readonly PInvokeModuleData _moduleData;
         private readonly string _entryPointName;
-        private readonly PInvokeFlags _flags;
+        private readonly CharSet _charSetMangling;
 
-        public PInvokeMethodFixupNode(PInvokeModuleData moduleData, string entryPointName, PInvokeFlags flags)
+        public PInvokeMethodFixupNode(PInvokeModuleData moduleData, string entryPointName, PInvokeFlags flags, TargetDetails target)
         {
             _moduleData = moduleData;
             _entryPointName = entryPointName;
-            _flags = flags;
+
+            if (target.IsWindows && !flags.ExactSpelling)
+            {
+                // Mirror CharSet normalization from Marshaller.CreateMarshaller
+                bool isAnsi = flags.CharSet switch
+                {
+                    CharSet.Ansi => true,
+                    CharSet.Unicode => false,
+                    CharSet.Auto => false,
+                    _ => true
+                };
+
+                _charSetMangling = isAnsi ? CharSet.Ansi : CharSet.Unicode;
+            }
         }
 
         public void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
@@ -31,13 +44,11 @@ namespace ILCompiler.DependencyAnalysis
             _moduleData.AppendMangledName(nameMangler, sb);
             sb.Append("__");
             sb.Append(_entryPointName);
-            if(!_flags.ExactSpelling)
+            if(_charSetMangling != default)
             {
                 sb.Append("__");
-                sb.Append(_flags.CharSet.ToString());
+                sb.Append(_charSetMangling.ToString());
             }
-            sb.Append("__");
-            sb.Append(((int)_flags.Attributes).ToString());
         }
         public int Offset => 0;
         public override bool IsShareable => true;
@@ -83,7 +94,7 @@ namespace ILCompiler.DependencyAnalysis
             // Module fixup cell
             builder.EmitPointerReloc(factory.PInvokeModuleFixup(_moduleData));
 
-            builder.EmitInt(_flags.ExactSpelling ? 0 : (int)_flags.CharSet);
+            builder.EmitInt((int)_charSetMangling);
 
             return builder.ToObjectData();
         }
@@ -92,9 +103,9 @@ namespace ILCompiler.DependencyAnalysis
 
         public override int CompareToImpl(ISortableNode other, CompilerComparer comparer)
         {
-            var flagsCompare = _flags.CompareTo(((PInvokeMethodFixupNode)other)._flags);
-            if (flagsCompare != 0)
-                return flagsCompare;
+            var charSetCompare = _charSetMangling.CompareTo(((PInvokeMethodFixupNode)other)._charSetMangling);
+            if (charSetCompare != 0)
+                return charSetCompare;
 
             var moduleCompare = _moduleData.CompareTo(((PInvokeMethodFixupNode)other)._moduleData, comparer);
             if (moduleCompare != 0)
