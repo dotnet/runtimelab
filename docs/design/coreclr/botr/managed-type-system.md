@@ -39,7 +39,7 @@ The type system provides access to most of the underlying metadata, but abstract
 
 The classes that represent types within the type system are:
 
-![hierarchy](images/typesystem-hierarchy.png)
+![hierarchy](images/typesystem-hierarchy.svg)
 
 Most of the classes in this hierarchy are not supposed to be derived by the type system user and many of them are sealed to prevent that.
 
