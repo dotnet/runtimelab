@@ -60,6 +60,12 @@ To run an individual test (after it was built), navigate to the `artifacts\tests
 
 `$repo_root` is the root of your clone of the repo.
 
+### Running WebAssembly test
+
+To build the tests targeting WebAssembly run `src\tests\build nativeaot [Debug|Release] wasm targetsNonWindows skipnative /p:SmokeTestsOnly=true /p:runtimeFlavor=CoreCLR`.
+
+To run the tests `src\tests\run runnativeaottests [Debug|Release] wasm
+
 ## Design Documentation
 
 - [ILC Compiler Architecture](../../../design/coreclr/botr/ilc-architecture.md)

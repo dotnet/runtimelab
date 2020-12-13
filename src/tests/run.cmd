@@ -15,7 +15,7 @@ set "__RepoRootDir=%~dp0\..\.."
 :: remove trailing slash
 if %__ProjectDir:~-1%==\ set "__ProjectDir=%__ProjectDir:~0,-1%"
 set "__ProjectFilesDir=%__ProjectDir%"
-set "__RootBinDir=%~dp0..\..\..\artifacts"
+set "__RootBinDir=%~dp0..\..\artifacts"
 set "__LogsDir=%__RootBinDir%\log"
 set "__MsbuildDebugLogsDir=%__LogsDir%\MsbuildDebugLogs"
 set __ToolsDir=%__ProjectDir%\..\Tools
@@ -46,6 +46,7 @@ if /i "%1" == "x64"                                     (set __BuildArch=x64&shi
 if /i "%1" == "x86"                                     (set __BuildArch=x86&shift&goto Arg_Loop)
 if /i "%1" == "arm"                                     (set __BuildArch=arm&shift&goto Arg_Loop)
 if /i "%1" == "arm64"                                   (set __BuildArch=arm64&shift&goto Arg_Loop)
+if /i "%1" == "wasm"                                    (set __BuildArch=wasm&set __TargetOS=Browser&set __DistroRid=browser-wasm&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 
 if /i "%1" == "debug"                                   (set __BuildType=Debug&shift&goto Arg_Loop)
 if /i "%1" == "release"                                 (set __BuildType=Release&shift&goto Arg_Loop)
@@ -184,6 +185,10 @@ if defined __AltJitArch (
 
 if defined RunInUnloadableContext (
     set __RuntestPyArgs=%__RuntestPyArgs% --run_in_context
+)
+
+if /i "%__BuildArch%" == "wasm" (
+    set __RuntestPyArgs=%__RuntestPyArgs% -target_os Browser
 )
 
 set NEXTCMD=python "%__RepoRootDir%\src\tests\run.py" %__RuntestPyArgs%

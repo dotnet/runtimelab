@@ -75,6 +75,20 @@ stages:
           buildArgs: -s nativeaot+libs+nativeaot.packages -lc release -rc debug
           extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
 
+  - ${{ if ne(variables.isOfficialBuild, true) }}:
+    - template: /eng/pipelines/common/platform-matrix.yml
+      parameters:
+        jobTemplate: /eng/pipelines/common/global-build-job.yml
+        buildConfig: Debug
+        runtimeFlavor: coreclr
+        platforms:
+        - Browser_wasm
+        jobParameters:
+          timeoutInMinutes: 90
+          testGroup: innerloop
+          buildArgs: -s nativeaot+libs+nativeaot.packages -lc release -rc debug -runtimeFlavor CoreCLR
+          extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+
   #
   # Build with Release config and Checked runtimeConfiguration
   #

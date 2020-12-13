@@ -67,7 +67,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <TargetsMobile Condition="'$(TargetOS)' == 'iOS' or '$(TargetOS)' == 'Android' or '$(TargetOS)' == 'tvOS' or '$(TargetOS)' == 'Browser'">true</TargetsMobile>
+    <TargetsMobile Condition="'$(TargetOS)' == 'iOS' or '$(TargetOS)' == 'Android' or '$(TargetOS)' == 'tvOS' or ('$(TargetOS)' == 'Browser' and '$(RuntimeFlavor)' == 'mono')">true</TargetsMobile>
   </PropertyGroup>
 
   <PropertyGroup Label="CalculateOS">

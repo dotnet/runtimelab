@@ -141,6 +141,9 @@ try {
     if (-not $excludeCIBinarylog) {
       $binaryLog = $true
     }
+    if ($properties.Contains('/p:TargetArchitecture=wasm') -and $runtimeFlavor -eq "CoreCLR") {
+      . $PSScriptRoot\..\..\wasm-tools\emsdk\emsdk_env.ps1
+    }
     $nodeReuse = $false
   }
 
