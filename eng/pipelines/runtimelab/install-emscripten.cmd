@@ -1,5 +1,5 @@
 mkdir "%1" 2>nul
-cd "%1"
+cd /D "%1"
 
 git clone https://github.com/emscripten-core/emsdk.git
 
