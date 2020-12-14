@@ -186,7 +186,7 @@ namespace ILCompiler
                 syntax.DefineOption("methodbodyfolding", ref _methodBodyFolding, "Fold identical method bodies");
                 syntax.DefineOptionList("initassembly", ref _initAssemblies, "Assembly(ies) with a library initializer");
                 syntax.DefineOptionList("appcontextswitch", ref _appContextSwitches, "System.AppContext switches to set");
-                syntax.DefineOptionList("feature", ref _featureSwitches, "Feature switches to apply (format: 'Feature.Name=[true|false]'");
+                syntax.DefineOptionList("feature", ref _featureSwitches, "Feature switches to apply (format: 'Namespace.Name=[true|false]'");
                 syntax.DefineOptionList("runtimeopt", ref _runtimeOptions, "Runtime options to set");
                 syntax.DefineOptionList("removefeature", ref _removedFeatures, "Framework features to remove");
                 syntax.DefineOption("singlethreaded", ref _singleThreaded, "Run compilation on a single thread");

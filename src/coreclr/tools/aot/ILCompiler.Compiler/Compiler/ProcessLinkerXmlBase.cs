@@ -315,9 +315,6 @@ namespace ILCompiler
 
             public override void AppendName(StringBuilder sb, FunctionPointerType type)
             {
-                // WTF is this CECIL?!
-                //signature.Append(function.Name);
-
                 sb.Append(" ");
                 AppendName(sb, type.Signature.ReturnType);
                 sb.Append(" *");
