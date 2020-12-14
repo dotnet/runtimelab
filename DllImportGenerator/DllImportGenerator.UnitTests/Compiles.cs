@@ -175,5 +175,38 @@ namespace DllImportGenerator.UnitTests
             var newCompDiags = newComp.GetDiagnostics();
             Assert.Empty(newCompDiags);
         }
+        
+        public static IEnumerable<object[]> CodeSnippetsToCompileWithForwarder()
+        {
+            yield return new[] { CodeSnippets.UserDefinedEntryPoint };
+            yield return new[] { CodeSnippets.AllSupportedDllImportNamedArguments };
+            
+            // Parameter / return types (supported in DllImportGenerator)
+            yield return new[] { CodeSnippets.BasicParametersAndModifiers<byte>() };
+            // Parameter / return types (not supported in DllImportGenerator)
+            yield return new[] { CodeSnippets.BasicParametersAndModifiers<string>() };
+        }
+
+        [Theory]
+        [MemberData(nameof(CodeSnippetsToCompileWithForwarder))]
+        public async Task ValidateSnippetsWithForwarder(string source)
+        {
+            Compilation comp = await TestUtils.CreateCompilation(source);
+            TestUtils.AssertPreSourceGeneratorCompilation(comp);
+
+            var newComp = TestUtils.RunGenerators(
+                comp,
+                out var generatorDiags, 
+                new ISourceGenerator[] 
+                {
+                    new Microsoft.Interop.DllImportGenerator()
+                },
+                new DllImportGeneratorOptionsProvider(useMarshalType: false, generateForwarders: true));
+
+            Assert.Empty(generatorDiags);
+
+            var newCompDiags = newComp.GetDiagnostics();
+            Assert.Empty(newCompDiags);
+        }
     }
 }
