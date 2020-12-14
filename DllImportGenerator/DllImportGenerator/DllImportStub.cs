@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
 
 using Microsoft.CodeAnalysis;
@@ -14,6 +11,12 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
 {
+    internal record StubEnvironment(
+        Compilation Compilation,
+        bool SupportedTargetFramework,
+        Version TargetFrameworkVersion,
+        AnalyzerConfigOptions Options);
+
     internal class DllImportStub
     {
         private TypePositionInfo returnTypeInfo;
@@ -54,6 +57,8 @@ namespace Microsoft.Interop
         public BlockSyntax StubCode { get; init; }
 
         public MethodDeclarationSyntax DllImportDeclaration { get; init; }
+
+        public AttributeListSyntax[] AdditionalAttributes { get; init; }
 
         /// <summary>
         /// Flags used to indicate members on GeneratedDllImport attribute.
@@ -104,8 +109,7 @@ namespace Microsoft.Interop
         public static DllImportStub Create(
             IMethodSymbol method,
             GeneratedDllImportData dllImportData,
-            Compilation compilation,
-            AnalyzerConfigOptions options,
+            StubEnvironment env,
             GeneratorDiagnostics diagnostics,
             CancellationToken token = default)
         {
@@ -158,7 +162,7 @@ namespace Microsoft.Interop
             for (int i = 0; i < method.Parameters.Length; i++)
             {
                 var param = method.Parameters[i];
-                var typeInfo = TypePositionInfo.CreateForParameter(param, defaultInfo, compilation, diagnostics);
+                var typeInfo = TypePositionInfo.CreateForParameter(param, defaultInfo, env.Compilation, diagnostics);
                 typeInfo = typeInfo with 
                 {
                     ManagedIndex = i,
@@ -167,7 +171,7 @@ namespace Microsoft.Interop
                 paramsTypeInfo.Add(typeInfo);
             }
 
-            TypePositionInfo retTypeInfo = TypePositionInfo.CreateForType(method.ReturnType, method.GetReturnTypeAttributes(), defaultInfo, compilation, diagnostics);
+            TypePositionInfo retTypeInfo = TypePositionInfo.CreateForType(method.ReturnType, method.GetReturnTypeAttributes(), defaultInfo, env.Compilation, diagnostics);
             retTypeInfo = retTypeInfo with
             {
                 ManagedIndex = TypePositionInfo.ReturnIndex,
@@ -178,7 +182,7 @@ namespace Microsoft.Interop
             if (!dllImportData.PreserveSig)
             {
                 // Create type info for native HRESULT return
-                retTypeInfo = TypePositionInfo.CreateForType(compilation.GetSpecialType(SpecialType.System_Int32), NoMarshallingInfo.Instance);
+                retTypeInfo = TypePositionInfo.CreateForType(env.Compilation.GetSpecialType(SpecialType.System_Int32), NoMarshallingInfo.Instance);
                 retTypeInfo = retTypeInfo with
                 {
                     NativeIndex = TypePositionInfo.ReturnIndex
@@ -201,8 +205,24 @@ namespace Microsoft.Interop
             }
 
             // Generate stub code
-            var stubGenerator = new StubCodeGenerator(method, dllImportData, paramsTypeInfo, retTypeInfo, diagnostics, options);
+            var stubGenerator = new StubCodeGenerator(method, dllImportData, paramsTypeInfo, retTypeInfo, diagnostics, env.Options);
             var (code, dllImport) = stubGenerator.GenerateSyntax();
+
+            var additionalAttrs = new List<AttributeListSyntax>();
+
+            // Define additional attributes for the stub definition.
+            if (env.TargetFrameworkVersion >= new Version(5, 0))
+            {
+                additionalAttrs.Add(
+                    AttributeList(
+                        SeparatedList(new []
+                        {
+                            // Adding the skip locals init indiscriminately since the source generator is
+                            // targeted at non-blittable method signatures which typically will contain locals
+                            // in the generated code.
+                            Attribute(ParseName(TypeNames.System_Runtime_CompilerServices_SkipLocalsInitAttribute))
+                        })));
+            }
 
             return new DllImportStub()
             {
@@ -212,6 +232,7 @@ namespace Microsoft.Interop
                 StubContainingTypes = containingTypes,
                 StubCode = code,
                 DllImportDeclaration = dllImport,
+                AdditionalAttributes = additionalAttrs.ToArray(),
             };
         }
     }

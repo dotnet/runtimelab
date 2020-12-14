@@ -156,6 +156,15 @@
   <data name="ConfigurationNotSupportedTitle" xml:space="preserve">
     <value>Specified configuration is not supported by source-generated P/Invokes.</value>
   </data>
+  <data name="ConvertToGeneratedDllImportDescription" xml:space="preserve">
+    <value>Use 'GeneratedDllImportAttribute' instead of 'DllImportAttribute' to generate P/Invoke marshalling code at compile time</value>
+  </data>
+  <data name="ConvertToGeneratedDllImportMessage" xml:space="preserve">
+    <value>Mark the method '{0}' with 'GeneratedDllImportAttribute' instead of 'DllImportAttribute' to generate P/Invoke marshalling code at compile time</value>
+  </data>
+  <data name="ConvertToGeneratedDllImportTitle" xml:space="preserve">
+    <value>Use 'GeneratedDllImportAttribute' instead of 'DllImportAttribute' to generate P/Invoke marshalling code at compile time</value>
+  </data>
   <data name="CustomTypeMarshallingManagedToNativeUnsupported" xml:space="preserve">
     <value>The specified parameter needs to be marshalled from managed to native, but the native type '{0}' does not support it.</value>
   </data>
@@ -263,6 +272,9 @@
   </data>
   <data name="TypeNotSupportedTitle" xml:space="preserve">
     <value>Specified type is not supported by source-generated P/Invokes</value>
+  </data>
+  <data name="ValuePropertyMarshallingRequiresAdditionalState" xml:space="preserve">
+    <value>Marshalling a value between managed and native with a native type with a 'Value' property requires extra state, which is not supported in this context.</value>
   </data>
   <data name="ValuePropertyMustHaveGetterDescription" xml:space="preserve">
     <value>The native type's 'Value' property must have a getter to support marshalling from managed to native.</value>
