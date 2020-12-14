@@ -208,5 +208,42 @@ namespace DllImportGenerator.UnitTests
             var newCompDiags = newComp.GetDiagnostics();
             Assert.Empty(newCompDiags);
         }
+        public static IEnumerable<object[]> CodeSnippetsToCompileWithMarshalType()
+        {
+            // SetLastError
+            yield return new[] { CodeSnippets.AllSupportedDllImportNamedArguments };
+            
+            // SafeHandle
+            yield return new[] { CodeSnippets.BasicParametersAndModifiers("Microsoft.Win32.SafeHandles.SafeFileHandle") };
+        }
+
+        [Theory]
+        [MemberData(nameof(CodeSnippetsToCompileWithMarshalType))]
+        public async Task ValidateSnippetsWithMarshalType(string source)
+        {
+            Compilation comp = await TestUtils.CreateCompilation(source);
+            TestUtils.AssertPreSourceGeneratorCompilation(comp);
+
+            var newComp = TestUtils.RunGenerators(
+                comp,
+                out var generatorDiags, 
+                new ISourceGenerator[] 
+                {
+                    new Microsoft.Interop.DllImportGenerator()
+                },
+                new DllImportGeneratorOptionsProvider(useMarshalType: true, generateForwarders: false));
+
+            Assert.Empty(generatorDiags);
+
+            var newCompDiags = newComp.GetDiagnostics();
+
+            Assert.All(newCompDiags, diag =>
+            {
+                Assert.Equal("CS0117", diag.Id);
+                Assert.StartsWith("'Marshal' does not contain a definition for ", diag.GetMessage());
+            });
+        }
+
+
     }
 }
