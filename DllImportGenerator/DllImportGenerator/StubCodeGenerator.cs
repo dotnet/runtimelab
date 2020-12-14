@@ -177,7 +177,7 @@ namespace Microsoft.Interop
                 AppendVariableDeclations(setupStatements, retMarshaller.TypeInfo, retMarshaller.Generator);
             }
 
-            if (this.dllImportData.SetLastError)
+            if (this.dllImportData.SetLastError && !options.GenerateForwarders())
             {
                 // Declare variable for last error
                 setupStatements.Add(MarshallerHelpers.DeclareWithDefault(
@@ -250,7 +250,7 @@ namespace Microsoft.Interop
                                 invoke));
                     }
 
-                    if (this.dllImportData.SetLastError)
+                    if (this.dllImportData.SetLastError && !options.GenerateForwarders())
                     {
                         // Marshal.SetLastSystemError(0);
                         var clearLastError = ExpressionStatement(
@@ -315,7 +315,7 @@ namespace Microsoft.Interop
                 allStatements.AddRange(tryStatements);
             }
 
-            if (this.dllImportData.SetLastError)
+            if (this.dllImportData.SetLastError && !options.GenerateForwarders())
             {
                 // Marshal.SetLastWin32Error(<lastError>);
                 allStatements.Add(ExpressionStatement(
