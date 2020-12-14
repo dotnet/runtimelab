@@ -52,7 +52,7 @@ where `<Configuration>` is your project configuration (such as Debug or Release)
 
 Once completed, you can find the native executable in the root folder of your project under `/bin/<Configuration>/net5.0/<RID>/publish/`. Navigate to `/bin/<Configuration>/net5.0/<RID>/publish/` in your project folder and run the produced native executable.
 
-Feel free to modify the sample application and experiment. However, keep in mind some functionality might not yet be supported in CoreRT. Let us know on the [Issues page](https://github.com/dotnet/corert/issues/).
+Feel free to modify the sample application and experiment. However, keep in mind some functionality might not yet be supported in CoreRT. Let us know on the [Issues page](https://github.com/dotnet/runtimelab/issues).
 
 ## Know Issues
 
