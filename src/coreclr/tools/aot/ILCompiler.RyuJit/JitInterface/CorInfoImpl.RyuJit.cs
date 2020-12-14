@@ -1632,8 +1632,7 @@ namespace Internal.JitInterface
         {
             MethodDesc md = HandleToObject(method);
 
-            string externName = md.GetPInvokeMethodMetadata().Name ?? md.Name;
-            Debug.Assert(externName != null);
+            string externName = _compilation.PInvokeILProvider.GetDirectCallExternName(md);
 
             pLookup = CreateConstLookupToSymbol(_compilation.NodeFactory.ExternSymbol(externName));
         }

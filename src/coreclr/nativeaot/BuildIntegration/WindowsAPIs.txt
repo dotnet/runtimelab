@@ -1,0 +1,21 @@
+# Windows APIs that must be direct calls for the runtime to be able to startup
+# TODO: Expand this to list all APIs available in supported Windows versions
+
+bcrypt!BCryptGenRandom
+kernel32!CloseHandle
+kernel32!CreateEventExW
+kernel32!CreateEventW
+kernel32!GetLastError
+kernel32!GetProcAddress
+kernel32!LoadLibraryExW
+kernel32!LocalAlloc
+kernel32!LocalFree
+kernel32!ResetEvent
+kernel32!SetEvent
+kernel32!SetLastError
+kernel32!Sleep
+kernel32!WaitForMultipleObjectsEx
+kernel32!WaitForSingleObject
+ole32!CoGetApartmentType
+ole32!CoInitializeEx
+ole32!CoUninitialize

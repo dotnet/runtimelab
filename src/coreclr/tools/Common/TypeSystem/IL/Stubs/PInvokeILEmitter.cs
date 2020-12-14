@@ -23,7 +23,7 @@ namespace Internal.IL.Stubs
         private readonly MethodDesc _targetMethod;
         private readonly Marshaller[] _marshallers;
         private readonly PInvokeILEmitterConfiguration _pInvokeILEmitterConfiguration;
-        private readonly PInvokeMetadata _importMetadata;
+        private readonly PInvokeMetadata _pInvokeMetadata;
         private readonly PInvokeFlags _flags;
         private readonly InteropStateManager _interopStateManager;
 
@@ -32,7 +32,7 @@ namespace Internal.IL.Stubs
             Debug.Assert(targetMethod.IsPInvoke || targetMethod is DelegateMarshallingMethodThunk);
             _targetMethod = targetMethod;
             _pInvokeILEmitterConfiguration = pinvokeILEmitterConfiguration;
-            _importMetadata = targetMethod.GetPInvokeMethodMetadata();
+            _pInvokeMetadata = targetMethod.GetPInvokeMethodMetadata();
             _interopStateManager = interopStateManager;
 
             //
@@ -47,7 +47,7 @@ namespace Internal.IL.Stubs
             else
             {
                 Debug.Assert(_targetMethod.IsPInvoke);
-                _flags = _importMetadata.Flags;
+                _flags = _pInvokeMetadata.Flags;
             }
             _marshallers = InitializeMarshallers(targetMethod, interopStateManager, _flags);
         }
@@ -230,7 +230,7 @@ namespace Internal.IL.Stubs
 
         private void EmitPInvokeCall(PInvokeILCodeStreams ilCodeStreams)
         {
-            if (!_importMetadata.Flags.PreserveSig)
+            if (!_flags.PreserveSig)
                 throw new NotSupportedException();
 
             ILEmitter emitter = ilCodeStreams.Emitter;
@@ -253,7 +253,7 @@ namespace Internal.IL.Stubs
                 nativeParameterTypes[i - 1] = _marshallers[i].NativeParameterType;
             }
 
-            if (!_pInvokeILEmitterConfiguration.GenerateDirectCall(_importMetadata.Module, _importMetadata.Name))
+            if (!_pInvokeILEmitterConfiguration.GenerateDirectCall(_targetMethod, out _))
             {
                 MetadataType lazyHelperType = context.GetHelperType("InteropHelpers");
                 FieldDesc lazyDispatchCell = _interopStateManager.GetPInvokeLazyFixupField(_targetMethod);
@@ -404,7 +404,7 @@ namespace Internal.IL.Stubs
             // The configuration can be null if this is delegate or calli marshalling
             if (_pInvokeILEmitterConfiguration != null)
             {
-                if (!_pInvokeILEmitterConfiguration.GenerateDirectCall(_importMetadata.Module, _importMetadata.Name))
+                if (!_pInvokeILEmitterConfiguration.GenerateDirectCall(_targetMethod, out _))
                 {
                     return true;
                 }
