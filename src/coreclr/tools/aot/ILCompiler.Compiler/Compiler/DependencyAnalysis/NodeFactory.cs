@@ -2,18 +2,17 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 
 using ILCompiler.DependencyAnalysisFramework;
 
+using Internal.IL;
+using Internal.Runtime;
 using Internal.Text;
 using Internal.TypeSystem;
-using Internal.Runtime;
-using Internal.IL;
 
 namespace ILCompiler.DependencyAnalysis
 {
