@@ -5563,12 +5563,7 @@ namespace Internal.IL
 
                     builder.EmitCompressedUInt(((uint)tryLength << 2) | (uint)clauseKind);
 
-                    RelocType rel = (_compilation.NodeFactory.Target.IsWindows)
-                        ? RelocType.IMAGE_REL_BASED_ABSOLUTE
-                        : RelocType.IMAGE_REL_BASED_REL32;
-
-                    if (_compilation.NodeFactory.Target.Abi == TargetAbi.Jit)
-                        rel = RelocType.IMAGE_REL_BASED_REL32;
+                    RelocType rel = RelocType.IMAGE_REL_BASED_ABSOLUTE;
 
                     switch (clauseKind)
                     {

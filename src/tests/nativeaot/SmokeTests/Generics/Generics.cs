@@ -36,11 +36,9 @@ class Program
 #if !CODEGEN_CPP 
         TestNullableCasting.Run();
         TestVariantCasting.Run();
-#if !CODEGEN_WASM  // TODO: Why has this broken since passing in CoreRT - possibly there is a GC running before which is known to have a problem (fixes for that not pushed to CoreRT in time for move)
         TestMDArrayAddressMethod.Run();
         TestNativeLayoutGeneration.Run();
         TestByRefLikeVTables.Run();
-#endif
 #endif
         return 100;
     }
