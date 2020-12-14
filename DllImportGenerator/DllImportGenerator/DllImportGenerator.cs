@@ -90,7 +90,7 @@ namespace Microsoft.Interop
 
                 // Process the GeneratedDllImport attribute
                 DllImportStub.GeneratedDllImportData dllImportData;
-                AttributeSyntax dllImportAttr = this.ProcessGeneratedDllImportAttribute(methodSymbolInfo, generatedDllImportAttr, out dllImportData);
+                AttributeSyntax dllImportAttr = this.ProcessGeneratedDllImportAttribute(methodSymbolInfo, generatedDllImportAttr, context.AnalyzerConfigOptions.GlobalOptions.GenerateForwarders(), out dllImportData);
                 Debug.Assert((dllImportAttr is not null) && (dllImportData is not null));
 
                 if (dllImportData!.IsUserDefined.HasFlag(DllImportStub.DllImportMember.BestFitMapping))
@@ -116,7 +116,7 @@ namespace Microsoft.Interop
                 }
 
                 // Create the stub.
-                var dllImportStub = DllImportStub.Create(methodSymbolInfo, dllImportData!, context.Compilation, generatorDiagnostics, context.CancellationToken);
+                var dllImportStub = DllImportStub.Create(methodSymbolInfo, dllImportData!, context.Compilation, generatorDiagnostics, context.AnalyzerConfigOptions.GlobalOptions, context.CancellationToken);
 
                 PrintGeneratedSource(generatedDllImports, methodSyntax, dllImportStub, dllImportAttr!);
             }
@@ -212,6 +212,7 @@ namespace Microsoft.Interop
         private AttributeSyntax ProcessGeneratedDllImportAttribute(
             IMethodSymbol method,
             AttributeData attrData,
+            bool generateForwarders,
             out DllImportStub.GeneratedDllImportData dllImportData)
         {
             dllImportData = new DllImportStub.GeneratedDllImportData();
@@ -286,7 +287,7 @@ namespace Microsoft.Interop
 
                 Debug.Assert(expSyntaxMaybe is not null);
 
-                if (PassThroughToDllImportAttribute(namedArg.Key))
+                if (generateForwarders || PassThroughToDllImportAttribute(namedArg.Key))
                 {
                     // Defer the name equals syntax till we know the value means something. If we created
                     // an expression we know the key value was valid.
@@ -339,9 +340,6 @@ namespace Microsoft.Interop
 
             static bool PassThroughToDllImportAttribute(string argName)
             {
-#if GENERATE_FORWARDER
-                return true;
-#else
                 // Certain fields on DllImport will prevent inlining. Their functionality should be handled by the
                 // generated source, so the generated DllImport declaration should not include these fields.
                 return argName switch
@@ -354,7 +352,6 @@ namespace Microsoft.Interop
                     nameof(DllImportStub.GeneratedDllImportData.SetLastError) => false,
                     _ => true
                 };
-#endif
             }
         }
 

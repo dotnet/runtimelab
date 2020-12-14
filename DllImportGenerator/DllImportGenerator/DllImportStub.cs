@@ -9,6 +9,7 @@ using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
@@ -104,6 +105,7 @@ namespace Microsoft.Interop
             IMethodSymbol method,
             GeneratedDllImportData dllImportData,
             Compilation compilation,
+            AnalyzerConfigOptions options,
             GeneratorDiagnostics diagnostics,
             CancellationToken token = default)
         {
@@ -199,7 +201,7 @@ namespace Microsoft.Interop
             }
 
             // Generate stub code
-            var stubGenerator = new StubCodeGenerator(method, dllImportData, paramsTypeInfo, retTypeInfo, diagnostics);
+            var stubGenerator = new StubCodeGenerator(method, dllImportData, paramsTypeInfo, retTypeInfo, diagnostics, options);
             var (code, dllImport) = stubGenerator.GenerateSyntax();
 
             return new DllImportStub()

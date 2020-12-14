@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
@@ -120,11 +121,14 @@ namespace Microsoft.Interop
         /// <returns>A <see cref="IMarshallingGenerator"/> instance.</returns>
         public static IMarshallingGenerator Create(
             TypePositionInfo info,
-            StubCodeContext context)
+            StubCodeContext context,
+            AnalyzerConfigOptions options)
         {
-#if GENERATE_FORWARDER
-            return MarshallingGenerators.Forwarder;
-#else
+            if (options.GenerateForwarders())
+            {
+                return MarshallingGenerators.Forwarder;
+            }
+
             if (info.IsNativeReturnPosition && !info.IsManagedReturnPosition)
             {
                 // Use marshaller for native HRESULT return / exception throwing
@@ -183,14 +187,14 @@ namespace Microsoft.Interop
                     return SafeHandle;
 
                 case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType: ITypeSymbol elementType }, MarshallingAttributeInfo: NoMarshallingInfo }:
-                    return CreateArrayMarshaller(info, context, elementType, NoMarshallingInfo.Instance);
+                    return CreateArrayMarshaller(info, context, elementType, NoMarshallingInfo.Instance, options);
 
                 case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType: ITypeSymbol elementType }, MarshallingAttributeInfo: ArrayMarshalAsInfo marshalAsInfo }:
                     if (marshalAsInfo.UnmanagedArrayType != UnmanagedArrayType.LPArray)
                     {
                         throw new MarshallingNotSupportedException(info, context);
                     }
-                    return CreateArrayMarshaller(info, context, elementType, marshalAsInfo.CreateArraySubTypeMarshalAsInfo());
+                    return CreateArrayMarshaller(info, context, elementType, marshalAsInfo.CreateArraySubTypeMarshalAsInfo(), options);
 
                 // Marshalling in new model.
                 // Must go before the cases that do not explicitly check for marshalling info to support
@@ -217,7 +221,6 @@ namespace Microsoft.Interop
                 default:
                     throw new MarshallingNotSupportedException(info, context);
             }
-#endif
         }
 
         private static IMarshallingGenerator CreateCharMarshaller(TypePositionInfo info, StubCodeContext context)
@@ -308,7 +311,7 @@ namespace Microsoft.Interop
             throw new MarshallingNotSupportedException(info, context);
         }
         
-        private static ExpressionSyntax GetNumElementsExpressionFromMarshallingInfo(TypePositionInfo info, StubCodeContext context)
+        private static ExpressionSyntax GetNumElementsExpressionFromMarshallingInfo(TypePositionInfo info, StubCodeContext context, AnalyzerConfigOptions options)
         {
             ExpressionSyntax numElementsExpression;
             if (info.MarshallingAttributeInfo is not ArrayMarshalAsInfo marshalAsInfo)
@@ -343,7 +346,7 @@ namespace Microsoft.Interop
                 else
                 {
                     var (managed, native) = context.GetIdentifiers(paramIndexInfo);
-                    string identifier = Create(paramIndexInfo, context).UsesNativeIdentifier(paramIndexInfo, context) ? native : managed;
+                    string identifier = Create(paramIndexInfo, context, options).UsesNativeIdentifier(paramIndexInfo, context) ? native : managed;
                     sizeParamIndexExpression = CastExpression(
                             PredefinedType(Token(SyntaxKind.IntKeyword)),
                             IdentifierName(identifier));
@@ -362,14 +365,14 @@ namespace Microsoft.Interop
             return numElementsExpression;
         }
 
-        private static IMarshallingGenerator CreateArrayMarshaller(TypePositionInfo info, StubCodeContext context, ITypeSymbol elementType, MarshallingInfo elementMarshallingInfo)
+        private static IMarshallingGenerator CreateArrayMarshaller(TypePositionInfo info, StubCodeContext context, ITypeSymbol elementType, MarshallingInfo elementMarshallingInfo, AnalyzerConfigOptions options)
         {
-            var elementMarshaller = Create(TypePositionInfo.CreateForType(elementType, elementMarshallingInfo), context);
+            var elementMarshaller = Create(TypePositionInfo.CreateForType(elementType, elementMarshallingInfo), context, options);
             ExpressionSyntax numElementsExpression = LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0));
             if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
             {
                 // In this case, we need a numElementsExpression supplied from metadata, so we'll calculate it here.
-                numElementsExpression = GetNumElementsExpressionFromMarshallingInfo(info, context);
+                numElementsExpression = GetNumElementsExpressionFromMarshallingInfo(info, context, options);
             }
             
             return elementMarshaller == Blittable

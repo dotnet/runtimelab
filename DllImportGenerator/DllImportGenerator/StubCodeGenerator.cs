@@ -6,6 +6,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
@@ -56,7 +57,8 @@ namespace Microsoft.Interop
             DllImportStub.GeneratedDllImportData dllImportData,
             IEnumerable<TypePositionInfo> paramsTypeInfo,
             TypePositionInfo retTypeInfo,
-            GeneratorDiagnostics generatorDiagnostics)
+            GeneratorDiagnostics generatorDiagnostics,
+            AnalyzerConfigOptions options)
         {
             Debug.Assert(retTypeInfo.IsNativeReturnPosition);
 
@@ -75,7 +77,7 @@ namespace Microsoft.Interop
             {
                 try
                 {
-                    return (p, MarshallingGenerators.Create(p, this));
+                    return (p, MarshallingGenerators.Create(p, this, options));
                 }
                 catch (MarshallingNotSupportedException e)
                 {
