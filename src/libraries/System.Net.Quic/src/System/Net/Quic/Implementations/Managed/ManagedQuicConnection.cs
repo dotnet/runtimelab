@@ -276,7 +276,8 @@ namespace System.Net.Quic.Implementations.Managed
             }
             else if (traceType != null)
             {
-                string filename = $"{DateTime.Now:yyyy-MM-dd_HH-mm-ss.fff}-{(isServer ? "server" : "client")}.qlog";
+                string odcidString = BitConverter.ToString(odcid.ToArray()).ToLower().Replace("-", "");
+                string filename = $"{odcidString}-{(isServer ? "server" : "client")}.qlog";
                 return new QlogTrace(File.Open(filename, FileMode.Create), odcid.ToArray(), isServer);
             }
 
