@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Testing;
 using System.Collections.Immutable;
 using System.Linq;
@@ -89,9 +90,23 @@ namespace DllImportGenerator.UnitTests
             return d;
         }
 
-        private static GeneratorDriver CreateDriver(Compilation c, params ISourceGenerator[] generators)
+        /// <summary>
+        /// Run the supplied generators on the compilation.
+        /// </summary>
+        /// <param name="comp">Compilation target</param>
+        /// <param name="diagnostics">Resulting diagnostics</param>
+        /// <param name="generators">Source generator instances</param>
+        /// <returns>The resulting compilation</returns>
+        public static Compilation RunGenerators(Compilation comp, out ImmutableArray<Diagnostic> diagnostics, ISourceGenerator[] generators, AnalyzerConfigOptionsProvider? options = null)
+        {
+            CreateDriver(comp, generators, options).RunGeneratorsAndUpdateCompilation(comp, out var d, out diagnostics);
+            return d;
+        }
+
+        private static GeneratorDriver CreateDriver(Compilation c, ISourceGenerator[] generators, AnalyzerConfigOptionsProvider? options = null)
             => CSharpGeneratorDriver.Create(
                 ImmutableArray.Create(generators),
-                parseOptions: (CSharpParseOptions)c.SyntaxTrees.First().Options);
+                parseOptions: (CSharpParseOptions)c.SyntaxTrees.First().Options,
+                optionsProvider: options);
     }
 }
