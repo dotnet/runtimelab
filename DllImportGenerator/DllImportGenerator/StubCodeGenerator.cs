@@ -49,7 +49,7 @@ namespace Microsoft.Interop
         };
 
         private readonly GeneratorDiagnostics diagnostics;
-
+        private readonly AnalyzerConfigOptions options;
         private readonly IMethodSymbol stubMethod;
         private readonly DllImportStub.GeneratedDllImportData dllImportData;
         private readonly IEnumerable<TypePositionInfo> paramsTypeInfo;
@@ -70,6 +70,7 @@ namespace Microsoft.Interop
             this.dllImportData = dllImportData;
             this.paramsTypeInfo = paramsTypeInfo.ToList();
             this.diagnostics = generatorDiagnostics;
+            this.options = options;
 
             // Get marshallers for parameters
             this.paramMarshallers = paramsTypeInfo.Select(p => CreateGenerator(p)).ToList();
@@ -256,7 +257,7 @@ namespace Microsoft.Interop
                             InvocationExpression(
                                 MemberAccessExpression(
                                     SyntaxKind.SimpleMemberAccessExpression,
-                                    ParseName(TypeNames.System_Runtime_InteropServices_MarshalEx),
+                                    ParseName(TypeNames.MarshalEx(options)),
                                     IdentifierName("SetLastSystemError")),
                                 ArgumentList(SingletonSeparatedList(
                                     Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(SuccessErrorCode)))))));
@@ -269,7 +270,7 @@ namespace Microsoft.Interop
                                 InvocationExpression(
                                     MemberAccessExpression(
                                     SyntaxKind.SimpleMemberAccessExpression,
-                                    ParseName(TypeNames.System_Runtime_InteropServices_MarshalEx),
+                                    ParseName(TypeNames.MarshalEx(options)),
                                     IdentifierName("GetLastSystemError")))));
 
                         invokeStatement = Block(clearLastError, invokeStatement, getLastError);
@@ -321,7 +322,7 @@ namespace Microsoft.Interop
                     InvocationExpression(
                         MemberAccessExpression(
                             SyntaxKind.SimpleMemberAccessExpression,
-                            ParseName(TypeNames.System_Runtime_InteropServices_MarshalEx),
+                            ParseName(TypeNames.MarshalEx(options)),
                             IdentifierName("SetLastWin32Error")),
                         ArgumentList(SingletonSeparatedList(
                             Argument(IdentifierName(LastErrorIdentifier)))))));

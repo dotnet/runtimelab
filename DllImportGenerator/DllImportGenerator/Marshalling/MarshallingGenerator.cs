@@ -110,7 +110,6 @@ namespace Microsoft.Interop
         public static readonly Forwarder Forwarder = new Forwarder();
         public static readonly BlittableMarshaller Blittable = new BlittableMarshaller();
         public static readonly DelegateMarshaller Delegate = new DelegateMarshaller();
-        public static readonly SafeHandleMarshaller SafeHandle = new SafeHandleMarshaller();
         public static readonly HResultExceptionMarshaller HResultException = new HResultExceptionMarshaller();
 
         /// <summary>
@@ -184,7 +183,7 @@ namespace Microsoft.Interop
                     {
                         throw new MarshallingNotSupportedException(info, context);
                     }
-                    return SafeHandle;
+                    return new SafeHandleMarshaller(options);
 
                 // Marshalling in new model.
                 // Must go before the cases that do not explicitly check for marshalling info to support
