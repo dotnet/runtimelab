@@ -2,17 +2,17 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 
 using ILCompiler.DependencyAnalysisFramework;
 
+using Internal.IL;
+using Internal.Runtime;
 using Internal.Text;
 using Internal.TypeSystem;
-using Internal.Runtime;
-using Internal.IL;
 
 namespace ILCompiler.DependencyAnalysis
 {
@@ -251,9 +251,9 @@ namespace ILCompiler.DependencyAnalysis
                 return new PInvokeModuleFixupNode(moduleData);
             });
 
-            _pInvokeMethodFixups = new NodeCache<Tuple<PInvokeModuleData, string, PInvokeFlags>, PInvokeMethodFixupNode>((Tuple<PInvokeModuleData, string, PInvokeFlags> key) =>
+            _pInvokeMethodFixups = new NodeCache<PInvokeMethodData, PInvokeMethodFixupNode>((PInvokeMethodData methodData) =>
             {
-                return new PInvokeMethodFixupNode(key.Item1, key.Item2, key.Item3);
+                return new PInvokeMethodFixupNode(methodData);
             });
 
             _methodEntrypoints = new NodeCache<MethodDesc, IMethodNode>(CreateMethodEntrypointNode);
@@ -728,11 +728,11 @@ namespace ILCompiler.DependencyAnalysis
             return _pInvokeModuleFixups.GetOrAdd(moduleData);
         }
 
-        private NodeCache<Tuple<PInvokeModuleData, string, PInvokeFlags>, PInvokeMethodFixupNode> _pInvokeMethodFixups;
+        private NodeCache<PInvokeMethodData, PInvokeMethodFixupNode> _pInvokeMethodFixups;
 
-        public PInvokeMethodFixupNode PInvokeMethodFixup(PInvokeModuleData moduleData, string entryPointName, PInvokeFlags flags)
+        public PInvokeMethodFixupNode PInvokeMethodFixup(PInvokeMethodData methodData)
         {
-            return _pInvokeMethodFixups.GetOrAdd(Tuple.Create(moduleData, entryPointName, flags));
+            return _pInvokeMethodFixups.GetOrAdd(methodData);
         }
 
         private NodeCache<TypeDesc, VTableSliceNode> _vTableNodes;
