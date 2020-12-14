@@ -51,7 +51,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <ItemGroup>
       <DirectPInvoke Include="@(NetCoreAppNativeLibrary->'lib%(Identity)')" />
-      <NativeLibrary Include="@(NetCoreAppNativeLibrary->'$(IlcPath)/framework/lib%(Identity)(NativeLibraryExtension)')" />
+      <NativeLibrary Include="@(NetCoreAppNativeLibrary->'$(IlcPath)/framework/lib%(Identity)$(NativeLibraryExtension)')" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetOS)' == 'OSX'">
