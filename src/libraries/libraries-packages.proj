@@ -5,6 +5,7 @@
     <TraversalGlobalProperties>BuildAllProjects=true</TraversalGlobalProperties>
     <AdditionalBuildTargetFrameworks Condition="'$(DotNetBuildFromSource)' == 'true'">$(AdditionalBuildTargetFrameworks);package-$(Configuration)</AdditionalBuildTargetFrameworks>
     <BuildAllPackages Condition="'$(BuildAllPackages)' == ''">false</BuildAllPackages>
+    <BuildAllOOBPackages Condition="'$(BuildAllOOBPackages)' == '' and '$(BuildAllPackages)' != 'true'">false</BuildAllOOBPackages>
     <BuildAllOOBPackages Condition="'$(BuildAllOOBPackages)' == ''">false</BuildAllOOBPackages>
   </PropertyGroup>
   
