@@ -95,20 +95,5 @@ namespace ILCompiler.Dataflow
         {
             return type.IsByRef || type.IsPointer;
         }
-
-        public static int ReadBranchDestination(this ref ILReader reader, ILOpcode currentOpcode)
-        {
-            if ((currentOpcode >= ILOpcode.br_s && currentOpcode <= ILOpcode.blt_un_s)
-                || currentOpcode == ILOpcode.leave_s)
-            {
-                return (sbyte)reader.ReadILByte() + reader.Offset;
-            }
-            else
-            {
-                Debug.Assert((currentOpcode >= ILOpcode.br && currentOpcode <= ILOpcode.blt_un)
-                    || currentOpcode == ILOpcode.leave);
-                return (int)reader.ReadILUInt32() + reader.Offset;
-            }
-        }
     }
 }
