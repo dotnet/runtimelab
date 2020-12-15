@@ -65,9 +65,12 @@ if ($ENV{__BuildArch} STREQUAL "x86")
     add_compile_options(/Gz)
 endif ()
 
+# TODO Unification debt https://github.com/dotnet/runtimelab/issues/106
+# CFG runtime checks in C++ code are unnecessary overhead unless Native AOT compiler
+# produces CFG compliant code as well and CFG is enabled in the linker
 # enable control-flow-guard support for native components
-add_compile_options(/guard:cf) 
-list(APPEND __SharedLinkArgs /GUARD:CF)
+# add_compile_options(/guard:cf)
+# list(APPEND __SharedLinkArgs /GUARD:CF)
 
 # Statically linked CRT (libcmt[d].lib, libvcruntime[d].lib and libucrt[d].lib) by default. This is done to avoid
 # linking in VCRUNTIME140.DLL for a simplified xcopy experience by reducing the dependency on VC REDIST.
@@ -79,8 +82,11 @@ list(APPEND __SharedLinkArgs /GUARD:CF)
 add_compile_options($<$<CONFIG:DEBUG>:/MTd>)
 add_compile_options($<$<CONFIG:RELEASE>:/MT>)
 
-add_compile_options($<$<CONFIG:RELEASE>:/GL>)
-add_compile_options($<$<CONFIG:RELEASE>:/O1>)
+# TODO Unification debt https://github.com/dotnet/runtimelab/issues/106
+# Link Time Code Generation requires exact C++ compiler and linker version match
+# add_compile_options($<$<CONFIG:RELEASE>:/GL>)
+# add_compile_options($<$<CONFIG:RELEASE>:/O1>)
+add_compile_options($<$<CONFIG:RELEASE>:/O2>)
 
 list(APPEND __LinkLibraries $<$<CONFIG:DEBUG>:libcmtd.lib>)
 list(APPEND __LinkLibraries $<$<CONFIG:RELEASE>:libcmt.lib>)
