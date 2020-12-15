@@ -95,7 +95,6 @@ add_library(System.IO.Compression.Native-static
     ${NATIVECOMPRESSION_SOURCES}
 )
 
-SET_TARGET_PROPERTIES(System.IO.Compression.Native-static PROPERTIES PREFIX "")
 SET_TARGET_PROPERTIES(System.IO.Compression.Native-static PROPERTIES OUTPUT_NAME System.IO.Compression.Native)
 
 # Allow specification of arguments that should be passed to the linker
@@ -123,4 +122,6 @@ if (GEN_SHARED_LIB)
 endif()
 
 install (TARGETS System.IO.Compression.Native-static DESTINATION ${STATIC_LIB_DESTINATION})
-
+if(WIN32)
+    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/System.IO.Compression.Native-static.dir/$<CONFIG>/System.IO.Compression.Native-static.pdb DESTINATION ${STATIC_LIB_DESTINATION})
+endif()
