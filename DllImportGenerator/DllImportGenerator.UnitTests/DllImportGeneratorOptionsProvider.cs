@@ -1,9 +1,14 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.Interop;
 
 namespace DllImportGenerator.UnitTests
 {
+    /// <summary>
+    /// An implementation of <see cref="AnalyzerConfigOptionsProvider"/> that provides configuration in code
+    /// of the options supported by the DllImportGenerator source generator. Used for testing various configurations.
+    /// </summary>
     internal class DllImportGeneratorOptionsProvider : AnalyzerConfigOptionsProvider
     {
         public DllImportGeneratorOptionsProvider(bool useMarshalType, bool generateForwarders)
@@ -23,7 +28,7 @@ namespace DllImportGenerator.UnitTests
             return EmptyOptions.Instance;
         }
 
-        class GlobalGeneratorOptions : AnalyzerConfigOptions
+        private class GlobalGeneratorOptions : AnalyzerConfigOptions
         {
             private readonly bool _useMarshalType = false;
             private readonly bool _generateForwarders = false;
@@ -37,11 +42,11 @@ namespace DllImportGenerator.UnitTests
             {
                 switch (key)
                 {
-                    case "build_property.DllImportGenerator_UseMarshalType":
+                    case OptionsHelper.UseMarshalTypeOption:
                         value = _useMarshalType.ToString();
                         return true;
                     
-                    case "build_property.DllImportGenerator_GenerateForwarders":
+                    case OptionsHelper.GenerateForwardersOption:
                         value = _generateForwarders.ToString();
                         return true;
                     
@@ -52,7 +57,7 @@ namespace DllImportGenerator.UnitTests
             }
         }
 
-        class EmptyOptions : AnalyzerConfigOptions
+        private class EmptyOptions : AnalyzerConfigOptions
         {
             public override bool TryGetValue(string key, [NotNullWhen(true)] out string? value)
             {

@@ -90,7 +90,7 @@ namespace DllImportGenerator.UnitTests
         /// <returns>The resulting compilation</returns>
         public static Compilation RunGenerators(Compilation comp, out ImmutableArray<Diagnostic> diagnostics, params ISourceGenerator[] generators)
         {
-            CreateDriver(comp, generators).RunGeneratorsAndUpdateCompilation(comp, out var d, out diagnostics);
+            CreateDriver(comp, null, generators).RunGeneratorsAndUpdateCompilation(comp, out var d, out diagnostics);
             return d;
         }
 
@@ -101,13 +101,13 @@ namespace DllImportGenerator.UnitTests
         /// <param name="diagnostics">Resulting diagnostics</param>
         /// <param name="generators">Source generator instances</param>
         /// <returns>The resulting compilation</returns>
-        public static Compilation RunGenerators(Compilation comp, out ImmutableArray<Diagnostic> diagnostics, ISourceGenerator[] generators, AnalyzerConfigOptionsProvider? options = null)
+        public static Compilation RunGenerators(Compilation comp, AnalyzerConfigOptionsProvider options, out ImmutableArray<Diagnostic> diagnostics, params ISourceGenerator[] generators)
         {
-            CreateDriver(comp, generators, options).RunGeneratorsAndUpdateCompilation(comp, out var d, out diagnostics);
+            CreateDriver(comp, options, generators).RunGeneratorsAndUpdateCompilation(comp, out var d, out diagnostics);
             return d;
         }
 
-        private static GeneratorDriver CreateDriver(Compilation c, ISourceGenerator[] generators, AnalyzerConfigOptionsProvider? options = null)
+        private static GeneratorDriver CreateDriver(Compilation c, AnalyzerConfigOptionsProvider? options, ISourceGenerator[] generators)
             => CSharpGeneratorDriver.Create(
                 ImmutableArray.Create(generators),
                 parseOptions: (CSharpParseOptions)c.SyntaxTrees.First().Options,

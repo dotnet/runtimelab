@@ -196,18 +196,16 @@ namespace DllImportGenerator.UnitTests
 
             var newComp = TestUtils.RunGenerators(
                 comp,
-                out var generatorDiags, 
-                new ISourceGenerator[] 
-                {
-                    new Microsoft.Interop.DllImportGenerator()
-                },
-                new DllImportGeneratorOptionsProvider(useMarshalType: false, generateForwarders: true));
+                new DllImportGeneratorOptionsProvider(useMarshalType: false, generateForwarders: true),
+                out var generatorDiags,
+                new Microsoft.Interop.DllImportGenerator());
 
             Assert.Empty(generatorDiags);
 
             var newCompDiags = newComp.GetDiagnostics();
             Assert.Empty(newCompDiags);
         }
+
         public static IEnumerable<object[]> CodeSnippetsToCompileWithMarshalType()
         {
             // SetLastError
@@ -226,12 +224,9 @@ namespace DllImportGenerator.UnitTests
 
             var newComp = TestUtils.RunGenerators(
                 comp,
-                out var generatorDiags, 
-                new ISourceGenerator[] 
-                {
-                    new Microsoft.Interop.DllImportGenerator()
-                },
-                new DllImportGeneratorOptionsProvider(useMarshalType: true, generateForwarders: false));
+                new DllImportGeneratorOptionsProvider(useMarshalType: true, generateForwarders: false),
+                out var generatorDiags,
+                new Microsoft.Interop.DllImportGenerator());
 
             Assert.Empty(generatorDiags);
 
@@ -243,7 +238,5 @@ namespace DllImportGenerator.UnitTests
                 Assert.StartsWith("'Marshal' does not contain a definition for ", diag.GetMessage());
             });
         }
-
-
     }
 }

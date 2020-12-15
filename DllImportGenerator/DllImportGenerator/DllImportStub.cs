@@ -179,7 +179,9 @@ namespace Microsoft.Interop
             };
 
             var managedRetTypeInfo = retTypeInfo;
-            if (!dllImportData.PreserveSig)
+            // Do not manually handle PreserveSig when generating forwarders.
+            // We want the runtime to handle everything.
+            if (!dllImportData.PreserveSig && !env.Options.GenerateForwarders())
             {
                 // Create type info for native HRESULT return
                 retTypeInfo = TypePositionInfo.CreateForType(env.Compilation.GetSpecialType(SpecialType.System_Int32), NoMarshallingInfo.Instance);

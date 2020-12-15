@@ -288,6 +288,8 @@ namespace Microsoft.Interop
 
                 Debug.Assert(expSyntaxMaybe is not null);
 
+                // If we're generating a forwarder stub, then all parameters on the GenerateDllImport attribute
+                // must also be added to the generated DllImport attribute.
                 if (generateForwarders || PassThroughToDllImportAttribute(namedArg.Key))
                 {
                     // Defer the name equals syntax till we know the value means something. If we created

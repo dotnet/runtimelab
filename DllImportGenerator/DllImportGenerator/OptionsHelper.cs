@@ -7,20 +7,20 @@ using System.Runtime.InteropServices;
 
 namespace Microsoft.Interop
 {
-    internal static class OptionsHelper
+    public static class OptionsHelper
     {
-        public static bool UseMarshalType(this AnalyzerConfigOptions options)
+        public const string UseMarshalTypeOption = "build_property.DllImportGenerator_UseMarshalType";
+        public const string GenerateForwardersOption = "build_property.DllImportGenerator_GenerateForwarders";
+
+        private static bool GetBoolOption(this AnalyzerConfigOptions options, string key)
         {
-            return options.TryGetValue("build_property.DllImportGenerator_UseMarshalType", out string? value)
+            return options.TryGetValue(key, out string? value)
                 && bool.TryParse(value, out bool result)
                 && result;
         }
 
-        public static bool GenerateForwarders(this AnalyzerConfigOptions options)
-        {
-            return options.TryGetValue("build_property.DllImportGenerator_GenerateForwarders", out string? value)
-                && bool.TryParse(value, out bool result)
-                && result;
-        }
+        internal static bool UseMarshalType(this AnalyzerConfigOptions options) => options.GetBoolOption(UseMarshalTypeOption);
+
+        internal static bool GenerateForwarders(this AnalyzerConfigOptions options) => options.GetBoolOption(GenerateForwardersOption);
     }
 }

@@ -177,6 +177,8 @@ namespace Microsoft.Interop
                 AppendVariableDeclations(setupStatements, retMarshaller.TypeInfo, retMarshaller.Generator);
             }
 
+            // Do not manually handle SetLastError when generating forwarders.
+            // We want the runtime to handle everything.
             if (this.dllImportData.SetLastError && !options.GenerateForwarders())
             {
                 // Declare variable for last error
@@ -250,6 +252,8 @@ namespace Microsoft.Interop
                                 invoke));
                     }
 
+                    // Do not manually handle SetLastError when generating forwarders.
+                    // We want the runtime to handle everything.
                     if (this.dllImportData.SetLastError && !options.GenerateForwarders())
                     {
                         // Marshal.SetLastSystemError(0);
