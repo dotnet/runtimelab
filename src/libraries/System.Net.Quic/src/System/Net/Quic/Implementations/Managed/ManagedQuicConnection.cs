@@ -322,15 +322,9 @@ namespace System.Net.Quic.Implementations.Managed
         {
             if (_readyToClose)
             {
-                // connection already closed, no timer needed
+                // connection to be closed, no timer needed
                 return long.MaxValue;
             }
-
-            // if (GetWriteLevel(_lastUpdateTimestamp) != PacketSpace.None)
-            // {
-            //     // start immediately
-            //     return _lastUpdateTimestamp;
-            // }
 
             long timer = _idleTimeout;
 
@@ -340,12 +334,14 @@ namespace System.Net.Quic.Implementations.Managed
                 return Math.Min(timer, _closingPeriodEndTimestamp.Value);
             }
 
-            // do not incorporate next ack timer if we cannot send ack anyway
+            // do not set timer for sending if there is no space available in congestion window
             if (Recovery.GetAvailableCongestionWindowBytes() >= RequiredAllowanceForSending)
             {
                 timer = Math.Min(timer, _nextAckTimer);
 
-                if (Recovery.IsPacing && !Recovery.IsApplicationLimited)
+                // We use pacer only after being connected, also, the pacer is useful only when not being
+                // limited by application (meaning is outstanding STREAM data to be sent)
+                if (Connected && Recovery.IsPacing && !Recovery.IsApplicationLimited)
                 {
                     timer = Math.Min(timer, Recovery.GetPacingTimerForNextFullPacket());
                 }

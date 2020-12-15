@@ -92,7 +92,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
         /// </summary>
         public void Start()
         {
-            _backgroundWorkerTask = Task.Factory.StartNew(Run, CancellationToken.None, TaskCreationOptions.LongRunning,
+            _backgroundWorkerTask = Task.Factory.StartNew(Run, CancellationToken.None, TaskCreationOptions.RunContinuationsAsynchronously,
                 TaskScheduler.Default);
             _parent.Start();
         }
