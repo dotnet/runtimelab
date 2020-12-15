@@ -4,7 +4,9 @@
   <PropertyGroup>
     <TraversalGlobalProperties>BuildAllProjects=true</TraversalGlobalProperties>
     <AdditionalBuildTargetFrameworks Condition="'$(DotNetBuildFromSource)' == 'true'">$(AdditionalBuildTargetFrameworks);package-$(Configuration)</AdditionalBuildTargetFrameworks>
-    <BuildAllOOBPackages Condition="'$(BuildAllOOBPackages)' == ''">true</BuildAllOOBPackages>
+    <BuildAllPackages Condition="'$(BuildAllPackages)' == ''">false</BuildAllPackages>
+    <BuildAllOOBPackages Condition="'$(BuildAllOOBPackages)' == '' and '$(BuildAllPackages)' != 'true'">false</BuildAllOOBPackages>
+    <BuildAllOOBPackages Condition="'$(BuildAllOOBPackages)' == ''">false</BuildAllOOBPackages>
   </PropertyGroup>
   
   <PropertyGroup>
@@ -15,7 +17,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="$(PkgDir)*\*.proj" Exclude="$(PkgDir)test\*" />
+    <ProjectReference Include="$(PkgDir)*\*.proj" Exclude="$(PkgDir)test\*" Condition="'$(BuildAllPackages)' == 'true'"/>
     <ProjectReference Include="$(MSBuildThisFileDirectory)*\pkg\**\*.pkgproj" Condition="('$(BuildAllConfigurations)' == 'true' or '$(DotNetBuildFromSource)' == 'true') And '$(BuildAllOOBPackages)' == 'true'" />
     <!-- If setting BuildAllOOBPackages to false, add bellow the individual OOB packages you want to continue to build -->
   </ItemGroup>
