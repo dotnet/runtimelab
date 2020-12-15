@@ -20,8 +20,8 @@ The Native AOT toolchain can be currently built for Linux, macOS and Windows x64
 
 The repository has a number of Visual Studio Solutions files (`*.sln`) that are useful for editing parts of the repository. Build the repo from command line first before building using the solution files. Remember to select the appropriate configuration that you built. By default, `build.cmd` builds Debug x64 and so `Debug` and `x64` must be selected in the solution build configuration drop downs.
 
-- `src\coreclr\src\nativeaot\nativeaot.sln`. This solution is for the runtime libraries.
-- `src\coreclr\src\tools\aot\ilc.sln`. This solution is for the compiler.
+- `src\coreclr\nativeaot\nativeaot.sln`. This solution is for the runtime libraries.
+- `src\coreclr\tools\aot\ilc.sln`. This solution is for the compiler.
 
 Typical workflow for working on the compiler:
 - Open `ilc.sln` in Visual Studio
@@ -42,7 +42,7 @@ The workflow looks like this:
 - In the ILCompiler project properties, on the Debug tab, set the "Application arguments" to the generated response file. This will be a file such as "C:\runtimelab\artifacts\bin\repro\x64\Debug\compile-with-Release-libs.rsp". Prefix the path to the file with "@" to indicate this is a response file so that the "Application arguments" field looks like "@some\path\to\file.rsp".
 - Build & run ILCompiler using **F5**. This will compile the repro project into an `.obj` file. You can debug the compiler and set breakpoints in it at this point.
 - The last step is linking the file into an executable so that we can launch the result of the AOT compilation.
-- Open the src\coreclr\src\tools\aot\ILCompiler\reproNative\reproNative.vcxproj project in Visual Studio. This project is configured to pick up the `.obj` file we just compiled and link it with the rest of the runtime.
+- Open the src\coreclr\tools\aot\ILCompiler\reproNative\reproNative.vcxproj project in Visual Studio. This project is configured to pick up the `.obj` file we just compiled and link it with the rest of the runtime.
 - Set the solution configuration to the tuple you've been using so far (e.g. x64 Debug)
 - Build & run using **F5**. This will run the platform linker to link the obj file with the runtime and launch it. At this point you can debug the runtime and the various System.Private libraries.
 

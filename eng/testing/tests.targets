@@ -2,7 +2,7 @@
   <PropertyGroup>
     <RunScriptInputName Condition="$([MSBuild]::IsOSPlatform('windows'))">RunnerTemplate.cmd</RunScriptInputName>
     <RunScriptInputName Condition="!$([MSBuild]::IsOSPlatform('windows'))">RunnerTemplate.sh</RunScriptInputName>
-    <RunScriptInputName Condition="'$(TargetOS)' == 'iOS'">AppleRunnerTemplate.sh</RunScriptInputName>
+    <RunScriptInputName Condition="'$(TargetOS)' == 'iOS' or '$(TargetOS)' == 'tvOS'">AppleRunnerTemplate.sh</RunScriptInputName>
     <RunScriptInputName Condition="'$(TargetOS)' == 'Android'">AndroidRunnerTemplate.sh</RunScriptInputName>
     <RunScriptInputName Condition="'$(TargetOS)' == 'Browser' and '$(__TestBuildMode)' != 'nativeaot'">WasmRunnerTemplate.sh</RunScriptInputName>
 
