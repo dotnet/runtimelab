@@ -1,0 +1,6 @@
+﻿<Project>
+  <ItemGroup>
+      <CompilerVisibleProperty Include="DllImportGenerator_UseMarshalType" />
+      <CompilerVisibleProperty Include="DllImportGenerator_GenerateForwarders" />
+  </ItemGroup>
+</Project>

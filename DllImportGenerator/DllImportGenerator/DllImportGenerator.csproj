@@ -39,6 +39,7 @@
 
   <ItemGroup>
     <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="Microsoft.Interop.DllImportGenerator.props" Pack="true" PackagePath="build" />
   </ItemGroup>
 
   <ItemGroup>
