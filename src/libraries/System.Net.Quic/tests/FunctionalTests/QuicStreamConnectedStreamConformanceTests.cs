@@ -36,6 +36,7 @@ namespace System.Net.Quic.Tests
         public override Task Parallel_ReadWriteMultipleStreamsConcurrently() => base.Parallel_ReadWriteMultipleStreamsConcurrently();
     }
 
+    [Collection("Managed Quic Tests")] // TODO-RZ: Tests are little flaky when run in parallel and fail on CI
     public abstract class ManagedQuicStreamConformanceTestsBase : QuicStreamConformanceTests
     {
         protected override bool FlushRequiredToWriteData => true;
@@ -53,6 +54,7 @@ namespace System.Net.Quic.Tests
         protected override QuicImplementationProvider Provider => QuicImplementationProviders.Managed;
     }
 
+    [Collection("Managed Quic Tests")] // TODO-RZ: Tests are little flaky when run in parallel and fail on CI
     [ConditionalClass(typeof(QuicTestBase<ManagedMockTlsProviderFactory>), nameof(QuicTestBase<ManagedMockTlsProviderFactory>.IsSupported))]
     public sealed class ManagedMockTlsQuicQuicStreamConformanceTests : ManagedQuicStreamConformanceTestsBase
     {
