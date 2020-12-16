@@ -16,4 +16,4 @@ Experiments should be contained within a branch in the dotnet/runtimelab reposit
    - To avoid spurious github notifications for merges from upstream, delete `.github/CODEOWNERS` from your branch or replace it with setting specific to your experiment. Example: [#26](https://github.com/dotnet/runtimelab/pull/26/files)
    - Make sure to edit your experiment branch to just build the packages that need to be built from that branch. [Example PR](https://github.com/dotnet/runtimelab/pull/467). To read more about why this can cause issues, read [this issue](https://github.com/dotnet/runtimelab/issues/465).
 - If your experiment is branched from [dotnet/runtimelab:standalone-template](https://github.com/dotnet/runtimelab/tree/standalone-template) follow the [README.md](https://github.com/dotnet/runtimelab/tree/standalone-template#standalone-experiments).
-- To make sure we follow our naming conventions, make sure all packages produced on your experiment are prefixed with Microsoft.* or System.*
+- To make sure we follow our naming conventions, make sure all packages produced on your experiment are prefixed with `Microsoft.*` or `System.*`.
