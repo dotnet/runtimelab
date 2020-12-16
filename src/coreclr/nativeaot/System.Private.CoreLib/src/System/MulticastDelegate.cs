@@ -186,7 +186,7 @@ namespace System
 
         // This method will combine this delegate with the passed delegate
         //  to form a new delegate.
-        protected override Delegate CombineImpl(Delegate? follow)
+        protected sealed override Delegate CombineImpl(Delegate? follow)
         {
             if (follow is null) // cast to object for a more efficient test
                 return this;
@@ -309,7 +309,7 @@ namespace System
         //  look at the invocation list.)  If this is found we remove it from
         //  this list and return a new delegate.  If its not found a copy of the
         //  current list is returned.
-        protected override Delegate? RemoveImpl(Delegate value)
+        protected sealed override Delegate? RemoveImpl(Delegate value)
         {
             // There is a special case were we are removing using a delegate as
             //    the value we need to check for this case
@@ -382,7 +382,7 @@ namespace System
             return this;
         }
 
-        public override Delegate[] GetInvocationList()
+        public sealed override Delegate[] GetInvocationList()
         {
             Delegate[] del;
             Delegate[] invocationList = m_helperObject as Delegate[];
