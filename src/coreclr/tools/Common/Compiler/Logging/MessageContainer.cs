@@ -3,8 +3,9 @@
 
 using System;
 using System.Text;
+using Internal.TypeSystem;
 
-namespace ILCompiler.Compiler.Logging
+namespace ILCompiler.Logging
 {
     public enum MessageCategory
     {
@@ -162,17 +163,15 @@ namespace ILCompiler.Compiler.Logging
                 sb.Append(" ");
             }
 
-#if false
             if (Origin?.MemberDefinition != null)
             {
-                if (Origin?.MemberDefinition is MethodDefinition method)
+                if (Origin?.MemberDefinition is MethodDesc method)
                     sb.Append(method.GetDisplayName());
-                else
-                    sb.Append(Origin?.MemberDefinition.FullName);
+                else 
+                    sb.Append(Origin?.MemberDefinition.ToString());
 
                 sb.Append(": ");
             }
-#endif
 
             // Expected output $"{FileName(SourceLine, SourceColumn)}: {SubCategory}{Category} IL{Code}: ({MemberDisplayName}: ){Text}");
             sb.Append(Text);

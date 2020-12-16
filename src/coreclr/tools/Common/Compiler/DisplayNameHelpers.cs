@@ -7,7 +7,7 @@ using Internal.TypeSystem;
 
 using Debug = System.Diagnostics.Debug;
 
-namespace ILCompiler.Dataflow
+namespace ILCompiler
 {
     internal static class DisplayNameHelpers
     {
