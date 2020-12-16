@@ -170,7 +170,9 @@ namespace Internal.IL.Stubs
 
                             nativeParameterTypes[i] = isByRefType ? nativeType.MakePointerType() : nativeType;
                         }
-                        _signature = new MethodSignature(MethodSignatureFlags.Static, 0, nativeReturnType, nativeParameterTypes);
+
+                        // TODO: x86: Read actual unmanaged calling convention from the delegate attribute
+                        _signature = new MethodSignature(MethodSignatureFlags.Static | MethodSignatureFlags.UnmanagedCallingConvention, 0, nativeReturnType, nativeParameterTypes);
                     }
                 }
                 return _signature;

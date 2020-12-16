@@ -1688,20 +1688,11 @@ namespace Internal.JitInterface
         {
             var methodIL = (MethodIL)HandleToObject((IntPtr)pResolvedToken.tokenScope);
             if (methodIL.OwningMethod.IsPInvoke)
-            {
                 return false;
-            }
 
             MethodSignature signature = (MethodSignature)methodIL.GetObject((int)pResolvedToken.token);
-
-            CorInfoCallConv callConv = (CorInfoCallConv)(signature.Flags & MethodSignatureFlags.UnmanagedCallingConventionMask);
-            if (callConv != CorInfoCallConv.CORINFO_CALLCONV_C &&
-                callConv != CorInfoCallConv.CORINFO_CALLCONV_STDCALL &&
-                callConv != CorInfoCallConv.CORINFO_CALLCONV_THISCALL &&
-                callConv != CorInfoCallConv.CORINFO_CALLCONV_FASTCALL)
-            {
+            if ((signature.Flags & MethodSignatureFlags.UnmanagedCallingConventionMask) == 0)
                 return false;
-            }
 
             MethodDesc stub = _compilation.PInvokeILProvider.GetCalliStub(signature);
             if (!mustConvert && !IsPInvokeStubRequired(stub))
