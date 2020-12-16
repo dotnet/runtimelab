@@ -26,7 +26,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <FeaturePortableThreadPool Condition="'$(FeaturePortableThreadPool)' == ''">false</FeaturePortableThreadPool>
-    <FeaturePortableThreadPool Condition="'$(TargetsUnix)' == 'true'">true</FeaturePortableThreadPool>
+    <FeaturePortableThreadPool Condition="'$(TargetsUnix)' == 'true' or '$(TargetsBrowser)'=='true'">true</FeaturePortableThreadPool>
   </PropertyGroup>
   <PropertyGroup>
     <FeaturePortableTimer Condition="'$(FeaturePortableTimer)' == ''">false</FeaturePortableTimer>
@@ -35,6 +35,10 @@
   <PropertyGroup>
     <FeatureHardwareIntrinsics>true</FeatureHardwareIntrinsics>
     <FeatureSharedLowLevelLock>true</FeatureSharedLowLevelLock>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetsBrowser)' == 'true'">
+    <DefineConstants >TARGET_UNIX;TARGET_WASM;TARGET_32BIT;FEATURE_64BIT_ALIGNMENT;$(DefineConstants)</DefineConstants>
+    <Platform>llvm</Platform>
   </PropertyGroup>
 
   <!-- Sources -->

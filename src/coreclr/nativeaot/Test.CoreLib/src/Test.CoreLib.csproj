@@ -12,8 +12,9 @@
   <PropertyGroup Condition="'$(Platform)' == 'armel'">
     <DefineConstants>FEATURE_64BIT_ALIGNMENT;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Platform)' == 'wasm'">
-    <DefineConstants>FEATURE_64BIT_ALIGNMENT;$(DefineConstants)</DefineConstants>
+  <PropertyGroup Condition="'$(TargetsBrowser)' == 'true'">
+    <DefineConstants>TARGET_WASM;TARGET_32BIT;FEATURE_64BIT_ALIGNMENT;$(DefineConstants)</DefineConstants>
+    <Platform>llvm</Platform>
   </PropertyGroup>
   <!-- For now, link Runtime.Base into Test.CoreLib until there is proper multifile build -->
   <PropertyGroup>
