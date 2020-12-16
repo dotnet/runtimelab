@@ -2431,6 +2431,9 @@
   <data name="MissingSatelliteAssembly_Default" xml:space="preserve">
     <value>Resource lookup fell back to the ultimate fallback resources in a satellite assembly, but that satellite either was not found or could not be loaded. Please consider reinstalling or repairing the application.</value>
   </data>
+  <data name="Multicast_Combine" xml:space="preserve">
+    <value>Delegates that are not of type MulticastDelegate may not be combined.</value>
+  </data>
   <data name="NotSupported_ObsoleteResourcesFile" xml:space="preserve">
     <value>Found an obsolete .resources file in assembly '{0}'. Rebuild that .resources file then rebuild that assembly.</value>
   </data>
