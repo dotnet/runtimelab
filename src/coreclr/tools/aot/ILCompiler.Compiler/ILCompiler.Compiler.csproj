@@ -112,6 +112,7 @@
     <Compile Include="..\..\Common\TypeSystem\IL\Stubs\TypeSystemThrowingILEmitter.cs">
       <Link>IL\Stubs\TypeSystemThrowingILEmitter.cs</Link>
     </Compile>
+    <Compile Include="..\..\Common\Compiler\DisplayNameHelpers.cs" Link="Compiler\DisplayNameHelpers.cs" />
     <Compile Include="..\..\Common\Compiler\CodeGenerationFailedException.cs" Link="Compiler\CodeGenerationFailedException.cs" />
     <Compile Include="..\..\Common\Compiler\CompilationBuilder.cs" Link="Compiler\CompilationBuilder.cs" />
     <Compile Include="..\..\Common\Compiler\CompilationModuleGroup.cs" Link="Compiler\CompilationModuleGroup.cs" />
@@ -172,7 +173,6 @@
     <Compile Include="Compiler\CompilerTypeSystemContext.Mangling.cs" />
     <Compile Include="Compiler\CompilerTypeSystemContext.Sorting.cs" />
     <Compile Include="Compiler\CompilerGeneratedInteropStubManager.cs" />
-    <Compile Include="Compiler\Dataflow\DisplayNameHelpers.cs" />
     <Compile Include="Compiler\Dataflow\DynamicallyAccessedMembersBinder.cs" />
     <Compile Include="Compiler\Dataflow\EcmaExtensions.cs" />
     <Compile Include="Compiler\Dataflow\FlowAnnotations.cs" />
