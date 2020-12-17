@@ -111,29 +111,7 @@ namespace ILCompiler
         {
             if (field.GetType() == typeof(PInvokeLazyFixupField))
             {
-                var pInvokeFixup = (PInvokeLazyFixupField)field;
-                PInvokeMetadata metadata = pInvokeFixup.PInvokeMetadata;
-                ModuleDesc callingModule = ((MetadataType)pInvokeFixup.TargetMethod.OwningType).Module;
-                DllImportSearchPath? dllImportSearchPath = default;
-                if (callingModule.Assembly is EcmaAssembly asm)
-                {
-                    // We look for [assembly:DefaultDllImportSearchPaths(...)]
-                    var attrHandle = asm.MetadataReader.GetCustomAttributeHandle(asm.AssemblyDefinition.GetCustomAttributes(),
-                        "System.Runtime.InteropServices", "DefaultDllImportSearchPathsAttribute");
-                    if (!attrHandle.IsNil)
-                    {
-                        var attr = asm.MetadataReader.GetCustomAttribute(attrHandle);
-                        var decoded = attr.DecodeValue(new CustomAttributeTypeProvider(asm));
-                        if (decoded.FixedArguments.Length == 1 &&
-                            decoded.FixedArguments[0].Value is int searchPath)
-                        {
-                            dllImportSearchPath = (DllImportSearchPath)searchPath;
-                        }
-                    }
-                }
-
-                PInvokeModuleData moduleData = new PInvokeModuleData(metadata.Module, dllImportSearchPath, callingModule);
-                return NodeFactory.PInvokeMethodFixup(moduleData, metadata.Name, metadata.Flags);
+                return NodeFactory.PInvokeMethodFixup(new PInvokeMethodData((PInvokeLazyFixupField)field));
             }
             else if (field is ExternSymbolMappedField externField)
             {

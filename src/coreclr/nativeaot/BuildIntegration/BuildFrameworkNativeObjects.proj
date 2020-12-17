@@ -1,7 +1,7 @@
 <Project DefaultTargets="CreateLib" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
   <PropertyGroup>
-    <IlcCompileDependsOn>ComputeIlcCompileInputs;BuildOneFrameworkLibrary</IlcCompileDependsOn>
+    <IlcCompileDependsOn>ComputeIlcCompileInputs;BuildOneFrameworkLibrary;SetupOSSpecificProps</IlcCompileDependsOn>
     <CreateLibDependsOn>BuildAllFrameworkLibrariesAsSingleLib</CreateLibDependsOn>
     <IlcMultiModule>true</IlcMultiModule>
     <NativeIntermediateOutputPath Condition="'$(FrameworkObjPath)' != ''">$(FrameworkObjPath)\</NativeIntermediateOutputPath>

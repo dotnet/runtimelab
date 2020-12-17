@@ -12,6 +12,7 @@ using ILCompiler;
 using LLVMSharp.Interop;
 using ILCompiler.Compiler.DependencyAnalysis;
 using ILCompiler.DependencyAnalysis;
+using ILCompiler.DependencyAnalysisFramework;
 using ILCompiler.LLVM;
 using Internal.IL.Stubs;
 using Internal.TypeSystem.Ecma;
@@ -34,10 +35,10 @@ namespace Internal.IL
             public ILExceptionRegion ILRegion;
         }
 
-        ArrayBuilder<object> _dependencies = new ArrayBuilder<object>();
-        public IEnumerable<object> GetDependencies()
+        DependencyNodeCore<NodeFactory>.DependencyList _dependencies = new DependencyNodeCore<NodeFactory>.DependencyList();
+        public DependencyNodeCore<NodeFactory>.DependencyList GetDependencies()
         {
-            return _dependencies.ToArray();
+            return _dependencies;
         }
 
         public LLVMModuleRef Module { get; }
@@ -181,6 +182,8 @@ namespace Internal.IL
             try
             {
                 ImportBasicBlocks();
+                
+                CodeBasedDependencyAlgorithm.AddDependenciesDueToMethodCodePresence(ref _dependencies, _compilation.NodeFactory, _method, _canonMethodIL);
             }
             catch
             {
@@ -1807,7 +1810,7 @@ namespace Internal.IL
             else
             {
                 ISymbolNode lookup = _compilation.ComputeConstantLookup(ReadyToRunHelperId.TypeHandleForCasting, type);
-                _dependencies.Add(lookup);
+                _dependencies.Add(lookup, "LLVM casting handle");
                 typeRef = LoadAddressOfSymbolNode(lookup);
             }
 
@@ -1821,7 +1824,7 @@ namespace Internal.IL
 
         LLVMValueRef CallGenericHelper(ReadyToRunHelperId helperId, object helperArg)
         {
-            _dependencies.Add(GetGenericLookupHelperAndAddReference(helperId, helperArg, out LLVMValueRef helper));
+            _dependencies.Add(GetGenericLookupHelperAndAddReference(helperId, helperArg, out LLVMValueRef helper), "LLVM generic helper");
             return _builder.BuildCall(helper, new LLVMValueRef[]
             {
                 GetShadowStack(),
@@ -1931,7 +1934,7 @@ namespace Internal.IL
                 {
                     // String constructors actually look like regular method calls
                     IMethodNode node = _compilation.NodeFactory.StringAllocator(callee);
-                    _dependencies.Add(node);
+                    _dependencies.Add(node, "LLVM string allocator");
                     callee = node.Method;
                     opcode = ILOpcode.call;
                 }
@@ -2060,7 +2063,7 @@ namespace Internal.IL
 
                     MethodDesc canonDelegateTargetMethod = delegateTargetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
                     ISymbolNode targetNode = delegateInfo.GetTargetNode(_compilation.NodeFactory);
-                    _dependencies.Add(targetNode);
+                    _dependencies.Add(targetNode, "LLVM delegate target");
                     if (delegateTargetMethod != canonDelegateTargetMethod)
                     {
                         var funcRef = LoadAddressOfSymbolNode(targetNode);
@@ -2182,7 +2185,7 @@ namespace Internal.IL
         private ISymbolNode GetMethodGenericDictionaryNode(MethodDesc method)
         {
             ISymbolNode node = _compilation.NodeFactory.MethodGenericDictionary(method);
-            _dependencies.Add(node);
+            _dependencies.Add(node, "LLVM GMV dictionary node");
 
             return node;
         }
@@ -2190,7 +2193,7 @@ namespace Internal.IL
         private LLVMValueRef GetOrCreateMethodSlot(MethodDesc canonMethod, MethodDesc callee)
         {
             var vtableSlotSymbol = _compilation.NodeFactory.VTableSlot(callee);
-            _dependencies.Add(vtableSlotSymbol);
+            _dependencies.Add(vtableSlotSymbol, "LLVM vtable symbol");
             LLVMValueRef slot = LoadAddressOfSymbolNode(vtableSlotSymbol);
             return _builder.BuildLoad(slot, $"{callee.Name}_slot");
         }
@@ -2242,7 +2245,7 @@ namespace Internal.IL
             dictPtrPtrStore = _builder.BuildAlloca(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0),
                 "dictPtrPtrStore");
 
-            _dependencies.Add(_compilation.NodeFactory.GVMDependencies(canonMethod));
+            _dependencies.Add(_compilation.NodeFactory.GVMDependencies(canonMethod), "LLVM GVM dependency");
             bool exactContextNeedsRuntimeLookup;
             if (canonMethod.HasInstantiation)
             {
@@ -2257,7 +2260,7 @@ namespace Internal.IL
             {
                 LLVMValueRef helper;
                 var node = GetGenericLookupHelperAndAddReference(ReadyToRunHelperId.MethodHandle, runtimeDeterminedMethod, out helper);
-                _dependencies.Add(node);
+                _dependencies.Add(node, "LLVM GM helper");
                 runtimeMethodHandle = _builder.BuildCall(helper, new LLVMValueRef[]
                 {
                     GetShadowStack(),
@@ -2267,7 +2270,7 @@ namespace Internal.IL
             else
             {
                 var runtimeMethodHandleNode = _compilation.NodeFactory.RuntimeMethodHandle(runtimeDeterminedMethod);
-                _dependencies.Add(runtimeMethodHandleNode);
+                _dependencies.Add(runtimeMethodHandleNode, "LLVM GVM runtimeMethodHandle");
                 runtimeMethodHandle = LoadAddressOfSymbolNode(runtimeMethodHandleNode);
             }
 
@@ -2416,7 +2419,7 @@ namespace Internal.IL
                 node = _compilation.NodeFactory.NecessaryTypeSymbol(target);
             }
             LLVMValueRef eeTypePointer = LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler, false);
-            _dependencies.Add(node);
+            _dependencies.Add(node, "LLVM Type ptr");
 
             return eeTypePointer;
         }
@@ -2448,7 +2451,7 @@ namespace Internal.IL
                             throw new InvalidProgramException("Provided field handle is invalid.");
 
                         LLVMValueRef src = LoadAddressOfSymbolNode(fieldNode);
-                        _dependencies.Add(fieldNode);
+                        _dependencies.Add(fieldNode, "LLVM initialize array symbol");
                         var fieldData = fieldNode.GetData(_compilation.NodeFactory, false).Data;
                         int srcLength = fieldData.Length;
 
@@ -2553,7 +2556,7 @@ namespace Internal.IL
                         else
                         {
                             IMethodNode methodNode = (IMethodNode)_compilation.ComputeConstantLookup(ReadyToRunHelperId.DefaultConstructor, method.Instantiation[0]);
-                            _dependencies.Add(methodNode);
+                            _dependencies.Add(methodNode, "LLVM default ctor");
 
                             MethodDesc ctor = methodNode.Method;
                             PushExpression(StackValueKind.Int32, "ctor", LLVMFunctionForMethod(ctor, ctor, null, false, null, ctor, out bool _, out LLVMValueRef _, out LLVMValueRef _), GetWellKnownType(WellKnownType.IntPtr));
@@ -2727,7 +2730,7 @@ namespace Internal.IL
                             else
                             {
                                 var constrainedTypeSymbol = _compilation.NodeFactory.ConstructedTypeSymbol(constrainedType);
-                                _dependencies.Add(constrainedTypeSymbol);
+                                _dependencies.Add(constrainedTypeSymbol, "LLVM constrained typr");
                                 hiddenParam = LoadAddressOfSymbolNode(constrainedTypeSymbol);
                             }
                         }
@@ -2745,7 +2748,7 @@ namespace Internal.IL
                         else
                         {
                             var owningTypeSymbol = _compilation.NodeFactory.ConstructedTypeSymbol(callee.OwningType);
-                            _dependencies.Add(owningTypeSymbol);
+                            _dependencies.Add(owningTypeSymbol, "LLVM type symbol");
                             hiddenParam = LoadAddressOfSymbolNode(owningTypeSymbol);
                         }
                     }
@@ -3113,7 +3116,7 @@ namespace Internal.IL
 
         private void AddMethodReference(MethodDesc method)
         {
-            _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(method));
+            _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(method), "LLVM method reference");
         }
 
         static Dictionary<string, MethodDesc> _pinvokeMap = new Dictionary<string, MethodDesc>();
@@ -3533,7 +3536,7 @@ namespace Internal.IL
         ISymbolNode GetAndAddFatFunctionPointer(MethodDesc method, bool isUnboxingStub = false)
         {
             ISymbolNode node = _compilation.NodeFactory.FatFunctionPointer(method, isUnboxingStub);
-            _dependencies.Add(node);
+            _dependencies.Add(node, "LLVM fat function ptr");
             return node;
         }
 
@@ -4822,7 +4825,7 @@ namespace Internal.IL
                     }
                 }
 
-                if (node != null) _dependencies.Add(node);
+                if (node != null) _dependencies.Add(node, "LLVM field symbol");
 
                 LLVMValueRef castStaticBase = _builder.BuildPointerCast(staticBase, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), owningType.Name + "_statics");
                 LLVMValueRef fieldAddr = _builder.BuildGEP(castStaticBase, new LLVMValueRef[] { BuildConstInt32(fieldOffset) }, field.Name + "_addr");
@@ -4867,8 +4870,8 @@ namespace Internal.IL
             // If left to when the code is written that uses the helper then its too late.
             IMethodNode helperNode = (IMethodNode)_compilation.NodeFactory.HelperEntrypoint(HelperEntrypoint.EnsureClassConstructorRunAndReturnNonGCStaticBase);
 
-            _dependencies.Add(node);
-            _dependencies.Add(helperNode);
+            _dependencies.Add(node, "LLVM GVM R2R helper");
+            _dependencies.Add(helperNode, "LLVM GVM helper entrypoint");
             return node;
         }
 
@@ -4880,7 +4883,7 @@ namespace Internal.IL
             if (builder.Handle == IntPtr.Zero) builder = _builder;
             if (type.IsCanonicalSubtype(CanonicalFormKind.Specific)) return; // TODO - what to do here?
             ISymbolNode classConstructionContextSymbol = _compilation.NodeFactory.TypeNonGCStaticsSymbol(type);
-            _dependencies.Add(classConstructionContextSymbol);
+            _dependencies.Add(classConstructionContextSymbol, "LVM cctor trigger");
             LLVMValueRef firstNonGcStatic = LoadAddressOfSymbolNode(classConstructionContextSymbol, builder);
 
             // TODO: Codegen could check whether it has already run rather than calling into EnsureClassConstructorRun
@@ -4906,7 +4909,7 @@ namespace Internal.IL
             if (needsCctorCheck)
             {
                 ISymbolNode classConstructionContextSymbol = _compilation.NodeFactory.TypeNonGCStaticsSymbol(type);
-                _dependencies.Add(classConstructionContextSymbol);
+                _dependencies.Add(classConstructionContextSymbol, "LLVM cctor thread static storage");
                 LLVMValueRef firstNonGcStatic = LoadAddressOfSymbolNode(classConstructionContextSymbol);
 
                 // TODO: Codegen could check whether it has already run rather than calling into EnsureClassConstructorRun
@@ -4995,7 +4998,7 @@ namespace Internal.IL
             string str = (string)_methodIL.GetObject(token);
             ISymbolNode node = _compilation.NodeFactory.SerializedStringObject(str);
             LLVMValueRef stringDataPointer = LoadAddressOfSymbolNode(node);
-            _dependencies.Add(node);
+            _dependencies.Add(node, "LLVM LoadString");
             _stack.Push(new ExpressionEntry(GetStackValueKind(stringType), String.Empty, stringDataPointer, stringType));
         }
 
@@ -5489,7 +5492,7 @@ namespace Internal.IL
             if (ehInfo != null)
             {
                 _ehInfoNode.AddEHInfo(ehInfo);
-                _dependencies.Add(_ehInfoNode);
+                _dependencies.Add(_ehInfoNode, "llvm EHData");
             }
         }
 

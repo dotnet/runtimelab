@@ -1,10 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using ILCompiler.DependencyAnalysisFramework;
 
 using Internal.Text;
@@ -15,7 +13,7 @@ namespace ILCompiler.DependencyAnalysis
     internal abstract class LLVMMethodCodeNode : DependencyNodeCore<NodeFactory>
     {
         protected readonly MethodDesc _method;
-        protected IEnumerable<Object> _dependencies = Enumerable.Empty<Object>();
+        protected DependencyList _dependencies;
 
         protected LLVMMethodCodeNode(MethodDesc method)
         {
@@ -23,7 +21,7 @@ namespace ILCompiler.DependencyAnalysis
             _method = method;
         }
 
-        public void SetDependencies(IEnumerable<Object> dependencies)
+        public void SetDependencies(DependencyList dependencies)
         {
             Debug.Assert(dependencies != null);
             _dependencies = dependencies;
@@ -69,10 +67,8 @@ namespace ILCompiler.DependencyAnalysis
         {
             var dependencies = new DependencyList();
 
-            foreach (Object node in _dependencies)
-                dependencies.Add(node, "Wasm code ");
-
-            CodeBasedDependencyAlgorithm.AddDependenciesDueToMethodCodePresence(ref dependencies, factory, _method);
+            foreach (DependencyListEntry node in _dependencies)
+                dependencies.Add(node);
 
             return dependencies;
         }

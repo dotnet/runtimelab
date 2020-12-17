@@ -1,7 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.Collections.Generic;
 using Internal.TypeSystem;
 
@@ -20,8 +19,8 @@ namespace ILCompiler.DependencyAnalysis
         {
             var dependencies = new DependencyList();
 
-            foreach (Object node in _dependencies)
-                dependencies.Add(node, "Wasm code ");
+            foreach (DependencyListEntry node in _dependencies)
+                dependencies.Add(node);
 
             return dependencies;
         }

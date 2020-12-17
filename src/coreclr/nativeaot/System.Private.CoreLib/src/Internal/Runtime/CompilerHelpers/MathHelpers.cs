@@ -21,7 +21,7 @@ namespace Internal.Runtime.CompilerHelpers
         // 64-bit checked multiplication for 32-bit platforms
         //
 
-        private const string RuntimeLibrary = "[MRT]";
+        private const string RuntimeLibrary = "*";
 
         // Helper to multiply two 32-bit uints
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

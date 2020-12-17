@@ -82,37 +82,22 @@ if(CLR_CMAKE_HOST_UNIX)
     add_subdirectory(pal)
     add_subdirectory(hosts)
 else(CLR_CMAKE_HOST_UNIX)
-<<<<<<< HEAD
     if(CLR_CMAKE_TARGET_UNIX AND NOT CLR_CMAKE_HOST_UNIX_WASM)
         add_subdirectory(src/pal/src/libunwind)
     endif(CLR_CMAKE_TARGET_UNIX AND NOT CLR_CMAKE_HOST_UNIX_WASM)
-=======
-    if(CLR_CMAKE_TARGET_UNIX)
-        add_subdirectory(pal/src/libunwind)
-    endif(CLR_CMAKE_TARGET_UNIX)
->>>>>>> dc1d9d9e2585b8f10aea4e375b6bea7ea492ad36
 endif(CLR_CMAKE_HOST_UNIX)
 
 # Add this subdir. We install the headers for the jit.
 add_subdirectory(pal/prebuilt/inc)
 
-<<<<<<< HEAD
 if(NOT CLR_CMAKE_HOST_UNIX_WASM)
-    add_subdirectory(src/debug/debug-pal)
-    add_subdirectory(src/tools/aot/jitinterface)
+    add_subdirectory(debug/debug-pal)
+    add_subdirectory(tools/aot/jitinterface)
 endif(NOT CLR_CMAKE_HOST_UNIX_WASM)
-=======
-add_subdirectory(debug/debug-pal)
->>>>>>> dc1d9d9e2585b8f10aea4e375b6bea7ea492ad36
 
 if(CLR_CMAKE_TARGET_WIN32 AND CLR_CMAKE_BUILD_SUBSET_RUNTIME)
   add_subdirectory(gc/sample)
 endif()
-
-<<<<<<< HEAD
-=======
-add_subdirectory(tools/aot/jitinterface)
->>>>>>> dc1d9d9e2585b8f10aea4e375b6bea7ea492ad36
 
 if(NOT CLR_CROSS_COMPONENTS_BUILD)
   add_subdirectory(nativeaot)

@@ -57,7 +57,7 @@ namespace ILCompiler.DependencyAnalysis
                 factory.MethodEntrypoint(_allocationMethod),
                 "String constructor call");
 
-            factory.MetadataManager.GetDependenciesDueToReflectability(ref result, factory, _constructorMethod);
+            factory.MetadataManager.GetDependenciesDueToReflectability(ref result, factory, _constructorMethod, methodIL: null);
 
             return result;
         }

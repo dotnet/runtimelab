@@ -155,6 +155,8 @@ namespace Internal.IL
             FindBasicBlocks();
             ImportBasicBlocks();
 
+            CodeBasedDependencyAlgorithm.AddDependenciesDueToMethodCodePresence(ref _dependencies, _factory, _canonMethod, _canonMethodIL);
+
             return _dependencies;
         }
 

@@ -4,8 +4,9 @@
 using System;
 
 using Internal.TypeSystem;
-
 using Internal.IL.Stubs;
+
+using Debug = System.Diagnostics.Debug;
 
 namespace Internal.IL
 {
@@ -32,6 +33,14 @@ namespace Internal.IL
         public MethodDesc GetCalliStub(MethodSignature signature)
         {
             return _interopStateManager.GetPInvokeCalliStub(signature);
+        }
+
+        public string GetDirectCallExternName(MethodDesc method)
+        {
+            bool directCall = _pInvokeILEmitterConfiguration.GenerateDirectCall(method, out string externName);
+            Debug.Assert(directCall);
+            Debug.Assert(externName != null);
+            return externName;
         }
     }
 }

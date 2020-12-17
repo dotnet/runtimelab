@@ -79,6 +79,10 @@ namespace ILCompiler
 
         private IReadOnlyList<string> _suppressedWarnings = Array.Empty<string>();
 
+        private IReadOnlyList<string> _directPInvokes = Array.Empty<string>();
+
+        private IReadOnlyList<string> _directPInvokeLists = Array.Empty<string>();
+
         private bool _help;
 
         private Program()
@@ -194,6 +198,8 @@ namespace ILCompiler
                 syntax.DefineOption("preinitstatics", ref _preinitStatics, "Interpret static constructors at compile time if possible (implied by -O)");
                 syntax.DefineOption("nopreinitstatics", ref _noPreinitStatics, "Do not interpret static constructors at compile time");
                 syntax.DefineOptionList("nowarn", ref _suppressedWarnings, "Disable specific warning messages");
+                syntax.DefineOptionList("directpinvoke", ref _directPInvokes, "PInvoke to call directly");
+                syntax.DefineOptionList("directpinvokelist", ref _directPInvokeLists, "File with list of PInvokes to call directly");
 
                 syntax.DefineOption("targetarch", ref _targetArchitectureStr, "Target architecture for cross compilation");
                 syntax.DefineOption("targetos", ref _targetOSStr, "Target OS for cross compilation");
@@ -557,12 +563,20 @@ namespace ILCompiler
             // Compile
             //
 
-            CompilationBuilder builder = new RyuJitCompilationBuilder(typeSystemContext, compilationGroup);
+            CompilationBuilder builder;
+            if (_isLlvmCodegen)
+                builder = new LLVMCodegenCompilationBuilder(typeSystemContext, compilationGroup);
+            else
+                builder = new RyuJitCompilationBuilder(typeSystemContext, compilationGroup);
 
             string compilationUnitPrefix = _multiFile ? System.IO.Path.GetFileNameWithoutExtension(_outputFilePath) : "";
             builder.UseCompilationUnitPrefix(compilationUnitPrefix);
 
-            PInvokeILEmitterConfiguration pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target);
+           PInvokeILEmitterConfiguration pinvokePolicy;
+            if (_isLlvmCodegen)
+                pinvokePolicy = new DirectPInvokePolicy();
+            else
+                pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target, _directPInvokes, _directPInvokeLists);
 
             RemovedFeature removedFeatures = 0;
             foreach (string feature in _removedFeatures)
@@ -620,6 +634,8 @@ namespace ILCompiler
 
             DynamicInvokeThunkGenerationPolicy invokeThunkGenerationPolicy = new DefaultDynamicInvokeThunkGenerationPolicy();
 
+            var flowAnnotations = new Dataflow.FlowAnnotations(logger, ilProvider);
+
             MetadataManager metadataManager = new UsageBasedMetadataManager(
                     compilationGroup,
                     typeSystemContext,
@@ -628,7 +644,7 @@ namespace ILCompiler
                     _metadataLogFileName,
                     stackTracePolicy,
                     invokeThunkGenerationPolicy,
-                    ilProvider,
+                    flowAnnotations,
                     metadataGenerationOptions,
                     logger);
 
@@ -640,7 +656,7 @@ namespace ILCompiler
             // fixable by using a CompilationGroup for the scanner that has a bigger worldview, but
             // let's cross that bridge when we get there).
             bool useScanner = _useScanner ||
-                (_optimizationMode != OptimizationMode.None && !_multiFile);
+                (_optimizationMode != OptimizationMode.None && !_isLlvmCodegen && !_multiFile);
 
             useScanner &= !_noScanner;
 

@@ -23,7 +23,7 @@ namespace System.Runtime
     [ReflectionBlocked]
     public static class RuntimeImports
     {
-        private const string RuntimeLibrary = "[MRT]";
+        private const string RuntimeLibrary = "*";
 
         [DllImport(RuntimeLibrary, ExactSpelling = true, CallingConvention = CallingConvention.Cdecl)]
         [SuppressGCTransition]

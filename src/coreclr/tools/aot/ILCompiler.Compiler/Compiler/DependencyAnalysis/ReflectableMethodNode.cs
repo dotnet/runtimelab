@@ -31,7 +31,7 @@ namespace ILCompiler.DependencyAnalysis
         public override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory factory)
         {
             DependencyList dependencies = null;
-            factory.MetadataManager.GetDependenciesDueToReflectability(ref dependencies, factory, _method);
+            factory.MetadataManager.GetDependenciesDueToReflectability(ref dependencies, factory, _method, methodIL: null);
 
             MethodDesc canonMethod = _method.GetCanonMethodTarget(CanonicalFormKind.Specific);
             if (canonMethod != _method)

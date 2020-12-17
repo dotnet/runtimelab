@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using Internal.IL;
+using Internal.TypeSystem;
 
 namespace ILCompiler
 {
@@ -11,8 +12,9 @@ namespace ILCompiler
     /// </summary>
     public sealed class DirectPInvokePolicy : PInvokeILEmitterConfiguration
     {
-        public override bool GenerateDirectCall(string libraryName, string methodName)
+        public override bool GenerateDirectCall(MethodDesc method, out string externName)
         {
+            externName = method.GetPInvokeMethodMetadata().Name ?? method.Name;
             return true;
         }
     }

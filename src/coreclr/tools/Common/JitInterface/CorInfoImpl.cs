@@ -303,6 +303,8 @@ namespace Internal.JitInterface
                 _methodCodeNode.Fixups.Add(node);
             }
 #else
+            MethodIL methodIL = (MethodIL)HandleToObject((IntPtr)_methodScope);
+            CodeBasedDependencyAlgorithm.AddDependenciesDueToMethodCodePresence(ref _additionalDependencies, _compilation.NodeFactory, MethodBeingCompiled, methodIL);
             _methodCodeNode.InitializeNonRelocationDependencies(_additionalDependencies);
 #endif
 
@@ -991,23 +993,14 @@ namespace Internal.JitInterface
                 return false;
             }
 
-            MethodDesc exactImpl = impl;
-
-            // Implementations of the special Array generic interface methods are not in the regular type hiearchy.
-            // FindMethodOnTypeWithMatchingTypicalMethod below would fail to find them.
-            if (!objType.IsArray)
+            if (impl.OwningType.IsValueType)
             {
-                if (impl.OwningType.IsValueType)
-                {
-                    impl = getUnboxingThunk(impl);
-                }
-
-                exactImpl = TypeSystemHelpers.FindMethodOnTypeWithMatchingTypicalMethod(objType, exactImpl);
+                impl = getUnboxingThunk(impl);
             }
 
             info->devirtualizedMethod = ObjectToHandle(impl);
             info->requiresInstMethodTableArg = false;
-            info->exactContext = contextFromType(exactImpl.OwningType);
+            info->exactContext = contextFromType(impl.OwningType);
 
             return true;
         }
