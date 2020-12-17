@@ -483,8 +483,8 @@
   </ItemGroup>
   <ItemGroup Condition="'$(InPlaceRuntime)' == 'true'">
     <!-- For LLVM I imagine we want the final target version -->
-    <Compile Include="$(BaseIntermediateOutputPath)..\$(PlatformConfigPathPart)\src\nativeaot\Runtime\Full\AsmOffsets.cs" Condition="'$(Platform)'!='llvm'"/>
-    <Compile Include="$(BaseIntermediateOutputPath)..\$(PlatformConfigPathPart)\src\nativeaot\Runtime\Portable\AsmOffsetsPortable.cs" Condition="'$(Platform)'=='llvm'"/>
+    <Compile Include="$(BaseIntermediateOutputPath)..\$(PlatformConfigPathPart)\nativeaot\Runtime\Full\AsmOffsets.cs" Condition="'$(Platform)'!='llvm'"/>
+    <Compile Include="$(BaseIntermediateOutputPath)..\..\$(PlatformConfigPathPart)\nativeaot\Runtime\Portable\AsmOffsetsPortable.cs" Condition="'$(Platform)'=='llvm'"/>
   </ItemGroup>
 
   <Import Project="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System.Private.CoreLib.Shared.projitems" Label="Shared" />
