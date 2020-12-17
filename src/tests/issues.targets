@@ -1089,9 +1089,6 @@
         <ExcludeList Include="$(XunitTestBinBase)/Interop/PInvoke/Miscellaneous/HandleRef/HandleRefTest/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/168</Issue>
         </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/Interop/PInvoke/Miscellaneous/ThisCall/ThisCallTest/*">
-            <Issue>https://github.com/dotnet/runtimelab/issues/178</Issue>
-        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/Interop/PInvoke/NativeCallManagedComVisible/**/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/155: COM</Issue>
         </ExcludeList>

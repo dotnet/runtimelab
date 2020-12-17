@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Runtime.InteropServices;
 using Internal.TypeSystem;
 using Internal.TypeSystem.Interop;
 using Debug = System.Diagnostics.Debug;
@@ -120,12 +121,21 @@ namespace Internal.IL.Stubs
                     }
                     else
                     {
-                        bool isAnsi = true;
-                        var ecmaType = _delegateType as EcmaType;
-                        if (ecmaType != null)
+                        PInvokeFlags flags = default;
+
+                        if (_delegateType is EcmaType ecmaType)
                         {
-                            isAnsi = ecmaType.GetDelegatePInvokeFlags().CharSet == System.Runtime.InteropServices.CharSet.Ansi;
+                            flags = ecmaType.GetDelegatePInvokeFlags();
                         }
+
+                        // Mirror CharSet normalization from Marshaller.CreateMarshaller
+                        bool isAnsi = flags.CharSet switch
+                        {
+                            CharSet.Ansi => true,
+                            CharSet.Unicode => false,
+                            CharSet.Auto => !_delegateType.Context.Target.IsWindows,
+                            _ => true
+                        };
 
                         MethodSignature delegateSignature = _invokeMethod.Signature;
                         TypeDesc[] nativeParameterTypes = new TypeDesc[delegateSignature.Length];
@@ -171,8 +181,11 @@ namespace Internal.IL.Stubs
                             nativeParameterTypes[i] = isByRefType ? nativeType.MakePointerType() : nativeType;
                         }
 
-                        // TODO: x86: Read actual unmanaged calling convention from the delegate attribute
-                        _signature = new MethodSignature(MethodSignatureFlags.Static | MethodSignatureFlags.UnmanagedCallingConvention, 0, nativeReturnType, nativeParameterTypes);
+                        MethodSignatureFlags unmanagedCallingConvention = flags.UnmanagedCallingConvention;
+                        if (unmanagedCallingConvention == MethodSignatureFlags.None)
+                            unmanagedCallingConvention = MethodSignatureFlags.UnmanagedCallingConvention;
+
+                        _signature = new MethodSignature(MethodSignatureFlags.Static | unmanagedCallingConvention, 0, nativeReturnType, nativeParameterTypes);
                     }
                 }
                 return _signature;
