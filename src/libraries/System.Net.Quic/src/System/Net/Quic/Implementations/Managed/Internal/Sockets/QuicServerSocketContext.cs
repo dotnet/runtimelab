@@ -60,7 +60,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
                 isNewConnection = true;
             }
 
-            connectionCtx.IncomingDatagramWriter.TryWrite(datagram);
+            connectionCtx.EnqueueDatagram(datagram);
 
             // the start is deferred until we write the first datagram into the queue to prevent the thread going to
             // sleep immediately after start

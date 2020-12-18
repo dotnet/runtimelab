@@ -35,14 +35,15 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
         private readonly QuicSocketContext.SendContext _sendContext;
 
         private Task _backgroundWorkerTask = Task.CompletedTask;
-        private bool _needsUpdate;
-        private bool _waiting;
         private readonly QuicReader _reader = new QuicReader(Memory<byte>.Empty);
 
         private long _timer = long.MaxValue;
         private int _delay = int.MaxValue;
+        private bool _waiting; // for debug only
 
         private ResettableValueTaskSource _waitCompletionSource = new ResettableValueTaskSource();
+        // set together with signaling _waitCompletionSource to prevent data races when resetting the _waitCompletionSource
+        private bool _stopWait;
 
         private readonly QuicWriter _writer = new QuicWriter(Memory<byte>.Empty);
 
@@ -70,8 +71,6 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
         private ArrayPool<byte> ArrayPool => _parent.ArrayPool;
         internal ManagedQuicConnection Connection { get; }
 
-        internal ChannelWriter<DatagramInfo> IncomingDatagramWriter => _recvQueue.Writer;
-
         /// <summary>
         ///     Local endpoint of the socket backing the background processing.
         /// </summary>
@@ -92,7 +91,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
         /// </summary>
         public void Start()
         {
-            _backgroundWorkerTask = Task.Factory.StartNew(Run, CancellationToken.None, TaskCreationOptions.RunContinuationsAsynchronously,
+            _backgroundWorkerTask = Task.Factory.StartNew(Run, CancellationToken.None, TaskCreationOptions.LongRunning,
                 TaskScheduler.Default);
             _parent.Start();
         }
@@ -103,8 +102,14 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
         /// </summary>
         public void WakeUp()
         {
-            Volatile.Write(ref _needsUpdate, true);
+            Volatile.Write(ref _stopWait, true);
             _waitCompletionSource.SignalWaiter();
+        }
+
+        public void EnqueueDatagram(DatagramInfo datagram)
+        {
+            _recvQueue.Writer.TryWrite(datagram);
+            WakeUp();
         }
 
         private async Task Run()
@@ -139,7 +144,6 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
 
                     if (Connection.GetWriteLevel(Timestamp.Now) != EncryptionLevel.None)
                     {
-                        _needsUpdate = false;
                         // TODO: discover path MTU
                         byte[]? buffer = ArrayPool.Rent(QuicConstants.MaximumAllowedDatagramSize);
                         _writer.Reset(buffer);
@@ -168,15 +172,16 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
                         // asynchronously wait until either the timer expires or we receive a new datagram
                         _waitCompletionSource.Reset();
 
-                        if (!Volatile.Read(ref _needsUpdate))
+                        // guard against race condition with WakeUp, if it was called just before Reset above
+                        if (!Volatile.Read(ref _stopWait))
                         {
+                            // cancelling this token will stop the (asynchronous) wait for next event
                             CancellationTokenSource cts = new CancellationTokenSource();
-                            Task<bool> read = _recvQueue.Reader.WaitToReadAsync(cts.Token).AsTask();
-                            Task wait = _waitCompletionSource.WaitAsync(CancellationToken.None).AsTask();
                             await using CancellationTokenRegistration registration = cts.Token.Register(static s =>
                             {
                                 ((ResettableValueTaskSource?) s)?.SignalWaiter();
                             }, _waitCompletionSource);
+
 
                             if (_timer < long.MaxValue)
                             {
@@ -184,17 +189,21 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
                                 Connection.Trace?.OnStartingWait(_delay);
                             }
 
-                            var task = await Task.WhenAny(read, wait).ConfigureAwait(false);
+                            await _waitCompletionSource.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+                            // dispose of the registration now so that the wait source is not double completed unnecessarily
+                            await registration.DisposeAsync().ConfigureAwait(false);
+
+                            // make sure the token is canceled if the source was completed by the WakeUp method.
                             cts.Cancel();
-                            _waitCompletionSource.SignalWaiter();
-                            await wait.ConfigureAwait(false);
                         }
                         else
                         {
+                            // since we already resetted the wait source, we need to complete it
                             _waitCompletionSource.SignalWaiter();
                             await _waitCompletionSource.WaitAsync(CancellationToken.None).ConfigureAwait(false);
                         }
 
+                        Volatile.Write(ref _stopWait, false);
                         Volatile.Write(ref _waiting, false);
                     }
                 }
