@@ -1,0 +1,350 @@
+<!--
+***********************************************************************************************
+Microsoft.NETCore.Native.targets
+
+WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild and have
+          created a backup copy.  Incorrect changes to this file will make it
+          impossible to load or build your projects from the command-line or the IDE.
+
+This file defines the steps in the build process for native AOT compilation.
+
+Licensed to the .NET Foundation under one or more agreements.
+The .NET Foundation licenses this file to you under the MIT license.
+***********************************************************************************************
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- how should these be done? -->
+  <PropertyGroup Condition="'$(Platform)' == 'wasm'">
+    <TargetOS>browser</TargetOS>
+    <NativeCodeGen>wasm</NativeCodeGen>
+  </PropertyGroup>
+
+  <!-- Set defaults for unspecified properties -->
+  <PropertyGroup>
+    <NativeIntermediateOutputPath Condition="'$(NativeIntermediateOutputPath)' == ''">$(IntermediateOutputPath)native\</NativeIntermediateOutputPath>
+    <NativeOutputPath Condition="'$(NativeOutputPath)' == ''">$(OutputPath)native\</NativeOutputPath>
+    <NativeCompilationDuringPublish Condition="'$(NativeCompilationDuringPublish)' == ''">true</NativeCompilationDuringPublish>
+    <IlcBuildTasksPath Condition="'$(IlcBuildTasksPath)' == ''">$(MSBuildThisFileDirectory)..\tools\netstandard\ILCompiler.Build.Tasks.dll</IlcBuildTasksPath>
+    <TargetOS Condition="'$(TargetOS)' == '' and '$([MSBuild]::IsOSPlatform(Windows))' == 'true'">windows</TargetOS>
+    <TargetOS Condition="'$(TargetOS)' == '' and '$([MSBuild]::IsOSPlatform(OSX))' == 'true'">OSX</TargetOS>
+    <TargetOS Condition="'$(TargetOS)' == ''">$(OS)</TargetOS>
+    <NativeDebugSymbols Condition="$(DebugSymbols) == 'true' or ($(DebugType) != 'none' and $(DebugType) != '')">true</NativeDebugSymbols>
+  </PropertyGroup>
+
+  <!-- Set up the defaults for the compatibility mode -->
+  <PropertyGroup>
+    <_BuildingInCompatibleMode Condition="$(RootAllApplicationAssemblies) == '' and $(IlcGenerateCompleteTypeMetadata) == '' and $(IlcGenerateStackTraceData) == '' and $(IlcDisableReflection) == ''">true</_BuildingInCompatibleMode>
+
+    <RootAllApplicationAssemblies Condition="$(RootAllApplicationAssemblies) == ''">true</RootAllApplicationAssemblies>
+    <IlcGenerateCompleteTypeMetadata Condition="$(IlcGenerateCompleteTypeMetadata) == ''">true</IlcGenerateCompleteTypeMetadata>
+    <IlcGenerateStackTraceData Condition="$(IlcGenerateStackTraceData) == ''">true</IlcGenerateStackTraceData>
+    <IlcScanReflection Condition="$(IlcScanReflection) == ''">true</IlcScanReflection>
+    <SuppressTrimAnalysisWarnings Condition="$(SuppressTrimAnalysisWarnings) == ''">true</SuppressTrimAnalysisWarnings>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <NativeObjectExt Condition="'$(TargetOS)' == 'windows'">.obj</NativeObjectExt>
+    <NativeObjectExt Condition="'$(TargetOS)' != 'windows'">.o</NativeObjectExt>
+
+    <LibFileExt Condition="'$(TargetOS)' == 'windows'">.lib</LibFileExt>
+    <LibFileExt Condition="'$(TargetOS)' != 'windows'">.a</LibFileExt>
+
+    <IlcOutputFileExt Condition="$(IlcOutputFileExt) == ''">$(NativeObjectExt)</IlcOutputFileExt>
+
+    <IsNativeExecutable Condition="'$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe'">true</IsNativeExecutable>
+
+    <NativeBinaryExt Condition="'$(IsNativeExecutable)' == 'true' and '$(TargetOS)' == 'windows'">.exe</NativeBinaryExt>
+    <NativeBinaryExt Condition="'$(IsNativeExecutable)' == 'true' and '$(TargetOS)' != 'windows'"></NativeBinaryExt>
+    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' == 'windows' and $(NativeLib) == 'Shared'">.dll</NativeBinaryExt>
+    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' == 'OSX' and $(NativeLib) == 'Shared'">.dylib</NativeBinaryExt>
+    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' != 'windows' and '$(TargetOS)' != 'OSX' and $(NativeLib) == 'Shared'">.so</NativeBinaryExt>
+    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' == 'windows' and $(NativeLib) == 'Static'">.lib</NativeBinaryExt>
+    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' != 'windows' and $(NativeLib) == 'Static'">.a</NativeBinaryExt>
+    <NativeBinaryExt Condition="'$(IsNativeExecutable)' == 'true' and '$(TargetOS)' == 'browser'">.html</NativeBinaryExt>
+
+    <ExportsFileExt Condition="'$(TargetOS)' == 'windows'">.def</ExportsFileExt>
+    <ExportsFileExt Condition="'$(TargetOS)' != 'windows'">.exports</ExportsFileExt>
+
+    <NativeObject>$(NativeIntermediateOutputPath)$(TargetName)$(NativeObjectExt)</NativeObject>
+    <NativeBinary>$(NativeOutputPath)$(TargetName)$(NativeBinaryExt)</NativeBinary>
+    <ExportsFile Condition="$(NativeLib) == 'Shared' and $(ExportsFile) == ''">$(NativeIntermediateOutputPath)$(TargetName)$(ExportsFileExt)</ExportsFile>
+
+    <IlcCompileOutput>$(NativeObject)</IlcCompileOutput>
+
+    <LinkNativeDependsOn>IlcCompile</LinkNativeDependsOn>
+
+    <FrameworkLibPath Condition="'$(FrameworkLibPath)' == ''">$(NativeOutputPath)</FrameworkLibPath>
+    <FrameworkObjPath Condition="'$(FrameworkObjPath)' == ''">$(NativeIntermediateOutputPath)</FrameworkObjPath>
+
+    <SharedLibrary Condition="'$(TargetOS)' == 'windows'">$(FrameworkLibPath)\Framework$(LibFileExt)</SharedLibrary>
+    <SharedLibrary Condition="'$(TargetOS)' != 'windows'">$(FrameworkLibPath)\libframework$(LibFileExt)</SharedLibrary>
+    <IlcDynamicBuildPropertyDependencies Condition="'$(IlcCalledViaPackage)' == 'true'">SetupProperties</IlcDynamicBuildPropertyDependencies>
+    <IlcDisableUnhandledExceptionExperience Condition="$(NativeCodeGen) == 'wasm'">true</IlcDisableUnhandledExceptionExperience>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IlcCompileDependsOn)'=='' and '$(NativeCompilationDuringPublish)' != 'false'">
+    <IlcCompileDependsOn Condition="'$(BuildingFrameworkLibrary)' != 'true'">Compile;ComputeIlcCompileInputs</IlcCompileDependsOn>
+    <IlcCompileDependsOn Condition="'$(IlcMultiModule)' == 'true' and '$(BuildingFrameworkLibrary)' != 'true'">$(IlcCompileDependsOn);BuildFrameworkLib</IlcCompileDependsOn>
+    <IlcCompileDependsOn>$(IlcCompileDependsOn);SetupOSSpecificProps</IlcCompileDependsOn>
+  </PropertyGroup>
+
+  <ItemGroup Condition="$(IlcSystemModule) == ''">
+    <AutoInitializedAssemblies Include="System.Private.CoreLib" />
+    <AutoInitializedAssemblies Include="System.Private.StackTraceMetadata" Condition="$(IlcDisableReflection) != 'true' or $(IlcGenerateStackTraceData) == 'true'"/>
+    <AutoInitializedAssemblies Include="System.Private.TypeLoader" />
+    <AutoInitializedAssemblies Include="System.Private.Reflection.Execution" Condition="$(IlcDisableReflection) != 'true'" />
+    <AutoInitializedAssemblies Include="System.Private.DisabledReflection" Condition="$(IlcDisableReflection) == 'true'" />
+    <AutoInitializedAssemblies Include="System.Private.Interop" />
+    <AutoInitializedAssemblies Include="System.Private.DeveloperExperience.Console" Condition="$(IlcDisableUnhandledExceptionExperience) != 'true'"  />
+  </ItemGroup>
+
+  <!-- Keep the list of default warning suppressions in sync with Microsoft.NET.ILLink.targets -->
+  <PropertyGroup Condition="$(SuppressTrimAnalysisWarnings) == 'true'">
+    <!-- RequiresUnreferenceCodeAttribute method called -->
+    <NoWarn>$(NoWarn);IL2026</NoWarn>
+    <!-- Invalid use of DynamicallyAccessedMembersAttribute -->
+    <NoWarn>$(NoWarn);IL2041;IL2042;IL2043;IL2056</NoWarn>
+    <!-- Reference to removed attribute type -->
+    <NoWarn>$(NoWarn);IL2045</NoWarn>
+    <!-- RequiresUnreferencedCodeAttribute mismatch on virtual override -->
+    <NoWarn>$(NoWarn);IL2046</NoWarn>
+    <!-- COM marshalling warning -->
+    <NoWarn>$(NoWarn);IL2050</NoWarn>
+    <!-- Reflection intrinsics with unknown arguments -->
+    <NoWarn>$(NoWarn);IL2032;IL2055;IL2057;IL2058;IL2059;IL2060;IL2061;IL2096</NoWarn>
+    <!-- Unknown values passed to locations with DynamicallyAccessedMemberTypes -->
+    <NoWarn>$(NoWarn);IL2062;IL2063;IL2064;IL2065;IL2066</NoWarn>
+    <!-- Unsatisfied DynamicallyAccessedMembers requirements -->
+    <NoWarn>$(NoWarn);IL2067;IL2068;IL2069;IL2070;IL2071;IL2072;IL2073;IL2074;IL2075;IL2076;IL2077;IL2078;IL2079;IL2080;IL2081;IL2082;IL2083;IL2084;IL2085;IL2086;IL2087;IL2088;IL2089;IL2090;IL2091</NoWarn>
+    <!-- DynamicallyAccessedMembersAttribute mismatch on virtual override -->
+    <NoWarn>$(NoWarn);IL2092;IL2093;IL2094;IL2095</NoWarn>
+    <!-- DynamicallyAccessedMembersAttribute used on unsupported member -->
+    <NoWarn>$(NoWarn);IL2097;IL2098;IL2099</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Exclude System.IO.Compression.Native.dll for now https://github.com/dotnet/corert/issues/5496 -->
+    <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\System.IO.Compression.Native.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <DefaultFrameworkAssemblies Include="@(FrameworkAssemblies)" />
+    <DefaultFrameworkAssemblies Include="@(PrivateSdkAssemblies)" />
+  </ItemGroup>
+
+  <!-- Part of workaround for lack of secondary build artifact import - https://github.com/Microsoft/msbuild/issues/2807 -->
+  <!-- The properties below need to be defined only after we've found the correct runtime package reference -->
+  <Target Name="SetupProperties" DependsOnTargets="$(IlcSetupPropertiesDependsOn)" BeforeTargets="Publish">
+    <PropertyGroup>
+      <!-- Define paths used in build targets to point to the runtime-specific ILCompiler implementation -->
+      <IlcPath Condition="'$(IlcPath)' == ''">$(RuntimePackagePath)</IlcPath>
+      <IlcBuildTasksPath>$(RuntimePackagePath)\tools\netstandard\ILCompiler.Build.Tasks.dll</IlcBuildTasksPath>
+      <!-- Set defaults for unspecified properties -->
+    </PropertyGroup>
+
+    <!-- If running from a package these values need to be set again with the resolved IlcPath -->
+    <ItemGroup>
+      <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll" />
+    </ItemGroup>
+    <ItemGroup>
+      <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <DefaultFrameworkAssemblies Include="@(FrameworkAssemblies)" />
+      <DefaultFrameworkAssemblies Include="@(PrivateSdkAssemblies)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="ComputeIlcCompileInputs" DependsOnTargets="$(IlcDynamicBuildPropertyDependencies)" BeforeTargets="Publish">
+    <ItemGroup>
+      <ManagedBinary Condition="$(BuildingFrameworkLibrary) != 'true'" Include="$(IntermediateOutputPath)$(TargetName)$(TargetExt)" />
+      <IlcCompileInput Include="@(ManagedBinary)" />
+      <IlcReference Include="@(DefaultFrameworkAssemblies)" />
+    </ItemGroup>
+  </Target>
+
+  <!--
+    BuildFrameworkLib is invoked before IlcCompile in multi-module builds to
+    produce the shared framework library on demand
+  -->
+  <Target Name="BuildFrameworkLib" Condition="'$(DisableFrameworkLibGeneration)' != 'true'" DependsOnTargets="$(IlcDynamicBuildPropertyDependencies)">
+    <ItemGroup>
+      <!-- This builds the project with the ILC implementation in the identified runtime package to avoid resolving it again  -->
+      <ProjectToBuild Include="$(MSBuildThisFileDirectory)BuildFrameworkNativeObjects.proj">
+          <AdditionalProperties>
+          IntermediateOutputPath=$(IntermediateOutputPath);
+          FrameworkLibPath=$(FrameworkLibPath);
+          FrameworkObjPath=$(FrameworkObjPath);
+          RuntimePackagePath=$(RuntimePackagePath)
+        </AdditionalProperties>
+      </ProjectToBuild>
+    </ItemGroup>
+    <MSBuild Projects="@(ProjectToBuild)" BuildInParallel="true" />
+  </Target>
+
+  <Target Name="IlcCompile"
+      Inputs="@(IlcCompileInput);@(RdXmlFile)"
+      Outputs="$(NativeIntermediateOutputPath)%(ManagedBinary.Filename)$(IlcOutputFileExt)"
+      DependsOnTargets="$(IlcCompileDependsOn)">
+
+    <ItemGroup>
+      <IlcArg Include="@(IlcCompileInput)" />
+      <IlcArg Include="-o:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename)$(IlcOutputFileExt)" />
+      <IlcArg Include="@(IlcReference->'-r:%(Identity)')" />
+      <IlcArg Condition="$(IlcGenerateMetadataLog) == 'true'" Include="--metadatalog:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).metadata.csv" />
+      <IlcArg Condition="$(IlcMultiModule) == 'true'" Include="--multifile" />
+      <IlcArg Condition="$(Optimize) == 'true'" Include="-O" />
+      <IlcArg Condition="$(NativeDebugSymbols) == 'true'" Include="-g" />
+      <IlcArg Condition="$(IlcGenerateMapFile) == 'true'" Include="--map:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).map.xml" />
+      <IlcArg Condition="$(IlcGenerateDgmlFile) == 'true'" Include="--dgmllog:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).codegen.dgml.xml" />
+      <IlcArg Condition="$(IlcGenerateDgmlFile) == 'true'" Include="--scandgmllog:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).scan.dgml.xml" />
+      <IlcArg Include="@(RdXmlFile->'--rdxml:%(Identity)')" />
+      <IlcArg Condition="$(NativeLib) != ''" Include="--nativelib" />
+      <IlcArg Condition="$(ExportsFile) != ''" Include="--exportsfile:$(ExportsFile)" />
+      <IlcArg Condition="'$(Platform)' == 'wasm'" Include="--targetarch:wasm" />
+      <IlcArg Condition="'$(Platform)' == 'wasm'" Include="--targetos:wasm" />
+      <IlcArg Include="@(AutoInitializedAssemblies->'--initassembly:%(Identity)')" />
+      <IlcArg Include="@(AppContextSwitchOverrides->'--appcontextswitch:%(Identity)')" />
+      <IlcArg Include="@(DirectPInvoke->'--directpinvoke:%(Identity)')" />
+      <IlcArg Include="@(DirectPInvokeList->'--directpinvokelist:%(Identity)')" />
+      <IlcArg Condition="$(ServerGarbageCollection) != ''" Include="--runtimeopt:RH_UseServerGC=1" />
+      <IlcArg Condition="$(IlcGenerateCompleteTypeMetadata) == 'true' and $(IlcDisableReflection) != 'true'" Include="--completetypemetadata" />
+      <IlcArg Condition="$(IlcGenerateStackTraceData) == 'true'" Include="--stacktracedata" />
+      <IlcArg Condition="$(RootAllApplicationAssemblies) == 'true' and $(IlcDisableReflection) != 'true'" Include="--rootallapplicationassemblies" />
+      <IlcArg Condition="$(IlcScanReflection) == 'true' and $(IlcDisableReflection) != 'true'" Include="--scanreflection" />
+      <IlcArg Condition="$(IlcFoldIdenticalMethodBodies) == 'true'" Include="--methodbodyfolding" />
+      <IlcArg Condition="$(Optimize) == 'true' and $(IlcOptimizationPreference) == 'Size'" Include="--Os" />
+      <IlcArg Condition="$(Optimize) == 'true' and $(IlcOptimizationPreference) == 'Speed'" Include="--Ot" />
+      <IlcArg Condition="$(IlcDisableReflection) == 'true'" Include="--disablereflection" />
+      <IlcArg Condition="$(IlcSingleThreaded) == 'true'" Include="--singlethreaded" />
+      <IlcArg Condition="$(IlcDisableReflection) == 'true'" Include="--removefeature:EventSource" />
+      <IlcArg Condition="$(IlcDisableReflection) == 'true'" Include="--removefeature:FrameworkStrings" />
+      <IlcArg Condition="$(IlcInvariantGlobalization) == 'true'" Include="--removefeature:Globalization" />
+      <IlcArg Condition="$(IlcSystemModule) != ''" Include="--systemmodule:$(IlcSystemModule)" />
+      <IlcArg Condition="$(IlcDumpIL) == 'true'" Include="--ildump:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).il" />
+      <IlcArg Condition="$(NoWarn) != ''" Include='--nowarn:"$([MSBuild]::Escape($(NoWarn)))"' />
+
+      <!-- Workaround for https://github.com/dotnet/corefx/issues/36723 -->
+      <IlcArg Include="--removefeature:SerializationGuard" />
+
+      <!-- Comparers don't currently work with reflection disabled. https://github.com/dotnet/corert/pull/7208 -->
+      <IlcArg Condition="$(IlcDisableReflection) == 'true'" Include="--removefeature:Comparers" />
+    </ItemGroup>
+
+    <MakeDir Directories="$(NativeIntermediateOutputPath)" />
+    <WriteLinesToFile File="$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).ilc.rsp" Lines="@(IlcArg)" Overwrite="true" />
+
+    <Message Text="Generating native code" Condition="$(_BuildingInCompatibleMode) != 'true'" Importance="high" />
+    <Message Text="Generating compatible native code. To optimize for size or speed, visit https://aka.ms/OptimizeCoreRT" Condition="$(_BuildingInCompatibleMode) == 'true'" Importance="high" />
+
+    <Exec Command="&quot;$(IlcPath)\tools\ilc&quot; @&quot;$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).ilc.rsp&quot;" />
+  </Target>
+
+  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Windows.props" Condition="'$(TargetOS)' == 'windows'" />
+  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Unix.props" Condition="'$(TargetOS)' != 'windows' and '$(TargetOS)' != 'browser'" />
+  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Browser.props" Condition="'$(TargetOS)' == 'browser'" />
+
+  <Target Name="MultiFileCopyNative"
+      Inputs="@(NativeObjects)"
+      Outputs="$(NativeOutputPath)"
+      DependsOnTargets="GetNativeObjects">
+
+      <Copy SourceFiles="@(NativeObjects)" DestinationFolder="$(NativeOutputPath)" />
+  </Target>
+
+  <PropertyGroup>
+    <_Win32ResFile>$(NativeIntermediateOutputPath)$(TargetName).res</_Win32ResFile>
+  </PropertyGroup>
+
+  <UsingTask TaskName="DumpNativeResources" AssemblyFile="$(IlcBuildTasksPath)" />
+  <Target Name="GenerateResFile"
+      Inputs="$(IntermediateOutputPath)$(TargetName)$(TargetExt)"
+      Outputs="$(_Win32ResFile)"
+      Condition="'$(TargetOS)' == 'windows'">
+
+    <DumpNativeResources
+        MainAssembly="$(IntermediateOutputPath)$(TargetName)$(TargetExt)"
+        ResourceFile="$(_Win32ResFile)" />
+
+  </Target>
+
+  <Target Name="LinkNative"
+      Inputs="$(NativeObject);@(NativeLibrary)"
+      Outputs="$(NativeBinary)"
+      DependsOnTargets="$(LinkNativeDependsOn);GenerateResFile">
+
+    <ItemGroup>
+      <CustomLinkerArg Include="&quot;$(NativeObject)&quot;" />
+      <CustomLinkerArg Include="-o &quot;$(NativeBinary)&quot;" Condition="'$(TargetOS)' != 'windows'" />
+      <CustomLinkerArg Include="/OUT:&quot;$(NativeBinary)&quot;" Condition="'$(TargetOS)' == 'windows'" />
+      <CustomLinkerArg Include="/DEF:&quot;$(ExportsFile)&quot;" Condition="'$(TargetOS)' == 'windows' and $(ExportsFile) != ''" />
+      <CustomLinkerArg Include="/LIBPATH:&quot;%(AdditionalNativeLibraryDirectories.Identity)&quot;" Condition="'$(TargetOS)' == 'windows' and '@(AdditionalNativeLibraryDirectories->Count())' &gt; 0" />
+      <CustomLinkerArg Include="-exported_symbols_list &quot;$(ExportsFile)&quot;" Condition="'$(TargetOS)' == 'OSX' and $(ExportsFile) != ''" />
+      <CustomLinkerArg Include="-Wl,--version-script=$(ExportsFile)" Condition="'$(TargetOS)' != 'windows' and '$(TargetOS)' != 'OSX' and $(ExportsFile) != ''"/>
+      <CustomLinkerArg Condition="Exists('$(_Win32ResFile)')" Include="&quot;$(_Win32ResFile)&quot;" />
+      <CustomLinkerArg Include="@(LinkerArg)" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(TargetOS)' != 'windows' and '$(TargetOS)' != 'OSX'">
+      <CustomLinkerArg Include="-Wl,--discard-all" />
+      <CustomLinkerArg Include="-Wl,--gc-sections" />
+    </ItemGroup>
+    <ItemGroup>
+      <CustomLibArg Include="-crs &quot;$(NativeBinary)&quot;" Condition="'$(TargetOS)' != 'windows'" />
+      <CustomLibArg Include="/OUT:&quot;$(NativeBinary)&quot;" Condition="'$(TargetOS)' == 'windows'" />
+      <CustomLibArg Include="&quot;$(NativeObject)&quot;" />
+    </ItemGroup>
+
+    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(NativeBinary)))" />
+
+    <Exec Command="$(CppLinker) @(CustomLinkerArg, ' ')" Condition="'$(TargetOS)' != 'windows' and '$(NativeLib)' != 'Static' and '$(TargetOS)' != 'browser'" />
+    <Exec Command="$(CppLibCreator) @(CustomLibArg, ' ')" Condition="'$(TargetOS)' != 'windows' and '$(NativeLib)' == 'Static' and '$(TargetOS)' != 'browser'" />
+
+    <WriteLinesToFile File="$(NativeIntermediateOutputPath)link.rsp" Lines="@(CustomLinkerArg)" Overwrite="true" Condition="'$(TargetOS)' == 'windows' and '$(NativeLib)' != 'Static'" />
+    <Exec Command="$(CppLinker)  @&quot;$(NativeIntermediateOutputPath)link.rsp&quot;" Condition="'$(TargetOS)' == 'windows' and '$(NativeLib)' != 'Static'" />
+    <WriteLinesToFile File="$(NativeIntermediateOutputPath)lib.rsp" Lines="@(CustomLibArg)" Overwrite="true" Condition="'$(TargetOS)' == 'windows' and '$(NativeLib)' == 'Static'" />
+    <Exec Command="$(CppLibCreator)  @&quot;$(NativeIntermediateOutputPath)lib.rsp&quot;" Condition="'$(TargetOS)' == 'windows' and '$(NativeLib)' == 'Static'" />
+    <WriteLinesToFile File="$(NativeIntermediateOutputPath)link.rsp" Lines="@(CustomLinkerArg)" Overwrite="true" Condition="'$(OS)' == 'Windows_NT' and '$(NativeLib)' != 'Static'" />
+    <Exec Command="$(CppLinker)  @&quot;$(NativeIntermediateOutputPath)link.rsp&quot;" Condition="'$(OS)' == 'Windows_NT' and '$(NativeLib)' != 'Static' and '$(TargetOS)' != 'browser'" />
+    <WriteLinesToFile File="$(NativeIntermediateOutputPath)lib.rsp" Lines="@(CustomLibArg)" Overwrite="true" Condition="'$(OS)' == 'Windows_NT' and '$(NativeLib)' == 'Static'" />
+    <Exec Command="$(CppLibCreator)  @&quot;$(NativeIntermediateOutputPath)lib.rsp&quot;" Condition="'$(OS)' == 'Windows_NT' and '$(NativeLib)' == 'Static' and '$(TargetOS)' != 'browser'" />
+
+    <PropertyGroup>
+      <EmccArgs>&quot;$(NativeObject)&quot; -o &quot;$(NativeBinary)&quot; -s ALLOW_MEMORY_GROWTH=1 -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s DISABLE_EXCEPTION_CATCHING=0 --emrun </EmccArgs>
+      <EmccArgs Condition="'$(Platform)'=='wasm'">$(EmccArgs) &quot;$(IlcPath)/sdk/libPortableRuntime.a&quot; &quot;$(IlcPath)/sdk/libbootstrapper.a&quot; &quot;$(IlcPath)/framework/libSystem.Native.a&quot; $(EmccExtraArgs)</EmccArgs>
+      <EmccArgs Condition="'$(Configuration)'=='Release'">$(EmccArgs) -O2 -flto</EmccArgs>
+      <EmccArgs Condition="'$(Configuration)'=='Debug'">$(EmccArgs) -g3</EmccArgs>
+    </PropertyGroup>
+
+    <!-- TODO: split wasm object file creation and linking : allows LTO to be turned off in debug builds -->
+    <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc.bat&quot; $(EmccArgs)" Condition="'$(TargetOS)' == 'browser' and '$(EMSDK)' != '' and '$(OS)' == 'Windows_NT'" />
+    <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc&quot; $(EmccArgs)" Condition="'$(TargetOS)' == 'browser' and '$(EMSDK)' != '' and '$(OS)' != 'Windows_NT'" />
+    <Message Text="Emscripten not found, not linking WebAssembly. To enable WebAssembly linking, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"
+             Condition="'$(NativeCodeGen)' == 'wasm' and '$(EMSDK)' == ''" />
+  </Target>
+
+  <Target Name="CreateLib"
+    Inputs="@(LibInputs)"
+    Outputs="$(SharedLibrary)"
+    DependsOnTargets="$(CreateLibDependsOn);$(IlcDynamicBuildPropertyDependencies);SetupOSSpecificProps"
+    >
+
+    <ItemGroup>
+      <CustomLibArg Include="/out:$(SharedLibrary)" Condition="'$(TargetOS)' == 'windows'" />
+      <CustomLibArg Include="-crs $(SharedLibrary)" Condition="'$(TargetOS)' != 'windows'" />
+      <CustomLibArg Include="@(LibInputs->'%(Identity)')" />
+    </ItemGroup>
+    <MakeDir Directories="$(NativeIntermediateOutputPath)" />
+    <WriteLinesToFile File="$(NativeIntermediateOutputPath)lib.rsp" Lines="@(CustomLibArg)" Overwrite="true" Condition="'$(TargetOS)' == 'windows'" />
+    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(SharedLibrary)))" />
+    <Exec Command="$(CppLibCreator) @&quot;$(NativeIntermediateOutputPath)lib.rsp&quot;" Condition="'$(TargetOS)' == 'windows'" />
+    <Exec Command="$(CppLibCreator) @(CustomLibArg, ' ')" Condition="'$(TargetOS)' != 'windows'" />
+  </Target>
+
+  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Publish.targets" Condition="'$(NativeCompilationDuringPublish)' != 'false'" />
+
+</Project>
