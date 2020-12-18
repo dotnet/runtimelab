@@ -514,10 +514,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
                         break;
                     }
 
-                    if (chunk.Buffer != null)
-                    {
-                        ReturnBuffer(chunk.Buffer);
-                    }
+                    ReturnBuffer(chunk.Buffer);
                 }
 
                 _chunks.RemoveRange(0, toRemove);

@@ -341,9 +341,16 @@ namespace System.Net.Quic.Implementations.Managed
 
                 // We use pacer only after being connected, also, the pacer is useful only when not being
                 // limited by application (meaning is outstanding STREAM data to be sent)
-                if (Connected && Recovery.IsPacing && !Recovery.IsApplicationLimited)
+                if (Connected)
                 {
-                    timer = Math.Min(timer, Recovery.GetPacingTimerForNextFullPacket());
+                    if (Recovery.IsPacing && !Recovery.IsApplicationLimited)
+                    {
+                        timer = Math.Min(timer, Recovery.GetPacingTimerForNextFullPacket());
+                    }
+                    else if (Recovery.IsApplicationLimited && _streams.HasFlushableStreams || _streams.HasUpdateableStreams)
+                    {
+                        return Recovery.LastLargeDatagramSentTimestamp;
+                    }
                 }
             }
 
