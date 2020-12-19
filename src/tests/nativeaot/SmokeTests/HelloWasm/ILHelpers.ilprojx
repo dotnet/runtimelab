@@ -1,0 +1,17 @@
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <DebugType>portable</DebugType>
+    <OutputPath>$(MSBuildProjectDirectory)\bin\$(Configuration)\$(Platform)\</OutputPath>
+    <IntermediateOutputPath>$(MSBuildProjectDirectory)\obj\$(Configuration)\$(Platform)\</IntermediateOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="ILHelpers.il" />
+    <PackageReference Include="Microsoft.NETCore.App">
+      <Version>$(MicrosoftNETCoreAppPackageVersion)</Version>
+    </PackageReference>
+  </ItemGroup>
+  
+</Project>
