@@ -6,6 +6,8 @@
 // Include System.Native headers
 #include "pal_console.h"
 #include "pal_datetime.h"
+#include "pal_dynamicload.h"
+#include "pal_environment.h"
 #include "pal_errno.h"
 #include "pal_interfaceaddresses.h"
 #include "pal_io.h"
@@ -233,6 +235,18 @@ static const Entry s_sysNative[] =
     DllImportEntry(SystemNative_GetGroupList)
     DllImportEntry(SystemNative_GetUid)
     DllImportEntry(SystemNative_LowLevelMonitor_Create)
+    DllImportEntry(SystemNative_LoadLibrary)
+    DllImportEntry(SystemNative_GetProcAddress)
+    DllImportEntry(SystemNative_FreeLibrary)
+    DllImportEntry(SystemNative_GetEnv)
+    DllImportEntry(SystemNative_SchedGetCpu)
+    DllImportEntry(SystemNative_Exit)
+    DllImportEntry(SystemNative_Abort)
+    DllImportEntry(SystemNative_GetEnviron)
+    DllImportEntry(SystemNative_GetErrNo)
+    DllImportEntry(SystemNative_ClearErrNo)
+    DllImportEntry(SystemNative_LowLevelMonitor_TimedWait)
+    DllImportEntry(SystemNative_RuntimeThread_CreateThread)
 };
 
 EXTERN_C const void* SystemResolveDllImport(const char* name);

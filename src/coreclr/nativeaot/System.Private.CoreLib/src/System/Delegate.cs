@@ -15,15 +15,11 @@ using Internal.Runtime.CompilerServices;
 
 namespace System
 {
-    // WARNING: Bartok hard-codes offsets to the delegate fields, so it's notion of where fields are may
-    // differ from the runtime's notion.  Bartok honors sequential and explicit layout directives, so I've
-    // ordered the fields in such a way as to match the runtime's layout and then just tacked on this
-    // sequential layout directive so that Bartok matches it.
-    [StructLayout(LayoutKind.Sequential)]
     [DebuggerDisplay("Target method(s) = {GetTargetMethodsDescriptionForDebugger()}")]
     public abstract partial class Delegate : ICloneable, ISerializable
     {
         // V1 API: Create closed instance delegates. Method name matching is case sensitive.
+        [RequiresUnreferencedCode("The target method might be removed")]
         protected Delegate(object target, string method)
         {
             // This constructor cannot be used by application code. To create a delegate by specifying the name of a method, an
@@ -34,7 +30,7 @@ namespace System
         }
 
         // V1 API: Create open static delegates. Method name matching is case insensitive.
-        protected Delegate(Type target, string method)
+        protected Delegate([DynamicallyAccessedMembers(AllMethods)] Type target, string method)
         {
             // This constructor cannot be used by application code. To create a delegate by specifying the name of a method, an
             // overload of the public static CreateDelegate method is used. This will eventually end up calling into the internal
@@ -373,8 +369,7 @@ namespace System
         public static Delegate CreateDelegate(Type type, object target, string method, bool ignoreCase, bool throwOnBindFailure) => ReflectionAugments.ReflectionCoreCallbacks.CreateDelegate(type, target, method, ignoreCase, throwOnBindFailure);
 
         // V1 api: Creates open delegates to static methods only, relaxed signature checking disallowed.
-        [RequiresUnreferencedCode("The target method might be removed")]
-        public static Delegate CreateDelegate(Type type, Type target, string method, bool ignoreCase, bool throwOnBindFailure) => ReflectionAugments.ReflectionCoreCallbacks.CreateDelegate(type, target, method, ignoreCase, throwOnBindFailure);
+        public static Delegate CreateDelegate(Type type, [DynamicallyAccessedMembers(AllMethods)] Type target, string method, bool ignoreCase, bool throwOnBindFailure) => ReflectionAugments.ReflectionCoreCallbacks.CreateDelegate(type, target, method, ignoreCase, throwOnBindFailure);
 
         internal bool IsOpenStatic
         {
