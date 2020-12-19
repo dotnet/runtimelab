@@ -17,7 +17,7 @@ The .NET Foundation licenses this file to you under the MIT license.
   <!-- how should these be done? -->
   <PropertyGroup Condition="'$(Platform)' == 'wasm'">
     <TargetOS>browser</TargetOS>
-    <NativeCodeGen>wasm</NativeCodeGen>
+    <NativeCodeGen>llvm</NativeCodeGen>
   </PropertyGroup>
 
   <!-- Set defaults for unspecified properties -->
@@ -46,11 +46,13 @@ The .NET Foundation licenses this file to you under the MIT license.
   <PropertyGroup>
     <NativeObjectExt Condition="'$(TargetOS)' == 'windows'">.obj</NativeObjectExt>
     <NativeObjectExt Condition="'$(TargetOS)' != 'windows'">.o</NativeObjectExt>
+    <LlvmObjectExt Condition="'$(NativeCodeGen)' == 'llvm'">.bc</LlvmObjectExt>
 
     <LibFileExt Condition="'$(TargetOS)' == 'windows'">.lib</LibFileExt>
     <LibFileExt Condition="'$(TargetOS)' != 'windows'">.a</LibFileExt>
 
     <IlcOutputFileExt Condition="$(IlcOutputFileExt) == ''">$(NativeObjectExt)</IlcOutputFileExt>
+    <IlcOutputFileExt Condition="'$(NativeCodeGen)' == 'llvm'">$(LlvmObjectExt)</IlcOutputFileExt>
 
     <IsNativeExecutable Condition="'$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe'">true</IsNativeExecutable>
 
@@ -66,6 +68,8 @@ The .NET Foundation licenses this file to you under the MIT license.
     <ExportsFileExt Condition="'$(TargetOS)' == 'windows'">.def</ExportsFileExt>
     <ExportsFileExt Condition="'$(TargetOS)' != 'windows'">.exports</ExportsFileExt>
 
+    <LlvmObject Condition="'$(NativeCodeGen)' == 'llvm'">$(NativeIntermediateOutputPath)$(TargetName)$(LlvmObjectExt)</LlvmObject>
+
     <NativeObject>$(NativeIntermediateOutputPath)$(TargetName)$(NativeObjectExt)</NativeObject>
     <NativeBinary>$(NativeOutputPath)$(TargetName)$(NativeBinaryExt)</NativeBinary>
     <ExportsFile Condition="$(NativeLib) == 'Shared' and $(ExportsFile) == ''">$(NativeIntermediateOutputPath)$(TargetName)$(ExportsFileExt)</ExportsFile>
@@ -73,6 +77,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <IlcCompileOutput>$(NativeObject)</IlcCompileOutput>
 
     <LinkNativeDependsOn>IlcCompile</LinkNativeDependsOn>
+    <LinkNativeDependsOn Condition="$(NativeCodeGen) == 'llvm'">WasmObject</LinkNativeDependsOn>
 
     <FrameworkLibPath Condition="'$(FrameworkLibPath)' == ''">$(NativeOutputPath)</FrameworkLibPath>
     <FrameworkObjPath Condition="'$(FrameworkObjPath)' == ''">$(NativeIntermediateOutputPath)</FrameworkObjPath>
@@ -80,7 +85,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <SharedLibrary Condition="'$(TargetOS)' == 'windows'">$(FrameworkLibPath)\Framework$(LibFileExt)</SharedLibrary>
     <SharedLibrary Condition="'$(TargetOS)' != 'windows'">$(FrameworkLibPath)\libframework$(LibFileExt)</SharedLibrary>
     <IlcDynamicBuildPropertyDependencies Condition="'$(IlcCalledViaPackage)' == 'true'">SetupProperties</IlcDynamicBuildPropertyDependencies>
-    <IlcDisableUnhandledExceptionExperience Condition="$(NativeCodeGen) == 'wasm'">true</IlcDisableUnhandledExceptionExperience>
+    <IlcDisableUnhandledExceptionExperience Condition="$(NativeCodeGen) == 'llvm'">true</IlcDisableUnhandledExceptionExperience>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(IlcCompileDependsOn)'=='' and '$(NativeCompilationDuringPublish)' != 'false'">
@@ -273,6 +278,26 @@ The .NET Foundation licenses this file to you under the MIT license.
 
   </Target>
 
+  <Target Name="WasmObject"
+      Inputs="$(LlvmObject)"
+      Outputs="$(NativeObject)"
+      DependsOnTargets="IlcCompile;GenerateResFile"
+      Condition="'$(NativeCodeGen)' == 'llvm'">
+
+    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(NativeBinary)))" />
+
+    <PropertyGroup>
+      <EmccArgs>&quot;$(LlvmObject)&quot; -c -o &quot;$(NativeObject)&quot; -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s DISABLE_EXCEPTION_CATCHING=0 -s ABORTING_MALLOC=0</EmccArgs>
+      <EmccArgs Condition="'$(NativeDebugSymbols)' != 'true'">$(EmccArgs) -O2</EmccArgs>
+      <EmccArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(EmccArgs) -g3</EmccArgs>
+    </PropertyGroup>
+    
+    <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc.bat&quot; $(EmccArgs)" Condition="'$(EMSDK)' != '' and '$(OS)' == 'Windows_NT'" />
+    <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc&quot; $(EmccArgs)" Condition="'$(EMSDK)' != '' and '$(OS)' != 'Windows_NT'" />
+    <Message Text="Emscripten not found, not linking WebAssembly. To enable WebAssembly linking, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"
+             Condition="'$(EMSDK)' == ''" />
+  </Target>
+
   <Target Name="LinkNative"
       Inputs="$(NativeObject);@(NativeLibrary)"
       Outputs="$(NativeBinary)"
@@ -316,15 +341,14 @@ The .NET Foundation licenses this file to you under the MIT license.
     <PropertyGroup>
       <EmccArgs>&quot;$(NativeObject)&quot; -o &quot;$(NativeBinary)&quot; -s ALLOW_MEMORY_GROWTH=1 -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s DISABLE_EXCEPTION_CATCHING=0 --emrun </EmccArgs>
       <EmccArgs Condition="'$(Platform)'=='wasm'">$(EmccArgs) &quot;$(IlcPath)/sdk/libPortableRuntime.a&quot; &quot;$(IlcPath)/sdk/libbootstrapper.a&quot; &quot;$(IlcPath)/framework/libSystem.Native.a&quot; $(EmccExtraArgs)</EmccArgs>
-      <EmccArgs Condition="'$(Configuration)'=='Release'">$(EmccArgs) -O2 -flto</EmccArgs>
-      <EmccArgs Condition="'$(Configuration)'=='Debug'">$(EmccArgs) -g3</EmccArgs>
+      <EmccArgs Condition="'$(NativeDebugSymbols)' != 'true'">$(EmccArgs) -O2 -flto</EmccArgs>
+      <EmccArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(EmccArgs) -g3</EmccArgs>
     </PropertyGroup>
 
-    <!-- TODO: split wasm object file creation and linking : allows LTO to be turned off in debug builds -->
     <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc.bat&quot; $(EmccArgs)" Condition="'$(TargetOS)' == 'browser' and '$(EMSDK)' != '' and '$(OS)' == 'Windows_NT'" />
     <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc&quot; $(EmccArgs)" Condition="'$(TargetOS)' == 'browser' and '$(EMSDK)' != '' and '$(OS)' != 'Windows_NT'" />
     <Message Text="Emscripten not found, not linking WebAssembly. To enable WebAssembly linking, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"
-             Condition="'$(NativeCodeGen)' == 'wasm' and '$(EMSDK)' == ''" />
+             Condition="'$(NativeCodeGen)' == 'llvm' and '$(EMSDK)' == ''" />
   </Target>
 
   <Target Name="CreateLib"
