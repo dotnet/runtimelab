@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Buffers;
 using System.Net.Quic.Implementations.Managed.Internal.Streams;
 using System.Threading.Tasks;
 using Xunit;
@@ -9,7 +10,7 @@ namespace System.Net.Quic.Tests
 {
     public class SendStreamTest
     {
-        private SendStream stream = new SendStream(0);
+        private SendStream stream = new SendStream(0, ArrayPool<byte>.Shared);
 
         private void EnqueueBytes(int count)
         {

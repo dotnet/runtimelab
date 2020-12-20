@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Buffers;
 using System.Linq;
 using System.Net.Quic.Implementations.Managed.Internal.Streams;
 using System.Threading;
@@ -11,7 +12,7 @@ namespace System.Net.Quic.Tests
 {
     public class ReceiveStreamTest
     {
-        private ReceiveStream stream = new ReceiveStream(1000);
+        private ReceiveStream stream = new ReceiveStream(1000, ArrayPool<byte>.Shared);
 
         private void ReceiveBytes(long offset, int count, bool end = false)
         {

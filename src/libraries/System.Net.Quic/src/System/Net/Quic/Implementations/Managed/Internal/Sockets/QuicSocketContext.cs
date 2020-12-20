@@ -181,7 +181,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
             {
                 // we need a new buffer, because the one which was received into last time may be still read from by the
                 // connection
-                var buffer = ArrayPool.Rent(QuicConstants.MaximumAllowedDatagramSize);
+                byte[] buffer = ArrayPool.Rent(QuicConstants.Internal.MaximumAllowedDatagramSize);
                 args.SetBuffer(buffer, 0, buffer.Length);
 
                 if (_remoteEndPoint != null)

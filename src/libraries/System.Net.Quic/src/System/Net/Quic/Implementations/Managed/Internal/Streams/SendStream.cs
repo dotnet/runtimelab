@@ -1,8 +1,10 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Net.Quic.Implementations.Managed.Internal.Headers;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -14,8 +16,13 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
     /// </summary>
     internal sealed class SendStream
     {
+        /// <summary>
+        ///     Array pool to use for buffering application data.
+        /// </summary>
+        private readonly ArrayPool<byte> _arrayPool;
+
         // TODO-RZ: tie this to control flow limits
-        private const int MaximumHeldChunks = 20;
+        private const int MaximumHeldChunks = 3;
 
         private object SyncObject => _toSendChannel;
 
@@ -47,7 +54,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
         /// <summary>
         ///     Chunk to be filled from user data.
         /// </summary>
-        private StreamChunk _toBeQueuedChunk = new StreamChunk(0, ReadOnlyMemory<byte>.Empty, QuicBufferPool.Rent());
+        private StreamChunk _toBeQueuedChunk = new StreamChunk(0, ReadOnlyMemory<byte>.Empty, Array.Empty<byte>());
 
         /// <summary>
         ///     Channel of incoming chunks of memory from the user.
@@ -73,8 +80,9 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
         /// </summary>
         internal long? Error { get; private set; }
 
-        public SendStream(long maxData)
+        public SendStream(long maxData, ArrayPool<byte> arrayPool)
         {
+            _arrayPool = arrayPool;
             UpdateMaxData(maxData);
         }
 
@@ -541,7 +549,8 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
                 // the semaphore is released when stream is aborted to make the caller writer throw
                 ThrowIfAborted();
             }
-            return QuicBufferPool.Rent();
+
+            return _arrayPool.Rent(QuicConstants.Internal.StreamChunkSize);
         }
 
         private async ValueTask<byte[]> RentBufferAsync(CancellationToken cancellationToken)
@@ -554,12 +563,12 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
                 ThrowIfAborted();
             }
 
-            return QuicBufferPool.Rent();
+            return _arrayPool.Rent(QuicConstants.Internal.StreamChunkSize);
         }
 
         private void ReturnBuffer(byte[] buffer)
         {
-            QuicBufferPool.Return(buffer);
+            _arrayPool.Return(buffer);
             _bufferLimitSemaphore.Release();
         }
 

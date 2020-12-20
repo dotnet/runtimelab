@@ -82,8 +82,6 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
 
             _recvContext.Timestamp = Timestamp.Now;
             Connection.ReceiveData(_reader, datagram.RemoteEndpoint, _recvContext);
-            // the array pools are shared
-            ArrayPool.Return(datagram.Buffer);
         }
 
         /// <summary>
@@ -139,13 +137,14 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Sockets
                     while (_recvQueue.Reader.TryRead(out DatagramInfo datagram))
                     {
                         DoReceiveDatagram(datagram);
+                        ArrayPool.Return(datagram.Buffer);
                         CheckForStateChange(ref previousState);
                     }
 
                     if (Connection.GetWriteLevel(Timestamp.Now) != EncryptionLevel.None)
                     {
                         // TODO: discover path MTU
-                        byte[]? buffer = ArrayPool.Rent(QuicConstants.MaximumAllowedDatagramSize);
+                        byte[]? buffer = ArrayPool.Rent(QuicConstants.Internal.MaximumAllowedDatagramSize);
                         _writer.Reset(buffer);
                         _sendContext.Timestamp = Timestamp.Now;
                         Connection.SendData(_writer, out var receiver, _sendContext);

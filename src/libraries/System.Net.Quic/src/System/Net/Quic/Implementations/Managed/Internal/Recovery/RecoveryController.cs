@@ -251,7 +251,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
 
             _rate = GetCurrentPacingRate();
 
-            _nextPacingDelay = (long) (QuicConstants.MaximumAllowedDatagramSize / _rate);
+            _nextPacingDelay = (long) (QuicConstants.Internal.MaximumAllowedDatagramSize / _rate);
             return _nextPacing = LastLargeDatagramSentTimestamp + _nextPacingDelay;
         }
 

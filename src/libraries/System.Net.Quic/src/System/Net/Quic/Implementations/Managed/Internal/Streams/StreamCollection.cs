@@ -3,10 +3,12 @@
 
 #nullable enable
 
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Net.Quic.Implementations.Managed.Internal.Headers;
 using System.Net.Quic.Implementations.Managed.Internal.Tls;
 using System.Threading.Channels;
 
@@ -21,6 +23,13 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
         ///     All streams by their id;
         /// </summary>
         private ImmutableDictionary<long, ManagedQuicStream> _streams = ImmutableDictionary<long, ManagedQuicStream>.Empty;
+
+        /// <summary>
+        ///     Shared pool of stream chunks for this connection
+        /// </summary>
+        private readonly ArrayPool<byte> _arrayPool = ArrayPool<byte>.Create(
+            QuicConstants.Internal.StreamChunkSize,
+            QuicConstants.Internal.StreamChunkPoolSize);
 
         /// <summary>
         ///     Number of total streams by their type.
@@ -156,11 +165,11 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
             };
 
             ReceiveStream? recvStream = maxDataInbound != null
-                ? new ReceiveStream(maxDataInbound.Value)
+                ? new ReceiveStream(maxDataInbound.Value, _arrayPool)
                 : null;
 
             SendStream? sendStream = maxDataOutbound != null
-                ? new SendStream(maxDataOutbound.Value)
+                ? new SendStream(maxDataOutbound.Value, _arrayPool)
                 : null;
 
             return new ManagedQuicStream(streamId, recvStream, sendStream, connection);

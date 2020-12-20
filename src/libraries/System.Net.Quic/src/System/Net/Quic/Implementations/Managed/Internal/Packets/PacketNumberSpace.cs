@@ -3,6 +3,7 @@
 
 #nullable enable
 
+using System.Buffers;
 using System.Net.Quic.Implementations.Managed.Internal.Crypto;
 using System.Net.Quic.Implementations.Managed.Internal.Parsing;
 using System.Net.Quic.Implementations.Managed.Internal.Streams;
@@ -68,12 +69,12 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Packets
         /// <summary>
         ///     Outbound messages to be carried in CRYPTO frames.
         /// </summary>
-        internal SendStream CryptoSendStream { get; } = new SendStream(long.MaxValue);
+        internal SendStream CryptoSendStream { get; } = new SendStream(long.MaxValue, ArrayPool<byte>.Shared);
 
         /// <summary>
         ///     Inbound messages from CRYPTO frames.
         /// </summary>
-        internal ReceiveStream CryptoReceiveStream { get; } = new ReceiveStream(long.MaxValue);
+        internal ReceiveStream CryptoReceiveStream { get; } = new ReceiveStream(long.MaxValue, ArrayPool<byte>.Shared);
 
         /// <summary>
         ///     Timestamp when last ack frame was sent.

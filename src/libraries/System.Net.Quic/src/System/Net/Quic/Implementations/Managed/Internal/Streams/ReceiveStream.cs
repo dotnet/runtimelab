@@ -1,8 +1,10 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Net.Quic.Implementations.Managed.Internal.Headers;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -14,7 +16,12 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
     /// </summary>
     internal sealed class ReceiveStream
     {
-        private int ReorderBuffersSize => QuicBufferPool.BufferSize;
+        /// <summary>
+        ///     Pool of arrays used to receive data.
+        /// </summary>
+        private readonly ArrayPool<byte> _arrayPool;
+
+        private const int ReorderBuffersSize = QuicConstants.Internal.StreamChunkSize;
 
         private object SyncObject => _deliverableChannel;
 
@@ -75,8 +82,9 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
             RemoteMaxData = Math.Max(RemoteMaxData, value);
         }
 
-        public ReceiveStream(long maxData)
+        public ReceiveStream(long maxData, ArrayPool<byte> arrayPool)
         {
+            _arrayPool = arrayPool;
             MaxData = maxData;
             RemoteMaxData = maxData;
         }
@@ -300,7 +308,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
                     // limit maximum number of buffers we have allocated at any moment.
                     while (_receivingBuffers.Count <= recvBufIndex)
                     {
-                        _receivingBuffers.Add(QuicBufferPool.Rent());
+                        _receivingBuffers.Add(_arrayPool.Rent(ReorderBuffersSize));
                     }
 
                     int written = Math.Min(data.Length, ReorderBuffersSize - recvBufOffset);
@@ -478,7 +486,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
 
         private void ReturnBuffer(byte[] buffer)
         {
-            QuicBufferPool.Return(buffer);
+            _arrayPool.Return(buffer);
         }
 
         private void DropAllBufferedData()
