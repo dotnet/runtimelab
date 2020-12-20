@@ -21,15 +21,15 @@
       <Version>15.3.409</Version>
     </PackageReference>
     <PackageReference Include="System.Reflection.Metadata">
-      <Version>1.8.1</Version>
+      <Version>$(SystemReflectionMetadataVersion)</Version>
     </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="$(NuGetPackageRoot)\system.reflection.metadata\1.8.1\lib\netstandard2.0\System.Reflection.Metadata.dll">
+    <Content Include="$(NuGetPackageRoot)\system.reflection.metadata\$(SystemReflectionMetadataVersion)\lib\netstandard2.0\System.Reflection.Metadata.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="$(NuGetPackageRoot)\system.collections.immutable\1.7.1\lib\netstandard2.0\System.Collections.Immutable.dll">
+    <Content Include="$(NuGetPackageRoot)\system.collections.immutable\5.0.0\lib\netstandard2.0\System.Collections.Immutable.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
