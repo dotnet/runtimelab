@@ -601,21 +601,21 @@ namespace System.Net.Quic.Implementations.Managed
 
             Debug.Assert(stream!.ReceiveStream != null);
 
-            var buffer = stream.ReceiveStream!;
+            var receiveStream = stream.ReceiveStream!;
             long writtenOffset = frame.Offset + frame.StreamData.Length;
 
-            if (writtenOffset > buffer.Size)
+            if (writtenOffset > receiveStream.Size)
             {
                 // receiving data on largest offset yet, check also connection-level control flow
-                ReceivedData += writtenOffset - buffer.Size;
-                if (ReceivedData > _sendLimits.MaxData)
+                ReceivedData += writtenOffset - receiveStream.Size;
+                if (ReceivedData > _receiveLimits.MaxData)
                 {
                     return CloseConnection(TransportErrorCode.FlowControlError, QuicError.MaxDataViolated, frameType);
                 }
             }
 
             // check stream-level flow control
-            if (writtenOffset > buffer.MaxData)
+            if (writtenOffset > receiveStream.MaxData)
             {
                 return CloseConnection(TransportErrorCode.FlowControlError, QuicError.StreamMaxDataViolated, frameType);
             }
@@ -623,15 +623,15 @@ namespace System.Net.Quic.Implementations.Managed
             if (frame.Fin)
             {
                 // if trying to change final size, or setting final size lower than already sent data, report error.
-                if (buffer.FinalSizeKnown && writtenOffset != buffer.Size ||
-                    writtenOffset < buffer.Size)
+                if (receiveStream.FinalSizeKnown && writtenOffset != receiveStream.Size ||
+                    writtenOffset < receiveStream.Size)
                 {
                     return CloseConnection(TransportErrorCode.FinalSizeError, QuicError.InconsistentFinalSize, frameType);
                 }
             }
 
             // close if writing past known stream end
-            if (buffer.FinalSizeKnown && writtenOffset > buffer.Size)
+            if (receiveStream.FinalSizeKnown && writtenOffset > receiveStream.Size)
             {
                 return CloseConnection(TransportErrorCode.FinalSizeError, QuicError.WritingPastFinalSize, frameType);
             }
@@ -642,9 +642,9 @@ namespace System.Net.Quic.Implementations.Managed
             //
             // we also discard any data received after receiving RESET_STREAM, which might occur
             // due to packet reordering.
-            if (buffer.StreamState <= RecvStreamState.SizeKnown)
+            if (receiveStream.StreamState <= RecvStreamState.SizeKnown)
             {
-                buffer.Receive(frame.Offset, frame.StreamData, frame.Fin);
+                receiveStream.Receive(frame.Offset, frame.StreamData, frame.Fin);
             }
 
             return ProcessPacketResult.Ok;
