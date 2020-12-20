@@ -3,14 +3,18 @@
 
 #nullable enable
 
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Quic.Implementations.Managed;
 using System.Net.Quic.Implementations.Managed.Internal;
 using System.Net.Quic.Implementations.Managed.Internal.Frames;
+using System.Net.Quic.Implementations.Managed.Internal.Parsing;
 using System.Net.Quic.Tests.Harness;
 using Xunit;
 using Xunit.Abstractions;
 using AckFrame = System.Net.Quic.Tests.Harness.AckFrame;
+using AckFrameImpl = System.Net.Quic.Implementations.Managed.Internal.Frames.AckFrame;
 using StreamFrame = System.Net.Quic.Tests.Harness.StreamFrame;
 
 namespace System.Net.Quic.Tests.Frames
@@ -80,43 +84,37 @@ namespace System.Net.Quic.Tests.Frames
         }
 
         [Fact]
-        public void TestAckNonContiguousRanges()
+        public void TestSerializeAckRanges()
         {
             // make sure the end has enough consecutive PNs to guarantee that earlier packets are determined lost
             var received = new[] {2, 3, 4, 7, 8, 10, 13, 14, 15, 16};
-            var lost = Enumerable.Range(0, 17).Except(received).ToArray();
 
             long last = received[^1];
 
-            // we enforce sending packets by writing one byte, coincidentally containing the value of expected packet
-            // number for better testing
-            var clientStream = Client.OpenUnidirectionalStream();
+            long ackDelay = 1245;
 
-            for (int i = 0; i <= last; i++)
+            RangeSet toAck = new RangeSet();
+            foreach (int i in received)
             {
-                // enforce sending a packet
-                clientStream.Write(new[] {(byte)i});
-                clientStream.Flush();
-                PacketBase packet = Get1RttToSend(Client);
-
-                // make sure our testing strategy works
-                Assert.Equal(i, packet.PacketNumber);
-
-                if (received.Contains((int)packet.PacketNumber))
-                {
-                    // let the packet be received
-                    SendPacket(Client, Server, packet);
-                }
-
-                // else drop the packet
-                LogFlightPackets(packet, Client, true);
+                toAck.Add(i);
             }
 
-            // send ack back to server
-            var frame = Send1Rtt(Server, Client).ShouldHaveFrame<AckFrame>();
+            Span<byte> destination = stackalloc byte[128];
+            (int bytesWritten, int rangesWritten) = AckFrameImpl.EncodeAckRanges(destination, toAck);
 
-            Assert.Equal(last, frame.LargestAcknowledged);
-            Assert.Equal(3, frame.FirstAckRange);
+            AckFrameImpl frame = new(last, ackDelay, rangesWritten, toAck[^1].Length - 1,
+                destination.Slice(0, bytesWritten), false, 0, 0, 0);
+
+            int read = 0;
+            List<AckFrame.AckRange> actual = new List<AckFrame.AckRange>();
+            while (read < frame.AckRangesRaw.Length)
+            {
+                read += QuicPrimitives.TryReadVarInt(frame.AckRangesRaw.Slice(read), out long gap);
+                read += QuicPrimitives.TryReadVarInt(frame.AckRangesRaw.Slice(read), out long ack);
+                actual.Add(new AckFrame.AckRange{ Acked = ack, Gap = gap});
+            }
+            Span<RangeSet.Range> decoded = stackalloc RangeSet.Range[toAck.Count];
+            Assert.True(frame.TryDecodeAckRanges(decoded));
 
             Assert.Equal(new[]
             {
@@ -124,13 +122,7 @@ namespace System.Net.Quic.Tests.Frames
                 new AckFrame.AckRange {Acked = 0, Gap = 1}, // 10
                 new AckFrame.AckRange {Acked = 1, Gap = 0}, // 7, 8
                 new AckFrame.AckRange {Acked = 2, Gap = 1}, // 2, 3, 4
-            }, frame.AckRanges);
-
-            // the data should be resent by now
-            var resent = Get1RttToSend(Client).Frames
-                .OfType<StreamFrame>().SelectMany(f => f.StreamData.Select(i => (int)i)).ToArray();
-
-            Assert.Equal(lost, resent);
+            }, actual);
         }
     }
 }

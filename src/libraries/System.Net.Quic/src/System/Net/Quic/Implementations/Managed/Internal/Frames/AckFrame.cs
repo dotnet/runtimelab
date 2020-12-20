@@ -83,6 +83,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Frames
         internal static int GetOverhead(long largestAcknowledged, long ackDelay, long ackRangeCount,
             long firstAckRange)
         {
+            // TODO-RZ: ECN values?
             return 1 + // type
                    QuicPrimitives.GetVarIntLength(largestAcknowledged) +
                    QuicPrimitives.GetVarIntLength(ackDelay) +
@@ -102,6 +103,44 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Frames
             Ect0Count = ect0Count;
             Ect1Count = ect1Count;
             CeCount = ceCount;
+        }
+
+        internal static (int bytesWritten, int rangesWritten) EncodeAckRanges(Span<byte> destination, RangeSet ranges)
+        {
+            var firstRange = ranges[^1];
+            long prevSmallestAcked = firstRange.Start;
+            int written = 0;
+
+            // write as many ranges as possible
+            int rangesSent = 0;
+            // start from the newest packets
+            for (int i = ranges.Count - 2; i >= 0; i--)
+            {
+                var range = ranges[i];
+
+                long nextLargestAcked = range.End;
+
+                // the numbers are always encoded as one lesser, meaning sending 0 in gap means actually 1,
+                // implying that     nextLargestAcked = prevSmallestAck - gap - 2
+
+                long gap = prevSmallestAcked - nextLargestAcked - 2;
+                long ack = range.Length - 1;
+
+                int gapWireLength = QuicPrimitives.TryWriteVarInt(destination.Slice(written), gap);
+                int ackWireLength = QuicPrimitives.TryWriteVarInt(destination.Slice(written + gapWireLength), ack);
+
+                if (ackWireLength == 0 || gapWireLength == 0)
+                {
+                    // cannot fit this range
+                    break;
+                }
+
+                prevSmallestAcked = ranges[i].Start;
+                rangesSent++;
+                written += gapWireLength + ackWireLength;
+            }
+
+            return (written, rangesSent);
         }
 
         internal bool TryDecodeAckRanges(Span<RangeSet.Range> ranges)

@@ -828,54 +828,27 @@ namespace System.Net.Quic.Implementations.Managed
             long largest = ranges.GetMax();
             var firstRange = ranges[^1];
 
-            int written = 0;
-            int lengthEstimate = ranges.Count * 2 * 4; // assume worst case encoding
+            int overhead = AckFrame.GetOverhead(largest, ackDelay, ranges.Count, firstRange.Length - 1);
+
+            int lengthEstimate = Math.Min(writer.BytesAvailable - overhead, ranges.Count * 2 * 4); // assume worst case encoding
 
             Span<byte> ackRangesRaw = lengthEstimate <= 512
                 ? stackalloc byte[lengthEstimate]
                 : new byte[lengthEstimate];
 
-            long prevSmallestAcked = firstRange.Start;
-            int overhead = AckFrame.GetOverhead(largest, ackDelay, ranges.Count, firstRange.Length - 1);
+            (int bytesWritten, int rangesWritten) = AckFrame.EncodeAckRanges(ackRangesRaw, ranges);
 
-            // write as many ranges as possible
-            int rangesSent = 0;
-            for (int i = ranges.Count - 2; i >= 0; i--)
+            if (bytesWritten + overhead <= writer.BytesAvailable)
             {
-                var range = ranges[i];
-
-                long nextLargestAcked = range.End;
-
-                // the numbers are always encoded as one lesser, meaning sending 0 in gap means actually 1,
-                // implying that     nextLargestAcked = prevSmallestAck - gap - 2
-
-                long gap = prevSmallestAcked - nextLargestAcked - 2;
-                long ack = range.Length - 1;
-
-                int rangeWireLength = 0;
-                rangeWireLength += QuicPrimitives.WriteVarInt(ackRangesRaw.Slice(written + rangeWireLength), gap);
-                rangeWireLength += QuicPrimitives.WriteVarInt(ackRangesRaw.Slice(written + rangeWireLength), ack);
-
-                if (written + overhead + rangeWireLength > writer.BytesAvailable)
+                // record that the range has been sent
+                for (int i = ranges.Count - rangesWritten - 1; i < ranges.Count; ++i)
                 {
-                    // cannot fit more
-                    break;
+                    context.SentPacket.AckedRanges.Add(ranges[i].Start, ranges[i].End);
                 }
 
-                prevSmallestAcked = ranges[i].Start;
-                // record that the range has been sent
-                context.SentPacket.AckedRanges.Add(range.Start, range.End);
-                rangesSent++;
-                written += rangeWireLength;
-            }
-
-            if (written + overhead <= writer.BytesAvailable)
-            {
-                context.SentPacket.AckedRanges.Add(firstRange.Start, firstRange.End);
-
                 // TODO-RZ implement ECN counts
-                var frame = new AckFrame(largest, ackDelay, rangesSent,
-                    firstRange.Length - 1, ackRangesRaw.Slice(0, written),
+                var frame = new AckFrame(largest, ackDelay, rangesWritten,
+                    firstRange.Length - 1, ackRangesRaw.Slice(0, bytesWritten),
                     false, 0, 0, 0);
                 AckFrame.Write(writer, frame);
                 Trace?.OnAckFrame(frame, ackDelayMicroSeconds);

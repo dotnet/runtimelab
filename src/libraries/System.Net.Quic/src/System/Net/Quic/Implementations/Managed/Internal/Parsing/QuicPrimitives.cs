@@ -64,6 +64,18 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Parsing
             return 1 << logLength;
         }
 
+        internal static int TryWriteVarInt(Span<byte> destination, long value)
+        {
+            int logLength = GetVarIntLengthLogarithm(value);
+
+            if (!TryWriteVarIntFixedLogLength(destination, value, logLength))
+            {
+                return 0;
+            }
+
+            return 1 << logLength;
+        }
+
         private static int TryReadVarIntFast(ReadOnlySpan<byte> source, out long result)
         {
             Debug.Assert(source.Length >= 8);
