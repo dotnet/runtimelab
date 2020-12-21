@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <DebugType>portable</DebugType>
+    <OutputPath>$(MSBuildProjectDirectory)\bin\$(Configuration)\$(Platform)\</OutputPath>
+    <IntermediateOutputPath>$(MSBuildProjectDirectory)\obj\$(Configuration)\$(Platform)\</IntermediateOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="CkFinite.il" />
+    <PackageReference Include="Microsoft.NETCore.App">
+      <Version>$(MicrosoftNETCoreAppPackageVersion)</Version>
+    </PackageReference>
+  </ItemGroup>
+
+  <Target Name="CreateManifestResourceNames" />
+</Project>

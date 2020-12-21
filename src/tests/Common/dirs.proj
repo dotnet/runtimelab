@@ -15,6 +15,7 @@
       <DisabledProjects Include="$(TestRoot)Performance\Scenario\JitBench\unofficial_dotnet\JitBench.csproj" /> <!-- no official build support for SDK-style netcoreapp2.0 projects -->
       <DisabledProjects Include="$(TestRoot)reflection\GenericAttribute\GenericAttributeTests.csproj" />
       <DisabledProjects Include="$(TestRoot)TestWrappers*\**\*.csproj" />
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\HelloWasm.csproj" Condition="!('$(TestBuildMode)' == 'nativeaot' and '$(TargetArchitecture)' == 'wasm')"/>
     </ItemGroup>
 
     <!-- These rely on implementation details of CoreCLR CoreLib -->

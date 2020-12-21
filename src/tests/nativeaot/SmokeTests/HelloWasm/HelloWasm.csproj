@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <CLRTestKind>BuildAndRun</CLRTestKind>
+    <CLRTestPriority>0</CLRTestPriority>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="HelloWasm.cs" />
+  </ItemGroup>
+	<!--
+  <ItemGroup>
+    <ProjectReference Include="CpObj.ilproj" Condition="'$(OS)' == 'Windows_NT'" />
+    <IlcArg Include="-r:$(IntermediateOutputPath)\CpObj.dll" Condition="'$(OS)' == 'Windows_NT'" />
+    <ProjectReference Include="CkFinite.ilproj" Condition="'$(OS)' == 'Windows_NT'" />
+    <IlcArg Include="-r:$(IntermediateOutputPath)\CkFinite.dll" Condition="'$(OS)' == 'Windows_NT'" />
+    <ProjectReference Include="ILHelpers.ilproj" Condition="'$(OS)' == 'Windows_NT'" />
+    <IlcArg Include="-r:$(IntermediateOutputPath)\ILHelpers.dll" Condition="'$(OS)' == 'Windows_NT'" />
+  </ItemGroup>
+	-->
+
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+    <!-- Turn off the ilproj dependent tests for now <DefineConstants>TARGET_WINDOWS;$(DefineConstants) </DefineConstants>-->
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <NativeAotProjectLines>
+      <![CDATA[
+  <PropertyGroup>
+    <EmccExtraArgs>--js-library $(MSBuildProjectDirectory)\dotnet_support.js --pre-js $(MSBuildProjectDirectory)\Microsoft.JSInterop.js --post-js $(MSBuildProjectDirectory)\HelloWasm.js</EmccExtraArgs>
+  </PropertyGroup>
+      ]]>
+    </NativeAotProjectLines>
+  </PropertyGroup>
+</Project>
