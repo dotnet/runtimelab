@@ -1158,7 +1158,8 @@ namespace Internal.JitInterface
                 if (pResult->exactContextNeedsRuntimeLookup &&
                     pResolvedToken.tokenContext == contextFromMethodBeingCompiled() &&
                     constrainedType == null &&
-                    exactType == MethodBeingCompiled.OwningType)
+                    exactType == MethodBeingCompiled.OwningType &&
+                    !MethodBeingCompiled.HasInstantiation)
                 {
                     var methodIL = (MethodIL)HandleToObject((IntPtr)pResolvedToken.tokenScope);
                     var rawMethod = (MethodDesc)methodIL.GetMethodILDefinition().GetObject((int)pResolvedToken.token);
