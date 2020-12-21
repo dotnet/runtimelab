@@ -1027,8 +1027,6 @@ namespace System.Net.Quic.Implementations.Managed
                     break;
                 }
             }
-
-            Recovery.IsApplicationLimited = writer.BytesAvailable > StreamFrame.MinSize;
         }
     }
 }

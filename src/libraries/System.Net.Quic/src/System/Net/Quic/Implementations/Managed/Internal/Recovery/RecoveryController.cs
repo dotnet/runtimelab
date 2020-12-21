@@ -202,7 +202,10 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
         /// </summary>
         internal ICongestionController CongestionController { get; }
 
-        internal bool IsPacing => LastLargeDatagramSentTimestamp != long.MinValue && SmoothedRtt != 0;
+        internal bool IsPacing =>
+            LastLargeDatagramSentTimestamp != long.MinValue && SmoothedRtt != 0 &&
+            // We start pacing only after actually starting to utilize the congestion window
+            BytesInFlight > CongestionWindow / 8;
 
         /// <summary>
         ///     Returns bytes available with respect to the current congestion window
@@ -302,7 +305,11 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
         /// <summary>
         ///     True if the connection is application limited (not enough application data to saturate the connection).
         /// </summary>
-        internal bool IsApplicationLimited { get; set; }
+        internal bool IsApplicationOrFlowControlLimited =>
+            // we will consider the connection to be application limited if we are unable to put more data on the wire
+            // than half of the available congestion window. This limits the growth of the window when we are limited by
+            // flow control or the application, while still allowing for exponential growth in congestion avoidance
+            BytesInFlight < CongestionWindow / 2;
 
         internal PacketNumberSpace GetPacketNumberSpace(PacketSpace space) => _pnSpaces[(int)space];
 
@@ -358,7 +365,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
                 SetLossDetectionTimer(isHandshakeComplete);
 
                 Trace?.OnRecoveryMetricsUpdated(this);
-                Trace?.OnCongestionStateUpdated(IsApplicationLimited ? CongestionState.ApplicationLimited : CongestionState);
+                Trace?.OnCongestionStateUpdated(IsApplicationOrFlowControlLimited ? CongestionState.ApplicationLimited : CongestionState);
             }
         }
 

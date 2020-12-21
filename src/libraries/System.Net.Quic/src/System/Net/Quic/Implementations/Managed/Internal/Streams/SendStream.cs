@@ -22,7 +22,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Streams
         private readonly ArrayPool<byte> _arrayPool;
 
         // TODO-RZ: tie this to control flow limits
-        private const int MaximumHeldChunks = 3;
+        private const int MaximumHeldChunks = QuicConstants.Internal.StreamChunkPoolSize / 2;
 
         private object SyncObject => _toSendChannel;
 

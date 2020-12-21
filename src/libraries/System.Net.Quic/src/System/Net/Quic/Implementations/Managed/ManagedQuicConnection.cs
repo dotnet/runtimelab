@@ -343,13 +343,17 @@ namespace System.Net.Quic.Implementations.Managed
                 // limited by application (meaning is outstanding STREAM data to be sent)
                 if (Connected)
                 {
-                    if (Recovery.IsPacing && !Recovery.IsApplicationLimited)
+                    if (_streams.HasFlushableStreams || _streams.HasUpdateableStreams)
                     {
-                        timer = Math.Min(timer, Recovery.GetPacingTimerForNextFullPacket());
-                    }
-                    else if (Recovery.IsApplicationLimited && _streams.HasFlushableStreams || _streams.HasUpdateableStreams)
-                    {
-                        return Recovery.LastLargeDatagramSentTimestamp;
+                        if (Recovery.IsPacing)
+                        {
+                            timer = Math.Min(timer, Recovery.GetPacingTimerForNextFullPacket());
+                        }
+                        else
+                        {
+                            // send immediately
+                            return Recovery.LastLargeDatagramSentTimestamp;
+                        }
                     }
                 }
             }
@@ -541,8 +545,9 @@ namespace System.Net.Quic.Implementations.Managed
             // check if we have something to send.
             // TODO-RZ: this list may be incomplete
             if (_pingWanted ||
-                _streams.HasFlushableStreams ||
                 _streams.HasUpdateableStreams ||
+                // send stream data only immediately only if limited by the application, otherwise rely on pacing
+                (_streams.HasFlushableStreams && (Recovery.IsApplicationOrFlowControlLimited || Recovery.GetPacingTimerForNextFullPacket() <= timestamp)) ||
                 ShouldSendConnectionClose(timestamp))
             {
                 return EncryptionLevel.Application;
