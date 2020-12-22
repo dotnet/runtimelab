@@ -104,8 +104,15 @@ namespace ILCompiler.DependencyAnalysis
                 if (_method.IsCanonicalMethod(CanonicalFormKind.Specific))
                     return false;
 
-                if (_method.OwningType.IsCanonicalSubtype(CanonicalFormKind.Universal) &&
-                    _method.OwningType != _method.OwningType.ConvertToCanonForm(CanonicalFormKind.Universal))
+                TypeDesc methodOwningType = _method.OwningType;
+
+                if (methodOwningType.IsCanonicalSubtype(CanonicalFormKind.Universal) &&
+                    methodOwningType != methodOwningType.ConvertToCanonForm(CanonicalFormKind.Universal))
+                    return false;
+
+                // SearchDynamicDependencies wouldn't come up with anything for these
+                if (!methodOwningType.IsInterface &&
+                    (methodOwningType.IsSealed() || _method.IsFinal))
                     return false;
 
                 return true;
@@ -114,9 +121,9 @@ namespace ILCompiler.DependencyAnalysis
 
         public override IEnumerable<CombinedDependencyListEntry> SearchDynamicDependencies(List<DependencyNodeCore<NodeFactory>> markedNodes, int firstNode, NodeFactory factory)
         {
-            Debug.Assert(_method.IsVirtual && _method.HasInstantiation);
-
             List<CombinedDependencyListEntry> dynamicDependencies = new List<CombinedDependencyListEntry>();
+
+            TypeDesc methodOwningType = _method.OwningType;
 
             for (int i = firstNode; i < markedNodes.Count; i++)
             {
@@ -130,13 +137,11 @@ namespace ILCompiler.DependencyAnalysis
                 if (!potentialOverrideType.IsDefType)
                     continue;
 
-                Debug.Assert(!potentialOverrideType.IsRuntimeDeterminedSubtype);
-
                 if (potentialOverrideType.IsInterface)
                 {
-                    if (_method.OwningType.HasSameTypeDefinition(potentialOverrideType) && (potentialOverrideType != _method.OwningType))
+                    if (methodOwningType.HasSameTypeDefinition(potentialOverrideType) && (potentialOverrideType != methodOwningType))
                     {
-                        if (potentialOverrideType.CanCastTo(_method.OwningType))
+                        if (potentialOverrideType.CanCastTo(methodOwningType))
                         {
                             // Variance expansion
                             MethodDesc matchingMethodOnRelatedVariantMethod = potentialOverrideType.GetMethod(_method.Name, _method.GetTypicalMethodDefinition().Signature);
@@ -152,11 +157,11 @@ namespace ILCompiler.DependencyAnalysis
                 // and other instantantiations that have the same canonical form.
                 // This ensure the various slot numbers remain equivalent across all types where there is an equivalence
                 // relationship in the vtable.
-                if (_method.OwningType.IsInterface)
+                if (methodOwningType.IsInterface)
                 {
                     foreach (DefType interfaceImpl in potentialOverrideType.RuntimeInterfaces)
                     {
-                        if (interfaceImpl == _method.OwningType)
+                        if (interfaceImpl == methodOwningType)
                         {
                             MethodDesc slotDecl = potentialOverrideType.ResolveInterfaceMethodTarget(_method.GetMethodDefinition());
                             if (slotDecl != null)
@@ -175,7 +180,7 @@ namespace ILCompiler.DependencyAnalysis
                     {
                         do
                         {
-                            if (overrideTypeCur == _method.OwningType)
+                            if (overrideTypeCur == methodOwningType)
                                 break;
 
                             overrideTypeCur = overrideTypeCur.BaseType;
@@ -186,23 +191,10 @@ namespace ILCompiler.DependencyAnalysis
                             continue;
                     }
 
-                    overrideTypeCur = potentialOverrideType;
-                    while (overrideTypeCur != null)
-                    {
-                        if (overrideTypeCur == _method.OwningType)
-                        {
-                            // The GVMDependencyNode already declares the entrypoint/dictionary dependencies of the current method 
-                            // as static dependencies, therefore we can break the loop as soon we hit the current method's owning type
-                            // while we're traversing the hierarchy of the potential derived types.
-                            break;
-                        }
-
-                        MethodDesc instantiatedTargetMethod = overrideTypeCur.FindVirtualFunctionTargetMethodOnObjectType(_method);
-                        if (instantiatedTargetMethod != null)
-                            dynamicDependencies.Add(new CombinedDependencyListEntry(factory.GVMDependencies(instantiatedTargetMethod), null, "DerivedMethodInstantiation"));
-
-                        overrideTypeCur = overrideTypeCur.BaseType;
-                    }
+                    MethodDesc instantiatedTargetMethod = potentialOverrideType.FindVirtualFunctionTargetMethodOnObjectType(_method);
+                    Debug.Assert(instantiatedTargetMethod != null);
+                    if (instantiatedTargetMethod != _method)
+                        dynamicDependencies.Add(new CombinedDependencyListEntry(factory.GVMDependencies(instantiatedTargetMethod), null, "DerivedMethodInstantiation"));
                 }
             }
 
