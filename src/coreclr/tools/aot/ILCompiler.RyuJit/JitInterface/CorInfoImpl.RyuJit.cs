@@ -1159,6 +1159,8 @@ namespace Internal.JitInterface
                     pResolvedToken.tokenContext == contextFromMethodBeingCompiled() &&
                     constrainedType == null &&
                     exactType == MethodBeingCompiled.OwningType &&
+                    // But don't allow inlining into generic methods since the generic context won't be the same.
+                    // The scanner won't be able to predict such inlinig. See https://github.com/dotnet/runtimelab/pull/489
                     !MethodBeingCompiled.HasInstantiation)
                 {
                     var methodIL = (MethodIL)HandleToObject((IntPtr)pResolvedToken.tokenScope);
