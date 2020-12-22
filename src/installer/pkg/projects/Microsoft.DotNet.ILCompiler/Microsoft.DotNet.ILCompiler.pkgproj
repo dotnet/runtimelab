@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <IncludeSymbolsInPackage>true</IncludeSymbolsInPackage>
+    <PackageDescription>Provides a native AOT compiler and runtime for .NET</PackageDescription>
   </PropertyGroup>
 
   <Target Name="GetIlcCompilerFiles"
