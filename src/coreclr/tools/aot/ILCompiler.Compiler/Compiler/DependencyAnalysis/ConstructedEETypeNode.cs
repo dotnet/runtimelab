@@ -59,7 +59,19 @@ namespace ILCompiler.DependencyAnalysis
                                 MethodDesc genericDefinition = method.GetMethodDefinition();
                                 MethodDesc slotDecl = _type.ResolveInterfaceMethodTarget(genericDefinition);
                                 if (slotDecl != null)
-                                    return true;
+                                {
+                                    // If the type doesn't introduce this interface method implementation (i.e. the same implementation
+                                    // already exists in the base type), do not consider this type interesting for GVM analysis just yet.
+                                    //
+                                    // We need to limit the number of types that are interesting for GVM analysis at all costs since
+                                    // these all will be looked at for every unique generic virtual method call in the program.
+                                    // Having a long list of interesting types affects the compilation throughput heavily.
+                                    if (slotDecl.OwningType == _type ||
+                                        _type.BaseType.ResolveInterfaceMethodTarget(genericDefinition) != slotDecl)
+                                    {
+                                        return true;
+                                    }
+                                }
                             }
                         }
                     }
