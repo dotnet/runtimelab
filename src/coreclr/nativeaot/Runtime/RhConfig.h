@@ -19,9 +19,7 @@
 
 #ifndef DACCESS_COMPILE
 
-#if defined(_DEBUG) || !defined(APP_LOCAL_RUNTIME)
 #define FEATURE_ENVIRONMENT_VARIABLE_CONFIG
-#endif
 
 class RhConfig
 {

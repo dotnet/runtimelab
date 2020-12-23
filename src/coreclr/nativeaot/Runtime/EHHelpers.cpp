@@ -190,20 +190,6 @@ EXTERN_C int32_t __stdcall RhpPInvokeExceptionGuard(PEXCEPTION_RECORD       pExc
                                                   DISPATCHER_CONTEXT *    pDispatcherContext)
 {
     UNREFERENCED_PARAMETER(EstablisherFrame);
-#ifdef APP_LOCAL_RUNTIME
-    UNREFERENCED_PARAMETER(pDispatcherContext);
-    //
-    // When running on Windows 8.1 RTM, we cannot register our vectored exception handler, because that
-    // version of MRT100.dll does not support it.  However, the binder sets this function as the personality
-    // routine for every reverse p/invoke, so we can handle hardware exceptions from managed code here.
-    //
-    EXCEPTION_POINTERS pointers;
-    pointers.ExceptionRecord = pExceptionRecord;
-    pointers.ContextRecord = pContextRecord;
-
-    if (RhpVectoredExceptionHandler(&pointers) == EXCEPTION_CONTINUE_EXECUTION)
-        return ExceptionContinueExecution;
-#endif //APP_LOCAL_RUNTIME
 
     Thread * pThread = ThreadStore::GetCurrentThread();
 

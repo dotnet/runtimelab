@@ -232,11 +232,7 @@ REDHAWK_PALEXPORT int32_t REDHAWK_PALAPI PalGetProcessCpuCount()
         // The concept of process CPU affinity is going away and so CoreSystem obsoletes the APIs used to
         // fetch this information. Instead we'll just return total cpu count.
         SYSTEM_INFO sysInfo;
-#ifndef APP_LOCAL_RUNTIME
         ::GetSystemInfo(&sysInfo);
-#else
-        ::GetNativeSystemInfo(&sysInfo);
-#endif
         CpuCount = sysInfo.dwNumberOfProcessors;
         return sysInfo.dwNumberOfProcessors;
     }
@@ -297,7 +293,7 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalGetMaximumStackBounds(_Out_ void** ppSt
     return true;
 }
 
-#if !defined(_INC_WINDOWS) || defined(APP_LOCAL_RUNTIME)
+#if !defined(_INC_WINDOWS)
 
 typedef struct _UNICODE_STRING {
     USHORT Length;
@@ -364,7 +360,7 @@ typedef struct _TEB {
     PVOID TlsExpansionSlots;
 } TEB, *PTEB;
 
-#endif // !defined(_INC_WINDOWS) || defined(APP_LOCAL_RUNTIME)
+#endif // !defined(_INC_WINDOWS)
 
 // retrieves the full path to the specified module, if moduleBase is NULL retreieves the full path to the
 // executable module of the current process.
