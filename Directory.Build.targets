@@ -22,27 +22,15 @@
     <NETCoreAppMaximumVersion>$(MajorVersion).$(MinorVersion)</NETCoreAppMaximumVersion>
   </PropertyGroup>
 
-  <!--
-    SDK currently does not know about net6.0 TargetFramework.
-    We need to manually add these to correctly resolve the targeting packs.
-    https://github.com/dotnet/sdk/issues/13950  
-  -->
-  <ItemGroup>
-    <KnownFrameworkReference Include="Microsoft.NETCore.App"
-      DefaultRuntimeFrameworkVersion="$(MicrosoftNETCoreAppVersion)"
-      IsTrimmable="true"
-      LatestRuntimeFrameworkVersion="$(MicrosoftNETCoreAppVersion)"
-      RuntimeFrameworkName="Microsoft.NETCore.App"
-      RuntimePackNamePatterns="Microsoft.NETCore.App.Runtime.**RID**"
-      RuntimePackRuntimeIdentifiers="linux-arm;linux-arm64;linux-musl-arm64;linux-musl-x64;linux-x64;osx-x64;rhel.6-x64;tizen.4.0.0-armel;tizen.5.0.0-armel;win-arm;win-arm64;win-x64;win-x86;ios-arm64;ios-arm;ios-x64;ios-x86;tvos-arm64;tvos-x64;android-arm64;android-arm;android-x64;android-x86;browser-wasm"
-      TargetFramework="$(NetCoreAppCurrent)"
-      TargetingPackName="Microsoft.NETCore.App.Ref"
-      TargetingPackVersion="$(MicrosoftNETCoreAppVersion)" />
-
-    <KnownAppHostPack Include="Microsoft.NETCore.App" 
-      AppHostPackNamePattern="Microsoft.NETCore.App.Host.**RID**"
-      AppHostPackVersion="$(MicrosoftNETCoreAppVersion)"
-      AppHostRuntimeIdentifiers="linux-arm;linux-arm64;linux-musl-arm64;linux-musl-x64;linux-x64;osx-x64;rhel.6-x64;tizen.4.0.0-armel;tizen.5.0.0-armel;win-arm;win-arm64;win-x64;win-x86"
-      TargetFramework="$(NetCoreAppCurrent)" />
-  </ItemGroup>
+  <!-- Packaging -->
+  <PropertyGroup>
+    <PackageDescription Condition="'$(PackageDescription)' == '' and '$(Description)' != ''">$(Description)</PackageDescription>
+    <RuntimePackageDisclaimer>Internal implementation package not meant for direct consumption. Please do not reference directly.</RuntimePackageDisclaimer>
+    <UseRuntimePackageDisclaimer Condition="'$(UseRuntimePackageDisclaimer)' == '' and
+                                            ($(MSBuildProjectName.StartsWith('runtime.native')) or '$(PackageTargetRuntime)' != '')">true</UseRuntimePackageDisclaimer>
+    <PackageDescription Condition="'$(PackageDescription)' != '' and '$(UseRuntimePackageDisclaimer)' == 'true'">$(RuntimePackageDisclaimer) %0A$(PackageDescription)</PackageDescription>
+    <PackageDescription Condition="'$(PackageDescription)' == '' and '$(UseRuntimePackageDisclaimer)' == 'true'">$(RuntimePackageDisclaimer)</PackageDescription>
+    <!-- Keep in sync as required by the Packaging SDK in Arcade. -->
+    <Description>$(PackageDescription)</Description>
+  </PropertyGroup>
 </Project>

@@ -1158,7 +1158,10 @@ namespace Internal.JitInterface
                 if (pResult->exactContextNeedsRuntimeLookup &&
                     pResolvedToken.tokenContext == contextFromMethodBeingCompiled() &&
                     constrainedType == null &&
-                    exactType == MethodBeingCompiled.OwningType)
+                    exactType == MethodBeingCompiled.OwningType &&
+                    // But don't allow inlining into generic methods since the generic context won't be the same.
+                    // The scanner won't be able to predict such inlinig. See https://github.com/dotnet/runtimelab/pull/489
+                    !MethodBeingCompiled.HasInstantiation)
                 {
                     var methodIL = (MethodIL)HandleToObject((IntPtr)pResolvedToken.tokenScope);
                     var rawMethod = (MethodDesc)methodIL.GetMethodILDefinition().GetObject((int)pResolvedToken.token);
@@ -1688,20 +1691,11 @@ namespace Internal.JitInterface
         {
             var methodIL = (MethodIL)HandleToObject((IntPtr)pResolvedToken.tokenScope);
             if (methodIL.OwningMethod.IsPInvoke)
-            {
                 return false;
-            }
 
             MethodSignature signature = (MethodSignature)methodIL.GetObject((int)pResolvedToken.token);
-
-            CorInfoCallConv callConv = (CorInfoCallConv)(signature.Flags & MethodSignatureFlags.UnmanagedCallingConventionMask);
-            if (callConv != CorInfoCallConv.CORINFO_CALLCONV_C &&
-                callConv != CorInfoCallConv.CORINFO_CALLCONV_STDCALL &&
-                callConv != CorInfoCallConv.CORINFO_CALLCONV_THISCALL &&
-                callConv != CorInfoCallConv.CORINFO_CALLCONV_FASTCALL)
-            {
+            if ((signature.Flags & MethodSignatureFlags.UnmanagedCallingConventionMask) == 0)
                 return false;
-            }
 
             MethodDesc stub = _compilation.PInvokeILProvider.GetCalliStub(signature);
             if (!mustConvert && !IsPInvokeStubRequired(stub))

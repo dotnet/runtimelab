@@ -27,7 +27,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="System.Reflection.Metadata">
-      <Version>1.8.1</Version>
+      <Version>$(SystemReflectionMetadataVersion)</Version>
     </PackageReference>
   </ItemGroup>
   <ItemGroup>

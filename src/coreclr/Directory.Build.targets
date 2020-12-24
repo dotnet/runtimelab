@@ -30,6 +30,6 @@
   </Target>
 
   <!-- Import targets here to have TargetPath and other macros defined. Limit to CoreLib. -->
-  <Import Condition="'$(IsNativeAotProject)' != 'true' and '$(MSBuildProjectName)' == 'System.Private.CoreLib'" Project="$(RepositoryEngineeringDir)illink.targets" />
+  <Import Condition="'$(MSBuildProjectName)' == 'System.Private.CoreLib'" Project="$(RepositoryEngineeringDir)illink.targets" />
 
 </Project>

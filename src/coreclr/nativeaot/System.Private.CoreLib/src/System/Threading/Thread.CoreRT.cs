@@ -367,6 +367,10 @@ namespace System.Threading
             StartInternal(parameter);
         }
 
+        // TODO: Remove  after https://github.com/dotnet/runtime/pull/46244
+        [UnsupportedOSPlatform("browser")]
+        internal void UnsafeStart() => StartInternal(null);
+
         private void StartInternal(object parameter)
         {
             using (LockHolder.Hold(_lock))

@@ -1,19 +1,20 @@
-# Optimizing programs targeting CoreRT
+# Optimizing programs targeting Native AOT
 
-The CoreRT compiler provides multiple switches to influence the compilation process. These switches control the code and metadata that the compiler generates and affect the runtime behavior of the compiled program.
+The Native AOT compiler provides multiple switches to influence the compilation process. These switches control the code and metadata that the compiler generates and affect the runtime behavior of the compiled program.
 
 To specify a switch, add a new property to your project file with one or more of the values below. For example, to specify the invariant globalization mode, add
 
 ```xml
   <PropertyGroup>
-    <IlcInvariantGlobalization>true</IlcInvariantGlobalization>
+    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 ```
 
 under the `<Project>` node of your project file.
 
-## Options related to globalization
-* `<IlcInvariantGlobalization>true</IlcInvariantGlobalization>`: enables the [globalization invariant mode](https://github.com/dotnet/runtime/blob/master/docs/design/features/globalization-invariant-mode.md) that removes code and data that supports non-english cultures. Removing code and data makes your app smaller.
+## Options related to library features
+
+Native AOT supports enabling and disabling all [documented framework library features](https://docs.microsoft.com/en-us/dotnet/core/deploying/trimming-options#trimming-framework-library-features). For example, to remove globalization specific code and data, add a `<InvariantGlobalization>true</InvariantGlobalization>` property to your project. Disabling a framework feature (or enabling a minimal mode of the feature) can result in significant size savings.
 
 ## Options related to reflection
 

@@ -9,7 +9,7 @@ using System.IO;
 using Internal.TypeSystem;
 using Internal.TypeSystem.Ecma;
 
-using ILCompiler.Compiler.Logging;
+using ILCompiler.Logging;
 
 using ILSequencePoint = Internal.IL.ILSequencePoint;
 using MethodIL = Internal.IL.MethodIL;

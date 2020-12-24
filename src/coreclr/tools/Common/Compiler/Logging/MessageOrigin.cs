@@ -6,7 +6,7 @@ using System.Text;
 
 using Internal.TypeSystem;
 
-namespace ILCompiler.Compiler.Logging
+namespace ILCompiler.Logging
 {
     public struct MessageOrigin
 #if false
