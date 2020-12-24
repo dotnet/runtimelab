@@ -221,7 +221,21 @@ namespace ILCompiler
                     }
 
                     if ((flags[offset] & OpcodeFlags.EndBasicBlock) != 0)
+                    {
+                        if (reader.HasNext)
+                        {
+                            // If the bytes following this basic block are not reachable from anywhere,
+                            // the sweeping step would consider them to be part of the last instruction
+                            // of the current basic block because of how instruction boundaries are identified.
+                            // We wouldn't NOP them out if the current basic block is reachable.
+                            //
+                            // That's a problem for RyuJIT because RyuJIT looks at these bytes for... reasons.
+                            //
+                            // We can just do the same thing as RyuJIT and consider those a basic block.
+                            offsetsToVisit.Push(reader.Offset);
+                        }
                         break;
+                    }
                 }
             }
 
