@@ -13,8 +13,6 @@ namespace System.Threading
 {
     public sealed partial class Thread
     {
-        internal const bool IsThreadStartSupported = true;
-
         // Extra bits used in _threadState
         private const ThreadState ThreadPoolThread = (ThreadState)0x1000;
 
@@ -24,18 +22,14 @@ namespace System.Threading
         internal ExecutionContext _executionContext;
         internal SynchronizationContext _synchronizationContext;
 
-        private volatile int _threadState;
+        private volatile int _threadState = (int)ThreadState.Unstarted;
         private ThreadPriority _priority;
         private ManagedThreadId _managedThreadId;
-        private string _name;
-        private Delegate _threadStart;
-        private object _threadStartArg;
-        private CultureInfo _startCulture;
-        private CultureInfo _startUICulture;
-        private int _maxStackSize;
+        private string? _name;
+        private StartHelper? _startHelper;
 
         // Protects starting the thread and setting its priority
-        private Lock _lock;
+        private Lock _lock = new Lock();
 
         // This is used for a quick check on thread pool threads after running a work item to determine if the name, background
         // state, or priority were changed by the work item, and if so to reset it. Other threads may also change some of those,
@@ -51,9 +45,16 @@ namespace System.Threading
 
         private Thread()
         {
-            _threadState = (int)ThreadState.Unstarted;
+            _managedThreadId = System.Threading.ManagedThreadId.GetCurrentThreadId();
+
+            PlatformSpecificInitialize();
+            RegisterThreadExitCallback();
+        }
+
+        private void Initialize()
+        {
             _priority = ThreadPriority.Normal;
-            _lock = new Lock();
+            _managedThreadId = new ManagedThreadId();
 
             PlatformSpecificInitialize();
             RegisterThreadExitCallback();
@@ -63,19 +64,6 @@ namespace System.Threading
         {
             RuntimeImports.RhSetThreadExitCallback(&OnThreadExit);
         }
-
-        private void SetStartHelper(Delegate threadStart, int maxStackSize)
-        {
-            _threadStart = threadStart;
-            _maxStackSize = maxStackSize;
-            _managedThreadId = new ManagedThreadId();
-        }
-
-        private void Create(ThreadStart start) => SetStartHelper(start, 0);
-        private void Create(ThreadStart start, int maxStackSize) => SetStartHelper(start, maxStackSize);
-
-        private void Create(ParameterizedThreadStart start) => SetStartHelper(start, 0);
-        private void Create(ParameterizedThreadStart start, int maxStackSize) => SetStartHelper(start, maxStackSize);
 
         internal static ulong CurrentOSThreadId
         {
@@ -95,7 +83,6 @@ namespace System.Threading
             Debug.Assert(t_currentThread == null);
 
             var currentThread = new Thread();
-            currentThread._managedThreadId = System.Threading.ManagedThreadId.GetCurrentThreadId();
             Debug.Assert(currentThread._threadState == (int)ThreadState.Unstarted);
 
             ThreadState state = threadPoolThread ? ThreadPoolThread : 0;
@@ -354,24 +341,7 @@ namespace System.Threading
         [MethodImpl(MethodImplOptions.NoInlining)] // Slow path method. Make sure that the caller frame does not pay for PInvoke overhead.
         public static bool Yield() => RuntimeImports.RhYield();
 
-        [UnsupportedOSPlatform("browser")]
-        public void Start() => StartInternal(null);
-
-        [UnsupportedOSPlatform("browser")]
-        public void Start(object parameter)
-        {
-            if (_threadStart is ThreadStart)
-            {
-                throw new InvalidOperationException(SR.InvalidOperation_ThreadWrongThreadStart);
-            }
-            StartInternal(parameter);
-        }
-
-        // TODO: Remove  after https://github.com/dotnet/runtime/pull/46244
-        [UnsupportedOSPlatform("browser")]
-        internal void UnsafeStart() => StartInternal(null);
-
-        private void StartInternal(object parameter)
+        private void StartCore()
         {
             using (LockHolder.Hold(_lock))
             {
@@ -382,7 +352,6 @@ namespace System.Threading
 
                 bool waitingForThreadStart = false;
                 GCHandle threadHandle = GCHandle.Alloc(this);
-                _threadStartArg = parameter;
 
                 try
                 {
@@ -408,7 +377,6 @@ namespace System.Threading
                     if (!waitingForThreadStart)
                     {
                         threadHandle.Free();
-                        _threadStartArg = null;
                     }
                 }
 
@@ -424,9 +392,6 @@ namespace System.Threading
         {
             GCHandle threadHandle = (GCHandle)parameter;
             Thread thread = (Thread)threadHandle.Target;
-            Delegate threadStart = thread._threadStart;
-            // Get the value before clearing the ThreadState.Unstarted bit
-            object threadStartArg = thread._threadStartArg;
 
             try
             {
@@ -445,39 +410,20 @@ namespace System.Threading
                 return;
             }
 
-            // Report success to the creator thread, which will free threadHandle and _threadStartArg
+            // Report success to the creator thread, which will free threadHandle
             int state = thread.ClearThreadStateBit(ThreadState.Unstarted);
             if ((state & (int)ThreadState.Background) == 0)
             {
                 IncrementRunningForeground();
             }
 
-            if (thread._startCulture != null)
-            {
-                CultureInfo.CurrentCulture = thread._startCulture;
-                thread._startCulture = null;
-            }
-
-            if (thread._startUICulture != null)
-            {
-                CultureInfo.CurrentUICulture = thread._startUICulture;
-                thread._startUICulture = null;
-            }
-
             try
             {
-                // The Thread cannot be started more than once, so we may clean up the delegate
-                thread._threadStart = null;
+                StartHelper? startHelper = thread._startHelper;
+                Debug.Assert(startHelper != null);
+                thread._startHelper = null;
 
-                ParameterizedThreadStart paramThreadStart = threadStart as ParameterizedThreadStart;
-                if (paramThreadStart != null)
-                {
-                    paramThreadStart(threadStartArg);
-                }
-                else
-                {
-                    ((ThreadStart)threadStart)();
-                }
+                startHelper.Run();
             }
             finally
             {
@@ -495,18 +441,6 @@ namespace System.Threading
             if ((state & (int)ThreadState.Background) == 0)
             {
                 DecrementRunningForeground();
-            }
-        }
-
-        private void SetCultureOnUnstartedThreadNoCheck(CultureInfo value, bool uiCulture)
-        {
-            if (uiCulture)
-            {
-                _startUICulture = value;
-            }
-            else
-            {
-                _startCulture = value;
             }
         }
 
