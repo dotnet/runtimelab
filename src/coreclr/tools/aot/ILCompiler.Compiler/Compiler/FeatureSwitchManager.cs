@@ -225,13 +225,14 @@ namespace ILCompiler
                         if (reader.HasNext)
                         {
                             // If the bytes following this basic block are not reachable from anywhere,
-                            // the flags would make it look like the current instruction is just veeery long
-                            // once we do sweeping. This would result in us keeping the bytes following
-                            // this basic block intact.
-                            // One would think it doesn't matter, but RyuJIT actually reads these bytes.
-                            // We better NOP them out and to do that, sweeping step needs to see this is
-                            // a new (potentially looong) unmarked instruction.
-                            flags[reader.Offset] |= OpcodeFlags.InstructionStart;
+                            // the sweeping step would consider them to be part of the last instruction
+                            // of the current basic block because of how instruction boundaries are identified.
+                            // We wouldn't NOP them out if the current basic block is reachable.
+                            //
+                            // That's a problem for RyuJIT because RyuJIT looks at these bytes for... reasons.
+                            //
+                            // We can just do the same thing as RyuJIT and consider those a basic block.
+                            offsetsToVisit.Push(reader.Offset);
                         }
                         break;
                     }
