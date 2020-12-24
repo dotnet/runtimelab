@@ -38,9 +38,13 @@
     <SkipValidatePackage>true</SkipValidatePackage>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <PkgProjPath>$(MSBuildProjectDirectory)\..\pkg\$(MSBuildProjectName).pkgproj</PkgProjPath>
+  </PropertyGroup>
+
   <Import Condition="Exists('$(PkgDir)baseline\baseline.props') and '$(MSBuildProjectExtension)' == '.pkgproj'" Project="$(PkgDir)baseline\baseline.props" />
 
-  <PropertyGroup Condition="'$(OsEnvironment)'=='Unix'">
+  <PropertyGroup Condition="'$(OsEnvironment)' == 'Unix'">
     <!--
       Building packages fails for two reasons.
       First, nuget doesn't like the paths in the nuspec having backslashes as directory separators.
