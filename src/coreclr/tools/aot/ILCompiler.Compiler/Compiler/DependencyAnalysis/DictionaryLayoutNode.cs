@@ -222,7 +222,13 @@ namespace ILCompiler.DependencyAnalysis
         public override int GetSlotForEntry(GenericLookupResult entry)
         {
             int index = Array.IndexOf(_layout, entry);
-            Debug.Assert(index >= 0);
+
+            // This entry wasn't precomputed. If this is an optimized build with scanner, it might suggest
+            // the scanner didn't see the need for this. There is a discrepancy between scanning and compiling.
+            // This is a fatal error to prevent bad codegen.
+            if (index < 0)
+                throw new InvalidOperationException($"{OwningMethodOrType}: {entry}");
+
             return index;
         }
 
@@ -284,7 +290,12 @@ namespace ILCompiler.DependencyAnalysis
                 ComputeLayout();
 
             int index = Array.IndexOf(_layout, entry);
-            Debug.Assert(index >= 0);
+
+            // We never called EnsureEntry on this during compilation?
+            // This is a fatal error to prevent bad codegen.
+            if (index < 0)
+                throw new InvalidOperationException($"{OwningMethodOrType}: {entry}");
+
             return index;
         }
 

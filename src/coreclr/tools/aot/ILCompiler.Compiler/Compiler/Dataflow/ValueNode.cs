@@ -756,7 +756,9 @@ namespace ILCompiler.Dataflow
             Kind = ValueNodeKind.MethodParameter;
             ParameterIndex = parameterIndex;
             DynamicallyAccessedMemberTypes = dynamicallyAccessedMemberTypes;
-            SourceContext = new ParameterOrigin(method, parameterIndex);
+            SourceContext = !method.Signature.IsStatic && parameterIndex == 0 ?
+                new MethodOrigin(method) :
+                new ParameterOrigin(method, parameterIndex);
         }
 
         public int ParameterIndex { get; }

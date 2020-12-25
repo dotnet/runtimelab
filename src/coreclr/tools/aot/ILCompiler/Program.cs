@@ -77,6 +77,8 @@ namespace ILCompiler
 
         private IReadOnlyList<string> _removedFeatures = Array.Empty<string>();
 
+        private IReadOnlyList<string> _featureSwitches = Array.Empty<string>();
+
         private IReadOnlyList<string> _suppressedWarnings = Array.Empty<string>();
 
         private IReadOnlyList<string> _directPInvokes = Array.Empty<string>();
@@ -191,6 +193,7 @@ namespace ILCompiler
                 syntax.DefineOption("methodbodyfolding", ref _methodBodyFolding, "Fold identical method bodies");
                 syntax.DefineOptionList("initassembly", ref _initAssemblies, "Assembly(ies) with a library initializer");
                 syntax.DefineOptionList("appcontextswitch", ref _appContextSwitches, "System.AppContext switches to set");
+                syntax.DefineOptionList("feature", ref _featureSwitches, "Feature switches to apply (format: 'Namespace.Name=[true|false]'");
                 syntax.DefineOptionList("runtimeopt", ref _runtimeOptions, "Runtime options to set");
                 syntax.DefineOptionList("removefeature", ref _removedFeatures, "Framework features to remove");
                 syntax.DefineOption("singlethreaded", ref _singleThreaded, "Run compilation on a single thread");
@@ -599,6 +602,17 @@ namespace ILCompiler
 
             if (removedFeatures != 0)
                 ilProvider = new RemovingILProvider(ilProvider, removedFeatures);
+
+            List<KeyValuePair<string, bool>> featureSwitches = new List<KeyValuePair<string, bool>>();
+            foreach (var switchPair in _featureSwitches)
+            {
+                string[] switchAndValue = switchPair.Split('=');
+                if (switchAndValue.Length != 2
+                    || !bool.TryParse(switchAndValue[1], out bool switchValue))
+                    throw new CommandLineException($"Unexpected feature switch pair '{switchPair}'");
+                featureSwitches.Add(new KeyValuePair<string, bool>(switchAndValue[0], switchValue));
+            }
+            ilProvider = new FeatureSwitchManager(ilProvider, featureSwitches);
 
             var logger = new Logger(Console.Out, _isVerbose, ProcessWarningCodes(_suppressedWarnings));
 

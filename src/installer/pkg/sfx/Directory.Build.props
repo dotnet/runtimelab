@@ -2,6 +2,7 @@
   <PropertyGroup>
     <EnsureRuntimeIdentifierSet>true</EnsureRuntimeIdentifierSet>
   </PropertyGroup>
+
   <Import Project="$([MSBuild]::GetPathOfFileAbove(Directory.Build.props, $(MSBuildThisFileDirectory)..))" />
 
   <PropertyGroup>
@@ -19,5 +20,7 @@
     <ProductBrandPrefix>Microsoft .NET</ProductBrandPrefix>
     <GenerateInstallers>true</GenerateInstallers>
     <GenerateVSInsertionPackages>true</GenerateVSInsertionPackages>
+    <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
+    <UseRuntimePackageDisclaimer>true</UseRuntimePackageDisclaimer>
   </PropertyGroup>
 </Project>

@@ -21,15 +21,15 @@
       <ReproResponseLines Include="-r:$(RuntimeBinDir)aotsdk\*.dll" />
       <ReproResponseLines Include="-r:$(ArtifactsDir)bin\pkg\$(BuildTargetFramework)\runtime\windows-$(LibrariesConfiguration)-$(TargetArchitecture)\*.dll" />
       <ReproResponseLines Include="-g" />
+      <ReproResponseLines Include="-O" Condition="'$(Optimize)' == 'true'" />
       <ReproResponseLines Include="--initassembly:System.Private.CoreLib" />
       <ReproResponseLines Include="--initassembly:System.Private.StackTraceMetadata" />
       <ReproResponseLines Include="--initassembly:System.Private.TypeLoader" />
       <ReproResponseLines Include="--initassembly:System.Private.Reflection.Execution" />
       <ReproResponseLines Include="--initassembly:System.Private.Interop" />
       <ReproResponseLines Include="--initassembly:System.Private.DeveloperExperience.Console" />
-      <ReproResponseLines Include="--completetypemetadata" />
+      <ReproResponseLines Include="--directpinvokelist:$(RuntimeBinDir)build\WindowsAPIs.txt" />
       <ReproResponseLines Include="--stacktracedata" />
-      <ReproResponseLines Include="--rootallapplicationassemblies" />
       <ReproResponseLines Include="--scanreflection" />
       <ReproResponseLines Include="--removefeature:SerializationGuard" />
     </ItemGroup>
