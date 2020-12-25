@@ -5,6 +5,12 @@
     <PackageDescription>Provides a native AOT compiler and runtime for .NET</PackageDescription>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <!-- For now, send symbols package into a dummy directory to avoid conflicts with dotnet/runtime and
+         to avoid issues with objwriter not having the rigth ELF version resource -->
+    <SymbolPackageOutputPath>$([MSBuild]::NormalizeDirectory('$(ArtifactsPackagesDir)', 'Ignored'))</SymbolPackageOutputPath>
+  </PropertyGroup>
+
   <Target Name="GetIlcCompilerFiles"
           DependsOnTargets="ResolveLibrariesFromLocalBuild"
           BeforeTargets="GetPackageFiles">
