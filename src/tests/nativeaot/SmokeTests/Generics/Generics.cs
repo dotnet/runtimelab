@@ -2579,41 +2579,4 @@ class Program
         }
     }
 
-
-    class TestGenericInliningDoesntHappen
-    {
-        interface IGenericInterface<T>
-        {
-            int Execute();
-        }
-
-        class GenericInterfaceImpl<T> : IGenericInterface<T>
-        {
-            public int Execute() => 42;
-        }
-
-        class GenericType<T>
-        {
-            IGenericInterface<T> _instance = new GenericInterfaceImpl<T>();
-
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            public static GenericType<T> GenericMethod<U>()
-            {
-                var v = new GenericType<T>();
-                // Codegen might attempt to inline this, but it requires generic inlining we don't support right now
-                if (v.NonGenericMethod() != 42)
-                    throw new Exception();
-                return v;
-            }
-
-            private int NonGenericMethod() => _instance.Execute();
-        }
-
-        public static void Run()
-        {
-            // Regression test for https://github.com/dotnet/runtimelab/issues/485
-            GenericType<object>.GenericMethod<int>();
-        }
-    }
-
 }
