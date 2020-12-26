@@ -542,7 +542,7 @@ namespace ILCompiler
                         _ => opcode - ILOpcode.ldloc_0,
                     };
 
-                    for (int potentialStlocOffset = currentOffset - 1; potentialStlocOffset >= 0; potentialStlocOffset++)
+                    for (int potentialStlocOffset = currentOffset - 1; potentialStlocOffset >= 0; potentialStlocOffset--)
                     {
                         if ((flags[potentialStlocOffset] & OpcodeFlags.InstructionStart) == 0)
                             continue;
@@ -553,8 +553,8 @@ namespace ILCompiler
                             (otherOpcode >= ILOpcode.stloc_0 && otherOpcode <= ILOpcode.stloc_3))
                             && otherOpcode switch
                             {
-                                ILOpcode.stloc => reader.ReadILUInt16(),
-                                ILOpcode.stloc_s => reader.ReadILByte(),
+                                ILOpcode.stloc => nestedReader.ReadILUInt16(),
+                                ILOpcode.stloc_s => nestedReader.ReadILByte(),
                                 _ => otherOpcode - ILOpcode.stloc_0,
                             } == locIndex)
                         {
