@@ -53,6 +53,22 @@ class Program
             {
                 EnsurePresent(typeof(NotPresentType));
             }
+            if (IsEnabled())
+            {
+                EnsurePresent(typeof(NotPresentType));
+            }
+            if (IsEnabled())
+            {
+                EnsurePresent(typeof(NotPresentType));
+            }
+            if (IsEnabled())
+            {
+                EnsurePresent(typeof(NotPresentType));
+            }
+            if (IsEnabled())
+            {
+                EnsurePresent(typeof(NotPresentType));
+            }
 
             ThrowIfPresent(typeof(SimpleTest), nameof(NotPresentType));
         }
