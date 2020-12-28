@@ -15,6 +15,7 @@ using Internal.TypeSystem;
 using Internal.TypeSystem.Ecma;
 
 using Debug = System.Diagnostics.Debug;
+using MethodDebugInformation = Internal.IL.MethodDebugInformation;
 
 namespace ILCompiler
 {
@@ -441,7 +442,25 @@ namespace ILCompiler
                 }
             }
 
-            return new SubstitutedMethodIL(method, newBody, newEHRegions.ToArray());
+            // Existing debug information might not match new instruction boundaries (plus there's little point
+            // in generating debug information for NOPs) - generate new debug information by filtering
+            // out the sequence points associated with nopped out instructions.
+            MethodDebugInformation debugInfo = method.GetDebugInfo();
+            if (debugInfo != null)
+            {
+                ArrayBuilder<ILSequencePoint> sequencePoints = new ArrayBuilder<ILSequencePoint>();
+                foreach (var sequencePoint in debugInfo.GetSequencePoints())
+                {
+                    if ((flags[sequencePoint.Offset] & OpcodeFlags.Mark) != 0)
+                    {
+                        sequencePoints.Add(sequencePoint);
+                    }
+                }
+
+                debugInfo = new SubstitutedDebugInformation(debugInfo, sequencePoints.ToArray());
+            }
+
+            return new SubstitutedMethodIL(method, newBody, newEHRegions.ToArray(), debugInfo);
         }
 
         private bool TryGetConstantArgument(MethodIL methodIL, byte[] body, OpcodeFlags[] flags, int offset, int argIndex, out int constant)
@@ -609,12 +628,14 @@ namespace ILCompiler
             private readonly byte[] _body;
             private readonly ILExceptionRegion[] _ehRegions;
             private readonly MethodIL _wrappedMethodIL;
+            private readonly MethodDebugInformation _debugInfo;
 
-            public SubstitutedMethodIL(MethodIL wrapped, byte[] body, ILExceptionRegion[] ehRegions)
+            public SubstitutedMethodIL(MethodIL wrapped, byte[] body, ILExceptionRegion[] ehRegions, MethodDebugInformation debugInfo)
             {
                 _wrappedMethodIL = wrapped;
                 _body = body;
                 _ehRegions = ehRegions;
+                _debugInfo = debugInfo;
             }
 
             public override MethodDesc OwningMethod => _wrappedMethodIL.OwningMethod;
@@ -624,6 +645,23 @@ namespace ILCompiler
             public override byte[] GetILBytes() => _body;
             public override LocalVariableDefinition[] GetLocals() => _wrappedMethodIL.GetLocals();
             public override object GetObject(int token) => _wrappedMethodIL.GetObject(token);
+            public override MethodDebugInformation GetDebugInfo() => _debugInfo;
+        }
+
+        private class SubstitutedDebugInformation : MethodDebugInformation
+        {
+            private readonly MethodDebugInformation _originalDebugInformation;
+            private readonly ILSequencePoint[] _sequencePoints;
+
+            public SubstitutedDebugInformation(MethodDebugInformation originalDebugInformation, ILSequencePoint[] newSequencePoints)
+            {
+                _originalDebugInformation = originalDebugInformation;
+                _sequencePoints = newSequencePoints;
+            }
+
+            public override IEnumerable<Internal.IL.ILLocalVariable> GetLocalVariables() => _originalDebugInformation.GetLocalVariables();
+            public override IEnumerable<string> GetParameterNames() => _originalDebugInformation.GetParameterNames();
+            public override IEnumerable<ILSequencePoint> GetSequencePoints() => _sequencePoints;
         }
 
         private class FeatureSwitchHashtable : LockFreeReaderHashtable<EcmaModule, AssemblyFeatureInfo>
