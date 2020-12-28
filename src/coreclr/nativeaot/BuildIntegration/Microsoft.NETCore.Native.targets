@@ -37,6 +37,11 @@ The .NET Foundation licenses this file to you under the MIT license.
     <SuppressTrimAnalysisWarnings Condition="$(SuppressTrimAnalysisWarnings) == ''">true</SuppressTrimAnalysisWarnings>
   </PropertyGroup>
 
+  <!-- Set up default feature switches -->
+  <PropertyGroup>
+    <EnableUnsafeBinaryFormatterSerialization Condition="'$(EnableUnsafeBinaryFormatterSerialization)' == ''">false</EnableUnsafeBinaryFormatterSerialization>
+  </PropertyGroup>
+
   <PropertyGroup>
     <NativeObjectExt Condition="'$(TargetOS)' == 'windows'">.obj</NativeObjectExt>
     <NativeObjectExt Condition="'$(TargetOS)' != 'windows'">.o</NativeObjectExt>
