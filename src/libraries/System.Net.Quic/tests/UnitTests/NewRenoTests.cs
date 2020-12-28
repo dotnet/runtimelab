@@ -12,7 +12,7 @@ namespace System.Net.Quic.Tests
     {
         private NewRenoCongestionController reno => NewRenoCongestionController.Instance;
 
-        private readonly RecoveryController recovery = new RecoveryController();
+        private readonly RecoveryController recovery = new RecoveryController(NewRenoCongestionController.Instance);
 
         private long Now = Timestamp.Now;
 

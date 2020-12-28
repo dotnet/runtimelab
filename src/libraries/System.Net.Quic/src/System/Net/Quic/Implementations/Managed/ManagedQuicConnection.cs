@@ -239,7 +239,7 @@ namespace System.Net.Quic.Implementations.Managed
             SourceConnectionId = ConnectionId.Random(ConnectionId.DefaultCidSize);
             DestinationConnectionId = ConnectionId.Random(ConnectionId.DefaultCidSize);
             Trace = InitTrace(IsServer, DestinationConnectionId.Data);
-            Recovery = new RecoveryController(Trace);
+            Recovery = new RecoveryController(RecoveryController.GetDefaultCongestionController(), Trace);
             _localConnectionIdCollection.Add(SourceConnectionId);
 
             // derive also clients initial secrets.
@@ -262,7 +262,7 @@ namespace System.Net.Quic.Implementations.Managed
 
             Tls = tlsProvider.CreateServer(this, options, _localTransportParameters);
             Trace = InitTrace(IsServer, odcid);
-            Recovery = new RecoveryController(Trace);
+            Recovery = new RecoveryController(RecoveryController.GetDefaultCongestionController(), Trace);
 
             CoreInit();
         }

@@ -12,17 +12,30 @@ using System.Net.Quic.Implementations.Managed.Internal.Tracing;
 namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
 {
     /// <summary>
-    ///     Class encapsulating logic on packet loss recovery.
+    ///     Class encapsulating basic logic on packet loss recovery.
     /// </summary>
     internal class RecoveryController
     {
+        /// <summary>
+        ///     Maximum size of a sent UDP datagram
+        ///     TODO-RZ: discover real path MTU
+        /// </summary>
         internal const int MaxDatagramSize = 1452;
 
+        internal static ICongestionController GetDefaultCongestionController()
+        {
+            string? cc = Environment.GetEnvironmentVariable("DOTNETQUIC_CC")?.ToLower();
+            return cc switch
+            {
+                "cubic" => new CubicCongestionController(),
+                _ => NewRenoCongestionController.Instance
+            };
+        }
 
-        public RecoveryController(IQuicTrace? trace = null)
+        public RecoveryController(ICongestionController congestionController, IQuicTrace? trace = null)
         {
             Trace = trace;
-            CongestionController = NewRenoCongestionController.Instance;
+            CongestionController = congestionController;
             Reset();
         }
 
@@ -329,6 +342,8 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
             MaxAckDelay = Timestamp.FromMilliseconds(25);
             LastLargeDatagramSentTimestamp = long.MinValue;
             BytesInFlight = 0;
+
+            CongestionController.Reset();
 
             foreach (PacketNumberSpace space in _pnSpaces)
             {
@@ -735,5 +750,16 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
             pnSpace.Reset();
             SetLossDetectionTimer(isHandshakeComplete);
         }
+
+        /// <summary>
+        ///     Returns true if the given timestamp is in current congestion recovery period.
+        /// </summary>
+        /// <param name="sentTimestamp"></param>
+        /// <returns></returns>
+        internal bool InCongestionRecovery(long sentTimestamp)
+        {
+            return sentTimestamp <= CongestionRecoveryStartTime;
+        }
+
     }
 }

@@ -32,5 +32,10 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
         /// <param name="packets">Packets lost.</param>
         /// <param name="now">Timestamp when loss occured in ticks.</param>
         void OnPacketsLost(RecoveryController recovery, Span<SentPacket> packets, long now);
+
+        /// <summary>
+        ///     Resets the congestion controller to the default state.
+        /// </summary>
+        void Reset();
     }
 }

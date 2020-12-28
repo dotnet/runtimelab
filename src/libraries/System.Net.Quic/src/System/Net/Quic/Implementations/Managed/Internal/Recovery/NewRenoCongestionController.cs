@@ -8,7 +8,7 @@ using System.Net.Quic.Implementations.Managed.Internal.Tracing;
 namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
 {
     /// <summary>
-    ///     Implementation of the reference congestion controll algorithm for QUIC based on the [RECOVERY] draft.
+    ///     Implementation of the reference congestion control algorithm for QUIC based on the [RECOVERY] draft.
     /// </summary>
     internal class NewRenoCongestionController : ICongestionController
     {
@@ -39,7 +39,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
             Debug.Assert(packet.InFlight);
             recovery.BytesInFlight -= packet.BytesSent;
 
-            if (InCongestionRecovery(recovery, packet.TimeSent))
+            if (recovery.InCongestionRecovery(packet.TimeSent))
             {
                 // do not increase congestion window in recovery period.
                 return;
@@ -64,30 +64,37 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
             }
         }
 
+        private void CollapseCongestionWindow(RecoveryController recovery)
+        {
+            recovery.CongestionWindow = RecoveryController.MinimumWindowSize;
+        }
+
         public void OnPacketsLost(RecoveryController recovery, Span<SentPacket> lostPackets, long now)
         {
-            SentPacket? lastPacket = null;
             foreach (var packet in lostPackets)
             {
                 Debug.Assert(packet.InFlight);
                 recovery.BytesInFlight -= packet.BytesSent;
-                lastPacket = packet;
             }
 
-            if (lastPacket != null)
+            if (lostPackets.IsEmpty)
             {
-                OnCongestionEvent(recovery, lastPacket.TimeSent, now);
+                return;
+            }
 
-                if (InPersistentCongestion(lastPacket))
-                {
-                    recovery.CongestionWindow = RecoveryController.MinimumWindowSize;
-                }
+            var lastPacket = lostPackets[^1];
+
+            OnCongestionEvent(recovery, lastPacket.TimeSent, now);
+
+            if (InPersistentCongestion(lastPacket))
+            {
+                CollapseCongestionWindow(recovery);
             }
         }
 
-        private bool InCongestionRecovery(RecoveryController recovery, long sentTimestamp)
+        public void Reset()
         {
-            return sentTimestamp < recovery.CongestionRecoveryStartTime;
+            // do nothing, we do not store any extra state here
         }
 
         private bool InPersistentCongestion(SentPacket largestLostPacket)
@@ -103,7 +110,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Recovery
         internal void OnCongestionEvent(RecoveryController recovery, long sentTimestamp, long now)
         {
             // start a new congestion event if packet was sent after the start of the previous congestion recovery period
-            if (InCongestionRecovery(recovery, sentTimestamp))
+            if (recovery.InCongestionRecovery(sentTimestamp))
                 return;
 
             recovery.CongestionRecoveryStartTime = now;
