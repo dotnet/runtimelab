@@ -446,12 +446,13 @@ namespace ILCompiler
             // in generating debug information for NOPs) - generate new debug information by filtering
             // out the sequence points associated with nopped out instructions.
             MethodDebugInformation debugInfo = method.GetDebugInfo();
-            if (debugInfo != null)
+            IEnumerable<ILSequencePoint> oldSequencePoints = debugInfo?.GetSequencePoints();
+            if (oldSequencePoints != null)
             {
                 ArrayBuilder<ILSequencePoint> sequencePoints = new ArrayBuilder<ILSequencePoint>();
-                foreach (var sequencePoint in debugInfo.GetSequencePoints())
+                foreach (var sequencePoint in oldSequencePoints)
                 {
-                    if ((flags[sequencePoint.Offset] & OpcodeFlags.Mark) != 0)
+                    if (sequencePoint.Offset < flags.Length && (flags[sequencePoint.Offset] & OpcodeFlags.Mark) != 0)
                     {
                         sequencePoints.Add(sequencePoint);
                     }
