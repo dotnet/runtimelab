@@ -15,6 +15,8 @@ using FlowAnnotations = ILCompiler.Dataflow.FlowAnnotations;
 using DependencyList = ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.DependencyList;
 using Debug = System.Diagnostics.Debug;
 using CustomAttributeValue = System.Reflection.Metadata.CustomAttributeValue<Internal.TypeSystem.TypeDesc>;
+using EcmaModule = Internal.TypeSystem.Ecma.EcmaModule;
+using CustomAttributeHandle = System.Reflection.Metadata.CustomAttributeHandle;
 
 namespace ILCompiler
 {
@@ -33,6 +35,7 @@ namespace ILCompiler
         private readonly List<FieldDesc> _fieldsWithMetadata = new List<FieldDesc>();
         private readonly List<MethodDesc> _methodsWithMetadata = new List<MethodDesc>();
         private readonly List<MetadataType> _typesWithMetadata = new List<MetadataType>();
+        private readonly List<ReflectableCustomAttribute> _customAttributesWithMetadata = new List<ReflectableCustomAttribute>();
 
         private readonly HashSet<ModuleDesc> _rootAllAssembliesExaminedModules = new HashSet<ModuleDesc>();
 
@@ -92,6 +95,12 @@ namespace ILCompiler
             if (typeMetadataNode != null)
             {
                 _typesWithMetadata.Add(typeMetadataNode.Type);
+            }
+
+            var customAttributeMetadataNode = obj as CustomAttributeMetadataNode;
+            if (customAttributeMetadataNode != null)
+            {
+                _customAttributesWithMetadata.Add(customAttributeMetadataNode.CustomAttribute);
             }
         }
 
@@ -629,7 +638,7 @@ namespace ILCompiler
             return new AnalysisBasedMetadataManager(
                 _typeSystemContext, _blockingPolicy, _resourceBlockingPolicy, _metadataLogFile, _stackTraceEmissionPolicy, _dynamicInvokeThunkGenerationPolicy,
                 _modulesWithMetadata, reflectableTypes.ToEnumerable(), reflectableMethods.ToEnumerable(),
-                reflectableFields.ToEnumerable(), GetTypesWithConstructedEETypes());
+                reflectableFields.ToEnumerable(), _customAttributesWithMetadata, GetTypesWithConstructedEETypes());
         }
 
         private struct ReflectableEntityBuilder<T>
@@ -691,6 +700,11 @@ namespace ILCompiler
             public bool GeneratesMetadata(MetadataType typeDef)
             {
                 return _factory.TypeMetadata(typeDef).Marked;
+            }
+
+            public bool GeneratesMetadata(EcmaModule module, CustomAttributeHandle caHandle)
+            {
+                return _factory.CustomAttributeMetadata(new ReflectableCustomAttribute(module, caHandle)).Marked;
             }
 
             public bool IsBlocked(MetadataType typeDef)
