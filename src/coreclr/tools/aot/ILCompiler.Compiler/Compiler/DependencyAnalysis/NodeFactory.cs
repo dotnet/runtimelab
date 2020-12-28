@@ -443,6 +443,11 @@ namespace ILCompiler.DependencyAnalysis
                 return new ModuleMetadataNode(module);
             });
 
+            _customAttributesWithMetadata = new NodeCache<ReflectableCustomAttribute, CustomAttributeMetadataNode>(ca =>
+            {
+                return new CustomAttributeMetadataNode(ca);
+            });
+
             _genericDictionaryLayouts = new NodeCache<TypeSystemEntity, DictionaryLayoutNode>(_dictionaryLayoutProvider.GetLayout);
 
             _stringAllocators = new NodeCache<MethodDesc, IMethodNode>(constructor =>
@@ -977,6 +982,16 @@ namespace ILCompiler.DependencyAnalysis
             // in the dependency graph otherwise.
             Debug.Assert(MetadataManager is UsageBasedMetadataManager);
             return _modulesWithMetadata.GetOrAdd(module);
+        }
+
+        private NodeCache<ReflectableCustomAttribute, CustomAttributeMetadataNode> _customAttributesWithMetadata;
+
+        internal CustomAttributeMetadataNode CustomAttributeMetadata(ReflectableCustomAttribute ca)
+        {
+            // These are only meaningful for UsageBasedMetadataManager. We should not have them
+            // in the dependency graph otherwise.
+            Debug.Assert(MetadataManager is UsageBasedMetadataManager);
+            return _customAttributesWithMetadata.GetOrAdd(ca);
         }
 
         private NodeCache<string, FrozenStringNode> _frozenStringNodes;

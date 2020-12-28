@@ -83,10 +83,8 @@ namespace ILCompiler.DependencyAnalysis
             AssemblyDefinition asmDef = assembly.MetadataReader.GetAssemblyDefinition();
             AddDependenciesDueToCustomAttributes(ref dependencies, factory, assembly, asmDef.GetCustomAttributes());
 
-            // This is rather awkward because ModuleDefinition doesn't offer means to get to the custom attributes
-            CustomAttributeHandleCollection moduleAttributes =
-                assembly.MetadataReader.GetCustomAttributes(System.Reflection.Metadata.Ecma335.MetadataTokens.EntityHandle(0x1));
-            AddDependenciesDueToCustomAttributes(ref dependencies, factory, assembly, moduleAttributes);
+            ModuleDefinition moduleDef = assembly.MetadataReader.GetModuleDefinition();
+            AddDependenciesDueToCustomAttributes(ref dependencies, factory, assembly, moduleDef.GetCustomAttributes());
         }
 
         private static void AddDependenciesDueToCustomAttributes(ref DependencyList dependencies, NodeFactory factory, EcmaModule module, CustomAttributeHandleCollection attributeHandles)
@@ -118,6 +116,7 @@ namespace ILCompiler.DependencyAnalysis
                     {
                         dependencies = dependencies ?? new DependencyList();
                         dependencies.AddRange(caDependencies);
+                        dependencies.Add(factory.CustomAttributeMetadata(new ReflectableCustomAttribute(module, caHandle)), "Attribute metadata");
                     }
                 }
                 catch (TypeSystemException)
