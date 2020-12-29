@@ -90,7 +90,7 @@ namespace ILCompiler.DependencyAnalysis
         private static void AddDependenciesDueToCustomAttributes(ref DependencyList dependencies, NodeFactory factory, EcmaModule module, CustomAttributeHandleCollection attributeHandles)
         {
             MetadataReader reader = module.MetadataReader;
-            MetadataManager mdManager = factory.MetadataManager;
+            var mdManager = (UsageBasedMetadataManager)factory.MetadataManager;
             var attributeTypeProvider = new CustomAttributeTypeProvider(module);
 
 
@@ -101,6 +101,10 @@ namespace ILCompiler.DependencyAnalysis
                 try
                 {
                     MethodDesc constructor = module.GetMethod(attribute.Constructor);
+
+                    if (!mdManager.GeneratesAttributeMetadata(constructor.OwningType))
+                        continue;
+
                     if (mdManager.IsReflectionBlocked(constructor))
                         continue;
 
