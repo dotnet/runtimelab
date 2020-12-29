@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <DefineConstants>SYSTEM_PRIVATE_CORELIB;FEATURE_MANAGED_ETW_CHANNELS;FEATURE_MANAGED_ETW;$(DefineConstants)</DefineConstants>
+    <DefineConstants>SYSTEM_PRIVATE_CORELIB;FEATURE_MANAGED_ETW_CHANNELS;FEATURE_MANAGED_ETW;FEATURE_POOLASYNCVALUETASKS;$(DefineConstants)</DefineConstants>
     <TargetsCoreRT>true</TargetsCoreRT>
     <UseSyncTable>true</UseSyncTable>
   </PropertyGroup>
@@ -477,7 +477,7 @@
     </Compile>
   </ItemGroup>
   <ItemGroup Condition="'$(InPlaceRuntime)' == 'true'">
-    <Compile Include="$(BaseIntermediateOutputPath)..\..\$(PlatformConfigPathPart)\nativeaot\Runtime\Full\AsmOffsets.cs" />
+    <Compile Include="$(BaseIntermediateOutputPath)..\..\$(TargetOS).$(TargetArchitecture).$(CoreCLRConfiguration)\nativeaot\Runtime\Full\AsmOffsets.cs" />
   </ItemGroup>
 
   <Import Project="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System.Private.CoreLib.Shared.projitems" Label="Shared" />

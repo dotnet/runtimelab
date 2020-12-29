@@ -347,10 +347,12 @@ namespace System.Runtime.CompilerServices
             void IValueTaskSource.GetResult(short token) => throw NotImplemented.ByDesign;
         }
 
+#if FEATURE_POOLASYNCVALUETASKS
         private sealed class SyncSuccessSentinelStateMachineBox : StateMachineBox
         {
             public SyncSuccessSentinelStateMachineBox() => SetResult(default!);
         }
+#endif
 
         /// <summary>Provides a strongly-typed box object based on the specific state machine type in use.</summary>
         private sealed class StateMachineBox<TStateMachine> :
@@ -369,7 +371,6 @@ namespace System.Runtime.CompilerServices
             private static StateMachineBox<TStateMachine>? s_cache;
             /// <summary>The number of items stored in <see cref="s_cache"/>.</summary>
             private static int s_cacheSize;
-#endif
 
             // TODO:
             // AsyncTaskMethodBuilder logs about the state machine box lifecycle; AsyncValueTaskMethodBuilder currently
@@ -380,6 +381,8 @@ namespace System.Runtime.CompilerServices
 
             /// <summary>If this box is stored in the cache, the next box in the cache.</summary>
             private StateMachineBox<TStateMachine>? _next;
+#endif
+
             /// <summary>The state machine itself.</summary>
             public TStateMachine? StateMachine;
 
@@ -419,7 +422,9 @@ namespace System.Runtime.CompilerServices
 
             private void ReturnOrDropBox()
             {
+#if FEATURE_POOLASYNCVALUETASKS
                 Debug.Assert(_next is null, "Expected box to not be part of cached list.");
+#endif
 
                 // Clear out the state machine and associated context to avoid keeping arbitrary state referenced by
                 // lifted locals.  We want to do this regardless of whether we end up caching the box or not, in case
