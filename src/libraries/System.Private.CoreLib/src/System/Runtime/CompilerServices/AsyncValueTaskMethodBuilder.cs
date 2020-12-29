@@ -5,7 +5,9 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Internal.Runtime.CompilerServices;
 
+#if FEATURE_POOLASYNCVALUETASKS
 using StateMachineBox = System.Runtime.CompilerServices.AsyncValueTaskMethodBuilder<System.Threading.Tasks.VoidTaskResult>.StateMachineBox;
+#endif
 
 namespace System.Runtime.CompilerServices
 {
