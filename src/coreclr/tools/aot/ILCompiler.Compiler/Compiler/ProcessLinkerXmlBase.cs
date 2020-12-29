@@ -143,6 +143,10 @@ namespace ILCompiler
                     {
                         ProcessField(type);
                     }
+                    else if (_reader.Name == "attribute")
+                    {
+                        ProcessAttribute(type);
+                    }
 
                     _reader.Skip();
                 }
@@ -219,6 +223,10 @@ namespace ILCompiler
         }
 
         protected virtual void ProcessField(FieldDesc field)
+        {
+        }
+
+        protected virtual void ProcessAttribute(TypeDesc type)
         {
         }
 
