@@ -40,6 +40,7 @@ The .NET Foundation licenses this file to you under the MIT license.
   <!-- Set up default feature switches -->
   <PropertyGroup>
     <EnableUnsafeBinaryFormatterSerialization Condition="'$(EnableUnsafeBinaryFormatterSerialization)' == ''">false</EnableUnsafeBinaryFormatterSerialization>
+    <UseSystemResourceKeys Condition="$(IlcDisableReflection) == 'true'">true</UseSystemResourceKeys>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -223,7 +224,6 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Condition="$(IlcDisableReflection) == 'true'" Include="--disablereflection" />
       <IlcArg Condition="$(IlcSingleThreaded) == 'true'" Include="--singlethreaded" />
       <IlcArg Condition="$(IlcDisableReflection) == 'true'" Include="--removefeature:EventSource" />
-      <IlcArg Condition="$(IlcDisableReflection) == 'true'" Include="--removefeature:FrameworkStrings" />
       <IlcArg Condition="$(IlcInvariantGlobalization) == 'true'" Include="--removefeature:Globalization" />
       <IlcArg Condition="$(IlcSystemModule) != ''" Include="--systemmodule:$(IlcSystemModule)" />
       <IlcArg Condition="$(IlcDumpIL) == 'true'" Include="--ildump:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).il" />

@@ -124,22 +124,6 @@ namespace ILCompiler
                 }
             }
 
-            if ((_removedFeature & RemovedFeature.FrameworkResources) != 0)
-            {
-                if (method.Signature.IsStatic &&
-                    owningType is Internal.TypeSystem.Ecma.EcmaType mdType &&
-                    mdType.Name == "SR" && mdType.Namespace == "System" &&
-                    FrameworkStringResourceBlockingPolicy.IsFrameworkAssembly(mdType.EcmaModule))
-                {
-                    if (method.Name == "UsingResourceKeys")
-                        return RemoveAction.ConvertToTrueStub;
-                    else if (method.Name == "GetResourceString" && method.Signature.Length == 2)
-                        return RemoveAction.ConvertToGetResourceStringStub;
-
-                    return RemoveAction.Nothing;
-                }
-            }
-
             if ((_removedFeature & RemovedFeature.Globalization) != 0)
             {
                 if (owningType is Internal.TypeSystem.Ecma.EcmaType mdType
@@ -275,7 +259,6 @@ namespace ILCompiler
     public enum RemovedFeature
     {
         Etw = 0x1,
-        FrameworkResources = 0x2,
         Globalization = 0x4,
         Comparers = 0x8,
         SerializationGuard = 0x10,

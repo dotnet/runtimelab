@@ -2,6 +2,11 @@
   <Import Project="../Directory.Build.props" />
 
   <PropertyGroup>
+    <ILLinkTrimAssembly>false</ILLinkTrimAssembly>
+    <GenerateResourcesSubstitutions>true</GenerateResourcesSubstitutions>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <EnableDefaultItems>false</EnableDefaultItems>
     <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
     <GenerateResxSourceOmitGetResourceString>true</GenerateResxSourceOmitGetResourceString>

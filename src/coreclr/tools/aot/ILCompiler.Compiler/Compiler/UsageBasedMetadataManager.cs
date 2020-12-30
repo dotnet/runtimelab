@@ -22,6 +22,8 @@ using CustomAttributeValue = System.Reflection.Metadata.CustomAttributeValue<Int
 using EcmaModule = Internal.TypeSystem.Ecma.EcmaModule;
 using EcmaType = Internal.TypeSystem.Ecma.EcmaType;
 using CustomAttributeHandle = System.Reflection.Metadata.CustomAttributeHandle;
+using CustomAttributeTypeProvider = Internal.TypeSystem.Ecma.CustomAttributeTypeProvider;
+using MetadataExtensions = Internal.TypeSystem.Ecma.MetadataExtensions;
 
 namespace ILCompiler
 {
@@ -226,8 +228,8 @@ namespace ILCompiler
                 {
                     _rootAllAssembliesExaminedModules.Add(metadataType.Module);
 
-                    if (metadataType.Module is Internal.TypeSystem.Ecma.EcmaModule ecmaModule &&
-                        !FrameworkStringResourceBlockingPolicy.IsFrameworkAssembly(ecmaModule))
+                    if (metadataType.Module is EcmaModule ecmaModule &&
+                        !IsFrameworkAssembly(ecmaModule))
                     {
                         dependencies = dependencies ?? new DependencyList();
                         var rootProvider = new RootingServiceProvider(factory, dependencies.Add);
@@ -290,6 +292,38 @@ namespace ILCompiler
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether '<paramref name="module"/>' is a framework assembly.
+        /// </summary>
+        public static bool IsFrameworkAssembly(EcmaModule module)
+        {
+            MetadataReader reader = module.MetadataReader;
+
+            // We look for [assembly:AssemblyMetadata(".NETFrameworkAssembly", "")]
+
+            foreach (CustomAttributeHandle attributeHandle in reader.GetAssemblyDefinition().GetCustomAttributes())
+            {
+                if (!MetadataExtensions.GetAttributeNamespaceAndName(reader, attributeHandle, out StringHandle namespaceHandle, out StringHandle nameHandle))
+                    continue;
+
+                if (!reader.StringComparer.Equals(namespaceHandle, "System.Reflection") ||
+                    !reader.StringComparer.Equals(nameHandle, "AssemblyMetadataAttribute"))
+                    continue;
+
+                var attributeTypeProvider = new CustomAttributeTypeProvider(module);
+                CustomAttribute attribute = reader.GetCustomAttribute(attributeHandle);
+                CustomAttributeValue<TypeDesc> decodedAttribute = attribute.DecodeValue(attributeTypeProvider);
+
+                if (decodedAttribute.FixedArguments.Length != 2)
+                    continue;
+
+                if (decodedAttribute.FixedArguments[0].Value is string s && s == ".NETFrameworkAssembly")
+                    return true;
+            }
+
+            return false;
         }
 
         protected override void GetRuntimeMappingDependenciesDueToReflectability(ref DependencyList dependencies, NodeFactory factory, TypeDesc type)
