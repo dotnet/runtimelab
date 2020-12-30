@@ -20,9 +20,7 @@ namespace ILCompiler.DependencyAnalysis
     // vtables are properly constructed
     internal class VirtualMethodUseNode : DependencyNodeCore<NodeFactory>
     {
-        private MethodDesc _decl;
-
-        public MethodDesc Method => _decl;
+        private readonly MethodDesc _decl;
 
         public VirtualMethodUseNode(MethodDesc decl)
         {
@@ -63,13 +61,16 @@ namespace ILCompiler.DependencyAnalysis
 
             MethodDesc canonDecl = _decl.GetCanonMethodTarget(CanonicalFormKind.Specific);
             if (canonDecl != _decl)
-                dependencies.Add(new DependencyListEntry(factory.VirtualMethodUse(canonDecl), "Canonical method"));
+                dependencies.Add(factory.VirtualMethodUse(canonDecl), "Canonical method");
 
-            dependencies.Add(new DependencyListEntry(factory.VTable(_decl.OwningType), "VTable of a VirtualMethodUse"));
+            dependencies.Add(factory.VTable(_decl.OwningType), "VTable of a VirtualMethodUse");
 
             // Do not report things like Foo<object, __Canon>.Frob().
             if (!_decl.IsCanonicalMethod(CanonicalFormKind.Any) || canonDecl == _decl)
                 factory.MetadataManager.GetDependenciesDueToVirtualMethodReflectability(ref dependencies, factory, _decl);
+
+            if (VariantInterfaceMethodUseNode.IsVariantMethodCall(factory, _decl))
+                dependencies.Add(factory.VariantInterfaceMethodUse(_decl.GetTypicalMethodDefinition()), "Variant interface call");
 
             return dependencies;
         }

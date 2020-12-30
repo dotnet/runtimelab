@@ -313,6 +313,15 @@ namespace ILCompiler.DependencyAnalysis
                 return new VirtualMethodUseNode(method);
             });
 
+            _variantMethods = new NodeCache<MethodDesc, VariantInterfaceMethodUseNode>((MethodDesc method) =>
+            {
+                // We don't need to track virtual method uses for types that have a vtable with a known layout.
+                // It's a waste of CPU time and memory.
+                Debug.Assert(!VTable(method.OwningType).HasFixedSlots);
+
+                return new VariantInterfaceMethodUseNode(method);
+            });
+
             _readyToRunHelpers = new NodeCache<ReadyToRunHelperKey, ISymbolNode>(CreateReadyToRunHelperNode);
 
             _genericReadyToRunHelpersFromDict = new NodeCache<ReadyToRunGenericHelperKey, ISymbolNode>(CreateGenericLookupFromDictionaryNode);
@@ -907,6 +916,13 @@ namespace ILCompiler.DependencyAnalysis
         public DependencyNodeCore<NodeFactory> VirtualMethodUse(MethodDesc decl)
         {
             return _virtMethods.GetOrAdd(decl);
+        }
+
+        private NodeCache<MethodDesc, VariantInterfaceMethodUseNode> _variantMethods;
+
+        public DependencyNodeCore<NodeFactory> VariantInterfaceMethodUse(MethodDesc decl)
+        {
+            return _variantMethods.GetOrAdd(decl);
         }
 
         private NodeCache<ReadyToRunHelperKey, ISymbolNode> _readyToRunHelpers;
