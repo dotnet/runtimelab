@@ -578,7 +578,6 @@ namespace Internal.Runtime.TypeLoader
         }
 #endif
 
-#if FEATURE_UNIVERSAL_GENERICS
         private class MethodCell : GenericDictionaryCell
         {
             internal MethodDesc Method;
@@ -892,7 +891,6 @@ namespace Internal.Runtime.TypeLoader
                 return thunkPtr;
             }
         }
-#endif
 
         private class CastingCell : GenericDictionaryCell
         {
@@ -1720,7 +1718,6 @@ namespace Internal.Runtime.TypeLoader
                     }
                     break;
 
-#if FEATURE_UNIVERSAL_GENERICS
                 case FixupSignatureKind.Method:
                     {
                         RuntimeSignature methodSig;
@@ -1736,6 +1733,7 @@ namespace Internal.Runtime.TypeLoader
                     }
                     break;
 
+#if FEATURE_UNIVERSAL_GENERICS
                 case FixupSignatureKind.NonGenericDirectConstrainedMethod:
                     {
                         var constraintType = nativeLayoutInfoLoadContext.GetType(ref parser);
