@@ -101,12 +101,6 @@ namespace System.Reflection.Runtime.General
 
             if (fromTypeInfo.IsPointer)
             {
-                if (toTypeInfo.Equals(CommonRuntimeTypes.Object))
-                    return true;  // T* is castable to Object.
-
-                if (toTypeInfo.Equals(CommonRuntimeTypes.UIntPtr))
-                    return true;  // T* is castable to UIntPtr (but not IntPtr)
-
                 if (!toTypeInfo.IsPointer)
                     return false;
 
