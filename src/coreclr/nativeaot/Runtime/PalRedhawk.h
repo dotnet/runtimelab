@@ -112,58 +112,6 @@ struct FILETIME
     uint32_t dwHighDateTime;
 };
 
-enum MEMORY_RESOURCE_NOTIFICATION_TYPE
-{
-    LowMemoryResourceNotification,
-    HighMemoryResourceNotification
-};
-
-enum LOGICAL_PROCESSOR_RELATIONSHIP
-{
-    RelationProcessorCore,
-    RelationNumaNode,
-    RelationCache,
-    RelationProcessorPackage
-};
-
-#define LTP_PC_SMT 0x1
-
-enum PROCESSOR_CACHE_TYPE
-{
-    CacheUnified,
-    CacheInstruction,
-    CacheData,
-    CacheTrace
-};
-
-struct CACHE_DESCRIPTOR
-{
-    uint8_t   Level;
-    uint8_t   Associativity;
-    uint16_t  LineSize;
-    uint32_t  Size;
-    PROCESSOR_CACHE_TYPE Type;
-};
-
-struct SYSTEM_LOGICAL_PROCESSOR_INFORMATION
-{
-    uintptr_t   ProcessorMask;
-    LOGICAL_PROCESSOR_RELATIONSHIP Relationship;
-    union
-    {
-        struct
-        {
-            uint8_t  Flags;
-        } ProcessorCore;
-        struct
-        {
-            uint32_t NodeNumber;
-        } NumaNode;
-        CACHE_DESCRIPTOR Cache;
-        uint64_t  Reserved[2];
-    };
-};
-
 #ifdef HOST_AMD64
 
 typedef struct DECLSPEC_ALIGN(16) _XSAVE_FORMAT {
