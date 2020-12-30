@@ -238,7 +238,6 @@ add_definitions(-DVERIFY_HEAP)
 add_definitions(-DCORERT)
 add_definitions(-DFEATURE_CACHED_INTERFACE_DISPATCH)
 add_definitions(-D_LIB)
-add_definitions(-DFEATURE_EMBEDDED_CONFIG)
 
 # there is a problem with undefined symbols when this is set
 # add_definitions(-DSTRESS_HEAP)

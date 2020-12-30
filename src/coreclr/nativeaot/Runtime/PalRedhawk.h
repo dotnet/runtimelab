@@ -708,8 +708,6 @@ REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalGetThreadContext(HANDLE hThread, _Out_ 
 
 REDHAWK_PALIMPORT int32_t REDHAWK_PALAPI PalGetProcessCpuCount();
 
-REDHAWK_PALIMPORT uint32_t REDHAWK_PALAPI PalReadFileContents(_In_z_ const TCHAR *, _Out_writes_all_(maxBytesToRead) char * buff, _In_ uint32_t maxBytesToRead);
-
 // Retrieves the entire range of memory dedicated to the calling thread's stack.  This does
 // not get the current dynamic bounds of the stack, which can be significantly smaller than
 // the maximum bounds.
@@ -790,7 +788,6 @@ REDHAWK_PALIMPORT void REDHAWK_PALAPI PalSleep(uint32_t milliseconds);
 REDHAWK_PALIMPORT UInt32_BOOL REDHAWK_PALAPI PalSwitchToThread();
 REDHAWK_PALIMPORT HANDLE REDHAWK_PALAPI PalCreateEventW(_In_opt_ LPSECURITY_ATTRIBUTES pEventAttributes, UInt32_BOOL manualReset, UInt32_BOOL initialState, _In_opt_z_ LPCWSTR pName);
 REDHAWK_PALIMPORT uint64_t REDHAWK_PALAPI PalGetTickCount64();
-REDHAWK_PALIMPORT HANDLE REDHAWK_PALAPI PalCreateFileW(_In_z_ LPCWSTR pFileName, uint32_t desiredAccess, uint32_t shareMode, _In_opt_ void* pSecurityAttributes, uint32_t creationDisposition, uint32_t flagsAndAttributes, HANDLE hTemplateFile);
 REDHAWK_PALIMPORT HANDLE REDHAWK_PALAPI PalCreateLowMemoryNotification();
 REDHAWK_PALIMPORT void REDHAWK_PALAPI PalTerminateCurrentProcess(uint32_t exitCode);
 REDHAWK_PALIMPORT HANDLE REDHAWK_PALAPI PalGetModuleHandleFromPointer(_In_ void* pointer);

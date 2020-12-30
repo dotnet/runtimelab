@@ -1016,30 +1016,6 @@ REDHAWK_PALEXPORT int32_t PalGetProcessCpuCount()
     return g_cNumProcs;
 }
 
-//Reads the entire contents of the file into the specified buffer, buff
-//returns the number of bytes read if the file is successfully read
-//returns 0 if the file is not found, size is greater than maxBytesToRead or the file couldn't be opened or read
-REDHAWK_PALEXPORT uint32_t PalReadFileContents(_In_z_ const TCHAR* fileName, _Out_writes_all_(maxBytesToRead) char* buff, _In_ uint32_t maxBytesToRead)
-{
-    int fd = open(fileName, O_RDONLY);
-    if (fd < 0)
-    {
-        return 0;
-    }
-
-
-    uint32_t bytesRead = 0;
-    struct stat fileStats;
-    if ((fstat(fd, &fileStats) == 0) && (fileStats.st_size <= maxBytesToRead))
-    {
-        bytesRead = read(fd, buff, fileStats.st_size);
-    }
-
-    close(fd);
-
-    return bytesRead;
-}
-
 __thread void* pStackHighOut = NULL;
 __thread void* pStackLowOut = NULL;
 

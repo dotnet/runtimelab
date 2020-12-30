@@ -238,42 +238,6 @@ REDHAWK_PALEXPORT int32_t REDHAWK_PALAPI PalGetProcessCpuCount()
     }
 }
 
-//Reads the entire contents of the file into the specified buffer, buff
-//returns the number of bytes read if the file is successfully read
-//returns 0 if the file is not found, size is greater than maxBytesToRead or the file couldn't be opened or read
-REDHAWK_PALEXPORT uint32_t REDHAWK_PALAPI PalReadFileContents(_In_z_ const TCHAR* fileName, _Out_writes_all_(maxBytesToRead) char* buff, _In_ uint32_t maxBytesToRead)
-{
-    WIN32_FILE_ATTRIBUTE_DATA attrData;
-
-    BOOL getAttrSuccess = GetFileAttributesExW(fileName, GetFileExInfoStandard, &attrData);
-
-    //if we weren't able to get the file attributes, or the file is larger than maxBytesToRead, or the file size is zero
-    if ((!getAttrSuccess) || (attrData.nFileSizeHigh != 0) || (attrData.nFileSizeLow > (DWORD)maxBytesToRead) || (attrData.nFileSizeLow == 0))
-    {
-        return 0;
-    }
-
-    HANDLE hFile = PalCreateFileW(fileName, GENERIC_READ, FILE_SHARE_DELETE | FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hFile == INVALID_HANDLE_VALUE)
-    {
-        return 0;
-    }
-
-    uint32_t bytesRead;
-
-    BOOL readSuccess = ReadFile(hFile, buff, (DWORD)maxBytesToRead, (DWORD*)&bytesRead, NULL);
-
-    CloseHandle(hFile);
-
-    if (!readSuccess)
-    {
-        return 0;
-    }
-
-    return bytesRead;
-}
-
-
 // Retrieves the entire range of memory dedicated to the calling thread's stack.  This does
 // not get the current dynamic bounds of the stack, which can be significantly smaller than
 // the maximum bounds.

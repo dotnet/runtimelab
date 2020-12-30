@@ -390,19 +390,6 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalEventEnabled(REGHANDLE regHandle, _In_ 
     return !!EventEnabled(regHandle, eventDescriptor);
 }
 
-REDHAWK_PALEXPORT HANDLE REDHAWK_PALAPI PalCreateFileW(
-    _In_z_ LPCWSTR pFileName,
-    uint32_t desiredAccess,
-    uint32_t shareMode,
-    _In_opt_ void* pSecurityAttributes,
-    uint32_t creationDisposition,
-    uint32_t flagsAndAttributes,
-    HANDLE hTemplateFile)
-{
-    return CreateFileW(pFileName, desiredAccess, shareMode, (LPSECURITY_ATTRIBUTES)pSecurityAttributes,
-                       creationDisposition, flagsAndAttributes, hTemplateFile);
-}
-
 REDHAWK_PALEXPORT HANDLE REDHAWK_PALAPI PalCreateLowMemoryNotification()
 {
     return CreateMemoryResourceNotification(LowMemoryResourceNotification);
