@@ -35,8 +35,6 @@ uint32_t PalEventWrite(REGHANDLE arg1, const EVENT_DESCRIPTOR * arg2, uint32_t a
 // Index for the fiber local storage of the attached thread pointer
 static uint32_t g_flsIndex = FLS_OUT_OF_INDEXES;
 
-static DWORD g_dwPALCapabilities;
-
 GCSystemInfo g_RhSystemInfo;
 
 bool InitializeSystemInfo()
@@ -71,8 +69,6 @@ void __stdcall FiberDetachCallback(void* lpFlsData)
 // initialization and false on failure.
 REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalInit()
 {
-    g_dwPALCapabilities = WriteWatchCapability | LowMemoryNotificationCapability;
-
     // We use fiber detach callbacks to run our thread shutdown code because the fiber detach
     // callback is made without the OS loader lock
     g_flsIndex = FlsAlloc(FiberDetachCallback);
@@ -82,12 +78,6 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalInit()
     }
 
     return true;
-}
-
-// Given a mask of capabilities return true if all of them are supported by the current PAL.
-REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalHasCapability(PalCapability capability)
-{
-    return (g_dwPALCapabilities & (DWORD)capability) == (DWORD)capability;
 }
 
 // Attach thread to PAL.

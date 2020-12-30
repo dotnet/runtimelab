@@ -15,14 +15,6 @@
 
 #include "rhassert.h"
 
-// We define the notion of capabilities: optional functionality that the PAL may expose. Use
-// PalHasCapability() with the constants below to determine what is supported at runtime.
-enum PalCapability
-{
-    WriteWatchCapability                = 0x00000001,   // GetWriteWatch() and friends
-    LowMemoryNotificationCapability     = 0x00000002,   // CreateMemoryResourceNotification() and friends
-};
-
 #ifndef DECLSPEC_ALIGN
 #ifdef _MSC_VER
 #define DECLSPEC_ALIGN(x)   __declspec(align(x))

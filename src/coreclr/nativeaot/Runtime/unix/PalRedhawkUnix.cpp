@@ -126,7 +126,6 @@ static const int tccMilliSecondsToMicroSeconds = 1000;
 static const int tccMilliSecondsToNanoSeconds = 1000000;
 static const int tccMicroSecondsToNanoSeconds = 1000;
 
-static uint32_t g_dwPALCapabilities;
 static uint32_t g_cNumProcs = 0;
 
 bool QueryLogicalProcessorCount();
@@ -402,8 +401,6 @@ void ConfigureSignals()
 // initialization and false on failure.
 REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalInit()
 {
-    g_dwPALCapabilities = 0;
-
     if (!QueryLogicalProcessorCount())
         return false;
 
@@ -417,12 +414,6 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalInit()
     ConfigureSignals();
 
     return true;
-}
-
-// Given a mask of capabilities return true if all of them are supported by the current PAL.
-REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalHasCapability(PalCapability capability)
-{
-    return (g_dwPALCapabilities & (uint32_t)capability) == (uint32_t)capability;
 }
 
 #if HAVE_THREAD_LOCAL

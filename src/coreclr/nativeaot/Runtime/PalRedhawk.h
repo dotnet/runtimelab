@@ -695,9 +695,6 @@ bool InitializeSystemInfo();
 // initialization and false on failure.
 REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalInit();
 
-// Given a mask of capabilities return true if all of them are supported by the current PAL.
-REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalHasCapability(PalCapability capability);
-
 // Given the OS handle of a loaded module, compute the upper and lower virtual address bounds (inclusive).
 REDHAWK_PALIMPORT void REDHAWK_PALAPI PalGetModuleBounds(HANDLE hOsHandle, _Out_ uint8_t ** ppLowerBound, _Out_ uint8_t ** ppUpperBound);
 
