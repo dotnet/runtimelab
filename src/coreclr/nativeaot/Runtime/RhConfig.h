@@ -35,7 +35,7 @@ private:
 #ifdef FEATURE_EMBEDDED_CONFIG
     // g_embeddedSettings is a buffer of ConfigPair structs embedded in the compiled binary.
     //
-    //NOTE: g_iniSettings is only set in ReadEmbeddedSettings and must be set atomically only once
+    //NOTE: g_embeddedSettings is only set in ReadEmbeddedSettings and must be set atomically only once
     //      using PalInterlockedCompareExchangePointer to avoid races when initializing
     void* volatile g_embeddedSettings = NULL;
 #endif // FEATURE_EMBEDDED_CONFIG
