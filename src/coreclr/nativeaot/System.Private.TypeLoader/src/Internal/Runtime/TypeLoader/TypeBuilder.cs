@@ -336,11 +336,13 @@ namespace Internal.Runtime.TypeLoader
                     " Fields size = " + (state.UnalignedTypeSize.HasValue ? state.UnalignedTypeSize.Value.LowLevelToString() : "UNDEF") +
                     " Type alignment = " + (state.FieldAlignment.HasValue ? state.FieldAlignment.Value.LowLevelToString() : "UNDEF"));
 
+#if FEATURE_UNIVERSAL_GENERICS
                 if (state.TemplateType != null && state.TemplateType.IsCanonicalSubtype(CanonicalFormKind.Universal))
                 {
                     state.VTableSlotsMapping = new VTableSlotMapper(state.TemplateType.RuntimeTypeHandle.GetNumVtableSlots());
                     ComputeVTableLayout(type, state.TemplateType, state);
                 }
+#endif
             }
         }
 
@@ -622,10 +624,12 @@ namespace Internal.Runtime.TypeLoader
                         typeInfoParser.SkipInteger(); // Handled in type layout algorithm
                         break;
 
+#if FEATURE_UNIVERSAL_GENERICS
                     case BagElementKind.VTableMethodSignatures:
                         TypeLoaderLogger.WriteLine("Found BagElementKind.VTableMethodSignatures");
                         ParseVTableMethodSignatures(state, context, typeInfoParser.GetParserFromRelativeOffset());
                         break;
+#endif
 
                     case BagElementKind.SealedVTableEntries:
                         TypeLoaderLogger.WriteLine("Found BagElementKind.SealedVTableEntries");
@@ -690,6 +694,7 @@ namespace Internal.Runtime.TypeLoader
             Debug.Assert(!checkBaseTypeSize || state.BaseTypeSize == baseTypeSize);
         }
 
+#if FEATURE_UNIVERSAL_GENERICS
         private void ParseVTableMethodSignatures(TypeBuilderState state, NativeLayoutInfoLoadContext nativeLayoutInfoLoadContext, NativeParser methodSignaturesParser)
         {
             TypeDesc type = state.TypeBeingBuilt;
@@ -719,6 +724,7 @@ namespace Internal.Runtime.TypeLoader
                 state.VTableMethodSignatures[i].MethodSignature = RuntimeSignature.CreateFromNativeLayoutSignature(nativeLayoutInfoLoadContext._module.Handle, sigParser.Offset);
             }
         }
+#endif
 
         private unsafe void ComputeVTableLayout(TypeDesc currentType, TypeDesc currentTemplateType, TypeBuilderState targetTypeState)
         {
@@ -1000,6 +1006,7 @@ namespace Internal.Runtime.TypeLoader
                 return GetRuntimeTypeHandles(type.Instantiation);
         }
 
+#if FEATURE_UNIVERSAL_GENERICS
         private unsafe void FinishVTableCallingConverterThunks(TypeDesc type, TypeBuilderState state)
         {
             Debug.Assert(state.TemplateType.IsCanonicalSubtype(CanonicalFormKind.Universal));
@@ -1067,6 +1074,7 @@ namespace Internal.Runtime.TypeLoader
                 }
             }
         }
+#endif
 
         //
         // Returns either the registered type handle or half-baked type handle. This method should be only called
@@ -1338,10 +1346,12 @@ namespace Internal.Runtime.TypeLoader
 
                 FinishClassConstructor(type, state);
 
+#if FEATURE_UNIVERSAL_GENERICS
                 // For types that were allocated from universal canonical templates, patch their vtables with
                 // pointers to calling convention conversion thunks
                 if (state.TemplateType != null && state.TemplateType.IsCanonicalSubtype(CanonicalFormKind.Universal))
                     FinishVTableCallingConverterThunks(type, state);
+#endif
             }
             else if (type is ParameterizedType)
             {
@@ -1359,10 +1369,12 @@ namespace Internal.Runtime.TypeLoader
                     {
                         FinishTypeDictionary(type, state);
 
+#if FEATURE_UNIVERSAL_GENERICS
                         // For types that were allocated from universal canonical templates, patch their vtables with
                         // pointers to calling convention conversion thunks
                         if (state.TemplateType != null && state.TemplateType.IsCanonicalSubtype(CanonicalFormKind.Universal))
                             FinishVTableCallingConverterThunks(type, state);
+#endif
                     }
                 }
                 else if (type is PointerType)
