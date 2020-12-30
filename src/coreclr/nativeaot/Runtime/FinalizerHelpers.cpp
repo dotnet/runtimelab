@@ -71,45 +71,6 @@ uint32_t WINAPI FinalizerStart(void* pContext)
     return 0;
 }
 
-bool RhStartFinalizerThread()
-{
-#ifdef APP_LOCAL_RUNTIME
-
-    //
-    // On app-local runtimes, if we're running with the fallback PAL code (meaning we don't have IManagedRuntimeServices)
-    // then we use the WinRT ThreadPool to create the finalizer thread.  This might fail at startup, if the current thread
-    // hasn't been CoInitialized.  So we need to retry this later.  We use fFinalizerThreadCreated to track whether we've
-    // successfully created the finalizer thread yet, and also as a sort of lock to make sure two threads don't try
-    // to create the finalizer thread at the same time.
-    //
-    static volatile int32_t fFinalizerThreadCreated;
-
-    if (Interlocked::Exchange(&fFinalizerThreadCreated, 1) != 1)
-    {
-        if (!PalStartFinalizerThread(FinalizerStart, (void*)g_FinalizerEvent.GetOSEvent()))
-        {
-            // Need to try again another time...
-            Interlocked::Exchange(&fFinalizerThreadCreated, 0);
-        }
-    }
-
-    // We always return true, so the GC can start even if we failed.
-    return true;
-
-#else // APP_LOCAL_RUNTIME
-
-    //
-    // If this isn't an app-local runtime, then the PAL will just call CreateThread directly, which should succeed
-    // under normal circumstances.
-    //
-    if (PalStartFinalizerThread(FinalizerStart, (void*)g_FinalizerEvent.GetOSEvent()))
-        return true;
-    else
-        return false;
-
-#endif // APP_LOCAL_RUNTIME
-}
-
 bool RhInitializeFinalization()
 {
     // Allocate the events the GC expects the finalizer thread to have. The g_FinalizerEvent event is signalled
@@ -122,7 +83,7 @@ bool RhInitializeFinalization()
         return false;
 
     // Create the finalizer thread itself.
-    if (!RhStartFinalizerThread())
+    if (!PalStartFinalizerThread(FinalizerStart, (void*)g_FinalizerEvent.GetOSEvent()))
         return false;
 
     return true;
@@ -135,12 +96,6 @@ void RhEnableFinalization()
 
 EXTERN_C REDHAWK_API void __cdecl RhInitializeFinalizerThread()
 {
-#ifdef APP_LOCAL_RUNTIME
-    // We may have failed to create the finalizer thread at startup.
-    // Try again now.
-    RhStartFinalizerThread();
-#endif
-
     g_FinalizerEvent.Set();
 }
 
@@ -157,12 +112,6 @@ EXTERN_C REDHAWK_API void __cdecl RhWaitForPendingFinalizers(UInt32_BOOL allowRe
         // (if there's no work to do it'll set the done event immediately).
         g_FinalizerDoneEvent.Reset();
         g_FinalizerEvent.Set();
-
-#ifdef APP_LOCAL_RUNTIME
-        // We may have failed to create the finalizer thread at startup.
-        // Try again now.
-        RhStartFinalizerThread();
-#endif
 
         // Wait for the finalizer thread to get back to us.
         g_FinalizerDoneEvent.Wait(INFINITE, false, allowReentrantWait);
