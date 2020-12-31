@@ -10,12 +10,6 @@
     <ProjectReference Include="..\..\System.Private.CoreLib\src\System.Private.CoreLib.csproj" />
     <ProjectReference Include="..\..\System.Private.Reflection.Metadata\src\System.Private.Reflection.Metadata.csproj" />
   </ItemGroup>
-  <ItemGroup Label="Embedded Resources">
-    <EmbeddedResource Include="Resources\Strings.resx">
-      <GenerateSource>true</GenerateSource>
-      <ClassName>System.SR</ClassName>
-    </EmbeddedResource>
-  </ItemGroup>
   <PropertyGroup>
     <NativeFormatCommonPath>$(CompilerCommonPath)\Internal\NativeFormat</NativeFormatCommonPath>
   </PropertyGroup>
@@ -61,9 +55,6 @@
     </Compile>
     <Compile Include="$(CommonPath)\System\NotImplemented.cs">
       <Link>NotImplemented.cs</Link>
-    </Compile>
-    <Compile Include="$(CommonPath)\System\SR.cs">
-      <Link>SR.cs</Link>
     </Compile>
     <Compile Include="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System\SR.cs" />
     <Compile Include="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System\Runtime\CompilerServices\IntrinsicAttribute.cs">

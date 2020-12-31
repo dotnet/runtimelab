@@ -1,11 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <ItemGroup Label="Embedded Resources">
-    <EmbeddedResource Include="Resources\Strings.resx">
-      <GenerateSource>true</GenerateSource>
-      <ClassName>System.SR</ClassName>
-    </EmbeddedResource>
-  </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\System.Private.CoreLib\src\System.Private.CoreLib.csproj" />
     <ProjectReference Include="..\..\System.Private.Reflection.Metadata\src\System.Private.Reflection.Metadata.csproj" />
@@ -71,9 +64,6 @@
     </Compile>
     <Compile Include="$(CommonPath)\System\NotImplemented.cs" >
       <Link>System\NotImplemented.cs</Link>
-    </Compile>
-    <Compile Include="$(CommonPath)\System\SR.cs" >
-      <Link>System\SR.cs</Link>
     </Compile>
     <Compile Include="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System\SR.cs" />
     <Compile Include="$(AotCommonPath)\System\Collections\Generic\LowLevelList.cs" >

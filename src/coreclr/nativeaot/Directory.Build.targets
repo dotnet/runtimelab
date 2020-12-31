@@ -1,0 +1,7 @@
+<Project>
+
+  <!-- resources.targets need to be imported before the Arcade SDK. -->
+  <Import Project="$(RepositoryEngineeringDir)resources.targets" />
+
+  <Import Project="..\Directory.Build.targets" />
+</Project>

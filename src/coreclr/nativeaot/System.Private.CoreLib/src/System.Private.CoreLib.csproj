@@ -1,19 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
-  <!-- Note that various places in SPCL depend on this resource name i.e. TplEventSource -->
-  <ItemGroup Label="Embedded Resources">
-    <EmbeddedResource Include="Resources\Strings.resx">
-      <GenerateSource>true</GenerateSource>
-      <ClassName>System.SR</ClassName>
-    </EmbeddedResource>
-  </ItemGroup>
-
   <ItemGroup>
     <ILLinkSubstitutionsXmls Include="ILLink\ILLink.Substitutions.xml" />
   </ItemGroup>
 
   <PropertyGroup>
     <DefineConstants>SYSTEM_PRIVATE_CORELIB;FEATURE_MANAGED_ETW_CHANNELS;FEATURE_MANAGED_ETW;$(DefineConstants)</DefineConstants>
+    <SkipCommonResourcesIncludes>true</SkipCommonResourcesIncludes>
     <TargetsCoreRT>true</TargetsCoreRT>
     <UseSyncTable>true</UseSyncTable>
     <RuntimeBasePath>..\..\Runtime.Base\src\</RuntimeBasePath>
