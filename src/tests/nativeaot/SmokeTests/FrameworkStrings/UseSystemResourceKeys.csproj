@@ -4,6 +4,9 @@
     <CLRTestKind>BuildAndRun</CLRTestKind>
     <CLRTestPriority>0</CLRTestPriority>
     <DefineConstants>$(DefineConstants);RESOURCE_KEYS</DefineConstants>
+    
+    <!-- Requires the framework to also be compiled with UseSystemResourceKeys -->
+    <NativeAotMultimoduleIncompatible>true</NativeAotMultimoduleIncompatible>
   </PropertyGroup>
 
   <PropertyGroup>
