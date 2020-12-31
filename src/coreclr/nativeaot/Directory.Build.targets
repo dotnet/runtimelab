@@ -1,7 +1,0 @@
-<Project>
-  <PropertyGroup>
-    <StringResourcesName Condition="'$(StringResourcesName)' == ''">$(AssemblyName).Resources.Strings</StringResourcesName>
-  </PropertyGroup>
-
-  <Import Project="../Directory.Build.targets" />
-</Project>

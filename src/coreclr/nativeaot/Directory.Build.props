@@ -3,7 +3,6 @@
 
   <PropertyGroup>
     <ILLinkTrimAssembly>false</ILLinkTrimAssembly>
-    <GenerateResourcesSubstitutions>true</GenerateResourcesSubstitutions>
   </PropertyGroup>
 
   <PropertyGroup>
