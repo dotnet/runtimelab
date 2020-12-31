@@ -9,9 +9,9 @@
   <PropertyGroup>
     <NativeAotProjectLines>
       <![CDATA[
-  <PropertyGroup>
-    <UseSystemResourceKeys>true</UseSystemResourceKeys>
-  </PropertyGroup>
+  <ItemGroup>
+    <IlcArg Include="--feature:System.Resources.UseSystemResourceKeys=true" />
+  </ItemGroup>
       ]]>
     </NativeAotProjectLines>
   </PropertyGroup>
