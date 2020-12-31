@@ -4,8 +4,18 @@
     <CLRTestKind>BuildAndRun</CLRTestKind>
     <CLRTestPriority>0</CLRTestPriority>
     <DefineConstants>$(DefineConstants);RESOURCE_KEYS</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <NativeAotProjectLines>
+      <![CDATA[
+  <PropertyGroup>
     <UseSystemResourceKeys>true</UseSystemResourceKeys>
   </PropertyGroup>
+      ]]>
+    </NativeAotProjectLines>
+  </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="Program.cs" />
   </ItemGroup>
