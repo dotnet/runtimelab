@@ -54,7 +54,20 @@ if (coreLibNames.Length != 0)
 #endif
 
 Console.WriteLine("Resources in reflection library:");
-string[] refNames = System.Reflection.Assembly.Load("System.Private.Reflection.Execution").GetManifestResourceNames();
+string[] refNames;
+const string reflectionAssembly = "System.Private.Reflection.Execution";
+#if RESOURCE_KEYS
+try
+{
+    refNames = System.Reflection.Assembly.Load(reflectionAssembly).GetManifestResourceNames();
+}
+catch (System.IO.FileNotFoundException)
+{
+    refNames = Array.Empty<string>();
+}
+#else
+refNames = System.Reflection.Assembly.Load(reflectionAssembly).GetManifestResourceNames();
+#endif
 foreach (var name in refNames)
     Console.WriteLine(name);
 
