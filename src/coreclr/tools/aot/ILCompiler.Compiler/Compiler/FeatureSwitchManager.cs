@@ -202,6 +202,8 @@ namespace ILCompiler
                     {
                         // Ends basic block.
                         flags[offset] |= OpcodeFlags.EndBasicBlock;
+
+                        reader.Skip(opcode);
                     }
                     else if (opcode == ILOpcode.switch_)
                     {
