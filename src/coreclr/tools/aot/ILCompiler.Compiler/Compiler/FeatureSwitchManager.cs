@@ -344,6 +344,13 @@ namespace ILCompiler
                             // Branches not tested for above are conditional and the flow falls through.
                             offsetsToVisit.Push(reader.Offset);
                         }
+                        else
+                        {
+                            // RyuJIT is going to look at this basic block even though it's unreachable.
+                            // Consider it visible so that we replace the beginning with an endless loop.
+                            if (reader.HasNext)
+                                flags[reader.Offset] |= OpcodeFlags.VisibleBasicBlockStart;
+                        }
                     }
                     else if (opcode == ILOpcode.switch_)
                     {
@@ -355,6 +362,20 @@ namespace ILCompiler
                             offsetsToVisit.Push(destination);
                         }
                         offsetsToVisit.Push(reader.Offset);
+                    }
+                    else if (opcode == ILOpcode.ret
+                        || opcode == ILOpcode.endfilter
+                        || opcode == ILOpcode.endfinally
+                        || opcode == ILOpcode.throw_
+                        || opcode == ILOpcode.rethrow
+                        || opcode == ILOpcode.jmp)
+                    {
+                        reader.Skip(opcode);
+
+                        // RyuJIT is going to look at this basic block even though it's unreachable.
+                        // Consider it visible so that we replace the beginning with an endless loop.
+                        if (reader.HasNext)
+                            flags[reader.Offset] |= OpcodeFlags.VisibleBasicBlockStart;
                     }
                     else
                     {
