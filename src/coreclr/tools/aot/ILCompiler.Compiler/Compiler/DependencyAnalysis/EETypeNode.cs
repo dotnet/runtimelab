@@ -271,6 +271,8 @@ namespace ILCompiler.DependencyAnalysis
                 {
                     Debug.Assert(interfaceType.IsInterface);
 
+                    bool isVariantInterfaceImpl = VariantInterfaceMethodUseNode.IsVariantInterfaceImplementation(factory, _type, interfaceType);
+
                     foreach (MethodDesc interfaceMethod in interfaceType.GetAllMethods())
                     {
                         if (interfaceMethod.Signature.IsStatic || !interfaceMethod.IsVirtual)
@@ -284,6 +286,16 @@ namespace ILCompiler.DependencyAnalysis
                         if (implMethod != null)
                         {
                             yield return new CombinedDependencyListEntry(factory.VirtualMethodUse(implMethod), factory.VirtualMethodUse(interfaceMethod), "Interface method");
+
+                            // If any of the implemented interfaces have variance, calls against compatible interface methods
+                            // could result in interface methods of this type being used (e.g. IEnumerable<object>.GetEnumerator()
+                            // can dispatch to an implementation of IEnumerable<string>.GetEnumerator()).
+                            if (isVariantInterfaceImpl)
+                            {
+                                MethodDesc typicalInterfaceMethod = interfaceMethod.GetTypicalMethodDefinition();
+                                yield return new CombinedDependencyListEntry(factory.VirtualMethodUse(implMethod), factory.VariantInterfaceMethodUse(typicalInterfaceMethod), "Interface method");
+                                yield return new CombinedDependencyListEntry(factory.VirtualMethodUse(interfaceMethod), factory.VariantInterfaceMethodUse(typicalInterfaceMethod), "Interface method");
+                            }
                         }
                     }
                 }
@@ -293,78 +305,6 @@ namespace ILCompiler.DependencyAnalysis
         public static bool IsTypeNodeShareable(TypeDesc type)
         {
             return type.IsParameterizedType || type.IsFunctionPointer || type is InstantiatedType;
-        }
-
-        private void AddVirtualMethodUseDependencies(DependencyList dependencyList, NodeFactory factory)
-        {
-            DefType closestDefType = _type.GetClosestDefType();
-
-            if (_type.RuntimeInterfaces.Length > 0 && !factory.VTable(closestDefType).HasFixedSlots)
-            {
-                foreach (var implementedInterface in _type.RuntimeInterfaces)
-                {
-                    // If any of the implemented interfaces have variance, calls against compatible interface methods
-                    // could result in interface methods of this type being used (e.g. IEnumberable<object>.GetEnumerator()
-                    // can dispatch to an implementation of IEnumerable<string>.GetEnumerator()).
-                    // For now, we will not try to optimize this and we will pretend all interface methods are necessary.
-                    bool allInterfaceMethodsAreImplicitlyUsed = false;
-                    if (implementedInterface.HasVariance)
-                    {
-                        TypeDesc interfaceDefinition = implementedInterface.GetTypeDefinition();
-                        for (int i = 0; i < interfaceDefinition.Instantiation.Length; i++)
-                        {
-                            var variantParameter = (GenericParameterDesc)interfaceDefinition.Instantiation[i];
-                            if (variantParameter.Variance != 0)
-                            {
-                                // Variant interface parameters that are instantiated over valuetypes are
-                                // not actually variant. Neither are contravariant parameters instantiated
-                                // over sealed types (there won't be another interface castable to it
-                                // through variance on that parameter).
-                                TypeDesc variantArgument = implementedInterface.Instantiation[i];
-                                if (!variantArgument.IsValueType
-                                    && (!variantArgument.IsSealed() || variantParameter.IsCovariant))
-                                {
-                                    allInterfaceMethodsAreImplicitlyUsed = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    if (!allInterfaceMethodsAreImplicitlyUsed &&
-                        (_type.IsArray || _type.GetTypeDefinition() == factory.ArrayOfTEnumeratorType) &&
-                        implementedInterface.HasInstantiation)
-                    {
-                        // NOTE: we need to also do this for generic interfaces on arrays because they have a weird casting rule
-                        // that doesn't require the implemented interface to be variant to consider it castable.
-                        // For value types, we only need this when the array is castable by size (int[] and ICollection<uint>),
-                        // or it's a reference type (Derived[] and ICollection<Base>).
-                        TypeDesc elementType = _type.IsArray ? ((ArrayType)_type).ElementType : _type.Instantiation[0];
-                        allInterfaceMethodsAreImplicitlyUsed =
-                            CastingHelper.IsArrayElementTypeCastableBySize(elementType) ||
-                            (elementType.IsDefType && !elementType.IsValueType);
-                    }
-
-                    if (allInterfaceMethodsAreImplicitlyUsed)
-                    {
-                        foreach (var interfaceMethod in implementedInterface.GetAllMethods())
-                        {
-                            if (interfaceMethod.Signature.IsStatic)
-                                continue;
-
-                            // Generic virtual methods are tracked by an orthogonal mechanism.
-                            if (interfaceMethod.HasInstantiation)
-                                continue;
-
-                            MethodDesc implMethod = closestDefType.ResolveInterfaceMethodToVirtualMethodOnType(interfaceMethod);
-                            if (implMethod != null)
-                            {
-                                dependencyList.Add(factory.VirtualMethodUse(interfaceMethod), "Variant interface method");
-                                dependencyList.Add(factory.VirtualMethodUse(implMethod), "Variant interface method");
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         internal static bool MethodHasNonGenericILMethodBody(MethodDesc method)
@@ -409,8 +349,6 @@ namespace ILCompiler.DependencyAnalysis
                     // Sealed vtables have relative pointers, so to minimize size, we build sealed vtables for the canonical types
                     dependencies.Add(new DependencyListEntry(factory.SealedVTable(_type.ConvertToCanonForm(CanonicalFormKind.Specific)), "Sealed Vtable"));
                 }
-
-                AddVirtualMethodUseDependencies(dependencies, factory);
 
                 // Also add the un-normalized vtable slices of implemented interfaces.
                 // This is important to do in the scanning phase so that the compilation phase can find
