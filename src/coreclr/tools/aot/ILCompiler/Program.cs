@@ -568,8 +568,6 @@ namespace ILCompiler
             {
                 if (feature == "EventSource")
                     removedFeatures |= RemovedFeature.Etw;
-                else if (feature == "FrameworkStrings")
-                    removedFeatures |= RemovedFeature.FrameworkResources;
                 else if (feature == "Globalization")
                     removedFeatures |= RemovedFeature.Globalization;
                 else if (feature == "Comparers")
@@ -610,9 +608,7 @@ namespace ILCompiler
                     ? (MetadataBlockingPolicy)new NoMetadataBlockingPolicy()
                     : new BlockedInternalsBlockingPolicy(typeSystemContext);
 
-                resBlockingPolicy = (removedFeatures & RemovedFeature.FrameworkResources) != 0
-                    ? new FrameworkStringResourceBlockingPolicy()
-                    : (ManifestResourceBlockingPolicy)new NoManifestResourceBlockingPolicy();
+                resBlockingPolicy = new ManifestResourceBlockingPolicy(featureSwitches);
 
                 metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.AnonymousTypeHeuristic;
                 if (_completeTypesMetadata)
