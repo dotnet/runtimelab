@@ -50,7 +50,7 @@ namespace ILCompiler.DependencyAnalysis
             Debug.Assert(!implementedInterface.IsGenericDefinition);
 
             // If any of the implemented interfaces have variance, calls against compatible interface methods
-            // could result in interface methods of this type being used (e.g. IEnumberable<object>.GetEnumerator()
+            // could result in interface methods of this type being used (e.g. IEnumerable<object>.GetEnumerator()
             // can dispatch to an implementation of IEnumerable<string>.GetEnumerator()).
             bool result = false;
             if (implementedInterface.HasVariance)
