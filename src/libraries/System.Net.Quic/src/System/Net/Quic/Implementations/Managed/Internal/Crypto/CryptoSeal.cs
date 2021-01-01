@@ -114,6 +114,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Crypto
             long packetNumber = 0;
             for (int i = 0; i < pnLength; ++i)
             {
+                // the packet number is stored in big endian
                 packetNumber = (packetNumber << 8) | buffer[pnOffset + i];
             }
             packetNumber = QuicPrimitives.DecodePacketNumber(expectedPn, (int) packetNumber, pnLength);

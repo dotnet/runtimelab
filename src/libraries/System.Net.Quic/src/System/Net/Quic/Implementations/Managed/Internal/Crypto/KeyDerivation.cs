@@ -13,7 +13,9 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Crypto
         private static readonly HashAlgorithmName hashAlgorithm = HashAlgorithmName.SHA256;
         private const int InitialSecretLength = 256 / 8;
 
-        public static readonly byte[] initialSalt =
+
+        // initial salt for deriving Initial protection keys. The salt is specific to this QUIC version (draft-27)
+        public static readonly byte[] initialSaltDraft27 =
         {
             0xc3, 0xee, 0xf7, 0x12, 0xc7, 0x2e, 0xbb, 0x5a, 0x11, 0xa7, 0xd2, 0x43, 0x2b, 0xb4, 0x63, 0x65, 0xbe,
             0xf9, 0xf5, 0x02
@@ -55,7 +57,7 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Crypto
 
         private static void DeriveInitialSecret(ReadOnlySpan<byte> dcid, Span<byte> secret)
         {
-            HKDF.Extract(hashAlgorithm, dcid, initialSalt, secret);
+            HKDF.Extract(hashAlgorithm, dcid, initialSaltDraft27, secret);
         }
 
         public static byte[] DeriveClientInitialSecret(ReadOnlySpan<byte> dcid)
