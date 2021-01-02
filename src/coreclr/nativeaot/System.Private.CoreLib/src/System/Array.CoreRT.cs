@@ -576,8 +576,16 @@ namespace System
 
             if (reliable)
             {
-                for (int i = 0; i < length; i++)
-                    destinationArray.SetValue(boxedElements[i], destinationIndex + i);
+                fixed (byte* pDstArray = &destinationArray.GetRawArrayData())
+                {
+                    nuint cbElementSize = sourceArray.ElementSize;
+                    byte* pDestinationElement = pDstArray + (nuint)destinationIndex * cbElementSize;
+                    for (int i = 0; i < length; i++)
+                    {
+                        RuntimeImports.RhUnbox(boxedElements[i], ref *pDestinationElement, sourceElementEEType);
+                        pDestinationElement += cbElementSize;
+                    }
+                }
             }
         }
 
