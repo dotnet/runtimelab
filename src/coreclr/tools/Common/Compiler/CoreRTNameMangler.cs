@@ -334,6 +334,11 @@ namespace ILCompiler
                     {
                         mangledName = GetPrefixMangledTypeName((IPrefixMangledType)type).ToString();
                     }
+                    else if (type is FunctionPointerType pointerType)
+                    {
+                        if (_mangleForCplusPlus) throw new NotImplementedException("Cannot mangle function pointer types when emitting C++");
+                        mangledName = "<fptr>" + pointerType.Signature.ToString();
+                    }
                     else
                     {
                         // This is a type definition. Since we didn't fall in the `is EcmaType` case above,
