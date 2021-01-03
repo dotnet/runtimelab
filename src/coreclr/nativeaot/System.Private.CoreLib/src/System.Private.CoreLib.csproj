@@ -2,6 +2,9 @@
   <ItemGroup>
     <ILLinkSubstitutionsXmls Include="ILLink\ILLink.Substitutions.xml" />
   </ItemGroup>
+  <ItemGroup Condition="'$(TargetsUnix)'=='true'">
+    <ILLinkSubstitutionsXmls Include="ILLink\ILLink.Substitutions.Unix.xml" />
+  </ItemGroup>
 
   <PropertyGroup>
     <DefineConstants>SYSTEM_PRIVATE_CORELIB;FEATURE_MANAGED_ETW_CHANNELS;FEATURE_MANAGED_ETW;$(DefineConstants)</DefineConstants>
