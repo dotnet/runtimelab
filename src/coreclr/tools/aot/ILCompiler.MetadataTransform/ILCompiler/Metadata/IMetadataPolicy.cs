@@ -4,6 +4,7 @@
 using Internal.Metadata.NativeFormat.Writer;
 
 using Cts = Internal.TypeSystem;
+using Ecma = System.Reflection.Metadata;
 
 namespace ILCompiler.Metadata
 {
@@ -35,6 +36,12 @@ namespace ILCompiler.Metadata
         /// </summary>
         /// <param name="fieldDef">Uninstantiated field definition to check.</param>
         bool GeneratesMetadata(Cts.FieldDesc fieldDef);
+
+        /// <summary>
+        /// Returns true if the custom attribute should generate <see cref="CustomAttribute"/> metadata.
+        /// If false, the custom attribute is not generated.
+        /// </summary>
+        bool GeneratesMetadata(Cts.Ecma.EcmaModule module, Ecma.CustomAttributeHandle customAttribute);
 
         /// <summary>
         /// Returns true if a type should be blocked from generating any metadata.

@@ -218,8 +218,8 @@
 
   <!-- CoreClr Native AOT sets -->
   <ItemGroup Condition="$(_subset.Contains('+nativeaot.libs+'))">
-    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.CoreLib\System.Private.CoreLib.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.Reflection.Metadata\System.Private.Reflection.Metadata.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.CoreLib\src\System.Private.CoreLib.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.Reflection.Metadata\src\System.Private.Reflection.Metadata.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.TypeLoader\src\System.Private.TypeLoader.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.Interop\src\System.Private.Interop.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.Reflection.Core\src\System.Private.Reflection.Core.csproj" Category="clr" />

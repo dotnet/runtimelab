@@ -85,6 +85,10 @@ namespace ILCompiler
                 {
                     ProcessType(_owningModule);
                 }
+                else if (_reader.Name == "resource")
+                {
+                    ProcessResource(_owningModule);
+                }
                 else
                 {
                     _reader.Skip();
@@ -105,10 +109,12 @@ namespace ILCompiler
                 {
                     ProcessType(assembly);
                 }
-                else
+                else if (_reader.Name == "resource")
                 {
-                    _reader.Skip();
+                    ProcessResource(assembly);
                 }
+
+                _reader.Skip();
             }
 
             _reader.ReadEndElement();
@@ -143,16 +149,16 @@ namespace ILCompiler
                     {
                         ProcessField(type);
                     }
+                    else if (_reader.Name == "attribute")
+                    {
+                        ProcessAttribute(type);
+                    }
 
                     _reader.Skip();
                 }
+            }
 
-                _reader.ReadEndElement();
-            }
-            else
-            {
-                _reader.Skip();
-            }
+            _reader.Skip();
         }
 
         private void ProcessMethod(TypeDesc type)
@@ -219,6 +225,14 @@ namespace ILCompiler
         }
 
         protected virtual void ProcessField(FieldDesc field)
+        {
+        }
+
+        protected virtual void ProcessAttribute(TypeDesc type)
+        {
+        }
+
+        protected virtual void ProcessResource(ModuleDesc module)
         {
         }
 

@@ -2,11 +2,6 @@ trigger: none
 
 jobs:
 #
-# Checkout repository
-#
-- template: /eng/pipelines/common/checkout-job.yml
-
-#
 # Build with Debug config and Checked runtimeConfiguration
 #
 - template: /eng/pipelines/common/platform-matrix.yml

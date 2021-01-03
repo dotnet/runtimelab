@@ -22,27 +22,21 @@ namespace ILCompiler.Metadata
 
             var attributeTypeProvider = new Cts.Ecma.CustomAttributeTypeProvider(module);
 
+            Ecma.MetadataReader reader = module.MetadataReader;
+
             foreach (var attributeHandle in attributes)
             {
-                Ecma.MetadataReader reader = module.MetadataReader;
+                if (!_policy.GeneratesMetadata(module, attributeHandle))
+                    continue;
+
                 Ecma.CustomAttribute attribute = reader.GetCustomAttribute(attributeHandle);
 
                 // TODO-NICE: We can intern the attributes based on the CA constructor and blob bytes
 
-                try
-                {
-                    Cts.MethodDesc constructor = module.GetMethod(attribute.Constructor);
-                    var decodedValue = attribute.DecodeValue(attributeTypeProvider);
+                Cts.MethodDesc constructor = module.GetMethod(attribute.Constructor);
+                var decodedValue = attribute.DecodeValue(attributeTypeProvider);
 
-                    if (IsBlockedCustomAttribute(constructor, decodedValue))
-                        continue;
-
-                    customAttributes.Add(HandleCustomAttribute(constructor, decodedValue));
-                }
-                catch (Cts.TypeSystemException)
-                {
-                    // TODO: We should emit unresolvable custom attributes instead of skipping these
-                }
+                customAttributes.Add(HandleCustomAttribute(constructor, decodedValue));
             }
 
             return customAttributes;
@@ -214,63 +208,6 @@ namespace ILCompiler.Metadata
             }
 
             return result;
-        }
-
-        private bool IsBlockedCustomAttribute(Cts.MethodDesc constructor, Ecma.CustomAttributeValue<Cts.TypeDesc> decodedValue)
-        {
-            if (IsBlocked(constructor.OwningType))
-                return true;
-
-            foreach (var fixedArgument in decodedValue.FixedArguments)
-            {
-                if (IsBlockedCustomAttributeConstantValue(fixedArgument.Type, fixedArgument.Value))
-                    return true;
-
-                if (fixedArgument.Type.IsEnum && IsBlocked(fixedArgument.Type))
-                    return true;
-            }
-
-            foreach (var namedArgument in decodedValue.NamedArguments)
-            {
-                if (IsBlockedCustomAttributeConstantValue(namedArgument.Type, namedArgument.Value))
-                    return true;
-            }
-
-            return false;
-        }
-
-        private bool IsBlockedCustomAttributeConstantValue(Cts.TypeDesc type, object value)
-        {
-            if (value == null)
-            {
-                return false;
-            }
-
-            if (type.IsSzArray)
-            {
-                var arrayType = (Cts.ArrayType)type;
-                var arrayValue = (ImmutableArray<Ecma.CustomAttributeTypedArgument<Cts.TypeDesc>>)value;
-
-                if (arrayType.ElementType.UnderlyingType.IsPrimitive || arrayType.ElementType.IsString)
-                    return false;
-
-                foreach (var arrayElement in arrayValue)
-                {
-                    if (IsBlockedCustomAttributeConstantValue(arrayElement.Type, arrayElement.Value))
-                        return true;
-                    if (arrayElement.Type.IsEnum && IsBlocked(arrayElement.Type))
-                        return true;
-                }
-            }
-            else if (value is Cts.TypeDesc)
-            {
-                Debug.Assert(type is Cts.MetadataType
-                    && ((Cts.MetadataType)type).Name == "Type"
-                    && ((Cts.MetadataType)type).Namespace == "System");
-                return IsBlocked((Cts.TypeDesc)value);
-            }
-
-            return false;
         }
 
         private static TValue[] GetCustomAttributeConstantArrayElements<TValue>(ImmutableArray<Ecma.CustomAttributeTypedArgument<Cts.TypeDesc>> value)

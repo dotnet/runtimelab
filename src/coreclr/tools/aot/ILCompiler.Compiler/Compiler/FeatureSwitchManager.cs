@@ -15,6 +15,7 @@ using Internal.TypeSystem;
 using Internal.TypeSystem.Ecma;
 
 using Debug = System.Diagnostics.Debug;
+using MethodDebugInformation = Internal.IL.MethodDebugInformation;
 
 namespace ILCompiler
 {
@@ -201,6 +202,8 @@ namespace ILCompiler
                     {
                         // Ends basic block.
                         flags[offset] |= OpcodeFlags.EndBasicBlock;
+
+                        reader.Skip(opcode);
                     }
                     else if (opcode == ILOpcode.switch_)
                     {
@@ -221,7 +224,21 @@ namespace ILCompiler
                     }
 
                     if ((flags[offset] & OpcodeFlags.EndBasicBlock) != 0)
+                    {
+                        if (reader.HasNext)
+                        {
+                            // If the bytes following this basic block are not reachable from anywhere,
+                            // the sweeping step would consider them to be part of the last instruction
+                            // of the current basic block because of how instruction boundaries are identified.
+                            // We wouldn't NOP them out if the current basic block is reachable.
+                            //
+                            // That's a problem for RyuJIT because RyuJIT looks at these bytes for... reasons.
+                            //
+                            // We can just do the same thing as RyuJIT and consider those a basic block.
+                            offsetsToVisit.Push(reader.Offset);
+                        }
                         break;
+                    }
                 }
             }
 
@@ -327,6 +344,13 @@ namespace ILCompiler
                             // Branches not tested for above are conditional and the flow falls through.
                             offsetsToVisit.Push(reader.Offset);
                         }
+                        else
+                        {
+                            // RyuJIT is going to look at this basic block even though it's unreachable.
+                            // Consider it visible so that we replace the beginning with an endless loop.
+                            if (reader.HasNext)
+                                flags[reader.Offset] |= OpcodeFlags.VisibleBasicBlockStart;
+                        }
                     }
                     else if (opcode == ILOpcode.switch_)
                     {
@@ -338,6 +362,20 @@ namespace ILCompiler
                             offsetsToVisit.Push(destination);
                         }
                         offsetsToVisit.Push(reader.Offset);
+                    }
+                    else if (opcode == ILOpcode.ret
+                        || opcode == ILOpcode.endfilter
+                        || opcode == ILOpcode.endfinally
+                        || opcode == ILOpcode.throw_
+                        || opcode == ILOpcode.rethrow
+                        || opcode == ILOpcode.jmp)
+                    {
+                        reader.Skip(opcode);
+
+                        // RyuJIT is going to look at this basic block even though it's unreachable.
+                        // Consider it visible so that we replace the beginning with an endless loop.
+                        if (reader.HasNext)
+                            flags[reader.Offset] |= OpcodeFlags.VisibleBasicBlockStart;
                     }
                     else
                     {
@@ -427,7 +465,26 @@ namespace ILCompiler
                 }
             }
 
-            return new SubstitutedMethodIL(method, newBody, newEHRegions.ToArray());
+            // Existing debug information might not match new instruction boundaries (plus there's little point
+            // in generating debug information for NOPs) - generate new debug information by filtering
+            // out the sequence points associated with nopped out instructions.
+            MethodDebugInformation debugInfo = method.GetDebugInfo();
+            IEnumerable<ILSequencePoint> oldSequencePoints = debugInfo?.GetSequencePoints();
+            if (oldSequencePoints != null)
+            {
+                ArrayBuilder<ILSequencePoint> sequencePoints = new ArrayBuilder<ILSequencePoint>();
+                foreach (var sequencePoint in oldSequencePoints)
+                {
+                    if (sequencePoint.Offset < flags.Length && (flags[sequencePoint.Offset] & OpcodeFlags.Mark) != 0)
+                    {
+                        sequencePoints.Add(sequencePoint);
+                    }
+                }
+
+                debugInfo = new SubstitutedDebugInformation(debugInfo, sequencePoints.ToArray());
+            }
+
+            return new SubstitutedMethodIL(method, newBody, newEHRegions.ToArray(), debugInfo);
         }
 
         private bool TryGetConstantArgument(MethodIL methodIL, byte[] body, OpcodeFlags[] flags, int offset, int argIndex, out int constant)
@@ -528,7 +585,7 @@ namespace ILCompiler
                         _ => opcode - ILOpcode.ldloc_0,
                     };
 
-                    for (int potentialStlocOffset = currentOffset - 1; potentialStlocOffset >= 0; potentialStlocOffset++)
+                    for (int potentialStlocOffset = currentOffset - 1; potentialStlocOffset >= 0; potentialStlocOffset--)
                     {
                         if ((flags[potentialStlocOffset] & OpcodeFlags.InstructionStart) == 0)
                             continue;
@@ -539,8 +596,8 @@ namespace ILCompiler
                             (otherOpcode >= ILOpcode.stloc_0 && otherOpcode <= ILOpcode.stloc_3))
                             && otherOpcode switch
                             {
-                                ILOpcode.stloc => reader.ReadILUInt16(),
-                                ILOpcode.stloc_s => reader.ReadILByte(),
+                                ILOpcode.stloc => nestedReader.ReadILUInt16(),
+                                ILOpcode.stloc_s => nestedReader.ReadILByte(),
                                 _ => otherOpcode - ILOpcode.stloc_0,
                             } == locIndex)
                         {
@@ -595,12 +652,14 @@ namespace ILCompiler
             private readonly byte[] _body;
             private readonly ILExceptionRegion[] _ehRegions;
             private readonly MethodIL _wrappedMethodIL;
+            private readonly MethodDebugInformation _debugInfo;
 
-            public SubstitutedMethodIL(MethodIL wrapped, byte[] body, ILExceptionRegion[] ehRegions)
+            public SubstitutedMethodIL(MethodIL wrapped, byte[] body, ILExceptionRegion[] ehRegions, MethodDebugInformation debugInfo)
             {
                 _wrappedMethodIL = wrapped;
                 _body = body;
                 _ehRegions = ehRegions;
+                _debugInfo = debugInfo;
             }
 
             public override MethodDesc OwningMethod => _wrappedMethodIL.OwningMethod;
@@ -610,6 +669,23 @@ namespace ILCompiler
             public override byte[] GetILBytes() => _body;
             public override LocalVariableDefinition[] GetLocals() => _wrappedMethodIL.GetLocals();
             public override object GetObject(int token) => _wrappedMethodIL.GetObject(token);
+            public override MethodDebugInformation GetDebugInfo() => _debugInfo;
+        }
+
+        private class SubstitutedDebugInformation : MethodDebugInformation
+        {
+            private readonly MethodDebugInformation _originalDebugInformation;
+            private readonly ILSequencePoint[] _sequencePoints;
+
+            public SubstitutedDebugInformation(MethodDebugInformation originalDebugInformation, ILSequencePoint[] newSequencePoints)
+            {
+                _originalDebugInformation = originalDebugInformation;
+                _sequencePoints = newSequencePoints;
+            }
+
+            public override IEnumerable<Internal.IL.ILLocalVariable> GetLocalVariables() => _originalDebugInformation.GetLocalVariables();
+            public override IEnumerable<string> GetParameterNames() => _originalDebugInformation.GetParameterNames();
+            public override IEnumerable<ILSequencePoint> GetSequencePoints() => _sequencePoints;
         }
 
         private class FeatureSwitchHashtable : LockFreeReaderHashtable<EcmaModule, AssemblyFeatureInfo>

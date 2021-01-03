@@ -36,10 +36,6 @@ uint32_t RhConfig::ReadConfigValue(_In_z_ const TCHAR *wszName, uint32_t uiDefau
     cchResult = PalGetEnvironmentVariable(wszName, wszBuffer, cchBuffer);
 #endif // FEATURE_ENVIRONMENT_VARIABLE_CONFIG
 
-    //if the config key wasn't found in the environment
-    if ((cchResult == 0) || (cchResult >= cchBuffer))
-        cchResult = GetIniVariable(wszName, wszBuffer, cchBuffer);
-
 #ifdef FEATURE_EMBEDDED_CONFIG
     // if the config key wasn't found in the ini file
     if ((cchResult == 0) || (cchResult >= cchBuffer))
@@ -67,34 +63,6 @@ uint32_t RhConfig::ReadConfigValue(_In_z_ const TCHAR *wszName, uint32_t uiDefau
     }
 
     return uiResult;
-}
-
-//reads a config value from rhconfig.ini into outputBuffer buffer returning the length of the value.
-//lazily reads the file so if the file is not yet read, it will read it on first called
-//if the file is not avaliable, or unreadable zero will always be returned
-//cchOutputBuffer is the maximum number of characters to write to outputBuffer
-//cchOutputBuffer must be a size >= CONFIG_VAL_MAXLEN + 1
-uint32_t RhConfig::GetIniVariable(_In_z_ const TCHAR* configName, _Out_writes_all_(cchOutputBuffer) TCHAR* outputBuffer, _In_ uint32_t cchOutputBuffer)
-{
-    //the buffer needs to be big enough to read the value buffer + null terminator
-    if (cchOutputBuffer < CONFIG_VAL_MAXLEN + 1)
-    {
-        return 0;
-    }
-
-    //if we haven't read the config yet try to read
-    if (g_iniSettings == NULL)
-    {
-        ReadConfigIni();
-    }
-
-    //if the config wasn't read or reading failed return 0 immediately
-    if (g_iniSettings == CONFIG_INI_NOT_AVAIL)
-    {
-        return 0;
-    }
-
-    return GetConfigVariable(configName, (ConfigPair*)g_iniSettings, outputBuffer, cchOutputBuffer);
 }
 
 #ifdef FEATURE_EMBEDDED_CONFIG
@@ -151,105 +119,6 @@ uint32_t RhConfig::GetConfigVariable(_In_z_ const TCHAR* configName, const Confi
 
     //if the config key was not found return 0
     return 0;
-}
-
-//reads the configuration values from rhconfig.ini and updates g_iniSettings
-//if the file is read succesfully and g_iniSettings will be set to a valid ConfigPair[] of length RCV_Count.
-//if the file does not exist or reading the file fails,  g_iniSettings is set to CONFIG_INI_NOT_AVAIL
-//NOTE: all return paths must set g_iniSettings
-void RhConfig::ReadConfigIni()
-{
-    if (g_iniSettings == NULL)
-    {
-        TCHAR* configPath = GetConfigPath();
-
-        //if we couldn't determine the path to the config set g_iniSettings to CONGIF_NOT_AVAIL
-        if (configPath == NULL)
-        {
-            //only set if another thread hasn't initialized the buffer yet, otherwise ignore and let the first setter win
-            PalInterlockedCompareExchangePointer(&g_iniSettings, CONFIG_INI_NOT_AVAIL, NULL);
-
-            return;
-        }
-
-        //buffer is max file size + 1 for null terminator if needed
-        char buff[CONFIG_FILE_MAXLEN + 1];
-
-        //if the file read failed or the file is bigger than the specified buffer this will return zero
-        uint32_t fSize = PalReadFileContents(configPath, buff, CONFIG_FILE_MAXLEN);
-
-        //ensure the buffer is null terminated
-        buff[fSize] = '\0';
-
-        //delete the configPath
-        delete[] configPath;
-
-        //if reading the file contents failed set g_iniSettings to CONFIG_INI_NOT_AVAIL
-        if (fSize == 0)
-        {
-            //only set if another thread hasn't initialized the buffer yet, otherwise ignore and let the first setter win
-            PalInterlockedCompareExchangePointer(&g_iniSettings, CONFIG_INI_NOT_AVAIL, NULL);
-
-            return;
-        }
-
-        ConfigPair* iniBuff = new (nothrow) ConfigPair[RCV_Count];
-        if (iniBuff == NULL)
-        {
-            //only set if another thread hasn't initialized the buffer yet, otherwise ignore and let the first setter win
-            PalInterlockedCompareExchangePointer(&g_iniSettings, CONFIG_INI_NOT_AVAIL, NULL);
-
-            return;
-        }
-
-        uint32_t iBuff = 0;
-        uint32_t iIniBuff = 0;
-        char* currLine;
-
-        //while we haven't reached the max number of config pairs, or the end of the file, read the next line
-        while (iIniBuff < RCV_Count && iBuff < fSize)
-        {
-            //'trim' the leading whitespace
-            while (priv_isspace(buff[iBuff]) && (iBuff < fSize))
-                iBuff++;
-
-            currLine = &buff[iBuff];
-
-            //find the end of the line
-            while ((buff[iBuff] != '\n') && (buff[iBuff] != '\r') && (iBuff < fSize))
-                iBuff++;
-
-            //null terminate the line
-            buff[iBuff] = '\0';
-
-            //parse the line
-            //only increment iIniBuff if the parsing succeeded otherwise reuse the config struct
-            if (ParseConfigLine(&iniBuff[iIniBuff], currLine))
-            {
-                iIniBuff++;
-            }
-
-            //advance to the next line;
-            iBuff++;
-        }
-
-        //initialize the remaining config pairs to "\0"
-        while (iIniBuff < RCV_Count)
-        {
-            iniBuff[iIniBuff].Key[0] = '\0';
-            iniBuff[iIniBuff].Value[0] = '\0';
-            iIniBuff++;
-        }
-
-        //if another thread initialized first let the first setter win
-        //delete the iniBuff to avoid leaking memory
-        if (PalInterlockedCompareExchangePointer(&g_iniSettings, iniBuff, NULL) != NULL)
-        {
-            delete[] iniBuff;
-        }
-    }
-
-    return;
 }
 
 #ifdef FEATURE_EMBEDDED_CONFIG
@@ -327,55 +196,7 @@ void RhConfig::ReadEmbeddedSettings()
 }
 #endif // FEATURE_EMBEDDED_CONFIG
 
-//returns the path to the runtime configuration ini
-_Ret_maybenull_z_ TCHAR* RhConfig::GetConfigPath()
-{
-    const TCHAR* exePathBuff;
-
-    //get the path to rhconfig.ini, this file is expected to live along side the app
-    //to build the path get the process executable module full path strip off the file name and
-    //append rhconfig.ini
-    int32_t pathLen = PalGetModuleFileName(&exePathBuff, NULL);
-
-    if (pathLen <= 0)
-    {
-        return NULL;
-    }
-    uint32_t iLastDirSeparator = 0;
-
-    for (uint32_t iPath = pathLen - 1; iPath > 0; iPath--)
-    {
-        if (exePathBuff[iPath] == DIRECTORY_SEPARATOR_CHAR)
-        {
-            iLastDirSeparator = iPath;
-            break;
-        }
-    }
-
-    if (iLastDirSeparator == 0)
-    {
-        return NULL;
-    }
-
-    TCHAR* configPath = new (nothrow) TCHAR[iLastDirSeparator + 1 + wcslen(CONFIG_INI_FILENAME) + 1];
-    if (configPath != NULL)
-    {
-        //copy the path base and file name
-        for (uint32_t i = 0; i <= iLastDirSeparator; i++)
-        {
-            configPath[i] = exePathBuff[i];
-        }
-
-        for (uint32_t i = 0; i <= wcslen(CONFIG_INI_FILENAME); i++)
-        {
-            configPath[i + iLastDirSeparator + 1] = CONFIG_INI_FILENAME[i];
-        }
-    }
-
-    return configPath;
-}
-
-//Parses one line of rhconfig.ini and populates values in the passed in configPair
+//Parses one line of config and populates values in the passed in configPair
 //returns: true if the parsing was successful, false if the parsing failed.
 //NOTE: if the method fails configPair is left in an unitialized state
 bool RhConfig::ParseConfigLine(_Out_ ConfigPair* configPair, _In_z_ const char * line)

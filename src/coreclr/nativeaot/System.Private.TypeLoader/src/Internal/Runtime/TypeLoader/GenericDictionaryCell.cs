@@ -388,6 +388,7 @@ namespace Internal.Runtime.TypeLoader
             }
         }
 
+#if FEATURE_UNIVERSAL_GENERICS
         private class TypeSizeCell : GenericDictionaryCell
         {
             internal TypeDesc Type;
@@ -408,7 +409,9 @@ namespace Internal.Runtime.TypeLoader
                     return (IntPtr)IntPtr.Size;
             }
         }
+#endif
 
+#if FEATURE_UNIVERSAL_GENERICS
         private class FieldOffsetCell : GenericDictionaryCell
         {
             internal DefType ContainingType;
@@ -493,6 +496,7 @@ namespace Internal.Runtime.TypeLoader
                 return (IntPtr)(sizeof(EEType) + result * IntPtr.Size);
             }
         }
+#endif
 
         private class AllocateObjectCell : GenericDictionaryCell
         {
@@ -963,6 +967,7 @@ namespace Internal.Runtime.TypeLoader
             }
         }
 
+#if FEATURE_UNIVERSAL_GENERICS
         private class CallingConventionConverterCell : GenericDictionaryCell
         {
             internal NativeFormat.CallingConventionConverterKind Flags;
@@ -1029,6 +1034,7 @@ namespace Internal.Runtime.TypeLoader
                 return result;
             }
         }
+#endif
 
         internal static unsafe GenericDictionaryCell[] BuildDictionary(TypeBuilder typeBuilder, NativeLayoutInfoLoadContext nativeLayoutInfoLoadContext, NativeParser parser)
         {
@@ -1663,6 +1669,7 @@ namespace Internal.Runtime.TypeLoader
                     }
                     break;
 
+#if FEATURE_UNIVERSAL_GENERICS
                 case FixupSignatureKind.TypeSize:
                     {
                         var type = nativeLayoutInfoLoadContext.GetType(ref parser);
@@ -1691,6 +1698,7 @@ namespace Internal.Runtime.TypeLoader
                         cell = new VTableOffsetCell() { ContainingType = type, VTableSlot = vtableSlot };
                     }
                     break;
+#endif
 
                 case FixupSignatureKind.AllocateObject:
                     {
@@ -1811,6 +1819,7 @@ namespace Internal.Runtime.TypeLoader
                     }
                     break;
 
+#if FEATURE_UNIVERSAL_GENERICS
                 case FixupSignatureKind.CallingConventionConverter:
                     {
                         CallingConventionConverterKind flags = (CallingConventionConverterKind)parser.GetUnsigned();
@@ -1828,6 +1837,7 @@ namespace Internal.Runtime.TypeLoader
                         };
                     }
                     break;
+#endif
 
                 case FixupSignatureKind.NotYetSupported:
                 case FixupSignatureKind.ThreadStaticIndex:

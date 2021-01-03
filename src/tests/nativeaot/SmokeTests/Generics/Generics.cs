@@ -5,10 +5,6 @@ using System;
 using System.Reflection;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-#if CODEGEN_WASM
-using System.Runtime.InteropServices;
-using Console=Program.Console;
-#endif
 
 class Program
 {
@@ -37,6 +33,7 @@ class Program
         TestFieldAccess.Run();
         TestDevirtualization.Run();
         TestGenericInlining.Run();
+        TestGenericInliningDoesntHappen.Run();
 #if !CODEGEN_CPP 
         TestNullableCasting.Run();
         TestVariantCasting.Run();
@@ -2546,37 +2543,39 @@ class Program
         }
     }
 
-#if CODEGEN_WASM
-    internal class Console
+    class TestGenericInliningDoesntHappen
     {
-        private static unsafe void PrintString(string s)
+        interface IGenericInterface<T>
         {
-            int length = s.Length;
-            fixed (char* curChar = s)
+            int Execute();
+        }
+
+        class GenericInterfaceImpl<T> : IGenericInterface<T>
+        {
+            public int Execute() => 42;
+        }
+
+        class GenericType<T>
+        {
+            IGenericInterface<T> _instance = new GenericInterfaceImpl<T>();
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            public static GenericType<T> GenericMethod<U>()
             {
-                for (int i = 0; i < length; i++)
-                {
-                    TwoByteStr curCharStr = new TwoByteStr();
-                    curCharStr.first = (byte)(*(curChar + i));
-                    printf((byte*)&curCharStr, null);
-                }
+                var v = new GenericType<T>();
+                // Codegen might attempt to inline this, but it requires generic inlining we don't support right now
+                if (v.NonGenericMethod() != 42)
+                    throw new Exception();
+                return v;
             }
+
+            private int NonGenericMethod() => _instance.Execute();
         }
 
-        internal static void WriteLine(string s)
+        public static void Run()
         {
-            PrintString(s);
-            PrintString("\n");
+            // Regression test for https://github.com/dotnet/runtimelab/issues/485
+            GenericType<object>.GenericMethod<int>();
         }
     }
-
-    struct TwoByteStr
-    {
-        public byte first;
-        public byte second;
-    }
-
-    [DllImport("*")]
-    private static unsafe extern int printf(byte* str, byte* unused);
-#endif
 }
