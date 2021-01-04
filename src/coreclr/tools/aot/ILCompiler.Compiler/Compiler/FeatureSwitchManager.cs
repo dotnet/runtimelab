@@ -135,7 +135,7 @@ namespace ILCompiler
             // The "seek backwards to find what feeds the comparison" only works for a couple known instructions
             // (load constant, call). It can't e.g. skip over arguments to the call.
             //
-            // Last step is a sweep - we replace the beginnings of all unreachable blocks with "br $-2"
+            // Last step is a sweep - we replace the tail of all unreachable blocks with "br $-2"
             // and nop out the rest. If the basic block is smaller than 2 bytes, we don't touch it.
             // We also eliminate any EH records that correspond to the stubbed out basic block.
 
@@ -347,7 +347,7 @@ namespace ILCompiler
                         else
                         {
                             // RyuJIT is going to look at this basic block even though it's unreachable.
-                            // Consider it visible so that we replace the beginning with an endless loop.
+                            // Consider it visible so that we replace the tail with an endless loop.
                             if (reader.HasNext)
                                 flags[reader.Offset] |= OpcodeFlags.VisibleBasicBlockStart;
                         }
@@ -373,7 +373,7 @@ namespace ILCompiler
                         reader.Skip(opcode);
 
                         // RyuJIT is going to look at this basic block even though it's unreachable.
-                        // Consider it visible so that we replace the beginning with an endless loop.
+                        // Consider it visible so that we replace the tail with an endless loop.
                         if (reader.HasNext)
                             flags[reader.Offset] |= OpcodeFlags.VisibleBasicBlockStart;
                     }
@@ -403,56 +403,37 @@ namespace ILCompiler
 
             byte[] newBody = (byte[])methodBytes.Clone();
             int position = 0;
-            int endOfUsefulCode = 0;
             while (position < newBody.Length)
             {
                 Debug.Assert((flags[position] & OpcodeFlags.InstructionStart) != 0);
+                Debug.Assert((flags[position] & OpcodeFlags.VisibleBasicBlockStart) != 0);
 
                 bool erase = (flags[position] & OpcodeFlags.Mark) == 0;
 
-                // If we need to erase this instruction and this instruction starts a visible basic
-                // block, we need to neutralize it by rewriting it into an infinite loop ("br $-2").
-                if (erase &&
-                    (flags[position] & OpcodeFlags.VisibleBasicBlockStart) != 0)
-                {
-                    // Make sure there's enough space (2 bytes) to neutralize the basic block.
-                    if (position + 1 < newBody.Length
-                        && (flags[position + 1] == 0 ||
-                        (((flags[position + 1] & OpcodeFlags.Mark) == 0
-                        && (flags[position + 1] & OpcodeFlags.VisibleBasicBlockStart) == 0))))
-                    {
-                        newBody[position] = (byte)ILOpCode.Br_s;
-                        newBody[position + 1] = unchecked((byte)-2);
-                        position += 2;
-                        endOfUsefulCode = position;
-
-                        // If we reached the end of the instruction or stream, loop over.
-                        // Otherwise continue down to nop out the remainder of this instruction.
-                        if (position == newBody.Length
-                            || flags[position] != 0)
-                            continue;
-                    }
-                    else
-                    {
-                        // We cannot neutralize the basic block, so better leave the method alone.
-                        return method;
-                    }
-                }
-
-                // Make sure to nop out the entire instruction
+                int basicBlockStart = position;
                 do
                 {
                     if (erase)
                         newBody[position] = (byte)ILOpCode.Nop;
                     position++;
-                    if (!erase)
-                        endOfUsefulCode = position;
-                }
-                while (position < newBody.Length && flags[position] == 0);
-            }
+                } while (position < newBody.Length && (flags[position] & OpcodeFlags.VisibleBasicBlockStart) == 0);
 
-            // RyuJIT doesn't like when there's unreachable garbage at the end of the method.
-            Array.Resize(ref newBody, endOfUsefulCode);
+                // If we had to nop out this basic block, we need to neutralize it by appending
+                // an infinite loop ("br $-2").
+                // We append instead of prepend because RyuJIT's importer has trouble with junk unreachable bytes.
+                if (erase)
+                {
+                    if (position - basicBlockStart < 2)
+                    {
+                        // We cannot neutralize the basic block, so better leave the method alone.
+                        // The control would fall through to the next basic block.
+                        return method;
+                    }
+
+                    newBody[position - 2] = (byte)ILOpCode.Br_s;
+                    newBody[position - 1] = unchecked((byte)-2);
+                }
+            }
 
             // EH regions with unmarked handlers belong to unmarked basic blocks
             // Need to eliminate them because they're not usable.
