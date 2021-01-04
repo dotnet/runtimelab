@@ -276,6 +276,12 @@ namespace ILCompiler
                                 offsetsToVisit.Push(ehRegion.FilterOffset);
 
                             offsetsToVisit.Push(ehRegion.HandlerOffset);
+
+                            // RyuJIT is going to look at this basic block even though it's unreachable.
+                            // Consider it visible so that we replace the tail with an endless loop.
+                            int handlerEnd = ehRegion.HandlerOffset + ehRegion.HandlerLength;
+                            if (handlerEnd < flags.Length)
+                                flags[handlerEnd] |= OpcodeFlags.VisibleBasicBlockStart;
                         }
                     }
 
