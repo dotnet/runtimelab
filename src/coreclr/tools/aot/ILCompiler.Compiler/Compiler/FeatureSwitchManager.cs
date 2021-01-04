@@ -489,6 +489,12 @@ namespace ILCompiler
 
         private bool TryGetConstantArgument(MethodIL methodIL, byte[] body, OpcodeFlags[] flags, int offset, int argIndex, out int constant)
         {
+            if ((flags[offset] & OpcodeFlags.BasicBlockStart) != 0)
+            {
+                constant = 0;
+                return false;
+            }
+
             for (int currentOffset = offset - 1; currentOffset >= 0; currentOffset--)
             {
                 if ((flags[currentOffset] & OpcodeFlags.InstructionStart) == 0)
