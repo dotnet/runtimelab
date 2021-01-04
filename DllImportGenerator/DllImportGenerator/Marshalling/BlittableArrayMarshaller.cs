@@ -149,7 +149,7 @@ namespace Microsoft.Interop
                 case StubCodeContext.Stage.Unmarshal:
                     if (info.IsManagedReturnPosition
                         || (info.IsByRef && info.RefKind != RefKind.In)
-                        || (info.ByValueContentsMarshalKind & ByValueContentsMarshalKind.Out) != 0)
+                        || info.ByValueContentsMarshalKind.HasFlag(ByValueContentsMarshalKind.Out))
                     {
                         // new Span<T>(nativeIdentifier, managedIdentifier.Length).CopyTo(managedIdentifier);
                         var unmarshalContentsStatement =
@@ -269,7 +269,7 @@ namespace Microsoft.Interop
 
         public override bool SupportsByValueMarshalKind(ByValueContentsMarshalKind marshalKind, StubCodeContext context)
         {
-            return !context.PinningSupported && (marshalKind & ByValueContentsMarshalKind.Out) != 0;
+            return !context.PinningSupported && marshalKind.HasFlag(ByValueContentsMarshalKind.Out);
         }
     }
 

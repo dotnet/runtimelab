@@ -153,7 +153,7 @@ namespace Microsoft.Interop
                 case StubCodeContext.Stage.Unmarshal:
                     if (info.IsManagedReturnPosition
                         || (info.IsByRef && info.RefKind != RefKind.In)
-                        || (info.ByValueContentsMarshalKind & ByValueContentsMarshalKind.Out) != 0)
+                        || info.ByValueContentsMarshalKind.HasFlag(ByValueContentsMarshalKind.Out))
                     {
                         var arraySubContext = new ArrayMarshallingCodeContext(context.CurrentStage, IndexerIdentifier, context, appendLocalManagedIdentifierSuffix: cacheManagedValue);
                         // Iterate through the elements of the native array to unmarshal them
@@ -297,7 +297,7 @@ namespace Microsoft.Interop
 
         public override bool SupportsByValueMarshalKind(ByValueContentsMarshalKind marshalKind, StubCodeContext context)
         {
-            return (marshalKind & ByValueContentsMarshalKind.Out) != 0;
+            return marshalKind.HasFlag(ByValueContentsMarshalKind.Out);
         }
 
         protected override ExpressionSyntax GenerateNullCheckExpression(TypePositionInfo info, StubCodeContext context)
