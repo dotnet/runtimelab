@@ -21,5 +21,9 @@
     <type fullname="System.StartupHookProvider" feature="System.StartupHookProvider.IsSupported" featurevalue="false">
       <method signature="System.Boolean get_IsSupported()" body="stub" value="false" />
     </type>
+    <type fullname="System.Runtime.Serialization.SerializationInfo" feature="System.Runtime.Serialization.SerializationGuard.IsSupported" featurevalue="false">
+      <method signature="System.Void ThrowIfDeserializationInProgress(System.String,System.Int32&amp;)" body="stub" />
+      <method signature="System.Void ThrowIfDeserializationInProgress()" body="stub" />
+    </type>
   </assembly>
 </linker>

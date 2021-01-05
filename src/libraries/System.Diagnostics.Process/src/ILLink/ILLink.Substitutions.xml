@@ -1,0 +1,7 @@
+<linker>
+  <assembly fullname="System.Diagnostics.Process">
+    <type fullname="System.Runtime.Serialization.SerializationGuard">
+      <method signature="System.Void ThrowIfDeserializationInProgress(System.String,System.Int32&amp;)" body="stub" feature="System.Runtime.Serialization.SerializationGuard.IsSupported" featurevalue="false" />
+    </type>
+  </assembly>
+</linker>
