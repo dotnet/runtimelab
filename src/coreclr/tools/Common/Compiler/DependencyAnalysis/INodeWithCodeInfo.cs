@@ -65,7 +65,7 @@ namespace ILCompiler.DependencyAnalysis
             get;
         }
 
-        ObjectNode.ObjectData EHInfo
+        MethodExceptionHandlingInfoNode EHInfo
         {
             get;
         }
