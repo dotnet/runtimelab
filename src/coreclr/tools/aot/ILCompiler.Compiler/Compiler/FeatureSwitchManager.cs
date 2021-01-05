@@ -775,6 +775,7 @@ namespace ILCompiler
                 else if (_value == null)
                 {
                     Debug.Assert(method.Signature.ReturnType.IsVoid);
+                    codestream.Emit(ILOpcode.ret);
                 }
                 else
                 {
