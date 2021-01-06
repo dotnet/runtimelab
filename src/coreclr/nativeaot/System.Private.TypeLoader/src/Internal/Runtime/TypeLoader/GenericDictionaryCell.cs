@@ -694,6 +694,7 @@ namespace Internal.Runtime.TypeLoader
                                 }
                                 break;
                             }
+#if FEATURE_UNIVERSAL_GENERICS
                         case TypeLoaderEnvironment.MethodAddressType.UniversalCanonical:
                             {
                                 if (Method.IsCanonicalMethod(CanonicalFormKind.Universal) &&
@@ -705,6 +706,7 @@ namespace Internal.Runtime.TypeLoader
                                 }
                                 break;
                             }
+#endif
                         default:
                             Environment.FailFast("Unexpected method address type");
                             return;
@@ -823,15 +825,18 @@ namespace Internal.Runtime.TypeLoader
                         return Method.FunctionPointer;
                     }
                 }
+#if FEATURE_UNIVERSAL_GENERICS
                 else if (Method.UsgFunctionPointer != IntPtr.Zero)
                 {
                     return BuildCallingConventionConverter(builder, Method.UsgFunctionPointer, methodDictionary, true);
                 }
+#endif
 
                 Debug.Fail("UNREACHABLE");
                 return IntPtr.Zero;
             }
 
+#if FEATURE_UNIVERSAL_GENERICS
             private IntPtr BuildCallingConventionConverter(TypeBuilder builder, IntPtr pointerToUse, IntPtr dictionary, bool usgConverter)
             {
                 RuntimeTypeHandle[] typeArgs = Empty<RuntimeTypeHandle>.Array;
@@ -890,6 +895,7 @@ namespace Internal.Runtime.TypeLoader
                 Debug.Assert(thunkPtr != IntPtr.Zero);
                 return thunkPtr;
             }
+#endif
         }
 
         private class CastingCell : GenericDictionaryCell
