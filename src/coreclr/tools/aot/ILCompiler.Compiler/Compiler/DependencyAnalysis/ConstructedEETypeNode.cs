@@ -137,13 +137,6 @@ namespace ILCompiler.DependencyAnalysis
                 AddDependenciesForUniversalGVMSupport(factory, _type, ref dependencyList);
             }
 
-            if (factory.PreinitializationManager.HasLazyStaticConstructor(_type))
-            {
-                // The fact that we generated an EEType means that someone can call RuntimeHelpers.RunClassConstructor.
-                // We need to make sure this is possible.
-                dependencyList.Add(new DependencyListEntry(factory.TypeNonGCStaticsSymbol((MetadataType)_type), "Class constructor"));
-            }
-
             // Ask the metadata manager if we have any dependencies due to reflectability.
             factory.MetadataManager.GetDependenciesDueToReflectability(ref dependencyList, factory, _type);
 
