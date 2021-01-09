@@ -282,12 +282,13 @@ namespace Internal.TypeSystem.NoMetadata
 
         private void GetTypeNameHelper(out string name, out string nsName, out string assemblyName)
         {
+            RuntimeTypeHandle genericDefinitionHandle = GetTypeDefinition().GetRuntimeTypeHandle();
+            Debug.Assert(!genericDefinitionHandle.IsNull());
+
+#if DEBUG
             TypeReferenceHandle typeRefHandle;
             QTypeDefinition qTypeDefinition;
             MetadataReader reader;
-
-            RuntimeTypeHandle genericDefinitionHandle = GetTypeDefinition().GetRuntimeTypeHandle();
-            Debug.Assert(!genericDefinitionHandle.IsNull());
 
             string enclosingDummy;
 
@@ -305,6 +306,7 @@ namespace Internal.TypeSystem.NoMetadata
                 assemblyName = typeRefHandle.GetContainingModuleName(reader);
             }
             else
+#endif
             {
                 name = genericDefinitionHandle.LowLevelToStringRawEETypeAddress();
                 nsName = "";

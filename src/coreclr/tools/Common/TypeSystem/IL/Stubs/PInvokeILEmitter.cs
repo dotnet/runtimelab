@@ -266,9 +266,23 @@ namespace Internal.IL.Stubs
                 if (unmanagedCallingConvention == MethodSignatureFlags.None)
                     unmanagedCallingConvention = MethodSignatureFlags.UnmanagedCallingConvention;
 
+                EmbeddedSignatureData[] embeddedSignatureData = null;
+                if (_targetMethod.HasCustomAttribute("System.Runtime.InteropServices", "SuppressGCTransitionAttribute"))
+                {
+                    embeddedSignatureData = new EmbeddedSignatureData[]
+                    {
+                        new EmbeddedSignatureData()
+                        {
+                            index = MethodSignature.IndexOfCustomModifiersOnReturnType,
+                            kind = EmbeddedSignatureDataKind.OptionalCustomModifier,
+                            type = context.SystemModule.GetKnownType("System.Runtime.CompilerServices", "CallConvSuppressGCTransition")
+                        }
+                    };
+                }
+
                 MethodSignature nativeSig = new MethodSignature(
                     _targetMethod.Signature.Flags | unmanagedCallingConvention, 0, nativeReturnType,
-                    nativeParameterTypes);
+                    nativeParameterTypes, embeddedSignatureData);
 
                 ILLocalVariable vNativeFunctionPointer = emitter.NewLocal(context
                     .GetWellKnownType(WellKnownType.IntPtr));
@@ -315,7 +329,7 @@ namespace Internal.IL.Stubs
 
             MethodSignature nativeSig = new MethodSignature(
                 calliThunk.TargetSignature.Flags, 0, nativeReturnType,
-                nativeParameterTypes);
+                nativeParameterTypes, calliThunk.TargetSignature.GetEmbeddedSignatureData());
 
             callsiteSetupCodeStream.EmitLdArg(calliThunk.TargetSignature.Length);
             callsiteSetupCodeStream.Emit(ILOpcode.calli, emitter.NewToken(nativeSig));
