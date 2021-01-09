@@ -14,13 +14,22 @@ namespace System.Collections.Generic
     {
         private static Comparer<T> s_default;
 
+        // The AOT compiler can flip this to false under certain circumstances.
+        private static bool SupportsGenericIComparableInterfaces => true;
+
         [Intrinsic]
         private static Comparer<T> Create()
         {
             // The compiler will overwrite the Create method with optimized
             // instantiation-specific implementation.
             // This body serves as a fallback when instantiation-specific implementation is unavailable.
-            Interlocked.CompareExchange(ref s_default, Unsafe.As<Comparer<T>>(ComparerHelpers.GetComparer(typeof(T).TypeHandle)), null);
+            // If that happens, the compiler ensures we generate data structures to make the fallback work
+            // when this method is compiled.
+            Interlocked.CompareExchange(ref s_default,
+                SupportsGenericIComparableInterfaces
+                ? Unsafe.As<Comparer<T>>(ComparerHelpers.GetComparer(typeof(T).TypeHandle))
+                : new ObjectComparer<T>(),
+                null);
             return s_default;
         }
 

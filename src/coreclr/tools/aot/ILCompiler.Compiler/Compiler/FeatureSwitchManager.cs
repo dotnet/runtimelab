@@ -85,7 +85,11 @@ namespace ILCompiler
                 var resultDef = result.GetMethodILDefinition();
                 if (resultDef != result)
                 {
-                    result = new InstantiatedMethodIL(method, GetMethodILWithInlinedSubstitutions(resultDef));
+                    MethodIL newBodyDef = GetMethodILWithInlinedSubstitutions(resultDef);
+
+                    // If we didn't rewrite the body, we can keep the existing result.
+                    if (newBodyDef != resultDef)
+                        result = new InstantiatedMethodIL(method, newBodyDef);
                 }
                 else
                 {
