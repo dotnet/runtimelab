@@ -119,7 +119,7 @@
     <ToolRuntimeRID Condition="'$(_runtimeOS)' == 'linux-musl' and $(TargetArchitecture.StartsWith('arm')) and !$(HostArch.StartsWith('arm'))">linux-x64</ToolRuntimeRID>
 
     <!-- cross-targeting FreeBSD on Linux -->
-    <ToolRuntimeRID Condition="'$(_runtimeOS)' == 'freebsd' and $([System.Runtime.InteropServices.RuntimeInformation]::OSDescription.StartsWith('Linux'))">linux-x64</ToolRuntimeRID>
+    <ToolRuntimeRID Condition="'$(TargetOS)' == 'freebsd' and $([System.Runtime.InteropServices.RuntimeInformation]::OSDescription.StartsWith('Linux'))">linux-x64</ToolRuntimeRID>
 
     <!-- There are no WebAssembly tools, so use the default ones -->
     <_buildingInOSX>$([MSBuild]::IsOSPlatform('OSX'))</_buildingInOSX>
