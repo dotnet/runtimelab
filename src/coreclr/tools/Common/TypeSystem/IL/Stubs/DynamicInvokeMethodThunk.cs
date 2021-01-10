@@ -43,6 +43,16 @@ namespace Internal.IL.Stubs
             return type;
         }
 
+        private static bool ContainsFunctionPointer(TypeDesc type)
+        {
+            if (type.IsFunctionPointer)
+                return true;
+            else if (type.IsParameterizedType)
+                return ContainsFunctionPointer(((ParameterizedType)type).ParameterType);
+            else
+                return false;
+        }
+
         public static bool SupportsSignature(MethodSignature signature)
         {
             // ----------------------------------------------------------------
@@ -57,7 +67,7 @@ namespace Internal.IL.Stubs
             // ----------------------------------------------------------------
 
             TypeDesc unwrappedReturnType = UnwrapByRef(signature.ReturnType);
-            if (unwrappedReturnType.IsFunctionPointer)
+            if (ContainsFunctionPointer(unwrappedReturnType))
                 return false;
             if (!unwrappedReturnType.IsSignatureVariable && unwrappedReturnType.IsByRefLike)
                 return false;
@@ -65,7 +75,7 @@ namespace Internal.IL.Stubs
             for (int i = 0; i < signature.Length; i++)
             {
                 TypeDesc unwrappedParameterType = UnwrapByRef(signature[i]);
-                if (unwrappedParameterType.IsFunctionPointer)
+                if (ContainsFunctionPointer(unwrappedParameterType))
                     return false;
                 if (!unwrappedParameterType.IsSignatureVariable && unwrappedParameterType.IsByRefLike)
                     return false;

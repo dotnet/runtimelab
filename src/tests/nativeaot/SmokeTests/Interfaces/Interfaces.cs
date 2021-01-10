@@ -35,6 +35,7 @@ public class BringUpTest
             return Fail;
 
         TestDefaultInterfaceMethods.Run();
+        TestVariantInterfaceOptimizations.Run();
 
         return Pass;
     }
@@ -516,6 +517,53 @@ public class BringUpTest
             {
                 throw new Exception();
             }
+        }
+    }
+
+    class TestVariantInterfaceOptimizations
+    {
+        static IEnumerable<Other> s_others = (IEnumerable<Other>)(object)new This[3] { (This)33, (This)66, (This)1 };
+
+        enum This : sbyte { }
+
+        enum Other : sbyte { }
+
+        sealed class MySealedClass { }
+
+        interface IContravariantInterface<in T>
+        {
+            string DoContravariant(T value);
+        }
+
+        interface ICovariantInterface<out T>
+        {
+            T DoCovariant(object value);
+        }
+
+        class CoAndContravariantOverSealed : IContravariantInterface<object>, ICovariantInterface<MySealedClass>
+        {
+            public string DoContravariant(object value) => "Hello";
+            public MySealedClass DoCovariant(object value) => null;
+        }
+
+        public static void Run()
+        {
+            Console.WriteLine("Testing variant optimizations...");
+
+            int sum = 0;
+            foreach (var other in s_others)
+            {
+                sum += (int)other;
+            }
+
+            if (sum != 100)
+                throw new Exception();
+
+            ICovariantInterface<object> i1 = new CoAndContravariantOverSealed();
+            i1.DoCovariant(null);
+
+            IContravariantInterface<MySealedClass> i2 = new CoAndContravariantOverSealed();
+            i2.DoContravariant(null);
         }
     }
 }

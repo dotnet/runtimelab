@@ -2578,5 +2578,4 @@ class Program
             GenericType<object>.GenericMethod<int>();
         }
     }
-
 }

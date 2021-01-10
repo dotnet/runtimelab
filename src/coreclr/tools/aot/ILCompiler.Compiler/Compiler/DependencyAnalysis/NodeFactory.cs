@@ -313,6 +313,15 @@ namespace ILCompiler.DependencyAnalysis
                 return new VirtualMethodUseNode(method);
             });
 
+            _variantMethods = new NodeCache<MethodDesc, VariantInterfaceMethodUseNode>((MethodDesc method) =>
+            {
+                // We don't need to track virtual method uses for types that have a vtable with a known layout.
+                // It's a waste of CPU time and memory.
+                Debug.Assert(!VTable(method.OwningType).HasFixedSlots);
+
+                return new VariantInterfaceMethodUseNode(method);
+            });
+
             _readyToRunHelpers = new NodeCache<ReadyToRunHelperKey, ISymbolNode>(CreateReadyToRunHelperNode);
 
             _genericReadyToRunHelpersFromDict = new NodeCache<ReadyToRunGenericHelperKey, ISymbolNode>(CreateGenericLookupFromDictionaryNode);
@@ -441,6 +450,11 @@ namespace ILCompiler.DependencyAnalysis
             _modulesWithMetadata = new NodeCache<ModuleDesc, ModuleMetadataNode>(module =>
             {
                 return new ModuleMetadataNode(module);
+            });
+
+            _customAttributesWithMetadata = new NodeCache<ReflectableCustomAttribute, CustomAttributeMetadataNode>(ca =>
+            {
+                return new CustomAttributeMetadataNode(ca);
             });
 
             _genericDictionaryLayouts = new NodeCache<TypeSystemEntity, DictionaryLayoutNode>(_dictionaryLayoutProvider.GetLayout);
@@ -904,6 +918,13 @@ namespace ILCompiler.DependencyAnalysis
             return _virtMethods.GetOrAdd(decl);
         }
 
+        private NodeCache<MethodDesc, VariantInterfaceMethodUseNode> _variantMethods;
+
+        public DependencyNodeCore<NodeFactory> VariantInterfaceMethodUse(MethodDesc decl)
+        {
+            return _variantMethods.GetOrAdd(decl);
+        }
+
         private NodeCache<ReadyToRunHelperKey, ISymbolNode> _readyToRunHelpers;
 
         public ISymbolNode ReadyToRunHelper(ReadyToRunHelperId id, Object target)
@@ -977,6 +998,16 @@ namespace ILCompiler.DependencyAnalysis
             // in the dependency graph otherwise.
             Debug.Assert(MetadataManager is UsageBasedMetadataManager);
             return _modulesWithMetadata.GetOrAdd(module);
+        }
+
+        private NodeCache<ReflectableCustomAttribute, CustomAttributeMetadataNode> _customAttributesWithMetadata;
+
+        internal CustomAttributeMetadataNode CustomAttributeMetadata(ReflectableCustomAttribute ca)
+        {
+            // These are only meaningful for UsageBasedMetadataManager. We should not have them
+            // in the dependency graph otherwise.
+            Debug.Assert(MetadataManager is UsageBasedMetadataManager);
+            return _customAttributesWithMetadata.GetOrAdd(ca);
         }
 
         private NodeCache<string, FrozenStringNode> _frozenStringNodes;

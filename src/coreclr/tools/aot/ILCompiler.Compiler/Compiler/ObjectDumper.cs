@@ -81,15 +81,6 @@ namespace ILCompiler
                 _writer.WriteAttributeString("Length", nodeWithCodeInfo.GCInfo.Length.ToStringInvariant());
                 _writer.WriteAttributeString("Hash", HashData(nodeWithCodeInfo.GCInfo));
                 _writer.WriteEndElement();
-
-                if (nodeWithCodeInfo.EHInfo != null)
-                {
-                    _writer.WriteStartElement("EHInfo");
-                    _writer.WriteAttributeString("Name", name);
-                    _writer.WriteAttributeString("Length", nodeWithCodeInfo.EHInfo.Data.Length.ToStringInvariant());
-                    _writer.WriteAttributeString("Hash", HashData(nodeWithCodeInfo.EHInfo.Data));
-                    _writer.WriteEndElement();
-                }
             }
         }
 

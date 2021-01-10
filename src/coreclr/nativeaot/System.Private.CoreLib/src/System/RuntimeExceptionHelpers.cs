@@ -173,10 +173,12 @@ namespace System
         // exception that escapes from a ThreadPool workitem, or from a void-returning async method.
         public static void ReportUnhandledException(Exception exception)
         {
+#if FEATURE_DUMP_DEBUGGING
             // ReportUnhandledError will also call this in APPX scenarios,
             // but WinRT can failfast before we get another chance
             // (in APPX scenarios, this one will get overwritten by the one with the CCW pointer)
             GenerateExceptionInformationForDump(exception, IntPtr.Zero);
+#endif
 
 #if ENABLE_WINRT
             // If possible report the exception to GEH, if not fail fast.
@@ -244,7 +246,9 @@ namespace System
                     : message;
                 DeveloperExperience.WriteLine(output);
 
+#if FEATURE_DUMP_DEBUGGING
                 GenerateExceptionInformationForDump(exception, IntPtr.Zero);
+#endif
             }
 
 #if TARGET_WINDOWS
@@ -280,6 +284,21 @@ namespace System
             // Trying to use locks or other concurrent access apis would actually defeat the purpose of making FailFast as robust as possible.
             public static bool Value;
         }
+
+        // This returns "true" once enough of the framework has been initialized to safely perform operations
+        // such as filling in the stack frame and generating diagnostic support.
+        public static bool SafeToPerformRichExceptionSupport
+        {
+            get
+            {
+                // Reflection needs to work as the exception code calls GetType() and GetType().ToString()
+                if (RuntimeAugments.CallbacksIfAvailable == null)
+                    return false;
+                return true;
+            }
+        }
+
+#if FEATURE_DUMP_DEBUGGING
 
 #pragma warning disable 414 // field is assigned, but never used -- This is because C# doesn't realize that we
         //                                      copy the field into a buffer.
@@ -614,19 +633,6 @@ namespace System
             }
         }
 
-        // This returns "true" once enough of the framework has been initialized to safely perform operations
-        // such as filling in the stack frame and generating diagnostic support.
-        public static bool SafeToPerformRichExceptionSupport
-        {
-            get
-            {
-                // Reflection needs to work as the exception code calls GetType() and GetType().ToString()
-                if (RuntimeAugments.CallbacksIfAvailable == null)
-                    return false;
-                return true;
-            }
-        }
-
         private static GCHandle s_ExceptionInfoBufferPinningHandle;
         private static Lock s_ExceptionInfoBufferLock = new Lock();
 
@@ -659,5 +665,6 @@ namespace System
                 }
             }
         }
+#endif // FEATURE_DUMP_DEBUGGING
     }
 }

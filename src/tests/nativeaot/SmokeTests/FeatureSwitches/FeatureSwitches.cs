@@ -49,6 +49,23 @@ class Program
 
         public static void Run()
         {
+            // repeat 5 times to get past the stloc.0/1/2/3 and into stloc.s
+            if (IsEnabled())
+            {
+                EnsurePresent(typeof(NotPresentType));
+            }
+            if (IsEnabled())
+            {
+                EnsurePresent(typeof(NotPresentType));
+            }
+            if (IsEnabled())
+            {
+                EnsurePresent(typeof(NotPresentType));
+            }
+            if (IsEnabled())
+            {
+                EnsurePresent(typeof(NotPresentType));
+            }
             if (IsEnabled())
             {
                 EnsurePresent(typeof(NotPresentType));

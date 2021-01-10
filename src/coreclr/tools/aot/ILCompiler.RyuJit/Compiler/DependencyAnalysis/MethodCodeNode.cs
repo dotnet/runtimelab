@@ -15,7 +15,7 @@ namespace ILCompiler.DependencyAnalysis
         private ObjectData _methodCode;
         private FrameInfo[] _frameInfos;
         private byte[] _gcInfo;
-        private ObjectData _ehInfo;
+        private MethodExceptionHandlingInfoNode _ehInfo;
         private DebugLocInfo[] _debugLocInfos;
         private DebugVarInfo[] _debugVarInfos;
         private DebugEHClauseInfo[] _debugEHClauseInfos;
@@ -71,15 +71,11 @@ namespace ILCompiler.DependencyAnalysis
                 dependencies.Add(factory.EagerCctorIndirection(owningType.GetStaticConstructor()), "Eager .cctor");
             }
 
-            if (_ehInfo != null && _ehInfo.Relocs != null)
+            if (_ehInfo != null)
             {
                 if (dependencies == null)
                     dependencies = new DependencyList();
-
-                foreach (Relocation reloc in _ehInfo.Relocs)
-                {
-                    dependencies.Add(reloc.Target, "reloc");
-                }
+                dependencies.Add(_ehInfo, "Exception handling information");
             }
 
             if (MethodAssociatedDataNode.MethodHasAssociatedData(factory, this))
@@ -108,7 +104,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public FrameInfo[] FrameInfos => _frameInfos;
         public byte[] GCInfo => _gcInfo;
-        public ObjectData EHInfo => _ehInfo;
+        public MethodExceptionHandlingInfoNode EHInfo => _ehInfo;
 
         public ISymbolNode GetAssociatedDataNode(NodeFactory factory)
         {
@@ -130,7 +126,7 @@ namespace ILCompiler.DependencyAnalysis
             _gcInfo = gcInfo;
         }
 
-        public void InitializeEHInfo(ObjectData ehInfo)
+        public void InitializeEHInfo(MethodExceptionHandlingInfoNode ehInfo)
         {
             Debug.Assert(_ehInfo == null);
             _ehInfo = ehInfo;

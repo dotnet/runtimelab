@@ -15,6 +15,7 @@ using Internal.TypeSystem;
 using Internal.TypeSystem.Ecma;
 
 using Debug = System.Diagnostics.Debug;
+using MethodDebugInformation = Internal.IL.MethodDebugInformation;
 
 namespace ILCompiler
 {
@@ -84,7 +85,11 @@ namespace ILCompiler
                 var resultDef = result.GetMethodILDefinition();
                 if (resultDef != result)
                 {
-                    result = new InstantiatedMethodIL(method, GetMethodILWithInlinedSubstitutions(resultDef));
+                    MethodIL newBodyDef = GetMethodILWithInlinedSubstitutions(resultDef);
+
+                    // If we didn't rewrite the body, we can keep the existing result.
+                    if (newBodyDef != resultDef)
+                        result = new InstantiatedMethodIL(method, newBodyDef);
                 }
                 else
                 {
@@ -134,7 +139,7 @@ namespace ILCompiler
             // The "seek backwards to find what feeds the comparison" only works for a couple known instructions
             // (load constant, call). It can't e.g. skip over arguments to the call.
             //
-            // Last step is a sweep - we replace the beginnings of all unreachable blocks with "br $-2"
+            // Last step is a sweep - we replace the tail of all unreachable blocks with "br $-2"
             // and nop out the rest. If the basic block is smaller than 2 bytes, we don't touch it.
             // We also eliminate any EH records that correspond to the stubbed out basic block.
 
@@ -201,6 +206,8 @@ namespace ILCompiler
                     {
                         // Ends basic block.
                         flags[offset] |= OpcodeFlags.EndBasicBlock;
+
+                        reader.Skip(opcode);
                     }
                     else if (opcode == ILOpcode.switch_)
                     {
@@ -221,7 +228,21 @@ namespace ILCompiler
                     }
 
                     if ((flags[offset] & OpcodeFlags.EndBasicBlock) != 0)
+                    {
+                        if (reader.HasNext)
+                        {
+                            // If the bytes following this basic block are not reachable from anywhere,
+                            // the sweeping step would consider them to be part of the last instruction
+                            // of the current basic block because of how instruction boundaries are identified.
+                            // We wouldn't NOP them out if the current basic block is reachable.
+                            //
+                            // That's a problem for RyuJIT because RyuJIT looks at these bytes for... reasons.
+                            //
+                            // We can just do the same thing as RyuJIT and consider those a basic block.
+                            offsetsToVisit.Push(reader.Offset);
+                        }
                         break;
+                    }
                 }
             }
 
@@ -259,6 +280,12 @@ namespace ILCompiler
                                 offsetsToVisit.Push(ehRegion.FilterOffset);
 
                             offsetsToVisit.Push(ehRegion.HandlerOffset);
+
+                            // RyuJIT is going to look at this basic block even though it's unreachable.
+                            // Consider it visible so that we replace the tail with an endless loop.
+                            int handlerEnd = ehRegion.HandlerOffset + ehRegion.HandlerLength;
+                            if (handlerEnd < flags.Length)
+                                flags[handlerEnd] |= OpcodeFlags.VisibleBasicBlockStart;
                         }
                     }
 
@@ -327,6 +354,13 @@ namespace ILCompiler
                             // Branches not tested for above are conditional and the flow falls through.
                             offsetsToVisit.Push(reader.Offset);
                         }
+                        else
+                        {
+                            // RyuJIT is going to look at this basic block even though it's unreachable.
+                            // Consider it visible so that we replace the tail with an endless loop.
+                            if (reader.HasNext)
+                                flags[reader.Offset] |= OpcodeFlags.VisibleBasicBlockStart;
+                        }
                     }
                     else if (opcode == ILOpcode.switch_)
                     {
@@ -338,6 +372,20 @@ namespace ILCompiler
                             offsetsToVisit.Push(destination);
                         }
                         offsetsToVisit.Push(reader.Offset);
+                    }
+                    else if (opcode == ILOpcode.ret
+                        || opcode == ILOpcode.endfilter
+                        || opcode == ILOpcode.endfinally
+                        || opcode == ILOpcode.throw_
+                        || opcode == ILOpcode.rethrow
+                        || opcode == ILOpcode.jmp)
+                    {
+                        reader.Skip(opcode);
+
+                        // RyuJIT is going to look at this basic block even though it's unreachable.
+                        // Consider it visible so that we replace the tail with an endless loop.
+                        if (reader.HasNext)
+                            flags[reader.Offset] |= OpcodeFlags.VisibleBasicBlockStart;
                     }
                     else
                     {
@@ -365,56 +413,37 @@ namespace ILCompiler
 
             byte[] newBody = (byte[])methodBytes.Clone();
             int position = 0;
-            int endOfUsefulCode = 0;
             while (position < newBody.Length)
             {
                 Debug.Assert((flags[position] & OpcodeFlags.InstructionStart) != 0);
+                Debug.Assert((flags[position] & OpcodeFlags.VisibleBasicBlockStart) != 0);
 
                 bool erase = (flags[position] & OpcodeFlags.Mark) == 0;
 
-                // If we need to erase this instruction and this instruction starts a visible basic
-                // block, we need to neutralize it by rewriting it into an infinite loop ("br $-2").
-                if (erase &&
-                    (flags[position] & OpcodeFlags.VisibleBasicBlockStart) != 0)
-                {
-                    // Make sure there's enough space (2 bytes) to neutralize the basic block.
-                    if (position + 1 < newBody.Length
-                        && (flags[position + 1] == 0 ||
-                        (((flags[position + 1] & OpcodeFlags.Mark) == 0
-                        && (flags[position + 1] & OpcodeFlags.VisibleBasicBlockStart) == 0))))
-                    {
-                        newBody[position] = (byte)ILOpCode.Br_s;
-                        newBody[position + 1] = unchecked((byte)-2);
-                        position += 2;
-                        endOfUsefulCode = position;
-
-                        // If we reached the end of the instruction or stream, loop over.
-                        // Otherwise continue down to nop out the remainder of this instruction.
-                        if (position == newBody.Length
-                            || flags[position] != 0)
-                            continue;
-                    }
-                    else
-                    {
-                        // We cannot neutralize the basic block, so better leave the method alone.
-                        return method;
-                    }
-                }
-
-                // Make sure to nop out the entire instruction
+                int basicBlockStart = position;
                 do
                 {
                     if (erase)
                         newBody[position] = (byte)ILOpCode.Nop;
                     position++;
-                    if (!erase)
-                        endOfUsefulCode = position;
-                }
-                while (position < newBody.Length && flags[position] == 0);
-            }
+                } while (position < newBody.Length && (flags[position] & OpcodeFlags.VisibleBasicBlockStart) == 0);
 
-            // RyuJIT doesn't like when there's unreachable garbage at the end of the method.
-            Array.Resize(ref newBody, endOfUsefulCode);
+                // If we had to nop out this basic block, we need to neutralize it by appending
+                // an infinite loop ("br $-2").
+                // We append instead of prepend because RyuJIT's importer has trouble with junk unreachable bytes.
+                if (erase)
+                {
+                    if (position - basicBlockStart < 2)
+                    {
+                        // We cannot neutralize the basic block, so better leave the method alone.
+                        // The control would fall through to the next basic block.
+                        return method;
+                    }
+
+                    newBody[position - 2] = (byte)ILOpCode.Br_s;
+                    newBody[position - 1] = unchecked((byte)-2);
+                }
+            }
 
             // EH regions with unmarked handlers belong to unmarked basic blocks
             // Need to eliminate them because they're not usable.
@@ -427,11 +456,36 @@ namespace ILCompiler
                 }
             }
 
-            return new SubstitutedMethodIL(method, newBody, newEHRegions.ToArray());
+            // Existing debug information might not match new instruction boundaries (plus there's little point
+            // in generating debug information for NOPs) - generate new debug information by filtering
+            // out the sequence points associated with nopped out instructions.
+            MethodDebugInformation debugInfo = method.GetDebugInfo();
+            IEnumerable<ILSequencePoint> oldSequencePoints = debugInfo?.GetSequencePoints();
+            if (oldSequencePoints != null)
+            {
+                ArrayBuilder<ILSequencePoint> sequencePoints = new ArrayBuilder<ILSequencePoint>();
+                foreach (var sequencePoint in oldSequencePoints)
+                {
+                    if (sequencePoint.Offset < flags.Length && (flags[sequencePoint.Offset] & OpcodeFlags.Mark) != 0)
+                    {
+                        sequencePoints.Add(sequencePoint);
+                    }
+                }
+
+                debugInfo = new SubstitutedDebugInformation(debugInfo, sequencePoints.ToArray());
+            }
+
+            return new SubstitutedMethodIL(method, newBody, newEHRegions.ToArray(), debugInfo);
         }
 
         private bool TryGetConstantArgument(MethodIL methodIL, byte[] body, OpcodeFlags[] flags, int offset, int argIndex, out int constant)
         {
+            if ((flags[offset] & OpcodeFlags.BasicBlockStart) != 0)
+            {
+                constant = 0;
+                return false;
+            }
+
             for (int currentOffset = offset - 1; currentOffset >= 0; currentOffset--)
             {
                 if ((flags[currentOffset] & OpcodeFlags.InstructionStart) == 0)
@@ -528,7 +582,7 @@ namespace ILCompiler
                         _ => opcode - ILOpcode.ldloc_0,
                     };
 
-                    for (int potentialStlocOffset = currentOffset - 1; potentialStlocOffset >= 0; potentialStlocOffset++)
+                    for (int potentialStlocOffset = currentOffset - 1; potentialStlocOffset >= 0; potentialStlocOffset--)
                     {
                         if ((flags[potentialStlocOffset] & OpcodeFlags.InstructionStart) == 0)
                             continue;
@@ -539,8 +593,8 @@ namespace ILCompiler
                             (otherOpcode >= ILOpcode.stloc_0 && otherOpcode <= ILOpcode.stloc_3))
                             && otherOpcode switch
                             {
-                                ILOpcode.stloc => reader.ReadILUInt16(),
-                                ILOpcode.stloc_s => reader.ReadILByte(),
+                                ILOpcode.stloc => nestedReader.ReadILUInt16(),
+                                ILOpcode.stloc_s => nestedReader.ReadILByte(),
                                 _ => otherOpcode - ILOpcode.stloc_0,
                             } == locIndex)
                         {
@@ -595,12 +649,14 @@ namespace ILCompiler
             private readonly byte[] _body;
             private readonly ILExceptionRegion[] _ehRegions;
             private readonly MethodIL _wrappedMethodIL;
+            private readonly MethodDebugInformation _debugInfo;
 
-            public SubstitutedMethodIL(MethodIL wrapped, byte[] body, ILExceptionRegion[] ehRegions)
+            public SubstitutedMethodIL(MethodIL wrapped, byte[] body, ILExceptionRegion[] ehRegions, MethodDebugInformation debugInfo)
             {
                 _wrappedMethodIL = wrapped;
                 _body = body;
                 _ehRegions = ehRegions;
+                _debugInfo = debugInfo;
             }
 
             public override MethodDesc OwningMethod => _wrappedMethodIL.OwningMethod;
@@ -610,6 +666,23 @@ namespace ILCompiler
             public override byte[] GetILBytes() => _body;
             public override LocalVariableDefinition[] GetLocals() => _wrappedMethodIL.GetLocals();
             public override object GetObject(int token) => _wrappedMethodIL.GetObject(token);
+            public override MethodDebugInformation GetDebugInfo() => _debugInfo;
+        }
+
+        private class SubstitutedDebugInformation : MethodDebugInformation
+        {
+            private readonly MethodDebugInformation _originalDebugInformation;
+            private readonly ILSequencePoint[] _sequencePoints;
+
+            public SubstitutedDebugInformation(MethodDebugInformation originalDebugInformation, ILSequencePoint[] newSequencePoints)
+            {
+                _originalDebugInformation = originalDebugInformation;
+                _sequencePoints = newSequencePoints;
+            }
+
+            public override IEnumerable<Internal.IL.ILLocalVariable> GetLocalVariables() => _originalDebugInformation.GetLocalVariables();
+            public override IEnumerable<string> GetParameterNames() => _originalDebugInformation.GetParameterNames();
+            public override IEnumerable<ILSequencePoint> GetSequencePoints() => _sequencePoints;
         }
 
         private class FeatureSwitchHashtable : LockFreeReaderHashtable<EcmaModule, AssemblyFeatureInfo>
@@ -706,6 +779,7 @@ namespace ILCompiler
                 else if (_value == null)
                 {
                     Debug.Assert(method.Signature.ReturnType.IsVoid);
+                    codestream.Emit(ILOpcode.ret);
                 }
                 else
                 {

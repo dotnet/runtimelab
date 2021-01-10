@@ -31,6 +31,7 @@
       <ReproResponseLines Include="--directpinvokelist:$(RuntimeBinDir)build\WindowsAPIs.txt" />
       <ReproResponseLines Include="--stacktracedata" />
       <ReproResponseLines Include="--scanreflection" />
+      <ReproResponseLines Include="--feature:System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization=false" />
       <ReproResponseLines Include="--removefeature:SerializationGuard" />
     </ItemGroup>
 

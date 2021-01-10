@@ -86,6 +86,7 @@ namespace System.Runtime.CompilerServices
             }
         }
 
+#if FEATURE_POOLASYNCVALUETASKS
         internal static void SetException(Exception exception, [NotNull] ref StateMachineBox? boxFieldRef)
         {
             if (exception is null)
@@ -95,6 +96,7 @@ namespace System.Runtime.CompilerServices
 
             (boxFieldRef ??= CreateWeaklyTypedStateMachineBox()).SetException(exception);
         }
+#endif
 
         /// <summary>Gets the value task for this builder.</summary>
         public ValueTask<TResult> Task
@@ -158,6 +160,7 @@ namespace System.Runtime.CompilerServices
             }
         }
 
+#if FEATURE_POOLASYNCVALUETASKS
         internal static void AwaitOnCompleted<TAwaiter, TStateMachine>(
             ref TAwaiter awaiter, ref TStateMachine stateMachine, ref StateMachineBox? box)
             where TAwaiter : INotifyCompletion
@@ -172,6 +175,7 @@ namespace System.Runtime.CompilerServices
                 System.Threading.Tasks.Task.ThrowAsync(e, targetContext: null);
             }
         }
+#endif
 
         /// <summary>Schedules the state machine to proceed to the next action when the specified awaiter completes.</summary>
         /// <typeparam name="TAwaiter">The type of the awaiter.</typeparam>
@@ -195,6 +199,7 @@ namespace System.Runtime.CompilerServices
             }
         }
 
+#if FEATURE_POOLASYNCVALUETASKS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(
             ref TAwaiter awaiter, ref TStateMachine stateMachine, [NotNull] ref StateMachineBox? boxRef)
@@ -204,7 +209,9 @@ namespace System.Runtime.CompilerServices
             IAsyncStateMachineBox box = GetStateMachineBox(ref stateMachine, ref boxRef);
             AsyncTaskMethodBuilder<VoidTaskResult>.AwaitUnsafeOnCompleted(ref awaiter, box);
         }
+#endif
 
+#if FEATURE_POOLASYNCVALUETASKS
         /// <summary>Gets the "boxed" state machine object.</summary>
         /// <typeparam name="TStateMachine">Specifies the type of the async state machine.</typeparam>
         /// <param name="stateMachine">The state machine.</param>
@@ -283,6 +290,7 @@ namespace System.Runtime.CompilerServices
         /// is evaluated in the debugger prior to the async method yielding for the first time.
         /// </summary>
         internal static StateMachineBox CreateWeaklyTypedStateMachineBox() => new StateMachineBox<IAsyncStateMachine>();
+#endif // FEATURE_POOLASYNCVALUETASKS
 
         /// <summary>
         /// Gets an object that may be used to uniquely identify this builder to the debugger.
@@ -309,6 +317,7 @@ namespace System.Runtime.CompilerServices
             }
         }
 
+#if FEATURE_POOLASYNCVALUETASKS
         /// <summary>The base type for all value task box reusable box objects, regardless of state machine type.</summary>
         internal abstract class StateMachineBox :
             IValueTaskSource<TResult>, IValueTaskSource
@@ -361,7 +370,6 @@ namespace System.Runtime.CompilerServices
             /// <summary>Delegate used to invoke on an ExecutionContext when passed an instance of this box type.</summary>
             private static readonly ContextCallback s_callback = ExecutionContextCallback;
 
-#if FEATURE_POOLASYNCVALUETASKS
             /// <summary>Lock used to protected the shared cache of boxes.</summary>
             /// <remarks>The code that uses this assumes a runtime without thread aborts.</remarks>
             private static int s_cacheLock;
@@ -369,7 +377,6 @@ namespace System.Runtime.CompilerServices
             private static StateMachineBox<TStateMachine>? s_cache;
             /// <summary>The number of items stored in <see cref="s_cache"/>.</summary>
             private static int s_cacheSize;
-#endif
 
             // TODO:
             // AsyncTaskMethodBuilder logs about the state machine box lifecycle; AsyncValueTaskMethodBuilder currently
@@ -380,6 +387,7 @@ namespace System.Runtime.CompilerServices
 
             /// <summary>If this box is stored in the cache, the next box in the cache.</summary>
             private StateMachineBox<TStateMachine>? _next;
+
             /// <summary>The state machine itself.</summary>
             public TStateMachine? StateMachine;
 
@@ -387,7 +395,6 @@ namespace System.Runtime.CompilerServices
             [MethodImpl(MethodImplOptions.AggressiveInlining)] // only one caller
             internal static StateMachineBox<TStateMachine> GetOrCreateBox()
             {
-#if FEATURE_POOLASYNCVALUETASKS
                 // Try to acquire the lock to access the cache.  If there's any contention, don't use the cache.
                 if (Interlocked.CompareExchange(ref s_cacheLock, 1, 0) == 0)
                 {
@@ -411,7 +418,6 @@ namespace System.Runtime.CompilerServices
                     // Release the lock.
                     Volatile.Write(ref s_cacheLock, 0);
                 }
-#endif
 
                 // Couldn't quickly get a cached instance, so create a new instance.
                 return new StateMachineBox<TStateMachine>();
@@ -426,7 +432,6 @@ namespace System.Runtime.CompilerServices
                 // the caller keeps the box alive for an arbitrary period of time.
                 ClearStateUponCompletion();
 
-#if FEATURE_POOLASYNCVALUETASKS
                 // Reset the MRVTSC.  We can either do this here, in which case we may be paying the (small) overhead
                 // to reset the box even if we're going to drop it, or we could do it while holding the lock, in which
                 // case we'll only reset it if necessary but causing the lock to be held for longer, thereby causing
@@ -460,7 +465,6 @@ namespace System.Runtime.CompilerServices
                     // Release the lock.
                     Volatile.Write(ref s_cacheLock, 0);
                 }
-#endif
             }
 
             /// <summary>
@@ -537,5 +541,6 @@ namespace System.Runtime.CompilerServices
             /// <summary>Gets the state machine as a boxed object.  This should only be used for debugging purposes.</summary>
             IAsyncStateMachine IAsyncStateMachineBox.GetStateMachineObject() => StateMachine!; // likely boxes, only use for debugging
         }
+#endif // FEATURE_POOLASYNCVALUETASKS
     }
 }

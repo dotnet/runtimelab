@@ -14,6 +14,10 @@ if(MSVC)
 endif (MSVC)
 
 if(CLR_CMAKE_HOST_UNIX)
+  if(CLR_CMAKE_TARGET_OSX)
+    add_definitions(-D_XOPEN_SOURCE)
+  endif(CLR_CMAKE_TARGET_OSX)
+
   if(CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_I386)
     # Allow 16 byte compare-exchange
     add_compile_options(-mcx16)
