@@ -68,7 +68,7 @@ In the source generated marshalling, the `[In]` and `[Out]` attributes will only
 
 ### Struct marshalling
 
-Support for struct marshalling in the source-generated marshalling is described in [StructMarshalling.md](StructMarshalling.md)
+Support for struct marshalling in the source-generated marshalling is described in [StructMarshalling.md](StructMarshalling.md).
 
 ## Verison 0
 
