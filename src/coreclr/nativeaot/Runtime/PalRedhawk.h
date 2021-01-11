@@ -112,58 +112,6 @@ struct FILETIME
     uint32_t dwHighDateTime;
 };
 
-enum MEMORY_RESOURCE_NOTIFICATION_TYPE
-{
-    LowMemoryResourceNotification,
-    HighMemoryResourceNotification
-};
-
-enum LOGICAL_PROCESSOR_RELATIONSHIP
-{
-    RelationProcessorCore,
-    RelationNumaNode,
-    RelationCache,
-    RelationProcessorPackage
-};
-
-#define LTP_PC_SMT 0x1
-
-enum PROCESSOR_CACHE_TYPE
-{
-    CacheUnified,
-    CacheInstruction,
-    CacheData,
-    CacheTrace
-};
-
-struct CACHE_DESCRIPTOR
-{
-    uint8_t   Level;
-    uint8_t   Associativity;
-    uint16_t  LineSize;
-    uint32_t  Size;
-    PROCESSOR_CACHE_TYPE Type;
-};
-
-struct SYSTEM_LOGICAL_PROCESSOR_INFORMATION
-{
-    uintptr_t   ProcessorMask;
-    LOGICAL_PROCESSOR_RELATIONSHIP Relationship;
-    union
-    {
-        struct
-        {
-            uint8_t  Flags;
-        } ProcessorCore;
-        struct
-        {
-            uint32_t NodeNumber;
-        } NumaNode;
-        CACHE_DESCRIPTOR Cache;
-        uint64_t  Reserved[2];
-    };
-};
-
 #ifdef HOST_AMD64
 
 typedef struct DECLSPEC_ALIGN(16) _XSAVE_FORMAT {
@@ -522,9 +470,6 @@ typedef enum _EXCEPTION_DISPOSITION {
 #ifndef DACCESS_COMPILE
 #ifndef _INC_WINDOWS
 
-typedef uint32_t (WINAPI *PTHREAD_START_ROUTINE)(_In_opt_ void* lpThreadParameter);
-typedef intptr_t (WINAPI *FARPROC)();
-
 #ifndef __GCENV_BASE_INCLUDED__
 #define TRUE                    1
 #define FALSE                   0
@@ -536,46 +481,11 @@ typedef intptr_t (WINAPI *FARPROC)();
 #define DLL_THREAD_ATTACH       2
 #define DLL_THREAD_DETACH       3
 #define DLL_PROCESS_DETACH      0
-#define DLL_PROCESS_VERIFIER    4
 
 #define INFINITE                0xFFFFFFFF
 
 #define DUPLICATE_CLOSE_SOURCE  0x00000001
 #define DUPLICATE_SAME_ACCESS   0x00000002
-
-#define GENERIC_READ            0x80000000
-#define GENERIC_WRITE           0x40000000
-#define GENERIC_EXECUTE         0x20000000
-#define GENERIC_ALL             0x10000000
-
-#define FILE_SHARE_READ         0x00000001
-#define FILE_SHARE_WRITE        0x00000002
-#define FILE_SHARE_DELETE       0x00000004
-
-#define FILE_ATTRIBUTE_READONLY             0x00000001
-#define FILE_ATTRIBUTE_HIDDEN               0x00000002
-#define FILE_ATTRIBUTE_SYSTEM               0x00000004
-#define FILE_ATTRIBUTE_DIRECTORY            0x00000010
-#define FILE_ATTRIBUTE_ARCHIVE              0x00000020
-#define FILE_ATTRIBUTE_DEVICE               0x00000040
-#define FILE_ATTRIBUTE_NORMAL               0x00000080
-#define FILE_ATTRIBUTE_TEMPORARY            0x00000100
-#define FILE_ATTRIBUTE_SPARSE_FILE          0x00000200
-#define FILE_ATTRIBUTE_REPARSE_POINT        0x00000400
-#define FILE_ATTRIBUTE_COMPRESSED           0x00000800
-#define FILE_ATTRIBUTE_OFFLINE              0x00001000
-#define FILE_ATTRIBUTE_NOT_CONTENT_INDEXED  0x00002000
-#define FILE_ATTRIBUTE_ENCRYPTED            0x00004000
-
-#define CREATE_NEW              1
-#define CREATE_ALWAYS           2
-#define OPEN_EXISTING           3
-#define OPEN_ALWAYS             4
-#define TRUNCATE_EXISTING       5
-
-#define FILE_BEGIN              0
-#define FILE_CURRENT            1
-#define FILE_END                2
 
 #define PAGE_NOACCESS           0x01
 #define PAGE_READONLY           0x02
@@ -605,22 +515,6 @@ typedef intptr_t (WINAPI *FARPROC)();
 #define WAIT_OBJECT_0           0
 #define WAIT_TIMEOUT            258
 #define WAIT_FAILED             0xFFFFFFFF
-
-#define CREATE_SUSPENDED        0x00000004
-#define THREAD_PRIORITY_NORMAL  0
-#define THREAD_PRIORITY_HIGHEST 2
-
-#define NOERROR                 0x0
-
-#define SUSPENDTHREAD_FAILED    0xFFFFFFFF
-#define RESUMETHREAD_FAILED     0xFFFFFFFF
-
-#define ERROR_INSUFFICIENT_BUFFER 122
-#define ERROR_TIMEOUT             1460
-#define ERROR_ALREADY_EXISTS      183
-
-#define GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT    0x00000002
-#define GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS          0x00000004
 
 #endif // !_INC_WINDOWS
 #endif // !DACCESS_COMPILE
@@ -695,22 +589,15 @@ bool InitializeSystemInfo();
 // initialization and false on failure.
 REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalInit();
 
-// Given a mask of capabilities return true if all of them are supported by the current PAL.
-REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalHasCapability(PalCapability capability);
-
 // Given the OS handle of a loaded module, compute the upper and lower virtual address bounds (inclusive).
 REDHAWK_PALIMPORT void REDHAWK_PALAPI PalGetModuleBounds(HANDLE hOsHandle, _Out_ uint8_t ** ppLowerBound, _Out_ uint8_t ** ppUpperBound);
 
 typedef struct _GUID GUID;
 REDHAWK_PALIMPORT void REDHAWK_PALAPI PalGetPDBInfo(HANDLE hOsHandle, _Out_ GUID * pGuidSignature, _Out_ uint32_t * pdwAge, _Out_writes_z_(cchPath) WCHAR * wszPath, int32_t cchPath);
 
-#ifndef APP_LOCAL_RUNTIME
 REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalGetThreadContext(HANDLE hThread, _Out_ PAL_LIMITED_CONTEXT * pCtx);
-#endif
 
 REDHAWK_PALIMPORT int32_t REDHAWK_PALAPI PalGetProcessCpuCount();
-
-REDHAWK_PALIMPORT uint32_t REDHAWK_PALAPI PalReadFileContents(_In_z_ const TCHAR *, _Out_writes_all_(maxBytesToRead) char * buff, _In_ uint32_t maxBytesToRead);
 
 // Retrieves the entire range of memory dedicated to the calling thread's stack.  This does
 // not get the current dynamic bounds of the stack, which can be significantly smaller than
@@ -792,21 +679,15 @@ REDHAWK_PALIMPORT void REDHAWK_PALAPI PalSleep(uint32_t milliseconds);
 REDHAWK_PALIMPORT UInt32_BOOL REDHAWK_PALAPI PalSwitchToThread();
 REDHAWK_PALIMPORT HANDLE REDHAWK_PALAPI PalCreateEventW(_In_opt_ LPSECURITY_ATTRIBUTES pEventAttributes, UInt32_BOOL manualReset, UInt32_BOOL initialState, _In_opt_z_ LPCWSTR pName);
 REDHAWK_PALIMPORT uint64_t REDHAWK_PALAPI PalGetTickCount64();
-REDHAWK_PALIMPORT HANDLE REDHAWK_PALAPI PalCreateFileW(_In_z_ LPCWSTR pFileName, uint32_t desiredAccess, uint32_t shareMode, _In_opt_ void* pSecurityAttributes, uint32_t creationDisposition, uint32_t flagsAndAttributes, HANDLE hTemplateFile);
 REDHAWK_PALIMPORT HANDLE REDHAWK_PALAPI PalCreateLowMemoryNotification();
 REDHAWK_PALIMPORT void REDHAWK_PALAPI PalTerminateCurrentProcess(uint32_t exitCode);
 REDHAWK_PALIMPORT HANDLE REDHAWK_PALAPI PalGetModuleHandleFromPointer(_In_ void* pointer);
-
-#ifndef APP_LOCAL_RUNTIME
 
 #ifdef TARGET_UNIX
 REDHAWK_PALIMPORT void REDHAWK_PALAPI PalSetHardwareExceptionHandler(PHARDWARE_EXCEPTION_HANDLER handler);
 #else
 REDHAWK_PALIMPORT void* REDHAWK_PALAPI PalAddVectoredExceptionHandler(uint32_t firstHandler, _In_ PVECTORED_EXCEPTION_HANDLER vectoredHandler);
 #endif
-
-#endif
-
 
 typedef uint32_t (__stdcall *BackgroundCallback)(_In_opt_ void* pCallbackContext);
 REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalStartBackgroundGCThread(_In_ BackgroundCallback callback, _In_opt_ void* pCallbackContext);

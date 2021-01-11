@@ -807,11 +807,6 @@ void GCToEEInterface::SuspendEE(SUSPEND_REASON reason)
     GetThreadStore()->SuspendAllThreads(true);
 
     FireEtwGCSuspendEEEnd_V1(GetClrInstanceId());
-
-#ifdef APP_LOCAL_RUNTIME
-    // now is a good opportunity to retry starting the finalizer thread
-    RhStartFinalizerThread();
-#endif
 }
 
 void GCToEEInterface::RestartEE(bool /*bFinishedGC*/)

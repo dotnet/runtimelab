@@ -3088,4 +3088,7 @@
   <data name="BinaryFormatter_SerializationDisallowed" xml:space="preserve">
     <value>BinaryFormatter serialization and deserialization are disabled within this application. See https://aka.ms/binaryformatter for more information.</value>
   </data>
+  <data name="Argv_IncludeDoubleQuote" xml:space="preserve">
+    <value>The argv[0] argument cannot include a double quote.</value>
+  </data>
 </root>

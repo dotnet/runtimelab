@@ -10,6 +10,8 @@ using ILCompiler.Metadata;
 using ILCompiler.DependencyAnalysis;
 
 using Debug = System.Diagnostics.Debug;
+using EcmaModule = Internal.TypeSystem.Ecma.EcmaModule;
+using CustomAttributeHandle = System.Reflection.Metadata.CustomAttributeHandle;
 
 namespace ILCompiler
 {
@@ -23,6 +25,7 @@ namespace ILCompiler
         private readonly Dictionary<TypeDesc, MetadataCategory> _reflectableTypes = new Dictionary<TypeDesc, MetadataCategory>();
         private readonly Dictionary<MethodDesc, MetadataCategory> _reflectableMethods = new Dictionary<MethodDesc, MetadataCategory>();
         private readonly Dictionary<FieldDesc, MetadataCategory> _reflectableFields = new Dictionary<FieldDesc, MetadataCategory>();
+        private readonly HashSet<ReflectableCustomAttribute> _reflectableAttributes = new HashSet<ReflectableCustomAttribute>();
 
         private readonly HashSet<TypeDesc> _ldtokenReferenceableTypes;
 
@@ -31,7 +34,8 @@ namespace ILCompiler
                 new FullyBlockedManifestResourceBlockingPolicy(), null, new NoStackTraceEmissionPolicy(),
                 new NoDynamicInvokeThunkGenerationPolicy(), Array.Empty<ModuleDesc>(),
                 Array.Empty<ReflectableEntity<TypeDesc>>(), Array.Empty<ReflectableEntity<MethodDesc>>(),
-                Array.Empty<ReflectableEntity<FieldDesc>>(), Array.Empty<TypeDesc>())
+                Array.Empty<ReflectableEntity<FieldDesc>>(), Array.Empty<ReflectableCustomAttribute>(),
+                Array.Empty<TypeDesc>())
         {
         }
 
@@ -46,6 +50,7 @@ namespace ILCompiler
             IEnumerable<ReflectableEntity<TypeDesc>> reflectableTypes,
             IEnumerable<ReflectableEntity<MethodDesc>> reflectableMethods,
             IEnumerable<ReflectableEntity<FieldDesc>> reflectableFields,
+            IEnumerable<ReflectableCustomAttribute> reflectableAttributes,
             IEnumerable<TypeDesc> ldtokenReferenceableTypes)
             : base(typeSystemContext, blockingPolicy, resourceBlockingPolicy, logFile, stackTracePolicy, invokeThunkGenerationPolicy)
         {
@@ -76,6 +81,11 @@ namespace ILCompiler
                 Debug.Assert((refField.Category & MetadataCategory.RuntimeMapping) == 0
                     || (_reflectableTypes[refField.Entity.OwningType] & MetadataCategory.RuntimeMapping) != 0);
                 _reflectableFields.Add(refField.Entity, refField.Category);
+            }
+
+            foreach (var refAttribute in reflectableAttributes)
+            {
+                _reflectableAttributes.Add(refAttribute);
             }
 
             _ldtokenReferenceableTypes = new HashSet<TypeDesc>(ldtokenReferenceableTypes);
@@ -245,6 +255,11 @@ namespace ILCompiler
                 return (_parent.GetMetadataCategory(typeDef) & MetadataCategory.Description) != 0;
             }
 
+            public bool GeneratesMetadata(EcmaModule module, CustomAttributeHandle caHandle)
+            {
+                return _parent._reflectableAttributes.Contains(new ReflectableCustomAttribute(module, caHandle));
+            }
+
             public bool IsBlocked(MetadataType typeDef)
             {
                 return _blockingPolicy.IsBlocked(typeDef);
@@ -267,5 +282,20 @@ namespace ILCompiler
             Entity = entity;
             Category = category;
         }
+    }
+
+    public struct ReflectableCustomAttribute : IEquatable<ReflectableCustomAttribute>
+    {
+        public readonly EcmaModule Module;
+        public readonly CustomAttributeHandle CustomAttributeHandle;
+
+        public ReflectableCustomAttribute(EcmaModule module, CustomAttributeHandle caHandle)
+            => (Module, CustomAttributeHandle) = (module, caHandle);
+
+        public bool Equals(ReflectableCustomAttribute other)
+            => other.Module == Module && other.CustomAttributeHandle == CustomAttributeHandle;
+        public override bool Equals(object obj)
+            => obj is ReflectableCustomAttribute other && Equals(other);
+        public override int GetHashCode() => Module.GetHashCode() ^ CustomAttributeHandle.GetHashCode();
     }
 }

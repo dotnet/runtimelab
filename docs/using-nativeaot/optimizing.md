@@ -16,6 +16,8 @@ under the `<Project>` node of your project file.
 
 Native AOT supports enabling and disabling all [documented framework library features](https://docs.microsoft.com/en-us/dotnet/core/deploying/trimming-options#trimming-framework-library-features). For example, to remove globalization specific code and data, add a `<InvariantGlobalization>true</InvariantGlobalization>` property to your project. Disabling a framework feature (or enabling a minimal mode of the feature) can result in significant size savings.
 
+The `EnableUnsafeBinaryFormatterSerialization` framework switch is already set to the optimal value of `false` (removing the support for [obsolete](https://github.com/dotnet/designs/blob/21b274dbc21e4ae54b7e4c5dbd5ef31e439e78db/accepted/2020/better-obsoletion/binaryformatter-obsoletion.md) binary serialization).
+
 ## Options related to reflection
 
 By default, the compiler tries to maximize compatibility with existing .NET code at the expense of compilation speed and size of the output executable. This allows people to use their existing code that worked well in a fully dynamic mode without hitting issues caused by full AOT compilation. To read more about reflection, see the [Reflection in AOT mode](reflection-in-aot-mode.md) document. The compatibility behaviors can be turned off by adding/editing following properties in your project file:
