@@ -25,6 +25,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharedTypes", "TestAssets\S
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TestAssets", "TestAssets", "{C7134A89-8852-4FBE-B426-EFE007C4A819}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Benchmarks", "Benchmarks\Benchmarks.csproj", "{0914590B-C47A-4754-A7BE-E4CD843A92E4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -67,6 +69,10 @@ Global
 		{D42D99E6-DA2B-48D5-BEED-F093A8E600BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D42D99E6-DA2B-48D5-BEED-F093A8E600BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D42D99E6-DA2B-48D5-BEED-F093A8E600BE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0914590B-C47A-4754-A7BE-E4CD843A92E4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0914590B-C47A-4754-A7BE-E4CD843A92E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0914590B-C47A-4754-A7BE-E4CD843A92E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0914590B-C47A-4754-A7BE-E4CD843A92E4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
