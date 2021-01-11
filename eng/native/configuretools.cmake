@@ -63,7 +63,7 @@ if(NOT WIN32 AND NOT CLR_CMAKE_TARGET_BROWSER)
   endif()
 endif()
 
-if (NOT CLR_CMAKE_HOST_WIN32)
+if (NOT CLR_CMAKE_HOST_WIN32 AND NOT CLR_CMAKE_TARGET_ARCH_WASM)
   # detect linker
   set(ldVersion ${CMAKE_C_COMPILER};-Wl,--version)
   execute_process(COMMAND ${ldVersion}
