@@ -558,6 +558,14 @@ if(GCC)
   endif()
 endif()
 
+TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
+
+if(IS_BIG_ENDIAN)
+  set(TARGET_BYTE_ORDER G_BIG_ENDIAN)
+else()
+  set(TARGET_BYTE_ORDER G_LITTLE_ENDIAN)
+endif()
+
 if(IS_BIG_ENDIAN)
   set(ORDER G_BIG_ENDIAN)
 else()
@@ -585,14 +593,6 @@ set(GSSIZE "ptrdiff_t")
 #
 # END OF EGLIB CHECKS
 #
-
-TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
-
-if(IS_BIG_ENDIAN)
-  set(TARGET_BYTE_ORDER G_BIG_ENDIAN)
-else()
-  set(TARGET_BYTE_ORDER G_LITTLE_ENDIAN)
-endif()
 
 ######################################
 # DEBUG BUILD CHECKS
