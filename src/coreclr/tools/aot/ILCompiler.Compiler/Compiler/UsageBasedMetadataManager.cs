@@ -46,7 +46,9 @@ namespace ILCompiler
         private readonly List<MetadataType> _typesWithMetadata = new List<MetadataType>();
         private readonly List<ReflectableCustomAttribute> _customAttributesWithMetadata = new List<ReflectableCustomAttribute>();
 
-        private readonly HashSet<ModuleDesc> _rootAllAssembliesExaminedModules = new HashSet<ModuleDesc>();
+        private readonly HashSet<ModuleDesc> _rootEntireAssembliesExaminedModules = new HashSet<ModuleDesc>();
+
+        private readonly HashSet<string> _rootEntireAssembliesModules;
 
         private readonly MetadataType _serializationInfoType;
 
@@ -65,7 +67,8 @@ namespace ILCompiler
             FlowAnnotations flowAnnotations,
             UsageBasedMetadataGenerationOptions generationOptions,
             Logger logger,
-            IEnumerable<KeyValuePair<string, bool>> featureSwitchValues)
+            IEnumerable<KeyValuePair<string, bool>> featureSwitchValues,
+            IEnumerable<string> rootEntireAssembliesModules)
             : base(typeSystemContext, blockingPolicy, resourceBlockingPolicy, logFile, stackTracePolicy, invokeThunkGenerationPolicy)
         {
             // We use this to mark places that would behave differently if we tracked exact fields used. 
@@ -79,6 +82,8 @@ namespace ILCompiler
             Logger = logger;
 
             _featureSwitchHashtable = new FeatureSwitchHashtable(new Dictionary<string, bool>(featureSwitchValues));
+
+            _rootEntireAssembliesModules = new HashSet<string>(rootEntireAssembliesModules);
         }
 
         protected override void Graph_NewMarkedNode(DependencyNodeCore<NodeFactory> obj)
@@ -198,16 +203,18 @@ namespace ILCompiler
                 }
             }
 
+            MetadataType mdType = type as MetadataType;
+
             // If anonymous type heuristic is turned on and this is an anonymous type, make sure we have
             // method bodies for all properties. It's common to have anonymous types used with reflection
             // and it's hard to specify them in RD.XML.
             if ((_generationOptions & UsageBasedMetadataGenerationOptions.AnonymousTypeHeuristic) != 0)
             {
-                if (type is MetadataType metadataType &&
-                    metadataType.HasInstantiation &&
-                    !metadataType.IsGenericDefinition &&
-                    metadataType.HasCustomAttribute("System.Runtime.CompilerServices", "CompilerGeneratedAttribute") &&
-                    metadataType.Name.Contains("AnonymousType"))
+                if (mdType != null &&
+                    mdType.HasInstantiation &&
+                    !mdType.IsGenericDefinition &&
+                    mdType.HasCustomAttribute("System.Runtime.CompilerServices", "CompilerGeneratedAttribute") &&
+                    mdType.Name.Contains("AnonymousType"))
                 {
                     foreach (MethodDesc method in type.GetMethods())
                     {
@@ -220,23 +227,19 @@ namespace ILCompiler
                 }
             }
 
-            // If the option was specified to root types and methods in all user assemblies, do that.
-            if ((_generationOptions & UsageBasedMetadataGenerationOptions.FullUserAssemblyRooting) != 0)
+            ModuleDesc module = mdType?.Module;
+            if (module != null && !_rootEntireAssembliesExaminedModules.Contains(module))
             {
-                if (type is MetadataType metadataType &&
-                    !_rootAllAssembliesExaminedModules.Contains(metadataType.Module))
-                {
-                    _rootAllAssembliesExaminedModules.Add(metadataType.Module);
+                // If the owning assembly needs to be fully compiled, do that.
+                _rootEntireAssembliesExaminedModules.Add(module);
 
-                    if (metadataType.Module is EcmaModule ecmaModule &&
-                        !IsFrameworkAssembly(ecmaModule))
+                if (_rootEntireAssembliesModules.Contains(module.Assembly.GetName().Name))
+                {
+                    dependencies = dependencies ?? new DependencyList();
+                    var rootProvider = new RootingServiceProvider(factory, dependencies.Add);
+                    foreach (TypeDesc t in mdType.Module.GetAllTypes())
                     {
-                        dependencies = dependencies ?? new DependencyList();
-                        var rootProvider = new RootingServiceProvider(factory, dependencies.Add);
-                        foreach (TypeDesc t in ecmaModule.GetAllTypes())
-                        {
-                            RootingHelpers.TryRootType(rootProvider, t, "RD.XML root");
-                        }
+                        RootingHelpers.TryRootType(rootProvider, t, "RD.XML root");
                     }
                 }
             }
@@ -271,7 +274,7 @@ namespace ILCompiler
             }
 
             // Event sources need their special nested types
-            if (type is MetadataType mdType && mdType.HasCustomAttribute("System.Diagnostics.Tracing", "EventSourceAttribute"))
+            if (mdType != null && mdType.HasCustomAttribute("System.Diagnostics.Tracing", "EventSourceAttribute"))
             {
                 AddEventSourceSpecialTypeDependencies(ref dependencies, factory, mdType.GetNestedType("Keywords"));
                 AddEventSourceSpecialTypeDependencies(ref dependencies, factory, mdType.GetNestedType("Tasks"));
@@ -292,38 +295,6 @@ namespace ILCompiler
                     }
                 }
             }
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether '<paramref name="module"/>' is a framework assembly.
-        /// </summary>
-        public static bool IsFrameworkAssembly(EcmaModule module)
-        {
-            MetadataReader reader = module.MetadataReader;
-
-            // We look for [assembly:AssemblyMetadata(".NETFrameworkAssembly", "")]
-
-            foreach (CustomAttributeHandle attributeHandle in reader.GetAssemblyDefinition().GetCustomAttributes())
-            {
-                if (!MetadataExtensions.GetAttributeNamespaceAndName(reader, attributeHandle, out StringHandle namespaceHandle, out StringHandle nameHandle))
-                    continue;
-
-                if (!reader.StringComparer.Equals(namespaceHandle, "System.Reflection") ||
-                    !reader.StringComparer.Equals(nameHandle, "AssemblyMetadataAttribute"))
-                    continue;
-
-                var attributeTypeProvider = new CustomAttributeTypeProvider(module);
-                CustomAttribute attribute = reader.GetCustomAttribute(attributeHandle);
-                CustomAttributeValue<TypeDesc> decodedAttribute = attribute.DecodeValue(attributeTypeProvider);
-
-                if (decodedAttribute.FixedArguments.Length != 2)
-                    continue;
-
-                if (decodedAttribute.FixedArguments[0].Value is string s && s == ".NETFrameworkAssembly")
-                    return true;
-            }
-
-            return false;
         }
 
         protected override void GetRuntimeMappingDependenciesDueToReflectability(ref DependencyList dependencies, NodeFactory factory, TypeDesc type)
@@ -897,11 +868,5 @@ namespace ILCompiler
         /// Scan IL for common interop patterns to find additional compilation roots.
         /// </summary>
         IteropILScanning = 8,
-
-        /// <summary>
-        /// Specifies that all types and methods in user assemblies should be considered dynamically
-        /// used.
-        /// </summary>
-        FullUserAssemblyRooting = 0x10,
     }
 }
