@@ -63,13 +63,7 @@ if(NOT WIN32 AND NOT CLR_CMAKE_TARGET_BROWSER)
   endif()
 endif()
 
-if (NOT CLR_CMAKE_HOST_WIN32 AND NOT CLR_CMAKE_TARGET_ARCH_WASM)
-  # Ensure that awk is present
-  find_program(AWK awk)
-  if (AWK STREQUAL "AWK-NOTFOUND")
-    message(FATAL_ERROR "AWK not found")
-  endif()
-
+if (NOT CLR_CMAKE_HOST_WIN32)
   # detect linker
   set(ldVersion ${CMAKE_C_COMPILER};-Wl,--version)
   execute_process(COMMAND ${ldVersion}

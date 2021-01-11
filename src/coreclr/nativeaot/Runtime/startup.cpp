@@ -39,7 +39,6 @@ int32_t RhpHardwareExceptionHandler(uintptr_t faultCode, uintptr_t faultAddress,
 int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs);
 #endif
 
-static void CheckForPalFallback();
 static bool DetectCPUFeatures();
 
 extern RhConfig * g_pRhConfig;
@@ -58,8 +57,6 @@ EXTERN_C int g_requiredCpuFeatures;
 
 static bool InitDLL(HANDLE hPalInstance)
 {
-    CheckForPalFallback();
-
 #ifdef FEATURE_CACHED_INTERFACE_DISPATCH
     //
     // Initialize interface dispatch.
@@ -81,13 +78,13 @@ static bool InitDLL(HANDLE hPalInstance)
         return false;
 
     // Note: The global exception handler uses RuntimeInstance
-#if !defined(APP_LOCAL_RUNTIME) && !defined(USE_PORTABLE_HELPERS)
+#if !defined(USE_PORTABLE_HELPERS)
 #ifndef TARGET_UNIX
     PalAddVectoredExceptionHandler(1, RhpVectoredExceptionHandler);
 #else
     PalSetHardwareExceptionHandler(RhpHardwareExceptionHandler);
 #endif
-#endif // !APP_LOCAL_RUNTIME && !USE_PORTABLE_HELPERS
+#endif // !USE_PORTABLE_HELPERS
 
     InitializeYieldProcessorNormalizedCrst();
 
@@ -124,34 +121,6 @@ static bool InitDLL(HANDLE hPalInstance)
         return false;
 
     return true;
-}
-
-static void CheckForPalFallback()
-{
-#ifdef _DEBUG
-    uint32_t disallowSetting = g_pRhConfig->GetDisallowRuntimeServicesFallback();
-    if (disallowSetting == 0)
-        return;
-
-    // The fallback provider doesn't implement write watch, so we check for the write watch capability as a
-    // proxy for whether or not we're using the fallback provider since we don't have direct access to this
-    // information from here.
-
-    if (disallowSetting == 1)
-    {
-        // If RH_DisallowRuntimeServicesFallback is set to 1, we want to fail fast if we discover that we're
-        // running against the fallback provider.
-        if (!PalHasCapability(WriteWatchCapability))
-            RhFailFast();
-    }
-    else if (disallowSetting == 2)
-    {
-        // If RH_DisallowRuntimeServicesFallback is set to 2, we want to fail fast if we discover that we're
-        // NOT running against the fallback provider.
-        if (PalHasCapability(WriteWatchCapability))
-            RhFailFast();
-    }
-#endif // _DEBUG
 }
 
 #ifndef USE_PORTABLE_HELPERS

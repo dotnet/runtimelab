@@ -3,6 +3,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection.PortableExecutable;
+using System.Reflection.Metadata;
+using System.IO;
+using System.Xml;
 
 using Internal.IL;
 using Internal.TypeSystem;
@@ -15,6 +19,11 @@ using FlowAnnotations = ILCompiler.Dataflow.FlowAnnotations;
 using DependencyList = ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.DependencyList;
 using Debug = System.Diagnostics.Debug;
 using CustomAttributeValue = System.Reflection.Metadata.CustomAttributeValue<Internal.TypeSystem.TypeDesc>;
+using EcmaModule = Internal.TypeSystem.Ecma.EcmaModule;
+using EcmaType = Internal.TypeSystem.Ecma.EcmaType;
+using CustomAttributeHandle = System.Reflection.Metadata.CustomAttributeHandle;
+using CustomAttributeTypeProvider = Internal.TypeSystem.Ecma.CustomAttributeTypeProvider;
+using MetadataExtensions = Internal.TypeSystem.Ecma.MetadataExtensions;
 
 namespace ILCompiler
 {
@@ -29,10 +38,13 @@ namespace ILCompiler
         internal readonly UsageBasedMetadataGenerationOptions _generationOptions;
         private readonly bool _hasPreciseFieldUsageInformation;
 
+        private readonly FeatureSwitchHashtable _featureSwitchHashtable;
+
         private readonly List<ModuleDesc> _modulesWithMetadata = new List<ModuleDesc>();
         private readonly List<FieldDesc> _fieldsWithMetadata = new List<FieldDesc>();
         private readonly List<MethodDesc> _methodsWithMetadata = new List<MethodDesc>();
         private readonly List<MetadataType> _typesWithMetadata = new List<MetadataType>();
+        private readonly List<ReflectableCustomAttribute> _customAttributesWithMetadata = new List<ReflectableCustomAttribute>();
 
         private readonly HashSet<ModuleDesc> _rootAllAssembliesExaminedModules = new HashSet<ModuleDesc>();
 
@@ -52,7 +64,8 @@ namespace ILCompiler
             DynamicInvokeThunkGenerationPolicy invokeThunkGenerationPolicy,
             FlowAnnotations flowAnnotations,
             UsageBasedMetadataGenerationOptions generationOptions,
-            Logger logger)
+            Logger logger,
+            IEnumerable<KeyValuePair<string, bool>> featureSwitchValues)
             : base(typeSystemContext, blockingPolicy, resourceBlockingPolicy, logFile, stackTracePolicy, invokeThunkGenerationPolicy)
         {
             // We use this to mark places that would behave differently if we tracked exact fields used. 
@@ -64,6 +77,8 @@ namespace ILCompiler
 
             FlowAnnotations = flowAnnotations;
             Logger = logger;
+
+            _featureSwitchHashtable = new FeatureSwitchHashtable(new Dictionary<string, bool>(featureSwitchValues));
         }
 
         protected override void Graph_NewMarkedNode(DependencyNodeCore<NodeFactory> obj)
@@ -92,6 +107,12 @@ namespace ILCompiler
             if (typeMetadataNode != null)
             {
                 _typesWithMetadata.Add(typeMetadataNode.Type);
+            }
+
+            var customAttributeMetadataNode = obj as CustomAttributeMetadataNode;
+            if (customAttributeMetadataNode != null)
+            {
+                _customAttributesWithMetadata.Add(customAttributeMetadataNode.CustomAttribute);
             }
         }
 
@@ -207,8 +228,8 @@ namespace ILCompiler
                 {
                     _rootAllAssembliesExaminedModules.Add(metadataType.Module);
 
-                    if (metadataType.Module is Internal.TypeSystem.Ecma.EcmaModule ecmaModule &&
-                        !FrameworkStringResourceBlockingPolicy.IsFrameworkAssembly(ecmaModule))
+                    if (metadataType.Module is EcmaModule ecmaModule &&
+                        !IsFrameworkAssembly(ecmaModule))
                     {
                         dependencies = dependencies ?? new DependencyList();
                         var rootProvider = new RootingServiceProvider(factory, dependencies.Add);
@@ -271,6 +292,38 @@ namespace ILCompiler
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether '<paramref name="module"/>' is a framework assembly.
+        /// </summary>
+        public static bool IsFrameworkAssembly(EcmaModule module)
+        {
+            MetadataReader reader = module.MetadataReader;
+
+            // We look for [assembly:AssemblyMetadata(".NETFrameworkAssembly", "")]
+
+            foreach (CustomAttributeHandle attributeHandle in reader.GetAssemblyDefinition().GetCustomAttributes())
+            {
+                if (!MetadataExtensions.GetAttributeNamespaceAndName(reader, attributeHandle, out StringHandle namespaceHandle, out StringHandle nameHandle))
+                    continue;
+
+                if (!reader.StringComparer.Equals(namespaceHandle, "System.Reflection") ||
+                    !reader.StringComparer.Equals(nameHandle, "AssemblyMetadataAttribute"))
+                    continue;
+
+                var attributeTypeProvider = new CustomAttributeTypeProvider(module);
+                CustomAttribute attribute = reader.GetCustomAttribute(attributeHandle);
+                CustomAttributeValue<TypeDesc> decodedAttribute = attribute.DecodeValue(attributeTypeProvider);
+
+                if (decodedAttribute.FixedArguments.Length != 2)
+                    continue;
+
+                if (decodedAttribute.FixedArguments[0].Value is string s && s == ".NETFrameworkAssembly")
+                    return true;
+            }
+
+            return false;
         }
 
         protected override void GetRuntimeMappingDependenciesDueToReflectability(ref DependencyList dependencies, NodeFactory factory, TypeDesc type)
@@ -535,6 +588,18 @@ namespace ILCompiler
             }
         }
 
+        public bool GeneratesAttributeMetadata(TypeDesc attributeType)
+        {
+            var ecmaType = attributeType.GetTypeDefinition() as EcmaType;
+            if (ecmaType != null)
+            {
+                var moduleInfo = _featureSwitchHashtable.GetOrCreateValue(ecmaType.EcmaModule);
+                return !moduleInfo.RemovedAttributes.Contains(ecmaType);
+            }
+
+            return true;
+        }
+
         public MetadataManager ToAnalysisBasedMetadataManager()
         {
             var reflectableTypes = ReflectableEntityBuilder<TypeDesc>.Create();
@@ -629,7 +694,7 @@ namespace ILCompiler
             return new AnalysisBasedMetadataManager(
                 _typeSystemContext, _blockingPolicy, _resourceBlockingPolicy, _metadataLogFile, _stackTraceEmissionPolicy, _dynamicInvokeThunkGenerationPolicy,
                 _modulesWithMetadata, reflectableTypes.ToEnumerable(), reflectableMethods.ToEnumerable(),
-                reflectableFields.ToEnumerable(), GetTypesWithConstructedEETypes());
+                reflectableFields.ToEnumerable(), _customAttributesWithMetadata, GetTypesWithConstructedEETypes());
         }
 
         private struct ReflectableEntityBuilder<T>
@@ -693,6 +758,11 @@ namespace ILCompiler
                 return _factory.TypeMetadata(typeDef).Marked;
             }
 
+            public bool GeneratesMetadata(EcmaModule module, CustomAttributeHandle caHandle)
+            {
+                return _factory.CustomAttributeMetadata(new ReflectableCustomAttribute(module, caHandle)).Marked;
+            }
+
             public bool IsBlocked(MetadataType typeDef)
             {
                 return _blockingPolicy.IsBlocked(typeDef);
@@ -701,6 +771,94 @@ namespace ILCompiler
             public bool IsBlocked(MethodDesc methodDef)
             {
                 return _blockingPolicy.IsBlocked(methodDef);
+            }
+        }
+
+        private class FeatureSwitchHashtable : LockFreeReaderHashtable<EcmaModule, AssemblyFeatureInfo>
+        {
+            private readonly Dictionary<string, bool> _switchValues;
+
+            public FeatureSwitchHashtable(Dictionary<string, bool> switchValues)
+            {
+                _switchValues = switchValues;
+            }
+
+            protected override bool CompareKeyToValue(EcmaModule key, AssemblyFeatureInfo value) => key == value.Module;
+            protected override bool CompareValueToValue(AssemblyFeatureInfo value1, AssemblyFeatureInfo value2) => value1.Module == value2.Module;
+            protected override int GetKeyHashCode(EcmaModule key) => key.GetHashCode();
+            protected override int GetValueHashCode(AssemblyFeatureInfo value) => value.Module.GetHashCode();
+
+            protected override AssemblyFeatureInfo CreateValueFromKey(EcmaModule key)
+            {
+                return new AssemblyFeatureInfo(key, _switchValues);
+            }
+        }
+
+        private class AssemblyFeatureInfo
+        {
+            public EcmaModule Module { get; }
+
+            public HashSet<TypeDesc> RemovedAttributes { get; }
+
+            public AssemblyFeatureInfo(EcmaModule module, IReadOnlyDictionary<string, bool> featureSwitchValues)
+            {
+                Module = module;
+                RemovedAttributes = new HashSet<TypeDesc>();
+
+                PEMemoryBlock resourceDirectory = module.PEReader.GetSectionData(module.PEReader.PEHeaders.CorHeader.ResourcesDirectory.RelativeVirtualAddress);
+
+                foreach (var resourceHandle in module.MetadataReader.ManifestResources)
+                {
+                    ManifestResource resource = module.MetadataReader.GetManifestResource(resourceHandle);
+
+                    // Don't try to process linked resources or resources in other assemblies
+                    if (!resource.Implementation.IsNil)
+                    {
+                        continue;
+                    }
+
+                    string resourceName = module.MetadataReader.GetString(resource.Name);
+                    if (resourceName == "ILLink.LinkAttributes.xml")
+                    {
+                        BlobReader reader = resourceDirectory.GetReader((int)resource.Offset, resourceDirectory.Length - (int)resource.Offset);
+                        int length = (int)reader.ReadUInt32();
+
+                        UnmanagedMemoryStream ms;
+                        unsafe
+                        {
+                            ms = new UnmanagedMemoryStream(reader.CurrentPointer, length);
+                        }
+
+                        RemovedAttributes = LinkAttributesReader.GetRemovedAttributes(module.Context, XmlReader.Create(ms), module, featureSwitchValues);
+                    }
+                }
+            }
+        }
+
+        private class LinkAttributesReader : ProcessLinkerXmlBase
+        {
+            private readonly HashSet<TypeDesc> _removedAttributes;
+
+            private LinkAttributesReader(TypeSystemContext context, XmlReader reader, ModuleDesc module, IReadOnlyDictionary<string, bool> featureSwitchValues)
+                : base(context, reader, module, featureSwitchValues)
+            {
+                _removedAttributes = new HashSet<TypeDesc>();
+            }
+
+            protected override void ProcessAttribute(TypeDesc type)
+            {
+                string internalValue = GetAttribute("internal");
+                if (internalValue == "RemoveAttributeInstances")
+                {
+                    _removedAttributes.Add(type);
+                }
+            }
+
+            public static HashSet<TypeDesc> GetRemovedAttributes(TypeSystemContext context, XmlReader reader, ModuleDesc module, IReadOnlyDictionary<string, bool> featureSwitchValues)
+            {
+                var rdr = new LinkAttributesReader(context, reader, module, featureSwitchValues);
+                rdr.ProcessXml();
+                return rdr._removedAttributes;
             }
         }
     }

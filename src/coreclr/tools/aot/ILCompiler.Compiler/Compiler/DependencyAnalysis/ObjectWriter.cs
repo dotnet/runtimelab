@@ -509,7 +509,7 @@ namespace ILCompiler.DependencyAnalysis
             }
 
             byte[] gcInfo = nodeWithCodeInfo.GCInfo;
-            ObjectData ehInfo = nodeWithCodeInfo.EHInfo;
+            MethodExceptionHandlingInfoNode ehInfo = nodeWithCodeInfo.EHInfo;
             ISymbolNode associatedDataNode = nodeWithCodeInfo.GetAssociatedDataNode(_nodeFactory);
 
             for (int i = 0; i < frameInfos.Length; i++)
@@ -543,29 +543,20 @@ namespace ILCompiler.DependencyAnalysis
 
                 if (associatedDataNode != null)
                 {
-                    EmitSymbolRef(_sb.Clear().Append(associatedDataNode.GetMangledName(_nodeFactory.NameMangler)), RelocType.IMAGE_REL_BASED_ABSOLUTE);
+                    EmitSymbolReference(associatedDataNode, 0, RelocType.IMAGE_REL_BASED_ABSOLUTE);
                     associatedDataNode = null;
                 }
 
                 if (ehInfo != null)
                 {
-                    EmitSymbolRef(_sb.Clear().Append(_nodeFactory.NameMangler.CompilationUnitPrefix).Append("_ehInfo").Append(_currentNodeZeroTerminatedName), RelocType.IMAGE_REL_BASED_ABSOLUTE);
+                    EmitSymbolReference(ehInfo, 0, RelocType.IMAGE_REL_BASED_ABSOLUTE);
+                    ehInfo = null;
                 }
 
                 if (gcInfo != null)
                 {
                     EmitBlob(gcInfo);
                     gcInfo = null;
-                }
-
-                if (ehInfo != null)
-                {
-                    // TODO: Place EHInfo into different section for better locality
-                    Debug.Assert(ehInfo.Alignment == 1);
-                    Debug.Assert(ehInfo.DefinedSymbols.Length == 0);
-                    EmitSymbolDef(_sb /* ehInfo */);
-                    EmitBlobWithRelocs(ehInfo.Data, ehInfo.Relocs);
-                    ehInfo = null;
                 }
 
                 // For window, just emit the frame blob (UNWIND_INFO) as a whole.
@@ -599,7 +590,7 @@ namespace ILCompiler.DependencyAnalysis
             }
 
             byte[] gcInfo = nodeWithCodeInfo.GCInfo;
-            ObjectData ehInfo = nodeWithCodeInfo.EHInfo;
+            MethodExceptionHandlingInfoNode ehInfo = nodeWithCodeInfo.EHInfo;
             ISymbolNode associatedDataNode = nodeWithCodeInfo.GetAssociatedDataNode(_nodeFactory);
 
             for (int i = 0; i < frameInfos.Length; i++)
@@ -638,31 +629,20 @@ namespace ILCompiler.DependencyAnalysis
 
                 if (associatedDataNode != null)
                 {
-                    _sb.Clear();
-                    AppendExternCPrefix(_sb);
-                    EmitSymbolRef(_sb.Append(associatedDataNode.GetMangledName(_nodeFactory.NameMangler)), RelocType.IMAGE_REL_BASED_RELPTR32);
+                    EmitSymbolReference(associatedDataNode, 0, RelocType.IMAGE_REL_BASED_RELPTR32);
                     associatedDataNode = null;
                 }
 
                 if (ehInfo != null)
                 {
-                    EmitSymbolRef(_sb.Clear().Append("_ehInfo").Append(_currentNodeZeroTerminatedName), RelocType.IMAGE_REL_BASED_RELPTR32);
+                    EmitSymbolReference(ehInfo, 0, RelocType.IMAGE_REL_BASED_RELPTR32);
+                    ehInfo = null;
                 }
 
                 if (gcInfo != null)
                 {
                     EmitBlob(gcInfo);
                     gcInfo = null;
-                }
-
-                if (ehInfo != null)
-                {
-                    // TODO: Place EHInfo into different section for better locality
-                    Debug.Assert(ehInfo.Alignment == 1);
-                    Debug.Assert(ehInfo.DefinedSymbols.Length == 0);
-                    EmitSymbolDef(_sb /* ehInfo */);
-                    EmitBlobWithRelocs(ehInfo.Data, ehInfo.Relocs);
-                    ehInfo = null;
                 }
 
                 // For Unix, we build CFI blob map for each offset.

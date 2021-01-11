@@ -388,6 +388,7 @@ namespace Internal.Runtime.TypeLoader
             }
         }
 
+#if FEATURE_UNIVERSAL_GENERICS
         private class TypeSizeCell : GenericDictionaryCell
         {
             internal TypeDesc Type;
@@ -408,7 +409,9 @@ namespace Internal.Runtime.TypeLoader
                     return (IntPtr)IntPtr.Size;
             }
         }
+#endif
 
+#if FEATURE_UNIVERSAL_GENERICS
         private class FieldOffsetCell : GenericDictionaryCell
         {
             internal DefType ContainingType;
@@ -493,6 +496,7 @@ namespace Internal.Runtime.TypeLoader
                 return (IntPtr)(sizeof(EEType) + result * IntPtr.Size);
             }
         }
+#endif
 
         private class AllocateObjectCell : GenericDictionaryCell
         {
@@ -690,6 +694,7 @@ namespace Internal.Runtime.TypeLoader
                                 }
                                 break;
                             }
+#if FEATURE_UNIVERSAL_GENERICS
                         case TypeLoaderEnvironment.MethodAddressType.UniversalCanonical:
                             {
                                 if (Method.IsCanonicalMethod(CanonicalFormKind.Universal) &&
@@ -701,6 +706,7 @@ namespace Internal.Runtime.TypeLoader
                                 }
                                 break;
                             }
+#endif
                         default:
                             Environment.FailFast("Unexpected method address type");
                             return;
@@ -819,15 +825,18 @@ namespace Internal.Runtime.TypeLoader
                         return Method.FunctionPointer;
                     }
                 }
+#if FEATURE_UNIVERSAL_GENERICS
                 else if (Method.UsgFunctionPointer != IntPtr.Zero)
                 {
                     return BuildCallingConventionConverter(builder, Method.UsgFunctionPointer, methodDictionary, true);
                 }
+#endif
 
                 Debug.Fail("UNREACHABLE");
                 return IntPtr.Zero;
             }
 
+#if FEATURE_UNIVERSAL_GENERICS
             private IntPtr BuildCallingConventionConverter(TypeBuilder builder, IntPtr pointerToUse, IntPtr dictionary, bool usgConverter)
             {
                 RuntimeTypeHandle[] typeArgs = Empty<RuntimeTypeHandle>.Array;
@@ -886,6 +895,7 @@ namespace Internal.Runtime.TypeLoader
                 Debug.Assert(thunkPtr != IntPtr.Zero);
                 return thunkPtr;
             }
+#endif
         }
 
         private class CastingCell : GenericDictionaryCell
@@ -963,6 +973,7 @@ namespace Internal.Runtime.TypeLoader
             }
         }
 
+#if FEATURE_UNIVERSAL_GENERICS
         private class CallingConventionConverterCell : GenericDictionaryCell
         {
             internal NativeFormat.CallingConventionConverterKind Flags;
@@ -1029,6 +1040,7 @@ namespace Internal.Runtime.TypeLoader
                 return result;
             }
         }
+#endif
 
         internal static unsafe GenericDictionaryCell[] BuildDictionary(TypeBuilder typeBuilder, NativeLayoutInfoLoadContext nativeLayoutInfoLoadContext, NativeParser parser)
         {
@@ -1663,6 +1675,7 @@ namespace Internal.Runtime.TypeLoader
                     }
                     break;
 
+#if FEATURE_UNIVERSAL_GENERICS
                 case FixupSignatureKind.TypeSize:
                     {
                         var type = nativeLayoutInfoLoadContext.GetType(ref parser);
@@ -1691,6 +1704,7 @@ namespace Internal.Runtime.TypeLoader
                         cell = new VTableOffsetCell() { ContainingType = type, VTableSlot = vtableSlot };
                     }
                     break;
+#endif
 
                 case FixupSignatureKind.AllocateObject:
                     {
@@ -1811,6 +1825,7 @@ namespace Internal.Runtime.TypeLoader
                     }
                     break;
 
+#if FEATURE_UNIVERSAL_GENERICS
                 case FixupSignatureKind.CallingConventionConverter:
                     {
                         CallingConventionConverterKind flags = (CallingConventionConverterKind)parser.GetUnsigned();
@@ -1828,6 +1843,7 @@ namespace Internal.Runtime.TypeLoader
                         };
                     }
                     break;
+#endif
 
                 case FixupSignatureKind.NotYetSupported:
                 case FixupSignatureKind.ThreadStaticIndex:

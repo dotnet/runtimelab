@@ -1360,7 +1360,11 @@ namespace Internal.JitInterface
                 pResult->nullInstanceCheck = false;
             }
             else if ((flags & CORINFO_CALLINFO_FLAGS.CORINFO_CALLINFO_LDFTN) == 0
-                && _compilation.HasFixedSlotVTable(targetMethod.OwningType))
+                // Canonically-equivalent types have the same vtable layout. Check the canonical form.
+                // We don't want to accidentally ask about Foo<object, __Canon> that may or may not
+                // be available to ask vtable questions about.
+                // This can happen in inlining that the scanner didn't expect.
+                && _compilation.HasFixedSlotVTable(targetMethod.OwningType.ConvertToCanonForm(CanonicalFormKind.Specific)))
             {
                 pResult->kind = CORINFO_CALL_KIND.CORINFO_VIRTUALCALL_VTABLE;
                 pResult->nullInstanceCheck = true;
@@ -1568,8 +1572,15 @@ namespace Internal.JitInterface
             methodDesc = MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(methodDesc);
             Debug.Assert(!methodDesc.CanMethodBeInSealedVTable());
 
+            // Avoid asking about slots on types like Foo<object, __Canon>. We might not have that information.
+            // Canonically-equivalent types have the same slots, so ask for Foo<__Canon, __Canon>.
+            methodDesc = methodDesc.GetCanonMethodTarget(CanonicalFormKind.Specific);
+
             int slot = VirtualMethodSlotHelper.GetVirtualMethodSlot(_compilation.NodeFactory, methodDesc, methodDesc.OwningType);
-            Debug.Assert(slot != -1);
+            if (slot == -1)
+            {
+                throw new InvalidOperationException(methodDesc.ToString());
+            }
 
             offsetAfterIndirection = (uint)(EETypeNode.GetVTableOffset(pointerSize) + slot * pointerSize);
         }

@@ -901,11 +901,6 @@ namespace Internal.Runtime.Augments
             RuntimeExceptionHelpers.ReportUnhandledException(exception);
         }
 
-        public static void GenerateExceptionInformationForDump(Exception currentException, IntPtr exceptionCCWPtr)
-        {
-            RuntimeExceptionHelpers.GenerateExceptionInformationForDump(currentException, exceptionCCWPtr);
-        }
-
         public static unsafe RuntimeTypeHandle GetRuntimeTypeHandleFromObjectReference(object obj)
         {
             return new RuntimeTypeHandle(obj.EETypePtr);

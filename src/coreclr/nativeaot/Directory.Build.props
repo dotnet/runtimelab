@@ -2,9 +2,12 @@
   <Import Project="../Directory.Build.props" />
 
   <PropertyGroup>
+    <ILLinkTrimAssembly>false</ILLinkTrimAssembly>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <EnableDefaultItems>false</EnableDefaultItems>
     <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
-    <GenerateResxSourceOmitGetResourceString>true</GenerateResxSourceOmitGetResourceString>
     <GenerateNeutralResourcesLanguageAttribute>false</GenerateNeutralResourcesLanguageAttribute>
     <EnsureRuntimePackageDependencies>false</EnsureRuntimePackageDependencies>
     <TargetFramework>$(NetCoreAppCurrent)</TargetFramework>
@@ -41,7 +44,6 @@
 
     <DisableImplicitConfigurationDefines>true</DisableImplicitConfigurationDefines>
 
-    <SkipCommonResourcesIncludes>true</SkipCommonResourcesIncludes>
     <DocumentationFile>$(OutputPath)$(MSBuildProjectName).xml</DocumentationFile>
   </PropertyGroup>
 

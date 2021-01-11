@@ -267,7 +267,7 @@ namespace Internal.JitInterface
             _methodCodeNode.InitializeFrameInfos(_frameInfos);
             _methodCodeNode.InitializeDebugEHClauseInfos(debugEHClauseInfos);
             _methodCodeNode.InitializeGCInfo(_gcInfo);
-            _methodCodeNode.InitializeEHInfo(ehInfo);
+            _methodCodeNode.InitializeEHInfo(ehInfo != null ? new MethodExceptionHandlingInfoNode(_methodCodeNode.Method, ehInfo) : null);
 
             _methodCodeNode.InitializeDebugLocInfos(_debugLocInfos);
             _methodCodeNode.InitializeDebugVarInfos(_debugVarInfos);
@@ -576,8 +576,9 @@ namespace Internal.JitInterface
             return callConv;
         }
 
-        private bool TryGetUnmanagedCallingConventionFromModOpt(MethodSignature signature, out CorInfoCallConvExtension callConv)
+        private bool TryGetUnmanagedCallingConventionFromModOpt(MethodSignature signature, out CorInfoCallConvExtension callConv, out bool suppressGCTransition)
         {
+            suppressGCTransition = false;
             callConv = CorInfoCallConvExtension.Managed;
             if (!signature.HasEmbeddedSignatureData || signature.GetEmbeddedSignatureData() == null)
                 return false;
@@ -598,6 +599,12 @@ namespace Internal.JitInterface
 
                 if (defType.Namespace != "System.Runtime.CompilerServices")
                     continue;
+
+                if (defType.Name == "CallConvSuppressGCTransition")
+                {
+                    suppressGCTransition = true;
+                    continue;
+                }
 
                 CorInfoCallConvExtension? callConvLocal = GetCallingConventionForCallConvType(defType);
 
@@ -1084,10 +1091,6 @@ namespace Internal.JitInterface
                 Debug.Assert(sig != null);
 
                 CorInfoCallConvExtension callConv = GetUnmanagedCallConv((MethodSignature)HandleToObject((IntPtr)sig->pSig), out pSuppressGCTransition);
-                if (sig->flags.HasFlag(CorInfoSigInfoFlags.CORINFO_SIGFLAG_SUPPRESS_GC_TRANSITION))
-                {
-                    pSuppressGCTransition = true;
-                }
                 return callConv;
             }
         }
@@ -1137,7 +1140,7 @@ namespace Internal.JitInterface
                 case MethodSignatureFlags.UnmanagedCallingConventionThisCall:
                     return CorInfoCallConvExtension.Thiscall;
                 case MethodSignatureFlags.UnmanagedCallingConvention:
-                    if (TryGetUnmanagedCallingConventionFromModOpt(signature, out CorInfoCallConvExtension callConvMaybe))
+                    if (TryGetUnmanagedCallingConventionFromModOpt(signature, out CorInfoCallConvExtension callConvMaybe, out suppressGCTransition))
                     {
                         return callConvMaybe;
                     }
@@ -1401,16 +1404,6 @@ namespace Internal.JitInterface
             var methodSig = (MethodSignature)methodIL.GetObject((int)sigTOK);
 
             Get_CORINFO_SIG_INFO(methodSig, sig);
-
-            // TODO: Replace this with a public mechanism to mark calli with SuppressGCTransition once it becomes available.
-            if (methodIL is PInvokeILStubMethodIL stubIL)
-            {
-                var method = stubIL.OwningMethod;
-                if (method.IsPInvoke && method.IsSuppressGCTransition())
-                {
-                    sig->flags |= CorInfoSigInfoFlags.CORINFO_SIGFLAG_SUPPRESS_GC_TRANSITION;
-                }
-            }
 
 #if !READYTORUN
             // Check whether we need to report this as a fat pointer call

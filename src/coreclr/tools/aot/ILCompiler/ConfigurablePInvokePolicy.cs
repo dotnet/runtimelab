@@ -84,15 +84,17 @@ namespace ILCompiler
 
             if (_target.IsWindows)
             {
-                if (name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-                    yield return name.Substring(0, name.Length - 4);
+                string suffix = ".dll";
+
+                if (name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                    yield return name.Substring(0, name.Length - suffix.Length);
             }
             else
             {
                 string suffix = _target.IsOSX ? ".dylib" : ".so";
 
                 if (name.EndsWith(suffix, StringComparison.Ordinal))
-                    yield return name.Substring(0, suffix.Length);
+                    yield return name.Substring(0, name.Length - suffix.Length);
             }
         }
 

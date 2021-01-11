@@ -183,7 +183,7 @@ namespace System.Threading
         {
             const int AllocationGranularity = 0x10000;  // 64 KiB
 
-            int stackSize = _maxStackSize;
+            int stackSize = _startHelper._maxStackSize;
             if ((0 < stackSize) && (stackSize < AllocationGranularity))
             {
                 // If StackSizeParamIsAReservation flag is set and the reserve size specified by CreateThread's

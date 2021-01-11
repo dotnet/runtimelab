@@ -1,13 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <ItemGroup Label="Embedded Resources">
-    <EmbeddedResource Include="Resources\Strings.resx">
-      <GenerateSource>true</GenerateSource>
-      <ClassName>System.SR</ClassName>
-    </EmbeddedResource>
-  </ItemGroup>
-
   <ItemGroup>
-    <ProjectReference Include="..\..\System.Private.CoreLib\System.Private.CoreLib.csproj" />
+    <ProjectReference Include="..\..\System.Private.CoreLib\src\System.Private.CoreLib.csproj" />
     <ProjectReference Include="..\..\System.Private.TypeLoader\src\System.Private.TypeLoader.csproj" />
   </ItemGroup>
 
@@ -36,9 +29,6 @@
     </Compile>
     <Compile Include="$(AotCommonPath)\System\Runtime\CompilerServices\__BlockReflectionAttribute.cs">
       <Link>System\Runtime\CompilerServices\__BlockReflectionAttribute.cs</Link>
-    </Compile>
-    <Compile Include="$(CommonPath)\System\SR.cs">
-      <Link>SR.cs</Link>
     </Compile>
     <Compile Include="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System\SR.cs" />
   </ItemGroup>
