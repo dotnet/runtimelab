@@ -16,6 +16,7 @@ class Program
         TestInGenericCode.Run();
         TestAttributeDataflow.Run();
         TestGenericDataflow.Run();
+        TestArrayDataflow.Run();
 
         return 100;
     }
@@ -242,6 +243,17 @@ class Program
             KeepsPublic<Type3WithPublicKept>.Keep<object>();
             Assert.Equal(2, typeof(Type3WithPublicKept).CountMethods());
             Assert.Equal(2, typeof(Type3WithPublicKept).CountPublicMethods());
+        }
+    }
+
+    class TestArrayDataflow
+    {
+        public static void Run()
+        {
+            // System.Array has 7 public properties
+            // This test might be a bit fragile, but we want to make sure accessing properties
+            // on an array triggers same as accessing properties on System.Array.
+            Assert.Equal(7, typeof(int[]).GetProperties().Length);
         }
     }
 }
