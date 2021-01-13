@@ -508,29 +508,34 @@ bool CoffNativeCodeManager::UnwindStackFrame(MethodInfo *    pMethodInfo,
     memset(&contextPointers, 0xDD, sizeof(contextPointers));
 #endif
 
-#ifdef TARGET_X86
+#if defined(TARGET_X86)
     #define FOR_EACH_NONVOLATILE_REGISTER(F) \
-        F(E, ax) F(E, cx) F(E, dx) F(E, bx) F(E, bp) F(E, si) F(E, di)
+        F(Eax, pRax) F(Ecx, pRcx) F(Edx, pRdx) F(Ebx, pRbx) F(Ebp, pRbp) F(Esi, pRsi) F(Edi, pRdi)
     #define WORDPTR PDWORD
-#else
+#elif defined(TARGET_AMD64)
     #define FOR_EACH_NONVOLATILE_REGISTER(F) \
-        F(R, ax) F(R, cx) F(R, dx) F(R, bx) F(R, bp) F(R, si) F(R, di) \
-        F(R, 8) F(R, 9) F(R, 10) F(R, 11) F(R, 12) F(R, 13) F(R, 14) F(R, 15)
+        F(Rax, pRax) F(Rcx, pRcx) F(Rdx, pRdx) F(Rbx, pRbx) F(Rbp, pRbp) F(Rsi, pRsi) F(Rdi, pRdi) \
+        F(R8, pR8) F(R9, pR9) F(R10, pR10) F(R11, pR11) F(R12, pR12) F(R13, pR13) F(R14, pR14) F(R15, pR15)
     #define WORDPTR PDWORD64
-#endif
+#elif defined(TARGET_ARM64)
+    #define FOR_EACH_NONVOLATILE_REGISTER(F) \
+        F(X19, pX19) F(X20, pX20) F(X21, pX21) F(X22, pX22) F(X23, pX23) F(X24, pX24) \
+        F(X25, pX25) F(X26, pX26) F(X27, pX27) F(X28, pX28) F(Fp, pFP) F(Lr, pLR)
+    #define WORDPTR PDWORD64
+#endif // defined(TARGET_X86)
 
-#define REGDISPLAY_TO_CONTEXT(prefix, reg) \
-    contextPointers.prefix####reg = (WORDPTR) pRegisterSet->pR##reg; \
-    if (pRegisterSet->pR##reg != NULL) context.prefix##reg = *(pRegisterSet->pR##reg);
+#define REGDISPLAY_TO_CONTEXT(contextField, regDisplayField) \
+    contextPointers.contextField = (WORDPTR) pRegisterSet->regDisplayField; \
+    if (pRegisterSet->regDisplayField != NULL) context.contextField = *pRegisterSet->regDisplayField;
 
-#define CONTEXT_TO_REGDISPLAY(prefix, reg) \
-    pRegisterSet->pR##reg = (PTR_UIntNative) contextPointers.prefix####reg;
+#define CONTEXT_TO_REGDISPLAY(contextField, regDisplayField) \
+    pRegisterSet->regDisplayField = (PTR_UIntNative) contextPointers.contextField;
 
     FOR_EACH_NONVOLATILE_REGISTER(REGDISPLAY_TO_CONTEXT);
 
-#ifdef TARGET_X86
+#if defined(TARGET_X86)
     PORTABILITY_ASSERT("CoffNativeCodeManager::UnwindStackFrame");
-#else // TARGET_X86
+#elif defined(TARGET_AMD64)
     memcpy(&context.Xmm6, pRegisterSet->Xmm, sizeof(pRegisterSet->Xmm));
 
     context.Rsp = pRegisterSet->SP;
@@ -554,11 +559,41 @@ bool CoffNativeCodeManager::UnwindStackFrame(MethodInfo *    pMethodInfo,
     pRegisterSet->pIP = PTR_PCODE(pRegisterSet->SP - sizeof(TADDR));
 
     memcpy(pRegisterSet->Xmm, &context.Xmm6, sizeof(pRegisterSet->Xmm));
-#endif // TARGET_X86
+#elif defined(TARGET_ARM64)
+    for (int i = 8; i < 16; i++)
+    {
+        context.V[i].Low = pRegisterSet->D[i - 8];
+        context.V[i].High = 0;
+    }
+
+    context.Sp = pRegisterSet->SP;
+    context.Pc = pRegisterSet->IP;
+
+    SIZE_T  EstablisherFrame;
+    PVOID   HandlerData;
+
+    RtlVirtualUnwind(NULL,
+                    dac_cast<TADDR>(m_moduleBase),
+                    pRegisterSet->IP,
+                    (PRUNTIME_FUNCTION)pNativeMethodInfo->runtimeFunction,
+                    &context,
+                    &HandlerData,
+                    &EstablisherFrame,
+                    &contextPointers);
+
+    pRegisterSet->SP = context.Sp;
+    pRegisterSet->IP = context.Pc;
+
+    pRegisterSet->pIP = PTR_PCODE(pRegisterSet->SP - sizeof(TADDR));
+
+    for (int i = 8; i < 16; i++)
+        pRegisterSet->D[i - 8] = context.V[i].Low;
+#endif // defined(TARGET_X86)
 
     FOR_EACH_NONVOLATILE_REGISTER(CONTEXT_TO_REGDISPLAY);
 
 #undef FOR_EACH_NONVOLATILE_REGISTER
+#undef WORDPTR
 #undef REGDISPLAY_TO_CONTEXT
 #undef CONTEXT_TO_REGDISPLAY
 

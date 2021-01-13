@@ -1598,6 +1598,11 @@ OBJECTREF* GcInfoDecoder::GetRegisterSlot(
     _ASSERTE(regNum >= 0 && regNum <= 30);
     _ASSERTE(regNum != 18); // TEB
 
+#ifdef FEATURE_REDHAWK
+    PTR_UIntNative* ppReg = &pRD->pX0;
+
+    return (OBJECTREF*)*(ppReg + regNum);
+#else
     DWORD64 **ppReg;
 
     if(regNum <= 17)
@@ -1617,6 +1622,7 @@ OBJECTREF* GcInfoDecoder::GetRegisterSlot(
     ppReg = &pRD->pCurrentContextPointers->X19;
 
     return (OBJECTREF*)*(ppReg + regNum-19);
+#endif
 }
 
 bool GcInfoDecoder::IsScratchRegister(int regNum,  PREGDISPLAY pRD)
