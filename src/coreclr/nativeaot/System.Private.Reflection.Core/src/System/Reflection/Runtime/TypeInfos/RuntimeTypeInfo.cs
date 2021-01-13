@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Reflection.Runtime.General;
@@ -185,6 +186,13 @@ namespace System.Reflection.Runtime.TypeInfos
             }
         }
 
+        [DynamicallyAccessedMembers(
+                DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.PublicMethods
+                | DynamicallyAccessedMemberTypes.PublicEvents
+                | DynamicallyAccessedMemberTypes.PublicProperties
+                | DynamicallyAccessedMemberTypes.PublicConstructors
+                | DynamicallyAccessedMemberTypes.PublicNestedTypes)]
         public sealed override MemberInfo[] GetDefaultMembers()
         {
             string defaultMemberName = GetDefaultMemberName();
