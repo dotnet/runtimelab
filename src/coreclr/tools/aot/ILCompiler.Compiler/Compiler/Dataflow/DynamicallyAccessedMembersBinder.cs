@@ -163,7 +163,7 @@ namespace ILCompiler.Dataflow
             }
         }
 
-        public static IEnumerable<FieldDesc> GetFieldsOnTypeHierarchy(this TypeDesc type, Func<FieldDesc, bool> filter, BindingFlags bindingFlags = BindingFlags.Default)
+        public static IEnumerable<FieldDesc> GetFieldsOnTypeHierarchy(this TypeDesc type, Func<FieldDesc, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
         {
             bool onBaseType = false;
             while (type != null)
@@ -201,7 +201,7 @@ namespace ILCompiler.Dataflow
             }
         }
 
-        public static IEnumerable<MetadataType> GetNestedTypesOnType(this TypeDesc type, Func<MetadataType, bool> filter, BindingFlags bindingFlags = BindingFlags.Default)
+        public static IEnumerable<MetadataType> GetNestedTypesOnType(this TypeDesc type, Func<MetadataType, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
         {
             if (type is not MetadataType mdType)
                 yield break;
@@ -227,7 +227,7 @@ namespace ILCompiler.Dataflow
             }
         }
 
-        public static IEnumerable<PropertyPseudoDesc> GetPropertiesOnTypeHierarchy(this TypeDesc type, Func<PropertyPseudoDesc, bool> filter, BindingFlags bindingFlags = BindingFlags.Default)
+        public static IEnumerable<PropertyPseudoDesc> GetPropertiesOnTypeHierarchy(this TypeDesc type, Func<PropertyPseudoDesc, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
         {
             bool onBaseType = false;
             while (type != null)
@@ -289,7 +289,7 @@ namespace ILCompiler.Dataflow
             }
         }
 
-        public static IEnumerable<EventPseudoDesc> GetEventsOnTypeHierarchy(this TypeDesc type, Func<EventPseudoDesc, bool> filter, BindingFlags bindingFlags = BindingFlags.Default)
+        public static IEnumerable<EventPseudoDesc> GetEventsOnTypeHierarchy(this TypeDesc type, Func<EventPseudoDesc, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
         {
             bool onBaseType = false;
             while (type != null)
