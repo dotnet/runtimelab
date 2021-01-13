@@ -294,7 +294,14 @@ namespace ILCompiler.Dataflow
             bool onBaseType = false;
             while (type != null)
             {
-                var ecmaType = (EcmaType)type.GetTypeDefinition();
+                if (type.GetTypeDefinition() is not EcmaType ecmaType)
+                {
+                    // Go down the inheritance chain to see if we have an EcmaType later.
+                    // Arrays would hit this (base type of arrays is the EcmaType for System.Array).
+                    type = type.BaseType;
+                    onBaseType = true;
+                    continue;
+                }
 
                 foreach (var eventHandle in ecmaType.MetadataReader.GetTypeDefinition(ecmaType.Handle).GetEvents())
                 {
