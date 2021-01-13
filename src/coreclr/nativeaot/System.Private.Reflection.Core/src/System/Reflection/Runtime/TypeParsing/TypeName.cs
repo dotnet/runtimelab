@@ -114,7 +114,7 @@ namespace System.Reflection.Runtime.TypeParsing
             return _declaringType + "+" + _nestedTypeName.EscapeTypeNameIdentifier();
         }
 
-        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2075:UnrecognizedReflectionPattern",
             Justification = "Reflection implementation")]
         public sealed override Type ResolveType(Assembly containingAssemblyIfAny, GetTypeOptions getTypeOptions)
         {
