@@ -52,6 +52,7 @@ namespace System
             }
         }
 
+        [Intrinsic]
         protected object MemberwiseClone()
         {
             return RuntimeImports.RhMemberwiseClone(this);
