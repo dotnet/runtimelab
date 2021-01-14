@@ -561,10 +561,7 @@ bool CoffNativeCodeManager::UnwindStackFrame(MethodInfo *    pMethodInfo,
     memcpy(pRegisterSet->Xmm, &context.Xmm6, sizeof(pRegisterSet->Xmm));
 #elif defined(TARGET_ARM64)
     for (int i = 8; i < 16; i++)
-    {
         context.V[i].Low = pRegisterSet->D[i - 8];
-        context.V[i].High = 0;
-    }
 
     context.Sp = pRegisterSet->SP;
     context.Pc = pRegisterSet->IP;
@@ -584,7 +581,7 @@ bool CoffNativeCodeManager::UnwindStackFrame(MethodInfo *    pMethodInfo,
     pRegisterSet->SP = context.Sp;
     pRegisterSet->IP = context.Pc;
 
-    pRegisterSet->pIP = PTR_PCODE(pRegisterSet->SP - sizeof(TADDR));
+    pRegisterSet->pIP = pRegisterSet->pLR;
 
     for (int i = 8; i < 16; i++)
         pRegisterSet->D[i - 8] = context.V[i].Low;
