@@ -177,5 +177,7 @@ namespace System
         {
             return RuntimeImports.modff(x, intptr);
         }
+
+        public static (float Sin, float Cos) SinCos(float x) => (Sin(x), Cos(x));
     }
 }

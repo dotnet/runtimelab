@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Reflection.Runtime.General;
@@ -121,6 +122,7 @@ namespace System.Reflection.Runtime.Assemblies
             return RuntimeAssemblyName.ToAssemblyName();
         }
 
+        [RequiresUnreferencedCode("Types might be removed")]
         public sealed override Type[] GetForwardedTypes()
         {
             List<Type> types = new List<Type>();
@@ -175,6 +177,7 @@ namespace System.Reflection.Runtime.Assemblies
         /// </summary>
         protected abstract IEnumerable<TypeForwardInfo> TypeForwardInfos { get; }
 
+        [RequiresUnreferencedCode("Types might be removed")]
         private static void AddPublicNestedTypes(Type type, List<Type> types)
         {
             foreach (Type nestedType in type.GetNestedTypes(BindingFlags.Public))
