@@ -30,7 +30,6 @@ The .NET Foundation licenses this file to you under the MIT license.
   <PropertyGroup>
     <_BuildingInCompatibleMode Condition="$(TrimMode) == '' and $(IlcGenerateStackTraceData) == '' and $(IlcDisableReflection) == ''">true</_BuildingInCompatibleMode>
 
-    <TrimMode Condition="'$(TrimMode)' == ''">copyused</TrimMode>
     <IlcGenerateStackTraceData Condition="$(IlcGenerateStackTraceData) == ''">true</IlcGenerateStackTraceData>
     <IlcScanReflection Condition="$(IlcScanReflection) == ''">true</IlcScanReflection>
     <SuppressTrimAnalysisWarnings Condition="$(SuppressTrimAnalysisWarnings) == ''">true</SuppressTrimAnalysisWarnings>
