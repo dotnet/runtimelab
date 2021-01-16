@@ -231,7 +231,7 @@
     <IsShippingPackage Condition="($(MSBuildProjectName.Contains('Private')) or $(IsExperimentalAssembly)) and '$(MSBuildProjectExtension)' == '.pkgproj'">false</IsShippingPackage>
     <!-- A package isn't generated (in traversal builds) if in servicing or in runtimelab. Intended to be overridden at project level. -->
     <!-- Disable building of all packages except Microsoft.DotNet.ILCompiler in this branch -->
-    <GeneratePackage Condition="'$(MSBuildProjectName)' != 'Microsoft.DotNet.ILCompiler'">false</GeneratePackage>
+    <GeneratePackage Condition="!$(MSBuildProjectName.StartsWith('Microsoft.DotNet.ILCompiler'))">false</GeneratePackage>
     <GeneratePackage Condition="'$(GeneratePackage)' == ''">true</GeneratePackage>
     <GeneratePackage Condition="(('$(PreReleaseVersionLabel)' == 'servicing' or
                                   '$(RepositoryName)' == 'runtimelab') and
