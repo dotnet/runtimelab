@@ -5,6 +5,9 @@
   <ItemGroup Condition="'$(TargetsUnix)'=='true'">
     <ILLinkSubstitutionsXmls Include="ILLink\ILLink.Substitutions.Unix.xml" />
   </ItemGroup>
+  <ItemGroup Condition="'$(TargetsBrowser)'=='true'">
+    <ILLinkSubstitutionsXmls Include="ILLink\ILLink.Substitutions.llvm.xml" />
+  </ItemGroup>
 
   <PropertyGroup>
     <DefineConstants>SYSTEM_PRIVATE_CORELIB;FEATURE_MANAGED_ETW_CHANNELS;FEATURE_MANAGED_ETW;$(DefineConstants)</DefineConstants>

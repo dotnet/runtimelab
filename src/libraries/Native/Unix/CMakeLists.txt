@@ -227,7 +227,7 @@ endif()
 add_subdirectory(System.Native)
 
 if(CLR_CMAKE_TARGET_BROWSER)
-    # skip for now
+    add_subdirectory(System.Globalization.Native)
 elseif(CLR_CMAKE_TARGET_IOS)
     add_subdirectory(System.Net.Security.Native)
     # System.Security.Cryptography.Native is intentionally disabled on iOS

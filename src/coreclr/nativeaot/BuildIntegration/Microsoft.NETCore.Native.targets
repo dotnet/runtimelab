@@ -347,7 +347,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <PropertyGroup>
       <EmccArgs>&quot;$(NativeObject)&quot; -o &quot;$(NativeBinary)&quot; -s ALLOW_MEMORY_GROWTH=1 -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s DISABLE_EXCEPTION_CATCHING=0 --emrun </EmccArgs>
-      <EmccArgs Condition="'$(Platform)'=='wasm'">$(EmccArgs) &quot;$(IlcPath)/sdk/libPortableRuntime.a&quot; &quot;$(IlcPath)/sdk/libbootstrapper.a&quot; &quot;$(IlcPath)/framework/libSystem.Native.a&quot; $(EmccExtraArgs)</EmccArgs>
+      <EmccArgs Condition="'$(Platform)'=='wasm'">$(EmccArgs) &quot;$(IlcPath)/sdk/libPortableRuntime.a&quot; &quot;$(IlcPath)/sdk/libbootstrapper.a&quot; &quot;$(IlcPath)/framework/libSystem.Native.a&quot; &quot;$(IlcPath)/framework/libSystem.Globalization.Native.a&quot; $(EmccExtraArgs)</EmccArgs>
       <EmccArgs Condition="'$(NativeDebugSymbols)' != 'true'">$(EmccArgs) -O2 -flto</EmccArgs>
       <EmccArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(EmccArgs) -g3</EmccArgs>
     </PropertyGroup>
