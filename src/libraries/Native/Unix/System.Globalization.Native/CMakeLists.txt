@@ -16,7 +16,8 @@ if(CLR_CMAKE_TARGET_UNIX)
     if (CLR_CMAKE_TARGET_UNIX_WASM)
 	    message("including ICU")
 	    # add ICU support to emscripten and workaround https://github.com/emscripten-core/emscripten/issues/9302
-	    add_compile_options(-s USE_ICU=1 -I$ENV{EMSDK}/upstream/emscripten/cache/ports/icu/icu/source/i18n)
+	    # ucol_setVariableTop is deprecated so disable warnings
+	    add_compile_options(-s USE_ICU=1 -I$ENV{EMSDK}/upstream/emscripten/cache/ports/icu/icu/source/i18n -Wno-deprecated-declarations)
     elseif (NOT CLR_CMAKE_TARGET_ANDROID)
         set(ICU_HOMEBREW_INC_PATH "/usr/local/opt/icu4c/include")
 
@@ -103,7 +104,11 @@ else()
     # it needs to build with coreclr in order to be linkable with it on Windows
     # coreclr and static libraries must match because linker does not permit mixing modules
     # with different C runtimes (i.e. Debug vs. Release)
-    install (TARGETS System.Globalization.Native-Static DESTINATION lib)
+    if(CLR_CMAKE_TARGET_UNIX_WASM)
+        install (TARGETS System.Globalization.Native-Static DESTINATION .)
+    else()
+        install (TARGETS System.Globalization.Native-Static DESTINATION lib)
+    endif()
 endif()
 
 if(NOT CLR_CMAKE_TARGET_OSX AND NOT CLR_CMAKE_TARGET_IOS AND NOT CLR_CMAKE_TARGET_TVOS AND NOT CLR_CMAKE_TARGET_ANDROID)
