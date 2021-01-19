@@ -83,17 +83,36 @@ namespace Microsoft.Interop
                                                         .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.FalseLiteralExpression))))));
                     
                     }
+
+                    var safeHandleCreationExpression = CastExpression(
+                        info.ManagedType.AsTypeSyntax(),
+                        InvocationExpression(
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                ParseTypeName(TypeNames.System_Activator),
+                                IdentifierName("CreateInstance")))
+                        .WithArgumentList(
+                            ArgumentList(
+                                SeparatedList(
+                                    new []{
+                                        Argument(
+                                            TypeOfExpression(
+                                                info.ManagedType.AsTypeSyntax())),
+                                        Argument(
+                                            LiteralExpression(
+                                                SyntaxKind.TrueLiteralExpression))
+                                        .WithNameColon(
+                                            NameColon(
+                                                IdentifierName("nonPublic")))
+                                    }))));
+
                     if (info.IsManagedReturnPosition)
                     {
                         yield return ExpressionStatement(
                             AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
                                 IdentifierName(managedIdentifier),
-                                InvocationExpression(
-                                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                        ParseName(TypeNames.MarshalEx(options)),
-                                        GenericName(Identifier("CreateSafeHandle"),
-                                            TypeArgumentList(SingletonSeparatedList(info.ManagedType.AsTypeSyntax())))),
-                                    ArgumentList())));
+                                safeHandleCreationExpression
+                                ));
                     }
                     else if (info.IsByRef && info.RefKind != RefKind.In)
                     {
@@ -105,13 +124,7 @@ namespace Microsoft.Interop
                                 info.ManagedType.AsTypeSyntax(),
                                 SingletonSeparatedList(
                                     VariableDeclarator(newHandleObjectIdentifier)
-                                    .WithInitializer(EqualsValueClause(
-                                        InvocationExpression(
-                                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                                ParseName(TypeNames.MarshalEx(options)),
-                                                GenericName(Identifier("CreateSafeHandle"),
-                                                    TypeArgumentList(SingletonSeparatedList(info.ManagedType.AsTypeSyntax())))),
-                                            ArgumentList()))))));
+                                    .WithInitializer(EqualsValueClause(safeHandleCreationExpression)))));
                         if (info.RefKind != RefKind.Out)
                         {
                             yield return LocalDeclarationStatement(
@@ -168,7 +181,7 @@ namespace Microsoft.Interop
                         InvocationExpression(
                             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                                 ParseTypeName(TypeNames.MarshalEx(options)),
-                                IdentifierName("SetHandle")),
+                                IdentifierName("InitHandle")),
                             ArgumentList(SeparatedList(
                                 new []
                                 {
