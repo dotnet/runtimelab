@@ -81,30 +81,31 @@ namespace Microsoft.Interop
                                                     SingletonSeparatedList(
                                                         VariableDeclarator(addRefdIdentifier)
                                                         .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.FalseLiteralExpression))))));
-                    
                     }
 
-                    var safeHandleCreationExpression = CastExpression(
-                        info.ManagedType.AsTypeSyntax(),
-                        InvocationExpression(
-                            MemberAccessExpression(
-                                SyntaxKind.SimpleMemberAccessExpression,
-                                ParseTypeName(TypeNames.System_Activator),
-                                IdentifierName("CreateInstance")))
-                        .WithArgumentList(
-                            ArgumentList(
-                                SeparatedList(
-                                    new []{
-                                        Argument(
-                                            TypeOfExpression(
-                                                info.ManagedType.AsTypeSyntax())),
-                                        Argument(
-                                            LiteralExpression(
-                                                SyntaxKind.TrueLiteralExpression))
-                                        .WithNameColon(
-                                            NameColon(
-                                                IdentifierName("nonPublic")))
-                                    }))));
+                    var safeHandleCreationExpression = ((SafeHandleMarshallingInfo)info.MarshallingAttributeInfo).AccessibleDefaultConstructor
+                        ? (ExpressionSyntax)ObjectCreationExpression(info.ManagedType.AsTypeSyntax(), ArgumentList(), initializer: null)
+                        : CastExpression(
+                            info.ManagedType.AsTypeSyntax(),
+                            InvocationExpression(
+                                MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    ParseTypeName(TypeNames.System_Activator),
+                                    IdentifierName("CreateInstance")))
+                            .WithArgumentList(
+                                ArgumentList(
+                                    SeparatedList(
+                                        new []{
+                                            Argument(
+                                                TypeOfExpression(
+                                                    info.ManagedType.AsTypeSyntax())),
+                                            Argument(
+                                                LiteralExpression(
+                                                    SyntaxKind.TrueLiteralExpression))
+                                            .WithNameColon(
+                                                NameColon(
+                                                    IdentifierName("nonPublic")))
+                                        }))));
 
                     if (info.IsManagedReturnPosition)
                     {
