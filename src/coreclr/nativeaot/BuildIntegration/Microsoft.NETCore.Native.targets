@@ -100,12 +100,14 @@ The .NET Foundation licenses this file to you under the MIT license.
   <ItemGroup>
     <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll">
       <IsTrimmable>true</IsTrimmable>
+      <TrimMode>link</TrimMode>
     </PrivateSdkAssemblies>
   </ItemGroup>
   <ItemGroup>
     <!-- Exclude System.IO.Compression.Native.dll for now https://github.com/dotnet/corert/issues/5496 -->
     <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\System.IO.Compression.Native.dll">
-        <IsTrimmable>true</IsTrimmable>
+      <IsTrimmable>true</IsTrimmable>
+      <TrimMode>link</TrimMode>
     </FrameworkAssemblies>
   </ItemGroup>
 
@@ -134,12 +136,14 @@ The .NET Foundation licenses this file to you under the MIT license.
     <ItemGroup>
       <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll">
         <IsTrimmable>true</IsTrimmable>
+        <TrimMode>link</TrimMode>
       </PrivateSdkAssemblies>
     </ItemGroup>
     <ItemGroup>
       <!-- Exclude System.IO.Compression.Native.dll for now https://github.com/dotnet/corert/issues/5496 -->
       <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\System.IO.Compression.Native.dll">
         <IsTrimmable>true</IsTrimmable>
+        <TrimMode>link</TrimMode>
       </FrameworkAssemblies>
     </ItemGroup>
 
