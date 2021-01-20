@@ -92,9 +92,9 @@ index 2bd0cbf9f7c..e7643d5f66d 100644
 +       .Case("R_AARCH64_JUMP26", (MCFixupKind)AArch64::fixup_aarch64_pcrel_call26)
 +       .Case("R_AARCH64_ADR_PREL_LO21",(MCFixupKind)AArch64::fixup_aarch64_pcrel_adrp_imm21)
 +       .Case("R_AARCH64_ADD_ABS_LO12_NC", (MCFixupKind)AArch64::fixup_aarch64_add_imm12)
-+        .Default(MCAsmBackend::getFixupKind(Name));
++       .Default(MCAsmBackend::getFixupKind(Name));
 +  }
-+  
++
 +
    const MCFixupKindInfo &getFixupKindInfo(MCFixupKind Kind) const override {
      const static MCFixupKindInfo Infos[AArch64::NumTargetFixupKinds] = {
@@ -127,6 +127,18 @@ index 89c3e5b4c76..ba105365d74 100644
        return R_CLS(PREL32);
      case FK_Data_8:
        if (IsILP32) {
+diff --git a/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp b/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
+index 31762b9e4cd..5d8c6d89efc 100644
+--- a/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
++++ b/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
+@@ -53,6 +53,7 @@ unsigned AArch64WinCOFFObjectWriter::getRelocType(
+   }
+ 
+   case FK_Data_4:
++  case FK_PCRel_4:
+     switch (Modifier) {
+     default:
+       return COFF::IMAGE_REL_ARM64_ADDR32;
 diff --git a/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.cpp b/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.cpp
 index a77df7a2598..e1aa7526f9b 100644
 --- a/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.cpp
