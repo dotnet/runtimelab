@@ -87,6 +87,7 @@
     <SubsetName Include="NativeAot" Description="The CoreCLR native AOT runtime, libraries, and tools." />
     <SubsetName Include="NativeAot.Libs" Description="The CoreCLR native AOT CoreLib and other low level class libraries." />
     <SubsetName Include="NativeAot.Tools" Description="The CoreCLR native AOT compiler." />
+    <SubsetName Include="NativeAot.ObjWriter" Description="Object writer for the CoreCLR native AOT compiler." />
     <SubsetName Include="NativeAot.Packages" Description="The CoreCLR native AOT compiler." />
 
     <!-- CoreClr -->
@@ -236,6 +237,10 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler\ILCompiler.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler\repro\repro.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(_subset.Contains('+nativeaot.objwriter+'))">
+    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ObjWriter\objwriter.proj" Category="clr" />
   </ItemGroup>
 
   <!-- Mono sets -->
