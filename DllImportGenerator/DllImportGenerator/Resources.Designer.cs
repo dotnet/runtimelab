@@ -214,6 +214,15 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Conversion to &apos;GeneratedDllImport&apos; may change behavior and compatibility. See {0} for more information..
+        /// </summary>
+        internal static string ConvertToGeneratedDllImportWarning {
+            get {
+                return ResourceManager.GetString("ConvertToGeneratedDllImportWarning", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Convert to &apos;GeneratedDllImport&apos; under a preprocessor define.
         /// </summary>
         internal static string ConvertToGeneratedDllImportWithPreprocessor {

@@ -105,7 +105,11 @@ namespace Microsoft.Interop.Analyzers
                 dllImportSyntax,
                 methodSymbol.GetDllImportData()!,
                 generatedDllImportAttrType);
-            
+
+            // Add annotation about potential behavioural and compatibility changes
+            generatedDllImportSyntax = generatedDllImportSyntax.WithAdditionalAnnotations(
+                WarningAnnotation.Create(string.Format(Resources.ConvertToGeneratedDllImportWarning, "[TODO] Documentation link")));
+
             // Replace DllImport with GeneratedDllImport
             SyntaxNode generatedDeclaration = generator.ReplaceNode(methodSyntax, dllImportSyntax, generatedDllImportSyntax);
 
@@ -118,7 +122,7 @@ namespace Microsoft.Interop.Analyzers
 
             if (!usePreprocessorDefines)
             {
-                // Replace the original methad with the updated one
+                // Replace the original method with the updated one
                 editor.ReplaceNode(methodSyntax, generatedDeclaration);
             }
             else
