@@ -133,9 +133,10 @@ namespace Microsoft.Interop
                 // Since we're generating source for the method, we know that the current type
                 // has to be declared in source.
                 TypeDeclarationSyntax typeDecl = (TypeDeclarationSyntax)currType.DeclaringSyntaxReferences[0].GetSyntax();
-                // Remove current members and attributes so we don't double declare them.
+                // Remove current members, attributes, and base list so we don't double declare them.
                 typeDecl = typeDecl.WithMembers(List<MemberDeclarationSyntax>())
-                                   .WithAttributeLists(List<AttributeListSyntax>());
+                                   .WithAttributeLists(List<AttributeListSyntax>())
+                                   .WithBaseList(null);
 
                 containingTypes.Add(typeDecl);
 
