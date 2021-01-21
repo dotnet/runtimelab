@@ -49,10 +49,6 @@ variables:
 stages:
 - stage: Build
   jobs:
-  #
-  # Checkout repository
-  #
-  - template: /eng/pipelines/common/checkout-job.yml
 
   #
   # Build the whole product using Mono and run libraries tests
