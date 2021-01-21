@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
@@ -553,6 +554,21 @@ namespace ILCompiler
                 {
                     compilationRoots.Add(new RdXmlRootProvider(typeSystemContext, rdXmlFilePath));
                 }
+            }
+
+            _rootedAssemblies = new List<string>(_rootedAssemblies.Select(a => ILLinkify(a)));
+            _conditionallyRootedAssemblies = new List<string>(_conditionallyRootedAssemblies.Select(a => ILLinkify(a)));
+
+            static string ILLinkify(string rootedAssembly)
+            {
+                // For compatibility with IL Linker, the parameter could be a file name or an assembly name.
+                // This is the logic IL Linker uses to decide how to interpret the string. Really.
+                string simpleName;
+                if (File.Exists(rootedAssembly))
+                    simpleName = Path.GetFileNameWithoutExtension(rootedAssembly);
+                else
+                    simpleName = rootedAssembly;
+                return simpleName;
             }
 
             // Root whatever assemblies were specified on the command line

@@ -33,6 +33,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <IlcGenerateStackTraceData Condition="$(IlcGenerateStackTraceData) == ''">true</IlcGenerateStackTraceData>
     <IlcScanReflection Condition="$(IlcScanReflection) == ''">true</IlcScanReflection>
     <SuppressTrimAnalysisWarnings Condition="$(SuppressTrimAnalysisWarnings) == ''">true</SuppressTrimAnalysisWarnings>
+    <TrimMode Condition="$(TrimMode) == ''">copyused</TrimMode>
   </PropertyGroup>
 
   <!-- Set up default feature switches -->
@@ -98,17 +99,11 @@ The .NET Foundation licenses this file to you under the MIT license.
   </ItemGroup>
 
   <ItemGroup>
-    <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll">
-      <IsTrimmable>true</IsTrimmable>
-      <TrimMode>link</TrimMode>
-    </PrivateSdkAssemblies>
+    <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll" />
   </ItemGroup>
   <ItemGroup>
     <!-- Exclude System.IO.Compression.Native.dll for now https://github.com/dotnet/corert/issues/5496 -->
-    <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\System.IO.Compression.Native.dll">
-      <IsTrimmable>true</IsTrimmable>
-      <TrimMode>link</TrimMode>
-    </FrameworkAssemblies>
+    <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\System.IO.Compression.Native.dll" />
   </ItemGroup>
 
   <ItemGroup>
@@ -118,7 +113,14 @@ The .NET Foundation licenses this file to you under the MIT license.
 
   <Target Name="_ComputeManagedAssemblyForILLink" AfterTargets="_ComputeManagedAssemblyToLink">
     <ItemGroup>
-      <ManagedAssemblyToLink Exclude="@(ManagedAssemblyToLink)" Include="@(DefaultFrameworkAssemblies)" />
+      <ManagedAssemblyToLink Remove="@(ManagedAssemblyToLink)" />
+      <ManagedAssemblyToLink Include="@(DefaultFrameworkAssemblies)">
+        <IsTrimmable>true</IsTrimmable>
+        <TrimMode>link</TrimMode>
+      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Include="@(_ManagedResolvedAssembliesToPublish);@(ManagedBinary)">
+        <IsTrimmable>true</IsTrimmable>
+      </ManagedAssemblyToLink>
     </ItemGroup>
   </Target>
 
@@ -134,17 +136,11 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <!-- If running from a package these values need to be set again with the resolved IlcPath -->
     <ItemGroup>
-      <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll">
-        <IsTrimmable>true</IsTrimmable>
-        <TrimMode>link</TrimMode>
-      </PrivateSdkAssemblies>
+      <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll" />
     </ItemGroup>
     <ItemGroup>
       <!-- Exclude System.IO.Compression.Native.dll for now https://github.com/dotnet/corert/issues/5496 -->
-      <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\System.IO.Compression.Native.dll">
-        <IsTrimmable>true</IsTrimmable>
-        <TrimMode>link</TrimMode>
-      </FrameworkAssemblies>
+      <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\System.IO.Compression.Native.dll" />
     </ItemGroup>
 
     <ItemGroup>
@@ -193,7 +189,6 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ItemGroup>
 
     <ItemGroup>
-      <_IlcRootedAssemblies Include="@(ManagedAssemblyToLink)" Condition="%(ManagedAssemblyToLink.TrimMode) == 'copy'" />
       <_IlcRootedAssemblies Include="@(TrimmerRootAssembly)" />
       <_IlcConditionallyRootedAssemblies Include="@(ManagedAssemblyToLink)" Condition="%(ManagedAssemblyToLink.TrimMode) == 'copyused'" />
     </ItemGroup>
@@ -230,8 +225,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Condition="$(IlcSystemModule) != ''" Include="--systemmodule:$(IlcSystemModule)" />
       <IlcArg Condition="$(IlcDumpIL) == 'true'" Include="--ildump:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).il" />
       <IlcArg Condition="$(NoWarn) != ''" Include='--nowarn:"$([MSBuild]::Escape($(NoWarn)))"' />
-      <IlcArg Include="@(_IlcRootedAssemblies->'--root:%(Filename)')" />
-      <IlcArg Include="@(_IlcConditionallyRootedAssemblies->'--conditionalroot:%(Filename)')" />
+      <IlcArg Include="@(_IlcRootedAssemblies->'--root:%(Identity)')" />
+      <IlcArg Include="@(_IlcConditionallyRootedAssemblies->'--conditionalroot:%(Identity)')" />
 
       <!-- Workaround for https://github.com/dotnet/corefx/issues/36723 -->
       <IlcArg Include="--removefeature:SerializationGuard" />
