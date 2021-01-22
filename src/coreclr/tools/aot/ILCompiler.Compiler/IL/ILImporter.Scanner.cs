@@ -345,12 +345,6 @@ namespace Internal.IL
                         return;
                 }
 
-                if (IsRuntimeTypeHandleGetValueInternal(method))
-                {
-                    if (_previousInstructionOffset >= 0 && _ilBytes[_previousInstructionOffset] == (byte)ILOpcode.ldtoken)
-                        return;
-                }
-
                 if (IsActivatorDefaultConstructorOf(method))
                 {
                     if (runtimeDeterminedMethod.IsRuntimeDeterminedExactMethod)
@@ -804,7 +798,6 @@ namespace Internal.IL
                 }
                 _dependencies.Add(reference, "ldtoken");
 
-                // If this is a ldtoken Type / GetValueInternal sequence, we're done.
                 // If this is a ldtoken Type / Type.GetTypeFromHandle sequence, we need one more helper.
                 BasicBlock nextBasicBlock = _basicBlocks[_currentOffset];
                 if (nextBasicBlock == null)
@@ -813,12 +806,7 @@ namespace Internal.IL
                     {
                         int methodToken = ReadILTokenAt(_currentOffset + 1);
                         var method = (MethodDesc)_methodIL.GetObject(methodToken);
-                        if (IsRuntimeTypeHandleGetValueInternal(method))
-                        {
-                            // Codegen expands this and doesn't do the normal ldtoken.
-                            return;
-                        }
-                        else if (IsTypeGetTypeFromHandle(method))
+                        if (IsTypeGetTypeFromHandle(method))
                         {
                             // Codegen will swap this one for GetRuntimeTypeHandle when optimizing
                             _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.GetRuntimeType), "ldtoken");
@@ -1109,20 +1097,6 @@ namespace Internal.IL
                 if (owningType != null)
                 {
                     return owningType.Name == "RuntimeHelpers" && owningType.Namespace == "System.Runtime.CompilerServices";
-                }
-            }
-
-            return false;
-        }
-
-        private bool IsRuntimeTypeHandleGetValueInternal(MethodDesc method)
-        {
-            if (method.IsIntrinsic && method.Name == "GetValueInternal")
-            {
-                MetadataType owningType = method.OwningType as MetadataType;
-                if (owningType != null)
-                {
-                    return owningType.Name == "RuntimeTypeHandle" && owningType.Namespace == "System";
                 }
             }
 
