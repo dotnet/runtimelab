@@ -96,6 +96,13 @@ if(CLR_CMAKE_TARGET_WIN32 AND CLR_CMAKE_BUILD_SUBSET_RUNTIME)
   add_subdirectory(gc/sample)
 endif()
 
+#-------------------------------------
+# Include directory directives
+#-------------------------------------
+# Include the basic prebuilt headers - required for getting fileversion resource details.
+include_directories("pal/prebuilt/inc")
+include_directories("../../artifacts/obj/coreclr")
+
 add_subdirectory(tools/aot/jitinterface)
 
 if(NOT CLR_CROSS_COMPONENTS_BUILD)
@@ -115,13 +122,6 @@ endif(CLR_CMAKE_HOST_WIN32)
 #  - all clr specific feature variable should also be added in this file
 #----------------------------------
 include(clrdefinitions.cmake)
-
-#-------------------------------------
-# Include directory directives
-#-------------------------------------
-# Include the basic prebuilt headers - required for getting fileversion resource details.
-include_directories("pal/prebuilt/inc")
-include_directories("../../artifacts/obj/coreclr")
 
 if(FEATURE_STANDALONE_GC)
   add_definitions(-DFEATURE_STANDALONE_GC)
