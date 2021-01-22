@@ -19,11 +19,5 @@ namespace System
     public struct RuntimeTypeHandle
     {
         private EETypePtr _pEEType;
-
-        [Intrinsic]
-        internal static unsafe IntPtr GetValueInternal(RuntimeTypeHandle handle)
-        {
-            return (IntPtr)handle._pEEType.ToPointer();
-        }
     }
 }

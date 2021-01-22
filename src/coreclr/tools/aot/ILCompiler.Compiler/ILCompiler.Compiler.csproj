@@ -96,9 +96,6 @@
     <Compile Include="..\..\Common\TypeSystem\IL\Stubs\DelegateMethodILEmitter.cs">
       <Link>IL\Stubs\DelegateMethodILEmitter.cs</Link>
     </Compile>
-    <Compile Include="..\..\Common\TypeSystem\IL\Stubs\EETypePtrOfIntrinsic.cs">
-      <Link>IL\Stubs\EETypePtrOfIntrinsic.cs</Link>
-    </Compile>
     <Compile Include="..\..\Common\TypeSystem\IL\Stubs\MethodBaseGetCurrentMethodThunk.Sorting.cs">
       <Link>IL\Stubs\MethodBaseGetCurrentMethodThunk.Sorting.cs</Link>
     </Compile>
