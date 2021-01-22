@@ -26,7 +26,7 @@ The Native AOT compiler supports the [documented options](https://docs.microsoft
 
 By default, the compiler tries to maximize compatibility with existing .NET code at the expense of compilation speed and size of the output executable. This allows people to use their existing code that worked well in a fully dynamic mode without hitting issues caused by trimming. To read more about reflection, see the [Reflection in AOT mode](reflection-in-aot-mode.md) document.
 
-🛈 Native AOT difference: the `TrimMode` of framework assemblies is set to `link` by default. To compile entire framework assemblies, use `TrimmerRootAssembly` to root the select assemblies. It's not recommended to root the entire framework.
+🛈 Native AOT difference: the `TrimMode` of framework assemblies is set to `link` by default. To compile entire framework assemblies, use `TrimmerRootAssembly` to root the selected assemblies. It's not recommended to root the entire framework.
 
 To enable more aggressive removal of unreferenced code, set the `<TrimMode>` property to `link`.
 

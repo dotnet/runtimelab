@@ -102,8 +102,8 @@ The .NET Foundation licenses this file to you under the MIT license.
     <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Exclude System.IO.Compression.Native.dll for now https://github.com/dotnet/corert/issues/5496 -->
-    <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\System.IO.Compression.Native.dll" />
+    <!-- Exclude System.IO.Compression.Native.dll -->
+    <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\*.Native.dll" />
   </ItemGroup>
 
   <ItemGroup>
@@ -139,8 +139,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll" />
     </ItemGroup>
     <ItemGroup>
-      <!-- Exclude System.IO.Compression.Native.dll for now https://github.com/dotnet/corert/issues/5496 -->
-      <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\System.IO.Compression.Native.dll" />
+      <!-- Exclude System.IO.Compression.Native.dll -->
+      <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\*.Native.dll" />
     </ItemGroup>
 
     <ItemGroup>
