@@ -45,8 +45,20 @@
       <DotnetExe Include="@(ReferenceCopyLocalPaths)" Condition="'%(ReferenceCopyLocalPaths.Filename)' == 'dotnet'" />
     </ItemGroup>
 
+    <!-- TODO: this is a temporary workaround since normally the hostfxr and host are used from a nuget package, but this doesn't contain s390x binaries yet -->
+    <ItemGroup Condition="'$(TargetArchitecture)' == 's390x'">
+      <HostFxFile Include="$(ArtifactsBinDir)\$(OutputRid).$(Configuration)\corehost\libhostfxr.so" />
+      <HostPolicyFile Include="$(ArtifactsBinDir)\$(OutputRid).$(Configuration)\corehost\libhostpolicy.so" />
+      <DotnetExe Include="$(ArtifactsBinDir)\$(OutputRid).$(Configuration)\corehost\dotnet" />
+    </ItemGroup>
+
     <Copy SourceFiles="@(HostFxFile)"
           DestinationFolder="$(TestHostRootPath)host\fxr\$(ProductVersion)"
+          SkipUnchangedFiles="true"
+          UseHardlinksIfPossible="$(UseHardlink)" />
+
+    <Copy SourceFiles="@(HostPolicyFile)"
+          DestinationFolder="$(TestHostRootPath)shared\Microsoft.NETCore.App\$(ProductVersion)"
           SkipUnchangedFiles="true"
           UseHardlinksIfPossible="$(UseHardlink)" />
 
