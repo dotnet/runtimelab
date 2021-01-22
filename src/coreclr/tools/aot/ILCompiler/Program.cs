@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
@@ -62,8 +63,6 @@ namespace ILCompiler
         private string _singleMethodName;
         private IReadOnlyList<string> _singleMethodGenericArgs;
 
-        private bool _rootAllApplicationAssemblies;
-
         private IReadOnlyList<string> _codegenOptions = Array.Empty<string>();
 
         private IReadOnlyList<string> _rdXmlFilePaths = Array.Empty<string>();
@@ -83,6 +82,9 @@ namespace ILCompiler
         private IReadOnlyList<string> _directPInvokes = Array.Empty<string>();
 
         private IReadOnlyList<string> _directPInvokeLists = Array.Empty<string>();
+
+        private IReadOnlyList<string> _rootedAssemblies = Array.Empty<string>();
+        private IReadOnlyList<string> _conditionallyRootedAssemblies = Array.Empty<string>();
 
         private bool _help;
 
@@ -176,7 +178,6 @@ namespace ILCompiler
                 syntax.DefineOption("waitfordebugger", ref waitForDebugger, "Pause to give opportunity to attach debugger");
                 syntax.DefineOptionList("codegenopt", ref _codegenOptions, "Define a codegen option");
                 syntax.DefineOptionList("rdxml", ref _rdXmlFilePaths, "RD.XML file(s) for compilation");
-                syntax.DefineOption("rootallapplicationassemblies", ref _rootAllApplicationAssemblies, "Consider all non-framework assemblies dynamically used");
                 syntax.DefineOption("map", ref _mapFileName, "Generate a map file");
                 syntax.DefineOption("metadatalog", ref _metadataLogFileName, "Generate a metadata log file");
                 syntax.DefineOption("nometadatablocking", ref _noMetadataBlocking, "Ignore metadata blocking for internal implementation details");
@@ -200,6 +201,9 @@ namespace ILCompiler
                 syntax.DefineOptionList("nowarn", ref _suppressedWarnings, "Disable specific warning messages");
                 syntax.DefineOptionList("directpinvoke", ref _directPInvokes, "PInvoke to call directly");
                 syntax.DefineOptionList("directpinvokelist", ref _directPInvokeLists, "File with list of PInvokes to call directly");
+
+                syntax.DefineOptionList("root", ref _rootedAssemblies, "Fully generate given assembly");
+                syntax.DefineOptionList("conditionalroot", ref _conditionallyRootedAssemblies, "Fully generate given assembly if it's used");
 
                 syntax.DefineOption("targetarch", ref _targetArchitectureStr, "Target architecture for cross compilation");
                 syntax.DefineOption("targetos", ref _targetOSStr, "Target OS for cross compilation");
@@ -552,6 +556,31 @@ namespace ILCompiler
                 }
             }
 
+            _rootedAssemblies = new List<string>(_rootedAssemblies.Select(a => ILLinkify(a)));
+            _conditionallyRootedAssemblies = new List<string>(_conditionallyRootedAssemblies.Select(a => ILLinkify(a)));
+
+            static string ILLinkify(string rootedAssembly)
+            {
+                // For compatibility with IL Linker, the parameter could be a file name or an assembly name.
+                // This is the logic IL Linker uses to decide how to interpret the string. Really.
+                string simpleName;
+                if (File.Exists(rootedAssembly))
+                    simpleName = Path.GetFileNameWithoutExtension(rootedAssembly);
+                else
+                    simpleName = rootedAssembly;
+                return simpleName;
+            }
+
+            // Root whatever assemblies were specified on the command line
+            foreach (var rootedAssembly in _rootedAssemblies)
+            {
+                // We only root the module type. The rest will fall out because we treat _rootedAssemblies
+                // same as conditionally rooted ones and here we're fulfilling the condition ("something is used").
+                compilationRoots.Add(
+                    new GenericRootProvider<ModuleDesc>(typeSystemContext.GetModuleForSimpleName(rootedAssembly),
+                    (ModuleDesc module, IRootingServiceProvider rooter) => rooter.AddCompilationRoot(module.GetGlobalModuleType(), "Command line root")));
+            }
+
             //
             // Compile
             //
@@ -615,8 +644,6 @@ namespace ILCompiler
                     metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.CompleteTypesOnly;
                 if (_scanReflection)
                     metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.ReflectionILScanning;
-                if (_rootAllApplicationAssemblies)
-                    metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.FullUserAssemblyRooting;
             }
             else
             {
@@ -639,7 +666,8 @@ namespace ILCompiler
                     flowAnnotations,
                     metadataGenerationOptions,
                     logger,
-                    featureSwitches);
+                    featureSwitches,
+                    _conditionallyRootedAssemblies.Concat(_rootedAssemblies));
 
             InteropStateManager interopStateManager = new InteropStateManager(typeSystemContext.GeneratedAssembly);
             InteropStubManager interopStubManager = new UsageBasedInteropStubManager(interopStateManager, pinvokePolicy);
