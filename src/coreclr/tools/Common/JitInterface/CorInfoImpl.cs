@@ -267,7 +267,7 @@ namespace Internal.JitInterface
             _methodCodeNode.InitializeFrameInfos(_frameInfos);
             _methodCodeNode.InitializeDebugEHClauseInfos(debugEHClauseInfos);
             _methodCodeNode.InitializeGCInfo(_gcInfo);
-            _methodCodeNode.InitializeEHInfo(ehInfo != null ? new MethodExceptionHandlingInfoNode(_methodCodeNode.Method, ehInfo) : null);
+            _methodCodeNode.InitializeEHInfo(ehInfo);
 
             _methodCodeNode.InitializeDebugLocInfos(_debugLocInfos);
             _methodCodeNode.InitializeDebugVarInfos(_debugVarInfos);
