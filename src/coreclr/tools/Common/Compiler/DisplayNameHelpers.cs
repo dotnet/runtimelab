@@ -59,12 +59,14 @@ namespace ILCompiler
                 .Append(field.Name).ToString();
         }
 
+#if !READYTORUN
         public static string GetDisplayName(this PropertyPseudoDesc property)
         {
             return new StringBuilder(property.OwningType.GetDisplayName())
                 .Append('.')
                 .Append(property.Name).ToString();
         }
+#endif
 
         public static string GetDisplayName(this TypeDesc type)
         {
