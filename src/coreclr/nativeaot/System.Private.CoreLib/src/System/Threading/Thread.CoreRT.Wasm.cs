@@ -16,5 +16,8 @@ namespace System.Threading
 
         [UnsupportedOSPlatform("browser")]
         public void Start(object parameter) => throw new PlatformNotSupportedException();
+
+        [UnsupportedOSPlatform("browser")]
+        public void UnsafeStart(object parameter) => throw new PlatformNotSupportedException();
     }
 }

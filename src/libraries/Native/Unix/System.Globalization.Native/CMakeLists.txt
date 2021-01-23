@@ -99,7 +99,6 @@ add_library(System.Globalization.Native-Static
 
 if(CLR_CMAKE_TARGET_UNIX)
     set_target_properties(System.Globalization.Native-Static PROPERTIES OUTPUT_NAME System.Globalization.Native  CLEAN_DIRECT_OUTPUT 1)
-    endif()
 endif()
 
 install (TARGETS System.Globalization.Native-Static DESTINATION ${STATIC_LIB_DESTINATION})
