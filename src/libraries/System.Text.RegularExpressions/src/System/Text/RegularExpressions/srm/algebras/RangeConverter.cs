@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
     internal class RangeConverter
     {

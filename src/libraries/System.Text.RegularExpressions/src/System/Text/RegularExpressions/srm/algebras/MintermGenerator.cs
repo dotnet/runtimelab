@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
 
     /// <summary>

@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 
 
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
     /// Represents a bitvector

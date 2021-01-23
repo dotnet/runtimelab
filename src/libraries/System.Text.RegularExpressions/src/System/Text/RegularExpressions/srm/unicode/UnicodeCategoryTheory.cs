@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Microsoft.SRM.Generated;
+using System.Text.RegularExpressions.SRM.Generated;
 
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
     /// Maps unicode categories to correspoing character predicates.

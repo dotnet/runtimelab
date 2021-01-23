@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System;
 using System.Linq.Expressions;
 
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
     internal static class VectorizedIndexOf
     {

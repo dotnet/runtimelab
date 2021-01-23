@@ -1,4 +1,4 @@
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
     internal struct Match
     {

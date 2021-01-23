@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using BvSetPair = System.Tuple<Microsoft.SRM.BDD, Microsoft.SRM.BDD>;
-using BvSet_Int = System.Tuple<Microsoft.SRM.BDD, int>;
-using BvSetKey = System.Tuple<int, Microsoft.SRM.BDD, Microsoft.SRM.BDD>;
+using BvSetPair = System.Tuple<System.Text.RegularExpressions.SRM.BDD, System.Text.RegularExpressions.SRM.BDD>;
+using BvSet_Int = System.Tuple<System.Text.RegularExpressions.SRM.BDD, int>;
+using BvSetKey = System.Tuple<int, System.Text.RegularExpressions.SRM.BDD, System.Text.RegularExpressions.SRM.BDD>;
 
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
 
     /// <summary>

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <IncludeRemoteExecutor>true</IncludeRemoteExecutor>
     <!-- xUnit2008 is about regexes and isn't appropriate in the test project for regexes -->
@@ -30,10 +30,10 @@
     <Compile Include="RegexMatchTimeoutExceptionTests.cs" />
     <Compile Include="RegexParserTests.cs" />
     <Compile Include="RegexReductionTests.cs" />
+    <Compile Include="RegexSRMTests.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
-    <Compile Include="..\src\System\Text\RegularExpressions\RegexParseError.cs"
-             Link="System\Text\RegularExpressions\RegexParseError.cs" />
+    <Compile Include="..\src\System\Text\RegularExpressions\RegexParseError.cs" Link="System\Text\RegularExpressions\RegexParseError.cs" />
     <Compile Include="RegexParserTests.netfx.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == '$(NetCoreAppCurrent)'">
@@ -45,7 +45,6 @@
     <Compile Include="PrecompiledRegexScenarioTest.cs" />
     <Compile Include="RegexCompilationInfoTests.cs" />
     <Compile Include="RegexGroupNameTests.cs" />
-    <Compile Include="$(CommonTestPath)System\Diagnostics\DebuggerAttributes.cs"
-             Link="Common\System\Diagnostics\DebuggerAttributes.cs" />
+    <Compile Include="$(CommonTestPath)System\Diagnostics\DebuggerAttributes.cs" Link="Common\System\Diagnostics\DebuggerAttributes.cs" />
   </ItemGroup>
 </Project>

@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
 
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
     [Serializable]
     internal struct RegexOptions
@@ -16,7 +16,7 @@ namespace Microsoft.SRM
         public static RegexOptions ECMAScript = new RegexOptions(32);
 
         // SRM specific options
-        public static RegexOptions Vectorize = new RegexOptions(1024);
+        public static RegexOptions Vectorize = new RegexOptions(0x400);
 
         private int value;
 
@@ -100,6 +100,8 @@ namespace Microsoft.SRM
             handleEquivalentOption(IgnorePatternWhitespace, System.Text.RegularExpressions.RegexOptions.IgnorePatternWhitespace);
             handleEquivalentOption(CultureInvariant, System.Text.RegularExpressions.RegexOptions.CultureInvariant);
             handleEquivalentOption(ECMAScript, System.Text.RegularExpressions.RegexOptions.ECMAScript);
+            //TBD: replace 0x400 by RegexOptions.Vectorize
+            handleEquivalentOption(Vectorize, (System.Text.RegularExpressions.RegexOptions)0x400);
             ignoreOption(System.Text.RegularExpressions.RegexOptions.RightToLeft);
             ignoreOption(System.Text.RegularExpressions.RegexOptions.Compiled);
             ignoreOption(System.Text.RegularExpressions.RegexOptions.ExplicitCapture);

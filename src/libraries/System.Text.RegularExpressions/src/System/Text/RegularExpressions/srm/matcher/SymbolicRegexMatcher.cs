@@ -6,7 +6,7 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.IO;
 
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
     /// Wraps an instance of SymbolicRegex&lt;BV&gt;, the number of needed partition blocks is &gt; 64
@@ -29,6 +29,8 @@ namespace Microsoft.SRM
             : this(new SymbolicRegexBuilder<BV>(BVAlgebra.Create(solver, minterms)), sr,
                   solver, srBuilder, minterms, options, StateLimit, startSetSizeLimit)
         {
+            //update the word letter predicate in the BV solver to the correct one
+            this.builder.wordLetterPredicate = this.builder.solver.ConvertFromCharSet(srBuilder.wordLetterPredicate);
         }
 
         /// <summary>
@@ -50,6 +52,8 @@ namespace Microsoft.SRM
             : base(srBuilder.Transform(sr, builder, builder.solver.ConvertFromCharSet),
                   solver, minterms, options, StateLimit, startSetSizeLimit)
         {
+            //update the word letter predicate in the ulong solver to the correct one
+            this.builder.wordLetterPredicate = this.builder.solver.ConvertFromCharSet(srBuilder.wordLetterPredicate);
         }
 
         /// <summary>
@@ -92,12 +96,6 @@ namespace Microsoft.SRM
         /// </summary>
         [NonSerialized]
         private DecisionTree dt;
-
-        /// <summary>
-        /// Used only by IsMatch and if A2 is used.
-        /// </summary>
-        [NonSerialized]
-        private int q0_A2 = 0;
 
         /// <summary>
         /// Initial state of A1 (0 is not used).
@@ -156,7 +154,7 @@ namespace Microsoft.SRM
         /// <summary>
         /// The RegexOptions this regex was created with
         /// </summary>
-        public RegexOptions Options { get; set; }
+        internal RegexOptions Options { get; set; }
 
         /// <summary>
         /// Main pattern of the matcher
@@ -272,14 +270,6 @@ namespace Microsoft.SRM
         private SymbolicRegexNode<S> A1;
 
         /// <summary>
-        /// Variant of A1 for matching.
-        /// In A2 anchors have been removed.
-        /// Used only by IsMatch and when A contains anchors.
-        /// </summary>
-        [NonSerialized]
-        private SymbolicRegexNode<S> A2 = null;
-
-        /// <summary>
         /// Initialized to atoms.Length.
         /// </summary>
         [NonSerialized]
@@ -331,6 +321,12 @@ namespace Microsoft.SRM
         [NonSerialized]
         private int[] delta;
 
+        /// <summary>
+        /// Lookup table for border-symbol transitions
+        /// </summary>
+        [NonSerialized]
+        private Dictionary<int, int[]> deltaForBorderSymbols = new Dictionary<int, int[]>();
+
         #region custom serialization
 
         [NonSerialized]
@@ -356,6 +352,7 @@ namespace Microsoft.SRM
                 info.AddValue("StartSetSizeLimit", StartSetSizeLimit);
 
                 ulong A_startset_ulong = (ulong)(object)A_startset;
+                ulong wordLetter_ulong = (ulong)(object)builder.wordLetterPredicate;
 
                 var simpl_precomputed = Array.ConvertAll(simpl_bvalg.dtree.precomputed, atomId => simpl_bvalg.IsSatisfiable(simpl_bvalg.MkAnd(simpl_bvalg.atoms[atomId], A_startset_ulong)));
                 BooleanDecisionTree simpl_A_StartSet;
@@ -368,6 +365,7 @@ namespace Microsoft.SRM
                 info.AddValue("A_StartSet", simpl_A_StartSet);
                 info.AddValue("A_startset", A_startset_ulong);
                 info.AddValue("A_StartSet_Size", simpl_A_StartSet_Size);
+                info.AddValue("wordLetter", wordLetter_ulong);
 
                 var simpl_A_prefix = "";
 
@@ -406,6 +404,7 @@ namespace Microsoft.SRM
                 info.AddValue("solver", this.builder.solver);
                 info.AddValue("A", A.Serialize());
                 info.AddValue("Options", (object)Options);
+                info.AddValue("wordLetter", this.builder.wordLetterPredicate);
 
                 info.AddValue("StateLimit", StateLimit);
                 info.AddValue("StartSetSizeLimit", StartSetSizeLimit);
@@ -432,6 +431,7 @@ namespace Microsoft.SRM
 
             var solver = (ICharAlgebra<S>)info.GetValue("solver", typeof(ICharAlgebra<S>));
             this.builder = new SymbolicRegexBuilder<S>(solver);
+            this.builder.wordLetterPredicate = (S)info.GetValue("wordLetter", typeof(S));
 
             this.atoms = builder.solver.GetPartition();
             this.dt = ((BVAlgebraBase)builder.solver).dtree;
@@ -482,6 +482,9 @@ namespace Microsoft.SRM
         /// </summary>
         internal SymbolicRegex(SymbolicRegexNode<S> sr, CharSetSolver css, BDD[] minterms, RegexOptions options, int StateLimit = 1000, int startSetSizeLimit = 128)
         {
+            if (sr.IsNullable)
+                throw new NotSupportedException("DFA option is not supported if the regex accepts the empty string");
+
             this.Options = options;
             this.StartSetSizeLimit = startSetSizeLimit;
             this.builder = sr.builder;
@@ -514,6 +517,9 @@ namespace Microsoft.SRM
 
             A_startset = A.GetStartSet(builder.solver);
             this.A_StartSet_Size = (int)builder.solver.ComputeDomainSize(A_startset);
+            if (this.A_StartSet_Size == 0)
+                throw new NotSupportedException("DFA option is not supported if the regex uses no characters");
+
             this.A_StartSet = BooleanDecisionTree.Create(css, builder.solver.ConvertToCharSet(css, A_startset));
 
             SymbolicRegexNode<S> tmp = A;
@@ -578,7 +584,7 @@ namespace Microsoft.SRM
         private void InitializeVectors()
         {
 #if UNSAFE
-            if (A_StartSet_Size <= StartSetSizeLimit)
+            if (A_StartSet_Size > 0 && A_StartSet_Size <= StartSetSizeLimit)
             {
                 char[] startchars = new List<char>(builder.solver.GenerateAllCharacters(A_startset)).ToArray();
                 A_StartSet_Vec = Array.ConvertAll(startchars, c => new Vector<ushort>(c));
@@ -607,57 +613,25 @@ namespace Microsoft.SRM
             }
             else
             {
-                char c = input[0];
-                q = Delta(c, q, out regex);
+                q = DeltaBorder(BorderSymbol.Beg, q, out _);
 
-
-                for (int i = 1; i < input.Length; i++)
+                for (int i = 0; i < input.Length; i++)
                 {
-                    c = input[i];
+                    var c = input[i];
 
-                    int p = 0;
-
-#if INLINE
-                    #region copy&paste region of the definition of Delta being inlined
-                int atom_id = (dt.precomputed.Length > c ? dt.precomputed[c] : dt.bst.Find(c));
-                S atom = atoms[atom_id];
-                if (q < StateLimit)
-                {
-                    #region use delta
-                    int offset = (q * K) + atom_id;
-                    p = delta[offset];
-                    if (p == 0)
+                    int p;
+                    if (c == 10)
                     {
-                        CreateNewTransition(q, atom, offset, out p, out regex);
+                        p = DeltaBorder(BorderSymbol.EOL, q, out _);
+                        p = Delta(10, p, out _);
+                        p = DeltaBorder(BorderSymbol.BOL, p, out _);
                     }
                     else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                    #endregion
-                }
-                else
-                {
-                    #region use deltaExtra
-                    int[] q_trans = deltaExtra[q];
-                    p = q_trans[atom_id];
-                    if (p == 0)
-                    {
-                        CreateNewTransitionExtra(q, atom_id, atom, q_trans, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                    #endregion
-                }
-                    #endregion
-#else
-                    p = Delta(c, q, out regex);
-#endif
+                        p = Delta(c, q, out _);
 
                     q = p;
                 }
+                regex = (q < StateLimit ? state2regex[q] : state2regexExtra[q]);
                 return q;
             }
         }
@@ -675,7 +649,7 @@ namespace Microsoft.SRM
         private int Delta(int c, int q, out SymbolicRegexNode<S> regex)
         {
             int p;
-            #region copy&paste region of the definition of Delta being inlined
+            #region cut-n-paste for explcit inlining
             int atom_id = (dt.precomputed.Length > c ? dt.precomputed[c] : dt.bst.Find(c));
             S atom = atoms[atom_id];
             if (q < StateLimit)
@@ -713,9 +687,32 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
+        /// Compute the target state for source state q and borderSymbol.
+        /// </summary>
+        /// <param name="borderSymbol">input border symbol</param>
+        /// <param name="q">state id of source regex</param>
+        /// <param name="regex">target regex</param>
+        /// <returns>state id of target regex</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private int DeltaBorder(BorderSymbol borderSymbol, int q, out SymbolicRegexNode<S> regex)
+        {
+            int p;
+            int borderSymbolId = (int)borderSymbol;
+            if (deltaForBorderSymbols.TryGetValue(q, out int[] targets) && targets[borderSymbolId] > 0)
+            {
+                p = targets[borderSymbolId];
+                regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
+            }
+            else
+            {
+                CreateNewTransitionForBorderSymbol(q, borderSymbol, out p, out regex);
+            }
+            return p;
+        }
+
+        /// <summary>
         /// Critical region for threadsafe applications for defining a new transition from q when q is larger that StateLimit
         /// </summary>
-        ///
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void CreateNewTransitionExtra(int q, int atom_id, S atom, int[] q_trans, out int p, out SymbolicRegexNode<S> regex)
         {
@@ -790,6 +787,56 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
+        /// Critical region for threadsafe applications for defining a new transition for border anchors
+        /// </summary>
+        //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void CreateNewTransitionForBorderSymbol(int q, BorderSymbol borderSymbol, out int p, out SymbolicRegexNode<S> regex)
+        {
+            lock (this)
+            {
+                //check if meanwhile the transition has become possibly defined by another thread
+                int borderSymbolId = (int)borderSymbol;
+                int[] targets;
+                if (!deltaForBorderSymbols.TryGetValue(q, out targets))
+                {
+                    // initialize the array of target states for border symbols
+                    targets = new int[(int)BorderSymbol.Count];
+                    deltaForBorderSymbols[q] = targets;
+                }
+                if (targets[borderSymbolId] > 0)
+                {
+                    p = targets[borderSymbolId];
+                    #region find the regex for p
+                    if (p < StateLimit)
+                        regex = state2regex[p];
+                    else
+                        regex = state2regexExtra[p];
+                    #endregion
+                }
+                else
+                {
+                    #region compute the derivative
+                    var q_regex = (q < StateLimit ? state2regex[q] : state2regexExtra[q]);
+                    var deriv = q_regex.MkDerivativeForBorder(borderSymbol);
+                    if (!regex2state.TryGetValue(deriv, out p))
+                    {
+                        p = nextStateId++;
+                        regex2state[deriv] = p;
+                        if (p < StateLimit)
+                            state2regex[p] = deriv;
+                        else
+                            state2regexExtra[p] = deriv;
+                        if (p >= StateLimit)
+                            deltaExtra[p] = new int[K];
+                    }
+                    #endregion
+                    targets[borderSymbolId] = p;
+                    regex = deriv;
+                }
+            }
+        }
+
+        /// <summary>
         /// Generate all matches.
         /// <param name="input">input string</param>
         /// <param name="limit">upper bound on the number of found matches, nonpositive value (default is 0) means no bound</param>
@@ -816,7 +863,7 @@ namespace Microsoft.SRM
         /// <param name="startat">the position to start search in the input string</param>
         /// <param name="endat">end position in the input, negative value means unspecified and taken to be input.Length-1</param>
         /// </summary>
-        public List<Match> MatchesSafe(string input, int limit = 0, int startat = 0, int endat = -1)
+        internal List<Match> MatchesSafe(string input, int limit = 0, int startat = 0, int endat = -1)
         {
             if (A.isNullable)
                 throw new AutomataException(AutomataExceptionKind.MustNotAcceptEmptyString);
@@ -836,8 +883,6 @@ namespace Microsoft.SRM
             //the first position after the last match
             int match_start_boundary = i;
 
-            bool A_has_nonempty_prefix = (!this.A_prefix.Equals(string.Empty));
-
             bool AisLazy = A_allLoopsAreLazy;
             bool AisSingleSeq = A.IsSequenceOfSingletons;
 
@@ -845,10 +890,7 @@ namespace Microsoft.SRM
             {
                 int i_q0_A1;
                 int watchdog;
-                //optimize for the case when A starts with a fixed prefix
-                i = (A_has_nonempty_prefix ?
-                        FindFinalStatePositionOpt(input, k, i, out i_q0_A1, out watchdog) :
-                        FindFinalStatePosition(input, k, i, out i_q0_A1, out watchdog));
+                i = FindFinalStatePosition(input, k, i, out i_q0_A1, out watchdog);
 
                 if (i == k)
                 {
@@ -878,7 +920,7 @@ namespace Microsoft.SRM
                     else
                     {
                         i_start = FindStartPosition(input, i, i_q0_A1);
-                        i_end = FindEndPosition(input, i_start);
+                        i_end = FindEndPosition(input, k, i_start);
                     }
                 }
 
@@ -933,82 +975,54 @@ namespace Microsoft.SRM
             if (this.A.containsAnchors)
             {
                 #region original regex contains anchors
-                //TBD prefix optimization may still be important here
-                //but the prefix needs to be computed based on A, but with start anchors removed or treated specially
-                if (A2 == null)
-                {
-                    #region initialize A2 to A.RemoveAnchors()
-                    this.A2 = A.ReplaceAnchors();
-                    int qA2;
-                    if (!regex2state.TryGetValue(this.A2, out qA2))
-                    {
-                        //the regex does not yet exist
-                        qA2 = this.nextStateId++;
-                        this.regex2state[this.A2] = qA2;
-                    }
-                    this.q0_A2 = qA2;
-                    if (qA2 >= this.StateLimit)
-                    {
-                        this.deltaExtra[qA2] = new int[this.K];
-                        this.state2regexExtra[qA2] = this.A2;
-                    }
-                    else
-                    {
-                        this.state2regex[qA2] = this.A2;
-                    }
 
+                //TBD: prefix optimization
+                //if (A2 == null)
+                //{
+                //#region initialize A2 to A.RemoveAnchors()
+                //this.A2 = A.ReplaceAnchors();
+                //int qA2;
+                //if (!regex2state.TryGetValue(this.A2, out qA2))
+                //{
+                //    //the regex does not yet exist
+                //    qA2 = this.nextStateId++;
+                //    this.regex2state[this.A2] = qA2;
+                //}
+                //this.q0_A2 = qA2;
+                //if (qA2 >= this.StateLimit)
+                //{
+                //    this.deltaExtra[qA2] = new int[this.K];
+                //    this.state2regexExtra[qA2] = this.A2;
+                //}
+                //else
+                //{
+                //    this.state2regex[qA2] = this.A2;
+                //}
+                //#endregion
+                //}
+                //int q = this.q0_A2;
+                //SymbolicRegexNode<S> regex = this.A2;
 
-
-                    #endregion
-                }
-
-                int q = this.q0_A2;
-                SymbolicRegexNode<S> regex = this.A2;
+                int q = this.q0_A;
+                SymbolicRegexNode<S> regex = this.A;
                 int i = startat;
+
+                if (i == 0)
+                    q = DeltaBorder(BorderSymbol.Beg, q, out _);
 
                 while (i < k)
                 {
                     int c = input[i];
                     int p;
 
-#if INLINE
-                    #region copy&paste region of the definition of Delta being inlined
-                int atom_id = (dt.precomputed.Length > c ? dt.precomputed[c] : dt.bst.Find(c));
-                S atom = atoms[atom_id];
-                if (q < StateLimit)
-                {
-                    #region use delta
-                    int offset = (q * K) + atom_id;
-                    p = delta[offset];
-                    if (p == 0)
+                    if (c == 10)
                     {
-                        CreateNewTransition(q, atom, offset, out p, out regex);
+                        p = DeltaBorder(BorderSymbol.EOL, q, out _);
+                        p = Delta(10, p, out _);
+                        p = DeltaBorder(BorderSymbol.BOL, p, out regex);
                     }
                     else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                    #endregion
-                }
-                else
-                {
-                    #region use deltaExtra
-                    int[] q_trans = deltaExtra[q];
-                    p = q_trans[atom_id];
-                    if (p == 0)
-                    {
-                        CreateNewTransitionExtra(q, atom_id, atom, q_trans, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                    #endregion
-                }
-                    #endregion
-#else
-                    p = Delta(c, q, out regex);
-#endif
+                        p = Delta(c, q, out regex);
 
                     if (regex == this.builder.dotStar)
                     {
@@ -1025,34 +1039,23 @@ namespace Microsoft.SRM
                     q = p;
                     i += 1;
                 }
+
+                q = DeltaBorder(BorderSymbol.End, q, out regex);
+
                 return regex.IsNullable;
                 #endregion
             }
             else
             {
                 #region original regex contains no anchors
-                int i;
-                int i_q0;
-                int watchdog;
-                if (this.A_prefix != string.Empty)
-                {
-                    i = FindFinalStatePositionOpt(input, k, startat, out i_q0, out watchdog);
-                }
-                else
-                {
-                    i = FindFinalStatePosition(input, k, startat, out i_q0, out watchdog);
-                }
+                int i = FindFinalStatePosition(input, k, startat, out _, out _);
                 if (i == k)
-                {
                     //the search for final state exceeded the input, so final state was not found
                     return false;
-                }
                 else
-                {
                     //since A has no anchors the pattern is really .*A.*
                     //thus if input[0...i] is in L(.*A) then input is in L(.*A.*)
                     return true;
-                }
                 #endregion
             }
         }
@@ -1061,60 +1064,37 @@ namespace Microsoft.SRM
         /// Find match end position using A, end position is known to exist.
         /// </summary>
         /// <param name="input">input array</param>
-        /// <param name="i">start position</param>
+        /// <param name="i">inclusive start position</param>
+        /// <param name="k">exclusive end position</param>
         /// <returns></returns>
-        private int FindEndPosition(string input, int i)
+        private int FindEndPosition(string input, int k, int i)
         {
-            int k = input.Length;
             int i_end = k;
             int q = q0_A;
+            SymbolicRegexNode<S> regex;
+            if (i == 0)
+                // start of input
+                q = DeltaBorder(BorderSymbol.Beg, q, out _);
+            else if (input[i - 1] == '\n')
+                // start of a line
+                q = DeltaBorder(BorderSymbol.BOL, q, out _);
             while (i < k)
             {
-                SymbolicRegexNode<S> regex;
                 int c = input[i];
                 int p;
 
-                //TBD: anchors
-
-#if INLINE
-                #region copy&paste region of the definition of Delta being inlined
-                int atom_id = (dt.precomputed.Length > c ? dt.precomputed[c] : dt.bst.Find(c));
-                S atom = atoms[atom_id];
-                if (q < StateLimit)
+                if (c == 10)
                 {
-                #region use delta
-                    int offset = (q * K) + atom_id;
-                    p = delta[offset];
-                    if (p == 0)
-                    {
-                        CreateNewTransition(q, atom, offset, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                #endregion
+                    p = DeltaBorder(BorderSymbol.EOL, q, out regex);
+                    if (regex.IsNullable)
+                        //nullable due to $ anchor
+                        //end position is therefore the prior character if it exists
+                        i_end = (i > 0 ? i - 1 : 0);
+                    p = Delta(10, p, out regex);
+                    p = DeltaBorder(BorderSymbol.BOL, p, out regex);
                 }
                 else
-                {
-                #region use deltaExtra
-                    int[] q_trans = deltaExtra[q];
-                    p = q_trans[atom_id];
-                    if (p == 0)
-                    {
-                        CreateNewTransitionExtra(q, atom_id, atom, q_trans, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                #endregion
-                }
-                #endregion
-#else
-                p = Delta(c, q, out regex);
-#endif
-
+                    p = Delta(c, q, out regex);
 
                 if (regex.isNullable)
                 {
@@ -1130,6 +1110,14 @@ namespace Microsoft.SRM
                 }
                 q = p;
                 i += 1;
+            }
+            if (i == k)
+            {
+                DeltaBorder(BorderSymbol.End, q, out regex);
+                if (regex.IsNullable)
+                    //match occurred due to end anchor
+                    //this must be the case here
+                    i_end = k - 1;
             }
             if (i_end == k)
                 throw new AutomataException(AutomataExceptionKind.InternalError);
@@ -1157,6 +1145,8 @@ namespace Microsoft.SRM
             }
             if (i == -1)
             {
+                //apply start symbol to potentially eliminate the start anchor
+                q = DeltaBorder(BorderSymbol.Beg, q, out regex);
                 //we reached the beginning of the input, thus the state q must be accepting
                 if (!regex.isNullable)
                     throw new AutomataException(AutomataExceptionKind.InternalError);
@@ -1173,52 +1163,31 @@ namespace Microsoft.SRM
             //walk back to the accepting state of Ar
             int p;
             int c;
+            if (i == input.Length - 1)
+                // at the end of the input
+                q = DeltaBorder(BorderSymbol.End, q, out _);
+            else if (i > 0 && input[i + 1] == '\n')
+                // at the end of a line
+                q = DeltaBorder(BorderSymbol.EOL, q, out _);
+
             while (i >= match_start_boundary)
             {
                 //observe that the input is reversed
                 //so input[k-1] is the first character
                 //and input[0] is the last character
-                //TBD: anchors
                 c = input[i];
 
-#if INLINE
-                #region copy&paste region of the definition of Delta being inlined
-                int atom_id = (dt.precomputed.Length > c ? dt.precomputed[c] : dt.bst.Find(c));
-                S atom = atoms[atom_id];
-                if (q < StateLimit)
+                if (c == 10)
                 {
-                #region use delta
-                    int offset = (q * K) + atom_id;
-                    p = delta[offset];
-                    if (p == 0)
-                    {
-                        CreateNewTransition(q, atom, offset, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                #endregion
+                    //going backwards, first consume StartLine because reversal keeps the anchors in place
+                    p = DeltaBorder(BorderSymbol.BOL, q, out regex);
+                    if (regex.IsNullable)
+                        last_start = i + 1;
+                    p = Delta(10, p, out _);
+                    p = DeltaBorder(BorderSymbol.BOL, p, out regex);
                 }
                 else
-                {
-                #region use deltaExtra
-                    int[] q_trans = deltaExtra[q];
-                    p = q_trans[atom_id];
-                    if (p == 0)
-                    {
-                        CreateNewTransitionExtra(q, atom_id, atom, q_trans, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                #endregion
-                }
-                #endregion
-#else
-                p = Delta(c, q, out regex);
-#endif
+                    p = Delta(c, q, out regex);
 
                 if (regex.isNullable)
                 {
@@ -1235,6 +1204,17 @@ namespace Microsoft.SRM
                     //the previous i_start was in fact the earliest
                     break;
                 }
+                else if (i == 0)
+                {
+                    //back at the start
+                    //there must be a start anchor blocking nullability
+                    p = DeltaBorder(BorderSymbol.Beg, p, out regex);
+                    if (regex.isNullable)
+                    {
+                        last_start = 0;
+                        break;
+                    }
+                }
                 q = p;
                 i -= 1;
             }
@@ -1243,25 +1223,194 @@ namespace Microsoft.SRM
             return last_start;
         }
 
+        ///// <summary>
+        ///// Return the position of the character that leads to a final state in A1
+        ///// </summary>
+        ///// <param name="input">given input string</param>
+        ///// <param name="i">start position</param>
+        ///// <param name="i_q0">last position the initial state of A1 was visited</param>
+        ///// <param name="k">input length or bounded input length</param>
+        ///// <param name="watchdog">length of the match or -1</param>
+        //private int FindFinalStatePosition(string input, int k, int i, out int i_q0, out int watchdog)
+        //{
+        //    int q = q0_A1;
+        //    int i_q0_A1 = i;
+
+        //    SymbolicRegexNode<S> regex = null;
+
+        //    // start with the start symbol in order to eliminate a possible start anchor
+        //    // q will remain the same if there is no start anchor
+        //    if (i == 0)
+        //        q = DeltaBorder(BorderSymbol.Beg, q, out regex);
+
+        //    while (i < k)
+        //    {
+        //        if (q == q0_A1)
+        //        {
+        //            i = IndexOfStartset(input, i);
+
+        //            if (i == -1)
+        //            {
+        //                i_q0 = i_q0_A1;
+        //                watchdog = -1;
+        //                return k;
+        //            }
+        //            i_q0_A1 = i;
+        //        }
+
+        //        int c = input[i];
+        //        int p;
+
+        //        if (c == 10)
+        //        {
+        //            p = DeltaBorder(BorderSymbol.EOL, q, out regex);
+        //            if (regex.isNullable)
+        //            {
+        //                //match has been found due to endline anchor
+        //                //so the match actually ends at the prior character
+        //                //unless the prior character does not exist
+        //                i = (i > 0 ? i - 1 : 0);
+        //                break;
+        //            }
+        //            p = Delta(10, p, out regex);
+        //            if (regex.isNullable)
+        //            {
+        //                //match has been found due to newline itself
+        //                //this can happen if anchor is not used
+        //                //but the newline character is used in the pattern
+        //                break;
+        //            }
+        //            p = DeltaBorder(BorderSymbol.BOL, p, out regex);
+        //            if (regex.isNullable)
+        //            {
+        //                //match has been found due to startline anchor
+        //                //highly unusual case that should not really happen
+        //                //in this case newline is part of the match
+        //                break;
+        //            }
+        //            if (regex == this.builder.nothing)
+        //            {
+        //                //p is a deadend state so any further search is meaningless
+        //                i_q0 = i_q0_A1;
+        //                watchdog = -1;
+        //                return k;
+        //            }
+        //        }
+        //        else
+        //        {
+        //            p = Delta(c, q, out regex);
+
+        //            if (regex.isNullable)
+        //            {
+        //                //p is a final state so match has been found
+        //                break;
+        //            }
+        //            else if (regex == this.builder.nothing)
+        //            {
+        //                //p is a deadend state so any further search is meaningless
+        //                i_q0 = i_q0_A1;
+        //                watchdog = -1;
+        //                return k;
+        //            }
+        //        }
+
+        //        //continue from the target state
+        //        q = p;
+        //        i += 1;
+        //    }
+        //    if (i == k)
+        //    {
+        //        q = DeltaBorder(BorderSymbol.End, q, out regex);
+        //        if (regex.IsNullable)
+        //            //match occurred due to end anchor
+        //            i = i - 1;
+        //    }
+        //    i_q0 = i_q0_A1;
+        //    watchdog = (regex == null ? -1 : this.GetWatchdog(regex));
+        //    return i;
+        //}
+
         /// <summary>
-        /// Return the position of the last character that leads to a final state in A1
+        /// FindFinalState optimized for the case when A starts with a fixed prefix
         /// </summary>
         /// <param name="input">given input string</param>
         /// <param name="i">start position</param>
         /// <param name="i_q0">last position the initial state of A1 was visited</param>
-        /// <param name="watchdog"></param>
         /// <param name="k">input length or bounded input length</param>
+        /// <param name="watchdog">length of the match or -1</param>
         private int FindFinalStatePosition(string input, int k, int i, out int i_q0, out int watchdog)
         {
             int q = q0_A1;
             int i_q0_A1 = i;
-
-            //TBD: anchors
+            //it is important to use Ordinal/OrdinalIgnoreCase to avoid culture dependent semantics of IndexOf
+            StringComparison comparison = (this.A_fixedPrefix_ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
             SymbolicRegexNode<S> regex = null;
+            watchdog = -1;
+            // start with the start symbol in order to eliminate a possible start(or BOL) anchor
+            // q will remain the same if there is no start anchor
+            if (i == 0)
+                q = DeltaBorder(BorderSymbol.Beg, q, out regex);
 
             while (i < k)
             {
-                if (q == q0_A1)
+                if (!string.IsNullOrEmpty(this.A_prefix))
+                {
+                    // ++++ the prefix optimization can be omitted without affecting correctness ++++
+                    // but this optimization has a major perfomance boost when a fixed prefix exists
+                    // .... in some cases in the order of 10x
+                    #region prefix optimization
+                    //stay in the initial state if the prefix does not match
+                    //thus advance the current position to the
+                    //first position where the prefix does match
+                    if (q == q0_A1)
+                    {
+                        i_q0_A1 = i;
+
+                        //i = IndexOf(input, prefix, i, this.A_fixedPrefix_ignoreCase);
+                        i = input.IndexOf(this.A_prefix, i, comparison);
+
+                        if (i == -1)
+                        {
+                            //if a matching position does not exist then IndexOf returns -1
+                            //so set i = k to match the while loop behavior
+                            i = k;
+                            break;
+                        }
+                        else
+                        {
+                            //compute the end state for the A prefix
+                            //skip directly to the resulting state
+                            // --- i.e. does the loop ---
+                            //for (int j = 0; j < prefix.Length; j++)
+                            //    q = Delta(prefix[j], q, out regex);
+                            // ---
+                            q = this.A1_skipState;
+                            regex = this.A1_skipStateRegex;
+
+                            //skip the prefix
+                            i = i + this.A_prefix.Length;
+                            if (regex.isNullable)
+                            {
+                                i_q0 = i_q0_A1;
+                                watchdog = GetWatchdog(regex);
+                                //return the last position of the match
+                                return i - 1;
+                            }
+                            if (i == k)
+                            {
+                                i_q0 = i_q0_A1;
+                                watchdog = -1;
+                                //check if there is an End anchor
+                                DeltaBorder(BorderSymbol.End, q, out regex);
+                                if (regex.IsNullable)
+                                    return k - 1;
+                                return k;
+                            }
+                        }
+                    }
+                    #endregion
+                }
+                else if (q == q0_A1)
                 {
                     i = IndexOfStartset(input, i);
 
@@ -1277,202 +1426,73 @@ namespace Microsoft.SRM
                 int c = input[i];
                 int p;
 
-#if INLINE
-                #region copy&paste region of the definition of Delta being inlined
-                int atom_id = (dt.precomputed.Length > c ? dt.precomputed[c] : dt.bst.Find(c));
-                S atom = atoms[atom_id];
-                if (q < StateLimit)
+                #region compute one step but extended with line anchors if c = '\n'
+                if (c == 10)
                 {
-                #region use delta
-                    int offset = (q * K) + atom_id;
-                    p = delta[offset];
-                    if (p == 0)
-                    {
-                        CreateNewTransition(q, atom, offset, out p, out regex);
-                    }
+                    if (i == input.Length - 1) // c is the last newline character
+                        p = DeltaBorder(BorderSymbol.EOLZ, q, out regex);
                     else
+                        p = DeltaBorder(BorderSymbol.EOL, q, out regex);
+
+                    if (regex.isNullable)
                     {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
+                        //match has been found due to endline anchor
+                        //so the match actually ends at the prior character
+                        //unless the prior character does not exist
+                        i = (i > 0 ? i - 1 : 0);
+                        break;
                     }
-                #endregion
+                    p = Delta(10, p, out regex);
+                    if (regex.isNullable)
+                    {
+                        //match has been found due to newline itself
+                        //this can happen if anchor is not used
+                        //but the newline character is used in the pattern
+                        break;
+                    }
+                    p = DeltaBorder(BorderSymbol.BOL, q, out regex);
+                    if (regex.isNullable)
+                    {
+                        //match has been found due to startline anchor
+                        //highly unusual case that should not really happen
+                        //in this case newline is part of the match
+                        break;
+                    }
+                    if (regex == this.builder.nothing)
+                    {
+                        //p is a deadend state so any further search is meaningless
+                        i_q0 = i_q0_A1;
+                        return k;
+                    }
                 }
                 else
                 {
-                #region use deltaExtra
-                    int[] q_trans = deltaExtra[q];
-                    p = q_trans[atom_id];
-                    if (p == 0)
-                    {
-                        CreateNewTransitionExtra(q, atom_id, atom, q_trans, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                #endregion
-                }
-                #endregion
-#else
-                p = Delta(c, q, out regex);
-#endif
+                    p = Delta(c, q, out regex);
 
-                if (regex.isNullable)
-                {
-                    //p is a final state so match has been found
-                    break;
+                    if (regex.isNullable)
+                    {
+                        //p is a final state so match has been found
+                        break;
+                    }
+                    else if (regex == this.builder.nothing)
+                    {
+                        //p is a deadend state so any further search is meaningless
+                        i_q0 = i_q0_A1;
+                        return k;
+                    }
                 }
-                else if (regex == this.builder.nothing)
-                {
-                    //p is a deadend state so any further search is meaningless
-                    i_q0 = i_q0_A1;
-                    watchdog = -1;
-                    return k;
-                }
+                #endregion
 
                 //continue from the target state
                 q = p;
                 i += 1;
             }
-            i_q0 = i_q0_A1;
-            watchdog = (regex == null ? -1  : this.GetWatchdog(regex));
-            return i;
-        }
-
-        /// <summary>
-        /// FindFinalState optimized for the case when A starts with a fixed prefix
-        /// </summary>
-        /// <param name="input">given input string</param>
-        /// <param name="i">start position</param>
-        /// <param name="i_q0">last position the initial state of A1 was visited</param>
-        /// <param name="watchdog"></param>
-        /// <param name="k">input length or bounded input length</param>
-        private int FindFinalStatePositionOpt(string input, int k, int i, out int i_q0, out int watchdog)
-        {
-            int q = q0_A1;
-            int i_q0_A1 = i;
-            var prefix = this.A_prefix;
-            //it is important to use Ordinal/OrdinalIgnoreCase to avoid culture dependent semantics of IndexOf
-            StringComparison comparison = (this.A_fixedPrefix_ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
-            SymbolicRegexNode<S> regex = null;
-            while (i < k)
+            if (i == k)
             {
-                // ++++ the following prefix optimization can be commented out without affecting correctness ++++
-                // but this optimization has a huge perfomance boost when fixed prefix exists .... in the order of 10x
-                //
-                #region prefix optimization
-                //stay in the initial state if the prefix does not match
-                //thus advance the current position to the
-                //first position where the prefix does match
-                if (q == q0_A1)
-                {
-                    i_q0_A1 = i;
-
-                    //i = IndexOf(input, prefix, i, this.A_fixedPrefix_ignoreCase);
-                    i = input.IndexOf(prefix, i, comparison);
-
-                    if (i == -1)
-                    {
-                        //if a matching position does not exist then IndexOf returns -1
-                        //so set i = k to match the while loop behavior
-                        i = k;
-                        break;
-                    }
-                    else
-                    {
-                        //compute the end state for the A prefix
-                        //skip directly to the resulting state
-                        // --- i.e. does the loop ---
-                        //for (int j = 0; j < prefix.Length; j++)
-                        //    q = Delta(prefix[j], q, out regex);
-                        // ---
-                        q = this.A1_skipState;
-                        regex = this.A1_skipStateRegex;
-
-                        //skip the prefix
-                        i = i + prefix.Length;
-                        if (regex.isNullable)
-                        {
-                            i_q0 = i_q0_A1;
-                            watchdog = GetWatchdog(regex);
-                            //return the last position of the match
-                            return i - 1;
-                        }
-                        if (i == k)
-                        {
-                            i_q0 = i_q0_A1;
-                            watchdog = -1;
-                            return k;
-                        }
-                    }
-                }
-                #endregion
-
-                //TBD: anchors
-                int c = input[i];
-                int p;
-
-                #region if original regex contains anchors and c is \n then insert startline and endline characters
-                if (A.containsAnchors && c == '\n')
-                {
-                    //TBD: anchors
-                }
-                #endregion
-
-#if INLINE
-                #region copy&paste region of the definition of Delta being inlined
-                int atom_id = (dt.precomputed.Length > c ? dt.precomputed[c] : dt.bst.Find(c));
-                S atom = atoms[atom_id];
-                if (q < StateLimit)
-                {
-                #region use delta
-                    int offset = (q * K) + atom_id;
-                    p = delta[offset];
-                    if (p == 0)
-                    {
-                        CreateNewTransition(q, atom, offset, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                #endregion
-                }
-                else
-                {
-                #region use deltaExtra
-                    int[] q_trans = deltaExtra[q];
-                    p = q_trans[atom_id];
-                    if (p == 0)
-                    {
-                        CreateNewTransitionExtra(q, atom_id, atom, q_trans, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                #endregion
-                }
-                #endregion
-#else
-                p = Delta(c, q, out regex);
-#endif
-
-                if (regex.isNullable)
-                {
-                    //p is a final state so match has been found
-                    break;
-                }
-                else if (regex == this.builder.nothing)
-                {
-                    i_q0 = i_q0_A1;
-                    //p is a deadend state so any further search is meaningless
-                    watchdog = -1;
-                    return k;
-                }
-
-                //continue from the target state
-                q = p;
-                i += 1;
+                q = DeltaBorder(BorderSymbol.End, q, out regex);
+                if (regex.IsNullable)
+                    //match occurred due to end anchor
+                    i = i - 1;
             }
             i_q0 = i_q0_A1;
             watchdog = (regex == null ? -1 : this.GetWatchdog(regex));
@@ -1521,7 +1541,7 @@ namespace Microsoft.SRM
                             break;
                         }
 
-                        int i_start = FindStartPosition_(inputp, i, i_q0_A1);
+                        int i_start = FindStartPosition_(inputp, input.Length, i, i_q0_A1);
 
                         int i_end = FindEndPosition_(inputp, k, i_start);
 
@@ -1548,7 +1568,7 @@ namespace Microsoft.SRM
                         break;
                     }
 
-                    int i_start = FindStartPosition_(inputp, i, i_q0_A1);
+                    int i_start = FindStartPosition_(inputp, input.Length, i, i_q0_A1);
 
                     int i_end = FindEndPosition_(inputp, k, i_start);
 
@@ -1604,55 +1624,55 @@ namespace Microsoft.SRM
                 int c = inputp[i];
                 int p;
 
-#if INLINE
-                #region copy&paste region of the definition of Delta being inlined
-                    int atom_id = (dt.precomputed.Length > c ? dt.precomputed[c] : dt.bst.Find(c));
-                    S atom = atoms[atom_id];
-                    if (q < StateLimit)
-                    {
-                #region use delta
-                        int offset = (q * K) + atom_id;
-                        p = delta[offset];
-                        if (p == 0)
-                        {
-                            CreateNewTransition(q, atom, offset, out p, out regex);
-                        }
-                        else
-                        {
-                            regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                        }
-                #endregion
-                    }
-                    else
-                    {
-                #region use deltaExtra
-                        int[] q_trans = deltaExtra[q];
-                        p = q_trans[atom_id];
-                        if (p == 0)
-                        {
-                            CreateNewTransitionExtra(q, atom_id, atom, q_trans, out p, out regex);
-                        }
-                        else
-                        {
-                            regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                        }
-                #endregion
-                    }
-                #endregion
-#else
-                p = Delta(c, q, out regex);
-#endif
-
-                if (regex.isNullable)
+                if (c == 10)
                 {
-                    //p is a final state so match has been found
-                    break;
+                    p = DeltaBorder(BorderSymbol.EOL, q, out regex);
+                    if (regex.isNullable)
+                    {
+                        //match has been found due to endline anchor
+                        //so the match actually ends at the prior character 
+                        //unless the prior character does not exist
+                        i = (i > 0 ? i - 1 : 0);
+                        break;
+                    }
+                    p = Delta(10, p, out regex);
+                    if (regex.isNullable)
+                    {
+                        //match has been found due to newline itself
+                        //this can happen if anchor is not used
+                        //but the newline character is used in the pattern
+                        break;
+                    }
+                    p = DeltaBorder(BorderSymbol.BOL, q, out regex);
+                    if (regex.isNullable)
+                    {
+                        //match has been found due to startline anchor
+                        //highly unusual case that should not really happen
+                        //in this case newline is part of the match
+                        break;
+                    }
+                    if (regex == this.builder.nothing)
+                    {
+                        //p is a deadend state so any further search is meaningless
+                        i_q0 = i_q0_A1;
+                        return k;
+                    }
                 }
-                else if (regex == this.builder.nothing)
+                else
                 {
-                    //p is a deadend state so any further search is meaningless
-                    i_q0 = i_q0_A1;
-                    return k;
+                    p = Delta(c, q, out regex);
+
+                    if (regex.isNullable)
+                    {
+                        //p is a final state so match has been found
+                        break;
+                    }
+                    else if (regex == this.builder.nothing)
+                    {
+                        //p is a deadend state so any further search is meaningless
+                        i_q0 = i_q0_A1;
+                        return k;
+                    }
                 }
 
                 //continue from the target state
@@ -1679,7 +1699,7 @@ namespace Microsoft.SRM
                 {
                     SymbolicRegexNode<S> regex = null;
 
-                    #region prefix optimization
+        #region prefix optimization
                     //stay in the initial state if the prefix does not match
                     //thus advance the current position to the 
                     //first position where the prefix does match
@@ -1725,61 +1745,60 @@ namespace Microsoft.SRM
                             }
                         }
                     }
-                    #endregion
+        #endregion
 
-                    //TBD: anchors
                     int c = inputp[i];
                     int p;
 
-#if INLINE
-                    #region copy&paste region of the definition of Delta being inlined
-                    int atom_id = (dt.precomputed.Length > c ? dt.precomputed[c] : dt.bst.Find(c));
-                    S atom = atoms[atom_id];
-                    if (q < StateLimit)
+                    if (c == 10)
                     {
-                    #region use delta
-                        int offset = (q * K) + atom_id;
-                        p = delta[offset];
-                        if (p == 0)
+                        p = DeltaBorder(BorderSymbol.EOL, q, out regex);
+                        if (regex.isNullable)
                         {
-                            CreateNewTransition(q, atom, offset, out p, out regex);
+                            //match has been found due to endline anchor
+                            //so the match actually ends at the prior character 
+                            //unless the prior character does not exist
+                            i = (i > 0 ? i - 1 : 0);
+                            break;
                         }
-                        else
+                        p = Delta(10, p, out regex);
+                        if (regex.isNullable)
                         {
-                            regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
+                            //match has been found due to newline itself
+                            //this can happen if anchor is not used
+                            //but the newline character is used in the pattern
+                            break;
                         }
-                    #endregion
+                        p = DeltaBorder(BorderSymbol.BOL, q, out regex);
+                        if (regex.isNullable)
+                        {
+                            //match has been found due to startline anchor
+                            //highly unusual case that should not really happen
+                            //in this case newline is part of the match
+                            break;
+                        }
+                        if (regex == this.builder.nothing)
+                        {
+                            //p is a deadend state so any further search is meaningless
+                            i_q0 = i_q0_A1;
+                            return k;
+                        }
                     }
                     else
                     {
-                    #region use deltaExtra
-                        int[] q_trans = deltaExtra[q];
-                        p = q_trans[atom_id];
-                        if (p == 0)
-                        {
-                            CreateNewTransitionExtra(q, atom_id, atom, q_trans, out p, out regex);
-                        }
-                        else
-                        {
-                            regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                        }
-                    #endregion
-                    }
-                    #endregion
-#else
-                    p = Delta(c, q, out regex);
-#endif
+                        p = Delta(c, q, out regex);
 
-                    if (regex.isNullable)
-                    {
-                        //p is a final state so match has been found
-                        break;
-                    }
-                    else if (regex == this.builder.nothing)
-                    {
-                        i_q0 = i_q0_A1;
-                        //p is a deadend state so any further search is meaningless
-                        return k;
+                        if (regex.isNullable)
+                        {
+                            //p is a final state so match has been found
+                            break;
+                        }
+                        else if (regex == this.builder.nothing)
+                        {
+                            //p is a deadend state so any further search is meaningless
+                            i_q0 = i_q0_A1;
+                            return k;
+                        }
                     }
 
                     //continue from the target state
@@ -1797,7 +1816,7 @@ namespace Microsoft.SRM
         /// <param name="i">position to start walking back from, i points at the last character of the match</param>
         /// <param name="match_start_boundary">do not pass this boundary when walking back</param>
         /// <returns></returns>
-        unsafe private int FindStartPosition_(char* input, int i, int match_start_boundary)
+        unsafe private int FindStartPosition_(char* input, int input_length, int i, int match_start_boundary)
         {
             int q = q0_Ar;
             SymbolicRegexNode<S> regex = null;
@@ -1827,6 +1846,14 @@ namespace Microsoft.SRM
             //walk back to the accepting state of Ar
             int p;
             int c;
+
+            if (i == input_length - 1)
+                // at the end of the input
+                q = DeltaBorder(BorderSymbol.End, q, out _);
+            else if (i > 0 && input[i + 1] == '\n')
+                // at the end of a line
+                q = DeltaBorder(BorderSymbol.EOL, q, out _);
+
             while (i >= match_start_boundary)
             {
                 //observe that the input is reversed 
@@ -1835,44 +1862,17 @@ namespace Microsoft.SRM
                 //TBD: anchors
                 c = input[i];
 
-#if INLINE
-                #region copy&paste region of the definition of Delta being inlined
-                int atom_id = (dt.precomputed.Length > c ? dt.precomputed[c] : dt.bst.Find(c));
-                S atom = atoms[atom_id];
-                if (q < StateLimit)
+                if (c == 10)
                 {
-                #region use delta
-                    int offset = (q * K) + atom_id;
-                    p = delta[offset];
-                    if (p == 0)
-                    {
-                        CreateNewTransition(q, atom, offset, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                #endregion
+                    //going backwards, first consume StartLine because reversal keeps the anchors in place
+                    p = DeltaBorder(BorderSymbol.BOL, q, out regex);
+                    if (regex.IsNullable)
+                        last_start = i + 1;
+                    p = Delta(10, p, out _);
+                    p = DeltaBorder(BorderSymbol.BOL, p, out regex);
                 }
                 else
-                {
-                #region use deltaExtra
-                    int[] q_trans = deltaExtra[q];
-                    p = q_trans[atom_id];
-                    if (p == 0)
-                    {
-                        CreateNewTransitionExtra(q, atom_id, atom, q_trans, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                #endregion
-                }
-                #endregion
-#else
-                p = Delta(c, q, out regex);
-#endif
+                    p = Delta(c, q, out regex);
 
                 if (regex.isNullable)
                 {
@@ -1908,52 +1908,31 @@ namespace Microsoft.SRM
         {
             int i_end = k;
             int q = q0_A;
+            SymbolicRegexNode<S> regex;
+            if (i == 0)
+                // start of input
+                q = DeltaBorder(BorderSymbol.Beg, q, out _);
+            else if (input[i - 1] == '\n')
+                // start of a line
+                q = DeltaBorder(BorderSymbol.BOL, q, out _);
+
             while (i < k)
             {
-                SymbolicRegexNode<S> regex;
                 int c = input[i];
                 int p;
 
-                //TBD: anchors
-
-#if INLINE
-                #region copy&paste region of the definition of Delta being inlined
-                int atom_id = (dt.precomputed.Length > c ? dt.precomputed[c] : dt.bst.Find(c));
-                S atom = atoms[atom_id];
-                if (q < StateLimit)
+                if (c == 10)
                 {
-                #region use delta
-                    int offset = (q * K) + atom_id;
-                    p = delta[offset];
-                    if (p == 0)
-                    {
-                        CreateNewTransition(q, atom, offset, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                #endregion
+                    p = DeltaBorder(BorderSymbol.EOL, q, out regex);
+                    if (regex.IsNullable)
+                        //nullable due to $ anchor
+                        //end position is therefore the prior character if it exists
+                        i_end = (i > 0 ? i - 1 : 0);
+                    p = Delta(10, p, out regex);
+                    p = DeltaBorder(BorderSymbol.BOL, p, out regex);
                 }
                 else
-                {
-                #region use deltaExtra
-                    int[] q_trans = deltaExtra[q];
-                    p = q_trans[atom_id];
-                    if (p == 0)
-                    {
-                        CreateNewTransitionExtra(q, atom_id, atom, q_trans, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                #endregion
-                }
-                #endregion
-#else
-                p = Delta(c, q, out regex);
-#endif
+                    p = Delta(c, q, out regex);
 
 
                 if (regex.isNullable)
@@ -1970,6 +1949,14 @@ namespace Microsoft.SRM
                 }
                 q = p;
                 i += 1;
+            }
+            if (i == k)
+            {
+                DeltaBorder(BorderSymbol.End, q, out regex);
+                if (regex.IsNullable)
+                    //match occurred due to end anchor
+                    //this must be the case here
+                    i_end = k - 1;
             }
             if (i_end == k)
                 throw new AutomataException(AutomataExceptionKind.InternalError);
@@ -2008,10 +1995,6 @@ namespace Microsoft.SRM
         /// <summary>
         ///  Find first occurrence of startset element in input starting from index i.
         /// </summary>
-        /// <param name="input">input string to search in</param>
-        /// <param name="i">the start index in input to search from</param>
-        /// <param name="surrogate_codepoint"></param>
-        /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int IndexOfStartsetUTF8(byte[] input, int i, ref int surrogate_codepoint)
         {
@@ -2219,10 +2202,16 @@ namespace Microsoft.SRM
             int q = q0_A;
             int step = 0;
             int codepoint = 0;
+            SymbolicRegexNode<S> regex;
+            if (i == 0)
+                // start of input
+                q = DeltaBorder(BorderSymbol.Beg, q, out _);
+            else if (input[i - 1] == '\n')
+                // start of a line
+                q = DeltaBorder(BorderSymbol.BOL, q, out _);
+
             while (i < k)
             {
-                SymbolicRegexNode<S> regex;
-
                 ushort c;
                 #region c = current UTF16 character
                 if (surrogate_codepoint == 0)
@@ -2259,47 +2248,19 @@ namespace Microsoft.SRM
 
                 int p;
 
-                //TBD: anchors
 
-#if INLINE
-                #region copy&paste region of the definition of Delta being inlined
-                int atom_id = (dt.precomputed.Length > c ? dt.precomputed[c] : dt.bst.Find(c));
-                S atom = atoms[atom_id];
-                if (q < StateLimit)
+                if (c == 10)
                 {
-                #region use delta
-                    int offset = (q * K) + atom_id;
-                    p = delta[offset];
-                    if (p == 0)
-                    {
-                        CreateNewTransition(q, atom, offset, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                #endregion
+                    p = DeltaBorder(BorderSymbol.EOL, q, out regex);
+                    if (regex.IsNullable)
+                        //nullable due to $ anchor
+                        //end position is therefore the prior character if it exists
+                        i_end = (i > 0 ? i - 1 : 0);
+                    p = Delta(10, p, out _);
+                    p = DeltaBorder(BorderSymbol.BOL, p, out regex);
                 }
                 else
-                {
-                #region use deltaExtra
-                    int[] q_trans = deltaExtra[q];
-                    p = q_trans[atom_id];
-                    if (p == 0)
-                    {
-                        CreateNewTransitionExtra(q, atom_id, atom, q_trans, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                #endregion
-                }
-                #endregion
-#else
-                p = Delta(c, q, out regex);
-#endif
-
+                    p = Delta(c, q, out regex);
 
                 if (regex.isNullable)
                 {
@@ -2318,6 +2279,15 @@ namespace Microsoft.SRM
                     i += step;
                 else
                     i += 1;
+            }
+            if (i == k)
+            {
+                DeltaBorder(BorderSymbol.End, q, out regex);
+                if (regex.IsNullable)
+                    //match occurred due to end anchor
+                    //this must be the case here
+                    //TBD: adjust offset according to uft8 if nonascii
+                    i_end = k - 1;
             }
             if (i_end == k)
                 throw new AutomataException(AutomataExceptionKind.InternalError);
@@ -2363,6 +2333,15 @@ namespace Microsoft.SRM
             int p;
             ushort c;
             int codepoint;
+
+            // TBD: calculation of next character for nonascii is not 1 but 2 or 3 bytes off
+            if (i == input.Length - 1)
+                // at the end of the input
+                q = DeltaBorder(BorderSymbol.End, q, out _);
+            else if (i > 0 && input[i + 1] == '\n')
+                // at the end of a line
+                q = DeltaBorder(BorderSymbol.EOL, q, out _);
+
             while (i >= match_start_boundary)
             {
                 //observe that the input is reversed
@@ -2403,44 +2382,17 @@ namespace Microsoft.SRM
                 }
                 #endregion
 
-#if INLINE
-                #region copy&paste region of the definition of Delta being inlined
-                int atom_id = (dt.precomputed.Length > c ? dt.precomputed[c] : dt.bst.Find(c));
-                S atom = atoms[atom_id];
-                if (q < StateLimit)
+                if (c == 10)
                 {
-                #region use delta
-                    int offset = (q * K) + atom_id;
-                    p = delta[offset];
-                    if (p == 0)
-                    {
-                        CreateNewTransition(q, atom, offset, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                #endregion
+                    //going backwards, first consume StartLine because reversal keeps the anchors in place
+                    p = DeltaBorder(BorderSymbol.BOL, q, out regex);
+                    if (regex.IsNullable)
+                        last_start = i + 1;
+                    p = Delta(10, p, out _);
+                    p = DeltaBorder(BorderSymbol.BOL, p, out regex);
                 }
                 else
-                {
-                #region use deltaExtra
-                    int[] q_trans = deltaExtra[q];
-                    p = q_trans[atom_id];
-                    if (p == 0)
-                    {
-                        CreateNewTransitionExtra(q, atom_id, atom, q_trans, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                #endregion
-                }
-                #endregion
-#else
-                p = Delta(c, q, out regex);
-#endif
+                    p = Delta(c, q, out regex);
 
                 if (regex.isNullable)
                 {
@@ -2598,47 +2550,19 @@ namespace Microsoft.SRM
                 #endregion
 
 
-                //TBD: anchors
                 int p;
 
-#if INLINE
-                #region copy&paste region of the definition of Delta being inlined
-                int atom_id = (dt.precomputed.Length > c ? dt.precomputed[c] : dt.bst.Find(c));
-                S atom = atoms[atom_id];
-                if (q < StateLimit)
+
+                if (c == 10)
                 {
-                #region use delta
-                    int offset = (q * K) + atom_id;
-                    p = delta[offset];
-                    if (p == 0)
-                    {
-                        CreateNewTransition(q, atom, offset, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                #endregion
+                    p = DeltaBorder(BorderSymbol.EOL, q, out regex);
+                    if (regex.IsNullable)
+                        break;
+                    p = Delta(10, p, out regex);
+                    p = DeltaBorder(BorderSymbol.BOL, p, out regex);
                 }
                 else
-                {
-                #region use deltaExtra
-                    int[] q_trans = deltaExtra[q];
-                    p = q_trans[atom_id];
-                    if (p == 0)
-                    {
-                        CreateNewTransitionExtra(q, atom_id, atom, q_trans, out p, out regex);
-                    }
-                    else
-                    {
-                        regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
-                    }
-                #endregion
-                }
-                #endregion
-#else
-                p = Delta(c, q, out regex);
-#endif
+                    p = Delta(c, q, out regex);
 
                 if (regex.isNullable)
                 {

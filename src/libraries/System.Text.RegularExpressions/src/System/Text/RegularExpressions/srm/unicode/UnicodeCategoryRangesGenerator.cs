@@ -4,7 +4,7 @@ using System.Text;
 using System.Globalization;
 using System.IO;
 
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
     /// Utility for generating unicode category ranges and corresponing binary decision diagrams

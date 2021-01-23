@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
     internal static class RegexCharSetPrinter
     {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
     /// Provides functionality to convert .NET regex patterns to corresponding symbolic finite automata and symbolic regexes
@@ -27,15 +27,6 @@ namespace Microsoft.SRM
             }
         }
 
-
-        //public SymbolicRegexBuilder<S> SRBuilder
-        //{
-        //    get
-        //    {
-        //        return srBuilder;
-        //    }
-        //}
-
         /// <summary>
         /// Constructs a regex to symbolic finite automata converter
         /// </summary>
@@ -48,81 +39,54 @@ namespace Microsoft.SRM
             this.srBuilder = new SymbolicRegexBuilder<S>((ICharAlgebra<S>)solver);
         }
 
+        /// <summary>
+        /// Used in exception messages
+        /// </summary>
         private static string DescribeRegexNodeType(int node_type)
         {
-            switch (node_type)
+            string description = node_type switch
             {
-                case RegexNode.Alternate:
-                    return "Alternate";
-                case RegexNode.Beginning:
-                    return "Beginning";
-                case RegexNode.Bol:
-                    return "Bol";
-                case RegexNode.Capture:  // (?<name> regex)
-                    return "Capture";
-                case RegexNode.Concatenate:
-                    return "Concatenate";
-                case RegexNode.Empty:
-                    return "Empty";
-                case RegexNode.End:
-                    return "End";
-                case RegexNode.EndZ:
-                    return "EndZ";
-                case RegexNode.Eol:
-                    return "Eol";
-                case RegexNode.Loop:
-                    return "Loop";
-                case RegexNode.Multi:
-                    return "Multi";
-                case RegexNode.Notone:
-                    return "Notone";
-                case RegexNode.Notoneloop:
-                    return "Notoneloop";
-                case RegexNode.One:
-                    return "One";
-                case RegexNode.Oneloop:
-                    return "Oneloop";
-                case RegexNode.Set:
-                    return "Set";
-                case RegexNode.Setloop:
-                    return "Setloop";
-                case RegexNode.ECMABoundary:
-                    return "ECMABoundary";
-                case RegexNode.Boundary:
-                    return "Boundary";
-                case RegexNode.Nothing:
-                    return "Nothing";
-                case RegexNode.NonBoundary:
-                    return "Nonboundary";
-                case RegexNode.NonECMABoundary:
-                    return "NonECMABoundary";
-                case RegexNode.Atomic:
-                    return "Atomic";
-                case RegexNode.Group:
-                    return "Group";
-                case RegexNode.Lazyloop:
-                    return "Lazyloop";
-                case RegexNode.Prevent:
-                    return "Prevent";
-                case RegexNode.Require:
-                    return "Require";
-                case RegexNode.Testgroup:
-                    return "Testgroup";
-                case RegexNode.Testref:
-                    return "Testref";
-                case RegexNode.Notonelazy:
-                    return "Notonelazy";
-                case RegexNode.Onelazy:
-                    return "Onelazy";
-                case RegexNode.Setlazy:
-                    return "Setlazy";
-                case RegexNode.Ref:
-                    return "Ref";
-                case RegexNode.Start:
-                    return "Start";
-                default:
-                    throw new AutomataException(AutomataExceptionKind.UnrecognizedRegex);
-            }
+                RegexNode.Oneloop => nameof(RegexNode.Oneloop),
+                RegexNode.Notoneloop => nameof(RegexNode.Notoneloop),
+                RegexNode.Setloop => nameof(RegexNode.Setloop),
+                RegexNode.Onelazy => nameof(RegexNode.Onelazy),
+                RegexNode.Notonelazy => nameof(RegexNode.Notonelazy),
+                RegexNode.Setlazy => nameof(RegexNode.Setlazy),
+                RegexNode.One => nameof(RegexNode.One),
+                RegexNode.Notone => nameof(RegexNode.Notone),
+                RegexNode.Set => nameof(RegexNode.Set),
+                RegexNode.Multi => nameof(RegexNode.Multi),
+                RegexNode.Ref => nameof(RegexNode.Ref),
+                RegexNode.Bol => nameof(RegexNode.Bol),
+                RegexNode.Eol => nameof(RegexNode.Eol),
+                RegexNode.Boundary => nameof(RegexNode.Boundary),
+                RegexNode.NonBoundary => nameof(RegexNode.NonBoundary),
+                RegexNode.ECMABoundary => nameof(RegexNode.ECMABoundary),
+                RegexNode.NonECMABoundary => nameof(RegexNode.NonECMABoundary),
+                RegexNode.Beginning => nameof(RegexNode.Beginning),
+                RegexNode.Start => nameof(RegexNode.Start),
+                RegexNode.EndZ => nameof(RegexNode.EndZ),
+                RegexNode.End => nameof(RegexNode.End),
+                RegexNode.Oneloopatomic => nameof(RegexNode.Oneloopatomic),
+                RegexNode.Notoneloopatomic => nameof(RegexNode.Notoneloopatomic),
+                RegexNode.Setloopatomic => nameof(RegexNode.Setloopatomic),
+                RegexNode.Nothing => nameof(RegexNode.Nothing),
+                RegexNode.Empty => nameof(RegexNode.Empty),
+                RegexNode.Alternate => nameof(RegexNode.Alternate),
+                RegexNode.Concatenate => nameof(RegexNode.Concatenate),
+                RegexNode.Loop => nameof(RegexNode.Loop),
+                RegexNode.Lazyloop => nameof(RegexNode.Lazyloop),
+                RegexNode.Capture => nameof(RegexNode.Capture),
+                RegexNode.Group => nameof(RegexNode.Group),
+                RegexNode.Require => nameof(RegexNode.Require),
+                RegexNode.Prevent => nameof(RegexNode.Prevent),
+                RegexNode.Atomic => nameof(RegexNode.Atomic),
+                RegexNode.Testref => nameof(RegexNode.Testref),
+                RegexNode.Testgroup => nameof(RegexNode.Testgroup),
+                RegexNode.UpdateBumpalong => nameof(RegexNode.UpdateBumpalong),
+                _ => $"({nameof(RegexCode)}:{node_type})"
+            };
+            return description;
         }
 
         #region Character sequences
@@ -337,20 +301,6 @@ namespace Microsoft.SRM
             }
         }
 
-        /// <summary>
-        /// Convert a .NET regex into an equivalent symbolic regex
-        /// </summary>
-        /// <param name="regex">the given .NET regex</param>
-        /// <param name="keepAnchors">if false (default) then anchors are replaced by equivalent regexes</param>
-        /// <param name="unwindlowerbounds"></param>
-        public SymbolicRegexNode<S> ConvertToSymbolicRegex(System.Text.RegularExpressions.Regex regex, bool keepAnchors = false, bool unwindlowerbounds = false)
-        {
-            var node = ConvertToSymbolicRegex(regex.ToString(), regex.Options, keepAnchors);
-            if (unwindlowerbounds)
-                node = node.Simplify();
-            return node;
-        }
-
         internal SymbolicRegexNode<S> ConvertNodeToSymbolicRegex(RegexNode node, bool topLevel)
         {
             switch (node.Type)
@@ -361,15 +311,17 @@ namespace Microsoft.SRM
                     return this.srBuilder.startAnchor;
                 case RegexNode.Bol:
                     return this.srBuilder.bolAnchor;
-                case RegexNode.Capture:  //paranthesis (...)
+                case RegexNode.Capture:  //treat as non-capturing group (...)
                     return ConvertNodeToSymbolicRegex(node.Child(0), topLevel);
                 case RegexNode.Concatenate:
                     return this.srBuilder.MkConcat(Array.ConvertAll(node.ChildrenToArray(), x => ConvertNodeToSymbolicRegex(x, false)), topLevel);
                 case RegexNode.Empty:
+                case RegexNode.UpdateBumpalong: // optional directive that behaves the same as Empty
                     return this.srBuilder.epsilon;
-                case RegexNode.End:
-                case RegexNode.EndZ:
+                case RegexNode.End:  // \z anchor
                     return this.srBuilder.endAnchor;
+                case RegexNode.EndZ: // \Z anchor
+                    return this.srBuilder.endAnchorZ;
                 case RegexNode.Eol:
                     return this.srBuilder.eolAnchor;
                 case RegexNode.Loop:
@@ -381,18 +333,21 @@ namespace Microsoft.SRM
                 case RegexNode.Notone:
                     return ConvertNodeNotoneToSymbolicRegex(node);
                 case RegexNode.Notoneloop:
+                case RegexNode.Notoneloopatomic:
                     return ConvertNodeNotoneloopToSymbolicRegex(node, false);
                 case RegexNode.Notonelazy:
                     return ConvertNodeNotoneloopToSymbolicRegex(node, true);
                 case RegexNode.One:
                     return ConvertNodeOneToSymbolicRegex(node);
                 case RegexNode.Oneloop:
+                case RegexNode.Oneloopatomic:
                     return ConvertNodeOneloopToSymbolicRegex(node, false);
                 case RegexNode.Onelazy:
                     return ConvertNodeOneloopToSymbolicRegex(node, true);
                 case RegexNode.Set:
                     return ConvertNodeSetToSymbolicRegex(node);
                 case RegexNode.Setloop:
+                case RegexNode.Setloopatomic:
                     return ConvertNodeSetloopToSymbolicRegex(node, false);
                 case RegexNode.Setlazy:
                     return ConvertNodeSetloopToSymbolicRegex(node, true);
@@ -400,28 +355,16 @@ namespace Microsoft.SRM
                     return MkIfThenElse(ConvertNodeToSymbolicRegex(node.Child(0), false), ConvertNodeToSymbolicRegex(node.Child(1), false), ConvertNodeToSymbolicRegex(node.Child(2), false));
                 case RegexNode.ECMABoundary:
                 case RegexNode.Boundary:
-                    throw new AutomataException(@"Not implemented: word-boundary \b");
+                    // update the word letter predicate based on the Unicode definition of it
+                    srBuilder.wordLetterPredicate = categorizer.WordLetterCondition;
+                    return this.srBuilder.wbAnchor;
                 case RegexNode.NonBoundary:
                 case RegexNode.NonECMABoundary:
-                    throw new AutomataException(@"Not implemented: non-word-boundary \B");
-                case RegexNode.Nothing:
-                    throw new AutomataException(@"Not implemented: Nothing");
-                case RegexNode.Atomic:
-                    throw new AutomataException("Not implemented: atomic constructs (?>) (?<)");
-                case RegexNode.Start:
-                    throw new AutomataException(@"Not implemented: \G");
-                case RegexNode.Group:
-                    throw new AutomataException("Not supported: grouping (?:)");
-                case RegexNode.Prevent:
-                    throw new AutomataException("Not supported: prevent constructs (?!) (?<!)");
-                case RegexNode.Require:
-                    throw new AutomataException("Not supported: require constructs (?=) (?<=)");
-                case RegexNode.Testref:
-                    throw new AutomataException("Not supported: test construct (?(n) | )");
-                case RegexNode.Ref:
-                    throw new AutomataException(@"Not supported: references \1");
+                    // update the word letter predicate based on the Unicode definition of it
+                    srBuilder.wordLetterPredicate = categorizer.WordLetterCondition;
+                    return this.srBuilder.nwbAnchor;
                 default:
-                    throw new AutomataException(@"Unexpected regex construct");
+                    throw new NotSupportedException($"DFA option does not support '{DescribeRegexNodeType(node.Type)}'");
             }
         }
 

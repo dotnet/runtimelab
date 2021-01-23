@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
     internal abstract class BVAlgebraBase
     {

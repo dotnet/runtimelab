@@ -34,6 +34,10 @@ namespace System.Text.RegularExpressions
         private RegexCode? _code;                             // if interpreted, this is the code for RegexInterpreter
         private bool _refsInitialized;
 
+        // SRM specific fields
+        internal bool _useSRM;                                // if true then SRM is used for matching
+        internal SRM.Regex? _srm;                             // defined as SRM.Regex when _useSRM is true else null
+
         protected Regex()
         {
             internalMatchTimeout = s_defaultMatchTimeout;
@@ -88,6 +92,10 @@ namespace System.Text.RegularExpressions
         /// </remarks>
         private void Init(string pattern, RegexOptions options, TimeSpan matchTimeout, CultureInfo? culture)
         {
+            _useSRM = ((int)options & 0x0800) == 0x0800; // extract the DFA flag
+            bool vectorizeSRM = ((int)options & 0x0400) == 0x0400; // extract the Vectorize flag
+            options = (RegexOptions)((uint)options & ~(uint)0x0C00); //remove the DFA and Vectorize flags
+
             ValidatePattern(pattern);
             ValidateOptions(options);
             ValidateMatchTimeout(matchTimeout);
@@ -113,7 +121,27 @@ namespace System.Text.RegularExpressions
             caps = _code.Caps;
             capsize = _code.CapSize;
 
+            // if SRM is used then construct the SMR.Regex matcher
+            // this construction fails and throws a DFANotSupportedException
+            // for some unsupported constructs used in the original regex
+            if (_useSRM)
+            {
+                //add back the Vectorize flag into the options of SRM
+                uint opt = (vectorizeSRM ? (uint)options | 0x0400 : (uint)options);
+                _srm = InitializeSRM(tree.Root, (RegexOptions)opt);
+            }
+
             InitializeReferences();
+        }
+
+        /// <summary>
+        /// This method is here for perf reasons: if InitializeSRM is NOT called in the
+        /// Init method, we don't load SRM.Regex when instantiating a regex that does not use the DFA option
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static SRM.Regex InitializeSRM(RegexNode rootNode, RegexOptions options)
+        {
+            return new SRM.Regex(rootNode, options);
         }
 
         internal static void ValidatePattern(string pattern)
