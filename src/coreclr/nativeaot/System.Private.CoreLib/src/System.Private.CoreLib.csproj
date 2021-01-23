@@ -332,21 +332,12 @@
     </Compile>
   </ItemGroup>
   <ItemGroup Condition="'$(TargetsUnix)'=='true' or '$(TargetsBrowser)'=='true'">
-    <Compile Include="Microsoft\Win32\SafeHandles\SafeWaitHandle.Unix.cs" />
     <Compile Include="System\Environment.CoreRT.Unix.cs" />
     <Compile Include="System\Runtime\InteropServices\PInvokeMarshal.Unix.cs" />
-    <Compile Include="System\Threading\EventWaitHandle.Unix.cs" />
     <Compile Include="System\Threading\LowLevelLifoSemaphore.Unix.cs" />
-    <Compile Include="System\Threading\Mutex.Unix.cs" />
     <Compile Include="System\Threading\PreAllocatedOverlapped.PlatformNotSupported.cs" />
-    <Compile Include="System\Threading\Semaphore.Unix.cs" />
     <Compile Include="System\Threading\Thread.CoreRT.Unix.cs" />
     <Compile Include="System\Threading\Thread.CoreRT.Wasm.cs" Condition="'$(TargetsBrowser)'=='true'"/>
-    <Compile Include="System\Threading\WaitHandle.Unix.cs" />
-    <Compile Include="System\Threading\WaitSubsystem.HandleManager.Unix.cs" />
-    <Compile Include="System\Threading\WaitSubsystem.ThreadWaitInfo.Unix.cs" />
-    <Compile Include="System\Threading\WaitSubsystem.Unix.cs" />
-    <Compile Include="System\Threading\WaitSubsystem.WaitableObject.Unix.cs" />
     <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.Abort.cs">
       <Link>Interop\Unix\System.Native\Interop.Abort.cs</Link>
     </Compile>

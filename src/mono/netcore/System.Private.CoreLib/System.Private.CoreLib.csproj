@@ -118,6 +118,11 @@
     <DefineConstants Condition="'$(FeaturePerfTracing)' == 'true'">$(DefineConstants);FEATURE_PERFTRACING</DefineConstants>
   </PropertyGroup>
 
+  <!-- Experimental mono metadata update feature -->
+  <PropertyGroup>
+    <DefineConstants Condition="'$(MonoMetadataUpdate)' == 'true'">$(DefineConstants);FEATURE_METADATA_UPDATE</DefineConstants>
+  </PropertyGroup>
+
   <!-- ILLinker settings -->
   <PropertyGroup>
     <ILLinkTrimAssembly>true</ILLinkTrimAssembly>
@@ -140,7 +145,6 @@
   <!-- Sources -->
   <ItemGroup>
       <Compile Include="$(BclSourcesRoot)\Mono\MonoListItem.cs" />
-      <Compile Include="$(BclSourcesRoot)\Mono\MonoPInvokeCallbackAttribute.cs" />
       <Compile Include="$(BclSourcesRoot)\Mono\RuntimeHandles.cs" />
       <Compile Include="$(BclSourcesRoot)\System\ArgIterator.cs" />
       <Compile Include="$(BclSourcesRoot)\System\Array.Mono.cs" />

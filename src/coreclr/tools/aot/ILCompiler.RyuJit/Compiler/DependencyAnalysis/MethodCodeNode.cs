@@ -126,10 +126,11 @@ namespace ILCompiler.DependencyAnalysis
             _gcInfo = gcInfo;
         }
 
-        public void InitializeEHInfo(MethodExceptionHandlingInfoNode ehInfo)
+        public void InitializeEHInfo(ObjectData ehInfo)
         {
             Debug.Assert(_ehInfo == null);
-            _ehInfo = ehInfo;
+            if (ehInfo != null)
+                _ehInfo = new MethodExceptionHandlingInfoNode(_method, ehInfo);
         }
 
         public DebugLocInfo[] DebugLocInfos => _debugLocInfos;

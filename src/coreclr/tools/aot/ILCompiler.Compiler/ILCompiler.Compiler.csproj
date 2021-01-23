@@ -96,9 +96,6 @@
     <Compile Include="..\..\Common\TypeSystem\IL\Stubs\DelegateMethodILEmitter.cs">
       <Link>IL\Stubs\DelegateMethodILEmitter.cs</Link>
     </Compile>
-    <Compile Include="..\..\Common\TypeSystem\IL\Stubs\EETypePtrOfIntrinsic.cs">
-      <Link>IL\Stubs\EETypePtrOfIntrinsic.cs</Link>
-    </Compile>
     <Compile Include="..\..\Common\TypeSystem\IL\Stubs\MethodBaseGetCurrentMethodThunk.Sorting.cs">
       <Link>IL\Stubs\MethodBaseGetCurrentMethodThunk.Sorting.cs</Link>
     </Compile>
@@ -128,7 +125,6 @@
     <Compile Include="..\..\Common\Compiler\DependencyAnalysis\INodeWithRuntimeDeterminedDependencies.cs" Link="Compiler\DependencyAnalysis\INodeWithRuntimeDeterminedDependencies.cs" />
     <Compile Include="..\..\Common\Compiler\DependencyAnalysis\ISortableNode.cs" Link="Compiler\DependencyAnalysis\ISortableNode.cs" />
     <Compile Include="..\..\Common\Compiler\DependencyAnalysis\ISymbolNode.cs" Link="Compiler\DependencyAnalysis\ISymbolNode.cs" />
-    <Compile Include="..\..\Common\Compiler\DependencyAnalysis\MethodExceptionHandlingInfoNode.cs" Link="Compiler\DependencyAnalysis\MethodExceptionHandlingInfoNode.cs" />
     <Compile Include="..\..\Common\Compiler\DependencyAnalysis\ObjectAndOffsetSymbolNode.cs" Link="Compiler\DependencyAnalysis\ObjectAndOffsetSymbolNode.cs" />
     <Compile Include="..\..\Common\Compiler\DependencyAnalysis\ObjectDataBuilder.cs" Link="Compiler\DependencyAnalysis\ObjectDataBuilder.cs" />
     <Compile Include="..\..\Common\Compiler\DependencyAnalysis\ObjectNode.cs" Link="Compiler\DependencyAnalysis\ObjectNode.cs" />
@@ -195,6 +191,7 @@
     <Compile Include="Compiler\DependencyAnalysis\ExternSymbolsWithIndirectionImportedNodeProvider.cs" />
     <Compile Include="Compiler\DependencyAnalysis\IndirectionExtensions.cs" />
     <Compile Include="Compiler\DependencyAnalysis\InterfaceDispatchCellSectionNode.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\MethodExceptionHandlingInfoNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\MrtImportImportedNodeProvider.cs" />
     <Compile Include="Compiler\DependencyAnalysis\MrtImports.cs" />
     <Compile Include="Compiler\DependencyAnalysis\MrtProcessedExportAddressTableNode.cs" />
@@ -227,6 +224,7 @@
     <Compile Include="Compiler\ExternSymbolMappedField.cs" />
     <Compile Include="Compiler\FeatureSwitchManager.cs" />
     <Compile Include="Compiler\GeneratingMetadataManager.cs" />
+    <Compile Include="Compiler\GenericRootProvider.cs" />
     <Compile Include="Compiler\HardwareIntrinsicHelpers.Aot.cs" />
     <Compile Include="Compiler\ManifestResourceBlockingPolicy.cs" />
     <Compile Include="Compiler\NoMetadataBlockingPolicy.cs" />
@@ -323,6 +321,7 @@
     <Compile Include="Compiler\DependencyAnalysis\GCStaticEETypeNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\GCStaticsNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\StaticsInfoHashtableNode.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\INodeWithCodeInfo.Aot.cs" />
     <Compile Include="Compiler\DependencyAnalysis\INodeWithDebugInfo.cs" />
     <Compile Include="Compiler\DependencyAnalysis\IExportableSymbolNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\JumpStubNode.cs" />

@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Reflection.Runtime.General;
+using System.Diagnostics.CodeAnalysis;
 
 namespace System.Reflection.Runtime.MethodInfos
 {
@@ -74,15 +75,17 @@ namespace System.Reflection.Runtime.MethodInfos
                             }
                         );
 
-                        map.AddMethod(type, nameof(Nullable<int>.GetValueOrDefault), Array.Empty<Type>(),
-                            (object thisObject, object[] args, Type thisType) =>
-                            {
-                                if (thisObject == null)
-                                    return RuntimeHelpers.GetUninitializedObject(thisType.GenericTypeArguments[0]);
+                        map.AddMethod(type, nameof(Nullable<int>.GetValueOrDefault), Array.Empty<Type>(), NullableGetValueOrDefault);
 
-                                return thisObject;
-                            }
-                        );
+                        static object NullableGetValueOrDefault(object thisObject, object[] args,
+                            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
+                            Type thisType)
+                        {
+                            if (thisObject == null)
+                                return RuntimeHelpers.GetUninitializedObject(thisType);
+
+                            return thisObject;
+                        }
 
                         map.AddMethod(type, nameof(Nullable<int>.GetValueOrDefault), new Type[] { theT },
                             (object thisObject, object[] args, Type thisType) =>

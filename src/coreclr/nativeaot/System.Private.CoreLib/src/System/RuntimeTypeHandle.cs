@@ -148,12 +148,6 @@ namespace System
             }
         }
 
-        [Intrinsic]
-        internal static IntPtr GetValueInternal(RuntimeTypeHandle handle)
-        {
-            return handle.RawValue;
-        }
-
         internal IntPtr RawValue
         {
             get

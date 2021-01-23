@@ -76,12 +76,6 @@ namespace Internal.IL
                             return new ILStubMethodIL(method, new byte[] { (byte)ILOpcode.break_, (byte)ILOpcode.ret }, Array.Empty<LocalVariableDefinition>(), null);
                     }
                     break;
-                case "EETypePtr":
-                    {
-                        if (owningType.Namespace == "System" && method.Name == "EETypePtrOf")
-                            return EETypePtrOfIntrinsic.EmitIL(method);
-                    }
-                    break;
                 case "RuntimeAugments":
                     {
                         if (owningType.Namespace == "Internal.Runtime.Augments" && method.Name == "GetCanonType")

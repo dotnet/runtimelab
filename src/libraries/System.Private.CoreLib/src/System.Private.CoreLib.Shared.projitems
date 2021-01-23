@@ -226,6 +226,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\Decimal.DecCalc.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\DefaultBinder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Delegate.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\CodeAnalysis\RequiresAssemblyFilesAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\CodeAnalysis\RequiresUnreferencedCodeAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\CodeAnalysis\DynamicallyAccessedMemberTypes.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\CodeAnalysis\DynamicallyAccessedMembersAttribute.cs" />
@@ -486,6 +487,10 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\PlatformNotSupportedException.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Progress.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Random.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Random.ImplBase.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Random.LegacyImpl.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Random.Xoshiro128StarStarImpl.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Random.Xoshiro256StarStarImpl.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Range.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\RankException.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\ReadOnlyMemory.cs" />
@@ -711,6 +716,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\CharSet.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\ClassInterfaceAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\ClassInterfaceType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\CLong.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\CoClassAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\CollectionsMarshal.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\ComDefaultInterfaceAttribute.cs" />
@@ -739,6 +745,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\ComTypes\ITypeLib2.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\ComVisibleAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\CriticalHandle.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\CULong.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\CurrencyWrapper.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\CustomQueryInterfaceMode.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\CustomQueryInterfaceResult.cs" />
@@ -773,6 +780,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\MemoryMarshal.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\UnmanagedCallersOnlyAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\NativeLibrary.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\NFloat.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\OptionalAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\OutAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\PreserveSigAttribute.cs" />
@@ -1953,5 +1961,16 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\LowLevelLifoSemaphore.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\LowLevelLifoSemaphore.Windows.cs" Condition="'$(TargetsWindows)' == 'true'" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\RegisteredWaitHandle.Portable.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetsCoreRT)' == 'true' and '$(TargetsWindows)' != 'true'">
+    <Compile Include="$(MSBuildThisFileDirectory)Microsoft\Win32\SafeHandles\SafeWaitHandle.Unix.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Threading\EventWaitHandle.Unix.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Threading\Mutex.Unix.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Threading\Semaphore.Unix.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Threading\WaitHandle.Unix.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Threading\WaitSubsystem.HandleManager.Unix.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Threading\WaitSubsystem.ThreadWaitInfo.Unix.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Threading\WaitSubsystem.Unix.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Threading\WaitSubsystem.WaitableObject.Unix.cs" />
   </ItemGroup>
 </Project>

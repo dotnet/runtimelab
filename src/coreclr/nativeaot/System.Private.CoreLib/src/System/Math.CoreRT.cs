@@ -189,5 +189,7 @@ namespace System
         {
             return RuntimeImports.modf(x, intptr);
         }
+
+        public static (double Sin, double Cos) SinCos(double x) => (Sin(x), Cos(x));
     }
 }
