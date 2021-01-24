@@ -4,6 +4,7 @@
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using System.Text.Encodings.Web;
 
@@ -496,8 +497,12 @@ namespace System.Text.Json
             {
                 if (_memberAccessorStrategy == null)
                 {
-#if NETFRAMEWORK || NETCOREAPP
+#if NETFRAMEWORK
                     _memberAccessorStrategy = new ReflectionEmitMemberAccessor();
+#elif NETCOREAPP
+                    _memberAccessorStrategy = RuntimeFeature.IsDynamicCodeSupported
+                        ? new ReflectionEmitMemberAccessor()
+                        : new ReflectionMemberAccessor();
 #else
                     _memberAccessorStrategy = new ReflectionMemberAccessor();
 #endif
