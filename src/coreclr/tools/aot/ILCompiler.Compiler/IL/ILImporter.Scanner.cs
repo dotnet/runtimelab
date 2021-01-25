@@ -285,8 +285,10 @@ namespace Internal.IL
                         _dependencies.Add(_factory.ConstructedTypeSymbol(owningType), reason);
                     }
 
-                    if (owningType.IsMdArray)
+                    if (owningType.IsArray)
                     {
+                        // RyuJIT is going to call the "MdArray" creation helper even if this is an SzArray,
+                        // hence the IsArray check above. Note that the MdArray helper can handle SzArrays.
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.NewMultiDimArr_NonVarArg), reason);
                         return;
                     }
