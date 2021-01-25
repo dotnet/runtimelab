@@ -1266,14 +1266,14 @@ namespace Internal.JitInterface
                 pResult->kind = CORINFO_CALL_KIND.CORINFO_CALL;
 
                 TypeDesc owningType = targetMethod.OwningType;
-                if (targetMethod.IsConstructor && owningType.IsString)
+                if (owningType.IsString && targetMethod.IsConstructor)
                 {
                     // Calling a string constructor doesn't call the actual constructor.
                     pResult->codePointerOrStubLookup.constLookup = CreateConstLookupToSymbol(
                         _compilation.NodeFactory.StringAllocator(targetMethod)
                         );
                 }
-                else if (targetMethod.IsConstructor && owningType.IsArray)
+                else if (owningType.IsArray && targetMethod.IsConstructor)
                 {
                     // Constructors on arrays are special and don't actually have entrypoints.
                     // That would be fine by itself and wouldn't need special casing. But
