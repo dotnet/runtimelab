@@ -122,7 +122,7 @@ namespace System.Text.RegularExpressions
             capsize = _code.CapSize;
 
             // if SRM is used then construct the SMR.Regex matcher
-            // this construction fails and throws a DFANotSupportedException
+            // this construction fails and throws a NotSupportedException
             // for some unsupported constructs used in the original regex
             if (_useSRM)
             {
@@ -141,6 +141,9 @@ namespace System.Text.RegularExpressions
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static SRM.Regex InitializeSRM(RegexNode rootNode, RegexOptions options)
         {
+            if ((options & RegexOptions.RightToLeft) != 0)
+                throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + RegexOptions.RightToLeft);
+
             return new SRM.Regex(rootNode, options);
         }
 
@@ -415,6 +418,10 @@ namespace System.Text.RegularExpressions
             {
                 ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.length, ExceptionResource.LengthNotNegative);
             }
+
+            // DFA option
+            if (_useSRM)
+                return RunSRM(quick, input, beginning, startat, length);
 
             RegexRunner runner = RentRunner();
             try

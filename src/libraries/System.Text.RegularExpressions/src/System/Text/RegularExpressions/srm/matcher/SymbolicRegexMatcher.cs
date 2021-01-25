@@ -483,7 +483,7 @@ namespace System.Text.RegularExpressions.SRM
         internal SymbolicRegex(SymbolicRegexNode<S> sr, CharSetSolver css, BDD[] minterms, RegexOptions options, int StateLimit = 1000, int startSetSizeLimit = 128)
         {
             if (sr.IsNullable)
-                throw new NotSupportedException("DFA option is not supported if the regex accepts the empty string");
+                throw new NotSupportedException( SRM.Regex._DFA_incompatible_with + "nullable regex (accepting the empty string)");
 
             this.Options = options;
             this.StartSetSizeLimit = startSetSizeLimit;
@@ -518,7 +518,7 @@ namespace System.Text.RegularExpressions.SRM
             A_startset = A.GetStartSet(builder.solver);
             this.A_StartSet_Size = (int)builder.solver.ComputeDomainSize(A_startset);
             if (this.A_StartSet_Size == 0)
-                throw new NotSupportedException("DFA option is not supported if the regex uses no characters");
+                throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + "characterless regex");
 
             this.A_StartSet = BooleanDecisionTree.Create(css, builder.solver.ConvertToCharSet(css, A_startset));
 
@@ -838,65 +838,61 @@ namespace System.Text.RegularExpressions.SRM
 
         /// <summary>
         /// Generate all matches.
+        /// <param name="isMatch">if true return null iff there exists a match</param>
         /// <param name="input">input string</param>
-        /// <param name="limit">upper bound on the number of found matches, nonpositive value (default is 0) means no bound</param>
         /// <param name="startat">the position to start search in the input string</param>
         /// <param name="endat">end position in the input, negative value means unspecified and taken to be input.Length-1</param>
         /// </summary>
-        public List<Match> Matches(string input, int limit = 0, int startat = 0, int endat = -1)
+        public Match FindMatch(bool isMatch, string input, int startat = 0, int endat = -1)
         {
 #if UNSAFE
             if ((Options & RegexOptions.Vectorize) != RegexOptions.None)
             {
-                return Matches_(input, limit, startat, endat);
+                return FindMatch_(input, 1, startat, endat);
             }
 #endif
-            return MatchesSafe(input, limit, startat, endat);
+            return FindMatchSafe(isMatch, input, startat, endat);
         }
 
         #region safe version of Matches and IsMatch for string input
 
         /// <summary>
-        /// Generate all matches.
+        /// Find a match.
+        /// <param name="quick">if true return null iff there exists a match</param>
         /// <param name="input">input string</param>
-        /// <param name="limit">upper bound on the number of found matches, nonpositive value (default is 0) means no bound</param>
         /// <param name="startat">the position to start search in the input string</param>
         /// <param name="endat">end position in the input, negative value means unspecified and taken to be input.Length-1</param>
         /// </summary>
-        internal List<Match> MatchesSafe(string input, int limit = 0, int startat = 0, int endat = -1)
+        internal Match FindMatchSafe(bool quick, string input, int startat = 0, int endat = -1)
         {
-            if (A.isNullable)
-                throw new AutomataException(AutomataExceptionKind.MustNotAcceptEmptyString);
-            else if (string.IsNullOrEmpty(input) || startat >= input.Length || startat < 0)
-                throw new AutomataException(AutomataExceptionKind.InvalidArgument);
+            if (string.IsNullOrEmpty(input))
+                    throw new ArgumentException($"'{nameof(input)}' must be a nonempty string");
+
+            if (startat >= input.Length || startat < 0)
+                    throw new ArgumentOutOfRangeException(nameof(startat));
 
             int k = ((endat < 0 | endat >= input.Length) ? input.Length : endat + 1);
-
-            //stores the accumulated matches
-            List<Match> matches = new List<Match>();
 
             //find the first accepting state
             //initial start position in the input is i = 0
             int i = startat;
 
-            //after a match is found the match_start_boundary becomes
-            //the first position after the last match
-            int match_start_boundary = i;
-
             bool AisLazy = A_allLoopsAreLazy;
             bool AisSingleSeq = A.IsSequenceOfSingletons;
 
-            while (true)
-            {
-                int i_q0_A1;
-                int watchdog;
-                i = FindFinalStatePosition(input, k, i, out i_q0_A1, out watchdog);
+            int i_q0_A1;
+            int watchdog;
+            i = FindFinalStatePosition(input, k, i, out i_q0_A1, out watchdog);
 
-                if (i == k)
-                {
-                    //end of input has been reached without reaching a final state, so no more matches
-                    break;
-                }
+            if (i == k)
+            {
+                //end of input has been reached without reaching a final state, so no match exists
+                return Match.NoMatch;
+            }
+            else
+            {
+                if (quick)
+                    return null;
 
                 int i_start;
                 int i_end;
@@ -924,17 +920,8 @@ namespace System.Text.RegularExpressions.SRM
                     }
                 }
 
-                var newmatch = new Match(i_start, i_end + 1 - i_start);
-                matches.Add(newmatch);
-                if (limit > 0 && matches.Count == limit)
-                    break;
-
-                //continue matching from the position following last match
-                i = i_end + 1;
-                match_start_boundary = i;
+                return new Match(i_start, i_end + 1 - i_start);
             }
-
-            return matches;
         }
 
         /// <summary>
@@ -955,108 +942,6 @@ namespace System.Text.RegularExpressions.SRM
             else
             {
                 return -1;
-            }
-        }
-
-        /// <summary>
-        /// Returns true iff the input string matches A.
-        /// <param name="input">input string</param>
-        /// <param name="startat">the position to start search in the input string</param>
-        /// <param name="endat">end position in the input, negative value means
-        /// unspecified and taken to be input.Length-1</param>
-        /// </summary>
-        public bool IsMatch(string input, int startat = 0, int endat = -1)
-        {
-            if (input == null || startat >= input.Length || startat < 0)
-                throw new AutomataException(AutomataExceptionKind.InvalidArgument);
-
-            int k = ((endat < 0 | endat >= input.Length) ? input.Length : endat + 1);
-
-            if (this.A.containsAnchors)
-            {
-                #region original regex contains anchors
-
-                //TBD: prefix optimization
-                //if (A2 == null)
-                //{
-                //#region initialize A2 to A.RemoveAnchors()
-                //this.A2 = A.ReplaceAnchors();
-                //int qA2;
-                //if (!regex2state.TryGetValue(this.A2, out qA2))
-                //{
-                //    //the regex does not yet exist
-                //    qA2 = this.nextStateId++;
-                //    this.regex2state[this.A2] = qA2;
-                //}
-                //this.q0_A2 = qA2;
-                //if (qA2 >= this.StateLimit)
-                //{
-                //    this.deltaExtra[qA2] = new int[this.K];
-                //    this.state2regexExtra[qA2] = this.A2;
-                //}
-                //else
-                //{
-                //    this.state2regex[qA2] = this.A2;
-                //}
-                //#endregion
-                //}
-                //int q = this.q0_A2;
-                //SymbolicRegexNode<S> regex = this.A2;
-
-                int q = this.q0_A;
-                SymbolicRegexNode<S> regex = this.A;
-                int i = startat;
-
-                if (i == 0)
-                    q = DeltaBorder(BorderSymbol.Beg, q, out _);
-
-                while (i < k)
-                {
-                    int c = input[i];
-                    int p;
-
-                    if (c == 10)
-                    {
-                        p = DeltaBorder(BorderSymbol.EOL, q, out _);
-                        p = Delta(10, p, out _);
-                        p = DeltaBorder(BorderSymbol.BOL, p, out regex);
-                    }
-                    else
-                        p = Delta(c, q, out regex);
-
-                    if (regex == this.builder.dotStar)
-                    {
-                        //the input is accepted no matter how the input continues
-                        return true;
-                    }
-                    if (regex == this.builder.nothing)
-                    {
-                        //the input is rejected no matter how the input continues
-                        return false;
-                    }
-
-                    //continue from the target state
-                    q = p;
-                    i += 1;
-                }
-
-                q = DeltaBorder(BorderSymbol.End, q, out regex);
-
-                return regex.IsNullable;
-                #endregion
-            }
-            else
-            {
-                #region original regex contains no anchors
-                int i = FindFinalStatePosition(input, k, startat, out _, out _);
-                if (i == k)
-                    //the search for final state exceeded the input, so final state was not found
-                    return false;
-                else
-                    //since A has no anchors the pattern is really .*A.*
-                    //thus if input[0...i] is in L(.*A) then input is in L(.*A.*)
-                    return true;
-                #endregion
             }
         }
 
@@ -1223,113 +1108,6 @@ namespace System.Text.RegularExpressions.SRM
             return last_start;
         }
 
-        ///// <summary>
-        ///// Return the position of the character that leads to a final state in A1
-        ///// </summary>
-        ///// <param name="input">given input string</param>
-        ///// <param name="i">start position</param>
-        ///// <param name="i_q0">last position the initial state of A1 was visited</param>
-        ///// <param name="k">input length or bounded input length</param>
-        ///// <param name="watchdog">length of the match or -1</param>
-        //private int FindFinalStatePosition(string input, int k, int i, out int i_q0, out int watchdog)
-        //{
-        //    int q = q0_A1;
-        //    int i_q0_A1 = i;
-
-        //    SymbolicRegexNode<S> regex = null;
-
-        //    // start with the start symbol in order to eliminate a possible start anchor
-        //    // q will remain the same if there is no start anchor
-        //    if (i == 0)
-        //        q = DeltaBorder(BorderSymbol.Beg, q, out regex);
-
-        //    while (i < k)
-        //    {
-        //        if (q == q0_A1)
-        //        {
-        //            i = IndexOfStartset(input, i);
-
-        //            if (i == -1)
-        //            {
-        //                i_q0 = i_q0_A1;
-        //                watchdog = -1;
-        //                return k;
-        //            }
-        //            i_q0_A1 = i;
-        //        }
-
-        //        int c = input[i];
-        //        int p;
-
-        //        if (c == 10)
-        //        {
-        //            p = DeltaBorder(BorderSymbol.EOL, q, out regex);
-        //            if (regex.isNullable)
-        //            {
-        //                //match has been found due to endline anchor
-        //                //so the match actually ends at the prior character
-        //                //unless the prior character does not exist
-        //                i = (i > 0 ? i - 1 : 0);
-        //                break;
-        //            }
-        //            p = Delta(10, p, out regex);
-        //            if (regex.isNullable)
-        //            {
-        //                //match has been found due to newline itself
-        //                //this can happen if anchor is not used
-        //                //but the newline character is used in the pattern
-        //                break;
-        //            }
-        //            p = DeltaBorder(BorderSymbol.BOL, p, out regex);
-        //            if (regex.isNullable)
-        //            {
-        //                //match has been found due to startline anchor
-        //                //highly unusual case that should not really happen
-        //                //in this case newline is part of the match
-        //                break;
-        //            }
-        //            if (regex == this.builder.nothing)
-        //            {
-        //                //p is a deadend state so any further search is meaningless
-        //                i_q0 = i_q0_A1;
-        //                watchdog = -1;
-        //                return k;
-        //            }
-        //        }
-        //        else
-        //        {
-        //            p = Delta(c, q, out regex);
-
-        //            if (regex.isNullable)
-        //            {
-        //                //p is a final state so match has been found
-        //                break;
-        //            }
-        //            else if (regex == this.builder.nothing)
-        //            {
-        //                //p is a deadend state so any further search is meaningless
-        //                i_q0 = i_q0_A1;
-        //                watchdog = -1;
-        //                return k;
-        //            }
-        //        }
-
-        //        //continue from the target state
-        //        q = p;
-        //        i += 1;
-        //    }
-        //    if (i == k)
-        //    {
-        //        q = DeltaBorder(BorderSymbol.End, q, out regex);
-        //        if (regex.IsNullable)
-        //            //match occurred due to end anchor
-        //            i = i - 1;
-        //    }
-        //    i_q0 = i_q0_A1;
-        //    watchdog = (regex == null ? -1 : this.GetWatchdog(regex));
-        //    return i;
-        //}
-
         /// <summary>
         /// FindFinalState optimized for the case when A starts with a fixed prefix
         /// </summary>
@@ -1450,7 +1228,7 @@ namespace System.Text.RegularExpressions.SRM
                         //but the newline character is used in the pattern
                         break;
                     }
-                    p = DeltaBorder(BorderSymbol.BOL, q, out regex);
+                    p = DeltaBorder(BorderSymbol.BOL, p, out regex);
                     if (regex.isNullable)
                     {
                         //match has been found due to startline anchor
@@ -1510,7 +1288,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="input">pointer to input string</param>
         /// <param name="limit">upper bound on the number of found matches, nonpositive value (default is 0) means no bound</param>
         /// </summary>
-        unsafe public List<Match> Matches_(string input, int limit = 0, int startat = 0, int endat = -1)
+        unsafe public List<Match> FindMatch_(string input, int limit = 0, int startat = 0, int endat = -1)
         {
             int k = ((endat < 0 | endat >= input.Length) ? input.Length : endat + 1);
             //stores the accumulated matches

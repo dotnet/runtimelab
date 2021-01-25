@@ -12,7 +12,9 @@ namespace System.Text.RegularExpressions.SRM
         private static readonly CharSetSolver solver = new CharSetSolver();
         private static readonly RegexToAutomatonConverter<BDD> converter = new RegexToAutomatonConverter<BDD>(solver);
 
-        private IMatcher matcher;
+        internal const string _DFA_incompatible_with = "RegexOptions.DFA is incompatible with ";
+
+        internal IMatcher matcher;
 
         public Regex(string pattern) : this(pattern, RegexOptions.None) { }
 
@@ -55,17 +57,16 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="endat">end position in the input, -1 means that the value is unspecified and taken to be input.Length-1</param>
         /// </summary>
         public bool IsMatch(string input, int startat = 0, int endat = -1)
-            => matcher.IsMatch(input, startat, endat);
+            => matcher.FindMatch(true, input, startat, endat) is null;
 
         /// <summary>
         /// Returns all matches as pairs (startindex, length) in the input string.
         /// </summary>
         /// <param name="input">given iput string</param>
-        /// <param name="limit">as soon as this many matches have been found the search terminates, 0 or negative value means that there is no bound, default is 0</param>
         /// <param name="startat">start position in the input, default is 0</param>
         /// <param name="endat">end position in the input, -1 means that the value is unspecified and taken to be input.Length-1</param>
-        public List<Match> Matches(string input, int limit = 0, int startat = 0, int endat = -1)
-            => matcher.Matches(input, limit, startat, endat);
+        public Match FindMatch(string input, int startat = 0, int endat = -1)
+            => matcher.FindMatch(false, input, startat, endat);
 
         /// <summary>
         /// Serialize this symbolic regex matcher to the given file.

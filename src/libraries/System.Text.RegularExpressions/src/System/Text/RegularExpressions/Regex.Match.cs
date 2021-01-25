@@ -79,10 +79,7 @@ namespace System.Text.RegularExpressions
                 ThrowHelper.ThrowArgumentNullException(ExceptionArgument.input);
             }
 
-            if (_useSRM)
-                return RunSRM(input, 0, input.Length);
-            else
-                return Run(quick: false, -1, input, 0, input.Length, UseOptionR() ? input.Length : 0)!;
+            return Run(quick: false, -1, input, 0, input.Length, UseOptionR() ? input.Length : 0)!;
         }
 
         /// <summary>
@@ -96,10 +93,7 @@ namespace System.Text.RegularExpressions
                 ThrowHelper.ThrowArgumentNullException(ExceptionArgument.input);
             }
 
-            if (_useSRM)
-                return RunSRM(input, startat, input.Length);
-            else
-                return Run(quick: false, -1, input, 0, input.Length, startat)!;
+            return Run(quick: false, -1, input, 0, input.Length, startat)!;
         }
 
         /// <summary>
@@ -112,10 +106,7 @@ namespace System.Text.RegularExpressions
                 ThrowHelper.ThrowArgumentNullException(ExceptionArgument.input);
             }
 
-            if (_useSRM)
-                return RunSRM(input, beginning, Math.Min(input.Length, length + beginning));
-            else
-                return Run(quick: false, -1, input, beginning, length, UseOptionR() ? beginning + length : beginning)!;
+            return Run(quick: false, -1, input, beginning, length, UseOptionR() ? beginning + length : beginning)!;
         }
 
         /// <summary>

@@ -1,9 +1,11 @@
 namespace System.Text.RegularExpressions.SRM
 {
-    internal struct Match
+    internal class Match
     {
+        internal static Match NoMatch = new (-1, -1);
         public int Index { get; private set; }
         public int Length { get; private set; }
+        public bool Success { get { return Index >= 0; } }
 
         public Match(int index, int length)
         {

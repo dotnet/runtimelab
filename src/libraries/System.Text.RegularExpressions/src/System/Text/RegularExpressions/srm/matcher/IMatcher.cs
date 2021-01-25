@@ -15,20 +15,12 @@ namespace System.Text.RegularExpressions.SRM
     internal interface IMatcher
     {
         /// <summary>
-        /// Returns true iff the input string matches.
+        /// Returns the next match (startindex, length) in the input string.
+        /// </summary>
+        /// <param name="isMatch">if true then return null iff a match exists</param>
         /// <param name="input">given iput string</param>
         /// <param name="startat">start position in the input, default is 0</param>
         /// <param name="endat">end position in the input, -1 means that the value is unspecified and taken to be input.Length-1</param>
-        /// </summary>
-        public bool IsMatch(string input, int startat = 0, int endat = -1);
-
-        /// <summary>
-        /// Returns all matches as pairs (startindex, length) in the input string.
-        /// </summary>
-        /// <param name="input">given iput string</param>
-        /// <param name="limit">as soon as this many matches have been found the search terminates, 0 or negative value means that there is no bound, default is 0</param>
-        /// <param name="startat">start position in the input, default is 0</param>
-        /// <param name="endat">end position in the input, -1 means that the value is unspecified and taken to be input.Length-1</param>
-        public List<Match> Matches(string input, int limit = 0, int startat = 0, int endat = -1);
+        public Match FindMatch(bool isMatch, string input, int startat = 0, int endat = -1);
     }
 }

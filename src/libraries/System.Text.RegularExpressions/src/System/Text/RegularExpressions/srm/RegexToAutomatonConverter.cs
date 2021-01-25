@@ -39,56 +39,6 @@ namespace System.Text.RegularExpressions.SRM
             this.srBuilder = new SymbolicRegexBuilder<S>((ICharAlgebra<S>)solver);
         }
 
-        /// <summary>
-        /// Used in exception messages
-        /// </summary>
-        private static string DescribeRegexNodeType(int node_type)
-        {
-            string description = node_type switch
-            {
-                RegexNode.Oneloop => nameof(RegexNode.Oneloop),
-                RegexNode.Notoneloop => nameof(RegexNode.Notoneloop),
-                RegexNode.Setloop => nameof(RegexNode.Setloop),
-                RegexNode.Onelazy => nameof(RegexNode.Onelazy),
-                RegexNode.Notonelazy => nameof(RegexNode.Notonelazy),
-                RegexNode.Setlazy => nameof(RegexNode.Setlazy),
-                RegexNode.One => nameof(RegexNode.One),
-                RegexNode.Notone => nameof(RegexNode.Notone),
-                RegexNode.Set => nameof(RegexNode.Set),
-                RegexNode.Multi => nameof(RegexNode.Multi),
-                RegexNode.Ref => nameof(RegexNode.Ref),
-                RegexNode.Bol => nameof(RegexNode.Bol),
-                RegexNode.Eol => nameof(RegexNode.Eol),
-                RegexNode.Boundary => nameof(RegexNode.Boundary),
-                RegexNode.NonBoundary => nameof(RegexNode.NonBoundary),
-                RegexNode.ECMABoundary => nameof(RegexNode.ECMABoundary),
-                RegexNode.NonECMABoundary => nameof(RegexNode.NonECMABoundary),
-                RegexNode.Beginning => nameof(RegexNode.Beginning),
-                RegexNode.Start => nameof(RegexNode.Start),
-                RegexNode.EndZ => nameof(RegexNode.EndZ),
-                RegexNode.End => nameof(RegexNode.End),
-                RegexNode.Oneloopatomic => nameof(RegexNode.Oneloopatomic),
-                RegexNode.Notoneloopatomic => nameof(RegexNode.Notoneloopatomic),
-                RegexNode.Setloopatomic => nameof(RegexNode.Setloopatomic),
-                RegexNode.Nothing => nameof(RegexNode.Nothing),
-                RegexNode.Empty => nameof(RegexNode.Empty),
-                RegexNode.Alternate => nameof(RegexNode.Alternate),
-                RegexNode.Concatenate => nameof(RegexNode.Concatenate),
-                RegexNode.Loop => nameof(RegexNode.Loop),
-                RegexNode.Lazyloop => nameof(RegexNode.Lazyloop),
-                RegexNode.Capture => nameof(RegexNode.Capture),
-                RegexNode.Group => nameof(RegexNode.Group),
-                RegexNode.Require => nameof(RegexNode.Require),
-                RegexNode.Prevent => nameof(RegexNode.Prevent),
-                RegexNode.Atomic => nameof(RegexNode.Atomic),
-                RegexNode.Testref => nameof(RegexNode.Testref),
-                RegexNode.Testgroup => nameof(RegexNode.Testgroup),
-                RegexNode.UpdateBumpalong => nameof(RegexNode.UpdateBumpalong),
-                _ => $"({nameof(RegexCode)}:{node_type})"
-            };
-            return description;
-        }
-
         #region Character sequences
 
         private const int SETLENGTH = 1;
@@ -363,9 +313,37 @@ namespace System.Text.RegularExpressions.SRM
                     // update the word letter predicate based on the Unicode definition of it
                     srBuilder.wordLetterPredicate = categorizer.WordLetterCondition;
                     return this.srBuilder.nwbAnchor;
+                case RegexNode.Nothing:
+                    return this.srBuilder.nothing;
                 default:
-                    throw new NotSupportedException($"DFA option does not support '{DescribeRegexNodeType(node.Type)}'");
+                    throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + DescribeRegexNodeType(node.Type));
             }
+        }
+
+        /// <summary>
+        /// Used in exception messages for nonsupported node types
+        /// </summary>
+        private static string DescribeRegexNodeType(int node_type)
+        {
+            string description = node_type switch
+            {
+                RegexNode.Ref => "backreference (\\ number)",
+                RegexNode.Testref => "captured group conditional (?( name ) yes-pattern | no-pattern ) or (?( number ) yes-pattern| no-pattern )",
+                RegexNode.Require => "positive lookahead (?= pattern) or positive lookbehind (?<= pattern)",
+                RegexNode.Prevent => "negative lookahead (?! pattern) or negative lookbehind (?<! pattern)",
+                RegexNode.Start => "contiguous matches (\\G)",
+                //TBD: other atomic patterns that were atomic originally (not converted to atomic)
+                RegexNode.Atomic => "atomic (nonbacktracking) subexpression (?> pattern)",
+                RegexNode.Boundary => "word boundary (\\b)",
+                RegexNode.NonBoundary => "non-word boundary (\\B)",
+                RegexNode.ECMABoundary => "word boundary (\\b)",
+                RegexNode.NonECMABoundary => "non-word boundary (\\B)",
+                RegexNode.Testgroup => nameof(RegexNode.Testgroup),
+                // the default should never arise, since other node types are either supported
+                // or have been removed (e.g. Group) from the final parse tree
+                _ => $"unexpected node type ({nameof(RegexNode)}:{node_type})"
+            };
+            return description;
         }
 
         public static string Escape(char c)

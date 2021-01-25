@@ -10,28 +10,36 @@ namespace System.Text.RegularExpressions
         /// This method is called and the SRM related classes should be loaded only if _useSRM is true
         /// </summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal Match RunSRM(string input, int startat, int length)
+        internal Match? RunSRM(bool quick, string input, int beg, int startat, int length)
         {
-            Match res = System.Text.RegularExpressions.Match.Empty;
-            if (startat >= length)
-                return res;
+            // TBD: endat is buggy in _srm.matcher.FindMatch
+            if (beg + length < input.Length)
+                throw new NotImplementedException($"{nameof(RunSRM)} with {nameof(length)} restriction");
 
-            // TBD: the endat argument of _srm.Matches works incorrectly with length and anchors
-            // but cutting the input is also potentially incorrect because of
-            // potential new $ or \z or \Z anchor matches that were not possible before
-            if (length < input.Length)
-                input = input.Substring(0, length);
+            int endat = Math.Min(beg + length, input.Length) - 1;
 
-            var matches = _srm.Matches(input, 1, startat);
-            if (matches.Count != 0)
+            if (startat > endat)
+                return System.Text.RegularExpressions.Match.Empty;
+
+            var match = _srm.matcher.FindMatch(quick, input, startat, endat);
+            if (quick)
             {
-                res = new Match(this, 1, input, 0, length, 0);
-                res._matches[0][0] = matches[0].Index;
-                res._matches[0][1] = matches[0].Length;
-                res._matchcount[0] = 1;
-                res.Tidy(0);
+                if (match is null)
+                    return null;
+                else
+                    return System.Text.RegularExpressions.Match.Empty;
             }
-            return res;
+            else if (match.Success)
+            {
+                Match res = new Match(this, 1, input, beg, length, startat);
+                res._matches[0][0] = match.Index;
+                res._matches[0][1] = match.Length;
+                res._matchcount[0] = 1;
+                res.Tidy(match.Index + match.Length);
+                return res;
+            }
+            else
+                return System.Text.RegularExpressions.Match.Empty;
         }
     }
 }

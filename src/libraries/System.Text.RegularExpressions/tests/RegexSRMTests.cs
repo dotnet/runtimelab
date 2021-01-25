@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+﻿// Licensed to the .NET Foundation under one or more agreements.if #DEBUG
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
@@ -11,7 +11,10 @@ namespace System.Text.RegularExpressions.Tests
     {
         static void WriteLine(string s)
         {
+#if DEBUG
+            // the string will appear in the Output window
             System.Diagnostics.Debug.WriteLine(s);
+#endif
         }
 
         //0x800 is intended to be RegexOptions.DFA
@@ -23,24 +26,6 @@ namespace System.Text.RegularExpressions.Tests
         public void BasicSRMTest()
         {
             var re = new Regex(@"a+", RegexOptions_DFA);
-            var match1 = re.Match("xxxxxaaaaxxxxxxxxxxaaaaaa");
-            Assert.True(match1.Success);
-            Assert.Equal(5, match1.Index);
-            Assert.Equal(4, match1.Length);
-            Assert.Equal("aaaa", match1.Value);
-            var match2 = match1.NextMatch();
-            Assert.True(match2.Success);
-            Assert.Equal(19, match2.Index);
-            Assert.Equal(6, match2.Length);
-            Assert.Equal("aaaaaa", match2.Value);
-            var match3 = match2.NextMatch();
-            Assert.False(match3.Success);
-        }
-
-        [Fact]
-        public void BasicSRMTestWithVectorize()
-        {
-            var re = new Regex(@"a+", RegexOptions_DFA | RegexOptions_Vectorize);
             var match1 = re.Match("xxxxxaaaaxxxxxxxxxxaaaaaa");
             Assert.True(match1.Success);
             Assert.Equal(5, match1.Index);
@@ -73,84 +58,110 @@ namespace System.Text.RegularExpressions.Tests
             Assert.False(match3.Success);
         }
 
-        [Fact]
-        public void BasicSRMTestWithLengthBound()
-        {
-            var re = new Regex(@"a+", RegexOptions_DFA);
-            var match1 = re.Match("xxxxxaaaaxxxxxxxxxxaaaaaa", 1, 7);
-            Assert.True(match1.Success);
-            Assert.Equal(5, match1.Index);
-            Assert.Equal(3, match1.Length);
-            Assert.Equal("aaa", match1.Value);
-            var match2 = match1.NextMatch();
-            Assert.False(match2.Success);
-        }
-
+        static int _NotSupportedException_count;
         [Theory]
-        [MemberData(nameof(MonoTests_RegexTestCases))]
-        public void ValidateSRMRegex(string pattern, RegexOptions options, string input, string expected)
+        [MemberData(nameof(MonoTests_RegexTestCases)), MemberData(nameof(MonoTests_RegexTestCases))]
+        public void ValidateSRMRegex_Monotests(string pattern, RegexOptions options, string input, string expected)
         {
-            if ((options & RegexOptions.RightToLeft) != 0)
-                return; // not supported
-
-            string result = "Fail.";
+            string result;
+            string result_isMatch;
             try
             {
                 var re = new Regex(pattern, options | RegexOptions_DFA);
                 var match = re.Match(input);
+                result_isMatch = (re.IsMatch(input) ? "Pass." : "Fail.");
 
                 if (match.Success)
                 {
                     result = "Pass.";
                     result += $" Group[0]=({match.Index},{match.Length})";
                 }
+                else
+                {
+                    result = "Fail.";
+                }
             }
-            catch (ArgumentException ae)
+            catch (ArgumentException)
             {
-                System.Diagnostics.Debug.WriteLine(ae.Message);
                 result = "Error.";
+                result_isMatch = "Error.";
             }
             catch (NotSupportedException nse)
             {
-                // not supported regex of DFA option
-                WriteLine(nse.Message);
-                return;
-            }
-            catch (NotImplementedException nie)
-            {
-                // not yet implemented but should be supported, e.g., \b and \B
-                WriteLine(nie.Message);
+                // incompatible with DFA option
+                _NotSupportedException_count += 1;
+                WriteLine(_NotSupportedException_count + ":" + nse.Message);
+
+                string[] possible_errors = new string[]
+                {"RightToLeft", "conditional", "lookahead", "lookbehind", "backreference",
+                    "atomic", "contiguous", "characterless", "nullable"};
+
+                Assert.True(Array.Exists(possible_errors, nse.Message.Contains));
                 return;
             }
             catch (Exception ex)
             {
-                WriteLine(ex.Message);
                 result = ex.ToString();
+                result_isMatch = result;
             }
 
             if (!expected.StartsWith(result))
-                WriteLine(expected + " != " + result);
+                WriteLine(expected + " <> " + result);
 
-            // capture groups not supported
+            // capture groups not supported, so validate Pass/Fail and Group[0]
             Assert.StartsWith(result, expected, StringComparison.Ordinal);
+            Assert.StartsWith(result_isMatch, expected, StringComparison.Ordinal);
         }
 
-        /// <summary>
-        /// Copy of MonoTests.RegexTestCases
-        /// </summary>
-        public static IEnumerable<object[]> MonoTests_RegexTestCases_handpicked()
+        [Theory]
+        [MemberData(nameof(ValidateSRMRegex_NotSupportedCases_Data))]
+        public void ValidateSRMRegex_NotSupportedCases(string pattern, RegexOptions options, string expected)
         {
-            yield return new object[] { @"((?s)^a(.))((?m)^b$)", RegexOptions.None, "a\nb\nc\n", "Pass. Group[0]=(0,3) Group[1]=(0,2) Group[2]=(1,1) Group[3]=(2,1)" };
-            yield return new object[] { @"(?>a*).", RegexOptions.ExplicitCapture, "aaaa", "Fail." };
-            yield return new object[] { @"((?s-i:a.))b", RegexOptions.IgnoreCase, "a\nB", "Pass. Group[0]=(0,3) Group[1]=(0,2)" };
-            yield return new object[] { @"(?:..)*?a", RegexOptions.None, "aba", "Pass. Group[0]=(0,1)" };
+            string actual = string.Empty;
+            try
+            {
+                new Regex(pattern, options | RegexOptions_DFA);
+            }
+            catch (Exception e)
+            {
+                actual = e.Message;
+            }
+            Assert.Contains(expected, actual);
         }
 
         /// <summary>
-        /// Copy of MonoTests.RegexTestCases
+        /// Nonsupported cases for the DFA option that are detected at Regex construction time
+        /// </summary>
+        public static IEnumerable<object[]> ValidateSRMRegex_NotSupportedCases_Data()
+        {
+            yield return new object[] { @"abc", RegexOptions.RightToLeft, "RightToLeft" };
+            yield return new object[] { @"^(a)?(?(1)a|b)+$", RegexOptions.None, "captured group conditional" };
+            yield return new object[] { @"(abc)\1", RegexOptions.None, "backreference" };
+            yield return new object[] { @"a(?=d).", RegexOptions.None, "positive lookahead" };
+            yield return new object[] { @"a(?!b).", RegexOptions.None, "negative lookahead" };
+            yield return new object[] { @"(?<=a)b", RegexOptions.None, "positive lookbehind" };
+            yield return new object[] { @"(?<!c)b", RegexOptions.None, "negative lookbehind" };
+            yield return new object[] { @"(?>(abc)*).", RegexOptions.None, "atomic" };
+            yield return new object[] { @"\G(\w+\s?\w*),?", RegexOptions.None, "contiguous matches" };
+            //TBD: RegexNode.Testgroup is also not supported
+            //TBD: following needs fix of atomic
+            //yield return new object[] { @"(?>a*).", RegexOptions.None, "atomic" };
+        }
+
+        /// <summary>
+        /// Copy of MonoTests.RegexTestCases, order is rearranged, tricky ones (that exposed issues/bugs) come first
         /// </summary>
         public static IEnumerable<object[]> MonoTests_RegexTestCases()
         {
+            //-----------
+            //tricky ones:
+            yield return new object[] { @"((?s)^a(.))((?m)^b$)", RegexOptions.None, "a\nb\nc\n", "Pass. Group[0]=(0,3) Group[1]=(0,2) Group[2]=(1,1) Group[3]=(2,1)" };
+            yield return new object[] { @"((?s-i:a.))b", RegexOptions.IgnoreCase, "a\nB", "Pass. Group[0]=(0,3) Group[1]=(0,2)" };
+            // TBD: needs fix of lazyloop
+            //yield return new object[] { @"(?:..)*?a", RegexOptions.None, "aba", "Pass. Group[0]=(0,1)" };
+            // TBD: needs fix of atomic
+            //yield return new object[] { @"(?>a*).", RegexOptions.ExplicitCapture, "aaaa", "Fail." };
+            //----------
             yield return new object[] { @"abc", RegexOptions.None, "abc", "Pass. Group[0]=(0,3)" };
             yield return new object[] { @"abc", RegexOptions.None, "xbc", "Fail." };
             yield return new object[] { @"abc", RegexOptions.None, "axc", "Fail." };
@@ -500,7 +511,6 @@ namespace System.Text.RegularExpressions.Tests
             yield return new object[] { @"(?<!c)b", RegexOptions.None, "b", "Pass. Group[0]=(0,1)" };
             yield return new object[] { @"(?<%)b", RegexOptions.None, "-", "Error." };
             yield return new object[] { @"(?:..)*a", RegexOptions.None, "aba", "Pass. Group[0]=(0,3)" };
-            //yield return new object[] { @"(?:..)*?a", RegexOptions.None, "aba", "Pass. Group[0]=(0,1)" };
             yield return new object[] { @"^(?:b|a(?=(.)))*\1", RegexOptions.None, "abc", "Pass. Group[0]=(0,2) Group[1]=(1,1)" };
             yield return new object[] { @"^(){3,5}", RegexOptions.None, "abc", "Pass. Group[0]=(0,0) Group[1]=(0,0)(0,0)(0,0)" };
             yield return new object[] { @"^(a+)*ax", RegexOptions.None, "aax", "Pass. Group[0]=(0,3) Group[1]=(0,1)" };
@@ -537,7 +547,6 @@ namespace System.Text.RegularExpressions.Tests
             yield return new object[] { @"(?-i:a)b", RegexOptions.IgnoreCase, "AB", "Fail." };
             yield return new object[] { @"((?-i:a))b", RegexOptions.IgnoreCase, "AB", "Fail." };
             yield return new object[] { @"((?-i:a.))b", RegexOptions.IgnoreCase, "a\nB", "Fail." };
-            //yield return new object[] { @"((?s-i:a.))b", RegexOptions.IgnoreCase, "a\nB", "Pass. Group[0]=(0,3) Group[1]=(0,2)" };
             yield return new object[] { @"((?s-i:a.))b", RegexOptions.IgnoreCase, "B\nB", "Fail." };
             yield return new object[] { @"(?:c|d)(?:)(?:a(?:)(?:b)(?:b(?:))(?:b(?:)(?:b)))", RegexOptions.None, "cabbbb", "Pass. Group[0]=(0,6)" };
             yield return new object[] { @"(?:c|d)(?:)(?:aaaaaaaa(?:)(?:bbbbbbbb)(?:bbbbbbbb(?:))(?:bbbbbbbb(?:)(?:bbbbbbbb)))", RegexOptions.None, "caaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "Pass. Group[0]=(0,41)" };
@@ -552,7 +561,6 @@ namespace System.Text.RegularExpressions.Tests
             yield return new object[] { @"(?<!(c|d))[ab]", RegexOptions.None, "dbaacb", "Pass. Group[0]=(2,1) Group[1]=" };
             yield return new object[] { @"(?<!cd)[ab]", RegexOptions.None, "cdaccb", "Pass. Group[0]=(5,1)" };
             yield return new object[] { @"^(?:a?b?)*$", RegexOptions.None, "a--", "Fail." };
-            //yield return new object[] { @"((?s)^a(.))((?m)^b$)", RegexOptions.None, "a\nb\nc\n", "Pass. Group[0]=(0,3) Group[1]=(0,2) Group[2]=(1,1) Group[3]=(2,1)" };
             yield return new object[] { @"((?m)^b$)", RegexOptions.None, "a\nb\nc\n", "Pass. Group[0]=(2,1) Group[1]=(2,1)" };
             yield return new object[] { @"(?m)^b", RegexOptions.None, "a\nb\n", "Pass. Group[0]=(2,1)" };
             yield return new object[] { @"(?m)^(b)", RegexOptions.None, "a\nb\n", "Pass. Group[0]=(2,1) Group[1]=(2,1)" };
@@ -1180,7 +1188,6 @@ namespace System.Text.RegularExpressions.Tests
             yield return new object[] { @"abc*(?!c{1,5})", RegexOptions.None, "abcc", "Pass. Group[0]=(0,4)" };
             yield return new object[] { @"abc*(?!c{1,})", RegexOptions.None, "abcc", "Pass. Group[0]=(0,4)" };
             yield return new object[] { @"(a)(?<1>b)(?'1'c)", RegexOptions.ExplicitCapture, "abc", "Pass. Group[0]=(0,3) Group[1]=(1,1)(2,1)" };
-            //yield return new object[] { @"(?>a*).", RegexOptions.ExplicitCapture, "aaaa", "Fail." };
             yield return new object[] { @"(?<ab>ab)c\1", RegexOptions.None, "abcabc", "Pass. Group[0]=(0,5) Group[1]=(0,2)" };
             yield return new object[] { @"\1", RegexOptions.ECMAScript, "-", "Fail." };
             yield return new object[] { @"\2", RegexOptions.ECMAScript, "-", "Fail." };
