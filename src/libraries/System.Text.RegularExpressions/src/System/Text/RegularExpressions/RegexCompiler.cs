@@ -1770,7 +1770,7 @@ namespace System.Text.RegularExpressions
             }
 
             // We use an empty bit from the node's options to store data on whether a node contains captures.
-            Debug.Assert(Regex.MaxOptionShift == 10);
+            Debug.Assert(Regex.MaxOptionShift == 11);
             const RegexOptions HasCapturesFlag = (RegexOptions)(1 << 31);
 
             // Skip the Capture node. We handle the implicit root capture specially.

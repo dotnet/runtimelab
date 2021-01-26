@@ -17,15 +17,12 @@ namespace System.Text.RegularExpressions.Tests
 #endif
         }
 
-        //0x800 is intended to be RegexOptions.DFA
-        const RegexOptions RegexOptions_DFA = (RegexOptions)0x800;
-        //0x400 is intended to be RegexOptions.Vectorize
-        const RegexOptions RegexOptions_Vectorize = (RegexOptions)0x400;
+        RegexOptions DFA = (RegexOptions)0x400;
 
         [Fact]
         public void BasicSRMTest()
         {
-            var re = new Regex(@"a+", RegexOptions_DFA);
+            var re = new Regex(@"a+", DFA);
             var match1 = re.Match("xxxxxaaaaxxxxxxxxxxaaaaaa");
             Assert.True(match1.Success);
             Assert.Equal(5, match1.Index);
@@ -43,7 +40,7 @@ namespace System.Text.RegularExpressions.Tests
         [Fact]
         public void BasicSRMTestWithIgnoreCase()
         {
-            var re = new Regex(@"a+", RegexOptions_DFA | RegexOptions.IgnoreCase);
+            var re = new Regex(@"a+", DFA | RegexOptions.IgnoreCase);
             var match1 = re.Match("xxxxxaAAaxxxxxxxxxxaaaaAa");
             Assert.True(match1.Success);
             Assert.Equal(5, match1.Index);
@@ -58,6 +55,37 @@ namespace System.Text.RegularExpressions.Tests
             Assert.False(match3.Success);
         }
 
+        static string And(params string[] regexes)
+        {
+            string conj = "(" + regexes[regexes.Length - 1] + ")";
+            for (int i= regexes.Length - 2; i >=0; i--)
+            {
+                conj = $"(?({regexes[i]}){conj}|[0-[0]])";
+            }
+            return conj;
+        }
+
+        [Fact]
+        public void SRMTest_ConjuctionIsMatch()
+        {
+            var re = new Regex(And(".*a.*",".*b.*"), DFA | RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            bool ok = re.IsMatch("xxaaxxBxaa");
+            Assert.True(ok);
+            bool fail = re.IsMatch("xxaaxxcxaa");
+            Assert.False(fail);
+        }
+
+        [Fact]
+        public void SRMTest_ConjuctionFindMatch()
+        {
+            // contains lower, upper, and a digit, and is between 2 and 4 characters long
+            var re = new Regex(And(".*[a-z].*", ".*[A-Z].*", ".*[0-9].*", ".{2,4}"), DFA | RegexOptions.Singleline);
+            var match = re.Match("xxaac\n5Bxaa");
+            Assert.True(match.Success);
+            Assert.Equal(4, match.Index);
+            Assert.Equal(4, match.Length);
+        }
+
         static int _NotSupportedException_count;
         [Theory]
         [MemberData(nameof(MonoTests_RegexTestCases)), MemberData(nameof(MonoTests_RegexTestCases))]
@@ -67,7 +95,7 @@ namespace System.Text.RegularExpressions.Tests
             string result_isMatch;
             try
             {
-                var re = new Regex(pattern, options | RegexOptions_DFA);
+                var re = new Regex(pattern, options | DFA);
                 var match = re.Match(input);
                 result_isMatch = (re.IsMatch(input) ? "Pass." : "Fail.");
 
@@ -120,7 +148,7 @@ namespace System.Text.RegularExpressions.Tests
             string actual = string.Empty;
             try
             {
-                new Regex(pattern, options | RegexOptions_DFA);
+                new Regex(pattern, options | DFA);
             }
             catch (Exception e)
             {

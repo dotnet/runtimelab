@@ -19,7 +19,7 @@ namespace System.Text.RegularExpressions
     /// </summary>
     public partial class Regex : ISerializable
     {
-        internal const int MaxOptionShift = 10;
+        internal const int MaxOptionShift = 11;
 
         protected internal string? pattern;                   // The string pattern provided
         protected internal RegexOptions roptions;             // the top-level options from the options string
@@ -92,10 +92,6 @@ namespace System.Text.RegularExpressions
         /// </remarks>
         private void Init(string pattern, RegexOptions options, TimeSpan matchTimeout, CultureInfo? culture)
         {
-            _useSRM = ((int)options & 0x0800) == 0x0800; // extract the DFA flag
-            bool vectorizeSRM = ((int)options & 0x0400) == 0x0400; // extract the Vectorize flag
-            options = (RegexOptions)((uint)options & ~(uint)0x0C00); //remove the DFA and Vectorize flags
-
             ValidatePattern(pattern);
             ValidateOptions(options);
             ValidateMatchTimeout(matchTimeout);
@@ -124,12 +120,10 @@ namespace System.Text.RegularExpressions
             // if SRM is used then construct the SMR.Regex matcher
             // this construction fails and throws a NotSupportedException
             // for some unsupported constructs used in the original regex
+            _useSRM = (options & RegexOptions.DFA) != 0;
             if (_useSRM)
-            {
-                //add back the Vectorize flag into the options of SRM
-                uint opt = (vectorizeSRM ? (uint)options | 0x0400 : (uint)options);
-                _srm = InitializeSRM(tree.Root, (RegexOptions)opt);
-            }
+                // remove the DFA flag because it is undefined in SRM
+                _srm = InitializeSRM(tree.Root, options & ~RegexOptions.DFA);
 
             InitializeReferences();
         }
@@ -163,6 +157,7 @@ namespace System.Text.RegularExpressions
 #if DEBUG
                              RegexOptions.Debug |
 #endif
+                             RegexOptions.DFA |
                              RegexOptions.CultureInvariant)) != 0))
             {
                 ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.options);
