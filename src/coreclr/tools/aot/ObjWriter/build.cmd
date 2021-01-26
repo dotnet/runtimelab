@@ -13,7 +13,7 @@ git apply "%~dp0llvm.patch" || exit /b 1
 
 :: Copy ObjWriter files
 robocopy /mir "%~dp0\" tools\ObjWriter
-if %ErrorLevel% geq 8 exit /b %ErrorLevel%
+if %ErrorLevel% geq 8 exit /b 1
 
 :: Configure and build
 if not exist build mkdir build
