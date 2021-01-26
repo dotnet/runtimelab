@@ -199,6 +199,12 @@ namespace System.Xml.Serialization
                 _primitiveType = type;
                 return;
             }
+
+            if (Mode == SerializationMode.ReflectionOnly)
+            {
+                return;
+            }
+
             _tempAssembly = s_cache[defaultNamespace, type];
             if (_tempAssembly == null)
             {
