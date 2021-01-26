@@ -371,62 +371,51 @@ namespace ILCompiler
 
         public override bool ShouldConsiderLdTokenReferenceAConstruction(TypeDesc type)
         {
-            // Tell codegen to use necessary type symbol. We're going to upgrade to a constructed
-            // type symbol from our IL scanner if needed when we get the GetDependenciesDueToMethodCodePresence callback.
-            return false;
+            // TODO: this can be further optimized
+            //
+            // Codegen will consult metadata manager on this whenever it sees LDTOKEN of some type.
+            // We could report false here if we had guarantees some other code (e.g. GetDependenciesDueToMethodCodePresenceInternal)
+            // is going to look at this again and create a constructed type dependendency if it's what's necessary
+            // (don't forget that "necessary" and "constructed" EETypes get coalesced into a single constructed EEType
+            // if there's at least one constructed EEType for this type in the graph, so telling codegen to just grab
+            // a necessary EEType doesn't hurt anything.
+            //
+            // The advantage of reporting false and trying to narrow this down is in being able to eliminate
+            // constructed EETypes for patterns like "if (typeof(T) == typeof(Foo))". The typecheck
+            // doesn't need a constructed EEType with a full vtable - we can get away with a stripped down
+            // EEType that has a lot less dependencies (the virtual methods are not generated).
+            return ConstructedEETypeNode.CreationAllowed(type);
         }
 
         protected override void GetDependenciesDueToMethodCodePresenceInternal(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)
         {
             bool scanReflection = (_generationOptions & UsageBasedMetadataGenerationOptions.ReflectionILScanning) != 0;
-            bool scanInterop = (_generationOptions & UsageBasedMetadataGenerationOptions.IteropILScanning) != 0;
-
-            // NOTE: we will intentionally run the scanner even if both scan modes are disabled
-            // because we rely on the scanner to report constructed EETypes for LDTOKEN references
-            // to types.
-            ReflectionMethodBodyScanner.ScanModes modes = 0;
-            if (scanReflection)
-                modes |= ReflectionMethodBodyScanner.ScanModes.Reflection;
-            if (scanInterop)
-                modes |= ReflectionMethodBodyScanner.ScanModes.Interop;
 
             Debug.Assert(methodIL != null || method.IsAbstract || method.IsPInvoke || method.IsInternalCall);
 
-            if (methodIL != null)
+            if (methodIL != null && scanReflection)
             {
-                try
+                if (FlowAnnotations.RequiresDataflowAnalysis(method))
                 {
-                    ReflectionMethodBodyScanner.Scan(ref dependencies, factory, methodIL, modes);
-                }
-                catch (TypeSystemException)
-                {
-                    // A problem with the IL - we just don't scan it...
+                    dependencies = dependencies ?? new DependencyList();
+                    dependencies.Add(factory.DataflowAnalyzedMethod(methodIL.GetMethodILDefinition()), "Method has annotated parameters");
                 }
 
-                if (scanReflection)
+                if ((method.HasInstantiation && !method.IsCanonicalMethod(CanonicalFormKind.Any)))
                 {
-                    if (FlowAnnotations.RequiresDataflowAnalysis(method))
-                    {
-                        dependencies = dependencies ?? new DependencyList();
-                        dependencies.Add(factory.DataflowAnalyzedMethod(methodIL.GetMethodILDefinition()), "Method has annotated parameters");
-                    }
+                    MethodDesc typicalMethod = method.GetTypicalMethodDefinition();
+                    Debug.Assert(typicalMethod != method);
 
-                    if ((method.HasInstantiation && !method.IsCanonicalMethod(CanonicalFormKind.Any)))
-                    {
-                        MethodDesc typicalMethod = method.GetTypicalMethodDefinition();
-                        Debug.Assert(typicalMethod != method);
+                    GetFlowDependenciesForInstantiation(ref dependencies, factory, method.Instantiation, typicalMethod.Instantiation, method);
+                }
 
-                        GetFlowDependenciesForInstantiation(ref dependencies, factory, method.Instantiation, typicalMethod.Instantiation, method);
-                    }
+                TypeDesc owningType = method.OwningType;
+                if (owningType.HasInstantiation && !owningType.IsCanonicalSubtype(CanonicalFormKind.Any))
+                {
+                    TypeDesc owningTypeDefinition = owningType.GetTypeDefinition();
+                    Debug.Assert(owningType != owningTypeDefinition);
 
-                    TypeDesc owningType = method.OwningType;
-                    if (owningType.HasInstantiation && !owningType.IsCanonicalSubtype(CanonicalFormKind.Any))
-                    {
-                        TypeDesc owningTypeDefinition = owningType.GetTypeDefinition();
-                        Debug.Assert(owningType != owningTypeDefinition);
-
-                        GetFlowDependenciesForInstantiation(ref dependencies, factory, owningType.Instantiation, owningTypeDefinition.Instantiation, owningType);
-                    }
+                    GetFlowDependenciesForInstantiation(ref dependencies, factory, owningType.Instantiation, owningTypeDefinition.Instantiation, owningType);
                 }
             }
         }
@@ -482,7 +471,7 @@ namespace ILCompiler
         public override void GetDependenciesDueToAccess(ref DependencyList dependencies, NodeFactory factory, MethodIL methodIL, FieldDesc writtenField)
         {
             bool scanReflection = (_generationOptions & UsageBasedMetadataGenerationOptions.ReflectionILScanning) != 0;
-            if (scanReflection && FlowAnnotations.RequiresDataflowAnalysis(writtenField))
+            if (scanReflection && Dataflow.ReflectionMethodBodyScanner.RequiresReflectionMethodBodyScannerForAccess(FlowAnnotations, writtenField))
             {
                 dependencies = dependencies ?? new DependencyList();
                 dependencies.Add(factory.DataflowAnalyzedMethod(methodIL.GetMethodILDefinition()), "Access to interesting field");
@@ -492,7 +481,7 @@ namespace ILCompiler
         public override void GetDependenciesDueToAccess(ref DependencyList dependencies, NodeFactory factory, MethodIL methodIL, MethodDesc calledMethod)
         {
             bool scanReflection = (_generationOptions & UsageBasedMetadataGenerationOptions.ReflectionILScanning) != 0;
-            if (scanReflection && FlowAnnotations.RequiresDataflowAnalysis(calledMethod))
+            if (scanReflection && Dataflow.ReflectionMethodBodyScanner.RequiresReflectionMethodBodyScannerForCallSite(FlowAnnotations, calledMethod))
             {
                 dependencies = dependencies ?? new DependencyList();
                 dependencies.Add(factory.DataflowAnalyzedMethod(methodIL.GetMethodILDefinition()), "Call to interesting method");
@@ -863,10 +852,5 @@ namespace ILCompiler
         /// Scan IL for common reflection patterns to find additional compilation roots.
         /// </summary>
         ReflectionILScanning = 4,
-
-        /// <summary>
-        /// Scan IL for common interop patterns to find additional compilation roots.
-        /// </summary>
-        IteropILScanning = 8,
     }
 }
