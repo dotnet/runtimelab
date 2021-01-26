@@ -9,7 +9,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendTargetFrameworkToOutputPath Condition="'$(BuildingInsideVisualStudio)' == 'true'">true</AppendTargetFrameworkToOutputPath>
-    <OutputPath>$(RuntimeBinDir)/ilc</OutputPath>
+    <OutputPath>$(RuntimeBinDir)ilc</OutputPath>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
     <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
     <RuntimeIdentifiers>linux-x64;win-x64;osx-x64</RuntimeIdentifiers>
@@ -36,16 +36,18 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <ObjectWriterVersion>1.0.0-alpha-28820-01</ObjectWriterVersion>
+    <ILCompilerVersion>6.0.0-preview.1.21075.1</ILCompilerVersion>
     <CoreDisToolsVersion>1.0.1-prerelease-00005</CoreDisToolsVersion>
+
+    <ObjWriterArtifactPath>$(ArtifactsDir)llvm\build\bin\Release\$(LibraryNamePrefix)objwriter$(LibraryNameExtension)</ObjWriterArtifactPath>
 
     <!-- CoreDisTools are used in debugging visualizers. The package only exists on Windows -->
     <IncludeCoreDisTools Condition="'$(TargetsWindows)' == 'true' and '$(Configuration)' != 'Release'">true</IncludeCoreDisTools>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetArchitecture)' != 'arm64'">
-    <PackageReference Include="Microsoft.DotNet.ObjectWriter">
-      <Version>$(ObjectWriterVersion)</Version>
+    <PackageReference Condition="!Exists('$(ObjWriterArtifactPath)')" Include="Microsoft.DotNet.ILCompiler">
+      <Version>$(ILCompilerVersion)</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.NetCore.CoreDisTools" Condition="'$(IncludeCoreDisTools)' == 'true'">
       <Version>$(CoreDisToolsVersion)</Version>
@@ -53,13 +55,20 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetArchitecture)' != 'arm64'">
-    <Content Include="$(NuGetPackageRoot)\runtime.$(ILCompilerRuntimeIdentifier).microsoft.dotnet.objectwriter\$(ObjectWriterVersion)\runtimes\$(ILCompilerRuntimeIdentifier)\native\$(LibraryNamePrefix)objwriter$(LibraryNameExtension)">
+    <Content Condition="Exists('$(ObjWriterArtifactPath)')" Include="$(ObjWriterArtifactPath)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
     </Content>
 
-    <Content Include="$(NuGetPackageRoot)\runtime.$(ILCompilerRuntimeIdentifier).microsoft.netcore.coredistools\$(CoreDisToolsVersion)\runtimes\$(ILCompilerRuntimeIdentifier)\native\coredistools.dll" Condition="'$(IncludeCoreDisTools)' == 'true'">
+    <Content Condition="!Exists('$(ObjWriterArtifactPath)')"
+      Include="$(NuGetPackageRoot)runtime.$(ILCompilerRuntimeIdentifier).microsoft.dotnet.ilcompiler\$(ILCompilerVersion)\tools\$(LibraryNamePrefix)objwriter$(LibraryNameExtension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+      <Pack>false</Pack>
+    </Content>
+
+    <Content Include="$(NuGetPackageRoot)runtime.$(ILCompilerRuntimeIdentifier).microsoft.netcore.coredistools\$(CoreDisToolsVersion)\runtimes\$(ILCompilerRuntimeIdentifier)\native\coredistools.dll" Condition="'$(IncludeCoreDisTools)' == 'true'">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
@@ -67,14 +76,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="$(RuntimeBinDir)\$(LibraryNamePrefix)jitinterface_$(TargetArchitecture)$(LibraryNameExtension)">
+    <Content Include="$(RuntimeBinDir)$(LibraryNamePrefix)jitinterface_$(TargetArchitecture)$(LibraryNameExtension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
     </Content>
 
-    <Content Include="$(RuntimeBinDir)\$(LibraryNamePrefix)clrjit$(LibraryNameExtension)">
-      <Link>$(LibraryNamePrefix)clrjitilc$(LibraryNameExtension)</Link>
+    <Content Include="$(RuntimeBinDir)$(LibraryNamePrefix)clrjit_*_$(TargetArchitecture)$(LibraryNameExtension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
@@ -116,5 +124,22 @@
 
   <ItemGroup>
     <Compile Remove="repro\*" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetOSComponent>unix</TargetOSComponent>
+    <TargetOSComponent Condition="'$(TargetOS)' == 'windows'">win</TargetOSComponent>
+    <TargetSpec>$(TargetOSComponent)_$(TargetArchitecture)_$(TargetArchitecture)</TargetSpec>
+  </PropertyGroup>
+
+  <!-- On Windows we can re-use PGO-optimized clrjit.dll produced by the build for AOT compilation.
+       On Linux renaming the library makes it difficult to debug it. -->
+  <ItemGroup Condition="'$(TargetOS)' == 'windows'">
+    <Content Remove="$(RuntimeBinDir)$(LibraryNamePrefix)clrjit_$(TargetSpec)$(LibraryNameExtension)" />
+    <Content Include="$(RuntimeBinDir)$(LibraryNamePrefix)clrjit$(LibraryNameExtension)"
+      CopyToOutputDirectory="PreserveNewest"
+      CopyToPublishDirectory="PreserveNewest"
+      Link="$(LibraryNamePrefix)clrjit_$(TargetSpec)$(LibraryNameExtension)"
+      />
   </ItemGroup>
 </Project>
