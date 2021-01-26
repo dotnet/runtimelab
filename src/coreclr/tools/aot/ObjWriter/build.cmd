@@ -19,5 +19,10 @@ if %ErrorLevel% geq 8 exit /b %ErrorLevel%
 if not exist build mkdir build
 cd build || exit /b 1
 
-cmake ../ -DCMAKE_BUILD_TYPE=Release -DLLVM_OPTIMIZED_TABLEGEN=1 -DHAVE_POSIX_SPAWN=0 -DLLVM_ENABLE_PIC=1 -DLLVM_BUILD_TESTS=0 -DLLVM_ENABLE_DOXYGEN=0 -DLLVM_INCLUDE_DOCS=0 -DLLVM_INCLUDE_TESTS=0 -DLLVM_TARGETS_TO_BUILD="ARM;X86;AArch64" -DCMAKE_INSTALL_PREFIX=install || exit /b 1
-cmake --build . -j 10 --config Release --target install || exit /b 1
+:: Evaluate the output from set-cmake-path.ps1
+for /f "delims=" %%a in ('powershell -NoProfile -ExecutionPolicy ByPass "& ""%2\eng\native\set-cmake-path.ps1"""') do %%a
+echo Using CMake at "%CMakePath%"
+if "%CMakePath%"=="" exit /b 1
+
+"%CMakePath%" ../ -DCMAKE_BUILD_TYPE=Release -DLLVM_OPTIMIZED_TABLEGEN=1 -DHAVE_POSIX_SPAWN=0 -DLLVM_ENABLE_PIC=1 -DLLVM_BUILD_TESTS=0 -DLLVM_ENABLE_DOXYGEN=0 -DLLVM_INCLUDE_DOCS=0 -DLLVM_INCLUDE_TESTS=0 -DLLVM_TARGETS_TO_BUILD="ARM;X86;AArch64" -DCMAKE_INSTALL_PREFIX=install || exit /b 1
+"%CMakePath%" --build . -j 10 --config Release --target install || exit /b 1
