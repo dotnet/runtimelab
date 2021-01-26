@@ -141,12 +141,6 @@ inline void PalRaiseException(uint32_t arg1, uint32_t arg2, uint32_t arg3, const
     RaiseException(arg1, arg2, arg3, arg4);
 }
 
-extern "C" UInt32_BOOL __stdcall ReleaseMutex(HANDLE);
-inline UInt32_BOOL PalReleaseMutex(HANDLE arg1)
-{
-    return ReleaseMutex(arg1);
-}
-
 extern "C" UInt32_BOOL __stdcall ResetEvent(HANDLE);
 inline UInt32_BOOL PalResetEvent(HANDLE arg1)
 {
@@ -157,12 +151,6 @@ extern "C" UInt32_BOOL __stdcall SetEvent(HANDLE);
 inline UInt32_BOOL PalSetEvent(HANDLE arg1)
 {
     return SetEvent(arg1);
-}
-
-extern "C" void __stdcall TerminateProcess(HANDLE, uint32_t);
-inline void PalTerminateProcess(HANDLE arg1, uint32_t arg2)
-{
-    TerminateProcess(arg1, arg2);
 }
 
 extern "C" uint32_t __stdcall WaitForSingleObjectEx(HANDLE, uint32_t, UInt32_BOOL);

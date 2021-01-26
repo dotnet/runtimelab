@@ -77,7 +77,7 @@ void Assert(const char * expr, const char * file, uint32_t line_num, const char 
     switch (result)
     {
     case IDABORT:
-        PalTerminateProcess(PalGetCurrentProcess(), 666);
+        PalTerminateCurrentProcess(42);
         break;
     case IDRETRY:
         PalDebugBreak();
@@ -92,19 +92,6 @@ void Assert(const char * expr, const char * file, uint32_t line_num, const char 
     UNREFERENCED_PARAMETER(line_num);
     UNREFERENCED_PARAMETER(message);
 #endif //!DACCESS_COMPILE
-}
-
-extern "C" void NYI_Assert(const char *message, ...)
-{
-#if !defined(DACCESS_COMPILE)
-    va_list args;
-    va_start(args, message);
-    vprintf(message, args);
-    va_end(args);
-    ASSERT_UNCONDITIONALLY("NYI");
-#else
-    UNREFERENCED_PARAMETER(message);
-#endif
 }
 
 #endif // _DEBUG

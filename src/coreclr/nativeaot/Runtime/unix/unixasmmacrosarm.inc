@@ -255,15 +255,6 @@ C_FUNC(\Name):
         EPILOG_STACK_FREE 4           // Discard caller's SP
 .endm
 
-#ifdef _DEBUG
-.macro GEN_ASSERT message, fileName, funcName
-        ldr r0, =\message
-        ldr r1, =\fileName
-        ldr r2, =\funcName
-        bl C_FUNC(NYI_Assert)
-.endm
-#endif
-
 // thumb with PIC version
 .macro INLINE_GET_TLS_VAR Var
         ldr     r0, 2f
