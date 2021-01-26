@@ -9,7 +9,7 @@ if [ ! -d llvm ]; then
 fi
 
 # Clean the tree and apply the patch
-cd llvm && git restore . || exit 1
+cd llvm && git checkout -- . || exit 1
 git apply "$ScriptPath/llvm.patch" || exit 1
 
 # Add ObjWriter files
