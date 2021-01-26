@@ -48,7 +48,7 @@
   <PropertyGroup>
     <DefaultCoreClrSubsets>clr.runtime+clr.jit+clr.alljits+linuxdac+clr.corelib+clr.tools+clr.nativecorelib+clr.packages</DefaultCoreClrSubsets>
 
-    <DefaultNativeAotSubsets>clr.jit+nativeaot.tools+nativeaot.libs</DefaultNativeAotSubsets>
+    <DefaultNativeAotSubsets>clr.jit+clr.alljits+nativeaot.tools+nativeaot.libs</DefaultNativeAotSubsets>
 
     <DefaultMonoSubsets Condition="'$(MonoEnableLLVM)' == 'true' and '$(MonoLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
     <DefaultMonoSubsets Condition="'$(MonoAOTEnableLLVM)' == 'true' and '$(MonoAOTLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
@@ -235,15 +235,15 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\Test.CoreLib\src\Test.CoreLib.csproj" Category="clr" />
   </ItemGroup>
 
+  <ItemGroup Condition="$(_subset.Contains('+nativeaot.objwriter+'))">
+    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ObjWriter\objwriter.proj" Category="clr" />
+  </ItemGroup>
+
   <ItemGroup Condition="$(_subset.Contains('+nativeaot.tools+'))">
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler.Build.Tasks\ILCompiler.Build.Tasks.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler\ILCompiler.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler\repro\repro.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" />
-  </ItemGroup>
-
-  <ItemGroup Condition="$(_subset.Contains('+nativeaot.objwriter+'))">
-    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ObjWriter\objwriter.proj" Category="clr" />
   </ItemGroup>
 
   <!-- Mono sets -->

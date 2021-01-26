@@ -50,7 +50,7 @@
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/Win64EH.h"
 #include "llvm/Target/TargetMachine.h"
-#include "..\..\..\lib\Target\AArch64\MCTargetDesc\AArch64MCExpr.h"
+#include "../../../lib/Target/AArch64/MCTargetDesc/AArch64MCExpr.h"
 
 using namespace llvm;
 using namespace llvm::codeview;

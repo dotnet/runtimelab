@@ -8,7 +8,7 @@
 
   <Target Name="Build">
     <!-- Use IgnoreStandardErrorWarningFormat because Arcade sets WarnAsError and there are multiple warnings in the LLVM build -->
-    <Exec Command="$(BuildScriptName) $(ArtifactsDir)"
+    <Exec Command="&quot;$(MSBuildThisFileDirectory)$(BuildScriptName)&quot; $(ArtifactsDir) $(RepoRoot)"
           IgnoreStandardErrorWarningFormat="true" />
   </Target>
 </Project>
