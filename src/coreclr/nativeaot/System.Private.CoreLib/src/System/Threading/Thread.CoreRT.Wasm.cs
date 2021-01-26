@@ -9,13 +9,14 @@ namespace System.Threading
     {
         internal const bool IsThreadStartSupported = false;
 
-        internal void UnsafeStart() => throw new PlatformNotSupportedException();
-
         [UnsupportedOSPlatform("browser")]
         public void Start() => throw new PlatformNotSupportedException();
 
         [UnsupportedOSPlatform("browser")]
         public void Start(object parameter) => throw new PlatformNotSupportedException();
+
+        [UnsupportedOSPlatform("browser")]
+        public void UnsafeStart() => throw new PlatformNotSupportedException();
 
         [UnsupportedOSPlatform("browser")]
         public void UnsafeStart(object parameter) => throw new PlatformNotSupportedException();
