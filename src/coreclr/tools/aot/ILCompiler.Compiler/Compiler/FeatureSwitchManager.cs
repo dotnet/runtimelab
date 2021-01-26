@@ -876,7 +876,7 @@ namespace ILCompiler
 
             private object TryCreateSubstitution(TypeDesc type, string value)
             {
-                switch (type.Category)
+                switch (type.UnderlyingType.Category)
                 {
                     case TypeFlags.Int32:
                         if (string.IsNullOrEmpty(value))
