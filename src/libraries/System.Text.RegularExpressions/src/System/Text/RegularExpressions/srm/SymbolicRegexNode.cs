@@ -667,6 +667,12 @@ namespace System.Text.RegularExpressions.SRM
             return MkAnd(builder, elems);
         }
 
+        //internal static SymbolicRegexNode<S> MkNot(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> body)
+        //{
+        //    var compl = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Not, body, null, -1, -1, default, null, null);
+        //    return compl;
+        //}
+
         internal static SymbolicRegexNode<S> MkOr(SymbolicRegexBuilder<S> builder, SymbolicRegexSet<S> alts)
         {
             if (alts.IsNothing)
@@ -1195,12 +1201,15 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
-        /// Returns the set of all predicates that occur in the regex
+        /// Returns the set of all predicates that occur in the regex or
+        /// the set containing True if there are no precidates in the regex, e.g., if the regex is "^"
         /// </summary>
         public HashSet<S> GetPredicates()
         {
             var predicates = new HashSet<S>();
             CollectPredicates_helper(predicates);
+            if (predicates.Count == 0)
+                predicates.Add(builder.solver.True);
             return predicates;
         }
 
@@ -1242,8 +1251,14 @@ namespace System.Text.RegularExpressions.SRM
                     }
                 case SymbolicRegexKind.Concat:
                     {
-                        left.CollectPredicates_helper(predicates);
-                        right.CollectPredicates_helper(predicates);
+                        // avoid deep nested recursion over long concat nodes
+                        SymbolicRegexNode<S> conc = this;
+                        while (conc.kind == SymbolicRegexKind.Concat)
+                        {
+                            conc.left.CollectPredicates_helper(predicates);
+                            conc = conc.right;
+                        }
+                        conc.CollectPredicates_helper(predicates);
                         return;
                     }
                 case SymbolicRegexKind.IfThenElse:
@@ -1274,9 +1289,6 @@ namespace System.Text.RegularExpressions.SRM
         {
             var predicates = new List<S>(GetPredicates());
             var mt = new List<S>(EnumerateMinterms(predicates.ToArray()));
-            //there must be at least one minterm
-            if (mt.Count == 0)
-                throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
             if (mt[0] is IComparable)
                 mt.Sort();
             var minterms = mt.ToArray();
@@ -1438,43 +1450,6 @@ namespace System.Text.RegularExpressions.SRM
                     }
                 default:
                     throw new NotImplementedException(kind.ToString());
-            }
-        }
-
-        /// <summary>
-        /// Unwind lower loop boundaries
-        /// </summary>
-        internal SymbolicRegexNode<S> Simplify()
-        {
-            switch (kind)
-            {
-                case SymbolicRegexKind.EndAnchor:
-                case SymbolicRegexKind.StartAnchor:
-                case SymbolicRegexKind.BOLAnchor:
-                case SymbolicRegexKind.EOLAnchor:
-                case SymbolicRegexKind.Epsilon:
-                case SymbolicRegexKind.Singleton:
-                case SymbolicRegexKind.WatchDog:
-                    return this;
-                case SymbolicRegexKind.Concat:
-                    return builder.MkConcat(left.Simplify(), right.Simplify());
-                case SymbolicRegexKind.Or:
-                    return builder.MkOr(alts.Simplify());
-                case SymbolicRegexKind.And:
-                    return builder.MkAnd(alts.Simplify());
-                case SymbolicRegexKind.Loop:
-                    {
-                        var body = this.left.Simplify();
-                        //we know that lower <= upper
-                        //so diff >= 0
-                        int diff = (this.upper == int.MaxValue ? int.MaxValue : upper - lower);
-                        var res = (diff == 0 ? builder.epsilon : builder.MkLoop(body, isLazyLoop, 0, diff));
-                        for (int i = 0; i < lower; i++)
-                            res = builder.MkConcat(body, res);
-                        return res;
-                    }
-                default:
-                    throw new NotImplementedException();
             }
         }
 
@@ -2451,20 +2426,6 @@ namespace System.Text.RegularExpressions.SRM
             }
             e.Dispose();
             return res;
-        }
-
-        internal SymbolicRegexSet<S> Simplify()
-        {
-            if (kind == SymbolicRegexSetKind.Disjunction)
-                return CreateDisjunction(builder, SimplifyElems());
-            else
-                return CreateConjunction(builder, SimplifyElems());
-        }
-
-        private IEnumerable<SymbolicRegexNode<S>> SimplifyElems()
-        {
-            foreach (var elem in this)
-                yield return elem.Simplify();
         }
 
         internal SymbolicRegexSet<S> DecrementBoundedLoopCount(bool makeZero = false)

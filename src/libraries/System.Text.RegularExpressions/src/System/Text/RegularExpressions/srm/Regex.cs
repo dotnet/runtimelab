@@ -16,27 +16,27 @@ namespace System.Text.RegularExpressions.SRM
 
         internal IMatcher matcher;
 
-        public Regex(string pattern) : this(pattern, RegexOptions.None) { }
+        //public Regex(string pattern) : this(pattern, RegexOptions.None) { }
 
-        public Regex(string pattern, RegexOptions options)
-        {
-            var root = converter.ConvertToSymbolicRegex(pattern, options, keepAnchors: true);
-            var partition = root.ComputeMinterms();
-            if (partition.Length > 64)
-            {
-                //more than 64 bits needed to represent a set
-                matcher = new SymbolicRegexBV(root, solver, converter.srBuilder, partition, options);
-            }
-            else
-            {
-                //enough to use 64 bits
-                matcher = new SymbolicRegexUInt64(root, solver, converter.srBuilder, partition, options);
-            }
-        }
+        //public Regex(string pattern, RegexOptions options)
+        //{
+        //    var root = converter.ConvertToSymbolicRegex(pattern, options, keepAnchors: true);
+        //    var partition = root.ComputeMinterms();
+        //    if (partition.Length > 64)
+        //    {
+        //        //more than 64 bits needed to represent a set
+        //        matcher = new SymbolicRegexBV(root, solver, converter.srBuilder, partition, options);
+        //    }
+        //    else
+        //    {
+        //        //enough to use 64 bits
+        //        matcher = new SymbolicRegexUInt64(root, solver, converter.srBuilder, partition, options);
+        //    }
+        //}
 
         public Regex(RegexNode rootNode, RegexOptions options)
         {
-            var root = converter.ConvertToSymbolicRegex(rootNode, keepAnchors: true);
+            var root = converter.ConvertNodeToSymbolicRegex(rootNode, true);
             var partition = root.ComputeMinterms();
             if (partition.Length > 64)
             {

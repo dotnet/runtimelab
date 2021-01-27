@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
-    /// Provides functionality to convert .NET regex patterns to corresponding symbolic finite automata and symbolic regexes
+    /// Provides functionality to convert .NET regex patterns to corresponding symbolic regexes
     /// </summary>
     internal class RegexToAutomatonConverter<S>
     {
@@ -219,37 +219,6 @@ namespace System.Text.RegularExpressions.SRM
         #endregion
 
         #region Symbolic regex conversion
-        /// <summary>
-        /// Convert a regex pattern to an equivalent symbolic regex
-        /// </summary>
-        /// <param name="regex">the given .NET regex pattern</param>
-        /// <param name="options">regular expression options for the pattern (default is RegexOptions.None)</param>
-        /// <param name="keepAnchors">if false (default) then anchors are replaced by equivalent regexes</param>
-        public SymbolicRegexNode<S> ConvertToSymbolicRegex(string regex, RegexOptions options, bool keepAnchors = false)
-        {
-            RegexTree tree = RegexParser.Parse(regex, options, (options & RegexOptions.CultureInvariant) != 0 ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture);
-            return ConvertToSymbolicRegex(tree.Root, keepAnchors);
-        }
-
-        internal SymbolicRegexNode<S> ConvertToSymbolicRegex(RegexNode root, bool keepAnchors = false, bool unwindlowerbounds = false)
-        {
-            var sregex = ConvertNodeToSymbolicRegex(root, true);
-            if (keepAnchors)
-            {
-                if (unwindlowerbounds)
-                    return sregex.Simplify();
-                else
-                    return sregex;
-            }
-            else
-            {
-                var res = this.srBuilder.RemoveAnchors(sregex, true, true);
-                if (unwindlowerbounds)
-                    return res.Simplify();
-                else
-                    return res;
-            }
-        }
 
         internal SymbolicRegexNode<S> ConvertNodeToSymbolicRegex(RegexNode node, bool topLevel)
         {
@@ -337,7 +306,6 @@ namespace System.Text.RegularExpressions.SRM
                 RegexNode.NonBoundary => "non-word boundary (\\B)",
                 RegexNode.ECMABoundary => "word boundary (\\b)",
                 RegexNode.NonECMABoundary => "non-word boundary (\\B)",
-                RegexNode.Testgroup => nameof(RegexNode.Testgroup),
                 // the default should never arise, since other node types are either supported
                 // or have been removed (e.g. Group) from the final parse tree
                 _ => $"unexpected node type ({nameof(RegexNode)}:{node_type})"

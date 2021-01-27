@@ -224,7 +224,7 @@ namespace System.Text.RegularExpressions.SRM
 
         /// <summary>
         /// Make a concatenation of given regexes, if any regex is nothing then return nothing, eliminate
-        /// intermediate epsilons, if toplevel, add watchdog at the end
+        /// intermediate epsilons, if toplevel and length is fixed, add watchdog at the end
         /// </summary>
         internal SymbolicRegexNode<S> MkConcat(SymbolicRegexNode<S>[] regexes, bool topLevel)
         {

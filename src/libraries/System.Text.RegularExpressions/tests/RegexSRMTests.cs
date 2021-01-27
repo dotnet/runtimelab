@@ -65,6 +65,11 @@ namespace System.Text.RegularExpressions.Tests
             return conj;
         }
 
+        static string Not(string regex)
+        {
+            return $"(?({regex})[0-[0]]|.*)";
+        }
+
         [Fact]
         public void SRMTest_ConjuctionIsMatch()
         {
@@ -84,6 +89,18 @@ namespace System.Text.RegularExpressions.Tests
             Assert.True(match.Success);
             Assert.Equal(4, match.Index);
             Assert.Equal(4, match.Length);
+        }
+
+        [Fact]
+        public void SRMTest_ComplementFindMatch()
+        {
+            // contains lower, upper, and a digit, and is between 4 and 8 characters long, does not contain 2 consequtive digits
+            var re = new Regex(And(".*[a-z].*", ".*[A-Z].*", ".*[0-9].*", ".{4,8}",
+                Not(".*(01|12|23|34|45|56|67|78|89).*")), DFA | RegexOptions.Singleline);
+            var match = re.Match("xxaac12Bxaas3455");
+            Assert.True(match.Success);
+            Assert.Equal(6, match.Index);
+            Assert.Equal(7, match.Length);
         }
 
         static int _NotSupportedException_count;
