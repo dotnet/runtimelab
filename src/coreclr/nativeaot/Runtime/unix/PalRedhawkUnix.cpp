@@ -39,14 +39,6 @@
 #include <lwp.h>
 #endif
 
-#if HAVE_SYSCONF
-// <unistd.h> already included above
-#elif HAVE_SYSCTL
-#include <sys/sysctl.h>
-#else
-#error Either sysctl or sysconf is required for GetSystemInfo.
-#endif
-
 #if HAVE_SYS_VMPARAM_H
 #include <sys/vmparam.h>
 #endif  // HAVE_SYS_VMPARAM_H
@@ -72,24 +64,6 @@
 #endif
 
 using std::nullptr_t;
-
-#ifndef __APPLE__
-#if HAVE_SYSCONF && HAVE__SC_AVPHYS_PAGES
-#define SYSCONF_PAGES _SC_AVPHYS_PAGES
-#elif HAVE_SYSCONF && HAVE__SC_PHYS_PAGES
-#define SYSCONF_PAGES _SC_PHYS_PAGES
-#else
-#error Dont know how to get page-size on this architecture!
-#endif
-#endif // __APPLE__
-
-#if defined(HOST_ARM) || defined(HOST_ARM64)
-#define SYSCONF_GET_NUMPROCS       _SC_NPROCESSORS_CONF
-#define SYSCONF_GET_NUMPROCS_NAME "_SC_NPROCESSORS_CONF"
-#else
-#define SYSCONF_GET_NUMPROCS       _SC_NPROCESSORS_ONLN
-#define SYSCONF_GET_NUMPROCS_NAME "_SC_NPROCESSORS_ONLN"
-#endif
 
 #define PalRaiseFailFastException RaiseFailFastException
 

@@ -11,17 +11,12 @@
 #cmakedefine01 HAVE_PTHREAD_GETTHREADID_NP
 
 #cmakedefine01 HAVE_CLOCK_NANOSLEEP
-#cmakedefine01 HAVE_SYSCTL
-#cmakedefine01 HAVE_SYSCONF
 
 #cmakedefine01 HAVE_GREGSET_T
 #cmakedefine01 HAVE___GREGSET_T
 
 #cmakedefine01 HAVE_SIGINFO_T
 #cmakedefine01 HAVE_UCONTEXT_T
-
-#cmakedefine01 HAVE__SC_PHYS_PAGES
-#cmakedefine01 HAVE__SC_AVPHYS_PAGES
 
 #cmakedefine01 HAVE_LWP_SELF
 #cmakedefine01 HAVE_SCHED_GETCPU

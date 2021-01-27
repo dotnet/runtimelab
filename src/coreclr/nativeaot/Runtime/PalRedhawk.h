@@ -82,27 +82,6 @@ typedef struct _GUID {
 
 #define DECLARE_HANDLE(_name) typedef HANDLE _name
 
-struct SYSTEM_INFO
-{
-    union
-    {
-        uint32_t  dwOemId;
-        struct {
-            uint16_t wProcessorArchitecture;
-            uint16_t wReserved;
-        } DUMMYSTRUCTNAME;
-    } DUMMYUNIONNAME;
-    uint32_t      dwPageSize;
-    void *      lpMinimumApplicationAddress;
-    void *      lpMaximumApplicationAddress;
-    uintptr_t  dwActiveProcessorMask;
-    uint32_t      dwNumberOfProcessors;
-    uint32_t      dwProcessorType;
-    uint32_t      dwAllocationGranularity;
-    uint16_t      wProcessorLevel;
-    uint16_t      wProcessorRevision;
-};
-
 // defined in gcrhenv.cpp
 bool __SwitchToThread(uint32_t dwSleepMSec, uint32_t dwSwitchCount);
 
