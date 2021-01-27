@@ -2127,6 +2127,11 @@ namespace ILCompiler.Dataflow
                 method = method.MakeInstantiatedMethod(inst);
             }
 
+            string reason = reflectionContext.MemberWithRequirements.ToString();
+
+            // For the method to be actually usable with reflection, we need to add the constructed type.
+            _dependencies.Add(_factory.MaximallyConstructableType(method.OwningType), reason);
+
             if (!MetadataManager.IsMethodSupportedInReflectionInvoke(method))
             {
                 if (_logger.IsVerbose)
@@ -2135,8 +2140,6 @@ namespace ILCompiler.Dataflow
             }
             else
             {
-                string reason = reflectionContext.MemberWithRequirements.ToString();
-
                 if (method.IsVirtual)
                 {
                     if (method.HasInstantiation)
