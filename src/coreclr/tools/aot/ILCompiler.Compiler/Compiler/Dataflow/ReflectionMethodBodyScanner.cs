@@ -911,6 +911,11 @@ namespace ILCompiler.Dataflow
                     //
                     case IntrinsicId.Enum_GetValues:
                         {
+                            // Enum.GetValues returns System.Array, but it's the array of the enum type under the hood
+                            // and people depend on this undocumented detail (could have returned enum of the underlying
+                            // type instead).
+                            //
+                            // At least until we have shared enum code, this needs extra handling to get it right.
                             foreach (var value in methodParams[0].UniqueValues())
                             {
                                 if (value is SystemTypeValue systemTypeValue
@@ -937,6 +942,7 @@ namespace ILCompiler.Dataflow
                     //
                     case IntrinsicId.Marshal_SizeOf:
                         {
+                            // We need the data to do struct marshalling.
                             foreach (var value in methodParams[0].UniqueValues())
                             {
                                 if (value is SystemTypeValue systemTypeValue
