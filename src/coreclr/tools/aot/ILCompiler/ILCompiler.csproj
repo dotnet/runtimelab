@@ -19,14 +19,9 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <LibraryNamePrefix>lib</LibraryNamePrefix>
-    <LibraryNamePrefix Condition="$([MSBuild]::IsOsPlatform('WINDOWS'))"></LibraryNamePrefix>
-    <LibraryNameExtension Condition="$([MSBuild]::IsOsPlatform('WINDOWS'))">.dll</LibraryNameExtension>
-    <LibraryNameExtension Condition="$([MSBuild]::IsOsPlatform('LINUX'))">.so</LibraryNameExtension>
-    <LibraryNameExtension Condition="$([MSBuild]::IsOsPlatform('OSX'))">.dylib</LibraryNameExtension>
-    <ILCompilerRuntimeIdentifier Condition="$([MSBuild]::IsOsPlatform('WINDOWS'))">win-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
-    <ILCompilerRuntimeIdentifier Condition="$([MSBuild]::IsOsPlatform('LINUX'))">linux-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
-    <ILCompilerRuntimeIdentifier Condition="$([MSBuild]::IsOsPlatform('OSX'))">osx-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
+    <ILCompilerRuntimeIdentifier Condition="'$(TargetsWindows)' == 'true'">win-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
+    <ILCompilerRuntimeIdentifier Condition="'$(TargetsLinux)' == 'true'">linux-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
+    <ILCompilerRuntimeIdentifier Condition="'$(TargetsOSX)' == 'true'">osx-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -39,7 +34,8 @@
     <ILCompilerVersion>6.0.0-preview.1.21075.1</ILCompilerVersion>
     <CoreDisToolsVersion>1.0.1-prerelease-00005</CoreDisToolsVersion>
 
-    <ObjWriterArtifactPath>$(ArtifactsDir)llvm\build\bin\Release\$(LibraryNamePrefix)objwriter$(LibraryNameExtension)</ObjWriterArtifactPath>
+    <ObjWriterArtifactPath Condition="'$(TargetsWindows)' == 'true'">$(ArtifactsDir)llvm\build\bin\Release\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
+    <ObjWriterArtifactPath Condition="'$(TargetsWindows)' != 'true'">$(ArtifactsDir)llvm\build\lib\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
 
     <!-- CoreDisTools are used in debugging visualizers. The package only exists on Windows -->
     <IncludeCoreDisTools Condition="'$(TargetsWindows)' == 'true' and '$(Configuration)' != 'Release'">true</IncludeCoreDisTools>
@@ -62,7 +58,7 @@
     </Content>
 
     <Content Condition="!Exists('$(ObjWriterArtifactPath)')"
-      Include="$(NuGetPackageRoot)runtime.$(ILCompilerRuntimeIdentifier).microsoft.dotnet.ilcompiler\$(ILCompilerVersion)\tools\$(LibraryNamePrefix)objwriter$(LibraryNameExtension)">
+      Include="$(NuGetPackageRoot)runtime.$(ILCompilerRuntimeIdentifier).microsoft.dotnet.ilcompiler\$(ILCompilerVersion)\tools\$(LibPrefix)objwriter$(LibSuffix)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
@@ -76,13 +72,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="$(RuntimeBinDir)$(LibraryNamePrefix)jitinterface_$(TargetArchitecture)$(LibraryNameExtension)">
+    <Content Include="$(RuntimeBinDir)$(LibPrefix)jitinterface_$(TargetArchitecture)$(LibSuffix)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
     </Content>
 
-    <Content Include="$(RuntimeBinDir)$(LibraryNamePrefix)clrjit_*_$(TargetArchitecture)$(LibraryNameExtension)">
+    <Content Include="$(RuntimeBinDir)$(LibPrefix)clrjit_*_$(TargetArchitecture)$(LibSuffix)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
@@ -128,18 +124,18 @@
 
   <PropertyGroup>
     <TargetOSComponent>unix</TargetOSComponent>
-    <TargetOSComponent Condition="'$(TargetOS)' == 'windows'">win</TargetOSComponent>
+    <TargetOSComponent Condition="'$(TargetsWindows)' == 'true'">win</TargetOSComponent>
     <TargetSpec>$(TargetOSComponent)_$(TargetArchitecture)_$(TargetArchitecture)</TargetSpec>
   </PropertyGroup>
 
   <!-- On Windows we can re-use PGO-optimized clrjit.dll produced by the build for AOT compilation.
        On Linux renaming the library makes it difficult to debug it. -->
-  <ItemGroup Condition="'$(TargetOS)' == 'windows'">
-    <Content Remove="$(RuntimeBinDir)$(LibraryNamePrefix)clrjit_$(TargetSpec)$(LibraryNameExtension)" />
-    <Content Include="$(RuntimeBinDir)$(LibraryNamePrefix)clrjit$(LibraryNameExtension)"
+  <ItemGroup Condition="'$(TargetsWindows)' == 'true'">
+    <Content Remove="$(RuntimeBinDir)$(LibPrefix)clrjit_$(TargetSpec)$(LibSuffix)" />
+    <Content Include="$(RuntimeBinDir)$(LibPrefix)clrjit$(LibSuffix)"
       CopyToOutputDirectory="PreserveNewest"
       CopyToPublishDirectory="PreserveNewest"
-      Link="$(LibraryNamePrefix)clrjit_$(TargetSpec)$(LibraryNameExtension)"
+      Link="$(LibPrefix)clrjit_$(TargetSpec)$(LibSuffix)"
       />
   </ItemGroup>
 </Project>
