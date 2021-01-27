@@ -283,21 +283,18 @@ namespace System.Text.RegularExpressions.SRM
                 case RegexNode.Notone:
                     return ConvertNodeNotoneToSymbolicRegex(node);
                 case RegexNode.Notoneloop:
-                case RegexNode.Notoneloopatomic:
                     return ConvertNodeNotoneloopToSymbolicRegex(node, false);
                 case RegexNode.Notonelazy:
                     return ConvertNodeNotoneloopToSymbolicRegex(node, true);
                 case RegexNode.One:
                     return ConvertNodeOneToSymbolicRegex(node);
                 case RegexNode.Oneloop:
-                case RegexNode.Oneloopatomic:
                     return ConvertNodeOneloopToSymbolicRegex(node, false);
                 case RegexNode.Onelazy:
                     return ConvertNodeOneloopToSymbolicRegex(node, true);
                 case RegexNode.Set:
                     return ConvertNodeSetToSymbolicRegex(node);
                 case RegexNode.Setloop:
-                case RegexNode.Setloopatomic:
                     return ConvertNodeSetloopToSymbolicRegex(node, false);
                 case RegexNode.Setlazy:
                     return ConvertNodeSetloopToSymbolicRegex(node, true);
@@ -332,8 +329,10 @@ namespace System.Text.RegularExpressions.SRM
                 RegexNode.Require => "positive lookahead (?= pattern) or positive lookbehind (?<= pattern)",
                 RegexNode.Prevent => "negative lookahead (?! pattern) or negative lookbehind (?<! pattern)",
                 RegexNode.Start => "contiguous matches (\\G)",
-                //TBD: other atomic patterns that were atomic originally (not converted to atomic)
                 RegexNode.Atomic => "atomic (nonbacktracking) subexpression (?> pattern)",
+                RegexNode.Setloopatomic => "atomic (nonbacktracking) subexpression (?> pattern)",
+                RegexNode.Oneloopatomic => "atomic (nonbacktracking) subexpression (?> pattern)",
+                RegexNode.Notoneloopatomic => "atomic (nonbacktracking) subexpression (?> pattern)",
                 RegexNode.Boundary => "word boundary (\\b)",
                 RegexNode.NonBoundary => "non-word boundary (\\B)",
                 RegexNode.ECMABoundary => "word boundary (\\b)",

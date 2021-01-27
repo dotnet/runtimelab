@@ -431,6 +431,13 @@ namespace System.Text.RegularExpressions
                 return;
             }
 
+            // the conversion to atomic is incompatible with DFA mode
+            // because it may introduce atomic loops that are not supported in DFA mode
+            if ((node.Options & RegexOptions.DFA) != 0)
+            {
+                return;
+            }
+
             // Walk the tree starting from the provided node.
             while (true)
             {
@@ -601,6 +608,13 @@ namespace System.Text.RegularExpressions
         /// </remarks>
         private RegexNode ReduceAtomic()
         {
+            // this work is incompatible with and unnecessary in DFA mode
+            // because atomic loops are not supported in DFA mode
+            if ((Options & RegexOptions.DFA) != 0)
+            {
+                return this;
+            }
+
             Debug.Assert(Type == Atomic);
             Debug.Assert(ChildCount() == 1);
 
@@ -1365,6 +1379,13 @@ namespace System.Text.RegularExpressions
         /// </summary>
         private void ReduceConcatenationWithAutoAtomic()
         {
+            // the conversion to atomic is incompatible with DFA mode
+            // because it may introduce atomic loops that are not supported in DFA mode
+            if ((Options & RegexOptions.DFA) != 0)
+            {
+                return;
+            }
+
             Debug.Assert(Type == Concatenate);
             Debug.Assert((Options & RegexOptions.RightToLeft) == 0);
             Debug.Assert(Children is List<RegexNode>);

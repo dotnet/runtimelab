@@ -125,6 +125,16 @@ namespace System.Text.RegularExpressions.Tests
                     "atomic", "contiguous", "characterless", "nullable"};
 
                 Assert.True(Array.Exists(possible_errors, nse.Message.Contains));
+
+                // make also sure that "?>" appears in the original regex
+                // if the error claims that the regex contains an atomic loop
+                // this is to make sure that internal lifting of nonatomic loops to atomic loops 
+                // (to avoid backtracking) is not enabled when the DFA option is used
+                if (nse.Message.Contains("atomic"))
+                {
+                    Assert.Contains("?>", pattern);
+                }
+
                 return;
             }
             catch (Exception ex)
@@ -171,9 +181,7 @@ namespace System.Text.RegularExpressions.Tests
             yield return new object[] { @"(?<!c)b", RegexOptions.None, "negative lookbehind" };
             yield return new object[] { @"(?>(abc)*).", RegexOptions.None, "atomic" };
             yield return new object[] { @"\G(\w+\s?\w*),?", RegexOptions.None, "contiguous matches" };
-            //TBD: RegexNode.Testgroup is also not supported
-            //TBD: following needs fix of atomic
-            //yield return new object[] { @"(?>a*).", RegexOptions.None, "atomic" };
+            yield return new object[] { @"(?>a*).", RegexOptions.None, "atomic" };
         }
 
         /// <summary>
@@ -187,8 +195,7 @@ namespace System.Text.RegularExpressions.Tests
             yield return new object[] { @"((?s-i:a.))b", RegexOptions.IgnoreCase, "a\nB", "Pass. Group[0]=(0,3) Group[1]=(0,2)" };
             // TBD: needs fix of lazyloop
             //yield return new object[] { @"(?:..)*?a", RegexOptions.None, "aba", "Pass. Group[0]=(0,1)" };
-            // TBD: needs fix of atomic
-            //yield return new object[] { @"(?>a*).", RegexOptions.ExplicitCapture, "aaaa", "Fail." };
+            yield return new object[] { @"(?>a*).", RegexOptions.ExplicitCapture, "aaaa", "Fail." };
             //----------
             yield return new object[] { @"abc", RegexOptions.None, "abc", "Pass. Group[0]=(0,3)" };
             yield return new object[] { @"abc", RegexOptions.None, "xbc", "Fail." };
