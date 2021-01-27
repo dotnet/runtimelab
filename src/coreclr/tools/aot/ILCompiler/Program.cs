@@ -630,7 +630,7 @@ namespace ILCompiler
 
             MetadataBlockingPolicy mdBlockingPolicy;
             ManifestResourceBlockingPolicy resBlockingPolicy;
-            UsageBasedMetadataGenerationOptions metadataGenerationOptions = UsageBasedMetadataGenerationOptions.IteropILScanning;
+            UsageBasedMetadataGenerationOptions metadataGenerationOptions = default;
             if (supportsReflection)
             {
                 mdBlockingPolicy = _noMetadataBlocking

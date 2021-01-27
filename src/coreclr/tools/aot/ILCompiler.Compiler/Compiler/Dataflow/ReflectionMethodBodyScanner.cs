@@ -322,6 +322,8 @@ namespace ILCompiler.Dataflow
             Expression_Field,
             Expression_Property,
             Expression_New,
+            Enum_GetValues,
+            Marshal_SizeOf,
             Activator_CreateInstance_Type,
             Activator_CreateInstance_AssemblyName_TypeName,
             Activator_CreateInstanceFrom,
@@ -405,6 +407,18 @@ namespace ILCompiler.Dataflow
                     && calledMethod.HasParameterOfType(0, "System", "Type")
                     && calledMethod.Signature.Length == 1
                     => IntrinsicId.Expression_New,
+
+                // static Array System.Enum.GetValues (Type)
+                "GetValues" when calledMethod.IsDeclaredOnType("System", "Enum")
+                    && calledMethod.HasParameterOfType(0, "System", "Type")
+                    && calledMethod.Signature.Length == 1
+                    => IntrinsicId.Enum_GetValues,
+
+                // static int System.Runtime.InteropServices.Marshal.SizeOf (Type)
+                "SizeOf" when calledMethod.IsDeclaredOnType("System.Runtime.InteropServices", "Marshal")
+                    && calledMethod.HasParameterOfType(0, "System", "Type")
+                    && calledMethod.Signature.Length == 1
+                    => IntrinsicId.Marshal_SizeOf,
 
                 // static System.Type.GetType (string)
                 // static System.Type.GetType (string, Boolean)
@@ -891,6 +905,64 @@ namespace ILCompiler.Dataflow
                         break;
 
                     //
+                    // System.Enum
+                    //
+                    // static GetValues (Type)
+                    //
+                    case IntrinsicId.Enum_GetValues:
+                        {
+                            // Enum.GetValues returns System.Array, but it's the array of the enum type under the hood
+                            // and people depend on this undocumented detail (could have returned enum of the underlying
+                            // type instead).
+                            //
+                            // At least until we have shared enum code, this needs extra handling to get it right.
+                            foreach (var value in methodParams[0].UniqueValues())
+                            {
+                                if (value is SystemTypeValue systemTypeValue
+                                    && !systemTypeValue.TypeRepresented.IsGenericDefinition
+                                    && !systemTypeValue.TypeRepresented.ContainsSignatureVariables(treatGenericParameterLikeSignatureVariable: true))
+                                {
+                                    if (systemTypeValue.TypeRepresented.IsEnum)
+                                    {
+                                        _dependencies.Add(_factory.ConstructedTypeSymbol(systemTypeValue.TypeRepresented.MakeArrayType()), "Enum.GetValues");
+                                    }
+                                }
+                                else
+                                {
+                                    _logger.LogWarning(Resources.Strings.IL9701, 9701, callingMethodBody, offset, MessageSubCategory.AotAnalysis);
+                                }
+                            }
+                        }
+                        break;
+
+                    //
+                    // System.Runtime.InteropServices.Marshal
+                    //
+                    // static SizeOf (Type)
+                    //
+                    case IntrinsicId.Marshal_SizeOf:
+                        {
+                            // We need the data to do struct marshalling.
+                            foreach (var value in methodParams[0].UniqueValues())
+                            {
+                                if (value is SystemTypeValue systemTypeValue
+                                    && !systemTypeValue.TypeRepresented.IsGenericDefinition
+                                    && !systemTypeValue.TypeRepresented.ContainsSignatureVariables(treatGenericParameterLikeSignatureVariable: true))
+                                {
+                                    if (systemTypeValue.TypeRepresented.IsDefType)
+                                    {
+                                        _dependencies.Add(_factory.StructMarshallingData((DefType)systemTypeValue.TypeRepresented), "Marshal.SizeOf");
+                                    }
+                                }
+                                else
+                                {
+                                    _logger.LogWarning(Resources.Strings.IL9702, 9702, callingMethodBody, offset, MessageSubCategory.AotAnalysis);
+                                }
+                            }
+                        }
+                        break;
+
+                    //
                     // System.Object
                     // 
                     // GetType()
@@ -972,7 +1044,7 @@ namespace ILCompiler.Dataflow
                                 {
                                     bool found = ILCompiler.DependencyAnalysis.ReflectionMethodBodyScanner.ResolveType(knownStringValue.Contents, ((MetadataType)callingMethodDefinition.OwningType).Module,
                                         callingMethodDefinition.Context,
-                                        out TypeDesc foundType, out _);
+                                        out TypeDesc foundType, out ModuleDesc referenceModule);
                                     if (!found)
                                     {
                                         // Intentionally ignore - it's not wrong for code to call Type.GetType on non-existing name, the code might expect null/exception back.
@@ -980,6 +1052,10 @@ namespace ILCompiler.Dataflow
                                     }
                                     else
                                     {
+                                        // Also add module metadata in case this reference was through a type forward
+                                        if (_factory.MetadataManager.CanGenerateMetadata(referenceModule.GetGlobalModuleType()))
+                                            _dependencies.Add(_factory.ModuleMetadata(referenceModule), reflectionContext.MemberWithRequirements.ToString());
+
                                         reflectionContext.RecordRecognizedPattern(() => _dependencies.Add(_factory.MaximallyConstructableType(foundType), "Type.GetType reference"));
                                         methodReturnValue = MergePointValue.MergeValues(methodReturnValue, new SystemTypeValue(foundType));
                                     }
@@ -1924,13 +2000,17 @@ namespace ILCompiler.Dataflow
                 {
                     ModuleDesc callingModule = ((reflectionContext.Source as MethodDesc)?.OwningType as MetadataType)?.Module;
 
-                    if (!ILCompiler.DependencyAnalysis.ReflectionMethodBodyScanner.ResolveType(knownStringValue.Contents, callingModule, reflectionContext.Source.Context, out TypeDesc foundType, out _))
+                    if (!ILCompiler.DependencyAnalysis.ReflectionMethodBodyScanner.ResolveType(knownStringValue.Contents, callingModule, reflectionContext.Source.Context, out TypeDesc foundType, out ModuleDesc referenceModule))
                     {
                         // Intentionally ignore - it's not wrong for code to call Type.GetType on non-existing name, the code might expect null/exception back.
                         reflectionContext.RecordHandledPattern();
                     }
                     else
                     {
+                        // Also add module metadata in case this reference was through a type forward
+                        if (_factory.MetadataManager.CanGenerateMetadata(referenceModule.GetGlobalModuleType()))
+                            _dependencies.Add(_factory.ModuleMetadata(referenceModule), reflectionContext.MemberWithRequirements.ToString());
+
                         MarkType(ref reflectionContext, foundType);
                         MarkTypeForDynamicallyAccessedMembers(ref reflectionContext, foundType, requiredMemberTypes);
                     }
@@ -2017,12 +2097,48 @@ namespace ILCompiler.Dataflow
 
         void MarkMethod(ref ReflectionPatternContext reflectionContext, MethodDesc method)
         {
-            if (method.HasInstantiation || method.OwningType.IsGenericDefinition || method.OwningType.ContainsSignatureVariables(treatGenericParameterLikeSignatureVariable: true))
+            // Code below assumes we need to specialize generic methods
+            Debug.Assert(method.IsMethodDefinition);
+
+            // If there's any genericness involved, try to create a fitting instantiation that would be usable at runtime.
+            // This is not a complete solution to the problem.
+            // If we ever decide that MakeGenericType/MakeGenericMethod should simply be considered unsafe, this code can be deleted
+            // and instantiations that are not fully closed can be ignored.
+            if (method.OwningType.IsGenericDefinition || method.OwningType.ContainsSignatureVariables(treatGenericParameterLikeSignatureVariable: true))
             {
-                if (_logger.IsVerbose)
-                    _logger.Writer.WriteLine($"Would mark {method} but it's generic");
+                TypeDesc owningType = method.OwningType.GetTypeDefinition();
+                Instantiation inst = ILCompiler.TypeExtensions.GetInstantiationThatMeetsConstraints(owningType.Instantiation, allowCanon: false);
+                if (inst.IsNull)
+                {
+                    if (_logger.IsVerbose)
+                        _logger.Writer.WriteLine($"Would mark {method} but can't get a good owning type");
+                    return;
+                }
+
+                method = method.Context.GetMethodForInstantiatedType(
+                    method.GetTypicalMethodDefinition(),
+                    ((MetadataType)owningType).MakeInstantiatedType(inst));
             }
-            else if (!MetadataManager.IsMethodSupportedInReflectionInvoke(method))
+
+            if (method.HasInstantiation)
+            {
+                Instantiation inst = ILCompiler.TypeExtensions.GetInstantiationThatMeetsConstraints(method.Instantiation, allowCanon: false);
+                if (inst.IsNull)
+                {
+                    if (_logger.IsVerbose)
+                        _logger.Writer.WriteLine($"Would mark {method} but can't get a good instantiation");
+                    return;
+                }
+
+                method = method.MakeInstantiatedMethod(inst);
+            }
+
+            string reason = reflectionContext.MemberWithRequirements.ToString();
+
+            // For the method to be actually usable with reflection, we need to add the constructed type.
+            _dependencies.Add(_factory.MaximallyConstructableType(method.OwningType), reason);
+
+            if (!MetadataManager.IsMethodSupportedInReflectionInvoke(method))
             {
                 if (_logger.IsVerbose)
                     _logger.Writer.WriteLine($"Would mark {method} but it's not usable for reflection invoke");
@@ -2030,8 +2146,6 @@ namespace ILCompiler.Dataflow
             }
             else
             {
-                string reason = reflectionContext.MemberWithRequirements.ToString();
-
                 if (method.IsVirtual)
                 {
                     if (method.HasInstantiation)
@@ -2185,6 +2299,12 @@ namespace ILCompiler.Dataflow
                 public const string IL2089 = "value stored in field '{0}' does not satisfy {3} requirements. The generic parameter '{1}' of '{2}' does not have matching annotations. The source value must declare at least the same requirements as those declared on the target location it is assigned to.";
                 public const string IL2090 = "'this' argument does not satisfy {3} in call to '{0}'. The generic parameter '{1}' of '{2}' does not have matching annotations. The source value must declare at least the same requirements as those declared on the target location it is assigned to.";
                 public const string IL2091 = "'{0}' generic argument does not satisfy {4} in '{1}'. The generic parameter '{2}' of '{3}' does not have matching annotations. The source value must declare at least the same requirements as those declared on the target location it is assigned to.";
+
+                // Error codes > 6000 are reserved for custom steps and illink doesn't claim ownership of them
+
+                // TODO: these are all unique to NativeAOT - mono/linker repo is not aware this error code is used.
+                public const string IL9701 = "Enum.GetValues was called with an unknown enum type. It might not be possible to construct an array of this type at runtime.";
+                public const string IL9702 = "Marshal.SizeOf was called with an unknown type. It might not be possible to compute the marshalling size at runtime.";
             }
         }
     }
