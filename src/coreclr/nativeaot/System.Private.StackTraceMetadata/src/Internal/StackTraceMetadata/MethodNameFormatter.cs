@@ -124,10 +124,19 @@ namespace Internal.StackTraceMetadata
         private void EmitMethodInstantiationName(MethodInstantiationHandle methodInstHandle)
         {
             MethodInstantiation methodInst = _metadataReader.GetMethodInstantiation(methodInstHandle);
-            MemberReferenceHandle methodRefHandle = methodInst.Method.ToMemberReferenceHandle(_metadataReader);
-            MemberReference methodRef = methodRefHandle.GetMemberReference(_metadataReader);
             MethodSignature methodSignature;
-            EmitContainingTypeAndMethodName(methodRef, out methodSignature);
+            if (methodInst.Method.HandleType == HandleType.MemberReference)
+            {
+                MemberReferenceHandle methodRefHandle = methodInst.Method.ToMemberReferenceHandle(_metadataReader);
+                MemberReference methodRef = methodRefHandle.GetMemberReference(_metadataReader);
+                EmitContainingTypeAndMethodName(methodRef, out methodSignature);
+            }
+            else
+            {
+                QualifiedMethodHandle qualifiedMethodHandle = methodInst.Method.ToQualifiedMethodHandle(_metadataReader);
+                QualifiedMethod qualifiedMethod = _metadataReader.GetQualifiedMethod(qualifiedMethodHandle);
+                EmitContainingTypeAndMethodName(qualifiedMethod, out methodSignature);
+            }
             EmitGenericArguments(methodInst.GenericTypeArguments);
             EmitMethodParameters(methodSignature);
         }
@@ -135,11 +144,7 @@ namespace Internal.StackTraceMetadata
         private void EmitMethodDefinitionName(QualifiedMethodHandle qualifiedMethodHandle)
         {
             QualifiedMethod qualifiedMethod = _metadataReader.GetQualifiedMethod(qualifiedMethodHandle);
-            Method method = _metadataReader.GetMethod(qualifiedMethod.Method);
-            MethodSignature methodSignature = _metadataReader.GetMethodSignature(method.Signature);
-            EmitTypeName(qualifiedMethod.EnclosingType, namespaceQualified: true);
-            _outputBuilder.Append('.');
-            EmitString(method.Name);
+            EmitContainingTypeAndMethodName(qualifiedMethod, out MethodSignature methodSignature);
             EmitMethodParameters(methodSignature);
         }
 
@@ -154,6 +159,15 @@ namespace Internal.StackTraceMetadata
             EmitTypeName(methodRef.Parent, namespaceQualified: true);
             _outputBuilder.Append('.');
             EmitString(methodRef.Name);
+        }
+
+        private void EmitContainingTypeAndMethodName(QualifiedMethod qualifiedMethod, out MethodSignature methodSignature)
+        {
+            Method method = _metadataReader.GetMethod(qualifiedMethod.Method);
+            methodSignature = _metadataReader.GetMethodSignature(method.Signature);
+            EmitTypeName(qualifiedMethod.EnclosingType, namespaceQualified: true);
+            _outputBuilder.Append('.');
+            EmitString(method.Name);
         }
 
         /// <summary>

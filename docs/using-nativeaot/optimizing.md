@@ -16,14 +16,24 @@ under the `<Project>` node of your project file.
 
 Native AOT supports enabling and disabling all [documented framework library features](https://docs.microsoft.com/en-us/dotnet/core/deploying/trimming-options#trimming-framework-library-features). For example, to remove globalization specific code and data, add a `<InvariantGlobalization>true</InvariantGlobalization>` property to your project. Disabling a framework feature (or enabling a minimal mode of the feature) can result in significant size savings.
 
-The `EnableUnsafeBinaryFormatterSerialization` framework switch is already set to the optimal value of `false` (removing the support for [obsolete](https://github.com/dotnet/designs/blob/21b274dbc21e4ae54b7e4c5dbd5ef31e439e78db/accepted/2020/better-obsoletion/binaryformatter-obsoletion.md) binary serialization).
+🛈 Native AOT difference: The `EnableUnsafeBinaryFormatterSerialization` framework switch is already set to the optimal value of `false` (removing the support for [obsolete](https://github.com/dotnet/designs/blob/21b274dbc21e4ae54b7e4c5dbd5ef31e439e78db/accepted/2020/better-obsoletion/binaryformatter-obsoletion.md) binary serialization).
 
-## Options related to reflection
+## Options related to trimming
 
-By default, the compiler tries to maximize compatibility with existing .NET code at the expense of compilation speed and size of the output executable. This allows people to use their existing code that worked well in a fully dynamic mode without hitting issues caused by full AOT compilation. To read more about reflection, see the [Reflection in AOT mode](reflection-in-aot-mode.md) document. The compatibility behaviors can be turned off by adding/editing following properties in your project file:
+The Native AOT compiler supports the [documented options](https://docs.microsoft.com/en-us/dotnet/core/deploying/trim-self-contained) for removing unused code (trimming). By default, the compiler tries to very conservatively remove some of the unused code.
 
-* `<RootAllApplicationAssemblies>false</RootAllApplicationAssemblies>`: this disables the compiler behavior where all code in the application assemblies is considered dynamically reachable. Leaving this option at the default value (`true`) has a significant effect on the size of the resulting executable because it prevents removal of unused code that would otherwise happen. The default value ensures compatibility with reflection-heavy applications.
-* `<IlcGenerateCompleteTypeMetadata>false</IlcGenerateCompleteTypeMetadata>`: this disables generation of complete type metadata. This is a compilation mode that prevents a situation where some members of a type are visible to reflection at runtime, but others aren't, because they weren't compiled.
+🛈 Native AOT difference: The documented `PublishTrimmed` property is implied to be `true` when Native AOT is active.
+
+By default, the compiler tries to maximize compatibility with existing .NET code at the expense of compilation speed and size of the output executable. This allows people to use their existing code that worked well in a fully dynamic mode without hitting issues caused by trimming. To read more about reflection, see the [Reflection in AOT mode](reflection-in-aot-mode.md) document.
+
+🛈 Native AOT difference: the `TrimMode` of framework assemblies is set to `link` by default. To compile entire framework assemblies, use `TrimmerRootAssembly` to root the selected assemblies. It's not recommended to root the entire framework.
+
+To enable more aggressive removal of unreferenced code, set the `<TrimMode>` property to `link`.
+
+To aid in troubleshooting some of the most common problems related to trimming add `<IlcGenerateCompleteTypeMetadata>true</IlcGenerateCompleteTypeMetadata>` to your project. This ensures types are preserved in their entirety, but the extra members that would otherwise be trimmed cannot be used in runtime reflection. This mode can turn some spurious `NullReferenceExceptions` (caused by reflection APIs returning a null) caused by trimming into more actionable exceptions.
+
+## Options related to metadata generation
+
 * `<IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>`: this disables generation of stack trace metadata that provides textual names in stack traces. This is for example the text string one gets by calling `Exception.ToString()` on a caught exception. With this option disabled, stack traces will still be generated, but will be based on reflection metadata alone (they might be less complete).
 * `<IlcDisableReflection>true</IlcDisableReflection>`: this completely disables the reflection metadata generation. Very basic reflection will still work (you can still use `typeof`, call `Object.GetType()`, compare the results, and query for basic properties such as `Type.IsValueType` or `Type.BaseType`), but most of the reflection stack will no longer work (no way to query/access methods and fields on types, or get names of types). This mode is experimental - more details in the [Reflection free mode](reflection-free-mode.md) document.
 

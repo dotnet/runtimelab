@@ -45,7 +45,7 @@
     <IncludeCoreDisTools Condition="'$(TargetsWindows)' == 'true' and '$(Configuration)' != 'Release'">true</IncludeCoreDisTools>
   </PropertyGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(TargetArchitecture)' != 'arm64'">
     <PackageReference Include="Microsoft.DotNet.ObjectWriter">
       <Version>$(ObjectWriterVersion)</Version>
     </PackageReference>
@@ -54,7 +54,7 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(TargetArchitecture)' != 'arm64'">
     <Content Include="$(NuGetPackageRoot)\runtime.$(ILCompilerRuntimeIdentifier).microsoft.dotnet.objectwriter\$(ObjectWriterVersion)\runtimes\$(ILCompilerRuntimeIdentifier)\native\$(LibraryNamePrefix)objwriter$(LibraryNameExtension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
@@ -66,7 +66,9 @@
       <Visible>false</Visible>
       <Pack>false</Pack>
     </Content>
+  </ItemGroup>
 
+  <ItemGroup>
     <Content Include="$(RuntimeBinDir)\$(LibraryNamePrefix)jitinterface_$(TargetArchitecture)$(LibraryNameExtension)" Condition="'$(TargetArchitecture)' != 'wasm'">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>

@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Collections.Generic;
 using System.Reflection.Runtime.BindingFlagSupport;
@@ -10,6 +11,7 @@ namespace System.Reflection.Runtime.TypeInfos
 {
     internal abstract partial class RuntimeTypeInfo
     {
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         public sealed override object InvokeMember(
             string name, BindingFlags bindingFlags, Binder binder, object target,
             object[] providedArgs, ParameterModifier[] modifiers, CultureInfo culture, string[] namedParams)
