@@ -254,6 +254,9 @@ class Program
             // This test might be a bit fragile, but we want to make sure accessing properties
             // on an array triggers same as accessing properties on System.Array.
             Assert.Equal(7, typeof(int[]).GetProperties().Length);
+
+            // Regression test for when dataflow analysis was trying to generate method bodies for these
+            Assert.Equal(1, typeof(int[]).GetConstructors().Length);
         }
     }
 }

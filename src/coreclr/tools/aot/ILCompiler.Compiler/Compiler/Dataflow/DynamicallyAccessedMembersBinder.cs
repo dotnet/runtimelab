@@ -97,6 +97,12 @@ namespace ILCompiler.Dataflow
 
         public static IEnumerable<MethodDesc> GetConstructorsOnType(this TypeDesc type, Func<MethodDesc, bool> filter, BindingFlags? bindingFlags = null)
         {
+            if (type.IsArray)
+            {
+                // Constructors on arrays are special magic that the reflection stack special cases at runtime anyway.
+                yield break;
+            }
+
             foreach (var method in type.GetMethods())
             {
                 if (!method.IsConstructor)
@@ -124,6 +130,14 @@ namespace ILCompiler.Dataflow
         public static IEnumerable<MethodDesc> GetMethodsOnTypeHierarchy(this TypeDesc type, Func<MethodDesc, bool> filter, BindingFlags? bindingFlags = null)
         {
             bool onBaseType = false;
+
+            if (type.IsArray)
+            {
+                // Methods on arrays are special magic that the reflection stack special cases at runtime anyway.
+                type = type.BaseType;
+                onBaseType = true;
+            }
+
             while (type != null)
             {
                 foreach (var method in type.GetMethods())
@@ -230,15 +244,18 @@ namespace ILCompiler.Dataflow
         public static IEnumerable<PropertyPseudoDesc> GetPropertiesOnTypeHierarchy(this TypeDesc type, Func<PropertyPseudoDesc, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
         {
             bool onBaseType = false;
+
+            if (type.IsArray)
+            {
+                type = type.BaseType;
+                onBaseType = true;
+            }
+
             while (type != null)
             {
-                if (type.GetTypeDefinition() is not EcmaType ecmaType)
+                if (type is not EcmaType ecmaType)
                 {
-                    // Go down the inheritance chain to see if we have an EcmaType later.
-                    // Arrays would hit this (base type of arrays is the EcmaType for System.Array).
-                    type = type.BaseType;
-                    onBaseType = true;
-                    continue;
+                    yield break;
                 }
 
                 foreach (var propertyHandle in ecmaType.MetadataReader.GetTypeDefinition(ecmaType.Handle).GetProperties())
@@ -292,15 +309,18 @@ namespace ILCompiler.Dataflow
         public static IEnumerable<EventPseudoDesc> GetEventsOnTypeHierarchy(this TypeDesc type, Func<EventPseudoDesc, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
         {
             bool onBaseType = false;
+
+            if (type.IsArray)
+            {
+                type = type.BaseType;
+                onBaseType = true;
+            }
+            
             while (type != null)
             {
-                if (type.GetTypeDefinition() is not EcmaType ecmaType)
+                if (type is not EcmaType ecmaType)
                 {
-                    // Go down the inheritance chain to see if we have an EcmaType later.
-                    // Arrays would hit this (base type of arrays is the EcmaType for System.Array).
-                    type = type.BaseType;
-                    onBaseType = true;
-                    continue;
+                    yield break;
                 }
 
                 foreach (var eventHandle in ecmaType.MetadataReader.GetTypeDefinition(ecmaType.Handle).GetEvents())
