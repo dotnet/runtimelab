@@ -35,20 +35,6 @@ uint32_t PalEventWrite(REGHANDLE arg1, const EVENT_DESCRIPTOR * arg2, uint32_t a
 // Index for the fiber local storage of the attached thread pointer
 static uint32_t g_flsIndex = FLS_OUT_OF_INDEXES;
 
-GCSystemInfo g_RhSystemInfo;
-
-bool InitializeSystemInfo()
-{
-    SYSTEM_INFO systemInfo;
-    GetSystemInfo(&systemInfo);
-
-    g_RhSystemInfo.dwNumberOfProcessors = systemInfo.dwNumberOfProcessors;
-    g_RhSystemInfo.dwPageSize = systemInfo.dwPageSize;
-    g_RhSystemInfo.dwAllocationGranularity = systemInfo.dwAllocationGranularity;
-
-    return true;
-}
-
 // This is called when each *fiber* is destroyed. When the home fiber of a thread is destroyed,
 // it means that the thread itself is destroyed.
 // Since we receive that notification outside of the Loader Lock, it allows us to safely acquire
@@ -76,6 +62,14 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalInit()
     {
         return false;
     }
+
+    if (!GCToOSInterface::Initialize())
+    {
+        return false;
+    }
+
+    // Use the same adjustment for current processor count as GC
+    g_RhNumberOfProcessors = GCToOSInterface::GetCurrentProcessCpuCount();
 
     return true;
 }
@@ -380,9 +374,9 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalEventEnabled(REGHANDLE regHandle, _In_ 
     return !!EventEnabled(regHandle, eventDescriptor);
 }
 
-REDHAWK_PALEXPORT HANDLE REDHAWK_PALAPI PalCreateLowMemoryNotification()
+REDHAWK_PALEXPORT void REDHAWK_PALAPI PalTerminateCurrentProcess(uint32_t arg2)
 {
-    return CreateMemoryResourceNotification(LowMemoryResourceNotification);
+    TerminateProcess(GetCurrentProcess(), arg2);
 }
 
 REDHAWK_PALEXPORT HANDLE REDHAWK_PALAPI PalGetModuleHandleFromPointer(_In_ void* pointer)
