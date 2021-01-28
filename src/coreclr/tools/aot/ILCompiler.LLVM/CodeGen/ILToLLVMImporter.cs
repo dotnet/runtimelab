@@ -2565,6 +2565,28 @@ namespace Internal.IL
                         return true;
                     }
                     break;
+                case "EETypePtrOf":
+                    if (_mangledName == "S_P_CoreLib_System_Reflection_RuntimeAssemblyName__GetHashCode")
+                    {
+
+                    }
+                    if (metadataType.Namespace == "System" && metadataType.Name == "EETypePtr" && method.Instantiation.Length == 1)
+                    {
+                        if (runtimeDeterminedMethod.IsRuntimeDeterminedExactMethod)
+                        {
+                            var genericTypeSymbol = CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.Instantiation[0]);
+                            PushExpression(StackValueKind.Int32, "eeTypePtr", genericTypeSymbol, GetWellKnownType(WellKnownType.IntPtr));
+                        }
+                        else
+                        {
+                            var genericTypeSymbol = _compilation.NodeFactory.ConstructedTypeSymbol(method.Instantiation[0]);
+
+                            PushExpression(StackValueKind.Int32, "eeTypePtr", GetEETypePointerForTypeDesc(genericTypeSymbol.Type, true), GetWellKnownType(WellKnownType.IntPtr));
+                        }
+
+                        return true;
+                    }
+                    break;
             }
 
             return false;
