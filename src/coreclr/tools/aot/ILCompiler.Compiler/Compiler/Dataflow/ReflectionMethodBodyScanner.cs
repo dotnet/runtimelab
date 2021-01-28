@@ -32,7 +32,8 @@ namespace ILCompiler.Dataflow
             return
                 GetIntrinsicIdForMethod(methodDefinition) > IntrinsicId.RequiresReflectionBodyScanner_Sentinel ||
                 flowAnnotations.RequiresDataflowAnalysis(methodDefinition) ||
-                methodDefinition.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresUnreferencedCodeAttribute");
+                methodDefinition.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresUnreferencedCodeAttribute") ||
+                methodDefinition.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresDynamicCodeAttribute");
         }
 
         public static bool RequiresReflectionMethodBodyScannerForMethodBody(FlowAnnotations flowAnnotations, MethodDesc methodDefinition)
@@ -50,6 +51,11 @@ namespace ILCompiler.Dataflow
         bool ShouldEnableReflectionPatternReporting(MethodDesc method)
         {
             return !method.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresUnreferencedCodeAttribute");
+        }
+
+        bool ShouldEnableAotPatternReporting(MethodDesc method)
+        {
+            return !method.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresDynamicCodeAttribute");
         }
 
         private ReflectionMethodBodyScanner(NodeFactory factory, FlowAnnotations flowAnnotations, Logger logger)
@@ -604,6 +610,7 @@ namespace ILCompiler.Dataflow
 
             var callingMethodDefinition = callingMethodBody.OwningMethod;
             bool shouldEnableReflectionWarnings = ShouldEnableReflectionPatternReporting(callingMethodDefinition);
+            bool shouldEnableAotWarnings = ShouldEnableAotPatternReporting(callingMethodDefinition);
             var reflectionContext = new ReflectionPatternContext(_logger, shouldEnableReflectionWarnings, callingMethodBody, offset, new MethodOrigin(calledMethod));
 
             DynamicallyAccessedMemberTypes returnValueDynamicallyAccessedMemberTypes = 0;
@@ -711,6 +718,9 @@ namespace ILCompiler.Dataflow
                                         $"It's not possible to guarantee the availability of requirements of the generic type.");
                                 }
                             }
+
+                            if (shouldEnableAotWarnings)
+                                LogDynamicCodeWarning(_logger, callingMethodBody, offset, calledMethod);
 
                             // We don't want to lose track of the type
                             // in case this is e.g. Activator.CreateInstance(typeof(Foo<>).MakeGenericType(...));
@@ -929,7 +939,8 @@ namespace ILCompiler.Dataflow
                                 }
                                 else
                                 {
-                                    _logger.LogWarning(Resources.Strings.IL9701, 9701, callingMethodBody, offset, MessageSubCategory.AotAnalysis);
+                                    if (shouldEnableAotWarnings)
+                                        _logger.LogWarning(Resources.Strings.IL9701, 9701, callingMethodBody, offset, MessageSubCategory.AotAnalysis);
                                 }
                             }
                         }
@@ -956,7 +967,8 @@ namespace ILCompiler.Dataflow
                                 }
                                 else
                                 {
-                                    _logger.LogWarning(Resources.Strings.IL9702, 9702, callingMethodBody, offset, MessageSubCategory.AotAnalysis);
+                                    if (shouldEnableAotWarnings)
+                                        _logger.LogWarning(Resources.Strings.IL9702, 9702, callingMethodBody, offset, MessageSubCategory.AotAnalysis);
                                 }
                             }
                         }
@@ -1616,6 +1628,9 @@ namespace ILCompiler.Dataflow
                             // We don't track MethodInfo values, so we can't determine if the MakeGenericMethod is problematic or not.
                             // Since some of the generic parameters may have annotations, all calls are potentially dangerous.
                             reflectionContext.RecordUnrecognizedPattern(2060, $"Call to `{calledMethod.GetDisplayName()}` can not be statically analyzed. It's not possible to guarantee the availability of requirements of the generic method.");
+
+                            if (shouldEnableAotWarnings)
+                                LogDynamicCodeWarning(_logger, callingMethodBody, offset, calledMethod);
                         }
                         break;
 
@@ -1650,6 +1665,28 @@ namespace ILCompiler.Dataflow
                             //}
 
                             _logger.LogWarning(message, 2026, callingMethodBody, offset, MessageSubCategory.TrimAnalysis);
+                        }
+
+                        
+
+                        if (shouldEnableAotWarnings &&                            
+                            calledMethod.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresDynamicCodeAttribute"))
+                        {
+                            LogDynamicCodeWarning(_logger, callingMethodBody, offset, calledMethod);
+                        }
+
+                        static void LogDynamicCodeWarning(Logger logger, MethodIL callingMethodBody, int offset, MethodDesc calledMethod)
+                        {
+                            string message = String.Format(Resources.Strings.IL9700, calledMethod.GetDisplayName());// +
+                                                                                                                    // TODO
+                                                                                                                    //$"{requiresUnreferencedCode.Message}.";
+
+                            //if (requiresUnreferencedCode.Url != null)
+                            //{
+                            //    message += " " + requiresUnreferencedCode.Url;
+                            //}
+
+                            logger.LogWarning(message, 9700, callingMethodBody, offset, MessageSubCategory.AotAnalysis);
                         }
 
                         // To get good reporting of errors we need to track the origin of the value for all method calls
@@ -2303,6 +2340,7 @@ namespace ILCompiler.Dataflow
                 // Error codes > 6000 are reserved for custom steps and illink doesn't claim ownership of them
 
                 // TODO: these are all unique to NativeAOT - mono/linker repo is not aware this error code is used.
+                public const string IL9700 = "Calling '{0}' which has `RequiresDynamicCodeAttribute` can break functionality when compiled fully ahead of time.";
                 public const string IL9701 = "Enum.GetValues was called with an unknown enum type. It might not be possible to construct an array of this type at runtime.";
                 public const string IL9702 = "Marshal.SizeOf was called with an unknown type. It might not be possible to compute the marshalling size at runtime.";
             }

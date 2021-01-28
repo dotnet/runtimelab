@@ -76,6 +76,7 @@ namespace System
             Debug.Assert(array != null);
         }
 
+        [RequiresDynamicCode("The native code for this array might not be available at runtime.")]
         public static Array CreateInstance(Type elementType, params long[] lengths)
         {
             if (lengths == null)
