@@ -5,7 +5,6 @@ using System.Runtime;
 using System.Threading;
 using System.Collections;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Reflection;
@@ -74,7 +73,6 @@ namespace System
             return EETypePtr.EETypePtrOf<Array>().ToPointer();
         }
 
-        [RequiresDynamicCode("The native code for this array might not be available at runtime.")]
         public static Array CreateInstance(Type elementType, int length)
         {
             if (elementType is null)
@@ -118,7 +116,6 @@ namespace System
             return NewMultiDimArray(arrayType.TypeHandle.ToEETypePtr(), pLengths, 3);
         }
 
-        [RequiresDynamicCode("The native code for this instantiation might not be available at runtime.")]
         public static Array CreateInstance(Type elementType, params int[] lengths)
         {
             if (elementType is null)
