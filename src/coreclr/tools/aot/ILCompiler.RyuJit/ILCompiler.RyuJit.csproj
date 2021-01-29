@@ -87,5 +87,11 @@
     <Compile Include="..\..\Common\JitInterface\SystemVStructClassificator.cs">
       <Link>JitInterface\SystemVStructClassificator.cs</Link>
     </Compile>
+    <Compile Include="..\..\Common\Pgo\PgoFormat.cs">
+      <Link>Pgo\PgoFormat.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Common\Pgo\TypeSystemEntityOrUnknown.cs">
+      <Link>Pgo\TypeSystemEntityOrUnknown.cs</Link>
+    </Compile>
   </ItemGroup>
 </Project>
