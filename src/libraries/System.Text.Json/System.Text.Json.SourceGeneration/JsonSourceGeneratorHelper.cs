@@ -17,16 +17,19 @@ namespace System.Text.Json.SourceGeneration
         private readonly Type _ienumerableType;
         private readonly Type _listOfTType;
         private readonly Type _ienumerableOfTType;
+        private readonly Type _ilistOfTType;
         private readonly Type _dictionaryType;
         private readonly Type _nullableOfTType;
 
         // Generation namespace for source generation code.
-        const string GenerationNamespace = "JsonCodeGeneration";
+        private readonly string _generationNamespace;
+
+        private const string JsonContextDeclarationSource = "internal partial class JsonContext : JsonSerializerContext";
 
         private readonly HashSet<Type> _knownTypes = new();
 
         // Contains used JsonTypeInfo<T> identifiers.
-        private HashSet<string> _usedCompilableTypeNames = new();
+        private HashSet<string> _usedFriendlyTypeNames = new();
 
         /// <summary>
         /// TypeInfo for serializable types.
@@ -42,11 +45,13 @@ namespace System.Text.Json.SourceGeneration
 
         public JsonSourceGeneratorHelper(GeneratorExecutionContext executionContext, MetadataLoadContext metadataLoadContext)
         {
+            _generationNamespace = $"{executionContext.Compilation.AssemblyName}.JsonSourceGeneration";
             _executionContext = executionContext;
 
             _ienumerableType = metadataLoadContext.Resolve(typeof(IEnumerable));
             _listOfTType = metadataLoadContext.Resolve(typeof(List<>));
             _ienumerableOfTType = metadataLoadContext.Resolve(typeof(IEnumerable<>));
+            _ilistOfTType = metadataLoadContext.Resolve(typeof(IList<>));
             _dictionaryType = metadataLoadContext.Resolve(typeof(Dictionary<,>));
             _nullableOfTType = metadataLoadContext.Resolve(typeof(Nullable<>));
 
@@ -56,30 +61,25 @@ namespace System.Text.Json.SourceGeneration
             InitializeDiagnosticDescriptors();
         }
 
-        public void GenerateSerializationMetadata(Dictionary<string, Type> serializableTypes)
+        public void GenerateSerializationMetadata(Dictionary<string, (Type, bool)> serializableTypes)
         {
             // Add base default instance source.
-            _executionContext.AddSource("JsonContext.g.cs", SourceText.From(BaseJsonContextImplementation, Encoding.UTF8));
+            AddBaseJsonContextImplementation();
 
-#if LAUNCH_DEBUGGER_ON_EXECUTE
-            try
+            foreach (KeyValuePair<string, (Type, bool)> pair in serializableTypes)
             {
-#endif
-                foreach (KeyValuePair<string, Type> pair in serializableTypes)
-                {
-                    TypeMetadata typeMetadata = GetOrAddTypeMetadata(pair.Value);
-                    GenerateSerializationMetadataForType(typeMetadata);
-                }
-#if LAUNCH_DEBUGGER_ON_EXECUTE
+                (Type type, bool canBeDynamic) = pair.Value;
+                TypeMetadata typeMetadata = GetOrAddTypeMetadata(type, canBeDynamic);
+                GenerateSerializationMetadataForType(typeMetadata);
             }
-            catch (Exception e)
-            {
-                throw e;
-            }
-#endif
 
             // Add GetJsonClassInfo override implementation.
             _executionContext.AddSource("JsonContext.GetJsonClassInfo.cs", SourceText.From(Get_GetClassInfo_Implementation(), Encoding.UTF8));
+        }
+
+        public void AddBaseJsonContextImplementation()
+        {
+            _executionContext.AddSource("JsonContext.g.cs", SourceText.From(BaseJsonContextImplementation, Encoding.UTF8));
         }
 
         public void GenerateSerializationMetadataForType(TypeMetadata typeMetadata)
@@ -99,9 +99,13 @@ namespace System.Text.Json.SourceGeneration
             {
                 case ClassType.KnownType:
                     {
-                        // Generate nothing. Default `JsonSerializerContext.GetClassInfo()` implementation will provide the metadata.
-                        return;
+                        _executionContext.AddSource(
+                            metadataFileName,
+                            SourceText.From(GenerateForTypeWithConverter(typeMetadata), Encoding.UTF8));
+
+                        _executionContext.ReportDiagnostic(Diagnostic.Create(_generatedTypeClass, Location.None, new string[] { typeMetadata.CompilableName }));
                     }
+                    break;
                 case ClassType.TypeWithCustomConverter:
                     {
                         // TODO: Generate code similar to ClassInfo for known types.
@@ -111,7 +115,9 @@ namespace System.Text.Json.SourceGeneration
                     {
                         _executionContext.AddSource(
                             metadataFileName,
-                            SourceText.From(GenerateForEnumerable(typeMetadata, collectionType: typeMetadata.CollectionType), Encoding.UTF8));
+                            SourceText.From(GenerateForCollection(typeMetadata), Encoding.UTF8));
+
+                        _executionContext.ReportDiagnostic(Diagnostic.Create(_generatedTypeClass, Location.None, new string[] { typeMetadata.CompilableName }));
 
                         GenerateSerializationMetadataForType(typeMetadata.CollectionValueTypeMetadata);
                     }
@@ -120,7 +126,9 @@ namespace System.Text.Json.SourceGeneration
                     {
                         _executionContext.AddSource(
                             metadataFileName,
-                            SourceText.From(GenerateForDictionary(typeMetadata, collectionType: typeMetadata.CollectionType), Encoding.UTF8));
+                            SourceText.From(GenerateForCollection(typeMetadata), Encoding.UTF8));
+
+                        _executionContext.ReportDiagnostic(Diagnostic.Create(_generatedTypeClass, Location.None, new string[] { typeMetadata.CompilableName }));
 
                         GenerateSerializationMetadataForType(typeMetadata.CollectionKeyTypeMetadata);
                         GenerateSerializationMetadataForType(typeMetadata.CollectionValueTypeMetadata);
@@ -143,15 +151,6 @@ namespace System.Text.Json.SourceGeneration
                         // Add declarations for the JsonTypeInfo<T> wrapper and nested property.
                         sb.Append(Get_TypeInfoClassWrapper_And_TypeInfoProperty_Declarations(typeMetadata));
 
-                        // Add declarations for JsonPropertyInfo<T>s for each property.
-                        // TODO: Add declarations for JsonPropertyInfo<T>s for each field.
-                        foreach (PropertyMetadata propertyMetadata in typeMetadata.PropertiesMetadata)
-                        {
-                            sb.Append($@"
-            private JsonPropertyInfo<{propertyMetadata.TypeMetadata.CompilableName}> _property_{propertyMetadata.Name};
-");
-                        }
-
                         // Add constructor which initializers the JsonPropertyInfo<T>s for the type.
                         sb.Append(GetTypeInfoConstructorAndInitializeMethod(typeMetadata));
 
@@ -162,17 +161,12 @@ namespace System.Text.Json.SourceGeneration
                 return new {typeMetadata.CompilableName}();
             }}
 ");
-                        // Add Serialize func.
-                        sb.Append(GenerateSerializeFunc(typeMetadata));
-
-                        // Add DeserializeFunc.
-                        sb.Append(GenerateDeserializeFunc(typeMetadata));
 
                         // Add end braces.
                         sb.Append($@"
-        }} // End of {typeMetadata.FriendlyName}TypeInfo class.
-    }} // End of JsonContext class.
-}} // End of {GenerationNamespace} namespace.
+        }}
+    }}
+}}
 ");
 
                         _executionContext.AddSource(
@@ -182,7 +176,7 @@ namespace System.Text.Json.SourceGeneration
                         _executionContext.ReportDiagnostic(Diagnostic.Create(_generatedTypeClass, Location.None, new string[] { typeMetadata.CompilableName }));
 
                         // If type had its JsonTypeInfo name changed, report to the user.
-                        if (type.Name != typeMetadata.CompilableName)
+                        if (type.Name != typeMetadata.FriendlyName)
                         {
                             //"Duplicate type name detected. Setting the JsonTypeInfo<T> property for type {0} in assembly {1} to {2}. To use please call JsonContext.Instance.{2}",
                             _executionContext.ReportDiagnostic(Diagnostic.Create(
@@ -212,26 +206,16 @@ namespace System.Text.Json.SourceGeneration
             }
         }
 
-        private static string GenerateForEnumerable(TypeMetadata typeMetadata, CollectionType collectionType)
+        private string GenerateForTypeWithConverter(TypeMetadata typeMetadata)
         {
             string typeCompilableName = typeMetadata.CompilableName;
             string typeFriendlyName = typeMetadata.FriendlyName;
 
-            TypeMetadata? collectionValueTypeMetadata = typeMetadata.CollectionValueTypeMetadata;
-            Debug.Assert(collectionValueTypeMetadata != null);
-
-            string valueTypeCompilableName = collectionValueTypeMetadata.CompilableName;
-            string valueTypeReadableName = collectionValueTypeMetadata.FriendlyName;
-
-            string elementClassInfo = collectionValueTypeMetadata.ClassType == ClassType.TypeUnsupportedBySourceGen
-                ? "null"
-                : $"this.{valueTypeReadableName}";
-
             return @$"{GetUsingStatementsString(typeMetadata)}
 
-namespace {GenerationNamespace}
+namespace {_generationNamespace}
 {{
-    public partial class JsonContext : JsonSerializerContext
+    {JsonContextDeclarationSource}
     {{
         private JsonTypeInfo<{typeCompilableName}> _{typeFriendlyName};
         public JsonTypeInfo<{typeCompilableName}> {typeFriendlyName}
@@ -240,47 +224,61 @@ namespace {GenerationNamespace}
             {{
                 if (_{typeFriendlyName} == null)
                 {{
-                    var typeInfo = (JsonCollectionTypeInfo<{typeCompilableName}>)KnownCollectionTypeInfos<{valueTypeCompilableName}>.Get{collectionType}({elementClassInfo}, this);
-                    typeInfo.CompleteInitialization();
+                    var typeInfo = new JsonValueInfo<{typeCompilableName}>(new {typeFriendlyName}Converter(), GetOptions());
+                    typeInfo.CompleteInitialization(canBeDynamic: {GetBoolAsStr(typeMetadata.CanBeDynamic)});
                     _{typeFriendlyName} = typeInfo;
                 }}
-                
+      
                 return _{typeFriendlyName};
             }}
         }}
     }}
 }}
-            ";
+";
         }
 
-        private static string GenerateForDictionary(TypeMetadata typeMetadata, CollectionType collectionType)
+        private static string GetBoolAsStr(bool value) => value ? "true" : "false";
+
+        private string  GenerateForCollection(TypeMetadata typeMetadata)
         {
             string typeCompilableName = typeMetadata.CompilableName;
             string typeFriendlyName = typeMetadata.FriendlyName;
 
             // Key metadata
             TypeMetadata? collectionKeyTypeMetadata = typeMetadata.CollectionKeyTypeMetadata;
-            Debug.Assert(collectionKeyTypeMetadata != null);
-
-            string keyTypeCompilableName = collectionKeyTypeMetadata.CompilableName;
-            string keyTypeReadableName = collectionKeyTypeMetadata.FriendlyName;
+            Debug.Assert(!(typeMetadata.CollectionType == CollectionType.Dictionary && collectionKeyTypeMetadata == null));
+            string keyTypeCompilableName = collectionKeyTypeMetadata?.CompilableName;
+            string keyTypeReadableName = collectionKeyTypeMetadata?.FriendlyName;
 
             // Value metadata
             TypeMetadata? collectionValueTypeMetadata = typeMetadata.CollectionValueTypeMetadata;
             Debug.Assert(collectionValueTypeMetadata != null);
-
             string valueTypeCompilableName = collectionValueTypeMetadata.CompilableName;
             string valueTypeReadableName = collectionValueTypeMetadata.FriendlyName;
 
-            string elementClassInfo = collectionValueTypeMetadata.ClassType == ClassType.TypeUnsupportedBySourceGen
+            string valueTypeMetadataPropertyName = collectionValueTypeMetadata.ClassType == ClassType.TypeUnsupportedBySourceGen
                 ? "null"
                 : $"this.{valueTypeReadableName}";
 
+            CollectionType collectionType = typeMetadata.CollectionType;
+
+            string collectionTypeInfoValue = collectionType switch
+            {
+                CollectionType.Array => GetEnumerableTypeInfoAssignment(),
+                CollectionType.List => GetEnumerableTypeInfoAssignment(),
+                CollectionType.IEnumerable => GetEnumerableTypeInfoAssignment(),
+                CollectionType.IList => GetEnumerableTypeInfoAssignment(),
+                CollectionType.Dictionary => $@"(JsonCollectionTypeInfo<{typeCompilableName}>)KnownDictionaryTypeInfos<{keyTypeCompilableName!}, {valueTypeCompilableName}>.Get{collectionType}({valueTypeMetadataPropertyName}, this)",
+                _ => throw new NotSupportedException()
+            };
+
+            string GetEnumerableTypeInfoAssignment() => $@"(JsonCollectionTypeInfo<{typeCompilableName}>)KnownCollectionTypeInfos<{valueTypeCompilableName}>.Get{collectionType}({valueTypeMetadataPropertyName}, this)";
+
             return @$"{GetUsingStatementsString(typeMetadata)}
 
-namespace {GenerationNamespace}
+namespace {_generationNamespace}
 {{
-    public partial class JsonContext : JsonSerializerContext
+    {JsonContextDeclarationSource}
     {{
         private JsonTypeInfo<{typeCompilableName}> _{typeFriendlyName};
         public JsonTypeInfo<{typeCompilableName}> {typeFriendlyName}
@@ -289,20 +287,20 @@ namespace {GenerationNamespace}
             {{
                 if (_{typeFriendlyName} == null)
                 {{
-                    var typeInfo = (JsonCollectionTypeInfo<{typeCompilableName}>)KnownDictionaryTypeInfos<{keyTypeCompilableName}, {valueTypeCompilableName}>.Get{collectionType}({elementClassInfo}, this);
-                    typeInfo.CompleteInitialization();
+                    var typeInfo = {collectionTypeInfoValue};
+                    typeInfo.CompleteInitialization(canBeDynamic: {GetBoolAsStr(typeMetadata.CanBeDynamic)});
                     _{typeFriendlyName} = typeInfo;
                 }}
-                
+      
                 return _{typeFriendlyName};
             }}
         }}
     }}
 }}
-            ";
+";
         }
 
-        public TypeMetadata GetOrAddTypeMetadata(Type type)
+        public TypeMetadata GetOrAddTypeMetadata(Type type, bool canBeDynamic = false)
         {
             if (_typeMetadataCache.TryGetValue(type, out TypeMetadata? typeMetadata))
             {
@@ -317,7 +315,6 @@ namespace {GenerationNamespace}
             Type? collectionKeyType = null;
             Type? collectionValueType = null;
             List<PropertyMetadata>? propertiesMetadata = null;
-            List<PropertyMetadata>? fieldsMetadata = null;
             CollectionType collectionType = CollectionType.NotApplicable;
 
             // TODO: first check for custom converter.
@@ -360,6 +357,12 @@ namespace {GenerationNamespace}
                         collectionType = CollectionType.IEnumerable;
                         collectionValueType = genericTypeArgs[0];
                     }
+                    else if (genericTypeDef == _ilistOfTType)
+                    {
+                        classType = ClassType.Enumerable;
+                        collectionType = CollectionType.IList;
+                        collectionValueType = genericTypeArgs[0];
+                    }
                     else if (genericTypeDef == _dictionaryType)
                     {
                         classType = ClassType.Dictionary;
@@ -379,10 +382,8 @@ namespace {GenerationNamespace}
 
                 // TODO: support for non-public members.
                 PropertyInfo[] properties = type.GetProperties();
-                FieldInfo[] fields = type.GetFields();
 
                 propertiesMetadata = new List<PropertyMetadata>(properties.Length);
-                fieldsMetadata = new List<PropertyMetadata>(fields.Length);
 
                 foreach (PropertyInfo property in properties)
                 {
@@ -394,39 +395,34 @@ namespace {GenerationNamespace}
                     propertiesMetadata.Add(propMetadata);
                 }
 
-                foreach (FieldInfo field in fields)
-                {
-                    fieldsMetadata.Add(new PropertyMetadata
-                    {
-                        Name = field.Name,
-                        TypeMetadata = GetOrAddTypeMetadata(field.FieldType)
-                    });
-                }
+                // TODO: consider fields.
             }
 
-            string compilableName = type.GetCompilableTypeName();
+            string compilableName = type.GetUniqueCompilableTypeName();
             string friendlyName = type.GetFriendlyTypeName();
 
-            if (_usedCompilableTypeNames.Contains(type.Name))
+            if (_usedFriendlyTypeNames.Contains(friendlyName))
             {
-                compilableName = type.GetUniqueCompilableTypeName();
                 friendlyName = type.GetUniqueFriendlyTypeName();
             }
             else
             {
-                _usedCompilableTypeNames.Add(compilableName);
+                _usedFriendlyTypeNames.Add(friendlyName);
             }
 
-            typeMetadata.CompilableName = compilableName;
-            typeMetadata.FriendlyName = friendlyName;
-            typeMetadata.Type = type;
-            typeMetadata.ClassType = classType;
-            typeMetadata.CollectionType = collectionType;
-            typeMetadata.CollectionKeyTypeMetadata = collectionKeyType != null ? GetOrAddTypeMetadata(collectionKeyType) : null;
-            typeMetadata.CollectionValueTypeMetadata = collectionValueType != null ? GetOrAddTypeMetadata(collectionValueType) : null;
-            typeMetadata.PropertiesMetadata = propertiesMetadata;
-            typeMetadata.FieldsMetadata = fieldsMetadata;
-            typeMetadata.IsValueType = type.IsValueType;
+            typeMetadata.Initialize(
+                compilableName,
+                friendlyName,
+                type,
+                classType,
+                isValueType: type.IsValueType,
+                canBeDynamic,
+                propertiesMetadata,
+                fieldsMetadata: null,
+                collectionType,
+                collectionKeyTypeMetadata: collectionKeyType != null ? GetOrAddTypeMetadata(collectionKeyType) : null,
+                collectionValueTypeMetadata: collectionValueType != null ? GetOrAddTypeMetadata(collectionValueType) : null);
+
             return typeMetadata;
         }
 
@@ -451,6 +447,7 @@ namespace {GenerationNamespace}
             _knownTypes.Add(metadataLoadContext.Resolve(typeof(short)));
             _knownTypes.Add(metadataLoadContext.Resolve(typeof(int)));
             _knownTypes.Add(metadataLoadContext.Resolve(typeof(long)));
+            _knownTypes.Add(metadataLoadContext.Resolve(typeof(object)));
             _knownTypes.Add(metadataLoadContext.Resolve(typeof(sbyte)));
             _knownTypes.Add(metadataLoadContext.Resolve(typeof(float)));
             _knownTypes.Add(metadataLoadContext.Resolve(typeof(string)));
@@ -474,9 +471,9 @@ namespace {GenerationNamespace}
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace {GenerationNamespace}
+namespace {_generationNamespace}
 {{
-    public partial class JsonContext : JsonSerializerContext
+    {JsonContextDeclarationSource}
     {{
         private static JsonContext s_instance;
         public static JsonContext Instance
@@ -517,9 +514,9 @@ namespace {GenerationNamespace}
 
             sb.Append(@$"{GetUsingStatementsString(usingStatements)}
 
-namespace {GenerationNamespace}
+namespace {_generationNamespace}
 {{
-    public partial class JsonContext : JsonSerializerContext
+    {JsonContextDeclarationSource}
     {{
         public override JsonClassInfo GetJsonClassInfo(Type type)
         {{");
@@ -539,7 +536,7 @@ namespace {GenerationNamespace}
             }
 
             sb.Append(@$"
-            return null;
+            return null!;
         }}
     }}
 }}
@@ -566,10 +563,11 @@ namespace {GenerationNamespace}
             HashSet<string> usingStatements = new();
 
             // Add library usings.
-            usingStatements.Add(FormatAsUsingStatement("System"));
+            //usingStatements.Add(FormatAsUsingStatement("System"));
             usingStatements.Add(FormatAsUsingStatement("System.Runtime.CompilerServices"));
             usingStatements.Add(FormatAsUsingStatement("System.Text.Json"));
             usingStatements.Add(FormatAsUsingStatement("System.Text.Json.Serialization"));
+            usingStatements.Add(FormatAsUsingStatement("System.Text.Json.Serialization.Converters"));
             usingStatements.Add(FormatAsUsingStatement("System.Text.Json.Serialization.Metadata"));
 
             // Add imports to root type.
@@ -595,10 +593,7 @@ namespace {GenerationNamespace}
                             AddUsingStatementsForType(property.TypeMetadata);
                         }
 
-                        foreach (PropertyMetadata property in typeMetadata.FieldsMetadata)
-                        {
-                            AddUsingStatementsForType(property.TypeMetadata);
-                        }
+                        // TODO: consider fields.
                     }
                     break;
                 default:
@@ -627,16 +622,16 @@ namespace {GenerationNamespace}
         private static string FormatAsUsingStatement(string @namespace) => $"using {@namespace};";
 
         // Includes necessary imports, namespace decl and initializes class.
-        private static string Get_ContextClass_And_TypeInfoProperty_Declarations(TypeMetadata typeMetadata)
+        private string Get_ContextClass_And_TypeInfoProperty_Declarations(TypeMetadata typeMetadata)
         {
             string typeCompilableName = typeMetadata.CompilableName;
             string typeFriendlyName = typeMetadata.FriendlyName;
 
             return $@"
 
-namespace {GenerationNamespace}
+namespace {_generationNamespace}
 {{
-    public partial class JsonContext : JsonSerializerContext
+    {JsonContextDeclarationSource}
     {{
         private {typeFriendlyName}TypeInfo _{typeFriendlyName};
         public JsonTypeInfo<{typeCompilableName}> {typeFriendlyName}
@@ -677,7 +672,7 @@ namespace {GenerationNamespace}
 
             public void Initialize(JsonContext context)
             {{
-                JsonObjectInfo<{typeMetadata.CompilableName}> typeInfo = new(CreateObjectFunc, SerializeFunc, DeserializeFunc, context.GetOptions());
+                JsonObjectInfo<{typeMetadata.CompilableName}> typeInfo = new(CreateObjectFunc, context.GetOptions());
             ");
 
             foreach (PropertyMetadata propertyMetadata in typeMetadata.PropertiesMetadata)
@@ -695,7 +690,7 @@ namespace {GenerationNamespace}
                     : $@"{{ (({typeCompilableName})obj).{propertyName} = value; }}";
 
                 sb.Append($@"
-                _property_{propertyName} = typeInfo.AddProperty(
+                typeInfo.AddProperty(
                     ""{propertyName}"",
                     (obj) => {{ return (({typeCompilableName})obj).{propertyName}; }},
                     (obj, value) => {propMutation},
@@ -703,134 +698,13 @@ namespace {GenerationNamespace}
                 ");
             }
 
-            // Finalize initialize method.
+            // TODO: consider fields.
+
             sb.Append($@"
-                typeInfo.CompleteInitialization();
+                typeInfo.CompleteInitialization(canBeDynamic: {GetBoolAsStr(typeMetadata.CanBeDynamic)});
                 TypeInfo = typeInfo;
             }}
-            ");
-
-            return sb.ToString();
-        }
-
-        private static string GenerateSerializeFunc(TypeMetadata typeMetadata)
-        {
-            StringBuilder sb = new();
-
-            // Start function.
-            sb.Append($@"
-            private void SerializeFunc(Utf8JsonWriter writer, object value, ref WriteStack writeStack, JsonSerializerOptions options)
-            {{");
-
-            // Create base object.
-            // TODO: avoid copy here?
-            sb.Append($@"
-                {typeMetadata.CompilableName} obj = ({typeMetadata.CompilableName})value;
-            ");
-
-            foreach (PropertyMetadata propertyMetadata in typeMetadata.PropertiesMetadata)
-            {
-                sb.Append($@"
-                _property_{propertyMetadata.Name}.WriteValue(obj.{propertyMetadata.Name}, ref writeStack, writer);");
-            }
-
-            // End function.
-            sb.Append($@"
-            }}
 ");
-
-            return sb.ToString();
-        }
-
-        private static string GenerateDeserializeFunc(TypeMetadata typeMetadata)
-        {
-            StringBuilder sb = new();
-
-            string typeCompilableName = typeMetadata.CompilableName;
-
-            // TODO: investigate why this is necessary. Could this simply be typeCompilableName?
-            string returnType = typeMetadata.IsValueType ? "object" : typeCompilableName;
-
-            // Start deserialize function.
-            sb.Append($@"
-            private {returnType} DeserializeFunc(ref Utf8JsonReader reader, ref ReadStack readStack, JsonSerializerOptions options)
-            {{");
-
-            // Create helper function to check for property name.
-            sb.Append($@"
-                bool ReadPropertyName(ref Utf8JsonReader reader)
-                {{
-                    return reader.Read() && reader.TokenType == JsonTokenType.PropertyName;
-                }}
-            ");
-
-            // Start loop to read properties.
-            sb.Append($@"
-                ReadOnlySpan<byte> propertyName;
-                {typeCompilableName} obj = new {typeCompilableName}();
-
-                while (ReadPropertyName(ref reader))
-                {{
-                    propertyName = reader.ValueSpan;
-            ");
-
-            // Read and set each property.
-            bool isFirstProperty = true;
-
-            foreach (PropertyMetadata propertyMetadata in typeMetadata.PropertiesMetadata)
-            {
-                string ifCheckPrefix;
-                if (isFirstProperty)
-                {
-                    ifCheckPrefix = "";
-                    isFirstProperty = false;
-                }
-                else
-                {
-                    ifCheckPrefix = "else ";
-                }
-
-                sb.Append($@"
-                    {ifCheckPrefix}if (propertyName.SequenceEqual(_property_{propertyMetadata.Name}.NameAsUtf8Bytes))
-                    {{
-                        reader.Read();
-                        _property_{propertyMetadata.Name}.ReadValueAndSetMember(ref reader, ref readStack, obj);
-                    }}");
-            }
-
-            // Base condition for unhandled properties.
-            if (typeMetadata.PropertiesMetadata.Count > 0)
-            {
-                sb.Append($@"
-                    else
-                    {{
-                        reader.Read();
-                    }}");
-            }
-            else
-            {
-                sb.Append($@"
-                    reader.Read();");
-            }
-
-            // Finish property reading loops.
-            sb.Append($@"
-                }}
-            ");
-
-            // Verify the final received token and return object.
-            sb.Append($@"
-                if (reader.TokenType != JsonTokenType.EndObject)
-                {{
-                    throw new JsonException(""todo"");
-                }}
-
-                return obj;");
-
-            // End deserialize function.
-            sb.Append($@"
-            }}
-            ");
 
             return sb.ToString();
         }

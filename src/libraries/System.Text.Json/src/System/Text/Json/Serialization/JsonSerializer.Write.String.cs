@@ -89,13 +89,9 @@ namespace System.Text.Json
         /// <param name="value"></param>
         /// <param name="jsonTypeInfo"></param>
         /// <returns></returns>
-        public static string Serialize<TValue>(in TValue value, JsonTypeInfo<TValue> jsonTypeInfo)
+        public static string Serialize<TValue>(TValue value, JsonTypeInfo<TValue> jsonTypeInfo)
         {
-            if (jsonTypeInfo == null)
-            {
-                throw new ArgumentNullException(nameof(jsonTypeInfo));
-            }
-
+            // null check for jsonTypeInfo occurs here.
             return SerializeUsingMetadata(value, jsonTypeInfo);
         }
 
@@ -131,7 +127,7 @@ namespace System.Text.Json
         /// <param name="value"></param>
         /// <param name="jsonSerializerContext"></param>
         /// <returns></returns>
-        public static string Serialize<TValue>(in TValue value, JsonSerializerContext jsonSerializerContext)
+        public static string Serialize<[DynamicallyAccessedMembers(MembersAccessedOnWrite)] TValue>(TValue value, JsonSerializerContext jsonSerializerContext)
         {
             if (jsonSerializerContext == null)
             {
@@ -144,15 +140,7 @@ namespace System.Text.Json
         private static string SerializeUsingMetadata<TValue>(in TValue value, JsonClassInfo? jsonClassInfo)
         {
             WriteStack state = default;
-
-            // TODO: this would be when to fallback to regular warm-up code-paths.
-            // For validation during development, we don't expect this to be null.
-            if (jsonClassInfo == null)
-            {
-                throw new ArgumentNullException(nameof(jsonClassInfo));
-            }
-
-            state.Initialize(jsonClassInfo);
+            state.Initialize(jsonClassInfo ?? throw new ArgumentNullException(nameof(jsonClassInfo)));
 
             JsonSerializerOptions options = jsonClassInfo.Options;
 

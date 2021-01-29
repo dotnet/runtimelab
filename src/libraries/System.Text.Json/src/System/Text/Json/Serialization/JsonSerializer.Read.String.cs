@@ -95,11 +95,7 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(json));
             }
 
-            if (jsonTypeInfo == null)
-            {
-                throw new ArgumentNullException(nameof(jsonTypeInfo));
-            }
-
+            // null check for jsonTypeInfo occurs here.
             return DeserializeUsingMetadata<TValue?>(json, jsonTypeInfo);
         }
 
@@ -248,8 +244,6 @@ namespace System.Text.Json
 
         private static TValue? DeserializeUsingMetadata<TValue>(string json, JsonClassInfo? jsonClassInfo)
         {
-            ReadStack state = default;
-
             // TODO: this would be when to fallback to regular warm-up code-paths.
             // For validation during development, we don't expect this to be null.
             if (jsonClassInfo == null)
@@ -257,6 +251,7 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(jsonClassInfo));
             }
 
+            ReadStack state = default;
             state.Initialize(jsonClassInfo);
 
             return Deserialize<TValue>(

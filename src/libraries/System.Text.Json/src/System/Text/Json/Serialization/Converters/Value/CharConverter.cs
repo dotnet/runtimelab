@@ -5,8 +5,14 @@ using System.Runtime.InteropServices;
 
 namespace System.Text.Json.Serialization.Converters
 {
-    internal sealed class CharConverter : JsonConverter<char>
+    /// <summary>
+    /// todo
+    /// </summary>
+    public sealed class CharConverter : JsonConverter<char>
     {
+        /// <summary>
+        /// todo
+        /// </summary>
         public override char Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             string? str = reader.GetString();
@@ -17,6 +23,9 @@ namespace System.Text.Json.Serialization.Converters
             return str[0];
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override void Write(Utf8JsonWriter writer, char value, JsonSerializerOptions options)
         {
             writer.WriteStringValue(

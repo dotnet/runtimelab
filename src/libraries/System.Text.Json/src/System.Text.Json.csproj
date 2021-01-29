@@ -18,6 +18,10 @@
     <!-- Use the contract reference path for ApiCompat. -->
     <ContractTargetFramework Condition="'$(TargetFramework)' == 'netcoreapp3.0'">netstandard2.0</ContractTargetFramework>
   </PropertyGroup>
+  <!-- ILLinker settings -->
+  <ItemGroup>
+    <ILLinkSubstitutionsXmls Include="$(ILLinkDirectory)ILLink.Substitutions.xml" />
+  </ItemGroup>
   <ItemGroup>
     <Compile Include="$(CommonPath)System\HexConverter.cs" Link="Common\System\HexConverter.cs" />
     <Compile Include="$(CommonPath)System\Text\Json\PooledByteBufferWriter.cs" Link="Common\System\Text\Json\PooledByteBufferWriter.cs" />
@@ -94,7 +98,6 @@
     <Compile Include="System\Text\Json\Serialization\Converters\Collection\StackOfTConverter.cs" />
     <Compile Include="System\Text\Json\Serialization\Converters\Object\JsonObjectConverter.cs" />
     <Compile Include="System\Text\Json\Serialization\Converters\Object\KeyValuePairConverter.cs" />
-    <Compile Include="System\Text\Json\Serialization\Converters\Object\ObjectCodeGenConverter.cs" />
     <Compile Include="System\Text\Json\Serialization\Converters\Object\ObjectConverterFactory.cs" />
     <Compile Include="System\Text\Json\Serialization\Converters\Object\ObjectDefaultConverter.cs" />
     <Compile Include="System\Text\Json\Serialization\Converters\Object\ObjectWithParameterizedConstructorConverter.cs" />
@@ -161,7 +164,6 @@
     <Compile Include="System\Text\Json\Serialization\JsonSerializerOptions.Converters.cs" />
     <Compile Include="System\Text\Json\Serialization\JsonSerializerOptions.cs" />
     <Compile Include="System\Text\Json\Serialization\JsonStringEnumConverter.cs" />
-    <Compile Include="System\Text\Json\Serialization\JsonSerializerContext.Known.cs" />
     <Compile Include="System\Text\Json\Serialization\Metadata\JsonClassInfo.cs" />
     <Compile Include="System\Text\Json\Serialization\Metadata\JsonClassInfo.Cache.cs" />
     <Compile Include="System\Text\Json\Serialization\Metadata\JsonCollectionTypeInfoOfT.cs" />
@@ -238,11 +240,9 @@
   <ItemGroup Condition="$(TargetFramework.StartsWith('netstandard')) or $(TargetFramework.StartsWith('net4'))">
     <Compile Include="System\Collections\Generic\StackExtensions.netstandard.cs" />
     <!-- Common or Common-branched source files -->
-    <Compile Include="$(CommonPath)System\Buffers\ArrayBufferWriter.cs"
-             Link="Common\System\Buffers\ArrayBufferWriter.cs" />
+    <Compile Include="$(CommonPath)System\Buffers\ArrayBufferWriter.cs" Link="Common\System\Buffers\ArrayBufferWriter.cs" />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == '$(NetCoreAppCurrent)' or
-                        '$(TargetFramework)' == 'netcoreapp3.0'">
+  <ItemGroup Condition="'$(TargetFramework)' == '$(NetCoreAppCurrent)' or&#xD;&#xA;                        '$(TargetFramework)' == 'netcoreapp3.0'">
     <Reference Include="System.Buffers" />
     <Reference Include="System.Collections" />
     <Reference Include="System.Collections.Concurrent" />

@@ -3,13 +3,22 @@
 
 namespace System.Text.Json.Serialization.Converters
 {
-    internal sealed class DateTimeOffsetConverter : JsonConverter<DateTimeOffset>
+    /// <summary>
+    /// todo
+    /// </summary>
+    public sealed class DateTimeOffsetConverter : JsonConverter<DateTimeOffset>
     {
+        /// <summary>
+        /// todo
+        /// </summary>
         public override DateTimeOffset Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             return reader.GetDateTimeOffset();
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override void Write(Utf8JsonWriter writer, DateTimeOffset value, JsonSerializerOptions options)
         {
             writer.WriteStringValue(value);

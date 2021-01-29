@@ -25,12 +25,14 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public void CompleteInitialization()
+        public void CompleteInitialization(bool canBeDynamic)
         {
             _isInitialized = true;
 
-            //todo: should we not add?
-            Options.AddJsonClassInfo(this);
+            if (canBeDynamic)
+            {
+                Options.AddJsonClassInfo(this);
+            }
         }
     }
 }

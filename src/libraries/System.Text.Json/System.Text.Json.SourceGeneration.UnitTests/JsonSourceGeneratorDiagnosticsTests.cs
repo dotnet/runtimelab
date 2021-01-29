@@ -54,6 +54,11 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             // Expected info logs.
             string[] expectedInfoDiagnostics = new string[] {
+                "Generated serialization metadata for type List<ReferencedAssembly.ActiveOrUpcomingEvent>",
+                "Generated serialization metadata for type Int32",
+                "Generated serialization metadata for type String",
+                "Generated serialization metadata for type DateTimeOffset",
+                "Generated serialization metadata for type Boolean",
                 "Generated serialization metadata for type ActiveOrUpcomingEvent",
                 "Generated serialization metadata for type CampaignSummaryViewModel",
                 "Generated serialization metadata for type IndexViewModel",
@@ -108,6 +113,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             // Expected success info logs.
             string[] expectedInfoDiagnostics = new string[] {
                 "Generated serialization metadata for type IndexViewModel",
+                "Generated serialization metadata for type Boolean",
                 "Generated serialization metadata for type CampaignSummaryViewModel"
             };
 
@@ -131,6 +137,8 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             // Expected info logs.
             string[] expectedInfoDiagnostics = new string[] {
                 "Generated serialization metadata for type Location",
+                "Generated serialization metadata for type Int32",
+                "Generated serialization metadata for type String",
                 "Generated serialization metadata for type HelloWorld.Location",
             };
             // Expected warning logs.

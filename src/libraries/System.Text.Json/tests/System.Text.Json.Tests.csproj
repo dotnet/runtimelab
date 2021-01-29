@@ -187,9 +187,10 @@
   <PropertyGroup Condition="'$(GenerateJsonMetadata)' == 'true'">
     <DefineConstants>$(DefineConstants);GENERATE_JSON_METADATA</DefineConstants>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <_ExtraTrimmerArgs>--feature System.Text.Json.DisableJsonSerializerDynamicFallback true</_ExtraTrimmerArgs>
   </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Condition="'$(GenerateJsonMetadata)' == 'true'" Include="..\System.Text.Json.SourceGeneration\System.Text.Json.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  <ItemGroup Condition="'$(GenerateJsonMetadata)' == 'true'">
+    <ProjectReference Include="..\System.Text.Json.SourceGeneration\System.Text.Json.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
   <Target Condition="'$(GenerateJsonMetadata)' == 'true'" Name="FixIncrementalCoreCompileWithAnalyzers" BeforeTargets="CoreCompile">
     <ItemGroup>

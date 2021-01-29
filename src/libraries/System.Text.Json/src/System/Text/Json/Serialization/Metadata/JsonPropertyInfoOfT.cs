@@ -46,8 +46,7 @@ namespace System.Text.Json.Serialization.Metadata
 
         internal JsonPropertyInfo() { }
 
-        internal override void Initialize(
-            Type parentClassType,
+        internal override void Initialize(Type parentClassType,
             Type declaredPropertyType,
             Type? runtimePropertyType,
             ClassType runtimeClassType,
@@ -68,6 +67,29 @@ namespace System.Text.Json.Serialization.Metadata
                 parentTypeNumberHandling,
                 options);
 
+            if (memberInfo != null)
+            {
+                if (!JsonHelpers.DisableJsonSerializerDynamicFallback)
+                {
+                    InitializeAccessorsWithReflection(memberInfo);
+                }
+            }
+            else
+            {
+                IsForClassInfo = true;
+                HasGetter = true;
+                HasSetter = true;
+            }
+
+            _converterIsExternalAndPolymorphic = !converter.IsInternalConverter && DeclaredPropertyType != converter.TypeToConvert;
+            PropertyTypeCanBeNull = DeclaredPropertyType.CanBeNull();
+            _propertyTypeEqualsTypeToConvert = typeof(T) == DeclaredPropertyType;
+
+            GetPolicies(ignoreCondition, parentTypeNumberHandling, defaultValueIsNull: PropertyTypeCanBeNull);
+        }
+
+        private void InitializeAccessorsWithReflection(MemberInfo memberInfo)
+        {
             switch (memberInfo)
             {
                 case PropertyInfo propertyInfo:
@@ -78,14 +100,14 @@ namespace System.Text.Json.Serialization.Metadata
                         if (getMethod != null && (getMethod.IsPublic || useNonPublicAccessors))
                         {
                             HasGetter = true;
-                            Get = options.MemberAccessorStrategy.CreatePropertyGetter<T>(propertyInfo);
+                            Get = Options.MemberAccessorStrategy.CreatePropertyGetter<T>(propertyInfo);
                         }
 
                         MethodInfo? setMethod = propertyInfo.SetMethod;
                         if (setMethod != null && (setMethod.IsPublic || useNonPublicAccessors))
                         {
                             HasSetter = true;
-                            Set = options.MemberAccessorStrategy.CreatePropertySetter<T>(propertyInfo);
+                            Set = Options.MemberAccessorStrategy.CreatePropertySetter<T>(propertyInfo);
                         }
 
                         break;
@@ -96,12 +118,12 @@ namespace System.Text.Json.Serialization.Metadata
                         Debug.Assert(fieldInfo.IsPublic);
 
                         HasGetter = true;
-                        Get = options.MemberAccessorStrategy.CreateFieldGetter<T>(fieldInfo);
+                        Get = Options.MemberAccessorStrategy.CreateFieldGetter<T>(fieldInfo);
 
                         if (!fieldInfo.IsInitOnly)
                         {
                             HasSetter = true;
-                            Set = options.MemberAccessorStrategy.CreateFieldSetter<T>(fieldInfo);
+                            Set = Options.MemberAccessorStrategy.CreateFieldSetter<T>(fieldInfo);
                         }
 
                         break;
@@ -109,19 +131,9 @@ namespace System.Text.Json.Serialization.Metadata
 
                 default:
                     {
-                        IsForClassInfo = true;
-                        HasGetter = true;
-                        HasSetter = true;
-
-                        break;
+                        throw new InvalidOperationException();
                     }
             }
-
-            _converterIsExternalAndPolymorphic = !converter.IsInternalConverter && DeclaredPropertyType != converter.TypeToConvert;
-            PropertyTypeCanBeNull = DeclaredPropertyType.CanBeNull();
-            _propertyTypeEqualsTypeToConvert = typeof(T) == DeclaredPropertyType;
-
-            GetPolicies(ignoreCondition, parentTypeNumberHandling, defaultValueIsNull: PropertyTypeCanBeNull);
         }
 
         /// <summary>

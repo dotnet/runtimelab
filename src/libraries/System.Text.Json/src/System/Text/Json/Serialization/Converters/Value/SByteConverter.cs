@@ -3,18 +3,31 @@
 
 namespace System.Text.Json.Serialization.Converters
 {
-    internal sealed class SByteConverter : JsonConverter<sbyte>
+    /// <summary>
+    /// todo
+    /// </summary>
+    [CLSCompliant(false)]
+    public sealed class SByteConverter : JsonConverter<sbyte>
     {
+        /// <summary>
+        /// todo
+        /// </summary>
         public SByteConverter()
         {
             IsInternalConverterForNumberType = true;
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override sbyte Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             return reader.GetSByte();
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override void Write(Utf8JsonWriter writer, sbyte value, JsonSerializerOptions options)
         {
             writer.WriteNumberValue(value);

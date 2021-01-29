@@ -17,7 +17,7 @@ namespace System.Text.Json.Serialization
         /// </summary>
         public JsonSerializerContext()
         {
-            _options = JsonSerializerOptions.DefaultCodeGenOptions;
+            _options = JsonSerializerOptions.DefaultOptions;
         }
 
         /// <summary>
@@ -58,5 +58,11 @@ namespace System.Text.Json.Serialization
             {
             }
         }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="type"></param>
+        public virtual JsonClassInfo? GetJsonClassInfo(Type type) => throw new NotImplementedException();
     }
 }

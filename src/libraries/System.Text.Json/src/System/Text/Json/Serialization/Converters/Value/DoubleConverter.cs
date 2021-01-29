@@ -3,18 +3,30 @@
 
 namespace System.Text.Json.Serialization.Converters
 {
-    internal sealed class DoubleConverter : JsonConverter<double>
+    /// <summary>
+    /// todo
+    /// </summary>
+    public sealed class DoubleConverter : JsonConverter<double>
     {
+        /// <summary>
+        /// todo
+        /// </summary>
         public DoubleConverter()
         {
             IsInternalConverterForNumberType = true;
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override double Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             return reader.GetDouble();
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override void Write(Utf8JsonWriter writer, double value, JsonSerializerOptions options)
         {
             writer.WriteNumberValue(value);

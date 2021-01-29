@@ -3,10 +3,12 @@ using System.Text.Json.Serialization;
 using System.Text.Json.SourceGeneration.Tests;
 
 [assembly: JsonSerializable(typeof(System.Text.Json.SourceGeneration.Tests.RepeatedTypes.Location))]
+[assembly: JsonSerializable(typeof(Location))]
+// TODO: add tests for when same type is specified in ths manner.
 [assembly: JsonSerializable(typeof(System.Text.Json.SourceGeneration.Tests.Location))]
 [assembly: JsonSerializable(typeof(ActiveOrUpcomingEvent))]
 [assembly: JsonSerializable(typeof(CampaignSummaryViewModel))]
-[assembly: JsonSerializable(typeof(IndexViewModel))]
+[assembly: JsonSerializable(typeof(IndexViewModel), CanBeDynamic = true)]
 [assembly: JsonSerializable(typeof(WeatherForecastWithPOCOs))]
 [assembly: JsonSerializable(typeof(EmptyPoco))]
 // Ensure no errors when type of member in previously specified object graph is passed as input type to generator.

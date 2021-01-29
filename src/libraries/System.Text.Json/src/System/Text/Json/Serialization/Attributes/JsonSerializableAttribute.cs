@@ -15,6 +15,12 @@ namespace System.Text.Json.Serialization
     public sealed class JsonSerializableAttribute : JsonAttribute
     {
         /// <summary>
+        /// Indicates whether the specified type might be the runtime type of an object instance which was declared as
+        /// a different type (polymorphic serialization), or might be passed in dynamically to the serializer.
+        /// </summary>
+        public bool CanBeDynamic { get; set; }
+
+        /// <summary>
         /// Initializes a new instance of <see cref="JsonSerializableAttribute"/> with the specified type.
         /// </summary>
         /// <param name="type">The Type of the property.</param>

@@ -28,17 +28,6 @@ namespace System.Text.Json
             }
         }
 
-        internal static JsonSerializerOptions? s_defaultCodeGenOptions;
-
-        internal static JsonSerializerOptions DefaultCodeGenOptions
-        {
-            get
-            {
-                s_defaultCodeGenOptions ??= CreateForCodeGen();
-                return s_defaultCodeGenOptions;
-            }
-        }
-
         private readonly ConcurrentDictionary<Type, JsonClassInfo> _classes = new ConcurrentDictionary<Type, JsonClassInfo>();
 
         // Simple LRU cache for the public (de)serialize entry points that avoid some lookups in _classes.
@@ -66,7 +55,6 @@ namespace System.Text.Json
         private bool _includeFields;
         private bool _propertyNameCaseInsensitive;
         private bool _writeIndented;
-        internal bool _initializeDefaultConverters;
 
         /// <summary>
         /// Constructs a new <see cref="JsonSerializerOptions"/> instance.
@@ -74,8 +62,11 @@ namespace System.Text.Json
         public JsonSerializerOptions()
         {
             Converters = new ConverterList(this);
-            _initializeDefaultConverters = true;
-            EnsureDefaultConvertersInitialized();
+
+            if (!JsonHelpers.DisableJsonSerializerDynamicFallback)
+            {
+                EnsureDefaultConvertersInitialized();
+            }
         }
 
         /// <summary>
@@ -110,7 +101,6 @@ namespace System.Text.Json
             _includeFields = options._includeFields;
             _propertyNameCaseInsensitive = options._propertyNameCaseInsensitive;
             _writeIndented = options._writeIndented;
-            _initializeDefaultConverters = options._initializeDefaultConverters;
 
             Converters = new ConverterList(this, (ConverterList)options.Converters);
             EffectiveMaxDepth = options.EffectiveMaxDepth;
@@ -137,24 +127,6 @@ namespace System.Text.Json
             {
                 throw new ArgumentOutOfRangeException(nameof(defaults));
             }
-        }
-
-        /// <summary>
-        /// TODO
-        /// </summary>
-        /// <returns></returns>
-        public static JsonSerializerOptions CreateForCodeGen() => new JsonSerializerOptions(false);
-
-        private JsonSerializerOptions(bool dummy)
-        {
-            Converters = new ConverterList(this);
-        }
-
-        private void InitializeWebDefaults()
-        {
-            _propertyNameCaseInsensitive = true;
-            _jsonPropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-            _numberHandling = JsonNumberHandling.AllowReadingFromString;
         }
 
         /// <summary>
@@ -568,7 +540,14 @@ namespace System.Text.Json
             // https://github.com/dotnet/runtime/issues/32357
             if (!_classes.TryGetValue(type, out JsonClassInfo? result))
             {
-                result = _classes.GetOrAdd(type, new JsonClassInfo(type, this));
+                if (JsonHelpers.DisableJsonSerializerDynamicFallback)
+                {
+                    throw new NotSupportedException($"Metadata for type {type} not provided to serializer - will not go down reflection-based code path.");
+                }
+                else
+                {
+                    result = _classes.GetOrAdd(type, new JsonClassInfo(type, this));
+                }
             }
 
             return result;

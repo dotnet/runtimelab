@@ -130,7 +130,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             // Check base functionality of found types.
             Assert.Equal(1, generator.SerializableTypes.Count);
-            Type foundType = generator.SerializableTypes.First().Value;
+            Type foundType = generator.SerializableTypes.First().Value.Item1;
 
             Assert.Equal("HelloWorld.MyType", foundType.FullName);
 

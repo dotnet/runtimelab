@@ -5,6 +5,7 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace System.Text.Json
 {
@@ -61,6 +62,27 @@ namespace System.Text.Json
 
             ReadStack state = default;
             state.Initialize(typeof(TValue), options, supportContinuation: false);
+
+            return ReadValueCore<TValue>(options, ref reader, ref state);
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="reader"></param>
+        /// <param name="jsonTypeInfo"></param>
+        /// <returns></returns>
+        public static TValue? Deserialize<[DynamicallyAccessedMembers(MembersAccessedOnRead)] TValue>(ref Utf8JsonReader reader, JsonTypeInfo<TValue> jsonTypeInfo)
+        {
+            if (jsonTypeInfo == null)
+            {
+                throw new ArgumentNullException(nameof(jsonTypeInfo));
+            }
+
+            JsonSerializerOptions options = jsonTypeInfo.Options;
+
+            ReadStack state = default;
+            state.Initialize(jsonTypeInfo, supportContinuation: false);
 
             return ReadValueCore<TValue>(options, ref reader, ref state);
         }
@@ -124,6 +146,39 @@ namespace System.Text.Json
 
             ReadStack state = default;
             state.Initialize(returnType, options, supportContinuation: false);
+
+            return ReadValueCore<object>(options, ref reader, ref state);
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="reader"></param>
+        /// <param name="returnType"></param>
+        /// <param name="jsonSerializerContext"></param>
+        /// <returns></returns>
+        public static object? Deserialize(
+            ref Utf8JsonReader reader,
+            [DynamicallyAccessedMembers(MembersAccessedOnRead)] Type returnType,
+            JsonSerializerContext jsonSerializerContext)
+        {
+            if (returnType == null)
+            {
+                throw new ArgumentNullException(nameof(returnType));
+            }
+
+            if (jsonSerializerContext == null)
+            {
+                throw new ArgumentNullException(nameof(jsonSerializerContext));
+            }
+
+            JsonClassInfo jsonClassInfo = jsonSerializerContext.GetJsonClassInfo(returnType) ??
+                throw new InvalidOperationException("Context can't return null");
+
+            JsonSerializerOptions options = jsonClassInfo.Options;
+
+            ReadStack state = default;
+            state.Initialize(jsonClassInfo, supportContinuation: false);
 
             return ReadValueCore<object>(options, ref reader, ref state);
         }

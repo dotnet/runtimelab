@@ -11,13 +11,43 @@
       <argument>ILLink</argument>
       <argument>IL2077</argument>
       <property name="Scope">member</property>
+      <property name="Target">M:System.Net.Http.Json.HttpContentJsonExtensions.&lt;ReadFromJsonAsyncCore&gt;d__3.MoveNext</property>
+    </attribute>
+    <attribute fullname="System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessageAttribute">
+      <argument>ILLink</argument>
+      <argument>IL2077</argument>
+      <property name="Scope">member</property>
+      <property name="Target">M:System.Net.Http.Json.HttpClientJsonExtensions.&lt;GetFromJsonAsyncCore&gt;d__9.MoveNext</property>
+    </attribute>
+    <attribute fullname="System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessageAttribute">
+      <argument>ILLink</argument>
+      <argument>IL2077</argument>
+      <property name="Scope">member</property>
       <property name="Target">M:System.Net.Http.Json.HttpContentJsonExtensions.&lt;ReadFromJsonAsyncCore&gt;d__2.MoveNext</property>
     </attribute>
     <attribute fullname="System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessageAttribute">
       <argument>ILLink</argument>
       <argument>IL2091</argument>
       <property name="Scope">member</property>
+      <property name="Target">M:System.Net.Http.Json.HttpClientJsonExtensions.&lt;GetFromJsonAsyncCore&gt;d__10`1.MoveNext</property>
+    </attribute>
+    <attribute fullname="System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessageAttribute">
+      <argument>ILLink</argument>
+      <argument>IL2091</argument>
+      <property name="Scope">member</property>
+      <property name="Target">M:System.Net.Http.Json.HttpClientJsonExtensions.&lt;GetFromJsonAsyncCore&gt;d__11`1.MoveNext</property>
+    </attribute>
+    <attribute fullname="System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessageAttribute">
+      <argument>ILLink</argument>
+      <argument>IL2091</argument>
+      <property name="Scope">member</property>
       <property name="Target">M:System.Net.Http.Json.HttpContentJsonExtensions.&lt;ReadFromJsonAsyncCore&gt;d__3`1.MoveNext</property>
+    </attribute>
+    <attribute fullname="System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessageAttribute">
+      <argument>ILLink</argument>
+      <argument>IL2091</argument>
+      <property name="Scope">member</property>
+      <property name="Target">M:System.Net.Http.Json.HttpContentJsonExtensions.&lt;ReadFromJsonAsyncCore&gt;d__4`1.MoveNext</property>
     </attribute>
   </assembly>
 </linker>
