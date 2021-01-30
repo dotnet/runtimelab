@@ -22,8 +22,7 @@
     <ILCompilerRuntimeIdentifier Condition="'$(TargetsWindows)' == 'true'">win-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
     <ILCompilerRuntimeIdentifier Condition="'$(TargetsLinux)' == 'true'">linux-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
     <ILCompilerRuntimeIdentifier Condition="'$(TargetsOSX)' == 'true'">osx-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
-    <ILCompilerRuntimeIdentifier>$(TargetPlatform)-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
-    <ILCompilerRuntimeIdentifier Condition="'$(TargetArchitecture)' == 'wasm'">$(TargetPlatform)-x64</ILCompilerRuntimeIdentifier>
+    <ILCompilerRuntimeIdentifier Condition="'$(TargetsBrowser)' == 'true'">browser-wasm</ILCompilerRuntimeIdentifier>
   </PropertyGroup>
 
   <PropertyGroup>
