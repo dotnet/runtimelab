@@ -22,7 +22,8 @@
     <ILCompilerRuntimeIdentifier Condition="'$(TargetsWindows)' == 'true'">win-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
     <ILCompilerRuntimeIdentifier Condition="'$(TargetsLinux)' == 'true'">linux-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
     <ILCompilerRuntimeIdentifier Condition="'$(TargetsOSX)' == 'true'">osx-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
-    <ILCompilerRuntimeIdentifier Condition="'$(TargetsBrowser)' == 'true'">browser-wasm</ILCompilerRuntimeIdentifier>
+    <!-- TODO: get the right platform if building wasm on Linux/OSX is required -->
+    <ILCompilerRuntimeIdentifier Condition="'$(TargetsBrowser)' == 'true'">win-x64</ILCompilerRuntimeIdentifier>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -42,7 +43,7 @@
     <IncludeCoreDisTools Condition="'$(TargetsWindows)' == 'true' and '$(Configuration)' != 'Release'">true</IncludeCoreDisTools>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(TargetArchitecture)' != 'arm64'">
+  <ItemGroup Condition="'$(TargetArchitecture)' != 'arm64' and '$(TargetArchitecture)' != 'wasm'">
     <PackageReference Condition="!Exists('$(ObjWriterArtifactPath)')" Include="Microsoft.DotNet.ILCompiler">
       <Version>$(ILCompilerVersion)</Version>
     </PackageReference>
@@ -51,7 +52,7 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetArchitecture)' != 'arm64'">
+  <ItemGroup Condition="'$(TargetArchitecture)' != 'arm64' and '$(TargetArchitecture)' != 'wasm'">
     <Content Condition="Exists('$(ObjWriterArtifactPath)')" Include="$(ObjWriterArtifactPath)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
