@@ -514,6 +514,7 @@ namespace System
         public virtual Type MakeArrayType() => throw new NotSupportedException();
         public virtual Type MakeArrayType(int rank) => throw new NotSupportedException();
         public virtual Type MakeByRefType() => throw new NotSupportedException();
+        [RequiresDynamicCode("The native code for this instantiation might not be available at runtime.")]
         public virtual Type MakeGenericType(params Type[] typeArguments) => throw new NotSupportedException(SR.NotSupported_SubclassOverride);
         public virtual Type MakePointerType() => throw new NotSupportedException();
 

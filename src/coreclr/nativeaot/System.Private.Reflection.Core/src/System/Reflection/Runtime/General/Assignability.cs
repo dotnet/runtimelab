@@ -4,6 +4,7 @@
 using System;
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection.Runtime.TypeInfos;
 
 using Internal.Reflection.Core;
@@ -12,6 +13,10 @@ namespace System.Reflection.Runtime.General
 {
     internal static class Assignability
     {
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2055:UnrecognizedReflectionPattern",
+            Justification = "Just instantiating over formals for desktop compat reasons")]
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+            Justification = "Just instantiating over formals for desktop compat reasons")]
         public static bool IsAssignableFrom(Type toTypeInfo, Type fromTypeInfo)
         {
             if (toTypeInfo == null)

@@ -291,6 +291,10 @@ namespace System.Reflection.Runtime.TypeParsing
             return s;
         }
 
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2055:RequiresUnreferencedCode",
+            Justification = "Used to implement resolving types from strings.")]
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+            Justification = "Used to implement resolving types from strings.")]
         public sealed override Type ResolveType(Assembly containingAssemblyIfAny, GetTypeOptions getTypeOptions)
         {
             Type genericTypeDefinition = _genericTypeDefinition.ResolveType(containingAssemblyIfAny, getTypeOptions);

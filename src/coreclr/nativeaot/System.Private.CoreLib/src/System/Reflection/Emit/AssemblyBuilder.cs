@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.IO;
 
@@ -37,12 +38,14 @@ namespace System.Reflection.Emit
             }
         }
 
+        [RequiresDynamicCode("Generating new code at runtime is not supported with native AOT.")]
         public static AssemblyBuilder DefineDynamicAssembly(AssemblyName name, AssemblyBuilderAccess access)
         {
             ReflectionEmitThrower.ThrowPlatformNotSupportedException();
             return default;
         }
 
+        [RequiresDynamicCode("Generating new code at runtime is not supported with native AOT.")]
         public static AssemblyBuilder DefineDynamicAssembly(AssemblyName name, AssemblyBuilderAccess access, IEnumerable<CustomAttributeBuilder> assemblyAttributes)
         {
             ReflectionEmitThrower.ThrowPlatformNotSupportedException();
