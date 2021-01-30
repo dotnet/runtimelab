@@ -564,8 +564,12 @@ namespace Internal.JitInterface
             MethodDesc method = HandleToObject(ftn);
 
             // TODO: Implement MapMethodDeclToMethodImpl from CoreCLR
-            if (method.IsVirtual)
+            if (method.IsVirtual &&
+                method.OwningType is MetadataType mdType &&
+                mdType.VirtualMethodImplsForType.Length > 0)
+            {
                 throw new NotImplementedException("getFunctionEntryPoint");
+            }
 
             pResult = CreateConstLookupToSymbol(_compilation.NodeFactory.MethodEntrypoint(method));
         }
