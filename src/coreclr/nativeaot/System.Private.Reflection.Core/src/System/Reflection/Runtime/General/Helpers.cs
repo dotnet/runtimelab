@@ -4,6 +4,7 @@
 using System.Text;
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -152,6 +153,8 @@ namespace System.Reflection.Runtime.General
 
         private static readonly char[] s_charsToEscape = new char[] { '\\', '[', ']', '+', '*', '&', ',' };
 
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+            Justification = "Delegates always generate metadata for the Invoke method")]
         public static RuntimeMethodInfo GetInvokeMethod(this RuntimeTypeInfo delegateType)
         {
             Debug.Assert(delegateType.IsDelegate);

@@ -203,7 +203,7 @@ EXTERN_C REDHAWK_API void* __cdecl RhAllocateThunksMapping()
             //br       xip1
             //brk      0xf000 //Stubs need to be 16 byte aligned therefore we fill with a break here
 
-            int delta = pCurrentDataAddress - pCurrentThunkAddress;
+            int delta = (int)(pCurrentDataAddress - pCurrentThunkAddress);
             *((uint32_t*)pCurrentThunkAddress) = 0x10000010 | (((delta & 0x03) << 29) | (((delta & 0x1FFFFC) >> 2) << 5));
             pCurrentThunkAddress += 4;
 

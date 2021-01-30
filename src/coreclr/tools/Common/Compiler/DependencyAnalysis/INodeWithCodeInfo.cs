@@ -47,29 +47,4 @@ namespace ILCompiler.DependencyAnalysis
             HandlerLength = handlerLength;
         }
     }
-
-    public interface INodeWithCodeInfo
-    {
-        FrameInfo[] FrameInfos
-        {
-            get;
-        }
-
-        byte[] GCInfo
-        {
-            get;
-        }
-
-        DebugEHClauseInfo[] DebugEHClauseInfos
-        {
-            get;
-        }
-
-        MethodExceptionHandlingInfoNode EHInfo
-        {
-            get;
-        }
-
-        ISymbolNode GetAssociatedDataNode(NodeFactory factory);
-    }
 }

@@ -9,19 +9,6 @@
 
 #ifdef FEATURE_CACHED_INTERFACE_DISPATCH
 
-// TODO: Implement Arm support
-#ifdef _DEBUG
-.rodata
-AssertMsg:                                       .asciz "__FILE__:%s: %s is not implemented\n"
-FileName:                                        .asciz "StubDispatch.S"
-RhpVTableOffsetDispatchName:                     .asciz "RhpVTableOffsetDispatch"
-.text
-.macro GEN_ASSERT_FUNC func
-        GEN_ASSERT AssertMsg, FileName, \func
-.endm
-#endif
-
-
 // Macro that generates a stub consuming a cache with the given number of entries.
 .macro DEFINE_INTERFACE_DISPATCH_STUB entries
 

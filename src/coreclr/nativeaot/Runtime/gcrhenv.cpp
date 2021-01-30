@@ -175,11 +175,6 @@ bool RedhawkGCInterface::InitializeSubsystems()
     MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_Context.RegistrationHandle = Microsoft_Windows_Redhawk_GC_PublicHandle;
 #endif // FEATURE_ETW
 
-    if (!InitializeSystemInfo())
-    {
-        return false;
-    }
-
     // Initialize the special EEType used to mark free list entries in the GC heap.
     g_FreeObjectEEType.InitializeAsGcFreeType();
     g_pFreeObjectEEType = &g_FreeObjectEEType;
@@ -188,7 +183,6 @@ bool RedhawkGCInterface::InitializeSubsystems()
         return false;
 
 #ifdef FEATURE_SVR_GC
-    // TODO: This should use the logical CPU count adjusted for process affinity and cgroup limits
     g_heap_type = (g_pRhConfig->GetUseServerGC() && PalGetProcessCpuCount() > 1) ? GC_HEAP_SVR : GC_HEAP_WKS;
 #else
     g_heap_type = GC_HEAP_WKS;

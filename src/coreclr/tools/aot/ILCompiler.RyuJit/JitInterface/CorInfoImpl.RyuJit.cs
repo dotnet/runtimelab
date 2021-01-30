@@ -1263,17 +1263,25 @@ namespace Internal.JitInterface
                     referencingArrayAddressMethod = targetMethod.IsArrayAddressMethod();
                 }
 
-                MethodDesc concreteMethod = targetMethod;
-                targetMethod = targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
-
                 pResult->kind = CORINFO_CALL_KIND.CORINFO_CALL;
 
-                if (targetMethod.IsConstructor && targetMethod.OwningType.IsString)
+                TypeDesc owningType = targetMethod.OwningType;
+                if (owningType.IsString && targetMethod.IsConstructor)
                 {
                     // Calling a string constructor doesn't call the actual constructor.
                     pResult->codePointerOrStubLookup.constLookup = CreateConstLookupToSymbol(
                         _compilation.NodeFactory.StringAllocator(targetMethod)
                         );
+                }
+                else if (owningType.IsArray && targetMethod.IsConstructor)
+                {
+                    // Constructors on arrays are special and don't actually have entrypoints.
+                    // That would be fine by itself and wouldn't need special casing. But
+                    // constructors on SzArray have a weird property that causes them not to have canonical forms.
+                    // int[][] has a .ctor(int32,int32) to construct the jagged array in one go, but its canonical
+                    // form of __Canon[] doesn't have the two-parameter constructor. The canonical form would need
+                    // to have an unlimited number of constructors to cover stuff like "int[][][][][][]..."
+                    pResult->codePointerOrStubLookup.constLookup = default;
                 }
                 else if (pResult->exactContextNeedsRuntimeLookup)
                 {
@@ -1282,6 +1290,8 @@ namespace Internal.JitInterface
                     // (Note: The generic lookup in R2R is performed by a call to a helper at runtime, not by
                     // codegen emitted at crossgen time)
 
+                    targetMethod = targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
+
                     Debug.Assert(!forceUseRuntimeLookup);
                     pResult->codePointerOrStubLookup.constLookup = CreateConstLookupToSymbol(
                         GetMethodEntrypoint(targetMethod)
@@ -1289,6 +1299,9 @@ namespace Internal.JitInterface
                 }
                 else
                 {
+                    MethodDesc concreteMethod = targetMethod;
+                    targetMethod = targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
+
                     ISymbolNode instParam = null;
 
                     if (targetMethod.RequiresInstMethodDescArg())
@@ -1629,13 +1642,15 @@ namespace Internal.JitInterface
             }
         }
 
-        private HRESULT allocMethodBlockCounts(uint count, ref BlockCounts* pBlockCounts)
+        private unsafe HRESULT allocPgoInstrumentationBySchema(CORINFO_METHOD_STRUCT_* ftnHnd, PgoInstrumentationSchema* pSchema, uint countSchemaItems, byte** pInstrumentationData)
         {
-            throw new NotImplementedException("allocMethodBlockCounts");
+            throw new NotImplementedException("allocPgoInstrumentationBySchema");
         }
 
-        private HRESULT getMethodBlockCounts(CORINFO_METHOD_STRUCT_* ftnHnd, ref uint pCount, ref BlockCounts* pBlockCounts, ref uint pNumRuns)
-        { throw new NotImplementedException("getBBProfileData"); }
+        private HRESULT getPgoInstrumentationResults(CORINFO_METHOD_STRUCT_* ftnHnd, ref PgoInstrumentationSchema* pSchema, ref uint pCountSchemaItems, byte** pInstrumentationData)
+        {
+            throw new NotImplementedException("getPgoInstrumentationResults");
+        }
 
         private CORINFO_CLASS_STRUCT_* getLikelyClass(CORINFO_METHOD_STRUCT_* ftnHnd, CORINFO_CLASS_STRUCT_* baseHnd, uint IlOffset, ref uint pLikelihood, ref uint pNumberOfClasses)
         {

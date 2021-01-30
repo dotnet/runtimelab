@@ -39,14 +39,6 @@
 #include <lwp.h>
 #endif
 
-#if HAVE_SYSCONF
-// <unistd.h> already included above
-#elif HAVE_SYSCTL
-#include <sys/sysctl.h>
-#else
-#error Either sysctl or sysconf is required for GetSystemInfo.
-#endif
-
 #if HAVE_SYS_VMPARAM_H
 #include <sys/vmparam.h>
 #endif  // HAVE_SYS_VMPARAM_H
@@ -72,24 +64,6 @@
 #endif
 
 using std::nullptr_t;
-
-#ifndef __APPLE__
-#if HAVE_SYSCONF && HAVE__SC_AVPHYS_PAGES
-#define SYSCONF_PAGES _SC_AVPHYS_PAGES
-#elif HAVE_SYSCONF && HAVE__SC_PHYS_PAGES
-#define SYSCONF_PAGES _SC_PHYS_PAGES
-#else
-#error Dont know how to get page-size on this architecture!
-#endif
-#endif // __APPLE__
-
-#if defined(HOST_ARM) || defined(HOST_ARM64)
-#define SYSCONF_GET_NUMPROCS       _SC_NPROCESSORS_CONF
-#define SYSCONF_GET_NUMPROCS_NAME "_SC_NPROCESSORS_CONF"
-#else
-#define SYSCONF_GET_NUMPROCS       _SC_NPROCESSORS_ONLN
-#define SYSCONF_GET_NUMPROCS_NAME "_SC_NPROCESSORS_ONLN"
-#endif
 
 #define PalRaiseFailFastException RaiseFailFastException
 
@@ -125,10 +99,6 @@ static const int tccSecondsToNanoSeconds = 1000000000;
 static const int tccMilliSecondsToMicroSeconds = 1000;
 static const int tccMilliSecondsToNanoSeconds = 1000000;
 static const int tccMicroSecondsToNanoSeconds = 1000;
-
-static uint32_t g_cNumProcs = 0;
-
-bool QueryLogicalProcessorCount();
 
 extern "C" void RaiseFailFastException(PEXCEPTION_RECORD arg1, PCONTEXT arg2, uint32_t arg3)
 {
@@ -401,9 +371,6 @@ void ConfigureSignals()
 // initialization and false on failure.
 REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalInit()
 {
-    if (!QueryLogicalProcessorCount())
-        return false;
-
 #ifndef USE_PORTABLE_HELPERS
     if (!InitializeHardwareExceptionHandling())
     {
@@ -412,6 +379,14 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalInit()
 #endif // !USE_PORTABLE_HELPERS
 
     ConfigureSignals();
+
+    if (!GCToOSInterface::Initialize())
+    {
+        return false;
+    }
+
+    // Use the same adjustment for current processor count as GC
+    g_RhNumberOfProcessors = GCToOSInterface::GetCurrentProcessCpuCount();
 
     return true;
 }
@@ -705,30 +680,6 @@ REDHAWK_PALEXPORT void PalPrintFatalError(const char* message)
     write(STDERR_FILENO, message, sizeof(message));
 }
 
-bool QueryLogicalProcessorCount()
-{
-#if HAVE_SYSCONF
-    g_cNumProcs = sysconf(SYSCONF_GET_NUMPROCS);
-    if (g_cNumProcs < 1)
-    {
-        ASSERT_UNCONDITIONALLY("sysconf failed for " SYSCONF_GET_NUMPROCS_NAME "\n");
-        return false;
-    }
-#elif HAVE_SYSCTL
-    size_t sz = sizeof(g_cNumProcs);
-
-    int st = 0;
-    if (sysctlbyname("hw.logicalcpu_max", &g_cNumProcs, &sz, NULL, 0) != 0)
-    {
-        ASSERT_UNCONDITIONALLY("sysctl failed for hw.logicalcpu_max\n");
-        return false;
-    }
-
-#endif // HAVE_SYSCONF
-
-    return true;
-}
-
 static int W32toUnixAccessControl(uint32_t flProtect)
 {
     int prot = 0;
@@ -904,14 +855,6 @@ extern "C" UInt32_BOOL IsDebuggerPresent()
 #endif
 }
 
-extern "C" void TerminateProcess(HANDLE arg1, uint32_t arg2)
-{
-    // TODO: change it to TerminateCurrentProcess
-    // Then if we modified the signature of the DuplicateHandle too, we can
-    // get rid of the PalGetCurrentProcess.
-    PORTABILITY_ASSERT("UNIXTODO: Implement this function");
-}
-
 extern "C" UInt32_BOOL SetEvent(HANDLE event)
 {
     EventUnixHandle* unixHandle = (EventUnixHandle*)event;
@@ -1002,9 +945,12 @@ extern "C" int32_t _stricmp(const char *string1, const char *string2)
     return strcasecmp(string1, string2);
 }
 
+uint32_t g_RhNumberOfProcessors;
+
 REDHAWK_PALEXPORT int32_t PalGetProcessCpuCount()
 {
-    return g_cNumProcs;
+    ASSERT(g_RhNumberOfProcessors > 0);
+    return g_RhNumberOfProcessors;
 }
 
 __thread void* pStackHighOut = NULL;
@@ -1079,43 +1025,6 @@ REDHAWK_PALEXPORT int32_t PalGetModuleFileName(_Out_ const TCHAR** pModuleNameOu
     *pModuleNameOut = dl.dli_fname;
     return strlen(dl.dli_fname);
 #endif // defined(HOST_WASM)
-}
-
-GCSystemInfo g_RhSystemInfo;
-
-// Initialize the g_SystemInfo
-bool InitializeSystemInfo()
-{
-    long pagesize = getpagesize();
-    g_RhSystemInfo.dwPageSize = pagesize;
-    g_RhSystemInfo.dwAllocationGranularity = pagesize;
-
-    int nrcpus = 0;
-
-#if HAVE_SYSCONF
-    nrcpus = sysconf(SYSCONF_GET_NUMPROCS);
-    if (nrcpus < 1)
-    {
-        ASSERT_UNCONDITIONALLY("sysconf failed for " SYSCONF_GET_NUMPROCS_NAME "\n");
-        return false;
-    }
-#elif HAVE_SYSCTL
-    int mib[2];
-
-    size_t sz = sizeof(nrcpus);
-    mib[0] = CTL_HW;
-    mib[1] = HW_NCPU;
-    int rc = sysctl(mib, 2, &nrcpus, &sz, NULL, 0);
-    if (rc != 0)
-    {
-        ASSERT_UNCONDITIONALLY("sysctl failed for HW_NCPU\n");
-        return false;
-    }
-#endif // HAVE_SYSCONF
-
-    g_RhSystemInfo.dwNumberOfProcessors = nrcpus;
-
-    return true;
 }
 
 extern "C" void FlushProcessWriteBuffers()

@@ -46,7 +46,9 @@ namespace ILCompiler
         private readonly List<MetadataType> _typesWithMetadata = new List<MetadataType>();
         private readonly List<ReflectableCustomAttribute> _customAttributesWithMetadata = new List<ReflectableCustomAttribute>();
 
-        private readonly HashSet<ModuleDesc> _rootAllAssembliesExaminedModules = new HashSet<ModuleDesc>();
+        private readonly HashSet<ModuleDesc> _rootEntireAssembliesExaminedModules = new HashSet<ModuleDesc>();
+
+        private readonly HashSet<string> _rootEntireAssembliesModules;
 
         private readonly MetadataType _serializationInfoType;
 
@@ -65,7 +67,8 @@ namespace ILCompiler
             FlowAnnotations flowAnnotations,
             UsageBasedMetadataGenerationOptions generationOptions,
             Logger logger,
-            IEnumerable<KeyValuePair<string, bool>> featureSwitchValues)
+            IEnumerable<KeyValuePair<string, bool>> featureSwitchValues,
+            IEnumerable<string> rootEntireAssembliesModules)
             : base(typeSystemContext, blockingPolicy, resourceBlockingPolicy, logFile, stackTracePolicy, invokeThunkGenerationPolicy)
         {
             // We use this to mark places that would behave differently if we tracked exact fields used. 
@@ -79,6 +82,8 @@ namespace ILCompiler
             Logger = logger;
 
             _featureSwitchHashtable = new FeatureSwitchHashtable(new Dictionary<string, bool>(featureSwitchValues));
+
+            _rootEntireAssembliesModules = new HashSet<string>(rootEntireAssembliesModules);
         }
 
         protected override void Graph_NewMarkedNode(DependencyNodeCore<NodeFactory> obj)
@@ -198,16 +203,18 @@ namespace ILCompiler
                 }
             }
 
+            MetadataType mdType = type as MetadataType;
+
             // If anonymous type heuristic is turned on and this is an anonymous type, make sure we have
             // method bodies for all properties. It's common to have anonymous types used with reflection
             // and it's hard to specify them in RD.XML.
             if ((_generationOptions & UsageBasedMetadataGenerationOptions.AnonymousTypeHeuristic) != 0)
             {
-                if (type is MetadataType metadataType &&
-                    metadataType.HasInstantiation &&
-                    !metadataType.IsGenericDefinition &&
-                    metadataType.HasCustomAttribute("System.Runtime.CompilerServices", "CompilerGeneratedAttribute") &&
-                    metadataType.Name.Contains("AnonymousType"))
+                if (mdType != null &&
+                    mdType.HasInstantiation &&
+                    !mdType.IsGenericDefinition &&
+                    mdType.HasCustomAttribute("System.Runtime.CompilerServices", "CompilerGeneratedAttribute") &&
+                    mdType.Name.Contains("AnonymousType"))
                 {
                     foreach (MethodDesc method in type.GetMethods())
                     {
@@ -220,23 +227,19 @@ namespace ILCompiler
                 }
             }
 
-            // If the option was specified to root types and methods in all user assemblies, do that.
-            if ((_generationOptions & UsageBasedMetadataGenerationOptions.FullUserAssemblyRooting) != 0)
+            ModuleDesc module = mdType?.Module;
+            if (module != null && !_rootEntireAssembliesExaminedModules.Contains(module))
             {
-                if (type is MetadataType metadataType &&
-                    !_rootAllAssembliesExaminedModules.Contains(metadataType.Module))
-                {
-                    _rootAllAssembliesExaminedModules.Add(metadataType.Module);
+                // If the owning assembly needs to be fully compiled, do that.
+                _rootEntireAssembliesExaminedModules.Add(module);
 
-                    if (metadataType.Module is EcmaModule ecmaModule &&
-                        !IsFrameworkAssembly(ecmaModule))
+                if (_rootEntireAssembliesModules.Contains(module.Assembly.GetName().Name))
+                {
+                    dependencies = dependencies ?? new DependencyList();
+                    var rootProvider = new RootingServiceProvider(factory, dependencies.Add);
+                    foreach (TypeDesc t in mdType.Module.GetAllTypes())
                     {
-                        dependencies = dependencies ?? new DependencyList();
-                        var rootProvider = new RootingServiceProvider(factory, dependencies.Add);
-                        foreach (TypeDesc t in ecmaModule.GetAllTypes())
-                        {
-                            RootingHelpers.TryRootType(rootProvider, t, "RD.XML root");
-                        }
+                        RootingHelpers.TryRootType(rootProvider, t, "RD.XML root");
                     }
                 }
             }
@@ -271,7 +274,7 @@ namespace ILCompiler
             }
 
             // Event sources need their special nested types
-            if (type is MetadataType mdType && mdType.HasCustomAttribute("System.Diagnostics.Tracing", "EventSourceAttribute"))
+            if (mdType != null && mdType.HasCustomAttribute("System.Diagnostics.Tracing", "EventSourceAttribute"))
             {
                 AddEventSourceSpecialTypeDependencies(ref dependencies, factory, mdType.GetNestedType("Keywords"));
                 AddEventSourceSpecialTypeDependencies(ref dependencies, factory, mdType.GetNestedType("Tasks"));
@@ -292,38 +295,6 @@ namespace ILCompiler
                     }
                 }
             }
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether '<paramref name="module"/>' is a framework assembly.
-        /// </summary>
-        public static bool IsFrameworkAssembly(EcmaModule module)
-        {
-            MetadataReader reader = module.MetadataReader;
-
-            // We look for [assembly:AssemblyMetadata(".NETFrameworkAssembly", "")]
-
-            foreach (CustomAttributeHandle attributeHandle in reader.GetAssemblyDefinition().GetCustomAttributes())
-            {
-                if (!MetadataExtensions.GetAttributeNamespaceAndName(reader, attributeHandle, out StringHandle namespaceHandle, out StringHandle nameHandle))
-                    continue;
-
-                if (!reader.StringComparer.Equals(namespaceHandle, "System.Reflection") ||
-                    !reader.StringComparer.Equals(nameHandle, "AssemblyMetadataAttribute"))
-                    continue;
-
-                var attributeTypeProvider = new CustomAttributeTypeProvider(module);
-                CustomAttribute attribute = reader.GetCustomAttribute(attributeHandle);
-                CustomAttributeValue<TypeDesc> decodedAttribute = attribute.DecodeValue(attributeTypeProvider);
-
-                if (decodedAttribute.FixedArguments.Length != 2)
-                    continue;
-
-                if (decodedAttribute.FixedArguments[0].Value is string s && s == ".NETFrameworkAssembly")
-                    return true;
-            }
-
-            return false;
         }
 
         protected override void GetRuntimeMappingDependenciesDueToReflectability(ref DependencyList dependencies, NodeFactory factory, TypeDesc type)
@@ -400,62 +371,51 @@ namespace ILCompiler
 
         public override bool ShouldConsiderLdTokenReferenceAConstruction(TypeDesc type)
         {
-            // Tell codegen to use necessary type symbol. We're going to upgrade to a constructed
-            // type symbol from our IL scanner if needed when we get the GetDependenciesDueToMethodCodePresence callback.
-            return false;
+            // TODO: this can be further optimized
+            //
+            // Codegen will consult metadata manager on this whenever it sees LDTOKEN of some type.
+            // We could report false here if we had guarantees some other code (e.g. GetDependenciesDueToMethodCodePresenceInternal)
+            // is going to look at this again and create a constructed type dependendency if it's what's necessary
+            // (don't forget that "necessary" and "constructed" EETypes get coalesced into a single constructed EEType
+            // if there's at least one constructed EEType for this type in the graph, so telling codegen to just grab
+            // a necessary EEType doesn't hurt anything.
+            //
+            // The advantage of reporting false and trying to narrow this down is in being able to eliminate
+            // constructed EETypes for patterns like "if (typeof(T) == typeof(Foo))". The typecheck
+            // doesn't need a constructed EEType with a full vtable - we can get away with a stripped down
+            // EEType that has a lot less dependencies (the virtual methods are not generated).
+            return ConstructedEETypeNode.CreationAllowed(type);
         }
 
         protected override void GetDependenciesDueToMethodCodePresenceInternal(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)
         {
             bool scanReflection = (_generationOptions & UsageBasedMetadataGenerationOptions.ReflectionILScanning) != 0;
-            bool scanInterop = (_generationOptions & UsageBasedMetadataGenerationOptions.IteropILScanning) != 0;
-
-            // NOTE: we will intentionally run the scanner even if both scan modes are disabled
-            // because we rely on the scanner to report constructed EETypes for LDTOKEN references
-            // to types.
-            ReflectionMethodBodyScanner.ScanModes modes = 0;
-            if (scanReflection)
-                modes |= ReflectionMethodBodyScanner.ScanModes.Reflection;
-            if (scanInterop)
-                modes |= ReflectionMethodBodyScanner.ScanModes.Interop;
 
             Debug.Assert(methodIL != null || method.IsAbstract || method.IsPInvoke || method.IsInternalCall);
 
-            if (methodIL != null)
+            if (methodIL != null && scanReflection)
             {
-                try
+                if (FlowAnnotations.RequiresDataflowAnalysis(method))
                 {
-                    ReflectionMethodBodyScanner.Scan(ref dependencies, factory, methodIL, modes);
-                }
-                catch (TypeSystemException)
-                {
-                    // A problem with the IL - we just don't scan it...
+                    dependencies = dependencies ?? new DependencyList();
+                    dependencies.Add(factory.DataflowAnalyzedMethod(methodIL.GetMethodILDefinition()), "Method has annotated parameters");
                 }
 
-                if (scanReflection)
+                if ((method.HasInstantiation && !method.IsCanonicalMethod(CanonicalFormKind.Any)))
                 {
-                    if (FlowAnnotations.RequiresDataflowAnalysis(method))
-                    {
-                        dependencies = dependencies ?? new DependencyList();
-                        dependencies.Add(factory.DataflowAnalyzedMethod(methodIL.GetMethodILDefinition()), "Method has annotated parameters");
-                    }
+                    MethodDesc typicalMethod = method.GetTypicalMethodDefinition();
+                    Debug.Assert(typicalMethod != method);
 
-                    if ((method.HasInstantiation && !method.IsCanonicalMethod(CanonicalFormKind.Any)))
-                    {
-                        MethodDesc typicalMethod = method.GetTypicalMethodDefinition();
-                        Debug.Assert(typicalMethod != method);
+                    GetFlowDependenciesForInstantiation(ref dependencies, factory, method.Instantiation, typicalMethod.Instantiation, method);
+                }
 
-                        GetFlowDependenciesForInstantiation(ref dependencies, factory, method.Instantiation, typicalMethod.Instantiation, method);
-                    }
+                TypeDesc owningType = method.OwningType;
+                if (owningType.HasInstantiation && !owningType.IsCanonicalSubtype(CanonicalFormKind.Any))
+                {
+                    TypeDesc owningTypeDefinition = owningType.GetTypeDefinition();
+                    Debug.Assert(owningType != owningTypeDefinition);
 
-                    TypeDesc owningType = method.OwningType;
-                    if (owningType.HasInstantiation && !owningType.IsCanonicalSubtype(CanonicalFormKind.Any))
-                    {
-                        TypeDesc owningTypeDefinition = owningType.GetTypeDefinition();
-                        Debug.Assert(owningType != owningTypeDefinition);
-
-                        GetFlowDependenciesForInstantiation(ref dependencies, factory, owningType.Instantiation, owningTypeDefinition.Instantiation, owningType);
-                    }
+                    GetFlowDependenciesForInstantiation(ref dependencies, factory, owningType.Instantiation, owningTypeDefinition.Instantiation, owningType);
                 }
             }
         }
@@ -511,7 +471,7 @@ namespace ILCompiler
         public override void GetDependenciesDueToAccess(ref DependencyList dependencies, NodeFactory factory, MethodIL methodIL, FieldDesc writtenField)
         {
             bool scanReflection = (_generationOptions & UsageBasedMetadataGenerationOptions.ReflectionILScanning) != 0;
-            if (scanReflection && FlowAnnotations.RequiresDataflowAnalysis(writtenField))
+            if (scanReflection && Dataflow.ReflectionMethodBodyScanner.RequiresReflectionMethodBodyScannerForAccess(FlowAnnotations, writtenField))
             {
                 dependencies = dependencies ?? new DependencyList();
                 dependencies.Add(factory.DataflowAnalyzedMethod(methodIL.GetMethodILDefinition()), "Access to interesting field");
@@ -521,7 +481,7 @@ namespace ILCompiler
         public override void GetDependenciesDueToAccess(ref DependencyList dependencies, NodeFactory factory, MethodIL methodIL, MethodDesc calledMethod)
         {
             bool scanReflection = (_generationOptions & UsageBasedMetadataGenerationOptions.ReflectionILScanning) != 0;
-            if (scanReflection && FlowAnnotations.RequiresDataflowAnalysis(calledMethod))
+            if (scanReflection && Dataflow.ReflectionMethodBodyScanner.RequiresReflectionMethodBodyScannerForCallSite(FlowAnnotations, calledMethod))
             {
                 dependencies = dependencies ?? new DependencyList();
                 dependencies.Add(factory.DataflowAnalyzedMethod(methodIL.GetMethodILDefinition()), "Call to interesting method");
@@ -892,16 +852,5 @@ namespace ILCompiler
         /// Scan IL for common reflection patterns to find additional compilation roots.
         /// </summary>
         ReflectionILScanning = 4,
-
-        /// <summary>
-        /// Scan IL for common interop patterns to find additional compilation roots.
-        /// </summary>
-        IteropILScanning = 8,
-
-        /// <summary>
-        /// Specifies that all types and methods in user assemblies should be considered dynamically
-        /// used.
-        /// </summary>
-        FullUserAssemblyRooting = 0x10,
     }
 }

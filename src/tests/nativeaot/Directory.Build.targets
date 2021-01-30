@@ -4,7 +4,6 @@
     <_NativeAotProjectLinesCommon>
       <![CDATA[
   <PropertyGroup>
-    <RootAllApplicationAssemblies>false</RootAllApplicationAssemblies>
     <IlcGenerateCompleteTypeMetadata>false</IlcGenerateCompleteTypeMetadata>
   </PropertyGroup>
       ]]>

@@ -97,6 +97,12 @@ namespace ILCompiler.Dataflow
 
         public static IEnumerable<MethodDesc> GetConstructorsOnType(this TypeDesc type, Func<MethodDesc, bool> filter, BindingFlags? bindingFlags = null)
         {
+            if (type.IsArray)
+            {
+                // Constructors on arrays are special magic that the reflection stack special cases at runtime anyway.
+                yield break;
+            }
+
             foreach (var method in type.GetMethods())
             {
                 if (!method.IsConstructor)
@@ -124,6 +130,14 @@ namespace ILCompiler.Dataflow
         public static IEnumerable<MethodDesc> GetMethodsOnTypeHierarchy(this TypeDesc type, Func<MethodDesc, bool> filter, BindingFlags? bindingFlags = null)
         {
             bool onBaseType = false;
+
+            if (type.IsArray)
+            {
+                // Methods on arrays are special magic that the reflection stack special cases at runtime anyway.
+                type = type.BaseType;
+                onBaseType = true;
+            }
+
             while (type != null)
             {
                 foreach (var method in type.GetMethods())
@@ -163,7 +177,7 @@ namespace ILCompiler.Dataflow
             }
         }
 
-        public static IEnumerable<FieldDesc> GetFieldsOnTypeHierarchy(this TypeDesc type, Func<FieldDesc, bool> filter, BindingFlags bindingFlags = BindingFlags.Default)
+        public static IEnumerable<FieldDesc> GetFieldsOnTypeHierarchy(this TypeDesc type, Func<FieldDesc, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
         {
             bool onBaseType = false;
             while (type != null)
@@ -201,7 +215,7 @@ namespace ILCompiler.Dataflow
             }
         }
 
-        public static IEnumerable<MetadataType> GetNestedTypesOnType(this TypeDesc type, Func<MetadataType, bool> filter, BindingFlags bindingFlags = BindingFlags.Default)
+        public static IEnumerable<MetadataType> GetNestedTypesOnType(this TypeDesc type, Func<MetadataType, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
         {
             if (type is not MetadataType mdType)
                 yield break;
@@ -227,12 +241,22 @@ namespace ILCompiler.Dataflow
             }
         }
 
-        public static IEnumerable<PropertyPseudoDesc> GetPropertiesOnTypeHierarchy(this TypeDesc type, Func<PropertyPseudoDesc, bool> filter, BindingFlags bindingFlags = BindingFlags.Default)
+        public static IEnumerable<PropertyPseudoDesc> GetPropertiesOnTypeHierarchy(this TypeDesc type, Func<PropertyPseudoDesc, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
         {
             bool onBaseType = false;
+
+            if (type.IsArray)
+            {
+                type = type.BaseType;
+                onBaseType = true;
+            }
+
             while (type != null)
             {
-                var ecmaType = (EcmaType)type.GetTypeDefinition();
+                if (type is not EcmaType ecmaType)
+                {
+                    yield break;
+                }
 
                 foreach (var propertyHandle in ecmaType.MetadataReader.GetTypeDefinition(ecmaType.Handle).GetProperties())
                 {
@@ -282,12 +306,22 @@ namespace ILCompiler.Dataflow
             }
         }
 
-        public static IEnumerable<EventPseudoDesc> GetEventsOnTypeHierarchy(this TypeDesc type, Func<EventPseudoDesc, bool> filter, BindingFlags bindingFlags = BindingFlags.Default)
+        public static IEnumerable<EventPseudoDesc> GetEventsOnTypeHierarchy(this TypeDesc type, Func<EventPseudoDesc, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
         {
             bool onBaseType = false;
+
+            if (type.IsArray)
+            {
+                type = type.BaseType;
+                onBaseType = true;
+            }
+            
             while (type != null)
             {
-                var ecmaType = (EcmaType)type.GetTypeDefinition();
+                if (type is not EcmaType ecmaType)
+                {
+                    yield break;
+                }
 
                 foreach (var eventHandle in ecmaType.MetadataReader.GetTypeDefinition(ecmaType.Handle).GetEvents())
                 {

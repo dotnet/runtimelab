@@ -730,14 +730,6 @@ namespace System.Runtime
         internal static extern long InterlockedCompareExchange(ref long location1, long value, long comparand);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
-#if TARGET_64BIT
-        [RuntimeImport(RuntimeLibrary, "RhpLockCmpXchg64")]
-#else
-        [RuntimeImport(RuntimeLibrary, "RhpLockCmpXchg32")]
-#endif
-        internal static extern IntPtr InterlockedCompareExchange(ref IntPtr location1, IntPtr value, IntPtr comparand);
-
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpCheckedLockCmpXchg")]
         internal static extern object InterlockedCompareExchange(ref object location1, object value, object comparand);
 
@@ -930,16 +922,6 @@ namespace System.Runtime
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "powf")]
         internal static extern float powf(float x, float y);
-
-        [Intrinsic]
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "scalbn")]
-        internal static extern double scalbn(double x, int n);
-
-        [Intrinsic]
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "scalbnf")]
-        internal static extern float scalbnf(float x, int n);
 
         [Intrinsic]
         [MethodImplAttribute(MethodImplOptions.InternalCall)]

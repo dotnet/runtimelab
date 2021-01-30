@@ -82,27 +82,6 @@ typedef struct _GUID {
 
 #define DECLARE_HANDLE(_name) typedef HANDLE _name
 
-struct SYSTEM_INFO
-{
-    union
-    {
-        uint32_t  dwOemId;
-        struct {
-            uint16_t wProcessorArchitecture;
-            uint16_t wReserved;
-        } DUMMYSTRUCTNAME;
-    } DUMMYUNIONNAME;
-    uint32_t      dwPageSize;
-    void *      lpMinimumApplicationAddress;
-    void *      lpMaximumApplicationAddress;
-    uintptr_t  dwActiveProcessorMask;
-    uint32_t      dwNumberOfProcessors;
-    uint32_t      dwProcessorType;
-    uint32_t      dwAllocationGranularity;
-    uint16_t      wProcessorLevel;
-    uint16_t      wProcessorRevision;
-};
-
 // defined in gcrhenv.cpp
 bool __SwitchToThread(uint32_t dwSleepMSec, uint32_t dwSwitchCount);
 
@@ -559,7 +538,7 @@ EventDataDescCreate(_Out_ EVENT_DATA_DESCRIPTOR * EventDataDescriptor, _In_opt_ 
 }
 #endif // _EVNTPROV_H_
 
-extern GCSystemInfo g_RhSystemInfo;
+extern uint32_t g_RhNumberOfProcessors;
 
 #ifdef TARGET_UNIX
 #define REDHAWK_PALIMPORT extern "C"
@@ -569,8 +548,6 @@ extern GCSystemInfo g_RhSystemInfo;
 #define REDHAWK_PALIMPORT EXTERN_C
 #define REDHAWK_PALAPI __stdcall
 #endif // TARGET_UNIX
-
-bool InitializeSystemInfo();
 
 #ifndef DACCESS_COMPILE
 
@@ -679,7 +656,6 @@ REDHAWK_PALIMPORT void REDHAWK_PALAPI PalSleep(uint32_t milliseconds);
 REDHAWK_PALIMPORT UInt32_BOOL REDHAWK_PALAPI PalSwitchToThread();
 REDHAWK_PALIMPORT HANDLE REDHAWK_PALAPI PalCreateEventW(_In_opt_ LPSECURITY_ATTRIBUTES pEventAttributes, UInt32_BOOL manualReset, UInt32_BOOL initialState, _In_opt_z_ LPCWSTR pName);
 REDHAWK_PALIMPORT uint64_t REDHAWK_PALAPI PalGetTickCount64();
-REDHAWK_PALIMPORT HANDLE REDHAWK_PALAPI PalCreateLowMemoryNotification();
 REDHAWK_PALIMPORT void REDHAWK_PALAPI PalTerminateCurrentProcess(uint32_t exitCode);
 REDHAWK_PALIMPORT HANDLE REDHAWK_PALAPI PalGetModuleHandleFromPointer(_In_ void* pointer);
 

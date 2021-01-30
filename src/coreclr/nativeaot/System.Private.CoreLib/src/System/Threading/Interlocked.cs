@@ -27,12 +27,6 @@ namespace System.Threading
         }
 
         [Intrinsic]
-        public static IntPtr CompareExchange(ref IntPtr location1, IntPtr value, IntPtr comparand)
-        {
-            return RuntimeImports.InterlockedCompareExchange(ref location1, value, comparand);
-        }
-
-        [Intrinsic]
         public static unsafe float CompareExchange(ref float location1, float value, float comparand)
         {
             float ret;
@@ -84,19 +78,6 @@ namespace System.Threading
         public static long Exchange(ref long location1, long value)
         {
             long oldValue;
-
-            do
-            {
-                oldValue = location1;
-            } while (CompareExchange(ref location1, value, oldValue) != oldValue);
-
-            return oldValue;
-        }
-
-        [Intrinsic]
-        public static IntPtr Exchange(ref IntPtr location1, IntPtr value)
-        {
-            IntPtr oldValue;
 
             do
             {
