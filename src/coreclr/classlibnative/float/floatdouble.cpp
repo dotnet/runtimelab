@@ -262,15 +262,6 @@ FCIMPL2_VV(double, COMDouble::Pow, double x, double y)
     return (double)pow(x, y);
 FCIMPLEND
 
-/*=====================================ScaleB===================================
-**
-==============================================================================*/
-FCIMPL2_VI(double, COMDouble::ScaleB, double x, int n)
-    FCALL_CONTRACT;
-
-    return (double)scalbn(x, n);
-FCIMPLEND
-
 /*=====================================Sin======================================
 **
 ==============================================================================*/
@@ -278,6 +269,21 @@ FCIMPL1_V(double, COMDouble::Sin, double x)
     FCALL_CONTRACT;
 
     return (double)sin(x);
+FCIMPLEND
+
+/*====================================SinCos====================================
+**
+==============================================================================*/
+FCIMPL3_VII(void, COMDouble::SinCos, double x, double* pSin, double* pCos)
+    FCALL_CONTRACT;
+
+#ifdef _MSC_VER
+    *pSin = sin(x);
+    *pCos = cos(x);
+#else
+    sincos(x, pSin, pCos);
+#endif
+
 FCIMPLEND
 
 /*=====================================Sinh=====================================

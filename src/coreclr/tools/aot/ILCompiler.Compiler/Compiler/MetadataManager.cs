@@ -246,6 +246,10 @@ namespace ILCompiler
             if (owningType.IsNullable)
                 return false;
 
+            // Methods on arrays are special cased in the runtime reflection
+            if (owningType.IsArray)
+                return false;
+
             // Finalizers are not reflection invokable
             if (method.IsFinalizer)
                 return false;

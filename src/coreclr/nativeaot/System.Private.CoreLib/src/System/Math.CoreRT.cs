@@ -143,12 +143,6 @@ namespace System
         }
 
         [Intrinsic]
-        public static double ScaleB(double x, int n)
-        {
-            return RuntimeImports.scalbn(x, n);
-        }
-
-        [Intrinsic]
         public static double Sin(double a)
         {
             return RuntimeImports.sin(a);
@@ -189,5 +183,7 @@ namespace System
         {
             return RuntimeImports.modf(x, intptr);
         }
+
+        public static (double Sin, double Cos) SinCos(double x) => (Sin(x), Cos(x));
     }
 }

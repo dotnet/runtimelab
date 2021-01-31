@@ -83,7 +83,7 @@ if(CLR_CMAKE_HOST_UNIX)
     add_subdirectory(hosts)
 else(CLR_CMAKE_HOST_UNIX)
     if(CLR_CMAKE_TARGET_UNIX AND NOT CLR_CMAKE_HOST_UNIX_WASM)
-        add_subdirectory(src/pal/src/libunwind)
+        add_subdirectory(pal/src/libunwind)
     endif(CLR_CMAKE_TARGET_UNIX AND NOT CLR_CMAKE_HOST_UNIX_WASM)
 endif(CLR_CMAKE_HOST_UNIX)
 
@@ -92,12 +92,22 @@ add_subdirectory(pal/prebuilt/inc)
 
 if(NOT CLR_CMAKE_HOST_UNIX_WASM)
     add_subdirectory(debug/debug-pal)
-    add_subdirectory(tools/aot/jitinterface)
 endif(NOT CLR_CMAKE_HOST_UNIX_WASM)
 
 if(CLR_CMAKE_TARGET_WIN32 AND CLR_CMAKE_BUILD_SUBSET_RUNTIME)
   add_subdirectory(gc/sample)
 endif()
+
+#-------------------------------------
+# Include directory directives
+#-------------------------------------
+# Include the basic prebuilt headers - required for getting fileversion resource details.
+include_directories("pal/prebuilt/inc")
+include_directories("../../artifacts/obj/coreclr")
+
+if(NOT CLR_CMAKE_HOST_UNIX_WASM)
+    add_subdirectory(tools/aot/jitinterface)
+endif(NOT CLR_CMAKE_HOST_UNIX_WASM)
 
 if(NOT CLR_CROSS_COMPONENTS_BUILD)
   add_subdirectory(nativeaot)
@@ -116,13 +126,6 @@ endif(CLR_CMAKE_HOST_WIN32)
 #  - all clr specific feature variable should also be added in this file
 #----------------------------------
 include(clrdefinitions.cmake)
-
-#-------------------------------------
-# Include directory directives
-#-------------------------------------
-# Include the basic prebuilt headers - required for getting fileversion resource details.
-include_directories("pal/prebuilt/inc")
-include_directories("../../artifacts/obj/coreclr")
 
 if(FEATURE_STANDALONE_GC)
   add_definitions(-DFEATURE_STANDALONE_GC)

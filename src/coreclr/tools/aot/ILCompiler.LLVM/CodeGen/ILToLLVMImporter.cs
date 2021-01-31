@@ -2565,6 +2565,25 @@ namespace Internal.IL
                         return true;
                     }
                     break;
+                case "EETypePtrOf":
+                    if (metadataType.Namespace == "System" && metadataType.Name == "EETypePtr" && method.Instantiation.Length == 1)
+                    {
+                        LLVMValueRef eeTypePtrRef;
+                        if (runtimeDeterminedMethod.IsRuntimeDeterminedExactMethod)
+                        {
+                            eeTypePtrRef = CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.Instantiation[0]);
+                        }
+                        else
+                        {
+                            var constructedTypeSymbol = _compilation.NodeFactory.ConstructedTypeSymbol(method.Instantiation[0]);
+                            _dependencies.Add(constructedTypeSymbol, "EETypePtrOf");
+                            eeTypePtrRef = LoadAddressOfSymbolNode(constructedTypeSymbol);
+                        }
+                        PushExpression(StackValueKind.Int32, "eeTypePtr", eeTypePtrRef, GetWellKnownType(WellKnownType.IntPtr));
+
+                        return true;
+                    }
+                    break;
             }
 
             return false;

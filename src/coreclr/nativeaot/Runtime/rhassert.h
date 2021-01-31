@@ -44,12 +44,6 @@ void Assert(const char * expr, const char * file, unsigned int line_num, const c
 #define _ASSERTE(_expr) ASSERT(_expr)
 #endif
 
-#if defined(_DEBUG)
-
-void NYI_ASSERT();
-
-#endif
-
 #define PORTABILITY_ASSERT(message) \
     ASSERT_UNCONDITIONALLY(message); \
     ASSUME(0); \

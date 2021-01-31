@@ -97,12 +97,16 @@ namespace System
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern double Pow(double x, double y);
 
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern double ScaleB(double x, int n);
-
         [Intrinsic]
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern double Sin(double a);
+
+        public static unsafe (double Sin, double Cos) SinCos(double x)
+        {
+            double sin, cos;
+            SinCos(x, &sin, &cos);
+            return (sin, cos);
+        }
 
         [Intrinsic]
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -125,5 +129,8 @@ namespace System
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         private static extern unsafe double ModF(double x, double* intptr);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private static extern unsafe void SinCos(double x, double* sin, double* cos);
     }
 }

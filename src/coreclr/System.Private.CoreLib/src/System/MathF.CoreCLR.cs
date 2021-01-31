@@ -86,12 +86,16 @@ namespace System
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern float Pow(float x, float y);
 
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern float ScaleB(float x, int n);
-
         [Intrinsic]
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern float Sin(float x);
+
+        public static unsafe (float Sin, float Cos) SinCos(float x)
+        {
+            float sin, cos;
+            SinCos(x, &sin, &cos);
+            return (sin, cos);
+        }
 
         [Intrinsic]
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -114,5 +118,8 @@ namespace System
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         private static extern unsafe float ModF(float x, float* intptr);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        private static extern unsafe void SinCos(float x, float* sin, float* cos);
     }
 }

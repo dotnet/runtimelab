@@ -25,8 +25,6 @@ check_library_exists(pthread pthread_condattr_setclock "" HAVE_PTHREAD_CONDATTR_
 check_library_exists(pthread pthread_getthreadid_np "" HAVE_PTHREAD_GETTHREADID_NP)
 
 check_function_exists(clock_nanosleep HAVE_CLOCK_NANOSLEEP)
-check_function_exists(sysctl HAVE_SYSCTL)
-check_function_exists(sysconf HAVE_SYSCONF)
 
 check_struct_has_member ("ucontext_t" uc_mcontext.gregs[0] ucontext.h HAVE_GREGSET_T)
 check_struct_has_member ("ucontext_t" uc_mcontext.__gregs[0] ucontext.h HAVE___GREGSET_T)
@@ -37,9 +35,6 @@ check_type_size(siginfo_t SIGINFO_T)
 set(CMAKE_EXTRA_INCLUDE_FILES)
 set(CMAKE_EXTRA_INCLUDE_FILES ucontext.h)
 check_type_size(ucontext_t UCONTEXT_T)
-
-check_cxx_symbol_exists(_SC_PHYS_PAGES unistd.h HAVE__SC_PHYS_PAGES)
-check_cxx_symbol_exists(_SC_AVPHYS_PAGES unistd.h HAVE__SC_AVPHYS_PAGES)
 
 check_cxx_source_compiles("
 #include <lwp.h>

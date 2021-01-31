@@ -3807,7 +3807,7 @@ PAL_GetCurrentThreadAffinitySet(SIZE_T size, UINT_PTR* data);
 #define log2          PAL_log2
 #define log10         PAL_log10
 #define pow           PAL_pow
-#define scalbn        PAL_scalbn
+#define sincos        PAL_sincos
 #define acosf         PAL_acosf
 #define acoshf        PAL_acoshf
 #define asinf         PAL_asinf
@@ -3820,7 +3820,7 @@ PAL_GetCurrentThreadAffinitySet(SIZE_T size, UINT_PTR* data);
 #define log2f         PAL_log2f
 #define log10f        PAL_log10f
 #define powf          PAL_powf
-#define scalbnf       PAL_scalbnf
+#define sincosf       PAL_sincosf
 #define malloc        PAL_malloc
 #define free          PAL_free
 #define _strdup       PAL__strdup
@@ -4089,8 +4089,8 @@ PALIMPORT double __cdecl log2(double);
 PALIMPORT double __cdecl log10(double);
 PALIMPORT double __cdecl modf(double, double*);
 PALIMPORT double __cdecl pow(double, double);
-PALIMPORT double __cdecl scalbn(double, int);
 PALIMPORT double __cdecl sin(double);
+PALIMPORT void __cdecl sincos(double, double*, double*);
 PALIMPORT double __cdecl sinh(double);
 PALIMPORT double __cdecl sqrt(double);
 PALIMPORT double __cdecl tan(double);
@@ -4133,8 +4133,8 @@ PALIMPORT float __cdecl log2f(float);
 PALIMPORT float __cdecl log10f(float);
 PALIMPORT float __cdecl modff(float, float*);
 PALIMPORT float __cdecl powf(float, float);
-PALIMPORT float __cdecl scalbnf(float, int);
 PALIMPORT float __cdecl sinf(float);
+PALIMPORT void __cdecl sincosf(float, float*, float*);
 PALIMPORT float __cdecl sinhf(float);
 PALIMPORT float __cdecl sqrtf(float);
 PALIMPORT float __cdecl tanf(float);

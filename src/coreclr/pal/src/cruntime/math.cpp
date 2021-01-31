@@ -510,21 +510,23 @@ PALIMPORT double __cdecl PAL_pow(double x, double y)
 
 /*++
 Function:
-    scalbn
+    sincos
 
 See MSDN.
 --*/
-PALIMPORT double __cdecl PAL_scalbn(double x, int n)
+PALIMPORT void __cdecl PAL_sincos(double x, double* sin, double* cos)
 {
-    double ret;
-    PERF_ENTRY(scalbn);
-    ENTRY("scalbn (x=%f, n=%d)\n", x, n);
+    PERF_ENTRY(sincos);
+    ENTRY("sincos (x=%f)\n", x);
 
-    ret = scalbn(x, n);
+#if defined(__APPLE__)
+    __sincos(x, sin, cos);
+#else
+    sincos(x, sin, cos);
+#endif // !__APPLE__
 
-    LOGEXIT("scalbn returns double %f\n", ret);
-    PERF_EXIT(scalbn);
-    return ret;
+    LOGEXIT("sincos returns (double %f, double %f)\n", *sin, *cos);
+    PERF_EXIT(sincos);
 }
 
 /*++
@@ -990,19 +992,21 @@ PALIMPORT float __cdecl PAL_powf(float x, float y)
 
 /*++
 Function:
-    scalbnf
+    sincosf
 
 See MSDN.
 --*/
-PALIMPORT float __cdecl PAL_scalbnf(float x, int n)
+PALIMPORT void __cdecl PAL_sincosf(float x, float* sin, float* cos)
 {
-    float ret;
-    PERF_ENTRY(scalbnf);
-    ENTRY("scalbnf (x=%f, n=%d)\n", x, n);
+    PERF_ENTRY(sincosf);
+    ENTRY("sincosf (x=%f)\n", x);
 
-    ret = scalbnf(x, n);
+#if defined(__APPLE__)
+    __sincosf(x, sin, cos);
+#else
+    sincosf(x, sin, cos);
+#endif // !__APPLE__
 
-    LOGEXIT("scalbnf returns double %f\n", ret);
-    PERF_EXIT(scalbnf);
-    return ret;
+    LOGEXIT("sincosf returns (float %f, float %f)\n", *sin, *cos);
+    PERF_EXIT(sincosf);
 }

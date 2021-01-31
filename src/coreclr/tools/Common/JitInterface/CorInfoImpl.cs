@@ -267,7 +267,7 @@ namespace Internal.JitInterface
             _methodCodeNode.InitializeFrameInfos(_frameInfos);
             _methodCodeNode.InitializeDebugEHClauseInfos(debugEHClauseInfos);
             _methodCodeNode.InitializeGCInfo(_gcInfo);
-            _methodCodeNode.InitializeEHInfo(ehInfo != null ? new MethodExceptionHandlingInfoNode(_methodCodeNode.Method, ehInfo) : null);
+            _methodCodeNode.InitializeEHInfo(ehInfo);
 
             _methodCodeNode.InitializeDebugLocInfos(_debugLocInfos);
             _methodCodeNode.InitializeDebugVarInfos(_debugVarInfos);
@@ -3420,13 +3420,6 @@ namespace Internal.JitInterface
 
             if (this.MethodBeingCompiled.IsUnmanagedCallersOnly)
             {
-#if READYTORUN
-                if (targetArchitecture == TargetArchitecture.X86)
-                {
-                    throw new RequiresRuntimeJitException("ReadyToRun: Methods with UnmanagedCallersOnlyAttribute not implemented");
-                }
-#endif
-
                 // Validate UnmanagedCallersOnlyAttribute usage
                 if (!this.MethodBeingCompiled.Signature.IsStatic) // Must be a static method
                 {

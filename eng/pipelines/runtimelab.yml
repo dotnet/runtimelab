@@ -52,11 +52,6 @@ variables:
 stages:
 - stage: Build
   jobs:
-  #
-  # Checkout repository
-  #
-  - ${{ if eq(variables.useCheckoutBundle, true) }}:
-    - template: /eng/pipelines/common/checkout-job.yml
 
   #
   # Build with Release config and Debug runtimeConfiguration
@@ -122,7 +117,7 @@ stages:
         isOfficialBuild: ${{ variables.isOfficialBuild }}
         timeoutInMinutes: 90
         testGroup: innerloop
-        buildArgs: -s nativeaot+libs+nativeaot.packages -c release
+        buildArgs: -s nativeaot.objwriter+nativeaot+libs+nativeaot.packages -c release
         extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
         extraStepsParameters:
           uploadIntermediateArtifacts: ${{ variables.isOfficialBuild }}

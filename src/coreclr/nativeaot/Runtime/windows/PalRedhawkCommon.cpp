@@ -221,21 +221,12 @@ REDHAWK_PALEXPORT void REDHAWK_PALAPI PalGetPDBInfo(HANDLE hOsHandle, _Out_ GUID
     }
 }
 
+uint32_t g_RhNumberOfProcessors;
+
 REDHAWK_PALEXPORT int32_t REDHAWK_PALAPI PalGetProcessCpuCount()
 {
-    static int CpuCount = 0;
-
-    if (CpuCount != 0)
-        return CpuCount;
-    else
-    {
-        // The concept of process CPU affinity is going away and so CoreSystem obsoletes the APIs used to
-        // fetch this information. Instead we'll just return total cpu count.
-        SYSTEM_INFO sysInfo;
-        ::GetSystemInfo(&sysInfo);
-        CpuCount = sysInfo.dwNumberOfProcessors;
-        return sysInfo.dwNumberOfProcessors;
-    }
+    ASSERT(g_RhNumberOfProcessors > 0);
+    return g_RhNumberOfProcessors;
 }
 
 // Retrieves the entire range of memory dedicated to the calling thread's stack.  This does
