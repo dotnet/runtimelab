@@ -123,7 +123,6 @@ public:
     uint32_t GetRequiredAlignment() const { return sizeof(void*); }
 #endif // FEATURE_BARTOK
 #endif // FEATURE_STRUCTALIGN
-    bool RequiresAlign8() { return ((EEType*)this)->RequiresAlign8(); }
     bool IsValueType() { return ((EEType*)this)->get_IsValueType(); }
     UInt32_BOOL SanityCheck() { return ((EEType*)this)->Validate(); }
 };

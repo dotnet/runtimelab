@@ -24,7 +24,6 @@ set(COMMON_RUNTIME_SOURCES
     MiscHelpers.cpp
     TypeManager.cpp
     ObjectLayout.cpp
-    OptionalFieldsRuntime.cpp
     portable.cpp
     profheapwalkhelper.cpp
     RestrictedCallouts.cpp

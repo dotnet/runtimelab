@@ -9,7 +9,6 @@
 // Forward declarations
 
 class EEType;
-class OptionalFields;
 class TypeManager;
 struct TypeManagerHandle;
 class DynamicModule;
@@ -107,8 +106,6 @@ enum EETypeField
 // Fundamental runtime type representation
 typedef DPTR(class EEType) PTR_EEType;
 typedef DPTR(PTR_EEType) PTR_PTR_EEType;
-typedef DPTR(class OptionalFields) PTR_OptionalFields;
-typedef DPTR(PTR_OptionalFields) PTR_PTR_OptionalFields;
 
 class EEType
 {
@@ -184,60 +181,6 @@ private:
         // We are storing a EETypeElementType in the upper bits for unboxing enums
         ElementTypeMask      = 0xf800,
         ElementTypeShift     = 11,
-    };
-
-public:
-
-    // These are flag values that are rarely set for types. If any of them are set then an optional field will
-    // be associated with the EEType to represent them.
-    enum RareFlags
-    {
-        // This type requires 8-byte alignment for its fields on certain platforms (only ARM currently).
-        RequiresAlign8Flag      = 0x00000001,
-
-        // Old unused flag
-        UNUSED1                 = 0x00000002,
-
-        // unused               = 0x00000004,
-
-        // unused               = 0x00000008,
-
-        // unused               = 0x00000010,
-
-        // This EEType has a Class Constructor
-        HasCctorFlag            = 0x0000020,
-
-        // Old unused flag
-        UNUSED2                 = 0x00000040,
-
-        // This EEType was constructed from a universal canonical template, and has
-        // its own dynamically created DispatchMap (does not use the DispatchMap of its template type)
-        HasDynamicallyAllocatedDispatchMapFlag      = 0x00000080,
-
-        // This EEType represents a structure that is an HFA (only ARM currently)
-        IsHFAFlag                           = 0x00000100,
-
-        // This EEType has sealed vtable entries
-        HasSealedVTableEntriesFlag          = 0x00000200,
-
-        // This dynamically created type has gc statics
-        IsDynamicTypeWithGcStaticsFlag      = 0x00000400,
-
-        // This dynamically created type has non gc statics
-        IsDynamicTypeWithNonGcStaticsFlag   = 0x00000800,
-
-        // This dynamically created type has thread statics
-        IsDynamicTypeWithThreadStaticsFlag  = 0x00001000,
-
-        // This EEType was constructed from a module where the open type is defined in
-        // a dynamically loaded type
-        HasDynamicModuleFlag                = 0x00002000,
-
-        // This EEType is for an abstract (but non-interface) type
-        IsAbstractClassFlag                 = 0x00004000,
-
-        // This EEType is for a Byref-like class (TypedReference, Span&lt;T&gt;,...)
-        IsByRefLikeFlag                     = 0x00008000,
     };
 
 public:
@@ -376,11 +319,6 @@ public:
     EETypeElementType GetElementType()
         { return (EETypeElementType)((m_usFlags & ElementTypeMask) >> ElementTypeShift); }
 
-    // Determine whether a type requires 8-byte alignment for its fields (required only on certain platforms,
-    // only ARM so far).
-    bool RequiresAlign8()
-        { return (get_RareFlags() & RequiresAlign8Flag) != 0; }
-
     // Determine whether a type is an instantiation of Nullable<T>.
     bool IsNullable()
         { return GetElementType() == ElementType_Nullable; }
@@ -390,12 +328,6 @@ public:
         { return (m_usFlags & IsDynamicTypeFlag) != 0; }
 
     uint32_t GetHashCode();
-
-    // Retrieve optional fields associated with this EEType. May be NULL if no such fields exist.
-    inline PTR_OptionalFields get_OptionalFields();
-
-    // Get flags that are less commonly set on EETypes.
-    inline uint32_t get_RareFlags();
 
     // Helper methods that deal with EEType topology (size and field layout). These are useful since as we
     // optimize for pay-for-play we increasingly want to customize exactly what goes into an EEType on a
@@ -418,4 +350,3 @@ public:
 
 #pragma warning(pop)
 
-#include "OptionalFields.h"
