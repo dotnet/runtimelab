@@ -32,21 +32,19 @@
 
   <PropertyGroup>
     <ILCompilerVersion>6.0.0-preview.1.21075.1</ILCompilerVersion>
-    <CoreDisToolsVersion>1.0.1-prerelease-00005</CoreDisToolsVersion>
 
     <ObjWriterArtifactPath Condition="'$(TargetsWindows)' == 'true'">$(ArtifactsDir)llvm\build\bin\Release\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
     <ObjWriterArtifactPath Condition="'$(TargetsWindows)' != 'true'">$(ArtifactsDir)llvm\build\lib\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
 
-    <!-- CoreDisTools are used in debugging visualizers. The package only exists on Windows -->
-    <IncludeCoreDisTools Condition="'$(TargetsWindows)' == 'true' and '$(Configuration)' != 'Release'">true</IncludeCoreDisTools>
+    <!-- CoreDisTools are used in debugging visualizers. -->
+    <IncludeCoreDisTools Condition="'$(Configuration)' != 'Release'">true</IncludeCoreDisTools>
   </PropertyGroup>
+
+  <Import Project="$(RepositoryEngineeringDir)coredistools.targets" Condition="'$(DotNetBuildFromSource)' != 'true' and '$(IncludeCoreDisTools)' == 'true'" />
 
   <ItemGroup Condition="'$(TargetArchitecture)' != 'arm64'">
     <PackageReference Condition="!Exists('$(ObjWriterArtifactPath)')" Include="Microsoft.DotNet.ILCompiler">
       <Version>$(ILCompilerVersion)</Version>
-    </PackageReference>
-    <PackageReference Include="Microsoft.NetCore.CoreDisTools" Condition="'$(IncludeCoreDisTools)' == 'true'">
-      <Version>$(CoreDisToolsVersion)</Version>
     </PackageReference>
   </ItemGroup>
 
@@ -64,11 +62,6 @@
       <Pack>false</Pack>
     </Content>
 
-    <Content Include="$(NuGetPackageRoot)runtime.$(ILCompilerRuntimeIdentifier).microsoft.netcore.coredistools\$(CoreDisToolsVersion)\runtimes\$(ILCompilerRuntimeIdentifier)\native\coredistools.dll" Condition="'$(IncludeCoreDisTools)' == 'true'">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Visible>false</Visible>
-      <Pack>false</Pack>
-    </Content>
   </ItemGroup>
 
   <ItemGroup>
@@ -82,6 +75,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
+    </Content>
+
+    <Content Include="$(CoreDisToolsLibrary)" Condition="Exists('$(CoreDisToolsLibrary)') and '$(IncludeCoreDisTools)' == 'true'">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
