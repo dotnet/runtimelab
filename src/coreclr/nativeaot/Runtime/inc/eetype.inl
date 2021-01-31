@@ -86,39 +86,6 @@ inline PTR_UInt8 FollowRelativePointer(const int32_t* pDist)
     return result;
 }
 
-// Retrieve optional fields associated with this EEType. May be NULL if no such fields exist.
-inline PTR_OptionalFields EEType::get_OptionalFields()
-{
-    if ((m_usFlags & OptionalFieldsFlag) == 0)
-        return NULL;
-
-    uint32_t cbOptionalFieldsOffset = GetFieldOffset(ETF_OptionalFieldsPtr);
-
-#if !defined(USE_PORTABLE_HELPERS)
-    if (!IsDynamicType())
-    {
-        return (OptionalFields*)FollowRelativePointer((int32_t*)((uint8_t*)this + cbOptionalFieldsOffset));
-    }
-    else
-#endif
-    {
-        return *(OptionalFields**)((uint8_t*)this + cbOptionalFieldsOffset);
-    }
-}
-
-// Get flags that are less commonly set on EETypes.
-inline uint32_t EEType::get_RareFlags()
-{
-    OptionalFields * pOptFields = get_OptionalFields();
-
-    // If there are no optional fields then none of the rare flags have been set.
-    if (!pOptFields)
-        return 0;
-
-    // Get the flags from the optional fields. The default is zero if that particular field was not included.
-    return pOptFields->GetRareFlags(0);
-}
-
 inline TypeManagerHandle* EEType::GetTypeManagerPtr()
 {
     uint32_t cbOffset = GetFieldOffset(ETF_TypeManagerIndirection);
@@ -195,78 +162,8 @@ __forceinline uint32_t EEType::GetFieldOffset(EETypeField eField)
     if (eField == ETF_SealedVirtualSlots)
         return cbOffset;
 
-    uint32_t rareFlags = get_RareFlags();
+    ASSERT(!"Decoding the rest requires rare flags");
 
-    // in the case of sealed vtable entries on static types, we have a UInt sized relative pointer
-    if (rareFlags & HasSealedVTableEntriesFlag)
-        cbOffset += relativeOrFullPointerOffset;
-
-    if (eField == ETF_DynamicDispatchMap)
-    {
-        ASSERT(IsDynamicType());
-        return cbOffset;
-    }
-    if ((rareFlags & HasDynamicallyAllocatedDispatchMapFlag) != 0)
-        cbOffset += sizeof(UIntTarget);
-
-    if (eField == ETF_GenericDefinition)
-    {
-        ASSERT(IsGeneric());
-        return cbOffset;
-    }
-    if (IsGeneric())
-        cbOffset += relativeOrFullPointerOffset;
-
-    if (eField == ETF_GenericComposition)
-    {
-        ASSERT(IsGeneric());
-        return cbOffset;
-    }
-    if (IsGeneric())
-        cbOffset += relativeOrFullPointerOffset;
-
-    if (eField == ETF_DynamicModule)
-    {
-        ASSERT((rareFlags & HasDynamicModuleFlag) != 0);
-        return cbOffset;
-    }
-
-    if ((rareFlags & HasDynamicModuleFlag) != 0)
-        cbOffset += sizeof(UIntTarget);
-
-    if (eField == ETF_DynamicTemplateType)
-    {
-        ASSERT(IsDynamicType());
-        return cbOffset;
-    }
-    if (IsDynamicType())
-        cbOffset += sizeof(UIntTarget);
-
-    if (eField == ETF_DynamicGcStatics)
-    {
-        ASSERT((rareFlags & IsDynamicTypeWithGcStaticsFlag) != 0);
-        return cbOffset;
-    }
-    if ((rareFlags & IsDynamicTypeWithGcStaticsFlag) != 0)
-        cbOffset += sizeof(UIntTarget);
-
-    if (eField == ETF_DynamicNonGcStatics)
-    {
-        ASSERT((rareFlags & IsDynamicTypeWithNonGcStaticsFlag) != 0);
-        return cbOffset;
-    }
-    if ((rareFlags & IsDynamicTypeWithNonGcStaticsFlag) != 0)
-        cbOffset += sizeof(UIntTarget);
-
-    if (eField == ETF_DynamicThreadStaticOffset)
-    {
-        ASSERT((rareFlags & IsDynamicTypeWithThreadStaticsFlag) != 0);
-        return cbOffset;
-    }
-    if ((rareFlags & IsDynamicTypeWithThreadStaticsFlag) != 0)
-        cbOffset += sizeof(uint32_t);
-
-    ASSERT(!"Unknown EEType field type");
     return 0;
 }
 #endif // __eetype_inl__
