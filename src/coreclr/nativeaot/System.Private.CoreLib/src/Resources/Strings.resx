@@ -3079,6 +3079,9 @@
   <data name="Encoding_UTF7_Disabled" xml:space="preserve">
     <value>Support for UTF-7 is disabled. See {0} for more information.</value>
   </data>
+  <data name="NotSupported_BodyRemoved" xml:space="preserve">
+    <value>The feature associated with this method was removed.</value>
+  </data>
   <data name="Arg_MustBeHalf" xml:space="preserve">
     <value>Object must be of type Half.</value>
   </data>
