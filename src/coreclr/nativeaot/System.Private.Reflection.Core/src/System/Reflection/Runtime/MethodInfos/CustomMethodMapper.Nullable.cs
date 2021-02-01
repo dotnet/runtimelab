@@ -23,7 +23,7 @@ namespace System.Reflection.Runtime.MethodInfos
                     {
                         Dictionary<MethodBase, CustomMethodInvokerAction> map = new Dictionary<MethodBase, CustomMethodInvokerAction>();
 
-                        Type type = CommonRuntimeTypes.Nullable;
+                        Type type = typeof(Nullable<>);
                         Type theT = type.GetGenericTypeParameters()[0];
 
                         map.AddMethod(type, nameof(Nullable<int>.ToString), Array.Empty<Type>(),
@@ -33,7 +33,7 @@ namespace System.Reflection.Runtime.MethodInfos
                             }
                         );
 
-                        map.AddMethod(type, nameof(Nullable<int>.Equals), new Type[] { CommonRuntimeTypes.Object },
+                        map.AddMethod(type, nameof(Nullable<int>.Equals), new Type[] { typeof(object) },
                             (object thisObject, object[] args, Type thisType) =>
                             {
                                 object other = args[0];

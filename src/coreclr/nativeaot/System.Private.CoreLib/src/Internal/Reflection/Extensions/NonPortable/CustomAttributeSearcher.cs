@@ -41,8 +41,8 @@ namespace Internal.Reflection.Extensions.NonPortable
             {
                 if (optionalAttributeTypeFilter == null)
                     throw new ArgumentNullException("type");
-                if (!(optionalAttributeTypeFilter.Equals(CommonRuntimeTypes.Attribute) ||
-                      optionalAttributeTypeFilter.IsSubclassOf(CommonRuntimeTypes.Attribute)))
+                if (!(optionalAttributeTypeFilter.Equals(typeof(Attribute)) ||
+                      optionalAttributeTypeFilter.IsSubclassOf(typeof(Attribute))))
                     throw new ArgumentException(SR.Argument_MustHaveAttributeBaseClass);
 
                 try

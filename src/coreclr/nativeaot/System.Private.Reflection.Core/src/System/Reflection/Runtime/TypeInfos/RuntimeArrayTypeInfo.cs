@@ -51,7 +51,7 @@ namespace System.Reflection.Runtime.TypeInfos
                 int rank = this.GetArrayRank();
 
                 RuntimeArrayTypeInfo arrayType = this;
-                RuntimeTypeInfo countType = CommonRuntimeTypes.Int32.CastToRuntimeTypeInfo();
+                RuntimeTypeInfo countType = typeof(int).CastToRuntimeTypeInfo();
 
                 {
                     //
@@ -168,10 +168,10 @@ namespace System.Reflection.Runtime.TypeInfos
             {
                 int rank = this.GetArrayRank();
 
-                RuntimeTypeInfo indexType = CommonRuntimeTypes.Int32.CastToRuntimeTypeInfo();
+                RuntimeTypeInfo indexType = typeof(int).CastToRuntimeTypeInfo();
                 RuntimeArrayTypeInfo arrayType = this;
                 RuntimeTypeInfo elementType = arrayType.InternalRuntimeElementType;
-                RuntimeTypeInfo voidType = CommonRuntimeTypes.Void.CastToRuntimeTypeInfo();
+                RuntimeTypeInfo voidType = typeof(void).CastToRuntimeTypeInfo();
 
                 {
                     RuntimeTypeInfo[] getParameters = new RuntimeTypeInfo[rank];

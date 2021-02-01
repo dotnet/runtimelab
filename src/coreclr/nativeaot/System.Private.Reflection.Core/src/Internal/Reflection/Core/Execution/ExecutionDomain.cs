@@ -361,20 +361,20 @@ namespace Internal.Reflection.Core.Execution
 
         private static readonly Type[] s_primitiveTypes =
         {
-                    CommonRuntimeTypes.Boolean,
-                    CommonRuntimeTypes.Char,
-                    CommonRuntimeTypes.SByte,
-                    CommonRuntimeTypes.Byte,
-                    CommonRuntimeTypes.Int16,
-                    CommonRuntimeTypes.UInt16,
-                    CommonRuntimeTypes.Int32,
-                    CommonRuntimeTypes.UInt32,
-                    CommonRuntimeTypes.Int64,
-                    CommonRuntimeTypes.UInt64,
-                    CommonRuntimeTypes.Single,
-                    CommonRuntimeTypes.Double,
-                    CommonRuntimeTypes.IntPtr,
-                    CommonRuntimeTypes.UIntPtr,
+                    typeof(bool),
+                    typeof(char),
+                    typeof(sbyte),
+                    typeof(byte),
+                    typeof(short),
+                    typeof(ushort),
+                    typeof(int),
+                    typeof(uint),
+                    typeof(long),
+                    typeof(ulong),
+                    typeof(float),
+                    typeof(double),
+                    typeof(IntPtr),
+                    typeof(UIntPtr),
         };
     }
 }

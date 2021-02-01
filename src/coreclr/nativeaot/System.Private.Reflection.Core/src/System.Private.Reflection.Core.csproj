@@ -149,9 +149,6 @@
     <Compile Include="Internal\Reflection\Tracing\ITraceableTypeMember.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="$(AotCommonPath)\System\CommonRuntimeTypes.cs">
-      <Link>System\CommonRuntimeTypes.cs</Link>
-    </Compile>
     <Compile Include="$(CommonPath)\System\NotImplemented.cs">
       <Link>System\NotImplemented.cs</Link>
     </Compile>

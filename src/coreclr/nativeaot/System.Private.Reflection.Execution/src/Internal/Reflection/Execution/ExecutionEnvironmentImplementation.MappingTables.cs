@@ -498,10 +498,10 @@ namespace Internal.Reflection.Execution
 
             // This is either a constructor ("returns" void) or an instance method
             MethodInfo reflectionMethodInfo = reflectionMethodBase as MethodInfo;
-            Type returnType = reflectionMethodInfo != null ? reflectionMethodInfo.ReturnType : CommonRuntimeTypes.Void;
+            Type returnType = reflectionMethodInfo != null ? reflectionMethodInfo.ReturnType : typeof(void);
 
             // Only use the return type if it's not void
-            if (!returnType.Equals(CommonRuntimeTypes.Void))
+            if (!returnType.Equals(typeof(void)))
                 dynamicInvokeMethodGenArguments.Add(returnType.TypeHandle);
 
             for (int i = 0; i < dynamicInvokeMethodGenArguments.Count; i++)
@@ -1517,7 +1517,7 @@ namespace Internal.Reflection.Execution
                     LowLevelList<RuntimeTypeHandle> result = ParameterTypeHandles;
 
                     MethodInfo reflectionMethodInfo = _methodBase as MethodInfo;
-                    Type returnType = reflectionMethodInfo != null ? reflectionMethodInfo.ReturnType : CommonRuntimeTypes.Void;
+                    Type returnType = reflectionMethodInfo != null ? reflectionMethodInfo.ReturnType : typeof(void);
                     if (returnType.IsByRef)
                         returnType = returnType.GetElementType();
                     result.Insert(0, returnType.TypeHandle);
@@ -1534,7 +1534,7 @@ namespace Internal.Reflection.Execution
                     bool[] result = new bool[parameters.Length + 1];
 
                     MethodInfo reflectionMethodInfo = _methodBase as MethodInfo;
-                    Type returnType = reflectionMethodInfo != null ? reflectionMethodInfo.ReturnType : CommonRuntimeTypes.Void;
+                    Type returnType = reflectionMethodInfo != null ? reflectionMethodInfo.ReturnType : typeof(void);
                     result[0] = returnType.IsByRef;
 
                     for (int i = 0; i < parameters.Length; i++)
@@ -1573,7 +1573,7 @@ namespace Internal.Reflection.Execution
 
                     // Check the return type for generic vars
                     MethodInfo reflectionMethodInfo = _methodBase as MethodInfo;
-                    _returnTypeAndParametersTypesCache[0] = reflectionMethodInfo != null ? reflectionMethodInfo.ReturnType : CommonRuntimeTypes.Void;
+                    _returnTypeAndParametersTypesCache[0] = reflectionMethodInfo != null ? reflectionMethodInfo.ReturnType : typeof(void);
                     _returnTypeAndParametersHandlesCache[0] = signature.ReturnType;
 
                     // Check the method parameters for generic vars
