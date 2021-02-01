@@ -5,6 +5,7 @@
 using System;
 using System.Diagnostics;
 #endif
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
@@ -195,6 +196,10 @@ namespace System.Diagnostics.Tracing
         /// </summary>
         /// <param name="property"></param>
         /// <returns></returns>
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+            Justification = "Instantiation over a reference type. See comments above.")]
+#endif
         private static Func<PropertyValue, PropertyValue> GetReferenceTypePropertyGetter(PropertyInfo property)
         {
             var helper = (TypeHelper)Activator.CreateInstance(typeof(ReferenceTypeHelper<>).MakeGenericType(property.DeclaringType!))!;
