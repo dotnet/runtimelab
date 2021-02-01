@@ -229,6 +229,9 @@ namespace System.Text.RegularExpressions.SRM
                 case RegexNode.Beginning:
                     return this.srBuilder.startAnchor;
                 case RegexNode.Bol:
+                    // update the \n predicate in the builder if it has not been updated already
+                    if (srBuilder.newLinePredicate.Equals(srBuilder.solver.False))
+                        srBuilder.newLinePredicate = srBuilder.solver.MkCharConstraint('\n');
                     return this.srBuilder.bolAnchor;
                 case RegexNode.Capture:  //treat as non-capturing group (...)
                     return ConvertNodeToSymbolicRegex(node.Child(0), topLevel);
@@ -240,8 +243,14 @@ namespace System.Text.RegularExpressions.SRM
                 case RegexNode.End:  // \z anchor
                     return this.srBuilder.endAnchor;
                 case RegexNode.EndZ: // \Z anchor
+                    // update the \n predicate in the builder if it has not been updated already
+                    if (srBuilder.newLinePredicate.Equals(srBuilder.solver.False))
+                        srBuilder.newLinePredicate = srBuilder.solver.MkCharConstraint('\n');
                     return this.srBuilder.endAnchorZ;
                 case RegexNode.Eol:
+                    // update the \n predicate in the builder if it has not been updated already
+                    if (srBuilder.newLinePredicate.Equals(srBuilder.solver.False))
+                        srBuilder.newLinePredicate = srBuilder.solver.MkCharConstraint('\n');
                     return this.srBuilder.eolAnchor;
                 case RegexNode.Loop:
                     return this.srBuilder.MkLoop(ConvertNodeToSymbolicRegex(node.Child(0), false), false, node.M, node.N);
@@ -269,15 +278,19 @@ namespace System.Text.RegularExpressions.SRM
                     return ConvertNodeSetloopToSymbolicRegex(node, true);
                 case RegexNode.Testgroup:
                     return MkIfThenElse(ConvertNodeToSymbolicRegex(node.Child(0), false), ConvertNodeToSymbolicRegex(node.Child(1), false), ConvertNodeToSymbolicRegex(node.Child(2), false));
+                // TBD: ECMA case intersect predicate with ascii range ?
                 case RegexNode.ECMABoundary:
                 case RegexNode.Boundary:
-                    // update the word letter predicate based on the Unicode definition of it
-                    srBuilder.wordLetterPredicate = categorizer.WordLetterCondition;
+                    // update the word letter predicate based on the Unicode definition of it if it was not updated already
+                    if (srBuilder.wordLetterPredicate.Equals(srBuilder.solver.False))
+                        srBuilder.wordLetterPredicate = categorizer.WordLetterCondition;
                     return this.srBuilder.wbAnchor;
-                case RegexNode.NonBoundary:
+                // TBD: ECMA case intersect predicate with ascii range ?
                 case RegexNode.NonECMABoundary:
-                    // update the word letter predicate based on the Unicode definition of it
-                    srBuilder.wordLetterPredicate = categorizer.WordLetterCondition;
+                case RegexNode.NonBoundary:
+                    // update the word letter predicate based on the Unicode definition of it if it was not updated already
+                    if (srBuilder.wordLetterPredicate.Equals(srBuilder.solver.False))
+                        srBuilder.wordLetterPredicate = categorizer.WordLetterCondition;
                     return this.srBuilder.nwbAnchor;
                 case RegexNode.Nothing:
                     return this.srBuilder.nothing;

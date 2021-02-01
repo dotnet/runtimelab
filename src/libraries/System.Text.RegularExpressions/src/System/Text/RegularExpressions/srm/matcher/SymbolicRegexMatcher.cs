@@ -31,6 +31,8 @@ namespace System.Text.RegularExpressions.SRM
         {
             //update the word letter predicate in the BV solver to the correct one
             this.builder.wordLetterPredicate = this.builder.solver.ConvertFromCharSet(srBuilder.wordLetterPredicate);
+            //update the \n predicate in the BV solver to the correct one
+            this.builder.newLinePredicate = this.builder.solver.ConvertFromCharSet(srBuilder.newLinePredicate);
         }
 
         /// <summary>
@@ -54,6 +56,8 @@ namespace System.Text.RegularExpressions.SRM
         {
             //update the word letter predicate in the ulong solver to the correct one
             this.builder.wordLetterPredicate = this.builder.solver.ConvertFromCharSet(srBuilder.wordLetterPredicate);
+            //update the \n predicate in the BV solver to the correct one
+            this.builder.newLinePredicate = this.builder.solver.ConvertFromCharSet(srBuilder.newLinePredicate);
         }
 
         /// <summary>
@@ -283,6 +287,7 @@ namespace System.Text.RegularExpressions.SRM
 
         /// <summary>
         /// Maps states >= StateLimit to regexes.
+        /// TBD: replace by allocating new blocks.
         /// </summary>
         [NonSerialized]
         private Dictionary<int, SymbolicRegexNode<S>> state2regexExtra = new Dictionary<int, SymbolicRegexNode<S>>();
@@ -293,7 +298,13 @@ namespace System.Text.RegularExpressions.SRM
         /// Length of state2regex is StateLimit. Entry 0 is not used.
         /// </summary>
         [NonSerialized]
-        private SymbolicRegexNode<S>[] state2regex;
+        private SymbolicRegexNode<S>[] statearray;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private SymbolicRegexNode<S> GetState(int stateId)
+        {
+            return (stateId < StateLimit ? statearray[stateId] : state2regexExtra[stateId]);
+        }
 
         /// <summary>
         /// Overflow from delta. Transitions with source state over the limit.
@@ -353,6 +364,7 @@ namespace System.Text.RegularExpressions.SRM
 
                 ulong A_startset_ulong = (ulong)(object)A_startset;
                 ulong wordLetter_ulong = (ulong)(object)builder.wordLetterPredicate;
+                ulong newLine_ulong = (ulong)(object)builder.newLinePredicate;
 
                 var simpl_precomputed = Array.ConvertAll(simpl_bvalg.dtree.precomputed, atomId => simpl_bvalg.IsSatisfiable(simpl_bvalg.MkAnd(simpl_bvalg.atoms[atomId], A_startset_ulong)));
                 BooleanDecisionTree simpl_A_StartSet;
@@ -366,6 +378,7 @@ namespace System.Text.RegularExpressions.SRM
                 info.AddValue("A_startset", A_startset_ulong);
                 info.AddValue("A_StartSet_Size", simpl_A_StartSet_Size);
                 info.AddValue("wordLetter", wordLetter_ulong);
+                info.AddValue("newLine", newLine_ulong);
 
                 var simpl_A_prefix = "";
 
@@ -405,6 +418,7 @@ namespace System.Text.RegularExpressions.SRM
                 info.AddValue("A", A.Serialize());
                 info.AddValue("Options", (object)Options);
                 info.AddValue("wordLetter", this.builder.wordLetterPredicate);
+                info.AddValue("newLine", this.builder.newLinePredicate);
 
                 info.AddValue("StateLimit", StateLimit);
                 info.AddValue("StartSetSizeLimit", StartSetSizeLimit);
@@ -432,6 +446,7 @@ namespace System.Text.RegularExpressions.SRM
             var solver = (ICharAlgebra<S>)info.GetValue("solver", typeof(ICharAlgebra<S>));
             this.builder = new SymbolicRegexBuilder<S>(solver);
             this.builder.wordLetterPredicate = (S)info.GetValue("wordLetter", typeof(S));
+            this.builder.newLinePredicate = (S)info.GetValue("newLine", typeof(S));
 
             this.atoms = builder.solver.GetPartition();
             this.dt = ((BVAlgebraBase)builder.solver).dtree;
@@ -442,7 +457,7 @@ namespace System.Text.RegularExpressions.SRM
 
             InitializeRegexes();
 
-            this.A_startset = A.GetStartSet(builder.solver);
+            this.A_startset = A.GetStartSet();
             this.A_StartSet_Size = (int)builder.solver.ComputeDomainSize(A_startset);
 
             this.A_StartSet = (BooleanDecisionTree)info.GetValue("A_StartSet", typeof(BooleanDecisionTree));
@@ -515,7 +530,7 @@ namespace System.Text.RegularExpressions.SRM
 
             InitializeRegexes();
 
-            A_startset = A.GetStartSet(builder.solver);
+            A_startset = A.GetStartSet();
             this.A_StartSet_Size = (int)builder.solver.ComputeDomainSize(A_startset);
             if (this.A_StartSet_Size == 0)
                 throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + "characterless regex");
@@ -543,16 +558,16 @@ namespace System.Text.RegularExpressions.SRM
             this.A_allLoopsAreLazy = this.A.CheckIfAllLoopsAreLazy();
             this.A_containsLazyLoop = this.A.CheckIfContainsLazyLoop();
             this.Ar = this.A.Reverse();
-            this.A1 = this.builder.MkConcat(this.builder.dotStar, this.A);
+            this.A1 = builder.MkConcat(builder.dotStar, this.A);
             this.regex2state[A1] = this.q0_A1;
             this.regex2state[Ar] = this.q0_Ar;
             this.regex2state[A] = this.q0_A;
             this.K = this.atoms.Length;
             this.delta = new int[this.K * this.StateLimit];
-            this.state2regex = new SymbolicRegexNode<S>[this.StateLimit];
+            this.statearray = new SymbolicRegexNode<S>[this.StateLimit];
             if (this.q0_A1 < this.StateLimit)
             {
-                this.state2regex[this.q0_A1] = this.A1;
+                this.statearray[this.q0_A1] = this.A1;
             }
             else
             {
@@ -562,7 +577,7 @@ namespace System.Text.RegularExpressions.SRM
 
             if (this.q0_Ar < this.StateLimit)
             {
-                this.state2regex[this.q0_Ar] = this.Ar;
+                this.statearray[this.q0_Ar] = this.Ar;
             }
             else
             {
@@ -572,7 +587,7 @@ namespace System.Text.RegularExpressions.SRM
 
             if (this.q0_A < this.StateLimit)
             {
-                this.state2regex[this.q0_A] = this.A;
+                this.statearray[this.q0_A] = this.A;
             }
             else
             {
@@ -606,32 +621,44 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="regex">regex of returned state</param>
         private int DeltaPlus(string input, int q, out SymbolicRegexNode<S> regex)
         {
+            var r = GetState(q);
             if (string.IsNullOrEmpty(input))
             {
-                regex = (q < StateLimit ? state2regex[q] : state2regexExtra[q]);
+                regex = r;
                 return q;
             }
             else
             {
-                q = DeltaBorder(BorderSymbol.Beg, q, out _);
+                int c = input[0];
+                int c_prev = -1;
+
+                int beg = r.info.StartsWithBoundaryAnchor && IsWordChar(c) ? BorderSymbol.Beg_WB : BorderSymbol.Beg;
+                q = DeltaBorder(beg, q, out r);
 
                 for (int i = 0; i < input.Length; i++)
                 {
-                    var c = input[i];
+                    c = input[i];
 
-                    int p;
                     if (c == 10)
                     {
-                        p = DeltaBorder(BorderSymbol.EOL, q, out _);
-                        p = Delta(10, p, out _);
-                        p = DeltaBorder(BorderSymbol.BOL, p, out _);
+                        int eol = r.info.StartsWithBoundaryAnchor && IsWordChar(c_prev) ? BorderSymbol.EOL_WB : BorderSymbol.EOL;
+                        q = DeltaBorder(eol, q, out _);
+                        q = Delta(10, q, out r);
+                        int bol = r.info.StartsWithBoundaryAnchor && IsWordChar(i < input.Length - 1 ? input[i + 1] : -1) ? BorderSymbol.BOL_WB : BorderSymbol.BOL;
+                        q = DeltaBorder(bol, q, out r);
                     }
                     else
-                        p = Delta(c, q, out _);
-
-                    q = p;
+                    {
+                        if (r.info.StartsWithBoundaryAnchor)
+                        {
+                            int boundary = (IsWordChar(c_prev) == IsWordChar(c)) ? BorderSymbol.NWB : BorderSymbol.WB;
+                            q = DeltaBorder(boundary, q, out _);
+                        }
+                        q = Delta(c, q, out r);
+                    }
+                    c_prev = c;
                 }
-                regex = (q < StateLimit ? state2regex[q] : state2regexExtra[q]);
+                regex = r;
                 return q;
             }
         }
@@ -663,7 +690,7 @@ namespace System.Text.RegularExpressions.SRM
                 }
                 else
                 {
-                    regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
+                    regex = GetState(p);
                 }
                 #endregion
             }
@@ -678,7 +705,7 @@ namespace System.Text.RegularExpressions.SRM
                 }
                 else
                 {
-                    regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
+                    regex = GetState(p);
                 }
                 #endregion
             }
@@ -694,14 +721,14 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="regex">target regex</param>
         /// <returns>state id of target regex</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private int DeltaBorder(BorderSymbol borderSymbol, int q, out SymbolicRegexNode<S> regex)
+        private int DeltaBorder(int borderSymbol, int q, out SymbolicRegexNode<S> regex)
         {
             int p;
-            int borderSymbolId = (int)borderSymbol;
+            int borderSymbolId = borderSymbol;
             if (deltaForBorderSymbols.TryGetValue(q, out int[] targets) && targets[borderSymbolId] > 0)
             {
                 p = targets[borderSymbolId];
-                regex = (p < StateLimit ? state2regex[p] : state2regexExtra[p]);
+                regex = GetState(p);
             }
             else
             {
@@ -713,7 +740,6 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Critical region for threadsafe applications for defining a new transition from q when q is larger that StateLimit
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void CreateNewTransitionExtra(int q, int atom_id, S atom, int[] q_trans, out int p, out SymbolicRegexNode<S> regex)
         {
             lock (this)
@@ -723,16 +749,13 @@ namespace System.Text.RegularExpressions.SRM
                 if (p1 != 0)
                 {
                     p = p1;
-                    if (p1 < StateLimit)
-                        regex = state2regex[p1];
-                    else
-                        regex = state2regexExtra[p1];
+                    regex = GetState(p);
                 }
                 else
                 {
                     //p is still undefined
                     var q_regex = state2regexExtra[q];
-                    var deriv = q_regex.MkDerivative(atom);
+                    var deriv = q_regex.MkDerivative(atom, 0);
                     if (!regex2state.TryGetValue(deriv, out p))
                     {
                         p = nextStateId++;
@@ -761,20 +784,20 @@ namespace System.Text.RegularExpressions.SRM
                 {
                     p = p1;
                     if (p1 < StateLimit)
-                        regex = state2regex[p1];
+                        regex = statearray[p1];
                     else
                         regex = state2regexExtra[p1];
                 }
                 else
                 {
-                    var q_regex = state2regex[q];
-                    var deriv = q_regex.MkDerivative(atom);
+                    var q_regex = statearray[q];
+                    var deriv = q_regex.MkDerivative(atom, 0);
                     if (!regex2state.TryGetValue(deriv, out p))
                     {
                         p = nextStateId++;
                         regex2state[deriv] = p;
                         if (p < StateLimit)
-                            state2regex[p] = deriv;
+                            statearray[p] = deriv;
                         else
                             state2regexExtra[p] = deriv;
                         if (p >= StateLimit)
@@ -790,40 +813,35 @@ namespace System.Text.RegularExpressions.SRM
         /// Critical region for threadsafe applications for defining a new transition for border anchors
         /// </summary>
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void CreateNewTransitionForBorderSymbol(int q, BorderSymbol borderSymbol, out int p, out SymbolicRegexNode<S> regex)
+        private void CreateNewTransitionForBorderSymbol(int q, int borderSymbol, out int p, out SymbolicRegexNode<S> regex)
         {
             lock (this)
             {
                 //check if meanwhile the transition has become possibly defined by another thread
-                int borderSymbolId = (int)borderSymbol;
+                int borderSymbolId = borderSymbol;
                 int[] targets;
                 if (!deltaForBorderSymbols.TryGetValue(q, out targets))
                 {
                     // initialize the array of target states for border symbols
-                    targets = new int[(int)BorderSymbol.Count];
+                    targets = new int[BorderSymbol.Count];
                     deltaForBorderSymbols[q] = targets;
                 }
                 if (targets[borderSymbolId] > 0)
                 {
                     p = targets[borderSymbolId];
-                    #region find the regex for p
-                    if (p < StateLimit)
-                        regex = state2regex[p];
-                    else
-                        regex = state2regexExtra[p];
-                    #endregion
+                    regex = GetState(p);
                 }
                 else
                 {
                     #region compute the derivative
-                    var q_regex = (q < StateLimit ? state2regex[q] : state2regexExtra[q]);
+                    var q_regex = GetState(q);
                     var deriv = q_regex.MkDerivativeForBorder(borderSymbol);
                     if (!regex2state.TryGetValue(deriv, out p))
                     {
                         p = nextStateId++;
                         regex2state[deriv] = p;
                         if (p < StateLimit)
-                            state2regex[p] = deriv;
+                            statearray[p] = deriv;
                         else
                             state2regexExtra[p] = deriv;
                         if (p >= StateLimit)
@@ -981,7 +999,7 @@ namespace System.Text.RegularExpressions.SRM
                 else
                     p = Delta(c, q, out regex);
 
-                if (regex.isNullable)
+                if (regex.IsNullable)
                 {
                     //accepting state has been reached
                     //record the position
@@ -1033,13 +1051,13 @@ namespace System.Text.RegularExpressions.SRM
                 //apply start symbol to potentially eliminate the start anchor
                 q = DeltaBorder(BorderSymbol.Beg, q, out regex);
                 //we reached the beginning of the input, thus the state q must be accepting
-                if (!regex.isNullable)
+                if (!regex.IsNullable)
                     throw new AutomataException(AutomataExceptionKind.InternalError);
                 return 0;
             }
 
             int last_start = -1;
-            if (regex != null && regex.isNullable)
+            if (regex != null && regex.IsNullable)
             {
                 //the whole prefix of Ar was in reverse a prefix of A
                 last_start = i + 1;
@@ -1074,7 +1092,7 @@ namespace System.Text.RegularExpressions.SRM
                 else
                     p = Delta(c, q, out regex);
 
-                if (regex.isNullable)
+                if (regex.IsNullable)
                 {
                     //earliest start point so far
                     //this must happen at some point
@@ -1094,7 +1112,7 @@ namespace System.Text.RegularExpressions.SRM
                     //back at the start
                     //there must be a start anchor blocking nullability
                     p = DeltaBorder(BorderSymbol.Beg, p, out regex);
-                    if (regex.isNullable)
+                    if (regex.IsNullable)
                     {
                         last_start = 0;
                         break;
@@ -1109,7 +1127,7 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
-        /// FindFinalState optimized for the case when A starts with a fixed prefix
+        /// FindFinalStatePosition is optimized for the case when A starts with a fixed prefix
         /// </summary>
         /// <param name="input">given input string</param>
         /// <param name="i">start position</param>
@@ -1120,22 +1138,35 @@ namespace System.Text.RegularExpressions.SRM
         {
             int q = q0_A1;
             int i_q0_A1 = i;
-            //it is important to use Ordinal/OrdinalIgnoreCase to avoid culture dependent semantics of IndexOf
+            // use Ordinal/OrdinalIgnoreCase to avoid culture dependent semantics of IndexOf
             StringComparison comparison = (this.A_fixedPrefix_ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
-            SymbolicRegexNode<S> regex = null;
+            SymbolicRegexNode<S> regex = A1;
             watchdog = -1;
-            // start with the start symbol in order to eliminate a possible start(or BOL) anchor
-            // q will remain the same if there is no start anchor
-            if (i == 0)
-                q = DeltaBorder(BorderSymbol.Beg, q, out regex);
 
+            // previous character --- potentially needed for \b and \B anchors
+            int prev_c = -1;
+            // current character
+            int c = input[0];
+            if (i == 0 && regex.info.StartsWithSomeAnchor)
+                // possibly unblock anchors \A or ^ or \b or \B in regex
+                q = DeltaBorder(GetStartBorderSymbol(-1, c), q, out regex);
+
+            // search for a match end position within input[i..k-1]
             while (i < k)
             {
-                if (!string.IsNullOrEmpty(this.A_prefix))
+                c = input[i];
+                if (regex.info.StartsWithSomeAnchor)
+                {
+                    q = DeltaBorder(GetStartBorderSymbol(prev_c, c), q, out regex);
+                    if (regex.IsNullable)
+                        break;
+                }
+                else if (!string.IsNullOrEmpty(this.A_prefix))
                 {
                     // ++++ the prefix optimization can be omitted without affecting correctness ++++
                     // but this optimization has a major perfomance boost when a fixed prefix exists
                     // .... in some cases in the order of 10x
+                    // TBD: checking correctness when anchors are used
                     #region prefix optimization
                     //stay in the initial state if the prefix does not match
                     //thus advance the current position to the
@@ -1167,7 +1198,7 @@ namespace System.Text.RegularExpressions.SRM
 
                             //skip the prefix
                             i = i + this.A_prefix.Length;
-                            if (regex.isNullable)
+                            if (regex.IsNullable)
                             {
                                 i_q0 = i_q0_A1;
                                 watchdog = GetWatchdog(regex);
@@ -1201,7 +1232,15 @@ namespace System.Text.RegularExpressions.SRM
                     i_q0_A1 = i;
                 }
 
-                int c = input[i];
+                // take care of potential boundary anchors
+                if (regex.info.StartsWithBoundaryAnchor)
+                {
+                    int boundary = GetStartBorderSymbol(i == 0 ? -1 : input[i - 1], c);
+                    q = DeltaBorder(boundary, q, out regex);
+                    if (regex.IsNullable)
+                        break;
+                }
+
                 int p;
 
                 #region compute one step but extended with line anchors if c = '\n'
@@ -1212,7 +1251,7 @@ namespace System.Text.RegularExpressions.SRM
                     else
                         p = DeltaBorder(BorderSymbol.EOL, q, out regex);
 
-                    if (regex.isNullable)
+                    if (regex.IsNullable)
                     {
                         //match has been found due to endline anchor
                         //so the match actually ends at the prior character
@@ -1221,15 +1260,16 @@ namespace System.Text.RegularExpressions.SRM
                         break;
                     }
                     p = Delta(10, p, out regex);
-                    if (regex.isNullable)
+                    if (regex.IsNullable)
                     {
                         //match has been found due to newline itself
                         //this can happen if anchor is not used
                         //but the newline character is used in the pattern
                         break;
                     }
-                    p = DeltaBorder(BorderSymbol.BOL, p, out regex);
-                    if (regex.isNullable)
+                    int bol = GetStartBorderSymbol(i == 0 ? -1 : input[i - 1], c);
+                    p = DeltaBorder(bol, p, out regex);
+                    if (regex.IsNullable)
                     {
                         //match has been found due to startline anchor
                         //highly unusual case that should not really happen
@@ -1246,8 +1286,7 @@ namespace System.Text.RegularExpressions.SRM
                 else
                 {
                     p = Delta(c, q, out regex);
-
-                    if (regex.isNullable)
+                    if (regex.IsNullable)
                     {
                         //p is a final state so match has been found
                         break;
@@ -1264,17 +1303,84 @@ namespace System.Text.RegularExpressions.SRM
                 //continue from the target state
                 q = p;
                 i += 1;
+                prev_c = c;
             }
             if (i == k)
             {
-                q = DeltaBorder(BorderSymbol.End, q, out regex);
+                if (k == input.Length)
+                    q = DeltaBorder(BorderSymbol.End, q, out regex);
+
+                if (regex.info.StartsWithBoundaryAnchor)
+                {
+                    int c1 = input[k - 1];
+                    bool c_is_wordChar = IsWordChar(c1);
+                    if (k == input.Length)
+                    {
+                        // if the last character is a word character it is also a word boundary
+                        // if the last character is not a word character it is also a non word boundary
+                        if (c_is_wordChar)
+                            DeltaBorder(BorderSymbol.WB, q, out regex);
+                        else
+                            DeltaBorder(BorderSymbol.NWB, q, out regex);
+                    }
+                    else
+                    {
+                        // d is the following character
+                        int d = input[k];
+                        bool d_is_wordChar = IsWordChar(d);
+                        bool is_not_wb = (d_is_wordChar == c_is_wordChar);
+                        // it is word boundary iff exactly one of c or d is a word character
+                        if (is_not_wb)
+                            DeltaBorder(BorderSymbol.NWB, q, out regex);
+                        else
+                            DeltaBorder(BorderSymbol.WB, q, out regex);
+                    }
+                }
                 if (regex.IsNullable)
-                    //match occurred due to end anchor
+                    //match occurred due to end anchor or boundary anchor
                     i = i - 1;
             }
             i_q0 = i_q0_A1;
             watchdog = (regex == null ? -1 : this.GetWatchdog(regex));
             return i;
+        }
+
+        private bool IsWordChar(int c)
+        {
+            if (c < 0)
+                return false;
+            int c_id = (dt.precomputed.Length > c ? dt.precomputed[c] : dt.bst.Find(c));
+            S c_atom = atoms[c_id];
+            bool c_is_wordChar = builder.solver.IsSatisfiable(builder.solver.MkAnd(c_atom, builder.wordLetterPredicate));
+            return c_is_wordChar;
+        }
+
+        /// <summary>
+        /// Get the current border symbol, returns one of the codes in BorderSymbol
+        /// </summary>
+        /// <param name="prev_char">previous input character or -1 if there was no previous character</param>
+        /// <param name="curr_char">current (next) character (other than \n)</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private int GetStartBorderSymbol(int prev_char, int curr_char)
+        {
+            if (prev_char < 0)
+            {
+                if (IsWordChar(curr_char))
+                    // input start and word border
+                    return BorderSymbol.Beg_WB;
+                else
+                    // input start
+                    return BorderSymbol.Beg;
+            }
+            else
+            {
+                // word border or non word border
+                int symb = IsWordChar(prev_char) == IsWordChar(curr_char) ? BorderSymbol.NWB : BorderSymbol.WB;
+                // that is also a start-line
+                if (prev_char == 10)
+                    symb |= BorderSymbol.BOL;
+                return symb;
+            }
         }
 
         #endregion
@@ -2040,7 +2146,7 @@ namespace System.Text.RegularExpressions.SRM
                 else
                     p = Delta(c, q, out regex);
 
-                if (regex.isNullable)
+                if (regex.IsNullable)
                 {
                     //accepting state has been reached
                     //record the position
@@ -2095,13 +2201,13 @@ namespace System.Text.RegularExpressions.SRM
             if (i == -1)
             {
                 //we reached the beginning of the input, thus the state q must be accepting
-                if (!regex.isNullable)
+                if (!regex.IsNullable)
                     throw new AutomataException(AutomataExceptionKind.InternalError);
                 return 0;
             }
 
             int last_start = -1;
-            if (regex != null && regex.isNullable)
+            if (regex != null && regex.IsNullable)
             {
                 //the whole prefix of Ar was in reverse a prefix of A
                 last_start = i + 1;
@@ -2172,7 +2278,7 @@ namespace System.Text.RegularExpressions.SRM
                 else
                     p = Delta(c, q, out regex);
 
-                if (regex.isNullable)
+                if (regex.IsNullable)
                 {
                     //earliest start point so far
                     //this must happen at some point
@@ -2255,7 +2361,7 @@ namespace System.Text.RegularExpressions.SRM
 
                             //skip the prefix
                             i = i + this.A_prefixUTF8.Length;
-                            if (regex.isNullable)
+                            if (regex.IsNullable)
                             {
                                 i_q0 = i_q0_A1;
                                 //return the last position of the match
@@ -2342,7 +2448,7 @@ namespace System.Text.RegularExpressions.SRM
                 else
                     p = Delta(c, q, out regex);
 
-                if (regex.isNullable)
+                if (regex.IsNullable)
                 {
                     //p is a final state so match has been found
                     break;

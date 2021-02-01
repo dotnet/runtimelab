@@ -20,6 +20,26 @@ namespace System.Text.RegularExpressions.Tests
         RegexOptions DFA = (RegexOptions)0x400;
 
         [Fact]
+        public void BasicSRMTestBorderAnchors()
+        {
+            //var re1 = new Regex(@"\B x", DFA);
+            //var match1 = re1.Match(" xx");
+            //Assert.True(match1.Success);
+            //Assert.Equal(0, match1.Index);
+            //Assert.Equal(2, match1.Length);
+            //var re2 = new Regex(@"\bxx\b", DFA);
+            //var match2 = re2.Match(" zxx:xx");
+            //Assert.True(match2.Success);
+            //Assert.Equal(5, match2.Index);
+            //Assert.Equal(2, match2.Length);
+            var re3 = new Regex(@"^abc*\B", RegexOptions.Multiline | DFA);
+            var match3 = re3.Match("\nabcc \nabcccd\n");
+            Assert.True(match3.Success);
+            Assert.Equal(1, match3.Index);
+            Assert.Equal(3, match3.Length);
+        }
+
+        [Fact]
         public void BasicSRMTest()
         {
             var re = new Regex(@"a+", DFA);
@@ -150,6 +170,12 @@ namespace System.Text.RegularExpressions.Tests
                 if (nse.Message.Contains("atomic"))
                 {
                     Assert.Contains("?>", pattern);
+                }
+
+                // make sure that the test reex is just an anchor here
+                if (nse.Message.Contains("characterless"))
+                {
+                    Assert.True(pattern == "^" || pattern == "$" || pattern == "\\z" || pattern == "\\Z" || pattern == "\\A");
                 }
 
                 return;

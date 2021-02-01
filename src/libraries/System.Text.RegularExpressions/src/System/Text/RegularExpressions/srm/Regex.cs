@@ -60,7 +60,7 @@ namespace System.Text.RegularExpressions.SRM
             => matcher.FindMatch(true, input, startat, endat) is null;
 
         /// <summary>
-        /// Returns all matches as pairs (startindex, length) in the input string.
+        /// Returns the next match (startindex, length) in the input string.
         /// </summary>
         /// <param name="input">given iput string</param>
         /// <param name="startat">start position in the input, default is 0</param>
