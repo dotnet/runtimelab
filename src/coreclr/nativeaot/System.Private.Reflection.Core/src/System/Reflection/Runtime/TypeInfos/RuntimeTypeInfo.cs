@@ -884,7 +884,7 @@ namespace System.Reflection.Runtime.TypeInfos
                             classification |= TypeClassification.IsEnum | TypeClassification.IsValueType;
                         if (baseType == typeof(MulticastDelegate))
                             classification |= TypeClassification.IsDelegate;
-                        if (baseType == valueType && this != enumType))
+                        if (baseType == valueType && this != enumType)
                         {
                             classification |= TypeClassification.IsValueType;
                             foreach (Type primitiveType in ReflectionCoreExecution.ExecutionDomain.PrimitiveTypes)
