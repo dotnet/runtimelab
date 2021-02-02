@@ -67,6 +67,11 @@ namespace Internal.TypeSystem
             if (valueType.IsEnum)
                 return false;
 
+            // These need to provide an implementation of Equals/GetHashCode because of NaN handling.
+            // The helper would be useless.
+            if (valueType.IsWellKnownType(WellKnownType.Double) || valueType.IsWellKnownType(WellKnownType.Single))
+                return false;
+
             return !_typeStateHashtable.GetOrCreateValue(valueType).CanCompareValueTypeBits;
         }
 
