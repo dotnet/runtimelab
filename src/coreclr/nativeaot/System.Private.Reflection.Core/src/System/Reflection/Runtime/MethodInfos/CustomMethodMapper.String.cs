@@ -21,11 +21,11 @@ namespace System.Reflection.Runtime.MethodInfos
                     {
                         Dictionary<MethodBase, CustomMethodInvokerAction> map = new Dictionary<MethodBase, CustomMethodInvokerAction>();
 
-                        Type type = CommonRuntimeTypes.String;
+                        Type type = typeof(string);
 
                         unsafe
                         {
-                            map.AddConstructor(type, new Type[] { CommonRuntimeTypes.Char, CommonRuntimeTypes.Int32 },
+                            map.AddConstructor(type, new Type[] { typeof(char), typeof(int) },
                                 (object thisObject, object[] args, Type thisType) =>
                                 {
                                     return new string((char)(args[0]), (int)(args[1]));
@@ -39,7 +39,7 @@ namespace System.Reflection.Runtime.MethodInfos
                                 }
                             );
 
-                            map.AddConstructor(type, new Type[] { typeof(char[]), CommonRuntimeTypes.Int32, CommonRuntimeTypes.Int32 },
+                            map.AddConstructor(type, new Type[] { typeof(char[]), typeof(int), typeof(int) },
                                 (object thisObject, object[] args, Type thisType) =>
                                 {
                                     return new string((char[])(args[0]), (int)(args[1]), (int)(args[2]));
@@ -53,7 +53,7 @@ namespace System.Reflection.Runtime.MethodInfos
                                 }
                             );
 
-                            map.AddConstructor(type, new Type[] { typeof(char*), CommonRuntimeTypes.Int32, CommonRuntimeTypes.Int32 },
+                            map.AddConstructor(type, new Type[] { typeof(char*), typeof(int), typeof(int) },
                                 (object thisObject, object[] args, Type thisType) =>
                                 {
                                     return new string((char*)(IntPtr)(args[0]), (int)(args[1]), (int)(args[2]));
@@ -67,14 +67,14 @@ namespace System.Reflection.Runtime.MethodInfos
                                 }
                             );
 
-                            map.AddConstructor(type, new Type[] { typeof(sbyte*), CommonRuntimeTypes.Int32, CommonRuntimeTypes.Int32 },
+                            map.AddConstructor(type, new Type[] { typeof(sbyte*), typeof(int), typeof(int) },
                                 (object thisObject, object[] args, Type thisType) =>
                                 {
                                     return new string((sbyte*)(IntPtr)(args[0]), (int)(args[1]), (int)(args[2]));
                                 }
                             );
 
-                            map.AddConstructor(type, new Type[] { typeof(sbyte*), CommonRuntimeTypes.Int32, CommonRuntimeTypes.Int32, typeof(Encoding) },
+                            map.AddConstructor(type, new Type[] { typeof(sbyte*), typeof(int), typeof(int), typeof(Encoding) },
                                 (object thisObject, object[] args, Type thisType) =>
                                 {
                                     return new string((sbyte*)(IntPtr)(args[0]), (int)(args[1]), (int)(args[2]), (Encoding)(args[3]));

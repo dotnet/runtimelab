@@ -391,9 +391,6 @@
     <Compile Include="$(CommonPath)\System\NotImplemented.cs">
       <Link>System\NotImplemented.cs</Link>
     </Compile>
-    <Compile Include="$(AotCommonPath)\System\CommonRuntimeTypes.cs">
-      <Link>System\CommonRuntimeTypes.cs</Link>
-    </Compile>
     <Compile Include="$(CompilerCommonPath)\Internal\NativeFormat\NativeFormatReader.Primitives.cs">
       <Link>Internal\NativeFormat\NativeFormatReader.Primitives.cs</Link>
     </Compile>

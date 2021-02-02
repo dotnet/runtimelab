@@ -69,7 +69,7 @@ namespace System
                 else if (dstEEType.IsValueType && !dstEEType.IsNullable)
                 {
                     if (semantics == CheckArgumentSemantics.SetFieldDirect)
-                        throw CreateChangeTypeException(CommonRuntimeTypes.Object.TypeHandle.ToEETypePtr(), dstEEType, semantics);
+                        throw CreateChangeTypeException(typeof(object).TypeHandle.ToEETypePtr(), dstEEType, semantics);
                     return Runtime.RuntimeImports.RhNewObject(dstEEType);
                 }
                 else

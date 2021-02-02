@@ -82,13 +82,13 @@ namespace Internal.Reflection.Augments
                     break;
             }
 
-            if (type.Equals(CommonRuntimeTypes.String))
+            if (type.Equals(typeof(string)))
                 return TypeCode.String;
 
-            if (type.Equals(CommonRuntimeTypes.DateTime))
+            if (type.Equals(typeof(DateTime)))
                 return TypeCode.DateTime;
 
-            if (type.Equals(CommonRuntimeTypes.Decimal))
+            if (type.Equals(typeof(decimal)))
                 return TypeCode.Decimal;
 
             if (eeType == DBNull.Value.EETypePtr)

@@ -122,10 +122,10 @@ namespace System.Reflection.Runtime.General
                 //
                 // This has to be coded as its own case as TypeInfo.BaseType on a generic parameter doesn't always return what you'd expect.
                 //
-                if (toTypeInfo.Equals(CommonRuntimeTypes.Object))
+                if (toTypeInfo.Equals(typeof(object)))
                     return true;
 
-                if (toTypeInfo.Equals(CommonRuntimeTypes.ValueType))
+                if (toTypeInfo.Equals(typeof(ValueType)))
                 {
                     GenericParameterAttributes attributes = fromTypeInfo.GenericParameterAttributes;
                     if ((attributes & GenericParameterAttributes.NotNullableValueTypeConstraint) != 0)
@@ -159,7 +159,7 @@ namespace System.Reflection.Runtime.General
             else
             {
                 // Interfaces are always castable to System.Object. The code below will not catch this as interfaces report their BaseType as null.
-                if (toTypeInfo.Equals(CommonRuntimeTypes.Object) && fromTypeInfo.IsInterface)
+                if (toTypeInfo.Equals(typeof(object)) && fromTypeInfo.IsInterface)
                     return true;
 
                 Type walk = fromTypeInfo;
@@ -255,24 +255,24 @@ namespace System.Reflection.Runtime.General
             if (t.IsEnum)
                 t = Enum.GetUnderlyingType(t);
 
-            if (t.Equals(CommonRuntimeTypes.Byte))
-                return CommonRuntimeTypes.SByte;
+            if (t.Equals(typeof(byte)))
+                return typeof(sbyte);
 
-            if (t.Equals(CommonRuntimeTypes.UInt16))
-                return CommonRuntimeTypes.Int16;
+            if (t.Equals(typeof(ushort)))
+                return typeof(short);
 
-            if (t.Equals(CommonRuntimeTypes.UInt32))
-                return CommonRuntimeTypes.Int32;
+            if (t.Equals(typeof(uint)))
+                return typeof(int);
 
-            if (t.Equals(CommonRuntimeTypes.UInt64))
-                return CommonRuntimeTypes.Int64;
+            if (t.Equals(typeof(ulong)))
+                return typeof(long);
 
-            if (t.Equals(CommonRuntimeTypes.UIntPtr) || t.Equals(CommonRuntimeTypes.IntPtr))
+            if (t.Equals(typeof(UIntPtr)) || t.Equals(typeof(IntPtr)))
             {
 #if TARGET_64BIT
-                return CommonRuntimeTypes.Int64;
+                return typeof(long);
 #else
-                return CommonRuntimeTypes.Int32;
+                return typeof(int);
 #endif
             }
 
@@ -332,7 +332,7 @@ namespace System.Reflection.Runtime.General
                 return false;
             }
 
-            return t.IsClass && !t.Equals(CommonRuntimeTypes.Object) && !t.Equals(CommonRuntimeTypes.ValueType) && !t.Equals(CommonRuntimeTypes.Enum);
+            return t.IsClass && !t.Equals(typeof(object)) && !t.Equals(typeof(ValueType)) && !t.Equals(typeof(Enum));
         }
 
         //

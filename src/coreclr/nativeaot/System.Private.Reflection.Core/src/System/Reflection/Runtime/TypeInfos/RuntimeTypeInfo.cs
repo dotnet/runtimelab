@@ -105,7 +105,7 @@ namespace System.Reflection.Runtime.TypeInfos
                     // unless that other generic parameter has a "class" constraint.
                     GenericParameterAttributes genericParameterAttributes = baseType.GenericParameterAttributes;
                     if (0 == (genericParameterAttributes & GenericParameterAttributes.ReferenceTypeConstraint))
-                        baseType = CommonRuntimeTypes.Object;
+                        baseType = typeof(object);
                 }
                 return baseType;
             }
@@ -877,12 +877,12 @@ namespace System.Reflection.Runtime.TypeInfos
                     Type baseType = this.BaseType;
                     if (baseType != null)
                     {
-                        Type enumType = CommonRuntimeTypes.Enum;
-                        Type valueType = CommonRuntimeTypes.ValueType;
+                        Type enumType = typeof(Enum);
+                        Type valueType = typeof(ValueType);
 
                         if (baseType.Equals(enumType))
                             classification |= TypeClassification.IsEnum | TypeClassification.IsValueType;
-                        if (baseType.Equals(CommonRuntimeTypes.MulticastDelegate))
+                        if (baseType.Equals(typeof(MulticastDelegate)))
                             classification |= TypeClassification.IsDelegate;
                         if (baseType.Equals(valueType) && !(this.Equals(enumType)))
                         {

@@ -167,7 +167,7 @@ namespace System.Reflection.Runtime.TypeInfos
                     return constraints[i];
                 }
 
-                RuntimeNamedTypeInfo objectTypeInfo = CommonRuntimeTypes.Object.CastToRuntimeNamedTypeInfo();
+                RuntimeNamedTypeInfo objectTypeInfo = typeof(object).CastToRuntimeNamedTypeInfo();
                 return objectTypeInfo.TypeDefinitionQHandle;
             }
         }
