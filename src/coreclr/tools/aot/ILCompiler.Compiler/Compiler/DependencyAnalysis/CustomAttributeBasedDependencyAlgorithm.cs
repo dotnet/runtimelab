@@ -254,16 +254,6 @@ namespace ILCompiler.DependencyAnalysis
 
             // Grab the metadata nodes that will be necessary to represent the typeof in the metadata blob
             TypeMetadataNode.GetMetadataDependencies(ref dependencies, factory, typeofType, "Custom attribute blob");
-
-            if (typeofType.IsArray
-                || (typeofType.HasInstantiation && !typeofType.IsGenericDefinition))
-            {
-                // We go for the entire EEType because the reflection stack at runtime will need an EEType anyway
-                // (e.g. if this is a `typeof(SomeType[,,])` just having the metadata for SomeType is not enough).
-                // The reflection stack can operate on metadata-only types in their unconstructed form only.
-                dependencies.Add(factory.MaximallyConstructableType(typeofType), "Custom attribute blob");
-            }
-
             return true;
         }
     }
