@@ -214,7 +214,7 @@ namespace Internal.Reflection.Execution
 
         private static bool IsNullable(this Type type)
         {
-            return type.IsGenericType && object.ReferenceEquals(typeof(Nullable<>), type.GetGenericTypeDefinition());
+            return type.IsGenericType && typeof(Nullable<>) == type.GetGenericTypeDefinition();
         }
 
         private static Type GetNullableType(this Type type)
@@ -229,22 +229,22 @@ namespace Internal.Reflection.Execution
 
         private static bool IsSystemObject(this Type type)
         {
-            return object.ReferenceEquals(typeof(object), type);
+            return typeof(object) == type;
         }
 
         private static bool IsSystemValueType(this Type type)
         {
-            return object.ReferenceEquals(typeof(ValueType), type);
+            return typeof(ValueType) == type;
         }
 
         private static bool IsSystemArray(this Type type)
         {
-            return object.ReferenceEquals(typeof(Array), type);
+            return typeof(Array) == type;
         }
 
         private static bool IsSystemVoid(this Type type)
         {
-            return object.ReferenceEquals(typeof(void), type);
+            return typeof(void) == type;
         }
 
         [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
@@ -290,19 +290,19 @@ namespace Internal.Reflection.Execution
                 return 0;
             }
 
-            if (object.ReferenceEquals(typeof(byte), normalizedType) || object.ReferenceEquals(typeof(sbyte), normalizedType))
+            if (typeof(byte) == normalizedType || typeof(sbyte) == normalizedType)
                 return 1;
 
-            if (object.ReferenceEquals(typeof(ushort), normalizedType) || object.ReferenceEquals(typeof(short), normalizedType))
+            if (typeof(ushort) == normalizedType || typeof(short) == normalizedType)
                 return 2;
 
-            if (object.ReferenceEquals(typeof(uint), normalizedType) || object.ReferenceEquals(typeof(int), normalizedType))
+            if (typeof(uint) == normalizedType || typeof(int) == normalizedType)
                 return 4;
 
-            if (object.ReferenceEquals(typeof(ulong), normalizedType) || object.ReferenceEquals(typeof(long), normalizedType))
+            if (typeof(ulong) == normalizedType || typeof(long) == normalizedType)
                 return 8;
 
-            if (object.ReferenceEquals(typeof(UIntPtr), normalizedType) || object.ReferenceEquals(typeof(IntPtr), normalizedType))
+            if (typeof(UIntPtr) == normalizedType || typeof(IntPtr) == normalizedType)
                 return sizeof(IntPtr);
 
             return 0;

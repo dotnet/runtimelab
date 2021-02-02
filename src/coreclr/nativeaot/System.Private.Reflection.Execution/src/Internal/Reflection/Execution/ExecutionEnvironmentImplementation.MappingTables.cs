@@ -501,7 +501,7 @@ namespace Internal.Reflection.Execution
             Type returnType = reflectionMethodInfo != null ? reflectionMethodInfo.ReturnType : typeof(void);
 
             // Only use the return type if it's not void
-            if (!returnType.Equals(typeof(void)))
+            if (!returnType == typeof(void))
                 dynamicInvokeMethodGenArguments.Add(returnType.TypeHandle);
 
             for (int i = 0; i < dynamicInvokeMethodGenArguments.Count; i++)

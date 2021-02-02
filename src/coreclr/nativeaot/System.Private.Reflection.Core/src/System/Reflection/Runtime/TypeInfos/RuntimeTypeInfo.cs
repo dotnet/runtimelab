@@ -880,11 +880,11 @@ namespace System.Reflection.Runtime.TypeInfos
                         Type enumType = typeof(Enum);
                         Type valueType = typeof(ValueType);
 
-                        if (baseType.Equals(enumType))
+                        if (baseType == enumType)
                             classification |= TypeClassification.IsEnum | TypeClassification.IsValueType;
-                        if (baseType.Equals(typeof(MulticastDelegate)))
+                        if (baseType == typeof(MulticastDelegate))
                             classification |= TypeClassification.IsDelegate;
-                        if (baseType.Equals(valueType) && !(this.Equals(enumType)))
+                        if (baseType == valueType && this != enumType))
                         {
                             classification |= TypeClassification.IsValueType;
                             foreach (Type primitiveType in ReflectionCoreExecution.ExecutionDomain.PrimitiveTypes)

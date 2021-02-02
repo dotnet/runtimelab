@@ -200,7 +200,7 @@ namespace System
             }
             if (elementType.IsByRef || elementType.IsByRefLike)
                 throw new NotSupportedException(SR.NotSupported_ByRefLikeArray);
-            if (elementType.Equals(typeof(void)))
+            if (elementType == typeof(void))
                 throw new NotSupportedException(SR.NotSupported_VoidArray);
             if (elementType.ContainsGenericParameters)
                 throw new NotSupportedException(SR.NotSupported_OpenType);

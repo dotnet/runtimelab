@@ -82,13 +82,13 @@ namespace Internal.Reflection.Augments
                     break;
             }
 
-            if (type.Equals(typeof(string)))
+            if (type == typeof(string))
                 return TypeCode.String;
 
-            if (type.Equals(typeof(DateTime)))
+            if (type == typeof(DateTime))
                 return TypeCode.DateTime;
 
-            if (type.Equals(typeof(decimal)))
+            if (type == typeof(decimal))
                 return TypeCode.Decimal;
 
             if (eeType == DBNull.Value.EETypePtr)
