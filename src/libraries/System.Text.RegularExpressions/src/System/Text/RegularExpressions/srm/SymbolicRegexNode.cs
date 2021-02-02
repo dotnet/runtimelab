@@ -311,6 +311,7 @@ namespace System.Text.RegularExpressions.SRM
             if (!info.StartsWithSomeAnchor)
                 return IsNullable;
             else
+            {
                 switch (kind)
                 {
                     case SymbolicRegexKind.Loop:
@@ -324,9 +325,21 @@ namespace System.Text.RegularExpressions.SRM
                     case SymbolicRegexKind.IfThenElse:
                         return (iteCond.IsNullableFor(context) ? left.IsNullableFor(context) : right.IsNullableFor(context));
                     case SymbolicRegexKind.StartAnchor:
-                        return (context & CharKind.Start) != 0;
+                        {
+                            if ((context & CharKind.Reverse) == 0)
+                                return (context & CharKind.Start) != 0;
+                            else
+                                // the roles of previous and next character info are switched
+                                return ((context >> 4) & CharKind.Start) != 0;
+                        }
                     case SymbolicRegexKind.BOLAnchor:
-                        return (context & (CharKind.Start|CharKind.Newline)) != 0;
+                        {
+                            if ((context & CharKind.Reverse) == 0)
+                                return (context & (CharKind.Start | CharKind.Newline)) != 0;
+                            else
+                                // the roles of previous and next character info are switched
+                                return ((context >> 4) & (CharKind.Start | CharKind.Newline)) != 0;
+                        }
                     case SymbolicRegexKind.WBAnchor:
                         // test that prev char is word letter iff next is not not word letter
                         return ((context & CharKind.WordLetter) ^ ((context >> 4) & CharKind.WordLetter)) != 0;
@@ -334,21 +347,40 @@ namespace System.Text.RegularExpressions.SRM
                         // test that prev char is word letter iff next is word letter
                         return ((context & CharKind.WordLetter) ^ ((context >> 4) & CharKind.WordLetter)) == 0;
                     case SymbolicRegexKind.EOLAnchor:
-                        // End-Of-Line anchor is nullable when the next character is Newline or End
-                        // note: at least one of the bits must be 1, but both could also be 1
-                        return ((context >> 4) & (CharKind.Newline| CharKind.End)) != 0;
+                        {
+                            // End-Of-Line anchor is nullable when the next character is Newline or End
+                            // note: at least one of the bits must be 1, but both could also be 1 in case of \Z
+                            if ((context & CharKind.Reverse) == 0)
+                                return ((context >> 4) & (CharKind.Newline | CharKind.End)) != 0;
+                            else
+                                // the roles of previous and next character info are switched in reverse mode
+                                return (context & (CharKind.Newline | CharKind.End)) != 0;
+                        }
                     case SymbolicRegexKind.EndAnchorZ:
-                        // \Z anchor is nullable when the next character is the last Newline or End
-                        // note: CharKind.NewLineZ == CharKind.Newline| CharKind.End
-                        return ((context >> 4) & CharKind.End) != 0;
+                        {
+                            // \Z anchor is nullable when the next character is either the last Newline or End
+                            // note: CharKind.NewLineZ == CharKind.Newline|CharKind.End
+                            if ((context & CharKind.Reverse) == 0)
+                                return ((context >> 4) & CharKind.End) != 0;
+                            else
+                                // the roles of previous and next character info are switched in reverse mode
+                                return (context & CharKind.End) != 0;
+                        }
                     default:
+                        {
 #if DEBUG
-                        if (kind != SymbolicRegexKind.EndAnchor)
-                            throw new Exception($"Unexpected {nameof(SymbolicRegexKind)}.{kind}");
+                            if (kind != SymbolicRegexKind.EndAnchor)
+                                throw new Exception($"Unexpected {nameof(SymbolicRegexKind)}.{kind}");
 #endif
-                        // \z anchor is nullable when the next character is End
-                        return (context >> 4) == CharKind.End;
+                            // \z anchor is nullable when the next character is End
+                            if ((context & CharKind.Reverse) == 0)
+                                return (context >> 4) == CharKind.End;
+                            else
+                                // the roles of previous and next character info are switched in reverse mode
+                                return (context & 0xF) == CharKind.End;
+                        }
                 }
+            }
         }
 
         #region various properties

@@ -22,21 +22,27 @@ namespace System.Text.RegularExpressions.Tests
         [Fact]
         public void BasicSRMTestBorderAnchors()
         {
-            //var re1 = new Regex(@"\B x", DFA);
-            //var match1 = re1.Match(" xx");
-            //Assert.True(match1.Success);
-            //Assert.Equal(0, match1.Index);
-            //Assert.Equal(2, match1.Length);
-            //var re2 = new Regex(@"\bxx\b", DFA);
-            //var match2 = re2.Match(" zxx:xx");
-            //Assert.True(match2.Success);
-            //Assert.Equal(5, match2.Index);
-            //Assert.Equal(2, match2.Length);
+            var re1 = new Regex(@"\B x", DFA);
+            var match1 = re1.Match(" xx");
+            Assert.True(match1.Success);
+            Assert.Equal(0, match1.Index);
+            Assert.Equal(2, match1.Length);
+            //---
+            var re2 = new Regex(@"\bxx\b", DFA);
+            var match2 = re2.Match(" zxx:xx");
+            Assert.True(match2.Success);
+            Assert.Equal(5, match2.Index);
+            Assert.Equal(2, match2.Length);
+            //---
             var re3 = new Regex(@"^abc*\B", RegexOptions.Multiline | DFA);
             var match3 = re3.Match("\nabcc \nabcccd\n");
             Assert.True(match3.Success);
             Assert.Equal(1, match3.Index);
             Assert.Equal(3, match3.Length);
+            var match3b = match3.NextMatch();
+            Assert.True(match3b.Success);
+            Assert.Equal(7, match3b.Index);
+            Assert.Equal(5, match3b.Length);
         }
 
         [Fact]

@@ -32,7 +32,13 @@ namespace System.Text.RegularExpressions.SRM
         internal S newLinePredicate;
 
         private Dictionary<S, SymbolicRegexNode<S>> singletonCache = new Dictionary<S, SymbolicRegexNode<S>>();
+        // states that have been created
         internal HashSet<State<S>> stateCache = new HashSet<State<S>>();
+        /// <summary>
+        /// Maps state ids to states, initial capacity is 1024 states.
+        /// Each time more states are needed the length is increased by 1024.
+        /// </summary>
+        internal State<S>[] statearray = new State<S>[1024];
 
         private SymbolicRegexBuilder()
         {
@@ -1061,6 +1067,25 @@ namespace System.Text.RegularExpressions.SRM
                     }
                 default:
                     throw new ArgumentException($"{nameof(Parse)}:{s[i]}");
+            }
+        }
+
+        internal State<S> DeserializeState(string s)
+        {
+            if (s[0] == 'r')
+            {
+                // reverse state
+                if (s[1] == ',')
+                    return State<S>.MkState(Parse(s, 2, out _), CharKindId.None, true);
+                else
+                    return State<S>.MkState(Parse(s, 3, out _), State<S>.GetCharKindIdFromEncoding(s[1]), true);
+            }
+            else
+            {
+                if (s[0] == ',')
+                    return State<S>.MkState(Parse(s, 1, out _), CharKindId.None, false);
+                else
+                    return State<S>.MkState(Parse(s, 2, out _), State<S>.GetCharKindIdFromEncoding(s[0]), false);
             }
         }
 
