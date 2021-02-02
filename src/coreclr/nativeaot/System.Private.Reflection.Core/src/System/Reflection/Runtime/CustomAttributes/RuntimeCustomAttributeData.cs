@@ -135,13 +135,13 @@ namespace System.Reflection.Runtime.CustomAttributes
             if (value == null)
                 return string.Format(typed ? "null" : "({0})null", argumentType.Name);
 
-            if (argumentType.Equals(typeof(string)))
+            if (argumentType == typeof(string))
                 return string.Format("\"{0}\"", value);
 
-            if (argumentType.Equals(typeof(char)))
+            if (argumentType == typeof(char))
                 return string.Format("'{0}'", value);
 
-            if (argumentType.Equals(typeof(Type)))
+            if (argumentType == typeof(Type))
                 return string.Format("typeof({0})", ((Type)value).FullName);
 
             else if (argumentType.IsArray)
@@ -176,7 +176,7 @@ namespace System.Reflection.Runtime.CustomAttributes
         //
         protected CustomAttributeTypedArgument WrapInCustomAttributeTypedArgument(object value, Type argumentType)
         {
-            if (argumentType.Equals(typeof(object)))
+            if (argumentType == typeof(object))
             {
                 // If the declared attribute type is System.Object, we must report the type based on the runtime value.
                 if (value == null)

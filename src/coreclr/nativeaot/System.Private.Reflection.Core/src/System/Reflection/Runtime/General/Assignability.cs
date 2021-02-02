@@ -122,10 +122,10 @@ namespace System.Reflection.Runtime.General
                 //
                 // This has to be coded as its own case as TypeInfo.BaseType on a generic parameter doesn't always return what you'd expect.
                 //
-                if (toTypeInfo.Equals(typeof(object)))
+                if (toTypeInfo == typeof(object))
                     return true;
 
-                if (toTypeInfo.Equals(typeof(ValueType)))
+                if (toTypeInfo == typeof(ValueType))
                 {
                     GenericParameterAttributes attributes = fromTypeInfo.GenericParameterAttributes;
                     if ((attributes & GenericParameterAttributes.NotNullableValueTypeConstraint) != 0)
@@ -159,7 +159,7 @@ namespace System.Reflection.Runtime.General
             else
             {
                 // Interfaces are always castable to System.Object. The code below will not catch this as interfaces report their BaseType as null.
-                if (toTypeInfo.Equals(typeof(object)) && fromTypeInfo.IsInterface)
+                if (toTypeInfo == typeof(object) && fromTypeInfo.IsInterface)
                     return true;
 
                 Type walk = fromTypeInfo;
@@ -255,19 +255,19 @@ namespace System.Reflection.Runtime.General
             if (t.IsEnum)
                 t = Enum.GetUnderlyingType(t);
 
-            if (t.Equals(typeof(byte)))
+            if (t == typeof(byte))
                 return typeof(sbyte);
 
-            if (t.Equals(typeof(ushort)))
+            if (t == typeof(ushort))
                 return typeof(short);
 
-            if (t.Equals(typeof(uint)))
+            if (t == typeof(uint))
                 return typeof(int);
 
-            if (t.Equals(typeof(ulong)))
+            if (t == typeof(ulong))
                 return typeof(long);
 
-            if (t.Equals(typeof(UIntPtr)) || t.Equals(typeof(IntPtr)))
+            if (t == typeof(UIntPtr) || t == typeof(IntPtr))
             {
 #if TARGET_64BIT
                 return typeof(long);
@@ -332,7 +332,7 @@ namespace System.Reflection.Runtime.General
                 return false;
             }
 
-            return t.IsClass && !t.Equals(typeof(object)) && !t.Equals(typeof(ValueType)) && !t.Equals(typeof(Enum));
+            return t.IsClass && t != typeof(object) && t != typeof(ValueType) && t != typeof(Enum);
         }
 
         //

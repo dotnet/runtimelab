@@ -96,7 +96,7 @@ namespace System
                 string typeName = ToString();
                 if (typeName.StartsWith("System."))
                 {
-                    if (rootElementType.IsPrimitive || rootElementType.Equals(typeof(void)))
+                    if (rootElementType.IsPrimitive || rootElementType == typeof(void))
                     {
                         typeName = typeName.Substring("System.".Length);
                     }
