@@ -165,7 +165,7 @@ namespace System.Text.RegularExpressions.Tests
 
                 string[] possible_errors = new string[]
                 {"RightToLeft", "conditional", "lookahead", "lookbehind", "backreference",
-                    "atomic", "contiguous", "characterless", "nullable"};
+                    "atomic", "contiguous", "characterless", "0-length match"};
 
                 Assert.True(Array.Exists(possible_errors, nse.Message.Contains));
 
@@ -181,7 +181,8 @@ namespace System.Text.RegularExpressions.Tests
                 // make sure that the test reex is just an anchor here
                 if (nse.Message.Contains("characterless"))
                 {
-                    Assert.True(pattern == "^" || pattern == "$" || pattern == "\\z" || pattern == "\\Z" || pattern == "\\A");
+                    Assert.True(pattern == "^" || pattern == "$" || pattern == "\\z" || pattern == "\\Z"
+                        || pattern == "\\A" || pattern == "^(){3,5}" || pattern == "(?i)");
                 }
 
                 return;
@@ -221,6 +222,7 @@ namespace System.Text.RegularExpressions.Tests
         /// </summary>
         public static IEnumerable<object[]> ValidateSRMRegex_NotSupportedCases_Data()
         {
+            yield return new object[] { @"\A(abc)*\Z", RegexOptions.None, "0-length match" };
             yield return new object[] { @"abc", RegexOptions.RightToLeft, "RightToLeft" };
             yield return new object[] { @"^(a)?(?(1)a|b)+$", RegexOptions.None, "captured group conditional" };
             yield return new object[] { @"(abc)\1", RegexOptions.None, "backreference" };
@@ -231,6 +233,14 @@ namespace System.Text.RegularExpressions.Tests
             yield return new object[] { @"(?>(abc)*).", RegexOptions.None, "atomic" };
             yield return new object[] { @"\G(\w+\s?\w*),?", RegexOptions.None, "contiguous matches" };
             yield return new object[] { @"(?>a*).", RegexOptions.None, "atomic" };
+            yield return new object[] { @"^(){3,5}", RegexOptions.None, "characterless" };
+            yield return new object[] { @"^", RegexOptions.None, "characterless" };
+            yield return new object[] { @"\Z", RegexOptions.None, "characterless" };
+            yield return new object[] { @"$", RegexOptions.None, "characterless" };
+            yield return new object[] { @"\z", RegexOptions.None, "characterless" };
+            yield return new object[] { @"\b", RegexOptions.None, "characterless" };
+            yield return new object[] { @"\B", RegexOptions.None, "characterless" };
+            yield return new object[] { @"\A\Z", RegexOptions.None, "characterless" }; 
         }
 
         /// <summary>
@@ -240,10 +250,10 @@ namespace System.Text.RegularExpressions.Tests
         {
             //-----------
             //tricky ones:
+            yield return new object[] { @"(?:..)*?a", RegexOptions.None, "aba", "Pass. Group[0]=(0,1)" };
+            yield return new object[] { @"(^|x)(c)", RegexOptions.None, "ca", "Pass. Group[0]=(0,1) Group[1]=(0,0) Group[2]=(0,1)" };
             yield return new object[] { @"((?s)^a(.))((?m)^b$)", RegexOptions.None, "a\nb\nc\n", "Pass. Group[0]=(0,3) Group[1]=(0,2) Group[2]=(1,1) Group[3]=(2,1)" };
             yield return new object[] { @"((?s-i:a.))b", RegexOptions.IgnoreCase, "a\nB", "Pass. Group[0]=(0,3) Group[1]=(0,2)" };
-            // TBD: needs fix of lazyloop
-            //yield return new object[] { @"(?:..)*?a", RegexOptions.None, "aba", "Pass. Group[0]=(0,1)" };
             yield return new object[] { @"(?>a*).", RegexOptions.ExplicitCapture, "aaaa", "Fail." };
             //----------
             yield return new object[] { @"abc", RegexOptions.None, "abc", "Pass. Group[0]=(0,3)" };

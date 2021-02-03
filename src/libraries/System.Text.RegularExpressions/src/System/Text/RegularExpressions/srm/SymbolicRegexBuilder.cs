@@ -242,7 +242,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Make loop regex
         /// </summary>
-        internal SymbolicRegexNode<S> MkLoop(SymbolicRegexNode<S> regex, bool isLazy, int lower = 0, int upper = int.MaxValue)
+        internal SymbolicRegexNode<S> MkLoop(SymbolicRegexNode<S> regex, bool isLazy, int lower = 0, int upper = int.MaxValue, bool toplevel = false)
         {
             if (lower == 1 && upper == 1)
             {
@@ -255,6 +255,14 @@ namespace System.Text.RegularExpressions.SRM
             else if (lower == 0 && upper == int.MaxValue && regex.kind == SymbolicRegexKind.Singleton && this.solver.AreEquivalent(this.solver.True, regex.set))
             {
                 return this.dotStar;
+            }
+            else if (lower == upper && lower < 10)
+            {
+                // unwind a fixed length loop of low bound into a concatenation
+                var elems = new SymbolicRegexNode<S>[lower];
+                for (int i = 0; i < lower; i++)
+                    elems[i] = regex;
+                return MkConcat(elems, toplevel);
             }
             else
             {

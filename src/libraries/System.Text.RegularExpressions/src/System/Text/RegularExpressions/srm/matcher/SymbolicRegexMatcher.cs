@@ -237,22 +237,6 @@ namespace System.Text.RegularExpressions.SRM
         [NonSerialized]
         private State<S>[] _Aq0 = new State<S>[6];
 
-        /// <summary>
-        /// Gets the A start regex for given previous character kind.
-        /// </summary>
-        private State<S> GetAq0(CharKindId prevCharKindId)
-        {
-            int id = (int)prevCharKindId;
-            if (_Aq0[id] == null)
-                lock (this)
-                {
-                    // double check that another thread has not already set it
-                    if (_Aq0[id] == null)
-                        _Aq0[id] = State<S>.MkState(A, prevCharKindId, false);
-                }
-            return _Aq0[id];
-        }
-
         [NonSerialized]
         private State<S>[] _A1q0 = new State<S>[6];
 

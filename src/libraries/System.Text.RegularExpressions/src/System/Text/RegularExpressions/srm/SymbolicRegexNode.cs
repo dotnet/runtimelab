@@ -720,7 +720,7 @@ namespace System.Text.RegularExpressions.SRM
         internal static SymbolicRegexNode<S> MkSingleton(SymbolicRegexBuilder<S> builder, S set)
         {
             var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, set, null, null);
-            node.info = SymbolicRegexInfo.Mk();
+            node.info = SymbolicRegexInfo.Mk(containsSomeCharacter : !set.Equals(builder.solver.False));
             return node;
         }
 
@@ -1923,7 +1923,7 @@ namespace System.Text.RegularExpressions.SRM
                 case SymbolicRegexKind.Concat:
                     {
                         var startSet = this.left.GetStartSet();
-                        if (left.IsNullable || left.IsAnchor)
+                        if (left.info.CanBeNullable)
                         {
                             var set2 = this.right.GetStartSet();
                             startSet = builder.solver.MkOr(startSet, set2);
@@ -2474,6 +2474,8 @@ namespace System.Text.RegularExpressions.SRM
                         res += "|";
                     res += R[i].ToString();
                 }
+                // parentheses are needed in some cases in concatenations
+                res = "(" + res + ")";
                 #endregion
             }
             else

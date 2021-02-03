@@ -12,31 +12,18 @@ namespace System.Text.RegularExpressions.SRM
         private static readonly CharSetSolver solver = new CharSetSolver();
         private static readonly RegexToAutomatonConverter<BDD> converter = new RegexToAutomatonConverter<BDD>(solver);
 
-        internal const string _DFA_incompatible_with = "RegexOptions.DFA is incompatible with ";
+        internal const string _DFA_incompatible_with = "DFA option is incompatible with ";
 
         internal IMatcher matcher;
-
-        //public Regex(string pattern) : this(pattern, RegexOptions.None) { }
-
-        //public Regex(string pattern, RegexOptions options)
-        //{
-        //    var root = converter.ConvertToSymbolicRegex(pattern, options, keepAnchors: true);
-        //    var partition = root.ComputeMinterms();
-        //    if (partition.Length > 64)
-        //    {
-        //        //more than 64 bits needed to represent a set
-        //        matcher = new SymbolicRegexBV(root, solver, converter.srBuilder, partition, options);
-        //    }
-        //    else
-        //    {
-        //        //enough to use 64 bits
-        //        matcher = new SymbolicRegexUInt64(root, solver, converter.srBuilder, partition, options);
-        //    }
-        //}
 
         public Regex(RegexNode rootNode, RegexOptions options)
         {
             var root = converter.ConvertNodeToSymbolicRegex(rootNode, true);
+            if (!root.info.ContainsSomeCharacter)
+                throw new NotSupportedException(_DFA_incompatible_with + "characterless pattern");
+            if (root.info.CanBeNullable)
+                throw new NotSupportedException(_DFA_incompatible_with + "pattern allowing 0-length match");
+
             var partition = root.ComputeMinterms();
             if (partition.Length > 64)
             {

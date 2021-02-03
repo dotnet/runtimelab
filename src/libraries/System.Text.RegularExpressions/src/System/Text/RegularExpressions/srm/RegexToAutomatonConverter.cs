@@ -253,9 +253,9 @@ namespace System.Text.RegularExpressions.SRM
                         srBuilder.newLinePredicate = srBuilder.solver.MkCharConstraint('\n');
                     return this.srBuilder.eolAnchor;
                 case RegexNode.Loop:
-                    return this.srBuilder.MkLoop(ConvertNodeToSymbolicRegex(node.Child(0), false), false, node.M, node.N);
+                    return this.srBuilder.MkLoop(ConvertNodeToSymbolicRegex(node.Child(0), false), false, node.M, node.N, topLevel);
                 case RegexNode.Lazyloop:
-                    return this.srBuilder.MkLoop(ConvertNodeToSymbolicRegex(node.Child(0), false), true, node.M, node.N);
+                    return this.srBuilder.MkLoop(ConvertNodeToSymbolicRegex(node.Child(0), false), true, node.M, node.N, topLevel);
                 case RegexNode.Multi:
                     return ConvertNodeMultiToSymbolicRegex(node, topLevel);
                 case RegexNode.Notone:
@@ -315,10 +315,6 @@ namespace System.Text.RegularExpressions.SRM
                 RegexNode.Setloopatomic => "atomic (nonbacktracking) subexpression (?> pattern)",
                 RegexNode.Oneloopatomic => "atomic (nonbacktracking) subexpression (?> pattern)",
                 RegexNode.Notoneloopatomic => "atomic (nonbacktracking) subexpression (?> pattern)",
-                RegexNode.Boundary => "word boundary (\\b)",
-                RegexNode.NonBoundary => "non-word boundary (\\B)",
-                RegexNode.ECMABoundary => "word boundary (\\b)",
-                RegexNode.NonECMABoundary => "non-word boundary (\\B)",
                 // the default should never arise, since other node types are either supported
                 // or have been removed (e.g. Group) from the final parse tree
                 _ => $"unexpected node type ({nameof(RegexNode)}:{node_type})"

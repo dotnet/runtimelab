@@ -12,10 +12,6 @@ namespace System.Text.RegularExpressions
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal Match? RunSRM(bool quick, string input, int beg, int startat, int length)
         {
-            // TBD: endat is buggy in _srm.matcher.FindMatch
-            if (beg + length < input.Length)
-                throw new NotImplementedException($"{nameof(RunSRM)} with {nameof(length)} restriction");
-
             int endat = Math.Min(beg + length, input.Length) - 1;
 
             if (startat > endat)
