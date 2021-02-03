@@ -1,23 +1,15 @@
 TOP=../../../../../..
 
-ifeq ($(V),)
-DOTNET_Q_ARGS=--nologo -v:q -consoleloggerparameters:NoSummary
-else
-DOTNET_Q_ARGS=--nologo
+include ../wasm.mk
+
+ifneq ($(AOT),)
+override MSBUILD_ARGS+=/p:RunAOTCompilation=true
 endif
 
-CONFIG?=Release
+ifneq ($(V),)
+DOTNET_MONO_LOG_LEVEL=--setenv=MONO_LOG_LEVEL=debug
+endif
 
-all: build
+PROJECT_NAME=Wasm.Console.Sample.csproj
 
-build:
-	$(TOP)/.dotnet/dotnet publish $(DOTNET_Q_ARGS) /p:TargetArchitecture=wasm /p:TargetOS=Browser /p:Configuration=$(CONFIG) WasmSample.csproj
-
-clean:
-	rm -rf bin
-
-run:
-	cd bin/$(CONFIG)/publish && ~/.jsvu/v8 --expose_wasm runtime.js -- --run WasmSample.dll
-
-runtimepack:
-	EMSDK_PATH=$(abspath $(TOP)/src/mono/wasm/emsdk) $(TOP)/build.sh -c $(CONFIG) -os Browser -arch wasm -subset Mono+Libs
+run: run-console

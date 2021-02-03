@@ -32,7 +32,7 @@ namespace System
         private string? _stackTraceString;
         private string? _remoteStackTraceString;
         private int _unused4;
-        private object? _dynamicMethods; // Dynamic methods referenced by the stack trace
+        private object[]? _dynamicMethods; // Dynamic methods referenced by the stack trace
         private int _HResult;
         private string? _source;
         private object? _unused6;
@@ -75,7 +75,8 @@ namespace System
             if (_traceIPs != null)
             {
                 stackFrames = Diagnostics.StackTrace.get_trace(this, 0, true);
-                stackFrames[stackFrames.Length - 1].isLastFrameFromForeignException = true;
+                if (stackFrames.Length > 0)
+                    stackFrames[stackFrames.Length - 1].isLastFrameFromForeignException = true;
 
                 if (foreignExceptionsFrames != null)
                 {
