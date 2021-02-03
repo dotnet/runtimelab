@@ -648,63 +648,63 @@ namespace System.Text.RegularExpressions.SRM
         internal static SymbolicRegexNode<S> MkWatchDog(SymbolicRegexBuilder<S> builder, int length)
         {
             var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.WatchDog, null, null, length, -1, default(S), null, null);
-            node.info = SymbolicRegexInfo.Mk(isNullable : true);
+            node.info = SymbolicRegexInfo.Mk(isAlwaysNullable: true);
             return node;
         }
 
         internal static SymbolicRegexNode<S> MkEpsilon(SymbolicRegexBuilder<S> builder)
         {
             var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Epsilon, null, null, -1, -1, default(S), null, null);
-            node.info = SymbolicRegexInfo.Mk(isNullable: true);
+            node.info = SymbolicRegexInfo.Mk(isAlwaysNullable: true);
             return node;
         }
 
         internal static SymbolicRegexNode<S> MkStartAnchor(SymbolicRegexBuilder<S> builder)
         {
             var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.StartAnchor, null, null, -1, -1, default(S), null, null);
-            node.info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true);
+            node.info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true);
             return node;
         }
 
         internal static SymbolicRegexNode<S> MkEndAnchor(SymbolicRegexBuilder<S> builder)
         {
             var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EndAnchor, null, null, -1, -1, default(S), null, null);
-            node.info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true);
+            node.info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true);
             return node;
         }
 
         internal static SymbolicRegexNode<S> MkEndAnchorZ(SymbolicRegexBuilder<S> builder)
         {
             var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EndAnchorZ, null, null, -1, -1, default(S), null, null);
-            node.info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true);
+            node.info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true);
             return node;
         }
 
         internal static SymbolicRegexNode<S> MkEolAnchor(SymbolicRegexBuilder<S> builder)
         {
             var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EOLAnchor, null, null, -1, -1, default(S), null, null);
-            node.info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true);
+            node.info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true);
             return node;
         }
 
         internal static SymbolicRegexNode<S> MkBolAnchor(SymbolicRegexBuilder<S> builder)
         {
             var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.BOLAnchor, null, null, -1, -1, default(S), null, null);
-            node.info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true);
+            node.info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true);
             return node;
         }
 
         internal static SymbolicRegexNode<S> MkWBAnchor(SymbolicRegexBuilder<S> builder)
         {
             var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.WBAnchor, null, null, -1, -1, default(S), null, null);
-            node.info = SymbolicRegexInfo.Mk(startsWithWBAnchor: true);
+            node.info = SymbolicRegexInfo.Mk(startsWithBoundaryAnchor: true, canBeNullable: true);
             return node;
         }
 
         internal static SymbolicRegexNode<S> MkNWBAnchor(SymbolicRegexBuilder<S> builder)
         {
             var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.NWBAnchor, null, null, -1, -1, default(S), null, null);
-            node.info = SymbolicRegexInfo.Mk(startsWithNWBAnchor: true);
+            node.info = SymbolicRegexInfo.Mk(startsWithBoundaryAnchor: true, canBeNullable: true);
             return node;
         }
 
@@ -780,7 +780,6 @@ namespace System.Text.RegularExpressions.SRM
                 return node;
             }
         }
-
 
         /// <summary>
         /// Make a concatenation of given regexes, if any regex is nothing then return nothing, eliminate

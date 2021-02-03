@@ -78,6 +78,11 @@ namespace System.Text.RegularExpressions.SRM
         internal int Id { get; private set; }
 
         /// <summary>
+        /// If true then the state is a dead-end, rejects all inputs.
+        /// </summary>
+        public bool IsNothing { get { return Node.IsNothing; } }
+
+        /// <summary>
         /// used to track is this state is a (PrevCharKind variant of) A1
         /// </summary>
         internal bool isInitialState;
