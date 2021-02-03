@@ -541,6 +541,10 @@ namespace Internal.JitInterface
                     id = ReadyToRunHelper.TypeHandleToRuntimeTypeHandle;
                     break;
 
+                case CorInfoHelpFunc.CORINFO_HELP_GETCURRENTMANAGEDTHREADID:
+                    id = ReadyToRunHelper.GetCurrentManagedThreadId;
+                    break;
+
                 default:
                     throw new NotImplementedException(ftnNum.ToString());
             }
