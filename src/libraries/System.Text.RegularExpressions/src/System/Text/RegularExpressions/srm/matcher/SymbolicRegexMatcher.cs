@@ -566,11 +566,10 @@ namespace System.Text.RegularExpressions.SRM
             int c = input[i];
             // atom_id = atoms.Length represents \Z (last \n)
             int atom_id = (c == 10 && i == input.Length ? atoms.Length : (c < dt.precomputed.Length ? dt.precomputed[c] : dt.bst.Find(c)));
-            S atom = (atom_id == atoms.Length ? builder.solver.False : atoms[atom_id]);
             int offset = (q.Id << K) | atom_id;
             var p = delta[offset];
             if (p == null)
-                return CreateNewTransition(q, atom, offset);
+                return CreateNewTransition(q, atom_id == atoms.Length ? builder.solver.False : atoms[atom_id], offset);
             else
                 return p;
         }
