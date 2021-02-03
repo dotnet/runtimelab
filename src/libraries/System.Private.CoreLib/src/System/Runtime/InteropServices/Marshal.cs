@@ -142,6 +142,8 @@ namespace System.Runtime.InteropServices
             return SizeOfHelper(t, throwIfNotMarshalable: true);
         }
 
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9702:AotUnfriendlyApi",
+            Justification = "AOT compilers can see the T.")]
         public static int SizeOf<T>() => SizeOf(typeof(T));
 
         /// <summary>
