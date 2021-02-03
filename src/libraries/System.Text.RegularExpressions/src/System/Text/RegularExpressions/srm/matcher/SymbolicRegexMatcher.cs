@@ -782,7 +782,7 @@ namespace System.Text.RegularExpressions.SRM
             {
 #if DEBUG
                 //we reached the beginning of the input, thus the state q must be accepting
-                if (!q.IsNullable(input, 0))
+                if (!q.IsNullable(input, i))
                     throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
 #endif
                 return 0;

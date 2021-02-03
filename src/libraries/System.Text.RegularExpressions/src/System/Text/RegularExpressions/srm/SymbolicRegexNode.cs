@@ -317,8 +317,7 @@ namespace System.Text.RegularExpressions.SRM
                     case SymbolicRegexKind.Loop:
                         return lower == 0 || left.IsNullableFor(context);
                     case SymbolicRegexKind.Concat:
-                        return (left.IsNullable && right.IsNullableFor(context)) ||
-                               (left.IsNullableFor(context) && right.IsNullable);
+                        return (left.IsNullableFor(context) && right.IsNullableFor(context));
                     case SymbolicRegexKind.Or:
                     case SymbolicRegexKind.And:
                         return alts.IsNullableFor(context);
