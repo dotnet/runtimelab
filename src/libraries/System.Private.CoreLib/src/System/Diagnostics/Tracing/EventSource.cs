@@ -3462,6 +3462,7 @@ namespace System.Diagnostics.Tracing
 #endif
         private static int GetHelperCallFirstArg(MethodInfo method)
         {
+#if !CORERT
             // Currently searches for the following pattern
             //
             // ...     // CAN ONLY BE THE INSTRUCTIONS BELOW
@@ -3578,6 +3579,7 @@ namespace System.Diagnostics.Tracing
                 }
                 idx++;
             }
+#endif
             return -1;
         }
 
