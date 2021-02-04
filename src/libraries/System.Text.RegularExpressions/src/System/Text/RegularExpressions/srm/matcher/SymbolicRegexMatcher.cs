@@ -15,7 +15,7 @@ namespace System.Text.RegularExpressions.SRM
     internal class SymbolicRegexBV : SymbolicRegex<BV>
     {
         private SymbolicRegexBV(SymbolicRegexBuilder<BV> builder, SymbolicRegexNode<BDD> sr,
-                                CharSetSolver solver, SymbolicRegexBuilder<BDD> srBuilder, BDD[] minterms, RegexOptions options)
+                                CharSetSolver solver, SymbolicRegexBuilder<BDD> srBuilder, BDD[] minterms, System.Text.RegularExpressions.RegexOptions options)
             : base(srBuilder.Transform(sr, builder, builder.solver.ConvertFromCharSet),
                   solver, minterms, options)
         {
@@ -25,7 +25,7 @@ namespace System.Text.RegularExpressions.SRM
         /// Is called with minterms.Length at least 65
         /// </summary>
         internal SymbolicRegexBV(SymbolicRegexNode<BDD> sr,
-                                 CharSetSolver solver, SymbolicRegexBuilder<BDD> srBuilder, BDD[] minterms, RegexOptions options)
+                                 CharSetSolver solver, SymbolicRegexBuilder<BDD> srBuilder, BDD[] minterms, System.Text.RegularExpressions.RegexOptions options)
             : this(new SymbolicRegexBuilder<BV>(BVAlgebra.Create(solver, minterms)), sr,
                   solver, srBuilder, minterms, options)
         {
@@ -50,7 +50,7 @@ namespace System.Text.RegularExpressions.SRM
     internal class SymbolicRegexUInt64 : SymbolicRegex<ulong>
     {
         private SymbolicRegexUInt64(SymbolicRegexBuilder<ulong> builder, SymbolicRegexNode<BDD> sr,
-                                CharSetSolver solver, SymbolicRegexBuilder<BDD> srBuilder, BDD[] minterms, RegexOptions options)
+                                CharSetSolver solver, SymbolicRegexBuilder<BDD> srBuilder, BDD[] minterms, System.Text.RegularExpressions.RegexOptions options)
             : base(srBuilder.Transform(sr, builder, builder.solver.ConvertFromCharSet),
                   solver, minterms, options)
         {
@@ -64,7 +64,7 @@ namespace System.Text.RegularExpressions.SRM
         /// Is called with minterms.Length at most 64
         /// </summary>
         internal SymbolicRegexUInt64(SymbolicRegexNode<BDD> sr,
-                                 CharSetSolver solver, SymbolicRegexBuilder<BDD> srBuilder, BDD[] minterms, RegexOptions options)
+                                 CharSetSolver solver, SymbolicRegexBuilder<BDD> srBuilder, BDD[] minterms, System.Text.RegularExpressions.RegexOptions options)
             : this(new SymbolicRegexBuilder<ulong>(BV64Algebra.Create(solver, minterms)), sr,
                   solver, srBuilder, minterms, options)
         {
@@ -134,7 +134,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// The RegexOptions this regex was created with
         /// </summary>
-        internal RegexOptions Options { get; set; }
+        internal System.Text.RegularExpressions.RegexOptions Options { get; set; }
 
         /// <summary>
         /// Set of elements that matter as first element of A.
@@ -385,7 +385,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public SymbolicRegex(SerializationInfo info, StreamingContext context)
         {
-            this.Options = (RegexOptions)info.GetValue("Options", typeof(RegexOptions));
+            this.Options = (System.Text.RegularExpressions.RegexOptions)info.GetValue("Options", typeof(System.Text.RegularExpressions.RegexOptions));
 
             var solver = (ICharAlgebra<S>)info.GetValue("solver", typeof(ICharAlgebra<S>));
             this.builder = new SymbolicRegexBuilder<S>(solver);
@@ -431,7 +431,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Constructs matcher for given symbolic regex
         /// </summary>
-        internal SymbolicRegex(SymbolicRegexNode<S> sr, CharSetSolver css, BDD[] minterms, RegexOptions options)
+        internal SymbolicRegex(SymbolicRegexNode<S> sr, CharSetSolver css, BDD[] minterms, System.Text.RegularExpressions.RegexOptions options)
         {
             if (sr.IsNullable)
                 throw new NotSupportedException( SRM.Regex._DFA_incompatible_with + "nullable regex (accepting the empty string)");

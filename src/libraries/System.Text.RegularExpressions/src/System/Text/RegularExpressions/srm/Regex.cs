@@ -16,7 +16,7 @@ namespace System.Text.RegularExpressions.SRM
 
         internal IMatcher matcher;
 
-        public Regex(RegexNode rootNode, RegexOptions options)
+        public Regex(RegexNode rootNode, System.Text.RegularExpressions.RegexOptions options)
         {
             var root = converter.ConvertNodeToSymbolicRegex(rootNode, true);
             if (!root.info.ContainsSomeCharacter)

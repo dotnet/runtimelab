@@ -129,12 +129,14 @@ namespace System.Text.RegularExpressions
         }
 
         /// <summary>
-        /// This method is here for perf reasons: if InitializeSRM is NOT called in the
-        /// Init method, we don't load SRM.Regex when instantiating a regex that does not use the DFA option
+        /// Checks that the options are supported and creates a DFA matcher.
+        /// The method throws NotSuppportedException if the regex uses constructs not compatible with the DFA option.
         /// </summary>
-        [MethodImpl(MethodImplOptions.NoInlining)]
         private static SRM.Regex InitializeSRM(RegexNode rootNode, RegexOptions options)
         {
+            // TBD: this could potentially be supported quite easily
+            // it essentially affects how the iput string is being processed  -- characters are read backwards --
+            // and what the right semantics of anchors is in this case (perhaps still unchanged)
             if ((options & RegexOptions.RightToLeft) != 0)
                 throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + RegexOptions.RightToLeft);
 
