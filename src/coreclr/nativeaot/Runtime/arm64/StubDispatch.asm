@@ -29,12 +29,12 @@
 ;;
 ;; Macro that generates a stub consuming a cache with the given number of entries.
 ;;
-    GBLS StubName
-
     MACRO
         DEFINE_INTERFACE_DISPATCH_STUB $entries
 
+    LCLS StubName
 StubName       SETS    "RhpInterfaceDispatch$entries"
+    LCLS StubAVLocation
 StubAVLocation SETS    "RhpInterfaceDispatchAVLocation$entries"
 
     NESTED_ENTRY $StubName

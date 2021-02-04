@@ -111,8 +111,9 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
         ;;   $refReg:  objectref to be stored
         ;;
         ;; On exit:
-        ;;   $destReg:   trashed
-        ;;   x9:         trashed
+        ;;   $destReg: trashed
+        ;;   x9:       trashed
+        ;;   x10:      trashed if WRITE_BARRIER_CHECK
         ;;
         INSERT_UNCHECKED_WRITE_BARRIER_CORE $destReg, $refReg
 
@@ -138,7 +139,7 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
         add     $destReg, x9, $destReg lsr #11
 
         ;; Check that this card hasn't already been written. Avoiding useless writes is a big win on
-        ;; multi-proc systems since it avoids cache thrashing.
+        ;; multi-proc systems since it avoids cache trashing.
         ldrb    w9, [$destReg]
         cmp     x9, 0xFF
         beq     %ft0
@@ -158,6 +159,7 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
         ;; On exit:
         ;;   $destReg:   trashed
         ;;   x9:         trashed
+        ;;   x10:        trashed if WRITE_BARRIER_CHECK
         ;;
         INSERT_CHECKED_WRITE_BARRIER_CORE $destReg, $refReg
 
@@ -185,22 +187,21 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 ;; on the managed heap.
 ;;
 ;; On entry:
-;;   x0 : the destination address (LHS of the assignment).
-;;        May not be an object reference (hence the checked).
-;;   x1 : the object reference (RHS of the assignment).
+;;   x0  : the destination address (LHS of the assignment).
+;;         May not be an object reference (hence the checked).
+;;   x1  : the object reference (RHS of the assignment)
+;;
 ;; On exit:
-;;   x1 : trashed
-;;   x9 : trashed
+;;   x9  : trashed
+;;   x10 : trashed if WRITE_BARRIER_CHECK
+;;   x14 : trashed
+;;   x15 : trashed
     LEAF_ENTRY RhpCheckedAssignRef
-    ALTERNATE_ENTRY RhpCheckedAssignRefAVLocation
     ALTERNATE_ENTRY RhpCheckedAssignRefX1
-    ALTERNATE_ENTRY RhpCheckedAssignRefX1AVLocation
 
-        stlr    x1, [x0]
-
-        INSERT_CHECKED_WRITE_BARRIER_CORE x0, x1
-
-        ret
+        mov     x14, x0                     ; x14 = dst
+        mov     x15, x1                     ; x15 = val
+        b       RhpCheckedAssignRefArm64
 
     LEAF_END RhpCheckedAssignRef
 
@@ -210,21 +211,20 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 ;; reside on the managed heap.
 ;;
 ;; On entry:
-;;  x0 : the destination address (LHS of the assignment).
-;;  x1 : the object reference (RHS of the assignment).
+;;   x0  : the destination address (LHS of the assignment)
+;;   x1  : the object reference (RHS of the assignment)
+;;
 ;; On exit:
-;;  x1 : trashed
-;;  x9 : trashed
+;;   x9  : trashed
+;;   x10 : trashed if WRITE_BARRIER_CHECK
+;;   x14 : trashed
+;;   x15 : trashed
     LEAF_ENTRY RhpAssignRef
-    ALTERNATE_ENTRY RhpAssignRefAVLocation
     ALTERNATE_ENTRY RhpAssignRefX1
-    ALTERNATE_ENTRY RhpAssignRefX1AVLocation
 
-        stlr    x1, [x0]
-
-        INSERT_UNCHECKED_WRITE_BARRIER_CORE x0, x1
-
-        ret
+        mov     x14, x0                     ; x14 = dst
+        mov     x15, x1                     ; x15 = val
+        b       RhpAssignRefArm64
 
     LEAF_END RhpAssignRef
 
@@ -250,7 +250,7 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 ;;  x10: trashed
 ;;
     LEAF_ENTRY RhpCheckedLockCmpXchg
-    ALTERNATE_ENTRY  RhpCheckedLockCmpXchgAVLocation
+    ALTERNATE_ENTRY RhpCheckedLockCmpXchgAVLocation
 
 CmpXchgRetry
         ;; Check location value is what we expect.
@@ -266,6 +266,7 @@ CmpXchgRetry
         ;; The following barrier code takes the destination in x0 and the value in x1 so the arguments are
         ;; already correctly set up.
 
+        ;; TODO: This trashes x10 if WRITE_BARRIER_CHECK
         INSERT_CHECKED_WRITE_BARRIER_CORE x0, x1
 
 CmpXchgNoUpdate
@@ -308,6 +309,7 @@ ExchangeRetry
         ;; The following barrier code takes the destination in x0 and the value in x1 so the arguments are
         ;; already correctly set up.
 
+        ;; TODO: This trashes x10 if WRITE_BARRIER_CHECK
         INSERT_CHECKED_WRITE_BARRIER_CORE x0, x1
 
         ;; x10 still contains the original value.
@@ -316,5 +318,75 @@ ExchangeRetry
         ret
 
     LEAF_END RhpCheckedXchg
+
+;; RhpAssignRefArm64(Object** dst, Object* src)
+;;
+;; On entry:
+;;   x14  : the destination address (LHS of the assignment).
+;;   x15  : the object reference (RHS of the assignment).
+;;
+;; On exit:
+;;   x9   : trashed
+;;   x10  : trashed if WRITE_BARRIER_CHECK
+;;   x14  : trashed
+;;
+    LEAF_ENTRY RhpAssignRefArm64, _TEXT
+    ALTERNATE_ENTRY RhpAssignRefAVLocation
+    ALTERNATE_ENTRY RhpAssignRefX1AVLocation
+
+        stlr    x15, [x14]
+
+        INSERT_UNCHECKED_WRITE_BARRIER_CORE x14, x15
+
+        ret
+    LEAF_END RhpAssignRefArm64
+
+;; void JIT_CheckedWriteBarrier(Object** dst, Object* src)
+;; On entry:
+;;   x14 : the destination address (LHS of the assignment)
+;;   x15 : the object reference (RHS of the assignment)
+;;
+;; On exit:
+;;   x9  : trashed
+;;   x10 : trashed if WRITE_BARRIER_CHECK
+;;   x14 : incremented by 8 to implement JIT_ByRefWriteBarrier contract
+;;
+    LEAF_ENTRY RhpCheckedAssignRefArm64, _TEXT
+    ALTERNATE_ENTRY RhpCheckedAssignRefAVLocation
+    ALTERNATE_ENTRY RhpCheckedAssignRefX1AVLocation
+
+        stlr    x15, [x14]
+
+        ;; TODO: This trashes x14
+        INSERT_CHECKED_WRITE_BARRIER_CORE x14, x15
+
+        add x14, x14, #8
+
+        ret
+    LEAF_END RhpCheckedAssignRefArm64
+
+;; void JIT_ByRefWriteBarrier
+;; On entry:
+;;   x13 : the source address (points to object reference to write)
+;;   x14 : the destination address (object reference written here)
+;;
+;; On exit:
+;;   x9  : trashed
+;;   x10 : trashed if WRITE_BARRIER_CHECK
+;;   x13 : incremented by 8
+;;   x14 : incremented by 8
+;;
+    LEAF_ENTRY RhpByRefAssignRefArm64, _TEXT
+        ldr x15, [x13]
+        str x15, [x14]
+
+        ;; TODO: This trashes x14
+        INSERT_CHECKED_WRITE_BARRIER_CORE x14, x15
+
+        add x13, x13, #8
+        add x14, x14, #8
+
+        ret
+    LEAF_END RhpByRefAssignRefArm64
 
     end
