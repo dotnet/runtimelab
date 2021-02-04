@@ -294,6 +294,10 @@ namespace ILCompiler
                     methodDesc = context.GetHelperEntryPoint("TypedReferenceHelpers", "TypeHandleToRuntimeTypeHandleMaybeNull");
                     break;
 
+                case ReadyToRunHelper.GetCurrentManagedThreadId:
+                    methodDesc = context.SystemModule.GetKnownType("System", "Environment").GetKnownMethod("get_CurrentManagedThreadId", null);
+                    break;
+
                 default:
                     throw new NotImplementedException(id.ToString());
             }
