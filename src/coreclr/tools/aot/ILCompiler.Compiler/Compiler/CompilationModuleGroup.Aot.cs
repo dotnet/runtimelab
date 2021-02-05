@@ -12,7 +12,7 @@ namespace ILCompiler
         ByOrdinal = 2,
     }
 
-    partial class CompilationModuleGroup
+    partial class CompilationModuleGroup : IInliningPolicy
     {
         /// <summary>
         /// If true, type dictionary of "type" is in the module to be compiled

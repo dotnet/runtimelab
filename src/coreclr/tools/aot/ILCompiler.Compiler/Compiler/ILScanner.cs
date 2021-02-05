@@ -36,7 +36,7 @@ namespace ILCompiler
             DebugInformationProvider debugInformationProvider,
             Logger logger,
             bool singleThreaded)
-            : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, null, logger)
+            : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, null, nodeFactory.CompilationModuleGroup, logger)
         {
             _helperCache = new HelperCache(this);
             _singleThreaded = singleThreaded;
@@ -247,6 +247,11 @@ namespace ILCompiler
             return new ScannedDevirtualizationManager(MarkedNodes);
         }
 
+        public IInliningPolicy GetInliningPolicy()
+        {
+            return new ScannedInliningPolicy(_factory.CompilationModuleGroup, MarkedNodes);
+        }
+
         private class ScannedVTableProvider : VTableSliceProvider
         {
             private Dictionary<TypeDesc, IReadOnlyList<MethodDesc>> _vtableSlices = new Dictionary<TypeDesc, IReadOnlyList<MethodDesc>>();
@@ -435,6 +440,44 @@ namespace ILCompiler
                     return false;
 
                 return base.IsEffectivelySealed(method);
+            }
+        }
+
+        private class ScannedInliningPolicy : IInliningPolicy
+        {
+            private readonly HashSet<TypeDesc> _constructedTypes = new HashSet<TypeDesc>();
+            private readonly CompilationModuleGroup _baseGroup;
+
+            public ScannedInliningPolicy(CompilationModuleGroup baseGroup, ImmutableArray<DependencyNodeCore<NodeFactory>> markedNodes)
+            {
+                _baseGroup = baseGroup;
+
+                foreach (var node in markedNodes)
+                {
+                    if (node is ConstructedEETypeNode eetypeNode)
+                    {
+                        TypeDesc type = eetypeNode.Type;
+                        _constructedTypes.Add(type);
+                    }
+                }
+            }
+
+            public bool CanInline(MethodDesc caller, MethodDesc callee)
+            {
+                if (_baseGroup.CanInline(caller, callee))
+                {
+                    /// Since the scanner doesn't look at instance methods whose owning type
+                    /// wasn't allocated (done through <see cref="TentativeInstanceMethodNode" />),
+                    /// we need to disallow inlining these methods. They could
+                    /// bring in dependencies that we didn't look at.
+                    if (!callee.Signature.IsStatic && !callee.OwningType.IsValueType)
+                    {
+                        return _constructedTypes.Contains(callee.OwningType);
+                    }
+                    return true;
+                }
+
+                return false;
             }
         }
     }

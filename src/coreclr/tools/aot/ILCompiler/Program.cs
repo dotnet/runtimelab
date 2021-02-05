@@ -750,6 +750,8 @@ namespace ILCompiler
                 // from accidentally devirtualizing cases that can never happen at runtime
                 // (e.g. devirtualizing a method on a type that never gets allocated).
                 builder.UseDevirtualizationManager(scanResults.GetDevirtualizationManager());
+
+                builder.UseInliningPolicy(scanResults.GetInliningPolicy());
             }
 
             ICompilation compilation = builder.ToCompilation();
