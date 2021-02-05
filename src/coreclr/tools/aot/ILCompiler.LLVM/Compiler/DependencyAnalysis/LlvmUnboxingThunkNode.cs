@@ -15,15 +15,15 @@ namespace ILCompiler.DependencyAnalysis
 
         protected override string GetName(NodeFactory factory) => this.GetMangledName(factory.NameMangler);
 
-        // public override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory factory)
-        // {
-        //     var dependencies = new DependencyList();
-        //
-        //     foreach (DependencyListEntry node in _dependencies)
-        //         dependencies.Add(node);
-        //
-        //     return dependencies;
-        // }
+        public override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory factory)
+        {
+            var dependencies = new DependencyList();
+
+            foreach (DependencyListEntry node in _dependencies)
+                dependencies.Add(node);
+
+            return dependencies;
+        }
 
         int ISortableNode.ClassCode => -18942467;
 

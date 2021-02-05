@@ -3268,7 +3268,7 @@ namespace Internal.JitInterface
                 default:
                     Debug.Fail("Invalid RelocType: " + fRelocType);
                     return 0;
-            };
+            }
         }
 
         private void recordRelocation(void* location, void* target, ushort fRelocType, ushort slotNum, int addlDelta)

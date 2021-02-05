@@ -67,7 +67,7 @@ namespace ILCompiler
         protected override void ComputeDependencyNodeDependencies(List<DependencyNodeCore<NodeFactory>> obj)
         {
             // Determine the list of method we actually need to compile
-            var methodsToCompile = new List<MethodCodeNode>();
+            var methodsToCompile = new List<LLVMMethodCodeNode>();
             foreach (var dependency in obj)
             {
                 var methodCodeNodeNeedingCode = dependency as LLVMMethodCodeNode;
@@ -90,11 +90,11 @@ namespace ILCompiler
             CompileSingleThreaded(methodsToCompile);
         }
 
-        private void CompileSingleThreaded(List<MethodCodeNode> methodsToCompile)
+        private void CompileSingleThreaded(List<LLVMMethodCodeNode> methodsToCompile)
         {
             CorInfoImpl corInfo = _corinfos.GetValue(Thread.CurrentThread, thread => new CorInfoImpl(this));
 
-            foreach (MethodCodeNode methodCodeNodeNeedingCode in methodsToCompile)
+            foreach (LLVMMethodCodeNode methodCodeNodeNeedingCode in methodsToCompile)
             {
                 if (Logger.IsVerbose)
                 {
@@ -105,7 +105,7 @@ namespace ILCompiler
             }
         }
 
-        private void CompileSingleMethod(CorInfoImpl corInfo, MethodCodeNode methodCodeNodeNeedingCode)
+        private void CompileSingleMethod(CorInfoImpl corInfo, LLVMMethodCodeNode methodCodeNodeNeedingCode)
         {
             MethodDesc method = methodCodeNodeNeedingCode.Method;
 
@@ -115,7 +115,7 @@ namespace ILCompiler
             }
             catch (CodeGenerationFailedException)
             {
-                ILImporter.CompileMethod(this, (LLVMMethodCodeNode)methodCodeNodeNeedingCode);
+                ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
             catch (TypeSystemException ex)
             {

@@ -36,7 +36,7 @@ namespace Internal.JitInterface
         private int SizeOfReversePInvokeTransitionFrame => 2 * PointerSize;
 
         private RyuJitCompilation _compilation;
-        private MethodCodeNode _methodCodeNode;
+        private IMethodCodeNode _methodCodeNode;
         private DebugLocInfo[] _debugLocInfos;
         private DebugVarInfo[] _debugVarInfos;
         private Dictionary<int, SequencePoint> _sequencePoints;
@@ -58,7 +58,7 @@ namespace Internal.JitInterface
             return _unboxingThunkFactory.GetUnboxingMethod(method);
         }
 
-        public void CompileMethod(MethodCodeNode methodCodeNodeNeedingCode, MethodIL methodIL = null)
+        public void CompileMethod(IMethodCodeNode methodCodeNodeNeedingCode, MethodIL methodIL = null)
         {
             _methodCodeNode = methodCodeNodeNeedingCode;
             _isFallbackBodyCompilation = methodIL != null;

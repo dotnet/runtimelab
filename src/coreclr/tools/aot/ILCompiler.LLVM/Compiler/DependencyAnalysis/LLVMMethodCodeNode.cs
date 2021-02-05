@@ -10,12 +10,12 @@ using Internal.TypeSystem;
 
 namespace ILCompiler.DependencyAnalysis
 {
-    internal abstract class LLVMMethodCodeNode : MethodCodeNode// DependencyNodeCore<NodeFactory>
+    internal abstract class LLVMMethodCodeNode : DependencyNodeCore<NodeFactory>, IMethodCodeNode
     {
         protected readonly MethodDesc _method;
         protected DependencyList _dependencies;
 
-        protected LLVMMethodCodeNode(MethodDesc method) : base(method)
+        protected LLVMMethodCodeNode(MethodDesc method)
         {
             Debug.Assert(!method.IsAbstract);
             _method = method;
@@ -27,10 +27,24 @@ namespace ILCompiler.DependencyAnalysis
             _dependencies = dependencies;
         }
         
+        public MethodDesc Method
+        {
+            get
+            {
+                return _method;
+            }
+        }
+
         public override bool StaticDependenciesAreComputed => CompilationCompleted;
 
         public bool CompilationCompleted { get; set; }
 
+        public void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
+        {
+            sb.Append(nameMangler.GetMangledMethodName(_method));
+        }
+        public int Offset => 0;
+        public bool RepresentsIndirectionCell => false;
 
         public override bool InterestingForDynamicDependencyAnalysis => false;
         public override bool HasDynamicDependencies => false;
@@ -38,6 +52,44 @@ namespace ILCompiler.DependencyAnalysis
 
         public override IEnumerable<CombinedDependencyListEntry> GetConditionalStaticDependencies(NodeFactory factory) => null;
         public override IEnumerable<CombinedDependencyListEntry> SearchDynamicDependencies(List<DependencyNodeCore<NodeFactory>> markedNodes, int firstNode, NodeFactory factory) => null;
+        public int ClassCode { get; }
+
+        public int CompareToImpl(ISortableNode other, CompilerComparer comparer)
+        {
+            return comparer.Compare(_method, ((LLVMMethodCodeNode)other)._method);
+        }
+
+        public void SetCode(ObjectNode.ObjectData data, bool isFoldable)
+        {
+        }
+
+        public void InitializeFrameInfos(FrameInfo[] frameInfos)
+        {
+        }
+
+        public void InitializeDebugEHClauseInfos(DebugEHClauseInfo[] debugEhClauseInfos)
+        {
+        }
+
+        public void InitializeGCInfo(byte[] gcInfo)
+        {
+        }
+
+        public void InitializeEHInfo(ObjectNode.ObjectData ehInfo)
+        {
+        }
+
+        public void InitializeDebugLocInfos(DebugLocInfo[] debugLocInfos)
+        {
+        }
+
+        public void InitializeDebugVarInfos(DebugVarInfo[] debugVarInfos)
+        {
+        }
+
+        public void InitializeNonRelocationDependencies(DependencyList additionalDependencies)
+        {
+        }
     }
 
     internal class LlvmMethodBodyNode : LLVMMethodCodeNode, IMethodBodyNode
@@ -49,16 +101,16 @@ namespace ILCompiler.DependencyAnalysis
 
         protected override string GetName(NodeFactory factory) => this.GetMangledName(factory.NameMangler);
 
-        // public override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory factory)
-        // {
-        //     var dependencies = new DependencyList();
-        //
-        //     foreach (DependencyListEntry node in _dependencies)
-        //         dependencies.Add(node);
-        //
-        //     return dependencies;
-        // }
-        //
+        public override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory factory)
+        {
+            var dependencies = new DependencyList();
+
+            foreach (DependencyListEntry node in _dependencies)
+                dependencies.Add(node);
+
+            return dependencies;
+        }
+
         int ISortableNode.ClassCode => -1502960727;
 
         int ISortableNode.CompareToImpl(ISortableNode other, CompilerComparer comparer)
