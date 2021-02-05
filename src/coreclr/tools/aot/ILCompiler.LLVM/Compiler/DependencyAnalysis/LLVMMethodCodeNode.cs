@@ -10,12 +10,12 @@ using Internal.TypeSystem;
 
 namespace ILCompiler.DependencyAnalysis
 {
-    internal abstract class LLVMMethodCodeNode : DependencyNodeCore<NodeFactory>
+    internal abstract class LLVMMethodCodeNode : MethodCodeNode// DependencyNodeCore<NodeFactory>
     {
         protected readonly MethodDesc _method;
         protected DependencyList _dependencies;
 
-        protected LLVMMethodCodeNode(MethodDesc method)
+        protected LLVMMethodCodeNode(MethodDesc method) : base(method)
         {
             Debug.Assert(!method.IsAbstract);
             _method = method;
@@ -27,24 +27,10 @@ namespace ILCompiler.DependencyAnalysis
             _dependencies = dependencies;
         }
         
-        public MethodDesc Method
-        {
-            get
-            {
-                return _method;
-            }
-        }
-
         public override bool StaticDependenciesAreComputed => CompilationCompleted;
 
         public bool CompilationCompleted { get; set; }
 
-        public void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
-        {
-            sb.Append(nameMangler.GetMangledMethodName(_method));
-        }
-        public int Offset => 0;
-        public bool RepresentsIndirectionCell => false;
 
         public override bool InterestingForDynamicDependencyAnalysis => false;
         public override bool HasDynamicDependencies => false;
@@ -63,16 +49,16 @@ namespace ILCompiler.DependencyAnalysis
 
         protected override string GetName(NodeFactory factory) => this.GetMangledName(factory.NameMangler);
 
-        public override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory factory)
-        {
-            var dependencies = new DependencyList();
-
-            foreach (DependencyListEntry node in _dependencies)
-                dependencies.Add(node);
-
-            return dependencies;
-        }
-
+        // public override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory factory)
+        // {
+        //     var dependencies = new DependencyList();
+        //
+        //     foreach (DependencyListEntry node in _dependencies)
+        //         dependencies.Add(node);
+        //
+        //     return dependencies;
+        // }
+        //
         int ISortableNode.ClassCode => -1502960727;
 
         int ISortableNode.CompareToImpl(ISortableNode other, CompilerComparer comparer)

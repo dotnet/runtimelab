@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 
 namespace Internal.JitInterface
 {
-    unsafe partial class CorInfoImpl
+    public unsafe partial class CorInfoImpl
     {
         [UnmanagedCallersOnly]
         static uint _getMethodAttribs(IntPtr thisHandle, IntPtr* ppException, CORINFO_METHOD_STRUCT_* ftn)

@@ -138,6 +138,7 @@ namespace Internal.JitInterface
                 TargetArchitecture.X64 => "x64",
                 TargetArchitecture.ARM => "arm",
                 TargetArchitecture.ARM64 => "arm64",
+                TargetArchitecture.Wasm32 => "x64", // "wasm32", == needs a clrjit module
                 _ => throw new NotImplementedException(target.Architecture.ToString())
             };
 

@@ -4371,6 +4371,13 @@ void Compiler::EndPhase(Phases phase)
     mostRecentlyActivePhase = phase;
 }
 
+
+inline void DoLlvmPhase(Compiler* _compiler)
+{
+    fatal(CORJIT_SKIPPED);
+    //assert(false);
+}
+
 //------------------------------------------------------------------------
 // compCompile: run phases needed for compilation
 //
@@ -5046,6 +5053,10 @@ void Compiler::compCompile(void** methodCodePtr, ULONG* methodCodeSize, JitFlags
     Rationalizer rat(this); // PHASE_RATIONALIZE
     rat.Run();
 
+    // TODO:after rat, but better before?
+    DoLlvmPhase(this); // DoPhase?
+
+    return;
     // Here we do "simple lowering".  When the RyuJIT backend works for all
     // platforms, this will be part of the more general lowering phase.  For now, though, we do a separate
     // pass of "final lowering."  We must do this before (final) liveness analysis, because this creates

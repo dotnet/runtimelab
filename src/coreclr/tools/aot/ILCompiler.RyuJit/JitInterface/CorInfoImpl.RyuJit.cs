@@ -22,7 +22,7 @@ using RyuJitCompilation = ILCompiler.Compilation;
 
 namespace Internal.JitInterface
 {
-    unsafe partial class CorInfoImpl
+    unsafe public partial class CorInfoImpl
     {
         private struct SequencePoint
         {

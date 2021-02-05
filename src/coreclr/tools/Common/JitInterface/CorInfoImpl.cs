@@ -33,7 +33,7 @@ using ILCompiler.DependencyAnalysis.ReadyToRun;
 
 namespace Internal.JitInterface
 {
-    internal unsafe sealed partial class CorInfoImpl
+    public unsafe sealed partial class CorInfoImpl
     {
         //
         // Global initialization and state
@@ -88,7 +88,7 @@ namespace Internal.JitInterface
         }
 
         [DllImport(JitSupportLibrary)]
-        private extern static CorJitResult JitCompileMethod(out IntPtr exception,
+        internal extern static CorJitResult JitCompileMethod(out IntPtr exception,
             IntPtr jit, IntPtr thisHandle, IntPtr callbacks,
             ref CORINFO_METHOD_INFO info, uint flags, out IntPtr nativeEntry, out uint codeSize);
 
@@ -3363,6 +3363,8 @@ namespace Internal.JitInterface
                     return (uint)ImageFileMachine.ARM;
                 case TargetArchitecture.ARM64:
                     return (uint)ImageFileMachine.ARM64;
+                case TargetArchitecture.Wasm32:
+                    return (uint)ImageFileMachine.AMD64; // TODO
                 default:
                     throw new NotImplementedException("Expected target architecture is not supported");
             }

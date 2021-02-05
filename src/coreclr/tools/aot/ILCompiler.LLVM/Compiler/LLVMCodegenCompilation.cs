@@ -2,7 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
-
+using System.Runtime.CompilerServices;
+using System.Threading;
 using Internal.TypeSystem;
 using Internal.IL;
 
@@ -10,26 +11,32 @@ using ILCompiler.DependencyAnalysis;
 using ILCompiler.DependencyAnalysisFramework;
 using LLVMSharp.Interop;
 using ILCompiler.LLVM;
+using Internal.JitInterface;
+using Internal.IL.Stubs;
 
 namespace ILCompiler
 {
-    public sealed class LLVMCodegenCompilation : Compilation
+    public sealed class LLVMCodegenCompilation : RyuJitCompilation
     {
+        private readonly ConditionalWeakTable<Thread, CorInfoImpl> _corinfos = new ConditionalWeakTable<Thread, CorInfoImpl>();
+        // private CountdownEvent _compilationCountdown;
+
         internal LLVMCodegenConfigProvider Options { get; }
         internal LLVMModuleRef Module { get; }
         internal LLVMTargetDataRef TargetData { get; }
         public new LLVMCodegenNodeFactory NodeFactory { get; }
         internal LLVMDIBuilderRef DIBuilder { get; }
         internal Dictionary<string, DebugMetadata> DebugMetadataMap { get; }
-        internal LLVMCodegenCompilation(
-            DependencyAnalyzerBase<NodeFactory> dependencyGraph,
+        internal LLVMCodegenCompilation(DependencyAnalyzerBase<NodeFactory> dependencyGraph,
             LLVMCodegenNodeFactory nodeFactory,
             IEnumerable<ICompilationRootProvider> roots,
             ILProvider ilProvider,
             DebugInformationProvider debugInformationProvider,
             Logger logger,
-            LLVMCodegenConfigProvider options)
-            : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, null, logger)
+            LLVMCodegenConfigProvider options,
+            DevirtualizationManager devirtualizationManager,
+            InstructionSetSupport instructionSetSupport)
+            : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, instructionSetSupport, 0)
         {
             NodeFactory = nodeFactory;
             LLVMModuleRef m = LLVMModuleRef.CreateWithName(options.ModuleName);
@@ -59,6 +66,8 @@ namespace ILCompiler
 
         protected override void ComputeDependencyNodeDependencies(List<DependencyNodeCore<NodeFactory>> obj)
         {
+            // Determine the list of method we actually need to compile
+            var methodsToCompile = new List<MethodCodeNode>();
             foreach (var dependency in obj)
             {
                 var methodCodeNodeNeedingCode = dependency as LLVMMethodCodeNode;
@@ -74,7 +83,57 @@ namespace ILCompiler
                 if (methodCodeNodeNeedingCode.StaticDependenciesAreComputed)
                     continue;
 
-                ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
+                methodsToCompile.Add(methodCodeNodeNeedingCode);
+
+//                ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
+            }
+            CompileSingleThreaded(methodsToCompile);
+        }
+
+        private void CompileSingleThreaded(List<MethodCodeNode> methodsToCompile)
+        {
+            CorInfoImpl corInfo = _corinfos.GetValue(Thread.CurrentThread, thread => new CorInfoImpl(this));
+
+            foreach (MethodCodeNode methodCodeNodeNeedingCode in methodsToCompile)
+            {
+                if (Logger.IsVerbose)
+                {
+                    Logger.Writer.WriteLine($"Compiling {methodCodeNodeNeedingCode.Method}...");
+                }
+
+                CompileSingleMethod(corInfo, methodCodeNodeNeedingCode);
+            }
+        }
+
+        private void CompileSingleMethod(CorInfoImpl corInfo, MethodCodeNode methodCodeNodeNeedingCode)
+        {
+            MethodDesc method = methodCodeNodeNeedingCode.Method;
+
+            try
+            {
+                corInfo.CompileMethod(methodCodeNodeNeedingCode);
+            }
+            catch (CodeGenerationFailedException)
+            {
+                ILImporter.CompileMethod(this, (LLVMMethodCodeNode)methodCodeNodeNeedingCode);
+            }
+            catch (TypeSystemException ex)
+            {
+                // TODO: fail compilation if a switch was passed
+
+                // Try to compile the method again, but with a throwing method body this time.
+                MethodIL throwingIL = TypeSystemThrowingILEmitter.EmitIL(method, ex);
+                corInfo.CompileMethod(methodCodeNodeNeedingCode, throwingIL);
+
+                // TODO: Log as a warning. For now, just log to the logger; but this needs to
+                // have an error code, be supressible, the method name/sig needs to be properly formatted, etc.
+                // https://github.com/dotnet/corert/issues/72
+                Logger.Writer.WriteLine($"Warning: Method `{method}` will always throw because: {ex.Message}");
+            }
+            finally
+            {
+                // if (_compilationCountdown != null)
+                //     _compilationCountdown.Signal();
             }
         }
 

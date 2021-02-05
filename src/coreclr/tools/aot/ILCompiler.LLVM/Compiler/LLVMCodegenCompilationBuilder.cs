@@ -8,6 +8,7 @@ using ILCompiler.DependencyAnalysis;
 using ILCompiler.DependencyAnalysisFramework;
 
 using Internal.IL;
+using Internal.JitInterface;
 
 namespace ILCompiler
 {
@@ -17,6 +18,7 @@ namespace ILCompiler
         // calling the Use/Configure methods and still get something reasonable back.
         LLVMCodegenConfigProvider _config = new LLVMCodegenConfigProvider(Array.Empty<string>());
         private ILProvider _ilProvider = new CoreRTILProvider();
+        private KeyValuePair<string, string>[] _ryujitOptions = Array.Empty<KeyValuePair<string, string>>();
 
         public LLVMCodegenCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group)
             : base(context, group, new CoreRTNameMangler(new LLVMNodeMangler(), false))
@@ -42,9 +44,31 @@ namespace ILCompiler
 
         public override ICompilation ToCompilation()
         {
+            ArrayBuilder<CorJitFlag> jitFlagBuilder = new ArrayBuilder<CorJitFlag>();
+
+            switch (_optimizationMode)
+            {
+                case OptimizationMode.None:
+                    jitFlagBuilder.Add(CorJitFlag.CORJIT_FLAG_DEBUG_CODE);
+                    break;
+
+                case OptimizationMode.PreferSize:
+                    jitFlagBuilder.Add(CorJitFlag.CORJIT_FLAG_SIZE_OPT);
+                    break;
+
+                case OptimizationMode.PreferSpeed:
+                    jitFlagBuilder.Add(CorJitFlag.CORJIT_FLAG_SPEED_OPT);
+                    break;
+
+                default:
+                    // Not setting a flag results in BLENDED_CODE.
+                    break;
+            }
+
             LLVMCodegenNodeFactory factory = new LLVMCodegenNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, GetPreinitializationManager());
+            JitConfigProvider.Initialize(_context.Target, jitFlagBuilder.ToArray(), _ryujitOptions);
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(new CompilerComparer()));
-            return new LLVMCodegenCompilation(graph, factory, _compilationRoots, _ilProvider, _debugInformationProvider, _logger, _config);
+            return new LLVMCodegenCompilation(graph, factory, _compilationRoots, _ilProvider, _debugInformationProvider, _logger, _config, _devirtualizationManager, _instructionSetSupport);
         }
     }
 
