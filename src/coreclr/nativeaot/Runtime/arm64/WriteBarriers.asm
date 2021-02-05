@@ -32,11 +32,11 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 
     MACRO
         ;; On entry:
-        ;;  $destReg: location to be updated
-        ;;  $refReg: objectref to be stored
+        ;;  $destReg: location to be updated (cannot be x9,x12)
+        ;;  $refReg: objectref to be stored (cannot be x9,x12)
         ;;
         ;; On exit:
-        ;;  x9,x10: trashed
+        ;;  x9,x12: trashed
         ;;  other registers are preserved
         ;;
         UPDATE_GC_SHADOW $destReg, $refReg
@@ -48,7 +48,7 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 
         ;; Save $destReg since we're about to modify it (and we need the original value both within the macro and
         ;; once we exit the macro).
-        mov     x10, $destReg
+        mov     x12, $destReg
 
         ;; Transform $destReg into the equivalent address in the shadow heap.
         adrp    x9, g_lowest_address
@@ -73,7 +73,7 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
         dmb     ish
 
         ;; Now check that the real heap location still contains the value we just wrote into the shadow heap.
-        mov     x9, x10
+        mov     x9, x12
         ldr     x9, [x9]
         cmp     x9, $refReg
         beq     %ft0
@@ -85,7 +85,7 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 
 0
         ;; Restore original $destReg value
-        mov     $destReg, x10
+        mov     $destReg, x12
 
 1
     MEND
@@ -107,15 +107,16 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 ;; some interlocked helpers that need an inline barrier.
     MACRO
         ;; On entry:
-        ;;   $destReg: location to be updated
-        ;;   $refReg:  objectref to be stored
+        ;;   $destReg:  location to be updated (cannot be x9,x12)
+        ;;   $refReg:   objectref to be stored (cannot be x9,x12)
+        ;;   $trashReg: register that can be trashed (can be $destReg or $refReg)
         ;;
         ;; On exit:
-        ;;   $destReg: trashed
-        ;;   x9:       trashed
-        ;;   x10:      trashed if WRITE_BARRIER_CHECK
+        ;;   $trashReg: trashed
+        ;;   x9:        trashed
+        ;;   x12:       trashed if WRITE_BARRIER_CHECK
         ;;
-        INSERT_UNCHECKED_WRITE_BARRIER_CORE $destReg, $refReg
+        INSERT_UNCHECKED_WRITE_BARRIER_CORE $destReg, $refReg, $trashReg
 
         ;; Update the shadow copy of the heap with the same value just written to the same heap. (A no-op unless
         ;; we're in a debug build and write barrier checking has been enabled).
@@ -136,16 +137,16 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
         ;; Set this object's card, if it hasn't already been set.
         adrp    x9, g_card_table
         ldr     x9, [x9, g_card_table]
-        add     $destReg, x9, $destReg lsr #11
+        add     $trashReg, x9, $destReg lsr #11
 
         ;; Check that this card hasn't already been written. Avoiding useless writes is a big win on
         ;; multi-proc systems since it avoids cache trashing.
-        ldrb    w9, [$destReg]
+        ldrb    w9, [$trashReg]
         cmp     x9, 0xFF
         beq     %ft0
 
         mov     x9, 0xFF
-        strb    w9, [$destReg]
+        strb    w9, [$trashReg]
 
 0
         ;; Exit label
@@ -153,15 +154,16 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 
     MACRO
         ;; On entry:
-        ;;   $destReg: location to be updated
-        ;;   $refReg:  objectref to be stored
+        ;;   $destReg:  location to be updated (cannot be x9,x12)
+        ;;   $refReg:   objectref to be stored (cannot be x9,x12)
+        ;;   $trashReg: register that can be trashed (can be $destReg or $refReg)
         ;;
         ;; On exit:
-        ;;   $destReg:   trashed
-        ;;   x9:         trashed
-        ;;   x10:        trashed if WRITE_BARRIER_CHECK
+        ;;   $trashReg: trashed
+        ;;   x9:        trashed
+        ;;   x12:       trashed if WRITE_BARRIER_CHECK
         ;;
-        INSERT_CHECKED_WRITE_BARRIER_CORE $destReg, $refReg
+        INSERT_CHECKED_WRITE_BARRIER_CORE $destReg, $refReg, $trashReg
 
         ;; The "check" of this checked write barrier - is $destReg
         ;; within the heap? if no, early out.
@@ -175,7 +177,7 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
         cmp     $destReg, x9
         bgt     %ft0
 
-        INSERT_UNCHECKED_WRITE_BARRIER_CORE $destReg, $refReg
+        INSERT_UNCHECKED_WRITE_BARRIER_CORE $destReg, $refReg, $trashReg
 
 0
         ;; Exit label
@@ -193,7 +195,7 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 ;;
 ;; On exit:
 ;;   x9  : trashed
-;;   x10 : trashed if WRITE_BARRIER_CHECK
+;;   x12 : trashed if WRITE_BARRIER_CHECK
 ;;   x14 : trashed
 ;;   x15 : trashed
     LEAF_ENTRY RhpCheckedAssignRef
@@ -216,7 +218,7 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 ;;
 ;; On exit:
 ;;   x9  : trashed
-;;   x10 : trashed if WRITE_BARRIER_CHECK
+;;   x12 : trashed if WRITE_BARRIER_CHECK
 ;;   x14 : trashed
 ;;   x15 : trashed
     LEAF_ENTRY RhpAssignRef
@@ -240,14 +242,15 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 ;; Interlocked compare exchange on objectref.
 ;;
 ;; On entry:
-;;  x0: pointer to objectref
-;;  x1: exchange value
-;;  x2: comparand
+;;   x0  : pointer to objectref
+;;   x1  : exchange value
+;;   x2  : comparand
 ;;
 ;; On exit:
-;;  x0: original value of objectref
-;;  x9: trashed
-;;  x10: trashed
+;;   x0  : original value of objectref
+;;   x9  : trashed
+;;   x10 : trashed
+;;   x12 : trashed if WRITE_BARRIER_CHECK
 ;;
     LEAF_ENTRY RhpCheckedLockCmpXchg
     ALTERNATE_ENTRY RhpCheckedLockCmpXchgAVLocation
@@ -266,8 +269,7 @@ CmpXchgRetry
         ;; The following barrier code takes the destination in x0 and the value in x1 so the arguments are
         ;; already correctly set up.
 
-        ;; TODO: This trashes x10 if WRITE_BARRIER_CHECK
-        INSERT_CHECKED_WRITE_BARRIER_CORE x0, x1
+        INSERT_CHECKED_WRITE_BARRIER_CORE x0, x1, x0
 
 CmpXchgNoUpdate
         ;; x10 still contains the original value.
@@ -286,13 +288,14 @@ CmpXchgNoUpdate
 ;; Interlocked exchange on objectref.
 ;;
 ;; On entry:
-;;  x0: pointer to objectref
-;;  x1: exchange value
+;;   x0  : pointer to objectref
+;;   x1  : exchange value
 ;;
 ;; On exit:
-;;  x0: original value of objectref
-;;  x9: trashed
-;;  x10: trashed
+;;   x0  : original value of objectref
+;;   x9  : trashed
+;;   x10 : trashed
+;;   x12 : trashed if WRITE_BARRIER_CHECK
 ;;
     LEAF_ENTRY RhpCheckedXchg
     ALTERNATE_ENTRY  RhpCheckedXchgAVLocation
@@ -309,8 +312,7 @@ ExchangeRetry
         ;; The following barrier code takes the destination in x0 and the value in x1 so the arguments are
         ;; already correctly set up.
 
-        ;; TODO: This trashes x10 if WRITE_BARRIER_CHECK
-        INSERT_CHECKED_WRITE_BARRIER_CORE x0, x1
+        INSERT_CHECKED_WRITE_BARRIER_CORE x0, x1, x0
 
         ;; x10 still contains the original value.
         mov     x0, x10
@@ -327,7 +329,7 @@ ExchangeRetry
 ;;
 ;; On exit:
 ;;   x9   : trashed
-;;   x10  : trashed if WRITE_BARRIER_CHECK
+;;   x12  : trashed if WRITE_BARRIER_CHECK
 ;;   x14  : trashed
 ;;
     LEAF_ENTRY RhpAssignRefArm64, _TEXT
@@ -336,7 +338,7 @@ ExchangeRetry
 
         stlr    x15, [x14]
 
-        INSERT_UNCHECKED_WRITE_BARRIER_CORE x14, x15
+        INSERT_UNCHECKED_WRITE_BARRIER_CORE x14, x15, x14
 
         ret
     LEAF_END RhpAssignRefArm64
@@ -348,8 +350,9 @@ ExchangeRetry
 ;;
 ;; On exit:
 ;;   x9  : trashed
-;;   x10 : trashed if WRITE_BARRIER_CHECK
+;;   x12 : trashed if WRITE_BARRIER_CHECK
 ;;   x14 : incremented by 8 to implement JIT_ByRefWriteBarrier contract
+;;   x15 : trashed
 ;;
     LEAF_ENTRY RhpCheckedAssignRefArm64, _TEXT
     ALTERNATE_ENTRY RhpCheckedAssignRefAVLocation
@@ -357,10 +360,9 @@ ExchangeRetry
 
         stlr    x15, [x14]
 
-        ;; TODO: This trashes x14
-        INSERT_CHECKED_WRITE_BARRIER_CORE x14, x15
+        INSERT_CHECKED_WRITE_BARRIER_CORE x14, x15, x15
 
-        add x14, x14, #8
+        add     x14, x14, #8
 
         ret
     LEAF_END RhpCheckedAssignRefArm64
@@ -372,19 +374,19 @@ ExchangeRetry
 ;;
 ;; On exit:
 ;;   x9  : trashed
-;;   x10 : trashed if WRITE_BARRIER_CHECK
+;;   x12 : trashed if WRITE_BARRIER_CHECK
 ;;   x13 : incremented by 8
 ;;   x14 : incremented by 8
+;;   x15 : trashed
 ;;
     LEAF_ENTRY RhpByRefAssignRefArm64, _TEXT
-        ldr x15, [x13]
-        str x15, [x14]
+        ldr     x15, [x13]
+        stlr    x15, [x14]
 
-        ;; TODO: This trashes x14
-        INSERT_CHECKED_WRITE_BARRIER_CORE x14, x15
+        INSERT_CHECKED_WRITE_BARRIER_CORE x14, x15, x15
 
-        add x13, x13, #8
-        add x14, x14, #8
+        add     x13, x13, #8
+        add     x14, x14, #8
 
         ret
     LEAF_END RhpByRefAssignRefArm64
