@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Versioning;
 
 namespace System.Security.Cryptography
@@ -54,21 +55,21 @@ namespace System.Security.Cryptography
             return _mode.GetHashCode();
         }
 
-        public override bool Equals(object? obj)
+        public override bool Equals([NotNullWhen(true)] object? obj)
         {
             return Equals(obj as RSASignaturePadding);
         }
 
-        public bool Equals(RSASignaturePadding? other)
+        public bool Equals([NotNullWhen(true)] RSASignaturePadding? other)
         {
-            return !object.ReferenceEquals(other, null) && _mode == other._mode;
+            return other is not null && _mode == other._mode;
         }
 
         public static bool operator ==(RSASignaturePadding? left, RSASignaturePadding? right)
         {
-            if (object.ReferenceEquals(left, null))
+            if (left is null)
             {
-                return object.ReferenceEquals(right, null);
+                return right is null;
             }
 
             return left.Equals(right);

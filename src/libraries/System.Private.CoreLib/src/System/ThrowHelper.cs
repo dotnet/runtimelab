@@ -89,6 +89,12 @@ namespace System
         }
 
         [DoesNotReturn]
+        internal static void ThrowArgumentException_TupleIncorrectType(object obj)
+        {
+            throw new ArgumentException(SR.Format(SR.ArgumentException_ValueTupleIncorrectType, obj.GetType()), "other");
+        }
+
+        [DoesNotReturn]
         internal static void ThrowArgumentOutOfRange_IndexException()
         {
             throw GetArgumentOutOfRangeException(ExceptionArgument.index,
@@ -141,6 +147,12 @@ namespace System
         {
             throw GetArgumentOutOfRangeException(ExceptionArgument.year,
                                                     ExceptionResource.ArgumentOutOfRange_Year);
+        }
+
+        [DoesNotReturn]
+        internal static void ThrowArgumentOutOfRange_Month(int month)
+        {
+            throw new ArgumentOutOfRangeException(nameof(month), month, SR.ArgumentOutOfRange_Month);
         }
 
         [DoesNotReturn]
@@ -699,6 +711,10 @@ namespace System
                     return "prefix";
                 case ExceptionArgument.suffix:
                     return "suffix";
+                case ExceptionArgument.buffer:
+                    return "buffer";
+                case ExceptionArgument.offset:
+                    return "offset";
                 default:
                     Debug.Fail("The enum value is not defined, please check the ExceptionArgument Enum.");
                     return "";
@@ -957,6 +973,8 @@ namespace System
         options,
         prefix,
         suffix,
+        buffer,
+        offset,
     }
 
     //
