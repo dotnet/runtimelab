@@ -22,7 +22,7 @@ namespace System.Net.WebSockets
         private readonly OutstandingOperationHelper _sendOutstandingOperationHelper;
         private readonly Stream _innerStream;
         private readonly IWebSocketStream? _innerStreamAsWebSocketStream;
-        private readonly string _subProtocol;
+        private readonly string? _subProtocol;
 
         // We are not calling Dispose method on this object in Cleanup method to avoid a race condition while one thread is calling disposing on
         // this object and another one is still using WaitAsync. According to Dev11 358715, this should be fine as long as we are not accessing the
@@ -54,7 +54,7 @@ namespace System.Net.WebSockets
         private Exception? _pendingException;
 
         protected WebSocketBase(Stream innerStream,
-            string subProtocol,
+            string? subProtocol,
             TimeSpan keepAliveInterval,
             WebSocketBuffer internalBuffer)
         {
@@ -113,7 +113,7 @@ namespace System.Net.WebSockets
             }
         }
 
-        public override string SubProtocol
+        public override string? SubProtocol
         {
             get
             {
@@ -806,8 +806,8 @@ namespace System.Net.WebSockets
                         {
                             throw new WebSocketException(WebSocketError.InvalidMessageType,
                                 SR.Format(SR.net_WebSockets_InvalidMessageType,
-                                    typeof(WebSocket).Name + "." + nameof(CloseAsync),
-                                    typeof(WebSocket).Name + "." + nameof(CloseOutputAsync),
+                                    nameof(WebSocket) + "." + nameof(CloseAsync),
+                                    nameof(WebSocket) + "." + nameof(CloseOutputAsync),
                                     receiveResult.MessageType));
                         }
                     }

@@ -24,7 +24,7 @@ namespace System.Net
         public System.Net.HttpListenerTimeoutManager TimeoutManager { get { throw null; } }
         public bool UnsafeConnectionNtlmAuthentication { get { throw null; } set { } }
         public void Abort() { }
-        public System.IAsyncResult BeginGetContext(System.AsyncCallback callback, object state) { throw null; }
+        public System.IAsyncResult BeginGetContext(System.AsyncCallback? callback, object? state) { throw null; }
         public void Close() { }
         public System.Net.HttpListenerContext EndGetContext(System.IAsyncResult asyncResult) { throw null; }
         public System.Net.HttpListenerContext GetContext() { throw null; }
@@ -45,10 +45,10 @@ namespace System.Net
         public System.Net.HttpListenerRequest Request { get { throw null; } }
         public System.Net.HttpListenerResponse Response { get { throw null; } }
         public System.Security.Principal.IPrincipal? User { get { throw null; } }
-        public System.Threading.Tasks.Task<System.Net.WebSockets.HttpListenerWebSocketContext> AcceptWebSocketAsync(string subProtocol) { throw null; }
-        public System.Threading.Tasks.Task<System.Net.WebSockets.HttpListenerWebSocketContext> AcceptWebSocketAsync(string subProtocol, int receiveBufferSize, System.TimeSpan keepAliveInterval) { throw null; }
-        public System.Threading.Tasks.Task<System.Net.WebSockets.HttpListenerWebSocketContext> AcceptWebSocketAsync(string subProtocol, int receiveBufferSize, System.TimeSpan keepAliveInterval, System.ArraySegment<byte> internalBuffer) { throw null; }
-        public System.Threading.Tasks.Task<System.Net.WebSockets.HttpListenerWebSocketContext> AcceptWebSocketAsync(string subProtocol, System.TimeSpan keepAliveInterval) { throw null; }
+        public System.Threading.Tasks.Task<System.Net.WebSockets.HttpListenerWebSocketContext> AcceptWebSocketAsync(string? subProtocol) { throw null; }
+        public System.Threading.Tasks.Task<System.Net.WebSockets.HttpListenerWebSocketContext> AcceptWebSocketAsync(string? subProtocol, int receiveBufferSize, System.TimeSpan keepAliveInterval) { throw null; }
+        public System.Threading.Tasks.Task<System.Net.WebSockets.HttpListenerWebSocketContext> AcceptWebSocketAsync(string? subProtocol, int receiveBufferSize, System.TimeSpan keepAliveInterval, System.ArraySegment<byte> internalBuffer) { throw null; }
+        public System.Threading.Tasks.Task<System.Net.WebSockets.HttpListenerWebSocketContext> AcceptWebSocketAsync(string? subProtocol, System.TimeSpan keepAliveInterval) { throw null; }
     }
     public partial class HttpListenerException : System.ComponentModel.Win32Exception
     {
@@ -105,7 +105,7 @@ namespace System.Net
         public string UserHostAddress { get { throw null; } }
         public string UserHostName { get { throw null; } }
         public string[]? UserLanguages { get { throw null; } }
-        public System.IAsyncResult BeginGetClientCertificate(System.AsyncCallback requestCallback, object state) { throw null; }
+        public System.IAsyncResult BeginGetClientCertificate(System.AsyncCallback? requestCallback, object? state) { throw null; }
         public System.Security.Cryptography.X509Certificates.X509Certificate2? EndGetClientCertificate(System.IAsyncResult asyncResult) { throw null; }
         public System.Security.Cryptography.X509Certificates.X509Certificate2? GetClientCertificate() { throw null; }
         public System.Threading.Tasks.Task<System.Security.Cryptography.X509Certificates.X509Certificate2?> GetClientCertificateAsync() { throw null; }

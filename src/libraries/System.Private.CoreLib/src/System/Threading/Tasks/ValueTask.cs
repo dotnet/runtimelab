@@ -148,7 +148,7 @@ namespace System.Threading.Tasks
         public override int GetHashCode() => _obj?.GetHashCode() ?? 0;
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
-        public override bool Equals(object? obj) =>
+        public override bool Equals([NotNullWhen(true)] object? obj) =>
             obj is ValueTask &&
             Equals((ValueTask)obj);
 
@@ -524,7 +524,7 @@ namespace System.Threading.Tasks
             0;
 
         /// <summary>Returns a value indicating whether this value is equal to a specified <see cref="object"/>.</summary>
-        public override bool Equals(object? obj) =>
+        public override bool Equals([NotNullWhen(true)] object? obj) =>
             obj is ValueTask<TResult> &&
             Equals((ValueTask<TResult>)obj);
 
@@ -556,7 +556,7 @@ namespace System.Threading.Tasks
 
             if (obj == null)
             {
-                return AsyncTaskMethodBuilder<TResult>.GetTaskForResult(_result!);
+                return Task.FromResult(_result!);
             }
 
             if (obj is Task<TResult> t)
@@ -584,7 +584,7 @@ namespace System.Threading.Tasks
                 {
                     // Get the result of the operation and return a task for it.
                     // If any exception occurred, propagate it
-                    return AsyncTaskMethodBuilder<TResult>.GetTaskForResult(t.GetResult(_token));
+                    return Task.FromResult(t.GetResult(_token));
 
                     // If status is Faulted or Canceled, GetResult should throw.  But
                     // we can't guarantee every implementation will do the "right thing".

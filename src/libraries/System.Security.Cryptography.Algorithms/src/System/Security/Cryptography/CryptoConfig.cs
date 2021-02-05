@@ -1,19 +1,16 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Runtime.Versioning;
 
 namespace System.Security.Cryptography
 {
-    [UnsupportedOSPlatform("browser")]
-    public class CryptoConfig
+    public partial class CryptoConfig
     {
         private const string AssemblyName_Cng = "System.Security.Cryptography.Cng";
         private const string AssemblyName_Csp = "System.Security.Cryptography.Csp";
@@ -447,7 +444,7 @@ namespace System.Security.Cryptography
             return retval;
         }
 
-        [RequiresUnreferencedCode("The default algorithm implementations might be removed, use strong type references like 'RSA.Create()' instead.")]
+        [RequiresUnreferencedCode(CreateFromNameUnreferencedCodeMessage)]
         public static object? CreateFromName(string name)
         {
             return CreateFromName(name, null);

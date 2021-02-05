@@ -1100,7 +1100,7 @@ MINI_OP3(OP_SSSE3_ALIGNR, "ssse3_alignr", XREG, XREG, XREG, IREG)
 
 /* sse 4.1 */
 MINI_OP(OP_SSE41_ROUNDP, "roundp", XREG, XREG, NONE) // packed, inst_c0 - mode, inst_c1 - r4 or r8
-MINI_OP(OP_SSE41_ROUNDS, "rounds", XREG, XREG, NONE) // scalar, inst_c0 - mode, inst_c1 - r4 or r8
+MINI_OP(OP_SSE41_ROUNDS, "rounds", XREG, XREG, XREG) // scalar, inst_c0 - mode, inst_c1 - r4 or r8
 MINI_OP3(OP_SSE41_INSERT, "sse41_insert", XREG, XREG, XREG, IREG)
 MINI_OP3(OP_SSE41_BLENDV, "sse41_blendv", XREG, XREG, XREG, XREG)
 MINI_OP(OP_SSE41_BLEND_IMM, "sse41_blend", XREG, XREG, XREG)
@@ -1550,6 +1550,7 @@ MINI_OP(OP_XOP_I8_I8, "xop_i8_i8", LREG, LREG, NONE)
 MINI_OP(OP_XOP_I4_I4, "xop_i4_i4", IREG, IREG, NONE)
 MINI_OP(OP_XOP_I4_I4_I4, "xop_i4_i4_i4", IREG, IREG, IREG)
 MINI_OP(OP_XOP_I4_I4_I8, "xop_i4_i4_i8", IREG, IREG, LREG)
+MINI_OP3(OP_XOP_X_X_X_X, "xop_x_x_x_x", XREG, XREG, XREG, XREG)
 
 MINI_OP(OP_XCAST, "xcast", XREG, XREG, NONE)
 /* Extract element of vector */
@@ -1578,4 +1579,6 @@ MINI_OP(OP_POPCNT64, "popcnt64", LREG, LREG, NONE)
 #ifdef TARGET_ARM64
 MINI_OP(OP_LSCNT32, "lscnt32", IREG, IREG, NONE)
 MINI_OP(OP_LSCNT64, "lscnt64", LREG, LREG, NONE)
+MINI_OP(OP_ARM64_SMULH, "arm64_smulh", LREG, LREG, LREG)
+MINI_OP(OP_ARM64_UMULH, "arm64_umulh", LREG, LREG, LREG)
 #endif // TARGET_ARM64
