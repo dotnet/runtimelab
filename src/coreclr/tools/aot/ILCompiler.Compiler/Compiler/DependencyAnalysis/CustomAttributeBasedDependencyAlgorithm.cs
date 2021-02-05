@@ -252,12 +252,8 @@ namespace ILCompiler.DependencyAnalysis
             if (factory.MetadataManager.IsReflectionBlocked(typeofType))
                 return false;
 
-            // We go for the entire EEType because the reflection stack at runtime might need an EEType anyway
-            // (e.g. if this is a `typeof(SomeType[,,])` just having the metadata for SomeType is not enough).
-            // Theoretically, we only need the EEType if this is a constructed type, but let's go for the full
-            // EEType for the sake of consistency.
-            dependencies.Add(factory.MaximallyConstructableType(typeofType), "Custom attribute blob");
-
+            // Grab the metadata nodes that will be necessary to represent the typeof in the metadata blob
+            TypeMetadataNode.GetMetadataDependencies(ref dependencies, factory, typeofType, "Custom attribute blob");
             return true;
         }
     }
