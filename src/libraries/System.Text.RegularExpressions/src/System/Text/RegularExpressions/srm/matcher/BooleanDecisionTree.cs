@@ -1,8 +1,11 @@
-﻿using System;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
     /// Decision tree for mapping character ranges into corresponding partition block ids
@@ -25,7 +28,7 @@ namespace Microsoft.SRM
         /// Crteate a Boolean decision tree.
         /// References to solver and domain are not saved in the resulting decision tree.
         /// </summary>
-        /// <param name="solver">character alberbra</param>
+        /// <param name="solver">character algebra</param>
         /// <param name="domain">elements that map to true</param>
         /// <param name="precomputeLimit">upper limit for block ids for characters to be precomputed in an array (default is 0xFF, i.e. extended ASCII)</param>
         /// <returns></returns>

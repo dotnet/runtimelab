@@ -97,9 +97,7 @@ namespace System.Text.RegularExpressions
         public Match NextMatch()
         {
             Regex? r = _regex;
-            return r != null ?
-                r.Run(false, Length, Text, _textbeg, _textend - _textbeg, _textpos)! :
-                this;
+            return r != null ? r.Run(false, Length, Text, _textbeg, _textend - _textbeg, _textpos)! : this;
         }
 
         /// <summary>

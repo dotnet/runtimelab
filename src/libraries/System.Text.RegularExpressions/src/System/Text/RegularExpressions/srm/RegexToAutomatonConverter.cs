@@ -1,12 +1,15 @@
-﻿using System;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
-    /// Provides functionality to convert .NET regex patterns to corresponding symbolic finite automata and symbolic regexes
+    /// Provides functionality to convert .NET regex patterns to corresponding symbolic regexes
     /// </summary>
     internal class RegexToAutomatonConverter<S>
     {
@@ -27,15 +30,6 @@ namespace Microsoft.SRM
             }
         }
 
-
-        //public SymbolicRegexBuilder<S> SRBuilder
-        //{
-        //    get
-        //    {
-        //        return srBuilder;
-        //    }
-        //}
-
         /// <summary>
         /// Constructs a regex to symbolic finite automata converter
         /// </summary>
@@ -46,83 +40,6 @@ namespace Microsoft.SRM
             this.solver = solver;
             this.categorizer = (categorizer == null ? new UnicodeCategoryTheory<S>(solver) : categorizer);
             this.srBuilder = new SymbolicRegexBuilder<S>((ICharAlgebra<S>)solver);
-        }
-
-        private static string DescribeRegexNodeType(int node_type)
-        {
-            switch (node_type)
-            {
-                case RegexNode.Alternate:
-                    return "Alternate";
-                case RegexNode.Beginning:
-                    return "Beginning";
-                case RegexNode.Bol:
-                    return "Bol";
-                case RegexNode.Capture:  // (?<name> regex)
-                    return "Capture";
-                case RegexNode.Concatenate:
-                    return "Concatenate";
-                case RegexNode.Empty:
-                    return "Empty";
-                case RegexNode.End:
-                    return "End";
-                case RegexNode.EndZ:
-                    return "EndZ";
-                case RegexNode.Eol:
-                    return "Eol";
-                case RegexNode.Loop:
-                    return "Loop";
-                case RegexNode.Multi:
-                    return "Multi";
-                case RegexNode.Notone:
-                    return "Notone";
-                case RegexNode.Notoneloop:
-                    return "Notoneloop";
-                case RegexNode.One:
-                    return "One";
-                case RegexNode.Oneloop:
-                    return "Oneloop";
-                case RegexNode.Set:
-                    return "Set";
-                case RegexNode.Setloop:
-                    return "Setloop";
-                case RegexNode.ECMABoundary:
-                    return "ECMABoundary";
-                case RegexNode.Boundary:
-                    return "Boundary";
-                case RegexNode.Nothing:
-                    return "Nothing";
-                case RegexNode.NonBoundary:
-                    return "Nonboundary";
-                case RegexNode.NonECMABoundary:
-                    return "NonECMABoundary";
-                case RegexNode.Atomic:
-                    return "Atomic";
-                case RegexNode.Group:
-                    return "Group";
-                case RegexNode.Lazyloop:
-                    return "Lazyloop";
-                case RegexNode.Prevent:
-                    return "Prevent";
-                case RegexNode.Require:
-                    return "Require";
-                case RegexNode.Testgroup:
-                    return "Testgroup";
-                case RegexNode.Testref:
-                    return "Testref";
-                case RegexNode.Notonelazy:
-                    return "Notonelazy";
-                case RegexNode.Onelazy:
-                    return "Onelazy";
-                case RegexNode.Setlazy:
-                    return "Setlazy";
-                case RegexNode.Ref:
-                    return "Ref";
-                case RegexNode.Start:
-                    return "Start";
-                default:
-                    throw new AutomataException(AutomataExceptionKind.UnrecognizedRegex);
-            }
         }
 
         #region Character sequences
@@ -305,51 +222,6 @@ namespace Microsoft.SRM
         #endregion
 
         #region Symbolic regex conversion
-        /// <summary>
-        /// Convert a regex pattern to an equivalent symbolic regex
-        /// </summary>
-        /// <param name="regex">the given .NET regex pattern</param>
-        /// <param name="options">regular expression options for the pattern (default is RegexOptions.None)</param>
-        /// <param name="keepAnchors">if false (default) then anchors are replaced by equivalent regexes</param>
-        public SymbolicRegexNode<S> ConvertToSymbolicRegex(string regex, RegexOptions options, bool keepAnchors = false)
-        {
-            RegexTree tree = RegexParser.Parse(regex, options, (options & RegexOptions.CultureInvariant) != 0 ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture);
-            return ConvertToSymbolicRegex(tree.Root, keepAnchors);
-        }
-
-        internal SymbolicRegexNode<S> ConvertToSymbolicRegex(RegexNode root, bool keepAnchors = false, bool unwindlowerbounds = false)
-        {
-            var sregex = ConvertNodeToSymbolicRegex(root, true);
-            if (keepAnchors)
-            {
-                if (unwindlowerbounds)
-                    return sregex.Simplify();
-                else
-                    return sregex;
-            }
-            else
-            {
-                var res = this.srBuilder.RemoveAnchors(sregex, true, true);
-                if (unwindlowerbounds)
-                    return res.Simplify();
-                else
-                    return res;
-            }
-        }
-
-        /// <summary>
-        /// Convert a .NET regex into an equivalent symbolic regex
-        /// </summary>
-        /// <param name="regex">the given .NET regex</param>
-        /// <param name="keepAnchors">if false (default) then anchors are replaced by equivalent regexes</param>
-        /// <param name="unwindlowerbounds"></param>
-        public SymbolicRegexNode<S> ConvertToSymbolicRegex(System.Text.RegularExpressions.Regex regex, bool keepAnchors = false, bool unwindlowerbounds = false)
-        {
-            var node = ConvertToSymbolicRegex(regex.ToString(), regex.Options, keepAnchors);
-            if (unwindlowerbounds)
-                node = node.Simplify();
-            return node;
-        }
 
         internal SymbolicRegexNode<S> ConvertNodeToSymbolicRegex(RegexNode node, bool topLevel)
         {
@@ -360,22 +232,33 @@ namespace Microsoft.SRM
                 case RegexNode.Beginning:
                     return this.srBuilder.startAnchor;
                 case RegexNode.Bol:
+                    // update the \n predicate in the builder if it has not been updated already
+                    if (srBuilder.newLinePredicate.Equals(srBuilder.solver.False))
+                        srBuilder.newLinePredicate = srBuilder.solver.MkCharConstraint('\n');
                     return this.srBuilder.bolAnchor;
-                case RegexNode.Capture:  //paranthesis (...)
+                case RegexNode.Capture:  //treat as non-capturing group (...)
                     return ConvertNodeToSymbolicRegex(node.Child(0), topLevel);
                 case RegexNode.Concatenate:
                     return this.srBuilder.MkConcat(Array.ConvertAll(node.ChildrenToArray(), x => ConvertNodeToSymbolicRegex(x, false)), topLevel);
                 case RegexNode.Empty:
+                case RegexNode.UpdateBumpalong: // optional directive that behaves the same as Empty
                     return this.srBuilder.epsilon;
-                case RegexNode.End:
-                case RegexNode.EndZ:
+                case RegexNode.End:  // \z anchor
                     return this.srBuilder.endAnchor;
+                case RegexNode.EndZ: // \Z anchor
+                    // update the \n predicate in the builder if it has not been updated already
+                    if (srBuilder.newLinePredicate.Equals(srBuilder.solver.False))
+                        srBuilder.newLinePredicate = srBuilder.solver.MkCharConstraint('\n');
+                    return this.srBuilder.endAnchorZ;
                 case RegexNode.Eol:
+                    // update the \n predicate in the builder if it has not been updated already
+                    if (srBuilder.newLinePredicate.Equals(srBuilder.solver.False))
+                        srBuilder.newLinePredicate = srBuilder.solver.MkCharConstraint('\n');
                     return this.srBuilder.eolAnchor;
                 case RegexNode.Loop:
-                    return this.srBuilder.MkLoop(ConvertNodeToSymbolicRegex(node.Child(0), false), false, node.M, node.N);
+                    return this.srBuilder.MkLoop(ConvertNodeToSymbolicRegex(node.Child(0), false), false, node.M, node.N, topLevel);
                 case RegexNode.Lazyloop:
-                    return this.srBuilder.MkLoop(ConvertNodeToSymbolicRegex(node.Child(0), false), true, node.M, node.N);
+                    return this.srBuilder.MkLoop(ConvertNodeToSymbolicRegex(node.Child(0), false), true, node.M, node.N, topLevel);
                 case RegexNode.Multi:
                     return ConvertNodeMultiToSymbolicRegex(node, topLevel);
                 case RegexNode.Notone:
@@ -398,31 +281,48 @@ namespace Microsoft.SRM
                     return ConvertNodeSetloopToSymbolicRegex(node, true);
                 case RegexNode.Testgroup:
                     return MkIfThenElse(ConvertNodeToSymbolicRegex(node.Child(0), false), ConvertNodeToSymbolicRegex(node.Child(1), false), ConvertNodeToSymbolicRegex(node.Child(2), false));
+                // TBD: ECMA case intersect predicate with ascii range ?
                 case RegexNode.ECMABoundary:
                 case RegexNode.Boundary:
-                    throw new AutomataException(@"Not implemented: word-boundary \b");
-                case RegexNode.NonBoundary:
+                    // update the word letter predicate based on the Unicode definition of it if it was not updated already
+                    if (srBuilder.wordLetterPredicate.Equals(srBuilder.solver.False))
+                        srBuilder.wordLetterPredicate = categorizer.WordLetterCondition;
+                    return this.srBuilder.wbAnchor;
+                // TBD: ECMA case intersect predicate with ascii range ?
                 case RegexNode.NonECMABoundary:
-                    throw new AutomataException(@"Not implemented: non-word-boundary \B");
+                case RegexNode.NonBoundary:
+                    // update the word letter predicate based on the Unicode definition of it if it was not updated already
+                    if (srBuilder.wordLetterPredicate.Equals(srBuilder.solver.False))
+                        srBuilder.wordLetterPredicate = categorizer.WordLetterCondition;
+                    return this.srBuilder.nwbAnchor;
                 case RegexNode.Nothing:
-                    throw new AutomataException(@"Not implemented: Nothing");
-                case RegexNode.Atomic:
-                    throw new AutomataException("Not implemented: atomic constructs (?>) (?<)");
-                case RegexNode.Start:
-                    throw new AutomataException(@"Not implemented: \G");
-                case RegexNode.Group:
-                    throw new AutomataException("Not supported: grouping (?:)");
-                case RegexNode.Prevent:
-                    throw new AutomataException("Not supported: prevent constructs (?!) (?<!)");
-                case RegexNode.Require:
-                    throw new AutomataException("Not supported: require constructs (?=) (?<=)");
-                case RegexNode.Testref:
-                    throw new AutomataException("Not supported: test construct (?(n) | )");
-                case RegexNode.Ref:
-                    throw new AutomataException(@"Not supported: references \1");
+                    return this.srBuilder.nothing;
                 default:
-                    throw new AutomataException(@"Unexpected regex construct");
+                    throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + DescribeRegexNodeType(node.Type));
             }
+        }
+
+        /// <summary>
+        /// Used in exception messages for nonsupported node types
+        /// </summary>
+        private static string DescribeRegexNodeType(int node_type)
+        {
+            string description = node_type switch
+            {
+                RegexNode.Ref => "backreference (\\ number)",
+                RegexNode.Testref => "captured group conditional (?( name ) yes-pattern | no-pattern ) or (?( number ) yes-pattern| no-pattern )",
+                RegexNode.Require => "positive lookahead (?= pattern) or positive lookbehind (?<= pattern)",
+                RegexNode.Prevent => "negative lookahead (?! pattern) or negative lookbehind (?<! pattern)",
+                RegexNode.Start => "contiguous matches (\\G)",
+                RegexNode.Atomic => "atomic (nonbacktracking) subexpression (?> pattern)",
+                RegexNode.Setloopatomic => "atomic (nonbacktracking) subexpression (?> pattern)",
+                RegexNode.Oneloopatomic => "atomic (nonbacktracking) subexpression (?> pattern)",
+                RegexNode.Notoneloopatomic => "atomic (nonbacktracking) subexpression (?> pattern)",
+                // the default should never arise, since other node types are either supported
+                // or have been removed (e.g. Group) from the final parse tree
+                _ => $"unexpected node type ({nameof(RegexNode)}:{node_type})"
+            };
+            return description;
         }
 
         public static string Escape(char c)

@@ -19,7 +19,7 @@ namespace System.Text.RegularExpressions
     /// </summary>
     public partial class Regex : ISerializable
     {
-        internal const int MaxOptionShift = 10;
+        internal const int MaxOptionShift = 11;
 
         protected internal string? pattern;                   // The string pattern provided
         protected internal RegexOptions roptions;             // the top-level options from the options string
@@ -33,6 +33,10 @@ namespace System.Text.RegularExpressions
         private volatile RegexRunner? _runner;                // cached runner
         private RegexCode? _code;                             // if interpreted, this is the code for RegexInterpreter
         private bool _refsInitialized;
+
+        // SRM specific fields
+        internal bool _useSRM;                                // if true then SRM is used for matching
+        internal SRM.Regex? _srm;                             // defined as SRM.Regex when _useSRM is true else null
 
         protected Regex()
         {
@@ -113,7 +117,30 @@ namespace System.Text.RegularExpressions
             caps = _code.Caps;
             capsize = _code.CapSize;
 
+            // if SRM is used then construct the SMR.Regex matcher
+            // this construction fails and throws a NotSupportedException
+            // for some unsupported constructs used in the original regex
+            _useSRM = (options & RegexOptions.DFA) != 0;
+            if (_useSRM)
+                // remove the DFA flag because it is undefined in SRM
+                _srm = InitializeSRM(tree.Root, options & ~RegexOptions.DFA);
+
             InitializeReferences();
+        }
+
+        /// <summary>
+        /// Checks that the options are supported and creates a DFA matcher.
+        /// The method throws NotSuppportedException if the regex uses constructs not compatible with the DFA option.
+        /// </summary>
+        private static SRM.Regex InitializeSRM(RegexNode rootNode, RegexOptions options)
+        {
+            // TBD: this could potentially be supported quite easily
+            // it essentially affects how the iput string is being processed  -- characters are read backwards --
+            // and what the right semantics of anchors is in this case (perhaps still unchanged)
+            if ((options & RegexOptions.RightToLeft) != 0)
+                throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + RegexOptions.RightToLeft);
+
+            return new SRM.Regex(rootNode, options);
         }
 
         internal static void ValidatePattern(string pattern)
@@ -132,6 +159,7 @@ namespace System.Text.RegularExpressions
 #if DEBUG
                              RegexOptions.Debug |
 #endif
+                             RegexOptions.DFA |
                              RegexOptions.CultureInvariant)) != 0))
             {
                 ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.options);
@@ -387,6 +415,10 @@ namespace System.Text.RegularExpressions
             {
                 ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.length, ExceptionResource.LengthNotNegative);
             }
+
+            // DFA option
+            if (_useSRM)
+                return RunSRM(quick, input, beginning, startat, length);
 
             RegexRunner runner = RentRunner();
             try

@@ -1,28 +1,107 @@
-﻿using System;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
     /// Kinds of symbolic regexes
     /// </summary>
     internal enum SymbolicRegexKind
     {
-        StartAnchor = 0,
-        EndAnchor = 1,
-        Epsilon = 2,
-        Singleton = 3,
-        Or = 4,
-        Concat = 5,
-        Loop = 6,
-        IfThenElse = 7,
-        And = 8,
-        WatchDog = 9,
-        //Sequence = 9
+        StartAnchor = 1,
+        EndAnchor = 2,
+        Epsilon = 4,
+        Singleton = 8,
+        Or = 0x10,
+        Concat = 0x20,
+        Loop = 0x40,
+        IfThenElse = 0x80,
+        And = 0x100,
+        WatchDog = 0x200,
+        BOLAnchor = 0x400,
+        EOLAnchor = 0x800,
+        EndAnchorZ = 0x1000,
+        WBAnchor = 0x2000,
+        NWBAnchor = 0x4000,
+    }
+
+    /// <summary>
+    /// Special purpose 0-width input symbols that match corresponding anchors.
+    /// Beginning anchors are odd, end anchors are even.
+    /// </summary>
+    internal static class BorderSymbol
+    {
+        /// <summary>
+        /// NonWord Boundary
+        /// </summary>
+        internal const int NWB = 0;
+
+        /// <summary>
+        /// Beginning of line
+        /// </summary>
+        internal const int BOL = 1;
+
+        /// <summary>
+        /// End of line
+        /// </summary>
+        internal const int EOL = 2;
+
+        /// <summary>
+        /// Beginning of input
+        /// </summary>
+        internal const int Beg = 3;
+
+        /// <summary>
+        /// End of input
+        /// </summary>
+        internal const int End = 4;
+
+        /// <summary>
+        /// End of line before last final newline character
+        /// </summary>
+        internal const int EOLZ = 6;
+
+        /// <summary>
+        /// Word Boundary (it can be unioned with line symbols using |)
+        /// </summary>
+        internal const int WB = 8;
+
+        /// <summary>
+        /// Beginning of line and Word Boundary
+        /// </summary>
+        internal const int BOL_WB = 9;
+
+        /// <summary>
+        /// End of line and Word Boundary
+        /// </summary>
+        internal const int EOL_WB = 10;
+
+        /// <summary>
+        /// Beginning of input and Word Boundary
+        /// </summary>
+        internal const int Beg_WB = 11;
+
+        /// <summary>
+        /// End of input and Word Boundary
+        /// </summary>
+        internal const int End_WB = 12;
+
+        /// <summary>
+        /// End of line before last final newline character and Word Boundary
+        /// </summary>
+        internal const int EOLZ_WB = 14;
+
+        /// <summary>
+        /// Upper bound on symbols that also approximates their count
+        /// </summary>
+        internal const int Count = 16;
     }
 
     /// <summary>
@@ -42,10 +121,17 @@ namespace Microsoft.SRM
 
         internal SymbolicRegexSet<S> alts;
 
-        internal bool isNullable;
-        public bool containsAnchors;
+        internal bool IsNullable { get { return info.IsNullable; } }
+        internal bool StartsWithSomeAnchor { get { return info.StartsWithSomeAnchor; } }
+
+        internal SymbolicRegexInfo info;
 
         private int hashcode = -1;
+
+        private static SymbolicRegexKind s_someanchor = SymbolicRegexKind.BOLAnchor |
+            SymbolicRegexKind.EOLAnchor | SymbolicRegexKind.StartAnchor |
+            SymbolicRegexKind.EndAnchor | SymbolicRegexKind.EndAnchorZ |
+            SymbolicRegexKind.WBAnchor | SymbolicRegexKind.NWBAnchor;
 
         #region serialization
 
@@ -87,7 +173,7 @@ namespace Microsoft.SRM
                     case SymbolicRegexKind.Loop:
                         {
                             if (node.isLazyLoop)
-                                sb.Append("Z(");
+                                sb.Append("l(");
                             else
                                 sb.Append("L(");
                             sb.Append(node.lower);
@@ -129,10 +215,25 @@ namespace Microsoft.SRM
                         }
                     case SymbolicRegexKind.EndAnchor:
                         {
-                            sb.Append('$');
+                            sb.Append('z');
+                            return;
+                        }
+                    case SymbolicRegexKind.EndAnchorZ:
+                        {
+                            sb.Append('Z');
                             return;
                         }
                     case SymbolicRegexKind.StartAnchor:
+                        {
+                            sb.Append('A');
+                            return;
+                        }
+                    case SymbolicRegexKind.EOLAnchor:
+                        {
+                            sb.Append('$');
+                            return;
+                        }
+                    case SymbolicRegexKind.BOLAnchor:
                         {
                             sb.Append('^');
                             return;
@@ -142,7 +243,17 @@ namespace Microsoft.SRM
                             sb.Append("#(" + node.lower + ")");
                             return;
                         }
-                    default: // SymbolicRegexKind.IfThenElse:
+                    case SymbolicRegexKind.WBAnchor:
+                        {
+                            sb.Append('b');
+                            return;
+                        }
+                    case SymbolicRegexKind.NWBAnchor:
+                        {
+                            sb.Append('B');
+                            return;
+                        }
+                    case SymbolicRegexKind.IfThenElse:
                         {
                             sb.Append("I(");
                             Serialize(node.iteCond, sb);
@@ -152,6 +263,10 @@ namespace Microsoft.SRM
                             Serialize(node.right, sb);
                             sb.Append(')');
                             return;
+                        }
+                    default:
+                        {
+                            throw new NotImplementedException($"{nameof(Serialize)}:{node.kind}");
                         }
                 }
             }
@@ -187,6 +302,88 @@ namespace Microsoft.SRM
 
 
         #endregion
+
+        /// <summary>
+        /// Relative nullability that takes into account the immediate character context
+        /// in order to resolve nullability of anchors
+        /// </summary>
+        /// <param name="context">kind info for previous and next character, previous char kind is in lower 4 bits, and
+        /// next char kind has been shifted 4 bits left into bits 4..7 in the context</param>
+        internal bool IsNullableFor(uint context)
+        {
+            if (!info.StartsWithSomeAnchor)
+                return IsNullable;
+            else
+            {
+                switch (kind)
+                {
+                    case SymbolicRegexKind.Loop:
+                        return lower == 0 || left.IsNullableFor(context);
+                    case SymbolicRegexKind.Concat:
+                        return (left.IsNullableFor(context) && right.IsNullableFor(context));
+                    case SymbolicRegexKind.Or:
+                    case SymbolicRegexKind.And:
+                        return alts.IsNullableFor(context);
+                    case SymbolicRegexKind.IfThenElse:
+                        return (iteCond.IsNullableFor(context) ? left.IsNullableFor(context) : right.IsNullableFor(context));
+                    case SymbolicRegexKind.StartAnchor:
+                        {
+                            if ((context & CharKind.Reverse) == 0)
+                                return (context & CharKind.Start) != 0;
+                            else
+                                // the roles of previous and next character info are switched
+                                return ((context >> 4) & CharKind.Start) != 0;
+                        }
+                    case SymbolicRegexKind.BOLAnchor:
+                        {
+                            if ((context & CharKind.Reverse) == 0)
+                                return (context & (CharKind.Start | CharKind.Newline)) != 0;
+                            else
+                                // the roles of previous and next character info are switched
+                                return ((context >> 4) & (CharKind.Start | CharKind.Newline)) != 0;
+                        }
+                    case SymbolicRegexKind.WBAnchor:
+                        // test that prev char is word letter iff next is not not word letter
+                        return ((context & CharKind.WordLetter) ^ ((context >> 4) & CharKind.WordLetter)) != 0;
+                    case SymbolicRegexKind.NWBAnchor:
+                        // test that prev char is word letter iff next is word letter
+                        return ((context & CharKind.WordLetter) ^ ((context >> 4) & CharKind.WordLetter)) == 0;
+                    case SymbolicRegexKind.EOLAnchor:
+                        {
+                            // End-Of-Line anchor is nullable when the next character is Newline or End
+                            // note: at least one of the bits must be 1, but both could also be 1 in case of \Z
+                            if ((context & CharKind.Reverse) == 0)
+                                return ((context >> 4) & (CharKind.Newline | CharKind.End)) != 0;
+                            else
+                                // the roles of previous and next character info are switched in reverse mode
+                                return (context & (CharKind.Newline | CharKind.End)) != 0;
+                        }
+                    case SymbolicRegexKind.EndAnchorZ:
+                        {
+                            // \Z anchor is nullable when the next character is either the last Newline or End
+                            // note: CharKind.NewLineZ == CharKind.Newline|CharKind.End
+                            if ((context & CharKind.Reverse) == 0)
+                                return ((context >> 4) & CharKind.End) != 0;
+                            else
+                                // the roles of previous and next character info are switched in reverse mode
+                                return (context & CharKind.End) != 0;
+                        }
+                    default:
+                        {
+#if DEBUG
+                            if (kind != SymbolicRegexKind.EndAnchor)
+                                throw new Exception($"Unexpected {nameof(SymbolicRegexKind)}.{kind}");
+#endif
+                            // \z anchor is nullable when the next character is End
+                            if ((context & CharKind.Reverse) == 0)
+                                return (context >> 4) == CharKind.End;
+                            else
+                                // the roles of previous and next character info are switched in reverse mode
+                                return (context & 0xF) == CharKind.End;
+                        }
+                }
+            }
+        }
 
         #region various properties
         /// <summary>
@@ -267,6 +464,14 @@ namespace Microsoft.SRM
                 return this.kind == SymbolicRegexKind.Epsilon;
             }
         }
+
+        /// <summary>
+        /// Returns true iff this is either a start-anchor or an end-anchor or EOLAnchor or BOLAnchor
+        /// </summary>
+        public bool IsAnchor
+        {
+            get { return (kind & s_someanchor) != 0; }
+        }
         #endregion
 
         /// <summary>
@@ -280,7 +485,7 @@ namespace Microsoft.SRM
         /// <summary>
         /// Gets the kind of the regex
         /// </summary>
-        public SymbolicRegexKind Kind
+        internal SymbolicRegexKind Kind
         {
             get { return kind; }
         }
@@ -388,46 +593,6 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Returns true iff this is a start-anchor
-        /// </summary>
-        public bool IsSartAnchor
-        {
-            get { return this.kind == SymbolicRegexKind.StartAnchor; }
-        }
-
-        /// <summary>
-        /// Returns true iff this is an anchor for detecting start of line (including first line or start of input)
-        /// </summary>
-        public bool IsStartOfLineAnchor
-        {
-            get { return this.lower == -2; }
-        }
-
-        /// <summary>
-        /// Returns true iff this is an anchor for detecting end of input
-        /// </summary>
-        public bool IsEndAnchor
-        {
-            get { return this.kind == SymbolicRegexKind.EndAnchor; }
-        }
-
-        /// <summary>
-        /// Returns true iff this is an anchor for detecting end of line (including last line or end of input)
-        /// </summary>
-        public bool IsEndOfLineAnchor
-        {
-            get { return this.upper == -2; }
-        }
-
-        /// <summary>
-        /// Returns true iff this is either a start-anchor or an end-anchor
-        /// </summary>
-        public bool IsAnchor
-        {
-            get { return IsSartAnchor || IsEndAnchor; }
-        }
-
-        /// <summary>
         /// AST node of a symbolic regex
         /// </summary>
         /// <param name="builder">the builder</param>
@@ -455,85 +620,110 @@ namespace Microsoft.SRM
         internal SymbolicRegexNode<S> ConcatWithoutNormalizing(SymbolicRegexNode<S> next)
         {
             var concat = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Concat, this, next, -1, -1, default(S), null, null);
+            concat.info = SymbolicRegexInfo.Concat(this.info, next.info);
             return concat;
         }
 
         #region called only once, in the constructor of SymbolicRegexBuilder
 
-        internal static SymbolicRegexNode<S> MkFalse(SymbolicRegexBuilder<S> builder, S f)
+        internal static SymbolicRegexNode<S> MkFalse(SymbolicRegexBuilder<S> builder)
         {
-            return new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, f, null, null);
+            var f = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, builder.solver.False, null, null);
+            f.info = SymbolicRegexInfo.Mk();
+            return f;
         }
 
-        internal static SymbolicRegexNode<S> MkTrue(SymbolicRegexBuilder<S> builder, S t)
+        internal static SymbolicRegexNode<S> MkTrue(SymbolicRegexBuilder<S> builder)
         {
-            return new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, t, null, null);
+            var t = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, builder.solver.True, null, null);
+            t.info = SymbolicRegexInfo.Mk();
+            return t;
         }
 
         internal static SymbolicRegexNode<S> MkNewline(SymbolicRegexBuilder<S> builder, S nl)
         {
-            return new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, nl, null, null);
+            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, nl, null, null);
+            node.info = SymbolicRegexInfo.Mk();
+            return node;
         }
-
-        //internal static SymbolicRegexNode<S> MkSequence(SymbolicRegexBuilder<S> builder, ImmutableList<S> seq)
-        //{
-        //    return new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Sequence, null, null, -1, -1, default(S), null, null, seq);
-        //}
 
         internal static SymbolicRegexNode<S> MkWatchDog(SymbolicRegexBuilder<S> builder, int length)
         {
-            var wd = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.WatchDog, null, null, length, -1, default(S), null, null);
-            wd.isNullable = true;
-            return wd;
+            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.WatchDog, null, null, length, -1, default(S), null, null);
+            node.info = SymbolicRegexInfo.Mk(isAlwaysNullable: true);
+            return node;
         }
 
         internal static SymbolicRegexNode<S> MkEpsilon(SymbolicRegexBuilder<S> builder)
         {
-            var eps = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Epsilon, null, null, -1, -1, default(S), null, null);
-            eps.isNullable = true;
-            return eps;
+            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Epsilon, null, null, -1, -1, default(S), null, null);
+            node.info = SymbolicRegexInfo.Mk(isAlwaysNullable: true);
+            return node;
         }
 
         internal static SymbolicRegexNode<S> MkStartAnchor(SymbolicRegexBuilder<S> builder)
         {
-            var anchor = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.StartAnchor, null, null, -1, -1, default(S), null, null);
-            anchor.containsAnchors = true;
-            return anchor;
+            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.StartAnchor, null, null, -1, -1, default(S), null, null);
+            node.info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true);
+            return node;
         }
 
         internal static SymbolicRegexNode<S> MkEndAnchor(SymbolicRegexBuilder<S> builder)
         {
-            var anchor = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EndAnchor, null, null, -1, -1, default(S), null, null);
-            anchor.containsAnchors = true;
-            return anchor;
+            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EndAnchor, null, null, -1, -1, default(S), null, null);
+            node.info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true);
+            return node;
+        }
+
+        internal static SymbolicRegexNode<S> MkEndAnchorZ(SymbolicRegexBuilder<S> builder)
+        {
+            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EndAnchorZ, null, null, -1, -1, default(S), null, null);
+            node.info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true);
+            return node;
         }
 
         internal static SymbolicRegexNode<S> MkEolAnchor(SymbolicRegexBuilder<S> builder)
         {
-            var anchor = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EndAnchor, null, null, -1, -2, default(S), null, null);
-            anchor.containsAnchors = true;
-            return anchor;
+            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EOLAnchor, null, null, -1, -1, default(S), null, null);
+            node.info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true);
+            return node;
         }
 
         internal static SymbolicRegexNode<S> MkBolAnchor(SymbolicRegexBuilder<S> builder)
         {
-            var anchor = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.StartAnchor, null, null, -2, -1, default(S), null, null);
-            anchor.containsAnchors = true;
-            return anchor;
+            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.BOLAnchor, null, null, -1, -1, default(S), null, null);
+            node.info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true);
+            return node;
+        }
+
+        internal static SymbolicRegexNode<S> MkWBAnchor(SymbolicRegexBuilder<S> builder)
+        {
+            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.WBAnchor, null, null, -1, -1, default(S), null, null);
+            node.info = SymbolicRegexInfo.Mk(startsWithBoundaryAnchor: true, canBeNullable: true);
+            return node;
+        }
+
+        internal static SymbolicRegexNode<S> MkNWBAnchor(SymbolicRegexBuilder<S> builder)
+        {
+            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.NWBAnchor, null, null, -1, -1, default(S), null, null);
+            node.info = SymbolicRegexInfo.Mk(startsWithBoundaryAnchor: true, canBeNullable: true);
+            return node;
         }
 
         internal static SymbolicRegexNode<S> MkDotStar(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> body)
         {
-            var loop = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Loop, body, null, 0, int.MaxValue, default(S), null, null);
-            loop.isNullable = true;
-            return loop;
+            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Loop, body, null, 0, int.MaxValue, default(S), null, null);
+            node.info = SymbolicRegexInfo.Loop(body.info, 0);
+            return node;
         }
 
         #endregion
 
         internal static SymbolicRegexNode<S> MkSingleton(SymbolicRegexBuilder<S> builder, S set)
         {
-            return new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, set, null, null);
+            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, set, null, null);
+            node.info = SymbolicRegexInfo.Mk(containsSomeCharacter : !set.Equals(builder.solver.False));
+            return node;
         }
 
         internal static SymbolicRegexNode<S> MkLoop(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> body, int lower, int upper, bool isLazy)
@@ -542,28 +732,23 @@ namespace Microsoft.SRM
                 throw new AutomataException(AutomataExceptionKind.InvalidArgument);
 
             var loop = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Loop, body, null, lower, upper, default(S), null, null);
-            if (loop.lower == 0)
-            {
-                loop.isNullable = true;
-            }
-            else
-            {
-                loop.isNullable = body.isNullable;
-            }
             loop.isLazyLoop = isLazy;
-            loop.containsAnchors = body.containsAnchors;
+            loop.info = SymbolicRegexInfo.Loop(body.info, lower);
             return loop;
         }
 
         internal static SymbolicRegexNode<S> MkOr(SymbolicRegexBuilder<S> builder, params SymbolicRegexNode<S>[] choices)
         {
-            return MkOr(builder, SymbolicRegexSet<S>.CreateDisjunction(builder, choices));
+            var node = MkOr(builder, SymbolicRegexSet<S>.CreateDisjunction(builder, choices));
+            node.info = SymbolicRegexInfo.Or(Array.ConvertAll(choices, c => c.info));
+            return node;
         }
 
         internal static SymbolicRegexNode<S> MkAnd(SymbolicRegexBuilder<S> builder, params SymbolicRegexNode<S>[] conjuncts)
         {
-            var elems = SymbolicRegexSet<S>.CreateConjunction(builder, conjuncts);
-            return MkAnd(builder, elems);
+            var node = MkAnd(builder, SymbolicRegexSet<S>.CreateConjunction(builder, conjuncts));
+            node.info = SymbolicRegexInfo.And(Array.ConvertAll(conjuncts, c => c.info));
+            return node;
         }
 
         internal static SymbolicRegexNode<S> MkOr(SymbolicRegexBuilder<S> builder, SymbolicRegexSet<S> alts)
@@ -576,10 +761,9 @@ namespace Microsoft.SRM
                 return alts.GetTheElement();
             else
             {
-                var or = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Or, null, null, -1, -1, default(S), null, alts);
-                or.isNullable = alts.IsNullable();
-                or.containsAnchors = alts.ContainsAnchors();
-                return or;
+                var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Or, null, null, -1, -1, default(S), null, alts);
+                node.info = SymbolicRegexInfo.Or(Array.ConvertAll(alts.ToArray(), c => c.info));
+                return node;
             }
         }
 
@@ -593,15 +777,15 @@ namespace Microsoft.SRM
                 return alts.GetTheElement();
             else
             {
-                var and = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.And, null, null, -1, -1, default(S), null, alts);
-                and.isNullable = alts.IsNullable();
-                and.containsAnchors = alts.ContainsAnchors();
-                return and;
+                var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.And, null, null, -1, -1, default(S), null, alts);
+                node.info = SymbolicRegexInfo.And(Array.ConvertAll(alts.ToArray(), c => c.info));
+                return node;
             }
         }
 
         /// <summary>
-        /// Only call MkConcat when left and right are flat, the resulting concat(left,right) is then also flat,
+        /// Make a concatenation of given regexes, if any regex is nothing then return nothing, eliminate
+        /// intermediate epsilons. Keep the concatenation flat, assuming both right and left are flat.
         /// </summary>
         internal static SymbolicRegexNode<S> MkConcat(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> left, SymbolicRegexNode<S> right)
         {
@@ -615,8 +799,8 @@ namespace Microsoft.SRM
             else if (left.kind != SymbolicRegexKind.Concat)
             {
                 concat = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Concat, left, right, -1, -1, default(S), null, null);
-                concat.isNullable = left.isNullable && right.isNullable;
-                concat.containsAnchors = left.containsAnchors || right.containsAnchors;
+                concat.info = SymbolicRegexInfo.Concat(left.info, right.info);
+                return concat;
             }
             else
             {
@@ -625,14 +809,12 @@ namespace Microsoft.SRM
                 for (int i = left_elems.Length - 1; i >= 0; i = i - 1)
                 {
                     var tmp = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Concat, left_elems[i], concat, -1, -1, default(S), null, null);
-                    tmp.isNullable = left_elems[i].isNullable && concat.isNullable;
-                    tmp.containsAnchors = left_elems[i].containsAnchors || concat.containsAnchors;
+                    tmp.info = SymbolicRegexInfo.Concat(left_elems[i].info, concat.info);
                     concat = tmp;
                 }
             }
             return concat;
         }
-
 
         //internal SymbolicRegexNode<S> MkConcatWith(SymbolicRegexNode<S> that)
         //{
@@ -706,13 +888,14 @@ namespace Microsoft.SRM
         {
             if (right == builder.nothing)
             {
-                return SymbolicRegexNode<S>.MkAnd(builder, cond, left);
+                var node = SymbolicRegexNode<S>.MkAnd(builder, cond, left);
+                node.info = SymbolicRegexInfo.And(cond.info, left.info);
+                return node;
             }
             else
             {
                 var ite = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.IfThenElse, left, right, -1, -1, default(S), cond, null);
-                ite.isNullable = (cond.isNullable ? left.isNullable : right.isNullable);
-                ite.containsAnchors = (cond.containsAnchors || left.containsAnchors || right.containsAnchors);
+                ite.info = SymbolicRegexInfo.ITE(cond.info, left.info, right.info);
                 return ite;
             }
         }
@@ -726,8 +909,13 @@ namespace Microsoft.SRM
             {
                 case SymbolicRegexKind.StartAnchor:
                 case SymbolicRegexKind.EndAnchor:
+                case SymbolicRegexKind.BOLAnchor:
+                case SymbolicRegexKind.EOLAnchor:
                 case SymbolicRegexKind.Epsilon:
                 case SymbolicRegexKind.WatchDog:
+                case SymbolicRegexKind.WBAnchor:
+                case SymbolicRegexKind.NWBAnchor:
+                case SymbolicRegexKind.EndAnchorZ:
                     return this;
                 case SymbolicRegexKind.Singleton:
                     {
@@ -737,14 +925,6 @@ namespace Microsoft.SRM
                         else
                             return builder.MkSingleton(newset);
                     }
-                //case SymbolicRegexKind.Sequence:
-                //    {
-                //        var newseq = new ImmutableList<S>(Array.ConvertAll(this.sequence.ToArray(), x => builder.solver.MkAnd(x, pred)));
-                //        if (this.sequence.Equals(newseq))
-                //            return this;
-                //        else
-                //            return builder.MkSequence(newseq);
-                //    }
                 case SymbolicRegexKind.Loop:
                     {
                         var body = this.left.Restrict(pred);
@@ -772,7 +952,7 @@ namespace Microsoft.SRM
                         var conjuncts = alts.Restrict(pred);
                         return builder.MkAnd(conjuncts);
                     }
-                default: //ITE
+                case SymbolicRegexKind.IfThenElse:
                     {
                         var truecase = this.left.Restrict(pred);
                         var falsecase = this.right.Restrict(pred);
@@ -781,6 +961,10 @@ namespace Microsoft.SRM
                             return this;
                         else
                             return builder.MkIfThenElse(cond, truecase, falsecase);
+                    }
+                default:
+                    {
+                        throw new NotImplementedException($"{nameof(Restrict)}:{kind}");
                     }
             }
         }
@@ -794,6 +978,13 @@ namespace Microsoft.SRM
             {
                 case SymbolicRegexKind.WatchDog:
                 case SymbolicRegexKind.Epsilon:
+                case SymbolicRegexKind.BOLAnchor:
+                case SymbolicRegexKind.EOLAnchor:
+                case SymbolicRegexKind.EndAnchor:
+                case SymbolicRegexKind.StartAnchor:
+                case SymbolicRegexKind.EndAnchorZ:
+                case SymbolicRegexKind.WBAnchor:
+                case SymbolicRegexKind.NWBAnchor:
                     return 0;
                 case SymbolicRegexKind.Singleton:
                     return 1;
@@ -832,50 +1023,131 @@ namespace Microsoft.SRM
             }
         }
 
-        //bool IsNullableInitially
-        //{
-        //    get
-        //    {
-        //        if (isNullable)
-        //            return true;
-        //        else if (kind == SymbolicRegexKind.Loop)
-        //            return lower == 0;
-        //        else if (kind == SymbolicRegexKind.Concat)
-        //            return left.IsNullableInitially && right.IsNullableInitially;
-        //        else if (kind == SymbolicRegexKind.Or)
-        //        {
-        //            foreach (var choice in alts)
-        //                if (choice.IsNullableInitially)
-        //                    return true;
-        //            return false;
-        //        }
-        //        else
-        //        {
-        //            return false;
-        //        }
-        //    }
-        //}
-
-        /// <summary>
-        /// Replace all anchors (^ and $) in the symbolic regex with () and missing anchors with .*
-        /// </summary>
-        /// <param name="isBeg">if true (default) then this is the beginning borderline and missing ^ is replaced with .*</param>
-        /// <param name="isEnd">if true (default) then this is the end borderline and missing $ is replaced with .*</param>
-        /// <returns></returns>
-        public SymbolicRegexNode<S> ReplaceAnchors(bool isBeg = true, bool isEnd = true)
-        {
-            return builder.RemoveAnchors(this, isBeg, isEnd);
-        }
-
         /// <summary>
         /// Takes the derivative of the symbolic regex wrt elem.
         /// Assumes that elem is either a minterm wrt the predicates of the whole regex or a singleton set.
         /// </summary>
         /// <param name="elem">given element wrt which the derivative is taken</param>
+        /// <param name="context">immediately surrounding character context that affects nullability of anchors</param>
         /// <returns></returns>
-        public SymbolicRegexNode<S> MkDerivative(S elem)
+        internal SymbolicRegexNode<S> MkDerivative(S elem, uint context)
         {
-            return builder.MkDerivative(elem, this);
+            if (this == builder.dotStar || this == builder.nothing)
+                return this;
+            else
+                switch (kind)
+                {
+                    case SymbolicRegexKind.Singleton:
+                        {
+                            if (builder.solver.IsSatisfiable(builder.solver.MkAnd(elem, set)))
+                                return builder.epsilon;
+                            else
+                                return builder.nothing;
+                        }
+                    case SymbolicRegexKind.Loop:
+                        {
+                            #region d(a, R*) = d(a,R)R*
+                            var step = left.MkDerivative(elem, context);
+                            if (step == builder.nothing)
+                            {
+                                return builder.nothing;
+                            }
+                            if (IsStar)
+                            {
+                                var deriv = builder.MkConcat(step, this);
+                                return deriv;
+                            }
+                            else if (IsPlus)
+                            {
+                                var star = builder.MkLoop(left, isLazyLoop);
+                                var deriv = builder.MkConcat(step, star);
+                                return deriv;
+                            }
+                            else if (IsMaybe)
+                            {
+                                return step;
+                            }
+                            else
+                            {
+                                //also decrement the upper bound if it was not maximum int
+                                //there cannot be a case when upper == lower == 1
+                                //such a loop is never created by MkLoop it will just return the first argument
+                                //and case upper == 1, lower == 0 is the previous case
+                                //so upper > 1 holds here
+                                int newupper = (upper == int.MaxValue ? int.MaxValue : upper - 1);
+                                int newlower = (lower == 0 ? 0 : lower - 1);
+                                var rest = builder.MkLoop(left, isLazyLoop, newlower, newupper);
+                                var deriv = builder.MkConcat(step, rest);
+                                return deriv;
+                            }
+                            #endregion
+                        }
+                    case SymbolicRegexKind.Concat:
+                        {
+                            #region d(a, AB) = d(a,A)B | (if A nullable then d(a,B))
+                            var first = builder.MkConcat(left.MkDerivative(elem, context), right);
+                            if (left.IsNullableFor(context))
+                            {
+                                var second = right.MkDerivative(elem, context);
+                                var deriv = builder.MkOr2(first, second);
+                                return deriv;
+                            }
+                            else
+                            {
+                                return first;
+                            }
+                            #endregion
+                        }
+                    case SymbolicRegexKind.Or:
+                        {
+                            #region d(a,A|B) = d(a,A)|d(a,B)
+                            var alts_deriv = alts.MkDerivative(elem, context);
+                            return builder.MkOr(alts_deriv);
+                            #endregion
+                        }
+                    case SymbolicRegexKind.And:
+                        {
+                            #region d(a,A & B) = d(a,A) & d(a,B)
+                            var derivs = alts.MkDerivative(elem, context);
+                            return builder.MkAnd(derivs);
+                            #endregion
+                        }
+                    case SymbolicRegexKind.IfThenElse:
+                        {
+                            #region d(a,Ite(A,B,C)) = Ite(d(a,A),d(a,B),d(a,C))
+                            var condD = iteCond.MkDerivative(elem, context);
+                            if (condD == builder.nothing)
+                            {
+                                var rightD = right.MkDerivative(elem, context);
+                                return rightD;
+                            }
+                            else if (condD == builder.dotStar)
+                            {
+                                var leftD = left.MkDerivative(elem, context);
+                                return leftD;
+                            }
+                            else
+                            {
+                                var leftD = left.MkDerivative(elem, context);
+                                var rightD = right.MkDerivative(elem, context);
+                                var ite = builder.MkIfThenElse(condD, leftD, rightD);
+                                return ite;
+                            }
+                            #endregion
+                        }
+                    default:
+                        return builder.nothing;
+                }
+        }
+
+        /// <summary>
+        /// Takes the derivative of the symbolic regex wrt an invisible border symbol.
+        /// The symbol is ignored by any regex except a respective anchor.
+        /// </summary>
+        /// <returns></returns>
+        internal SymbolicRegexNode<S> MkDerivativeForBorder(int borderSymbol)
+        {
+            return builder.MkDerivativeForBorder(borderSymbol, this);
         }
 
         ///// <summary>
@@ -940,17 +1212,6 @@ namespace Microsoft.SRM
         //    return aut;
         //}
 
-        /// <summary>
-        /// true iff epsilon is accepted
-        /// </summary>
-        public bool IsNullable
-        {
-            get
-            {
-                return isNullable;
-            }
-        }
-
         [NonSerialized]
         private static int prime = 31;
         public override int GetHashCode()
@@ -961,7 +1222,12 @@ namespace Microsoft.SRM
                 {
                     case SymbolicRegexKind.EndAnchor:
                     case SymbolicRegexKind.StartAnchor:
+                    case SymbolicRegexKind.BOLAnchor:
+                    case SymbolicRegexKind.EOLAnchor:
                     case SymbolicRegexKind.Epsilon:
+                    case SymbolicRegexKind.WBAnchor:
+                    case SymbolicRegexKind.NWBAnchor:
+                    case SymbolicRegexKind.EndAnchorZ:
                         hashcode = kind.GetHashCode();
                         break;
                     case SymbolicRegexKind.WatchDog:
@@ -980,12 +1246,11 @@ namespace Microsoft.SRM
                     case SymbolicRegexKind.Singleton:
                         hashcode = kind.GetHashCode() ^ set.GetHashCode();
                         break;
-                    //case SymbolicRegexKind.Sequence:
-                    //    hashcode = kind.GetHashCode() ^ sequence.GetHashCode();
-                    //    break;
-                    default: //if-then-else
+                    case SymbolicRegexKind.IfThenElse:
                         hashcode = kind.GetHashCode() ^ iteCond.GetHashCode() ^ (left.GetHashCode() << 1) ^ (right.GetHashCode() << 2);
                         break;
+                    default:
+                        throw new NotImplementedException($"{nameof(GetHashCode)}:{kind}");
                 }
             }
             return hashcode;
@@ -1027,13 +1292,86 @@ namespace Microsoft.SRM
             }
         }
 
+        private string ToStringForLoop()
+        {
+            switch (kind)
+            {
+                case SymbolicRegexKind.Singleton:
+                    return ToString();
+                default:
+                    return "(" + ToString() + ")";
+            }
+        }
+
+        internal string ToStringForAlts()
+        {
+            switch (kind)
+            {
+                case SymbolicRegexKind.Concat:
+                case SymbolicRegexKind.Singleton:
+                case SymbolicRegexKind.Loop:
+                    return ToString();
+                default:
+                    return "(" + ToString() + ")";
+            }
+        }
+
+        public override string ToString()
+        {
+            switch (kind)
+            {
+                case SymbolicRegexKind.EndAnchor:
+                    return "\\z";
+                case SymbolicRegexKind.StartAnchor:
+                    return "\\A";
+                case SymbolicRegexKind.BOLAnchor:
+                    return "^";
+                case SymbolicRegexKind.EOLAnchor:
+                    return "$";
+                case SymbolicRegexKind.Epsilon:
+                    return "";
+                case SymbolicRegexKind.WatchDog:
+                    return "";
+                case SymbolicRegexKind.WBAnchor:
+                    return "\\b";
+                case SymbolicRegexKind.NWBAnchor:
+                    return "\\B";
+                case SymbolicRegexKind.EndAnchorZ:
+                    return "\\Z";
+                case SymbolicRegexKind.Loop:
+                    {
+                        if (IsDotStar)
+                            return ".*";
+                        else if (IsStar)
+                            return left.ToStringForLoop() + "*";
+                        else if (IsBoundedLoop)
+                            return left.ToStringForLoop() + "{" + lower + "," + upper + "}";
+                        else
+                            return left.ToStringForLoop() + "{" + lower + ",}";
+                    }
+                case SymbolicRegexKind.Or:
+                    return alts.ToString();
+                case SymbolicRegexKind.And:
+                    return alts.ToString();
+                case SymbolicRegexKind.Concat:
+                    return left.ToString() + right.ToString();
+                case SymbolicRegexKind.Singleton:
+                    return builder.solver.SerializePredicate(set);
+                default:
+                    return "(TBD:if-then-else)";
+            }
+        }
+
         /// <summary>
-        /// Returns the set of all predicates that occur in the regex
+        /// Returns the set of all predicates that occur in the regex or
+        /// the set containing True if there are no precidates in the regex, e.g., if the regex is "^"
         /// </summary>
         public HashSet<S> GetPredicates()
         {
             var predicates = new HashSet<S>();
             CollectPredicates_helper(predicates);
+            if (predicates.Count == 0)
+                predicates.Add(builder.solver.True);
             return predicates;
         }
 
@@ -1044,6 +1382,13 @@ namespace Microsoft.SRM
         {
             switch (kind)
             {
+                case SymbolicRegexKind.BOLAnchor:
+                case SymbolicRegexKind.EOLAnchor:
+                case SymbolicRegexKind.EndAnchorZ:
+                    {
+                        predicates.Add(builder.newLinePredicate);
+                        return;
+                    }
                 case SymbolicRegexKind.StartAnchor:
                 case SymbolicRegexKind.EndAnchor:
                 case SymbolicRegexKind.Epsilon:
@@ -1068,16 +1413,32 @@ namespace Microsoft.SRM
                     }
                 case SymbolicRegexKind.Concat:
                     {
-                        left.CollectPredicates_helper(predicates);
-                        right.CollectPredicates_helper(predicates);
+                        // avoid deep nested recursion over long concat nodes
+                        SymbolicRegexNode<S> conc = this;
+                        while (conc.kind == SymbolicRegexKind.Concat)
+                        {
+                            conc.left.CollectPredicates_helper(predicates);
+                            conc = conc.right;
+                        }
+                        conc.CollectPredicates_helper(predicates);
                         return;
                     }
-                default: //ITE
+                case SymbolicRegexKind.IfThenElse:
                     {
                         this.iteCond.CollectPredicates_helper(predicates);
                         this.left.CollectPredicates_helper(predicates);
                         this.right.CollectPredicates_helper(predicates);
                         return;
+                    }
+                case SymbolicRegexKind.NWBAnchor:
+                case SymbolicRegexKind.WBAnchor:
+                    {
+                        predicates.Add(builder.wordLetterPredicate);
+                        return;
+                    }
+                default:
+                    {
+                        throw new NotImplementedException($"{nameof(CollectPredicates_helper)}:{kind}");
                     }
             }
         }
@@ -1090,9 +1451,6 @@ namespace Microsoft.SRM
         {
             var predicates = new List<S>(GetPredicates());
             var mt = new List<S>(EnumerateMinterms(predicates.ToArray()));
-            //there must be at least one minterm
-            if (mt.Count == 0)
-                throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
             if (mt[0] is IComparable)
                 mt.Sort();
             var minterms = mt.ToArray();
@@ -1112,15 +1470,8 @@ namespace Microsoft.SRM
         {
             switch (kind)
             {
-                case SymbolicRegexKind.Epsilon:
-                case SymbolicRegexKind.Singleton:
-                    return this;
                 case SymbolicRegexKind.WatchDog:
                     return builder.epsilon;
-                case SymbolicRegexKind.StartAnchor:
-                    return builder.endAnchor;
-                case SymbolicRegexKind.EndAnchor:
-                    return builder.startAnchor;
                 case SymbolicRegexKind.Loop:
                     return builder.MkLoop(this.left.Reverse(), this.isLazyLoop, this.lower, this.upper);
                 case SymbolicRegexKind.Concat:
@@ -1147,8 +1498,12 @@ namespace Microsoft.SRM
                         var rev = builder.MkAnd(alts.Reverse());
                         return rev;
                     }
-                default: //if-then-else
-                    return builder.MkIfThenElse(iteCond.Reverse(), left.Reverse(), right.Reverse());
+                case SymbolicRegexKind.IfThenElse:
+                    {
+                        return builder.MkIfThenElse(iteCond.Reverse(), left.Reverse(), right.Reverse());
+                    }
+                default:
+                    return this;
             }
         }
 
@@ -1156,21 +1511,15 @@ namespace Microsoft.SRM
         {
             switch (kind)
             {
-                case SymbolicRegexKind.EndAnchor:
-                case SymbolicRegexKind.StartAnchor:
-                case SymbolicRegexKind.Singleton:
-                case SymbolicRegexKind.WatchDog:
-                case SymbolicRegexKind.Epsilon:
-                    return false;
                 case SymbolicRegexKind.Loop:
                     return (this.upper < int.MaxValue) && (this.upper > upperBoundLowestValue);
                 case SymbolicRegexKind.Concat:
                     return (this.left.StartsWithLoop(upperBoundLowestValue) ||
-                        (this.left.isNullable && this.right.StartsWithLoop(upperBoundLowestValue)));
+                        (this.left.IsNullable && this.right.StartsWithLoop(upperBoundLowestValue)));
                 case SymbolicRegexKind.Or:
                     return alts.StartsWithLoop(upperBoundLowestValue);
                 default:
-                    throw new NotImplementedException();
+                    return false;
             }
         }
 
@@ -1186,6 +1535,8 @@ namespace Microsoft.SRM
                     {
                         case SymbolicRegexKind.EndAnchor:
                         case SymbolicRegexKind.StartAnchor:
+                        case SymbolicRegexKind.EOLAnchor:
+                        case SymbolicRegexKind.BOLAnchor:
                         case SymbolicRegexKind.Singleton:
                         case SymbolicRegexKind.WatchDog:
                         case SymbolicRegexKind.Epsilon:
@@ -1230,6 +1581,8 @@ namespace Microsoft.SRM
             {
                 case SymbolicRegexKind.EndAnchor:
                 case SymbolicRegexKind.StartAnchor:
+                case SymbolicRegexKind.EOLAnchor:
+                case SymbolicRegexKind.BOLAnchor:
                 case SymbolicRegexKind.Singleton:
                 case SymbolicRegexKind.WatchDog:
                 case SymbolicRegexKind.Epsilon:
@@ -1263,41 +1616,6 @@ namespace Microsoft.SRM
         }
 
         /// <summary>
-        /// Unwind lower loop boundaries
-        /// </summary>
-        internal SymbolicRegexNode<S> Simplify()
-        {
-            switch (kind)
-            {
-                case SymbolicRegexKind.EndAnchor:
-                case SymbolicRegexKind.StartAnchor:
-                case SymbolicRegexKind.Epsilon:
-                case SymbolicRegexKind.Singleton:
-                case SymbolicRegexKind.WatchDog:
-                    return this;
-                case SymbolicRegexKind.Concat:
-                    return builder.MkConcat(left.Simplify(), right.Simplify());
-                case SymbolicRegexKind.Or:
-                    return builder.MkOr(alts.Simplify());
-                case SymbolicRegexKind.And:
-                    return builder.MkAnd(alts.Simplify());
-                case SymbolicRegexKind.Loop:
-                    {
-                        var body = this.left.Simplify();
-                        //we know that lower <= upper
-                        //so diff >= 0
-                        int diff = (this.upper == int.MaxValue ? int.MaxValue : upper - lower);
-                        var res = (diff == 0 ? builder.epsilon : builder.MkLoop(body, isLazyLoop, 0, diff));
-                        for (int i = 0; i < lower; i++)
-                            res = builder.MkConcat(body, res);
-                        return res;
-                    }
-                default:
-                    throw new NotImplementedException();
-            }
-        }
-
-        /// <summary>
         /// Only valid to call if there is a single bounded loop
         /// </summary>
         internal SymbolicRegexNode<S> DecrementBoundedLoopCount(bool makeZero = false)
@@ -1310,6 +1628,8 @@ namespace Microsoft.SRM
                 {
                     case SymbolicRegexKind.EndAnchor:
                     case SymbolicRegexKind.StartAnchor:
+                    case SymbolicRegexKind.EOLAnchor:
+                    case SymbolicRegexKind.BOLAnchor:
                     case SymbolicRegexKind.Singleton:
                     case SymbolicRegexKind.WatchDog:
                     case SymbolicRegexKind.Epsilon:
@@ -1583,48 +1903,52 @@ namespace Microsoft.SRM
         /// <summary>
         /// Gets the predicate that covers all elements that make some progress.
         /// </summary>
-        public S GetStartSet(ICharAlgebra<S> algebra)
+        internal S GetStartSet()
         {
             switch (kind)
             {
                 case SymbolicRegexKind.Epsilon:
-                case SymbolicRegexKind.StartAnchor:
                 case SymbolicRegexKind.WatchDog:
                 case SymbolicRegexKind.EndAnchor:
-                    return algebra.False;
+                case SymbolicRegexKind.StartAnchor:
+                case SymbolicRegexKind.WBAnchor:
+                case SymbolicRegexKind.NWBAnchor:
+                    return builder.solver.False;
+                case SymbolicRegexKind.EOLAnchor:
+                case SymbolicRegexKind.EndAnchorZ:
+                case SymbolicRegexKind.BOLAnchor:
+                    return builder.newLinePredicate;
                 case SymbolicRegexKind.Singleton:
                     return this.set;
-                //case SymbolicRegexKind.Sequence:
-                //    return this.sequence.First;
                 case SymbolicRegexKind.Loop:
-                    return this.left.GetStartSet(algebra);
+                    return this.left.GetStartSet();
                 case SymbolicRegexKind.Concat:
                     {
-                        var startSet = this.left.GetStartSet(algebra);
-                        if (left.isNullable || left.kind == SymbolicRegexKind.StartAnchor)
+                        var startSet = this.left.GetStartSet();
+                        if (left.info.CanBeNullable)
                         {
-                            var set2 = this.right.GetStartSet(algebra);
-                            startSet = algebra.MkOr(startSet, set2);
+                            var set2 = this.right.GetStartSet();
+                            startSet = builder.solver.MkOr(startSet, set2);
                         }
                         return startSet;
                     }
                 case SymbolicRegexKind.Or:
                     {
-                        S startSet = algebra.False;
+                        S startSet = builder.solver.False;
                         foreach (var alt in alts)
-                            startSet = algebra.MkOr(startSet, alt.GetStartSet(algebra));
+                            startSet = builder.solver.MkOr(startSet, alt.GetStartSet());
                         return startSet;
                     }
                 case SymbolicRegexKind.And:
                     {
-                        S startSet = algebra.True;
+                        S startSet = builder.solver.True;
                         foreach (var alt in alts)
-                            startSet = algebra.MkAnd(startSet, alt.GetStartSet(algebra));
+                            startSet = builder.solver.MkAnd(startSet, alt.GetStartSet());
                         return startSet;
                     }
                 default: //if-then-else
                     {
-                        S startSet = algebra.MkOr(iteCond.GetStartSet(algebra), algebra.MkOr(left.GetStartSet(algebra), right.GetStartSet(algebra)));
+                        S startSet = builder.solver.MkOr(iteCond.GetStartSet(), builder.solver.MkOr(left.GetStartSet(), right.GetStartSet()));
                         return startSet;
                     }
             }
@@ -1719,7 +2043,7 @@ namespace Microsoft.SRM
         /// </summary>
         public bool CheckIfAllLoopsAreLazy()
         {
-            bool existsEagerLoop =  this.ExistsNode(node => (node.kind == SymbolicRegexKind.Loop && !node.IsMaybe && !node.isLazyLoop));
+            bool existsEagerLoop = this.ExistsNode(node => (node.kind == SymbolicRegexKind.Loop && !node.IsMaybe && !node.isLazyLoop));
             return !existsEagerLoop;
         }
 
@@ -1743,7 +2067,6 @@ namespace Microsoft.SRM
     /// </summary>
     internal class SymbolicRegexSet<S> : IEnumerable<SymbolicRegexNode<S>>
     {
-        internal static bool optimizeLoops = true;
         internal SymbolicRegexBuilder<S> builder;
 
         private HashSet<SymbolicRegexNode<S>> set;
@@ -1785,7 +2108,7 @@ namespace Microsoft.SRM
         //}
         //#endregion
 
-        public SymbolicRegexSetKind Kind
+        internal SymbolicRegexSetKind Kind
         {
             get { return kind; }
         }
@@ -1842,146 +2165,131 @@ namespace Microsoft.SRM
             var loops = new Dictionary<Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>, int>();
             var other = new HashSet<SymbolicRegexNode<S>>();
             int watchdog = -1;
-            if (optimizeLoops)
-            {
-                foreach (var elem in elems)
-                {
-                    //keep track of maximal watchdog in the set
-                    if (elem.kind == SymbolicRegexKind.WatchDog && elem.lower > watchdog)
-                        watchdog = elem.lower;
 
-                    #region start foreach
-                    if (elem == builder.dotStar)
-                        return builder.fullSet;
-                    else if (elem != builder.nothing)
+            foreach (var elem in elems)
+            {
+                //keep track of maximal watchdog in the set
+                if (elem.kind == SymbolicRegexKind.WatchDog && elem.lower > watchdog)
+                    watchdog = elem.lower;
+
+                #region start foreach
+                if (elem == builder.dotStar)
+                    return builder.fullSet;
+                else if (elem != builder.nothing)
+                {
+                    switch (elem.kind)
                     {
-                        switch (elem.kind)
-                        {
-                            case SymbolicRegexKind.Or:
+                        case SymbolicRegexKind.Or:
+                            {
+                                foreach (var alt in elem.alts)
                                 {
-                                    foreach (var alt in elem.alts)
+                                    if (alt.kind == SymbolicRegexKind.Loop && alt.lower == 0)
                                     {
-                                        if (alt.kind == SymbolicRegexKind.Loop && alt.lower == 0)
-                                        {
-                                            var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>(alt.left, builder.epsilon);
-                                            //map to the maximal of the upper bounds
-                                            int cnt;
-                                            if (loops.TryGetValue(pair, out cnt))
-                                            {
-                                                if (cnt < alt.upper)
-                                                    loops[pair] = alt.upper;
-                                            }
-                                            else
-                                            {
-                                                loops[pair] = alt.upper;
-                                            }
-                                        }
-                                        else if (alt.kind == SymbolicRegexKind.Concat && alt.left.kind == SymbolicRegexKind.Loop && alt.left.lower == 0)
-                                        {
-                                            var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>(alt.left.left, alt.right);
-                                            //map to the maximal of the upper bounds
-                                            int cnt;
-                                            if (loops.TryGetValue(pair, out cnt))
-                                            {
-                                                if (cnt < alt.left.upper)
-                                                    loops[pair] = alt.left.upper;
-                                            }
-                                            else
-                                            {
-                                                loops[pair] = alt.left.upper;
-                                            }
-                                        }
-                                        else
-                                        {
-                                            other.Add(alt);
-                                        }
-                                    }
-                                    break;
-                                }
-                            case SymbolicRegexKind.Loop:
-                                {
-                                    if (elem.kind == SymbolicRegexKind.Loop && elem.lower == 0)
-                                    {
-                                        var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>(elem.left, builder.epsilon);
-                                        //map the body of the loop (elem.left) to the maximal of the upper bounds
-                                        int cnt;
-                                        if (loops.TryGetValue(pair, out cnt))
-                                        {
-                                            if (cnt < elem.upper)
-                                                loops[pair] = elem.upper;
-                                        }
-                                        else
-                                        {
-                                            loops[pair] = elem.upper;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        other.Add(elem);
-                                    }
-                                    break;
-                                }
-                            case SymbolicRegexKind.Concat:
-                                {
-                                    if (elem.kind == SymbolicRegexKind.Concat && elem.left.kind == SymbolicRegexKind.Loop && elem.left.lower == 0)
-                                    {
-                                        var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>(elem.left.left, elem.right);
+                                        var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>(alt.left, builder.epsilon);
                                         //map to the maximal of the upper bounds
                                         int cnt;
                                         if (loops.TryGetValue(pair, out cnt))
                                         {
-                                            if (cnt < elem.left.upper)
-                                                loops[pair] = elem.left.upper;
+                                            if (cnt < alt.upper)
+                                                loops[pair] = alt.upper;
                                         }
                                         else
                                         {
-                                            loops[pair] = elem.left.upper;
+                                            loops[pair] = alt.upper;
+                                        }
+                                    }
+                                    else if (alt.kind == SymbolicRegexKind.Concat && alt.left.kind == SymbolicRegexKind.Loop && alt.left.lower == 0)
+                                    {
+                                        var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>(alt.left.left, alt.right);
+                                        //map to the maximal of the upper bounds
+                                        int cnt;
+                                        if (loops.TryGetValue(pair, out cnt))
+                                        {
+                                            if (cnt < alt.left.upper)
+                                                loops[pair] = alt.left.upper;
+                                        }
+                                        else
+                                        {
+                                            loops[pair] = alt.left.upper;
                                         }
                                     }
                                     else
                                     {
-                                        other.Add(elem);
+                                        other.Add(alt);
                                     }
-                                    break;
                                 }
-                            default:
+                                break;
+                            }
+                        case SymbolicRegexKind.Loop:
+                            {
+                                if (elem.kind == SymbolicRegexKind.Loop && elem.lower == 0)
+                                {
+                                    var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>(elem.left, builder.epsilon);
+                                    //map the body of the loop (elem.left) to the maximal of the upper bounds
+                                    int cnt;
+                                    if (loops.TryGetValue(pair, out cnt))
+                                    {
+                                        if (cnt < elem.upper)
+                                            loops[pair] = elem.upper;
+                                    }
+                                    else
+                                    {
+                                        loops[pair] = elem.upper;
+                                    }
+                                }
+                                else
                                 {
                                     other.Add(elem);
-                                    break;
                                 }
-                        }
+                                break;
+                            }
+                        case SymbolicRegexKind.Concat:
+                            {
+                                if (elem.kind == SymbolicRegexKind.Concat && elem.left.kind == SymbolicRegexKind.Loop && elem.left.lower == 0)
+                                {
+                                    var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>(elem.left.left, elem.right);
+                                    //map to the maximal of the upper bounds
+                                    int cnt;
+                                    if (loops.TryGetValue(pair, out cnt))
+                                    {
+                                        if (cnt < elem.left.upper)
+                                            loops[pair] = elem.left.upper;
+                                    }
+                                    else
+                                    {
+                                        loops[pair] = elem.left.upper;
+                                    }
+                                }
+                                else
+                                {
+                                    other.Add(elem);
+                                }
+                                break;
+                            }
+                        default:
+                            {
+                                other.Add(elem);
+                                break;
+                            }
                     }
-                    #endregion
                 }
-                //if any element of other is covered in loops then omit it
-                var others1 = new HashSet<SymbolicRegexNode<S>>();
-                foreach (var sr in other)
-                {
-                    var key = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>(sr, builder.epsilon);
-                    if (loops.ContainsKey(key))
-                        others1.Add(sr);
-                }
-                foreach (var pair in loops)
-                {
-                    if (other.Contains(pair.Key.Item2))
-                        others1.Add(pair.Key.Item2);
-                }
-                other.ExceptWith(others1);
+                #endregion
             }
-            else
+            //if any element of other is covered in loops then omit it
+            var others1 = new HashSet<SymbolicRegexNode<S>>();
+            foreach (var sr in other)
             {
-                foreach (var elem in elems)
-                {
-                    if (elem.kind == SymbolicRegexKind.Or)
-                    {
-                        other.UnionWith(elem.alts);
-                    }
-                    else
-                    {
-                        other.Add(elem);
-                    }
-                }
+                var key = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>(sr, builder.epsilon);
+                if (loops.ContainsKey(key))
+                    others1.Add(sr);
             }
+            foreach (var pair in loops)
+            {
+                if (other.Contains(pair.Key.Item2))
+                    others1.Add(pair.Key.Item2);
+            }
+            other.ExceptWith(others1);
+
             if (other.Count == 0 && loops.Count == 0)
                 return builder.emptySet;
             else
@@ -2011,10 +2319,7 @@ namespace Microsoft.SRM
                     conjuncts.Add(elem);
                 }
             }
-            if (conjuncts.Count == 0)
-                return builder.fullSet;
-            else
-                return new SymbolicRegexSet<S>(builder, SymbolicRegexSetKind.Conjunction, conjuncts, loops);
+            return new SymbolicRegexSet<S>(builder, SymbolicRegexSetKind.Conjunction, conjuncts, loops);
         }
 
         private IEnumerable<SymbolicRegexNode<S>> RestrictElems(S pred)
@@ -2080,6 +2385,33 @@ namespace Microsoft.SRM
             }
         }
 
+        internal bool IsNullableFor(uint context)
+        {
+            var e = this.GetEnumerator();
+            if (kind == SymbolicRegexSetKind.Disjunction)
+            {
+                #region some element must be nullable
+                while (e.MoveNext())
+                {
+                    if (e.Current.IsNullableFor(context))
+                        return true;
+                }
+                return false;
+                #endregion
+            }
+            else
+            {
+                #region  all elements must be nullable
+                while (e.MoveNext())
+                {
+                    if (!e.Current.IsNullableFor(context))
+                        return false;
+                }
+                return true;
+                #endregion
+            }
+        }
+
         public override int GetHashCode()
         {
             if (hashCode == 0)
@@ -2132,8 +2464,7 @@ namespace Microsoft.SRM
             var e = this.GetEnumerator();
             var R = new List<string>();
             while (e.MoveNext())
-                R.Add(e.Current.ToString());
-            R.Sort();
+                R.Add(e.Current.ToStringForAlts());
             if (R.Count == 0)
                 return res;
             if (kind == SymbolicRegexSetKind.Disjunction)
@@ -2145,6 +2476,8 @@ namespace Microsoft.SRM
                         res += "|";
                     res += R[i].ToString();
                 }
+                // parentheses are needed in some cases in concatenations
+                res = "(" + res + ")";
                 #endregion
             }
             else
@@ -2172,46 +2505,32 @@ namespace Microsoft.SRM
             return elems;
         }
 
-        private IEnumerable<SymbolicRegexNode<S>> RemoveAnchorsElems(SymbolicRegexBuilder<S> builder, bool isBeg, bool isEnd)
-        {
-            foreach (var elem in this)
-                yield return elem.ReplaceAnchors(isBeg, isEnd);
-        }
-
-        public SymbolicRegexSet<S> RemoveAnchors(bool isBeg, bool isEnd)
+        internal SymbolicRegexSet<S> MkDerivative(S elem, uint context)
         {
             if (kind == SymbolicRegexSetKind.Disjunction)
-                return CreateDisjunction(builder, RemoveAnchorsElems(builder, isBeg, isEnd));
+                return CreateDisjunction(builder, MkDerivativesOfElems(elem, context));
             else
-                return CreateConjunction(builder, RemoveAnchorsElems(builder, isBeg, isEnd));
+                return CreateConjunction(builder, MkDerivativesOfElems(elem, context));
         }
 
-        internal SymbolicRegexSet<S> MkDerivative(S elem)
+        internal SymbolicRegexSet<S> MkDerivativesForBorder(int borderSymbol)
         {
             if (kind == SymbolicRegexSetKind.Disjunction)
-                return CreateDisjunction(builder, MkDerivativesOfElems(elem));
+                return CreateDisjunction(builder, MkDerivativesForBorder_(borderSymbol));
             else
-                return CreateConjunction(builder, MkDerivativesOfElems(elem));
+                return CreateConjunction(builder, MkDerivativesForBorder_(borderSymbol));
         }
 
-        internal SymbolicRegexSet<S> MkDerivative_StartOfLine()
-        {
-            if (kind == SymbolicRegexSetKind.Disjunction)
-                return CreateDisjunction(builder, MkDerivatives_StartOfLine_OfElems());
-            else
-                return CreateConjunction(builder, MkDerivatives_StartOfLine_OfElems());
-        }
-
-        private IEnumerable<SymbolicRegexNode<S>> MkDerivativesOfElems(S elem)
+        private IEnumerable<SymbolicRegexNode<S>> MkDerivativesOfElems(S elem, uint context)
         {
             foreach (var s in this)
-                yield return s.MkDerivative(elem);
+                yield return s.MkDerivative(elem, context);
         }
 
-        private IEnumerable<SymbolicRegexNode<S>> MkDerivatives_StartOfLine_OfElems()
+        private IEnumerable<SymbolicRegexNode<S>> MkDerivativesForBorder_(int borderSymbol)
         {
             foreach (var s in this)
-                yield return s.builder.MkDerivative_StartOfLine(s);
+                yield return s.builder.MkDerivativeForBorder(borderSymbol, s);
         }
 
         private IEnumerable<SymbolicRegexNode<T>> TransformElems<T>(SymbolicRegexBuilder<T> builderT, Func<S, T> predicateTransformer)
@@ -2267,20 +2586,6 @@ namespace Microsoft.SRM
             return res;
         }
 
-        internal SymbolicRegexSet<S> Simplify()
-        {
-            if (kind == SymbolicRegexSetKind.Disjunction)
-                return CreateDisjunction(builder, SimplifyElems());
-            else
-                return CreateConjunction(builder, SimplifyElems());
-        }
-
-        private IEnumerable<SymbolicRegexNode<S>> SimplifyElems()
-        {
-            foreach (var elem in this)
-                yield return elem.Simplify();
-        }
-
         internal SymbolicRegexSet<S> DecrementBoundedLoopCount(bool makeZero = false)
         {
             if (kind == SymbolicRegexSetKind.Disjunction)
@@ -2293,14 +2598,6 @@ namespace Microsoft.SRM
         {
             foreach (var elem in this)
                 yield return elem.DecrementBoundedLoopCount(makeZero);
-        }
-
-        internal bool ContainsAnchors()
-        {
-            foreach (var elem in this)
-                if (elem.containsAnchors)
-                    return true;
-            return false;
         }
 
         private int enabledBoundedLoopCount = -1;

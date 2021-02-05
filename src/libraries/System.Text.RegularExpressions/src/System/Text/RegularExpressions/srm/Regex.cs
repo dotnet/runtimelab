@@ -1,10 +1,13 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
     [Serializable]
     internal class Regex
@@ -12,13 +15,18 @@ namespace Microsoft.SRM
         private static readonly CharSetSolver solver = new CharSetSolver();
         private static readonly RegexToAutomatonConverter<BDD> converter = new RegexToAutomatonConverter<BDD>(solver);
 
-        private IMatcher matcher;
+        internal const string _DFA_incompatible_with = "DFA option is incompatible with ";
 
-        public Regex(string pattern) : this(pattern, RegexOptions.None) { }
+        internal IMatcher matcher;
 
-        public Regex(string pattern, RegexOptions options)
+        public Regex(RegexNode rootNode, System.Text.RegularExpressions.RegexOptions options)
         {
-            var root = converter.ConvertToSymbolicRegex(pattern, options, keepAnchors: true);
+            var root = converter.ConvertNodeToSymbolicRegex(rootNode, true);
+            if (!root.info.ContainsSomeCharacter)
+                throw new NotSupportedException(_DFA_incompatible_with + "characterless pattern");
+            if (root.info.CanBeNullable)
+                throw new NotSupportedException(_DFA_incompatible_with + "pattern allowing 0-length match");
+
             var partition = root.ComputeMinterms();
             if (partition.Length > 64)
             {
@@ -39,17 +47,16 @@ namespace Microsoft.SRM
         /// <param name="endat">end position in the input, -1 means that the value is unspecified and taken to be input.Length-1</param>
         /// </summary>
         public bool IsMatch(string input, int startat = 0, int endat = -1)
-            => matcher.IsMatch(input, startat, endat);
+            => matcher.FindMatch(true, input, startat, endat) is null;
 
         /// <summary>
-        /// Returns all matches as pairs (startindex, length) in the input string.
+        /// Returns the next match (startindex, length) in the input string.
         /// </summary>
         /// <param name="input">given iput string</param>
-        /// <param name="limit">as soon as this many matches have been found the search terminates, 0 or negative value means that there is no bound, default is 0</param>
         /// <param name="startat">start position in the input, default is 0</param>
         /// <param name="endat">end position in the input, -1 means that the value is unspecified and taken to be input.Length-1</param>
-        public List<Match> Matches(string input, int limit = 0, int startat = 0, int endat = -1)
-            => matcher.Matches(input, limit, startat, endat);
+        public Match FindMatch(string input, int startat = 0, int endat = -1)
+            => matcher.FindMatch(false, input, startat, endat);
 
         /// <summary>
         /// Serialize this symbolic regex matcher to the given file.

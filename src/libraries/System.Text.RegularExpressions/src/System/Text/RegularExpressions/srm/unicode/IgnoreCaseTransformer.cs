@@ -1,10 +1,13 @@
-﻿using System;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Microsoft.SRM
+namespace System.Text.RegularExpressions.SRM
 {
     internal class IgnoreCaseTransformer
     {
@@ -15,7 +18,7 @@ namespace Microsoft.SRM
         public IgnoreCaseTransformer(CharSetSolver charSetSolver)
         {
             this.solver = charSetSolver;
-            IgnoreCaseRel = charSetSolver.Deserialize(Microsoft.SRM.Generated.IgnoreCaseRelation.ignorecase);
+            IgnoreCaseRel = charSetSolver.Deserialize(System.Text.RegularExpressions.SRM.Generated.IgnoreCaseRelation.ignorecase);
             domain = IgnoreCaseRel >> 16;
         }
 

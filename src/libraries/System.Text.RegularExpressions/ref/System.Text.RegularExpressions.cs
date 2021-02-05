@@ -240,6 +240,7 @@ namespace System.Text.RegularExpressions
         RightToLeft = 64,
         ECMAScript = 256,
         CultureInvariant = 512,
+        DFA = 1024,
     }
     public enum RegexParseError
     {
