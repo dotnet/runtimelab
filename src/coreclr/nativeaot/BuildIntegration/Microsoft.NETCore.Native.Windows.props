@@ -19,7 +19,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <CppLibCreator>lib</CppLibCreator>
     <FullRuntimeName>Runtime</FullRuntimeName>
     <FullRuntimeName Condition="'$(ServerGarbageCollection)' != ''">Runtime.ServerGC</FullRuntimeName>
-    <ApplicationEntryName Condition="'$(ApplicationEntryName)' == ''">wmainCRTStartup</ApplicationEntryName>
+    <EntryPointSymbol Condition="'$(EntryPointSymbol)' == ''">wmainCRTStartup</EntryPointSymbol>
     <LinkerSubsystem Condition="'$(OutputType)' == 'WinExe' and '$(LinkerSubsystem)' == ''">WINDOWS</LinkerSubsystem>
     <LinkerSubsystem Condition="'$(OutputType)' == 'Exe' and '$(LinkerSubsystem)' == ''">CONSOLE</LinkerSubsystem>
   </PropertyGroup>
@@ -74,7 +74,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <!-- The runtime is not compatible with jump stubs inserted by incremental linking. -->
       <LinkerArg Include="/INCREMENTAL:NO" />
       <LinkerArg Condition="'$(LinkerSubsystem)' != ''" Include="/SUBSYSTEM:$(LinkerSubsystem)" />
-      <LinkerArg Condition="'$(OutputType)' == 'WinExe' or '$(OutputType)' == 'Exe'" Include="/ENTRY:$(ApplicationEntryName)" />
+      <LinkerArg Condition="'$(OutputType)' == 'WinExe' or '$(OutputType)' == 'Exe'" Include="/ENTRY:$(EntryPointSymbol)" />
       <LinkerArg Condition="$(NativeLib) == 'Shared'" Include="/INCLUDE:CoreRT_StaticInitialization"/>
       <LinkerArg Include="/NATVIS:&quot;$(MSBuildThisFileDirectory)CoreRTNatVis.natvis&quot;" />
     </ItemGroup>
