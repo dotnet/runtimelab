@@ -41,10 +41,8 @@ namespace ILCompiler.DependencyAnalysis
 
             if (CompilationModuleGroup.ContainsMethodBody(method, false))
             {
-                // If this is an instance method on a non-valuetype, don't add direct reference to
-                // the method body just yet. We might be able to optimize the method body
-                // away if the owning type was never seen as allocated.
-                if (!method.Signature.IsStatic && !method.OwningType.IsValueType && !method.IsCanonicalMethod(CanonicalFormKind.Any))
+                // We might be able to optimize the method body away if the owning type was never seen as allocated.
+                if (method.NotCallableWithoutOwningEEType())
                     return new TentativeInstanceMethodNode(new MethodCodeNode(method));
 
                 return new MethodCodeNode(method);

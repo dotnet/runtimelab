@@ -466,11 +466,11 @@ namespace ILCompiler
             {
                 if (_baseGroup.CanInline(caller, callee))
                 {
-                    /// Since the scanner doesn't look at instance methods whose owning type
-                    /// wasn't allocated (done through <see cref="TentativeInstanceMethodNode" />),
-                    /// we need to disallow inlining these methods. They could
-                    /// bring in dependencies that we didn't look at.
-                    if (!callee.Signature.IsStatic && !callee.OwningType.IsValueType)
+                    // Since the scanner doesn't look at instance methods whose owning type
+                    // wasn't allocated (done through TentativeInstanceMethodNode),
+                    // we need to disallow inlining these methods. They could
+                    // bring in dependencies that we didn't look at.
+                    if (callee.NotCallableWithoutOwningEEType())
                     {
                         return _constructedTypes.Contains(callee.OwningType);
                     }

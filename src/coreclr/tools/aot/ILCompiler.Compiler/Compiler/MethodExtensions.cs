@@ -150,5 +150,14 @@ namespace ILCompiler
             // The sealed vtable optimization doesn't make sense for interfaces since the slots are not inherited by anyone.
             return method.IsFinal && method.IsNewSlot && !method.OwningType.IsInterface;
         }
+
+        public static bool NotCallableWithoutOwningEEType(this MethodDesc method)
+        {
+            TypeDesc owningType = method.OwningType;
+            return !method.Signature.IsStatic && /* Static methods don't have this */
+                !owningType.IsValueType && /* Value type instance methods take a ref to data */
+                !owningType.IsArrayTypeWithoutGenericInterfaces() && /* Type loader can make these at runtime */
+                !method.IsSharedByGenericInstantiations; /* Current impl limitation; can be lifted */
+        }
     }
 }

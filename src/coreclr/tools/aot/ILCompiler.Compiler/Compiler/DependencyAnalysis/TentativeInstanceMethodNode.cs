@@ -39,8 +39,7 @@ namespace ILCompiler.DependencyAnalysis
 
         private ISymbolNode GetTarget(NodeFactory factory)
         {
-            // TODO: Make a new entrypoint?
-            MethodDesc helper = factory.TypeSystemContext.GetHelperEntryPoint("ThrowHelpers", "ThrowBodyRemoved");
+            MethodDesc helper = factory.TypeSystemContext.GetHelperEntryPoint("ThrowHelpers", "ThrowInstanceBodyRemoved");
             return factory.MethodEntrypoint(helper);
         }
 

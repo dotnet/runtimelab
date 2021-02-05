@@ -18,6 +18,11 @@ namespace Internal.Runtime.CompilerHelpers
             throw new NotSupportedException(SR.NotSupported_BodyRemoved);
         }
 
+        internal static void ThrowInstanceBodyRemoved()
+        {
+            throw new NotSupportedException(SR.NotSupported_InstanceBodyRemoved);
+        }
+
         public static void ThrowOverflowException()
         {
             throw new OverflowException();

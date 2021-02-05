@@ -9,16 +9,7 @@ namespace ILCompiler.DependencyAnalysis
     {
         protected override void EmitCode(NodeFactory factory, ref ARMEmitter encoder, bool relocsOnly)
         {
-            ISymbolNode target = GetTarget(factory);
-            if (!target.RepresentsIndirectionCell)
-            {
-                encoder.EmitJMP(target); // b methodEntryPoint
-            }
-            else
-            {
-                encoder.EmitMOV(encoder.TargetRegister.InterproceduralScratch, target);
-                encoder.EmitJMP(encoder.TargetRegister.InterproceduralScratch);
-            }
+            encoder.EmitJMP(GetTarget(factory));
         }
     }
 }

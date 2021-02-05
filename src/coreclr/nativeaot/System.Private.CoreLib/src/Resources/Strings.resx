@@ -3082,6 +3082,9 @@
   <data name="NotSupported_BodyRemoved" xml:space="preserve">
     <value>The feature associated with this method was removed.</value>
   </data>
+  <data name="NotSupported_InstanceBodyRemoved" xml:space="preserve">
+    <value>The body of this instance method was removed by the AOT compiler. This can happen if the owning type was not seen as allocated by the AOT compiler.</value>
+  </data>
   <data name="Arg_MustBeHalf" xml:space="preserve">
     <value>Object must be of type Half.</value>
   </data>
