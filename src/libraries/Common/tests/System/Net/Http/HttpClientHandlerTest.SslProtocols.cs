@@ -86,7 +86,7 @@ namespace System.Net.Http.Functional.Tests
                 {
                     yield return new object[] { protocol, true };
 #pragma warning disable 0618 // SSL2/3 are deprecated
-                     // On certain platforms these are completely disabled and cannot be used at all.
+                    // On certain platforms these are completely disabled and cannot be used at all.
                     if (protocol != SslProtocols.Ssl2 && protocol != SslProtocols.Ssl3)
                     {
                         yield return new object[] { protocol, false };
@@ -100,10 +100,12 @@ namespace System.Net.Http.Functional.Tests
         [MemberData(nameof(GetAsync_AllowedSSLVersion_Succeeds_MemberData))]
         public async Task GetAsync_AllowedSSLVersion_Succeeds(SslProtocols acceptedProtocol, bool requestOnlyThisProtocol)
         {
+            int count = 0;
             using (HttpClientHandler handler = CreateHttpClientHandler())
             using (HttpClient client = CreateHttpClient(handler))
             {
-                handler.ServerCertificateCustomValidationCallback = TestHelper.AllowAllCertificates;
+                handler.ServerCertificateCustomValidationCallback =
+                    (request, cert, chain, errors) => { count++; return true; };
 
                 if (requestOnlyThisProtocol)
                 {
@@ -124,13 +126,23 @@ namespace System.Net.Http.Functional.Tests
 #pragma warning restore 0618
                 }
 
+                // Use a different SNI for each connection to prevent TLS 1.3 renegotiation issue: https://github.com/dotnet/runtime/issues/47378
+                client.DefaultRequestHeaders.Host = getTestSNIName();
+
                 var options = new LoopbackServer.Options { UseSsl = true, SslProtocols = acceptedProtocol };
                 await LoopbackServer.CreateServerAsync(async (server, url) =>
                 {
                     await TestHelper.WhenAllCompletedOrAnyFailed(
-                        server.AcceptConnectionSendResponseAndCloseAsync(),
-                        client.GetAsync(url));
+                      server.AcceptConnectionSendResponseAndCloseAsync(),
+                      client.GetAsync(url));
                 }, options);
+
+                Assert.Equal(1, count);
+            }
+
+            string getTestSNIName()
+            {
+                return $"{nameof(GetAsync_AllowedSSLVersion_Succeeds)}_{acceptedProtocol}_{requestOnlyThisProtocol}";
             }
         }
 

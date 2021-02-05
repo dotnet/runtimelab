@@ -499,15 +499,7 @@ namespace System.Net.Http
             _sendBuffer.Commit(2);
 
             HttpMethod normalizedMethod = HttpMethod.Normalize(request.Method);
-            if (normalizedMethod.Http3EncodedBytes != null)
-            {
-                BufferBytes(normalizedMethod.Http3EncodedBytes);
-            }
-            else
-            {
-                BufferLiteralHeaderWithStaticNameReference(H3StaticTable.MethodGet, normalizedMethod.Method);
-            }
-
+            BufferBytes(normalizedMethod.Http3EncodedBytes);
             BufferIndexedHeader(H3StaticTable.SchemeHttps);
 
             if (request.HasHeaders && request.Headers.Host != null)
@@ -519,9 +511,6 @@ namespace System.Net.Http
                 BufferBytes(_connection.Pool._http3EncodedAuthorityHostHeader);
             }
 
-            // The only way to reach H3 is to upgrade via an Alt-Svc header, so we can encode Alt-Used for every connection.
-            BufferBytes(_connection.AltUsedEncodedHeaderBytes);
-
             Debug.Assert(request.RequestUri != null);
             string pathAndQuery = request.RequestUri.PathAndQuery;
             if (pathAndQuery == "/")
@@ -532,6 +521,9 @@ namespace System.Net.Http
             {
                 BufferLiteralHeaderWithStaticNameReference(H3StaticTable.PathSlash, pathAndQuery);
             }
+
+            // The only way to reach H3 is to upgrade via an Alt-Svc header, so we can encode Alt-Used for every connection.
+            BufferBytes(_connection.AltUsedEncodedHeaderBytes);
 
             if (request.HasHeaders)
             {
@@ -743,7 +735,7 @@ namespace System.Net.Http
 
                 _recvBuffer.Discard(bytesRead);
 
-                if (NetEventSource.IsEnabled)
+                if (NetEventSource.Log.IsEnabled())
                 {
                     Trace($"Received frame {frameType} of length {payloadLength}.");
                 }
@@ -753,10 +745,13 @@ namespace System.Net.Http
                     case Http3FrameType.Headers:
                     case Http3FrameType.Data:
                         return ((Http3FrameType)frameType, payloadLength);
-                    case Http3FrameType.Settings:
+                    case Http3FrameType.Settings: // These frames should only be received on a control stream, not a response stream.
                     case Http3FrameType.GoAway:
                     case Http3FrameType.MaxPushId:
-                        // These frames should only be received on a control stream, not a response stream.
+                    case Http3FrameType.ReservedHttp2Priority: // These frames are explicitly reserved and must never be sent.
+                    case Http3FrameType.ReservedHttp2Ping:
+                    case Http3FrameType.ReservedHttp2WindowUpdate:
+                    case Http3FrameType.ReservedHttp2Continuation:
                         throw new Http3ConnectionException(Http3ErrorCode.UnexpectedFrame);
                     case Http3FrameType.DuplicatePush:
                     case Http3FrameType.PushPromise:
@@ -808,6 +803,9 @@ namespace System.Net.Http
                 _recvBuffer.Discard(processLength);
                 headersLength -= processLength;
             }
+
+            // Reset decoder state. Require because one decoder instance is reused to decode headers and trailers.
+            _headerDecoder.Reset();
         }
 
         private static ReadOnlySpan<byte> StatusHeaderNameBytes => new byte[] { (byte)'s', (byte)'t', (byte)'a', (byte)'t', (byte)'u', (byte)'s' };
@@ -886,7 +884,7 @@ namespace System.Net.Http
 
                 _response = new HttpResponseMessage()
                 {
-                    Version = Http3Connection.HttpVersion30,
+                    Version = HttpVersion.Version30,
                     RequestMessage = _request,
                     Content = new HttpConnectionResponseContent(),
                     StatusCode = (HttpStatusCode)statusCode
@@ -1171,7 +1169,7 @@ namespace System.Net.Http
             private Http3RequestStream? _stream;
             private HttpResponseMessage? _response;
 
-            public override bool CanRead => true;
+            public override bool CanRead => _stream != null;
 
             public override bool CanWrite => false;
 
@@ -1256,7 +1254,7 @@ namespace System.Net.Http
 
             public override bool CanRead => false;
 
-            public override bool CanWrite => true;
+            public override bool CanWrite => _stream != null;
 
             public Http3WriteStream(Http3RequestStream stream)
             {
