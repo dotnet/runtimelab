@@ -1815,7 +1815,7 @@ public:
         unsigned roundedByteSize = roundUp(byteSize, TARGET_POINTER_SIZE);
 #endif // OSX_ARM64_ABI
 
-#if !defined(TARGET_ARM)
+#if !defined(TARGET_ARM) && !defined(TARGET_WASM32)
         // Arm32 could have a struct with 8 byte alignment
         // which rounded size % 8 is not 0.
         assert(m_byteAlignment != 0);
@@ -7530,6 +7530,17 @@ public:
 #elif defined(TARGET_ARM64)
             reg     = REG_R11;
             regMask = RBM_R11;
+#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)  //TODO: empty better?
+            if (isCoreRTABI)
+            {
+                reg = REG_R10;
+                regMask = RBM_R10;
+            }
+            else
+            {
+                reg = REG_R11;
+                regMask = RBM_R11;
+            }
 #else
 #error Unsupported or unset target architecture
 #endif
@@ -7977,7 +7988,7 @@ private:
 
     UNATIVE_OFFSET unwindGetCurrentOffset(FuncInfoDsc* func);
 
-#if defined(TARGET_AMD64)
+#if defined(TARGET_AMD64) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO: delete?
 
     void unwindBegPrologWindows();
     void unwindPushWindows(regNumber reg);
@@ -8034,7 +8045,7 @@ private:
     // Get highest available level for SIMD codegen
     SIMDLevel getSIMDSupportLevel()
     {
-#if defined(TARGET_XARCH)
+#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
         if (compOpportunisticallyDependsOn(InstructionSet_AVX2))
         {
             return SIMD_AVX2_Supported;
@@ -9626,7 +9637,7 @@ public:
     // In case of Amd64 this doesn't include float regs saved on stack.
     unsigned compCalleeRegsPushed;
 
-#if defined(TARGET_XARCH)
+#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
     // Mask of callee saved float regs on stack.
     regMaskTP compCalleeFPRegsSavedMask;
 #endif
@@ -11227,6 +11238,27 @@ const instruction INS_ABS  = INS_fabs;
 const instruction INS_SQRT = INS_fsqrt;
 
 #endif // TARGET_ARM64
+
+#if defined(TARGET_WASM32) || defined(TARGET_WASM64)
+
+const instruction INS_SHIFT_LEFT_LOGICAL = INS_shl;
+const instruction INS_SHIFT_RIGHT_LOGICAL = INS_shr;
+const instruction INS_SHIFT_RIGHT_ARITHM = INS_sar;
+
+const instruction INS_AND = INS_and;
+const instruction INS_OR = INS_or;
+const instruction INS_XOR = INS_xor;
+const instruction INS_NEG = INS_neg;
+const instruction INS_TEST = INS_test;
+const instruction INS_MUL = INS_imul;
+const instruction INS_SIGNED_DIVIDE = INS_idiv;
+const instruction INS_UNSIGNED_DIVIDE = INS_div;
+const instruction INS_BREAKPOINT = INS_int3;
+const instruction INS_ADDC = INS_adc;
+const instruction INS_SUBC = INS_sbb;
+const instruction INS_NOT = INS_not;
+
+#endif // defined(TARGET_WASM32) || defined(TARGET_WASM64)
 
 /*****************************************************************************/
 

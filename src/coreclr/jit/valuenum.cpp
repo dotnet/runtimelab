@@ -57,6 +57,8 @@ struct FloatTraits
         unsigned bits = 0xFFC00000u;
 #elif defined(TARGET_ARMARCH)
         unsigned           bits = 0x7FC00000u;
+#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+        unsigned           bits = 0x7FC00000u;
 #else
 #error Unsupported or unset target architecture
 #endif
@@ -83,6 +85,8 @@ struct DoubleTraits
         unsigned long long bits = 0xFFF8000000000000ull;
 #elif defined(TARGET_ARMARCH)
         unsigned long long bits = 0x7FF8000000000000ull;
+#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+        unsigned long long bits = 0xFFF8000000000000ull;
 #else
 #error Unsupported or unset target architecture
 #endif

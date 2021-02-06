@@ -1027,7 +1027,7 @@ void Compiler::fgExtendDbgLifetimes()
                     LIR::Range initRange = LIR::EmptyRange();
                     initRange.InsertBefore(nullptr, zero, store);
 
-#if !defined(TARGET_64BIT)
+#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
                     DecomposeLongs::DecomposeRange(this, initRange);
 #endif // !defined(TARGET_64BIT)
                     m_pLowering->LowerRange(block, initRange);

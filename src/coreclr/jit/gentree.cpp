@@ -2894,7 +2894,7 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
         // nodes with GTF_ADDRMODE_NO_CSE and calculate a more accurate cost.
 
         addr->gtFlags |= GTF_ADDRMODE_NO_CSE;
-#ifdef TARGET_XARCH
+#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
         // addrmodeCount is the count of items that we used to form
         // an addressing mode.  The maximum value is 4 when we have
         // all of these:   { base, idx, cns, mul }
@@ -3025,7 +3025,7 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
                 }
             }
         }
-#elif defined TARGET_ARM64
+#elif defined TARGET_ARM64 
         if (base)
         {
             *pCostEx += base->GetCostEx();
@@ -3331,7 +3331,7 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
                 goto COMMON_CNS;
             }
 
-#elif defined TARGET_XARCH
+#elif defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
 
             case GT_CNS_STR:
 #ifdef TARGET_AMD64
@@ -3657,6 +3657,16 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
                         costSz = 4;
                     }
 #elif defined(TARGET_XARCH)
+                    costEx = 1;
+                    costSz = 2;
+
+                    if (isflt || varTypeIsFloating(op1->TypeGet()))
+                    {
+                        /* cast involving floats always go through memory */
+                        costEx = IND_COST_EX * 2;
+                        costSz = 6;
+                    }
+#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
                     costEx = 1;
                     costSz = 2;
 

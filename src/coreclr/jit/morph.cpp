@@ -3065,6 +3065,9 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
 #elif defined(TARGET_X86)
 
         passUsingFloatRegs = false;
+#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+
+        passUsingFloatRegs = varTypeIsFloating(argx);
 
 #else
 #error Unsupported or unset target architecture
@@ -3115,7 +3118,7 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
                 assert(structSize == info.compCompHnd->getClassSize(objClass));
             }
         }
-#if defined(TARGET_AMD64)
+#if defined(TARGET_AMD64) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
 #ifdef UNIX_AMD64_ABI
         if (!isStructArg)
         {

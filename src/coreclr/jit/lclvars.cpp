@@ -5700,7 +5700,7 @@ int Compiler::lvaAssignVirtualFrameOffsetToArg(unsigned lclNum,
 
 #if defined(TARGET_X86)
         argOffs += TARGET_POINTER_SIZE;
-#elif defined(TARGET_AMD64)
+#elif defined(TARGET_AMD64) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
         // Register arguments on AMD64 also takes stack space. (in the backing store)
         varDsc->SetStackOffset(argOffs);
         argOffs += TARGET_POINTER_SIZE;

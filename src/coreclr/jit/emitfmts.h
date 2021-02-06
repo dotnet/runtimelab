@@ -8,6 +8,8 @@
 #include "emitfmtsarm.h"
 #elif defined(TARGET_ARM64)
 #include "emitfmtsarm64.h"
+#elif defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO: need anything here?  Try removing
+#include "emitfmtswasm.h"
 #else
 #error Unsupported or unset target architecture
 #endif // target type

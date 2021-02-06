@@ -4371,12 +4371,13 @@ void Compiler::EndPhase(Phases phase)
     mostRecentlyActivePhase = phase;
 }
 
-
+#if defined(TARGET_WASM32) || defined(TARGET_WASM64)
 inline void DoLlvmPhase(Compiler* _compiler)
 {
     fatal(CORJIT_SKIPPED);
     //assert(false);
 }
+#endif
 
 //------------------------------------------------------------------------
 // compCompile: run phases needed for compilation
@@ -5053,8 +5054,10 @@ void Compiler::compCompile(void** methodCodePtr, ULONG* methodCodeSize, JitFlags
     Rationalizer rat(this); // PHASE_RATIONALIZE
     rat.Run();
 
+#if defined(TARGET_WASM32) || defined(TARGET_WASM64)
     // TODO:after rat, but better before?
     DoLlvmPhase(this); // DoPhase?
+#endif
 
     return;
     // Here we do "simple lowering".  When the RyuJIT backend works for all

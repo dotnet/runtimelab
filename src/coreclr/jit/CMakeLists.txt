@@ -23,7 +23,11 @@ function(create_standalone_jit)
     endif()
     set(JIT_ARCH_LINK_LIBRARIES gcinfo_unix_arm64)
   else()
-    set(JIT_ARCH_LINK_LIBRARIES gcinfo_${TARGETDETAILS_OS}_${TARGETDETAILS_ARCH})
+    if(TARGETDETAILS_OS STREQUAL "browser")
+      set(JIT_ARCH_LINK_LIBRARIES gcinfo_win_x64) # TODO: Wasm
+    else()
+      set(JIT_ARCH_LINK_LIBRARIES gcinfo_${TARGETDETAILS_OS}_${TARGETDETAILS_ARCH})
+    endif()
   endif()
 
   if(TARGETDETAILS_ARCH STREQUAL "x64")
@@ -34,6 +38,10 @@ function(create_standalone_jit)
     set(JIT_ARCH_SOURCES ${JIT_I386_SOURCES})
   elseif(TARGETDETAILS_ARCH STREQUAL "arm64")
     set(JIT_ARCH_SOURCES ${JIT_ARM64_SOURCES})
+  elseif(TARGETDETAILS_ARCH STREQUAL "wasm64")
+    set(JIT_ARCH_SOURCES ${JIT_WASM64_SOURCES})
+  elseif(TARGETDETAILS_ARCH STREQUAL "wasm32")
+    set(JIT_ARCH_SOURCES ${JIT_WASM32_SOURCES})
   else()
     clr_unknown_arch()
   endif()
@@ -57,7 +65,18 @@ function(create_standalone_jit)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE FEATURE_SIMD)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE FEATURE_HW_INTRINSICS)
   endif ()
+
+  if (TARGETDETAILS_ARCH STREQUAL "wasm64")
+    target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM64)
+  endif ()
+  if (TARGETDETAILS_ARCH STREQUAL "wasm32")
+    target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM32)
+  endif ()
 endfunction()
+
+if (TARGETDETAILS_ARCH STREQUAL "wasm64" OR TARGETDETAILS_ARCH STREQUAL "wasm32")
+    set(CLR_CMAKE_TARGET_ARCH_WASM 1)
+endif ()
 
 if (CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_ARM64 OR (CLR_CMAKE_TARGET_ARCH_I386 AND NOT CLR_CMAKE_HOST_UNIX))
   add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_ARCH>>>:FEATURE_SIMD>)
@@ -270,6 +289,7 @@ if (CLR_CMAKE_TARGET_WIN32)
     list (APPEND JIT_HEADERS
       emitfmtsxarch.h
       emitxarch.h
+      emitwasm.h
       hwintrinsiclistxarch.h
       hwintrinsic.h
       instrsxarch.h
@@ -289,6 +309,34 @@ set( JIT_AMD64_SOURCES
   simdcodegenxarch.cpp
   targetamd64.cpp
   unwindamd64.cpp
+  hwintrinsicxarch.cpp
+  hwintrinsiccodegenxarch.cpp
+)
+
+# TODO this is just a copy of AMD64_SOURCES to get started - e.g. simd,hwintrinsics doesn't make sense for wasm
+set( JIT_WASM64_SOURCES
+  codegenwasm.cpp
+  emitwasm.cpp
+  lowerwasm.cpp
+  lsrawasm.cpp
+  simd.cpp
+  simdashwintrinsic.cpp
+  simdcodegenxarch.cpp
+  targetwasm.cpp
+  unwindwasm.cpp
+  hwintrinsicxarch.cpp
+  hwintrinsiccodegenxarch.cpp
+)
+set( JIT_WASM32_SOURCES
+  codegenwasm.cpp
+  emitwasm.cpp
+  lowerwasm.cpp
+  lsrawasm.cpp
+  simd.cpp
+  simdashwintrinsic.cpp
+  simdcodegenxarch.cpp
+  targetwasm.cpp
+  unwindwasm.cpp
   hwintrinsicxarch.cpp
   hwintrinsiccodegenxarch.cpp
 )
@@ -363,6 +411,8 @@ convert_to_absolute_path(JIT_AMD64_SOURCES ${JIT_AMD64_SOURCES})
 convert_to_absolute_path(JIT_ARM_SOURCES ${JIT_ARM_SOURCES})
 convert_to_absolute_path(JIT_I386_SOURCES ${JIT_I386_SOURCES})
 convert_to_absolute_path(JIT_ARM64_SOURCES ${JIT_ARM64_SOURCES})
+convert_to_absolute_path(JIT_WASM64_SOURCES ${JIT_WASM64_SOURCES})
+convert_to_absolute_path(JIT_WASM32_SOURCES ${JIT_WASM32_SOURCES})
 
 set(JIT_DLL_MAIN_FILE ${CMAKE_CURRENT_LIST_DIR}/dllmain.cpp)
 
@@ -499,6 +549,9 @@ if (CLR_CMAKE_BUILD_SUBSET_ALLJITS AND NOT CLR_CROSS_COMPONENTS_BUILD)
   create_standalone_jit(TARGET clrjit_unix_arm_${ARCH_HOST_NAME} OS unix ARCH arm)
   create_standalone_jit(TARGET clrjit_win_arm_${ARCH_HOST_NAME} OS win ARCH arm)
   create_standalone_jit(TARGET clrjit_win_x86_${ARCH_HOST_NAME} OS win ARCH x86)
+  create_standalone_jit(TARGET clrjit_browser_wasm32_${ARCH_HOST_NAME} OS browser ARCH wasm32)
+  # uncomment to enable 8 byte pointer size version of the wasm clrjit.dll
+  #create_standalone_jit(TARGET clrjit_browser_wasm64_${ARCH_HOST_NAME} OS browser ARCH wasm64)
 else()
   if (CLR_CMAKE_TARGET_UNIX)
     create_standalone_jit(TARGET clrjit_unix_${ARCH_TARGET_NAME}_${ARCH_HOST_NAME} OS unix ARCH ${ARCH_TARGET_NAME})

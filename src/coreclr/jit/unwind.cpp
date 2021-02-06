@@ -425,6 +425,8 @@ UNATIVE_OFFSET Compiler::unwindGetCurrentOffset(FuncInfoDsc* func)
 
 // See unwindX86.cpp
 
+#elif defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO
+
 #else // TARGET*
 
 #error Unsupported or unset target architecture

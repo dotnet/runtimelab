@@ -97,7 +97,7 @@ private:
     void ContainCheckCompare(GenTreeOp* node);
     void ContainCheckBinary(GenTreeOp* node);
     void ContainCheckBoundsChk(GenTreeBoundsChk* node);
-#ifdef TARGET_XARCH
+#if defined(TARGET_XARCH) || defined (TARGET_WASM32) || defined(TARGET_WASM64)
     void ContainCheckFloatBinary(GenTreeOp* node);
     void ContainCheckIntrinsic(GenTreeOp* node);
 #endif // TARGET_XARCH
@@ -228,7 +228,7 @@ private:
     // return true if this call target is within range of a pc-rel call on the machine
     bool IsCallTargetInRange(void* addr);
 
-#if defined(TARGET_XARCH)
+#if defined(TARGET_XARCH) || defined (TARGET_WASM32) || defined(TARGET_WASM64)
     GenTree* PreferredRegOptionalOperand(GenTree* tree);
 
     // ------------------------------------------------------------------

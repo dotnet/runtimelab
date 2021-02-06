@@ -147,6 +147,7 @@
 #if !defined(HOST_ARM64)
 #define _CROSS_COMPILER_
 #endif
+#elif defined(TARGET_WASM32)
 #else
 #error Unsupported or unset target architecture
 #endif
@@ -194,6 +195,8 @@
 #define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_ARMNT
 #elif defined(TARGET_ARM64)
 #define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_ARM64 // 0xAA64
+#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_AMD64 // TODO: what is this?
 #else
 #error Unsupported or unset target architecture
 #endif
@@ -239,10 +242,11 @@
 #define UNIX_AMD64_ABI_ONLY(x)
 #endif // defined(UNIX_AMD64_ABI)
 
-#if defined(DEBUG) && !defined(OSX_ARM64_ABI)
+#if defined(DEBUG) && !defined(OSX_ARM64_ABI)  && !defined(TARGET_WASM32)
 // On all platforms except Arm64 OSX arguments on the stack are taking
 // register size slots. On these platforms we could check that stack slots count
 // matchs out new byte size calculations.
+// For Wasm32 doubles are 8 bytes so can't be asserted against the size of a "register"
 #define DEBUG_ARG_SLOTS
 #endif
 

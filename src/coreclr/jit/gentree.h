@@ -7363,7 +7363,7 @@ inline unsigned GenTree::GetMultiRegCount()
     }
 #endif
 
-#if !defined(TARGET_64BIT)
+#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
     if (OperIsMultiRegOp())
     {
         return AsMultiRegOp()->GetRegCount();
@@ -7432,7 +7432,7 @@ inline regNumber GenTree::GetRegByIndex(int regIndex)
         return AsPutArgSplit()->GetRegNumByIdx(regIndex);
     }
 #endif
-#if !defined(TARGET_64BIT)
+#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
     if (OperIsMultiRegOp())
     {
         return AsMultiRegOp()->GetRegNumByIdx(regIndex);
@@ -7492,7 +7492,7 @@ inline var_types GenTree::GetRegTypeByIndex(int regIndex)
         return AsPutArgSplit()->GetRegType(regIndex);
     }
 #endif
-#if !defined(TARGET_64BIT)
+#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
     if (OperIsMultiRegOp())
     {
         return AsMultiRegOp()->GetRegType(regIndex);
@@ -7556,7 +7556,7 @@ inline unsigned int GenTree::GetRegSpillFlagByIdx(int regIndex) const
         return AsPutArgSplit()->GetRegSpillFlagByIdx(regIndex);
     }
 #endif
-#if !defined(TARGET_64BIT)
+#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
     if (OperIsMultiRegOp())
     {
         return AsMultiRegOp()->GetRegSpillFlagByIdx(regIndex);

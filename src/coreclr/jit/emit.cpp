@@ -2172,7 +2172,7 @@ bool emitter::emitHasEpilogEnd()
 
 #endif // JIT32_GCENCODER
 
-#ifdef TARGET_XARCH
+#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
 
 /*****************************************************************************
  *
@@ -3274,6 +3274,9 @@ const size_t hexEncodingSize = 19;
 #elif defined(TARGET_ARM)
 const size_t basicIndent     = 12;
 const size_t hexEncodingSize = 11;
+#elif defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+const size_t basicIndent = 7;
+const size_t hexEncodingSize = 21;
 #endif
 
 #ifdef DEBUG
@@ -4474,6 +4477,8 @@ AGAIN:
         // The size of IF_LARGEJMP/IF_LARGEADR/IF_LARGELDC are 8 or 12.
         // All other code size is 4.
         assert((sizeDif == 4) || (sizeDif == 8));
+#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+        jmp->idCodeSize(jsz);
 #else
 #error Unsupported or unset target architecture
 #endif
@@ -5908,6 +5913,8 @@ unsigned emitter::emitEndCodeGen(Compiler* comp,
 #elif defined(TARGET_ARM64)
                     assert(!jmp->idAddr()->iiaHasInstrCount());
                     emitOutputLJ(NULL, adr, jmp);
+#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+                    * (BYTE*)adr -= (BYTE)adj;
 #else
 #error Unsupported or unset target architecture
 #endif
@@ -5916,7 +5923,7 @@ unsigned emitter::emitEndCodeGen(Compiler* comp,
                 {
                     // Patch Forward non-Short Jump
                     CLANG_FORMAT_COMMENT_ANCHOR;
-#if defined(TARGET_XARCH)
+#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
                     *(int*)adr -= adj;
 #elif defined(TARGET_ARMARCH)
                     assert(!jmp->idAddr()->iiaHasInstrCount());

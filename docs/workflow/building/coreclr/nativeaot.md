@@ -11,8 +11,13 @@ The Native AOT toolchain can be currently built for Linux, macOS and Windows x64
    - Run `dotnet publish --packages pkg -r [win-x64|linux-x64|osx-64] -c [Debug|Release]` to publish your project. `--packages pkg` option restores the package into a local directory that is easy to cleanup once you are done. It avoids polluting the global nuget cache with your locally built dev package.
 
 ## Building for Web Assembly
+- This branch contains a version of the WebAssembly compiler that creates LLVM from the clrjit to take advantage of RyuJits optimisations.  It goes from RyuJIT IR -> LLVM instead of the NativeAOT-LLVM branch way of CIL -> LLVM.
+- It does not work, yet or maybe never.
 - Currently only tested on Windows
+- Build the x64 libraries and compiler as per the Building section.
 - Run `build nativeaot+libs+nativeaot.packages -rc [Debug|Release] -lc [Debug|Release] -a wasm -os Browser -runtimeFlavor CoreCLR`
+- The compiler can now be debugged with the Wasm clrjit.  Load the clrjit_browser_wasm32_x64.vcxproj which can be found in artifacts\obj\coreclr\windows.x64.Debug\jit
+- Run Ilc with a .rsp file as normal for Web assembly, e.g. if you build the WebAssembly tests you can use artifacts\tests\coreclr\Browser.wasm.Debug\nativeaot\SmokeTests\HelloWasm\HelloWasm\native\HelloWasm.ilc.rsp
 - Add the package directory to your `nuget.config` as above.
 - Run `dotnet publish -r browser-wasm -c [Debug|Release] /p:Platform=wasm` to publish.
 

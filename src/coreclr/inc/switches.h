@@ -65,6 +65,8 @@
     #define USE_UPPER_ADDRESS       0
 #endif // !HOST_UNIX
 
+#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+    #define USE_UPPER_ADDRESS       0 // TODO : what's this?
 #else
     #error Please add a new #elif clause and define all portability macros for the new platform
 #endif

@@ -145,6 +145,8 @@ public:
         REGNUM_R13,
         REGNUM_R14,
         REGNUM_R15,
+#elif TARGET_WASM32 || TARGET_WASM64
+// TODO????
 #else
         PORTABILITY_WARNING("Register numbers not defined on this platform")
 #endif

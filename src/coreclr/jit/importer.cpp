@@ -3783,7 +3783,7 @@ GenTree* Compiler::impIntrinsic(GenTree*                newobjThis,
         GenTree* op1;
         GenTree* op2;
 
-#if defined(TARGET_XARCH) || defined(TARGET_ARM64)
+#if defined(TARGET_XARCH) || defined(TARGET_ARM64) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
         // TODO-ARM-CQ: reenable treating Interlocked operation as intrinsic
 
         // Note that CORINFO_INTRINSIC_InterlockedAdd32/64 are not actually used.
