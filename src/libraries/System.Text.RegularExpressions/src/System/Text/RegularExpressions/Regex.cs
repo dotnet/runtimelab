@@ -14,7 +14,7 @@ using System.Threading;
 namespace System.Text.RegularExpressions
 {
     /// <summary>
-    /// Represents an immutable regular expression. Also contains static methods that
+    /// Represents an  immutable regular expression. Also contains static methods that
     /// allow use of regular expressions without instantiating a Regex explicitly.
     /// </summary>
     public partial class Regex : ISerializable
