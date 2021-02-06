@@ -89,6 +89,11 @@ namespace ILCompiler
             {
                 return false;
             }
-        } 
+        }
+
+        public override bool AllowInstanceMethodOptimization(MethodDesc method)
+        {
+            return true;
+        }
     }
 }
