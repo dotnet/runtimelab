@@ -83,6 +83,14 @@ namespace Internal.TypeSystem.Interop
             }
         }
 
+        public override DefType BaseType
+        {
+            get
+            {
+                return InteropTypes.GetNativeFunctionPointerWrapper(Context);
+            }
+        }
+
         public override bool IsSealed
         {
             get
