@@ -106,6 +106,15 @@ namespace ILCompiler
                 RootingHelpers.RootType(rootProvider, type, "RD.XML root");
             }
 
+            var marshalStructureDegreeAttribute = typeElement.Attribute("MarshalStructure");
+            if (marshalStructureDegreeAttribute != null && type is DefType defType)
+            {
+                if (marshalStructureDegreeAttribute.Value != "Required All")
+                    throw new NotSupportedException($"\"{marshalStructureDegreeAttribute.Value}\" is not a supported value for the \"MarshalStructure\" attribute of the \"Type\" Runtime Directive. Supported values are \"Required All\".");
+
+                rootProvider.RootStructMarshallingData(defType, "RD.XML root");
+            }
+
             foreach (var element in typeElement.Elements())
             {
                 switch (element.Name.LocalName)
