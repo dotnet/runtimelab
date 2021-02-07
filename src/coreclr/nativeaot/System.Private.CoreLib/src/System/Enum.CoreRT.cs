@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime;
 using System.Runtime.CompilerServices;
 using Internal.Runtime.CompilerServices;
@@ -243,6 +244,7 @@ namespace System
             return GetEnumInfo(enumType).UnderlyingType;
         }
 
+        [RequiresDynamicCode("It might not be possible to create an array of the enum type at runtime.")]
         public static Array GetValues(Type enumType)
         {
             if (enumType == null)
