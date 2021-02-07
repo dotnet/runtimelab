@@ -9,7 +9,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendTargetFrameworkToOutputPath Condition="'$(BuildingInsideVisualStudio)' == 'true'">true</AppendTargetFrameworkToOutputPath>
-    <OutputPath>E:\GitHub\runtimelab\artifacts\obj\coreclr\windows.x64.Debug\jit\Debug\</OutputPath>
+    <OutputPath>$(RuntimeBinDir)ilc</OutputPath>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
     <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
     <RuntimeIdentifiers>linux-x64;win-x64;osx-x64</RuntimeIdentifiers>
@@ -59,7 +59,8 @@
       <Pack>false</Pack>
     </Content>
 
-    <Content Condition="!Exists('$(ObjWriterArtifactPath)')" Include="$(NuGetPackageRoot)runtime.$(ILCompilerRuntimeIdentifier).microsoft.dotnet.ilcompiler\$(ILCompilerVersion)\tools\$(LibPrefix)objwriter$(LibSuffix)">
+    <Content Condition="!Exists('$(ObjWriterArtifactPath)')"
+      Include="$(NuGetPackageRoot)runtime.$(ILCompilerRuntimeIdentifier).microsoft.dotnet.ilcompiler\$(ILCompilerVersion)\tools\$(LibPrefix)objwriter$(LibSuffix)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
@@ -134,6 +135,10 @@
        On Linux renaming the library makes it difficult to debug it. -->
   <ItemGroup Condition="'$(TargetsWindows)' == 'true'">
     <Content Remove="$(RuntimeBinDir)$(LibPrefix)clrjit_$(TargetSpec)$(LibSuffix)" />
-    <Content Include="$(RuntimeBinDir)$(LibPrefix)clrjit$(LibSuffix)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Link="$(LibPrefix)clrjit_$(TargetSpec)$(LibSuffix)" />
+    <Content Include="$(RuntimeBinDir)$(LibPrefix)clrjit$(LibSuffix)"
+      CopyToOutputDirectory="PreserveNewest"
+      CopyToPublishDirectory="PreserveNewest"
+      Link="$(LibPrefix)clrjit_$(TargetSpec)$(LibSuffix)"
+      />
   </ItemGroup>
 </Project>
