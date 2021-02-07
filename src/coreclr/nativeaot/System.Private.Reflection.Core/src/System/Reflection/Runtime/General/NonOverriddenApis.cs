@@ -148,8 +148,6 @@ namespace System.Reflection.Runtime.TypeInfos
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         public sealed override MemberInfo[] FindMembers(MemberTypes memberType, BindingFlags bindingAttr, MemberFilter filter, object filterCriteria) => base.FindMembers(memberType, bindingAttr, filter, filterCriteria);
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicEvents)]
-        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2085:UnrecognizedReflectionPattern",
-            Justification = "Linker doesn't recognize GetEvents(BindingFlags.Public) but this is what the body is doing")]
         public sealed override EventInfo[] GetEvents() => base.GetEvents();
         protected sealed override bool IsContextfulImpl() => base.IsContextfulImpl();
         public sealed override bool IsSubclassOf(Type c) => base.IsSubclassOf(c);
