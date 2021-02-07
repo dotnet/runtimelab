@@ -166,7 +166,7 @@ namespace System.Text.RegularExpressions.Tests
 
                 string[] possible_errors = new string[]
                 {"RightToLeft", "conditional", "lookahead", "lookbehind", "backreference",
-                    "atomic", "contiguous", "characterless", "0-length match"};
+                    "atomic", "contiguous", "characterless", "0-length match", "ECMAScript"};
 
                 Assert.True(Array.Exists(possible_errors, nse.Message.Contains));
 
@@ -225,6 +225,7 @@ namespace System.Text.RegularExpressions.Tests
         {
             yield return new object[] { @"\A(abc)*\Z", RegexOptions.None, "0-length match" };
             yield return new object[] { @"abc", RegexOptions.RightToLeft, "RightToLeft" };
+            yield return new object[] { @"abc", RegexOptions.ECMAScript, "ECMAScript" };
             yield return new object[] { @"^(a)?(?(1)a|b)+$", RegexOptions.None, "captured group conditional" };
             yield return new object[] { @"(abc)\1", RegexOptions.None, "backreference" };
             yield return new object[] { @"a(?=d).", RegexOptions.None, "positive lookahead" };
@@ -1360,8 +1361,8 @@ namespace System.Text.RegularExpressions.Tests
         [InlineData("aba|bab", "baaabbbaba", "(6,9)")]
         [InlineData("(aa|aaa)*|(a|aaaaa)", "aa", "(0,2)(0,2)")]
         [InlineData("(a.|.a.)*|(a|.a...)", "aa", "(0,2)(0,2)")]
-        //[InlineData("ab|a", "xabc", "(1,3)")]
-        //[InlineData("ab|a", "xxabc", "(2,4)")]
+        [InlineData("ab|a", "xabc", "(1,2)")] // is (1,3) in non-DFA mode in AttRegexTests.Test
+        [InlineData("ab|a", "xxabc", "(2,3)")] // is (2,4) in non-DFA mode in AttRegexTests.Test
         [InlineData("(?i)(Ab|cD)*", "aBcD", "(0,4)(2,4)")]
         [InlineData("[^-]", "--a", "(2,3)")]
         [InlineData("[a-]*", "--a", "(0,3)")]
@@ -1528,17 +1529,17 @@ namespace System.Text.RegularExpressions.Tests
         [InlineData("X(.?){7,8}Y", "X1234567Y", "(0,9)(8,8)")] // was "(0,9)(7,8)"
         [InlineData("X(.?){8,8}Y", "X1234567Y", "(0,9)(8,8)")]
         [InlineData("(a|ab|c|bcd){0,}(d*)", "ababcd", "(0,1)(1,1)")] // was "(0,6)(3,6)(6,6)"
-        //[InlineData("(a|ab|c|bcd){1,}(d*)", "ababcd", "(0,1)(1,1)")] // was "(0,6)(3,6)(6,6)"
+        [InlineData("(a|ab|c|bcd){1,}(d*)", "ababcd", "(0,6)")] // is "(0,1)(1,1)" in non DFA mode and was "(0,6)(3,6)(6,6)"
         [InlineData("(a|ab|c|bcd){2,}(d*)", "ababcd", "(0,6)(3,6)(6,6)")]
         [InlineData("(a|ab|c|bcd){3,}(d*)", "ababcd", "(0,6)(3,6)(6,6)")]
         [InlineData("(a|ab|c|bcd){4,}(d*)", "ababcd", "NOMATCH")]
         [InlineData("(a|ab|c|bcd){0,10}(d*)", "ababcd", "(0,1)(1,1)")] // was "(0,6)(3,6)(6,6)"
-        //[InlineData("(a|ab|c|bcd){1,10}(d*)", "ababcd", "(0,1)(1,1)")] // was "(0,6)(3,6)(6,6)"
+        [InlineData("(a|ab|c|bcd){1,10}(d*)", "ababcd", "(0,6)")] // is "(0,1)(1,1)" in non DFA mode and was "(0,6)(3,6)(6,6)"
         [InlineData("(a|ab|c|bcd){2,10}(d*)", "ababcd", "(0,6)(3,6)(6,6)")]
         [InlineData("(a|ab|c|bcd){3,10}(d*)", "ababcd", "(0,6)(3,6)(6,6)")]
         [InlineData("(a|ab|c|bcd){4,10}(d*)", "ababcd", "NOMATCH")]
         [InlineData("(a|ab|c|bcd)*(d*)", "ababcd", "(0,1)(1,1)")] // was "(0,6)(3,6)(6,6)"
-        //[InlineData("(a|ab|c|bcd)+(d*)", "ababcd", "(0,1)(1,1)")] // was "(0,6)(3,6)(6,6)"
+        [InlineData("(a|ab|c|bcd)+(d*)", "ababcd", "(0,6)")] // is "(0,1)(1,1)" in non DFA mode was "(0,6)(3,6)(6,6)"
         [InlineData("(ab|a|c|bcd){0,}(d*)", "ababcd", "(0,6)(4,5)(5,6)")] // was "(0,6)(3,6)(6,6)"
         [InlineData("(ab|a|c|bcd){1,}(d*)", "ababcd", "(0,6)(4,5)(5,6)")] // was "(0,6)(3,6)(6,6)"
         [InlineData("(ab|a|c|bcd){2,}(d*)", "ababcd", "(0,6)(4,5)(5,6)")] // was "(0,6)(3,6)(6,6)"

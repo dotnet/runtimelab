@@ -134,11 +134,14 @@ namespace System.Text.RegularExpressions
         /// </summary>
         private static SRM.Regex InitializeSRM(RegexNode rootNode, RegexOptions options)
         {
-            // TBD: this could potentially be supported quite easily
+            // TBD: this could potentially be supported quite easily but is not of priority
             // it essentially affects how the iput string is being processed  -- characters are read backwards --
             // and what the right semantics of anchors is in this case (perhaps still unchanged)
             if ((options & RegexOptions.RightToLeft) != 0)
                 throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + RegexOptions.RightToLeft);
+            // TBD: this could also be supported easily, but is not of priority
+            if ((options & RegexOptions.ECMAScript) != 0)
+                throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + RegexOptions.ECMAScript);
 
             return new SRM.Regex(rootNode, options);
         }
