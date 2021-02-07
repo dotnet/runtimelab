@@ -183,8 +183,6 @@ mono_arch_create_sdb_trampoline (gboolean single_step, MonoTrampInfo **info, gbo
 	/* Initialize a MonoContext structure on the stack */
 	s390_stmg (code, s390_r0, s390_r14, STK_BASE, gr_offset);
 	s390_stg  (code, s390_r1, 0, STK_BASE, sp_offset);
-	sp_offset = ctx_offset + G_STRUCT_OFFSET(MonoContext, uc_stack.ss_sp);
-	s390_stg  (code, s390_r1, 0, STK_BASE, sp_offset);
 	s390_stg  (code, s390_r14, 0, STK_BASE, ip_offset);
 	
 	fp_offset = ctx_offset + G_STRUCT_OFFSET(MonoContext, uc_mcontext.fpregs.fprs);
