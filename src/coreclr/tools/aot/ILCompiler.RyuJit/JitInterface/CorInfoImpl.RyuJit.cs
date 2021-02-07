@@ -1716,6 +1716,11 @@ namespace Internal.JitInterface
             if (method.IsRawPInvoke())
                 return false;
 
+            // Stub is required to trigger precise static constructor
+            TypeDesc owningType = method.OwningType;
+            if (_compilation.HasLazyStaticConstructor(owningType) && !((MetadataType)owningType).IsBeforeFieldInit)
+                return true;
+
             // We could have given back the PInvoke stub IL to the JIT and let it inline it, without
             // checking whether there is any stub required. Save the JIT from doing the inlining by checking upfront.
             return IsPInvokeStubRequired(method);
