@@ -32,8 +32,11 @@ namespace System.Reflection.Runtime.Assemblies
     internal partial class RuntimeAssembly
     {
 #if DEBUG
+        [RequiresUnreferencedCode("Assembly.CreateInstance is not supported with trimming. Use Type.GetType instead.")]
         public sealed override object CreateInstance(string typeName, bool ignoreCase, BindingFlags bindingAttr, Binder binder, object[] args, CultureInfo culture, object[] activationAttributes) => base.CreateInstance(typeName, ignoreCase, bindingAttr, binder, args, culture, activationAttributes);
+        [RequiresUnreferencedCode("Types might be removed")]
         public sealed override Type GetType(string name) => base.GetType(name);
+        [RequiresUnreferencedCode("Types might be removed")]
         public sealed override Type GetType(string name, bool throwOnError) => base.GetType(name, throwOnError);
         public sealed override bool IsDynamic => base.IsDynamic;
         public sealed override string ToString() => base.ToString();
@@ -105,8 +108,11 @@ namespace System.Reflection.Runtime.Modules
     internal abstract partial class RuntimeModule
     {
 #if DEBUG
+        [RequiresUnreferencedCode("Types might be removed")]
         public sealed override Type[] FindTypes(TypeFilter filter, object filterCriteria) => base.FindTypes(filter, filterCriteria);
+        [RequiresUnreferencedCode("Types might be removed")]
         public sealed override Type GetType(string className) => base.GetType(className);
+        [RequiresUnreferencedCode("Types might be removed")]
         public sealed override Type GetType(string className, bool ignoreCase) => base.GetType(className, ignoreCase);
 #endif //DEBUG
     }
@@ -139,7 +145,9 @@ namespace System.Reflection.Runtime.TypeInfos
     {
 #if DEBUG
         public sealed override Type[] FindInterfaces(TypeFilter filter, object filterCriteria) => base.FindInterfaces(filter, filterCriteria);
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         public sealed override MemberInfo[] FindMembers(MemberTypes memberType, BindingFlags bindingAttr, MemberFilter filter, object filterCriteria) => base.FindMembers(memberType, bindingAttr, filter, filterCriteria);
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicEvents)]
         public sealed override EventInfo[] GetEvents() => base.GetEvents();
         protected sealed override bool IsContextfulImpl() => base.IsContextfulImpl();
         public sealed override bool IsSubclassOf(Type c) => base.IsSubclassOf(c);

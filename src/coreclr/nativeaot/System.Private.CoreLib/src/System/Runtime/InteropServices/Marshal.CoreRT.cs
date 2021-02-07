@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text;
 
@@ -237,21 +238,25 @@ namespace System.Runtime.InteropServices
             throw new PlatformNotSupportedException();
         }
 
+        [RequiresDynamicCode("Marshalling code for the object might not be available")]
         public static byte ReadByte(object ptr, int ofs)
         {
             return ReadValueSlow(ptr, ofs, ReadByte);
         }
 
+        [RequiresDynamicCode("Marshalling code for the object might not be available")]
         public static short ReadInt16(object ptr, int ofs)
         {
             return ReadValueSlow(ptr, ofs, ReadInt16);
         }
 
+        [RequiresDynamicCode("Marshalling code for the object might not be available")]
         public static int ReadInt32(object ptr, int ofs)
         {
             return ReadValueSlow(ptr, ofs, ReadInt32);
         }
 
+        [RequiresDynamicCode("Marshalling code for the object might not be available")]
         public static long ReadInt64(object ptr, int ofs)
         {
             return ReadValueSlow(ptr, ofs, ReadInt64);
@@ -263,6 +268,7 @@ namespace System.Runtime.InteropServices
         // It's only there for backcompact
         // People should instead use the IntPtr overloads
         //====================================================================
+        [RequiresDynamicCode("Marshalling code for the object might not be available")]
         private static unsafe T ReadValueSlow<T>(object ptr, int ofs, Func<IntPtr, int, T> readValueHelper)
         {
             // Consumers of this method are documented to throw AccessViolationException on any AV
@@ -309,26 +315,31 @@ namespace System.Runtime.InteropServices
             }
         }
 
+        [RequiresDynamicCode("Marshalling code for the object might not be available")]
         public static void WriteByte(object ptr, int ofs, byte val)
         {
             WriteValueSlow(ptr, ofs, val, (IntPtr nativeHome, int offset, byte value) => WriteByte(nativeHome, offset, value));
         }
 
+        [RequiresDynamicCode("Marshalling code for the object might not be available")]
         public static void WriteInt16(object ptr, int ofs, short val)
         {
             WriteValueSlow(ptr, ofs, val, WriteInt16);
         }
 
+        [RequiresDynamicCode("Marshalling code for the object might not be available")]
         public static void WriteInt32(object ptr, int ofs, int val)
         {
             WriteValueSlow(ptr, ofs, val, WriteInt32);
         }
 
+        [RequiresDynamicCode("Marshalling code for the object might not be available")]
         public static void WriteInt64(object ptr, int ofs, long val)
         {
             WriteValueSlow(ptr, ofs, val, WriteInt64);
         }
 
+        [RequiresDynamicCode("Marshalling code for the object might not be available")]
         private static unsafe void WriteValueSlow<T>(object ptr, int ofs, T val, Action<IntPtr, int, T> writeValueHelper)
         {
             // Consumers of this method are documented to throw AccessViolationException on any AV
