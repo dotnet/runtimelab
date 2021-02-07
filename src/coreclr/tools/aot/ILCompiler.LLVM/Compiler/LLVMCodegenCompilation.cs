@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -61,6 +62,7 @@ namespace ILCompiler
 
             var nodes = _dependencyGraph.MarkedNodeList;
 
+            Console.WriteLine($"RyuJIT compilation results, total method {totalMethodCount} RyuJit Methods {ryuJitMethodCount} % {ryuJitMethodCount * 100 / totalMethodCount}");
             LLVMObjectWriter.EmitObject(outputFile, nodes, NodeFactory, this, dumper);
         }
 
@@ -105,6 +107,8 @@ namespace ILCompiler
             }
         }
 
+        static int totalMethodCount;
+        static int ryuJitMethodCount;
         private void CompileSingleMethod(CorInfoImpl corInfo, LLVMMethodCodeNode methodCodeNodeNeedingCode)
         {
             MethodDesc method = methodCodeNodeNeedingCode.Method;
@@ -112,6 +116,7 @@ namespace ILCompiler
             try
             {
                 corInfo.CompileMethod(methodCodeNodeNeedingCode);
+                ryuJitMethodCount++;
             }
             catch (CodeGenerationFailedException)
             {
@@ -132,6 +137,7 @@ namespace ILCompiler
             }
             finally
             {
+                totalMethodCount++;
                 // if (_compilationCountdown != null)
                 //     _compilationCountdown.Signal();
             }

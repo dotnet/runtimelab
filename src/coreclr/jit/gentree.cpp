@@ -3088,7 +3088,7 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
         // we have already found either a non-ADD op1 or a non-constant op2.
         gtWalkOp(&op1, &op2, nullptr, true);
 
-#if defined(TARGET_XARCH)
+#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64)
         // For XARCH we will fold GT_ADDs in the op2 position into the addressing mode, so we call
         // gtWalkOp on both operands of the original GT_ADD.
         // This is not done for ARMARCH. Though the stated reason is that we don't try to create a
@@ -3098,7 +3098,7 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
         // into the addressing mode.
         // Walk op2 looking for non-overflow GT_ADDs of constants.
         gtWalkOp(&op2, &op1, nullptr, true);
-#endif // defined(TARGET_XARCH)
+#endif // defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64)
 
         // OK we are done walking the tree
         // Now assert that op1 and op2 correspond with base and idx

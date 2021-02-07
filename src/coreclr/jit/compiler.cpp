@@ -830,7 +830,7 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
             // Arm64 Windows VarArg methods arguments will not classify HFA/HVA types, they will need to be treated
             // as if they are not HFA/HVA types.
             var_types hfaType;
-#if defined(TARGET_WINDOWS) && defined(TARGET_ARM64)
+#if defined(TARGET_WINDOWS) && defined(TARGET_ARM64) || defined (TARGET_WASM32) || defined(TARGET_WASM64)
             if (isVarArg)
             {
                 hfaType = TYP_UNDEF;
@@ -923,7 +923,7 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
             howToPassStruct = SPK_ByValue;
             useType         = TYP_STRUCT;
 
-#elif defined(TARGET_AMD64) || defined(TARGET_ARM64)
+#elif defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined (TARGET_WASM32) || defined(TARGET_WASM64) // TODO: WASM can in theory pass any size struct as an arg.
 
             // Otherwise we pass this struct by reference to a copy
             // setup wbPassType and useType indicate that this is passed using one register (by reference to a copy)
@@ -5057,9 +5057,9 @@ void Compiler::compCompile(void** methodCodePtr, ULONG* methodCodeSize, JitFlags
 #if defined(TARGET_WASM32) || defined(TARGET_WASM64)
     // TODO:after rat, but better before?
     DoLlvmPhase(this); // DoPhase?
+    return;
 #endif
 
-    return;
     // Here we do "simple lowering".  When the RyuJIT backend works for all
     // platforms, this will be part of the more general lowering phase.  For now, though, we do a separate
     // pass of "final lowering."  We must do this before (final) liveness analysis, because this creates
