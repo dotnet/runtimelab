@@ -221,7 +221,7 @@ void GCInfo::gcMarkRegPtrVal(regNumber reg, var_types type)
             break;
     }
 }
-#endif !TARGET_WASM
+#endif // !TARGET_WASM
 
 /*****************************************************************************/
 
