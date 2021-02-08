@@ -115,20 +115,6 @@ stages:
             isOfficialBuild: true
             librariesBinArtifactName: libraries_bin_official_allconfigurations
 
-  # Installer official builds need to build installers and need the libraries all configurations build
-  - ${{ if eq(variables.isOfficialBuild, true) }}:
-    - template: /eng/pipelines/installer/installer-matrix.yml
-      parameters:
-        jobParameters:
-          liveRuntimeBuildConfig: Release
-          liveLibrariesBuildConfig: Release
-          isOfficialBuild: ${{ variables.isOfficialBuild }}
-          useOfficialAllConfigurations: true
-          dependsOnGlobalBuild: true
-        platforms:
-        - Linux_x64
-        - windows_x64
-
   - ${{ if ne(variables.isOfficialBuild, true) }}:
     #
     # CoreCLR Test builds using live libraries release build
