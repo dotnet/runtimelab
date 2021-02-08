@@ -4739,7 +4739,7 @@ public:
 
 #ifndef TARGET_WASM
     void fgSetOptions();
-#endif !TARGET_WASM
+#endif// !TARGET_WASM
 
 #ifdef DEBUG
     static fgWalkPreFn fgAssertNoQmark;
