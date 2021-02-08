@@ -106,5 +106,10 @@ namespace ILCompiler
         {
             return false;
         }
+
+        public override bool AllowVirtualMethodOnAbstractTypeOptimization(MethodDesc method)
+        {
+            return false;
+        }
     }
 }
