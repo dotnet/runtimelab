@@ -335,7 +335,7 @@ void dspRegMask(regMaskTP regMask, size_t minSiz)
                 }
 #elif defined(TARGET_X86) 
 // No register ranges
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+#elif defined(TARGET_WASM) // TODO Wasm
                 // For AMD64, create ranges for int registers R8 through R15, but not the "old" registers.
                 if (regNum >= REG_R8)
                 {

@@ -15,7 +15,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #pragma hdrstop
 #endif
 
-#if defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#if defined(TARGET_WASM)
 typedef union _UNWIND_CODE {
     struct {
         UCHAR CodeOffset;
@@ -423,4 +423,4 @@ void Compiler::unwindEmitFunc(FuncInfoDsc* func, void* pHotCode, void* pColdCode
     assert(false);
 }
 
-#endif // defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#endif // defined(TARGET_WASM)

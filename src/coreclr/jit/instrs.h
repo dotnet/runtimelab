@@ -7,7 +7,7 @@
 #include "instrsarm.h"
 #elif defined(TARGET_ARM64)
 #include "instrsarm64.h"
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#elif defined(TARGET_WASM)
 #include "instrswasm.h"
 #else
 #error Unsupported or unset target architecture

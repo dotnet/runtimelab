@@ -47,7 +47,7 @@ enum instruction : unsigned
 
     INS_lea,   // Not a real instruction. It is used for load the address of stack locals
 
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#elif defined(TARGET_WASM)
 #define INST0(id, nm, um, mr,                 flags) INS_##id,
 #define INST1(id, nm, um, mr,                 flags) INS_##id,
 #define INST2(id, nm, um, mr, mi,             flags) INS_##id,
@@ -114,7 +114,7 @@ enum insFlags: unsigned
     INS_FLAGS_SET = 0x01,
     INS_FLAGS_DONT_CARE = 0x02,
 };
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO : can this be removed/empty?
+#elif defined(TARGET_WASM) // TODO : can this be removed/empty?
 enum insFlags: uint8_t
 {
     INS_FLAGS_None = 0x00,

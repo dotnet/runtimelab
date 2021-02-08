@@ -33,7 +33,7 @@ enum SIMDLevel
     // Vector<T> length is 256-bit and SIMD instructions are VEX-256 encoded.
     // Floating-point instructions are VEX-128 encoded.
     SIMD_AVX2_Supported = 3
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#elif defined(TARGET_WASM)
     // SSE2 - The min bar of SIMD ISA on x86/x64.
     // Vector<T> length is 128-bit.
     // Floating-point instructions are legacy SSE encoded.

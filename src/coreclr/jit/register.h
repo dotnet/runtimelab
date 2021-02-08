@@ -13,7 +13,7 @@
 #endif
 
 // TODO: WASM doesn't have these but can't compile without them
-#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#if defined(TARGET_XARCH) || defined(TARGET_WASM)
 
 #if defined(TARGET_X86)
 /*
@@ -70,7 +70,7 @@ REGALIAS(EDI, RDI)
 #ifdef TARGET_AMD64
 #define XMMBASE 16
 #define XMMMASK(x) (__int64(1) << ((x)+XMMBASE))
-#elif defined(TARGET_WASM32) || defined(TARGET_WSM64)
+#elif defined(TARGET_WASM)
 #define XMMBASE 16
 #define XMMMASK(x) (__int64(1) << ((x)+XMMBASE))
 #else // !TARGET_AMD64
@@ -107,7 +107,7 @@ REGDEF(STK,    16+XMMBASE,  0x0000,       "STK"  )
 #elif defined(TARGET_ARM64)
  #include "registerarm64.h"
 
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#elif defined(TARGET_WASM)
 #else
   #error Unsupported or unset target architecture
 #endif // target type

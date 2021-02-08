@@ -8,7 +8,7 @@
 #pragma hdrstop
 #endif
 
-#if defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#if defined(TARGET_WASM)
 
 #include "target.h"
 

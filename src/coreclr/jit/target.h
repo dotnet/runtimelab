@@ -45,7 +45,7 @@
 #define REGMASK_BITS 64
 #define CSE_CONST_SHARED_LOW_BITS 12
 
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#elif defined(TARGET_WASM)
 #define REGMASK_BITS 32
 #define CSE_CONST_SHARED_LOW_BITS 16
 #else
@@ -148,7 +148,7 @@ enum _regMask_enum : unsigned
 #include "register.h"
 };
 
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#elif defined(TARGET_WASM)
 enum _regNumber_enum : unsigned
 {
 #define REGDEF(name, rnum, mask, sname) REG_##name = rnum,
@@ -1583,7 +1583,7 @@ typedef unsigned char   regNumberSmall;
   // have encoding that restricts what registers that can be used for the indexed element when the element size is H (i.e. 2 bytes).
   #define RBM_ASIMD_INDEXED_H_ELEMENT_ALLOWED_REGS (RBM_V0|RBM_V1|RBM_V2|RBM_V3|RBM_V4|RBM_V5|RBM_V6|RBM_V7|RBM_V8|RBM_V9|RBM_V10|RBM_V11|RBM_V12|RBM_V13|RBM_V14|RBM_V15)
 
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)  // TODO: a copy of X64
+#elif defined(TARGET_WASM)  // TODO: a copy of X64
 #define RBM_LNGRET_LO            RBM_EAX
 #define REG_LNGRET_HI            REG_EDX
 #define RBM_LNGRET_HI            RBM_EDX
@@ -2426,7 +2426,7 @@ inline regMaskTP genRegMaskFloat(regNumber reg, var_types type = TYP_DOUBLE);
  */
 inline bool genIsValidReg(regNumber reg)
 {
-#if defined(TARGET_WASM32) || defined(TARGET_WASM64) // infinite "registers"
+#if defined(TARGET_WASM) // infinite "registers"
     return true;
 #else
     /* It's safest to perform an unsigned comparison in case reg is negative */
@@ -2541,7 +2541,7 @@ inline regMaskTP fullIntArgRegMask()
 //
 inline bool isValidIntArgReg(regNumber reg)
 {
-#if defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#if defined(TARGET_WASM)
     return true;
 #else
     return (genRegMask(reg) & fullIntArgRegMask()) != 0;
@@ -2622,7 +2622,7 @@ inline regMaskTP genRegMask(regNumber reg)
     regMaskTP result = 1 << reg;
     assert(result == regMasks[reg]);
     return result;
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#elif defined(TARGET_WASM)
     regMaskTP result = 1 << reg;
     assert(result == regMasks[reg]);
     return result;
@@ -2638,7 +2638,7 @@ inline regMaskTP genRegMask(regNumber reg)
 
 inline regMaskTP genRegMaskFloat(regNumber reg, var_types type /* = TYP_DOUBLE */)
 {
-#if defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_X86) || defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#if defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_X86) || defined(TARGET_WASM)
     assert(genIsValidFloatReg(reg));
     assert((unsigned)reg < ArrLen(regMasks));
     return regMasks[reg];
