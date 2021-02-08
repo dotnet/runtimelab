@@ -22,8 +22,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "clrjit_browser_wasm32_x64",
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "clrjit_win_x64_x64", "..\..\..\..\artifacts\obj\coreclr\windows.x64.Debug\jit\clrjit_win_x64_x64.vcxproj", "{A75E7596-C53A-3C6F-8FD7-AC56E41F3783}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "clrjit_win_x86_x64", "..\..\..\..\artifacts\obj\coreclr\windows.x64.Debug\jit\clrjit_win_x86_x64.vcxproj", "{AD5CAC34-CF44-34E0-AF16-7725F5B2AF94}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Checked|Any CPU = Checked|Any CPU
@@ -240,22 +238,6 @@ Global
 		{A75E7596-C53A-3C6F-8FD7-AC56E41F3783}.RelWithDebInfo|x64.ActiveCfg = RelWithDebInfo|x64
 		{A75E7596-C53A-3C6F-8FD7-AC56E41F3783}.RelWithDebInfo|x64.Build.0 = RelWithDebInfo|x64
 		{A75E7596-C53A-3C6F-8FD7-AC56E41F3783}.RelWithDebInfo|x86.ActiveCfg = RelWithDebInfo|x64
-		{AD5CAC34-CF44-34E0-AF16-7725F5B2AF94}.Checked|Any CPU.ActiveCfg = Checked|x64
-		{AD5CAC34-CF44-34E0-AF16-7725F5B2AF94}.Checked|x64.ActiveCfg = Checked|x64
-		{AD5CAC34-CF44-34E0-AF16-7725F5B2AF94}.Checked|x64.Build.0 = Checked|x64
-		{AD5CAC34-CF44-34E0-AF16-7725F5B2AF94}.Checked|x86.ActiveCfg = Checked|x64
-		{AD5CAC34-CF44-34E0-AF16-7725F5B2AF94}.Debug|Any CPU.ActiveCfg = Debug|x64
-		{AD5CAC34-CF44-34E0-AF16-7725F5B2AF94}.Debug|x64.ActiveCfg = Debug|x64
-		{AD5CAC34-CF44-34E0-AF16-7725F5B2AF94}.Debug|x64.Build.0 = Debug|x64
-		{AD5CAC34-CF44-34E0-AF16-7725F5B2AF94}.Debug|x86.ActiveCfg = Debug|x64
-		{AD5CAC34-CF44-34E0-AF16-7725F5B2AF94}.Release|Any CPU.ActiveCfg = Release|x64
-		{AD5CAC34-CF44-34E0-AF16-7725F5B2AF94}.Release|x64.ActiveCfg = Release|x64
-		{AD5CAC34-CF44-34E0-AF16-7725F5B2AF94}.Release|x64.Build.0 = Release|x64
-		{AD5CAC34-CF44-34E0-AF16-7725F5B2AF94}.Release|x86.ActiveCfg = Release|x64
-		{AD5CAC34-CF44-34E0-AF16-7725F5B2AF94}.RelWithDebInfo|Any CPU.ActiveCfg = RelWithDebInfo|x64
-		{AD5CAC34-CF44-34E0-AF16-7725F5B2AF94}.RelWithDebInfo|x64.ActiveCfg = RelWithDebInfo|x64
-		{AD5CAC34-CF44-34E0-AF16-7725F5B2AF94}.RelWithDebInfo|x64.Build.0 = RelWithDebInfo|x64
-		{AD5CAC34-CF44-34E0-AF16-7725F5B2AF94}.RelWithDebInfo|x86.ActiveCfg = RelWithDebInfo|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

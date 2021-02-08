@@ -761,8 +761,8 @@ void Compiler::eeGetVars()
 #endif // DEBUG
 }
 
-#ifndef TARGET_WASM
 #ifdef DEBUG
+#ifndef TARGET_WASM
 void Compiler::eeDispVar(ICorDebugInfo::NativeVarInfo* var)
 {
     const char* name = nullptr;
