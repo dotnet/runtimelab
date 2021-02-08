@@ -6,7 +6,7 @@
 // of a method, except for the target-specific elements, which are
 // primarily in the Target class.
 //
-
+#ifndef TARGET_WASM
 #ifndef _CODEGEN_H_
 #define _CODEGEN_H_
 #include "codegeninterface.h"
@@ -50,7 +50,7 @@ public:
                                    ssize_t* cnsPtr);
 
 private:
-#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+#if defined(TARGET_XARCH)
     // Bit masks used in negating a float or double number.
     // This is to avoid creating more than one data constant for these bitmasks when a
     // method has more than one GT_NEG operation on floating point values.
@@ -422,7 +422,7 @@ protected:
 
 #endif // TARGET_AMD64
 
-#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+#if defined(TARGET_XARCH)
 
     // Save/Restore callee saved float regs to stack
     void genPreserveCalleeSavedFltRegs(unsigned lclFrameSize);
@@ -1615,3 +1615,4 @@ inline void DoPhase(CodeGen* _codeGen, Phases _phase, void (CodeGen::*_action)()
 }
 
 #endif // _CODEGEN_H_
+#endif // TARGET_WASM

@@ -131,10 +131,12 @@ void Compiler::fgLocalVarLiveness()
     {
         printf("*************** In fgLocalVarLiveness()\n");
 
+#ifndef TARGET_WASM
         if (compRationalIRForm)
         {
             lvaTableDump();
         }
+#endif //!TARGET_WASM
     }
 #endif // DEBUG
 
@@ -1030,7 +1032,9 @@ void Compiler::fgExtendDbgLifetimes()
 #if !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
                     DecomposeLongs::DecomposeRange(this, initRange);
 #endif // !defined(TARGET_64BIT)
+#ifndef TARGET_WASM
                     m_pLowering->LowerRange(block, initRange);
+#endif // !TARGET_WASM
 
                     // Naively inserting the initializer at the end of the block may add code after the block's
                     // terminator, in which case the inserted code will never be executed (and the IR for the
@@ -1993,10 +1997,12 @@ void Compiler::fgComputeLifeLIR(VARSET_TP& life, BasicBlock* block, VARSET_VALAR
                                 store->OperIs(GT_STOREIND) ? store->AsStoreInd()->Data() : store->AsBlk()->Data();
                             data->SetUnusedValue();
 
+#ifndef TARGET_WASM
                             if (data->isIndir())
                             {
                                 Lowering::TransformUnusedIndirection(data->AsIndir(), this, block);
                             }
+#endif // !TARGET_WASM
 
                             fgRemoveDeadStoreLIR(store, block);
                         }
@@ -2115,12 +2121,14 @@ void Compiler::fgComputeLifeLIR(VARSET_TP& life, BasicBlock* block, VARSET_VALAR
             case GT_DYN_BLK:
             {
                 bool removed = fgTryRemoveNonLocal(node, &blockRange);
+#ifndef TARGET_WASM
                 if (!removed && node->IsUnusedValue())
                 {
                     // IR doesn't expect dummy uses of `GT_OBJ/BLK/DYN_BLK`.
                     JITDUMP("Transform an unused OBJ/BLK node [%06d]\n", dspTreeID(node));
                     Lowering::TransformUnusedIndirection(node->AsIndir(), this, block);
                 }
+#endif // !TARGET_WASM
             }
             break;
 

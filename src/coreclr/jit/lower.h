@@ -10,7 +10,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 */
-
+#ifndef TARGET_WASM
 #ifndef _LOWER_H_
 #define _LOWER_H_
 
@@ -97,7 +97,7 @@ private:
     void ContainCheckCompare(GenTreeOp* node);
     void ContainCheckBinary(GenTreeOp* node);
     void ContainCheckBoundsChk(GenTreeBoundsChk* node);
-#if defined(TARGET_XARCH) || defined (TARGET_WASM32) || defined(TARGET_WASM64)
+#if defined(TARGET_XARCH) || defined(TARGET_WASM)
     void ContainCheckFloatBinary(GenTreeOp* node);
     void ContainCheckIntrinsic(GenTreeOp* node);
 #endif // TARGET_XARCH
@@ -228,7 +228,7 @@ private:
     // return true if this call target is within range of a pc-rel call on the machine
     bool IsCallTargetInRange(void* addr);
 
-#if defined(TARGET_XARCH) || defined (TARGET_WASM32) || defined(TARGET_WASM64)
+#if defined(TARGET_XARCH) || defined(TARGET_WASM)
     GenTree* PreferredRegOptionalOperand(GenTree* tree);
 
     // ------------------------------------------------------------------
@@ -579,3 +579,4 @@ private:
 };
 
 #endif // _LOWER_H_
+#endif // TARGET_WASM

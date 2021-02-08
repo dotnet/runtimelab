@@ -13,7 +13,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 // TODO-Cleanup: There are additional methods in CodeGen*.cpp that are almost
 // identical, and which should probably be moved here.
-
+#ifndef TARGET_WASM
 #include "jitpch.h"
 #ifdef _MSC_VER
 #pragma hdrstop
@@ -30,6 +30,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #include "patchpointinfo.h"
 
 /*****************************************************************************/
+#endif //!TARGET_WASM
 
 const BYTE genTypeSizes[] = {
 #define DEF_TP(tn, nm, jitType, verType, sz, sze, asze, st, al, tf, howUsed) sz,
@@ -54,6 +55,7 @@ const BYTE genActualTypes[] = {
 #include "typelist.h"
 #undef DEF_TP
 };
+#ifndef TARGET_WASM
 
 void CodeGenInterface::setFramePointerRequiredEH(bool value)
 {
@@ -820,7 +822,7 @@ TempDsc* CodeGenInterface::getSpillTempDsc(GenTree* tree)
     return temp;
 }
 
-#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#ifdef TARGET_XARCH
 
 #ifdef TARGET_AMD64
 // Returns relocation type hint for an addr.
@@ -1926,7 +1928,7 @@ void CodeGen::genCheckOverflow(GenTree* tree)
     {
         bool isUnsignedOverflow = ((tree->gtFlags & GTF_UNSIGNED) != 0);
 
-#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+#if defined(TARGET_XARCH)
 
         jumpKind = isUnsignedOverflow ? EJ_jb : EJ_jo;
 
@@ -5663,10 +5665,6 @@ void CodeGen::genZeroInitFltRegs(const regMaskTP& initFltRegs, const regMaskTP& 
 #elif defined(TARGET_ARM64)
                 // We will just zero out the entire vector register. This sets it to a double/float zero value
                 GetEmitter()->emitIns_R_I(INS_movi, EA_16BYTE, reg, 0x00, INS_OPTS_16B);
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
-                // XORPS is the fastest and smallest way to initialize a XMM register to zero.
-                inst_RV_RV(INS_xorps, reg, reg, TYP_DOUBLE);
-                dblInitReg = reg;
 #else // TARGET*
 #error Unsupported or unset target architecture
 #endif
@@ -5702,10 +5700,6 @@ void CodeGen::genZeroInitFltRegs(const regMaskTP& initFltRegs, const regMaskTP& 
 #elif defined(TARGET_ARM64)
                 // We will just zero out the entire vector register. This sets it to a double/float zero value
                 GetEmitter()->emitIns_R_I(INS_movi, EA_16BYTE, reg, 0x00, INS_OPTS_16B);
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
-                // XORPS is the fastest and smallest way to initialize a XMM register to zero.
-                inst_RV_RV(INS_xorps, reg, reg, TYP_DOUBLE);
-                fltInitReg = reg;
 #else // TARGET*
 #error Unsupported or unset target architecture
 #endif
@@ -6015,7 +6009,7 @@ void CodeGen::genPopCalleeSavedRegistersAndFreeLclFrame(bool jmpEpilog)
     }
 }
 
-#elif defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#elif defined(TARGET_XARCH)
 
 void CodeGen::genPopCalleeSavedRegisters(bool jmpEpilog)
 {
@@ -6336,7 +6330,7 @@ void CodeGen::genZeroInitFrame(int untrLclHi, int untrLclLo, regNumber initReg, 
 #endif // TARGET_ARM64
         noway_assert(uCntBytes == 0);
 
-#elif defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+#elif defined(TARGET_XARCH)
         assert(compiler->getSIMDSupportLevel() >= SIMD_SSE2_Supported);
         emitter*  emit        = GetEmitter();
         regNumber frameReg    = genFramePointerReg();
@@ -6348,7 +6342,7 @@ void CodeGen::genZeroInitFrame(int untrLclHi, int untrLclLo, regNumber initReg, 
         noway_assert((blkSize % sizeof(int)) == 0);
         // initReg is not a live incoming argument reg
         assert((genRegMask(initReg) & intRegState.rsCalleeRegArgMaskLiveIn) == 0);
-#if defined(TARGET_AMD64) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+#if defined(TARGET_AMD64)
         // We will align on x64 so can use the aligned mov
         instruction simdMov = simdAlignedMovIns();
         // Aligning low we want to move up to next boundary
@@ -6374,7 +6368,7 @@ void CodeGen::genZeroInitFrame(int untrLclHi, int untrLclLo, regNumber initReg, 
             {
                 emit->emitIns_AR_R(ins_Store(TYP_I_IMPL), EA_PTRSIZE, zeroReg, frameReg, untrLclLo + i);
             }
-#if defined(TARGET_AMD64) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+#if defined(TARGET_AMD64)
             assert((i == blkSize) || (i + (int)sizeof(int) == blkSize));
             if (i != blkSize)
             {
@@ -6396,7 +6390,7 @@ void CodeGen::genZeroInitFrame(int untrLclHi, int untrLclLo, regNumber initReg, 
             regNumber zeroSIMDReg = genRegNumFromMask(RBM_XMM4);
 #endif // UNIX_AMD64_ABI
 
-#if defined(TARGET_AMD64) || defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#if defined(TARGET_AMD64)
             int       alignedLclHi;
             int       alignmentHiBlkSize;
 
@@ -8505,7 +8499,7 @@ void CodeGen::genFnEpilog(BasicBlock* block)
     compiler->unwindEndEpilog();
 }
 
-#elif defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+#elif defined(TARGET_XARCH)
 
 void CodeGen::genFnEpilog(BasicBlock* block)
 {
@@ -9880,7 +9874,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 */
 
-#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+#if defined(TARGET_XARCH)
 // Save compCalleeFPRegsPushed with the smallest register number saved at [RSP+offset], working
 // down the stack to the largest register number stored at [RSP+offset-(genCountBits(regMask)-1)*XMM_REG_SIZE]
 // Here offset = 16-byte aligned offset after pushing integer registers.
@@ -12936,3 +12930,4 @@ void CodeGenInterface::VariableLiveKeeper::dumpLvaVariableLiveRanges() const
 }
 #endif // DEBUG
 #endif // USING_VARIABLE_LIVE_RANGE
+#endif // TARGET_WASM

@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 // clang-format off
+#ifndef TARGET_WASM
 #ifndef JMP_SMALL
 #error Must define JMP_SMALL macro before including this file
 #endif
@@ -46,27 +47,6 @@ JMP_SMALL(lt    , ge    , blt    )  // LT
 JMP_SMALL(gt    , le    , bgt    )  // GT
 JMP_SMALL(le    , gt    , ble    )  // LE
 
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64) //copying AMD64
-
-//       jump   reverse instruction
-JMP_SMALL(jmp, jmp, jmp)
-JMP_SMALL(jo, jno, jo)
-JMP_SMALL(jno, jo, jno)
-JMP_SMALL(jb, jae, jb)
-JMP_SMALL(jae, jb, jae)
-JMP_SMALL(je, jne, je)
-JMP_SMALL(jne, je, jne)
-JMP_SMALL(jbe, ja, jbe)
-JMP_SMALL(ja, jbe, ja)
-JMP_SMALL(js, jns, js)
-JMP_SMALL(jns, js, jns)
-JMP_SMALL(jp, jnp, jp)
-JMP_SMALL(jnp, jp, jnp)
-JMP_SMALL(jl, jge, jl)
-JMP_SMALL(jge, jl, jge)
-JMP_SMALL(jle, jg, jle)
-JMP_SMALL(jg, jle, jg)
-
 #else
   #error Unsupported or unset target architecture
 #endif // target type
@@ -74,5 +54,6 @@ JMP_SMALL(jg, jle, jg)
 /*****************************************************************************/
 #undef JMP_SMALL
 /*****************************************************************************/
+#endif // TARGET_WASM
 
 // clang-format on

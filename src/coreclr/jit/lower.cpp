@@ -14,6 +14,7 @@ XX                                                                           XX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 */
+#ifndef TARGET_WASM
 
 #include "jitpch.h"
 #ifdef _MSC_VER
@@ -5339,7 +5340,7 @@ GenTree* Lowering::LowerConstIntDivOrMod(GenTree* node)
             return nullptr;
         }
 
-#if defined(TARGET_XARCH) || defined(TARGET_ARM64) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+#if defined(TARGET_XARCH) || defined(TARGET_ARM64) || defined(TARGET_WASM) // TODO Wasm
         ssize_t magic;
         int     shift;
 
@@ -6675,3 +6676,4 @@ bool Lowering::TryTransformStoreObjAsStoreInd(GenTreeBlk* blkNode)
     LowerStoreIndirCommon(blkNode);
     return true;
 }
+#endif // !TARGET_WASM

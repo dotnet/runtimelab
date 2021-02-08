@@ -17,6 +17,7 @@
 // accessed from members of Compiler.
 //
 
+#ifndef TARGET_WASM
 #ifndef _CODEGEN_INTERFACE_H_
 #define _CODEGEN_INTERFACE_H_
 
@@ -116,8 +117,6 @@ private:
     static const insFlags instInfo[INS_count];
 #elif defined(TARGET_ARM) || defined(TARGET_ARM64)
     static const BYTE instInfo[INS_count];
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
-    static const insFlags instInfo[INS_count];
 #else
 #error Unsupported target architecture
 #endif
@@ -202,7 +201,7 @@ public:
 
     regNumber genGetThisArgReg(GenTreeCall* call) const;
 
-#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+#ifdef TARGET_XARCH
 #ifdef TARGET_AMD64
     // There are no reloc hints on x86
     unsigned short genAddrRelocTypeHint(size_t addr);
@@ -777,3 +776,4 @@ public:
 };
 
 #endif // _CODEGEN_INTERFACE_H_
+#endif // TARGET_WASM

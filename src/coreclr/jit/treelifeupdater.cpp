@@ -56,6 +56,7 @@ bool TreeLifeUpdater<ForCodeGen>::UpdateLifeFieldVar(GenTreeLclVar* lclNode, uns
 
     if (isBorn || isDying)
     {
+#ifndef TARGET_WASM
         if (ForCodeGen)
         {
             regNumber reg     = lclNode->GetRegNumByIdx(multiRegIndex);
@@ -70,6 +71,8 @@ bool TreeLifeUpdater<ForCodeGen>::UpdateLifeFieldVar(GenTreeLclVar* lclNode, uns
                 compiler->codeGen->genUpdateRegLife(fldVarDsc, isBorn, isDying DEBUGARG(lclNode));
             }
         }
+#endif // !TARGET_WASM
+
         // First, update the live set
         if (isDying)
         {
@@ -96,6 +99,7 @@ bool TreeLifeUpdater<ForCodeGen>::UpdateLifeFieldVar(GenTreeLclVar* lclNode, uns
 
         VarSetOps::Assign(compiler, compiler->compCurLife, newLife);
 
+#ifndef TARGET_WASM
         if (ForCodeGen)
         {
             // Only add vars to the gcInfo.gcVarPtrSetCur if they are currently on stack, since the
@@ -122,6 +126,7 @@ bool TreeLifeUpdater<ForCodeGen>::UpdateLifeFieldVar(GenTreeLclVar* lclNode, uns
                     VarSetOps::RemoveElemD(compiler, compiler->codeGen->gcInfo.gcVarPtrSetCur, fldVarIndex);
                 }
 
+#ifndef TARGET_WASM
 #ifdef DEBUG
                 if (compiler->verbose)
                 {
@@ -129,6 +134,7 @@ bool TreeLifeUpdater<ForCodeGen>::UpdateLifeFieldVar(GenTreeLclVar* lclNode, uns
                     printf("\n");
                 }
 #endif // DEBUG
+#endif // !TARGET_WASM
             }
 
 #ifdef USING_VARIABLE_LIVE_RANGE
@@ -141,8 +147,10 @@ bool TreeLifeUpdater<ForCodeGen>::UpdateLifeFieldVar(GenTreeLclVar* lclNode, uns
             compiler->codeGen->siUpdate();
 #endif // USING_SCOPE_INFO
         }
+#endif // !TARGET_WASM
     }
 
+#ifndef TARGET_WASM
     if (ForCodeGen && spill)
     {
         if (VarSetOps::IsMember(compiler, compiler->codeGen->gcInfo.gcTrkStkPtrLcls, fldVarIndex))
@@ -160,6 +168,7 @@ bool TreeLifeUpdater<ForCodeGen>::UpdateLifeFieldVar(GenTreeLclVar* lclNode, uns
         }
         return true;
     }
+#endif // !TARGET_WASM
     return false;
 }
 
@@ -252,6 +261,7 @@ void TreeLifeUpdater<ForCodeGen>::UpdateLifeVar(GenTree* tree)
         if (varDsc->lvTracked)
         {
             VarSetOps::AddElemD(compiler, varDeltaSet, varDsc->lvVarIndex);
+#ifndef TARGET_WASM
             if (ForCodeGen)
             {
                 if (isBorn && varDsc->lvIsRegCandidate() && tree->gtHasReg())
@@ -269,7 +279,9 @@ void TreeLifeUpdater<ForCodeGen>::UpdateLifeVar(GenTree* tree)
                     VarSetOps::AddElemD(compiler, stackVarDeltaSet, varDsc->lvVarIndex);
                 }
             }
+#endif // !TARGET_WASM
         }
+#ifndef TARGET_WASM
         else if (ForCodeGen && lclVarTree->IsMultiRegLclVar())
         {
             assert(varDsc->lvPromoted && compiler->lvaEnregMultiRegVars);
@@ -306,6 +318,7 @@ void TreeLifeUpdater<ForCodeGen>::UpdateLifeVar(GenTree* tree)
             }
             spill = false;
         }
+#endif // !TARGET_WASM
         else if (varDsc->lvPromoted)
         {
             // If hasDeadTrackedFieldVars is true, then, for a LDOBJ(ADDR(<promoted struct local>)),
@@ -392,6 +405,7 @@ void TreeLifeUpdater<ForCodeGen>::UpdateLifeVar(GenTree* tree)
 
         VarSetOps::Assign(compiler, compiler->compCurLife, newLife);
 
+#ifndef TARGET_WASM
         if (ForCodeGen)
         {
             // Only add vars to the gcInfo.gcVarPtrSetCur if they are currently on stack, since the
@@ -437,8 +451,10 @@ void TreeLifeUpdater<ForCodeGen>::UpdateLifeVar(GenTree* tree)
             compiler->codeGen->siUpdate();
 #endif // USING_SCOPE_INFO
         }
+#endif // !TARGET_WASM
     }
 
+#ifndef TARGET_WASM
     if (ForCodeGen && spill)
     {
         assert(!varDsc->lvPromoted);
@@ -457,6 +473,7 @@ void TreeLifeUpdater<ForCodeGen>::UpdateLifeVar(GenTree* tree)
             }
         }
     }
+#endif // !TARGET_WASM
 }
 
 //------------------------------------------------------------------------

@@ -101,7 +101,7 @@ inline regNumber emitter::inst3opImulReg(instruction ins)
  *  get stored in different places within the instruction descriptor.
  */
 
-#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#ifdef TARGET_XARCH
 
 inline ssize_t emitter::emitGetInsAmd(instrDesc* id)
 {
@@ -335,50 +335,6 @@ inline ssize_t emitter::emitGetInsAmdAny(instrDesc* id)
 
     id->idReg2((regNumber)encodeMask); // Save in idReg2
 
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64) // copy AMD64
-    assert(REGNUM_BITS >= 4);
-    encodeMask = 0;
-
-    if ((regmask & RBM_RSI) != RBM_NONE)
-    {
-        encodeMask |= 0x01;
-    }
-    if ((regmask & RBM_RDI) != RBM_NONE)
-    {
-        encodeMask |= 0x02;
-    }
-    if ((regmask & RBM_RBX) != RBM_NONE)
-    {
-        encodeMask |= 0x04;
-    }
-    if ((regmask & RBM_RBP) != RBM_NONE)
-    {
-        encodeMask |= 0x08;
-    }
-
-    id->idReg1((regNumber)encodeMask); // Save in idReg1
-
-    encodeMask = 0;
-
-    if ((regmask & RBM_R12) != RBM_NONE)
-    {
-        encodeMask |= 0x01;
-    }
-    if ((regmask & RBM_R13) != RBM_NONE)
-    {
-        encodeMask |= 0x02;
-    }
-    if ((regmask & RBM_R14) != RBM_NONE)
-    {
-        encodeMask |= 0x04;
-    }
-    if ((regmask & RBM_R15) != RBM_NONE)
-    {
-        encodeMask |= 0x08;
-    }
-
-    id->idReg2((regNumber)encodeMask); // Save in idReg2
-
 #else
     NYI("unknown target");
 #endif
@@ -490,45 +446,6 @@ inline ssize_t emitter::emitGetInsAmdAny(instrDesc* id)
         regmask |= RBM_R27;
     if ((encodeMask & 0x10) != 0)
         regmask |= RBM_R28;
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO: copy of AMD64
-    assert(REGNUM_BITS >= 4);
-    encodeMask = id->idReg1();
-
-    if ((encodeMask & 0x01) != 0)
-    {
-        regmask |= RBM_RSI;
-    }
-    if ((encodeMask & 0x02) != 0)
-    {
-        regmask |= RBM_RDI;
-    }
-    if ((encodeMask & 0x04) != 0)
-    {
-        regmask |= RBM_RBX;
-    }
-    if ((encodeMask & 0x08) != 0)
-    {
-        regmask |= RBM_RBP;
-    }
-
-    encodeMask = id->idReg2();
-
-    if ((encodeMask & 0x01) != 0)
-    {
-        regmask |= RBM_R12;
-    }
-    if ((encodeMask & 0x02) != 0)
-    {
-        regmask |= RBM_R13;
-    }
-    if ((encodeMask & 0x04) != 0)
-    {
-        regmask |= RBM_R14;
-    }
-    if ((encodeMask & 0x08) != 0)
-    {
-        regmask |= RBM_R15;
-    }
 
 #else
     NYI("unknown target");

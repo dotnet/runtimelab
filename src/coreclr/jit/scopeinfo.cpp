@@ -48,6 +48,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
  *
  ******************************************************************************
  */
+#ifndef TARGET_WASM
 
 #include "jitpch.h"
 #ifdef _MSC_VER
@@ -1881,3 +1882,4 @@ void CodeGen::psiMoveToStack(unsigned varNum)
 #endif // ACCURATE_PROLOG_DEBUG_INFO
 }
 #endif // USING_SCOPE_INFO
+#endif // !TARGET_WASM

@@ -67,9 +67,11 @@ function(create_standalone_jit)
   endif ()
 
   if (TARGETDETAILS_ARCH STREQUAL "wasm64")
+    target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM64)
   endif ()
   if (TARGETDETAILS_ARCH STREQUAL "wasm32")
+    target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM32)
   endif ()
 endfunction()
@@ -289,7 +291,6 @@ if (CLR_CMAKE_TARGET_WIN32)
     list (APPEND JIT_HEADERS
       emitfmtsxarch.h
       emitxarch.h
-      emitwasm.h
       hwintrinsiclistxarch.h
       hwintrinsic.h
       instrsxarch.h
@@ -315,10 +316,6 @@ set( JIT_AMD64_SOURCES
 
 # TODO this is just a copy of AMD64_SOURCES to get started - e.g. simd,hwintrinsics doesn't make sense for wasm
 set( JIT_WASM64_SOURCES
-  codegenwasm.cpp
-  emitwasm.cpp
-  lowerwasm.cpp
-  lsrawasm.cpp
   simd.cpp
   simdashwintrinsic.cpp
   simdcodegenxarch.cpp
@@ -328,10 +325,6 @@ set( JIT_WASM64_SOURCES
   hwintrinsiccodegenxarch.cpp
 )
 set( JIT_WASM32_SOURCES
-  codegenwasm.cpp
-  emitwasm.cpp
-  lowerwasm.cpp
-  lsrawasm.cpp
   simd.cpp
   simdashwintrinsic.cpp
   simdcodegenxarch.cpp

@@ -1,7 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 /*****************************************************************************/
-
+#ifndef TARGET_WASM
 #ifndef _EMIT_H_
 #define _EMIT_H_
 
@@ -576,10 +576,6 @@ protected:
 #elif defined(TARGET_ARM64)
         static_assert_no_msg(INS_count <= 512);
         instruction _idIns : 9;
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO ??
-        static_assert_no_msg(INS_count <= 1024);
-        instruction _idIns : 10;
-#define MAX_ENCODED_SIZE 15
 #else  // !(defined(TARGET_XARCH) || defined(TARGET_ARM64))
         static_assert_no_msg(INS_count <= 256);
         instruction _idIns : 8;
@@ -587,9 +583,6 @@ protected:
 
 // The format for the instruction
 #if defined(TARGET_XARCH)
-        static_assert_no_msg(IF_COUNT <= 128);
-        insFormat _idInsFmt : 7;
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
         static_assert_no_msg(IF_COUNT <= 128);
         insFormat _idInsFmt : 7;
 #else
@@ -642,12 +635,6 @@ protected:
                                   // doesn't cross a byte boundary.
 #elif defined(TARGET_ARM64)
 // Moved the definition of '_idOpSize' later so that we don't cross a 32-bit boundary when laying out bitfields
-
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO: wasm?
-        unsigned _idCodeSize : 4; // size of instruction in bytes. Max size of an Intel instruction is 15 bytes.
-        opSize   _idOpSize : 3;   // operand size: 0=1 , 1=2 , 2=4 , 3=8, 4=16, 5=32
-                                  // At this point we have fully consumed first DWORD so that next field
-                                  // doesn't cross a byte boundary.
 #else  // ARM
         opSize      _idOpSize : 2; // operand size: 0=1 , 1=2 , 2=4 , 3=8
 #endif // ARM
@@ -713,9 +700,6 @@ protected:
 #define ID_EXTRA_BITFIELD_BITS (17)
 #elif defined(TARGET_XARCH)
                                    // For xarch, we have used 14 bits from the second DWORD.
-#define ID_EXTRA_BITFIELD_BITS (14)
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
-                                   // TODO: delete?
 #define ID_EXTRA_BITFIELD_BITS (14)
 #else
 #error Unsupported or unset target architecture
@@ -868,13 +852,7 @@ protected:
                 regNumber _idReg3 : REGNUM_BITS;
                 regNumber _idReg4 : REGNUM_BITS;
             };
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO: delete?
-            struct
-            {
-                regNumber _idReg3 : REGNUM_BITS;
-                regNumber _idReg4 : REGNUM_BITS;
-            };
-#endif // defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#endif // defined(TARGET_XARCH)
 
         } _idAddrUnion;
 
@@ -972,29 +950,7 @@ protected:
             _idInsFlags = sf;
             assert(sf == _idInsFlags);
         }
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
-
-        unsigned idCodeSize() const
-        {
-            return _idCodeSize;
-        }
-        void idCodeSize(unsigned sz)
-        {
-            if (sz > 15)
-            {
-                // This is a temporary workaround for non-precise instr size
-                // estimator on XARCH. It often overestimates sizes and can
-                // return value more than 15 that doesn't fit in 4 bits _idCodeSize.
-                // If somehow we generate instruction that needs more than 15 bytes we
-                // will fail on another assert in emit.cpp: noway_assert(id->idCodeSize() >= csz).
-                // Issue https://github.com/dotnet/runtime/issues/12840.
-                sz = 15;
-            }
-            assert(sz <= 15); // Intel decoder limit.
-            _idCodeSize = sz;
-            assert(sz == _idCodeSize);
-        }
-#endif // defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#endif // TARGET_ARM
 
         emitAttr idOpSize()
         {
@@ -1362,24 +1318,6 @@ protected:
 #define PERFSCORE_LATENCY_WR_GENERAL PERFSCORE_LATENCY_1C
 #define PERFSCORE_LATENCY_RD_WR_GENERAL PERFSCORE_LATENCY_4C
 
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
-
-// a read,write or modify from stack location, possible def to use latency from L0 cache
-#define PERFSCORE_LATENCY_RD_STACK PERFSCORE_LATENCY_2C
-#define PERFSCORE_LATENCY_WR_STACK PERFSCORE_LATENCY_2C
-#define PERFSCORE_LATENCY_RD_WR_STACK PERFSCORE_LATENCY_5C
-
-// a read, write or modify from constant location, possible def to use latency from L0 cache
-#define PERFSCORE_LATENCY_RD_CONST_ADDR PERFSCORE_LATENCY_2C
-#define PERFSCORE_LATENCY_WR_CONST_ADDR PERFSCORE_LATENCY_2C
-#define PERFSCORE_LATENCY_RD_WR_CONST_ADDR PERFSCORE_LATENCY_5C
-
-// a read, write or modify from memory location, possible def to use latency from L0 or L1 cache
-// plus an extra cost  (of 1.0) for a increased chance  of a cache miss
-#define PERFSCORE_LATENCY_RD_GENERAL PERFSCORE_LATENCY_3C
-#define PERFSCORE_LATENCY_WR_GENERAL PERFSCORE_LATENCY_3C
-#define PERFSCORE_LATENCY_RD_WR_GENERAL PERFSCORE_LATENCY_6C
-
 #endif // TARGET_XXX
 
 // Make this an enum:
@@ -1481,21 +1419,6 @@ protected:
 
 #endif // TARGET_XARCH
 
-#if defined(TARGET_WASM32) || defined(TARGET_WASM64) // copying AMD64
-
-    struct instrDescAmd : instrDesc // large addrmode disp
-    {
-        ssize_t idaAmdVal;
-    };
-
-    struct instrDescCnsAmd : instrDesc // large cons + addrmode disp
-    {
-        ssize_t idacCnsVal;
-        ssize_t idacAmdVal;
-    };
-
-#endif // defined(TARGET_WASM32) || defined(TARGET_WASM64)
-
     struct instrDescCGCA : instrDesc // call with ...
     {
         VARSET_TP idcGCvars;    // ... updated GC vars or
@@ -1549,7 +1472,7 @@ protected:
     size_t emitGetInstrDescSize(const instrDesc* id);
     size_t emitGetInstrDescSizeSC(const instrDesc* id);
 
-#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#ifdef TARGET_XARCH
 
     ssize_t emitGetInsCns(instrDesc* id);
     ssize_t emitGetInsDsp(instrDesc* id);
@@ -1623,7 +1546,7 @@ protected:
     unsigned       emitEpilogCnt;
     UNATIVE_OFFSET emitEpilogSize;
 
-#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+#ifdef TARGET_XARCH
 
     void           emitStartExitSeq(); // Mark the start of the "return" sequence
     emitLocation   emitExitSeqBegLoc;
@@ -2964,3 +2887,4 @@ inline void emitter::emitEnableGC()
 /*****************************************************************************/
 #endif // _EMIT_H_
 /*****************************************************************************/
+#endif // TARGET_WASM

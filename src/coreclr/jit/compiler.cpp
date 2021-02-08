@@ -204,7 +204,7 @@ void Compiler::compDspSrcLinesByLineNum(unsigned line, bool seek)
 }
 
 /*****************************************************************************/
-
+#ifndef TARGET_WASM
 void Compiler::compDspSrcLinesByNativeIP(UNATIVE_OFFSET curIP)
 {
     static IPmappingDsc* nextMappingDsc;
@@ -262,6 +262,7 @@ void Compiler::compDspSrcLinesByNativeIP(UNATIVE_OFFSET curIP)
         }
     }
 }
+#endif // TARGET_WASM
 
 /*****************************************************************************/
 #endif // DEBUG
@@ -830,7 +831,7 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
             // Arm64 Windows VarArg methods arguments will not classify HFA/HVA types, they will need to be treated
             // as if they are not HFA/HVA types.
             var_types hfaType;
-#if defined(TARGET_WINDOWS) && defined(TARGET_ARM64) || defined (TARGET_WASM32) || defined(TARGET_WASM64)
+#if defined(TARGET_WINDOWS) && defined(TARGET_ARM64) || defined(TARGET_WASM)
             if (isVarArg)
             {
                 hfaType = TYP_UNDEF;
@@ -923,7 +924,7 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
             howToPassStruct = SPK_ByValue;
             useType         = TYP_STRUCT;
 
-#elif defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined (TARGET_WASM32) || defined(TARGET_WASM64) // TODO: WASM can in theory pass any size struct as an arg.
+#elif defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_WASM) // TODO: WASM can in theory pass any size struct as an arg.
 
             // Otherwise we pass this struct by reference to a copy
             // setup wbPassType and useType indicate that this is passed using one register (by reference to a copy)
@@ -947,6 +948,61 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
 
     return useType;
 }
+
+#ifdef TARGET_WASM
+bool Compiler::IsHfa(CORINFO_CLASS_HANDLE hClass)
+{
+    return false; // TODO WASM
+}
+var_types Compiler::GetHfaType(GenTree* tree)
+{
+    return TYP_UNDEF; // TODO WASM
+}
+var_types Compiler::GetHfaType(CORINFO_CLASS_HANDLE hClass)
+{
+    return TYP_UNDEF;
+}
+//------------------------------------------------------------------------
+// GetHfaCount: Given a  class handle for an HFA struct
+//    return the number of registers needed to hold the HFA
+//
+//    Note that on ARM32 the single precision registers overlap with
+//        the double precision registers and for that reason each
+//        double register is considered to be two single registers.
+//        Thus for ARM32 an HFA of 4 doubles this function will return 8.
+//    On ARM64 given an HFA of 4 singles or 4 doubles this function will
+//         will return 4 for both.
+// Arguments:
+//    hClass: the class handle of a HFA struct
+//
+unsigned Compiler::GetHfaCount(CORINFO_CLASS_HANDLE hClass)
+{
+    assert(false); // TODO
+    //assert(IsHfa(hClass));
+    //var_types hfaType = GetHfaType(hClass);
+    //unsigned  classSize = info.compCompHnd->getClassSize(hClass);
+    //// Note that the retail build issues a warning about a potential divsion by zero without the Max function
+    //unsigned elemSize = Max((unsigned)1, (unsigned)EA_SIZE_IN_BYTES(emitActualTypeSize(hfaType)));
+    //return classSize / elemSize;
+    return 1;
+}
+
+IL_OFFSET jitGetILoffs(IL_OFFSETX offsx)
+{
+    assert(offsx != BAD_IL_OFFSET);
+
+    switch ((int)offsx) // Need the cast since offs is unsigned and the case statements are comparing to signed.
+    {
+    case ICorDebugInfo::NO_MAPPING:
+    case ICorDebugInfo::PROLOG:
+    case ICorDebugInfo::EPILOG:
+        unreached();
+
+    default:
+        return IL_OFFSET(offsx & ~IL_OFFSETX_BITS);
+    }
+}
+#endif //TARGET_WASM
 
 //-----------------------------------------------------------------------------
 // getReturnTypeForStruct:
@@ -1445,8 +1501,9 @@ void Compiler::compStartup()
 #endif
 
     /* Initialize the emitter */
-
+#ifndef TARGET_WASM
     emitter::emitInit();
+#endif // !TARGET_WASM
 
     // Static vars of ValueNumStore
     ValueNumStore::InitValueNumStoreStatics();
@@ -1480,9 +1537,11 @@ void Compiler::compShutdown()
     DisplayNowayAssertMap();
 #endif // MEASURE_NOWAY
 
+#ifndef TARGET_WASM
     /* Shut down the emitter */
 
     emitter::emitDone();
+#endif // !TARGET_WASM
 
 #if defined(DEBUG) || defined(INLINE_DATA)
     // Finish reading and/or writing inline xml
@@ -1928,7 +1987,9 @@ void Compiler::compInit(ArenaAllocator*       pAlloc,
 
     if (!compIsForInlining())
     {
+#ifndef TARGET_WASM
         codeGen = getCodeGenerator(this);
+#endif // !TARGET_WASM
         optInit();
         hashBv::Init(this);
 
@@ -2686,7 +2747,9 @@ void Compiler::compInitOptions(JitFlags* jitFlags)
     else
     {
         verbose = false;
+#ifndef TARGET_WASM
         codeGen->setVerbose(false);
+#endif // !TARGET_WASM
     }
     verboseTrees     = verbose && shouldUseVerboseTrees();
     verboseSsa       = verbose && shouldUseVerboseSsa();
@@ -3143,7 +3206,9 @@ void Compiler::compInitOptions(JitFlags* jitFlags)
         verbose         = true;
         verboseTrees    = shouldUseVerboseTrees();
         verboseSsa      = shouldUseVerboseSsa();
+#ifndef TARGET_WASM
         codeGen->setVerbose(true);
+#endif // !TARGET_WASM
     }
 
     treesBeforeAfterMorph = (JitConfig.TreesBeforeAfterMorph() == 1);
@@ -3203,7 +3268,9 @@ void Compiler::compInitOptions(JitFlags* jitFlags)
 //-------------------------------------------------------------------------
 
 #ifdef DEBUG
+#ifndef TARGET_WASM
     assert(!codeGen->isGCTypeFixed());
+#endif // !TARGET_WASM
     opts.compGcChecks = (JitConfig.JitGCChecks() != 0) || compStressCompile(STRESS_GENERIC_VARN, 5);
 #endif
 
@@ -3966,6 +4033,7 @@ _SetMinOpts:
         opts.compFlags |= CLFLG_MINOPT;
     }
 
+#ifndef TARGET_WASM
     if (!compIsForInlining())
     {
         codeGen->setFramePointerRequired(false);
@@ -3998,6 +4066,7 @@ _SetMinOpts:
             codeGen->SetAlignLoops(JitConfig.JitAlignLoops() == 1);
         }
     }
+#endif // !TARGET_WASM
 
     fgCanRelocateEHRegions = true;
 }
@@ -4371,7 +4440,7 @@ void Compiler::EndPhase(Phases phase)
     mostRecentlyActivePhase = phase;
 }
 
-#if defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#if defined(TARGET_WASM)
 inline void DoLlvmPhase(Compiler* _compiler)
 {
     fatal(CORJIT_SKIPPED);
@@ -4512,6 +4581,7 @@ void Compiler::compCompile(void** methodCodePtr, ULONG* methodCodeSize, JitFlags
     // Note that requiring a EBP Frame disallows double alignment.  Thus if we change this
     // we either have to disallow double alignment for E&C some other way or handle it in EETwain.
 
+#ifndef TARGET_WASM
     if (opts.compDbgEnC)
     {
         codeGen->setFramePointerRequired(true);
@@ -4522,6 +4592,7 @@ void Compiler::compCompile(void** methodCodePtr, ULONG* methodCodeSize, JitFlags
         //
         // compLocallocUsed            = true;
     }
+#endif // !TARGET_WASM
 
     // Start phases that are broadly called morphing, and includes
     // global morph, as well as other phases that massage the trees so
@@ -4780,8 +4851,10 @@ void Compiler::compCompile(void** methodCodePtr, ULONG* methodCodeSize, JitFlags
         }
 #endif // defined(FEATURE_EH_FUNCLETS) && defined(TARGET_ARM)
 
+#ifndef TARGET_WASM
         // Decide the kind of code we want to generate
         fgSetOptions();
+#endif !TARGET_WASM
 
         fgExpandQmarkNodes();
 
@@ -5054,11 +5127,10 @@ void Compiler::compCompile(void** methodCodePtr, ULONG* methodCodeSize, JitFlags
     Rationalizer rat(this); // PHASE_RATIONALIZE
     rat.Run();
 
-#if defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#if defined(TARGET_WASM)
     // TODO:after rat, but better before?
     DoLlvmPhase(this); // DoPhase?
-    return;
-#endif
+#else
 
     // Here we do "simple lowering".  When the RyuJIT backend works for all
     // platforms, this will be part of the more general lowering phase.  For now, though, we do a separate
@@ -5172,8 +5244,11 @@ void Compiler::compCompile(void** methodCodePtr, ULONG* methodCodeSize, JitFlags
         fprintf(compJitFuncInfoFile, ""); // in our logic this causes a flush
     }
 #endif // FUNC_INFO_LOGGING
+#endif // TARGET_WASM
+
 }
 
+#ifndef TARGET_WASM
 //------------------------------------------------------------------------
 // generatePatchpointInfo: allocate and fill in patchpoint info data,
 //    and report it to the VM
@@ -5253,6 +5328,7 @@ void Compiler::generatePatchpointInfo()
     // Register this with the runtime.
     info.compCompHnd->setPatchpointInfo(patchpointInfo);
 }
+#endif // !TARGET_WASM
 
 //------------------------------------------------------------------------
 // ResetOptAnnotations: Clear annotations produced during global optimizations.
@@ -5666,9 +5742,11 @@ int Compiler::compCompile(CORINFO_MODULE_HANDLE classPtr,
             goto DoneCleanUp;
         }
 
+#ifndef TARGET_WASM
         /* Tell the emitter that we're done with this function */
 
         GetEmitter()->emitEndCG();
+#endif // !TARGET_WASM
 
     DoneCleanUp:
         compDone();
@@ -6182,12 +6260,14 @@ int Compiler::compCompileHelper(CORINFO_MODULE_HANDLE classPtr,
     compBasicBlockID = 0;
 #endif
 
+#ifndef TARGET_WASM
     /* Initialize emitter */
 
     if (!compIsForInlining())
     {
         codeGen->GetEmitter()->emitBegCG(this, compHnd);
     }
+#endif // !TARGET_WASM
 
     info.compIsStatic = (info.compFlags & CORINFO_FLG_STATIC) != 0;
 
@@ -8547,6 +8627,7 @@ void cEH(Compiler* comp)
     comp->fgDispHandlerTab();
 }
 
+#ifndef TARGET_WASM
 void cVar(Compiler* comp, unsigned lclNum)
 {
     static unsigned sequenceNumber = 0; // separate calls with a number to indicate this function has been called
@@ -8575,6 +8656,7 @@ void cVarsFinal(Compiler* comp)
     printf("===================================================================== *Vars %u\n", sequenceNumber++);
     comp->lvaTableDump(Compiler::FINAL_FRAME_LAYOUT);
 }
+#endif !TARGET_WASM
 
 void cBlockCheapPreds(Compiler* comp, BasicBlock* block)
 {
@@ -8683,6 +8765,7 @@ void dEH()
     cEH(JitTls::GetCompiler());
 }
 
+#ifndef TARGET_WASM
 void dVar(unsigned lclNum)
 {
     cVar(JitTls::GetCompiler(), lclNum);
@@ -8702,6 +8785,7 @@ void dVarsFinal()
 {
     cVarsFinal(JitTls::GetCompiler());
 }
+#endif !TARGET_WASM
 
 void dBlockPreds(BasicBlock* block)
 {

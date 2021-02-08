@@ -11,6 +11,7 @@ XX                                                                           XX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 */
+#ifndef TARGET_WASM
 
 #include "jitpch.h"
 #ifdef _MSC_VER
@@ -65,7 +66,7 @@ const char* CodeGen::genInsName(instruction ins)
         #define INST9(id, nm, ldst, fmt, e1, e2, e3, e4, e5, e6, e7, e8, e9 ) nm,
         #include "instrs.h"
 
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#elif defined(TARGET_WASM)
         #define INST0(id, nm, um, mr,                 flags) nm,
         #define INST1(id, nm, um, mr,                 flags) nm,
         #define INST2(id, nm, um, mr, mi,             flags) nm,
@@ -1819,7 +1820,7 @@ instruction CodeGen::ins_Copy(var_types dstType)
     {
         return INS_mov;
     }
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#elif defined(TARGET_WASM)
     if (varTypeIsSIMD(dstType))
     {
         return INS_movaps;
@@ -1858,7 +1859,7 @@ instruction CodeGen::ins_Copy(regNumber srcReg, var_types dstType)
     {
         return ins_Copy(dstType);
     }
-#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+#if defined(TARGET_XARCH) || defined(TARGET_WASM) // TODO Wasm
     if (dstIsFloatReg)
     {
         return INS_mov_i2xmm;
@@ -2013,7 +2014,7 @@ instruction CodeGenInterface::ins_StoreFromSrc(regNumber srcReg, var_types dstTy
     return ins;
 }
 
-#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#if defined(TARGET_XARCH) || defined(TARGET_WASM)
 
 bool CodeGen::isMoveIns(instruction ins)
 {
@@ -2397,7 +2398,7 @@ void CodeGen::instGen_MemoryBarrier(BarrierKind barrierKind)
     }
 #endif // DEBUG
 
-#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+#if defined(TARGET_XARCH) || defined(TARGET_WASM) // TODO Wasm
     // only full barrier needs to be emitted on Xarch
     if (barrierKind != BARRIER_FULL)
     {
@@ -2426,7 +2427,7 @@ void CodeGen::instGen_Set_Reg_To_Zero(emitAttr size, regNumber reg, insFlags fla
     GetEmitter()->emitIns_R_R(INS_xor, size, reg, reg);
 #elif defined(TARGET_ARMARCH)
     GetEmitter()->emitIns_R_I(INS_mov, size, reg, 0 ARM_ARG(flags));
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#elif defined(TARGET_WASM)
     GetEmitter()->emitIns_R_R(INS_xor, size, reg, reg);
 #else
 #error "Unknown TARGET"
@@ -2445,7 +2446,7 @@ void CodeGen::instGen_Compare_Reg_To_Zero(emitAttr size, regNumber reg)
     GetEmitter()->emitIns_R_R(INS_test, size, reg, reg);
 #elif defined(TARGET_ARMARCH)
     GetEmitter()->emitIns_R_I(INS_cmp, size, reg, 0);
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#elif defined(TARGET_WASM)
     GetEmitter()->emitIns_R_R(INS_test, size, reg, reg);
 #else
 #error "Unknown TARGET"
@@ -2459,7 +2460,7 @@ void CodeGen::instGen_Compare_Reg_To_Zero(emitAttr size, regNumber reg)
  */
 void CodeGen::instGen_Compare_Reg_To_Reg(emitAttr size, regNumber reg1, regNumber reg2)
 {
-#if defined(TARGET_XARCH) || defined(TARGET_ARMARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+#if defined(TARGET_XARCH) || defined(TARGET_ARMARCH) || defined(TARGET_WASM) // TODO Wasm
     GetEmitter()->emitIns_R_R(INS_cmp, size, reg1, reg2);
 #else
 #error "Unknown TARGET"
@@ -2479,7 +2480,7 @@ void CodeGen::instGen_Compare_Reg_To_Imm(emitAttr size, regNumber reg, target_ss
     }
     else
     {
-#if defined(TARGET_XARCH) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+#if defined(TARGET_XARCH) || defined(TARGET_WASM) // TODO Wasm
 #if defined(TARGET_AMD64)
         if ((EA_SIZE(size) == EA_8BYTE) && (((int)imm != (ssize_t)imm) || EA_IS_CNS_RELOC(size)))
         {
@@ -2535,6 +2536,7 @@ void CodeGen::instGen_Store_Reg_Into_Lcl(var_types dstType, regNumber srcReg, in
 
     GetEmitter()->emitIns_S_R(ins_Store(dstType), size, srcReg, varNum, offs);
 }
+#endif // !TARGET_WASM
 
 /*****************************************************************************/
 /*****************************************************************************/

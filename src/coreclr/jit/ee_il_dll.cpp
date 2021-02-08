@@ -571,6 +571,7 @@ void Compiler::eeGetStmtOffsets()
     info.compCompHnd->freeArray(offsets);
 }
 
+#ifndef TARGET_WASM
 /*****************************************************************************
  *
  *                  Debugging support - Local var info
@@ -632,6 +633,7 @@ void Compiler::eeSetLVdone()
 
     eeVars = nullptr; // We give up ownership after setVars()
 }
+#endif // !TARGET_WASM
 
 void Compiler::eeGetVars()
 {
@@ -759,6 +761,7 @@ void Compiler::eeGetVars()
 #endif // DEBUG
 }
 
+#ifndef TARGET_WASM
 #ifdef DEBUG
 void Compiler::eeDispVar(ICorDebugInfo::NativeVarInfo* var)
 {
@@ -854,6 +857,7 @@ void Compiler::eeDispVar(ICorDebugInfo::NativeVarInfo* var)
 
     printf("\n");
 }
+#endif // !TARGET_WASM
 
 // Same parameters as ICorStaticInfo::setVars().
 void Compiler::eeDispVars(CORINFO_METHOD_HANDLE ftn, ULONG32 cVars, ICorDebugInfo::NativeVarInfo* vars)
@@ -1108,6 +1112,7 @@ WORD Compiler::eeGetRelocTypeHint(void* target)
     }
 }
 
+#ifndef TARGET_WASM
 CORINFO_FIELD_HANDLE Compiler::eeFindJitDataOffs(unsigned dataOffs)
 {
     // Data offsets are marked by the fact that the low two bits are 0b01 0x1
@@ -1145,6 +1150,7 @@ int Compiler::eeGetJitDataOffs(CORINFO_FIELD_HANDLE field)
         return -1;
     }
 }
+#endif // !TARGET_WASM
 
 /*****************************************************************************
  *

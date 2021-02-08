@@ -891,7 +891,7 @@ unsigned Compiler::ehGetCallFinallyRegionIndex(unsigned finallyIndex, bool* inTr
     assert(finallyIndex != EHblkDsc::NO_ENCLOSING_INDEX);
     assert(ehGetDsc(finallyIndex)->HasFinallyHandler());
 
-#if defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#if defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_WASM)
     return ehGetDsc(finallyIndex)->ebdGetEnclosingRegionIndex(inTryRegion);
 #else
     *inTryRegion = true;
@@ -1092,6 +1092,7 @@ void* Compiler::ehEmitCookie(BasicBlock* block)
     return cookie;
 }
 
+#ifndef TARGET_WASM
 /*****************************************************************************
  * Determine the emitter code offset for a block. If the block is a finally
  * target, choose the offset of the NOP padding that precedes the block.
@@ -1101,6 +1102,7 @@ UNATIVE_OFFSET Compiler::ehCodeOffset(BasicBlock* block)
 {
     return GetEmitter()->emitCodeOffset(ehEmitCookie(block), 0);
 }
+#endif // !TARGET_WASM
 
 /****************************************************************************/
 
@@ -2979,10 +2981,12 @@ void Compiler::dispOutgoingEHClause(unsigned num, const CORINFO_EH_CLAUSE& claus
 {
     if (opts.dspDiffable)
     {
+#ifndef TARGET_WASM
         /* (( brace matching editor workaround to compensate for the following line */
         printf("EH#%u: try [%s..%s) handled by [%s..%s) ", num, GetEmitter()->emitOffsetToLabel(clause.TryOffset),
                GetEmitter()->emitOffsetToLabel(clause.TryLength), GetEmitter()->emitOffsetToLabel(clause.HandlerOffset),
                GetEmitter()->emitOffsetToLabel(clause.HandlerLength));
+#endif // !TARGET_WASM
     }
     else
     {
@@ -3005,9 +3009,11 @@ void Compiler::dispOutgoingEHClause(unsigned num, const CORINFO_EH_CLAUSE& claus
         case CORINFO_EH_CLAUSE_FILTER:
             if (opts.dspDiffable)
             {
+#ifndef TARGET_WASM
                 /* ( brace matching editor workaround to compensate for the following line */
                 printf("filter at [%s..%s)", GetEmitter()->emitOffsetToLabel(clause.ClassToken),
                        GetEmitter()->emitOffsetToLabel(clause.HandlerOffset));
+#endif // !TARGET_WASM
             }
             else
             {

@@ -3065,7 +3065,7 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
 #elif defined(TARGET_X86)
 
         passUsingFloatRegs = false;
-#elif defined(TARGET_WASM32) || defined(TARGET_WASM64)
+#elif defined(TARGET_WASM)
 
         passUsingFloatRegs = varTypeIsFloating(argx);
 
@@ -3118,7 +3118,7 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
                 assert(structSize == info.compCompHnd->getClassSize(objClass));
             }
         }
-#if defined(TARGET_AMD64) || defined(TARGET_WASM32) || defined(TARGET_WASM64) // TODO Wasm
+#if defined(TARGET_AMD64) || defined(TARGET_WASM) // TODO Wasm
 #ifdef UNIX_AMD64_ABI
         if (!isStructArg)
         {
@@ -8587,8 +8587,13 @@ void Compiler::fgMorphTailCallViaJitHelper(GenTreeCall* call)
     assert(ppArg != nullptr);
     assert(*ppArg == nullptr);
 
+#ifndef TARGET_WASM
     unsigned nOldStkArgsWords =
         (compArgSize - (codeGen->intRegState.rsCalleeRegArgCount * REGSIZE_BYTES)) / REGSIZE_BYTES;
+#else
+    unsigned nOldStkArgsWords = 0;
+    assert(false); // TODO: Wasm: what to do here?
+#endif // !TARGET_WASM
     GenTree* arg3 = gtNewIconNode((ssize_t)nOldStkArgsWords, TYP_I_IMPL);
     *ppArg        = gtNewCallArgs(arg3); // numberOfOldStackArgs
     ppArg         = &((*ppArg)->NextRef());
@@ -17108,6 +17113,7 @@ void Compiler::fgMergeBlockReturn(BasicBlock* block)
     }
 }
 
+#ifndef TARGET_WASM
 /*****************************************************************************
  *
  *  Make some decisions about the kind of code to generate.
@@ -17218,6 +17224,7 @@ void Compiler::fgSetOptions()
 
     // printf("method will %s be fully interruptible\n", GetInterruptible() ? "   " : "not");
 }
+#endif // !TARGET_WASM
 
 /*****************************************************************************/
 
@@ -17908,7 +17915,9 @@ void Compiler::fgPromoteStructs()
     if (verbose)
     {
         printf("\nlvaTable before fgPromoteStructs\n");
+#ifndef TARGET_WASM
         lvaTableDump();
+#endif //!TARGET_WASM
     }
 #endif // DEBUG
 
@@ -17980,7 +17989,9 @@ void Compiler::fgPromoteStructs()
     if (verbose)
     {
         printf("\nlvaTable after fgPromoteStructs\n");
+#ifndef TARGET_WASM
         lvaTableDump();
+#endif //!TARGET_WASM
     }
 #endif // DEBUG
 }

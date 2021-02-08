@@ -13,6 +13,7 @@ XX                                                                           XX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 */
+#ifndef TARGET_WASM
 
 #include "jitpch.h"
 #ifdef _MSC_VER
@@ -3905,3 +3906,4 @@ int LinearScan::BuildCmp(GenTree* tree)
     }
     return srcCount;
 }
+#endif // !TARGET_WASM
