@@ -735,7 +735,7 @@ private:
     // Hence the "SmallFPSet" has 5 elements.
     CLANG_FORMAT_COMMENT_ANCHOR;
 
-#if defined(TARGET_AMD64) || defined(TARGET_WASM)
+#if defined(TARGET_AMD64)
 #ifdef UNIX_AMD64_ABI
     // On System V the RDI and RSI are not callee saved. Use R12 ans R13 as callee saved registers.
     static const regMaskTP LsraLimitSmallIntSet =
@@ -757,17 +757,6 @@ private:
 #elif defined(TARGET_X86)
     static const regMaskTP LsraLimitSmallIntSet = (RBM_EAX | RBM_ECX | RBM_EDI);
     static const regMaskTP LsraLimitSmallFPSet  = (RBM_XMM0 | RBM_XMM1 | RBM_XMM2 | RBM_XMM6 | RBM_XMM7);
-#elif defined(TARGET_WASM)
-#ifdef UNIX_AMD64_ABI
-    // On System V the RDI and RSI are not callee saved. Use R12 ans R13 as callee saved registers.
-    static const regMaskTP LsraLimitSmallIntSet =
-        (RBM_EAX | RBM_ECX | RBM_EBX | RBM_ETW_FRAMED_EBP | RBM_R12 | RBM_R13);
-#else  // !UNIX_AMD64_ABI
-    // On Windows Amd64 use the RDI and RSI as callee saved registers.
-    static const regMaskTP LsraLimitSmallIntSet =
-        (RBM_EAX | RBM_ECX | RBM_EBX | RBM_ETW_FRAMED_EBP | RBM_ESI | RBM_EDI);
-#endif // !UNIX_AMD64_ABI
-    static const regMaskTP LsraLimitSmallFPSet = (RBM_XMM0 | RBM_XMM1 | RBM_XMM2 | RBM_XMM6 | RBM_XMM7);
 #else
 #error Unsupported or unset target architecture
 #endif // target
@@ -1733,7 +1722,7 @@ private:
 
     void setDelayFree(RefPosition* use);
     int BuildBinaryUses(GenTreeOp* node, regMaskTP candidates = RBM_NONE);
-#if defined(TARGET_XARCH) || defined(TARGET_WASM)
+#ifdef TARGET_XARCH
     int BuildRMWUses(GenTreeOp* node, regMaskTP candidates = RBM_NONE);
 #endif // !TARGET_XARCH
     // This is the main entry point for building the RefPositions for a node.
@@ -1754,7 +1743,7 @@ private:
     void BuildDefsWithKills(GenTree* tree, int dstCount, regMaskTP dstCandidates, regMaskTP killMask);
 
     int BuildReturn(GenTree* tree);
-#if defined(TARGET_XARCH) || defined(TARGET_WASM)
+#ifdef TARGET_XARCH
     // This method, unlike the others, returns the number of sources, since it may be called when
     // 'tree' is contained.
     int BuildShiftRotate(GenTree* tree);
@@ -1775,7 +1764,7 @@ private:
     int BuildGCWriteBarrier(GenTree* tree);
     int BuildCast(GenTreeCast* cast);
 
-#if defined(TARGET_XARCH) || defined(TARGET_WASM)
+#ifdef TARGET_XARCH
     // returns true if the tree can use the read-modify-write memory instruction form
     bool isRMWRegOper(GenTree* tree);
     int BuildMul(GenTree* tree);

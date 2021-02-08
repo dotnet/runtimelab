@@ -3,6 +3,8 @@
 
 #pragma once
 
+#ifndef TARGET_WASM
+
 #include "compiler.h"
 #include "phase.h"
 
@@ -42,3 +44,5 @@ private:
     bool throwHelperBlocksUsed; // Were any throw helper blocks created for this method.
 #endif                          // !FEATURE_FIXED_OUT_ARGS
 };
+
+#endif // !TARGET_WASM

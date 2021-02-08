@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 /*****************************************************************************/
 
+#ifndef TARGET_WASM
 #ifndef _INSTR_H_
 #define _INSTR_H_
 /*****************************************************************************/
@@ -113,19 +114,6 @@ enum insFlags: unsigned
     INS_FLAGS_NOT_SET = 0x00,
     INS_FLAGS_SET = 0x01,
     INS_FLAGS_DONT_CARE = 0x02,
-};
-#elif defined(TARGET_WASM) // TODO : can this be removed/empty?
-enum insFlags: uint8_t
-{
-    INS_FLAGS_None = 0x00,
-    INS_FLAGS_ReadsFlags = 0x01,
-    INS_FLAGS_WritesFlags = 0x02,
-    INS_FLAGS_x87Instr = 0x04,
-    INS_Flags_IsDstDstSrcAVXInstruction = 0x08,
-    INS_Flags_IsDstSrcSrcAVXInstruction = 0x10,
-
-    //  TODO-Cleanup:
-    INS_FLAGS_DONT_CARE = 0x00,
 };
 #else
 #error Unsupported target architecture
@@ -317,3 +305,4 @@ enum emitAttr : unsigned
 /*****************************************************************************/
 #endif //_INSTR_H_
 /*****************************************************************************/
+#endif // !TARGET_WASM

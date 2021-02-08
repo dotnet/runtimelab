@@ -19690,7 +19690,11 @@ void Compiler::impInlineInitVars(InlineInfo* pInlineInfo)
                         return;
                     }
                 }
+#ifndef TARGET_WASM
                 else if (genTypeSize(sigType) < EA_PTRSIZE)
+#else
+                else if (genTypeSize(sigType) < TARGET_POINTER_SIZE) // TODO: is this sensible in the abscence of EA_PTRSIZE?
+#endif
                 {
                     // Narrowing cast.
                     if (inlArgNode->OperIs(GT_LCL_VAR))

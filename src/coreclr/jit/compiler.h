@@ -4739,7 +4739,7 @@ public:
 
 #ifndef TARGET_WASM
     void fgSetOptions();
-#endif// !TARGET_WASM
+#endif // !TARGET_WASM
 
 #ifdef DEBUG
     static fgWalkPreFn fgAssertNoQmark;
@@ -11265,27 +11265,6 @@ const instruction INS_ABS  = INS_fabs;
 const instruction INS_SQRT = INS_fsqrt;
 
 #endif // TARGET_ARM64
-
-#if defined(TARGET_WASM)
-
-const instruction INS_SHIFT_LEFT_LOGICAL = INS_shl;
-const instruction INS_SHIFT_RIGHT_LOGICAL = INS_shr;
-const instruction INS_SHIFT_RIGHT_ARITHM = INS_sar;
-
-const instruction INS_AND = INS_and;
-const instruction INS_OR = INS_or;
-const instruction INS_XOR = INS_xor;
-const instruction INS_NEG = INS_neg;
-const instruction INS_TEST = INS_test;
-const instruction INS_MUL = INS_imul;
-const instruction INS_SIGNED_DIVIDE = INS_idiv;
-const instruction INS_UNSIGNED_DIVIDE = INS_div;
-const instruction INS_BREAKPOINT = INS_int3;
-const instruction INS_ADDC = INS_adc;
-const instruction INS_SUBC = INS_sbb;
-const instruction INS_NOT = INS_not;
-
-#endif // defined(TARGET_WASM)
 
 /*****************************************************************************/
 

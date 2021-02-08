@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+#ifndef TARGET_WASM
+
 #include "jitpch.h"
 #ifdef _MSC_VER
 #pragma hdrstop
@@ -19,12 +21,8 @@ StackLevelSetter::StackLevelSetter(Compiler* compiler)
     , throwHelperBlocksUsed(comp->fgUseThrowHelperBlocks() && comp->compUsesThrowHelper)
 #endif // !FEATURE_FIXED_OUT_ARGS
 {
-#ifndef TARGET_WASM
     // The constructor reads this value to skip iterations that could set it if it is already set.
     compiler->codeGen->resetWritePhaseForFramePointerRequired();
-#else
-    assert(false); // Wasm - TODO can this be ignored?
-#endif // !TARGET_WASM
 }
 
 //------------------------------------------------------------------------
@@ -338,11 +336,7 @@ void StackLevelSetter::CheckArgCnt()
             printf("Too many pushed arguments for an ESP based encoding, forcing an EBP frame\n");
         }
 #endif
-#ifndef TARGET_WASM
         comp->codeGen->setFramePointerRequired(true);
-#else
-        assert(false); // Wasm - TODO can this be ignored?
-#endif // !TARGET_WASM
     }
 }
 
@@ -365,3 +359,4 @@ void StackLevelSetter::CheckAdditionalArgs()
     }
 #endif // TARGET_X86
 }
+#endif // !TARGET_WASM

@@ -4854,7 +4854,7 @@ void Compiler::compCompile(void** methodCodePtr, ULONG* methodCodeSize, JitFlags
 #ifndef TARGET_WASM
         // Decide the kind of code we want to generate
         fgSetOptions();
-#endif !TARGET_WASM
+#endif // !TARGET_WASM
 
         fgExpandQmarkNodes();
 
@@ -8656,7 +8656,7 @@ void cVarsFinal(Compiler* comp)
     printf("===================================================================== *Vars %u\n", sequenceNumber++);
     comp->lvaTableDump(Compiler::FINAL_FRAME_LAYOUT);
 }
-#endif !TARGET_WASM
+#endif // !TARGET_WASM
 
 void cBlockCheapPreds(Compiler* comp, BasicBlock* block)
 {
@@ -8785,7 +8785,7 @@ void dVarsFinal()
 {
     cVarsFinal(JitTls::GetCompiler());
 }
-#endif !TARGET_WASM
+#endif // !TARGET_WASM
 
 void dBlockPreds(BasicBlock* block)
 {
