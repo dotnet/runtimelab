@@ -30,24 +30,6 @@ namespace System.Text.Json.Serialization.Metadata
 
         internal delegate T ParameterizedConstructorDelegate<T, TArg0, TArg1, TArg2, TArg3>(TArg0 arg0, TArg1 arg1, TArg2 arg2, TArg3 arg3);
 
-        /// <summary>
-        /// todo
-        /// </summary>
-        /// <param name="writer"></param>
-        /// <param name="value"></param>
-        /// <param name="writeStack"></param>
-        /// <param name="options"></param>
-        public delegate void SerializeDelegate(Utf8JsonWriter writer, object value, ref WriteStack writeStack, JsonSerializerOptions options);
-
-        /// <summary>
-        /// todo
-        /// </summary>
-        /// <param name="reader"></param>
-        /// <param name="readStack"></param>
-        /// <param name="options"></param>
-        /// <returns></returns>
-        public delegate object DeserializeDelegate(ref Utf8JsonReader reader, ref ReadStack readStack, JsonSerializerOptions options);
-
         private ConstructorDelegate? _createObject;
         /// <summary>
         /// todo
@@ -66,48 +48,6 @@ namespace System.Text.Json.Serialization.Metadata
                 }
 
                 _createObject = value;
-            }
-        }
-
-        private SerializeDelegate? _serialize;
-
-        /// <summary>
-        /// todo
-        /// </summary>
-        public SerializeDelegate? Serialize
-        {
-            get
-            {
-                return _serialize;
-            }
-            set
-            {
-                if (_isInitialized)
-                {
-                    throw new InvalidOperationException("todo");
-                }
-
-                _serialize = value;
-            }
-        }
-
-        private DeserializeDelegate? _deserialize;
-        /// <summary>
-        /// todo
-        /// </summary>
-        public DeserializeDelegate? Deserialize
-        {
-            get
-            {
-                return _deserialize;
-            }
-            set
-            {
-                if (_isInitialized)
-                {
-                    throw new InvalidOperationException("todo");
-                }
-                _deserialize = value;
             }
         }
 
@@ -210,12 +150,7 @@ namespace System.Text.Json.Serialization.Metadata
         {
             Type = type;
 
-            if (options == null)
-            {
-                options = JsonSerializerOptions.DefaultCodeGenOptions;
-            }
-
-            Options = options;
+            Options = options ?? JsonSerializerOptions.DefaultOptions;
 
             // todo: fix up nullability to avoid this.
             PropertyInfoForClassInfo = null!;
@@ -411,10 +346,7 @@ namespace System.Text.Json.Serialization.Metadata
 
         internal void CompleteObjectInitialization()
         {
-            if (PropertyCacheArray == null)
-            {
-                PropertyCacheArray = new JsonPropertyInfo[PropertyCache!.Count];
-            }
+            PropertyCacheArray ??= new JsonPropertyInfo[PropertyCache!.Count];
 
             // Copy the dictionary cache to the array cache.
             PropertyCache!.Values.CopyTo(PropertyCacheArray, 0);
@@ -656,7 +588,7 @@ namespace System.Text.Json.Serialization.Metadata
             JsonConverter? converter = options.DetermineConverter(parentClassType, type, memberInfo);
             if (converter == null)
             {
-                Debug.Assert(!options._initializeDefaultConverters);
+                Debug.Assert(JsonHelpers.DisableJsonSerializerDynamicFallback);
                 throw new NotSupportedException("Built-in converters not initialized; thus no converter found for type.");
             }
 

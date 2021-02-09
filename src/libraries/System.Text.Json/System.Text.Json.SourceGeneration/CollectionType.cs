@@ -13,6 +13,7 @@ namespace System.Text.Json.SourceGeneration
         Array = 1,
         List = 2,
         IEnumerable = 3,
-        Dictionary = 4
+        IList = 4,
+        Dictionary = 5
     }
 }

@@ -55,6 +55,20 @@ namespace System.Text.Json.Serialization.Metadata
             return s_ienumerable;
         }
 
+        private static JsonTypeInfo<IList<T>>? s_ilist;
+        /// <summary>
+        /// todo
+        /// </summary>
+        public static JsonTypeInfo<IList<T>> GetIList(JsonClassInfo elementInfo, JsonSerializerContext context)
+        {
+            if (s_ilist == null)
+            {
+                s_ilist = new JsonCollectionTypeInfo<IList<T>>(CreateList, new IListOfTConverter<IList<T>, T>(), elementInfo, context._options);
+            }
+
+            return s_ilist;
+        }
+
         private static List<T> CreateList()
         {
             return new List<T>();

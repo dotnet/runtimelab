@@ -3,19 +3,30 @@
 
 namespace System.Text.Json.Serialization.Converters
 {
-    internal sealed class SingleConverter : JsonConverter<float>
+    /// <summary>
+    /// todo
+    /// </summary>
+    public sealed class SingleConverter : JsonConverter<float>
     {
-
+        /// <summary>
+        /// todo
+        /// </summary>
         public SingleConverter()
         {
             IsInternalConverterForNumberType = true;
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override float Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             return reader.GetSingle();
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override void Write(Utf8JsonWriter writer, float value, JsonSerializerOptions options)
         {
             writer.WriteNumberValue(value);

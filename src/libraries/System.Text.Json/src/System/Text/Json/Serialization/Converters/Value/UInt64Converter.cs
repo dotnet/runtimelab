@@ -3,18 +3,31 @@
 
 namespace System.Text.Json.Serialization.Converters
 {
-    internal sealed class UInt64Converter : JsonConverter<ulong>
+    /// <summary>
+    /// todo
+    /// </summary>
+    [CLSCompliant(false)]
+    public sealed class UInt64Converter : JsonConverter<ulong>
     {
+        /// <summary>
+        /// todo
+        /// </summary>
         public UInt64Converter()
         {
             IsInternalConverterForNumberType = true;
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override ulong Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             return reader.GetUInt64();
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override void Write(Utf8JsonWriter writer, ulong value, JsonSerializerOptions options)
         {
             writer.WriteNumberValue(value);

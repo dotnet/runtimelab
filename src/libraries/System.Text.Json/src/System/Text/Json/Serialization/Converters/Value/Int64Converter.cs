@@ -3,18 +3,30 @@
 
 namespace System.Text.Json.Serialization.Converters
 {
-    internal sealed class Int64Converter : JsonConverter<long>
+    /// <summary>
+    /// todo
+    /// </summary>
+    public sealed class Int64Converter : JsonConverter<long>
     {
+        /// <summary>
+        /// todo
+        /// </summary>
         public Int64Converter()
         {
             IsInternalConverterForNumberType = true;
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override long Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             return reader.GetInt64();
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override void Write(Utf8JsonWriter writer, long value, JsonSerializerOptions options)
         {
             writer.WriteNumberValue(value);

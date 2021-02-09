@@ -3,18 +3,30 @@
 
 namespace System.Text.Json.Serialization.Converters
 {
-    internal sealed class Int16Converter : JsonConverter<short>
+    /// <summary>
+    /// todo
+    /// </summary>
+    public sealed class Int16Converter : JsonConverter<short>
     {
+        /// <summary>
+        /// todo
+        /// </summary>
         public Int16Converter()
         {
             IsInternalConverterForNumberType = true;
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override short Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             return reader.GetInt16();
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override void Write(Utf8JsonWriter writer, short value, JsonSerializerOptions options)
         {
             // For performance, lift up the writer implementation.

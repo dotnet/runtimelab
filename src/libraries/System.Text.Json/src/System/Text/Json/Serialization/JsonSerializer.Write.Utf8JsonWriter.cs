@@ -91,7 +91,7 @@ namespace System.Text.Json
 
             if (options == null)
             {
-                options = JsonSerializerOptions.DefaultCodeGenOptions;
+                options = JsonSerializerOptions.DefaultOptions;
             }
 
             using (var output = new PooledByteBufferWriter(options.DefaultBufferSize))

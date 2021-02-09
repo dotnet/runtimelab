@@ -3,18 +3,31 @@
 
 namespace System.Text.Json.Serialization.Converters
 {
-    internal sealed class UInt16Converter : JsonConverter<ushort>
+    /// <summary>
+    /// todo
+    /// </summary>
+    [CLSCompliant(false)]
+    public sealed class UInt16Converter : JsonConverter<ushort>
     {
+        /// <summary>
+        /// todo
+        /// </summary>
         public UInt16Converter()
         {
             IsInternalConverterForNumberType = true;
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override ushort Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             return reader.GetUInt16();
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override void Write(Utf8JsonWriter writer, ushort value, JsonSerializerOptions options)
         {
             // For performance, lift up the writer implementation.

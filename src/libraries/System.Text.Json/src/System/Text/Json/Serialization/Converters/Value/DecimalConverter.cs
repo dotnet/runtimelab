@@ -3,18 +3,30 @@
 
 namespace System.Text.Json.Serialization.Converters
 {
-    internal sealed class DecimalConverter : JsonConverter<decimal>
+    /// <summary>
+    /// todo
+    /// </summary>
+    public sealed class DecimalConverter : JsonConverter<decimal>
     {
+        /// <summary>
+        /// todo
+        /// </summary>
         public DecimalConverter()
         {
             IsInternalConverterForNumberType = true;
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override decimal Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             return reader.GetDecimal();
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override void Write(Utf8JsonWriter writer, decimal value, JsonSerializerOptions options)
         {
             writer.WriteNumberValue(value);

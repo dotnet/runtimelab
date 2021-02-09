@@ -58,8 +58,9 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             // Check base functionality of found types.
             Assert.Equal(1, generator.SerializableTypes.Count);
-            Type myType = generator.SerializableTypes["HelloWorld.MyType"];
+            (Type myType, bool canBeDynamic) = generator.SerializableTypes["HelloWorld.MyType"];
             Assert.Equal("HelloWorld.MyType", myType.FullName);
+            Assert.False(canBeDynamic);
 
             // Check for received fields, properties and methods in created type.
             string[] expectedPropertyNames = { "PublicPropertyInt", "PublicPropertyString",};
@@ -124,8 +125,8 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             // Check base functionality of found types.
             Assert.Equal(2, generator.SerializableTypes.Count);
-            Type myType = generator.SerializableTypes["HelloWorld.MyType"];
-            Type notMyType = generator.SerializableTypes["ReferencedAssembly.Location"];
+            Type myType = generator.SerializableTypes["HelloWorld.MyType"].Item1;
+            Type notMyType = generator.SerializableTypes["ReferencedAssembly.Location"].Item1;
 
             // Check for MyType.
             Assert.Equal("HelloWorld.MyType", myType.FullName);
@@ -208,7 +209,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             Assert.Equal(2, generator.SerializableTypes.Count);
 
             // Check for MyType.
-            Assert.Equal("HelloWorld.MyType", generator.SerializableTypes["HelloWorld.MyType"].FullName);
+            Assert.Equal("HelloWorld.MyType", generator.SerializableTypes["HelloWorld.MyType"].Item1.FullName);
 
             // Check for received fields, properties and methods for MyType.
             string[] expectedFieldNamesMyType = { "PublicChar", "PublicDouble" };
@@ -217,7 +218,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             CheckFieldsPropertiesMethods("HelloWorld.MyType", ref generator, expectedFieldNamesMyType, expectedPropertyNamesMyType, expectedMethodNamesMyType);
 
             // Check for NotMyType.
-            Assert.Equal("ReferencedAssembly.Location", generator.SerializableTypes["ReferencedAssembly.Location"].FullName);
+            Assert.Equal("ReferencedAssembly.Location", generator.SerializableTypes["ReferencedAssembly.Location"].Item1.FullName);
 
             // Check for received fields, properties and methods for NotMyType.
             string[] expectedFieldNamesNotMyType = { };
@@ -296,9 +297,10 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
         private void CheckFieldsPropertiesMethods(string typeName, ref JsonSourceGenerator generator, string[] expectedFields, string[] expectedProperties, string[] expectedMethods)
         {
-            string[] receivedFields = generator.SerializableTypes[typeName].GetFields().Select(field => field.Name).OrderBy(s => s).ToArray();
-            string[] receivedProperties = generator.SerializableTypes[typeName].GetProperties().Select(property => property.Name).OrderBy(s => s).ToArray();
-            string[] receivedMethods = generator.SerializableTypes[typeName].GetMethods().Select(method => method.Name).OrderBy(s => s).ToArray();
+            Type type = generator.SerializableTypes[typeName].Item1;
+            string[] receivedFields = type.GetFields().Select(field => field.Name).OrderBy(s => s).ToArray();
+            string[] receivedProperties = type.GetProperties().Select(property => property.Name).OrderBy(s => s).ToArray();
+            string[] receivedMethods = type.GetMethods().Select(method => method.Name).OrderBy(s => s).ToArray();
 
             Assert.Equal(expectedFields, receivedFields);
             Assert.Equal(expectedProperties, receivedProperties);

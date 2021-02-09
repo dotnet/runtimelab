@@ -19,13 +19,9 @@ namespace System.Text.Json.Serialization.Metadata
         /// todo
         /// </summary>
         /// <param name="createObjectFunc"></param>
-        /// <param name="serializeFunc"></param>
-        /// <param name="deserializeFunc"></param>
         /// <param name="options"></param>
         public JsonObjectInfo(
             ConstructorDelegate createObjectFunc,
-            SerializeDelegate serializeFunc,
-            DeserializeDelegate deserializeFunc,
             JsonSerializerOptions options) : base(typeof(T), options, ClassType.Object)
         {
             if (createObjectFunc == null)
@@ -35,19 +31,8 @@ namespace System.Text.Json.Serialization.Metadata
 
             CreateObject = createObjectFunc;
 
-            if (serializeFunc == null)
-            {
-                throw new ArgumentNullException(nameof(serializeFunc));
-            }
-            Serialize = serializeFunc;
+            JsonConverter converter = new ObjectDefaultConverter<T>();
 
-            if (deserializeFunc == null)
-            {
-                throw new ArgumentNullException(nameof(deserializeFunc));
-            }
-            Deserialize = deserializeFunc;
-
-            JsonConverter converter = new ObjectCodeGenConverter<T>();
             ConverterBase = converter;
             PropertyInfoForClassInfo = CreatePropertyInfoForClassInfo(Type, Type, converter, Options);
         }
@@ -108,12 +93,14 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public void CompleteInitialization()
+        public void CompleteInitialization(bool canBeDynamic)
         {
             CompleteObjectInitialization();
 
-            //todo: should we not add?
-            Options.AddJsonClassInfo(this);
+            if (canBeDynamic)
+            {
+                Options.AddJsonClassInfo(this);
+            }
         }
     }
 }

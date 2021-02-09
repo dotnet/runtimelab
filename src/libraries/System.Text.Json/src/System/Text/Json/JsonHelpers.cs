@@ -11,6 +11,15 @@ namespace System.Text.Json
 {
     internal static partial class JsonHelpers
     {
+        /// <summary>
+        /// Determines whether to statically root all serialization converters and reflection code-paths of the serializer.
+        /// This value can be influenced by an ILLinker feature switch which allows linking of this code to reduce IL size for
+        /// assembly, and consequently the calling application. Removing this code effectively prohibits all dynamic fallback
+        /// by the serializer; serialization metadata must be provided explictly to the serializer, otherwise
+        /// <see cref="NotSupportedException" /> will be thrown when (de)serialization of a type without accompanying metadata is attempted.
+        /// </summary>
+        internal static bool DisableJsonSerializerDynamicFallback { get; }
+
         // Copy of Array.MaxArrayLength. For byte arrays the limit is slightly larger
         private const int MaxArrayLength = 0X7FEFFFFF;
 

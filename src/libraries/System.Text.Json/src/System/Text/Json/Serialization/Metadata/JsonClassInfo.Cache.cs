@@ -6,7 +6,6 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text.Json.Serialization;
 
 namespace System.Text.Json.Serialization.Metadata
 {
@@ -112,7 +111,7 @@ namespace System.Text.Json.Serialization.Metadata
 
         /// <summary>
         /// Create a <see cref="JsonPropertyInfo"/> for a given Type.
-        /// See <seealso cref="JsonClassInfo.PropertyInfoForClassInfo"/>.
+        /// See <seealso cref="PropertyInfoForClassInfo"/>.
         /// </summary>
         internal static JsonPropertyInfo CreatePropertyInfoForClassInfo(
             Type declaredPropertyType,
@@ -120,8 +119,9 @@ namespace System.Text.Json.Serialization.Metadata
             JsonConverter converter,
             JsonSerializerOptions options)
         {
-            // todo: avoid this reflection-based code-path for codegen scenarios
-            JsonNumberHandling? numberHandling = GetNumberHandlingForType(declaredPropertyType);
+            JsonNumberHandling? numberHandling = JsonHelpers.DisableJsonSerializerDynamicFallback
+                ? null // TODO: populate this properly in source gen
+                : GetNumberHandlingForType(declaredPropertyType);
 
             JsonPropertyInfo jsonPropertyInfo = CreateProperty(
                 declaredPropertyType: declaredPropertyType,
@@ -133,7 +133,6 @@ namespace System.Text.Json.Serialization.Metadata
                 parentTypeNumberHandling: numberHandling);
 
             Debug.Assert(jsonPropertyInfo.IsForClassInfo);
-
             return jsonPropertyInfo;
         }
 

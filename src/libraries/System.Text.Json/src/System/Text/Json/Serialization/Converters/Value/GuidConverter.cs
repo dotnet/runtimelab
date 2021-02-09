@@ -3,13 +3,22 @@
 
 namespace System.Text.Json.Serialization.Converters
 {
-    internal sealed class GuidConverter : JsonConverter<Guid>
+    /// <summary>
+    /// todo
+    /// </summary>
+    public sealed class GuidConverter : JsonConverter<Guid>
     {
+        /// <summary>
+        /// todo
+        /// </summary>
         public override Guid Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             return reader.GetGuid();
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override void Write(Utf8JsonWriter writer, Guid value, JsonSerializerOptions options)
         {
             writer.WriteStringValue(value);

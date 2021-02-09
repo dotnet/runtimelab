@@ -3,18 +3,31 @@
 
 namespace System.Text.Json.Serialization.Converters
 {
-    internal sealed class UInt32Converter : JsonConverter<uint>
+    /// <summary>
+    /// todo
+    /// </summary>
+    [CLSCompliant(false)]
+    public sealed class UInt32Converter : JsonConverter<uint>
     {
+        /// <summary>
+        /// todo
+        /// </summary>
         public UInt32Converter()
         {
             IsInternalConverterForNumberType = true;
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override uint Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             return reader.GetUInt32();
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override void Write(Utf8JsonWriter writer, uint value, JsonSerializerOptions options)
         {
             // For performance, lift up the writer implementation.

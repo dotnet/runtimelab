@@ -1,7 +1,9 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization.Metadata;
 
 namespace System.Text.Json
 {
@@ -33,6 +35,35 @@ namespace System.Text.Json
             var reader = new Utf8JsonReader(utf8Json, isFinalBlock: true, readerState);
 
             return ReadCore<TValue>(ref reader, typeof(TValue), options);
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="utf8Json"></param>
+        /// <param name="jsonTypeInfo"></param>
+        /// <returns></returns>
+        public static TValue? Deserialize<[DynamicallyAccessedMembers(MembersAccessedOnRead)] TValue>(
+            ReadOnlySpan<byte> utf8Json,
+            JsonTypeInfo<TValue> jsonTypeInfo)
+        {
+            if (jsonTypeInfo == null)
+            {
+                throw new ArgumentNullException(nameof(jsonTypeInfo));
+            }
+
+            JsonSerializerOptions options = jsonTypeInfo.Options;
+
+            // Set by serializer; should not be null.
+            Debug.Assert(options != null);
+
+            var readerState = new JsonReaderState(options.GetReaderOptions());
+            var reader = new Utf8JsonReader(utf8Json, isFinalBlock: true, readerState);
+
+            ReadStack state = default;
+            state.Initialize(jsonTypeInfo);
+
+            return ReadCore<TValue>(jsonTypeInfo.PropertyInfoForClassInfo.ConverterBase, ref reader, options, ref state);
         }
 
         /// <summary>

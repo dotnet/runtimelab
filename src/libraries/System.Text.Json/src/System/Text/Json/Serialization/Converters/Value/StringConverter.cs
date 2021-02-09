@@ -3,13 +3,22 @@
 
 namespace System.Text.Json.Serialization.Converters
 {
-    internal sealed class StringConverter : JsonConverter<string>
+    /// <summary>
+    /// todo
+    /// </summary>
+    public sealed class StringConverter : JsonConverter<string>
     {
+        /// <summary>
+        /// todo
+        /// </summary>
         public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             return reader.GetString();
         }
 
+        /// <summary>
+        /// todo
+        /// </summary>
         public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options)
         {
             // For performance, lift up the writer implementation.

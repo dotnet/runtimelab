@@ -65,7 +65,7 @@ namespace System.Text.Json
 
         internal JsonConverter GetDictionaryKeyConverter(Type keyType)
         {
-            if (!_initializeDefaultConverters)
+            if (JsonHelpers.DisableJsonSerializerDynamicFallback)
             {
                 if (keyType != typeof(string))
                 {
@@ -246,7 +246,7 @@ namespace System.Text.Json
             // Priority 4: Attempt to get built-in converter.
             if (converter == null)
             {
-                if (!_initializeDefaultConverters)
+                if (JsonHelpers.DisableJsonSerializerDynamicFallback)
                 {
                     return null;
                 }
