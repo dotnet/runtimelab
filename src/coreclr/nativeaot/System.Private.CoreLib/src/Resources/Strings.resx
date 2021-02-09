@@ -2569,6 +2569,9 @@
   <data name="NotSupported_DBNullSerial" xml:space="preserve">
     <value>Only one DBNull instance may exist, and calls to DBNull deserialization methods are not allowed.</value>
   </data>
+  <data name="NotSupported_DynamicAssembly" xml:space="preserve">
+    <value>The invoked member is not supported in a dynamic assembly.</value>
+  </data>
   <data name="Serialization_StringBuilderCapacity" xml:space="preserve">
     <value>The serialized Capacity property of StringBuilder must be positive, less than or equal to MaxCapacity and greater than or equal to the String length.</value>
   </data>
@@ -3096,5 +3099,8 @@
   </data>
   <data name="Argv_IncludeDoubleQuote" xml:space="preserve">
     <value>The argv[0] argument cannot include a double quote.</value>
+  </data>
+  <data name="ResourceManager_ReflectionNotAllowed" xml:space="preserve">
+    <value>Use of ResourceManager for custom types is disabled. Set the MSBuild Property CustomResourceTypesSupport to true in order to enable it.</value>
   </data>
 </root>

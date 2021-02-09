@@ -7,7 +7,7 @@ using System.IO;
 
 namespace System.Reflection.Emit
 {
-    public sealed class AssemblyBuilder : Assembly
+    public sealed partial class AssemblyBuilder : Assembly
     {
         internal AssemblyBuilder()
         {
@@ -15,14 +15,6 @@ namespace System.Reflection.Emit
         }
 
         public override string FullName
-        {
-            get
-            {
-                return default;
-            }
-        }
-
-        public override bool IsDynamic
         {
             get
             {
@@ -68,21 +60,6 @@ namespace System.Reflection.Emit
         }
 
         public override int GetHashCode()
-        {
-            return default;
-        }
-
-        public override ManifestResourceInfo GetManifestResourceInfo(string resourceName)
-        {
-            return default;
-        }
-
-        public override string[] GetManifestResourceNames()
-        {
-            return default;
-        }
-
-        public override Stream GetManifestResourceStream(string name)
         {
             return default;
         }
