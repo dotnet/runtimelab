@@ -320,8 +320,9 @@ class ThreadTest
         const string ThreadName = "My thread";
         t.Name = ThreadName;
         Expect(t.Name == ThreadName, string.Format("Expected t.Name == \"{0}\"", ThreadName));
-        ExpectException<InvalidOperationException>(() => { t.Name = null; },
-            "Expected InvalidOperationException setting Thread.Name back to null");
+
+        t.Name = null;
+        Expect(t.Name == null, "Expected t.Name == null");
 
         ExpectPassed(nameof(TestNameProperty), 3);
     }
