@@ -1,3 +1,15 @@
+diff --git a/include/llvm/BinaryFormat/COFF.h b/include/llvm/BinaryFormat/COFF.h
+index b395db6eaa8..74820a8f79f 100644
+--- a/include/llvm/BinaryFormat/COFF.h
++++ b/include/llvm/BinaryFormat/COFF.h
+@@ -395,6 +395,7 @@ enum RelocationTypesARM64 {
+   IMAGE_REL_ARM64_ADDR64 = 0x000E,
+   IMAGE_REL_ARM64_BRANCH19 = 0x000F,
+   IMAGE_REL_ARM64_BRANCH14 = 0x0010,
++  IMAGE_REL_ARM64_REL32 = 0x0011,
+ };
+ 
+ enum COMDATType {
 diff --git a/include/llvm/MC/MCObjectStreamer.h b/include/llvm/MC/MCObjectStreamer.h
 index 7c1189e46ab..d1d77c97311 100644
 --- a/include/llvm/MC/MCObjectStreamer.h
@@ -79,8 +91,20 @@ index 2bfb9a63eed..a710098e798 100644
  void MCStreamer::EmitBinaryData(StringRef Data) { EmitBytes(Data); }
  void MCStreamer::EmitValueImpl(const MCExpr *Value, unsigned Size, SMLoc Loc) {
    visitUsedExpr(*Value);
+diff --git a/lib/Object/COFFObjectFile.cpp b/lib/Object/COFFObjectFile.cpp
+index 0a2053477ca..049657d9bfa 100644
+--- a/lib/Object/COFFObjectFile.cpp
++++ b/lib/Object/COFFObjectFile.cpp
+@@ -1238,6 +1238,7 @@ void COFFObjectFile::getRelocationTypeName(
+     LLVM_COFF_SWITCH_RELOC_TYPE_NAME(IMAGE_REL_ARM64_ADDR64);
+     LLVM_COFF_SWITCH_RELOC_TYPE_NAME(IMAGE_REL_ARM64_BRANCH19);
+     LLVM_COFF_SWITCH_RELOC_TYPE_NAME(IMAGE_REL_ARM64_BRANCH14);
++    LLVM_COFF_SWITCH_RELOC_TYPE_NAME(IMAGE_REL_ARM64_REL32);
+     default:
+       Res = "Unknown";
+     }
 diff --git a/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp b/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
-index 2bd0cbf9f7c..e7643d5f66d 100644
+index 2bd0cbf9f7c..9af66be0fbd 100644
 --- a/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
 +++ b/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
 @@ -41,6 +41,15 @@ public:
@@ -128,17 +152,19 @@ index 89c3e5b4c76..ba105365d74 100644
      case FK_Data_8:
        if (IsILP32) {
 diff --git a/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp b/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
-index 31762b9e4cd..5d8c6d89efc 100644
+index 31762b9e4cd..d53ab3e3b61 100644
 --- a/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
 +++ b/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
-@@ -53,6 +53,7 @@ unsigned AArch64WinCOFFObjectWriter::getRelocType(
-   }
+@@ -65,6 +65,9 @@ unsigned AArch64WinCOFFObjectWriter::getRelocType(
+   case FK_Data_8:
+     return COFF::IMAGE_REL_ARM64_ADDR64;
  
-   case FK_Data_4:
 +  case FK_PCRel_4:
-     switch (Modifier) {
-     default:
-       return COFF::IMAGE_REL_ARM64_ADDR32;
++    return COFF::IMAGE_REL_ARM64_REL32;
++
+   case FK_SecRel_2:
+     return COFF::IMAGE_REL_ARM64_SECTION;
+ 
 diff --git a/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.cpp b/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.cpp
 index a77df7a2598..e1aa7526f9b 100644
 --- a/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.cpp

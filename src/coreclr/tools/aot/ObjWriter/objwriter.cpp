@@ -348,14 +348,13 @@ void ObjectWriter::EmitSymbolDef(const char *SymbolName, bool global) {
 
   if (TheTriple.getObjectFormat() == Triple::ELF &&
       Streamer->getCurrentSectionOnly()->getKind().isText()) {
-      switch (TheTriple.getArch()) {
-        case Triple::thumb:
-        case Triple::aarch64:
-          Streamer->EmitSymbolAttribute(Sym, MCSA_ELF_TypeFunction);
-          break;
-
-        default:
-          break;
+    switch (TheTriple.getArch()) {
+    case Triple::thumb:
+    case Triple::aarch64:
+      Streamer->EmitSymbolAttribute(Sym, MCSA_ELF_TypeFunction);
+      break;
+    default:
+      break;
     }
   }
 
@@ -370,8 +369,6 @@ ObjectWriter::GetSymbolRefExpr(const char *SymbolName,
   Assembler->registerSymbol(*T);
   return MCSymbolRefExpr::create(T, Kind, *OutContext);
 }
-
-
 
 unsigned ObjectWriter::GetDFSize() {
   return Streamer->getOrCreateDataFragment()->getContents().size();
@@ -418,7 +415,7 @@ int ObjectWriter::EmitSymbolRef(const char *SymbolName,
   case RelocType::IMAGE_REL_BASED_DIR64:
     Size = 8;
     break;
-  case RelocType::IMAGE_REL_BASED_REL32: {
+  case RelocType::IMAGE_REL_BASED_REL32:
     Size = 4;
     IsPCRel = true;
     if (ObjFileInfo->getObjectFileType() == ObjFileInfo->IsELF) {
@@ -427,7 +424,6 @@ int ObjectWriter::EmitSymbolRef(const char *SymbolName,
       Kind = MCSymbolRefExpr::VK_PLT;
     }
     break;
-  }
   case RelocType::IMAGE_REL_BASED_RELPTR32:
     Size = 4;
     IsPCRel = true;
@@ -495,15 +491,23 @@ void ObjectWriter::EmitWinFrameInfo(const char *FunctionName, int StartOffset,
   const MCExpr *BaseRefRel =
       GetSymbolRefExpr(FunctionName, MCSymbolRefExpr::VK_COFF_IMGREL32);
 
+  Triple::ArchType Arch = TMachine->getTargetTriple().getArch();
+
+  if (Arch == Triple::thumb || Arch == Triple::thumbeb) {
+    StartOffset |= 1;
+  }
+
   // start Offset
   const MCExpr *StartOfs = MCConstantExpr::create(StartOffset, *OutContext);
   Streamer->EmitValue(
       MCBinaryExpr::createAdd(BaseRefRel, StartOfs, *OutContext), 4);
 
-  // end Offset
-  const MCExpr *EndOfs = MCConstantExpr::create(EndOffset, *OutContext);
-  Streamer->EmitValue(MCBinaryExpr::createAdd(BaseRefRel, EndOfs, *OutContext),
-                      4);
+  if (Arch == Triple::x86 || Arch == Triple::x86_64) {
+    // end Offset
+    const MCExpr *EndOfs = MCConstantExpr::create(EndOffset, *OutContext);
+    Streamer->EmitValue(
+        MCBinaryExpr::createAdd(BaseRefRel, EndOfs, *OutContext), 4);
+  }
 
   // frame symbol reference
   Streamer->EmitValue(
