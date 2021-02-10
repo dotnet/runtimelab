@@ -1127,6 +1127,8 @@ enum interesting_data_point
     max_idp_count
 };
 
+struct gc_flavor_debug_contract;
+
 //class definition of the internal class
 class gc_heap
 {
@@ -1140,6 +1142,7 @@ class gc_heap
     friend class t_join;
     friend class gc_mechanisms;
     friend class seg_free_spaces;
+    friend struct gc_flavor_debug_contract;
 
 #ifdef BACKGROUND_GC
     friend class exclusive_sync;

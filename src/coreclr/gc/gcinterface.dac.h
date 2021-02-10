@@ -129,7 +129,7 @@ struct oom_history
     failure_get_memory fgm;
     size_t size;
     size_t available_pagefile_mb;
-    BOOL loh_p;
+    bool loh_p;
 };
 
 // Analogue for the GC gc_heap class, containing information regarding a single
