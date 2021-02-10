@@ -172,8 +172,7 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(jsonSerializerContext));
             }
 
-            JsonClassInfo jsonClassInfo = jsonSerializerContext.GetJsonClassInfo(returnType) ??
-                throw new InvalidOperationException("Context can't return null");
+            JsonClassInfo jsonClassInfo = JsonHelpers.GetJsonClassInfo(jsonSerializerContext, returnType);
 
             JsonSerializerOptions options = jsonClassInfo.Options;
 

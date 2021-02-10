@@ -117,7 +117,9 @@ namespace System.Text.Json
                 ThrowHelper.ThrowArgumentException_DeserializeWrongType(inputType, value);
             }
 
-            return SerializeUsingMetadata(value, jsonSerializerContext.GetJsonClassInfo(inputType));
+            return SerializeUsingMetadata(
+                value,
+                JsonHelpers.GetJsonClassInfo(jsonSerializerContext, inputType));
         }
 
         /// <summary>
@@ -134,7 +136,9 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(jsonSerializerContext));
             }
 
-            return SerializeUsingMetadata(value, jsonSerializerContext.GetJsonClassInfo(typeof(TValue)));
+            return SerializeUsingMetadata(
+                value,
+                JsonHelpers.GetJsonClassInfo(jsonSerializerContext, typeof(TValue)));
         }
 
         private static string SerializeUsingMetadata<TValue>(in TValue value, JsonClassInfo? jsonClassInfo)

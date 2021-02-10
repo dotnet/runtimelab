@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace System.Text.Json
 {
@@ -163,6 +164,15 @@ namespace System.Text.Json
             {
                 ThrowHelper.ThrowOutOfMemoryException(length);
             }
+        }
+
+        public static JsonClassInfo GetJsonClassInfo(JsonSerializerContext context, Type type)
+        {
+            Debug.Assert(context != null);
+            Debug.Assert(type != null);
+
+            return context.GetJsonClassInfo(type) ??
+                throw new InvalidOperationException($"GetJsonClassInfo for context {context.GetType()} can't return null for type: {type}.");
         }
     }
 }

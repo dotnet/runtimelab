@@ -112,7 +112,10 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(jsonSerializerContext));
             }
 
-            return DeserializeUsingMetadataAsync<TValue?>(utf8Json, jsonSerializerContext.GetJsonClassInfo(typeof(TValue)), cancellationToken);
+            return DeserializeUsingMetadataAsync<TValue?>(
+                utf8Json,
+                JsonHelpers.GetJsonClassInfo(jsonSerializerContext, typeof(TValue)),
+                cancellationToken);
         }
 
         /// <summary>
@@ -138,7 +141,10 @@ namespace System.Text.Json
             if (jsonSerializerContext == null)
                 throw new ArgumentNullException(nameof(jsonSerializerContext));
 
-            return DeserializeUsingMetadataAsync<object?>(utf8Json, jsonSerializerContext.GetJsonClassInfo(returnType), cancellationToken);
+            return DeserializeUsingMetadataAsync<object?>(
+                utf8Json,
+                JsonHelpers.GetJsonClassInfo(jsonSerializerContext, returnType),
+                cancellationToken);
         }
 
         private static ValueTask<TValue?> DeserializeUsingMetadataAsync<TValue>(
