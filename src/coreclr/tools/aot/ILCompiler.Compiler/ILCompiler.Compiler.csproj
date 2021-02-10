@@ -218,7 +218,6 @@
     <Compile Include="Compiler\DependencyAnalysis\CustomAttributeBasedDependencyAlgorithm.cs" />
     <Compile Include="Compiler\DependencyAnalysis\FieldMetadataNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ILScanNodeFactory.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\ISymbolNodeWithDebugInfo.cs" />
     <Compile Include="Compiler\DictionaryLayoutProvider.cs" />
     <Compile Include="Compiler\DirectPInvokePolicy.cs" />
     <Compile Include="Compiler\Disassembler.cs" />

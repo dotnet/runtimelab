@@ -198,7 +198,7 @@ namespace ILCompiler
         /// <param name="type"></param>
         /// <param name="needsCompleteType"></param>
         /// <returns></returns>
-        private uint GetTypeIndex(TypeDesc type, bool needsCompleteType)
+        public uint GetTypeIndex(TypeDesc type, bool needsCompleteType)
         {
             uint typeIndex = 0;
             if (needsCompleteType ?

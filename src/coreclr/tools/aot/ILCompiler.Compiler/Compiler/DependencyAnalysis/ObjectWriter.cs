@@ -1143,6 +1143,11 @@ namespace ILCompiler.DependencyAnalysis
                         objectWriter.EmitDebugEHClauseInfo(node);
                         objectWriter.EmitDebugFunctionInfo(node, nodeContents.Data.Length);
                     }
+
+                    if (node is ConstructedEETypeNode eeType)
+                    {
+                        objectWriter._userDefinedTypeDescriptor.GetTypeIndex(eeType.Type, needsCompleteType: true);
+                    }
                 }
 
                 objectWriter.EmitDebugModuleInfo();
