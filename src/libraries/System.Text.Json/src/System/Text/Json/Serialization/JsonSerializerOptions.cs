@@ -524,7 +524,7 @@ namespace System.Text.Json
 
         internal void AddJsonClassInfo(JsonClassInfo jsonClassInfo)
         {
-            _haveTypesBeenCreated = true;
+            //_haveTypesBeenCreated = true;
 
             // todo: for performance, consider not adding to internal dictionary.
             // For compat, calling options.GetConverter() however would need to lazily populate
@@ -608,6 +608,15 @@ namespace System.Text.Json
             {
                 ThrowHelper.ThrowInvalidOperationException_SerializerOptionsImmutable();
             }
+        }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <returns>todo</returns>
+        public string GetTypesInDictionary()
+        {
+            return string.Join(",", _classes.Keys);
         }
     }
 }

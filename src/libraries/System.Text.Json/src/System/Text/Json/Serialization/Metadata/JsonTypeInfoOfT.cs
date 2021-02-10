@@ -9,8 +9,14 @@ namespace System.Text.Json.Serialization.Metadata
     /// <typeparam name="T"></typeparam>
     public abstract class JsonTypeInfo<T> : JsonClassInfo
     {
-        internal JsonTypeInfo(Type type, JsonSerializerOptions? options, ClassType classType) :
+        internal JsonTypeInfo(Type type, JsonSerializerOptions options, ClassType classType) :
             base(type, options, classType)
         { }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        /// <param name="canBeDynamic"></param>
+        public abstract void CompleteInitialization(bool canBeDynamic);
     }
 }

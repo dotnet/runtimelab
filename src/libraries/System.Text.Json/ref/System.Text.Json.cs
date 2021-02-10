@@ -249,6 +249,7 @@ namespace System.Text.Json
         public System.Text.Json.Serialization.ReferenceHandler? ReferenceHandler { get { throw null; } set { } }
         public bool WriteIndented { get { throw null; } set { } }
         public System.Text.Json.Serialization.JsonConverter? GetConverter(System.Type typeToConvert) { throw null; }
+        public string GetTypesInDictionary() { throw null; }
     }
     public enum JsonTokenType : byte
     {
@@ -587,7 +588,7 @@ namespace System.Text.Json.Serialization
         public void Dispose() { }
         protected virtual void Dispose(bool disposing) { }
         public virtual System.Text.Json.Serialization.Metadata.JsonClassInfo? GetJsonClassInfo(System.Type type) { throw null; }
-        public System.Text.Json.JsonSerializerOptions? GetOptions() { throw null; }
+        public System.Text.Json.JsonSerializerOptions GetOptions() { throw null; }
     }
     public sealed partial class JsonStringEnumConverter : System.Text.Json.Serialization.JsonConverterFactory
     {
@@ -761,14 +762,14 @@ namespace System.Text.Json.Serialization.Metadata
     }
     public sealed partial class JsonCollectionTypeInfo<T> : System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>
     {
-        public JsonCollectionTypeInfo(System.Text.Json.Serialization.Metadata.JsonClassInfo.ConstructorDelegate createObjectFunc, System.Text.Json.Serialization.JsonConverter<T> converter, System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.JsonSerializerOptions? options) { }
-        public void CompleteInitialization(bool canBeDynamic) { }
+        public JsonCollectionTypeInfo(System.Text.Json.Serialization.Metadata.JsonClassInfo.ConstructorDelegate createObjectFunc, System.Text.Json.Serialization.JsonConverter<T> converter, System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.JsonSerializerOptions options) { }
+        public override void CompleteInitialization(bool canBeDynamic) { }
     }
     public sealed partial class JsonObjectInfo<T> : System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>
     {
-        public JsonObjectInfo(System.Text.Json.Serialization.Metadata.JsonClassInfo.ConstructorDelegate createObjectFunc, System.Text.Json.JsonSerializerOptions? options) { }
+        public JsonObjectInfo(System.Text.Json.Serialization.Metadata.JsonClassInfo.ConstructorDelegate createObjectFunc, System.Text.Json.JsonSerializerOptions options) { }
         public System.Text.Json.Serialization.Metadata.JsonPropertyInfo<TProperty> AddProperty<TProperty>(string propertyName, System.Func<object, TProperty>? getter, System.Action<object, TProperty>? setter, System.Text.Json.Serialization.Metadata.JsonTypeInfo<TProperty> classInfo) { throw null; }
-        public void CompleteInitialization(bool canBeDynamic) { }
+        public override void CompleteInitialization(bool canBeDynamic) { }
     }
     public abstract partial class JsonPropertyInfo
     {
@@ -796,11 +797,12 @@ namespace System.Text.Json.Serialization.Metadata
     public abstract partial class JsonTypeInfo<T> : System.Text.Json.Serialization.Metadata.JsonClassInfo
     {
         internal JsonTypeInfo() { }
+        public abstract void CompleteInitialization(bool canBeDynamic);
     }
     public sealed partial class JsonValueInfo<T> : System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>
     {
-        public JsonValueInfo(System.Text.Json.Serialization.JsonConverter<T> converter, System.Text.Json.JsonSerializerOptions? options) { }
-        public void CompleteInitialization(bool canBeDynamic) { }
+        public JsonValueInfo(System.Text.Json.Serialization.JsonConverter<T> converter, System.Text.Json.JsonSerializerOptions options) { }
+        public override void CompleteInitialization(bool canBeDynamic) { }
     }
     public static partial class KnownCollectionTypeInfos<T>
     {

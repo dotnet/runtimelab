@@ -146,11 +146,11 @@ namespace System.Text.Json.Serialization.Metadata
             }
         }
 
-        internal JsonClassInfo(Type type, JsonSerializerOptions? options, ClassType classType)
+        internal JsonClassInfo(Type type, JsonSerializerOptions options, ClassType classType)
         {
             Type = type;
 
-            Options = options ?? JsonSerializerOptions.DefaultOptions;
+            Options = options ?? throw new ArgumentNullException(nameof(options));
 
             // todo: fix up nullability to avoid this.
             PropertyInfoForClassInfo = null!;

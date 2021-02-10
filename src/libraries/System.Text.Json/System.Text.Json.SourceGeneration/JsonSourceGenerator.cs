@@ -65,7 +65,6 @@ namespace System.Text.Json.SourceGeneration
                         {
                             AttributeArgumentSyntax boolArgumentNode = (AttributeArgumentSyntax)attributeArguments.ElementAt(1);
                             IEnumerable<SyntaxNode> childNodes = boolArgumentNode.ChildNodes();
-                            //Debug.Assert(childNodes.First() is LiteralExpressionSyntax);
                             SyntaxNode booleanValueNode = childNodes.ElementAt(1);
                             canBeDynamic = boolArgumentNode.Expression.Kind() == SyntaxKind.TrueLiteralExpression;
                         }

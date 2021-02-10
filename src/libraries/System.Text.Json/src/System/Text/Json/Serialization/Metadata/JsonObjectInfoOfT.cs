@@ -93,7 +93,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public void CompleteInitialization(bool canBeDynamic)
+        public override void CompleteInitialization(bool canBeDynamic)
         {
             CompleteObjectInitialization();
 
