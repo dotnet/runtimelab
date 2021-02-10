@@ -11,7 +11,7 @@ using GCStaticRegionConstants = Internal.Runtime.GCStaticRegionConstants;
 
 namespace ILCompiler.DependencyAnalysis
 {
-    public class GCStaticsNode : ObjectNode, IExportableSymbolNode, ISortableSymbolNode, ISymbolNodeWithDebugInfo
+    public class GCStaticsNode : ObjectNode, IExportableSymbolNode, ISortableSymbolNode
     {
         private readonly MetadataType _type;
         private readonly TypePreinit.PreinitializationInfo _preinitializationInfo;
@@ -34,8 +34,6 @@ namespace ILCompiler.DependencyAnalysis
 
         public int Offset => 0;
         public MetadataType Type => _type;
-
-        public IDebugInfo DebugInfo => NullTypeIndexDebugInfo.Instance;
 
         public static string GetMangledName(TypeDesc type, NameMangler nameMangler)
         {

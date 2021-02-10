@@ -198,7 +198,7 @@ namespace ILCompiler
         /// <param name="type"></param>
         /// <param name="needsCompleteType"></param>
         /// <returns></returns>
-        private uint GetTypeIndex(TypeDesc type, bool needsCompleteType)
+        public uint GetTypeIndex(TypeDesc type, bool needsCompleteType)
         {
             uint typeIndex = 0;
             if (needsCompleteType ?
@@ -482,9 +482,43 @@ namespace ILCompiler
 
                 LayoutInt fieldOffset = fieldDesc.Offset;
                 int fieldOffsetEmit = fieldOffset.IsIndeterminate ? 0xBAAD : fieldOffset.AsInt;
+
+                TypeDesc fieldType = GetFieldDebugType(fieldDesc);
+
+                // We're going to drill into this type more deeply and it might be more than what the
+                // compiler already looked at. e.g. if this is a reference type instance field that
+                // has fields that don't resolve we might hit resolution exceptions in the process:
+                //
+                // class NeverInstantiated
+                // {
+                //     private UnresolvableType Foo;
+                // }
+                //
+                // class GeneratingDebugInfoForThis
+                // {
+                //     // Going to throw here because instance layout of UnresolvableType cannot be computed.
+                //     private NeverInstantiated Bar;
+                // }
+                //
+                // If this happens, just treat the field as Object or IntPtr. Better than crashing here.
+                //
+                // We are limiting this try/catch to when the type is not a valuetype. If it's a valuetype,
+                // we would generate a very invalid debug info. This should have been prevented elsewhere.
+                uint fieldTypeIndex;
+                try
+                {
+                    fieldTypeIndex = GetVariableTypeIndex(fieldType, false);
+                }
+                catch (TypeSystemException) when (!fieldType.IsValueType)
+                {
+                    fieldTypeIndex = fieldType.IsGCPointer ?
+                        GetVariableTypeIndex(fieldType.Context.GetWellKnownType(WellKnownType.Object))
+                        : GetVariableTypeIndex(fieldType.Context.GetWellKnownType(WellKnownType.IntPtr));
+                }
+
                 DataFieldDescriptor field = new DataFieldDescriptor
                 {
-                    FieldTypeIndex = GetVariableTypeIndex(GetFieldDebugType(fieldDesc), false),
+                    FieldTypeIndex = fieldTypeIndex,
                     Offset = (ulong)fieldOffsetEmit,
                     Name = fieldDesc.Name
                 };
