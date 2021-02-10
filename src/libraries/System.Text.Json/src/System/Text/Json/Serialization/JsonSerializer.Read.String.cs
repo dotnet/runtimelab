@@ -118,7 +118,9 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(jsonSerializerContext));
             }
 
-            return DeserializeUsingMetadata<TValue?>(json, jsonSerializerContext.GetJsonClassInfo(typeof(TValue)));
+            return DeserializeUsingMetadata<TValue?>(
+                json,
+                JsonHelpers.GetJsonClassInfo(jsonSerializerContext, typeof(TValue)));
         }
 
         /// <summary>
@@ -140,7 +142,9 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(jsonSerializerContext));
             }
 
-            return DeserializeUsingMetadata<object?>(json, jsonSerializerContext.GetJsonClassInfo(type));
+            return DeserializeUsingMetadata<object?>(
+                json,
+                JsonHelpers.GetJsonClassInfo(jsonSerializerContext, type));
         }
 
         /// <summary>
