@@ -15,5 +15,9 @@
       <Value>.NETCoreApp;UAP</Value>
     </ValidatePackageSuppression>
   </ItemGroup>
+  <PropertyGroup>
+    <!-- Bump up patch version to avoid NuGet package downgrade warnings. -->
+    <PackageVersion>6.0.1</PackageVersion>
+  </PropertyGroup>
   <Import Project="$([MSBuild]::GetPathOfFileAbove(Directory.Build.targets))" />
 </Project>
