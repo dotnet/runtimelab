@@ -10,7 +10,7 @@ namespace System.Text.Json.Serialization
     /// </summary>
     public partial class JsonSerializerContext : IDisposable
     {
-        internal readonly JsonSerializerOptions? _options;
+        internal readonly JsonSerializerOptions _options;
 
         /// <summary>
         /// todo
@@ -26,13 +26,13 @@ namespace System.Text.Json.Serialization
         /// <param name="options"></param>
         public JsonSerializerContext(JsonSerializerOptions options)
         {
-            _options = options;
+            _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
         /// <summary>
         /// todo
         /// </summary>
-        public JsonSerializerOptions? GetOptions()
+        public JsonSerializerOptions GetOptions()
         {
             return _options;
         }

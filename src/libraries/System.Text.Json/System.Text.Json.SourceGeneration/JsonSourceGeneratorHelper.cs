@@ -63,9 +63,6 @@ namespace System.Text.Json.SourceGeneration
 
         public void GenerateSerializationMetadata(Dictionary<string, (Type, bool)> serializableTypes)
         {
-            // Add base default instance source.
-            AddBaseJsonContextImplementation();
-
             foreach (KeyValuePair<string, (Type, bool)> pair in serializableTypes)
             {
                 (Type type, bool canBeDynamic) = pair.Value;
@@ -73,13 +70,16 @@ namespace System.Text.Json.SourceGeneration
                 GenerateSerializationMetadataForType(typeMetadata);
             }
 
+            // Add base default instance source.
+            AddBaseJsonContextImplementation();
+
             // Add GetJsonClassInfo override implementation.
             _executionContext.AddSource("JsonContext.GetJsonClassInfo.cs", SourceText.From(Get_GetClassInfo_Implementation(), Encoding.UTF8));
         }
 
         public void AddBaseJsonContextImplementation()
         {
-            _executionContext.AddSource("JsonContext.g.cs", SourceText.From(BaseJsonContextImplementation, Encoding.UTF8));
+            _executionContext.AddSource("JsonContext.g.cs", SourceText.From(BaseJsonContextImplementation(), Encoding.UTF8));
         }
 
         public void GenerateSerializationMetadataForType(TypeMetadata typeMetadata)
@@ -225,6 +225,7 @@ namespace {_generationNamespace}
                 if (_{typeFriendlyName} == null)
                 {{
                     var typeInfo = new JsonValueInfo<{typeCompilableName}>(new {typeFriendlyName}Converter(), GetOptions());
+                    // TODO: remove this for types that can be dynamic since they are initialized in JsonContext ctor.
                     typeInfo.CompleteInitialization(canBeDynamic: {GetBoolAsStr(typeMetadata.CanBeDynamic)});
                     _{typeFriendlyName} = typeInfo;
                 }}
@@ -288,6 +289,7 @@ namespace {_generationNamespace}
                 if (_{typeFriendlyName} == null)
                 {{
                     var typeInfo = {collectionTypeInfoValue};
+                    // TODO: remove this for types that can be dynamic since they are initialized in JsonContext ctor.
                     typeInfo.CompleteInitialization(canBeDynamic: {GetBoolAsStr(typeMetadata.CanBeDynamic)});
                     _{typeFriendlyName} = typeInfo;
                 }}
@@ -467,8 +469,10 @@ namespace {_generationNamespace}
         }
 
         // Base source generation context partial class.
-        private string BaseJsonContextImplementation => @$"
-using System.Text.Json;
+        private string BaseJsonContextImplementation()
+        {
+            StringBuilder sb = new();
+            sb.Append(@$"using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace {_generationNamespace}
@@ -491,14 +495,34 @@ namespace {_generationNamespace}
 
         private JsonContext()
         {{
+            Initialize();
         }}
 
         public JsonContext(JsonSerializerOptions options) : base(options)
         {{
+            Initialize();
         }}
-    }}
-}}
-";
+
+        private void Initialize()
+        {{");
+
+            foreach (TypeMetadata typeMetadata in _typeMetadataCache.Values)
+            {
+                if (typeMetadata.ClassType != ClassType.TypeUnsupportedBySourceGen && typeMetadata.CanBeDynamic)
+                {
+                    sb.Append(@$"
+            this.{typeMetadata.FriendlyName}.CompleteInitialization(canBeDynamic: true);");
+                }
+            }
+
+            sb.Append(@"
+        }
+    }
+}
+");
+
+            return sb.ToString();
+        }
 
         private string Get_GetClassInfo_Implementation()
         {

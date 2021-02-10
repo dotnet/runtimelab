@@ -20,7 +20,7 @@ namespace System.Text.Json.Serialization.Metadata
             ConstructorDelegate createObjectFunc,
             JsonConverter<T> converter,
             JsonClassInfo elementInfo,
-            JsonSerializerOptions? options) : base(typeof(T), options, ClassType.Enumerable)
+            JsonSerializerOptions options) : base(typeof(T), options, ClassType.Enumerable)
         {
             ConverterBase = converter;
 
@@ -34,7 +34,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public void CompleteInitialization(bool canBeDynamic)
+        public override void CompleteInitialization(bool canBeDynamic)
         {
             _isInitialized = true;
 

@@ -16,7 +16,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// <param name="options"></param>
         public JsonValueInfo(
             JsonConverter<T> converter,
-            JsonSerializerOptions? options) : base(typeof(T), options, ClassType.Value)
+            JsonSerializerOptions options) : base(typeof(T), options, ClassType.Value)
         {
             ConverterBase = converter;
             PropertyInfoForClassInfo = CreatePropertyInfoForClassInfo(Type, Type, converter, Options);
@@ -25,7 +25,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public void CompleteInitialization(bool canBeDynamic)
+        public override void CompleteInitialization(bool canBeDynamic)
         {
             _isInitialized = true;
 

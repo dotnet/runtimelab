@@ -343,5 +343,45 @@ namespace System.Text.Json.SourceGeneration.Tests
             VerifyIndexViewModel(index, JsonSerializer.Deserialize(indexAsJsonElement.GetRawText(), JsonContext.Instance.IndexViewModel));
             VerifyCampaignSummaryViewModel(campaignSummary, JsonSerializer.Deserialize(campaignSummeryAsJsonElement.GetRawText(), JsonContext.Instance.CampaignSummaryViewModel));
         }
+
+        [Fact]
+        public static void SerializeObjectArray_WithCustomOptions()
+        {
+            IndexViewModel index = CreateIndexViewModel();
+            CampaignSummaryViewModel campaignSummary = CreateCampaignSummaryViewModel();
+
+            JsonSerializerOptions options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            JsonContext context = new JsonContext(options);
+
+            string json = JsonSerializer.Serialize(new object[] { index, campaignSummary }, context.ObjectArray);
+            object[] arr = JsonSerializer.Deserialize(json, context.ObjectArray);
+
+            JsonElement indexAsJsonElement = (JsonElement)arr[0];
+            JsonElement campaignSummeryAsJsonElement = (JsonElement)arr[1];
+            VerifyIndexViewModel(index, JsonSerializer.Deserialize(indexAsJsonElement.GetRawText(), context.IndexViewModel));
+            VerifyCampaignSummaryViewModel(campaignSummary, JsonSerializer.Deserialize(campaignSummeryAsJsonElement.GetRawText(), context.CampaignSummaryViewModel));
+        }
+
+#pragma warning disable CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+        [Fact]
+        public static void SerializeObjectArray_SimpleTypes_WithCustomOptions()
+        {
+            JsonSerializerOptions options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            JsonContext context = new JsonContext(options);
+
+            string json = JsonSerializer.Serialize(GetArgs(), context);
+            object?[]? arr = JsonSerializer.Deserialize<object?[]?>(json, context);
+
+            JsonElement hello = (JsonElement)arr[0];
+            JsonElement world = (JsonElement)arr[1];
+            Assert.Equal("\"Hello\"", hello.GetRawText());
+            Assert.Equal("\"World\"", world.GetRawText());
+        }
+
+        private static object?[]? GetArgs()
+#pragma warning restore CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+        {
+            return new object[] { "Hello", "World" };
+        }
     }
 }
