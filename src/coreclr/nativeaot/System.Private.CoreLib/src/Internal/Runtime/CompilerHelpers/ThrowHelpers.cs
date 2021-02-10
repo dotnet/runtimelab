@@ -18,6 +18,11 @@ namespace Internal.Runtime.CompilerHelpers
             throw new NotSupportedException(SR.NotSupported_BodyRemoved);
         }
 
+        internal static void ThrowFeatureBodyRemoved()
+        {
+            throw new NotSupportedException(SR.NotSupported_FeatureBodyRemoved);
+        }
+
         internal static void ThrowInstanceBodyRemoved()
         {
             throw new NotSupportedException(SR.NotSupported_InstanceBodyRemoved);
