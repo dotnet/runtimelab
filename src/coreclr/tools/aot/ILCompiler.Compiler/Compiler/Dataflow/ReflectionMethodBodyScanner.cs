@@ -2394,8 +2394,6 @@ namespace ILCompiler.Dataflow
 
                 // TODO: these are all unique to NativeAOT - mono/linker repo is not aware this error code is used.
                 public const string IL9700 = "Calling '{0}' which has `RequiresDynamicCodeAttribute` can break functionality when compiled fully ahead of time.";
-                public const string IL9701 = "Enum.GetValues was called with an unknown enum type. It might not be possible to construct an array of this type at runtime.";
-                public const string IL9702 = "Marshal.SizeOf was called with an unknown type. It might not be possible to compute the marshalling size at runtime.";
             }
         }
     }
