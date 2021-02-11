@@ -36,7 +36,7 @@ namespace Internal.IL
         public static MethodDesc GetOptionalHelperEntryPoint(this TypeSystemContext context, string typeName, string methodName)
         {
             MetadataType helperType = context.GetOptionalHelperType(typeName);
-            MethodDesc helperMethod = helperType.GetMethod(methodName, null);
+            MethodDesc helperMethod = helperType?.GetMethod(methodName, null);
             return helperMethod;
         }
 
