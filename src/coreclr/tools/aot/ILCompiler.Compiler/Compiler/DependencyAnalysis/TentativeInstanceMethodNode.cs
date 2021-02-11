@@ -37,8 +37,9 @@ namespace ILCompiler.DependencyAnalysis
 
         protected override ISymbolNode GetTarget(NodeFactory factory)
         {
-            MethodDesc helper = factory.TypeSystemContext.GetHelperEntryPoint("ThrowHelpers", "ThrowInstanceBodyRemoved");
-            return factory.MethodEntrypoint(helper);
+            // If the class library doesn't provide this helper, the optimization is disabled.
+            MethodDesc helper = factory.TypeSystemContext.GetOptionalHelperEntryPoint("ThrowHelpers", "ThrowInstanceBodyRemoved");
+            return helper == null ? RealBody: factory.MethodEntrypoint(helper);
         }
 
         public override IEnumerable<CombinedDependencyListEntry> GetConditionalStaticDependencies(NodeFactory factory)
