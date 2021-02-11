@@ -5,6 +5,7 @@
 
     TEXTAREA
 
+    EXTERN      RhpGcPoll2
     EXTERN      g_fGcStressStarted
 
 PROBE_SAVE_FLAGS_EVERYTHING     equ DEFAULT_FRAME_SAVE_FLAGS + PTFF_SAVE_ALL_SCRATCH
@@ -410,44 +411,18 @@ EXTRA_SAVE_SIZE equ (32*16)
     NESTED_END RhpGcProbeRare
 
     LEAF_ENTRY RhpGcPoll
-        brk 0xf000 ;; TODO: remove after debugging/testing stub
-        ;
-        ; !!!!! Native AOT note: take implementation from GcProbe.S instead - it's more compact
-        ;
-        ; @todo: I'm assuming it's not OK to trash any register here. If that's not true we can optimize the
-        ; push/pops out of this fast path.
-        str         x0, [sp], #-0x10!
         ldr         x0, =RhpTrapThreads
         ldr         w0, [x0]
-        tbnz        x0, #TrapThreadsFlags_TrapThreads_Bit, %F0
-        ldr         x0, [sp], #0x10!
+        cbnz        w0, RhpGcPollRare ;; TrapThreadsFlags_None = 0
         ret
-0
-        ldr         x0, [sp], #0x10!
-        b           RhpGcPollRare
     LEAF_END RhpGcPoll
 
     NESTED_ENTRY RhpGcPollRare
-        brk 0xf000 ;; TODO: remove after debugging/testing stub
-        PROLOG_PROBE_FRAME |, x3, #PROBE_SAVE_FLAGS_EVERYTHING, 0
-
-        ; Unhijack this thread, if necessary.
-        INLINE_THREAD_UNHIJACK x2, x0, x1       ;; trashes x0, x1
-
-        mov         x4, x2
-        WaitForGCCompletion
-
-        EPILOG_PROBE_FRAME
+        PUSH_COOP_PINVOKE_FRAME x0
+        bl          RhpGcPoll2
+        POP_COOP_PINVOKE_FRAME
+        ret
     NESTED_END RhpGcPollRare
-
-    LEAF_ENTRY RhpGcPollStress
-        ;
-        ; loop hijacking is used instead
-        ;
-        brk 0xf000
-
-    LEAF_END RhpGcPollStress
-
 
 #ifdef FEATURE_GC_STRESS
     NESTED_ENTRY RhpHijackForGcStress

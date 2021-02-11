@@ -91,6 +91,21 @@ index 2bfb9a63eed..a710098e798 100644
  void MCStreamer::EmitBinaryData(StringRef Data) { EmitBytes(Data); }
  void MCStreamer::EmitValueImpl(const MCExpr *Value, unsigned Size, SMLoc Loc) {
    visitUsedExpr(*Value);
+diff --git a/lib/MC/WinCOFFObjectWriter.cpp b/lib/MC/WinCOFFObjectWriter.cpp
+index 956ae70b38d..b8ac715f61a 100644
+--- a/lib/MC/WinCOFFObjectWriter.cpp
++++ b/lib/MC/WinCOFFObjectWriter.cpp
+@@ -790,7 +790,9 @@ void WinCOFFObjectWriter::recordRelocation(MCAssembler &Asm,
+   if ((Header.Machine == COFF::IMAGE_FILE_MACHINE_AMD64 &&
+        Reloc.Data.Type == COFF::IMAGE_REL_AMD64_REL32) ||
+       (Header.Machine == COFF::IMAGE_FILE_MACHINE_I386 &&
+-       Reloc.Data.Type == COFF::IMAGE_REL_I386_REL32))
++       Reloc.Data.Type == COFF::IMAGE_REL_I386_REL32) ||
++      (Header.Machine == COFF::IMAGE_FILE_MACHINE_ARM64 &&
++       Reloc.Data.Type == COFF::IMAGE_REL_ARM64_REL32))
+     FixedValue += 4;
+ 
+   if (Header.Machine == COFF::IMAGE_FILE_MACHINE_ARMNT) {
 diff --git a/lib/Object/COFFObjectFile.cpp b/lib/Object/COFFObjectFile.cpp
 index 0a2053477ca..049657d9bfa 100644
 --- a/lib/Object/COFFObjectFile.cpp

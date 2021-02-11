@@ -16,13 +16,14 @@
         ;; Check a single entry in the cache.
         ;;  x9   : Cache data structure. Also used for target address jump.
         ;;  x10  : Instance EEType*
-        ;;  x11  : Trashed
-        ldr     x11, [x9, #(OFFSETOF__InterfaceDispatchCache__m_rgEntries + ($entry * 16))]
-        cmp     x10, x11
-        bne     %ft0    ;; Jump to label '0'
+        ;;  x11  : Indirection cell address, preserved
+        ;;  x12  : Trashed
+        ldr     x12, [x9, #(OFFSETOF__InterfaceDispatchCache__m_rgEntries + ($entry * 16))]
+        cmp     x10, x12
+        bne     %ft0
         ldr     x9, [x9, #(OFFSETOF__InterfaceDispatchCache__m_rgEntries + ($entry * 16) + 8)]
         br      x9
-0   ;; Label '0'
+0
     MEND
 
 
@@ -32,18 +33,13 @@
     MACRO
         DEFINE_INTERFACE_DISPATCH_STUB $entries
 
-    LCLS StubName
-StubName       SETS    "RhpInterfaceDispatch$entries"
-    LCLS StubAVLocation
-StubAVLocation SETS    "RhpInterfaceDispatchAVLocation$entries"
+    NESTED_ENTRY RhpInterfaceDispatch$entries
 
-    NESTED_ENTRY $StubName
-
-        ;; xip1 currently holds the indirection cell address. We need to get the cache structure instead.
-        ldr     x9, [xip1, #OFFSETOF__InterfaceDispatchCell__m_pCache]
+        ;; x11 holds the indirection cell address. Load the cache pointer.
+        ldr     x9, [x11, #OFFSETOF__InterfaceDispatchCell__m_pCache]
 
         ;; Load the EEType from the object instance in x0.
-        ALTERNATE_ENTRY $StubAVLocation
+        ALTERNATE_ENTRY RhpInterfaceDispatchAVLocation$entries
         ldr     x10, [x0]
 
     GBLA CurrentEntry
@@ -54,10 +50,10 @@ CurrentEntry SETA 0
 CurrentEntry SETA CurrentEntry + 1
     WEND
 
-        ;; xip1 still contains the indirection cell address.
+        ;; x11 still contains the indirection cell address.
         b RhpInterfaceDispatchSlow
 
-    NESTED_END $StubName
+    NESTED_END RhpInterfaceDispatch$entries
 
     MEND
 
@@ -81,6 +77,7 @@ CurrentEntry SETA CurrentEntry + 1
 ;; Initial dispatch on an interface when we don't have a cache yet.
 ;;
     LEAF_ENTRY RhpInitialInterfaceDispatch
+    ALTERNATE_ENTRY RhpInitialDynamicInterfaceDispatch
         ;; Trigger an AV if we're dispatching on a null this.
         ;; The exception handling infrastructure is aware of the fact that this is the first
         ;; instruction of RhpInitialInterfaceDispatch and uses it to translate an AV here
@@ -95,9 +92,9 @@ CurrentEntry SETA CurrentEntry + 1
 ;; Stub dispatch routine for dispatch to a vtable slot
 ;;
     LEAF_ENTRY RhpVTableOffsetDispatch
-        ;; xip1 has the interface dispatch cell address in it.
+        ;; x11 contains the interface dispatch cell address.
         ;; load x12 to point to the vtable offset (which is stored in the m_pCache field).
-        ldr     x12, [xip1, #OFFSETOF__InterfaceDispatchCell__m_pCache]
+        ldr     x12, [x11, #OFFSETOF__InterfaceDispatchCell__m_pCache]
 
         ;; Load the EEType from the object instance in x0, and add it to the vtable offset
         ;; to get the address in the vtable of what we want to dereference
@@ -112,14 +109,15 @@ CurrentEntry SETA CurrentEntry + 1
 
 ;;
 ;; Cache miss case, call the runtime to resolve the target and update the cache.
+;; Use universal transition helper to allow an exception to flow out of resolution.
 ;;
     LEAF_ENTRY RhpInterfaceDispatchSlow
-    ALTERNATE_ENTRY RhpInitialDynamicInterfaceDispatch
-        ;; xip1 has the interface dispatch cell address in it.
+        ;; x11 contains the interface dispatch cell address.
         ;; Calling convention of the universal thunk is:
-        ;;  xip0: contains target address for the thunk to call
-        ;;  xip1: contains parameter of the thunk's target
+        ;;  xip0: target address for the thunk to call
+        ;;  xip1: parameter of the thunk's target
         ldr     xip0, =RhpCidResolve
+        mov     xip1, x11
         b       RhpUniversalTransition_DebugStepTailCall
     LEAF_END RhpInterfaceDispatchSlow
 
