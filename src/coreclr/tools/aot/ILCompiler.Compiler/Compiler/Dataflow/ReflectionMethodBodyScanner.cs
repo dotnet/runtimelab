@@ -330,6 +330,9 @@ namespace ILCompiler.Dataflow
             Expression_New,
             Enum_GetValues,
             Marshal_SizeOf,
+            Marshal_PtrToStructure,
+            Marshal_DestroyStructure,
+            Marshal_GetDelegateForFunctionPointer,
             Activator_CreateInstance_Type,
             Activator_CreateInstance_AssemblyName_TypeName,
             Activator_CreateInstanceFrom,
@@ -425,6 +428,24 @@ namespace ILCompiler.Dataflow
                     && calledMethod.HasParameterOfType(0, "System", "Type")
                     && calledMethod.Signature.Length == 1
                     => IntrinsicId.Marshal_SizeOf,
+
+                // static object System.Runtime.InteropServices.Marshal.PtrToStructure (IntPtr, Type)
+                "PtrToStructure" when calledMethod.IsDeclaredOnType("System.Runtime.InteropServices", "Marshal")
+                    && calledMethod.HasParameterOfType(1, "System", "Type")
+                    && calledMethod.Signature.Length == 2
+                    => IntrinsicId.Marshal_PtrToStructure,
+
+                // static void System.Runtime.InteropServices.Marshal.DestroyStructure (IntPtr, Type)
+                "DestroyStructure" when calledMethod.IsDeclaredOnType("System.Runtime.InteropServices", "Marshal")
+                    && calledMethod.HasParameterOfType(1, "System", "Type")
+                    && calledMethod.Signature.Length == 2
+                    => IntrinsicId.Marshal_DestroyStructure,
+
+                // static Delegate System.Runtime.InteropServices.Marshal.GetDelegateForFunctionPointer (IntPtr, Type)
+                "GetDelegateForFunctionPointer" when calledMethod.IsDeclaredOnType("System.Runtime.InteropServices", "Marshal")
+                    && calledMethod.HasParameterOfType(1, "System", "Type")
+                    && calledMethod.Signature.Length == 2
+                    => IntrinsicId.Marshal_GetDelegateForFunctionPointer,
 
                 // static System.Type.GetType (string)
                 // static System.Type.GetType (string, Boolean)
@@ -622,7 +643,8 @@ namespace ILCompiler.Dataflow
                 returnValueDynamicallyAccessedMemberTypes = requiresDataFlowAnalysis ?
                     _flowAnnotations.GetReturnParameterAnnotation(calledMethod) : 0;
 
-                switch (GetIntrinsicIdForMethod(calledMethod))
+                var intrinsicId = GetIntrinsicIdForMethod(calledMethod);
+                switch (intrinsicId)
                 {
                     case IntrinsicId.IntrospectionExtensions_GetTypeInfo:
                         {
@@ -937,10 +959,9 @@ namespace ILCompiler.Dataflow
                                         _dependencies.Add(_factory.ConstructedTypeSymbol(systemTypeValue.TypeRepresented.MakeArrayType()), "Enum.GetValues");
                                     }
                                 }
-                                else
+                                else if (shouldEnableAotWarnings)
                                 {
-                                    if (shouldEnableAotWarnings)
-                                        _logger.LogWarning(Resources.Strings.IL9701, 9701, callingMethodBody, offset, MessageSubCategory.AotAnalysis);
+                                    LogDynamicCodeWarning(_logger, callingMethodBody, offset, calledMethod);
                                 }
                             }
                         }
@@ -950,11 +971,17 @@ namespace ILCompiler.Dataflow
                     // System.Runtime.InteropServices.Marshal
                     //
                     // static SizeOf (Type)
+                    // static PtrToStructure (IntPtr, Type)
+                    // static DestroyStructure (IntPtr, Type)
                     //
                     case IntrinsicId.Marshal_SizeOf:
+                    case IntrinsicId.Marshal_PtrToStructure:
+                    case IntrinsicId.Marshal_DestroyStructure:
                         {
+                            int paramIndex = intrinsicId == IntrinsicId.Marshal_SizeOf ? 0 : 1;
+
                             // We need the data to do struct marshalling.
-                            foreach (var value in methodParams[0].UniqueValues())
+                            foreach (var value in methodParams[paramIndex].UniqueValues())
                             {
                                 if (value is SystemTypeValue systemTypeValue
                                     && !systemTypeValue.TypeRepresented.IsGenericDefinition
@@ -962,13 +989,39 @@ namespace ILCompiler.Dataflow
                                 {
                                     if (systemTypeValue.TypeRepresented.IsDefType)
                                     {
-                                        _dependencies.Add(_factory.StructMarshallingData((DefType)systemTypeValue.TypeRepresented), "Marshal.SizeOf");
+                                        _dependencies.Add(_factory.StructMarshallingData((DefType)systemTypeValue.TypeRepresented), "Marshal API");
                                     }
                                 }
-                                else
+                                else if (shouldEnableAotWarnings)
                                 {
-                                    if (shouldEnableAotWarnings)
-                                        _logger.LogWarning(Resources.Strings.IL9702, 9702, callingMethodBody, offset, MessageSubCategory.AotAnalysis);
+                                    LogDynamicCodeWarning(_logger, callingMethodBody, offset, calledMethod);
+                                }
+                            }
+                        }
+                        break;
+
+                    //
+                    // System.Runtime.InteropServices.Marshal
+                    //
+                    // static GetDelegateForFunctionPointer (IntPtr, Type)
+                    //
+                    case IntrinsicId.Marshal_GetDelegateForFunctionPointer:
+                        {
+                            // We need the data to do delegate marshalling.
+                            foreach (var value in methodParams[1].UniqueValues())
+                            {
+                                if (value is SystemTypeValue systemTypeValue
+                                    && !systemTypeValue.TypeRepresented.IsGenericDefinition
+                                    && !systemTypeValue.TypeRepresented.ContainsSignatureVariables(treatGenericParameterLikeSignatureVariable: true))
+                                {
+                                    if (systemTypeValue.TypeRepresented.IsDefType)
+                                    {
+                                        _dependencies.Add(_factory.DelegateMarshallingData((DefType)systemTypeValue.TypeRepresented), "Marshal API");
+                                    }
+                                }
+                                else if (shouldEnableAotWarnings)
+                                {
+                                    LogDynamicCodeWarning(_logger, callingMethodBody, offset, calledMethod);
                                 }
                             }
                         }

@@ -104,6 +104,7 @@ namespace System.Runtime.InteropServices
             return string.CreateStringFromEncoding((byte*)ptr, byteLen, Encoding.UTF8);
         }
 
+        [RequiresDynamicCode("Marshalling code for the object might not be available")]
         public static int SizeOf(object structure)
         {
             if (structure is null)
@@ -124,6 +125,7 @@ namespace System.Runtime.InteropServices
             return SizeOfHelper(structure.GetType(), throwIfNotMarshalable: true);
         }
 
+        [RequiresDynamicCode("Marshalling code for the object might not be available")]
         public static int SizeOf(Type t)
         {
             if (t is null)
@@ -142,7 +144,7 @@ namespace System.Runtime.InteropServices
             return SizeOfHelper(t, throwIfNotMarshalable: true);
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9702:AotUnfriendlyApi",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
             Justification = "AOT compilers can see the T.")]
         public static int SizeOf<T>() => SizeOf(typeof(T));
 
@@ -540,6 +542,7 @@ namespace System.Runtime.InteropServices
         /// Creates a new instance of "structuretype" and marshals data from a
         /// native memory block to it.
         /// </summary>
+        [RequiresDynamicCode("Marshalling code for the object might not be available")]
         public static object? PtrToStructure(IntPtr ptr,
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
             Type structureType)
@@ -568,6 +571,7 @@ namespace System.Runtime.InteropServices
         /// <summary>
         /// Marshals data from a native memory block to a preallocated structure class.
         /// </summary>
+        [RequiresDynamicCode("Marshalling code for the object might not be available")]
         public static void PtrToStructure(IntPtr ptr, object structure)
         {
             PtrToStructureHelper(ptr, structure, allowValueClasses: false);
@@ -853,6 +857,7 @@ namespace System.Runtime.InteropServices
             return type.FullName;
         }
 
+        [RequiresDynamicCode("Marshalling code for the delegate might not be available")]
         public static Delegate GetDelegateForFunctionPointer(IntPtr ptr, Type t)
         {
             if (ptr == IntPtr.Zero)

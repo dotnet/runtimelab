@@ -100,6 +100,7 @@ namespace System.Runtime.InteropServices
             }
         }
 
+        [RequiresDynamicCode("Marshalling code for the object might not be available")]
         public static unsafe void DestroyStructure(IntPtr ptr, Type structuretype)
         {
             if (ptr == IntPtr.Zero)
@@ -136,6 +137,7 @@ namespace System.Runtime.InteropServices
             }
         }
 
+        [RequiresDynamicCode("Marshalling code for the object might not be available")]
         public static unsafe void StructureToPtr(object structure, IntPtr ptr, bool fDeleteOld)
         {
             if (structure == null)
