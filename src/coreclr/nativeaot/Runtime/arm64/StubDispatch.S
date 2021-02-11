@@ -14,7 +14,7 @@
         // Check a single entry in the cache.
         //  x9   : Cache data structure. Also used for target address jump.
         //  x10  : Instance EEType*
-        //  x11  : x11 still contains the indirection cell address. do not trash
+        //  x11  : Indirection cell address, preserved
         //  x12  : Trashed
         ldr     x12, [x9, #(OFFSETOF__InterfaceDispatchCache__m_rgEntries + (\entry * 16))]
         cmp     x10, x12
@@ -31,7 +31,7 @@
 
     NESTED_ENTRY "RhpInterfaceDispatch\entries", _TEXT, NoHandler
 
-        // x11 currently holds the indirection cell address. We need to get the cache structure instead.
+        // x11 holds the indirection cell address. Load the cache pointer.
         ldr     x9, [x11, #OFFSETOF__InterfaceDispatchCell__m_pCache]
 
         // Load the EEType from the object instance in x0.
@@ -69,9 +69,10 @@
     DEFINE_INTERFACE_DISPATCH_STUB 64
 
 //
-// Initial dispatch on an interface when we dont have a cache yet.
+// Initial dispatch on an interface when we don't have a cache yet.
 //
     LEAF_ENTRY RhpInitialInterfaceDispatch, _TEXT
+    ALTERNATE_ENTRY RhpInitialDynamicInterfaceDispatch
         // Trigger an AV if we're dispatching on a null this.
         // The exception handling infrastructure is aware of the fact that this is the first
         // instruction of RhpInitialInterfaceDispatch and uses it to translate an AV here
@@ -86,9 +87,9 @@
 // Stub dispatch routine for dispatch to a vtable slot
 //
     LEAF_ENTRY RhpVTableOffsetDispatch, _TEXT
-        // xip1 has the interface dispatch cell address in it.
+        // x11 contains the interface dispatch cell address.
         // load x12 to point to the vtable offset (which is stored in the m_pCache field).
-        ldr     x12, [xip1, #OFFSETOF__InterfaceDispatchCell__m_pCache]
+        ldr     x12, [x11, #OFFSETOF__InterfaceDispatchCell__m_pCache]
 
         // Load the EEType from the object instance in x0, and add it to the vtable offset
         // to get the address in the vtable of what we want to dereference
@@ -103,13 +104,13 @@
 
 //
 // Cache miss case, call the runtime to resolve the target and update the cache.
+// Use universal transition helper to allow an exception to flow out of resolution.
 //
     LEAF_ENTRY RhpInterfaceDispatchSlow, _TEXT
-    ALTERNATE_ENTRY RhpInitialDynamicInterfaceDispatch
-        // xip1 has the interface dispatch cell address in it.
+        // x11 contains the interface dispatch cell address.
         // Calling convention of the universal thunk is:
-        //  xip0: contains target address for the thunk to call
-        //  xip1: contains parameter of the thunks target
+        //  xip0: target address for the thunk to call
+        //  xip1: parameter of the thunk's target
         PREPARE_EXTERNAL_VAR RhpCidResolve, xip0
         mov xip1, x11
         b       RhpUniversalTransition_DebugStepTailCall
