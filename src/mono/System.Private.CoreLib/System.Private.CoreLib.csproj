@@ -67,7 +67,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)' == 's390x'">
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DefineConstants>TARGET_64BIT;TARGET_S390X;BIGENDIAN;$(DefineConstants)</DefineConstants>
+    <DefineConstants>$(DefineConstants);TARGET_S390X;BIGENDIAN</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)' == 'wasm'">
     <PlatformTarget>AnyCPU</PlatformTarget>
