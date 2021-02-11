@@ -104,7 +104,7 @@ namespace System.Runtime.InteropServices
             return string.CreateStringFromEncoding((byte*)ptr, byteLen, Encoding.UTF8);
         }
 
-        [RequiresDynamicCode("Marshalling code for the object might not be available")]
+        [RequiresDynamicCode("Marshalling code for the object might not be available. Use the SizeOf<T> overload instead.")]
         public static int SizeOf(object structure)
         {
             if (structure is null)
@@ -125,7 +125,7 @@ namespace System.Runtime.InteropServices
             return SizeOfHelper(structure.GetType(), throwIfNotMarshalable: true);
         }
 
-        [RequiresDynamicCode("Marshalling code for the object might not be available")]
+        [RequiresDynamicCode("Marshalling code for the object might not be available. Use the SizeOf<T> overload instead.")]
         public static int SizeOf(Type t)
         {
             if (t is null)
@@ -857,7 +857,7 @@ namespace System.Runtime.InteropServices
             return type.FullName;
         }
 
-        [RequiresDynamicCode("Marshalling code for the delegate might not be available")]
+        [RequiresDynamicCode("Marshalling code for the delegate might not be available. Use the GetDelegateForFunctionPointer<TDelegate> overload instead.")]
         public static Delegate GetDelegateForFunctionPointer(IntPtr ptr, Type t)
         {
             if (ptr == IntPtr.Zero)
@@ -894,6 +894,7 @@ namespace System.Runtime.InteropServices
             return (TDelegate)(object)GetDelegateForFunctionPointer(ptr, typeof(TDelegate));
         }
 
+        [RequiresDynamicCode("Marshalling code for the delegate might not be available. Use the GetFunctionPointerForDelegate<TDelegate> overload instead.")]
         public static IntPtr GetFunctionPointerForDelegate(Delegate d)
         {
             if (d is null)
