@@ -79,7 +79,7 @@ namespace System.Text.Json.SourceGeneration
                 }
             }
 
-            JsonSourceGeneratorHelper helper = new(executionContext, metadataLoadContext);
+            JsonSourceGeneratorHelper helper = new(executionContext, metadataLoadContext, SerializableTypes);
 
             if (SerializableTypes == null)
             {
@@ -90,7 +90,7 @@ namespace System.Text.Json.SourceGeneration
 
             Debug.Assert(SerializableTypes.Count >= 1);
 
-            helper.GenerateSerializationMetadata(SerializableTypes);
+            helper.GenerateSerializationMetadata();
 #if LAUNCH_DEBUGGER_ON_EXECUTE
             }
             catch (Exception e)

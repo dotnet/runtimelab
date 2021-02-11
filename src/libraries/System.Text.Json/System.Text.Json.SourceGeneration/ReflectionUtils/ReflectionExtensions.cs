@@ -15,9 +15,9 @@ namespace System.Reflection
             return memberInfo.CustomAttributes.FirstOrDefault(a => type.IsAssignableFrom(a.AttributeType));
         }
 
-        public static CustomAttributeData GetCustomAttributeData(this ParameterInfo paramterInfo, Type type)
+        public static CustomAttributeData GetCustomAttributeData(this ParameterInfo parameterInfo, Type type)
         {
-            return paramterInfo.CustomAttributes.FirstOrDefault(a => type.IsAssignableFrom(a.AttributeType));
+            return parameterInfo.CustomAttributes.FirstOrDefault(a => type.IsAssignableFrom(a.AttributeType));
         }
 
         public static TValue GetConstructorArgument<TValue>(this CustomAttributeData customAttributeData, int index)
@@ -28,6 +28,19 @@ namespace System.Reflection
         public static TValue GetNamedArgument<TValue>(this CustomAttributeData customAttributeData, string name)
         {
             return (TValue)customAttributeData.NamedArguments.FirstOrDefault(a => a.MemberName == name).TypedValue.Value;
+        }
+
+        // TODO: do we need new public API on System.Reflection, similar to FieldInfo.IsInitOnly?
+        public static bool IsInitOnly(this MethodInfo method)
+        {
+            MethodInfoWrapper? methodInfoWrapper = method as MethodInfoWrapper;
+
+            if (methodInfoWrapper == null)
+            {
+                throw new ArgumentException("Expected a MethodInfoWrapper instance.", nameof(method));
+            }
+
+            return methodInfoWrapper.IsInitOnly;
         }
     }
 }

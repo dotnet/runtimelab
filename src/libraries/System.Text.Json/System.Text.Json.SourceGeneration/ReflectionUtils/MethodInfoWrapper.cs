@@ -22,7 +22,45 @@ namespace System.Reflection
 
         public override ICustomAttributeProvider ReturnTypeCustomAttributes => throw new NotImplementedException();
 
-        public override MethodAttributes Attributes => throw new NotImplementedException();
+        private MethodAttributes? _attributes;
+
+        public override MethodAttributes Attributes
+        {
+            get
+            {
+                if (!_attributes.HasValue)
+                {
+                    _attributes = default(MethodAttributes);
+
+                    if (_method.IsAbstract)
+                    {
+                        _attributes |= MethodAttributes.Abstract;
+                    }
+
+                    if (_method.IsStatic)
+                    {
+                        _attributes |= MethodAttributes.Static;
+                    }
+
+                    if (_method.IsVirtual)
+                    {
+                        _attributes |= MethodAttributes.Virtual;
+                    }
+
+                    switch (_method.DeclaredAccessibility)
+                    {
+                        case Accessibility.Public:
+                            _attributes |= MethodAttributes.Public;
+                            break;
+                        case Accessibility.Private:
+                            _attributes |= MethodAttributes.Private;
+                            break;
+                    }
+                }
+
+                return _attributes.Value;
+            }
+        }
 
         public override RuntimeMethodHandle MethodHandle => throw new NotSupportedException();
 
@@ -34,7 +72,10 @@ namespace System.Reflection
 
         public override bool IsGenericMethod => _method.IsGenericMethod;
 
+        public bool IsInitOnly => _method.IsInitOnly;
+
         public override Type ReflectedType => throw new NotImplementedException();
+
         public override IList<CustomAttributeData> GetCustomAttributesData()
         {
             var attributes = new List<CustomAttributeData>();

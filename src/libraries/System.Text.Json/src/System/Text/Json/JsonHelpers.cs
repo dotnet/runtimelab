@@ -20,6 +20,9 @@ namespace System.Text.Json
         /// <see cref="NotSupportedException" /> will be thrown when (de)serialization of a type without accompanying metadata is attempted.
         /// </summary>
         internal static bool DisableJsonSerializerDynamicFallback { get; }
+#if GENERATE_JSON_METADATA
+            = true;
+#endif
 
         // Copy of Array.MaxArrayLength. For byte arrays the limit is slightly larger
         private const int MaxArrayLength = 0X7FEFFFFF;

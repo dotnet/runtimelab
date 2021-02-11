@@ -522,14 +522,29 @@ namespace System.Text.Json
             }
         }
 
-        internal void AddJsonClassInfo(JsonClassInfo jsonClassInfo)
+        internal void AddJsonClassInfoToCompleteInitialization(JsonClassInfo jsonClassInfo)
         {
-            //_haveTypesBeenCreated = true;
-
             // todo: for performance, consider not adding to internal dictionary.
             // For compat, calling options.GetConverter() however would need to lazily populate
-            // the dictionary from the context(s) assoicated with the options class.
+            // the dictionary from the context(s) associated with the options class.
+
             _classes.GetOrAdd(jsonClassInfo.Type, jsonClassInfo);
+
+            // TODO: should we verify mutable here?
+            // VerifyMutable();
+
+            // TODO: re: should we verify mutable here?
+            // OR: Should we make last jsonClassInfo added wins:
+            // _classes[jsonClassInfo.Type] = jsonClassInfo;
+
+            // TODO: reason about what would happen if we change the code to the following.
+            // - Should multiple context instances be allowed to add metadata to a single options instance?
+            // - Should a single context instance add metadata for the same type to the options instance?
+            // - Is the existing behavior consistent with the dynamic serializer?
+            //if (!_classes.TryAdd(jsonClassInfo.Type, jsonClassInfo))
+            //{
+            //    throw new InvalidOperationException($"Metadata for type {jsonClassInfo.Type} already provided to serializer - {_classes[jsonClassInfo.Type]}.");
+            //}
         }
 
         internal JsonClassInfo GetOrAddClass(Type type)

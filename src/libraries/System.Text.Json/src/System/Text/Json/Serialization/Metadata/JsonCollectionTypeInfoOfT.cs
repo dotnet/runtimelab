@@ -28,7 +28,7 @@ namespace System.Text.Json.Serialization.Metadata
             ElementClassInfo = elementInfo;
             CreateObject = createObjectFunc;
 
-            PropertyInfoForClassInfo = CreatePropertyInfoForClassInfo(Type, Type, converter, Options);
+            PropertyInfoForClassInfo = SourceGenCreatePropertyInfoForClassInfo(Type, Type, runtimeClassInfo: this, converter, Options);
         }
 
         /// <summary>
@@ -40,7 +40,7 @@ namespace System.Text.Json.Serialization.Metadata
 
             if (canBeDynamic)
             {
-                Options.AddJsonClassInfo(this);
+                Options.AddJsonClassInfoToCompleteInitialization(this);
             }
         }
     }

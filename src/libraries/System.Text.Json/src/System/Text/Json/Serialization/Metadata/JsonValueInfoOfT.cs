@@ -19,7 +19,7 @@ namespace System.Text.Json.Serialization.Metadata
             JsonSerializerOptions options) : base(typeof(T), options, ClassType.Value)
         {
             ConverterBase = converter;
-            PropertyInfoForClassInfo = CreatePropertyInfoForClassInfo(Type, Type, converter, Options);
+            PropertyInfoForClassInfo = SourceGenCreatePropertyInfoForClassInfo(Type, Type, runtimeClassInfo: this, converter, Options);
         }
 
         /// <summary>
@@ -31,7 +31,7 @@ namespace System.Text.Json.Serialization.Metadata
 
             if (canBeDynamic)
             {
-                Options.AddJsonClassInfo(this);
+                Options.AddJsonClassInfoToCompleteInitialization(this);
             }
         }
     }

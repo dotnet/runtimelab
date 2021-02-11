@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <TargetFrameworks>$(NetCoreAppCurrent);netstandard2.0;netcoreapp3.0;net461</TargetFrameworks>
@@ -274,4 +274,9 @@
     <ProjectReference Include="$(LibrariesProjectRoot)System.Runtime.CompilerServices.Unsafe\src\System.Runtime.CompilerServices.Unsafe.ilproj" />
     <ProjectReference Include="$(LibrariesProjectRoot)System.Text.Encodings.Web\src\System.Text.Encodings.Web.csproj" />
   </ItemGroup>
+  <!-- TODO: remove before shipping.
+       Configuration to run JSON source generator -->
+  <PropertyGroup Condition="'$(GenerateJsonMetadata)' == 'true'">
+    <DefineConstants>$(DefineConstants);GENERATE_JSON_METADATA</DefineConstants>
+  </PropertyGroup>
 </Project>

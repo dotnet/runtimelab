@@ -4,8 +4,19 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Tests;
 using System.Threading.Tasks;
 using Xunit;
+
+[assembly: JsonSerializable(typeof(byte[]))]
+[assembly: JsonSerializable(typeof(byte[][]))]
+[assembly: JsonSerializable(typeof(int[]))]
+[assembly: JsonSerializable(typeof(int[][]))]
+[assembly: JsonSerializable(typeof(int[][][]))]
+[assembly: JsonSerializable(typeof(List<byte>))]
+[assembly: JsonSerializable(typeof(TestClassWithInitializedArray))]
+[assembly: JsonSerializable(typeof(TestClassWithStringArray))]
 
 namespace System.Text.Json.Serialization.Tests
 {
@@ -21,17 +32,9 @@ namespace System.Text.Json.Serialization.Tests
     }
 #endif
 
-    public abstract partial class ArrayTests
+    public abstract partial class ArrayTests : SerializerTests
     {
-        private SerializationWrapper Serializer { get; }
-
-        private DeserializationWrapper Deserializer { get; }
-
-        public ArrayTests(SerializationWrapper serializer, DeserializationWrapper deserializer)
-        {
-            Serializer = serializer;
-            Deserializer = deserializer;
-        }
+        public ArrayTests(SerializationWrapper serializer, DeserializationWrapper deserializer) : base(serializer, deserializer) { }
 
         [Fact]
 #if GENERATE_JSON_METADATA
@@ -108,9 +111,6 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-#if GENERATE_JSON_METADATA
-        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/388")]
-#endif
         public async Task ReadByteListAsJsonArray()
         {
             string json = $"[1, 2]";

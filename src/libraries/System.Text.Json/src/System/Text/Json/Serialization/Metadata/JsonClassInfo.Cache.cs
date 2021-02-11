@@ -109,6 +109,33 @@ namespace System.Text.Json.Serialization.Metadata
             return jsonPropertyInfo;
         }
 
+        internal static JsonPropertyInfo SourceGenCreateProperty(
+            Type declaredPropertyType,
+            Type? runtimePropertyType,
+            Type parentClassType,
+            JsonClassInfo runtimeClassInfo,
+            JsonConverter converter,
+            JsonSerializerOptions options,
+            JsonNumberHandling? parentTypeNumberHandling = null,
+            JsonIgnoreCondition? ignoreCondition = null)
+        {
+            // Create the JsonPropertyInfo instance.
+            JsonPropertyInfo jsonPropertyInfo = converter.CreateJsonPropertyInfo();
+
+            jsonPropertyInfo.SourceGenInitializePropertyInfoForClassInfo(
+                parentClassType,
+                declaredPropertyType,
+                runtimePropertyType,
+                runtimeClassType: converter.ClassType,
+                runtimeClassInfo,
+                converter,
+                ignoreCondition,
+                parentTypeNumberHandling,
+                options);
+
+            return jsonPropertyInfo;
+        }
+
         /// <summary>
         /// Create a <see cref="JsonPropertyInfo"/> for a given Type.
         /// See <seealso cref="PropertyInfoForClassInfo"/>.
@@ -128,6 +155,31 @@ namespace System.Text.Json.Serialization.Metadata
                 runtimePropertyType: runtimePropertyType,
                 memberInfo: null, // Not a real property so this is null.
                 parentClassType: JsonClassInfo.ObjectType, // a dummy value (not used)
+                converter: converter,
+                options,
+                parentTypeNumberHandling: numberHandling);
+
+            Debug.Assert(jsonPropertyInfo.IsForClassInfo);
+            return jsonPropertyInfo;
+        }
+
+        /// <summary>
+        /// Create a <see cref="JsonPropertyInfo"/> for a given Type.
+        /// See <seealso cref="PropertyInfoForClassInfo"/>.
+        /// </summary>
+        internal static JsonPropertyInfo SourceGenCreatePropertyInfoForClassInfo(
+            Type declaredPropertyType,
+            Type runtimePropertyType,
+            JsonClassInfo runtimeClassInfo,
+            JsonConverter converter,
+            JsonSerializerOptions options,
+            JsonNumberHandling? numberHandling = null)
+        {
+            JsonPropertyInfo jsonPropertyInfo = SourceGenCreateProperty(
+                declaredPropertyType: declaredPropertyType,
+                runtimePropertyType: runtimePropertyType,
+                parentClassType: ObjectType, // a dummy value (not used)
+                runtimeClassInfo,
                 converter: converter,
                 options,
                 parentTypeNumberHandling: numberHandling);

@@ -767,8 +767,8 @@ namespace System.Text.Json.Serialization.Metadata
     }
     public sealed partial class JsonObjectInfo<T> : System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>
     {
-        public JsonObjectInfo(System.Text.Json.Serialization.Metadata.JsonClassInfo.ConstructorDelegate createObjectFunc, System.Text.Json.JsonSerializerOptions options) { }
-        public System.Text.Json.Serialization.Metadata.JsonPropertyInfo<TProperty> AddProperty<TProperty>(string propertyName, System.Func<object, TProperty>? getter, System.Action<object, TProperty>? setter, System.Text.Json.Serialization.Metadata.JsonTypeInfo<TProperty> classInfo) { throw null; }
+        public JsonObjectInfo(System.Text.Json.Serialization.Metadata.JsonClassInfo.ConstructorDelegate? createObjectFunc, System.Text.Json.JsonSerializerOptions options) { }
+        public System.Text.Json.Serialization.Metadata.JsonPropertyInfo<TProperty> AddProperty<TProperty>(string clrPropertyName, System.Reflection.MemberTypes memberType, System.Type declaringType, System.Text.Json.Serialization.Metadata.JsonTypeInfo<TProperty> classInfo, System.Func<object, TProperty>? getter = null, System.Action<object, TProperty>? setter = null, string? jsonPropertyName = null, System.Text.Json.Serialization.JsonIgnoreCondition? ignoreCondition = null) { throw null; }
         public override void CompleteInitialization(bool canBeDynamic) { }
     }
     public abstract partial class JsonPropertyInfo

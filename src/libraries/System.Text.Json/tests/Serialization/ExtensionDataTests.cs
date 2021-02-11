@@ -5,14 +5,29 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static class ExtensionDataTests
+#if !GENERATE_JSON_METADATA
+    public class ExtensionDataTests_DynamicSerializer : ExtensionDataTests
     {
+        public ExtensionDataTests_DynamicSerializer() : base(SerializationWrapper.StringSerializer, DeserializationWrapper.StringDeserializer) { }
+    }
+#else
+    public class ExtensionDataTests_MetadataBasedSerializer : ExtensionDataTests
+    {
+        public ExtensionDataTests_MetadataBasedSerializer() : base(SerializationWrapper.StringMetadataSerializer, DeserializationWrapper.StringMetadataDeserialzer) { }
+    }
+#endif
+
+    public abstract class ExtensionDataTests : SerializerTests
+    {
+        public ExtensionDataTests(SerializationWrapper serializer, DeserializationWrapper deserializer) : base(serializer, deserializer) { }
+
         [Fact]
-        public static void ExtensionPropertyNotUsed()
+        public void ExtensionPropertyNotUsed()
         {
             string json = @"{""MyNestedClass"":" + SimpleTestClass.s_json + "}";
             ClassWithExtensionProperty obj = JsonSerializer.Deserialize<ClassWithExtensionProperty>(json);
@@ -20,7 +35,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ExtensionPropertyRoundTrip()
+        public void ExtensionPropertyRoundTrip()
         {
             ClassWithExtensionProperty obj;
 
@@ -55,7 +70,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ExtensionFieldNotUsed()
+        public void ExtensionFieldNotUsed()
         {
             string json = @"{""MyNestedClass"":" + SimpleTestClass.s_json + "}";
             ClassWithExtensionField obj = JsonSerializer.Deserialize<ClassWithExtensionField>(json);
@@ -63,7 +78,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ExtensionFieldRoundTrip()
+        public void ExtensionFieldRoundTrip()
         {
             ClassWithExtensionField obj;
 
@@ -98,15 +113,15 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ExtensionPropertyIgnoredWhenWritingDefault()
+        public async Task ExtensionPropertyIgnoredWhenWritingDefault()
         {
             string expected = @"{}";
-            string actual = JsonSerializer.Serialize(new ClassWithExtensionPropertyAsObject());
+            string actual = await Serializer.SerializeWrapper(new ClassWithExtensionPropertyAsObject());
             Assert.Equal(expected, actual);
         }
 
         [Fact]
-        public static void MultipleExtensionPropertyIgnoredWhenWritingDefault()
+        public async Task MultipleExtensionPropertyIgnoredWhenWritingDefault()
         {
             var obj = new ClassWithMultipleDictionaries();
             string actual = JsonSerializer.Serialize(obj);
@@ -116,7 +131,7 @@ namespace System.Text.Json.Serialization.Tests
             {
                 ActualDictionary = new Dictionary<string, object>()
             };
-            actual = JsonSerializer.Serialize(obj);
+            actual = await Serializer.SerializeWrapper(obj);
             Assert.Equal("{\"ActualDictionary\":{}}", actual);
 
             obj = new ClassWithMultipleDictionaries
@@ -126,7 +141,7 @@ namespace System.Text.Json.Serialization.Tests
                     { "test", "value" }
                 }
             };
-            actual = JsonSerializer.Serialize(obj);
+            actual = await Serializer.SerializeWrapper(obj);
             Assert.Equal("{\"ActualDictionary\":null,\"test\":\"value\"}", actual);
 
             obj = new ClassWithMultipleDictionaries
@@ -137,16 +152,16 @@ namespace System.Text.Json.Serialization.Tests
                     { "test", "value" }
                 }
             };
-            actual = JsonSerializer.Serialize(obj);
+            actual = await Serializer.SerializeWrapper(obj);
             Assert.Equal("{\"ActualDictionary\":{},\"test\":\"value\"}", actual);
         }
 
         [Fact]
-        public static void ExtensionPropertyInvalidJsonFail()
+        public async Task ExtensionPropertyInvalidJsonFail()
         {
             const string BadJson = @"{""Good"":""OK"",""Bad"":!}";
 
-            JsonException jsonException = Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ClassWithExtensionPropertyAsObject>(BadJson));
+            JsonException jsonException = await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<ClassWithExtensionPropertyAsObject>(BadJson));
             Assert.Contains("Path: $.Bad | LineNumber: 0 | BytePositionInLine: 19.", jsonException.ToString());
             Assert.NotNull(jsonException.InnerException);
             Assert.IsAssignableFrom<JsonException>(jsonException.InnerException);
@@ -154,28 +169,28 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ExtensionPropertyAlreadyInstantiated()
+        public async Task ExtensionPropertyAlreadyInstantiated()
         {
             Assert.NotNull(new ClassWithExtensionPropertyAlreadyInstantiated().MyOverflow);
 
             string json = @"{""MyIntMissing"":2}";
 
-            ClassWithExtensionProperty obj = JsonSerializer.Deserialize<ClassWithExtensionProperty>(json);
+            ClassWithExtensionProperty obj = await Deserializer.DeserializeWrapper<ClassWithExtensionProperty>(json);
             Assert.Equal(2, obj.MyOverflow["MyIntMissing"].GetInt32());
         }
 
         [Fact]
-        public static void ExtensionPropertyAsObject()
+        public async Task ExtensionPropertyAsObject()
         {
             string json = @"{""MyIntMissing"":2}";
 
-            ClassWithExtensionPropertyAsObject obj = JsonSerializer.Deserialize<ClassWithExtensionPropertyAsObject>(json);
+            ClassWithExtensionPropertyAsObject obj = await Deserializer.DeserializeWrapper<ClassWithExtensionPropertyAsObject>(json);
             Assert.IsType<JsonElement>(obj.MyOverflow["MyIntMissing"]);
             Assert.Equal(2, ((JsonElement)obj.MyOverflow["MyIntMissing"]).GetInt32());
         }
 
         [Fact]
-        public static void ExtensionPropertyCamelCasing()
+        public void ExtensionPropertyCamelCasing()
         {
             // Currently we apply no naming policy. If we do (such as a ExtensionPropertyNamingPolicy), we'd also have to add functionality to the JsonDocument.
 
@@ -225,7 +240,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void NullValuesIgnored()
+        public void NullValuesIgnored()
         {
             const string json = @"{""MyNestedClass"":null}";
             const string jsonMissing = @"{""MyNestedClassMissing"":null}";
@@ -275,7 +290,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void InvalidExtensionPropertyFail()
+        public void InvalidExtensionPropertyFail()
         {
             // Baseline
             JsonSerializer.Deserialize<ClassWithExtensionProperty>(@"{}");
@@ -295,9 +310,9 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void IgnoredDataShouldNotBeExtensionData()
+        public async Task IgnoredDataShouldNotBeExtensionData()
         {
-            ClassWithIgnoredData obj = JsonSerializer.Deserialize<ClassWithIgnoredData>(@"{""MyInt"":1}");
+            ClassWithIgnoredData obj = await Deserializer.DeserializeWrapper<ClassWithIgnoredData>(@"{""MyInt"":1}");
 
             Assert.Equal(0, obj.MyInt);
             Assert.Null(obj.MyOverflow);
@@ -370,12 +385,12 @@ namespace System.Text.Json.Serialization.Tests
         [InlineData(typeof(Dictionary<string, JsonElement>), typeof(JsonElementOverflowConverter))]
         [InlineData(typeof(CustomOverflowDictionary<object>), typeof(CustomObjectDictionaryOverflowConverter))]
         [InlineData(typeof(CustomOverflowDictionary<JsonElement>), typeof(CustomJsonElementDictionaryOverflowConverter))]
-        public static void ExtensionProperty_SupportsWritingToCustomSerializerWithOptions(Type overflowType, Type converterType)
+        public void ExtensionProperty_SupportsWritingToCustomSerializerWithOptions(Type overflowType, Type converterType)
         {
             typeof(ExtensionDataTests)
                 .GetMethod(nameof(ExtensionProperty_SupportsWritingToCustomSerializerWithOptionsInternal), BindingFlags.Static | BindingFlags.NonPublic)
                 .MakeGenericMethod(overflowType, converterType)
-                .Invoke(null, null);
+                .Invoke(this, null);
         }
 
         private static void ExtensionProperty_SupportsWritingToCustomSerializerWithOptionsInternal<TDictionary, TConverter>()
@@ -432,15 +447,15 @@ namespace System.Text.Json.Serialization.Tests
         [InlineData(typeof(ClassWithJsonElementExtensionDataWithAttributedConverter), typeof(Dictionary<string, JsonElement>))]
         [InlineData(typeof(ClassWithCustomElementExtensionDataWithAttributedConverter), typeof(CustomOverflowDictionary<object>))]
         [InlineData(typeof(ClassWithCustomJsonElementExtensionDataWithAttributedConverter), typeof(CustomOverflowDictionary<JsonElement>))]
-        public static void ExtensionProperty_SupportsWritingToCustomSerializerWithExplicitConverter(Type attributedType, Type dictionaryType)
+        public async Task ExtensionProperty_SupportsWritingToCustomSerializerWithExplicitConverter(Type attributedType, Type dictionaryType)
         {
-            typeof(ExtensionDataTests)
-                .GetMethod(nameof(ExtensionProperty_SupportsWritingToCustomSerializerWithExplicitConverterInternal), BindingFlags.Static | BindingFlags.NonPublic)
+            await (Task)typeof(ExtensionDataTests)
+                .GetMethod(nameof(ExtensionProperty_SupportsWritingToCustomSerializerWithExplicitConverterInternal), BindingFlags.Instance| BindingFlags.NonPublic)
                 .MakeGenericMethod(attributedType, dictionaryType)
-                .Invoke(null, null);
+                .Invoke(this, null);
         }
 
-        private static void ExtensionProperty_SupportsWritingToCustomSerializerWithExplicitConverterInternal<TRoot, TDictionary>()
+        private async Task ExtensionProperty_SupportsWritingToCustomSerializerWithExplicitConverterInternal<TRoot, TDictionary>()
             where TRoot : IClassWithOverflow<TDictionary>, new()
             where TDictionary : new()
         {
@@ -449,7 +464,7 @@ namespace System.Text.Json.Serialization.Tests
                 Overflow = new TDictionary()
             };
 
-            string json = JsonSerializer.Serialize(root);
+            string json = await Serializer.SerializeWrapper(root);
             Assert.Equal(@"{""MyCustomOverflowWrite"":""OverflowValueWrite""}", json);
         }
 
@@ -458,15 +473,15 @@ namespace System.Text.Json.Serialization.Tests
         [InlineData(typeof(Dictionary<string, JsonElement>), typeof(JsonElementOverflowConverter), typeof(JsonElement))]
         [InlineData(typeof(CustomOverflowDictionary<object>), typeof(CustomObjectDictionaryOverflowConverter), typeof(object))]
         [InlineData(typeof(CustomOverflowDictionary<JsonElement>), typeof(CustomJsonElementDictionaryOverflowConverter), typeof(JsonElement))]
-        public static void ExtensionProperty_IgnoresCustomSerializerWithOptions(Type overflowType, Type converterType, Type elementType)
+        public async Task ExtensionProperty_IgnoresCustomSerializerWithOptions(Type overflowType, Type converterType, Type elementType)
         {
-            typeof(ExtensionDataTests)
-                .GetMethod(nameof(ExtensionProperty_IgnoresCustomSerializerWithOptionsInternal), BindingFlags.Static | BindingFlags.NonPublic)
+            await (Task)typeof(ExtensionDataTests)
+                .GetMethod(nameof(ExtensionProperty_IgnoresCustomSerializerWithOptionsInternal), BindingFlags.Instance | BindingFlags.NonPublic)
                 .MakeGenericMethod(overflowType, elementType, converterType)
-                .Invoke(null, null);
+                .Invoke(this, null);
         }
 
-        private static void ExtensionProperty_IgnoresCustomSerializerWithOptionsInternal<TDictionary, TOverflowItem, TConverter>()
+        private async Task ExtensionProperty_IgnoresCustomSerializerWithOptionsInternal<TDictionary, TOverflowItem, TConverter>()
             where TConverter : JsonConverter, new()
             where TDictionary : IDictionary<string, TOverflowItem>
         {
@@ -474,7 +489,7 @@ namespace System.Text.Json.Serialization.Tests
             options.Converters.Add(new TConverter());
 
             ClassWithExtensionData<TDictionary> obj
-                = JsonSerializer.Deserialize<ClassWithExtensionData<TDictionary>>(@"{""TestKey"":""TestValue""}", options);
+                = await Deserializer.DeserializeWrapper<ClassWithExtensionData<TDictionary>>(@"{""TestKey"":""TestValue""}", options);
 
             Assert.Equal("TestValue", ((JsonElement)(object)obj.Overflow["TestKey"]).GetString());
         }
@@ -484,38 +499,38 @@ namespace System.Text.Json.Serialization.Tests
         [InlineData(typeof(ClassWithJsonElementExtensionDataWithAttributedConverter), typeof(Dictionary<string, JsonElement>), typeof(JsonElement))]
         [InlineData(typeof(ClassWithCustomElementExtensionDataWithAttributedConverter), typeof(CustomOverflowDictionary<object>), typeof(object))]
         [InlineData(typeof(ClassWithCustomJsonElementExtensionDataWithAttributedConverter), typeof(CustomOverflowDictionary<JsonElement>), typeof(JsonElement))]
-        public static void ExtensionProperty_IgnoresCustomSerializerWithExplicitConverter(Type attributedType, Type dictionaryType, Type elementType)
+        public async Task ExtensionProperty_IgnoresCustomSerializerWithExplicitConverter(Type attributedType, Type dictionaryType, Type elementType)
         {
-            typeof(ExtensionDataTests)
-                .GetMethod(nameof(ExtensionProperty_IgnoresCustomSerializerWithExplicitConverterInternal), BindingFlags.Static | BindingFlags.NonPublic)
+            await (Task)typeof(ExtensionDataTests)
+                .GetMethod(nameof(ExtensionProperty_IgnoresCustomSerializerWithExplicitConverterInternal), BindingFlags.Instance | BindingFlags.NonPublic)
                 .MakeGenericMethod(attributedType, dictionaryType, elementType)
-                .Invoke(null, null);
+                .Invoke(this, null);
         }
 
-        private static void ExtensionProperty_IgnoresCustomSerializerWithExplicitConverterInternal<TRoot, TDictionary, TOverflowItem>()
+        private async Task ExtensionProperty_IgnoresCustomSerializerWithExplicitConverterInternal<TRoot, TDictionary, TOverflowItem>()
             where TRoot : IClassWithOverflow<TDictionary>, new()
             where TDictionary : IDictionary<string, TOverflowItem>
         {
             ClassWithExtensionData<TDictionary> obj
-                = JsonSerializer.Deserialize<ClassWithExtensionData<TDictionary>>(@"{""TestKey"":""TestValue""}");
+                = await Deserializer.DeserializeWrapper<ClassWithExtensionData<TDictionary>>(@"{""TestKey"":""TestValue""}");
 
             Assert.Equal("TestValue", ((JsonElement)(object)obj.Overflow["TestKey"]).GetString());
         }
 
         [Fact]
-        public static void ExtensionPropertyObjectValue_Empty()
+        public void ExtensionPropertyObjectValue_Empty()
         {
             ClassWithExtensionPropertyAlreadyInstantiated obj = JsonSerializer.Deserialize<ClassWithExtensionPropertyAlreadyInstantiated>(@"{}");
             Assert.Equal(@"{}", JsonSerializer.Serialize(obj));
         }
 
         [Fact]
-        public static void ExtensionPropertyObjectValue_SameAsExtensionPropertyName()
+        public async Task ExtensionPropertyObjectValue_SameAsExtensionPropertyName()
         {
             const string json = @"{""MyOverflow"":{""Key1"":""V""}}";
 
             // Deserializing directly into the overflow is not supported by design.
-            ClassWithExtensionPropertyAsObject obj = JsonSerializer.Deserialize<ClassWithExtensionPropertyAsObject>(json);
+            ClassWithExtensionPropertyAsObject obj = await Deserializer.DeserializeWrapper<ClassWithExtensionPropertyAsObject>(json);
 
             // The JSON is treated as normal overflow.
             Assert.NotNull(obj.MyOverflow["MyOverflow"]);
@@ -531,7 +546,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ExtensionPropertyDuplicateNames()
+        public async Task ExtensionPropertyDuplicateNames()
         {
             var obj = new ClassWithExtensionPropertyAsObjectAndNameProperty();
             obj.Name = "Name1";
@@ -543,7 +558,7 @@ namespace System.Text.Json.Serialization.Tests
             Assert.Equal(@"{""Name"":""Name1"",""Name"":""Name2""}", json);
 
             // The overflow value comes last in the JSOn so it overwrites the original value.
-            obj = JsonSerializer.Deserialize<ClassWithExtensionPropertyAsObjectAndNameProperty>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithExtensionPropertyAsObjectAndNameProperty>(json);
             Assert.Equal("Name2", obj.Name);
 
             // Since there was no overflow, this should be null.
@@ -551,7 +566,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void NullAsNullObjectOrJsonValueKindNull()
+        public void NullAsNullObjectOrJsonValueKindNull()
         {
             const string json = @"{""MissingProperty"":null}";
 
@@ -574,10 +589,10 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ExtensionPropertyObjectValue()
+        public async Task ExtensionPropertyObjectValue()
         {
             // Baseline
-            ClassWithExtensionPropertyAlreadyInstantiated obj = JsonSerializer.Deserialize<ClassWithExtensionPropertyAlreadyInstantiated>(@"{}");
+            ClassWithExtensionPropertyAlreadyInstantiated obj = await Deserializer.DeserializeWrapper<ClassWithExtensionPropertyAlreadyInstantiated>(@"{}");
             obj.MyOverflow.Add("test", new object());
             obj.MyOverflow.Add("test1", 1);
 
@@ -595,7 +610,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ExtensionPropertyObjectValue_RoundTrip()
+        public void ExtensionPropertyObjectValue_RoundTrip()
         {
             // Baseline
             ClassWithExtensionPropertyAlreadyInstantiated obj = JsonSerializer.Deserialize<ClassWithExtensionPropertyAlreadyInstantiated>(@"{}");
@@ -648,7 +663,7 @@ namespace System.Text.Json.Serialization.Tests
         [InlineData(@"{""MyIntMissing"":2,""MyReference"":{""MyIntMissingChild"":3}}")]
         [InlineData(@"{""MyReference"":{""MyIntMissingChild"":3},""MyIntMissing"":2}")]
         [InlineData(@"{""MyReference"":{""MyNestedClass"":null,""MyInt"":0,""MyIntMissingChild"":3},""MyIntMissing"":2}")]
-        public static void NestedClass(string json)
+        public void NestedClass(string json)
         {
             ClassWithReference obj;
 
@@ -695,7 +710,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void NestedClassWithObjectExtensionDataProperty()
+        public void NestedClassWithObjectExtensionDataProperty()
         {
             var child = new ChildClassWithObject { Number = 2 };
             child.ExtensionData.Add("SpecialInformation", "I am child class");
@@ -744,7 +759,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void NestedClassWithJsonElementExtensionDataProperty()
+        public void NestedClassWithJsonElementExtensionDataProperty()
         {
             var child = new ChildClassWithJsonElement { Number = 4 };
             child.ExtensionData.Add("SpecialInformation", JsonDocument.Parse(JsonSerializer.SerializeToUtf8Bytes("I am child class")).RootElement);
@@ -771,7 +786,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void DeserializeIntoObjectProperty()
+        public void DeserializeIntoObjectProperty()
         {
             ClassWithExtensionPropertyAsObject obj;
             string json;
@@ -802,7 +817,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void DeserializeIntoMultipleDictionaries()
+        public void DeserializeIntoMultipleDictionaries()
         {
             ClassWithMultipleDictionaries obj;
             string json;
@@ -831,7 +846,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void DeserializeIntoJsonElementProperty()
+        public void DeserializeIntoJsonElementProperty()
         {
             ClassWithExtensionPropertyAsJsonElement obj;
             string json;
@@ -862,7 +877,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void SerializerOutputRoundtripsWhenEscaping()
+        public void SerializerOutputRoundtripsWhenEscaping()
         {
             string jsonString = "{\"\u6C49\u5B57\":\"abc\",\"Class\":{\"\u6F22\u5B57\":\"xyz\"},\"\u62DC\u6258\":{\"\u62DC\u6258\u62DC\u6258\":1}}";
 
@@ -903,7 +918,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ExtensionProperty_InvalidDictionary()
+        public void ExtensionProperty_InvalidDictionary()
         {
             ClassWithInvalidExtensionPropertyStringString obj1 = new ClassWithInvalidExtensionPropertyStringString();
             Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(obj1));
@@ -944,24 +959,24 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void DeserializeIntoImmutableDictionaryProperty()
+        public async Task DeserializeIntoImmutableDictionaryProperty()
         {
             // baseline
-            JsonSerializer.Deserialize<ClassWithExtensionPropertyAsImmutable>(@"{}");
-            JsonSerializer.Deserialize<ClassWithExtensionPropertyAsImmutableJsonElement>(@"{}");
-            JsonSerializer.Deserialize<ClassWithExtensionPropertyPrivateConstructor>(@"{}");
-            JsonSerializer.Deserialize<ClassWithExtensionPropertyPrivateConstructorJsonElement>(@"{}");
+            await Deserializer.DeserializeWrapper<ClassWithExtensionPropertyAsImmutable>(@"{}");
+            await Deserializer.DeserializeWrapper<ClassWithExtensionPropertyAsImmutableJsonElement>(@"{}");
+            await Deserializer.DeserializeWrapper<ClassWithExtensionPropertyPrivateConstructor>(@"{}");
+            await Deserializer.DeserializeWrapper<ClassWithExtensionPropertyPrivateConstructorJsonElement>(@"{}");
 
-            Assert.Throws<NotSupportedException>(() => JsonSerializer.Deserialize<ClassWithExtensionPropertyAsImmutable>("{\"hello\":\"world\"}"));
-            Assert.Throws<NotSupportedException>(() => JsonSerializer.Deserialize<ClassWithExtensionPropertyAsImmutableJsonElement>("{\"hello\":\"world\"}"));
-            Assert.Throws<NotSupportedException>(() => JsonSerializer.Deserialize<ClassWithExtensionPropertyPrivateConstructor>("{\"hello\":\"world\"}"));
-            Assert.Throws<NotSupportedException>(() => JsonSerializer.Deserialize<ClassWithExtensionPropertyPrivateConstructorJsonElement>("{\"hello\":\"world\"}"));
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<ClassWithExtensionPropertyCustomIImmutable>("{\"hello\":\"world\"}"));
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<ClassWithExtensionPropertyCustomIImmutableJsonElement>("{\"hello\":\"world\"}"));
+            await Assert.ThrowsAsync<NotSupportedException>(async () => await Deserializer.DeserializeWrapper<ClassWithExtensionPropertyAsImmutable>("{\"hello\":\"world\"}"));
+            await Assert.ThrowsAsync<NotSupportedException>(async () => await Deserializer.DeserializeWrapper<ClassWithExtensionPropertyAsImmutableJsonElement>("{\"hello\":\"world\"}"));
+            await Assert.ThrowsAsync<NotSupportedException>(async () => await Deserializer.DeserializeWrapper<ClassWithExtensionPropertyPrivateConstructor>("{\"hello\":\"world\"}"));
+            await Assert.ThrowsAsync<NotSupportedException>(async () => await Deserializer.DeserializeWrapper<ClassWithExtensionPropertyPrivateConstructorJsonElement>("{\"hello\":\"world\"}"));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<ClassWithExtensionPropertyCustomIImmutable>("{\"hello\":\"world\"}"));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<ClassWithExtensionPropertyCustomIImmutableJsonElement>("{\"hello\":\"world\"}"));
         }
 
         [Fact]
-        public static void SerializeIntoImmutableDictionaryProperty()
+        public void SerializeIntoImmutableDictionaryProperty()
         {
             // attempt to serialize a null immutable dictionary
             string expectedJson = "{}";
@@ -1025,9 +1040,9 @@ namespace System.Text.Json.Serialization.Tests
         [InlineData(typeof(ClassWithExtensionPropertyNoGenericParameters))]
         [InlineData(typeof(ClassWithExtensionPropertyOneGenericParameter))]
         [InlineData(typeof(ClassWithExtensionPropertyThreeGenericParameters))]
-        public static void DeserializeIntoGenericDictionaryParameterCount(Type type)
+        public async Task DeserializeIntoGenericDictionaryParameterCount(Type type)
         {
-            object obj = JsonSerializer.Deserialize("{\"hello\":\"world\"}", type);
+            object obj = await Deserializer.DeserializeWrapper("{\"hello\":\"world\"}", type);
 
             IDictionary<string, object> extData = (IDictionary<string, object>)type.GetProperty("MyOverflow").GetValue(obj)!;
             Assert.Equal("world", ((JsonElement)extData["hello"]).GetString());
@@ -1052,7 +1067,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void CustomObjectConverterInExtensionProperty()
+        public void CustomObjectConverterInExtensionProperty()
         {
             const string Json = "{\"hello\": \"world\"}";
 
@@ -1084,14 +1099,14 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void CustomJsonElementConverterInExtensionProperty()
+        public async Task CustomJsonElementConverterInExtensionProperty()
         {
             const string Json = "{\"hello\": \"world\"}";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new JsonElementConverter());
 
-            ClassWithExtensionPropertyAsJsonElement obj = JsonSerializer.Deserialize<ClassWithExtensionPropertyAsJsonElement>(Json, options);
+            ClassWithExtensionPropertyAsJsonElement obj = await Deserializer.DeserializeWrapper<ClassWithExtensionPropertyAsJsonElement>(Json, options);
             JsonElement overflowProp = obj.MyOverflow["hello"];
             Assert.Equal(JsonValueKind.Undefined, overflowProp.ValueKind);
 

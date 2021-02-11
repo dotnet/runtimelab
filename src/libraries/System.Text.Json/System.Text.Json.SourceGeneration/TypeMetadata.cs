@@ -30,11 +30,12 @@ namespace System.Text.Json.SourceGeneration
 
         public TypeMetadata? CollectionValueTypeMetadata { get; private set; }
 
+        /// <summary>
+        /// Serialization metadata for the properties and fields on the type.
+        /// </summary>
         public List<PropertyMetadata>? PropertiesMetadata { get; private set; }
 
-        // TODO: perhaps this can be consolidated to PropertiesMetadata above, even when field support is added;
-        // unless we have to distiguish here to only allow support based on static or runtime opt-in.
-        public List<PropertyMetadata>? FieldsMetadata { get; private set; }
+        public ObjectConstructionStrategy ConstructionStrategy { get; private set; }
 
         public void Initialize(
             string compilableName,
@@ -44,10 +45,10 @@ namespace System.Text.Json.SourceGeneration
             bool isValueType,
             bool canBeDynamic,
             List<PropertyMetadata>? propertiesMetadata,
-            List<PropertyMetadata>? fieldsMetadata,
             CollectionType collectionType,
             TypeMetadata? collectionKeyTypeMetadata,
-            TypeMetadata? collectionValueTypeMetadata)
+            TypeMetadata? collectionValueTypeMetadata,
+            ObjectConstructionStrategy constructionStrategy)
         {
             if (_hasBeenInitialized)
             {
@@ -63,10 +64,15 @@ namespace System.Text.Json.SourceGeneration
             IsValueType = isValueType;
             CanBeDynamic = canBeDynamic;
             PropertiesMetadata = propertiesMetadata;
-            FieldsMetadata = fieldsMetadata;
             CollectionType = collectionType;
             CollectionKeyTypeMetadata = collectionKeyTypeMetadata;
             CollectionValueTypeMetadata = collectionValueTypeMetadata;
+
+            if (constructionStrategy != ObjectConstructionStrategy.NotApplicable && classType != ClassType.Object)
+            {
+                throw new InvalidOperationException($"ObjectConstructionStrategy not valid for class type. Stategy: {constructionStrategy} | Type: {type} | Class type: {classType}");
+            }
+            ConstructionStrategy = constructionStrategy;
         }
     }
 }

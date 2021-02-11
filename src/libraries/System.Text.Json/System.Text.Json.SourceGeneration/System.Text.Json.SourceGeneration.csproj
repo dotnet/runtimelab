@@ -18,10 +18,12 @@
     <Compile Include="ClassType.cs" />
     <Compile Include="CollectionType.cs" />
     <Compile Include="IsExternalInit.cs" />
+    <Compile Include="JsonIgnoreCondition.cs" />
     <Compile Include="JsonSourceGenerator.cs" />
     <Compile Include="JsonSourceGenerator.Diagnostics.cs" />
     <Compile Include="JsonSourceGeneratorHelper.cs" />
     <Compile Include="JsonSerializableSyntaxReceiver.cs" />
+    <Compile Include="ObjectConstructionStrategy.cs" />
     <Compile Include="PropertyMetadata.cs" />
     <Compile Include="ReflectionUtils\AssemblyWrapper.cs" />
     <Compile Include="ReflectionUtils\TypeExtensions.cs" />

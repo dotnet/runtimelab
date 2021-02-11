@@ -40,17 +40,6 @@
     <Compile Include="Serialization\Array.WriteTests.cs" />
     <Compile Include="Serialization\CacheTests.cs" />
     <Compile Include="Serialization\CamelCaseUnitTests.cs" />
-    <Compile Include="Serialization\CodeGenTests\CampaignSummaryViewModelTypeInfoPocoTests.cs" />
-    <Compile Include="Serialization\CodeGenTests\ActiveOrUpcomingEventPocoTests.cs" />
-    <Compile Include="Serialization\CodeGenTests\IndexViewModelPocoTests.cs" />
-    <Compile Include="Serialization\CodeGenTests\LocationPocoTests.cs" />
-    <Compile Include="Serialization\CodeGenTests\ContextClass\MyNamespace.JsonContext.ActiveOrUpcomingEvent.cs" />
-    <Compile Include="Serialization\CodeGenTests\ContextClass\MyNamespace.JsonContext.CampaignSummaryViewModel.cs" />
-    <Compile Include="Serialization\CodeGenTests\ContextClass\MyNamespace.JsonContext.IndexViewModel.cs" />
-    <Compile Include="Serialization\CodeGenTests\ContextClass\MyNamespace.JsonContext.Location.cs" />
-    <Compile Include="Serialization\CodeGenTests\ContextClass\MyNamespace.JsonContext.cs" />
-    <Compile Include="Serialization\CodeGenTests\ContextClass\MyNamespace.Location.cs" />
-    <Compile Include="Serialization\CodeGenTests\SlowPathTests.cs" />
     <Compile Include="Serialization\CollectionTests\CollectionTests.Concurrent.Write.cs" />
     <Compile Include="Serialization\CollectionTests\CollectionTests.Concurrent.cs" />
     <Compile Include="Serialization\CollectionTests\CollectionTests.Dictionary.cs" />
@@ -112,7 +101,7 @@
     <Compile Include="Serialization\InvalidTypeTests.cs" />
     <Compile Include="Serialization\JsonDocumentTests.cs" />
     <Compile Include="Serialization\JsonElementTests.cs" />
-    <Compile Include="Serialization\JsonSerializableTypes.cs" />
+    <Compile Include="Serialization\SerializerTests.cs" />
     <Compile Include="Serialization\Null.ReadTests.cs" />
     <Compile Include="Serialization\Null.WriteTests.cs" />
     <Compile Include="Serialization\NullableTests.cs" />
@@ -183,11 +172,11 @@
     <ProjectReference Include="$(LibrariesProjectRoot)System.Collections.Immutable\src\System.Collections.Immutable.csproj" />
     <ProjectReference Include="..\src\System.Text.Json.csproj" />
   </ItemGroup>
-  <!-- Configuration to run JSON source generator -->
+  <!-- TODO: remove before shipping.
+       Configuration to run JSON source generator -->
   <PropertyGroup Condition="'$(GenerateJsonMetadata)' == 'true'">
     <DefineConstants>$(DefineConstants);GENERATE_JSON_METADATA</DefineConstants>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <_ExtraTrimmerArgs>--feature System.Text.Json.DisableJsonSerializerDynamicFallback true</_ExtraTrimmerArgs>
   </PropertyGroup>
   <ItemGroup Condition="'$(GenerateJsonMetadata)' == 'true'">
     <ProjectReference Include="..\System.Text.Json.SourceGeneration\System.Text.Json.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />

@@ -16,7 +16,12 @@ namespace System.Reflection
             foreach (KeyValuePair<string, TypedConstant> na in a.NamedArguments)
             {
                 var member = a.AttributeClass!.GetMembers(na.Key).First();
-                namedArguments.Add(new CustomAttributeNamedArgument(new MemberInfoWrapper(member, metadataLoadContext), na.Value.Value));
+
+                MemberInfo memberInfo = member is IPropertySymbol
+                    ? new PropertyInfoWrapper((IPropertySymbol)member, metadataLoadContext)
+                    : new FieldInfoWrapper((IFieldSymbol)member, metadataLoadContext);
+
+                namedArguments.Add(new CustomAttributeNamedArgument(memberInfo, na.Value.Value));
             }
 
             var constructorArguments = new List<CustomAttributeTypedArgument>();

@@ -253,11 +253,11 @@ namespace System.Reflection
 
             foreach (ISymbol item in _typeSymbol.GetMembers())
             {
-                if (item is IPropertySymbol property && !property.IsReadOnly)
+                if (item is IPropertySymbol property)
                 {
                     if ((item.DeclaredAccessibility & Accessibility.Public) == Accessibility.Public)
                     {
-                        properties.Add(new PropertyWrapper(property, _metadataLoadContext));
+                        properties.Add(new PropertyInfoWrapper(property, _metadataLoadContext));
                     }
                 }
             }
@@ -275,9 +275,26 @@ namespace System.Reflection
             throw new NotImplementedException();
         }
 
+        private TypeAttributes? _typeAttributes;
+
         protected override TypeAttributes GetAttributeFlagsImpl()
         {
-            throw new NotImplementedException();
+            if (!_typeAttributes.HasValue)
+            {
+                _typeAttributes = default(TypeAttributes);
+
+                if (_typeSymbol.IsAbstract)
+                {
+                    _typeAttributes |= TypeAttributes.Abstract;
+                }
+
+                if (_typeSymbol.TypeKind == TypeKind.Interface)
+                {
+                    _typeAttributes |= TypeAttributes.Interface;
+                }
+            }
+
+            return _typeAttributes.Value;
         }
 
         protected override ConstructorInfo GetConstructorImpl(BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers)
@@ -292,7 +309,16 @@ namespace System.Reflection
 
         protected override PropertyInfo GetPropertyImpl(string name, BindingFlags bindingAttr, Binder binder, Type returnType, Type[] types, ParameterModifier[] modifiers)
         {
-            throw new NotImplementedException();
+            // TODO: peformance; caching; honor bindingAttr
+            foreach (PropertyInfo propertyInfo in GetProperties(bindingAttr))
+            {
+                if (propertyInfo.Name == name)
+                {
+                    return propertyInfo;
+                }
+            }
+
+            return null!;
         }
 
         protected override bool HasElementTypeImpl()

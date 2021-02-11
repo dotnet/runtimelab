@@ -299,6 +299,9 @@ namespace System.Text.Json.Serialization.Metadata
             _isInitialized = true;
         }
 
+        /// <summary>
+        /// Changes here should be reflected in <see cref="JsonObjectInfo{T}.CacheMember"/>
+        /// </summary>
         private void CacheMember(
             Type declaringType,
             Type memberType,
@@ -327,8 +330,8 @@ namespace System.Text.Json.Serialization.Metadata
                     !jsonPropertyInfo.IsIgnored &&
                     // Is the current property hidden by the previously cached property
                     // (with `new` keyword, or by overriding)?
-                    other.MemberInfo!.Name != memberName &&
-                    // Was a property with the same CLR name was ignored? That property hid the current property,
+                    other.ClrName! != memberName &&
+                    // Was a property with the same CLR name ignored? That property hid the current property,
                     // thus, if it was ignored, the current property should be ignored too.
                     ignoredMembers?.ContainsKey(memberName) != true)
                 {
@@ -472,6 +475,7 @@ namespace System.Text.Json.Serialization.Metadata
             ParameterCache = parameterCache;
             ParameterCount = parameters.Length;
         }
+
         private static bool PropertyIsOverridenAndIgnored(MemberInfo currentMember, Dictionary<string, MemberInfo>? ignoredMembers)
         {
             if (ignoredMembers == null || !ignoredMembers.TryGetValue(currentMember.Name, out MemberInfo? ignoredProperty))
@@ -592,49 +596,57 @@ namespace System.Text.Json.Serialization.Metadata
                 throw new NotSupportedException("Built-in converters not initialized; thus no converter found for type.");
             }
 
+            runtimeType = GetRuntimeType(type, converter);
+
+            Debug.Assert(!IsInvalidForSerialization(runtimeType));
+
+            return converter;
+        }
+
+        internal static Type GetRuntimeType(Type declaredType, JsonConverter converter)
+        {
             // The runtimeType is the actual value being assigned to the property.
             // There are three types to consider for the runtimeType:
             // 1) The declared type (the actual property type).
             // 2) The converter.TypeToConvert (the T value that the converter supports).
             // 3) The converter.RuntimeType (used with interfaces such as IList).
+            Type runtimeType;
 
             Type converterRuntimeType = converter.RuntimeType;
-            if (type == converterRuntimeType)
+            if (declaredType == converterRuntimeType)
             {
-                runtimeType = type;
+                runtimeType = declaredType;
             }
             else
             {
-                if (type.IsInterface)
+                if (declaredType.IsInterface)
                 {
                     runtimeType = converterRuntimeType;
                 }
                 else if (converterRuntimeType.IsInterface)
                 {
-                    runtimeType = type;
+                    runtimeType = declaredType;
                 }
                 else
                 {
                     // Use the most derived version from the converter.RuntimeType or converter.TypeToConvert.
-                    if (type.IsAssignableFrom(converterRuntimeType))
+                    if (declaredType.IsAssignableFrom(converterRuntimeType))
                     {
                         runtimeType = converterRuntimeType;
                     }
-                    else if (converterRuntimeType.IsAssignableFrom(type) || converter.TypeToConvert.IsAssignableFrom(type))
+                    else if (converterRuntimeType.IsAssignableFrom(declaredType) || converter.TypeToConvert.IsAssignableFrom(declaredType))
                     {
-                        runtimeType = type;
+                        runtimeType = declaredType;
                     }
                     else
                     {
                         runtimeType = default!;
-                        ThrowHelper.ThrowNotSupportedException_SerializationNotSupported(type);
+                        ThrowHelper.ThrowNotSupportedException_SerializationNotSupported(declaredType);
                     }
                 }
             }
 
-            Debug.Assert(!IsInvalidForSerialization(runtimeType));
-
-            return converter;
+            return runtimeType;
         }
 
         private static void ValidateType(Type type, Type? parentClassType, MemberInfo? memberInfo, JsonSerializerOptions options)
