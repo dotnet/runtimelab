@@ -177,7 +177,7 @@ namespace System.Reflection.Runtime.TypeInfos
         public sealed override string GetEnumName(object value) => Enum.GetName(this, value);
         public sealed override string[] GetEnumNames() => Enum.GetNames(this);
         public sealed override Type GetEnumUnderlyingType() => Enum.GetUnderlyingType(this);
-        [RequiresDynamicCode("It might not be possible to create an array of the enum type at runtime.")]
+        [RequiresDynamicCode("It might not be possible to create an array of the enum type at runtime. Use Enum.GetValues<TEnum> instead.")]
         public sealed override Array GetEnumValues() => Enum.GetValues(this);
         public sealed override bool IsEnumDefined(object value) => Enum.IsDefined(this, value);
 
