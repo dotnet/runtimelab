@@ -259,7 +259,7 @@ namespace System.Text.RegularExpressions.SRM
             {
                 return this.dotStar;
             }
-            else if (lower == upper && lower < 10)
+            else if (lower == upper && lower < 3)
             {
                 // unwind a fixed length loop of low bound into a concatenation
                 var elems = new SymbolicRegexNode<S>[lower];

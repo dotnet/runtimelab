@@ -713,7 +713,7 @@ namespace System.Text.RegularExpressions.SRM
         internal static SymbolicRegexNode<S> MkDotStar(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> body)
         {
             var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Loop, body, null, 0, int.MaxValue, default(S), null, null);
-            node.info = SymbolicRegexInfo.Loop(body.info, 0);
+            node.info = SymbolicRegexInfo.Loop(body.info, 0, true);
             return node;
         }
 
@@ -733,7 +733,7 @@ namespace System.Text.RegularExpressions.SRM
 
             var loop = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Loop, body, null, lower, upper, default(S), null, null);
             loop.isLazyLoop = isLazy;
-            loop.info = SymbolicRegexInfo.Loop(body.info, lower);
+            loop.info = SymbolicRegexInfo.Loop(body.info, lower, isLazy);
             return loop;
         }
 
