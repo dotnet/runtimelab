@@ -118,11 +118,11 @@ namespace System.Text.RegularExpressions.SRM
         ushort A_StartSet_singleton;
 #endif
 
-        /// <summary>
-        /// First byte of A_prefixUTF8 in vector
-        /// </summary>
-        [NonSerialized]
-        private Vector<byte> A_prefixUTF8_first_byte;
+        ///// <summary>
+        ///// First byte of A_prefixUTF8 in vector
+        ///// </summary>
+        //[NonSerialized]
+        //private Vector<byte> A_prefixUTF8_first_byte;
 
         /// <summary>
         /// Original regex.
@@ -417,7 +417,7 @@ namespace System.Text.RegularExpressions.SRM
             this.Ar_prefix_array = (S[])info.GetValue("Ar_prefix_array", typeof(S[]));
             this.Ar_prefix = StringUtility.DeserializeStringFromCharCodeSequence(info.GetString("Ar_prefix"));
 
-            InitializeVectors();
+            //InitializeVectors();
         }
 
         /// <summary>
@@ -481,7 +481,7 @@ namespace System.Text.RegularExpressions.SRM
             this.Ar_prefix_array = Ar.GetPrefix();
             this.Ar_prefix = new string(Array.ConvertAll(this.Ar_prefix_array, x => (char)css.GetMin(builder.solver.ConvertToCharSet(css, x))));
 
-            InitializeVectors();
+            //InitializeVectors();
         }
 
         private void InitializeRegexes()
@@ -528,22 +528,22 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
-        private void InitializeVectors()
-        {
-#if UNSAFE
-            if (A_StartSet_Size > 0 && A_StartSet_Size <= StartSetSizeLimit)
-            {
-                char[] startchars = new List<char>(builder.solver.GenerateAllCharacters(A_startset)).ToArray();
-                A_StartSet_Vec = Array.ConvertAll(startchars, c => new Vector<ushort>(c));
-                A_StartSet_singleton = (ushort)startchars[0];
-            }
-#endif
+//        private void InitializeVectors()
+//        {
+//#if UNSAFE
+//            if (A_StartSet_Size > 0 && A_StartSet_Size <= StartSetSizeLimit)
+//            {
+//                char[] startchars = new List<char>(builder.solver.GenerateAllCharacters(A_startset)).ToArray();
+//                A_StartSet_Vec = Array.ConvertAll(startchars, c => new Vector<ushort>(c));
+//                A_StartSet_singleton = (ushort)startchars[0];
+//            }
+//#endif
 
-            if (this.A_prefix != string.Empty)
-            {
-                this.A_prefixUTF8_first_byte = new Vector<byte>(this.A_prefixUTF8[0]);
-            }
-        }
+//            if (this.A_prefix != string.Empty)
+//            {
+//                this.A_prefixUTF8_first_byte = new Vector<byte>(this.A_prefixUTF8[0]);
+//            }
+//        }
 
         /// <summary>
         /// Return the state after the given input string from the given state q.

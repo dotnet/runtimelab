@@ -95,7 +95,7 @@ stages:
           buildArgs: -s clr+libs -c $(_BuildConfig)
 
 
-
+  - ${{ if ne(variables.isOfficialBuild, true) }}:
     #
     # Libraries Release Test Execution against a release coreclr runtime
     #
