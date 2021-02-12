@@ -57,7 +57,7 @@ namespace ILCompiler.Dataflow
             var decodedValue = decoded.Value;
 
             if (decodedValue.FixedArguments.Length != 0)
-                return (string)decodedValue.FixedArguments[decodedValue.FixedArguments.Length - 1].Value;
+                return (string)decodedValue.FixedArguments[0].Value;
 
             return null;
         }
@@ -75,7 +75,7 @@ namespace ILCompiler.Dataflow
             var decodedValue = decoded.Value;
 
             if (decodedValue.FixedArguments.Length != 0)
-                return (string)decodedValue.FixedArguments[decodedValue.FixedArguments.Length - 1].Value;
+                return (string)decodedValue.FixedArguments[0].Value;
 
             return null;
         }
