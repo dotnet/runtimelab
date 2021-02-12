@@ -25,6 +25,24 @@ namespace System.Runtime.InteropServices
     /// </summary>
     public abstract partial class ComWrappers
     {
+        private ConditionalWeakTable<object, IntPtr> _ccwCache = new ConditionalWeakTable<object, IntPtr>();
+        public static unsafe IUnknownVftbl IUnknownVftbl => Unsafe.AsRef<IUnknownVftbl>(IUnknownVftblPtr.ToPointer());
+
+        internal static IntPtr IUnknownVftblPtr { get; }
+
+        static unsafe ComWrappers()
+        {
+            GetIUnknownImpl(out var qi, out var addRef, out var release);
+
+            IUnknownVftblPtr = RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IUnknownVftbl), sizeof(IUnknownVftbl));
+            (*(IUnknownVftbl*)IUnknownVftblPtr) = new IUnknownVftbl
+            {
+                QueryInterface = (delegate* unmanaged[Stdcall]<IntPtr, ref Guid, out IntPtr, int>)qi,
+                AddRef = (delegate* unmanaged[Stdcall]<IntPtr, uint>)addRef,
+                Release = (delegate* unmanaged[Stdcall]<IntPtr, uint>)release,
+            };
+        }
+
         /// <summary>
         /// ABI for function dispatch of a COM interface.
         /// </summary>
@@ -100,12 +118,49 @@ namespace System.Runtime.InteropServices
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
 
-            return TryGetOrCreateComInterfaceForObjectInternal(ObjectHandleOnStack.Create(ref impl), impl.id, ObjectHandleOnStack.Create(ref instance), flags, out retValue);
-        }
+            bool success = true;
+            IntPtr retValue = _ccwCache.GetValue(instance, (c) =>
+            {
+                var vtblEntries = impl.ComputeVtables(instance, flags, out var count);
+                // Here I should create someing like that https://github.com/dotnet/runtime/blob/9f8aab73d93156933ae65a476204bf62c02f6537/src/coreclr/interop/comwrappers.cpp#L16
+                // Which would be saved to CCW cache.
+                // Creation of CCW is basically ManagedObjectWrapper::Create reimplementation.
 
-        private static bool TryGetOrCreateComInterfaceForObjectInternal(ObjectHandleOnStack comWrappersImpl, long wrapperId, ObjectHandleOnStack instance, CreateComInterfaceFlags flags, out IntPtr retValue)
-        {
-            throw new NotImplementedException();
+                // Maximum number of runtime supplied vtables.
+                ComInterfaceEntry* runtimeDefinedLocal = stackallock ComInterfaceEntry[4];
+                int runtimeDefinedCount = 0;
+
+                // Check if the caller will provide the IUnknown table.
+                if ((flags & CreateComInterfaceFlags.CallerDefinedIUnknown) == CreateComInterfaceFlags.None)
+                {
+                    ComInterfaceEntry* curr = runtimeDefinedLocal[runtimeDefinedCount++];
+                    curr->IID = __uuidof(IUnknown);
+                    curr->Vtable = &ManagedObjectWrapper_IUnknownImpl;
+                }
+
+                // Check if the caller wants tracker support.
+                if ((flags & CreateComInterfaceFlags.TrackerSupport) == CreateComInterfaceFlags.TrackerSupport)
+                {
+                    ComInterfaceEntry* curr = runtimeDefinedLocal[runtimeDefinedCount++];
+                    curr->IID = __uuidof(IReferenceTrackerTarget);
+                    curr->Vtable = &ManagedObjectWrapper_IReferenceTrackerTargetImpl;
+                }
+
+                // Compute size for ManagedObjectWrapper instance.
+                nuint totalRuntimeDefinedSize = runtimeDefinedCount * sizeof(ComInterfaceEntry);
+                nuint totalDefinedCount = (nuint)runtimeDefinedCount + userDefinedCount;
+
+                // Compute the total entry size of dispatch section.
+                nuint totalDispatchSectionCount = ComputeThisPtrForDispatchSection(totalDefinedCount) + totalDefinedCount;
+                nuint totalDispatchSectionSize = totalDispatchSectionCount * sizeof(void*);
+
+                // Allocate memory for the ManagedObjectWrapper.
+                char* wrapperMem = (char*)InteropLibImports::MemAlloc(sizeof(ManagedObjectWrapper) + totalRuntimeDefinedSize + totalDispatchSectionSize + ABI::AlignmentThisPtrMaxPadding, AllocScenario::ManagedObjectWrapper);
+
+                success = false;
+                return IntPtr.Zero;
+            });
+            return success;
         }
 
         // Called by the runtime to execute the abstract instance function
@@ -282,13 +337,6 @@ namespace System.Runtime.InteropServices
             {
                 throw new InvalidOperationException(SR.InvalidOperation_ResetGlobalComWrappersInstance);
             }
-
-            SetGlobalInstanceRegisteredForTrackerSupport(instance.id);
-        }
-
-        private static void SetGlobalInstanceRegisteredForTrackerSupport(long id)
-        {
-            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -313,16 +361,6 @@ namespace System.Runtime.InteropServices
             {
                 throw new InvalidOperationException(SR.InvalidOperation_ResetGlobalComWrappersInstance);
             }
-
-            // Indicate to the runtime that a global instance has been registered for marshalling.
-            // This allows the native runtime know to call into the managed ComWrappers only if a
-            // global instance is registered for marshalling.
-            SetGlobalInstanceRegisteredForMarshalling(instance.id);
-        }
-
-        private static void SetGlobalInstanceRegisteredForMarshalling(long id)
-        {
-            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -336,7 +374,27 @@ namespace System.Runtime.InteropServices
 
         private static void GetIUnknownImplInternal(out IntPtr fpQueryInterface, out IntPtr fpAddRef, out IntPtr fpRelease)
         {
-            throw new NotImplementedException();
+            fpQueryInterface = (IntPtr)&ABI_QueryInterface;
+            fpAddRef = (IntPtr)&ABI_AddRef;
+            fpRelease = (IntPtr)&ABI_Release;
+        }
+
+        [UnmanagedCallersOnly]
+        private static int ABI_QueryInterface(IntPtr ppObject, ref Guid guid, out IntPtr returnValue)
+        {
+            return 0;
+        }
+
+        [UnmanagedCallersOnly]
+        private static int ABI_AddRef(IntPtr ppObject)
+        {
+            return 0;
+        }
+
+        [UnmanagedCallersOnly]
+        private static int ABI_Release(IntPtr ppObject)
+        {
+            return 0;
         }
 
         internal static int CallICustomQueryInterface(object customQueryInterfaceMaybe, ref Guid iid, out IntPtr ppObject)
