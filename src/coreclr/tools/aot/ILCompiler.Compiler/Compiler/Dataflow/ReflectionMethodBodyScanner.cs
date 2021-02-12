@@ -1655,9 +1655,7 @@ namespace ILCompiler.Dataflow
                             calledMethod.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresUnreferencedCodeAttribute"))
                         {
                             string message =
-                                $"Calling '{calledMethod.GetDisplayName()}' which has `RequiresUnreferencedCodeAttribute` can break functionality when trimming application code.";// +
-                                // TODO
-                                //$"{requiresUnreferencedCode.Message}.";
+                                $"Calling '{calledMethod.GetDisplayName()}' which has `RequiresUnreferencedCodeAttribute` can break functionality when trimming application code. {DiagnosticUtilities.GetRequiresUnreferencedCodeAttributeMessage(calledMethod)}.";
 
                             //if (requiresUnreferencedCode.Url != null)
                             //{
@@ -1677,9 +1675,7 @@ namespace ILCompiler.Dataflow
 
                         static void LogDynamicCodeWarning(Logger logger, MethodIL callingMethodBody, int offset, MethodDesc calledMethod)
                         {
-                            string message = String.Format(Resources.Strings.IL9700, calledMethod.GetDisplayName());// +
-                                                                                                                    // TODO
-                                                                                                                    //$"{requiresUnreferencedCode.Message}.";
+                            string message = $"{String.Format(Resources.Strings.IL9700, calledMethod.GetDisplayName())} {DiagnosticUtilities.GetRequiresDynamicCodeAttributeMessage(calledMethod)}.";
 
                             //if (requiresUnreferencedCode.Url != null)
                             //{
