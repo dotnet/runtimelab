@@ -1229,12 +1229,6 @@
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Performance/CodeQuality/Burgers/Burgers/*">
             <Issue>Multimodule incompatible (GVM)</Issue>
         </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/JIT/Performance/CodeQuality/Serialization/Deserialize/*">
-            <Issue>https://github.com/dotnet/runtimelab/issues/195</Issue>
-        </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/JIT/Performance/CodeQuality/Serialization/Serialize/*">
-            <Issue>https://github.com/dotnet/runtimelab/issues/195</Issue>
-        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Regression/CLR-x86-JIT/V1-M12-Beta2/b68872/b68872/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/188</Issue>
         </ExcludeList>
