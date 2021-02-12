@@ -323,12 +323,10 @@ namespace System
 
             return enumType.GetEnumUnderlyingType();
         }
-#endif
 
         public static TEnum[] GetValues<TEnum>() where TEnum : struct, Enum
             => (TEnum[])GetValues(typeof(TEnum));
 
-#if !CORERT
         public static Array GetValues(Type enumType)
         {
             if (enumType is null)
