@@ -8510,35 +8510,6 @@ Thread::EnumMemoryRegionsWorker(CLRDataEnumMemoryFlags flags)
     }
 }
 
-#endif // #ifdef DACCESS_COMPILE
-
-OBJECTHANDLE Thread::GetOrCreateDeserializationTracker()
-{
-    CONTRACTL
-    {
-        THROWS;
-        GC_TRIGGERS;
-        MODE_COOPERATIVE;
-    }
-    CONTRACTL_END;
-
-#if !defined (DACCESS_COMPILE)
-    if (m_DeserializationTracker != NULL)
-    {
-        return m_DeserializationTracker;
-    }
-
-    _ASSERTE(this == GetThread());
-
-    MethodTable* pMT = CoreLibBinder::GetClass(CLASS__DESERIALIZATION_TRACKER);
-    m_DeserializationTracker = CreateGlobalStrongHandle(AllocateObject(pMT));
-
-    _ASSERTE(m_DeserializationTracker != NULL);
-#endif // !defined (DACCESS_COMPILE)
-
-    return m_DeserializationTracker;
-}
-
 void
 ThreadStore::EnumMemoryRegions(CLRDataEnumMemoryFlags flags)
 {
@@ -8574,3 +8545,5 @@ ThreadStore::EnumMemoryRegions(CLRDataEnumMemoryFlags flags)
         EX_CATCH_RETHROW_ONLY_COR_E_OPERATIONCANCELLED
     }
 }
+
+#endif // #ifdef DACCESS_COMPILE

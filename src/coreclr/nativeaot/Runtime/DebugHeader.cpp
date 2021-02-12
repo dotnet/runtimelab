@@ -118,7 +118,6 @@ extern "C" NativeAOTRuntimeDebugHeader g_NativeAOTRuntimeDebugHeader = {};
 
 #define MAKE_DEBUG_FIELD_ENTRY(TypeName, FieldName) MAKE_DEBUG_ENTRY(TypeName, FieldName, offsetof(TypeName, FieldName))
 
-// TODO: this would probably make more sense in the globals list
 #define MAKE_DEFINE_ENTRY(Name, Value) MAKE_DEBUG_ENTRY(Globals, Name, Value)
 
 #define MAKE_SIZE_ENTRY(TypeName) MAKE_DEBUG_ENTRY(TypeName, SIZEOF, sizeof(TypeName))
