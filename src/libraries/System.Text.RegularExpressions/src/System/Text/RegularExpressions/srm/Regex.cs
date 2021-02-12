@@ -27,16 +27,22 @@ namespace System.Text.RegularExpressions.SRM
             if (root.info.CanBeNullable)
                 throw new NotSupportedException(_DFA_incompatible_with + "pattern allowing 0-length match");
 
-            var partition = root.ComputeMinterms();
-            if (partition.Length > 64)
+            // make sure no two threads can create an SRM regex at the same time
+            // this may cause thread safety issues deep down in multiple places
+            // in particular, BDDs or use of the BDD algebra is not threadsafe in ComputeMinterms
+            lock (this)
             {
-                //more than 64 bits needed to represent a set
-                matcher = new SymbolicRegexBV(root, solver, converter.srBuilder, partition, options);
-            }
-            else
-            {
-                //enough to use 64 bits
-                matcher = new SymbolicRegexUInt64(root, solver, converter.srBuilder, partition, options);
+                var partition = root.ComputeMinterms();
+                if (partition.Length > 64)
+                {
+                    //more than 64 bits needed to represent a set
+                    matcher = new SymbolicRegexBV(root, solver, converter.srBuilder, partition, options);
+                }
+                else
+                {
+                    //enough to use 64 bits
+                    matcher = new SymbolicRegexUInt64(root, solver, converter.srBuilder, partition, options);
+                }
             }
         }
 
