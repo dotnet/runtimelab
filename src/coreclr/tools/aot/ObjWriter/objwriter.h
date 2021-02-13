@@ -15,6 +15,12 @@
 #include "llvm/DebugInfo/CodeView/TypeTableBuilder.h"
 
 #include "cfi.h"
+// This constant should be added to CFI_OPCODE enumeration in cfi.h
+enum CFI_OPCODE_EXT
+{
+  CFI_DEF_CFA = 3
+};
+
 #include "jitDebugInfo.h"
 #include <string>
 #include <set>
