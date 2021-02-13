@@ -172,7 +172,7 @@ namespace System.Text.RegularExpressions.SRM
                         }
                     case SymbolicRegexKind.Loop:
                         {
-                            if (node.isLazyLoop)
+                            if (node.info.IsLazy)
                                 sb.Append("l(");
                             else
                                 sb.Append("L(");
@@ -661,6 +661,13 @@ namespace System.Text.RegularExpressions.SRM
             return node;
         }
 
+        internal static SymbolicRegexNode<S> MkEagerEmptyLoop(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> body)
+        {
+            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Loop, body, null, 0, 0, default(S), null, null);
+            node.info = SymbolicRegexInfo.Mk(isAlwaysNullable: true, isLazy: false);
+            return node;
+        }
+
         internal static SymbolicRegexNode<S> MkStartAnchor(SymbolicRegexBuilder<S> builder)
         {
             var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.StartAnchor, null, null, -1, -1, default(S), null, null);
@@ -931,7 +938,7 @@ namespace System.Text.RegularExpressions.SRM
                         if (body == this.left)
                             return this;
                         else
-                            return builder.MkLoop(body, isLazyLoop, this.lower, this.upper);
+                            return builder.MkLoop(body, info.IsLazy, this.lower, this.upper);
                     }
                 case SymbolicRegexKind.Concat:
                     {
@@ -1048,7 +1055,7 @@ namespace System.Text.RegularExpressions.SRM
                         {
                             #region d(a, R*) = d(a,R)R*
                             var step = left.MkDerivative(elem, context);
-                            if (step == builder.nothing)
+                            if (step == builder.nothing || upper == 0)
                             {
                                 return builder.nothing;
                             }
@@ -1059,24 +1066,19 @@ namespace System.Text.RegularExpressions.SRM
                             }
                             else if (IsPlus)
                             {
-                                var star = builder.MkLoop(left, isLazyLoop);
+                                var star = builder.MkLoop(left, info.IsLazy);
                                 var deriv = builder.MkConcat(step, star);
                                 return deriv;
                             }
-                            else if (IsMaybe)
-                            {
-                                return step;
-                            }
+                            //else if (IsMaybe)
+                            //{
+                            //    return step;
+                            //}
                             else
                             {
-                                //also decrement the upper bound if it was not maximum int
-                                //there cannot be a case when upper == lower == 1
-                                //such a loop is never created by MkLoop it will just return the first argument
-                                //and case upper == 1, lower == 0 is the previous case
-                                //so upper > 1 holds here
                                 int newupper = (upper == int.MaxValue ? int.MaxValue : upper - 1);
                                 int newlower = (lower == 0 ? 0 : lower - 1);
-                                var rest = builder.MkLoop(left, isLazyLoop, newlower, newupper);
+                                var rest = builder.MkLoop(left, info.IsLazy, newlower, newupper);
                                 var deriv = builder.MkConcat(step, rest);
                                 return deriv;
                             }
@@ -1138,16 +1140,6 @@ namespace System.Text.RegularExpressions.SRM
                     default:
                         return builder.nothing;
                 }
-        }
-
-        /// <summary>
-        /// Takes the derivative of the symbolic regex wrt an invisible border symbol.
-        /// The symbol is ignored by any regex except a respective anchor.
-        /// </summary>
-        /// <returns></returns>
-        internal SymbolicRegexNode<S> MkDerivativeForBorder(int borderSymbol)
-        {
-            return builder.MkDerivativeForBorder(borderSymbol, this);
         }
 
         ///// <summary>
@@ -1212,8 +1204,6 @@ namespace System.Text.RegularExpressions.SRM
         //    return aut;
         //}
 
-        [NonSerialized]
-        private static int prime = 31;
         public override int GetHashCode()
         {
             if (hashcode == -1)
@@ -1228,26 +1218,26 @@ namespace System.Text.RegularExpressions.SRM
                     case SymbolicRegexKind.WBAnchor:
                     case SymbolicRegexKind.NWBAnchor:
                     case SymbolicRegexKind.EndAnchorZ:
-                        hashcode = kind.GetHashCode();
+                        hashcode = (kind, info).GetHashCode();
                         break;
                     case SymbolicRegexKind.WatchDog:
-                        hashcode = kind.GetHashCode() + lower;
+                        hashcode = (kind, lower).GetHashCode();
                         break;
                     case SymbolicRegexKind.Loop:
-                        hashcode = kind.GetHashCode() ^ left.GetHashCode() ^ lower ^ upper ^ isLazyLoop.GetHashCode();
+                        hashcode = (kind, left, lower, upper, info).GetHashCode();
                         break;
                     case SymbolicRegexKind.Or:
                     case SymbolicRegexKind.And:
-                        hashcode = kind.GetHashCode() ^ alts.GetHashCode();
+                        hashcode = (kind, alts, info).GetHashCode();
                         break;
                     case SymbolicRegexKind.Concat:
-                        hashcode = left.GetHashCode() + (prime * right.GetHashCode());
+                        hashcode = (left, right, info).GetHashCode();
                         break;
                     case SymbolicRegexKind.Singleton:
-                        hashcode = kind.GetHashCode() ^ set.GetHashCode();
+                        hashcode = (kind, set).GetHashCode();
                         break;
                     case SymbolicRegexKind.IfThenElse:
-                        hashcode = kind.GetHashCode() ^ iteCond.GetHashCode() ^ (left.GetHashCode() << 1) ^ (right.GetHashCode() << 2);
+                        hashcode = (kind, iteCond, left, right).GetHashCode();
                         break;
                     default:
                         throw new NotImplementedException($"{nameof(GetHashCode)}:{kind}");
@@ -1269,7 +1259,7 @@ namespace System.Text.RegularExpressions.SRM
             }
             else
             {
-                if (this.kind != that.kind)
+                if (this.kind != that.kind || this.info.Equals(that.info))
                     return false;
                 switch (this.kind)
                 {
@@ -1343,11 +1333,11 @@ namespace System.Text.RegularExpressions.SRM
                         if (IsDotStar)
                             return ".*";
                         else if (IsStar)
-                            return left.ToStringForLoop() + "*";
+                            return left.ToStringForLoop() + "*" + (info.IsLazy ? "?" : "");
                         else if (IsBoundedLoop)
-                            return left.ToStringForLoop() + "{" + lower + "," + upper + "}";
+                            return left.ToStringForLoop() + "{" + lower + "," + upper + "}" + (info.IsLazy ? "?" : "");
                         else
-                            return left.ToStringForLoop() + "{" + lower + ",}";
+                            return left.ToStringForLoop() + "{" + lower + ",}" + (info.IsLazy ? "?" : "");
                     }
                 case SymbolicRegexKind.Or:
                     return alts.ToString();
@@ -1473,7 +1463,7 @@ namespace System.Text.RegularExpressions.SRM
                 case SymbolicRegexKind.WatchDog:
                     return builder.epsilon;
                 case SymbolicRegexKind.Loop:
-                    return builder.MkLoop(this.left.Reverse(), this.isLazyLoop, this.lower, this.upper);
+                    return builder.MkLoop(this.left.Reverse(), this.info.IsLazy, this.lower, this.upper);
                 case SymbolicRegexKind.Concat:
                     {
                         var rev = left.Reverse();
@@ -1646,7 +1636,7 @@ namespace System.Text.RegularExpressions.SRM
                                 else
                                 {
                                     int upper1 = upper - 1;
-                                    return builder.MkLoop(this.left, this.isLazyLoop, 0, upper1);
+                                    return builder.MkLoop(this.left, this.info.IsLazy, 0, upper1);
                                 }
                             }
                             else
@@ -2028,23 +2018,6 @@ namespace System.Text.RegularExpressions.SRM
                     }
                 }
             }
-        }
-
-        /// <summary>
-        /// Returns true if the regex contains a lazy loop
-        /// </summary>
-        public bool CheckIfContainsLazyLoop()
-        {
-            return this.ExistsNode(node => (node.kind == SymbolicRegexKind.Loop && node.isLazyLoop));
-        }
-
-        /// <summary>
-        /// Returns true if there are no loops or if all loops are lazy.
-        /// </summary>
-        public bool CheckIfAllLoopsAreLazy()
-        {
-            bool existsEagerLoop = this.ExistsNode(node => (node.kind == SymbolicRegexKind.Loop && !node.IsMaybe && !node.isLazyLoop));
-            return !existsEagerLoop;
         }
 
         /// <summary>
@@ -2513,24 +2486,10 @@ namespace System.Text.RegularExpressions.SRM
                 return CreateConjunction(builder, MkDerivativesOfElems(elem, context));
         }
 
-        internal SymbolicRegexSet<S> MkDerivativesForBorder(int borderSymbol)
-        {
-            if (kind == SymbolicRegexSetKind.Disjunction)
-                return CreateDisjunction(builder, MkDerivativesForBorder_(borderSymbol));
-            else
-                return CreateConjunction(builder, MkDerivativesForBorder_(borderSymbol));
-        }
-
         private IEnumerable<SymbolicRegexNode<S>> MkDerivativesOfElems(S elem, uint context)
         {
             foreach (var s in this)
                 yield return s.MkDerivative(elem, context);
-        }
-
-        private IEnumerable<SymbolicRegexNode<S>> MkDerivativesForBorder_(int borderSymbol)
-        {
-            foreach (var s in this)
-                yield return s.builder.MkDerivativeForBorder(borderSymbol, s);
         }
 
         private IEnumerable<SymbolicRegexNode<T>> TransformElems<T>(SymbolicRegexBuilder<T> builderT, Func<S, T> predicateTransformer)

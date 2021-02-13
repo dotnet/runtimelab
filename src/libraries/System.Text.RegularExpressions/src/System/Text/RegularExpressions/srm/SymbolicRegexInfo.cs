@@ -110,44 +110,62 @@ namespace System.Text.RegularExpressions.SRM
 
         public static SymbolicRegexInfo Or(IEnumerable<SymbolicRegexInfo> infos)
         {
+            uint isLazy = IsLazyMask;
             uint i = 0;
             foreach (SymbolicRegexInfo info in infos)
+            {
+                // disjunction is lazy if ALL of its members are lazy
+                isLazy &= info._info;
                 i |= info._info;
+            }
+            i = (i & ~IsLazyMask) | isLazy;
             return Mk(i);
         }
 
         public static SymbolicRegexInfo Or(params SymbolicRegexInfo[] infos)
         {
+            uint isLazy = IsLazyMask;
             uint i = 0;
             for (int j = 0; j < infos.Length; j++)
+            {
+                // disjunction is lazy if ALL of its members are lazy
+                isLazy &= infos[j]._info;
                 i |= infos[j]._info;
+            }
+            i = (i & ~IsLazyMask) | isLazy;
             return Mk(i);
         }
 
         public static SymbolicRegexInfo And(IEnumerable<SymbolicRegexInfo> infos)
         {
+            uint isLazy = IsLazyMask;
             uint isNullable = IsAlwaysNullableMask|CanBeNullableMask;
             uint i = 0;
             foreach (SymbolicRegexInfo info in infos)
             {
-                //nullability is conjunctive while other properties are disjunctive
+                //nullability and lazyness are conjunctive while other properties are disjunctive
+                isLazy &= info._info;
                 isNullable &= info._info;
                 i |= info._info;
             }
+            i = (i & ~IsLazyMask) | isLazy;
             i = (i & ~(IsAlwaysNullableMask | CanBeNullableMask)) | isNullable;
             return Mk(i);
         }
 
         public static SymbolicRegexInfo And(params SymbolicRegexInfo[] infos)
         {
+            uint isLazy = IsLazyMask;
             uint isNullable = IsAlwaysNullableMask | CanBeNullableMask;
             uint i = 0;
             for (int j = 0; j < infos.Length; j++)
             {
-                //nullability is conjunctive while other properties are disjunctive
+                //nullability and lazyness are conjunctive while other properties are disjunctive
+                isLazy &= infos[j]._info;
                 isNullable &= infos[j]._info;
                 i |= infos[j]._info;
             }
+            i = (i & ~IsLazyMask) | isLazy;
             i = (i & ~(IsAlwaysNullableMask | CanBeNullableMask)) | isNullable;
             return Mk(i);
         }
@@ -161,16 +179,22 @@ namespace System.Text.RegularExpressions.SRM
             bool containsSomeAnchor = left_info.ContainsSomeAnchor || right_info.ContainsSomeAnchor;
             bool containsLineAnchor = left_info.ContainsLineAnchor || right_info.ContainsLineAnchor;
             bool containsSomeCharacter = left_info.ContainsSomeCharacter || right_info.ContainsSomeCharacter;
-            bool isLazy = ((left_info.CanBeNullable && right_info.IsLazy) || (left_info.IsLazy && right_info.CanBeNullable));
+            //both have to be lazy for the concat to be lazy
+            bool isLazy = left_info.IsLazy && right_info.IsLazy;
             return Mk(isNullable, canBeNullable, startsWithLineAnchor, startsWithBoundaryAnchor, containsSomeAnchor, containsLineAnchor, containsSomeCharacter, isLazy);
         }
 
         public static SymbolicRegexInfo Loop(SymbolicRegexInfo body_info, int lowerBound, bool isLazy)
         {
-            // anchors are visible from outside the loop
-            // if the lower boud is 0 then the loop is also nullable else it is nullable iff the body is nullable
-            // mark the loop eager if it s not lazy
-            uint i = body_info._info | (isLazy ? IsLazyMask : 0) | (lowerBound == 0 ? (IsAlwaysNullableMask | CanBeNullableMask) : 0);
+            // inherit anchor visibility from the loop body
+            uint i = body_info._info;
+            // the loop is nullable if either the body is nullable or if the lower boud is 0
+            i = i |(lowerBound == 0 ? (IsAlwaysNullableMask | CanBeNullableMask) : 0);
+            // the loop is lazy iff it is marked lazy
+            if (isLazy)
+                i = i | IsLazyMask;
+            else
+                i = i & ~IsLazyMask;
             return Mk(i);
         }
 
@@ -179,7 +203,7 @@ namespace System.Text.RegularExpressions.SRM
             uint i = (cond_info._info | then_info._info | else_info._info) & ~IsAlwaysNullableMask;
 
             // nullability is determined as follows
-            // it is unclear exactly what the correct behavior should be of anchors in ITE
+            // it is unclear exactly what the correct behavior should be of anchors in ITE and for lazy loops
             bool isAlwaysNullable = (cond_info.IsNullable ? then_info.IsNullable : else_info.IsNullable);
             if (isAlwaysNullable)
                 i = i | (IsAlwaysNullableMask | CanBeNullableMask);

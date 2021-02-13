@@ -130,6 +130,47 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Equal(7, match.Length);
         }
 
+        [Fact]
+        public void SRMTest_LazyLoopMatch()
+        {
+            //eager
+            var re = new Regex("a[0-9]+0", DFA);
+            var match = re.Match("ababca123000xyz");
+            Assert.True(match.Success);
+            Assert.Equal(5, match.Index);
+            Assert.Equal(7, match.Length);
+            //---
+            //lazy
+            var reL = new Regex("a[0-9]+?0", DFA);
+            var matchL = reL.Match("ababca123000xyz");
+            Assert.True(matchL.Success);
+            Assert.Equal(5, matchL.Index);
+            Assert.Equal(5, matchL.Length);
+            //lazy and eager combined
+            var re2 = new Regex("a[0-9]+?0|b[0-9]+0", DFA);
+            var match21 = re2.Match("ababca123000xyzababcb123000xyz");
+            //the first match starting with 'a' uses lazy loop
+            Assert.True(match21.Success);
+            Assert.Equal(5, match21.Index);
+            Assert.Equal(5, match21.Length);
+            //the second match starting with 'b' uses eager loop
+            var match22 = match21.NextMatch();
+            Assert.True(match22.Success);
+            Assert.Equal(20, match22.Index);
+            Assert.Equal(7, match22.Length);
+        }
+
+        [Fact]
+        public void SRMTest_CountedLoopCase()
+        {
+            //eager matching of the loop must match 5 elements in the loop
+            var re = new Regex("a[bcd]{4,5}(.)", DFA);
+            var match = re.Match("acdbcdbe");
+            Assert.True(match.Success);
+            Assert.Equal(0, match.Index);
+            Assert.Equal(7, match.Length);
+        }
+
         static int _NotSupportedException_count;
         [Theory]
         [MemberData(nameof(MonoTests_RegexTestCases)), MemberData(nameof(MonoTests_RegexTestCases))]

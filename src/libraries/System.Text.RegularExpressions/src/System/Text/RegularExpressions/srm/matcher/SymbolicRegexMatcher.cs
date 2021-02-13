@@ -129,10 +129,6 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         [NonSerialized]
         internal SymbolicRegexNode<S> A;
-        [NonSerialized]
-        private bool A_allLoopsAreLazy = false;
-        [NonSerialized]
-        private bool A_containsLazyLoop = false;
 
         /// <summary>
         /// The RegexOptions this regex was created with
@@ -486,8 +482,6 @@ namespace System.Text.RegularExpressions.SRM
 
         private void InitializeRegexes()
         {
-            A_allLoopsAreLazy = A.CheckIfAllLoopsAreLazy();
-            A_containsLazyLoop = A.CheckIfContainsLazyLoop();
             A1 = builder.MkConcat(builder.dotStar, A);
             Ar = A.Reverse();
             // let K be the smallest k s.t. 2^k >= atoms.Length + 1
@@ -651,7 +645,6 @@ namespace System.Text.RegularExpressions.SRM
             //initial start position in the input is i = 0
             int i = startat;
 
-            bool AisLazy = A_allLoopsAreLazy;
             bool AisSingleSeq = A.IsSequenceOfSingletons;
 
             int i_q0_A1;
