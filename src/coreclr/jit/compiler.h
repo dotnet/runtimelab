@@ -7627,12 +7627,12 @@ public:
                      unsigned                          varNum,
                      const CodeGenInterface::siVarLoc& loc);
     void eeSetLVdone();
-#endif
 
 #ifdef DEBUG
     void eeDispVar(ICorDebugInfo::NativeVarInfo* var);
     void eeDispVars(CORINFO_METHOD_HANDLE ftn, ULONG32 cVars, ICorDebugInfo::NativeVarInfo* vars);
 #endif // DEBUG
+#endif
 
     // ICorJitInfo wrappers
 

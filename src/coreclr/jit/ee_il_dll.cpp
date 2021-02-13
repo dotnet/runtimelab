@@ -857,7 +857,6 @@ void Compiler::eeDispVar(ICorDebugInfo::NativeVarInfo* var)
 
     printf("\n");
 }
-#endif // !TARGET_WASM
 
 // Same parameters as ICorStaticInfo::setVars().
 void Compiler::eeDispVars(CORINFO_METHOD_HANDLE ftn, ULONG32 cVars, ICorDebugInfo::NativeVarInfo* vars)
@@ -879,6 +878,7 @@ void Compiler::eeDispVars(CORINFO_METHOD_HANDLE ftn, ULONG32 cVars, ICorDebugInf
         eeDispVar(&vars[i]);
     }
 }
+#endif // !TARGET_WASM
 #endif // DEBUG
 
 /*****************************************************************************
