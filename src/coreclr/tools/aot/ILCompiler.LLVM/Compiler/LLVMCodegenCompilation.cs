@@ -62,7 +62,7 @@ namespace ILCompiler
 
             var nodes = _dependencyGraph.MarkedNodeList;
 
-            Console.WriteLine($"RyuJIT compilation results, total method {totalMethodCount} RyuJit Methods {ryuJitMethodCount} % {ryuJitMethodCount * 100 / totalMethodCount}");
+            Console.WriteLine($"RyuJIT compilation results, total methods {totalMethodCount} RyuJit Methods {ryuJitMethodCount} % {((decimal)ryuJitMethodCount * 100 / totalMethodCount):n4}");
             LLVMObjectWriter.EmitObject(outputFile, nodes, NodeFactory, this, dumper);
         }
 
@@ -86,8 +86,6 @@ namespace ILCompiler
                     continue;
 
                 methodsToCompile.Add(methodCodeNodeNeedingCode);
-
-//                ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
             CompileSingleThreaded(methodsToCompile);
         }
@@ -98,6 +96,9 @@ namespace ILCompiler
 
             foreach (LLVMMethodCodeNode methodCodeNodeNeedingCode in methodsToCompile)
             {
+                if (methodCodeNodeNeedingCode.StaticDependenciesAreComputed)
+                    continue;
+
                 if (Logger.IsVerbose)
                 {
                     Logger.Writer.WriteLine($"Compiling {methodCodeNodeNeedingCode.Method}...");
@@ -115,11 +116,11 @@ namespace ILCompiler
 
             try
             {
-                corInfo.CompileMethod(methodCodeNodeNeedingCode);
+            //     corInfo.CompileMethod(methodCodeNodeNeedingCode);
                 ryuJitMethodCount++;
-            }
-            catch (CodeGenerationFailedException)
-            {
+            // }
+            // catch (CodeGenerationFailedException)
+            // {
                 ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
             catch (TypeSystemException ex)

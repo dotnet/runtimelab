@@ -79,6 +79,7 @@ stages:
         runtimeFlavor: coreclr
         platforms:
         - Browser_wasm
+        - windows_x64
         jobParameters:
           timeoutInMinutes: 90
           testGroup: innerloop
