@@ -4441,8 +4441,10 @@ void Compiler::EndPhase(Phases phase)
 }
 
 #if defined(TARGET_WASM)
-inline void DoLlvmPhase(Compiler* _compiler)
+inline void DoLlvmPhase(Compiler* pCompiler)
 {
+    void* llvmModule;
+    llvmModule = pCompiler->info.compCompHnd->getLlvmModule();
     fatal(CORJIT_SKIPPED);
     //assert(false);
 }

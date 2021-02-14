@@ -127,6 +127,7 @@ struct JitInterfaceCallbacks
     unsigned (* getMethodHash)(void * thisHandle, CorInfoExceptionClass** ppException, void* ftn);
     size_t (* findNameOfToken)(void * thisHandle, CorInfoExceptionClass** ppException, void* moduleHandle, unsigned int token, char* szFQName, size_t FQNameCapacity);
     bool (* getSystemVAmd64PassStructInRegisterDescriptor)(void * thisHandle, CorInfoExceptionClass** ppException, void* structHnd, void* structPassInRegDescPtr);
+    void* (* getLlvmModule)(void * thisHandle, CorInfoExceptionClass** ppException);
     unsigned int (* getThreadTLSIndex)(void * thisHandle, CorInfoExceptionClass** ppException, void** ppIndirection);
     const void* (* getInlinedCallFrameVptr)(void * thisHandle, CorInfoExceptionClass** ppException, void** ppIndirection);
     long* (* getAddrOfCaptureThreadGlobal)(void * thisHandle, CorInfoExceptionClass** ppException, void** ppIndirection);
@@ -1308,6 +1309,14 @@ public:
 {
     CorInfoExceptionClass* pException = nullptr;
     bool temp = _callbacks->getSystemVAmd64PassStructInRegisterDescriptor(_thisHandle, &pException, structHnd, structPassInRegDescPtr);
+    if (pException != nullptr) throw pException;
+    return temp;
+}
+
+    virtual void* getLlvmModule()
+{
+    CorInfoExceptionClass* pException = nullptr;
+    void* temp = _callbacks->getLlvmModule(_thisHandle, &pException);
     if (pException != nullptr) throw pException;
     return temp;
 }

@@ -1145,6 +1145,14 @@ bool WrapICorJitInfo::getSystemVAmd64PassStructInRegisterDescriptor(
     return temp;
 }
 
+void* WrapICorJitInfo::getLlvmModule()
+{
+    API_ENTER(getLlvmModule);
+    void* temp = wrapHnd->getLlvmModule();
+    API_LEAVE(getLlvmModule);
+    return temp;
+}
+
 DWORD WrapICorJitInfo::getThreadTLSIndex(
           void** ppIndirection)
 {

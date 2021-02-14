@@ -92,7 +92,7 @@ namespace ILCompiler
 
         private void CompileSingleThreaded(List<LLVMMethodCodeNode> methodsToCompile)
         {
-            CorInfoImpl corInfo = _corinfos.GetValue(Thread.CurrentThread, thread => new CorInfoImpl(this));
+            CorInfoImpl corInfo = _corinfos.GetValue(Thread.CurrentThread, thread => new CorInfoImpl(this, Module.Handle));
 
             foreach (LLVMMethodCodeNode methodCodeNodeNeedingCode in methodsToCompile)
             {
@@ -116,11 +116,11 @@ namespace ILCompiler
 
             try
             {
-            //     corInfo.CompileMethod(methodCodeNodeNeedingCode);
+                corInfo.CompileMethod(methodCodeNodeNeedingCode);
                 ryuJitMethodCount++;
-            // }
-            // catch (CodeGenerationFailedException)
-            // {
+            }
+            catch (CodeGenerationFailedException)
+            {
                 ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
             catch (TypeSystemException ex)

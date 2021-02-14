@@ -820,6 +820,11 @@ bool interceptor_ICJI::getSystemVAmd64PassStructInRegisterDescriptor(
     return original_ICorJitInfo->getSystemVAmd64PassStructInRegisterDescriptor(structHnd, structPassInRegDescPtr);
 }
 
+void* interceptor_ICJI::getLlvmModule()
+{
+    return original_ICorJitInfo->getLlvmModule();
+}
+
 DWORD interceptor_ICJI::getThreadTLSIndex(
           void** ppIndirection)
 {

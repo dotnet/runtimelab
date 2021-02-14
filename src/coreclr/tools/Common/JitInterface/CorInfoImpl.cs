@@ -3455,6 +3455,11 @@ namespace Internal.JitInterface
             return (uint)sizeof(CORJIT_FLAGS);
         }
 
+        private void* getLlvmModule()
+        {
+            return _llvmModuleHandle.ToPointer();
+        }
+
 
 #if READYTORUN
         InstructionSetFlags _actualInstructionSetSupported;

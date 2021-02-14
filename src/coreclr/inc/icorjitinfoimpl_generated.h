@@ -478,6 +478,8 @@ bool getSystemVAmd64PassStructInRegisterDescriptor(
           CORINFO_CLASS_HANDLE structHnd,
           SYSTEMV_AMD64_CORINFO_STRUCT_REG_PASSING_DESCRIPTOR* structPassInRegDescPtr) override;
 
+void* getLlvmModule() override;
+
 DWORD getThreadTLSIndex(
           void** ppIndirection) override;
 
