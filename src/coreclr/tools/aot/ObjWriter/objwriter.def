@@ -1,3 +1,5 @@
+LIBRARY objwriter
+EXPORTS
 InitObjWriter
 FinishObjWriter
 SwitchSection
