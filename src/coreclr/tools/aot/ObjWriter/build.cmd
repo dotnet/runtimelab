@@ -28,7 +28,6 @@ cd build || exit /b 1
 
 :: REVIEW: Why do we set HAVE_POSIX_SPAWN=0?
 "%CMakePath%" ../ ^
-  -DCMAKE_CONFIGURATION_TYPES=%BuildType% ^
   -DCMAKE_BUILD_TYPE=%BuildType% ^
   -DCMAKE_INSTALL_PREFIX=install ^
   -DHAVE_POSIX_SPAWN=0 ^
