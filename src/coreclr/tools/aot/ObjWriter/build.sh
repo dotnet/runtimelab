@@ -19,11 +19,9 @@ git apply "$ScriptDir/llvm.patch" || exit 1
 [ -d build ] || mkdir build
 cd build || exit 1
 
-# REVIEW: Why do we set HAVE_POSIX_SPAWN=0?
 cmake ../ \
   -DCMAKE_BUILD_TYPE="$BuildType" \
   -DCMAKE_INSTALL_PREFIX=install \
-  -DHAVE_POSIX_SPAWN=0 \
   -DLLVM_BUILD_TOOLS=0 \
   -DLLVM_INCLUDE_UTILS=0 \
   -DLLVM_INCLUDE_RUNTIMES=0 \

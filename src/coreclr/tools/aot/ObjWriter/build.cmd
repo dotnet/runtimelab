@@ -26,11 +26,9 @@ echo Using CMake at "%CMakePath%"
 if not exist build mkdir build
 cd build || exit /b 1
 
-:: REVIEW: Why do we set HAVE_POSIX_SPAWN=0?
 "%CMakePath%" ../ ^
   -DCMAKE_BUILD_TYPE=%BuildType% ^
   -DCMAKE_INSTALL_PREFIX=install ^
-  -DHAVE_POSIX_SPAWN=0 ^
   -DLLVM_BUILD_TOOLS=0 ^
   -DLLVM_INCLUDE_UTILS=0 ^
   -DLLVM_INCLUDE_RUNTIMES=0 ^
