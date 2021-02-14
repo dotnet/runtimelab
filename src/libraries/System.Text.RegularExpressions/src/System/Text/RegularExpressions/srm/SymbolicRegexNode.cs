@@ -121,7 +121,29 @@ namespace System.Text.RegularExpressions.SRM
 
         internal SymbolicRegexSet<S> alts;
 
+        /// <summary>
+        /// True if this node only involves lazy loops
+        /// </summary>
+        internal bool IsLazy { get { return info.IsLazy; } }
+        /// <summary>
+        /// True if this node accepts the empty string uncoditionally.
+        /// </summary>
         internal bool IsNullable { get { return info.IsNullable; } }
+        /// <summary>
+        /// True if this node can potentially accept the empty string depending on anchors and immediate context.
+        /// </summary>
+        internal bool CanBeNullable
+        {
+            get
+            {
+#if DEBUG
+                if (!info.CanBeNullable && info.IsNullable)
+                    throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
+#endif
+                    return info.CanBeNullable;
+            }
+
+        }
         internal bool StartsWithSomeAnchor { get { return info.StartsWithSomeAnchor; } }
 
         internal SymbolicRegexInfo info;
@@ -172,7 +194,7 @@ namespace System.Text.RegularExpressions.SRM
                         }
                     case SymbolicRegexKind.Loop:
                         {
-                            if (node.info.IsLazy)
+                            if (node.IsLazy)
                                 sb.Append("l(");
                             else
                                 sb.Append("L(");
@@ -739,7 +761,6 @@ namespace System.Text.RegularExpressions.SRM
                 throw new AutomataException(AutomataExceptionKind.InvalidArgument);
 
             var loop = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Loop, body, null, lower, upper, default(S), null, null);
-            loop.isLazyLoop = isLazy;
             loop.info = SymbolicRegexInfo.Loop(body.info, lower, isLazy);
             return loop;
         }
@@ -938,7 +959,7 @@ namespace System.Text.RegularExpressions.SRM
                         if (body == this.left)
                             return this;
                         else
-                            return builder.MkLoop(body, info.IsLazy, this.lower, this.upper);
+                            return builder.MkLoop(body, IsLazy, this.lower, this.upper);
                     }
                 case SymbolicRegexKind.Concat:
                     {
@@ -1066,7 +1087,7 @@ namespace System.Text.RegularExpressions.SRM
                             }
                             else if (IsPlus)
                             {
-                                var star = builder.MkLoop(left, info.IsLazy);
+                                var star = builder.MkLoop(left, IsLazy);
                                 var deriv = builder.MkConcat(step, star);
                                 return deriv;
                             }
@@ -1078,7 +1099,7 @@ namespace System.Text.RegularExpressions.SRM
                             {
                                 int newupper = (upper == int.MaxValue ? int.MaxValue : upper - 1);
                                 int newlower = (lower == 0 ? 0 : lower - 1);
-                                var rest = builder.MkLoop(left, info.IsLazy, newlower, newupper);
+                                var rest = builder.MkLoop(left, IsLazy, newlower, newupper);
                                 var deriv = builder.MkConcat(step, rest);
                                 return deriv;
                             }
@@ -1333,11 +1354,11 @@ namespace System.Text.RegularExpressions.SRM
                         if (IsDotStar)
                             return ".*";
                         else if (IsStar)
-                            return left.ToStringForLoop() + "*" + (info.IsLazy ? "?" : "");
+                            return left.ToStringForLoop() + "*" + (IsLazy ? "?" : "");
                         else if (IsBoundedLoop)
-                            return left.ToStringForLoop() + "{" + lower + "," + upper + "}" + (info.IsLazy ? "?" : "");
+                            return left.ToStringForLoop() + "{" + lower + "," + upper + "}" + (IsLazy ? "?" : "");
                         else
-                            return left.ToStringForLoop() + "{" + lower + ",}" + (info.IsLazy ? "?" : "");
+                            return left.ToStringForLoop() + "{" + lower + ",}" + (IsLazy ? "?" : "");
                     }
                 case SymbolicRegexKind.Or:
                     return alts.ToString();
@@ -1463,7 +1484,7 @@ namespace System.Text.RegularExpressions.SRM
                 case SymbolicRegexKind.WatchDog:
                     return builder.epsilon;
                 case SymbolicRegexKind.Loop:
-                    return builder.MkLoop(this.left.Reverse(), this.info.IsLazy, this.lower, this.upper);
+                    return builder.MkLoop(this.left.Reverse(), this.IsLazy, this.lower, this.upper);
                 case SymbolicRegexKind.Concat:
                     {
                         var rev = left.Reverse();
@@ -1636,7 +1657,7 @@ namespace System.Text.RegularExpressions.SRM
                                 else
                                 {
                                     int upper1 = upper - 1;
-                                    return builder.MkLoop(this.left, this.info.IsLazy, 0, upper1);
+                                    return builder.MkLoop(this.left, this.IsLazy, 0, upper1);
                                 }
                             }
                             else
@@ -1846,11 +1867,6 @@ namespace System.Text.RegularExpressions.SRM
         //1 means it is a sequence of singletons
         internal int sequenceOfSingletons_count;
 
-        /// <summary>
-        /// true if this node is a lazy loop
-        /// </summary>
-        internal bool isLazyLoop;
-
         internal bool IsSequenceOfSingletons
         {
             get
@@ -1915,7 +1931,7 @@ namespace System.Text.RegularExpressions.SRM
                 case SymbolicRegexKind.Concat:
                     {
                         var startSet = this.left.GetStartSet();
-                        if (left.info.CanBeNullable)
+                        if (left.CanBeNullable)
                         {
                             var set2 = this.right.GetStartSet();
                             startSet = builder.solver.MkOr(startSet, set2);

@@ -505,14 +505,14 @@ namespace System.Text.RegularExpressions.SRM
                             return MkOr2(sr.left, this.epsilon);
                         else if (sr.IsPlus)
                         {
-                            var star = this.MkLoop(sr.left, sr.info.IsLazy);
+                            var star = this.MkLoop(sr.left, sr.IsLazy);
                             var plus = this.MkConcat(sr.left, star);
                             return plus;
                         }
                         else if (sr.upper == int.MaxValue)
                         {
                             var fixed_loop = this.MkLoop(sr.left, false, sr.lower, sr.lower);
-                            var star = this.MkLoop(sr.left, sr.info.IsLazy);
+                            var star = this.MkLoop(sr.left, sr.IsLazy);
                             var concat = this.MkConcat(fixed_loop, star);
                             return concat;
                         }
@@ -715,7 +715,7 @@ namespace System.Text.RegularExpressions.SRM
                 //case SymbolicRegexKind.Sequence:
                 //    return builderT.MkSequence(new Sequence<T>(Array.ConvertAll<S,T>(sr.sequence.ToArray(), x => predicateTransformer(x))));
                 case SymbolicRegexKind.Loop:
-                    return builderT.MkLoop(Transform(sr.left, builderT, predicateTransformer), sr.info.IsLazy, sr.lower, sr.upper);
+                    return builderT.MkLoop(Transform(sr.left, builderT, predicateTransformer), sr.IsLazy, sr.lower, sr.upper);
                 case SymbolicRegexKind.Or:
                     return builderT.MkOr(sr.alts.Transform(builderT, predicateTransformer));
                 case SymbolicRegexKind.And:

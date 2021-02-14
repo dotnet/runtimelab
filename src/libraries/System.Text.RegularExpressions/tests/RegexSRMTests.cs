@@ -161,7 +161,40 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         [Fact]
-        public void SRMTest_CountedLoopCase()
+        public void SRMTest_NestedLazyLoop()
+        {
+            //read lazily blocks of 3 x's at a time
+            var re = new Regex("(x{3})+?", DFA);
+            var match = re.Match("abcxxxxxxxxacacaca");
+            Assert.True(match.Success);
+            Assert.Equal(3, match.Index);
+            Assert.Equal(3, match.Length);
+        }
+
+        [Fact]
+        public void SRMTest_NestedEagerLoop()
+        {
+            //read eagerly blocks of 3 x's at a time
+            var re = new Regex("(x{3})+", DFA);
+            var match = re.Match("abcxxxxxxxxacacaca");
+            Assert.True(match.Success);
+            Assert.Equal(3, match.Index);
+            Assert.Equal(6, match.Length);
+        }
+
+        [Fact]
+        public void SRMTest_CountedLazyLoop()
+        {
+            var re = new Regex("a[bcd]{4,5}?(.)", DFA);
+            var match = re.Match("acdbcdbe");
+            Assert.True(match.Success);
+            Assert.Equal(0, match.Index);
+            // lazy loop [bcd]{4,5}? only needs to iterate 4 times
+            Assert.Equal(6, match.Length);
+        }
+
+        [Fact]
+        public void SRMTest_CountedLoop()
         {
             //eager matching of the loop must match 5 elements in the loop
             var re = new Regex("a[bcd]{4,5}(.)", DFA);
