@@ -15,6 +15,7 @@
 #include "objwriter.h"
 #include "debugInfo/dwarf/dwarfTypeBuilder.h"
 #include "debugInfo/codeView/codeViewTypeBuilder.h"
+#include "cvconst.h"
 #include "llvm/DebugInfo/CodeView/CodeView.h"
 #include "llvm/DebugInfo/CodeView/Line.h"
 #include "llvm/DebugInfo/CodeView/SymbolRecord.h"
@@ -343,14 +344,18 @@ void ObjectWriter::EmitSymbolDef(const char *SymbolName, bool global) {
 
   Triple TheTriple = TMachine->getTargetTriple();
 
-  // A Thumb2 function symbol should be marked with an appropriate ELF
-  // attribute to make later computation of a relocation address value correct
+  // An ARM function symbol should be marked with an appropriate ELF attribute
+  // to make later computation of a relocation address value correct
 
   if (TheTriple.getObjectFormat() == Triple::ELF &&
       Streamer->getCurrentSectionOnly()->getKind().isText()) {
     switch (TheTriple.getArch()) {
+    case Triple::arm:
+    case Triple::armeb:
     case Triple::thumb:
+    case Triple::thumbeb:
     case Triple::aarch64:
+    case Triple::aarch64_be:
       Streamer->EmitSymbolAttribute(Sym, MCSA_ELF_TypeFunction);
       break;
     default:
@@ -599,6 +604,51 @@ void ObjectWriter::EmitVarDefRange(const MCSymbol *Fn,
   Streamer->EmitIntValue(Range.Range, 2);
 }
 
+// Maps an ICorDebugInfo register number to the corresponding CodeView
+// register number
+CVRegNum ObjectWriter::GetCVRegNum(ICorDebugInfo::RegNum RegNum) {
+  switch (TMachine->getTargetTriple().getArch()) {
+  case Triple::x86:
+    if (X86::ICorDebugInfo::REGNUM_EAX <= RegNum &&
+        RegNum <= X86::ICorDebugInfo::REGNUM_EDI) {
+      return RegNum - X86::ICorDebugInfo::REGNUM_EAX + CV_REG_EAX;
+    }
+    break;
+  case Triple::x86_64:
+    if (Amd64::ICorDebugInfo::REGNUM_RAX <= RegNum &&
+        RegNum <= Amd64::ICorDebugInfo::REGNUM_R15) {
+      return RegNum - Amd64::ICorDebugInfo::REGNUM_RAX + CV_AMD64_RAX;
+    }
+    break;
+  case Triple::arm:
+  case Triple::armeb:
+  case Triple::thumb:
+  case Triple::thumbeb:
+    if (Arm::ICorDebugInfo::REGNUM_R0 <= RegNum &&
+        RegNum <= Arm::ICorDebugInfo::REGNUM_PC) {
+      return RegNum - Arm::ICorDebugInfo::REGNUM_R0 + CV_ARM_R0;
+    }
+    break;
+  case Triple::aarch64:
+  case Triple::aarch64_be:
+    if (Arm64::ICorDebugInfo::REGNUM_X0 <= RegNum &&
+        RegNum < Arm64::ICorDebugInfo::REGNUM_PC) {
+      return RegNum - Arm64::ICorDebugInfo::REGNUM_X0 + CV_ARM64_X0;
+    }
+    // Special registers are ordered FP, LR, SP, PC in ICorDebugInfo's
+    // enumeration and FP, LR, SP, *ZR*, PC in CodeView's enumeration.
+    // For that reason handle the PC register separately.
+    if (RegNum == Arm64::ICorDebugInfo::REGNUM_PC) {
+      return CV_ARM64_PC;
+    }
+    break;
+  default:
+    assert(false && "Unexpected architecture");
+    break;
+  }
+  return CV_REG_NONE;
+}
+
 void ObjectWriter::EmitCVDebugVarInfo(const MCSymbol *Fn,
                                       const DebugVarInfo LocInfos[],
                                       int NumVarInfos) {
@@ -625,8 +675,8 @@ void ObjectWriter::EmitCVDebugVarInfo(const MCSymbol *Fn,
 
         // Currently only support integer registers.
         // TODO: support xmm registers
-        if (Range.loc.vlReg.vlrReg >=
-            sizeof(cvRegMapAmd64) / sizeof(cvRegMapAmd64[0])) {
+        CVRegNum CVReg = GetCVRegNum(Range.loc.vlReg.vlrReg);
+        if (CVReg == CV_REG_NONE) {
           break;
         }
         SymbolRecordKind SymbolKind = SymbolRecordKind::DefRangeRegisterSym;
@@ -639,8 +689,9 @@ void ObjectWriter::EmitCVDebugVarInfo(const MCSymbol *Fn,
         DefRangeRegisterSymbol.Range.Range =
             Range.endOffset - Range.startOffset;
         DefRangeRegisterSymbol.Range.ISectStart = 0;
-        DefRangeRegisterSymbol.Hdr.Register =
-            cvRegMapAmd64[Range.loc.vlReg.vlrReg];
+        DefRangeRegisterSymbol.Hdr.Register = CVReg;
+        DefRangeRegisterSymbol.Hdr.MayHaveNoName = 0;
+
         unsigned Length = sizeof(DefRangeRegisterSymbol.Hdr);
         Streamer->EmitBytes(
             StringRef((char *)&DefRangeRegisterSymbol.Hdr, Length));
@@ -651,15 +702,10 @@ void ObjectWriter::EmitCVDebugVarInfo(const MCSymbol *Fn,
       case ICorDebugInfo::VLT_STK: {
 
         // TODO: support REGNUM_AMBIENT_SP
-        if (Range.loc.vlStk.vlsBaseReg >=
-            sizeof(cvRegMapAmd64) / sizeof(cvRegMapAmd64[0])) {
+        CVRegNum CVReg = GetCVRegNum(Range.loc.vlStk.vlsBaseReg);
+        if (CVReg == CV_REG_NONE) {
           break;
         }
-
-        assert(Range.loc.vlStk.vlsBaseReg <
-                   sizeof(cvRegMapAmd64) / sizeof(cvRegMapAmd64[0]) &&
-               "Register number should be in the range of [REGNUM_RAX, "
-               "REGNUM_R15].");
 
         SymbolRecordKind SymbolKind = SymbolRecordKind::DefRangeRegisterRelSym;
         unsigned SizeofDefRangeRegisterRelSym =
@@ -672,8 +718,8 @@ void ObjectWriter::EmitCVDebugVarInfo(const MCSymbol *Fn,
         DefRangeRegisterRelSymbol.Range.Range =
             Range.endOffset - Range.startOffset;
         DefRangeRegisterRelSymbol.Range.ISectStart = 0;
-        DefRangeRegisterRelSymbol.Hdr.Register =
-            cvRegMapAmd64[Range.loc.vlStk.vlsBaseReg];
+        DefRangeRegisterRelSymbol.Hdr.Register = CVReg;
+        DefRangeRegisterRelSymbol.Hdr.Flags = 0;
         DefRangeRegisterRelSymbol.Hdr.BasePointerOffset =
             Range.loc.vlStk.vlsOffset;
 
@@ -1015,7 +1061,7 @@ void ObjectWriter::EmitARMExIdxPerOffset()
       break;
     case CFI_ADJUST_CFA_OFFSET:
       assert(Reg == DWARF_REG_ILLEGAL &&
-           "Unexpected Register Value for OpAdjustCfaOffset");
+          "Unexpected Register Value for OpAdjustCfaOffset");
       ATS.emitPad(CFIsPerOffset[i].Offset);
       break;
     case CFI_DEF_CFA_REGISTER:
