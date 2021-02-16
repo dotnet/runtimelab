@@ -60,15 +60,13 @@ namespace System.Runtime.Serialization
                 if (RuntimeFeature.IsDynamicCodeSupported || (!declaringType.IsValueType && !propertyType.IsValueType))
                 {
                     var createGetterGeneric = s_createGetterInternal.MakeGenericMethod(declaringType, propertyType).CreateDelegate<Func<PropertyInfo, Getter>>();
-                    Getter accessor = createGetterGeneric(propInfo);
-                    return accessor;
+                    return createGetterGeneric(propInfo);
                 }
                 else
                 {
                     return (obj) =>
                     {
-                        var value = propInfo.GetValue(obj);
-                        return value;
+                        return propInfo.GetValue(obj);
                     };
                 }
             }
@@ -118,9 +116,8 @@ namespace System.Runtime.Serialization
                     // Only JIT if dynamic code is supported.
                     if (RuntimeFeature.IsDynamicCodeSupported || (!declaringType.IsValueType && !propertyType.IsValueType))
                     {
-                        var buildSetAccessorGeneric = s_createSetterInternal.MakeGenericMethod(propInfo.DeclaringType!, propInfo.PropertyType).CreateDelegate<Func<PropertyInfo, Setter>>();
-                        Setter accessor = buildSetAccessorGeneric(propInfo);
-                        return accessor;
+                        var createSetterGeneric = s_createSetterInternal.MakeGenericMethod(propInfo.DeclaringType!, propInfo.PropertyType).CreateDelegate<Func<PropertyInfo, Setter>>();
+                        return createSetterGeneric(propInfo);
                     }
                     else
                     {
