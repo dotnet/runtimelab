@@ -12,13 +12,13 @@ namespace System.Text.RegularExpressions.SRM
     internal class BDD
     {
         /// <summary>
-        /// The unique BDD leaf that represents true.
+        /// The unique BDD leaf that represents the empty set or true.
         /// </summary>
-        internal static BDD True = new BDD(-1, null, null);
+        public static BDD True = new BDD(-1);
         /// <summary>
-        /// The unique BDD leaf that represents false.
+        /// The unique BDD leaf that represents the full set or false.
         /// </summary>
-        internal static BDD False = new BDD(-2, null, null);
+        public static BDD False = new BDD(-2);
 
         /// <summary>
         /// The encoding of the set for lower ordinals for the case when the current bit is 1.
@@ -37,11 +37,30 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public readonly int Ordinal;
 
+        /// <summary>
+        /// Preassigned hashcode value that respects equivalence
+        /// </summary>
+        private readonly int hashcode;
+
+        /// <summary>
+        /// Create a leaf
+        /// </summary>
+        private BDD(int ordinal)
+        {
+            Ordinal = ordinal;
+            //let the ordinal also be the hashcode
+            hashcode = (ordinal, 0, 0).GetHashCode();
+        }
+
         internal BDD(int ordinal, BDD one, BDD zero)
         {
-            this.One = one;
-            this.Zero = zero;
-            this.Ordinal = ordinal;
+            One = one;
+            Zero = zero;
+            Ordinal = ordinal;
+            //precompute a hashchode value that respects BDD equivalence
+            //i.e. two equivalent BDDs will always have the same hashcode
+            //that is independent of object id values of the BDD objects
+            hashcode = (ordinal, one.hashcode, zero.hashcode).GetHashCode();
         }
 
         /// <summary>
@@ -127,5 +146,7 @@ namespace System.Text.RegularExpressions.SRM
 
             return res;
         }
+
+        public override int GetHashCode() => hashcode;
     }
 }

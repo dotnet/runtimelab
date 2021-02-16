@@ -23,7 +23,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Operation cache for Boolean operations over BDDs
         /// </summary>
-        private Dictionary<BoolOpKey, BDD> _booOpCache = new Dictionary<BoolOpKey, BDD>();
+        private Dictionary<BoolOpKey, BDD> _boolOpCache = new Dictionary<BoolOpKey, BDD>();
 
         /// <summary>
         /// Internalize the creation of all BDDs so that any two BDDs with same bit and children are the same pointers.
@@ -73,7 +73,7 @@ namespace System.Text.RegularExpressions.SRM
 
             var key = new BoolOpKey(BDDOp.OR, a, b);
             BDD res;
-            if (_booOpCache.TryGetValue(key, out res))
+            if (_boolOpCache.TryGetValue(key, out res))
                 return res;
 
             if (b.Ordinal > a.Ordinal)
@@ -95,7 +95,7 @@ namespace System.Text.RegularExpressions.SRM
                 res = (t == f ? t : MkBvSet(a.Ordinal, t, f));
             }
 
-            _booOpCache[key] = res;
+            _boolOpCache[key] = res;
             return res;
         }
 
@@ -115,7 +115,7 @@ namespace System.Text.RegularExpressions.SRM
 
             var key = new BoolOpKey(BDDOp.AND, a, b);
             BDD res;
-            if (_booOpCache.TryGetValue(key, out res))
+            if (_boolOpCache.TryGetValue(key, out res))
                 return res;
 
             if (b.Ordinal > a.Ordinal)
@@ -137,7 +137,7 @@ namespace System.Text.RegularExpressions.SRM
                 res = (t == f ? t : MkBvSet(a.Ordinal, t, f));
             }
 
-            _booOpCache[key] = res;
+            _boolOpCache[key] = res;
             return res;
         }
 
@@ -161,11 +161,11 @@ namespace System.Text.RegularExpressions.SRM
 
             var key = new BoolOpKey(BDDOp.NOT, a, null);
             BDD neg;
-            if (_booOpCache.TryGetValue(key, out neg))
+            if (_boolOpCache.TryGetValue(key, out neg))
                 return neg;
 
             neg = MkBvSet(a.Ordinal, MkNot(a.One), MkNot(a.Zero));
-            _booOpCache[key] = neg;
+            _boolOpCache[key] = neg;
             return neg;
         }
 
