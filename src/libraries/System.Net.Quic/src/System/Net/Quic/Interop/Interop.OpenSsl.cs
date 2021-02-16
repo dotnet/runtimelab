@@ -25,12 +25,11 @@ internal static partial class Interop
         static OpenSslQuic()
         {
             IntPtr ctx = IntPtr.Zero;
-            IntPtr ssl = IntPtr.Zero;
 
             try
             {
                 ctx = SslCtxNew(TlsMethod());
-                ssl = SslNew(ctx);
+                using SslSafeHandle ssl = SslNew(ctx);
 
                 // this function is present only in the modified OpenSSL library
                 SslSetQuicMethod(ssl, (QuicMethodCallbacks*) IntPtr.Zero);
@@ -46,9 +45,6 @@ internal static partial class Interop
 
 
             // Free up the allocated native resources
-            if (ssl != IntPtr.Zero)
-                SslFree(ssl);
-
             if (ctx != IntPtr.Zero)
                 SslCtxFree(ctx);
         }
@@ -74,74 +70,74 @@ internal static partial class Interop
         internal static extern IntPtr SslCtxSetClientCertCb(IntPtr method);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_new")]
-        internal static extern IntPtr SslNew(IntPtr ctx);
+        internal static extern SslSafeHandle SslNew(IntPtr ctx);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_free")]
         internal static extern void SslFree(IntPtr ssl);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_use_certificate_file")]
-        internal static extern int SslUseCertificateFile(IntPtr ssl, [MarshalAs(UnmanagedType.LPStr
+        internal static extern int SslUseCertificateFile(SslSafeHandle ssl, [MarshalAs(UnmanagedType.LPStr
             )]
             string file, SslFiletype type);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_use_PrivateKey_file")]
-        internal static extern int SslUsePrivateKeyFile(IntPtr ssl, [MarshalAs(UnmanagedType.LPStr
+        internal static extern int SslUsePrivateKeyFile(SslSafeHandle ssl, [MarshalAs(UnmanagedType.LPStr
             )]
             string file, SslFiletype type);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_use_cert_and_key")]
-        internal static extern int SslUseCertAndKey(IntPtr ssl, IntPtr x509, IntPtr privateKey, IntPtr caChain, int doOverride);
+        internal static extern int SslUseCertAndKey(SslSafeHandle ssl, IntPtr x509, IntPtr privateKey, IntPtr caChain, int doOverride);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_use_certificate")]
-        internal static extern int SslUseCertificate(IntPtr ssl, IntPtr x509);
+        internal static extern int SslUseCertificate(SslSafeHandle ssl, IntPtr x509);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_get_version")]
         internal static extern byte* SslGetVersion(IntPtr ssl);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_set_quic_method")]
-        internal static extern int SslSetQuicMethod(IntPtr ssl, QuicMethodCallbacks* methods);
+        internal static extern int SslSetQuicMethod(SslSafeHandle ssl, QuicMethodCallbacks* methods);
 
         [StructLayout(LayoutKind.Sequential)]
         internal struct QuicMethodCallbacks
         {
-            //int (*)(IntPtr ssl, OpenSslEncryptionLevel level, byte* readSecret, byte* writeSecret, UIntPtr secretLen)
+            //int (*)(SslSafeHandle ssl, OpenSslEncryptionLevel level, byte* readSecret, byte* writeSecret, UIntPtr secretLen)
             internal delegate* unmanaged[Cdecl]<IntPtr, OpenSslEncryptionLevel, byte*, byte*, UIntPtr, int> SetEncryptionSecrets;
 
-            //int (*)(IntPtr ssl, OpenSslEncryptionLevel level, byte* data, UIntPtr len)
+            //int (*)(SslSafeHandle ssl, OpenSslEncryptionLevel level, byte* data, UIntPtr len)
             internal delegate* unmanaged[Cdecl]<IntPtr, OpenSslEncryptionLevel, byte*, UIntPtr, int> AddHandshakeData;
 
             //int (*)(IntPtr ssl)
             internal delegate* unmanaged[Cdecl]<IntPtr, int> FlushFlight;
 
-            //int (*)(IntPtr ssl, OpenSslEncryptionLevel level, byte alert)
+            //int (*)(SslSafeHandle ssl, OpenSslEncryptionLevel level, byte alert)
             internal delegate* unmanaged[Cdecl]<IntPtr, OpenSslEncryptionLevel, byte, int> SendAlert;
         }
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_set_accept_state")]
-        internal static extern int SslSetAcceptState(IntPtr ssl);
+        internal static extern int SslSetAcceptState(SslSafeHandle ssl);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_set_connect_state")]
-        internal static extern int SslSetConnectState(IntPtr ssl);
+        internal static extern int SslSetConnectState(SslSafeHandle ssl);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_do_handshake")]
-        internal static extern int SslDoHandshake(IntPtr ssl);
+        internal static extern int SslDoHandshake(SslSafeHandle ssl);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_ctrl")]
-        internal static extern int SslCtrl(IntPtr ssl, SslCtrlCommand cmd, long larg, IntPtr parg);
+        internal static extern int SslCtrl(SslSafeHandle ssl, SslCtrlCommand cmd, long larg, IntPtr parg);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_callback_ctrl")]
-        internal static extern int SslCallbackCtrl(IntPtr ssl, SslCtrlCommand cmd, IntPtr fp);
+        internal static extern int SslCallbackCtrl(SslSafeHandle ssl, SslCtrlCommand cmd, IntPtr fp);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_CTX_callback_ctrl")]
         internal static extern int SslCtxCallbackCtrl(IntPtr ctx, SslCtrlCommand cmd, IntPtr fp);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_get_error")]
-        internal static extern int SslGetError(IntPtr ssl, int code);
+        internal static extern int SslGetError(SslSafeHandle ssl, int code);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_provide_quic_data")]
-        internal static extern int SslProvideQuicData(IntPtr ssl, OpenSslEncryptionLevel level, byte* data, IntPtr len);
+        internal static extern int SslProvideQuicData(SslSafeHandle ssl, OpenSslEncryptionLevel level, byte* data, IntPtr len);
 
-        internal static int SslProvideQuicData(IntPtr ssl, OpenSslEncryptionLevel level, ReadOnlySpan<byte> data)
+        internal static int SslProvideQuicData(SslSafeHandle ssl, OpenSslEncryptionLevel level, ReadOnlySpan<byte> data)
         {
             fixed (byte* pData = data)
             {
@@ -150,12 +146,12 @@ internal static partial class Interop
         }
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_set_ex_data")]
-        internal static extern int SslSetExData(IntPtr ssl, int idx, IntPtr data);
+        internal static extern int SslSetExData(SslSafeHandle ssl, int idx, IntPtr data);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_get_ex_data")]
         internal static extern IntPtr SslGetExData(IntPtr ssl, int idx);
 
-        internal static int SslSetTlsExtHostName(IntPtr ssl, string hostname)
+        internal static int SslSetTlsExtHostName(SslSafeHandle ssl, string hostname)
         {
             var addr = Marshal.StringToHGlobalAnsi(hostname);
             const long TLSEXT_NAMETYPE_host_name = 0;
@@ -165,7 +161,7 @@ internal static partial class Interop
         }
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate int TlsExtServernameCallback(IntPtr ssl, ref int al, IntPtr arg);
+        internal delegate int TlsExtServernameCallback(SslSafeHandle ssl, ref int al, IntPtr arg);
 
         internal static int SslCtxSetTlsExtServernameCallback(IntPtr ctx, TlsExtServernameCallback callback)
         {
@@ -174,33 +170,33 @@ internal static partial class Interop
         }
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_set_quic_transport_params")]
-        internal static extern int SslSetQuicTransportParams(IntPtr ssl, byte* param, IntPtr length);
+        internal static extern int SslSetQuicTransportParams(SslSafeHandle ssl, byte* param, IntPtr length);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_get_peer_quic_transport_params")]
-        internal static extern int SslGetPeerQuicTransportParams(IntPtr ssl, out byte* param, out IntPtr length);
+        internal static extern int SslGetPeerQuicTransportParams(SslSafeHandle ssl, out byte* param, out IntPtr length);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_quic_write_level")]
-        internal static extern OpenSslEncryptionLevel SslQuicWriteLevel(IntPtr ssl);
+        internal static extern OpenSslEncryptionLevel SslQuicWriteLevel(SslSafeHandle ssl);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_is_init_finished")]
-        internal static extern int SslIsInitFinished(IntPtr ssl);
+        internal static extern int SslIsInitFinished(SslSafeHandle ssl);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_get_current_cipher")]
-        internal static extern IntPtr SslGetCurrentCipher(IntPtr ssl);
+        internal static extern IntPtr SslGetCurrentCipher(SslSafeHandle ssl);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_CIPHER_get_protocol_id")]
         internal static extern ushort SslCipherGetProtocolId(IntPtr cipher);
 
-        internal static TlsCipherSuite SslGetCipherId(IntPtr ssl)
+        internal static TlsCipherSuite SslGetCipherId(SslSafeHandle ssl)
         {
             var cipher = SslGetCurrentCipher(ssl);
             return (TlsCipherSuite)SslCipherGetProtocolId(cipher);
         }
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_set_ciphersuites")]
-        internal static extern int SslSetCiphersuites(IntPtr ssl, byte* list);
+        internal static extern int SslSetCiphersuites(SslSafeHandle ssl, byte* list);
 
-        internal static int SslSetCiphersuites(IntPtr ssl, string list)
+        internal static int SslSetCiphersuites(SslSafeHandle ssl, string list)
         {
             var ptr = Marshal.StringToHGlobalAnsi(list);
             int result = SslSetCiphersuites(ssl, (byte*)ptr.ToPointer());
@@ -209,9 +205,9 @@ internal static partial class Interop
         }
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_set_cipher_list")]
-        internal static extern int SslSetCipherList(IntPtr ssl, byte* list);
+        internal static extern int SslSetCipherList(SslSafeHandle ssl, byte* list);
 
-        internal static int SslSetCipherList(IntPtr ssl, string list)
+        internal static int SslSetCipherList(SslSafeHandle ssl, string list)
         {
             var ptr = Marshal.StringToHGlobalAnsi(list);
             int result = SslSetCipherList(ssl, (byte*)ptr.ToPointer());
@@ -220,9 +216,9 @@ internal static partial class Interop
         }
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_get_cipher_list")]
-        internal static extern IntPtr SslGetCipherList(IntPtr ssl, int priority);
+        internal static extern IntPtr SslGetCipherList(SslSafeHandle ssl, int priority);
 
-        internal static List<string> SslGetCipherList(IntPtr ssl)
+        internal static List<string> SslGetCipherList(SslSafeHandle ssl)
         {
             var list = new List<string>();
 
@@ -238,10 +234,10 @@ internal static partial class Interop
         }
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_set_alpn_protos")]
-        internal static extern int SslSetAlpnProtos(IntPtr ssl, IntPtr protosStr, int protosLen);
+        internal static extern int SslSetAlpnProtos(SslSafeHandle ssl, IntPtr protosStr, int protosLen);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_get0_alpn_selected")]
-        internal static extern int SslGet0AlpnSelected(IntPtr ssl, out IntPtr data, out int len);
+        internal static extern int SslGet0AlpnSelected(SslSafeHandle ssl, out IntPtr data, out int len);
 
         [DllImport(Ssl, EntryPoint = EntryPointPrefix + "SSL_CTX_set_alpn_select_cb")]
         internal static extern int SslCtxSetAlpnSelectCb(IntPtr ctx, delegate* unmanaged[Cdecl]<IntPtr /*ssl*/, byte** /*pOut*/, byte* /*outLen*/, byte* /*pIn*/, int /*inLen*/, IntPtr /*arg*/, /*->*/ int> cb, IntPtr arg);

@@ -10,9 +10,24 @@ using System.Net.Security;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
+using Microsoft.Win32.SafeHandles;
 
 namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
 {
+    internal sealed class SslSafeHandle : SafeHandleZeroOrMinusOneIsInvalid
+    {
+        private SslSafeHandle()
+            : base(true)
+        {
+        }
+
+        protected override bool ReleaseHandle()
+        {
+            Interop.OpenSslQuic.SslFree(handle);
+            return true;
+        }
+    }
+
     /// <summary>
     ///     Class encapsulating TLS related logic and interop.
     /// </summary>
@@ -291,14 +306,14 @@ namespace System.Net.Quic.Implementations.Managed.Internal.Tls.OpenSsl
             Debug.Assert(result == 0);
         }
 
-        private readonly IntPtr _ssl;
+        private readonly SslSafeHandle _ssl;
 
         public bool IsHandshakeComplete => Interop.OpenSslQuic.SslIsInitFinished(_ssl) == 1;
         public EncryptionLevel WriteLevel { get; private set; }
 
         public void Dispose()
         {
-            Interop.OpenSslQuic.SslFree(_ssl);
+            _ssl.Dispose();
             _gcHandle.Free();
         }
 
