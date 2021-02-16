@@ -35,7 +35,9 @@ namespace Internal.Reflection
         public override Assembly[] GetLoadedAssemblies() => throw new NotSupportedException(SR.Reflection_Disabled);
         public override MethodBase GetMethodFromHandle(RuntimeMethodHandle runtimeMethodHandle) => throw new NotSupportedException(SR.Reflection_Disabled);
         public override MethodBase GetMethodFromHandle(RuntimeMethodHandle runtimeMethodHandle, RuntimeTypeHandle declaringTypeHandle) => throw new NotSupportedException(SR.Reflection_Disabled);
+#if FEATURE_COMINTEROP
         public override Type GetTypeFromCLSID(Guid clsid, string server, bool throwOnError) => throw new NotSupportedException(SR.Reflection_Disabled);
+#endif
         public override Assembly Load(AssemblyName refName, bool throwOnFileNotFound) => throw new NotSupportedException(SR.Reflection_Disabled);
         public override Assembly Load(byte[] rawAssembly, byte[] pdbSymbolStore) => throw new NotSupportedException(SR.Reflection_Disabled);
         public override Assembly Load(string assemblyPath) => throw new NotSupportedException(SR.Reflection_Disabled);

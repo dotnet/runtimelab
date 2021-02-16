@@ -10,13 +10,6 @@ using System.Text;
 using Internal.Runtime.Augments;
 using Internal.Runtime.CompilerServices;
 
-namespace System
-{
-    // For System.Private.Reflection.Core's sake
-    [CLSCompliant(false)]
-    public class __ComObject { }
-}
-
 namespace System.Runtime.InteropServices
 {
     public static partial class Marshal
