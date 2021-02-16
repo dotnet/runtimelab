@@ -144,9 +144,16 @@ namespace System.Runtime.InteropServices
             return SizeOfHelper(t, throwIfNotMarshalable: true);
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
-            Justification = "AOT compilers can see the T.")]
-        public static int SizeOf<T>() => SizeOf(typeof(T));
+        public static int SizeOf<T>()
+        {
+            Type t = typeof(T);
+            if (t.IsGenericType)
+            {
+                throw new ArgumentException(SR.Argument_NeedNonGenericType, nameof(t));
+            }
+
+            return SizeOfHelper(t, throwIfNotMarshalable: true);
+        }
 
         /// <summary>
         /// IMPORTANT NOTICE: This method does not do any verification on the array.
@@ -581,13 +588,33 @@ namespace System.Runtime.InteropServices
 
         public static void PtrToStructure<T>(IntPtr ptr, [DisallowNull] T structure)
         {
-            PtrToStructure(ptr, (object)structure!);
+            PtrToStructureHelper(ptr, structure, allowValueClasses: false);
+        }
+
+        public static T? PtrToStructure<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]T>(IntPtr ptr)
+        {
+            if (ptr == IntPtr.Zero)
+            {
+                // Compat: this was originally implemented as a call to the non-generic version+cast.
+                // It would throw for non-nullable valuetypes here and return null for Nullable<T> even
+                // though it's generic.
+                if (default(T) != null)
+                    throw new NullReferenceException();
+
+                return default;
+            }
+
+            Type structureType = typeof(T);
+            if (structureType.IsGenericType)
+            {
+                throw new ArgumentException(SR.Argument_NeedNonGenericType, nameof(structureType));
+            }
+
+            return (T)PtrToStructureHelper(ptr, structureType);
         }
 
         [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
             Justification = "AOT compilers can see the T.")]
-        public static T? PtrToStructure<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]T>(IntPtr ptr) => (T)PtrToStructure(ptr, typeof(T))!;
-
         public static void DestroyStructure<T>(IntPtr ptr) => DestroyStructure(ptr, typeof(T));
 
         /// <summary>
@@ -893,11 +920,29 @@ namespace System.Runtime.InteropServices
             return GetDelegateForFunctionPointerInternal(ptr, t);
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
-            Justification = "AOT compilers can see the T.")]
         public static TDelegate GetDelegateForFunctionPointer<TDelegate>(IntPtr ptr)
         {
-            return (TDelegate)(object)GetDelegateForFunctionPointer(ptr, typeof(TDelegate));
+            if (ptr == IntPtr.Zero)
+            {
+                throw new ArgumentNullException(nameof(ptr));
+            }
+
+            Type t = typeof(TDelegate);
+            if (t.IsGenericType)
+            {
+                throw new ArgumentException(SR.Argument_NeedNonGenericType, nameof(TDelegate));
+            }
+
+            // COMPAT: This block of code isn't entirely correct.
+            // Users passing in typeof(MulticastDelegate) as 't' skip this check
+            // since Delegate is a base type of MulticastDelegate.
+            Type? c = t.BaseType;
+            if (c != typeof(Delegate) && c != typeof(MulticastDelegate))
+            {
+                throw new ArgumentException(SR.Arg_MustBeDelegate, nameof(TDelegate));
+            }
+
+            return (TDelegate)(object)GetDelegateForFunctionPointerInternal(ptr, t);
         }
 
         [RequiresDynamicCode("Marshalling code for the delegate might not be available. Use the GetFunctionPointerForDelegate<TDelegate> overload instead.")]
