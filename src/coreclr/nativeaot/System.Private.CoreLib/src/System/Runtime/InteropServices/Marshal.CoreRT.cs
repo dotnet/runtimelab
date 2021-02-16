@@ -234,27 +234,27 @@ namespace System.Runtime.InteropServices
         }
 
         [RequiresDynamicCode("Marshalling code for the object might not be available")]
-        public static byte ReadByte(object ptr, int ofs)
+        public static unsafe byte ReadByte(object ptr, int ofs)
         {
-            return ReadValueSlow(ptr, ofs, ReadByte);
+            return ReadValueSlow<byte>(ptr, ofs, &ReadByte);
         }
 
         [RequiresDynamicCode("Marshalling code for the object might not be available")]
-        public static short ReadInt16(object ptr, int ofs)
+        public static unsafe short ReadInt16(object ptr, int ofs)
         {
-            return ReadValueSlow(ptr, ofs, ReadInt16);
+            return ReadValueSlow<short>(ptr, ofs, &ReadInt16);
         }
 
         [RequiresDynamicCode("Marshalling code for the object might not be available")]
-        public static int ReadInt32(object ptr, int ofs)
+        public static unsafe int ReadInt32(object ptr, int ofs)
         {
-            return ReadValueSlow(ptr, ofs, ReadInt32);
+            return ReadValueSlow<int>(ptr, ofs, &ReadInt32);
         }
 
         [RequiresDynamicCode("Marshalling code for the object might not be available")]
-        public static long ReadInt64(object ptr, int ofs)
+        public static unsafe long ReadInt64(object ptr, int ofs)
         {
-            return ReadValueSlow(ptr, ofs, ReadInt64);
+            return ReadValueSlow<long>(ptr, ofs, &ReadInt64);
         }
 
         //====================================================================
@@ -264,7 +264,7 @@ namespace System.Runtime.InteropServices
         // People should instead use the IntPtr overloads
         //====================================================================
         [RequiresDynamicCode("Marshalling code for the object might not be available")]
-        private static unsafe T ReadValueSlow<T>(object ptr, int ofs, Func<IntPtr, int, T> readValueHelper)
+        private static unsafe T ReadValueSlow<T>(object ptr, int ofs, delegate*<IntPtr, int, T> readValueHelper)
         {
             // Consumers of this method are documented to throw AccessViolationException on any AV
             if (ptr is null)
@@ -311,31 +311,31 @@ namespace System.Runtime.InteropServices
         }
 
         [RequiresDynamicCode("Marshalling code for the object might not be available")]
-        public static void WriteByte(object ptr, int ofs, byte val)
+        public static unsafe void WriteByte(object ptr, int ofs, byte val)
         {
-            WriteValueSlow(ptr, ofs, val, (IntPtr nativeHome, int offset, byte value) => WriteByte(nativeHome, offset, value));
+            WriteValueSlow(ptr, ofs, val, &WriteByte);
         }
 
         [RequiresDynamicCode("Marshalling code for the object might not be available")]
-        public static void WriteInt16(object ptr, int ofs, short val)
+        public static unsafe void WriteInt16(object ptr, int ofs, short val)
         {
-            WriteValueSlow(ptr, ofs, val, WriteInt16);
+            WriteValueSlow(ptr, ofs, val, &WriteInt16);
         }
 
         [RequiresDynamicCode("Marshalling code for the object might not be available")]
-        public static void WriteInt32(object ptr, int ofs, int val)
+        public static unsafe void WriteInt32(object ptr, int ofs, int val)
         {
-            WriteValueSlow(ptr, ofs, val, WriteInt32);
+            WriteValueSlow(ptr, ofs, val, &WriteInt32);
         }
 
         [RequiresDynamicCode("Marshalling code for the object might not be available")]
-        public static void WriteInt64(object ptr, int ofs, long val)
+        public static unsafe void WriteInt64(object ptr, int ofs, long val)
         {
-            WriteValueSlow(ptr, ofs, val, WriteInt64);
+            WriteValueSlow(ptr, ofs, val, &WriteInt64);
         }
 
         [RequiresDynamicCode("Marshalling code for the object might not be available")]
-        private static unsafe void WriteValueSlow<T>(object ptr, int ofs, T val, Action<IntPtr, int, T> writeValueHelper)
+        private static unsafe void WriteValueSlow<T>(object ptr, int ofs, T val, delegate*<IntPtr, int, T, void> writeValueHelper)
         {
             // Consumers of this method are documented to throw AccessViolationException on any AV
             if (ptr is null)
