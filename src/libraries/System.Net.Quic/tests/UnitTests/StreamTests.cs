@@ -69,10 +69,7 @@ namespace System.Net.Quic.Tests
             clientStream.Flush();
             clientStream.Shutdown();
 
-            Intercept1RttFrame<StreamFrame>(Client, Server, frame =>
-            {
-                Assert.True(frame.Fin);
-            });
+            Intercept1RttFrame<StreamFrame>(Client, Server, frame => { Assert.True(frame.Fin); });
         }
 
 
@@ -85,10 +82,7 @@ namespace System.Net.Quic.Tests
             // send data before marking end of stream
             clientStream.Write(data);
             clientStream.Flush();
-            Intercept1RttFrame<StreamFrame>(Client, Server, frame =>
-            {
-                Assert.False(frame.Fin);
-            });
+            Intercept1RttFrame<StreamFrame>(Client, Server, frame => { Assert.False(frame.Fin); });
 
             // no more data to send, just the fin bit
             clientStream.Shutdown();
@@ -99,10 +93,7 @@ namespace System.Net.Quic.Tests
             });
 
             // don't repeat the frame
-            InterceptFlight(Client, Server, flight =>
-            {
-                Assert.Empty(flight.Packets);
-            });
+            InterceptFlight(Client, Server, flight => { Assert.Empty(flight.Packets); });
         }
 
         [Fact]
@@ -153,7 +144,7 @@ namespace System.Net.Quic.Tests
             Send1Rtt(Server, Client).ShouldHaveConnectionClose(
                 TransportErrorCode.FrameEncodingError,
                 QuicError.UnableToDeserialize,
-                 FrameType.Stream | FrameType.StreamLenBit | FrameType.StreamOffBit);
+                FrameType.Stream | FrameType.StreamLenBit | FrameType.StreamOffBit);
         }
 
         [Fact]
@@ -204,7 +195,7 @@ namespace System.Net.Quic.Tests
             Send1Rtt(Server, Client).ShouldHaveConnectionClose(
                 TransportErrorCode.FlowControlError,
                 QuicError.MaxDataViolated,
-                 FrameType.Stream | FrameType.StreamLenBit | FrameType.StreamOffBit);
+                FrameType.Stream | FrameType.StreamLenBit | FrameType.StreamOffBit);
         }
 
         [Fact]
@@ -218,20 +209,50 @@ namespace System.Net.Quic.Tests
             // lose the first packet with stream data
             Lose1RttPacketWithFrame<StreamFrame>(Client);
 
+            // deliver second packet with more data
             clientStream.Write(data);
             clientStream.Flush();
-            CurrentTimestamp += RecoveryController.InitialRtt * 1;
-            // deliver second packet with more data
             Send1RttWithFrame<StreamFrame>(Client, Server);
 
-            // send ack back, leading the client to believe that first packet was lost
-            CurrentTimestamp += RecoveryController.InitialRtt * 1;
-            Send1Rtt(Server, Client).ShouldHaveFrame<AckFrame>();
+            TriggerLossDetection(Client, Server);
 
             // resend original data
-            var frame = Send1Rtt(Client, Server).ShouldHaveFrame<StreamFrame>();
-            Assert.Equal(0, frame.Offset);
-            Assert.Equal(data, frame.StreamData);
+            Send1Rtt(Client, Server).ShouldHaveFrame<StreamFrame>(frame =>
+            {
+                Assert.Equal(0, frame.Offset);
+                Assert.Equal(data, frame.StreamData);
+            });
+        }
+
+        [Fact]
+        public void ResendsFinAfterLoss()
+        {
+            byte[] data = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
+            var clientStream = Client.OpenStream(true);
+            clientStream.Write(data);
+            clientStream.Flush();
+
+            // Deliver the first packet with data (no Fin yet)
+            Send1RttWithFrame<StreamFrame>(Client, Server, frame =>
+            {
+                Assert.Equal(data, frame.StreamData);
+                Assert.False(frame.Fin);
+            });
+
+            // close the stream and lose the FIN stream frame
+            clientStream.Shutdown();
+            Lose1RttPacketWithFrame<StreamFrame>(Client, frame =>
+            {
+                Assert.True(frame.Fin);
+            });
+
+            TriggerLossDetection(Client, Server);
+
+            // resend the FIN bit
+            Send1Rtt(Client, Server).ShouldHaveFrame<StreamFrame>(frame =>
+            {
+                Assert.True(frame.Fin);
+            });
         }
 
         [Fact]
@@ -287,14 +308,14 @@ namespace System.Net.Quic.Tests
 
             // receiving connection close implicitly closes all streams
             Server.Ping();
-            Intercept1Rtt(Server, Client, packet =>
-            {
-                packet.Frames.Add(new ConnectionCloseFrame()
+            Intercept1Rtt(Server, Client,
+                packet =>
                 {
-                    ErrorCode = TransportErrorCode.InternalError,
-                    ReasonPhrase = "Test Error",
+                    packet.Frames.Add(new ConnectionCloseFrame()
+                    {
+                        ErrorCode = TransportErrorCode.InternalError, ReasonPhrase = "Test Error",
+                    });
                 });
-            });
 
             await shutdownWriteCompletedTask.AsTask().TimeoutAfter(500);
         }

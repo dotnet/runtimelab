@@ -15,6 +15,7 @@ using System.Net.Quic.Implementations.Managed.Internal.Sockets;
 using System.Net.Quic.Implementations.Managed.Internal.Tls;
 using System.Net.Quic.Tests.Harness;
 using System.Net.Security;
+using System.Reflection;
 using System.Threading.Channels;
 using Xunit;
 using Xunit.Abstractions;
@@ -234,11 +235,13 @@ namespace System.Net.Quic.Tests
         /// </summary>
         /// <param name="source">The source connection.</param>
         /// <param name="destination">The destination connection.</param>
+        /// <param name="inspector">Optional inspection callback</param>
         internal TFrame Send1RttWithFrame<TFrame>(ManagedQuicConnection source,
-            ManagedQuicConnection destination) where TFrame : FrameBase
+            ManagedQuicConnection destination, Action<TFrame>? inspector = null) where TFrame : FrameBase
         {
-            var packet = Send1Rtt(source, destination);
-            return packet.ShouldHaveFrame<TFrame>();
+            var frame = Send1Rtt(source, destination).ShouldHaveFrame<TFrame>();
+            inspector?.Invoke(frame);
+            return frame;
         }
 
         /// <summary>
@@ -423,12 +426,14 @@ namespace System.Net.Quic.Tests
         ///     returns the frame for further inspection.
         /// </summary>
         /// <param name="source">The source connection.</param>
-        internal TFrame Lose1RttPacketWithFrame<TFrame>(ManagedQuicConnection source) where TFrame : FrameBase
+        internal TFrame Lose1RttPacketWithFrame<TFrame>(ManagedQuicConnection source, Action<TFrame>? inspector = null) where TFrame : FrameBase
         {
             var flight = GetFlightToSend(source);
             var packet = Assert.IsType<OneRttPacket>(Assert.Single(flight.Packets));
             LogFlightPackets(flight, true);
-            return packet.ShouldHaveFrame<TFrame>();
+            var frame = packet.ShouldHaveFrame<TFrame>();
+            inspector?.Invoke(frame);
+            return frame;
         }
 
         /// <summary>
@@ -447,9 +452,10 @@ namespace System.Net.Quic.Tests
             Lose1RttPacketWithFrame<TFrame>(source);
 
             CurrentTimestamp += RecoveryController.InitialRtt;
+
             // ping the destination to elicit ack
             // TODO-RZ: calculate exact delta time needed for the packet to be deemed lost
-            Client.Ping();
+            source.Ping();
             // no retransmission yet
             Send1Rtt(source, destination).ShouldNotHaveFrame<TFrame>();
 
@@ -459,6 +465,27 @@ namespace System.Net.Quic.Tests
 
             // check that the frame got resent.
             Send1RttWithFrame<TFrame>(source, destination);
+        }
+
+        /// <summary>
+        ///     Helper function for triggering retransmission after losing packets. It works by exchanging PING + AKC frames
+        ///     with long enough delay to provoke loss-by-time threshold.
+        /// </summary>
+        /// <param name="loss">The endpoint that needs loss to be triggered.</param>
+        /// <param name="peer">The other endpoint.</param>
+        internal void TriggerLossDetection(ManagedQuicConnection loss, ManagedQuicConnection peer)
+        {
+            CurrentTimestamp += RecoveryController.InitialRtt;
+
+            // ping the destination to elicit ack
+            // TODO-RZ: calculate exact delta time needed for the packet to be deemed lost
+            loss.Ping();
+            // no retransmission yet
+            Send1Rtt(loss, peer);
+
+            // receive ack late enough for the original packet be deemed lost.
+            CurrentTimestamp += 3 * RecoveryController.InitialRtt;
+            Send1RttWithFrame<AckFrame>(peer, loss);
         }
 
         internal void LogFlightPackets(IEnumerable<PacketBase> packets, ManagedQuicConnection sender, bool lost = false)

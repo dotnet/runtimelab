@@ -14,10 +14,11 @@ namespace System.Net.Quic.Tests
 {
     internal static class TestHelpers
     {
-        public static TFrame ShouldHaveFrame<TFrame>(this IFramePacket packet) where TFrame : FrameBase
+        public static TFrame ShouldHaveFrame<TFrame>(this IFramePacket packet, Action<TFrame>? inspector = null) where TFrame : FrameBase
         {
             var frame = packet.Frames.OfType<TFrame>().SingleOrDefault();
             Assert.True(frame != null, $"Packet does not contain {typeof(TFrame).Name}s.");
+            inspector?.Invoke(frame!);
             return frame!;
         }
 
