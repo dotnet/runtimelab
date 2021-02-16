@@ -254,11 +254,10 @@ namespace System.Text.RegularExpressions.SRM
         /// Assumes that set is a union of some minterms (or empty).
         /// If null then null is returned.
         /// </summary>
-        public BV ConvertFromCharSet(BDD set)
+        public BV ConvertFromCharSet(BDDAlgebra alg, BDD set)
         {
             if (set == null)
                 return null;
-            var alg = set.algebra;
             BV res = this.zero;
             for (int i = 0; i < partition.Length; i++)
             {

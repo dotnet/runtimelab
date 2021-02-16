@@ -12,6 +12,15 @@ namespace System.Text.RegularExpressions.SRM
     internal class BDD
     {
         /// <summary>
+        /// The unique BDD leaf that represents true.
+        /// </summary>
+        internal static BDD True = new BDD(-1, null, null);
+        /// <summary>
+        /// The unique BDD leaf that represents false.
+        /// </summary>
+        internal static BDD False = new BDD(-2, null, null);
+
+        /// <summary>
         /// The encoding of the set for lower ordinals for the case when the current bit is 1.
         /// The value is null iff IsLeaf is true.
         /// </summary>
@@ -23,24 +32,21 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public readonly BDD Zero;
 
-
-        public readonly BDDAlgebra algebra;
-
         /// <summary>
         /// Ordinal of this bit if nonleaf
         /// </summary>
         public readonly int Ordinal;
 
-        internal BDD(BDDAlgebra algebra, int ordinal, BDD one, BDD zero)
+        internal BDD(int ordinal, BDD one, BDD zero)
         {
             this.One = one;
             this.Zero = zero;
             this.Ordinal = ordinal;
-            this.algebra = algebra;
         }
 
         /// <summary>
-        /// True iff the node is a terminal (One and Zero are null).
+        /// True iff the node is a terminal (One and Zero are both null).
+        /// True and False are terminals.
         /// </summary>
         public bool IsLeaf
         {
@@ -48,19 +54,19 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
-        /// True iff the set is full.
+        /// True iff the BDD is True.
         /// </summary>
         public bool IsFull
         {
-            get { return this == algebra.True; }
+            get { return this == True; }
         }
 
         /// <summary>
-        /// True iff the set is empty.
+        /// True iff the BDD is False.
         /// </summary>
         public bool IsEmpty
         {
-            get { return this == algebra.False; }
+            get { return this == False; }
         }
 
         /// <summary>
@@ -120,31 +126,6 @@ namespace System.Text.RegularExpressions.SRM
             }
 
             return res;
-        }
-
-        public static BDD operator >>(BDD x, int k)
-        {
-            return x.algebra.ShiftRight(x, k);
-        }
-
-        public static BDD operator <<(BDD x, int k)
-        {
-            return x.algebra.ShiftLeft(x, k);
-        }
-
-        public static BDD operator &(BDD x, BDD y)
-        {
-            return x.algebra.MkAnd(x, y);
-        }
-
-        public static BDD operator |(BDD x, BDD y)
-        {
-            return x.algebra.MkOr(x, y);
-        }
-
-        public static BDD operator !(BDD x)
-        {
-            return x.algebra.MkNot(x);
         }
     }
 }

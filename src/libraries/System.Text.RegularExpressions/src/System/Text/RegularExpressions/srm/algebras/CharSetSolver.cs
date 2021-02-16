@@ -255,7 +255,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Identity function, returns s.
         /// </summary>
-        public BDD ConvertFromCharSet(BDD s)
+        public BDD ConvertFromCharSet(BDDAlgebra _, BDD s)
         {
             return s;
         }

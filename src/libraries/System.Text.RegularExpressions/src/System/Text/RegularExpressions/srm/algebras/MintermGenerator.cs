@@ -29,14 +29,6 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
-        /// Returns GenerateMinterms(true, preds).
-        /// </summary>
-        public IEnumerable<Tuple<bool[], PRED>> GenerateMinterms(params PRED[] preds)
-        {
-            return GenerateMinterms(true, preds);
-        }
-
-        /// <summary>
         /// Given an array of predidates {p_1, p_2, ..., p_n} where n>=0.
         /// Enumerate all satisfiable Boolean combinations Tuple({b_1, b_2, ..., b_n}, p)
         /// where p is satisfiable and equivalent to p'_1 &amp; p'_2 &amp; ... &amp; p'_n,
@@ -44,9 +36,8 @@ namespace System.Text.RegularExpressions.SRM
         /// If n=0 return Tuple({},True).
         /// </summary>
         /// <param name="preds">array of predicates</param>
-        /// <param name="useEquivalenceChecking">optimization flag: if true, uses equivalence checking to cluster equivalent predicates; otherwise does not use equivalence checking</param>
-        /// <returns>all minterms of the given predicate sequence</returns>
-        public IEnumerable<Tuple<bool[], PRED>> GenerateMinterms(bool useEquivalenceChecking, params PRED[] preds)
+       /// <returns>all minterms of the given predicate sequence</returns>
+        public IEnumerable<Tuple<bool[], PRED>> GenerateMinterms(params PRED[] preds)
         {
             if (preds.Length == 0)
             {
@@ -66,7 +57,7 @@ namespace System.Text.RegularExpressions.SRM
                 for (int i = 0; i < count; i++)
                 {
                     int newIndex;
-                    EquivClass equiv = CreateEquivalenceClass(useEquivalenceChecking, preds[i]);
+                    EquivClass equiv = CreateEquivalenceClass(preds[i]);
                     if (!newIndexMap.TryGetValue(equiv, out newIndex))
                     {
                         newIndex = newIndexMap.Count;
@@ -104,27 +95,25 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
-        private EquivClass CreateEquivalenceClass(bool useEquivalenceChecking, PRED set)
+        private EquivClass CreateEquivalenceClass(PRED set)
         {
-            return new EquivClass(useEquivalenceChecking, this, set);
+            return new EquivClass(this, set);
         }
 
         private class EquivClass
         {
             private PRED set;
             private MintermGenerator<PRED> gen;
-            private bool useEquivalenceChecking;
 
-            internal EquivClass(bool useEquivalenceChecking, MintermGenerator<PRED> gen, PRED set)
+            internal EquivClass(MintermGenerator<PRED> gen, PRED set)
             {
                 this.set = set;
                 this.gen = gen;
-                this.useEquivalenceChecking = useEquivalenceChecking;
             }
 
             public override int GetHashCode()
             {
-                if (useEquivalenceChecking && !gen.hashCodesRespectEquivalence)
+                if (!gen.hashCodesRespectEquivalence)
                     //cannot rely on equivalent predicates having the same hashcode
                     //so all predicates end up in the same bucket that causes a linear search
                     //with Equals to check equivalence when useEquivalenceChecking=true
@@ -133,13 +122,8 @@ namespace System.Text.RegularExpressions.SRM
                     return set.GetHashCode();
             }
 
-            public override bool Equals(object obj)
-            {
-                if (useEquivalenceChecking)
-                    return gen.ba.AreEquivalent(set, ((EquivClass)obj).set);
-                else
-                    return set.Equals(((EquivClass)obj).set);
-            }
+            public override bool Equals(object obj) =>
+                obj is EquivClass ec && gen.ba.AreEquivalent(set, ec.set);
         }
     }
 

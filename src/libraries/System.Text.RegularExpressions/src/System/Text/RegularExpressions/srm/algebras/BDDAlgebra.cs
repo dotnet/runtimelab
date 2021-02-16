@@ -6,25 +6,33 @@ using System.Collections.Generic;
 using BvSetPair = System.Tuple<System.Text.RegularExpressions.SRM.BDD, System.Text.RegularExpressions.SRM.BDD>;
 using BvSet_Int = System.Tuple<System.Text.RegularExpressions.SRM.BDD, int>;
 using BvSetKey = System.Tuple<int, System.Text.RegularExpressions.SRM.BDD, System.Text.RegularExpressions.SRM.BDD>;
+using BoolOpKey = System.Tuple<System.Text.RegularExpressions.SRM.BDDOp, System.Text.RegularExpressions.SRM.BDD, System.Text.RegularExpressions.SRM.BDD>;
 
 namespace System.Text.RegularExpressions.SRM
 {
+    internal enum BDDOp
+    {
+        AND, OR, NOT
+    }
 
     /// <summary>
-    /// Solver for BDDs.
+    /// Solver for Specialized BDDs.
     /// </summary>
     internal abstract class BDDAlgebra : IBooleanAlgebra<BDD>
     {
-        private Dictionary<BvSetPair, BDD> orCache = new Dictionary<BvSetPair, BDD>();
-        private Dictionary<BvSetPair, BDD> andCache = new Dictionary<BvSetPair, BDD>();
-        private Dictionary<BDD, BDD> notCache = new Dictionary<BDD, BDD>();
-        private Dictionary<BvSet_Int, BDD> shiftCache = new Dictionary<BvSet_Int, BDD>();
-        private Dictionary<Tuple<int, Tuple<ulong, ulong>>, BDD> intervalCache = new Dictionary<Tuple<int, Tuple<ulong, ulong>>, BDD>();
-        private Dictionary<BDD, ulong> sizeCache = new Dictionary<BDD, ulong>();
+        /// <summary>
+        /// Operation cache for Boolean operations over BDDs
+        /// </summary>
+        private Dictionary<BoolOpKey, BDD> _booOpCache = new Dictionary<BoolOpKey, BDD>();
 
-        private BDD _True;
-        private BDD _False;
+        /// <summary>
+        /// Internalize the creation of all BDDs so that any two BDDs with same bit and children are the same pointers.
+        /// </summary>
+        private Dictionary<BvSetKey, BDD> bvsetCache = new Dictionary<BvSetKey, BDD>();
 
+        /// <summary>
+        /// Generator for minterms.
+        /// </summary>
         private MintermGenerator<BDD> mintermGen;
 
         /// <summary>
@@ -33,12 +41,7 @@ namespace System.Text.RegularExpressions.SRM
         public BDDAlgebra()
         {
             mintermGen = new MintermGenerator<BDD>(this);
-            _True = new BDD(this, -1, null, null);
-            _False = new BDD(this, -2, null, null);
         }
-
-        //internalize the creation of all charsets so that any two charsets with same bit and children are the same pointers
-        private Dictionary<BvSetKey, BDD> bvsetCache = new Dictionary<BvSetKey, BDD>();
 
         public BDD MkBvSet(int nr, BDD one, BDD zero)
         {
@@ -46,7 +49,7 @@ namespace System.Text.RegularExpressions.SRM
             BDD set;
             if (!bvsetCache.TryGetValue(key, out set))
             {
-                set = new BDD(this, nr, one, zero);
+                set = new BDD(nr, one, zero);
                 bvsetCache[key] = set;
             }
             return set;
@@ -68,9 +71,9 @@ namespace System.Text.RegularExpressions.SRM
             if (a == b)
                 return a;
 
-            var key = new BvSetPair(a, b);
+            var key = new BoolOpKey(BDDOp.OR, a, b);
             BDD res;
-            if (orCache.TryGetValue(key, out res))
+            if (_booOpCache.TryGetValue(key, out res))
                 return res;
 
             if (b.Ordinal > a.Ordinal)
@@ -92,7 +95,7 @@ namespace System.Text.RegularExpressions.SRM
                 res = (t == f ? t : MkBvSet(a.Ordinal, t, f));
             }
 
-            orCache[key] = res;
+            _booOpCache[key] = res;
             return res;
         }
 
@@ -110,9 +113,9 @@ namespace System.Text.RegularExpressions.SRM
             if (a == b)
                 return a;
 
-            var key = new BvSetPair(a, b);
+            var key = new BoolOpKey(BDDOp.AND, a, b);
             BDD res;
-            if (andCache.TryGetValue(key, out res))
+            if (_booOpCache.TryGetValue(key, out res))
                 return res;
 
             if (b.Ordinal > a.Ordinal)
@@ -134,7 +137,7 @@ namespace System.Text.RegularExpressions.SRM
                 res = (t == f ? t : MkBvSet(a.Ordinal, t, f));
             }
 
-            andCache[key] = res;
+            _booOpCache[key] = res;
             return res;
         }
 
@@ -156,12 +159,13 @@ namespace System.Text.RegularExpressions.SRM
             if (a == True)
                 return False;
 
+            var key = new BoolOpKey(BDDOp.NOT, a, null);
             BDD neg;
-            if (notCache.TryGetValue(a, out neg))
+            if (_booOpCache.TryGetValue(key, out neg))
                 return neg;
 
             neg = MkBvSet(a.Ordinal, MkNot(a.One), MkNot(a.Zero));
-            notCache[a] = neg;
+            _booOpCache[key] = neg;
             return neg;
         }
 
@@ -176,6 +180,9 @@ namespace System.Text.RegularExpressions.SRM
             return res;
         }
 
+        /// <summary>
+        /// Intersect all sets in the array
+        /// </summary>
         public BDD MkAnd(params BDD[] sets)
         {
             BDD res = True;
@@ -200,7 +207,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public BDD True
         {
-            get { return _True; }
+            get { return BDD.True; }
         }
 
         /// <summary>
@@ -208,7 +215,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public BDD False
         {
-            get { return _False; }
+            get { return BDD.False; }
         }
 
         /// <summary>
@@ -243,7 +250,7 @@ namespace System.Text.RegularExpressions.SRM
                 throw new AutomataException(AutomataExceptionKind.InvalidArgument);
             if (set.IsLeaf || k == 0)
                 return set;
-            return Shift_(set, 0 - k);
+            return Shift_(new Dictionary<BvSet_Int, BDD>(), set, 0 - k);
         }
 
         /// <summary>
@@ -257,36 +264,45 @@ namespace System.Text.RegularExpressions.SRM
                 throw new AutomataException(AutomataExceptionKind.InvalidArgument);
             if (set.IsLeaf || k == 0)
                 return set;
-            return Shift_(set, k);
+            return Shift_(new Dictionary<BvSet_Int, BDD>(), set, k);
         }
 
-        private BDD Shift_(BDD set, int k)
+        /// <summary>
+        /// Uses shiftCache to avoid recomputations in shared BDDs (DAGs).
+        /// shiftCache could be a field fo the algebra but would then  require locks for thread-safety.
+        /// </summary>
+        private BDD Shift_(Dictionary<BvSet_Int, BDD> shiftCache, BDD set, int k)
         {
             if (set.IsLeaf || k == 0)
                 return set;
+
+            int ordinal = set.Ordinal + k;
+
+            if (ordinal < 0)
+                return True;  //this arises if k is negative
 
             var key = new BvSet_Int(set, k);
 
             BDD res;
             if (shiftCache.TryGetValue(key, out res))
                 return res;
-
-            int ordinal = set.Ordinal + k;
-
-            if (ordinal < 0)
-                res = True;  //if k is negative
             else
             {
-                BDD zero = Shift_(set.Zero, k);
-                BDD one = Shift_(set.One, k);
+                //make sure another thread hasn't meanwhile alreday done this
+                if (shiftCache.TryGetValue(key, out res))
+                    return res;
+
+                BDD zero = Shift_(shiftCache, set.Zero, k);
+                BDD one = Shift_(shiftCache, set.One, k);
 
                 if (zero == one)
                     res = zero;
                 else
                     res = MkBvSet(ordinal, one, zero);
+
+                shiftCache[key] = res;
+                return res;
             }
-            shiftCache[key] = res;
-            return res;
         }
 
         #endregion
@@ -335,109 +351,96 @@ namespace System.Text.RegularExpressions.SRM
 
         private BDD CreateFromInterval1(uint mask, int bit, uint m, uint n)
         {
-            BDD set;
-            var pair = new Tuple<ulong, ulong>((ulong)m << 32, (ulong)n);
-            var key = new Tuple<int, Tuple<ulong, ulong>>(bit, pair);
-
-            if (intervalCache.TryGetValue(key, out set))
-                return set;
-
-            else
+            if (mask == 1) //base case: LSB
             {
+                if (n == 0)  //implies that m==0
+                    return MkBvSet(bit, False, True);
+                else if (m == 1) //implies that n==1
+                    return MkBvSet(bit, True, False);
+                else //m=0 and n=1, thus full range from 0 to ((mask << 1)-1)
+                    return True;
+            }
+            else if (m == 0 && n == ((mask << 1) - 1)) //full interval
+            {
+                return True;
+            }
+            else //mask > 1, i.e., mask = 2^b for some b > 0, and not full interval
+            {
+                //e.g. m = x41 = 100 0001, n = x59 = 101 1001, mask = x40 = 100 0000, ord = 6 = log2(b)
+                uint mb = m & mask; // e.g. mb = b
+                uint nb = n & mask; // e.g. nb = b
 
-                if (mask == 1) //base case: LSB
+                if (nb == 0) // implies that 1-branch is empty
                 {
-                    if (n == 0)  //implies that m==0
-                        set = MkBvSet(bit, False, True);
-                    else if (m == 1) //implies that n==1
-                        set = MkBvSet(bit, True, False);
-                    else //m=0 and n=1, thus full range from 0 to ((mask << 1)-1)
-                        set = True;
+                    var fcase = CreateFromInterval1(mask >> 1, bit - 1, m, n);
+                    return MkBvSet(bit, False, fcase);
                 }
-                else if (m == 0 && n == ((mask << 1) - 1)) //full interval
+                else if (mb == mask) // implies that 0-branch is empty
                 {
-                    set = True;
+                    var tcase = CreateFromInterval1(mask >> 1, bit - 1, m & ~mask, n & ~mask);
+                    return MkBvSet(bit, tcase, False);
                 }
-                else //mask > 1, i.e., mask = 2^b for some b > 0, and not full interval
+                else //split the interval in two
                 {
-                    //e.g. m = x41 = 100 0001, n = x59 = 101 1001, mask = x40 = 100 0000, ord = 6 = log2(b)
-                    uint mb = m & mask; // e.g. mb = b
-                    uint nb = n & mask; // e.g. nb = b
-
-                    if (nb == 0) // implies that 1-branch is empty
-                    {
-                        var fcase = CreateFromInterval1(mask >> 1, bit - 1, m, n);
-                        set = MkBvSet(bit, False, fcase);
-                    }
-                    else if (mb == mask) // implies that 0-branch is empty
-                    {
-                        var tcase = CreateFromInterval1(mask >> 1, bit - 1, m & ~mask, n & ~mask);
-                        set = MkBvSet(bit, tcase, False);
-                    }
-                    else //split the interval in two
-                    {
-                        var fcase = CreateFromInterval1(mask >> 1, bit - 1, m, mask - 1);
-                        var tcase = CreateFromInterval1(mask >> 1, bit - 1, 0, n & ~mask);
-                        set = MkBvSet(bit, tcase, fcase);
-                    }
+                    var fcase = CreateFromInterval1(mask >> 1, bit - 1, m, mask - 1);
+                    var tcase = CreateFromInterval1(mask >> 1, bit - 1, 0, n & ~mask);
+                    return MkBvSet(bit, tcase, fcase);
                 }
-                intervalCache[key] = set;
-                return set;
             }
         }
 
-        private BDD CreateFromInterval1(ulong mask, int bit, ulong m, ulong n)
-        {
-            BDD set;
-            var pair = new Tuple<ulong, ulong>(m, n);
-            var key = new Tuple<int, Tuple<ulong, ulong>>(bit, pair);
+        //private BDD CreateFromInterval1(ulong mask, int bit, ulong m, ulong n)
+        //{
+        //    BDD set;
+        //    var pair = new Tuple<ulong, ulong>(m, n);
+        //    var key = new Tuple<int, Tuple<ulong, ulong>>(bit, pair);
 
-            if (intervalCache.TryGetValue(key, out set))
-                return set;
+        //    if (intervalCache.TryGetValue(key, out set))
+        //        return set;
 
-            else
-            {
+        //    else
+        //    {
 
-                if (mask == 1) //base case: LSB
-                {
-                    if (n == 0)  //implies that m==0
-                        set = MkBvSet(bit, False, True);
-                    else if (m == 1) //implies that n==1
-                        set = MkBvSet(bit, True, False);
-                    else //m=0 and n=1, thus full range from 0 to ((mask << 1)-1)
-                        set = True;
-                }
-                else if (m == 0 && n == ((mask << 1) - 1)) //full interval
-                {
-                    set = True;
-                }
-                else //mask > 1, i.e., mask = 2^b for some b > 0, and not full interval
-                {
-                    //e.g. m = x41 = 100 0001, n = x59 = 101 1001, mask = x40 = 100 0000, ord = 6 = log2(b)
-                    ulong mb = m & mask; // e.g. mb = b
-                    ulong nb = n & mask; // e.g. nb = b
+        //        if (mask == 1) //base case: LSB
+        //        {
+        //            if (n == 0)  //implies that m==0
+        //                set = MkBvSet(bit, False, True);
+        //            else if (m == 1) //implies that n==1
+        //                set = MkBvSet(bit, True, False);
+        //            else //m=0 and n=1, thus full range from 0 to ((mask << 1)-1)
+        //                set = True;
+        //        }
+        //        else if (m == 0 && n == ((mask << 1) - 1)) //full interval
+        //        {
+        //            set = True;
+        //        }
+        //        else //mask > 1, i.e., mask = 2^b for some b > 0, and not full interval
+        //        {
+        //            //e.g. m = x41 = 100 0001, n = x59 = 101 1001, mask = x40 = 100 0000, ord = 6 = log2(b)
+        //            ulong mb = m & mask; // e.g. mb = b
+        //            ulong nb = n & mask; // e.g. nb = b
 
-                    if (nb == 0) // implies that 1-branch is empty
-                    {
-                        var fcase = CreateFromInterval1(mask >> 1, bit - 1, m, n);
-                        set = MkBvSet(bit, False, fcase);
-                    }
-                    else if (mb == mask) // implies that 0-branch is empty
-                    {
-                        var tcase = CreateFromInterval1(mask >> 1, bit - 1, m & ~mask, n & ~mask);
-                        set = MkBvSet(bit, tcase, False);
-                    }
-                    else //split the interval in two
-                    {
-                        var fcase = CreateFromInterval1(mask >> 1, bit - 1, m, mask - 1);
-                        var tcase = CreateFromInterval1(mask >> 1, bit - 1, 0, n & ~mask);
-                        set = MkBvSet(bit, tcase, fcase);
-                    }
-                }
-                intervalCache[key] = set;
-                return set;
-            }
-        }
+        //            if (nb == 0) // implies that 1-branch is empty
+        //            {
+        //                var fcase = CreateFromInterval1(mask >> 1, bit - 1, m, n);
+        //                set = MkBvSet(bit, False, fcase);
+        //            }
+        //            else if (mb == mask) // implies that 0-branch is empty
+        //            {
+        //                var tcase = CreateFromInterval1(mask >> 1, bit - 1, m & ~mask, n & ~mask);
+        //                set = MkBvSet(bit, tcase, False);
+        //            }
+        //            else //split the interval in two
+        //            {
+        //                var fcase = CreateFromInterval1(mask >> 1, bit - 1, m, mask - 1);
+        //                var tcase = CreateFromInterval1(mask >> 1, bit - 1, 0, n & ~mask);
+        //                set = MkBvSet(bit, tcase, fcase);
+        //            }
+        //        }
+        //        intervalCache[key] = set;
+        //        return set;
+        //    }
+        //}
 
         /// <summary>
         /// Convert the set into an equivalent array of uint ranges.
@@ -455,7 +458,7 @@ namespace System.Text.RegularExpressions.SRM
                 return null;
         }
 
-        #region Member generation and choice
+        #region domain size andf min computation
 
         /// <summary>
         /// Calculate the number of elements in the set. Returns 0 when set is full and maxBit is 63.
@@ -472,12 +475,12 @@ namespace System.Text.RegularExpressions.SRM
                 return 0UL;
             else if (set == True)
             {
+                //e.g if maxBit is 15 then the return value is 1 << 16, i.e., 2^16
                 return ((1UL << maxBit) << 1);
             }
             else
             {
-                var res = CalculateCardinality1(set);
-                //sizeCache.Clear();
+                var res = CalculateCardinality1(new Dictionary<BDD, ulong>(), set);
                 if (maxBit > set.Ordinal)
                 {
                     res = (1UL << (maxBit - set.Ordinal)) * res;
@@ -486,7 +489,15 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
-        private ulong CalculateCardinality1(BDD set)
+        /// <summary>
+        /// Caches previously calculated values in sizeCache so that computations are not repeated inside a BDD for the same sub-BDD.
+        /// Thus the number of internal calls is propotional to the number of nodes of the BDD, that could otherwise be exponential in the worst case.
+        /// The size cache cused to be a static field but the current way makes it thread-safe without use of locks.
+        /// </summary>
+        /// <param name="sizeCache">previously computed sizes</param>
+        /// <param name="set">given set to compute size of</param>
+        /// <returns></returns>
+        private ulong CalculateCardinality1(Dictionary<BDD, ulong> sizeCache, BDD set)
         {
             ulong size;
             if (sizeCache.TryGetValue(set, out size))
@@ -503,7 +514,7 @@ namespace System.Text.RegularExpressions.SRM
                 }
                 else
                 {
-                    sizeR = ((uint)1 << (((set.Ordinal - 1) - set.One.Ordinal))) * CalculateCardinality1(set.One);
+                    sizeR = ((uint)1 << (((set.Ordinal - 1) - set.One.Ordinal))) * CalculateCardinality1(sizeCache, set.One);
                 }
             }
             else if (set.Zero.IsFull)
@@ -515,12 +526,12 @@ namespace System.Text.RegularExpressions.SRM
                 }
                 else
                 {
-                    sizeR = (1UL << (((set.Ordinal - 1) - set.One.Ordinal))) * CalculateCardinality1(set.One);
+                    sizeR = (1UL << (((set.Ordinal - 1) - set.One.Ordinal))) * CalculateCardinality1(sizeCache, set.One);
                 }
             }
             else
             {
-                sizeL = (1UL << (((set.Ordinal - 1) - set.Zero.Ordinal))) * CalculateCardinality1(set.Zero);
+                sizeL = (1UL << (((set.Ordinal - 1) - set.Zero.Ordinal))) * CalculateCardinality1(sizeCache, set.Zero);
                 if (set.One == False)
                 {
                     sizeR = 0UL;
@@ -531,7 +542,7 @@ namespace System.Text.RegularExpressions.SRM
                 }
                 else
                 {
-                    sizeR = (1UL << (((set.Ordinal - 1) - set.One.Ordinal))) * CalculateCardinality1(set.One);
+                    sizeR = (1UL << (((set.Ordinal - 1) - set.One.Ordinal))) * CalculateCardinality1(sizeCache, set.One);
                 }
             }
             size = sizeL + sizeR;
@@ -552,26 +563,31 @@ namespace System.Text.RegularExpressions.SRM
 
         #endregion
 
-        private BDD ProjectBit_(BDD bdd, int bit, Dictionary<BDD, BDD> cache)
-        {
-            BDD res;
-            if (!cache.TryGetValue(bdd, out res))
-            {
-                if (bdd.IsLeaf || bdd.Ordinal < bit)
-                    res = bdd;
-                else if (bdd.Ordinal == bit)
-                    res = MkOr(bdd.One, bdd.Zero);
-                else
-                {
-                    var bdd1 = ProjectBit_(bdd.One, bit, cache);
-                    var bdd0 = ProjectBit_(bdd.Zero, bit, cache);
-                    res = MkBvSet(bdd.Ordinal, bdd1, bdd0);
-                }
-                cache[bdd] = res;
-            }
-            return res;
-        }
+        //private BDD ProjectBit_(BDD bdd, int bit, Dictionary<BDD, BDD> cache)
+        //{
+        //    BDD res;
+        //    if (!cache.TryGetValue(bdd, out res))
+        //    {
+        //        if (bdd.IsLeaf || bdd.Ordinal < bit)
+        //            res = bdd;
+        //        else if (bdd.Ordinal == bit)
+        //            res = MkOr(bdd.One, bdd.Zero);
+        //        else
+        //        {
+        //            var bdd1 = ProjectBit_(bdd.One, bit, cache);
+        //            var bdd0 = ProjectBit_(bdd.Zero, bit, cache);
+        //            res = MkBvSet(bdd.Ordinal, bdd1, bdd0);
+        //        }
+        //        cache[bdd] = res;
+        //    }
+        //    return res;
+        //}
 
+        /// <summary>
+        /// Returns true. This is a very strong property that relies on the Boolean operation caches.
+        /// Any two equivalent BDDs are identical.
+        /// This property can potentially be dropped at the expense of efficiency.
+        /// </summary>
         public bool IsExtensional
         {
             get { return true; }

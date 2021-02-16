@@ -238,11 +238,10 @@ namespace System.Text.RegularExpressions.SRM
         /// Assumes that set is a union of some minterms (or empty).
         /// If null then 0 is returned.
         /// </summary>
-        public ulong ConvertFromCharSet(BDD set)
+        public ulong ConvertFromCharSet(BDDAlgebra alg, BDD set)
         {
             if (set == null)
                 return zero;
-            var alg = set.algebra;
             ulong res = this.zero;
             for (int i = 0; i < partition.Length; i++)
             {

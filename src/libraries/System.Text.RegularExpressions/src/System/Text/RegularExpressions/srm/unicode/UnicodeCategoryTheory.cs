@@ -179,13 +179,13 @@ namespace System.Text.RegularExpressions.SRM
                     else
                         catConditions[i] = solver.MkCharPredicate(
                               UnicodeCategoryPredicateName(i),
-                              solver.ConvertFromCharSet(solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.CP437Bdd[i])));
+                              solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.CP437Bdd[i])));
                 }
                 else
                 {
                     catConditions[i] = solver.MkCharPredicate(
                          UnicodeCategoryPredicateName(i),
-                         solver.ConvertFromCharSet(solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeBdd[i])));
+                         solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeBdd[i])));
                 }
             }
             return catConditions[i];
@@ -205,13 +205,13 @@ namespace System.Text.RegularExpressions.SRM
                     {
                         //use BDDs
                         whiteSpaceCondition = solver.MkCharPredicate("IsWhitespace",
-                                     solver.ConvertFromCharSet(solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.CP437WhitespaceBdd)));
+                                     solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.CP437WhitespaceBdd)));
                     }
                     else
                     {
                         //use BDDs
                         whiteSpaceCondition = solver.MkCharPredicate("IsWhitespace",
-                                     solver.ConvertFromCharSet(solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeWhitespaceBdd)));
+                                     solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeWhitespaceBdd)));
                     }
                 }
                 return whiteSpaceCondition;
@@ -232,13 +232,13 @@ namespace System.Text.RegularExpressions.SRM
                     {
                         //use BDDs
                         wordLetterCondition = solver.MkCharPredicate("IsWordletter",
-                                     solver.ConvertFromCharSet(solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.CP437WordCharacterBdd)));
+                                     solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.CP437WordCharacterBdd)));
                     }
                     else
                     {
                         //use BDDs
                         wordLetterCondition = solver.MkCharPredicate("IsWordletter",
-                                     solver.ConvertFromCharSet(solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeWordCharacterBdd)));
+                                     solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeWordCharacterBdd)));
                     }
                 }
                 return wordLetterCondition;
