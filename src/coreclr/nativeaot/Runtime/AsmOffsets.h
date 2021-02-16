@@ -66,8 +66,6 @@ ASM_OFFSET(   10,    20, InterfaceDispatchCache, m_rgEntries)
 ASM_SIZEOF(    8,    10, InterfaceDispatchCacheEntry)
 #endif
 
-ASM_OFFSET(    4,     8, StaticClassConstructionContext, m_initialized)
-
 #ifdef FEATURE_DYNAMIC_CODE
 ASM_OFFSET(    0,     0, CallDescrData, pSrc)
 ASM_OFFSET(    4,     8, CallDescrData, numStackSlots)
