@@ -284,7 +284,11 @@ namespace System.Reflection.Runtime.TypeInfos
 
             // We only permit creating parameterized types if the pay-for-play policy specifically allows them *or* if the result
             // type would be an open type.
-            if (typeHandle.IsNull() && !elementType.ContainsGenericParameters && !(elementType is RuntimeCLSIDTypeInfo))
+            if (typeHandle.IsNull() && !elementType.ContainsGenericParameters
+#if FEATURE_COMINTEROP
+                && !(elementType is RuntimeCLSIDTypeInfo)
+#endif
+                )
                 throw ReflectionCoreExecution.ExecutionDomain.CreateMissingArrayTypeException(elementType, multiDim, rank);
         }
     }
@@ -446,6 +450,7 @@ namespace System.Reflection.Runtime.TypeInfos
         }
     }
 
+#if FEATURE_COMINTEROP
     internal sealed partial class RuntimeCLSIDTypeInfo
     {
         public static RuntimeCLSIDTypeInfo GetRuntimeCLSIDTypeInfo(Guid clsid, string server)
@@ -464,4 +469,5 @@ namespace System.Reflection.Runtime.TypeInfos
             public static readonly ClsIdTypeTable Table = new ClsIdTypeTable();
         }
     }
+#endif
 }
