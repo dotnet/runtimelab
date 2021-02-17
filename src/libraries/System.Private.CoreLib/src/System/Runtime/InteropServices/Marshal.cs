@@ -149,7 +149,7 @@ namespace System.Runtime.InteropServices
             Type t = typeof(T);
             if (t.IsGenericType)
             {
-                throw new ArgumentException(SR.Argument_NeedNonGenericType, nameof(t));
+                throw new ArgumentException(SR.Argument_NeedNonGenericType, nameof(T));
             }
 
             return SizeOfHelper(t, throwIfNotMarshalable: true);
@@ -607,7 +607,7 @@ namespace System.Runtime.InteropServices
             Type structureType = typeof(T);
             if (structureType.IsGenericType)
             {
-                throw new ArgumentException(SR.Argument_NeedNonGenericType, nameof(structureType));
+                throw new ArgumentException(SR.Argument_NeedNonGenericType, nameof(T));
             }
 
             return (T)PtrToStructureHelper(ptr, structureType);
@@ -933,9 +933,9 @@ namespace System.Runtime.InteropServices
                 throw new ArgumentException(SR.Argument_NeedNonGenericType, nameof(TDelegate));
             }
 
-            // COMPAT: This block of code isn't entirely correct.
-            // Users passing in typeof(MulticastDelegate) as 't' skip this check
-            // since Delegate is a base type of MulticastDelegate.
+            // For backward compatibility, we allow lookup of existing delegate to
+            // function pointer mappings using abstract MulticastDelegate type. We will check
+            // for the non-abstract delegate type later if no existing mapping is found.
             Type? c = t.BaseType;
             if (c != typeof(Delegate) && c != typeof(MulticastDelegate))
             {
@@ -956,6 +956,8 @@ namespace System.Runtime.InteropServices
             return GetFunctionPointerForDelegateInternal(d);
         }
 
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+            Justification = "AOT compilers can see the T.")]
         public static IntPtr GetFunctionPointerForDelegate<TDelegate>(TDelegate d) where TDelegate : notnull
         {
             return GetFunctionPointerForDelegate((Delegate)(object)d);
