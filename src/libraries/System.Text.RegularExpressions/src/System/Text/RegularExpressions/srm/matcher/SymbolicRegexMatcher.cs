@@ -129,10 +129,6 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         [NonSerialized]
         internal SymbolicRegexNode<S> A;
-        [NonSerialized]
-        private bool A_allLoopsAreLazy = false;
-        [NonSerialized]
-        private bool A_containsLazyLoop = false;
 
         /// <summary>
         /// The RegexOptions this regex was created with
@@ -486,8 +482,6 @@ namespace System.Text.RegularExpressions.SRM
 
         private void InitializeRegexes()
         {
-            A_allLoopsAreLazy = A.CheckIfAllLoopsAreLazy();
-            A_containsLazyLoop = A.CheckIfContainsLazyLoop();
             A1 = builder.MkConcat(builder.dotStar, A);
             Ar = A.Reverse();
             // let K be the smallest k s.t. 2^k >= atoms.Length + 1
@@ -637,11 +631,13 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         internal Match FindMatchSafe(bool quick, string input, int startat = 0, int endat = -1)
         {
+#if DEBUG
             if (string.IsNullOrEmpty(input))
                     throw new ArgumentException($"'{nameof(input)}' must be a nonempty string");
 
             if (startat >= input.Length || startat < 0)
                     throw new ArgumentOutOfRangeException(nameof(startat));
+#endif
 
             int k = ((endat < 0 | endat >= input.Length) ? input.Length : endat + 1);
 
@@ -649,7 +645,6 @@ namespace System.Text.RegularExpressions.SRM
             //initial start position in the input is i = 0
             int i = startat;
 
-            bool AisLazy = A_allLoopsAreLazy;
             bool AisSingleSeq = A.IsSequenceOfSingletons;
 
             int i_q0_A1;
@@ -676,13 +671,19 @@ namespace System.Text.RegularExpressions.SRM
                 }
                 else
                 {
-                    //If A is lazy then there is no need to maximize length of end-position
-                    if (AisLazy)
+                    ////If A is lazy then there is no need to maximize length of end-position
+                    //if (AisLazy)
+                    //{
+                    //    if (AisSingleSeq)
+                    //        i_start = i - A.sequenceOfSingletons_count + 1;
+                    //    else
+                    //        i_start = FindStartPosition(input, i, i_q0_A1);
+                    //    i_end = i;
+                    //}
+                    if (AisSingleSeq)
                     {
-                        if (AisSingleSeq)
-                            i_start = i - A.sequenceOfSingletons_count + 1;
-                        else
-                            i_start = FindStartPosition(input, i, i_q0_A1);
+                        // TBD: this case should be covered by watchdog
+                        i_start = i - A.sequenceOfSingletons_count + 1;
                         i_end = i;
                     }
                     else
@@ -738,10 +739,12 @@ namespace System.Text.RegularExpressions.SRM
 
                 if (q.IsNullable(input, i+1))
                 {
+                    // stop here if q is not eager
+                    if (q.Node.info.IsLazy)
+                        return i;
                     //accepting state has been reached
                     //record the position
                     i_end = i;
-                    // TBD: should stop here if q is not part of an eager loop
                 }
                 else if (q.Node == builder.nothing)
                 {
