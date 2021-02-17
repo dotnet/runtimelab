@@ -148,7 +148,7 @@ extern "C" void PopulateDebugHeaders()
     MAKE_SIZE_ENTRY(gc_alloc_context);
     MAKE_DEBUG_FIELD_ENTRY(gc_alloc_context, alloc_ptr);
     MAKE_DEBUG_FIELD_ENTRY(gc_alloc_context, alloc_limit);
-    MAKE_DEBUG_FIELD_ENTRY(gc_alloc_context, alloc_bytes;);
+    MAKE_DEBUG_FIELD_ENTRY(gc_alloc_context, alloc_bytes);
     MAKE_DEBUG_FIELD_ENTRY(gc_alloc_context, alloc_bytes_uoh);
     MAKE_DEBUG_FIELD_ENTRY(gc_alloc_context, alloc_count);
 
@@ -259,7 +259,7 @@ extern "C" void PopulateDebugHeaders()
 
     // Some DAC functions need to know the module base address, easiest way is with
     // the HANDLE to our module which is the base address.
-    HANDLE moduleBaseAddress = PalGetModuleHandleFromPointer(&PopulateDebugHeaders);
+    HANDLE moduleBaseAddress = PalGetModuleHandleFromPointer((void *)&PopulateDebugHeaders);
     MAKE_GLOBAL_ENTRY(moduleBaseAddress);
 
     g_NativeAOTRuntimeDebugHeader.DebugTypesList = currentType;
