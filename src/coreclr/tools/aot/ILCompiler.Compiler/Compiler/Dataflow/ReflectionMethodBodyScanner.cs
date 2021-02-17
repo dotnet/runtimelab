@@ -1096,9 +1096,8 @@ namespace ILCompiler.Dataflow
                             reflectionContext.AnalyzingPattern();
 
                             var parameters = calledMethod.Signature;
-                            if ((parameters.Length == 3 && (methodParams[2].Kind == ValueNodeKind.MethodReturn || methodParams[2].Kind == ValueNodeKind.ConstInt || methodParams[2].Kind == ValueNodeKind.LoadField)
-                                && (methodParams[2].AsConstInt() == null || methodParams[2].AsConstInt() != 0)) ||
-                                (parameters.Length == 5 && (methodParams[4].AsConstInt() == null || methodParams[4].AsConstInt() != 0)))
+                            if ((parameters.Length == 3 && parameters[2].IsWellKnownType(WellKnownType.Boolean) && methodParams[2].AsConstInt() != 0) ||
+                                (parameters.Length == 5 && methodParams[4].AsConstInt() != 0))
                             {
                                 reflectionContext.RecordUnrecognizedPattern(2096, $"Call to '{calledMethod.GetDisplayName()}' can perform case insensitive lookup of the type, currently ILLink can not guarantee presence of all the matching types");
                                 break;
@@ -1708,7 +1707,7 @@ namespace ILCompiler.Dataflow
                             calledMethod.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresUnreferencedCodeAttribute"))
                         {
                             string message =
-                                $"Calling '{calledMethod.GetDisplayName()}' which has `RequiresUnreferencedCodeAttribute` can break functionality when trimming application code. {DiagnosticUtilities.GetRequiresUnreferencedCodeAttributeMessage(calledMethod)}.";
+                                $"Using method '{calledMethod.GetDisplayName()}' which has 'RequiresUnreferencedCodeAttribute' can break functionality when trimming application code. {DiagnosticUtilities.GetRequiresUnreferencedCodeAttributeMessage(calledMethod)}.";
 
                             //if (requiresUnreferencedCode.Url != null)
                             //{
