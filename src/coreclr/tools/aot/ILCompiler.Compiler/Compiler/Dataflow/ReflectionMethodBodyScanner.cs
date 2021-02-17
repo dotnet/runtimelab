@@ -1709,7 +1709,7 @@ namespace ILCompiler.Dataflow
                         {
                             string attributeMessage = DiagnosticUtilities.GetRequiresUnreferencedCodeAttributeMessage(calledMethod);
 
-                            if (attributeMessage.Length > 0 && attributeMessage[attributeMessage.Length - 1] != '.')
+                            if (attributeMessage.Length > 0 && !attributeMessage.EndsWith('.'))
                                 attributeMessage += '.';
 
                             string message =
@@ -1735,7 +1735,7 @@ namespace ILCompiler.Dataflow
                         {
                             string attributeMessage = DiagnosticUtilities.GetRequiresDynamicCodeAttributeMessage(calledMethod);
 
-                            if (attributeMessage.Length > 0 && attributeMessage[attributeMessage.Length - 1] != '.')
+                            if (attributeMessage.Length > 0 && !attributeMessage.EndsWith('.'))
                                 attributeMessage += '.';
 
                             string message = $"{String.Format(Resources.Strings.IL9700, calledMethod.GetDisplayName())} {attributeMessage}";
