@@ -120,7 +120,6 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         internal int[] SerializeCompact(BDD bdd)
         {
-            //return SerializeBasedOnRanges(bdd);
             return SerializeCompact2(bdd);
         }
 
@@ -196,12 +195,15 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         internal BDD DeserializeCompact(int[] arcs)
         {
-            //return DeserializeBasedOnRanges(arcs);
-            return DeserializeCompact2(arcs);
+            lock (this)
+            {
+                return DeserializeCompact2(arcs);
+            }
         }
 
         /// <summary>
-        /// Recreates a BDD from an int array that has been created using SerializeCompact
+        /// Recreates a BDD from an int array that has been created using SerializeCompact.
+        /// Is executed in a single thread mode.
         /// </summary>
         private BDD DeserializeCompact2(int[] arcs)
         {
@@ -240,7 +242,7 @@ namespace System.Text.RegularExpressions.SRM
                             throw new AutomataException(AutomataExceptionKind.CompactDeserializationError);
                         var oneBranch = bddMap[one];
                         var zeroBranch = bddMap[zero];
-                        var bdd = MkBvSet(x, oneBranch, zeroBranch);
+                        var bdd = MkBDD(x, oneBranch, zeroBranch);
                         bddMap[i] = bdd;
                         if (bdd.Ordinal <= bdd.One.Ordinal || bdd.Ordinal <= bdd.Zero.Ordinal)
                             throw new AutomataException(AutomataExceptionKind.CompactDeserializationError);

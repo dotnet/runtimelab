@@ -58,11 +58,6 @@ namespace System.Text.RegularExpressions.SRM
         S MkNot(S predicate);
 
         /// <summary>
-        /// Compute the predicate and(predicate1,not(predicate2))
-        /// </summary>
-        S MkDiff(S predicate1, S predicate2);
-
-        /// <summary>
         /// Returns true iff the predicate is satisfiable.
         /// </summary>
         bool IsSatisfiable(S predicate);
@@ -73,7 +68,13 @@ namespace System.Text.RegularExpressions.SRM
         bool AreEquivalent(S predicate1, S predicate2);
 
         /// <summary>
-        /// True iff any two equivalent predicates are identical.
+        /// True means then if two predicates are equivalent then their hashcodes are equal.
+        /// This is a weak form of extensionality.
+        /// </summary>
+        bool HashCodesRespectEquivalence { get; }
+
+        /// <summary>
+        /// True means that if two predicates are equivalent then they are identical.
         /// </summary>
         bool IsExtensional { get; }
 

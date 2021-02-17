@@ -48,7 +48,6 @@ namespace System.Text.RegularExpressions.SRM
         private BDD(int ordinal)
         {
             Ordinal = ordinal;
-            //let the ordinal also be the hashcode
             hashcode = (ordinal, 0, 0).GetHashCode();
         }
 
@@ -147,6 +146,16 @@ namespace System.Text.RegularExpressions.SRM
             return res;
         }
 
+        /// <summary>
+        /// O(1) operation that returns the precomputed hashcode.
+        /// </summary>
         public override int GetHashCode() => hashcode;
+
+        /// <summary>
+        /// A shallow equality check that holds if ordinals are identical and one's are identical and zero's are identical.
+        /// This equality is used in the _bddCache lookup.
+        /// </summary>
+        public override bool Equals(object? obj) =>
+            obj is BDD bdd && (this == bdd || !IsLeaf && !bdd.IsLeaf && One == bdd.One && Zero == bdd.Zero);
     }
 }

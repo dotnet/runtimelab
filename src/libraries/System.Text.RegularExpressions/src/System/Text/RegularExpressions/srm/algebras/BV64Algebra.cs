@@ -122,6 +122,14 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
+        public bool HashCodesRespectEquivalence
+        {
+            get
+            {
+                return true;
+            }
+        }
+
         public ulong True
         {
             get
@@ -183,12 +191,6 @@ namespace System.Text.RegularExpressions.SRM
         public ulong MkAnd(ulong predicate1, ulong predicate2)
         {
             return predicate1 & predicate2;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ulong MkDiff(ulong predicate1, ulong predicate2)
-        {
-            return predicate1 & ~predicate2;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

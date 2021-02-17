@@ -124,6 +124,14 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
+        public bool HashCodesRespectEquivalence
+        {
+            get
+            {
+                return true;
+            }
+        }
+
         public BV True
         {
             get
@@ -185,12 +193,6 @@ namespace System.Text.RegularExpressions.SRM
         public BV MkAnd(BV predicate1, BV predicate2)
         {
             return predicate1 & predicate2;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public BV MkDiff(BV predicate1, BV predicate2)
-        {
-            return predicate1 & ~predicate2;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

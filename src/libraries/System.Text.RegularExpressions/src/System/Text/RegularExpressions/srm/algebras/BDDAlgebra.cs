@@ -3,54 +3,71 @@
 
 using System;
 using System.Collections.Generic;
-using BvSetPair = System.Tuple<System.Text.RegularExpressions.SRM.BDD, System.Text.RegularExpressions.SRM.BDD>;
-using BvSet_Int = System.Tuple<System.Text.RegularExpressions.SRM.BDD, int>;
-using BvSetKey = System.Tuple<int, System.Text.RegularExpressions.SRM.BDD, System.Text.RegularExpressions.SRM.BDD>;
-using BoolOpKey = System.Tuple<System.Text.RegularExpressions.SRM.BDDOp, System.Text.RegularExpressions.SRM.BDD, System.Text.RegularExpressions.SRM.BDD>;
+using BDD_Int = System.Tuple<System.Text.RegularExpressions.SRM.BDD, int>;
+using BoolOpKey = System.Tuple<System.Text.RegularExpressions.SRM.BoolOp, System.Text.RegularExpressions.SRM.BDD, System.Text.RegularExpressions.SRM.BDD>;
 
 namespace System.Text.RegularExpressions.SRM
 {
-    internal enum BDDOp
+
+    /// <summary>
+    /// Boolean operations over BDDs.
+    /// </summary>
+    internal enum BoolOp
     {
-        AND, OR, NOT
+        OR, AND, XOR, NOT
     }
 
     /// <summary>
     /// Solver for Specialized BDDs.
+    /// TBD: policy for clearing/reducing the caches when they grow too large.
+    /// Ultimately, the caches are crucial for efficiency, not for correctness.
     /// </summary>
     internal abstract class BDDAlgebra : IBooleanAlgebra<BDD>
     {
         /// <summary>
-        /// Operation cache for Boolean operations over BDDs
+        /// Operation cache for binary Boolean operations over BDDs.
+        /// Here BoolOpKey.Item1 is one of: OR, AND, XOR.
         /// </summary>
-        private Dictionary<BoolOpKey, BDD> _boolOpCache = new Dictionary<BoolOpKey, BDD>();
+        private Dictionary<BoolOpKey, BDD> _binOpCache = new Dictionary<BoolOpKey, BDD>();
+        /// <summary>
+        /// Operation cache for complementing BDDs.
+        /// </summary>
+        private Dictionary<BDD, BDD> _notCache = new Dictionary<BDD, BDD>();
 
         /// <summary>
-        /// Internalize the creation of all BDDs so that any two BDDs with same bit and children are the same pointers.
+        /// Internalize the creation of BDDs so that two BDDs with same ordinal and identical children are the same object.
+        /// The algorithms do not rely on 100% internalization
+        /// (they could but this would make it difficult (or near impossible) to clear caches.
+        /// Allowing distinct but equivalent BDDs is also a tradeoff between efficiency and flexibility.
         /// </summary>
-        private Dictionary<BvSetKey, BDD> bvsetCache = new Dictionary<BvSetKey, BDD>();
+        private Dictionary<BDD, BDD> _bddCache = new Dictionary<BDD, BDD>();
 
         /// <summary>
         /// Generator for minterms.
         /// </summary>
-        private MintermGenerator<BDD> mintermGen;
+        private MintermGenerator<BDD> _mintermGen;
 
         /// <summary>
-        /// Construct a solver for bitvector sets.
+        /// Construct a solver for BDDs.
         /// </summary>
         public BDDAlgebra()
         {
-            mintermGen = new MintermGenerator<BDD>(this);
+            _mintermGen = new MintermGenerator<BDD>(this);
         }
 
-        public BDD MkBvSet(int nr, BDD one, BDD zero)
+        /// <summary>
+        /// Create a BDD with given ordinal and given one and zero child.
+        /// Returns the BDD from the cache if one already exists.
+        /// Must be executed in a single thread mode.
+        /// </summary>
+        public BDD MkBDD(int ordinal, BDD one, BDD zero)
         {
-            var key = new BvSetKey(nr, one, zero);
+            var key = new BDD(ordinal, one, zero);
             BDD set;
-            if (!bvsetCache.TryGetValue(key, out set))
+            if (!_bddCache.TryGetValue(key, out set))
             {
-                set = new BDD(nr, one, zero);
-                bvsetCache[key] = set;
+                set = key;
+                _bddCache[key] = key;
             }
             return set;
         }
@@ -62,6 +79,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public BDD MkOr(BDD a, BDD b)
         {
+            //one of a or b is a leaf
             if (a == False)
                 return b;
             if (b == False)
@@ -71,32 +89,12 @@ namespace System.Text.RegularExpressions.SRM
             if (a == b)
                 return a;
 
-            var key = new BoolOpKey(BDDOp.OR, a, b);
+            var key = new BoolOpKey(BoolOp.OR, a, b);
             BDD res;
-            if (_boolOpCache.TryGetValue(key, out res))
+            if (_binOpCache.TryGetValue(key, out res))
                 return res;
 
-            if (b.Ordinal > a.Ordinal)
-            {
-                BDD t = MkOr(a, b.One);
-                BDD f = MkOr(a, b.Zero);
-                res = (t == f ? t : MkBvSet(b.Ordinal, t, f));
-            }
-            else if (a.Ordinal > b.Ordinal)
-            {
-                BDD t = MkOr(a.One, b);
-                BDD f = MkOr(a.Zero, b);
-                res = (t == f ? t : MkBvSet(a.Ordinal, t, f));
-            }
-            else //a.bit == b.bit
-            {
-                BDD t = MkOr(a.One, b.One);
-                BDD f = MkOr(a.Zero, b.Zero);
-                res = (t == f ? t : MkBvSet(a.Ordinal, t, f));
-            }
-
-            _boolOpCache[key] = res;
-            return res;
+            return MkBoolOP_lock(key);
         }
 
         /// <summary>
@@ -113,40 +111,12 @@ namespace System.Text.RegularExpressions.SRM
             if (a == b)
                 return a;
 
-            var key = new BoolOpKey(BDDOp.AND, a, b);
+            var key = new BoolOpKey(BoolOp.AND, a, b);
             BDD res;
-            if (_boolOpCache.TryGetValue(key, out res))
+            if (_binOpCache.TryGetValue(key, out res))
                 return res;
 
-            if (b.Ordinal > a.Ordinal)
-            {
-                BDD t = MkAnd(a, b.One);
-                BDD f = MkAnd(a, b.Zero);
-                res = (t == f ? t : MkBvSet(b.Ordinal, t, f));
-            }
-            else if (a.Ordinal > b.Ordinal)
-            {
-                BDD t = MkAnd(a.One, b);
-                BDD f = MkAnd(a.Zero, b);
-                res = (t == f ? t : MkBvSet(a.Ordinal, t, f));
-            }
-            else //a.bit == b.bit
-            {
-                BDD t = MkAnd(a.One, b.One);
-                BDD f = MkAnd(a.Zero, b.Zero);
-                res = (t == f ? t : MkBvSet(a.Ordinal, t, f));
-            }
-
-            _boolOpCache[key] = res;
-            return res;
-        }
-
-        /// <summary>
-        /// Make the difference a - b
-        /// </summary>
-        public BDD MkDiff(BDD a, BDD b)
-        {
-            return MkAnd(a, MkNot(b));
+            return MkBoolOP_lock(key);
         }
 
         /// <summary>
@@ -159,13 +129,151 @@ namespace System.Text.RegularExpressions.SRM
             if (a == True)
                 return False;
 
-            var key = new BoolOpKey(BDDOp.NOT, a, null);
             BDD neg;
-            if (_boolOpCache.TryGetValue(key, out neg))
+            if (_notCache.TryGetValue(a, out neg))
                 return neg;
 
-            neg = MkBvSet(a.Ordinal, MkNot(a.One), MkNot(a.Zero));
-            _boolOpCache[key] = neg;
+            return MkBoolOP_lock(new BoolOpKey(BoolOp.NOT, a, null));
+        }
+
+        /// <summary>
+        /// Apply the operation in the key in a thread safe manner.
+        /// All new entries in _boolOpCache, _notCache, and _bddCache are created through this call.
+        /// </summary>
+        /// <param name="key">containing the Boolean operation and two BDD arguments</param>
+        private BDD MkBoolOP_lock(BoolOpKey key)
+        {
+            //updates to _boolOpCache and _notCache  may only happen through this method call
+            lock (this)
+            {
+                BoolOp op = key.Item1;
+                BDD a = key.Item2;
+                BDD? b = key.Item3;
+                BDD res;
+
+                if (op == BoolOp.NOT)
+                {
+                    res = MkBDD(a.Ordinal, MkNot_rec(a.One), MkNot_rec(a.Zero));
+                    _notCache[a] = res;
+                    return res;
+                }
+
+                if (b.Ordinal > a.Ordinal)
+                {
+                    BDD t = MkBinBoolOP_rec(op, a, b.One);
+                    BDD f = MkBinBoolOP_rec(op, a, b.Zero);
+                    res = (t == f ? t : MkBDD(b.Ordinal, t, f));
+                }
+                else if (a.Ordinal > b.Ordinal)
+                {
+                    BDD t = MkBinBoolOP_rec(op, a.One, b);
+                    BDD f = MkBinBoolOP_rec(op, a.Zero, b);
+                    res = (t == f ? t : MkBDD(a.Ordinal, t, f));
+                }
+                else
+                {
+                    BDD t = MkBinBoolOP_rec(op, a.One, b.One);
+                    BDD f = MkBinBoolOP_rec(op, a.Zero, b.Zero);
+                    res = (t == f ? t : MkBDD(a.Ordinal, t, f));
+                }
+                _binOpCache[key] = res;
+                return res;
+            }
+        }
+
+        /// <summary>
+        /// Applies the binary Boolean operation op and constructs the BDD recursively from a and b.
+        /// Is executed in a single thread mode.
+        /// </summary>
+        /// <param name="op">given binary Boolean operation</param>
+        /// <param name="a">first BDD</param>
+        /// <param name="b">second BDD</param>
+        /// <returns></returns>
+        private BDD MkBinBoolOP_rec(BoolOp op, BDD a, BDD b)
+        {
+            #region the cases when one of a or b is a leaf or when a == b
+            switch (op)
+            {
+                case BoolOp.OR:
+                    if (a == False)
+                        return b;
+                    if (b == False)
+                        return a;
+                    if (a == True || b == True)
+                        return True;
+                    if (a == b)
+                        return a;
+                    break;
+                case BoolOp.AND:
+                    if (a == True)
+                        return b;
+                    if (b == True)
+                        return a;
+                    if (a == False || b == False)
+                        return False;
+                    if (a == b)
+                        return a;
+                    break;
+                default: //BDDOp.XOR
+                    if (a == False)
+                        return b;
+                    if (b == False)
+                        return a;
+                    if (a == b)
+                        return False;
+                    if (a == True)
+                        return MkNot_rec(b);
+                    if (b == True)
+                        return MkNot_rec(a);
+                    break;
+            }
+            #endregion
+
+            var key = new BoolOpKey(op, a, b);
+            BDD res;
+            if (_binOpCache.TryGetValue(key, out res))
+                return res;
+
+            if (b.Ordinal > a.Ordinal)
+            {
+                BDD t = MkBinBoolOP_rec(op, a, b.One);
+                BDD f = MkBinBoolOP_rec(op, a, b.Zero);
+                res = (t == f ? t : MkBDD(b.Ordinal, t, f));
+            }
+            else if (a.Ordinal > b.Ordinal)
+            {
+                BDD t = MkBinBoolOP_rec(op, a.One, b);
+                BDD f = MkBinBoolOP_rec(op, a.Zero, b);
+                res = (t == f ? t : MkBDD(a.Ordinal, t, f));
+            }
+            else
+            {
+                BDD t = MkBinBoolOP_rec(op, a.One, b.One);
+                BDD f = MkBinBoolOP_rec(op, a.Zero, b.Zero);
+                res = (t == f ? t : MkBDD(a.Ordinal, t, f));
+            }
+
+            _binOpCache[key] = res;
+            return res;
+        }
+
+        /// <summary>
+        /// Negate a.
+        /// Is executed in a single thread mode.
+        /// </summary>
+        private BDD MkNot_rec(BDD a)
+        {
+            if (a == False)
+                return True;
+            if (a == True)
+                return False;
+
+            BDD neg;
+            if (_notCache.TryGetValue(a, out neg))
+                return neg;
+
+            neg = MkBDD(a.Ordinal, MkNot_rec(a.One), MkNot_rec(a.Zero));
+            _notCache[a] = neg;
             return neg;
         }
 
@@ -227,15 +335,39 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
-        /// Returns true if a and b represent mathematically equal sets of characters.
-        /// Two BDDs are by construction equivalent iff they are identical.
+        /// Returns true if a and b represent equivalent BDDs.
         /// </summary>
         public bool AreEquivalent(BDD a, BDD b)
         {
-            return a == b;
+            return MkXOr(a, b) == False;
         }
 
         #endregion
+
+        /// <summary>
+        /// Make the XOR of a and b
+        /// </summary>
+        internal BDD MkXOr(BDD a, BDD b)
+        {
+            if (a == False)
+                return b;
+            if (b == False)
+                return a;
+            if (a == True)
+                return MkNot(b);
+            if (b == True)
+                return MkNot(a);
+            if (a == b)
+                return False;
+
+            var key = new BoolOpKey(BoolOp.XOR, a, b);
+
+            BDD res;
+            if (_binOpCache.TryGetValue(key, out res))
+                return res;
+
+            return MkBoolOP_lock(key);
+        }
 
         #region bit-shift operations
 
@@ -250,7 +382,7 @@ namespace System.Text.RegularExpressions.SRM
                 throw new AutomataException(AutomataExceptionKind.InvalidArgument);
             if (set.IsLeaf || k == 0)
                 return set;
-            return Shift_(new Dictionary<BvSet_Int, BDD>(), set, 0 - k);
+            return Shift_lock(set, 0 - k);
         }
 
         /// <summary>
@@ -264,14 +396,25 @@ namespace System.Text.RegularExpressions.SRM
                 throw new AutomataException(AutomataExceptionKind.InvalidArgument);
             if (set.IsLeaf || k == 0)
                 return set;
-            return Shift_(new Dictionary<BvSet_Int, BDD>(), set, k);
+            return Shift_lock(set, k);
+        }
+
+        /// <summary>
+        /// Allow shift_lock only single thread at a time because _bddCache is updated.
+        /// </summary>
+        private BDD Shift_lock(BDD set, int k)
+        {
+            lock (this)
+            {
+                return Shift_rec(new Dictionary<BDD_Int, BDD>(), set, k);
+            }
         }
 
         /// <summary>
         /// Uses shiftCache to avoid recomputations in shared BDDs (DAGs).
-        /// shiftCache could be a field fo the algebra but would then  require locks for thread-safety.
+        /// Is executed in a single thread mode.
         /// </summary>
-        private BDD Shift_(Dictionary<BvSet_Int, BDD> shiftCache, BDD set, int k)
+        private BDD Shift_rec(Dictionary<BDD_Int, BDD> shiftCache, BDD set, int k)
         {
             if (set.IsLeaf || k == 0)
                 return set;
@@ -281,7 +424,7 @@ namespace System.Text.RegularExpressions.SRM
             if (ordinal < 0)
                 return True;  //this arises if k is negative
 
-            var key = new BvSet_Int(set, k);
+            var key = new BDD_Int(set, k);
 
             BDD res;
             if (shiftCache.TryGetValue(key, out res))
@@ -292,13 +435,13 @@ namespace System.Text.RegularExpressions.SRM
                 if (shiftCache.TryGetValue(key, out res))
                     return res;
 
-                BDD zero = Shift_(shiftCache, set.Zero, k);
-                BDD one = Shift_(shiftCache, set.One, k);
+                BDD zero = Shift_rec(shiftCache, set.Zero, k);
+                BDD one = Shift_rec(shiftCache, set.One, k);
 
                 if (zero == one)
                     res = zero;
                 else
-                    res = MkBvSet(ordinal, one, zero);
+                    res = MkBDD(ordinal, one, zero);
 
                 shiftCache[key] = res;
                 return res;
@@ -311,7 +454,7 @@ namespace System.Text.RegularExpressions.SRM
 
         public IEnumerable<Tuple<bool[], BDD>> GenerateMinterms(params BDD[] sets)
         {
-            return mintermGen.GenerateMinterms(sets);
+            return _mintermGen.GenerateMinterms(sets);
         }
 
         #endregion
@@ -330,33 +473,40 @@ namespace System.Text.RegularExpressions.SRM
 
         /// <summary>
         /// Make the set containing all values greater than or equal to m and less than or equal to n when considering bits between 0 and maxBit.
+        /// Is executed in a single thread mode.
         /// </summary>
         /// <param name="m">lower bound</param>
         /// <param name="n">upper bound</param>
         /// <param name="maxBit">bits above maxBit are unspecified</param>
         public BDD MkSetFromRange(uint m, uint n, int maxBit)
         {
-            if (n < m)
-                return False;
-            uint mask = (uint)1 << maxBit;
-            //filter out bits greater than maxBit
-            if (maxBit < 31)
+            lock (this)
             {
-                uint filter = (mask << 1) - 1;
-                m = m & filter;
-                n = n & filter;
+                if (n < m)
+                    return False;
+                uint mask = (uint)1 << maxBit;
+                //filter out bits greater than maxBit
+                if (maxBit < 31)
+                {
+                    uint filter = (mask << 1) - 1;
+                    m = m & filter;
+                    n = n & filter;
+                }
+                return CreateFromInterval_rec(mask, maxBit, m, n);
             }
-            return CreateFromInterval1(mask, maxBit, m, n);
         }
 
-        private BDD CreateFromInterval1(uint mask, int bit, uint m, uint n)
+        /// <summary>
+        /// Is executed in single-threaded mode, makes updates to _bddCache.
+        /// </summary>
+        private BDD CreateFromInterval_rec(uint mask, int bit, uint m, uint n)
         {
             if (mask == 1) //base case: LSB
             {
                 if (n == 0)  //implies that m==0
-                    return MkBvSet(bit, False, True);
+                    return MkBDD(bit, False, True);
                 else if (m == 1) //implies that n==1
-                    return MkBvSet(bit, True, False);
+                    return MkBDD(bit, True, False);
                 else //m=0 and n=1, thus full range from 0 to ((mask << 1)-1)
                     return True;
             }
@@ -372,19 +522,19 @@ namespace System.Text.RegularExpressions.SRM
 
                 if (nb == 0) // implies that 1-branch is empty
                 {
-                    var fcase = CreateFromInterval1(mask >> 1, bit - 1, m, n);
-                    return MkBvSet(bit, False, fcase);
+                    var fcase = CreateFromInterval_rec(mask >> 1, bit - 1, m, n);
+                    return MkBDD(bit, False, fcase);
                 }
                 else if (mb == mask) // implies that 0-branch is empty
                 {
-                    var tcase = CreateFromInterval1(mask >> 1, bit - 1, m & ~mask, n & ~mask);
-                    return MkBvSet(bit, tcase, False);
+                    var tcase = CreateFromInterval_rec(mask >> 1, bit - 1, m & ~mask, n & ~mask);
+                    return MkBDD(bit, tcase, False);
                 }
                 else //split the interval in two
                 {
-                    var fcase = CreateFromInterval1(mask >> 1, bit - 1, m, mask - 1);
-                    var tcase = CreateFromInterval1(mask >> 1, bit - 1, 0, n & ~mask);
-                    return MkBvSet(bit, tcase, fcase);
+                    var fcase = CreateFromInterval_rec(mask >> 1, bit - 1, m, mask - 1);
+                    var tcase = CreateFromInterval_rec(mask >> 1, bit - 1, 0, n & ~mask);
+                    return MkBDD(bit, tcase, fcase);
                 }
             }
         }
@@ -458,7 +608,7 @@ namespace System.Text.RegularExpressions.SRM
                 return null;
         }
 
-        #region domain size andf min computation
+        #region domain size and min computation
 
         /// <summary>
         /// Calculate the number of elements in the set. Returns 0 when set is full and maxBit is 63.
@@ -584,13 +734,19 @@ namespace System.Text.RegularExpressions.SRM
         //}
 
         /// <summary>
-        /// Returns true. This is a very strong property that relies on the Boolean operation caches.
-        /// Any two equivalent BDDs are identical.
-        /// This property can potentially be dropped at the expense of efficiency.
+        /// Any two BDDs that are equivalent are isomorphic and have the same hashcode.
+        /// </summary>
+        public bool HashCodesRespectEquivalence
+        {
+            get { return true; }
+        }
+
+        /// <summary>
+        /// Two equuivalent BDDs need not be identical
         /// </summary>
         public bool IsExtensional
         {
-            get { return true; }
+            get { return false; }
         }
 
         #region Serialializing and deserializing BDDs from dags encoded by ulongs arrays
@@ -659,61 +815,65 @@ namespace System.Text.RegularExpressions.SRM
 
         /// <summary>
         /// Recreates a BDD from a ulong array that has been created using Serialize.
+        /// Is executed in a single thread mode.
         /// </summary>
         public BDD Deserialize(ulong[] arcs)
         {
-            if (arcs.Length == 1)
-                return False;
-            if (arcs.Length == 2)
-                return True;
-
-            //organized by order
-            var levelsMap = new Dictionary<int, List<int>>();
-            List<int> levels = new List<int>();
-
-            BDD[] bddMap = new BDD[arcs.Length];
-            bddMap[0] = False;
-            bddMap[1] = True;
-
-            for (int i = 2; i < arcs.Length; i++)
+            lock (this)
             {
-                ulong ordinal = (arcs[i] >> 48);
-                int x = (int)ordinal;
-                List<int> x_list;
-                if (!levelsMap.TryGetValue(x, out x_list))
+                if (arcs.Length == 1)
+                    return False;
+                if (arcs.Length == 2)
+                    return True;
+
+                //organized by order
+                var levelsMap = new Dictionary<int, List<int>>();
+                List<int> levels = new List<int>();
+
+                BDD[] bddMap = new BDD[arcs.Length];
+                bddMap[0] = False;
+                bddMap[1] = True;
+
+                for (int i = 2; i < arcs.Length; i++)
                 {
-                    x_list = new List<int>();
-                    levelsMap[x] = x_list;
-                    levels.Add(x);
+                    ulong ordinal = (arcs[i] >> 48);
+                    int x = (int)ordinal;
+                    List<int> x_list;
+                    if (!levelsMap.TryGetValue(x, out x_list))
+                    {
+                        x_list = new List<int>();
+                        levelsMap[x] = x_list;
+                        levels.Add(x);
+                    }
+                    x_list.Add(i);
                 }
-                x_list.Add(i);
-            }
 
-            //create the BDD nodes according to the level order
-            //strating with the lowest ordinal
-            //this is to ensure proper internalization
-            levels.Sort();
+                //create the BDD nodes according to the level order
+                //strating with the lowest ordinal
+                //this is to ensure proper internalization
+                levels.Sort();
 
-            foreach (int x in levels)
-            {
-                foreach (int i in levelsMap[x])
+                foreach (int x in levels)
                 {
-                    ulong oneU = (arcs[i] >> 24) & 0xFFFFFF;
-                    int one = (int)oneU;
-                    ulong zeroU = arcs[i] & 0xFFFFFF;
-                    int zero = (int)zeroU;
-                    if (one >= bddMap.Length || zero >= bddMap.Length)
-                        throw new AutomataException(AutomataExceptionKind.BDDDeserializationError);
-                    var oneBranch = bddMap[one];
-                    var zeroBranch = bddMap[zero];
-                    var bdd = MkBvSet(x, oneBranch, zeroBranch);
-                    bddMap[i] = bdd;
-                    if (bdd.Ordinal <= bdd.One.Ordinal || bdd.Ordinal <= bdd.Zero.Ordinal)
-                        throw new AutomataException(AutomataExceptionKind.BDDDeserializationError);
+                    foreach (int i in levelsMap[x])
+                    {
+                        ulong oneU = (arcs[i] >> 24) & 0xFFFFFF;
+                        int one = (int)oneU;
+                        ulong zeroU = arcs[i] & 0xFFFFFF;
+                        int zero = (int)zeroU;
+                        if (one >= bddMap.Length || zero >= bddMap.Length)
+                            throw new AutomataException(AutomataExceptionKind.BDDDeserializationError);
+                        var oneBranch = bddMap[one];
+                        var zeroBranch = bddMap[zero];
+                        var bdd = MkBDD(x, oneBranch, zeroBranch);
+                        bddMap[i] = bdd;
+                        if (bdd.Ordinal <= bdd.One.Ordinal || bdd.Ordinal <= bdd.Zero.Ordinal)
+                            throw new AutomataException(AutomataExceptionKind.BDDDeserializationError);
+                    }
                 }
-            }
 
-            return bddMap[2];
+                return bddMap[2];
+            }
         }
 
         public abstract string SerializePredicate(BDD s);
