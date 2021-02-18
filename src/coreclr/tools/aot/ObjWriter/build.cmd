@@ -5,7 +5,7 @@ set "ScriptDir=%~dp0"
 set "ArtifactsDir=%~1"
 set "RepoRoot=%~2"
 set "BuildType=%~3"
-if "%BuildType%"=="" set "BuildType=Release"
+if "%BuildType%"=="" set "BuildType=RelWithDebInfo"
 
 :: Clone the LLVM repo
 pushd "%ArtifactsDir%" || exit /b 1
