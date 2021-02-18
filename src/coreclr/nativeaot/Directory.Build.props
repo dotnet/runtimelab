@@ -54,6 +54,13 @@
   <PropertyGroup>
     <DefineConstants Condition="'$(FeatureCominterop)' == 'true'">FEATURE_COMINTEROP;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
+  <PropertyGroup>
+    <FeatureComWrappers>false</FeatureComWrappers>
+    <FeatureComWrappers Condition="'$(TargetsWindows)' == 'true'">true</FeatureComWrappers>
+  </PropertyGroup>
+  <PropertyGroup>
+    <DefineConstants Condition="'$(FeatureComWrappers)' == 'true'">FEATURE_COMWRAPPERS;$(DefineConstants)</DefineConstants>
+  </PropertyGroup>
 
   <!-- Platform specific properties -->
   <PropertyGroup Condition="'$(Platform)' == 'x64'">
