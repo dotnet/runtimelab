@@ -7,6 +7,7 @@ using System.Threading;
 using System.Runtime.CompilerServices;
 using System.Runtime.Versioning;
 using Internal.Runtime.CompilerServices;
+using System.Diagnostics;
 
 namespace System.Runtime.InteropServices
 {
@@ -43,14 +44,9 @@ namespace System.Runtime.InteropServices
             {
                 // See the dispatch section in the runtime for details on the masking below.
                 const long DispatchThisPtrMask = ~0xfL;
-                var comInstance = *(ComInterfaceInstance**)(((long)dispatchPtr) & DispatchThisPtrMask);
+                ManagedObjectWrapper* comInstance = *(ManagedObjectWrapper**)(((long)dispatchPtr) & DispatchThisPtrMask);
 
-                return Unsafe.As<T>(GCHandle.InternalGet(comInstance->GcHandle));
-            }
-
-            private struct ComInterfaceInstance
-            {
-                public IntPtr GcHandle;
+                return Unsafe.As<T>(RuntimeImports.RhHandleGet(comInstance->Target));
             }
         }
 
@@ -70,7 +66,7 @@ namespace System.Runtime.InteropServices
 
         internal unsafe struct ManagedObjectWrapper
         {
-            volatile IntPtr Target;
+            public volatile IntPtr Target; // This is GC Handle
             long _refCount;
 
             int _runtimeDefinedCount;
@@ -83,7 +79,7 @@ namespace System.Runtime.InteropServices
         }
         internal unsafe struct EntrySet
         {
-            public readonly ComInterfaceEntry* Start;
+            public ComInterfaceEntry* Start;
             public int Count;
 
             public EntrySet(ComInterfaceEntry* start, int count)
@@ -170,7 +166,7 @@ namespace System.Runtime.InteropServices
 
         private static unsafe ManagedObjectWrapper* CreateCCW(ComWrappers impl, object instance, CreateComInterfaceFlags flags)
         {
-            var userDefined = impl.ComputeVtables(instance, flags, out var userDefinedCount);
+            ComInterfaceEntry* userDefined = impl.ComputeVtables(instance, flags, out int userDefinedCount);
             // Here I should create someing like that https://github.com/dotnet/runtime/blob/9f8aab73d93156933ae65a476204bf62c02f6537/src/coreclr/interop/comwrappers.cpp#L16
             // Which would be saved to CCW cache.
             // Creation of CCW is basically ManagedObjectWrapper::Create reimplementation.
@@ -218,15 +214,15 @@ namespace System.Runtime.InteropServices
             ComInterfaceEntry* runtimeDefined = null;
             if (0 < runtimeDefinedCount)
             {
-                //::memcpy(runtimeDefinedOffset, runtimeDefinedLocal, totalRuntimeDefinedSize);
+                // FIXME: I may have to get rid of using Span, since it's more pain to implement using that API.
+                runtimeDefinedLocal.Slice(0, runtimeDefinedCount).CopyTo(new Span<ComInterfaceEntry>((void*)runtimeDefinedOffset, runtimeDefinedCount));
                 runtimeDefined = (ComInterfaceEntry*)(runtimeDefinedOffset);
             }
 
             // Compute the dispatch section offset and ensure it is aligned.
             IntPtr dispatchSectionOffset = runtimeDefinedOffset + totalRuntimeDefinedSize;
             dispatchSectionOffset = AlignDispatchSection(dispatchSectionOffset, AlignmentThisPtrMaxPadding);
-            if (dispatchSectionOffset == IntPtr.Zero)
-                ThrowHelper.ThrowInvalidOperationException();
+            Debug.Assert(dispatchSectionOffset != IntPtr.Zero);
 
             // Define the sets for the tables to insert
             EntrySet[] AllEntries =
@@ -235,13 +231,19 @@ namespace System.Runtime.InteropServices
                 new EntrySet(userDefined, userDefinedCount)
             };
 
+            ManagedObjectWrapper* mow = (ManagedObjectWrapper*)wrapperMem;
             ComInterfaceDispatch* dispSection = PopulateDispatchSection(
-                wrapperMem,
-                dispatchSectionOffset,
+                mow,
+                (DispatchSectionEntry*)dispatchSectionOffset,
                 AllEntries);
 
-            ManagedObjectWrapper* mow = (ManagedObjectWrapper*)wrapperMem;
             return mow;
+        }
+
+        unsafe struct DispatchSectionEntry
+        {
+            public ManagedObjectWrapper* thisPtr;
+            public IntPtr Vtable;
         }
 
         // Given a pointer and a padding allowance, attempt to find an offset into
@@ -257,8 +259,10 @@ namespace System.Runtime.InteropServices
                     return IntPtr.Zero;
 
                 extraPadding -= sizeof(void*);
-            // Poison unused portions of the section.
-            //::memset(section, 0xff, sizeof(void*));
+#if DEBUG
+                // Poison unused portions of the section.
+                new Span<byte>((void*)section, sizeof(void*)).Fill(0xff);
+#endif
 
                 section += sizeof(void*);
             }
@@ -268,15 +272,12 @@ namespace System.Runtime.InteropServices
 
         // Populate the dispatch section with the entry sets
         static unsafe ComInterfaceDispatch* PopulateDispatchSection(
-            IntPtr thisPtr,
-            IntPtr dispatchSection,
+            ManagedObjectWrapper* thisPtr,
+            DispatchSectionEntry* dispatchSection,
             Span<EntrySet> entrySets)
         {
             // Define dispatch section iterator.
-            IntPtr* currDisp = (IntPtr*)(dispatchSection);
-
-            // Keep rolling count of dispatch entries.
-            int dispCount = 0;
+            DispatchSectionEntry* currDisp = (DispatchSectionEntry*)dispatchSection;
 
             // Iterate over all interface entry sets.
             foreach (var curr in entrySets)
@@ -285,26 +286,13 @@ namespace System.Runtime.InteropServices
                 int entryCount = curr.Count;
 
                 // Update dispatch section with 'this' pointer and vtables.
-                for (int i = 0; i < entryCount; ++i, ++dispCount, ++currEntry)
+                for (int i = 0; i < entryCount; ++i, ++currEntry, currDisp++)
                 {
                     // Insert the 'this' pointer at the appropriate locations
-                    // e.g.:
-                    //       32-bit         |      64-bit
-                    //   (0 * 4) % 16 =  0  |  (0 * 8) % 16 = 0
-                    //   (1 * 4) % 16 =  4  |  (1 * 8) % 16 = 8
-                    //   (2 * 4) % 16 =  8  |  (2 * 8) % 16 = 0
-                    //   (3 * 4) % 16 = 12  |  (3 * 8) % 16 = 8
-                    //   (4 * 4) % 16 =  0  |  (4 * 8) % 16 = 0
-                    //   (5 * 4) % 16 =  4  |  (5 * 8) % 16 = 8
-                    //
-                    if (((dispCount * sizeof(void*)) % DispatchAlignmentThisPtr) == 0)
-                    {
-                        *currDisp++ = thisPtr;
-                        ++dispCount;
-                    }
+                    currDisp->thisPtr = thisPtr;
 
                     // Fill in the dispatch entry
-                    *currDisp++ = currEntry->Vtable;
+                    currDisp->Vtable = currEntry->Vtable;
                 }
             }
 
@@ -539,17 +527,11 @@ namespace System.Runtime.InteropServices
 
     }
 
-    [Guid("00000000-0000-0000-C000-000000000046")]
-    [CLSCompliant(false)]
-    public unsafe struct IUnknownVftbl
+    internal unsafe struct IUnknownVftbl
     {
-        private void* _QueryInterface;
-        public delegate* unmanaged<IntPtr, ref Guid, out IntPtr, int> QueryInterface { get => (delegate* unmanaged<IntPtr, ref Guid, out IntPtr, int>)_QueryInterface; set => _QueryInterface = (void*)value; }
-        private void* _AddRef;
-        public delegate* unmanaged<IntPtr, uint> AddRef { get => (delegate* unmanaged<IntPtr, uint>)_AddRef; set => _AddRef = (void*)value; }
-        private void* _Release;
-        public delegate* unmanaged<IntPtr, uint> Release { get => (delegate* unmanaged<IntPtr, uint>)_Release; set => _Release = (void*)value; }
-
+        public delegate* unmanaged<IntPtr, ref Guid, out IntPtr, int> QueryInterface;
+        public delegate* unmanaged<IntPtr, uint> AddRef;
+        public delegate* unmanaged<IntPtr, uint> Release;
         public static IUnknownVftbl AbiToProjectionVftbl => ComWrappersSupport.IUnknownVftbl;
         public static IntPtr AbiToProjectionVftblPtr => ComWrappersSupport.IUnknownVftblPtr;
     }
@@ -562,7 +544,7 @@ namespace System.Runtime.InteropServices
 
         static unsafe ComWrappersSupport()
         {
-            GetIUnknownImplInternal(out var qi, out var addRef, out var release);
+            GetIUnknownImplInternal(out IntPtr qi, out IntPtr addRef, out IntPtr release);
 
             IUnknownVftblPtr = RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IUnknownVftbl), sizeof(IUnknownVftbl));
             (*(IUnknownVftbl*)IUnknownVftblPtr) = new IUnknownVftbl
