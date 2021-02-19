@@ -61,7 +61,7 @@ internal static class " + classname + @"
             {
                 var a = solver.MkCharSetFromRange(kv.Key, kv.Key);
                 var b = kv.Value;
-                ignorecase = ignorecase | (a << 16) & b;
+                ignorecase = solver.MkOr(ignorecase, solver.MkAnd(solver.ShiftLeft(a, 16), b));
             }
             var ignorecaseArray = solver.Serialize(ignorecase);
             for (int i = 0; i < ignorecaseArray.Length; i++)
@@ -102,13 +102,13 @@ internal static class " + classname + @"
                         BDD equiv = solver.False;
 
                         if (ignoreCase.ContainsKey(c))
-                            equiv = equiv | ignoreCase[c];
+                            equiv = solver.MkOr(equiv, ignoreCase[c]);
                         if (ignoreCase.ContainsKey(cU))
-                            equiv = equiv | ignoreCase[cU];
+                            equiv = solver.MkOr(equiv, ignoreCase[cU]);
                         if (ignoreCase.ContainsKey(cL))
-                            equiv = equiv | ignoreCase[cL];
+                            equiv = solver.MkOr(equiv, ignoreCase[cL]);
 
-                        equiv = equiv | solver.MkCharSetFromRange(c, c) | solver.MkCharSetFromRange(cU, cU) | solver.MkCharSetFromRange(cL, cL);
+                        equiv = solver.MkOr(equiv, solver.MkOr(solver.MkCharSetFromRange(c, c), solver.MkOr(solver.MkCharSetFromRange(cU, cU), solver.MkCharSetFromRange(cL, cL))));
 
                         foreach (char d in solver.GenerateAllCharacters(equiv))
                             ignoreCase[d] = equiv;

@@ -19,7 +19,7 @@ namespace System.Text.RegularExpressions.SRM
     {
         private SymbolicRegexBV(SymbolicRegexBuilder<BV> builder, SymbolicRegexNode<BDD> sr,
                                 CharSetSolver solver, SymbolicRegexBuilder<BDD> srBuilder, BDD[] minterms, System.Text.RegularExpressions.RegexOptions options)
-            : base(srBuilder.Transform(sr, builder, builder.solver.ConvertFromCharSet),
+            : base(srBuilder.Transform(sr, builder, set => builder.solver.ConvertFromCharSet(solver, set)),
                   solver, minterms, options)
         {
         }
@@ -33,9 +33,9 @@ namespace System.Text.RegularExpressions.SRM
                   solver, srBuilder, minterms, options)
         {
             //update the word letter predicate in the BV solver to the correct one
-            this.builder.wordLetterPredicate = this.builder.solver.ConvertFromCharSet(srBuilder.wordLetterPredicate);
+            this.builder.wordLetterPredicate = this.builder.solver.ConvertFromCharSet(solver, srBuilder.wordLetterPredicate);
             //update the \n predicate in the BV solver to the correct one
-            this.builder.newLinePredicate = this.builder.solver.ConvertFromCharSet(srBuilder.newLinePredicate);
+            this.builder.newLinePredicate = this.builder.solver.ConvertFromCharSet(solver, srBuilder.newLinePredicate);
         }
 
         /// <summary>
@@ -54,13 +54,13 @@ namespace System.Text.RegularExpressions.SRM
     {
         private SymbolicRegexUInt64(SymbolicRegexBuilder<ulong> builder, SymbolicRegexNode<BDD> sr,
                                 CharSetSolver solver, SymbolicRegexBuilder<BDD> srBuilder, BDD[] minterms, System.Text.RegularExpressions.RegexOptions options)
-            : base(srBuilder.Transform(sr, builder, builder.solver.ConvertFromCharSet),
+            : base(srBuilder.Transform(sr, builder, set => builder.solver.ConvertFromCharSet(solver, set)),
                   solver, minterms, options)
         {
             //update the word letter predicate in the ulong solver to the correct one
-            this.builder.wordLetterPredicate = this.builder.solver.ConvertFromCharSet(srBuilder.wordLetterPredicate);
+            this.builder.wordLetterPredicate = this.builder.solver.ConvertFromCharSet(solver, srBuilder.wordLetterPredicate);
             //update the \n predicate in the BV solver to the correct one
-            this.builder.newLinePredicate = this.builder.solver.ConvertFromCharSet(srBuilder.newLinePredicate);
+            this.builder.newLinePredicate = this.builder.solver.ConvertFromCharSet(solver, srBuilder.newLinePredicate);
         }
 
         /// <summary>

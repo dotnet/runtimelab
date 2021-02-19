@@ -122,6 +122,14 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
+        public bool HashCodesRespectEquivalence
+        {
+            get
+            {
+                return true;
+            }
+        }
+
         public ulong True
         {
             get
@@ -186,12 +194,6 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ulong MkDiff(ulong predicate1, ulong predicate2)
-        {
-            return predicate1 & ~predicate2;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ulong MkNot(ulong predicate)
         {
             return all & ~predicate;
@@ -238,11 +240,10 @@ namespace System.Text.RegularExpressions.SRM
         /// Assumes that set is a union of some minterms (or empty).
         /// If null then 0 is returned.
         /// </summary>
-        public ulong ConvertFromCharSet(BDD set)
+        public ulong ConvertFromCharSet(BDDAlgebra alg, BDD set)
         {
             if (set == null)
                 return zero;
-            var alg = set.algebra;
             ulong res = this.zero;
             for (int i = 0; i < partition.Length; i++)
             {

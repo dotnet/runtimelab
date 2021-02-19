@@ -14,9 +14,7 @@ namespace System.Text.RegularExpressions.SRM
     /// <typeparam name="PRED">type of predicates</typeparam>
     internal class MintermGenerator<PRED>
     {
-        private IBooleanAlgebra<PRED> ba;
-
-        private bool hashCodesRespectEquivalence;
+        private IBooleanAlgebra<PRED> _ba;
 
         /// <summary>
         /// Constructs a minterm generator for a given Boolean Algebra.
@@ -24,16 +22,14 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="ba">given Boolean Algebra</param>
         public MintermGenerator(IBooleanAlgebra<PRED> ba)
         {
-            this.ba = ba;
-            hashCodesRespectEquivalence = ba.IsExtensional;
-        }
-
-        /// <summary>
-        /// Returns GenerateMinterms(true, preds).
-        /// </summary>
-        public IEnumerable<Tuple<bool[], PRED>> GenerateMinterms(params PRED[] preds)
-        {
-            return GenerateMinterms(true, preds);
+#if DEBUG
+            if (!ba.HashCodesRespectEquivalence)
+                //cannot rely on equivalent predicates having the same hashcode
+                //so all predicates would end up in the same bucket that causes a linear search
+                //with Equals to check equivalence --- this case must never arise here
+                throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
+#endif
+            _ba = ba;
         }
 
         /// <summary>
@@ -44,13 +40,12 @@ namespace System.Text.RegularExpressions.SRM
         /// If n=0 return Tuple({},True).
         /// </summary>
         /// <param name="preds">array of predicates</param>
-        /// <param name="useEquivalenceChecking">optimization flag: if true, uses equivalence checking to cluster equivalent predicates; otherwise does not use equivalence checking</param>
-        /// <returns>all minterms of the given predicate sequence</returns>
-        public IEnumerable<Tuple<bool[], PRED>> GenerateMinterms(bool useEquivalenceChecking, params PRED[] preds)
+       /// <returns>all minterms of the given predicate sequence</returns>
+        public IEnumerable<Tuple<bool[], PRED>> GenerateMinterms(params PRED[] preds)
         {
             if (preds.Length == 0)
             {
-                yield return new Tuple<bool[], PRED>(Array.Empty<bool>(), ba.True);
+                yield return new Tuple<bool[], PRED>(Array.Empty<bool>(), _ba.True);
             }
             else
             {
@@ -66,7 +61,7 @@ namespace System.Text.RegularExpressions.SRM
                 for (int i = 0; i < count; i++)
                 {
                     int newIndex;
-                    EquivClass equiv = CreateEquivalenceClass(useEquivalenceChecking, preds[i]);
+                    EquivClass equiv = CreateEquivalenceClass(preds[i]);
                     if (!newIndexMap.TryGetValue(equiv, out newIndex))
                     {
                         newIndex = newIndexMap.Count;
@@ -89,7 +84,7 @@ namespace System.Text.RegularExpressions.SRM
                 //        new Tuple<bool[], PRED>(characteristic, pair.Second);
                 //}
 
-                var tree = new PartitonTree<PRED>(ba);
+                var tree = new PartitonTree<PRED>(_ba);
                 foreach (var psi in nonequivalentSets)
                     tree.Refine(psi);
                 foreach (var leaf in tree.GetLeaves())
@@ -104,42 +99,32 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
-        private EquivClass CreateEquivalenceClass(bool useEquivalenceChecking, PRED set)
+        private EquivClass CreateEquivalenceClass(PRED set)
         {
-            return new EquivClass(useEquivalenceChecking, this, set);
+            return new EquivClass(_ba, set);
         }
 
+        /// <summary>
+        /// Wraps a predicate as an equivalence class object whose Equals method is Equivalence checking
+        /// </summary>
         private class EquivClass
         {
-            private PRED set;
-            private MintermGenerator<PRED> gen;
-            private bool useEquivalenceChecking;
+            private PRED _set;
+            private IBooleanAlgebra<PRED> _ba;
 
-            internal EquivClass(bool useEquivalenceChecking, MintermGenerator<PRED> gen, PRED set)
+            internal EquivClass(IBooleanAlgebra<PRED> ba, PRED set)
             {
-                this.set = set;
-                this.gen = gen;
-                this.useEquivalenceChecking = useEquivalenceChecking;
+                _set = set;
+                _ba = ba;
             }
 
             public override int GetHashCode()
             {
-                if (useEquivalenceChecking && !gen.hashCodesRespectEquivalence)
-                    //cannot rely on equivalent predicates having the same hashcode
-                    //so all predicates end up in the same bucket that causes a linear search
-                    //with Equals to check equivalence when useEquivalenceChecking=true
-                    return 0;
-                else
-                    return set.GetHashCode();
+                return _set.GetHashCode();
             }
 
-            public override bool Equals(object obj)
-            {
-                if (useEquivalenceChecking)
-                    return gen.ba.AreEquivalent(set, ((EquivClass)obj).set);
-                else
-                    return set.Equals(((EquivClass)obj).set);
-            }
+            public override bool Equals(object obj) =>
+                obj is EquivClass ec && _ba.AreEquivalent(_set, ec._set);
         }
     }
 

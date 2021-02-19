@@ -92,7 +92,7 @@ namespace System.Text.RegularExpressions.SRM
         {
             var res = alg.False;
             for (int i = 0; i < intervals.Length; i++)
-                res = res | alg.MkSetFromRange(intervals[i].Item1, intervals[i].Item2, 15);
+                res = alg.MkOr(res, alg.MkSetFromRange(intervals[i].Item1, intervals[i].Item2, 15));
             return res;
         }
 

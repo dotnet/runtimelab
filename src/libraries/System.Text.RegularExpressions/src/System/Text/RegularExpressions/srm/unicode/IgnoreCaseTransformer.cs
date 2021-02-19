@@ -19,7 +19,7 @@ namespace System.Text.RegularExpressions.SRM
         {
             this.solver = charSetSolver;
             IgnoreCaseRel = charSetSolver.Deserialize(System.Text.RegularExpressions.SRM.Generated.IgnoreCaseRelation.ignorecase);
-            domain = IgnoreCaseRel >> 16;
+            domain = solver.ShiftRight(IgnoreCaseRel, 16);
         }
 
         /// <summary>
@@ -27,12 +27,12 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public BDD Apply(BDD bdd)
         {
-            if ((domain & bdd).IsEmpty)
+            if (solver.MkAnd(domain, bdd).IsEmpty)
                 return bdd;
             else
             {
-                var ignorecase = (bdd & IgnoreCaseRel) >> 16;
-                var res = ignorecase | bdd;
+                var ignorecase = solver.ShiftRight(solver.MkAnd(bdd, IgnoreCaseRel), 16);
+                var res = solver.MkOr(ignorecase, bdd);
                 return res;
             }
         }
@@ -40,7 +40,7 @@ namespace System.Text.RegularExpressions.SRM
         public bool IsInDomain(char c)
         {
             BDD c_bdd = solver.MkCharConstraint(c);
-            if ((c_bdd & domain).IsEmpty)
+            if (solver.MkAnd(c_bdd, domain).IsEmpty)
                 return false;
             else
                 return true;

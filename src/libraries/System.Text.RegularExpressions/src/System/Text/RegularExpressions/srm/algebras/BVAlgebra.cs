@@ -124,6 +124,14 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
+        public bool HashCodesRespectEquivalence
+        {
+            get
+            {
+                return true;
+            }
+        }
+
         public BV True
         {
             get
@@ -188,12 +196,6 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public BV MkDiff(BV predicate1, BV predicate2)
-        {
-            return predicate1 & ~predicate2;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BV MkNot(BV predicate)
         {
             return ones & ~predicate;
@@ -254,11 +256,10 @@ namespace System.Text.RegularExpressions.SRM
         /// Assumes that set is a union of some minterms (or empty).
         /// If null then null is returned.
         /// </summary>
-        public BV ConvertFromCharSet(BDD set)
+        public BV ConvertFromCharSet(BDDAlgebra alg, BDD set)
         {
             if (set == null)
                 return null;
-            var alg = set.algebra;
             BV res = this.zero;
             for (int i = 0; i < partition.Length; i++)
             {

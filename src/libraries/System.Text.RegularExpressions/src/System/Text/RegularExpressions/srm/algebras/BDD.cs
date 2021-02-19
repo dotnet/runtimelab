@@ -12,6 +12,15 @@ namespace System.Text.RegularExpressions.SRM
     internal class BDD
     {
         /// <summary>
+        /// The unique BDD leaf that represents the empty set or true.
+        /// </summary>
+        public static BDD True = new BDD(-1);
+        /// <summary>
+        /// The unique BDD leaf that represents the full set or false.
+        /// </summary>
+        public static BDD False = new BDD(-2);
+
+        /// <summary>
         /// The encoding of the set for lower ordinals for the case when the current bit is 1.
         /// The value is null iff IsLeaf is true.
         /// </summary>
@@ -23,24 +32,39 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public readonly BDD Zero;
 
-
-        public readonly BDDAlgebra algebra;
-
         /// <summary>
         /// Ordinal of this bit if nonleaf
         /// </summary>
         public readonly int Ordinal;
 
-        internal BDD(BDDAlgebra algebra, int ordinal, BDD one, BDD zero)
+        /// <summary>
+        /// Preassigned hashcode value that respects equivalence
+        /// </summary>
+        private readonly int hashcode;
+
+        /// <summary>
+        /// Create a leaf
+        /// </summary>
+        private BDD(int ordinal)
         {
-            this.One = one;
-            this.Zero = zero;
-            this.Ordinal = ordinal;
-            this.algebra = algebra;
+            Ordinal = ordinal;
+            hashcode = (ordinal, 0, 0).GetHashCode();
+        }
+
+        internal BDD(int ordinal, BDD one, BDD zero)
+        {
+            One = one;
+            Zero = zero;
+            Ordinal = ordinal;
+            //precompute a hashchode value that respects BDD equivalence
+            //i.e. two equivalent BDDs will always have the same hashcode
+            //that is independent of object id values of the BDD objects
+            hashcode = (ordinal, one.hashcode, zero.hashcode).GetHashCode();
         }
 
         /// <summary>
-        /// True iff the node is a terminal (One and Zero are null).
+        /// True iff the node is a terminal (One and Zero are both null).
+        /// True and False are terminals.
         /// </summary>
         public bool IsLeaf
         {
@@ -48,19 +72,19 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
-        /// True iff the set is full.
+        /// True iff the BDD is True.
         /// </summary>
         public bool IsFull
         {
-            get { return this == algebra.True; }
+            get { return this == True; }
         }
 
         /// <summary>
-        /// True iff the set is empty.
+        /// True iff the BDD is False.
         /// </summary>
         public bool IsEmpty
         {
-            get { return this == algebra.False; }
+            get { return this == False; }
         }
 
         /// <summary>
@@ -122,29 +146,16 @@ namespace System.Text.RegularExpressions.SRM
             return res;
         }
 
-        public static BDD operator >>(BDD x, int k)
-        {
-            return x.algebra.ShiftRight(x, k);
-        }
+        /// <summary>
+        /// O(1) operation that returns the precomputed hashcode.
+        /// </summary>
+        public override int GetHashCode() => hashcode;
 
-        public static BDD operator <<(BDD x, int k)
-        {
-            return x.algebra.ShiftLeft(x, k);
-        }
-
-        public static BDD operator &(BDD x, BDD y)
-        {
-            return x.algebra.MkAnd(x, y);
-        }
-
-        public static BDD operator |(BDD x, BDD y)
-        {
-            return x.algebra.MkOr(x, y);
-        }
-
-        public static BDD operator !(BDD x)
-        {
-            return x.algebra.MkNot(x);
-        }
+        /// <summary>
+        /// A shallow equality check that holds if ordinals are identical and one's are identical and zero's are identical.
+        /// This equality is used in the _bddCache lookup.
+        /// </summary>
+        public override bool Equals(object? obj) =>
+            obj is BDD bdd && (this == bdd || !IsLeaf && !bdd.IsLeaf && One == bdd.One && Zero == bdd.Zero);
     }
 }

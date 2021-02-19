@@ -33,7 +33,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Make a term that encodes the given character set.
         /// </summary>
-        PRED ConvertFromCharSet(BDD set);
+        PRED ConvertFromCharSet(BDDAlgebra bddAlg, BDD set);
 
         /// <summary>
         /// Compute the number of elements in the set
