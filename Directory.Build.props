@@ -217,7 +217,7 @@
 
   <!-- Packaging -->
   <PropertyGroup>
-    <GitHubRepositoryName>runtime</GitHubRepositoryName>
+    <GitHubRepositoryName>runtimelab</GitHubRepositoryName>
     <RepositoryUrl>git://github.com/dotnet/$(GitHubRepositoryName)</RepositoryUrl>
     <ProjectUrl>https://github.com/dotnet/$(GitHubRepositoryName)</ProjectUrl>
     <LicenseUrl>https://github.com/dotnet/$(GitHubRepositoryName)/blob/master/LICENSE.TXT</LicenseUrl>
