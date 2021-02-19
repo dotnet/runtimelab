@@ -26,6 +26,10 @@ namespace System.Runtime.InteropServices
     /// </summary>
     public abstract partial class ComWrappers
     {
+        internal static unsafe IUnknownVftbl DefaultIUnknownVftbl => Unsafe.AsRef<IUnknownVftbl>(DefaultIUnknownVftblPtr.ToPointer());
+
+        internal static IntPtr DefaultIUnknownVftblPtr { get; }
+
         const int DispatchAlignmentThisPtr = 16;
         private static readonly ConditionalWeakTable<object, ManagedObjectWrapperHolder> CCWTable = new ConditionalWeakTable<object, ManagedObjectWrapperHolder>();
 
@@ -42,15 +46,20 @@ namespace System.Runtime.InteropServices
             /// <returns>Instance of type associated with dispatched function call.</returns>
             public static unsafe T GetInstance<T>(ComInterfaceDispatch* dispatchPtr) where T : class
             {
+                ManagedObjectWrapper* comInstance = ToManagedObjectWrapper(dispatchPtr);
+                return Unsafe.As<T>(RuntimeImports.RhHandleGet(comInstance->Target));
+            }
+
+            internal static unsafe ManagedObjectWrapper* ToManagedObjectWrapper(ComInterfaceDispatch* dispatchPtr)
+            {
                 // See the dispatch section in the runtime for details on the masking below.
                 const long DispatchThisPtrMask = ~0xfL;
                 ManagedObjectWrapper* comInstance = *(ManagedObjectWrapper**)(((long)dispatchPtr) & DispatchThisPtrMask);
-
-                return Unsafe.As<T>(RuntimeImports.RhHandleGet(comInstance->Target));
+                return comInstance;
             }
         }
 
-        enum CreateComInterfaceFlagsEx
+        internal enum CreateComInterfaceFlagsEx
         {
             None = CreateComInterfaceFlags.None,
             CallerDefinedIUnknown = CreateComInterfaceFlags.CallerDefinedIUnknown,
@@ -67,15 +76,31 @@ namespace System.Runtime.InteropServices
         internal unsafe struct ManagedObjectWrapper
         {
             public volatile IntPtr Target; // This is GC Handle
-            long _refCount;
+            public long RefCount;
 
-            int _runtimeDefinedCount;
-            int _userDefinedCount;
-            ComInterfaceEntry* _runtimeDefined;
-            ComInterfaceEntry* _userDefined;
-            ComInterfaceDispatch* _dispatches;
+            public int RuntimeDefinedCount;
+            public int UserDefinedCount;
+            public ComInterfaceEntry* RuntimeDefined;
+            public ComInterfaceEntry* UserDefined;
+            internal DispatchSectionEntry* Dispatches;
 
-            volatile CreateComInterfaceFlagsEx _flags;
+            internal volatile CreateComInterfaceFlagsEx Flags;
+
+            public int AddRef()
+            {
+                return 0;
+            }
+
+            public int Release()
+            {
+                return 0;
+            }
+
+            public unsafe int QueryInterface(ref Guid guid, out IntPtr returnValue)
+            {
+                returnValue = IntPtr.Zero;
+                return 0;
+            }
         }
         internal unsafe struct EntrySet
         {
@@ -89,7 +114,7 @@ namespace System.Runtime.InteropServices
             }
         }
 
-        class ManagedObjectWrapperHolder
+        internal class ManagedObjectWrapperHolder
         {
             private IntPtr wrapper;
             public ManagedObjectWrapperHolder(IntPtr wrapper)
@@ -104,6 +129,15 @@ namespace System.Runtime.InteropServices
             }
         }
 
+        internal unsafe struct IUnknownVftbl
+        {
+            public delegate* unmanaged<IntPtr, ref Guid, out IntPtr, int> QueryInterface;
+            public delegate* unmanaged<IntPtr, uint> AddRef;
+            public delegate* unmanaged<IntPtr, uint> Release;
+            public static IUnknownVftbl AbiToProjectionVftbl => ComWrappers.DefaultIUnknownVftbl;
+            public static IntPtr AbiToProjectionVftblPtr => ComWrappers.DefaultIUnknownVftblPtr;
+        }
+
         /// <summary>
         /// Globally registered instance of the ComWrappers class for reference tracker support.
         /// </summary>
@@ -116,6 +150,19 @@ namespace System.Runtime.InteropServices
 
         private static long s_instanceCounter;
         private readonly long id = Interlocked.Increment(ref s_instanceCounter);
+
+        static unsafe ComWrappers()
+        {
+            GetIUnknownImplInternal(out IntPtr qi, out IntPtr addRef, out IntPtr release);
+
+            DefaultIUnknownVftblPtr = RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IUnknownVftbl), sizeof(IUnknownVftbl));
+            (*(IUnknownVftbl*)DefaultIUnknownVftblPtr) = new IUnknownVftbl
+            {
+                QueryInterface = (delegate* unmanaged<IntPtr, ref Guid, out IntPtr, int>)qi,
+                AddRef = (delegate* unmanaged<IntPtr, uint>)addRef,
+                Release = (delegate* unmanaged<IntPtr, uint>)release,
+            };
+        }
 
         /// <summary>
         /// Create a COM representation of the supplied object that can be passed to a non-managed environment.
@@ -160,6 +207,7 @@ namespace System.Runtime.InteropServices
                 success = value != null;
                 return new ManagedObjectWrapperHolder((IntPtr)value);
             });
+            // I should get IUnknown implementation from MOW. It maye have behave incorrectly when using user provided IUnknown.
             retValue = ccwValue.ComIp;
             return success;
         }
@@ -180,7 +228,7 @@ namespace System.Runtime.InteropServices
             {
                 ComInterfaceEntry curr = runtimeDefinedLocal[runtimeDefinedCount++];
                 curr.IID = new Guid(0x00000000, 0x0000, 0x0000, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
-                curr.Vtable = ComWrappersSupport.IUnknownVftblPtr;
+                curr.Vtable = ComWrappers.DefaultIUnknownVftblPtr;
             }
 
             // Check if the caller wants tracker support.
@@ -232,15 +280,24 @@ namespace System.Runtime.InteropServices
             };
 
             ManagedObjectWrapper* mow = (ManagedObjectWrapper*)wrapperMem;
-            ComInterfaceDispatch* dispSection = PopulateDispatchSection(
+            PopulateDispatchSection(
                 mow,
                 (DispatchSectionEntry*)dispatchSectionOffset,
                 AllEntries);
-
+            // Hope I properly understand how line below works.
+            // https://github.com/dotnet/runtime/blob/9f8aab73d93156933ae65a476204bf62c02f6537/src/coreclr/interop/comwrappers.cpp#L401
+            mow->Target = IntPtr.Zero;
+            mow->RefCount = 1;
+            mow->RuntimeDefinedCount = runtimeDefinedCount;
+            mow->RuntimeDefined = runtimeDefined;
+            mow->UserDefinedCount = userDefinedCount;
+            mow->UserDefined = userDefined;
+            mow->Flags = (CreateComInterfaceFlagsEx)flags;
+            mow->Dispatches = (DispatchSectionEntry*)dispatchSectionOffset;
             return mow;
         }
 
-        unsafe struct DispatchSectionEntry
+        internal unsafe struct DispatchSectionEntry
         {
             public ManagedObjectWrapper* thisPtr;
             public IntPtr Vtable;
@@ -271,13 +328,13 @@ namespace System.Runtime.InteropServices
         }
 
         // Populate the dispatch section with the entry sets
-        static unsafe ComInterfaceDispatch* PopulateDispatchSection(
+        static unsafe void PopulateDispatchSection(
             ManagedObjectWrapper* thisPtr,
             DispatchSectionEntry* dispatchSection,
             Span<EntrySet> entrySets)
         {
             // Define dispatch section iterator.
-            DispatchSectionEntry* currDisp = (DispatchSectionEntry*)dispatchSection;
+            DispatchSectionEntry* currDisp = dispatchSection;
 
             // Iterate over all interface entry sets.
             foreach (var curr in entrySets)
@@ -295,8 +352,6 @@ namespace System.Runtime.InteropServices
                     currDisp->Vtable = currEntry->Vtable;
                 }
             }
-
-            return (ComInterfaceDispatch*)(dispatchSection);
         }
 
 
@@ -505,7 +560,7 @@ namespace System.Runtime.InteropServices
         /// <param name="fpAddRef">Function pointer to AddRef.</param>
         /// <param name="fpRelease">Function pointer to Release.</param>
         protected internal static void GetIUnknownImpl(out IntPtr fpQueryInterface, out IntPtr fpAddRef, out IntPtr fpRelease)
-            => ComWrappersSupport.GetIUnknownImplInternal(out fpQueryInterface, out fpAddRef, out fpRelease);
+            => GetIUnknownImplInternal(out fpQueryInterface, out fpAddRef, out fpRelease);
 
         internal static int CallICustomQueryInterface(object customQueryInterfaceMaybe, ref Guid iid, out IntPtr ppObject)
         {
@@ -521,64 +576,37 @@ namespace System.Runtime.InteropServices
 
         private static unsafe int ComputeThisPtrForDispatchSection(int dispatchCount)
         {
-            var EntriesPerThisPtr = (DispatchAlignmentThisPtr / sizeof(nuint)) - 1;
+            // For 64 bit architeture that always would be the case.
+            const int EntriesPerThisPtr = 1;
             return (dispatchCount / EntriesPerThisPtr) + ((dispatchCount % EntriesPerThisPtr) == 0 ? 0 : 1);
         }
 
-    }
-
-    internal unsafe struct IUnknownVftbl
-    {
-        public delegate* unmanaged<IntPtr, ref Guid, out IntPtr, int> QueryInterface;
-        public delegate* unmanaged<IntPtr, uint> AddRef;
-        public delegate* unmanaged<IntPtr, uint> Release;
-        public static IUnknownVftbl AbiToProjectionVftbl => ComWrappersSupport.IUnknownVftbl;
-        public static IntPtr AbiToProjectionVftblPtr => ComWrappersSupport.IUnknownVftblPtr;
-    }
-
-    internal class ComWrappersSupport
-    {
-        public static unsafe IUnknownVftbl IUnknownVftbl => Unsafe.AsRef<IUnknownVftbl>(IUnknownVftblPtr.ToPointer());
-
-        internal static IntPtr IUnknownVftblPtr { get; }
-
-        static unsafe ComWrappersSupport()
+        [UnmanagedCallersOnly]
+        internal static unsafe int ABI_QueryInterface(IntPtr ppObject, ref Guid guid, out IntPtr returnValue)
         {
-            GetIUnknownImplInternal(out IntPtr qi, out IntPtr addRef, out IntPtr release);
+            ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)ppObject);
+            return wrapper->QueryInterface(ref guid, out returnValue);
+        }
 
-            IUnknownVftblPtr = RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IUnknownVftbl), sizeof(IUnknownVftbl));
-            (*(IUnknownVftbl*)IUnknownVftblPtr) = new IUnknownVftbl
-            {
-                QueryInterface = (delegate* unmanaged<IntPtr, ref Guid, out IntPtr, int>)qi,
-                AddRef = (delegate* unmanaged<IntPtr, uint>)addRef,
-                Release = (delegate* unmanaged<IntPtr, uint>)release,
-            };
+        [UnmanagedCallersOnly]
+        internal static unsafe int ABI_AddRef(IntPtr ppObject)
+        {
+            ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)ppObject);
+            return wrapper->AddRef();
+        }
+
+        [UnmanagedCallersOnly]
+        internal static unsafe int ABI_Release(IntPtr ppObject)
+        {
+            ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)ppObject);
+            return wrapper->Release();
         }
 
         internal static unsafe void GetIUnknownImplInternal(out IntPtr fpQueryInterface, out IntPtr fpAddRef, out IntPtr fpRelease)
         {
-            fpQueryInterface = (IntPtr)(delegate* unmanaged<IntPtr, Guid*, IntPtr*, int>)&ABI_QueryInterface;
-            fpAddRef = (IntPtr)(delegate* unmanaged<IntPtr, int>)&ABI_AddRef;
-            fpRelease = (IntPtr)(delegate* unmanaged<IntPtr, int>)&ABI_Release;
-        }
-
-        [UnmanagedCallersOnly]
-        private static unsafe int ABI_QueryInterface(IntPtr ppObject, Guid* guid, IntPtr* returnValue)
-        {
-            *returnValue = IntPtr.Zero;
-            return 0;
-        }
-
-        [UnmanagedCallersOnly]
-        private static int ABI_AddRef(IntPtr ppObject)
-        {
-            return 0;
-        }
-
-        [UnmanagedCallersOnly]
-        private static int ABI_Release(IntPtr ppObject)
-        {
-            return 0;
+            fpQueryInterface = (IntPtr)(delegate* unmanaged<IntPtr, ref Guid, out IntPtr, int>)&ComWrappers.ABI_QueryInterface;
+            fpAddRef = (IntPtr)(delegate* unmanaged<IntPtr, int>)&ComWrappers.ABI_AddRef;
+            fpRelease = (IntPtr)(delegate* unmanaged<IntPtr, int>)&ComWrappers.ABI_Release;
         }
     }
 }
