@@ -72,9 +72,9 @@
       to find source code for debugging. It is also used to name the build output manifest for orchestrated builds.
     -->
     <GitHubRepositoryName>runtimelab</GitHubRepositoryName>
-    <RepositoryUrl>git://github.com/dotnet/runtimelab</RepositoryUrl>
-    <ProjectUrl>https://github.com/dotnet/runtimelab</ProjectUrl>
-    <LicenseUrl>https://github.com/dotnet/runtimelab/blob/master/LICENSE.TXT</LicenseUrl>
+    <RepositoryUrl>git://github.com/dotnet/$(GitHubRepositoryName)</RepositoryUrl>
+    <ProjectUrl>https://github.com/dotnet/$(GitHubRepositoryName)</ProjectUrl>
+    <LicenseUrl>https://github.com/dotnet/$(GitHubRepositoryName)/blob/master/LICENSE.TXT</LicenseUrl>
     <RuntimeIdGraphDefinitionFile>$([MSBuild]::NormalizePath('$(LibrariesProjectRoot)', 'pkg', 'Microsoft.NETCore.Platforms', 'runtime.json'))</RuntimeIdGraphDefinitionFile>
     <LicenseFile>$(RepoRoot)LICENSE.TXT</LicenseFile>
 
