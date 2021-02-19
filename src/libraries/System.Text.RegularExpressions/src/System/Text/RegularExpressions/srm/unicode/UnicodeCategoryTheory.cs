@@ -91,14 +91,7 @@ namespace System.Text.RegularExpressions.SRM
 
         public UnicodeCategoryTheory(ICharAlgebra<PRED> solver)
         {
-#if DEBUG
-            if (solver.Encoding != BitWidth.BV16)
-                throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
-#endif
-
             this.solver = solver;
-            // remove initialization, since the predicate creation is lazy and on demand
-            // InitializeUnicodeCategoryDefinitions();
         }
 
         private PRED MkRangesConstraint(IEnumerable<int[]> ranges)
@@ -109,84 +102,15 @@ namespace System.Text.RegularExpressions.SRM
             return res;
         }
 
-        //private void InitializeUnicodeCategoryDefinitions()
-        //{
-        //    if (solver.Encoding == BitWidth.BV7)
-        //    {
-        //        // depricated case
-        //        //use ranges directly
-        //        for (int i = 0; i < 30; i++)
-        //            if (UnicodeCategoryRanges.ASCII[i] == null)
-        //                catConditions[i] = solver.False;
-        //            else
-        //                catConditions[i] = solver.MkCharPredicate(
-        //                      UnicodeCategoryPredicateName(i), MkRangesConstraint(UnicodeCategoryRanges.ASCII[i]));
-
-        //        whiteSpaceCondition = solver.MkCharPredicate(
-        //                      "IsWhitespace", MkRangesConstraint(UnicodeCategoryRanges.ASCIIWhitespace));
-        //        wordLetterCondition = solver.MkCharPredicate(
-        //                      "IsWordletter", MkRangesConstraint(UnicodeCategoryRanges.ASCIIWordCharacter));
-        //    }
-        //    else if (solver.Encoding == BitWidth.BV8)
-        //    {
-        //        // depricated case
-        //        //use BDDs
-        //        for (int i = 0; i < 30; i++)
-        //            if (UnicodeCategoryRanges.CP437Bdd[i] == null)
-        //                catConditions[i] = solver.False;
-        //            else
-        //                catConditions[i] = solver.MkCharPredicate(
-        //                      UnicodeCategoryPredicateName(i),
-        //                      solver.ConvertFromCharSet(solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.CP437Bdd[i])));
-        //        whiteSpaceCondition = solver.MkCharPredicate("IsWhitespace",
-        //                     solver.ConvertFromCharSet(solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.CP437WhitespaceBdd)));
-        //        wordLetterCondition = solver.MkCharPredicate("IsWordletter",
-        //                     solver.ConvertFromCharSet(solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.CP437WordCharacterBdd)));
-        //    }
-        //    else
-        //    {
-        //        //use BDDs
-        //        for (int i = 0; i < 30; i++)
-        //            catConditions[i] = solver.MkCharPredicate(
-        //                 UnicodeCategoryPredicateName(i),
-        //                 solver.ConvertFromCharSet(solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeBdd[i])));
-        //        whiteSpaceCondition = solver.MkCharPredicate("IsWhitespace",
-        //                     solver.ConvertFromCharSet(solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeWhitespaceBdd)));
-        //        wordLetterCondition = solver.MkCharPredicate("IsWordletter",
-        //                     solver.ConvertFromCharSet(solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeWordCharacterBdd)));
-        //    }
-        //}
-
         #region IUnicodeCategoryTheory<Expr> Members
 
         public PRED CategoryCondition(int i)
         {
             if (object.Equals(catConditions[i], default(PRED))) //uninitialized
             {
-                if (solver.Encoding == BitWidth.BV7)
-                {
-                    if (UnicodeCategoryRanges.ASCII[i] == null)
-                        catConditions[i] = solver.False;
-                    else
-                        catConditions[i] = solver.MkCharPredicate(
-                              UnicodeCategoryPredicateName(i), MkRangesConstraint(UnicodeCategoryRanges.ASCII[i]));
-                }
-                else if (solver.Encoding == BitWidth.BV8)
-                {
-                    //use BDDs
-                    if (UnicodeCategoryRanges.CP437Bdd[i] == null)
-                        catConditions[i] = solver.False;
-                    else
-                        catConditions[i] = solver.MkCharPredicate(
-                              UnicodeCategoryPredicateName(i),
-                              solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.CP437Bdd[i])));
-                }
-                else
-                {
-                    catConditions[i] = solver.MkCharPredicate(
-                         UnicodeCategoryPredicateName(i),
-                         solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeBdd[i])));
-                }
+                catConditions[i] = solver.MkCharPredicate(
+                     UnicodeCategoryPredicateName(i),
+                     solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeBdd[i])));
             }
             return catConditions[i];
         }
@@ -196,23 +120,8 @@ namespace System.Text.RegularExpressions.SRM
             get {
                 if (object.Equals(whiteSpaceCondition, default(PRED)))
                 {
-                    if (solver.Encoding == BitWidth.BV7)
-                    {
-                        whiteSpaceCondition = solver.MkCharPredicate(
-                                      "IsWhitespace", MkRangesConstraint(UnicodeCategoryRanges.ASCIIWhitespace));
-                    }
-                    else if (solver.Encoding == BitWidth.BV8)
-                    {
-                        //use BDDs
-                        whiteSpaceCondition = solver.MkCharPredicate("IsWhitespace",
-                                     solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.CP437WhitespaceBdd)));
-                    }
-                    else
-                    {
-                        //use BDDs
-                        whiteSpaceCondition = solver.MkCharPredicate("IsWhitespace",
-                                     solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeWhitespaceBdd)));
-                    }
+                    whiteSpaceCondition = solver.MkCharPredicate("IsWhitespace",
+                                 solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeWhitespaceBdd)));
                 }
                 return whiteSpaceCondition;
             }
@@ -223,23 +132,8 @@ namespace System.Text.RegularExpressions.SRM
             get {
                 if (object.Equals(wordLetterCondition, default(PRED)))
                 {
-                    if (solver.Encoding == BitWidth.BV7)
-                    {
-                        wordLetterCondition = solver.MkCharPredicate(
-                                      "IsWordletter", MkRangesConstraint(UnicodeCategoryRanges.ASCIIWordCharacter));
-                    }
-                    else if (solver.Encoding == BitWidth.BV8)
-                    {
-                        //use BDDs
-                        wordLetterCondition = solver.MkCharPredicate("IsWordletter",
-                                     solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.CP437WordCharacterBdd)));
-                    }
-                    else
-                    {
-                        //use BDDs
-                        wordLetterCondition = solver.MkCharPredicate("IsWordletter",
-                                     solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeWordCharacterBdd)));
-                    }
+                    wordLetterCondition = solver.MkCharPredicate("IsWordletter",
+                                 solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeWordCharacterBdd)));
                 }
                 return wordLetterCondition;
             }

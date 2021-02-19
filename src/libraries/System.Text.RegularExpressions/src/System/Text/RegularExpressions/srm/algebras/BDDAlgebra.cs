@@ -40,7 +40,7 @@ namespace System.Text.RegularExpressions.SRM
         /// (they could but this would make it difficult (or near impossible) to clear caches.
         /// Allowing distinct but equivalent BDDs is also a tradeoff between efficiency and flexibility.
         /// </summary>
-        private Dictionary<BDD, BDD> _bddCache = new Dictionary<BDD, BDD>();
+        private HashSet<BDD> _bddCache = new HashSet<BDD>();
 
         /// <summary>
         /// Generator for minterms.
@@ -57,7 +57,7 @@ namespace System.Text.RegularExpressions.SRM
 
         /// <summary>
         /// Create a BDD with given ordinal and given one and zero child.
-        /// Returns the BDD from the cache if one already exists.
+        /// Returns the BDD from the cache if it already exists.
         /// Must be executed in a single thread mode.
         /// </summary>
         public BDD MkBDD(int ordinal, BDD one, BDD zero)
@@ -67,7 +67,7 @@ namespace System.Text.RegularExpressions.SRM
             if (!_bddCache.TryGetValue(key, out set))
             {
                 set = key;
-                _bddCache[key] = key;
+                _bddCache.Add(set);
             }
             return set;
         }

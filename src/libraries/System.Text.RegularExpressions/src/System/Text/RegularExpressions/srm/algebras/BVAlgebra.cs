@@ -140,14 +140,6 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
-        public BitWidth Encoding
-        {
-            get
-            {
-                throw new NotSupportedException();
-            }
-        }
-
         public CharSetSolver CharSetProvider
         {
             get
