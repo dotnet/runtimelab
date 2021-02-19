@@ -144,6 +144,14 @@ extern "C" void PopulateDebugHeaders()
     MAKE_DEBUG_FIELD_ENTRY(GcDacVars, generation_table);
     MAKE_DEBUG_FIELD_ENTRY(GcDacVars, ephemeral_heap_segment);
     MAKE_DEBUG_FIELD_ENTRY(GcDacVars, alloc_allocated);
+    MAKE_DEBUG_FIELD_ENTRY(GcDacVars, n_heaps);
+    MAKE_DEBUG_FIELD_ENTRY(GcDacVars, g_heaps);
+
+    MAKE_SIZE_ENTRY(dac_gc_heap);
+    MAKE_DEBUG_FIELD_ENTRY(dac_gc_heap, alloc_allocated);
+    MAKE_DEBUG_FIELD_ENTRY(dac_gc_heap, ephemeral_heap_segment);
+    MAKE_DEBUG_FIELD_ENTRY(dac_gc_heap, finalize_queue);
+    MAKE_DEBUG_FIELD_ENTRY(dac_gc_heap, generation_table);
 
     MAKE_SIZE_ENTRY(gc_alloc_context);
     MAKE_DEBUG_FIELD_ENTRY(gc_alloc_context, alloc_ptr);
