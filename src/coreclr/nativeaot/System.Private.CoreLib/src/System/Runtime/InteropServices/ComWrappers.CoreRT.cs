@@ -85,21 +85,66 @@ namespace System.Runtime.InteropServices
             internal DispatchSectionEntry* Dispatches;
 
             internal volatile CreateComInterfaceFlagsEx Flags;
-
-            public int AddRef()
+            const ulong ComRefCountMask = 0x000000007fffffffUL;
+            static ulong GetComCount(ulong c)
             {
-                return 0;
+                return c & ComRefCountMask;
             }
 
-            public int Release()
+            public ulong AddRef()
             {
-                return 0;
+                return GetComCount((ulong)Interlocked.Increment(ref RefCount));
             }
 
-            public unsafe int QueryInterface(ref Guid guid, out IntPtr returnValue)
+            public ulong Release()
             {
-                returnValue = IntPtr.Zero;
-                return 0;
+                if (GetComCount((ulong)RefCount) == 0)
+                {
+                    Debug.Fail("Over release of MOW - COM");
+                    return unchecked((ulong)-1);
+                }
+
+                return GetComCount((ulong)Interlocked.Decrement(ref RefCount));
+            }
+
+            public unsafe int QueryInterface(ref Guid riid, out IntPtr ppvObject)
+            {
+                ppvObject = AsRuntimeDefined(ref riid);
+                if (ppvObject == IntPtr.Zero)
+                {
+                    ppvObject = AsUserDefined(ref riid);
+                    if (ppvObject == IntPtr.Zero)
+                        return HResults.COR_E_INVALIDCAST;
+                }
+
+                AddRef();
+                return HResults.S_OK;
+            }
+
+            IntPtr AsRuntimeDefined(ref Guid riid)
+            {
+                for (int i = 0; i < RuntimeDefinedCount; ++i)
+                {
+                    if (RuntimeDefined[i].IID == riid)
+                    {
+                        return Dispatches[i].Vtable;
+                    }
+                }
+
+                return IntPtr.Zero;
+            }
+
+            IntPtr AsUserDefined(ref Guid riid)
+            {
+                for (int i = 0; i < UserDefinedCount; ++i)
+                {
+                    if (UserDefined[i].IID == riid)
+                    {
+                        return Dispatches[i + RuntimeDefinedCount].Vtable;
+                    }
+                }
+
+                return IntPtr.Zero;
             }
         }
         internal unsafe struct EntrySet
@@ -589,14 +634,14 @@ namespace System.Runtime.InteropServices
         }
 
         [UnmanagedCallersOnly]
-        internal static unsafe int ABI_AddRef(IntPtr ppObject)
+        internal static unsafe ulong ABI_AddRef(IntPtr ppObject)
         {
             ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)ppObject);
             return wrapper->AddRef();
         }
 
         [UnmanagedCallersOnly]
-        internal static unsafe int ABI_Release(IntPtr ppObject)
+        internal static unsafe ulong ABI_Release(IntPtr ppObject)
         {
             ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)ppObject);
             return wrapper->Release();
@@ -605,8 +650,8 @@ namespace System.Runtime.InteropServices
         internal static unsafe void GetIUnknownImplInternal(out IntPtr fpQueryInterface, out IntPtr fpAddRef, out IntPtr fpRelease)
         {
             fpQueryInterface = (IntPtr)(delegate* unmanaged<IntPtr, ref Guid, out IntPtr, int>)&ComWrappers.ABI_QueryInterface;
-            fpAddRef = (IntPtr)(delegate* unmanaged<IntPtr, int>)&ComWrappers.ABI_AddRef;
-            fpRelease = (IntPtr)(delegate* unmanaged<IntPtr, int>)&ComWrappers.ABI_Release;
+            fpAddRef = (IntPtr)(delegate* unmanaged<IntPtr, ulong>)&ComWrappers.ABI_AddRef;
+            fpRelease = (IntPtr)(delegate* unmanaged<IntPtr, ulong>)&ComWrappers.ABI_Release;
         }
     }
 }
