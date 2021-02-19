@@ -1,13 +1,11 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.Collections;
-using System.Threading;
-using System.Runtime.CompilerServices;
-using System.Runtime.Versioning;
-using Internal.Runtime.CompilerServices;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using Internal.Runtime.CompilerServices;
 
 namespace System.Runtime.InteropServices
 {
@@ -29,6 +27,8 @@ namespace System.Runtime.InteropServices
         internal static unsafe IUnknownVftbl DefaultIUnknownVftbl => Unsafe.AsRef<IUnknownVftbl>(DefaultIUnknownVftblPtr.ToPointer());
 
         internal static IntPtr DefaultIUnknownVftblPtr { get; }
+
+        internal static Guid IID_IUnknown = new Guid(0x00000000, 0x0000, 0x0000, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
 
         const int DispatchAlignmentThisPtr = 16;
         private static readonly ConditionalWeakTable<object, ManagedObjectWrapperHolder> CCWTable = new ConditionalWeakTable<object, ManagedObjectWrapperHolder>();
@@ -121,6 +121,16 @@ namespace System.Runtime.InteropServices
                 return HResults.S_OK;
             }
 
+            public IntPtr As(ref Guid riid)
+            {
+                // Find target interface and return dispatcher or null if not found.
+                IntPtr typeMaybe = AsRuntimeDefined(ref riid);
+                if (typeMaybe == IntPtr.Zero)
+                    typeMaybe = AsUserDefined(ref riid);
+
+                return typeMaybe;
+            }
+
             IntPtr AsRuntimeDefined(ref Guid riid)
             {
                 for (int i = 0; i < RuntimeDefinedCount; ++i)
@@ -159,18 +169,18 @@ namespace System.Runtime.InteropServices
             }
         }
 
-        internal class ManagedObjectWrapperHolder
+        internal unsafe class ManagedObjectWrapperHolder
         {
-            private IntPtr wrapper;
-            public ManagedObjectWrapperHolder(IntPtr wrapper)
+            private ManagedObjectWrapper* wrapper;
+            public ManagedObjectWrapperHolder(ManagedObjectWrapper* wrapper)
             {
                 this.wrapper = wrapper;
             }
 
-            public unsafe IntPtr ComIp => this.wrapper + sizeof(ManagedObjectWrapper);
+            public unsafe IntPtr ComIp => this.wrapper->As(ref ComWrappers.IID_IUnknown);
             ~ManagedObjectWrapperHolder()
             {
-                Marshal.FreeCoTaskMem(this.wrapper);
+                Marshal.FreeCoTaskMem((IntPtr)this.wrapper);
             }
         }
 
@@ -250,7 +260,7 @@ namespace System.Runtime.InteropServices
             {
                 var value = CreateCCW(impl, c, flags);
                 success = value != null;
-                return new ManagedObjectWrapperHolder((IntPtr)value);
+                return new ManagedObjectWrapperHolder(value);
             });
             // I should get IUnknown implementation from MOW. It maye have behave incorrectly when using user provided IUnknown.
             retValue = ccwValue.ComIp;
@@ -272,7 +282,7 @@ namespace System.Runtime.InteropServices
             if ((flags & CreateComInterfaceFlags.CallerDefinedIUnknown) == CreateComInterfaceFlags.None)
             {
                 ComInterfaceEntry curr = runtimeDefinedLocal[runtimeDefinedCount++];
-                curr.IID = new Guid(0x00000000, 0x0000, 0x0000, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
+                curr.IID = IID_IUnknown;
                 curr.Vtable = ComWrappers.DefaultIUnknownVftblPtr;
             }
 
