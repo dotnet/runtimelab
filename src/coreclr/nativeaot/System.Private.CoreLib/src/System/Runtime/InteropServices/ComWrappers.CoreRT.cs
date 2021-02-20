@@ -14,8 +14,6 @@ namespace System.Runtime.InteropServices
     /// </summary>
     public abstract partial class ComWrappers
     {
-        internal static unsafe IUnknownVftbl DefaultIUnknownVftbl => Unsafe.AsRef<IUnknownVftbl>(DefaultIUnknownVftblPtr.ToPointer());
-
         internal static IntPtr DefaultIUnknownVftblPtr { get; }
 
         internal static Guid IID_IUnknown = new Guid(0x00000000, 0x0000, 0x0000, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
