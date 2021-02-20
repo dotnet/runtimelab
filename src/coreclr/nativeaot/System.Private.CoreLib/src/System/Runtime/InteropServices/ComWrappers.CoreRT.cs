@@ -396,32 +396,6 @@ namespace System.Runtime.InteropServices
         }
 
 
-        // Called by the runtime to execute the abstract instance function
-        internal static unsafe void* CallComputeVtables(ComWrappersScenario scenario, ComWrappers? comWrappersImpl, object obj, CreateComInterfaceFlags flags, out int count)
-        {
-            ComWrappers? impl = null;
-            switch (scenario)
-            {
-                case ComWrappersScenario.Instance:
-                    impl = comWrappersImpl;
-                    break;
-                case ComWrappersScenario.TrackerSupportGlobalInstance:
-                    impl = s_globalInstanceForTrackerSupport;
-                    break;
-                case ComWrappersScenario.MarshallingGlobalInstance:
-                    impl = s_globalInstanceForMarshalling;
-                    break;
-            }
-
-            if (impl is null)
-            {
-                count = -1;
-                return null;
-            }
-
-            return impl.ComputeVtables(obj, flags, out count);
-        }
-
         /// <summary>
         /// Get the currently registered managed object or creates a new managed object and registers it.
         /// </summary>
@@ -440,29 +414,6 @@ namespace System.Runtime.InteropServices
                 throw new ArgumentNullException(nameof(externalComObject));
 
             return obj!;
-        }
-
-        // Called by the runtime to execute the abstract instance function.
-        internal static object? CallCreateObject(ComWrappersScenario scenario, ComWrappers? comWrappersImpl, IntPtr externalComObject, CreateObjectFlags flags)
-        {
-            ComWrappers? impl = null;
-            switch (scenario)
-            {
-                case ComWrappersScenario.Instance:
-                    impl = comWrappersImpl;
-                    break;
-                case ComWrappersScenario.TrackerSupportGlobalInstance:
-                    impl = s_globalInstanceForTrackerSupport;
-                    break;
-                case ComWrappersScenario.MarshallingGlobalInstance:
-                    impl = s_globalInstanceForMarshalling;
-                    break;
-            }
-
-            if (impl == null)
-                return null;
-
-            return impl.CreateObject(externalComObject, flags);
         }
 
         /// <summary>
@@ -623,7 +574,7 @@ namespace System.Runtime.InteropServices
         }
 
         [UnmanagedCallersOnly]
-        internal static unsafe int ABI_QueryInterface(IntPtr ppObject, ref Guid guid, out IntPtr returnValue)
+        internal static unsafe int ABI_QueryInterface(IntPtr ppObject, Guid* guid, IntPtr* returnValue)
         {
             ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)ppObject);
             return wrapper->QueryInterface(ref guid, out returnValue);
