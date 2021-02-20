@@ -10,16 +10,6 @@ using Internal.Runtime.CompilerServices;
 namespace System.Runtime.InteropServices
 {
     /// <summary>
-    /// Internal enumeration used by the runtime to indicate the scenario for which ComWrappers is being used.
-    /// </summary>
-    internal enum ComWrappersScenario
-    {
-        Instance = 0,
-        TrackerSupportGlobalInstance = 1,
-        MarshallingGlobalInstance = 2,
-    }
-
-    /// <summary>
     /// Class for managing wrappers of COM IUnknown types.
     /// </summary>
     public abstract partial class ComWrappers
