@@ -24,6 +24,7 @@ struct DebugTypeEntry
     const char *TypeName;
     const char *FieldName;
     uint32_t FieldOffset;
+    uint32_t ResevedPadding;
 };
 
 struct GlobalValueEntry
@@ -85,7 +86,7 @@ struct NativeAOTRuntimeDebugHeader
 
     // Reserved - Currently it only serves as alignment padding for the pointers which
     // follow but future usage will be considered a back-compatible change.
-    const uint32_t ReservedPadding = 0;
+    const uint32_t ReservedPadding1 = 0;
 
     // Header pointers below here are encoded using the defined pointer size and endianess
     // specified in the Flags field. The data within the contracts they point to also uses
@@ -95,12 +96,20 @@ struct NativeAOTRuntimeDebugHeader
     #define DEBUG_TYPES_ARRAY_SIZE 101
     const uint32_t DebugTypeEntriesArraySize = DEBUG_TYPES_ARRAY_SIZE;
 
+    // Reserved - Currently it only serves as alignment padding for the pointers which
+    // follow but future usage will be considered a back-compatible change.
+    const uint32_t ReservedPadding2 = 0;
+
     // An array describing important types and their offsets
     DebugTypeEntry DebugTypeEntries[DEBUG_TYPES_ARRAY_SIZE];
 
     // The length of the GlobalEntries array
     #define GLOBALS_ARRAY_SIZE 5
     const uint32_t GlobalEntriesArraySize = GLOBALS_ARRAY_SIZE;
+    
+    // Reserved - Currently it only serves as alignment padding for the pointers which
+    // follow but future usage will be considered a back-compatible change.
+    const uint32_t ReservedPadding3 = 0;
 
     // An array that contains pointers to important globals
     GlobalValueEntry GlobalEntries[GLOBALS_ARRAY_SIZE];
