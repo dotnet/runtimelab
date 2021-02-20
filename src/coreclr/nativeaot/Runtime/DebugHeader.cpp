@@ -120,7 +120,7 @@ extern "C" NativeAOTRuntimeDebugHeader g_NativeAOTRuntimeDebugHeader = {};
 #define MAKE_DEBUG_ENTRY(TypeName, FieldName, Value)                                                                        \
     do                                                                                                                      \
     {                                                                                                                       \
-        g_NativeAOTRuntimeDebugHeader.DebugTypeEntries[currentDebugPos] = std::move(DebugTypeEntry{ #TypeName, #FieldName, Value });                 \
+        g_NativeAOTRuntimeDebugHeader.DebugTypeEntries[currentDebugPos] = { #TypeName, #FieldName, Value, 0  };             \
         ++currentDebugPos;                                                                                                  \
         ASSERT(currentDebugPos <= g_NativeAOTRuntimeDebugHeader.DebugTypeEntriesArraySize);                                 \
     } while(0)
