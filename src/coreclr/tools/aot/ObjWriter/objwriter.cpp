@@ -607,7 +607,7 @@ void ObjectWriter::EmitVarDefRange(const MCSymbol *Fn,
 // Maps an ICorDebugInfo register number to the corresponding CodeView
 // register number
 CVRegNum ObjectWriter::GetCVRegNum(ICorDebugInfo::RegNum RegNum) {
-  static const CVRegNum cvRegMapAmd64[] = {
+  static const CVRegNum CvRegMapAmd64[] = {
     CV_AMD64_RAX, CV_AMD64_RCX, CV_AMD64_RDX, CV_AMD64_RBX,
     CV_AMD64_RSP, CV_AMD64_RBP, CV_AMD64_RSI, CV_AMD64_RDI,
     CV_AMD64_R8, CV_AMD64_R9, CV_AMD64_R10, CV_AMD64_R11,
@@ -622,8 +622,8 @@ CVRegNum ObjectWriter::GetCVRegNum(ICorDebugInfo::RegNum RegNum) {
     }
     break;
   case Triple::x86_64:
-    if (RegNum < sizeof(cvRegMapAmd64) / sizeof(cvRegMapAmd64[0])) {
-      return cvRegMapAmd64[RegNum];
+    if (RegNum < sizeof(CvRegMapAmd64) / sizeof(CvRegMapAmd64[0])) {
+      return CvRegMapAmd64[RegNum];
     }
     break;
   case Triple::arm:
