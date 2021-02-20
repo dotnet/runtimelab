@@ -21,24 +21,15 @@ GPTR_DECL(EEType, g_pFreeObjectEEType);
 
 struct DebugTypeEntry
 {
-    DebugTypeEntry *Next;
     const char *TypeName;
     const char *FieldName;
-    const uint32_t FieldOffset;
+    uint32_t FieldOffset;
 };
 
 struct GlobalValueEntry
 {
-    GlobalValueEntry *Next;
     const char *Name;
     const void *Address;
-};
-
-struct DefineEntry
-{
-    DefineEntry *Next;
-    const char *Name;
-    const char *Value;
 };
 
 // This structure is part of a in-memory serialization format that is used by diagnostic tools to
@@ -100,11 +91,19 @@ struct NativeAOTRuntimeDebugHeader
     // specified in the Flags field. The data within the contracts they point to also uses
     // the same pointer size and endianess encoding unless otherwise specified.
 
-    DebugTypeEntry *DebugTypesList = nullptr;
+    // The length of the DebugTypeEntries array
+    #define DEBUG_TYPES_ARRAY_SIZE 101
+    const uint32_t DebugTypeEntriesArraySize = DEBUG_TYPES_ARRAY_SIZE;
 
-    GlobalValueEntry *GlobalsList = nullptr;
+    // An array describing important types and their offsets
+    DebugTypeEntry DebugTypeEntries[DEBUG_TYPES_ARRAY_SIZE];
 
-    DefineEntry *DefinesList = nullptr;
+    // The length of the GlobalEntries array
+    #define GLOBALS_ARRAY_SIZE 5
+    const uint32_t GlobalEntriesArraySize = GLOBALS_ARRAY_SIZE;
+
+    // An array that contains pointers to important globals
+    GlobalValueEntry GlobalEntries[GLOBALS_ARRAY_SIZE];
 };
 
 extern "C" NativeAOTRuntimeDebugHeader g_NativeAOTRuntimeDebugHeader = {};
@@ -112,8 +111,9 @@ extern "C" NativeAOTRuntimeDebugHeader g_NativeAOTRuntimeDebugHeader = {};
 #define MAKE_DEBUG_ENTRY(TypeName, FieldName, Value)                                                                        \
     do                                                                                                                      \
     {                                                                                                                       \
-        currentType = new (nothrow) DebugTypeEntry{ previousType, #TypeName, #FieldName, Value };                             \
-        previousType = currentType;                                                                                         \
+        g_NativeAOTRuntimeDebugHeader.DebugTypeEntries[currentDebugPos] = std::move(DebugTypeEntry{ #TypeName, #FieldName, Value });                 \
+        ++currentDebugPos;                                                                                                  \
+        ASSERT(currentDebugPos <= g_NativeAOTRuntimeDebugHeader.DebugTypeEntriesArraySize);                                 \
     } while(0)
 
 #define MAKE_DEBUG_FIELD_ENTRY(TypeName, FieldName) MAKE_DEBUG_ENTRY(TypeName, FieldName, offsetof(TypeName, FieldName))
@@ -125,14 +125,18 @@ extern "C" NativeAOTRuntimeDebugHeader g_NativeAOTRuntimeDebugHeader = {};
 #define MAKE_GLOBAL_ENTRY(Name)                                                                                             \
     do                                                                                                                      \
     {                                                                                                                       \
-        currentGlobal = new (nothrow) GlobalValueEntry{ previousGlobal, #Name, Name };                                      \
-        previousGlobal = currentGlobal;                                                                                     \
+        g_NativeAOTRuntimeDebugHeader.GlobalEntries[currentGlobalPos] = { #Name, Name };                                    \
+        ++currentGlobalPos;                                                                                                 \
+        ASSERT(currentGlobalPos <= g_NativeAOTRuntimeDebugHeader.GlobalEntriesArraySize)                                    \
     } while(0)                                                                                                              \
 
 extern "C" void PopulateDebugHeaders()
 {
-    DebugTypeEntry *previousType = nullptr;
-    DebugTypeEntry *currentType = nullptr;
+    size_t currentDebugPos = 0;
+    size_t currentGlobalPos = 0;
+
+    ZeroMemory(g_NativeAOTRuntimeDebugHeader.DebugTypeEntries, g_NativeAOTRuntimeDebugHeader.DebugTypeEntriesArraySize);
+    ZeroMemory(g_NativeAOTRuntimeDebugHeader.GlobalEntries, g_NativeAOTRuntimeDebugHeader.GlobalEntriesArraySize);
 
     MAKE_SIZE_ENTRY(GcDacVars);
     MAKE_DEBUG_FIELD_ENTRY(GcDacVars, major_version_number);
@@ -195,7 +199,8 @@ extern "C" void PopulateDebugHeaders()
     MAKE_SIZE_ENTRY(EEType);
     MAKE_DEBUG_FIELD_ENTRY(EEType, m_uBaseSize);
     MAKE_DEBUG_FIELD_ENTRY(EEType, m_usComponentSize);
-    MAKE_DEBUG_FIELD_ENTRY(EEType, m_usFlags);    MAKE_DEBUG_ENTRY(EEType, m_pBaseType, offsetof(EEType, m_RelatedType) + offsetof(EEType::RelatedTypeUnion, m_pBaseType));
+    MAKE_DEBUG_FIELD_ENTRY(EEType, m_usFlags);
+    MAKE_DEBUG_ENTRY(EEType, m_pBaseType, offsetof(EEType, m_RelatedType) + offsetof(EEType::RelatedTypeUnion, m_pBaseType));
     MAKE_DEBUG_ENTRY(EEType, m_ppBaseTypeViaIAT, offsetof(EEType, m_RelatedType) + offsetof(EEType::RelatedTypeUnion, m_ppBaseTypeViaIAT));
     MAKE_DEBUG_ENTRY(EEType, m_pCanonicalType, offsetof(EEType, m_RelatedType) + offsetof(EEType::RelatedTypeUnion, m_pCanonicalType));
     MAKE_DEBUG_ENTRY(EEType, m_ppCanonicalTypeViaIAT, offsetof(EEType, m_RelatedType) + offsetof(EEType::RelatedTypeUnion, m_ppCanonicalTypeViaIAT));
@@ -252,9 +257,6 @@ extern "C" void PopulateDebugHeaders()
     MAKE_SIZE_ENTRY(RuntimeInstance);
     MAKE_DEBUG_FIELD_ENTRY(RuntimeInstance, m_pThreadStore);
 
-    GlobalValueEntry *previousGlobal = nullptr;
-    GlobalValueEntry *currentGlobal = nullptr;
-
     RuntimeInstance *g_pTheRuntimeInstance = GetRuntimeInstance();
     MAKE_GLOBAL_ENTRY(g_pTheRuntimeInstance);
 
@@ -270,6 +272,14 @@ extern "C" void PopulateDebugHeaders()
     HANDLE moduleBaseAddress = PalGetModuleHandleFromPointer((void *)&PopulateDebugHeaders);
     MAKE_GLOBAL_ENTRY(moduleBaseAddress);
 
-    g_NativeAOTRuntimeDebugHeader.DebugTypesList = currentType;
-    g_NativeAOTRuntimeDebugHeader.GlobalsList = currentGlobal;
+    static_assert(EEType::Flags::EETypeKindMask         == 0x0003, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
+    static_assert(EEType::Flags::RelatedTypeViaIATFlag  == 0x0004, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
+    static_assert(EEType::Flags::IsDynamicTypeFlag      == 0x0008, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
+    static_assert(EEType::Flags::HasFinalizerFlag       == 0x0010, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
+    static_assert(EEType::Flags::HasPointersFlag        == 0x0020, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
+    static_assert(EEType::Flags::GenericVarianceFlag    == 0x0080, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
+    static_assert(EEType::Flags::OptionalFieldsFlag     == 0x0100, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
+    static_assert(EEType::Flags::IsGenericFlag          == 0x0400, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
+    static_assert(EEType::Flags::ElementTypeMask        == 0xf800, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
+    static_assert(EEType::Flags::ElementTypeShift       == 11,     "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
 }
