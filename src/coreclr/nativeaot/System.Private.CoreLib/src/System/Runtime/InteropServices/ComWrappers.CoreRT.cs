@@ -14,7 +14,7 @@ namespace System.Runtime.InteropServices
     /// </summary>
     public abstract partial class ComWrappers
     {
-        internal static IntPtr DefaultIUnknownVftblPtr { get; }
+        internal static IntPtr DefaultIUnknownVftblPtr { get; } = CreateDefaultIUnknownVftbl();
 
         internal static Guid IID_IUnknown = new Guid(0x00000000, 0x0000, 0x0000, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
 
@@ -74,34 +74,34 @@ namespace System.Runtime.InteropServices
 
             internal volatile CreateComInterfaceFlagsEx Flags;
             const ulong ComRefCountMask = 0x000000007fffffffUL;
-            static ulong GetComCount(ulong c)
+            static uint GetComCount(ulong c)
             {
-                return c & ComRefCountMask;
+                return (uint)(c & ComRefCountMask);
             }
 
-            public ulong AddRef()
+            public uint AddRef()
             {
                 return GetComCount((ulong)Interlocked.Increment(ref RefCount));
             }
 
-            public ulong Release()
+            public uint Release()
             {
                 if (GetComCount((ulong)RefCount) == 0)
                 {
                     Debug.Fail("Over release of MOW - COM");
-                    return unchecked((ulong)-1);
+                    return unchecked((uint)-1);
                 }
 
                 return GetComCount((ulong)Interlocked.Decrement(ref RefCount));
             }
 
-            public unsafe int QueryInterface(ref Guid riid, out IntPtr ppvObject)
+            public unsafe int QueryInterface(Guid* riid, IntPtr* ppvObject)
             {
-                ppvObject = AsRuntimeDefined(ref riid);
-                if (ppvObject == IntPtr.Zero)
+                *ppvObject = AsRuntimeDefined(riid);
+                if (*ppvObject == IntPtr.Zero)
                 {
-                    ppvObject = AsUserDefined(ref riid);
-                    if (ppvObject == IntPtr.Zero)
+                    *ppvObject = AsUserDefined(riid);
+                    if (*ppvObject == IntPtr.Zero)
                         return HResults.COR_E_INVALIDCAST;
                 }
 
@@ -109,21 +109,21 @@ namespace System.Runtime.InteropServices
                 return HResults.S_OK;
             }
 
-            public IntPtr As(ref Guid riid)
+            public IntPtr As(Guid *riid)
             {
                 // Find target interface and return dispatcher or null if not found.
-                IntPtr typeMaybe = AsRuntimeDefined(ref riid);
+                IntPtr typeMaybe = AsRuntimeDefined(riid);
                 if (typeMaybe == IntPtr.Zero)
-                    typeMaybe = AsUserDefined(ref riid);
+                    typeMaybe = AsUserDefined(riid);
 
                 return typeMaybe;
             }
 
-            IntPtr AsRuntimeDefined(ref Guid riid)
+            IntPtr AsRuntimeDefined(Guid* riid)
             {
                 for (int i = 0; i < RuntimeDefinedCount; ++i)
                 {
-                    if (RuntimeDefined[i].IID == riid)
+                    if (RuntimeDefined[i].IID == *riid)
                     {
                         return Dispatches[i].Vtable;
                     }
@@ -132,11 +132,11 @@ namespace System.Runtime.InteropServices
                 return IntPtr.Zero;
             }
 
-            IntPtr AsUserDefined(ref Guid riid)
+            IntPtr AsUserDefined(Guid *riid)
             {
                 for (int i = 0; i < UserDefinedCount; ++i)
                 {
-                    if (UserDefined[i].IID == riid)
+                    if (UserDefined[i].IID == *riid)
                     {
                         return Dispatches[i + RuntimeDefinedCount].Vtable;
                     }
@@ -165,7 +165,15 @@ namespace System.Runtime.InteropServices
                 this.wrapper = wrapper;
             }
 
-            public unsafe IntPtr ComIp => this.wrapper->As(ref ComWrappers.IID_IUnknown);
+            public unsafe IntPtr ComIp
+            {
+                get
+                {
+                    fixed (Guid* guid = &ComWrappers.IID_IUnknown)
+                        return this.wrapper->As(guid);
+                }
+            }
+
             ~ManagedObjectWrapperHolder()
             {
                 Marshal.FreeCoTaskMem((IntPtr)this.wrapper);
@@ -191,19 +199,6 @@ namespace System.Runtime.InteropServices
 
         private static long s_instanceCounter;
         private readonly long id = Interlocked.Increment(ref s_instanceCounter);
-
-        static unsafe ComWrappers()
-        {
-            GetIUnknownImplInternal(out IntPtr qi, out IntPtr addRef, out IntPtr release);
-
-            DefaultIUnknownVftblPtr = RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IUnknownVftbl), sizeof(IUnknownVftbl));
-            (*(IUnknownVftbl*)DefaultIUnknownVftblPtr) = new IUnknownVftbl
-            {
-                QueryInterface = (delegate* unmanaged<IntPtr, ref Guid, out IntPtr, int>)qi,
-                AddRef = (delegate* unmanaged<IntPtr, uint>)addRef,
-                Release = (delegate* unmanaged<IntPtr, uint>)release,
-            };
-        }
 
         /// <summary>
         /// Create a COM representation of the supplied object that can be passed to a non-managed environment.
@@ -256,9 +251,6 @@ namespace System.Runtime.InteropServices
         private static unsafe ManagedObjectWrapper* CreateCCW(ComWrappers impl, object instance, CreateComInterfaceFlags flags)
         {
             ComInterfaceEntry* userDefined = impl.ComputeVtables(instance, flags, out int userDefinedCount);
-            // Here I should create someing like that https://github.com/dotnet/runtime/blob/9f8aab73d93156933ae65a476204bf62c02f6537/src/coreclr/interop/comwrappers.cpp#L16
-            // Which would be saved to CCW cache.
-            // Creation of CCW is basically ManagedObjectWrapper::Create reimplementation.
 
             // Maximum number of runtime supplied vtables.
             Span<ComInterfaceEntry> runtimeDefinedLocal = stackalloc ComInterfaceEntry[4];
@@ -325,8 +317,6 @@ namespace System.Runtime.InteropServices
                 mow,
                 (DispatchSectionEntry*)dispatchSectionOffset,
                 AllEntries);
-            // Hope I properly understand how line below works.
-            // https://github.com/dotnet/runtime/blob/9f8aab73d93156933ae65a476204bf62c02f6537/src/coreclr/interop/comwrappers.cpp#L401
             mow->Target = IntPtr.Zero;
             mow->RefCount = 1;
             mow->RuntimeDefinedCount = runtimeDefinedCount;
@@ -551,8 +541,12 @@ namespace System.Runtime.InteropServices
         /// <param name="fpQueryInterface">Function pointer to QueryInterface.</param>
         /// <param name="fpAddRef">Function pointer to AddRef.</param>
         /// <param name="fpRelease">Function pointer to Release.</param>
-        protected internal static void GetIUnknownImpl(out IntPtr fpQueryInterface, out IntPtr fpAddRef, out IntPtr fpRelease)
-            => GetIUnknownImplInternal(out fpQueryInterface, out fpAddRef, out fpRelease);
+        protected internal static unsafe void GetIUnknownImpl(out IntPtr fpQueryInterface, out IntPtr fpAddRef, out IntPtr fpRelease)
+        {
+            fpQueryInterface = (IntPtr)(delegate* unmanaged<IntPtr, Guid*, IntPtr*, int>)&ComWrappers.IUnknown_QueryInterface;
+            fpAddRef = (IntPtr)(delegate* unmanaged<IntPtr, uint>)&ComWrappers.IUnknown_AddRef;
+            fpRelease = (IntPtr)(delegate* unmanaged<IntPtr, uint>)&ComWrappers.IUnknown_Release;
+        }
 
         internal static int CallICustomQueryInterface(object customQueryInterfaceMaybe, ref Guid iid, out IntPtr ppObject)
         {
@@ -574,31 +568,31 @@ namespace System.Runtime.InteropServices
         }
 
         [UnmanagedCallersOnly]
-        internal static unsafe int ABI_QueryInterface(IntPtr ppObject, Guid* guid, IntPtr* returnValue)
+        internal static unsafe int IUnknown_QueryInterface(IntPtr ppObject, Guid* guid, IntPtr* returnValue)
         {
             ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)ppObject);
-            return wrapper->QueryInterface(ref guid, out returnValue);
+            return wrapper->QueryInterface(guid, returnValue);
         }
 
         [UnmanagedCallersOnly]
-        internal static unsafe ulong ABI_AddRef(IntPtr ppObject)
+        internal static unsafe uint IUnknown_AddRef(IntPtr ppObject)
         {
             ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)ppObject);
             return wrapper->AddRef();
         }
 
         [UnmanagedCallersOnly]
-        internal static unsafe ulong ABI_Release(IntPtr ppObject)
+        internal static unsafe uint IUnknown_Release(IntPtr ppObject)
         {
             ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)ppObject);
             return wrapper->Release();
         }
 
-        internal static unsafe void GetIUnknownImplInternal(out IntPtr fpQueryInterface, out IntPtr fpAddRef, out IntPtr fpRelease)
+        private static unsafe IntPtr CreateDefaultIUnknownVftbl()
         {
-            fpQueryInterface = (IntPtr)(delegate* unmanaged<IntPtr, ref Guid, out IntPtr, int>)&ComWrappers.ABI_QueryInterface;
-            fpAddRef = (IntPtr)(delegate* unmanaged<IntPtr, ulong>)&ComWrappers.ABI_AddRef;
-            fpRelease = (IntPtr)(delegate* unmanaged<IntPtr, ulong>)&ComWrappers.ABI_Release;
+            IntPtr* vftbl = (IntPtr*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(ComWrappers), 3 * sizeof(IntPtr));
+            GetIUnknownImpl(out vftbl[0], out vftbl[1], out vftbl[2]);
+            return (IntPtr)vftbl;
         }
     }
 }
