@@ -609,6 +609,13 @@ void ObjectWriter::EmitVarDefRange(const MCSymbol *Fn,
 // Maps an ICorDebugInfo register number to the corresponding CodeView
 // register number
 CVRegNum ObjectWriter::GetCVRegNum(ICorDebugInfo::RegNum RegNum) {
+  static const CVRegNum CvRegMapAmd64[] = {
+    CV_AMD64_RAX, CV_AMD64_RCX, CV_AMD64_RDX, CV_AMD64_RBX,
+    CV_AMD64_RSP, CV_AMD64_RBP, CV_AMD64_RSI, CV_AMD64_RDI,
+    CV_AMD64_R8, CV_AMD64_R9, CV_AMD64_R10, CV_AMD64_R11,
+    CV_AMD64_R12, CV_AMD64_R13, CV_AMD64_R14, CV_AMD64_R15,
+  };
+
   switch (TMachine->getTargetTriple().getArch()) {
   case Triple::x86:
     if (X86::ICorDebugInfo::REGNUM_EAX <= RegNum &&
@@ -617,9 +624,8 @@ CVRegNum ObjectWriter::GetCVRegNum(ICorDebugInfo::RegNum RegNum) {
     }
     break;
   case Triple::x86_64:
-    if (Amd64::ICorDebugInfo::REGNUM_RAX <= RegNum &&
-        RegNum <= Amd64::ICorDebugInfo::REGNUM_R15) {
-      return RegNum - Amd64::ICorDebugInfo::REGNUM_RAX + CV_AMD64_RAX;
+    if (RegNum < sizeof(CvRegMapAmd64) / sizeof(CvRegMapAmd64[0])) {
+      return CvRegMapAmd64[RegNum];
     }
     break;
   case Triple::arm:
