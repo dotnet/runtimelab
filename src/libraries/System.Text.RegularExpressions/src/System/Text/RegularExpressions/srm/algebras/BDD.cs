@@ -45,7 +45,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Create a leaf
         /// </summary>
-        private BDD(int ordinal)
+        internal BDD(int ordinal)
         {
             Ordinal = ordinal;
             hashcode = (ordinal, 0, 0).GetHashCode();
@@ -59,7 +59,7 @@ namespace System.Text.RegularExpressions.SRM
             //precompute a hashchode value that respects BDD equivalence
             //i.e. two equivalent BDDs will always have the same hashcode
             //that is independent of object id values of the BDD objects
-            hashcode = (ordinal, one.hashcode, zero.hashcode).GetHashCode();
+            hashcode = (ordinal, one, zero).GetHashCode();
         }
 
         /// <summary>
@@ -156,6 +156,6 @@ namespace System.Text.RegularExpressions.SRM
         /// This equality is used in the _bddCache lookup.
         /// </summary>
         public override bool Equals(object? obj) =>
-            obj is BDD bdd && (this == bdd || !IsLeaf && !bdd.IsLeaf && One == bdd.One && Zero == bdd.Zero);
+            obj is BDD bdd && (this == bdd || Ordinal == bdd.Ordinal && One == bdd.One && Zero == bdd.Zero);
     }
 }

@@ -166,18 +166,35 @@ namespace System.Text.RegularExpressions.SRM
 
                 if (op == BoolOp.NOT)
                 {
-                    res = MkBDD(a.Ordinal, MkNot_rec(a.One), MkNot_rec(a.Zero));
-                    _notCache[a] = res;
-                    return res;
+                    if (a.IsLeaf)
+                    {
+                        //multi-terminal case, we know here that a is neither True nor False
+                        int ord = CombineLeafOrdinals(op, a.Ordinal, 0);
+                        res = MkBDD(ord, null, null);
+                        _notCache[a] = res;
+                        return res;
+                    }
+                    else
+                    {
+                        res = MkBDD(a.Ordinal, MkNot_rec(a.One), MkNot_rec(a.Zero));
+                        _notCache[a] = res;
+                        return res;
+                    }
                 }
 
-                if (b.Ordinal > a.Ordinal)
+                if (a.IsLeaf && b.IsLeaf)
+                {
+                    //multi-terminal case, we know here that a is neither True nor False
+                    int ord = CombineLeafOrdinals(op, a.Ordinal, b.Ordinal);
+                    res = MkBDD(ord, null, null);
+                }
+                else if (a.IsLeaf || b.Ordinal > a.Ordinal)
                 {
                     BDD t = MkBinBoolOP_rec(op, a, b.One);
                     BDD f = MkBinBoolOP_rec(op, a, b.Zero);
                     res = (t == f ? t : MkBDD(b.Ordinal, t, f));
                 }
-                else if (a.Ordinal > b.Ordinal)
+                else if (b.IsLeaf || a.Ordinal > b.Ordinal)
                 {
                     BDD t = MkBinBoolOP_rec(op, a.One, b);
                     BDD f = MkBinBoolOP_rec(op, a.Zero, b);
@@ -204,7 +221,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <returns></returns>
         private BDD MkBinBoolOP_rec(BoolOp op, BDD a, BDD b)
         {
-            #region the cases when one of a or b is a leaf or when a == b
+            #region the cases when one of a or b is True or False or when a == b
             switch (op)
             {
                 case BoolOp.OR:
@@ -247,23 +264,32 @@ namespace System.Text.RegularExpressions.SRM
             if (_binOpCache.TryGetValue(key, out res))
                 return res;
 
-            if (b.Ordinal > a.Ordinal)
+            if (a.IsLeaf && b.IsLeaf)
             {
-                BDD t = MkBinBoolOP_rec(op, a, b.One);
-                BDD f = MkBinBoolOP_rec(op, a, b.Zero);
-                res = (t == f ? t : MkBDD(b.Ordinal, t, f));
-            }
-            else if (a.Ordinal > b.Ordinal)
-            {
-                BDD t = MkBinBoolOP_rec(op, a.One, b);
-                BDD f = MkBinBoolOP_rec(op, a.Zero, b);
-                res = (t == f ? t : MkBDD(a.Ordinal, t, f));
+                //multi-terminal case, we know here that a is neither True nor False
+                int ord = CombineLeafOrdinals(op, a.Ordinal, b.Ordinal);
+                res = MkBDD(ord, null, null);
             }
             else
             {
-                BDD t = MkBinBoolOP_rec(op, a.One, b.One);
-                BDD f = MkBinBoolOP_rec(op, a.Zero, b.Zero);
-                res = (t == f ? t : MkBDD(a.Ordinal, t, f));
+                if (a.IsLeaf || b.Ordinal > a.Ordinal)
+                {
+                    BDD t = MkBinBoolOP_rec(op, a, b.One);
+                    BDD f = MkBinBoolOP_rec(op, a, b.Zero);
+                    res = (t == f ? t : MkBDD(b.Ordinal, t, f));
+                }
+                else if (b.IsLeaf || a.Ordinal > b.Ordinal)
+                {
+                    BDD t = MkBinBoolOP_rec(op, a.One, b);
+                    BDD f = MkBinBoolOP_rec(op, a.Zero, b);
+                    res = (t == f ? t : MkBDD(a.Ordinal, t, f));
+                }
+                else
+                {
+                    BDD t = MkBinBoolOP_rec(op, a.One, b.One);
+                    BDD f = MkBinBoolOP_rec(op, a.Zero, b.Zero);
+                    res = (t == f ? t : MkBDD(a.Ordinal, t, f));
+                }
             }
 
             _binOpCache[key] = res;
@@ -285,7 +311,11 @@ namespace System.Text.RegularExpressions.SRM
             if (_notCache.TryGetValue(a, out neg))
                 return neg;
 
-            neg = MkBDD(a.Ordinal, MkNot_rec(a.One), MkNot_rec(a.Zero));
+            if (a.IsLeaf)
+                //muti-terminal case
+                neg = MkBDD(CombineLeafOrdinals(BoolOp.NOT, a.Ordinal, 0), null, null);
+            else
+                neg = MkBDD(a.Ordinal, MkNot_rec(a.One), MkNot_rec(a.Zero));
             _notCache[a] = neg;
             return neg;
         }
@@ -629,17 +659,22 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="set">the given set</param>
         /// <param name="maxBit">bits above maxBit are ignored</param>
         /// <returns>the cardinality of the set</returns>
-        public ulong ComputeDomainSize(BDD set, int maxBit)
+        public virtual ulong ComputeDomainSize(BDD set, int maxBit)
         {
             if (maxBit < set.Ordinal)
-                throw new AutomataException(AutomataExceptionKind.InvalidArguments);
+                throw new ArgumentOutOfRangeException(nameof(maxBit));
 
             if (set == False)
                 return 0UL;
             else if (set == True)
             {
-                //e.g if maxBit is 15 then the return value is 1 << 16, i.e., 2^16
+                //e.g. if maxBit is 15 then the return value is 1 << 16, i.e., 2^16
                 return ((1UL << maxBit) << 1);
+            }
+            else if (set.IsLeaf)
+            {
+                //multi-terminal case is not supported
+                throw new NotSupportedException(nameof(ComputeDomainSize));
             }
             else
             {
@@ -665,6 +700,10 @@ namespace System.Text.RegularExpressions.SRM
             ulong size;
             if (sizeCache.TryGetValue(set, out size))
                 return size;
+
+            if (set.IsLeaf)
+                //multi-terminal case is not supported
+                throw new NotSupportedException(nameof(ComputeDomainSize));
 
             ulong sizeL;
             ulong sizeR;
@@ -892,5 +931,15 @@ namespace System.Text.RegularExpressions.SRM
         public abstract string SerializePredicate(BDD s);
         public abstract BDD DeserializePredicate(string s);
         #endregion
+
+        /// <summary>
+        /// Throws NotSupportedException.
+        /// Can be overwridden by multi-terminal extension of the algebra.
+        /// The returned integer will act as the combined leaf ordinal
+        /// </summary>
+        public virtual int CombineLeafOrdinals(BoolOp op, int ordinal1, int ordinal2)
+        {
+            throw new NotSupportedException($"{nameof(CombineLeafOrdinals)}:{op}");
+        }
     }
 }
