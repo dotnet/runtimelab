@@ -615,9 +615,23 @@ CVRegNum ObjectWriter::GetCVRegNum(ICorDebugInfo::RegNum RegNum) {
     }
     break;
   case Triple::x86_64:
-    if (Amd64::ICorDebugInfo::REGNUM_RAX <= RegNum &&
-        RegNum <= Amd64::ICorDebugInfo::REGNUM_R15) {
-      return RegNum - Amd64::ICorDebugInfo::REGNUM_RAX + CV_AMD64_RAX;
+    switch ((Amd64::ICorDebugInfo::RegNum)RegNum) {
+      case Amd64::ICorDebugInfo::REGNUM_RAX: return CV_AMD64_RAX;
+      case Amd64::ICorDebugInfo::REGNUM_RCX: return CV_AMD64_RCX;
+      case Amd64::ICorDebugInfo::REGNUM_RDX: return CV_AMD64_RDX;
+      case Amd64::ICorDebugInfo::REGNUM_RBX: return CV_AMD64_RBX;
+      case Amd64::ICorDebugInfo::REGNUM_RSP: return CV_AMD64_RSP;
+      case Amd64::ICorDebugInfo::REGNUM_RBP: return CV_AMD64_RBP;
+      case Amd64::ICorDebugInfo::REGNUM_RSI: return CV_AMD64_RSI;
+      case Amd64::ICorDebugInfo::REGNUM_RDI: return CV_AMD64_RDI;
+      case Amd64::ICorDebugInfo::REGNUM_R8: return CV_AMD64_R8;
+      case Amd64::ICorDebugInfo::REGNUM_R9: return CV_AMD64_R9;
+      case Amd64::ICorDebugInfo::REGNUM_R10: return CV_AMD64_R10;
+      case Amd64::ICorDebugInfo::REGNUM_R11: return CV_AMD64_R11;
+      case Amd64::ICorDebugInfo::REGNUM_R12: return CV_AMD64_R12;
+      case Amd64::ICorDebugInfo::REGNUM_R13: return CV_AMD64_R13;
+      case Amd64::ICorDebugInfo::REGNUM_R14: return CV_AMD64_R14;
+      case Amd64::ICorDebugInfo::REGNUM_R15: return CV_AMD64_R15;
     }
     break;
   case Triple::arm:
