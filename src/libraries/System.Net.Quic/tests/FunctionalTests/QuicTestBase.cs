@@ -46,7 +46,13 @@ namespace System.Net.Quic.Tests
 
         internal QuicListener CreateQuicListener(IPEndPoint endpoint)
         {
-            QuicListener listener = new QuicListener(ImplementationProvider, endpoint, GetSslServerAuthenticationOptions());
+            QuicListener listener = new QuicListener(ImplementationProvider, new QuicListenerOptions()
+            {
+                ListenEndPoint = endpoint,
+                ServerAuthenticationOptions = GetSslServerAuthenticationOptions(),
+                CertificateFilePath = "Certs/cert.crt",
+                PrivateKeyFilePath = "Certs/cert.key"
+            });
             listener.Start();
             return listener;
         }
@@ -85,5 +91,15 @@ namespace System.Net.Quic.Tests
     public sealed class MockProviderFactory : IQuicImplProviderFactory
     {
         public QuicImplementationProvider GetProvider() => QuicImplementationProviders.Mock;
+    }
+
+    public sealed class ManagedProviderFactory : IQuicImplProviderFactory
+    {
+        public QuicImplementationProvider GetProvider() => QuicImplementationProviders.Managed;
+    }
+
+    public sealed class ManagedMockTlsProviderFactory : IQuicImplProviderFactory
+    {
+        public QuicImplementationProvider GetProvider() => QuicImplementationProviders.ManagedMockTls;
     }
 }

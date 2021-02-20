@@ -34,7 +34,31 @@ namespace System.Net.Quic.Tests
         public override Task Write_DataReadFromDesiredOffset(ReadWriteMode mode) => base.Write_DataReadFromDesiredOffset(mode);
         [ActiveIssue("https://github.com/dotnet/runtime/issues/756")]
         public override Task Parallel_ReadWriteMultipleStreamsConcurrently() => base.Parallel_ReadWriteMultipleStreamsConcurrently();
+    }
 
+    [Collection("Managed Quic Tests")] // TODO-RZ: Tests are little flaky when run in parallel and fail on CI
+    public abstract class ManagedQuicStreamConformanceTestsBase : QuicStreamConformanceTests
+    {
+        protected override bool FlushRequiredToWriteData => true;
+
+        [ActiveIssue("Not implemented")]
+        public override Task ReadAsync_DuringReadAsync_ThrowsIfUnsupported() => base.ReadAsync_DuringReadAsync_ThrowsIfUnsupported();
+
+        [ActiveIssue("Test does not call flush")]
+        public override Task ConcurrentBidirectionalReadsWrites_Success() => base.ConcurrentBidirectionalReadsWrites_Success();
+    }
+
+    [ConditionalClass(typeof(QuicTestBase<ManagedProviderFactory>), nameof(QuicTestBase<ManagedProviderFactory>.IsSupported))]
+    public sealed class ManagedQuicStreamConformanceTests : ManagedQuicStreamConformanceTestsBase
+    {
+        protected override QuicImplementationProvider Provider => QuicImplementationProviders.Managed;
+    }
+
+    [Collection("Managed Quic Tests")] // TODO-RZ: Tests are little flaky when run in parallel and fail on CI
+    [ConditionalClass(typeof(QuicTestBase<ManagedMockTlsProviderFactory>), nameof(QuicTestBase<ManagedMockTlsProviderFactory>.IsSupported))]
+    public sealed class ManagedMockTlsQuicQuicStreamConformanceTests : ManagedQuicStreamConformanceTestsBase
+    {
+        protected override QuicImplementationProvider Provider => QuicImplementationProviders.ManagedMockTls;
     }
 
     public abstract class QuicStreamConformanceTests : ConnectedStreamConformanceTests
@@ -46,10 +70,14 @@ namespace System.Net.Quic.Tests
             QuicImplementationProvider provider = Provider;
             var protocol = new SslApplicationProtocol("quictest");
 
-            var listener = new QuicListener(
-                provider,
-                new IPEndPoint(IPAddress.Loopback, 0),
-                new SslServerAuthenticationOptions { ApplicationProtocols = new List<SslApplicationProtocol> { protocol } });
+            QuicListener listener = new QuicListener(provider, new QuicListenerOptions()
+            {
+                ListenEndPoint = new IPEndPoint(IPAddress.Loopback, 0),
+                ServerAuthenticationOptions = new SslServerAuthenticationOptions { ApplicationProtocols = new List<SslApplicationProtocol> { protocol } },
+                CertificateFilePath = "Certs/cert.crt",
+                PrivateKeyFilePath = "Certs/cert.key"
+            });
+
             listener.Start();
 
             QuicConnection connection1 = null, connection2 = null;
@@ -60,6 +88,10 @@ namespace System.Net.Quic.Tests
                 {
                     connection1 = await listener.AcceptConnectionAsync();
                     stream1 = await connection1.AcceptStreamAsync();
+
+                    // Hack to force stream creation
+                    byte[] buffer = new byte[1];
+                    await stream1.ReadAsync(buffer);
                 }),
                 Task.Run(async () =>
                 {
@@ -69,6 +101,11 @@ namespace System.Net.Quic.Tests
                         new SslClientAuthenticationOptions() { ApplicationProtocols = new List<SslApplicationProtocol>() { protocol } });
                     await connection2.ConnectAsync();
                     stream2 = connection2.OpenBidirectionalStream();
+
+                    // Hack to force stream creation
+                    byte[] buffer = new byte[1];
+                    await stream2.WriteAsync(buffer);
+                    await stream2.FlushAsync();
                 }));
 
             var result = new StreamPairWithOtherDisposables(stream1, stream2);

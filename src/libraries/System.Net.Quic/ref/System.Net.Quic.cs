@@ -11,6 +11,8 @@ namespace System.Net.Quic
         public static Implementations.QuicImplementationProvider Mock => throw null;
         public static Implementations.QuicImplementationProvider MsQuic => throw null;
         public static Implementations.QuicImplementationProvider Default => throw null;
+        public static Implementations.QuicImplementationProvider Managed => throw null;
+        public static Implementations.QuicImplementationProvider ManagedMockTls => throw null;
     }
     public sealed class QuicListener : IDisposable
     {

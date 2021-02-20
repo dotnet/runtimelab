@@ -1,8 +1,73 @@
 # .NET Runtime - Managed QUIC implementation
 
-This feature branch contains a prototype for a fully managed implementation of the QUIC protocol, in System.Net.Quic.
+## Supported QUIC Protocol Features
 
-TODO: Instructions for using, etc.
+This implementation is highly in WIP state. The features are at the draft-27 version. The goal was
+to obtain a minimal working implementation able to reliably transmit data between client and server.
+This can be used to evaluate the viability of purely C# implementation for production releases. Some
+transport-unrelated features are left unimplemented.
+
+Currently implemented:
+
+- Basic connection establishment
+- Encryption
+- TLS integration backed by [modified OpenSSL](https://github.com/openssl/openssl/pull/8797)
+- Sending data, flow control, loss recovery, congestion control
+- Stream/Connection termination
+- Coalescing packets into a single UDP datagram
+
+## Unsupported QUIC Protocol Features
+
+A list of highlights of unimplemented protocol features follows:
+
+- Connection migration
+- Stateless reset
+- 0-RTT data
+- Server Preferred Address
+- Version Negotiation
+- Address Validation
+- Encryption key updates
+
+## OpenSSL integration
+
+To function correctly, the implementation requires a custom branch of OpenSSL from Akamai
+https://github.com/akamai/openssl/tree/OpenSSL_1_1_1g-quic to be present in the path. See
+instructions in the OpenSSL readme on how to build the library.
+
+Alternatively, you can try using the mock tls, see Switching the implementation below
+
+## Tracing and qvis
+
+To simplify debugging, this implementation can emit traces that can be analyzed. Note that emiting
+traces has negative impact on the performance of the implementation.
+
+### Console
+
+To get traces printed to the console, define `DOTNETQUIC_TRACE` environment variable to `console`.
+
+### qlog and qvis
+
+The implementation can produce traces that can be consumed by https://qvis.edm.uhasselt.be
+visualizer. To collect traces, define `DOTNETQUIC_TRACE` environment variable to `qlog`.
+The traces will be saved in the working directory in a file named
+_[timestamp]-[server|client].qvis_.
+
+## Switching the implementation
+
+The internal implementation of `QuicConnection` and related types allows switching the underlying
+implementation provider. This can be done either by explicitly passing the provider into the 
+`QuicConnection` and `QuicListener` constructors, or overriding the default provider by setting the
+`DOTNETQUIC_PROVIDER` to one of the following values:
+
+- `managed` - (default), managed implementation with TLS backed by modified OpenSSL.
+- `managedmocktls` - managed implementation with mocked TLS. This works without additional
+  dependencies, but does not interop with other implementations.
+- `msquic` - uses the `MsQuic` library. Needs msquic.dll to be in path.
+
+## Disabling encryption
+
+Regardless of the provider used, you can circumvent the encryption by defining the
+`DOTNETQUIC_NOENCRYPT` environment variable to something nonempty.
 
 # .NET Runtime
 

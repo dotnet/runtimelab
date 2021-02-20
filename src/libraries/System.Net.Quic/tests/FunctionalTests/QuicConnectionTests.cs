@@ -65,4 +65,11 @@ namespace System.Net.Quic.Tests
 
     [ConditionalClass(typeof(QuicTestBase<MsQuicProviderFactory>), nameof(QuicTestBase<MsQuicProviderFactory>.IsSupported))]
     public sealed class QuicConnectionTests_MsQuicProvider : QuicConnectionTests<MsQuicProviderFactory> { }
+
+    [ConditionalClass(typeof(QuicTestBase<ManagedProviderFactory>), nameof(QuicTestBase<ManagedProviderFactory>.IsSupported))]
+    public sealed class QuicConnectionTests_ManagedProvider : QuicConnectionTests<ManagedProviderFactory> { }
+
+    [Collection("Managed Quic Tests")] // TODO-RZ: Tests are little flaky when run in parallel and fail on CI
+    [ConditionalClass(typeof(QuicTestBase<ManagedMockTlsProviderFactory>), nameof(QuicTestBase<ManagedMockTlsProviderFactory>.IsSupported))]
+    public sealed class QuicConnectionTests_ManagedMockTlsProvider : QuicConnectionTests<ManagedMockTlsProviderFactory> { }
 }

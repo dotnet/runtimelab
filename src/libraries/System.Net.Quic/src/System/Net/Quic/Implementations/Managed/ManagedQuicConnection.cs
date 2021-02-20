@@ -1,0 +1,963 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+#nullable enable
+
+using System.Diagnostics;
+using System.IO;
+using System.Net.Quic.Implementations.Managed.Internal;
+using System.Net.Quic.Implementations.Managed.Internal.Crypto;
+using System.Net.Quic.Implementations.Managed.Internal.Frames;
+using System.Net.Quic.Implementations.Managed.Internal.Headers;
+using System.Net.Quic.Implementations.Managed.Internal.Packets;
+using System.Net.Quic.Implementations.Managed.Internal.Recovery;
+using System.Net.Quic.Implementations.Managed.Internal.Sockets;
+using System.Net.Quic.Implementations.Managed.Internal.Streams;
+using System.Net.Quic.Implementations.Managed.Internal.Tracing;
+using System.Net.Quic.Implementations.Managed.Internal.Tls;
+using System.Net.Security;
+using System.Threading;
+using System.Threading.Channels;
+using System.Threading.Tasks;
+
+namespace System.Net.Quic.Implementations.Managed
+{
+    internal sealed partial class ManagedQuicConnection : QuicConnectionProvider
+    {
+        // This limit should ensure that if we can fit at least an ack frame into the packet,
+        private const int RequiredAllowanceForSending = 2 * ConnectionId.MaximumLength + 40;
+
+        private readonly SingleEventValueTaskSource _connectTcs = new SingleEventValueTaskSource();
+
+        private readonly SingleEventValueTaskSource _closeTcs = new SingleEventValueTaskSource();
+
+        /// <summary>
+        ///     Object for creating a trace of this connection.
+        /// </summary>
+        public IQuicTrace? Trace { get; }
+
+        /// <summary>
+        ///     Timestamp when last <see cref="ConnectionCloseFrame"/> was sent, or 0 if no such frame was sent yet.
+        /// </summary>
+        private long _lastConnectionCloseSentTimestamp;
+
+        /// <summary>
+        ///     Packet number spaces for the three main packet types.
+        /// </summary>
+        private readonly PacketNumberSpace[] _pnSpaces = new PacketNumberSpace[3]
+        {
+            new PacketNumberSpace(PacketType.Initial, PacketSpace.Initial),
+            new PacketNumberSpace(PacketType.Handshake, PacketSpace.Handshake),
+            new PacketNumberSpace(PacketType.OneRtt, PacketSpace.Application)
+        };
+
+        /// <summary>
+        ///     Recovery controller used for this connection.
+        /// </summary>
+        private RecoveryController Recovery { get; }
+
+        /// <summary>
+        ///     If true, the connection is in draining state. The connection MUST not send packets in such state. The
+        ///     The connection transitions to closed at <see cref="_closingPeriodEndTimestamp"/> at the latest.
+        /// </summary>
+        private bool _isDraining;
+
+        /// <summary>
+        ///     The connection is ready to be closed.
+        /// </summary>
+        private bool _readyToClose;
+
+        /// <summary>
+        ///     If true, the connection is in closing or draining state and will be considered close at
+        ///     <see cref="_closingPeriodEndTimestamp"/> at the latest.
+        /// </summary>
+        private bool IsClosing => _closingPeriodEndTimestamp != null;
+
+        /// <summary>
+        ///     Timestamp when the connection close will be initiated due to lack of packets from peer.
+        /// </summary>
+        private long _idleTimeout = long.MaxValue; // use infinite by default
+
+        /// <summary>
+        ///     True if an ack-eliciting packet has been sent since last receiving an ack-eliciting packet.
+        /// </summary>
+        private bool _ackElicitingWasSentSinceLastReceive;
+
+        /// <summary>
+        ///     Timestamp when the closing period will be end and the connection will be considered closed.
+        /// </summary>
+        private long? _closingPeriodEndTimestamp;
+
+        /// <summary>
+        ///     Gets the current state of the connection.
+        /// </summary>
+        internal QuicConnectionState ConnectionState
+        {
+            get
+            {
+                if (_closeTcs.IsSet) return QuicConnectionState.Closed;
+                if (_readyToClose) return QuicConnectionState.BeforeClosed;
+                if (_isDraining) return QuicConnectionState.Draining;
+                if (IsClosing) return QuicConnectionState.Closing;
+                if (Connected) return QuicConnectionState.Connected;
+                return QuicConnectionState.None;
+            }
+        }
+
+        /// <summary>
+        ///     QUIC transport parameters used for this endpoint.
+        /// </summary>
+        private readonly TransportParameters _localTransportParameters;
+
+        /// <summary>
+        ///     The TLS handshake module.
+        /// </summary>
+        internal ITls Tls { get; }
+
+        /// <summary>
+        ///     Remote endpoint address.
+        /// </summary>
+        private readonly EndPoint _remoteEndpoint;
+
+        /// <summary>
+        ///     Context of the socket serving this connection.
+        /// </summary>
+        private QuicConnectionContext _socketContext;
+
+        /// <summary>
+        ///     True if handshake has been confirmed by the peer. For server this means that TLS has reported handshake complete,
+        ///     for client it means that a HANDSHAKE_DONE frame has been received.
+        /// </summary>
+        private bool HandshakeConfirmed => IsServer ? Tls.IsHandshakeComplete : _handshakeDoneReceived;
+
+        /// <summary>
+        ///     For client: True if HANDSHAKE_DONE frame has been received.
+        ///     For Server: true if HANDSHAKE_DONE frame has been delivered.
+        /// </summary>
+        private bool _handshakeDoneReceived;
+
+        /// <summary>
+        ///     True if this side of connection belongs to the server.
+        /// </summary>
+        internal readonly bool IsServer;
+
+        /// <summary>
+        ///     Collection of streams for this connection.
+        /// </summary>
+        private readonly StreamCollection _streams = new StreamCollection();
+
+        /// <summary>
+        ///     Collection of local connection ids used by this endpoint.
+        /// </summary>
+        private readonly ConnectionIdCollection _localConnectionIdCollection = new ConnectionIdCollection();
+
+        /// <summary>
+        ///     Collection of local connection ids used by remote endpoint.
+        /// </summary>
+        private readonly ConnectionIdCollection _remoteConnectionIdCollection = new ConnectionIdCollection();
+
+        /// <summary>
+        ///     Flow control limits set by this endpoint for the peer for the entire connection.
+        /// </summary>
+        private ConnectionFlowControlLimits _receiveLimits;
+
+        /// <summary>
+        ///     Values of <see cref="_receiveLimits"/> that peer has confirmed received.
+        /// </summary>
+        private ConnectionFlowControlLimits _receiveLimitsAtPeer;
+
+        /// <summary>
+        ///     Flow control limits set by the peer for this endpoint for the entire connection.
+        /// </summary>
+        private ConnectionFlowControlLimits _sendLimits;
+
+        /// <summary>
+        ///     QUIC transport parameters requested by peer endpoint.
+        /// </summary>
+        private TransportParameters _peerTransportParameters = TransportParameters.Default;
+
+        /// <summary>
+        ///     Error received via CONNECTION_CLOSE frame to be reported to the user.
+        /// </summary>
+        private QuicError? _inboundError;
+
+        /// <summary>
+        ///     Error to send in next packet in a CONNECTION_CLOSE frame.
+        /// </summary>
+        private QuicError? _outboundError;
+
+        /// <summary>
+        ///     Version of the QUIC protocol used for this connection.
+        /// </summary>
+        private readonly QuicVersion version = QuicVersion.Draft27;
+
+        /// <summary>
+        ///     Timer when at the latest the next ACK frame should be sent.
+        /// </summary>
+        private long _nextAckTimer = long.MaxValue;
+
+        /// <summary>
+        ///     True if PING frame should be sent during next flight.
+        /// </summary>
+        private bool _pingWanted;
+
+        /// <summary>
+        ///     True if this instance has been disposed.
+        /// </summary>
+        private bool _disposed;
+
+        /// <summary>
+        ///     If not null, contains the exception that terminated the socket maintenance task.
+        /// </summary>
+        private Exception? _socketContextException;
+
+        /// <summary>
+        ///     Requests sending PING frame to the peer, requiring the peer to send acknowledgement back.
+        /// </summary>
+        internal void Ping()
+        {
+            _pingWanted = true;
+        }
+
+        /// <summary>
+        ///     Unsafe access to the <see cref="RemoteEndPoint"/> field. Does not create a defensive copy!
+        /// </summary>
+        internal EndPoint UnsafeRemoteEndPoint => _remoteEndpoint;
+
+        // client constructor
+        internal ManagedQuicConnection(QuicTlsProvider tlsProvider, QuicClientConnectionOptions options)
+        {
+            IsServer = false;
+            _remoteEndpoint = options.RemoteEndPoint!;
+
+            _socketContext = new QuicClientSocketContext(options.LocalEndPoint, _remoteEndpoint, this)
+                .ConnectionContext;
+            _localTransportParameters = TransportParameters.FromClientConnectionOptions(options);
+            Tls = tlsProvider.CreateClient(this, options, _localTransportParameters);
+
+            // init random connection ids for the client
+            SourceConnectionId = ConnectionId.Random(ConnectionId.DefaultCidSize);
+            DestinationConnectionId = ConnectionId.Random(ConnectionId.DefaultCidSize);
+            Trace = InitTrace(IsServer, DestinationConnectionId.Data);
+            Recovery = new RecoveryController(RecoveryController.GetDefaultCongestionController(), Trace);
+            _localConnectionIdCollection.Add(SourceConnectionId);
+
+            // derive also clients initial secrets.
+            DeriveInitialProtectionKeys(DestinationConnectionId.Data);
+
+            // generate first Crypto frames
+            Tls.TryAdvanceHandshake();
+
+            CoreInit();
+        }
+
+        // server constructor
+        internal ManagedQuicConnection(QuicTlsProvider tlsProvider, QuicListenerOptions options, QuicConnectionContext socketContext,
+            EndPoint remoteEndpoint, ReadOnlySpan<byte> odcid)
+        {
+            IsServer = true;
+            _socketContext = socketContext;
+            _remoteEndpoint = remoteEndpoint;
+            _localTransportParameters = TransportParameters.FromListenerOptions(options);
+
+            Tls = tlsProvider.CreateServer(this, options, _localTransportParameters);
+            Trace = InitTrace(IsServer, odcid);
+            Recovery = new RecoveryController(RecoveryController.GetDefaultCongestionController(), Trace);
+
+            CoreInit();
+        }
+
+        private static IQuicTrace? InitTrace(bool isServer, ReadOnlySpan<byte> odcid)
+        {
+            string? traceType = Environment.GetEnvironmentVariable("DOTNETQUIC_TRACE");
+            if (traceType == "console")
+            {
+                return new TextWriterTrace(Console.Out, isServer);
+            }
+            else if (traceType != null)
+            {
+                string odcidString = BitConverter.ToString(odcid.ToArray()).ToLower().Replace("-", "");
+                string filename = $"{odcidString}-{(isServer ? "server" : "client")}.qlog";
+                return new QlogTrace(File.Open(filename, FileMode.Create), odcid.ToArray(), isServer);
+            }
+
+            return null;
+        }
+
+        private void CoreInit()
+        {
+            Trace?.OnTransportParametersSet(_localTransportParameters);
+
+            _receiveLimits.UpdateMaxData(_localTransportParameters.InitialMaxData);
+            _receiveLimits.UpdateMaxStreamsBidi(_localTransportParameters.InitialMaxStreamsBidi);
+            _receiveLimits.UpdateMaxStreamsUni(_localTransportParameters.InitialMaxStreamsUni);
+            _receiveLimitsAtPeer = _receiveLimits;
+        }
+
+
+        /// <summary>
+        ///     Connection ID used by this endpoint to identify packets for this connection.
+        /// </summary>
+        public ConnectionId? SourceConnectionId { get; private set; }
+
+        /// <summary>
+        ///     Connection ID used by the peer to identify packets for this connection.
+        /// </summary>
+        public ConnectionId? DestinationConnectionId { get; private set; }
+
+        /// <summary>
+        ///     Sets new socket context that will from now on service the connection.
+        /// </summary>
+        /// <param name="context">The new context.</param>
+        internal void SetSocketContext(QuicConnectionContext context)
+        {
+            _socketContext = context;
+        }
+
+        /// <summary>
+        ///     Returns timestamp of the next timer event, after timeout, <see cref="OnTimeout"/> should be called.
+        /// </summary>
+        /// <returns>Timestamp in ticks of the next timer or long.MaxValue if no timer is needed.</returns>
+        internal long GetNextTimerTimestamp()
+        {
+            if (_readyToClose)
+            {
+                // connection to be closed, no timer needed
+                return long.MaxValue;
+            }
+
+            long timer = _idleTimeout;
+
+            if (_closingPeriodEndTimestamp != null)
+            {
+                // no other timer besides idle timeout and closing period makes sense when closing.
+                return Math.Min(timer, _closingPeriodEndTimestamp.Value);
+            }
+
+            // do not set timer for sending if there is no space available in congestion window
+            if (Recovery.GetAvailableCongestionWindowBytes() >= RequiredAllowanceForSending)
+            {
+                timer = Math.Min(timer, _nextAckTimer);
+
+                // We use pacer only after being connected, also, the pacer is useful only when not being
+                // limited by application (meaning is outstanding STREAM data to be sent)
+                if (Connected)
+                {
+                    if (_streams.HasFlushableStreams || _streams.HasUpdateableStreams)
+                    {
+                        if (Recovery.IsPacing)
+                        {
+                            timer = Math.Min(timer, Recovery.GetPacingTimerForNextFullPacket());
+                        }
+                        else
+                        {
+                            // send immediately
+                            return Recovery.LastLargeDatagramSentTimestamp;
+                        }
+                    }
+                }
+            }
+
+            timer = Math.Min(timer, Recovery.LossRecoveryTimer);
+
+            return timer;
+        }
+
+        internal void OnTimeout(long timestamp)
+        {
+            if (_closingPeriodEndTimestamp.HasValue)
+            {
+                if (timestamp >= _closingPeriodEndTimestamp)
+                {
+                    LocalClose();
+                }
+                return;
+            }
+
+            if (timestamp >= _idleTimeout)
+            {
+                // TODO-RZ: Force close the connection with error
+                CloseConnection(TransportErrorCode.NoError);
+                LocalClose();
+            }
+
+            if (timestamp >= Recovery.LossRecoveryTimer)
+            {
+                Recovery.OnLossDetectionTimeout(Tls.IsHandshakeComplete, timestamp);
+            }
+        }
+
+        /// <summary>
+        ///     Advances the cryptographic handshake based on received data.
+        /// </summary>
+        private void DoHandshake()
+        {
+            if (!Tls.TryAdvanceHandshake() && _outboundError == null)
+            {
+                CloseConnection(TransportErrorCode.InternalError, "SSL error");
+                return;
+            }
+
+            // get peer transport parameters, if we didn't do so already
+            if (!ReferenceEquals(_peerTransportParameters, TransportParameters.Default)
+                // the transport parameters may not have been received yet
+                || Tls.WriteLevel == EncryptionLevel.Initial)
+            {
+                return;
+            }
+
+            var param = Tls.GetPeerTransportParameters();
+
+            if (param == null)
+            {
+                // failed to retrieve transport parameters.
+                CloseConnection(TransportErrorCode.TransportParameterError);
+                return;
+            }
+
+            ref ConnectionFlowControlLimits limits = ref _sendLimits;
+
+            limits.UpdateMaxData(param.InitialMaxData);
+            limits.UpdateMaxStreamsBidi(param.InitialMaxStreamsBidi);
+            limits.UpdateMaxStreamsUni(param.InitialMaxStreamsUni);
+
+            Recovery.MaxAckDelay = Timestamp.FromMilliseconds(param.MaxAckDelay);
+
+            _peerTransportParameters = param;
+        }
+
+        /// <summary>
+        ///     Derives initial protection keys based on the destination connection id sent by the client.
+        /// </summary>
+        /// <param name="dcid">Destination connection ID sent from client-sent packets.</param>
+        private void DeriveInitialProtectionKeys(byte[] dcid)
+        {
+            byte[] readSecret;
+            byte[] writeSecret;
+
+            var algorithm = QuicConstants.InitialCipherSuite;
+
+            if (IsServer)
+            {
+                readSecret = KeyDerivation.DeriveClientInitialSecret(dcid);
+                writeSecret = KeyDerivation.DeriveServerInitialSecret(dcid);
+            }
+            else
+            {
+                writeSecret = KeyDerivation.DeriveClientInitialSecret(dcid);
+                readSecret = KeyDerivation.DeriveServerInitialSecret(dcid);
+            }
+
+            SetEncryptionSecrets(EncryptionLevel.Initial, algorithm, readSecret, writeSecret);
+        }
+
+        /// <summary>
+        ///     Gets the amount of data this endpoint can send at this time
+        /// </summary>
+        /// <returns></returns>
+        internal int GetSendingAllowance(long timestamp, bool ignorePacer)
+        {
+            // ignore the pacer if we need to send an ack
+            if (ignorePacer)
+            {
+                return Recovery.GetAvailableCongestionWindowBytes();
+            }
+
+            return Recovery.GetSendingAllowance(timestamp);
+        }
+
+        private bool ShouldIgnorePacer(long timestamp)
+        {
+            return _nextAckTimer <= timestamp || _pingWanted || ShouldSendConnectionClose(timestamp);
+        }
+
+        /// <summary>
+        ///     Gets <see cref="EncryptionLevel"/> at which the next packet should be sent.
+        /// </summary>
+        internal EncryptionLevel GetWriteLevel(long timestamp)
+        {
+            if (_readyToClose)
+            {
+                // if connection closed, we are not sending any data
+                return EncryptionLevel.None;
+            }
+
+            // if there is a probe waiting to be sent on any level, send it.
+            // Because probe packets are not limited by congestion window, this avoids a live-lock in
+            // scenario where there is a pending ack in e.g. Initial epoch, but the connection cannot
+            // send it because it is limited by congestion window, because it has in-flight packets
+            // in Handshake epoch.
+            var probeSpace = PacketSpace.Initial;
+            for (int i = 1; i < _pnSpaces.Length; i++)
+            {
+                var packetSpace = (PacketSpace)i;
+                var recoverySpace = Recovery.GetPacketNumberSpace(packetSpace);
+                if (recoverySpace.RemainingLossProbes > Recovery.GetPacketNumberSpace(probeSpace).RemainingLossProbes)
+                {
+                    probeSpace = packetSpace;
+                }
+            }
+
+            if (Recovery.GetPacketNumberSpace(probeSpace).RemainingLossProbes > 0)
+            {
+                return (EncryptionLevel)probeSpace;
+            }
+
+            // if pending errors, send them in appropriate epoch,
+            if (_outboundError?.IsQuicError == true)
+            {
+                if (!ShouldSendConnectionClose(timestamp))
+                    return EncryptionLevel.None;
+
+                EncryptionLevel desiredLevel = Tls.WriteLevel;
+                if (!Connected && desiredLevel == EncryptionLevel.Application)
+                {
+                    // don't use application level if handshake is not complete
+                    return EncryptionLevel.Handshake;
+                }
+
+                return desiredLevel;
+            }
+
+            // Check if the pacer allow us to send something. note that this also handles the case when we need to
+            // ignore the pacer due to pending ack.
+            if (GetSendingAllowance(timestamp, ShouldIgnorePacer(timestamp)) < RequiredAllowanceForSending)
+            {
+                // can't send anything now
+                return EncryptionLevel.None;
+            }
+
+            for (int i = 0; i < _pnSpaces.Length; i++)
+            {
+                var level = (EncryptionLevel)i;
+                var pnSpace = _pnSpaces[i];
+                var recoverySpace = Recovery.GetPacketNumberSpace((PacketSpace) i);
+
+                // to advance handshake
+                if (pnSpace.CryptoSendStream.IsFlushable ||
+                    // send acknowledgement if needed, prefer sending acks in Initial and Handshake
+                    // immediately since there is a great chance of coalescing with next level
+                    (i < 2 ? pnSpace.AckElicited : pnSpace.NextAckTimer <= timestamp) ||
+                    recoverySpace.LostPackets.Count > 0)
+                    return level;
+            }
+
+            // check if we have something to send.
+            // TODO-RZ: this list may be incomplete
+            if (_pingWanted ||
+                _streams.HasUpdateableStreams ||
+                // send stream data only immediately only if limited by the application, otherwise rely on pacing
+                (_streams.HasFlushableStreams && (Recovery.IsApplicationOrFlowControlLimited || Recovery.GetPacingTimerForNextFullPacket() <= timestamp)) ||
+                ShouldSendConnectionClose(timestamp))
+            {
+                return EncryptionLevel.Application;
+            }
+
+            // otherwise we have no data to send.
+            return EncryptionLevel.None;
+        }
+
+        private static PacketSpace GetPacketSpace(PacketType packetType)
+        {
+            return packetType switch
+            {
+                PacketType.Initial => PacketSpace.Initial,
+                PacketType.ZeroRtt => PacketSpace.Application,
+                PacketType.Handshake => PacketSpace.Handshake,
+                PacketType.OneRtt => PacketSpace.Application,
+                _ => throw new ArgumentOutOfRangeException(nameof(packetType), packetType, null)
+            };
+        }
+
+        private static EncryptionLevel GetEncryptionLevel(PacketType packetType)
+        {
+            return packetType switch
+            {
+                PacketType.Initial => EncryptionLevel.Initial,
+                PacketType.Handshake => EncryptionLevel.Handshake,
+                PacketType.ZeroRtt => EncryptionLevel.EarlyData,
+                PacketType.OneRtt => EncryptionLevel.Application,
+                PacketType.Retry => EncryptionLevel.None,
+                PacketType.VersionNegotiation => EncryptionLevel.None,
+                _ => throw new ArgumentOutOfRangeException(nameof(packetType), packetType, null)
+            };
+        }
+
+        /// <summary>
+        ///     Gets instance of <see cref="PacketNumberSpace"/> associated with the given encryption level.
+        /// </summary>
+        /// <param name="encryptionLevel">The encryption level.</param>
+        internal PacketNumberSpace GetPacketNumberSpace(EncryptionLevel encryptionLevel)
+        {
+            return encryptionLevel switch
+            {
+                EncryptionLevel.Initial => _pnSpaces[0],
+                EncryptionLevel.Handshake => _pnSpaces[1],
+                EncryptionLevel.EarlyData => _pnSpaces[2],
+                EncryptionLevel.Application => _pnSpaces[2],
+                _ => throw new ArgumentOutOfRangeException(nameof(encryptionLevel), encryptionLevel, null)
+            };
+        }
+
+        /// <summary>
+        ///     Prepares the connection for termination due to an error. The connection will start closing once the
+        ///     when the error is actually sent.
+        /// </summary>
+        /// <param name="errorCode">The error code identifying the nature of the error.</param>
+        /// <param name="reason">Optional short human-readable reason for closing.</param>
+        /// <param name="frameType">Optional type of the frame which was being processed when the error was encountered</param>
+        /// <returns>Always returns <see cref="ProcessPacketResult.Error"/> to simplify packet processing code</returns>
+        private ProcessPacketResult CloseConnection(TransportErrorCode errorCode, string? reason = null,
+            FrameType frameType = FrameType.Padding)
+        {
+            _outboundError ??= new QuicError(errorCode, reason, frameType);
+            return ProcessPacketResult.Error;
+        }
+
+        internal async ValueTask DisposeAsync()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            // TODO-RZ: QUIC should not use default error for closing, they are defined solely by application layer
+            var task =  CloseAsync((long)TransportErrorCode.NoError);
+            _disposed = true;
+            await task.ConfigureAwait(false);
+        }
+
+        public override void Dispose()
+        {
+            // TODO-RZ: I don't like this, but there does not seem to be a better way, unless we just want to do
+            // fire-and-forget
+            DisposeAsync().AsTask().ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+
+        private void SetEncryptionSecrets(EncryptionLevel level, TlsCipherSuite algorithm,
+            ReadOnlySpan<byte> readSecret, ReadOnlySpan<byte> writeSecret)
+        {
+            // TODO-RZ: is it wise to log secrets to event source?
+            if (NetEventSource.IsEnabled) NetEventSource.SetEncryptionSecrets(this, level, algorithm, readSecret, writeSecret);
+
+            var pnSpace = GetPacketNumberSpace(level);
+            Debug.Assert(pnSpace.SendCryptoSeal == null, "Protection keys already derived");
+
+            pnSpace.RecvCryptoSeal = CryptoSeal.Create(algorithm, readSecret);
+            pnSpace.SendCryptoSeal = CryptoSeal.Create(algorithm, writeSecret);
+
+            Trace?.OnKeyUpdated(readSecret, level, !IsServer, KeyUpdateTrigger.Tls, null);
+            Trace?.OnKeyUpdated(writeSecret, level, IsServer, KeyUpdateTrigger.Tls, null);
+        }
+
+        internal void SetEncryptionSecrets(EncryptionLevel level, ReadOnlySpan<byte> readSecret,
+            ReadOnlySpan<byte> writeSecret)
+        {
+            var alg = Tls.GetNegotiatedCipher();
+            SetEncryptionSecrets(level, alg, readSecret, writeSecret);
+        }
+
+        internal void AddHandshakeData(EncryptionLevel level, ReadOnlySpan<byte> data)
+        {
+            SendStream cryptoOutboundStream = GetPacketNumberSpace(level).CryptoSendStream;
+            cryptoOutboundStream.Enqueue(data);
+        }
+
+        internal void FlushHandshakeData()
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                SendStream cryptoOutboundStream = GetPacketNumberSpace((EncryptionLevel)i).CryptoSendStream;
+                cryptoOutboundStream.ForceFlushPartialChunk();
+            }
+        }
+
+        internal void SendTlsAlert(EncryptionLevel level, int alert)
+        {
+            // RFC: A TLS alert is turned into a QUIC connection error by converting the
+            // one-byte alert description into a QUIC error code.  The alert
+            // description is added to 0x100 to produce a QUIC error code from the
+            // range reserved for CRYPTO_ERROR.  The resulting value is sent in a
+            // QUIC CONNECTION_CLOSE frame.
+
+            CloseConnection((TransportErrorCode)alert + 0x100, $"Tls alert - {alert}");
+        }
+
+        private enum ProcessPacketResult
+        {
+            /// <summary>
+            ///     Packet processed without errors.
+            /// </summary>
+            Ok,
+
+            /// <summary>
+            ///     Packet is discarded. E.g. because it could not be decrypted (yet).
+            /// </summary>
+            DropPacket,
+
+            /// <summary>
+            ///     Packet is valid but violates the protocol, the connection should be closed.
+            /// </summary>
+            Error
+        }
+
+        #region Public API
+
+        internal override bool Connected => HandshakeConfirmed;
+
+        internal override IPEndPoint LocalEndPoint => _socketContext.LocalEndPoint;
+
+        // TODO-RZ: create a defensive copy of the endpoint
+        internal override EndPoint RemoteEndPoint => _remoteEndpoint;
+
+        internal override ValueTask ConnectAsync(CancellationToken cancellationToken = default)
+        {
+            ThrowIfDisposed();
+            ThrowIfError();
+
+            if (Connected) return default;
+
+            if (NetEventSource.IsEnabled) NetEventSource.NewClientConnection(this, SourceConnectionId!.Data, DestinationConnectionId!.Data);
+
+            _socketContext.WakeUp();
+            _socketContext.Start();
+
+            return _connectTcs.GetTask();
+        }
+
+        internal override QuicStreamProvider OpenUnidirectionalStream()
+        {
+            ThrowIfDisposed();
+            ThrowIfError();
+
+            return OpenStream(true);
+        }
+
+        internal override QuicStreamProvider OpenBidirectionalStream()
+        {
+            ThrowIfDisposed();
+            ThrowIfError();
+
+            return OpenStream(false);
+        }
+
+        internal override long GetRemoteAvailableUnidirectionalStreamCount()
+        {
+            ThrowIfDisposed();
+            ThrowIfError();
+
+            return _sendLimits.MaxStreamsUni;
+        }
+
+        internal override long GetRemoteAvailableBidirectionalStreamCount()
+        {
+            ThrowIfDisposed();
+            ThrowIfError();
+
+            return _sendLimits.MaxStreamsBidi;
+        }
+
+        internal override async ValueTask<QuicStreamProvider>
+            AcceptStreamAsync(CancellationToken cancellationToken = default)
+        {
+            ThrowIfDisposed();
+            ThrowIfError();
+
+            try
+            {
+                return await _streams.IncomingStreams.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (ChannelClosedException e)
+            {
+                Debug.Assert(e.InnerException is QuicException);
+                // TODO-RZ Consider returning null from there
+                throw e.InnerException!;
+            }
+        }
+
+        internal override SslApplicationProtocol NegotiatedApplicationProtocol
+        {
+            get
+            {
+                ThrowIfDisposed();
+                return Tls.GetNegotiatedProtocol();
+            }
+        }
+
+        internal override ValueTask CloseAsync(long errorCode, CancellationToken cancellationToken = default)
+        {
+            ThrowIfDisposed();
+
+            if (_closeTcs.IsSet)
+            {
+                return default;
+            }
+
+            if (!Connected)
+            {
+                // abandon connection attempt
+                _connectTcs.TryCompleteException(new QuicConnectionAbortedException(errorCode));
+                DoCleanup();
+                return default;
+            }
+
+            _outboundError = new QuicError((TransportErrorCode)errorCode, null, FrameType.Padding, false);
+            _socketContext.WakeUp();
+
+            // the connection will be closed and disposed from the background thread
+            return _closeTcs.GetTask();
+        }
+
+        #endregion
+
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(ManagedQuicConnection));
+            }
+        }
+
+        internal void ThrowIfError()
+        {
+            if (_socketContextException != null)
+                throw new Exception("Internal socket operation failed", _socketContextException);
+
+            var error = _inboundError ?? _outboundError;
+            // don't throw if connection was closed gracefully. By doing so, we still allow retrieving
+            // unread data/streams if the connection was closed by the peer.
+            if (error != null && error.ErrorCode != TransportErrorCode.NoError)
+            {
+                throw MakeAbortedException(error);
+            }
+        }
+
+        private void DropPacketNumberSpace(PacketSpace space, ObjectPool<SentPacket> sentPacketPool)
+        {
+            // TODO-RZ: discard the PacketNumberSpace instance and let GC collect it?
+            var pnSpace = _pnSpaces[(int)space];
+            if (pnSpace.SendCryptoSeal == null)
+            {
+                // already dropped
+                return;
+            }
+
+            Recovery.DropUnackedData(space, Tls.IsHandshakeComplete, sentPacketPool);
+
+            // drop protection keys
+            pnSpace.SendCryptoSeal = null;
+            pnSpace.RecvCryptoSeal = null;
+
+            pnSpace.NextAckTimer = long.MaxValue;
+            ResetAckTimer();
+        }
+
+        /// <summary>
+        ///     Starts closing period.
+        /// </summary>
+        /// <param name="now">Timestamp of the current moment.</param>
+        /// <param name="error">Error which led to connection closing.</param>
+        private void StartClosing(long now, QuicError error)
+        {
+            Debug.Assert(_closingPeriodEndTimestamp == null);
+            Debug.Assert(error != null);
+
+            // The closing and draining states SHOULD exists for at least three times the current PTO interval
+            // Note: this is to properly discard reordered/delayed packets.
+            _closingPeriodEndTimestamp = now + 3 * Recovery.GetProbeTimeoutInterval();
+
+            // disable ack timer
+            _nextAckTimer = long.MaxValue;
+
+            // close the incoming streams channel with exception
+            // TODO-RZ: maybe we should return null from the AcceptStreamMethod?
+            _streams.IncomingStreams.Writer.TryComplete(MakeAbortedException(error));
+
+            foreach (var stream in _streams.AllStreams)
+            {
+                stream.OnConnectionClosed(MakeAbortedException(error));
+            }
+        }
+
+        private void StartDraining()
+        {
+            _isDraining = true;
+        }
+
+        /// <summary>
+        ///     Calculates idle timeout based on the local and peer endpoints transport parameters.
+        /// </summary>
+        private long GetIdleTimeoutPeriod()
+        {
+            long localTimeout = Timestamp.FromMilliseconds(_localTransportParameters.MaxIdleTimeout);
+            long peerTimeout = Timestamp.FromMilliseconds(_peerTransportParameters.MaxIdleTimeout);
+
+            return (localTimeout, peerTimeout) switch
+            {
+                (0, 0) => 0,
+                (long t, 0) => t,
+                (0, long t) => t,
+                (long t, long u) => Math.Min(t, u)
+            };
+        }
+
+        private void RestartIdleTimer(long now)
+        {
+            long timeout = GetIdleTimeoutPeriod();
+            if (timeout > 0)
+            {
+                // RFC: If the idle timeout is enabled by either peer, a connection is
+                // silently closed and its state is discarded when it remains idle for
+                // longer than the minimum of the max_idle_timeouts (see Section 18.2)
+                // and three times the current Probe Timeout (PTO).
+                _idleTimeout = now + timeout + 3 * Recovery.GetProbeTimeoutInterval();
+            }
+        }
+
+        private void SignalConnected()
+        {
+            if (NetEventSource.IsEnabled) NetEventSource.Connected(this);
+            _connectTcs.TryComplete();
+        }
+
+        private static QuicConnectionAbortedException MakeAbortedException(QuicError error)
+        {
+            return error.ReasonPhrase != null
+                // TODO-RZ: We should probably format reason phrase into the exception message
+                ? new QuicConnectionAbortedException(error.ReasonPhrase, (long)error.ErrorCode)
+                : new QuicConnectionAbortedException((long)error.ErrorCode);
+        }
+
+        internal void OnSocketContextException(Exception e)
+        {
+            _socketContextException = e;
+            CloseConnection(TransportErrorCode.InternalError);
+
+            _connectTcs.TryCompleteException(e);
+            LocalClose();
+
+            foreach (var stream in _streams)
+            {
+                stream.OnFatalException(e);
+            }
+        }
+
+        /// <summary>
+        ///     Perform any cleanup that must be done from the socket thread
+        /// </summary>
+        internal void DoCleanup()
+        {
+            Tls.Dispose();
+            Trace?.Dispose();
+            _closeTcs.TryComplete();
+        }
+
+        /// <summary>
+        ///     Forcibly closes the connection on this side.
+        /// </summary>
+        internal void LocalClose()
+        {
+            _readyToClose = true;
+        }
+    }
+}
