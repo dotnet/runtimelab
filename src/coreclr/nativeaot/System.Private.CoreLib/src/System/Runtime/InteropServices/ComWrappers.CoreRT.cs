@@ -189,8 +189,6 @@ namespace System.Runtime.InteropServices
             public delegate* unmanaged<IntPtr, ref Guid, out IntPtr, int> QueryInterface;
             public delegate* unmanaged<IntPtr, uint> AddRef;
             public delegate* unmanaged<IntPtr, uint> Release;
-            public static IUnknownVftbl AbiToProjectionVftbl => ComWrappers.DefaultIUnknownVftbl;
-            public static IntPtr AbiToProjectionVftblPtr => ComWrappers.DefaultIUnknownVftblPtr;
         }
 
         /// <summary>
