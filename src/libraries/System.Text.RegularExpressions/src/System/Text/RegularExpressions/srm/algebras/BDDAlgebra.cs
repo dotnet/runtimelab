@@ -56,6 +56,19 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
+        /// Assumes op is a binary commutative operation: one of OR, AND, XOR.
+        /// Treats the arguments as if they are unordered.
+        /// Orders left and right by hashcode in the constructed key.
+        /// </summary>
+        private static BoolOpKey MkBoolOpKey(BoolOp op, BDD left, BDD right)
+        {
+            if (left.hashcode <= right.hashcode)
+                return new BoolOpKey(op, left, right);
+            else
+                return new BoolOpKey(op, right, left);
+        }
+
+        /// <summary>
         /// Create a BDD with given ordinal and given one and zero child.
         /// Returns the BDD from the cache if it already exists.
         /// Must be executed in a single thread mode.
@@ -89,7 +102,7 @@ namespace System.Text.RegularExpressions.SRM
             if (a == b)
                 return a;
 
-            var key = new BoolOpKey(BoolOp.OR, a, b);
+            var key = MkBoolOpKey(BoolOp.OR, a, b);
             BDD res;
             if (_binOpCache.TryGetValue(key, out res))
                 return res;
@@ -111,7 +124,7 @@ namespace System.Text.RegularExpressions.SRM
             if (a == b)
                 return a;
 
-            var key = new BoolOpKey(BoolOp.AND, a, b);
+            var key = MkBoolOpKey(BoolOp.AND, a, b);
             BDD res;
             if (_binOpCache.TryGetValue(key, out res))
                 return res;
@@ -229,7 +242,7 @@ namespace System.Text.RegularExpressions.SRM
             }
             #endregion
 
-            var key = new BoolOpKey(op, a, b);
+            var key = MkBoolOpKey(op, a, b);
             BDD res;
             if (_binOpCache.TryGetValue(key, out res))
                 return res;
@@ -360,7 +373,7 @@ namespace System.Text.RegularExpressions.SRM
             if (a == b)
                 return False;
 
-            var key = new BoolOpKey(BoolOp.XOR, a, b);
+            var key = MkBoolOpKey(BoolOp.XOR, a, b);
 
             BDD res;
             if (_binOpCache.TryGetValue(key, out res))

@@ -40,7 +40,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Preassigned hashcode value that respects equivalence
         /// </summary>
-        private readonly int hashcode;
+        internal readonly int hashcode;
 
         /// <summary>
         /// Create a leaf
