@@ -213,7 +213,7 @@ namespace System.Text.RegularExpressions.SRM
         /// Index 1 represents True.
         /// and entry at index i&gt;1 is node i and has the structure:
         /// BDD: (ordinal &lt;&lt; 48) | (oneNode &lt;&lt; 24) | zeroNode.
-        /// or MTBDD Leaf: (ordinal &lt;&lt; 48) that has both children == 0
+        /// or MTBDD Leaf: (ordinal &lt;&lt; 48) that has both children == 0.
         /// This BDD (when different from True and False) is the final element.
         /// </summary>
         public ulong[] Serialize()
@@ -244,6 +244,9 @@ namespace System.Text.RegularExpressions.SRM
             idmap[True] = 1;
             idmap[False] = 0;
 
+            //the values at 0 and 1 are irrelevant
+            res.Add(0);
+            res.Add(0);
             //the next avaliable node id
             int id = 2;
 
@@ -253,15 +256,14 @@ namespace System.Text.RegularExpressions.SRM
                 if (node == True || node == False)
                     continue;
 
-                int node_id = id++;
-                idmap[node] = node_id;
+                idmap[node] = id++;
 
                 if (node.IsLeaf)
                     //MTBDD leaf
-                    res[node_id] = ((ulong)node.Ordinal) << 48;
+                    res.Add(((ulong)node.Ordinal) << 48);
                 else
                     //children ids are well-defined due to the topological order of nodes
-                    res[node_id] = (((ulong)node.Ordinal) << 48) | (((ulong)idmap[node.One]) << 24) | ((uint)idmap[node.Zero]);
+                    res.Add((((ulong)node.Ordinal) << 48) | (((ulong)idmap[node.One]) << 24) | ((uint)idmap[node.Zero]));
             }
             return res.ToArray();
         }
@@ -340,7 +342,7 @@ namespace System.Text.RegularExpressions.SRM
         public static BDD Deserialize(string input, BDDAlgebra algebra = null)
         {
             string[] elems = input.Split('.');
-            ulong[] arcs = Array.ConvertAll(elems, ulong.Parse);
+            ulong[] arcs = Array.ConvertAll(elems, x => ulong.Parse(x, Globalization.NumberStyles.HexNumber));
             return Deserialize(arcs, algebra);
         }
 

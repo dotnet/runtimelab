@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Xunit;
 using Xunit.Abstractions;
 using System.Linq;
+using System.Reflection;
 
 namespace System.Text.RegularExpressions.Tests
 {
@@ -78,6 +79,24 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Equal(19, match2.Index);
             Assert.Equal(6, match2.Length);
             Assert.Equal("aaaaAa", match2.Value);
+            var match3 = match2.NextMatch();
+            Assert.False(match3.Success);
+        }
+
+        [Fact]
+        public void BasicSRMTestNonASCII()
+        {
+            var re = new Regex(@"\d\w+", DFA);
+            var match1 = re.Match("=====12\u212A4==========1aa\u0130Aa");
+            Assert.True(match1.Success);
+            Assert.Equal(5, match1.Index);
+            Assert.Equal(4, match1.Length);
+            Assert.Equal("12\u212A4", match1.Value);
+            var match2 = match1.NextMatch();
+            Assert.True(match2.Success);
+            Assert.Equal(19, match2.Index);
+            Assert.Equal(6, match2.Length);
+            Assert.Equal("1aa\u0130Aa", match2.Value);
             var match3 = match2.NextMatch();
             Assert.False(match3.Success);
         }

@@ -134,7 +134,16 @@ namespace System.Text.RegularExpressions.SRM
                 {
                     wordLetterCondition = solver.MkCharPredicate("IsWordletter",
                                  solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeWordCharacterBdd)));
+
+#if DEBUG
+                    //test serializer/deserializer
+                    string s = solver.SerializePredicate(wordLetterCondition);
+                    var w = solver.DeserializePredicate(s);
+                    if (!wordLetterCondition.Equals(w))
+                        throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
+#endif
                 }
+
                 return wordLetterCondition;
             }
         }
