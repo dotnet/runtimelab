@@ -48,6 +48,53 @@ index 5390e794242..5b258e76787 100644
    /// Functionally identical to EmitBytes. When emitting textual assembly, this
    /// method uses .byte directives instead of .ascii or .asciz for readability.
    virtual void EmitBinaryData(StringRef Data);
+diff --git a/include/llvm/Support/ManagedStatic.h b/include/llvm/Support/ManagedStatic.h
+index b4bf3210cc7..f7f7cbf781a 100644
+--- a/include/llvm/Support/ManagedStatic.h
++++ b/include/llvm/Support/ManagedStatic.h
+@@ -33,18 +33,41 @@ template <typename T, size_t N> struct object_deleter<T[N]> {
+   static void call(void *Ptr) { delete[](T *)Ptr; }
+ };
+ 
++// ManagedStatic must be initialized to zero, and it must *not* have a dynamic
++// initializer because managed statics are often created while running other
++// dynamic initializers. In standard C++11, the best way to accomplish this is
++// with a constexpr default constructor. However, different versions of the
++// Visual C++ compiler have had bugs where, even though the constructor may be
++// constexpr, a dynamic initializer may be emitted depending on optimization
++// settings. For the affected versions of MSVC, use the old linker
++// initialization pattern of not providing a constructor and leaving the fields
++// uninitialized. See http://llvm.org/PR41367 for details.
++#if !defined(_MSC_VER) || (_MSC_VER >= 1925) || defined(__clang__)
++#define LLVM_USE_CONSTEXPR_CTOR
++#endif
++
+ /// ManagedStaticBase - Common base class for ManagedStatic instances.
+ class ManagedStaticBase {
+ protected:
++#ifdef LLVM_USE_CONSTEXPR_CTOR
++  mutable std::atomic<void *> Ptr{};
++  mutable void (*DeleterFn)(void *) = nullptr;
++  mutable const ManagedStaticBase *Next = nullptr;
++#else
+   // This should only be used as a static variable, which guarantees that this
+   // will be zero initialized.
+   mutable std::atomic<void *> Ptr;
+-  mutable void (*DeleterFn)(void*);
++  mutable void (*DeleterFn)(void *);
+   mutable const ManagedStaticBase *Next;
++#endif
+ 
+   void RegisterManagedStatic(void *(*creator)(), void (*deleter)(void*)) const;
+ 
+ public:
++#ifdef LLVM_USE_CONSTEXPR_CTOR
++  constexpr ManagedStaticBase() = default;
++#endif
++
+   /// isConstructed - Return true if this object has not been created yet.
+   bool isConstructed() const { return Ptr != nullptr; }
+ 
 diff --git a/lib/MC/MCObjectStreamer.cpp b/lib/MC/MCObjectStreamer.cpp
 index 174397e2739..ef7161fb56c 100644
 --- a/lib/MC/MCObjectStreamer.cpp
