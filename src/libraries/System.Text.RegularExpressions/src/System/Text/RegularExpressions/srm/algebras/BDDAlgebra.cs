@@ -169,7 +169,7 @@ namespace System.Text.RegularExpressions.SRM
                     if (a.IsLeaf)
                     {
                         //multi-terminal case, we know here that a is neither True nor False
-                        int ord = CombineLeafOrdinals(op, a.Ordinal, 0);
+                        ushort ord = CombineLeafOrdinals(op, (ushort)a.Ordinal, 0);
                         res = MkBDD(ord, null, null);
                         _notCache[a] = res;
                         return res;
@@ -185,7 +185,7 @@ namespace System.Text.RegularExpressions.SRM
                 if (a.IsLeaf && b.IsLeaf)
                 {
                     //multi-terminal case, we know here that a is neither True nor False
-                    int ord = CombineLeafOrdinals(op, a.Ordinal, b.Ordinal);
+                    ushort ord = CombineLeafOrdinals(op, (ushort)a.Ordinal, (ushort)b.Ordinal);
                     res = MkBDD(ord, null, null);
                 }
                 else if (a.IsLeaf || b.Ordinal > a.Ordinal)
@@ -267,7 +267,7 @@ namespace System.Text.RegularExpressions.SRM
             if (a.IsLeaf && b.IsLeaf)
             {
                 //multi-terminal case, we know here that a is neither True nor False
-                int ord = CombineLeafOrdinals(op, a.Ordinal, b.Ordinal);
+                ushort ord = CombineLeafOrdinals(op, (ushort)a.Ordinal, (ushort)b.Ordinal);
                 res = MkBDD(ord, null, null);
             }
             else
@@ -313,7 +313,7 @@ namespace System.Text.RegularExpressions.SRM
 
             if (a.IsLeaf)
                 //muti-terminal case
-                neg = MkBDD(CombineLeafOrdinals(BoolOp.NOT, a.Ordinal, 0), null, null);
+                neg = MkBDD(CombineLeafOrdinals(BoolOp.NOT, (ushort)a.Ordinal, 0), null, null);
             else
                 neg = MkBDD(a.Ordinal, MkNot_rec(a.One), MkNot_rec(a.Zero));
             _notCache[a] = neg;
@@ -462,7 +462,7 @@ namespace System.Text.RegularExpressions.SRM
             if (set.IsLeaf || k == 0)
                 return set;
 
-            int ordinal = set.Ordinal + k;
+            int ordinal = (int)set.Ordinal + k;
 
             if (ordinal < 0)
                 return True;  //this arises if k is negative
@@ -484,7 +484,7 @@ namespace System.Text.RegularExpressions.SRM
                 if (zero == one)
                     res = zero;
                 else
-                    res = MkBDD(ordinal, one, zero);
+                    res = MkBDD((ushort)ordinal, one, zero);
 
                 shiftCache[key] = res;
                 return res;
@@ -547,9 +547,9 @@ namespace System.Text.RegularExpressions.SRM
             if (mask == 1) //base case: LSB
             {
                 if (n == 0)  //implies that m==0
-                    return MkBDD(bit, False, True);
+                    return MkBDD((ushort)bit, False, True);
                 else if (m == 1) //implies that n==1
-                    return MkBDD(bit, True, False);
+                    return MkBDD((ushort)bit, True, False);
                 else //m=0 and n=1, thus full range from 0 to ((mask << 1)-1)
                     return True;
             }
@@ -566,18 +566,18 @@ namespace System.Text.RegularExpressions.SRM
                 if (nb == 0) // implies that 1-branch is empty
                 {
                     var fcase = CreateFromInterval_rec(mask >> 1, bit - 1, m, n);
-                    return MkBDD(bit, False, fcase);
+                    return MkBDD((ushort)bit, False, fcase);
                 }
                 else if (mb == mask) // implies that 0-branch is empty
                 {
                     var tcase = CreateFromInterval_rec(mask >> 1, bit - 1, m & ~mask, n & ~mask);
-                    return MkBDD(bit, tcase, False);
+                    return MkBDD((ushort)bit, tcase, False);
                 }
                 else //split the interval in two
                 {
                     var fcase = CreateFromInterval_rec(mask >> 1, bit - 1, m, mask - 1);
                     var tcase = CreateFromInterval_rec(mask >> 1, bit - 1, 0, n & ~mask);
-                    return MkBDD(bit, tcase, fcase);
+                    return MkBDD((ushort)bit, tcase, fcase);
                 }
             }
         }
@@ -802,83 +802,21 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         #region Serialializing and deserializing BDDs from dags encoded by ulongs arrays
-        /// <summary>
-        /// Serialize a BDD in a flat ulong array.
-        /// The BDD may have at most 2^16 bits and 2^24 nodes.
-        /// BDD.False is represented by ulong[]{0}.
-        /// BDD.True is represented by ulong[]{0,0}.
-        /// Element at index 0 is the false node,
-        /// element at index 1 is the true node,
-        /// and entry at index i>1 is node i and has the structure:
-        /// (ordinal &lt;&lt; 48) | (trueNode &lt;&lt; 24) | falseNode.
-        /// The root of the BDD (when different from True and False) is node 2.
-        /// </summary>
-        public ulong[] Serialize(BDD bdd)
-        {
-            if (bdd.IsEmpty)
-                return new ulong[] { 0 };
-            if (bdd.IsFull)
-                return new ulong[] { 0, 0 };
-            if (bdd.IsLeaf)
-                throw new AutomataException(AutomataExceptionKind.MTBDDsNotSupportedForThisOperation);
-
-            int nrOfNodes = bdd.CountNodes();
-
-            if (nrOfNodes > (1 << 24))
-                throw new AutomataException(AutomataExceptionKind.BDDSerializationNodeLimitViolation);
-
-            if (bdd.Ordinal >= (1 << 16))
-                throw new AutomataException(AutomataExceptionKind.BDDSerializationBitLimitViolation);
-
-            ulong[] res = new ulong[nrOfNodes];
-
-            //here we know that bdd is neither empty nor full
-            var done = new Dictionary<BDD, int>();
-            done[False] = 0;
-            done[True] = 1;
-
-            Stack<BDD> stack = new Stack<BDD>();
-            stack.Push(bdd);
-            done[bdd] = 2;
-
-            int doneCount = 3;
-
-            while (stack.Count > 0)
-            {
-                BDD b = stack.Pop();
-                if (!done.ContainsKey(b.One))
-                {
-                    done[b.One] = (doneCount++);
-                    stack.Push(b.One);
-                }
-                if (!done.ContainsKey(b.Zero))
-                {
-                    done[b.Zero] = (doneCount++);
-                    stack.Push(b.Zero);
-                }
-                int bId = done[b];
-                int fId = done[b.Zero];
-                int tId = done[b.One];
-
-                res[bId] = (((ulong)b.Ordinal) << 48) | (((ulong)tId) << 24) | ((uint)fId);
-            }
-            return res;
-        }
 
         /// <summary>
-        /// Recreates a BDD from a ulong array that has been created using Serialize.
-        /// Is executed in a single thread mode.
+        /// depricated, needed until the pregenerated unicode categories have been replaced using the new BDD serializer
+        /// TBD: use the new serializer/desrializer methods of BDD
         /// </summary>
         public BDD Deserialize(ulong[] arcs)
         {
+            if (arcs.Length == 1)
+                return False;
+            if (arcs.Length == 2)
+                return True;
+
             lock (this)
             {
-                if (arcs.Length == 1)
-                    return False;
-                if (arcs.Length == 2)
-                    return True;
-
-                //organized by order
+                //nonterminals are organized by ordinals
                 var levelsMap = new Dictionary<int, List<int>>();
                 List<int> levels = new List<int>();
 
@@ -888,21 +826,21 @@ namespace System.Text.RegularExpressions.SRM
 
                 for (int i = 2; i < arcs.Length; i++)
                 {
-                    ulong ordinal = (arcs[i] >> 48);
-                    int x = (int)ordinal;
-                    List<int> x_list;
-                    if (!levelsMap.TryGetValue(x, out x_list))
+                    int ord = (int)(arcs[i] >> 48);
+                    List<int> ord_list;
+                    if (!levelsMap.TryGetValue(ord, out ord_list))
                     {
-                        x_list = new List<int>();
-                        levelsMap[x] = x_list;
-                        levels.Add(x);
+                        ord_list = new List<int>();
+                        levelsMap[ord] = ord_list;
+                        levels.Add(ord);
                     }
-                    x_list.Add(i);
+                    ord_list.Add(i);
                 }
 
-                //create the BDD nodes according to the level order
-                //strating with the lowest ordinal
-                //this is to ensure proper internalization
+                //create the nonterminal BDD nodes ordered according to ordinal as levels
+                //strating with the lowest level
+                //this is to ensure proper internalization of prior
+                //levels before proceeding to next level.
                 levels.Sort();
 
                 foreach (int x in levels)
@@ -917,7 +855,7 @@ namespace System.Text.RegularExpressions.SRM
                             throw new AutomataException(AutomataExceptionKind.BDDDeserializationError);
                         var oneBranch = bddMap[one];
                         var zeroBranch = bddMap[zero];
-                        var bdd = MkBDD(x, oneBranch, zeroBranch);
+                        var bdd = MkBDD((ushort)x, oneBranch, zeroBranch);
                         bddMap[i] = bdd;
                         if (bdd.Ordinal <= bdd.One.Ordinal || bdd.Ordinal <= bdd.Zero.Ordinal)
                             throw new AutomataException(AutomataExceptionKind.BDDDeserializationError);
@@ -928,18 +866,64 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
-        public abstract string SerializePredicate(BDD s);
-        public abstract BDD DeserializePredicate(string s);
+        /// <summary>
+        /// Serializes the BDD using BDD.Serialize(StringBuilder)
+        /// </summary>
+        public string SerializePredicate(BDD bdd)
+        {
+            var sb = new StringBuilder();
+            bdd.Serialize(sb);
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Throws NotSupportedException. Can be overriden in a derived algebra.
+        /// </summary>
+        public BDD DeserializePredicate(string s)
+        {
+            var bdd = BDD.Deserialize(s, this);
+            return bdd;
+        }
         #endregion
 
         /// <summary>
         /// Throws NotSupportedException.
-        /// Can be overwridden by multi-terminal extension of the algebra.
-        /// The returned integer will act as the combined leaf ordinal
+        /// Can be overwridden in a derived algebra.
+        /// The returned short integer will act as the combined leaf ordinal in  a multi-terminal BDD.
         /// </summary>
-        public virtual int CombineLeafOrdinals(BoolOp op, int ordinal1, int ordinal2)
+        public virtual ushort CombineLeafOrdinals(BoolOp op, ushort ordinal1, ushort ordinal2)
         {
             throw new NotSupportedException($"{nameof(CombineLeafOrdinals)}:{op}");
+        }
+
+        /// <summary>
+        /// Replace the True node in the BDD by a non-Boolean terminal.
+        /// Locks the algebra for single threaded use.
+        /// </summary>
+        public BDD ReplaceTrue(BDD bdd, ushort terminal)
+        {
+            lock (this)
+            {
+                BDD leaf = MkBDD(terminal, null, null);
+                return ReplaceTrue_(bdd, leaf, new Dictionary<BDD, BDD>());
+            }
+        }
+
+        private BDD ReplaceTrue_(BDD bdd, BDD leaf, Dictionary<BDD, BDD> cache)
+        {
+            if (bdd == True)
+                return leaf;
+            if (bdd.IsLeaf)
+                return bdd;
+            BDD res;
+            if (cache.TryGetValue(bdd, out res))
+                return res;
+
+            BDD one = ReplaceTrue_(bdd.One, leaf, cache);
+            BDD zero = ReplaceTrue_(bdd.Zero, leaf, cache);
+            res = MkBDD(bdd.Ordinal, one, zero);
+            cache[bdd] = res;
+            return res;
         }
     }
 }

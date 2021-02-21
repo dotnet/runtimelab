@@ -90,7 +90,7 @@ namespace System.Text.RegularExpressions.SRM
         IEnumerable<Tuple<bool[], S>> GenerateMinterms(params S[] constraints);
 
         /// <summary>
-        /// Serialize the predicate using characters in [0-9a-f\-\.]
+        /// Serialize the predicate using characters in [0-9A-F\-\.]
         /// </summary>
         /// <param name="s">given predicate</param>
         string SerializePredicate(S s);

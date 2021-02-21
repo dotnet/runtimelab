@@ -261,7 +261,7 @@ namespace System.Text.RegularExpressions.SRM
                             throw new AutomataException(AutomataExceptionKind.CompactDeserializationError);
                         var oneBranch = bddMap[one];
                         var zeroBranch = bddMap[zero];
-                        var bdd = MkBDD(x, oneBranch, zeroBranch);
+                        var bdd = MkBDD((ushort)x, oneBranch, zeroBranch);
                         bddMap[i] = bdd;
                         if (bdd.Ordinal <= bdd.One.Ordinal || bdd.Ordinal <= bdd.Zero.Ordinal)
                             throw new AutomataException(AutomataExceptionKind.CompactDeserializationError);
@@ -382,23 +382,9 @@ namespace System.Text.RegularExpressions.SRM
             return pred;
         }
 
-        #region code generation
-
         public BDD[] GetPartition()
         {
             throw new NotSupportedException();
-        }
-
-        #endregion
-
-        public override string SerializePredicate(BDD s)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override BDD DeserializePredicate(string s)
-        {
-            throw new NotImplementedException();
         }
     }
 }

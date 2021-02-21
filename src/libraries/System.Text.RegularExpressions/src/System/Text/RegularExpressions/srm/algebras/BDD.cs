@@ -14,11 +14,11 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// The unique BDD leaf that represents the empty set or true.
         /// </summary>
-        public static BDD True = new BDD(-1);
+        public static BDD True = new BDD(-2);
         /// <summary>
         /// The unique BDD leaf that represents the full set or false.
         /// </summary>
-        public static BDD False = new BDD(-2);
+        public static BDD False = new BDD(-1);
 
         /// <summary>
         /// The encoding of the set for lower ordinals for the case when the current bit is 1.
@@ -45,7 +45,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Create a leaf
         /// </summary>
-        internal BDD(int ordinal)
+        private BDD(int ordinal)
         {
             Ordinal = ordinal;
             hashcode = (ordinal, 0, 0).GetHashCode();
@@ -157,5 +157,223 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public override bool Equals(object? obj) =>
             obj is BDD bdd && (this == bdd || Ordinal == bdd.Ordinal && One == bdd.One && Zero == bdd.Zero);
+
+        /// <summary>
+        /// Returns a topologically sorted array of all the nodes in this BDD
+        /// such that, all leaves appear first in the array
+        /// and all nonterminals with smaller ordinal
+        /// appear before nodes with larger ordinal.
+        /// So this BDD itself appears last.
+        /// </summary>
+        public BDD[] TopSort()
+        {
+            if (IsLeaf)
+                return new BDD[] { this };
+
+            //order the nodes according to their ordinals
+            //into the nonterminals array
+            var nonterminals = new List<BDD>[Ordinal + 1];
+            var nodes = new List<BDD>();
+            var stack = new Stack<BDD>();
+            var set = new HashSet<BDD>();
+
+            stack.Push(this);
+
+            while (stack.Count > 0)
+            {
+                var node = stack.Pop();
+                if (node.IsLeaf)
+                    nodes.Add(node);
+                else
+                {
+                    if (nonterminals[node.Ordinal] == null)
+                        nonterminals[node.Ordinal] = new List<BDD>();
+                    nonterminals[node.Ordinal].Add(node);
+                    if (set.Add(node.Zero))
+                        stack.Push(node.Zero);
+                    if (set.Add(node.One))
+                        stack.Push(node.One);
+                }
+            }
+
+            for (int i = 0; i < nonterminals.Length; i++)
+                if (nonterminals[i] != null)
+                    nodes.AddRange(nonterminals[i]);
+            return nodes.ToArray();
+        }
+
+        /// <summary>
+        /// Serialize this BDD in a flat ulong array.
+        /// The BDD may have at most 2^16 bits and 2^24 nodes.
+        /// The ordinal values must fit within 16 bits also for multi-terminal leaves.
+        /// BDD.False is represented by return value ulong[]{0}.
+        /// BDD.True is represented by return value ulong[]{0,0}.
+        /// In all other cases:
+        /// Index 0 represents False.
+        /// Index 1 represents True.
+        /// and entry at index i&gt;1 is node i and has the structure:
+        /// BDD: (ordinal &lt;&lt; 48) | (oneNode &lt;&lt; 24) | zeroNode.
+        /// or MTBDD Leaf: (ordinal &lt;&lt; 48) that has both children == 0
+        /// This BDD (when different from True and False) is the final element.
+        /// </summary>
+        public ulong[] Serialize()
+        {
+            if (IsEmpty)
+                return new ulong[] { 0 }; //False
+            if (IsFull)
+                return new ulong[] { 0, 0 }; //True
+
+            BDD[] nodes = TopSort();
+#if DEBUG
+            if (nodes[nodes.Length - 1] != this)
+                throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
+
+            if (nodes.Length > (1 << 24))
+                throw new AutomataException(AutomataExceptionKind.BDDSerializationNodeLimitViolation);
+#endif
+
+            //add 2 extra positions (just in case) index 0 and 1 are reserved for False and True
+            //in MTBDD case it may happen that 2 more solts are needed (0 and 1)
+            //but this is only possible when neither True nor False occur in this BDD
+            //in all other situations res will have the same length as nodes
+            List<ulong> res = new List<ulong>(nodes.Length + 2);
+
+            //here we know that bdd is neither False nor True
+            //but it could still be a MTBDD leaf if both children are null
+            var idmap = new Dictionary<BDD, int>();
+            idmap[True] = 1;
+            idmap[False] = 0;
+
+            //the next avaliable node id
+            int id = 2;
+
+            for (int i = 0; i < nodes.Length; i++)
+            {
+                BDD node = nodes[i];
+                if (node == True || node == False)
+                    continue;
+
+                int node_id = id++;
+                idmap[node] = node_id;
+
+                if (node.IsLeaf)
+                    //MTBDD leaf
+                    res[node_id] = ((ulong)node.Ordinal) << 48;
+                else
+                    //children ids are well-defined due to the topological order of nodes
+                    res[node_id] = (((ulong)node.Ordinal) << 48) | (((ulong)idmap[node.One]) << 24) | ((uint)idmap[node.Zero]);
+            }
+            return res.ToArray();
+        }
+
+        /// <summary>
+        /// Recreates a BDD from a ulong array that has been created using Serialize.
+        /// Is executed using a lock on algebra (if algebra != null) in a single thread mode.
+        /// If no algebra is given (algebra == null) then creates the BDD without using a BDD algebra --
+        /// which implies that all BDD nodes other than True and False are new BDD objects
+        /// that have not been internalized or cached.
+        /// </summary>
+        public static BDD Deserialize(ulong[] arcs, BDDAlgebra algebra = null)
+        {
+            if (arcs.Length == 1)
+                return False;
+            if (arcs.Length == 2)
+                return True;
+
+            if (algebra == null)
+                return Deserialize_(arcs, MkBDD);
+            else
+                lock (algebra)
+                    return Deserialize_(arcs, algebra.MkBDD);
+        }
+
+        private static BDD MkBDD(int ordinal, BDD one, BDD zero)
+        {
+            return new BDD(ordinal, one, zero);
+        }
+
+        private static BDD Deserialize_(ulong[] arcs, Func<int, BDD, BDD, BDD> mkBDD)
+        {
+            int k = arcs.Length;
+            BDD[] nodes = new BDD[k];
+            nodes[0] = False;
+            nodes[1] = True;
+            for (int i = 2; i < k; i++)
+            {
+                ushort ord = (ushort)(arcs[i] >> 48);
+                int oneId = (int)((arcs[i] >> 24) & 0xFFFFFF);
+                int zeroId = (int)(arcs[i] & 0xFFFFFF);
+                if (oneId == 0 && zeroId == 0)
+                    //make a MTBDD terminal
+                    nodes[i] = mkBDD(ord, null, null);
+                else
+                    nodes[i] = mkBDD(ord, nodes[oneId], nodes[zeroId]);
+            }
+            //the result is the final BDD in the nodes array
+            return nodes[k - 1];
+        }
+
+        /// <summary>
+        /// Invokes Serialize and appends the array as code_0.code_1. ... .code_{N-1} to sb
+        /// where N is the length of the array returned by Serialize() and code_i is the
+        /// hexadecimal encoding of the i'th element using [0-9A-F] digits.
+        /// Uses '.' as separator.
+        /// </summary>
+        public void Serialize(StringBuilder sb)
+        {
+            ulong[] res = Serialize();
+            sb.Append(res[0].ToString("X"));
+            for (int i = 1; i < res.Length; i++)
+            {
+                sb.Append('.');
+                sb.Append(res[i].ToString("X"));
+            }
+        }
+
+        /// <summary>
+        /// Recreates a BDD from an input string that has been created using Serialize.
+        /// Is executed using a lock on algebra (if algebra != null) in a single thread mode.
+        /// If no algebra is given (algebra == null) then creates the BDD without using any BDD algebra --
+        /// which implies that all BDD nodes other than True and False are new BDD objects
+        /// that have not been internalized or cached.
+        /// </summary>
+        public static BDD Deserialize(string input, BDDAlgebra algebra = null)
+        {
+            string[] elems = input.Split('.');
+            ulong[] arcs = Array.ConvertAll(elems, ulong.Parse);
+            return Deserialize(arcs, algebra);
+        }
+
+        /// <summary>
+        /// Finds the terminal for the input in a Multi-Terminal-BDD.
+        /// Bits of the input are used to determine the path in the BDD.
+        /// Returns -1 if False is reached and -2 if True is reached,
+        /// else returns the MTBDD terminal id that is reached.
+        /// </summary>
+        public int FindTerminal(int input)
+        {
+            if (IsLeaf)
+                return Ordinal;
+            else if ((input & (1 << Ordinal)) == 0)
+                return Zero.FindTerminal(input);
+            else
+                return One.FindTerminal(input);
+        }
+
+        /// <summary>
+        /// Finds the terminal for the input in a Multi-Terminal-BDD.
+        /// Bits of the input are used to determine the path in the BDD.
+        /// Returns -1 if False is reached and -2 if True is reached,
+        /// else returns the MTBDD terminal id that is reached.
+        /// </summary>
+        public int FindTerminal(ulong input)
+        {
+            if (IsLeaf)
+                return Ordinal;
+            else if ((input & ((ulong)1 << Ordinal)) == 0)
+                return Zero.FindTerminal(input);
+            else
+                return One.FindTerminal(input);
+        }
     }
 }
