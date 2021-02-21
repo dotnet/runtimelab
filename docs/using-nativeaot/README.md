@@ -1,5 +1,6 @@
 # Using Native AOT
 
+- [Building](../workflow/building/coreclr/nativeaot.md)
 - [Limitations](limitations.md)
 - [Debugging applications](debugging.md)
 - [Optimizing applications](optimizing.md)
