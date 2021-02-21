@@ -58,7 +58,6 @@
     <FeatureComWrappers>false</FeatureComWrappers>
     <FeatureComWrappers Condition="'$(TargetsWindows)' == 'true'">true</FeatureComWrappers>
   </PropertyGroup>
-  </PropertyGroup>
 
   <!-- Platform specific properties -->
   <PropertyGroup Condition="'$(Platform)' == 'x64'">
