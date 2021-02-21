@@ -95,13 +95,13 @@ namespace System.Runtime.InteropServices
                 return GetComCount((ulong)Interlocked.Decrement(ref RefCount));
             }
 
-            public unsafe int QueryInterface(Guid* riid, IntPtr* ppvObject)
+            public unsafe int QueryInterface(in Guid riid, out IntPtr ppvObject)
             {
-                *ppvObject = AsRuntimeDefined(riid);
-                if (*ppvObject == IntPtr.Zero)
+                ppvObject = AsRuntimeDefined(in riid);
+                if (ppvObject == IntPtr.Zero)
                 {
-                    *ppvObject = AsUserDefined(riid);
-                    if (*ppvObject == IntPtr.Zero)
+                    ppvObject = AsUserDefined(in riid);
+                    if (ppvObject == IntPtr.Zero)
                         return HResults.COR_E_INVALIDCAST;
                 }
 
@@ -109,21 +109,21 @@ namespace System.Runtime.InteropServices
                 return HResults.S_OK;
             }
 
-            public IntPtr As(Guid *riid)
+            public IntPtr As(in Guid riid)
             {
                 // Find target interface and return dispatcher or null if not found.
-                IntPtr typeMaybe = AsRuntimeDefined(riid);
+                IntPtr typeMaybe = AsRuntimeDefined(in riid);
                 if (typeMaybe == IntPtr.Zero)
-                    typeMaybe = AsUserDefined(riid);
+                    typeMaybe = AsUserDefined(in riid);
 
                 return typeMaybe;
             }
 
-            IntPtr AsRuntimeDefined(Guid* riid)
+            IntPtr AsRuntimeDefined(in Guid riid)
             {
                 for (int i = 0; i < RuntimeDefinedCount; ++i)
                 {
-                    if (RuntimeDefined[i].IID == *riid)
+                    if (RuntimeDefined[i].IID == riid)
                     {
                         return Dispatches[i].Vtable;
                     }
@@ -132,11 +132,11 @@ namespace System.Runtime.InteropServices
                 return IntPtr.Zero;
             }
 
-            IntPtr AsUserDefined(Guid *riid)
+            IntPtr AsUserDefined(in Guid riid)
             {
                 for (int i = 0; i < UserDefinedCount; ++i)
                 {
-                    if (UserDefined[i].IID == *riid)
+                    if (UserDefined[i].IID == riid)
                     {
                         return Dispatches[i + RuntimeDefinedCount].Vtable;
                     }
@@ -165,14 +165,7 @@ namespace System.Runtime.InteropServices
                 this.wrapper = wrapper;
             }
 
-            public unsafe IntPtr ComIp
-            {
-                get
-                {
-                    fixed (Guid* guid = &ComWrappers.IID_IUnknown)
-                        return this.wrapper->As(guid);
-                }
-            }
+            public unsafe IntPtr ComIp => this.wrapper->As(in ComWrappers.IID_IUnknown);
 
             ~ManagedObjectWrapperHolder()
             {
@@ -243,7 +236,6 @@ namespace System.Runtime.InteropServices
                 success = value != null;
                 return new ManagedObjectWrapperHolder(value);
             });
-            // I should get IUnknown implementation from MOW. It maye have behave incorrectly when using user provided IUnknown.
             retValue = ccwValue.ComIp;
             return success;
         }
@@ -568,23 +560,23 @@ namespace System.Runtime.InteropServices
         }
 
         [UnmanagedCallersOnly]
-        internal static unsafe int IUnknown_QueryInterface(IntPtr ppObject, Guid* guid, IntPtr* returnValue)
+        internal static unsafe int IUnknown_QueryInterface(IntPtr pThis, Guid* guid, IntPtr* ppObject)
         {
-            ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)ppObject);
-            return wrapper->QueryInterface(guid, returnValue);
+            ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)pThis);
+            return wrapper->QueryInterface(in *guid, out *ppObject);
         }
 
         [UnmanagedCallersOnly]
-        internal static unsafe uint IUnknown_AddRef(IntPtr ppObject)
+        internal static unsafe uint IUnknown_AddRef(IntPtr pThis)
         {
-            ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)ppObject);
+            ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)pThis);
             return wrapper->AddRef();
         }
 
         [UnmanagedCallersOnly]
-        internal static unsafe uint IUnknown_Release(IntPtr ppObject)
+        internal static unsafe uint IUnknown_Release(IntPtr pThis)
         {
-            ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)ppObject);
+            ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)pThis);
             return wrapper->Release();
         }
 
