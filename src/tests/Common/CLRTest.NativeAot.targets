@@ -32,6 +32,14 @@ WARNING:   When setting properties based on their current state (for example:
   <Target Name="GetNativeAotBashScript">
 
     <PropertyGroup>
+      <NativeAotCleanupBashScript Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(NativeAotTest)' != 'false'">
+        <![CDATA[
+if [ ! -z ${RunNativeAot+x} ]%3B then
+    rm -rf native
+fi
+        ]]>
+    </NativeAotCleanupBashScript>
+
       <NativeAotBashScript Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(NativeAotTest)' != 'false'">
         <![CDATA[
 if [ ! -z ${RunNativeAot+x} ]%3B then
@@ -68,7 +76,7 @@ fi
         ]]>
       </NativeAotBashScript>
 
-      <BashCLRTestPreCommands>$(BashCLRTestPreCommands);$(NativeAotBashScript)</BashCLRTestPreCommands>
+      <BashCLRTestPreCommands>$(NativeAotCleanupBashScript);$(BashCLRTestPreCommands);$(NativeAotBashScript)</BashCLRTestPreCommands>
     </PropertyGroup>
   </Target>
 
