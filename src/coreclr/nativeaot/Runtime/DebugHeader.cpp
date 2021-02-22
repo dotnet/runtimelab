@@ -33,6 +33,12 @@ struct GlobalValueEntry
     const void *Address;
 };
 
+static constexpr size_t DebugTypeEntriesArraySize = 96;
+static DebugTypeEntry s_DebugEntries[DebugTypeEntriesArraySize];
+
+static constexpr size_t GlobalEntriesArraySize = 6;
+static GlobalValueEntry s_GlobalEntries[GlobalEntriesArraySize];
+
 // This structure is part of a in-memory serialization format that is used by diagnostic tools to
 // reason about the runtime. As a contract with our diagnostic tools it must be kept up-to-date
 // by changing the MajorVersion when breaking changes occur. If you are changing the runtime then
@@ -55,7 +61,7 @@ struct GlobalValueEntry
 //   - Changing the data type of a global whose address is recorded in this structure
 //   - Changing the meaning of a field or global refered to in this structure so that it can no longer
 //     be used in the manner the format specification describes.
-struct NativeAOTRuntimeDebugHeader
+struct DotNetRuntimeDebugHeader
 {
     // The cookie serves as a sanity check against process corruption or being requested
     // to treat some other non-.Net module as though it did contain the coreRT runtime.
@@ -92,37 +98,21 @@ struct NativeAOTRuntimeDebugHeader
     // specified in the Flags field. The data within the contracts they point to also uses
     // the same pointer size and endianess encoding unless otherwise specified.
 
-    // The length of the DebugTypeEntries array
-    #define DEBUG_TYPES_ARRAY_SIZE 101
-    const uint32_t DebugTypeEntriesArraySize = DEBUG_TYPES_ARRAY_SIZE;
+    // A pointer to an array describing important types and their offsets
+    DebugTypeEntry (*DebugTypeEntries)[DebugTypeEntriesArraySize] = nullptr;
 
-    // Reserved - Currently it only serves as alignment padding for the pointers which
-    // follow but future usage will be considered a back-compatible change.
-    const uint32_t ReservedPadding2 = 0;
-
-    // An array describing important types and their offsets
-    DebugTypeEntry DebugTypeEntries[DEBUG_TYPES_ARRAY_SIZE];
-
-    // The length of the GlobalEntries array
-    #define GLOBALS_ARRAY_SIZE 5
-    const uint32_t GlobalEntriesArraySize = GLOBALS_ARRAY_SIZE;
-    
-    // Reserved - Currently it only serves as alignment padding for the pointers which
-    // follow but future usage will be considered a back-compatible change.
-    const uint32_t ReservedPadding3 = 0;
-
-    // An array that contains pointers to important globals
-    GlobalValueEntry GlobalEntries[GLOBALS_ARRAY_SIZE];
+    // A pointer to an array that contains pointers to important globals
+    GlobalValueEntry (*GlobalEntries)[GlobalEntriesArraySize] = nullptr;
 };
 
-extern "C" NativeAOTRuntimeDebugHeader g_NativeAOTRuntimeDebugHeader = {};
+extern "C" DotNetRuntimeDebugHeader g_NativeAOTRuntimeDebugHeader = {};
 
 #define MAKE_DEBUG_ENTRY(TypeName, FieldName, Value)                                                                        \
     do                                                                                                                      \
     {                                                                                                                       \
-        g_NativeAOTRuntimeDebugHeader.DebugTypeEntries[currentDebugPos] = { #TypeName, #FieldName, Value, 0  };             \
+        (*g_NativeAOTRuntimeDebugHeader.DebugTypeEntries)[currentDebugPos] = { #TypeName, #FieldName, Value, 0  };             \
         ++currentDebugPos;                                                                                                  \
-        ASSERT(currentDebugPos <= g_NativeAOTRuntimeDebugHeader.DebugTypeEntriesArraySize);                                 \
+        ASSERT(currentDebugPos <= DebugTypeEntriesArraySize);                                 \
     } while(0)
 
 #define MAKE_DEBUG_FIELD_ENTRY(TypeName, FieldName) MAKE_DEBUG_ENTRY(TypeName, FieldName, offsetof(TypeName, FieldName))
@@ -134,9 +124,9 @@ extern "C" NativeAOTRuntimeDebugHeader g_NativeAOTRuntimeDebugHeader = {};
 #define MAKE_GLOBAL_ENTRY(Name)                                                                                             \
     do                                                                                                                      \
     {                                                                                                                       \
-        g_NativeAOTRuntimeDebugHeader.GlobalEntries[currentGlobalPos] = { #Name, Name };                                    \
+        (*g_NativeAOTRuntimeDebugHeader.GlobalEntries)[currentGlobalPos] = { #Name, Name };                                    \
         ++currentGlobalPos;                                                                                                 \
-        ASSERT(currentGlobalPos <= g_NativeAOTRuntimeDebugHeader.GlobalEntriesArraySize)                                    \
+        ASSERT(currentGlobalPos <= GlobalEntriesArraySize)                                    \
     } while(0)                                                                                                              \
 
 extern "C" void PopulateDebugHeaders()
@@ -144,8 +134,11 @@ extern "C" void PopulateDebugHeaders()
     size_t currentDebugPos = 0;
     size_t currentGlobalPos = 0;
 
-    ZeroMemory(g_NativeAOTRuntimeDebugHeader.DebugTypeEntries, g_NativeAOTRuntimeDebugHeader.DebugTypeEntriesArraySize);
-    ZeroMemory(g_NativeAOTRuntimeDebugHeader.GlobalEntries, g_NativeAOTRuntimeDebugHeader.GlobalEntriesArraySize);
+    ZeroMemory(s_DebugEntries, DebugTypeEntriesArraySize);
+    ZeroMemory(s_GlobalEntries, GlobalEntriesArraySize);
+
+    g_NativeAOTRuntimeDebugHeader.DebugTypeEntries = &s_DebugEntries;
+    g_NativeAOTRuntimeDebugHeader.GlobalEntries = &s_GlobalEntries;
 
     MAKE_SIZE_ENTRY(GcDacVars);
     MAKE_DEBUG_FIELD_ENTRY(GcDacVars, major_version_number);
@@ -201,10 +194,6 @@ extern "C" void PopulateDebugHeaders()
     MAKE_DEBUG_FIELD_ENTRY(ThreadBuffer, m_threadId);
     MAKE_DEBUG_FIELD_ENTRY(ThreadBuffer, m_pThreadStressLog);
 
-    // EEThreadID is forward declared and not available
-    MAKE_DEBUG_ENTRY(EEThreadID, SIZEOF, sizeof(void*));
-    MAKE_DEBUG_ENTRY(EEThreadID, m_FiberPtrId, 0);
-
     MAKE_SIZE_ENTRY(EEType);
     MAKE_DEBUG_FIELD_ENTRY(EEType, m_uBaseSize);
     MAKE_DEBUG_FIELD_ENTRY(EEType, m_usComponentSize);
@@ -257,12 +246,6 @@ extern "C" void PopulateDebugHeaders()
     MAKE_DEBUG_FIELD_ENTRY(StressMsg, timeStamp);
     MAKE_DEBUG_FIELD_ENTRY(StressMsg, args);
 
-    MAKE_SIZE_ENTRY(Object);
-    MAKE_DEBUG_FIELD_ENTRY(Object, m_pEEType);
-
-    MAKE_SIZE_ENTRY(Array);
-    MAKE_DEBUG_FIELD_ENTRY(Array, m_Length);
-
     MAKE_SIZE_ENTRY(RuntimeInstance);
     MAKE_DEBUG_FIELD_ENTRY(RuntimeInstance, m_pThreadStore);
 
@@ -283,11 +266,9 @@ extern "C" void PopulateDebugHeaders()
 
     static_assert(EEType::Flags::EETypeKindMask         == 0x0003, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
     static_assert(EEType::Flags::RelatedTypeViaIATFlag  == 0x0004, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
-    static_assert(EEType::Flags::IsDynamicTypeFlag      == 0x0008, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
     static_assert(EEType::Flags::HasFinalizerFlag       == 0x0010, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
     static_assert(EEType::Flags::HasPointersFlag        == 0x0020, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
     static_assert(EEType::Flags::GenericVarianceFlag    == 0x0080, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
-    static_assert(EEType::Flags::OptionalFieldsFlag     == 0x0100, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
     static_assert(EEType::Flags::IsGenericFlag          == 0x0400, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
     static_assert(EEType::Flags::ElementTypeMask        == 0xf800, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
     static_assert(EEType::Flags::ElementTypeShift       == 11,     "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");

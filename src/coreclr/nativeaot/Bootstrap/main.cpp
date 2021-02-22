@@ -103,8 +103,6 @@ extern "C" bool RhRegisterOSModule(void * pModule,
     void * pvUnboxingStubsStartRange, uint32_t cbUnboxingStubsRange,
     void ** pClasslibFunctions, uint32_t nClasslibFunctions);
 
-extern "C" void PopulateDebugHeaders();
-
 extern "C" void* PalGetModuleHandleFromPointer(void* pointer);
 
 extern "C" void GetRuntimeException();
@@ -165,9 +163,6 @@ static int InitializeRuntime()
     }
 
     InitializeModules(osModule, __modules_a, (int)((__modules_z - __modules_a)), (void **)&c_classlibFunctions, _countof(c_classlibFunctions));
-
-    // Populate the values needed for debugging
-    PopulateDebugHeaders();
 
 #ifdef CORERT_DLL
     // Run startup method immediately for a native library
