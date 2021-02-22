@@ -111,6 +111,9 @@ namespace System.Text.RegularExpressions.SRM
                 catConditions[i] = solver.MkCharPredicate(
                      UnicodeCategoryPredicateName(i),
                      solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeBdd[i])));
+#if DEBUG
+                ValidateSerialization(catConditions[i]);
+#endif
             }
             return catConditions[i];
         }
@@ -122,6 +125,9 @@ namespace System.Text.RegularExpressions.SRM
                 {
                     whiteSpaceCondition = solver.MkCharPredicate("IsWhitespace",
                                  solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeWhitespaceBdd)));
+#if DEBUG
+                    ValidateSerialization(whiteSpaceCondition);
+#endif
                 }
                 return whiteSpaceCondition;
             }
@@ -134,18 +140,23 @@ namespace System.Text.RegularExpressions.SRM
                 {
                     wordLetterCondition = solver.MkCharPredicate("IsWordletter",
                                  solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeWordCharacterBdd)));
-
 #if DEBUG
-                    //test serializer/deserializer
-                    string s = solver.SerializePredicate(wordLetterCondition);
-                    var w = solver.DeserializePredicate(s);
-                    if (!wordLetterCondition.Equals(w))
-                        throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
+                    ValidateSerialization(wordLetterCondition);
 #endif
                 }
-
                 return wordLetterCondition;
             }
+        }
+
+        /// <summary>
+        /// Validate correctness of serialization/deserialization for the given predicate
+        /// </summary>
+        private void ValidateSerialization(PRED pred)
+        {
+            string s = solver.SerializePredicate(pred);
+            var psi = solver.DeserializePredicate(s);
+            if (!pred.Equals(psi))
+                throw new AutomataException(AutomataExceptionKind.BDDDeserializationError);
         }
 
         #endregion

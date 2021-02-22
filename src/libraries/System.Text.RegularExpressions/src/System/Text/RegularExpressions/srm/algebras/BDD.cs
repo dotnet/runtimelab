@@ -159,14 +159,17 @@ namespace System.Text.RegularExpressions.SRM
             obj is BDD bdd && (this == bdd || Ordinal == bdd.Ordinal && One == bdd.One && Zero == bdd.Zero);
 
         /// <summary>
-        /// Returns a topologically sorted array of all the nodes in this BDD
-        /// such that, all leaves appear first in the array
-        /// and all nonterminals with smaller ordinal
-        /// appear before nodes with larger ordinal.
-        /// So this BDD itself appears last.
+        /// Returns a topologically sorted array of all the nodes (other than True or False) in this BDD
+        /// such that, all MTBDD leaves (other than True or False) appear first in the array
+        /// and all nonterminals with smaller ordinal appear before nodes with larger ordinal.
+        /// So this BDD itself (if different from True or False) appears last.
+        /// In the case of True or False returns the empty array.
         /// </summary>
         public BDD[] TopSort()
         {
+            if (IsFull || IsEmpty)
+                return Array.Empty<BDD>();
+
             if (IsLeaf)
                 return new BDD[] { this };
 
@@ -182,6 +185,9 @@ namespace System.Text.RegularExpressions.SRM
             while (stack.Count > 0)
             {
                 var node = stack.Pop();
+                if (node.IsFull || node.IsEmpty)
+                    continue;
+
                 if (node.IsLeaf)
                     nodes.Add(node);
                 else
@@ -208,20 +214,16 @@ namespace System.Text.RegularExpressions.SRM
         /// The ordinal values must fit within 16 bits also for multi-terminal leaves.
         /// BDD.False is represented by return value ulong[]{0}.
         /// BDD.True is represented by return value ulong[]{0,0}.
-        /// In all other cases:
-        /// Index 0 represents False.
-        /// Index 1 represents True.
-        /// and entry at index i&gt;1 is node i and has the structure:
-        /// BDD: (ordinal &lt;&lt; 48) | (oneNode &lt;&lt; 24) | zeroNode.
-        /// or MTBDD Leaf: (ordinal &lt;&lt; 48) that has both children == 0.
-        /// This BDD (when different from True and False) is the final element.
+        /// Serializer uses more compacted representations when fewer bits are needed, which
+        /// is reflected in the first two numbers of the return value.
+        /// MTBDD nonterminal ordinals are represented by negated numbers as -id.
         /// </summary>
-        public ulong[] Serialize()
+        public long[] Serialize()
         {
             if (IsEmpty)
-                return new ulong[] { 0 }; //False
+                return new long[] { 0 }; //False
             if (IsFull)
-                return new ulong[] { 0, 0 }; //True
+                return new long[] { 0, 0 }; //True
 
             BDD[] nodes = TopSort();
 #if DEBUG
@@ -231,12 +233,22 @@ namespace System.Text.RegularExpressions.SRM
             if (nodes.Length > (1 << 24))
                 throw new AutomataException(AutomataExceptionKind.BDDSerializationNodeLimitViolation);
 #endif
+            //use fewer bits when possible, starting with nibble size
+            int ordinal_bits = Ordinal < 16 ? 4 : (Ordinal < 0x100 ? 8 : (Ordinal < 0x1000 ? 12 : 16));
+            //use as few bits as possible for node identifiers, starting with byte size
+            //this will give smaller and more compact serialized representations
+            int node_bits = 4;
+            while (nodes.Length >= (1 << node_bits))
+                node_bits += 1;
 
-            //add 2 extra positions (just in case) index 0 and 1 are reserved for False and True
-            //in MTBDD case it may happen that 2 more solts are needed (0 and 1)
-            //but this is only possible when neither True nor False occur in this BDD
-            //in all other situations res will have the same length as nodes
-            List<ulong> res = new List<ulong>(nodes.Length + 2);
+            //add 2 extra positions: index 0 and 1 are reserved for False and True
+            long[] res = new long[nodes.Length + 2];
+            res[0] = ordinal_bits;
+            res[1] = node_bits;
+
+            //the compacted bit layout is (one_id,zero_id,ordinal)
+            int one_node_shift = ordinal_bits + node_bits;
+            int zero_node_shift = ordinal_bits;
 
             //here we know that bdd is neither False nor True
             //but it could still be a MTBDD leaf if both children are null
@@ -244,28 +256,20 @@ namespace System.Text.RegularExpressions.SRM
             idmap[True] = 1;
             idmap[False] = 0;
 
-            //the values at 0 and 1 are irrelevant
-            res.Add(0);
-            res.Add(0);
-            //the next avaliable node id
-            int id = 2;
-
             for (int i = 0; i < nodes.Length; i++)
             {
                 BDD node = nodes[i];
-                if (node == True || node == False)
-                    continue;
-
-                idmap[node] = id++;
+                idmap[node] = i + 2;
 
                 if (node.IsLeaf)
-                    //MTBDD leaf
-                    res.Add(((ulong)node.Ordinal) << 48);
+                    //this is MTBDD leaf: negate the value (it may be 0)
+                    //because True and False are excluded from TopSort()
+                    res[i + 2] = -node.Ordinal;
                 else
                     //children ids are well-defined due to the topological order of nodes
-                    res.Add((((ulong)node.Ordinal) << 48) | (((ulong)idmap[node.One]) << 24) | ((uint)idmap[node.Zero]));
+                    res[i + 2] = (node.Ordinal) | (idmap[node.One] << one_node_shift) | (idmap[node.Zero] << zero_node_shift);
             }
-            return res.ToArray();
+            return res;
         }
 
         /// <summary>
@@ -275,7 +279,7 @@ namespace System.Text.RegularExpressions.SRM
         /// which implies that all BDD nodes other than True and False are new BDD objects
         /// that have not been internalized or cached.
         /// </summary>
-        public static BDD Deserialize(ulong[] arcs, BDDAlgebra algebra = null)
+        public static BDD Deserialize(long[] arcs, BDDAlgebra algebra = null)
         {
             if (arcs.Length == 1)
                 return False;
@@ -294,22 +298,30 @@ namespace System.Text.RegularExpressions.SRM
             return new BDD(ordinal, one, zero);
         }
 
-        private static BDD Deserialize_(ulong[] arcs, Func<int, BDD, BDD, BDD> mkBDD)
+        private static BDD Deserialize_(long[] arcs, Func<int, BDD, BDD, BDD> mkBDD)
         {
             int k = arcs.Length;
+            int ordinal_bits = (int)arcs[0]; //how many bits are used in a nonterminal ordinal
+            long ordinal_mask = (1 << ordinal_bits) - 1;
+            int node_bits = (int)arcs[1];    //how many bits are used in a node id
+            long node_mask = (1 << node_bits) - 1;
+            int one_node_shift = ordinal_bits + node_bits;
+            int zero_node_shift = ordinal_bits;
             BDD[] nodes = new BDD[k];
             nodes[0] = False;
             nodes[1] = True;
             for (int i = 2; i < k; i++)
             {
-                ushort ord = (ushort)(arcs[i] >> 48);
-                int oneId = (int)((arcs[i] >> 24) & 0xFFFFFF);
-                int zeroId = (int)(arcs[i] & 0xFFFFFF);
-                if (oneId == 0 && zeroId == 0)
-                    //make a MTBDD terminal
-                    nodes[i] = mkBDD(ord, null, null);
+                long arc = arcs[i];
+                if (arc <= 0)
+                    nodes[i] = mkBDD((int)-arc, null, null);
                 else
+                {
+                    int ord = (int)(arc & ordinal_mask);
+                    int oneId = (int)((arcs[i] >> one_node_shift) & node_mask);
+                    int zeroId = (int)((arcs[i] >> zero_node_shift) & node_mask);
                     nodes[i] = mkBDD(ord, nodes[oneId], nodes[zeroId]);
+                }
             }
             //the result is the final BDD in the nodes array
             return nodes[k - 1];
@@ -323,12 +335,12 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public void Serialize(StringBuilder sb)
         {
-            ulong[] res = Serialize();
-            sb.Append(res[0].ToString("X"));
+            long[] res = Serialize();
+            sb.Append(res[0]);
             for (int i = 1; i < res.Length; i++)
             {
                 sb.Append('.');
-                sb.Append(res[i].ToString("X"));
+                sb.Append(res[i]);
             }
         }
 
@@ -342,7 +354,7 @@ namespace System.Text.RegularExpressions.SRM
         public static BDD Deserialize(string input, BDDAlgebra algebra = null)
         {
             string[] elems = input.Split('.');
-            ulong[] arcs = Array.ConvertAll(elems, x => ulong.Parse(x, Globalization.NumberStyles.HexNumber));
+            long[] arcs = Array.ConvertAll(elems, long.Parse);
             return Deserialize(arcs, algebra);
         }
 
