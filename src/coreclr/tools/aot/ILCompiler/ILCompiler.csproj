@@ -31,7 +31,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <ILCompilerVersion>6.0.0-preview.1.21075.1</ILCompilerVersion>
+    <ILCompilerVersion>6.0.0-preview.2.21122.4</ILCompilerVersion>
 
     <ObjWriterArtifactPath Condition="'$(TargetsWindows)' == 'true'">$(ArtifactsDir)llvm\build\bin\RelWithDebInfo\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
     <ObjWriterArtifactPath Condition="'$(TargetsWindows)' != 'true'">$(ArtifactsDir)llvm\build\lib\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
