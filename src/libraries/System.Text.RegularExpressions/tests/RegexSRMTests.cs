@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Xunit;
 using Xunit.Abstractions;
 using System.Linq;
+using System.Reflection;
 
 namespace System.Text.RegularExpressions.Tests
 {
@@ -80,6 +81,96 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Equal("aaaaAa", match2.Value);
             var match3 = match2.NextMatch();
             Assert.False(match3.Success);
+        }
+
+        [Fact]
+        public void BasicSRMTestNonASCII()
+        {
+            var re = new Regex(@"\d\s\w+", DFA);
+            var match1 = re.Match("=====1\v\u212A4==========1\ta\u0130Aa");
+            Assert.True(match1.Success);
+            Assert.Equal(5, match1.Index);
+            Assert.Equal(4, match1.Length);
+            Assert.Equal("1\v\u212A4", match1.Value);
+            var match2 = match1.NextMatch();
+            Assert.True(match2.Success);
+            Assert.Equal(19, match2.Index);
+            Assert.Equal(6, match2.Length);
+            Assert.Equal("1\ta\u0130Aa", match2.Value);
+            var match3 = match2.NextMatch();
+            Assert.False(match3.Success);
+        }
+
+        [Fact]
+        public void SRMTest_UnicodeCategories00to09()
+        {
+            //"Lu", 0: UppercaseLetter
+            //"Ll", 1: LowercaseLetter
+            //"Lt", 2: TitlecaseLetter
+            //"Lm", 3: ModifierLetter
+            //"Lo", 4: OtherLetter
+            //"Mn", 5: NonSpacingMark
+            //"Mc", 6: SpacingCombiningMark
+            //"Me", 7: EnclosingMark
+            //"Nd", 8: DecimalDigitNumber
+            //"Nl", 9: LetterNumber
+            var re = new Regex(@"\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Mn}\p{Mc}\p{Me}\p{Nd}\p{Nl}", DFA);
+            //match contains the first character from each category
+            string input = "=====Aa\u01C5\u02B0\u01BB\u0300\u0903\u04880\u16EE===";
+            var match1 = re.Match(input);
+            Assert.True(match1.Success);
+            Assert.Equal(5, match1.Index);
+            Assert.Equal(10, match1.Length);
+            var match2 = match1.NextMatch();
+            Assert.False(match2.Success);
+        }
+
+        [Fact]
+        public void SRMTest_UnicodeCategories10to19()
+        {
+            //"No", 10: OtherNumber
+            //"Zs", 11: SpaceSeparator
+            //"Zl", 12: LineSeparator
+            //"Zp", 13: ParagraphSeparator
+            //"Cc", 14: Control
+            //"Cf", 15: Format
+            //"Cs", 16: Surrogate
+            //"Co", 17: PrivateUse
+            //"Pc", 18: ConnectorPunctuation
+            //"Pd", 19: DashPunctuation
+            var re = new Regex(@"\p{No}\p{Zs}\p{Zl}\p{Zp}\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Pc}\p{Pd}", DFA);
+            //match contains the first character from each category
+            string input = "=====\u00B2 \u2028\u2029\0\u0600\uD800\uE000_\u002D===";
+            var match1 = re.Match(input);
+            Assert.True(match1.Success);
+            Assert.Equal(5, match1.Index);
+            Assert.Equal(10, match1.Length);
+            var match2 = match1.NextMatch();
+            Assert.False(match2.Success);
+        }
+
+        [Fact]
+        public void SRMTest_UnicodeCategories20to29()
+        {
+            //"Ps", 20: OpenPunctuation
+            //"Pe", 21: ClosePunctuation
+            //"Pi", 22: InitialQuotePunctuation
+            //"Pf", 23: FinalQuotePunctuation
+            //"Po", 24: OtherPunctuation
+            //"Sm", 25: MathSymbol
+            //"Sc", 26: CurrencySymbol
+            //"Sk", 27: ModifierSymbol
+            //"So", 28: OtherSymbol
+            //"Cn", 29: OtherNotAssigned
+            var re = new Regex(@"\p{Ps}\p{Pe}\p{Pi}\p{Pf}\p{Po}\p{Sm}\p{Sc}\p{Sk}\p{So}\p{Cn}", DFA);
+            //match contains the first character from each category
+            string input = "=====()\xAB\xBB!+$^\xA6\u0378======";
+            var match1 = re.Match(input);
+            Assert.True(match1.Success);
+            Assert.Equal(5, match1.Index);
+            Assert.Equal(10, match1.Length);
+            var match2 = match1.NextMatch();
+            Assert.False(match2.Success);
         }
 
         static string And(params string[] regexes)

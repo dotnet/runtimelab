@@ -54,18 +54,18 @@ internal static class " + classname + @"
             StreamWriter sw = new StreamWriter(string.Format("{1}{0}.cs", classname, path));
             sw.WriteLine(prefix);
 
-            sw.WriteLine("#region ASCII");
-            WriteRangeFields(BitWidth.BV7, sw, "ASCII");
-            sw.WriteLine("#endregion");
-            sw.WriteLine();
+            //sw.WriteLine("#region ASCII");
+            //WriteRangeFields(7, sw, "ASCII");
+            //sw.WriteLine("#endregion");
+            //sw.WriteLine();
 
-            sw.WriteLine("#region CP437");
-            WriteRangeFields(BitWidth.BV8, sw, "CP437");
-            sw.WriteLine("#endregion");
-            sw.WriteLine();
+            //sw.WriteLine("#region CP437");
+            //WriteRangeFields(8, sw, "CP437");
+            //sw.WriteLine("#endregion");
+            //sw.WriteLine();
 
             sw.WriteLine("#region Unicode (UTF16)");
-            WriteRangeFields(BitWidth.BV16, sw, "Unicode");
+            WriteRangeFields(16, sw, "Unicode");
             sw.WriteLine("#endregion");
             sw.WriteLine();
 
@@ -73,9 +73,8 @@ internal static class " + classname + @"
             sw.Close();
         }
 
-        private static void WriteRangeFields(BitWidth encoding, StreamWriter sw, string field)
+        private static void WriteRangeFields(int bits, StreamWriter sw, string field)
         {
-            int bits = (int)encoding;
             int maxChar = (1 << bits) - 1;
             var catMap = new Dictionary<UnicodeCategory, Ranges>();
             for (int c = 0; c < 30; c++)
@@ -97,7 +96,7 @@ internal static class " + classname + @"
             }
             //generate bdd reprs for each of the category ranges
             BDD[] catBDDs = new BDD[30];
-            CharSetSolver bddb = new CharSetSolver(encoding);
+            CharSetSolver bddb = new CharSetSolver();
             for (int c = 0; c < 30; c++)
                 catBDDs[c] = bddb.MkBddForIntRanges(catMap[(UnicodeCategory)c].ranges);
 

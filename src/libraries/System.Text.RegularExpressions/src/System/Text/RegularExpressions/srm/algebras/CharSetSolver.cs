@@ -16,29 +16,46 @@ namespace System.Text.RegularExpressions.SRM
     /// </summary>
     internal class CharSetSolver : BDDAlgebra, ICharAlgebra<BDD>
     {
+        /// <summary>
+        /// bit-width is now fixed to 16 --- essentially characters are 16-bit unsigned numbers
+        /// </summary>
+        private const int _bw = 16;
 
-        private int _bw;
+        /// <summary>
+        /// Bound on precomputed character BDD, bound must be such that ToUpper and ToLower are in this range.
+        /// </summary>
+        private const int charPredTable_Length = 128;
+        /// <summary>
+        /// BDDs for all ASCII characters for fast lookup.
+        /// </summary>
+        private BDD[] charPredTable = new BDD[charPredTable_Length];
+        /// <summary>
+        /// BDDs for all ASCII characters in Case Insensitive mode for fast lookup.
+        /// </summary>
+        private BDD[] charPredTableIgnoreCase = new BDD[charPredTable_Length];
 
-        public BitWidth Encoding
-        {
-            get { return (BitWidth)_bw; }
-        }
+        internal const char Turkish_dotless_i = '\u0130';
+        internal const char Kelvin_sign = '\u212A';
 
         /// <summary>
         /// Construct the solver for BitWidth.BV16
         /// </summary>
-        public CharSetSolver() : this(BitWidth.BV16)
+        public CharSetSolver()
         {
-        }
-
-        /// <summary>
-        /// Construct a character set solver for the given character encoding (nr of bits).
-        /// </summary>
-        public CharSetSolver(BitWidth bits) : base()
-        {
-            if (!CharacterEncodingTool.IsSpecified(bits))
-                throw new AutomataException(AutomataExceptionKind.CharacterEncodingIsUnspecified);
-            _bw = (int)bits;
+            //prefill the arrays: charPredTable and charPredTableIgnoreCase for ASCII
+            for (char c = '\x00'; c < charPredTable_Length; c++)
+                charPredTable[c] = MkSetFrom(c, _bw - 1);
+            for (char c = '\x00'; c < charPredTable_Length; c++)
+            {
+                if (c == 'I')
+                    charPredTableIgnoreCase[c] = MkOr(MkOr(charPredTable['I'], charPredTable['i']), MkSetFrom(Turkish_dotless_i, _bw - 1));
+                else if (c == 'K')
+                    charPredTableIgnoreCase[c] = MkOr(MkOr(charPredTable['K'], charPredTable['k']), MkSetFrom(Kelvin_sign, _bw - 1));
+                else if (char.IsLetter(c))
+                    charPredTableIgnoreCase[c] = MkOr(charPredTable[char.ToUpper(c)], charPredTable[char.ToLower(c)]);
+                else
+                    charPredTableIgnoreCase[c] = charPredTable[c];
+            }
         }
 
         private IgnoreCaseTransformer _IgnoreCase;
@@ -52,21 +69,23 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
-        private BDD[] charPredTable = new BDD[1 << 16];
-
         /// <summary>
-        /// Make a character containing the given character c.
+        /// Make a character predicate for the given character c.
         /// If c is a lower case or upper case character and ignoreCase is true
-        /// then add both the upper case and the lower case characters.
+        /// then add both the upper case and the lower case characters into the predicate.
         /// </summary>
         public BDD MkCharConstraint(char c, bool ignoreCase = false)
         {
-            int i = (int)c;
-            if (charPredTable[i] == null)
-                charPredTable[i] = MkSetFrom((uint)c, _bw - 1);
-            if (ignoreCase)
-                return IgnoreCase.Apply(charPredTable[i]);
-            return charPredTable[i];
+            if (c < charPredTable_Length)
+                return ignoreCase ? charPredTableIgnoreCase[c] : charPredTable[c];
+            else
+            {
+                var bdd = MkSetFrom(c, _bw - 1);
+                if (ignoreCase)
+                    return IgnoreCase.Apply(bdd);
+                else
+                    return bdd;
+            }
         }
 
         /// <summary>
@@ -242,7 +261,7 @@ namespace System.Text.RegularExpressions.SRM
                             throw new AutomataException(AutomataExceptionKind.CompactDeserializationError);
                         var oneBranch = bddMap[one];
                         var zeroBranch = bddMap[zero];
-                        var bdd = MkBDD(x, oneBranch, zeroBranch);
+                        var bdd = MkBDD((ushort)x, oneBranch, zeroBranch);
                         bddMap[i] = bdd;
                         if (bdd.Ordinal <= bdd.One.Ordinal || bdd.Ordinal <= bdd.Zero.Ordinal)
                             throw new AutomataException(AutomataExceptionKind.CompactDeserializationError);
@@ -363,23 +382,9 @@ namespace System.Text.RegularExpressions.SRM
             return pred;
         }
 
-        #region code generation
-
         public BDD[] GetPartition()
         {
             throw new NotSupportedException();
-        }
-
-        #endregion
-
-        public override string SerializePredicate(BDD s)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override BDD DeserializePredicate(string s)
-        {
-            throw new NotImplementedException();
         }
     }
 }

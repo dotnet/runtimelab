@@ -63,7 +63,7 @@ internal static class " + classname + @"
                 var b = kv.Value;
                 ignorecase = solver.MkOr(ignorecase, solver.MkAnd(solver.ShiftLeft(a, 16), b));
             }
-            var ignorecaseArray = solver.Serialize(ignorecase);
+            var ignorecaseArray = ignorecase.Serialize();
             for (int i = 0; i < ignorecaseArray.Length; i++)
                 sw.WriteLine("0x{0:X16},", ignorecaseArray[i]);
 

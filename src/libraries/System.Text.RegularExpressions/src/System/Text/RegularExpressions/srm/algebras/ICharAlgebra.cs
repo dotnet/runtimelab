@@ -14,8 +14,6 @@ namespace System.Text.RegularExpressions.SRM
     /// <typeparam name="PRED">predicates</typeparam>
     internal interface ICharAlgebra<PRED> : IBooleanAlgebra<PRED>
     {
-        BitWidth Encoding { get; }
-
         /// <summary>
         /// Make a constraint describing the set of all characters between a (inclusive) and b (inclusive).
         /// Add both uppercase and lowercase elelements if caseInsensitive is true.
