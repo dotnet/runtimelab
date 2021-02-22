@@ -169,7 +169,7 @@ namespace System.Text.RegularExpressions.SRM
                     if (a.IsLeaf)
                     {
                         //multi-terminal case, we know here that a is neither True nor False
-                        ushort ord = CombineLeafOrdinals(op, (ushort)a.Ordinal, 0);
+                        int ord = CombineTerminals(op, a.Ordinal, 0);
                         res = MkBDD(ord, null, null);
                         _notCache[a] = res;
                         return res;
@@ -185,7 +185,7 @@ namespace System.Text.RegularExpressions.SRM
                 if (a.IsLeaf && b.IsLeaf)
                 {
                     //multi-terminal case, we know here that a is neither True nor False
-                    ushort ord = CombineLeafOrdinals(op, (ushort)a.Ordinal, (ushort)b.Ordinal);
+                    int ord = CombineTerminals(op, a.Ordinal, b.Ordinal);
                     res = MkBDD(ord, null, null);
                 }
                 else if (a.IsLeaf || b.Ordinal > a.Ordinal)
@@ -267,7 +267,7 @@ namespace System.Text.RegularExpressions.SRM
             if (a.IsLeaf && b.IsLeaf)
             {
                 //multi-terminal case, we know here that a is neither True nor False
-                ushort ord = CombineLeafOrdinals(op, (ushort)a.Ordinal, (ushort)b.Ordinal);
+                int ord = CombineTerminals(op, a.Ordinal, b.Ordinal);
                 res = MkBDD(ord, null, null);
             }
             else
@@ -313,7 +313,7 @@ namespace System.Text.RegularExpressions.SRM
 
             if (a.IsLeaf)
                 //muti-terminal case
-                neg = MkBDD(CombineLeafOrdinals(BoolOp.NOT, (ushort)a.Ordinal, 0), null, null);
+                neg = MkBDD(CombineTerminals(BoolOp.NOT, a.Ordinal, 0), null, null);
             else
                 neg = MkBDD(a.Ordinal, MkNot_rec(a.One), MkNot_rec(a.Zero));
             _notCache[a] = neg;
@@ -877,30 +877,27 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
-        /// Throws NotSupportedException. Can be overriden in a derived algebra.
+        /// Calls BDD.Deserialize(s, this)
         /// </summary>
-        public BDD DeserializePredicate(string s)
-        {
-            var bdd = BDD.Deserialize(s, this);
-            return bdd;
-        }
+        public BDD DeserializePredicate(string s) => BDD.Deserialize(s, this);
         #endregion
 
         /// <summary>
         /// Throws NotSupportedException.
         /// Can be overwridden in a derived algebra.
-        /// The returned short integer will act as the combined leaf ordinal in  a multi-terminal BDD.
+        /// The returned integer must be nonegative
+        /// and will act as the combined terminal in a multi-terminal BDD.
         /// </summary>
-        public virtual ushort CombineLeafOrdinals(BoolOp op, ushort ordinal1, ushort ordinal2)
+        public virtual int CombineTerminals(BoolOp op, int terminal1, int terminal2)
         {
-            throw new NotSupportedException($"{nameof(CombineLeafOrdinals)}:{op}");
+            throw new NotSupportedException($"{nameof(CombineTerminals)}:{op}");
         }
 
         /// <summary>
         /// Replace the True node in the BDD by a non-Boolean terminal.
         /// Locks the algebra for single threaded use.
         /// </summary>
-        public BDD ReplaceTrue(BDD bdd, ushort terminal)
+        public BDD ReplaceTrue(BDD bdd, int terminal)
         {
             lock (this)
             {

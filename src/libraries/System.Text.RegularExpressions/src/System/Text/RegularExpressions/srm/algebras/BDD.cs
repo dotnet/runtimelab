@@ -208,10 +208,11 @@ namespace System.Text.RegularExpressions.SRM
             return nodes.ToArray();
         }
 
+        private static readonly long[] s_False_repr = new long[] { 0 };
+        private static readonly long[] s_True_repr = new long[] { 0, 0 };
         /// <summary>
         /// Serialize this BDD in a flat ulong array.
-        /// The BDD may have at most 2^16 bits and 2^24 nodes.
-        /// The ordinal values must fit within 16 bits also for multi-terminal leaves.
+        /// The BDD may have at most 2^k ordinals and 2^n nodes, st. k+2n&lt;64.
         /// BDD.False is represented by return value ulong[]{0}.
         /// BDD.True is represented by return value ulong[]{0,0}.
         /// Serializer uses more compacted representations when fewer bits are needed, which
@@ -221,9 +222,9 @@ namespace System.Text.RegularExpressions.SRM
         public long[] Serialize()
         {
             if (IsEmpty)
-                return new long[] { 0 }; //False
+                return s_False_repr; //represents False
             if (IsFull)
-                return new long[] { 0, 0 }; //True
+                return s_True_repr; //represents True
 
             BDD[] nodes = TopSort();
 #if DEBUG
@@ -235,7 +236,7 @@ namespace System.Text.RegularExpressions.SRM
 #endif
             //use fewer bits when possible, starting with nibble size
             int ordinal_bits = Ordinal < 16 ? 4 : (Ordinal < 0x100 ? 8 : (Ordinal < 0x1000 ? 12 : 16));
-            //use as few bits as possible for node identifiers, starting with byte size
+            //use as few bits as possible for node identifiers, starting with nibble size
             //this will give smaller and more compact serialized representations
             int node_bits = 4;
             while (nodes.Length >= (1 << node_bits))
@@ -330,7 +331,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Invokes Serialize and appends the array as code_0.code_1. ... .code_{N-1} to sb
         /// where N is the length of the array returned by Serialize() and code_i is the
-        /// hexadecimal encoding of the i'th element using [0-9A-F] digits.
+        /// decimal encoding of the i'th element.
         /// Uses '.' as separator.
         /// </summary>
         public void Serialize(StringBuilder sb)
@@ -346,10 +347,11 @@ namespace System.Text.RegularExpressions.SRM
 
         /// <summary>
         /// Recreates a BDD from an input string that has been created using Serialize.
-        /// Is executed using a lock on algebra (if algebra != null) in a single thread mode.
+        /// Is executed using a lock on the algebra (if algebra != null) in a single thread mode.
         /// If no algebra is given (algebra == null) then creates the BDD without using any BDD algebra --
         /// which implies that all BDD nodes other than True and False are new BDD objects
-        /// that have not been internalized or cached.
+        /// that have not been internalized or cached. When created without any algebra the BDD
+        /// can still be used as a classifier with FindTerminal that does not use or require any algebra.
         /// </summary>
         public static BDD Deserialize(string input, BDDAlgebra algebra = null)
         {
