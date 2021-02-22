@@ -338,30 +338,31 @@ void ObjectWriter::EmitIntValue(uint64_t Value, unsigned Size) {
 void ObjectWriter::EmitSymbolDef(const char *SymbolName, bool global) {
   MCSymbol *Sym = OutContext->getOrCreateSymbol(Twine(SymbolName));
 
-  if (global) {
-    Streamer->EmitSymbolAttribute(Sym, MCSA_Global);
-  } else {
-    Streamer->EmitSymbolAttribute(Sym, MCSA_Local);
-  }
+  Streamer->EmitSymbolAttribute(Sym, MCSA_Global);
 
   Triple TheTriple = TMachine->getTargetTriple();
 
-  // An ARM function symbol should be marked with an appropriate ELF attribute
-  // to make later computation of a relocation address value correct
+  if (TheTriple.getObjectFormat() == Triple::ELF) {
+    // An ARM function symbol should be marked with an appropriate ELF attribute
+    // to make later computation of a relocation address value correct
+    if (Streamer->getCurrentSectionOnly()->getKind().isText()) {
+      switch (TheTriple.getArch()) {
+      case Triple::arm:
+      case Triple::armeb:
+      case Triple::thumb:
+      case Triple::thumbeb:
+      case Triple::aarch64:
+      case Triple::aarch64_be:
+        Streamer->EmitSymbolAttribute(Sym, MCSA_ELF_TypeFunction);
+        break;
+      default:
+        break;
+      }
+    }
 
-  if (TheTriple.getObjectFormat() == Triple::ELF &&
-      Streamer->getCurrentSectionOnly()->getKind().isText()) {
-    switch (TheTriple.getArch()) {
-    case Triple::arm:
-    case Triple::armeb:
-    case Triple::thumb:
-    case Triple::thumbeb:
-    case Triple::aarch64:
-    case Triple::aarch64_be:
-      Streamer->EmitSymbolAttribute(Sym, MCSA_ELF_TypeFunction);
-      break;
-    default:
-      break;
+    // Mark the symbol hidden if requested
+    if (!global) {
+      Streamer->EmitSymbolAttribute(Sym, MCSA_Hidden);
     }
   }
 

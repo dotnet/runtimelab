@@ -841,12 +841,7 @@ namespace ILCompiler.DependencyAnalysis
                     AppendExternCPrefix(_sb);
                     name.AppendMangledName(_nodeFactory.NameMangler, _sb);
 
-                    // Emit all symbols as global on Windows because they matter only for the PDB.
-                    // Emit all symbols as global in multifile builds so that object files can
-                    // link against each other.
-                    bool isGlobal = _nodeFactory.Target.IsWindows || !_isSingleFileCompilation;
-
-                    EmitSymbolDef(_sb, isGlobal);
+                    EmitSymbolDef(_sb);
 
                     string alternateName = _nodeFactory.GetSymbolAlternateName(name);
                     if (alternateName != null)
