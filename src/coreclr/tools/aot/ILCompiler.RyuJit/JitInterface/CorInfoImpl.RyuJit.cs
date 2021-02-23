@@ -36,6 +36,7 @@ namespace Internal.JitInterface
         private int SizeOfReversePInvokeTransitionFrame => 2 * PointerSize;
 
         private RyuJitCompilation _compilation;
+        private MethodDebugInformation _debugInfo;
         private MethodCodeNode _methodCodeNode;
         private DebugLocInfo[] _debugLocInfos;
         private DebugVarInfo[] _debugVarInfos;
@@ -826,6 +827,8 @@ namespace Internal.JitInterface
             try
             {
                 MethodDebugInformation debugInfo = _compilation.GetDebugInfo(methodIL);
+
+                _debugInfo = debugInfo;
 
                 // TODO: NoLineNumbers
                 //if (!_compilation.Options.NoLineNumbers)
