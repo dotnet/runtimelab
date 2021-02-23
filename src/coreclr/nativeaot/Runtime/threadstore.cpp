@@ -542,5 +542,4 @@ Error:
     *pWrittenCountOut = countWritten;
     return Boolean_false;
 }
-
 #endif // DACCESS_COMPILE
