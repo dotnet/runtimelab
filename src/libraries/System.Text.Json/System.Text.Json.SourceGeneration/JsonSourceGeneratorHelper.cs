@@ -74,7 +74,7 @@ namespace System.Text.Json.SourceGeneration
             AddBaseJsonContextImplementation();
 
             // Add GetJsonClassInfo override implementation.
-            _executionContext.AddSource("JsonContext.GetJsonClassInfo.cs", SourceText.From(Get_GetClassInfo_Implementation(), Encoding.UTF8));
+            _executionContext.AddSource("JsonContext.GetJsonClassInfo.g.cs", SourceText.From(Get_GetClassInfo_Implementation(), Encoding.UTF8));
         }
 
         public void AddBaseJsonContextImplementation()
@@ -542,7 +542,7 @@ namespace {_generationNamespace}
 {{
     {JsonContextDeclarationSource}
     {{
-        public override JsonClassInfo GetJsonClassInfo(Type type)
+        public override JsonClassInfo GetJsonClassInfo(System.Type type)
         {{");
 
             // TODO: Make this Dictionary-lookup-based if _handledType.Count > 64.

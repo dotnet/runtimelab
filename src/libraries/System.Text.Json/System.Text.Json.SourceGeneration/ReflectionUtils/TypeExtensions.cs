@@ -20,14 +20,14 @@ namespace System.Reflection
         {
             if (!type.IsGenericType)
             {
-                return name;
+                return name.Replace('+', '.');
             }
 
             // TODO: Guard upstream against open generics.
             Debug.Assert(!type.ContainsGenericParameters);
 
             int backTickIndex = name.IndexOf('`');
-            string baseName = name.Substring(0, backTickIndex);
+            string baseName = name.Substring(0, backTickIndex).Replace('+', '.');
 
             return $"{baseName}<{string.Join(",", type.GetGenericArguments().Select(arg => GetUniqueCompilableTypeName(arg)))}>";
         }

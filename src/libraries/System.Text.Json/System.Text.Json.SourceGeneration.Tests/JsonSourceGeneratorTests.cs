@@ -12,6 +12,8 @@ using Xunit;
 [assembly: JsonSerializable(typeof(object[]))]
 // Specify a type that was already specified in TestClasses.cs to test that the generator handles this scenario well.
 [assembly: JsonSerializable(typeof(CampaignSummaryViewModel), CanBeDynamic = true)]
+[assembly: JsonSerializable(typeof(JsonSerializerSourceGeneratorTests.MyNestedClass))]
+[assembly: JsonSerializable(typeof(JsonSerializerSourceGeneratorTests.MyNestedClass.MyNestedNestedClass))]
 
 namespace System.Text.Json.SourceGeneration.Tests
 {
@@ -382,6 +384,29 @@ namespace System.Text.Json.SourceGeneration.Tests
 #pragma warning restore CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
         {
             return new object[] { "Hello", "World" };
+        }
+
+        [Fact]
+        public static void HandlesNestedTypes()
+        {
+            string json = @"{""MyInt"":5}";
+            MyNestedClass obj = JsonSerializer.Deserialize<MyNestedClass>(json, JsonContext.Instance.MyNestedClass);
+            Assert.Equal(5, obj.MyInt);
+            Assert.Equal(json, JsonSerializer.Serialize(obj, JsonContext.Instance.MyNestedClass));
+
+            MyNestedClass.MyNestedNestedClass obj2 = JsonSerializer.Deserialize<MyNestedClass.MyNestedNestedClass>(json, JsonContext.Instance.MyNestedNestedClass);
+            Assert.Equal(5, obj2.MyInt);
+            Assert.Equal(json, JsonSerializer.Serialize(obj2, JsonContext.Instance.MyNestedNestedClass));
+        }
+
+        public class MyNestedClass
+        {
+            public int MyInt { get; set; }
+
+            public class MyNestedNestedClass
+            {
+                public int MyInt { get; set; }
+            }
         }
     }
 }
