@@ -339,21 +339,30 @@ namespace ILCompiler.DependencyAnalysis
         [DllImport(NativeObjectWriterFileName)]
         private static extern void EmitDebugVar(IntPtr objWriter, string name, UInt32 typeIndex, bool isParam, Int32 rangeCount, NativeVarInfo[] range);
 
-        public void EmitDebugVar(DebugVarInfo debugVar)
+        public void EmitDebugVar(INodeWithDebugInfo owningNode, DebugVarInfo debugVar)
         {
             int rangeCount = debugVar.Ranges.Count;
             uint typeIndex;
 
+            string varName = debugVar.Name;
             try
             {
-                typeIndex = _userDefinedTypeDescriptor.GetVariableTypeIndex(debugVar.Type);
+                if (owningNode.IsStateMachineMoveNextMethod && rangeCount > 0 && debugVar.Ranges[0].varNumber == 0)
+                {
+                    typeIndex = _userDefinedTypeDescriptor.GetStateMachineThisVariableTypeIndex(debugVar.Type);
+                    varName = "locals";
+                }
+                else
+                {
+                    typeIndex = _userDefinedTypeDescriptor.GetVariableTypeIndex(debugVar.Type);
+                }
             }
             catch (TypeSystemException)
             {
                 typeIndex = 0; // T_NOTYPE
             }
 
-            EmitDebugVar(_nativeObjectWriter, debugVar.Name, typeIndex, debugVar.IsParam, rangeCount, debugVar.Ranges.ToArray());
+            EmitDebugVar(_nativeObjectWriter, varName, typeIndex, debugVar.IsParam, rangeCount, debugVar.Ranges.ToArray());
         }
 
         public void EmitDebugVarInfo(ObjectNode node)
@@ -367,7 +376,7 @@ namespace ILCompiler.DependencyAnalysis
                 {
                     foreach (var v in vars)
                     {
-                        EmitDebugVar(v);
+                        EmitDebugVar(nodeWithDebugInfo, v);
                     }
                 }
             }
