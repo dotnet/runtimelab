@@ -33,9 +33,13 @@ struct GlobalValueEntry
     const void *Address;
 };
 
+// This size should be one bigger than the number of entries since a null entry
+// signifies the end of the array.
 static constexpr size_t DebugTypeEntriesArraySize = 96;
 static DebugTypeEntry s_DebugEntries[DebugTypeEntriesArraySize];
 
+// This size should be one bigger than the number of entries since a null entry
+// signifies the end of the array.
 static constexpr size_t GlobalEntriesArraySize = 6;
 static GlobalValueEntry s_GlobalEntries[GlobalEntriesArraySize];
 
@@ -105,12 +109,12 @@ struct DotNetRuntimeDebugHeader
     GlobalValueEntry (*GlobalEntries)[GlobalEntriesArraySize] = nullptr;
 };
 
-extern "C" DotNetRuntimeDebugHeader g_NativeAOTRuntimeDebugHeader = {};
+extern "C" DotNetRuntimeDebugHeader g_DotNetRuntimeDebugHeader = {};
 
 #define MAKE_DEBUG_ENTRY(TypeName, FieldName, Value)                                                                        \
     do                                                                                                                      \
     {                                                                                                                       \
-        (*g_NativeAOTRuntimeDebugHeader.DebugTypeEntries)[currentDebugPos] = { #TypeName, #FieldName, Value, 0  };             \
+        (*g_DotNetRuntimeDebugHeader.DebugTypeEntries)[currentDebugPos] = { #TypeName, #FieldName, Value, 0  };             \
         ++currentDebugPos;                                                                                                  \
         ASSERT(currentDebugPos <= DebugTypeEntriesArraySize);                                 \
     } while(0)
@@ -124,7 +128,7 @@ extern "C" DotNetRuntimeDebugHeader g_NativeAOTRuntimeDebugHeader = {};
 #define MAKE_GLOBAL_ENTRY(Name)                                                                                             \
     do                                                                                                                      \
     {                                                                                                                       \
-        (*g_NativeAOTRuntimeDebugHeader.GlobalEntries)[currentGlobalPos] = { #Name, Name };                                    \
+        (*g_DotNetRuntimeDebugHeader.GlobalEntries)[currentGlobalPos] = { #Name, Name };                                    \
         ++currentGlobalPos;                                                                                                 \
         ASSERT(currentGlobalPos <= GlobalEntriesArraySize)                                    \
     } while(0)                                                                                                              \
@@ -137,8 +141,8 @@ extern "C" void PopulateDebugHeaders()
     ZeroMemory(s_DebugEntries, DebugTypeEntriesArraySize);
     ZeroMemory(s_GlobalEntries, GlobalEntriesArraySize);
 
-    g_NativeAOTRuntimeDebugHeader.DebugTypeEntries = &s_DebugEntries;
-    g_NativeAOTRuntimeDebugHeader.GlobalEntries = &s_GlobalEntries;
+    g_DotNetRuntimeDebugHeader.DebugTypeEntries = &s_DebugEntries;
+    g_DotNetRuntimeDebugHeader.GlobalEntries = &s_GlobalEntries;
 
     MAKE_SIZE_ENTRY(GcDacVars);
     MAKE_DEBUG_FIELD_ENTRY(GcDacVars, major_version_number);
