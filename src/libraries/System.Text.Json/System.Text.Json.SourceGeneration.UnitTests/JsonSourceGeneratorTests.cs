@@ -306,5 +306,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             Assert.Equal(expectedProperties, receivedProperties);
             Assert.Equal(expectedMethods, receivedMethods);
         }
+
+        // TODO: add test guarding against (de)serializing static classes.
     }
 }

@@ -70,6 +70,9 @@ namespace System.Text.Json.SourceGeneration
                         }
 
                         Type type = new TypeWrapper(typeSymbol, metadataLoadContext);
+
+                        // TODO: define behavior for when type.Namespace == "<global namespace>".
+
                         // Last JsonSerializableAttribute instance for a specified type wins.
                         (SerializableTypes ??= new Dictionary<string, (Type, bool)>())[type.FullName] = (type, canBeDynamic);
                     }

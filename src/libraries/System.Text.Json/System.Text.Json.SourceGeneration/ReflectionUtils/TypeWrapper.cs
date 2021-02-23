@@ -37,7 +37,33 @@ namespace System.Reflection
 
         public override Type BaseType => _typeSymbol.BaseType!.AsType(_metadataLoadContext);
 
-        public override string FullName => Namespace + "." + Name;
+        private string? _fullName;
+
+        public override string FullName
+        {
+            get
+            {
+                if (_fullName == null)
+                {
+                    StringBuilder sb = new();
+                    sb.Append(Name);
+
+                    for (ISymbol currentSymbol = _typeSymbol.ContainingSymbol; currentSymbol != null && currentSymbol.Kind != SymbolKind.Namespace; currentSymbol = currentSymbol.ContainingSymbol)
+                    {
+                        sb.Insert(0, $"{currentSymbol.Name}+");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(Namespace))
+                    {
+                        sb.Insert(0, $"{Namespace}.");
+                    }
+
+                    _fullName = sb.ToString();
+                }
+
+                return _fullName;
+            }
+        }
 
         public override Guid GUID => Guid.Empty;
 
