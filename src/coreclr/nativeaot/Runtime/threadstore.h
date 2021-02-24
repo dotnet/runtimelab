@@ -13,8 +13,12 @@ enum class TrapThreadsFlags
     TrapThreads = 2
 };
 
+extern "C" void PopulateDebugHeaders();
+
 class ThreadStore
 {
+    friend void PopulateDebugHeaders();
+
     SList<Thread>       m_ThreadList;
     PTR_RuntimeInstance m_pRuntimeInstance;
     CLREventStatic      m_SuspendCompleteEvent;

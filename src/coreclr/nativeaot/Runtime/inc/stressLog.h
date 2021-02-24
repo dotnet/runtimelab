@@ -277,12 +277,14 @@ typedef DPTR(ThreadStressLog) PTR_ThreadStressLog;
 struct StressLogChunk;
 typedef DPTR(StressLogChunk) PTR_StressLogChunk;
 struct DacpStressLogEnumCBArgs;
+extern "C" void PopulateDebugHeaders();
 
 
 //==========================================================================================
 // StressLog - per-thread circular queue of stresslog messages
 //
 class StressLog {
+    friend void PopulateDebugHeaders();
 public:
 // private:
     unsigned facilitiesToLog;               // Bitvector of facilities to log (see loglf.h)
@@ -468,6 +470,7 @@ struct StressMsg {
     static size_t maxMsgSize ()
     { return sizeof(StressMsg) + maxArgCnt*sizeof(void*); }
 
+    friend void PopulateDebugHeaders();
     friend class ThreadStressLog;
     friend class StressLog;
 };
@@ -547,6 +550,7 @@ class ThreadStressLog {
     PTR_Thread pThread;         // thread associated with these stress logs
     StressMsg * origCurPtr;     // this holds the original curPtr before we start the dump
 
+    friend void PopulateDebugHeaders();
     friend class StressLog;
 
 #ifndef DACCESS_COMPILE

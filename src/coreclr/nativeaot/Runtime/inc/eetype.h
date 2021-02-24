@@ -107,9 +107,12 @@ enum EETypeField
 typedef DPTR(class EEType) PTR_EEType;
 typedef DPTR(PTR_EEType) PTR_PTR_EEType;
 
+extern "C" void PopulateDebugHeaders();
+
 class EEType
 {
     friend class AsmOffsets;
+    friend void PopulateDebugHeaders();
 
 private:
     struct RelatedTypeUnion

@@ -39,6 +39,8 @@ int32_t RhpHardwareExceptionHandler(uintptr_t faultCode, uintptr_t faultAddress,
 int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs);
 #endif
 
+extern "C" void PopulateDebugHeaders();
+
 static bool DetectCPUFeatures();
 
 extern RhConfig * g_pRhConfig;
@@ -372,6 +374,9 @@ extern "C" bool RhInitialize()
 
     if (!InitDLL(PalGetModuleHandleFromPointer((void*)&RhInitialize)))
         return false;
+
+    // Populate the values needed for debugging
+    PopulateDebugHeaders();
 
     return true;
 }
