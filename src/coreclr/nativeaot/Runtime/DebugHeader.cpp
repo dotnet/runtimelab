@@ -46,10 +46,7 @@ static GlobalValueEntry s_GlobalEntries[GlobalEntriesArraySize];
 // This structure is part of a in-memory serialization format that is used by diagnostic tools to
 // reason about the runtime. As a contract with our diagnostic tools it must be kept up-to-date
 // by changing the MajorVersion when breaking changes occur. If you are changing the runtime then
-// you are responsible for understanding what changes are breaking changes. You can do this by
-// reading the specification (Documentation\design-docs\diagnostics\ProcessMemoryFormatSpec.md)
-// to understand what promises the runtime makes to diagnostic tools. Any change that would make that
-// document become inaccurate is a breaking change.
+// you are responsible for understanding what changes are breaking changes.
 //
 // If you do want to make a breaking change please coordinate with diagnostics team as breaking changes
 // require debugger side components to be updated, and then the new versions will need to be distributed
@@ -73,8 +70,8 @@ struct DotNetRuntimeDebugHeader
     // earlier debuggers should treat the module as if it had no .Net runtime at all.
     // If the cookie is valid a debugger is safe to assume the Major/Minor version fields
     // will follow, but any contents beyond that depends on the version values.
-    // The cookie value is currently set to 0x4E 0x41 0x44 0x48 (NADH in ascii)
-    const uint8_t Cookie[4] = { 0x4E, 0x41, 0x44, 0x48 };
+    // The cookie value is currently set to 0x4E 0x41 0x44 0x48 (DNDH in ascii)
+    const uint8_t Cookie[4] = { 0x44, 0x4E, 0x44, 0x48 };
 
     // This counter can be incremented to indicate breaking changes
     // This field must be encoded little endian, regardless of the typical endianess of
@@ -103,20 +100,20 @@ struct DotNetRuntimeDebugHeader
     // the same pointer size and endianess encoding unless otherwise specified.
 
     // A pointer to an array describing important types and their offsets
-    DebugTypeEntry (*DebugTypeEntries)[DebugTypeEntriesArraySize] = nullptr;
+    DebugTypeEntry (* volatile DebugTypeEntries)[DebugTypeEntriesArraySize] = nullptr;
 
     // A pointer to an array that contains pointers to important globals
-    GlobalValueEntry (*GlobalEntries)[GlobalEntriesArraySize] = nullptr;
+    GlobalValueEntry (* volatile GlobalEntries)[GlobalEntriesArraySize] = nullptr;
 };
 
 extern "C" DotNetRuntimeDebugHeader DotNetRuntimeDebugHeader = {};
 
-#define MAKE_DEBUG_ENTRY(TypeName, FieldName, Value)                                                                        \
-    do                                                                                                                      \
-    {                                                                                                                       \
-        (*DotNetRuntimeDebugHeader.DebugTypeEntries)[currentDebugPos] = { #TypeName, #FieldName, Value, 0  };             \
-        ++currentDebugPos;                                                                                                  \
-        ASSERT(currentDebugPos <= DebugTypeEntriesArraySize);                                 \
+#define MAKE_DEBUG_ENTRY(TypeName, FieldName, Value)                             \
+    do                                                                           \
+    {                                                                            \
+        s_DebugEntries[currentDebugPos] = { #TypeName, #FieldName, Value, 0  };  \
+        ++currentDebugPos;                                                       \
+        ASSERT(currentDebugPos <= DebugTypeEntriesArraySize);                    \
     } while(0)
 
 #define MAKE_DEBUG_FIELD_ENTRY(TypeName, FieldName) MAKE_DEBUG_ENTRY(TypeName, FieldName, offsetof(TypeName, FieldName))
@@ -125,13 +122,13 @@ extern "C" DotNetRuntimeDebugHeader DotNetRuntimeDebugHeader = {};
 
 #define MAKE_SIZE_ENTRY(TypeName) MAKE_DEBUG_ENTRY(TypeName, SIZEOF, sizeof(TypeName))
 
-#define MAKE_GLOBAL_ENTRY(Name)                                                                                             \
-    do                                                                                                                      \
-    {                                                                                                                       \
-        (*DotNetRuntimeDebugHeader.GlobalEntries)[currentGlobalPos] = { #Name, Name };                                    \
-        ++currentGlobalPos;                                                                                                 \
-        ASSERT(currentGlobalPos <= GlobalEntriesArraySize)                                    \
-    } while(0)                                                                                                              \
+#define MAKE_GLOBAL_ENTRY(Name)                                                   \
+    do                                                                            \
+    {                                                                             \
+        s_GlobalEntries[currentGlobalPos] = { #Name, Name };                      \
+        ++currentGlobalPos;                                                       \
+        ASSERT(currentGlobalPos <= GlobalEntriesArraySize)                        \
+    } while(0)                                                                    \
 
 extern "C" void PopulateDebugHeaders()
 {
@@ -140,9 +137,6 @@ extern "C" void PopulateDebugHeaders()
 
     ZeroMemory(s_DebugEntries, DebugTypeEntriesArraySize);
     ZeroMemory(s_GlobalEntries, GlobalEntriesArraySize);
-
-    DotNetRuntimeDebugHeader.DebugTypeEntries = &s_DebugEntries;
-    DotNetRuntimeDebugHeader.GlobalEntries = &s_GlobalEntries;
 
     MAKE_SIZE_ENTRY(GcDacVars);
     MAKE_DEBUG_FIELD_ENTRY(GcDacVars, major_version_number);
@@ -268,12 +262,15 @@ extern "C" void PopulateDebugHeaders()
     HANDLE moduleBaseAddress = PalGetModuleHandleFromPointer((void *)&PopulateDebugHeaders);
     MAKE_GLOBAL_ENTRY(moduleBaseAddress);
 
-    static_assert(EEType::Flags::EETypeKindMask         == 0x0003, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
-    static_assert(EEType::Flags::RelatedTypeViaIATFlag  == 0x0004, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
-    static_assert(EEType::Flags::HasFinalizerFlag       == 0x0010, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
-    static_assert(EEType::Flags::HasPointersFlag        == 0x0020, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
-    static_assert(EEType::Flags::GenericVarianceFlag    == 0x0080, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
-    static_assert(EEType::Flags::IsGenericFlag          == 0x0400, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
-    static_assert(EEType::Flags::ElementTypeMask        == 0xf800, "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
-    static_assert(EEType::Flags::ElementTypeShift       == 11,     "SOS has a hard coded dependency on the values of EEType::Flags. If you change these values you must bump major_version_number.");
+    DotNetRuntimeDebugHeader.DebugTypeEntries = &s_DebugEntries;
+    DotNetRuntimeDebugHeader.GlobalEntries = &s_GlobalEntries;
+
+    static_assert(EEType::Flags::EETypeKindMask         == 0x0003, "The debugging data contract has a hard coded dependency on this value of EEType::Flags. If you change this value you must bump major_version_number.");
+    static_assert(EEType::Flags::RelatedTypeViaIATFlag  == 0x0004, "The debugging data contract has a hard coded dependency on this value of EEType::Flags. If you change this value you must bump major_version_number.");
+    static_assert(EEType::Flags::HasFinalizerFlag       == 0x0010, "The debugging data contract has a hard coded dependency on this value of EEType::Flags. If you change this value you must bump major_version_number.");
+    static_assert(EEType::Flags::HasPointersFlag        == 0x0020, "The debugging data contract has a hard coded dependency on this value of EEType::Flags. If you change this value you must bump major_version_number.");
+    static_assert(EEType::Flags::GenericVarianceFlag    == 0x0080, "The debugging data contract has a hard coded dependency on this value of EEType::Flags. If you change this value you must bump major_version_number.");
+    static_assert(EEType::Flags::IsGenericFlag          == 0x0400, "The debugging data contract has a hard coded dependency on this value of EEType::Flags. If you change this value you must bump major_version_number.");
+    static_assert(EEType::Flags::ElementTypeMask        == 0xf800, "The debugging data contract has a hard coded dependency on this value of EEType::Flags. If you change this value you must bump major_version_number.");
+    static_assert(EEType::Flags::ElementTypeShift       == 11,     "The debugging data contract has a hard coded dependency on this value of EEType::Flags. If you change this value you must bump major_version_number.");
 }
