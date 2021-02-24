@@ -12,8 +12,7 @@ namespace System.Text.RegularExpressions.SRM
     /// <summary>
     /// Represents a bitvector
     /// </summary>
-    [Serializable]
-    internal class BV : IComparable, ISerializable
+    internal class BV : IComparable
     {
         internal ulong first;
         internal ulong[] more;
@@ -48,6 +47,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Bitwise OR
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static BV operator |(BV x, BV y)
         {
             int k = (x.more.Length <= y.more.Length ? x.more.Length : y.more.Length);
@@ -63,6 +63,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Bitwise XOR
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static BV operator ^(BV x, BV y)
         {
             int k = (x.more.Length <= y.more.Length ? x.more.Length : y.more.Length);
@@ -78,6 +79,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Bitwise NOT
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static BV operator ~(BV x)
         {
             var first_compl = ~x.first;
@@ -119,11 +121,13 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
-        /// Shows the serialized representation
+        /// Returns the serialized representation
         /// </summary>
         public override string ToString()
         {
-            return Serialize();
+            var sb = new StringBuilder();
+            Serialize(sb);
+            return sb.ToString();
         }
 
         public override bool Equals(object obj)
@@ -185,30 +189,14 @@ namespace System.Text.RegularExpressions.SRM
 
         #region serialization
         /// <summary>
-        /// Serialize
+        /// Serialize BV into a string of hexadecimal numerals, separated by '_',
+        /// each numeral representing an unsigned 64-bit integer in hexadecimal using uppercase A-F
         /// </summary>
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        public void Serialize(StringBuilder sb)
         {
-            info.AddValue("bv", Serialize());
-        }
-        /// <summary>
-        /// Deserialize
-        /// </summary>
-        public BV(SerializationInfo info, StreamingContext context)
-        {
-            var s = info.GetString("bv");
-            Deserialize_Helper(s, out first, out more);
-        }
-
-        /// <summary>
-        /// Serialize BV into a string of hexadecimal numerals, separated by '.',
-        /// each numeral representing an unsigned 64-bit integer in hexadecimal using lowercase a-f
-        /// </summary>
-        /// <returns></returns>
-        public string Serialize()
-        {
-            string str = this.first.ToString("x") + "." + string.Join(".", Array.ConvertAll(this.more, x => x.ToString("x")));
-            return str;
+            sb.Append(this.first.ToString("X"));
+            sb.Append('_');
+            sb.Append(string.Join("_", Array.ConvertAll(this.more, x => x.ToString("X"))));
         }
 
         /// <summary>
@@ -225,9 +213,9 @@ namespace System.Text.RegularExpressions.SRM
 
         private static void Deserialize_Helper(string s, out ulong first, out ulong[] rest)
         {
-            int i = s.IndexOf('.');
+            int i = s.IndexOf('_');
             first = ulong.Parse(s.Substring(0, i), System.Globalization.NumberStyles.HexNumber);
-            rest = Array.ConvertAll(s.Substring(i + 1).Split('.'), x => ulong.Parse(x, System.Globalization.NumberStyles.HexNumber));
+            rest = Array.ConvertAll(s.Substring(i + 1).Split('_'), x => ulong.Parse(x, System.Globalization.NumberStyles.HexNumber));
         }
         #endregion
     }

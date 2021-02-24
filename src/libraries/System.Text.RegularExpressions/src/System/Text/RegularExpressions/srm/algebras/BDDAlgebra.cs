@@ -896,6 +896,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Replace the True node in the BDD by a non-Boolean terminal.
         /// Locks the algebra for single threaded use.
+        /// Observe that the Ordinal of False is -1 and the Ordinal of True is -2.
         /// </summary>
         public BDD ReplaceTrue(BDD bdd, int terminal)
         {

@@ -37,6 +37,8 @@ namespace System.Text.RegularExpressions.SRM
         internal const char Turkish_dotless_i = '\u0130';
         internal const char Kelvin_sign = '\u212A';
 
+        internal BDD nonascii;
+
         /// <summary>
         /// Construct the solver for BitWidth.BV16
         /// </summary>
@@ -56,6 +58,7 @@ namespace System.Text.RegularExpressions.SRM
                 else
                     charPredTableIgnoreCase[c] = charPredTable[c];
             }
+            nonascii = MkCharSetFromRange('\x80', '\uFFFF');
         }
 
         private IgnoreCaseTransformer _IgnoreCase;

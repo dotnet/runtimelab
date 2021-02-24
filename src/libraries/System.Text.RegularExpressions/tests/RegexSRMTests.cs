@@ -173,6 +173,71 @@ namespace System.Text.RegularExpressions.Tests
             Assert.False(match2.Success);
         }
 
+        [Fact]
+        public void SRMTest_UnicodeCategories00to29()
+        {
+            var re = new Regex(@"\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Mn}\p{Mc}\p{Me}\p{Nd}\p{Nl}\p{No}\p{Zs}\p{Zl}\p{Zp}\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Pc}\p{Pd}\p{Ps}\p{Pe}\p{Pi}\p{Pf}\p{Po}\p{Sm}\p{Sc}\p{Sk}\p{So}\p{Cn}", DFA);
+            //match contains the first character from each category
+            string input = "=====Aa\u01C5\u02B0\u01BB\u0300\u0903\u04880\u16EE\xB2 \u2028\u2029\0\u0600\uD800\uE000_\x2D()\xAB\xBB!+$^\xA6\u0378======";
+            var match1 = re.Match(input);
+            Assert.True(match1.Success);
+            Assert.Equal(5, match1.Index);
+            Assert.Equal(30, match1.Length);
+            var match2 = match1.NextMatch();
+            Assert.False(match2.Success);
+        }
+
+        [Fact]
+        public void SRMTest_BV()
+        {
+            //this will need a total of 68 parts, thus will use the general BV algebra instead of BV64 algebra
+            var re = new Regex(@"(abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>:;@)+", DFA);
+            string input = "=====abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>:;@abcdefg======";
+            var match1 = re.Match(input);
+            Assert.True(match1.Success);
+            Assert.Equal(5, match1.Index);
+            Assert.Equal(67, match1.Length);
+            var match2 = match1.NextMatch();
+            Assert.False(match2.Success);
+        }
+
+        [Fact]
+        public void SRMTest_BV_WideLatin()
+        {
+            //this will need a total of 2x70 + 2 parts, thus will use the general BV algebra instead of BV64 algebra
+            string pattern_orig = @"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>:;&^%!";
+            //shift each char in the pattern to the Wide-Latin alphabet of Unicode
+            //pattern_WL = "ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９＜＞：；＆＾％！"
+            string pattern_WL = new String(Array.ConvertAll(pattern_orig.ToCharArray(), c => (char)((int)c + 0xFF00 - 32)));
+            string pattern = "(" + pattern_orig + "===" + pattern_WL + ")+";
+            var re = new Regex(pattern, DFA);
+            string input = "=====" + pattern_orig + "===" + pattern_WL + pattern_orig + "===" + pattern_WL + "===" + pattern_orig + "===" + pattern_orig;
+            var match1 = re.Match(input);
+            Assert.True(match1.Success);
+            Assert.Equal(5, match1.Index);
+            Assert.Equal(2*(pattern_orig.Length + 3 + pattern_WL.Length), match1.Length);
+            var match2 = match1.NextMatch();
+            Assert.False(match2.Success);
+        }
+
+        [Fact]
+        public void SRMTest_BV64_WideLatin()
+        {
+            string pattern_orig = @"abc";
+            //shift each char in the pattern to the Wide-Latin alphabet of Unicode
+            //pattern_WL = "ａｂｃ"
+            string pattern_WL = new String(Array.ConvertAll(pattern_orig.ToCharArray(), c => (char)((int)c + 0xFF00 - 32)));
+            string pattern = "(" + pattern_orig + "===" + pattern_WL + ")+";
+            var re = new Regex(pattern, DFA | RegexOptions.IgnoreCase);
+            string input = "=====" + pattern_orig.ToUpper() + "===" + pattern_WL + pattern_orig + "===" + pattern_WL.ToUpper() + "===" + pattern_orig + "===" + pattern_orig;
+            var match1 = re.Match(input);
+            Assert.True(match1.Success);
+            Assert.Equal(5, match1.Index);
+            Assert.Equal(2 * (pattern_orig.Length + 3 + pattern_WL.Length), match1.Length);
+            var match2 = match1.NextMatch();
+            Assert.False(match2.Success);
+        }
+
         static string And(params string[] regexes)
         {
             string conj = "(" + regexes[regexes.Length - 1] + ")";
