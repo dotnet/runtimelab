@@ -271,7 +271,6 @@ namespace Internal.JitInterface
 
             _methodCodeNode.InitializeDebugLocInfos(_debugLocInfos);
             _methodCodeNode.InitializeDebugVarInfos(_debugVarInfos);
-            _methodCodeNode.InitializeIsStateMachineMoveNextMethod(_debugInfo.IsStateMachineMoveNextMethod);
 #if READYTORUN
             _methodCodeNode.InitializeInliningInfo(_inlinedMethods.ToArray());
 
@@ -309,6 +308,14 @@ namespace Internal.JitInterface
             MethodIL methodIL = HandleToObject(_methodScope);
             CodeBasedDependencyAlgorithm.AddDependenciesDueToMethodCodePresence(ref _additionalDependencies, _compilation.NodeFactory, MethodBeingCompiled, methodIL);
             _methodCodeNode.InitializeNonRelocationDependencies(_additionalDependencies);
+            _methodCodeNode.InitializeDebugInfo(_debugInfo);
+
+            LocalVariableDefinition[] locals = methodIL.GetLocals();
+            TypeDesc[] localTypes = new TypeDesc[locals.Length];
+            for (int i = 0; i < localTypes.Length; i++)
+                localTypes[i] = locals[i].Type;
+
+            _methodCodeNode.InitializeLocalTypes(localTypes);
 #endif
 
             PublishProfileData();
@@ -397,12 +404,8 @@ namespace Internal.JitInterface
 
 #if !READYTORUN
             _sequencePoints = null;
-            _variableToTypeDesc = null;
 
             _debugInfo = null;
-
-            _parameterIndexToNameMap = null;
-            _localSlotToInfoMap = null;
 
             _additionalDependencies = null;
 #endif
