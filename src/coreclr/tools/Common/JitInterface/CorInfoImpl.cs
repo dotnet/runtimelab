@@ -271,6 +271,7 @@ namespace Internal.JitInterface
 
             _methodCodeNode.InitializeDebugLocInfos(_debugLocInfos);
             _methodCodeNode.InitializeDebugVarInfos(_debugVarInfos);
+            _methodCodeNode.InitializeIsStateMachineMoveNextMethod(_debugInfo.IsStateMachineMoveNextMethod);
 #if READYTORUN
             _methodCodeNode.InitializeInliningInfo(_inlinedMethods.ToArray());
 
@@ -397,6 +398,8 @@ namespace Internal.JitInterface
 #if !READYTORUN
             _sequencePoints = null;
             _variableToTypeDesc = null;
+
+            _debugInfo = null;
 
             _parameterIndexToNameMap = null;
             _localSlotToInfoMap = null;
