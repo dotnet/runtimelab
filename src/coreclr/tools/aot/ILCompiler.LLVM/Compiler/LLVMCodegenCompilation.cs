@@ -28,8 +28,9 @@ namespace ILCompiler
             ILProvider ilProvider,
             DebugInformationProvider debugInformationProvider,
             Logger logger,
+            IInliningPolicy inliningPolicy,
             LLVMCodegenConfigProvider options)
-            : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, null, logger)
+            : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, null, inliningPolicy, logger)
         {
             NodeFactory = nodeFactory;
             LLVMModuleRef m = LLVMModuleRef.CreateWithName(options.ModuleName);
