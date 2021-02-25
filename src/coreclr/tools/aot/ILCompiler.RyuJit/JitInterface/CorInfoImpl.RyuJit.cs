@@ -41,9 +41,6 @@ namespace Internal.JitInterface
         private DebugLocInfo[] _debugLocInfos;
         private DebugVarInfo[] _debugVarInfos;
         private Dictionary<int, SequencePoint> _sequencePoints;
-        private Dictionary<uint, ILLocalVariable> _localSlotToInfoMap;
-        private Dictionary<uint, string> _parameterIndexToNameMap;
-        private TypeDesc[] _variableToTypeDesc;
         private readonly UnboxingMethodDescFactory _unboxingThunkFactory = new UnboxingMethodDescFactory();
         private bool _isFallbackBodyCompilation;
         private DependencyList _additionalDependencies;
@@ -712,50 +709,33 @@ namespace Internal.JitInterface
 
         private void setVars(CORINFO_METHOD_STRUCT_* ftn, uint cVars, NativeVarInfo* vars)
         {
-            if (_localSlotToInfoMap == null && _parameterIndexToNameMap == null)
+            var methodIL = (MethodIL)HandleToObject((IntPtr)_methodScope);
+
+            MethodSignature sig = methodIL.OwningMethod.Signature;
+            int numLocals = methodIL.GetLocals().Length;
+
+            ArrayBuilder<DebugVarRangeInfo>[] debugVarInfoBuilders = new ArrayBuilder<DebugVarRangeInfo>[(sig.IsStatic ? 0 : 1) + sig.Length + numLocals];
+
+            for (uint i = 0; i < cVars; i++)
             {
-                return;
+                uint varNumber = vars[i].varNumber;
+                if (varNumber < debugVarInfoBuilders.Length)
+                    debugVarInfoBuilders[varNumber].Add(new DebugVarRangeInfo(vars[i].startOffset, vars[i].endOffset, vars[i].varLoc));
             }
 
-            uint paramCount = (_parameterIndexToNameMap == null) ? 0 : (uint)_parameterIndexToNameMap.Count;
-            Dictionary<uint, DebugVarInfo> debugVars = new Dictionary<uint, DebugVarInfo>();
-
-            for (int i = 0; i < cVars; i++)
+            var debugVarInfos = new ArrayBuilder<DebugVarInfo>();
+            for (uint i = 0; i < debugVarInfoBuilders.Length; i++)
             {
-                NativeVarInfo nativeVarInfo = vars[i];
-
-                if (nativeVarInfo.varNumber < paramCount)
+                if (debugVarInfoBuilders[i].Count > 0)
                 {
-                    string name = _parameterIndexToNameMap[nativeVarInfo.varNumber];
-                    updateDebugVarInfo(debugVars, name, true, nativeVarInfo);
-                }
-                else if (_localSlotToInfoMap != null)
-                {
-                    ILLocalVariable ilVar;
-                    uint slotNumber = nativeVarInfo.varNumber - paramCount;
-                    if (_localSlotToInfoMap.TryGetValue(slotNumber, out ilVar))
-                    {
-                        updateDebugVarInfo(debugVars, ilVar.Name, false, nativeVarInfo);
-                    }
+                    debugVarInfos.Add(new DebugVarInfo(i, debugVarInfoBuilders[i].ToArray()));
                 }
             }
 
-            _debugVarInfos = new DebugVarInfo[debugVars.Count];
-            debugVars.Values.CopyTo(_debugVarInfos, 0);
-        }
+            _debugVarInfos = debugVarInfos.ToArray();
 
-        private void updateDebugVarInfo(Dictionary<uint, DebugVarInfo> debugVars, string name,
-                                        bool isParam, NativeVarInfo nativeVarInfo)
-        {
-            DebugVarInfo debugVar;
-
-            if (!debugVars.TryGetValue(nativeVarInfo.varNumber, out debugVar))
-            {
-                debugVar = new DebugVarInfo(name, isParam, _variableToTypeDesc[(int)nativeVarInfo.varNumber]);
-                debugVars[nativeVarInfo.varNumber] = debugVar;
-            }
-
-            debugVar.Ranges.Add(nativeVarInfo);
+            // JIT gave the ownership of this to us, so need to free this.
+            freeArray(vars);
         }
 
         /// <summary>
@@ -849,45 +829,6 @@ namespace Internal.JitInterface
                         }
                     }
                 }
-
-                IEnumerable<ILLocalVariable> localVariables = debugInfo.GetLocalVariables();
-                if (localVariables != null)
-                {
-                    SetLocalVariables(localVariables);
-                }
-
-                IEnumerable<string> parameters = debugInfo.GetParameterNames();
-                if (parameters != null)
-                {
-                    SetParameterNames(parameters);
-                }
-
-                ArrayBuilder<TypeDesc> variableToTypeDesc = new ArrayBuilder<TypeDesc>();
-
-                var signature = MethodBeingCompiled.Signature;
-                if (!signature.IsStatic)
-                {
-                    TypeDesc type = MethodBeingCompiled.OwningType;
-
-                    // This pointer for value types is a byref
-                    if (MethodBeingCompiled.OwningType.IsValueType)
-                        type = type.MakeByRefType();
-
-                    variableToTypeDesc.Add(type);
-                }
-
-                for (int i = 0; i < signature.Length; ++i)
-                {
-                    TypeDesc type = signature[i];
-                    variableToTypeDesc.Add(type);
-                }
-                var locals = methodIL.GetLocals();
-                for (int i = 0; i < locals.Length; ++i)
-                {
-                    TypeDesc type = locals[i].Type;
-                    variableToTypeDesc.Add(type);
-                }
-                _variableToTypeDesc = variableToTypeDesc.ToArray();
             }
             catch (Exception e)
             {
@@ -907,34 +848,6 @@ namespace Internal.JitInterface
             }
 
             _sequencePoints = sequencePoints;
-        }
-
-        public void SetLocalVariables(IEnumerable<ILLocalVariable> localVariables)
-        {
-            Debug.Assert(localVariables != null);
-            var localSlotToInfoMap = new Dictionary<uint, ILLocalVariable>();
-
-            foreach (var v in localVariables)
-            {
-                localSlotToInfoMap[(uint)v.Slot] = v;
-            }
-
-            _localSlotToInfoMap = localSlotToInfoMap;
-        }
-
-        public void SetParameterNames(IEnumerable<string> parameters)
-        {
-            Debug.Assert(parameters != null);
-            var parameterIndexToNameMap = new Dictionary<uint, string>();
-            uint index = 0;
-
-            foreach (var p in parameters)
-            {
-                parameterIndexToNameMap[index] = p;
-                ++index;
-            }
-
-            _parameterIndexToNameMap = parameterIndexToNameMap;
         }
 
         private ISymbolNode GetGenericLookupHelper(CORINFO_RUNTIME_LOOKUP_KIND runtimeLookupKind, ReadyToRunHelperId helperId, object helperArgument)

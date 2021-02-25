@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Collections.Generic;
 
 using Internal.Text;
 using Internal.TypeSystem;
@@ -193,12 +194,9 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        DebugVarInfo[] INodeWithDebugInfo.DebugVarInfos
+        IEnumerable<DebugVarInfoMetadata> INodeWithDebugInfo.GetDebugVars()
         {
-            get
-            {
-                return Array.Empty<DebugVarInfo>();
-            }
+            return Array.Empty<DebugVarInfoMetadata>();
         }
 
 #if !SUPPORT_JIT

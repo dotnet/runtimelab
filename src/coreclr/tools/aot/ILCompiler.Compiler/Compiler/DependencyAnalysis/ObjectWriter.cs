@@ -337,17 +337,15 @@ namespace ILCompiler.DependencyAnalysis
         }
 
         [DllImport(NativeObjectWriterFileName)]
-        private static extern void EmitDebugVar(IntPtr objWriter, string name, UInt32 typeIndex, bool isParam, Int32 rangeCount, NativeVarInfo[] range);
+        private static extern void EmitDebugVar(IntPtr objWriter, string name, UInt32 typeIndex, bool isParam, Int32 rangeCount, ref NativeVarInfo range);
 
-        public void EmitDebugVar(INodeWithDebugInfo owningNode, DebugVarInfo debugVar)
+        public void EmitDebugVar(INodeWithDebugInfo owningNode, in DebugVarInfoMetadata debugVar)
         {
-            int rangeCount = debugVar.Ranges.Count;
             uint typeIndex;
-
             string varName = debugVar.Name;
             try
             {
-                if (owningNode.IsStateMachineMoveNextMethod && rangeCount > 0 && debugVar.Ranges[0].varNumber == 0)
+                if (owningNode.IsStateMachineMoveNextMethod && debugVar.DebugVarInfo.VarNumber == 0)
                 {
                     typeIndex = _userDefinedTypeDescriptor.GetStateMachineThisVariableTypeIndex(debugVar.Type);
                     varName = "locals";
@@ -362,7 +360,23 @@ namespace ILCompiler.DependencyAnalysis
                 typeIndex = 0; // T_NOTYPE
             }
 
-            EmitDebugVar(_nativeObjectWriter, varName, typeIndex, debugVar.IsParam, rangeCount, debugVar.Ranges.ToArray());
+            DebugVarRangeInfo[] rangeInfos = debugVar.DebugVarInfo.Ranges;
+            Span<NativeVarInfo> varInfos = rangeInfos.Length < 128 ?
+                stackalloc NativeVarInfo[rangeInfos.Length] :
+                new NativeVarInfo[rangeInfos.Length];
+
+            for (int i = 0; i < rangeInfos.Length; i++)
+            {
+                varInfos[i] = new NativeVarInfo
+                {
+                    endOffset = rangeInfos[i].EndOffset,
+                    startOffset = rangeInfos[i].StartOffset,
+                    varLoc = rangeInfos[i].VarLoc,
+                    varNumber = debugVar.DebugVarInfo.VarNumber,
+                };
+            }
+
+            EmitDebugVar(_nativeObjectWriter, varName, typeIndex, debugVar.IsParameter, varInfos.Length, ref varInfos[0]);
         }
 
         public void EmitDebugVarInfo(ObjectNode node)
@@ -371,13 +385,9 @@ namespace ILCompiler.DependencyAnalysis
             var nodeWithDebugInfo = node as INodeWithDebugInfo;
             if (nodeWithDebugInfo != null)
             {
-                DebugVarInfo[] vars = nodeWithDebugInfo.DebugVarInfos;
-                if (vars != null)
+                foreach (var debugVar in nodeWithDebugInfo.GetDebugVars())
                 {
-                    foreach (var v in vars)
-                    {
-                        EmitDebugVar(nodeWithDebugInfo, v);
-                    }
+                    EmitDebugVar(nodeWithDebugInfo, debugVar);
                 }
             }
         }
