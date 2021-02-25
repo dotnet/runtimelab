@@ -20,7 +20,7 @@ sudo dnf install clang zlib-devel krb5-libs krb5-devel ncurses-compat-libs
 * Install clang and developer packages for libraries that .NET Core depends on.
 
 ```sh
-sudo apt-get install clang zlib1g-dev libkrb5-dev libtinfo5
+sudo apt-get install clang zlib1g-dev libkrb5-dev
 ```
 
 # macOS (10.12+)
