@@ -51,7 +51,7 @@ namespace System.Text.RegularExpressions.SRM
             ones = BV.MkTrue(_bits);
             atoms = new BV[_bits];
             for (int i = 0; i < _bits; i++)
-                atoms[i] = zero.SetBit1(i);
+               atoms[i] = BV.MkBit1(_bits, i);
         }
 
         public BV False => zero;

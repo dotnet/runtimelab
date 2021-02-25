@@ -187,10 +187,10 @@ namespace System.Text.RegularExpressions.Tests
             Assert.False(match2.Success);
         }
 
-        //[Fact]
-        private void SRMTest_BV()
+        [Fact]
+        public void SRMTest_BV()
         {
-            //this will need a total of 68 parts, thus will use the general BV algebra instead of BV64 algebra
+             //this will need a total of 68 parts, thus will use the general BV algebra instead of BV64 algebra
             var re = new Regex(@"(abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>:;@)+", DFA);
             string input = "=====abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>:;@abcdefg======";
             var match1 = re.Match(input);
@@ -201,13 +201,13 @@ namespace System.Text.RegularExpressions.Tests
             Assert.False(match2.Success);
         }
 
-        //[Fact]
-        private void SRMTest_BV_WideLatin()
+        [Fact]
+        public void SRMTest_BV_WideLatin()
         {
             //this will need a total of 2x70 + 2 parts, thus will use the general BV algebra instead of BV64 algebra
-            string pattern_orig = @"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>:;&^%!";
+            string pattern_orig = @"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>:;&@%!";
             //shift each char in the pattern to the Wide-Latin alphabet of Unicode
-            //pattern_WL = "ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９＜＞：；＆＾％！"
+            //pattern_WL = "ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９＜＞：；＆＠％！"
             string pattern_WL = new String(Array.ConvertAll(pattern_orig.ToCharArray(), c => (char)((int)c + 0xFF00 - 32)));
             string pattern = "(" + pattern_orig + "===" + pattern_WL + ")+";
             var re = new Regex(pattern, DFA);

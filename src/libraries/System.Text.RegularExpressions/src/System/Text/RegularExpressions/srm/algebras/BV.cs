@@ -78,22 +78,12 @@ namespace System.Text.RegularExpressions.SRM
         public static BV MkTrue(int K) => ~MkFalse(K);
 
         /// <summary>
-        /// Returns the bitvector with its i'th bit set to 1.
+        /// Returns the bitvector of length K with its i'th bit set to 1 all other bits are 0.
         /// </summary>
-        public BV SetBit1(int i)
+        public static BV MkBit1(int K, int i)
         {
-            BV bv = new BV(Length, _blocks);
+            BV bv = new BV(K);
             bv[i] = true;
-            return bv;
-        }
-
-        /// <summary>
-        /// Returns the bitvector with its i'th bit set to 0
-        /// </summary>
-        public BV SetBit0(int i)
-        {
-            BV bv = new BV(Length, _blocks);
-            bv[i] = false;
             return bv;
         }
 
@@ -120,8 +110,8 @@ namespace System.Text.RegularExpressions.SRM
             if (x.Length != y.Length)
                 throw new InvalidOperationException();
 #endif
-            ulong[] blocks = new ulong[x.Length];
-            for (int i = 0; i < x.Length; i++)
+            ulong[] blocks = new ulong[x._blocks.Length];
+            for (int i = 0; i < blocks.Length; i++)
                 blocks[i] = x._blocks[i] & y._blocks[i];
             return new BV(x.Length, blocks);
         }
@@ -136,8 +126,8 @@ namespace System.Text.RegularExpressions.SRM
             if (x.Length != y.Length)
                 throw new InvalidOperationException();
 #endif
-            ulong[] blocks = new ulong[x.Length];
-            for (int i = 0; i < x.Length; i++)
+            ulong[] blocks = new ulong[x._blocks.Length];
+            for (int i = 0; i < blocks.Length; i++)
                 blocks[i] = x._blocks[i] | y._blocks[i];
             return new BV(x.Length, blocks);
         }
@@ -152,8 +142,8 @@ namespace System.Text.RegularExpressions.SRM
             if (x.Length != y.Length)
                 throw new InvalidOperationException();
 #endif
-            ulong[] blocks = new ulong[x.Length];
-            for (int i = 0; i < x.Length; i++)
+            ulong[] blocks = new ulong[x._blocks.Length];
+            for (int i = 0; i < blocks.Length; i++)
                 blocks[i] = x._blocks[i] ^ y._blocks[i];
             return new BV(x.Length, blocks);
         }
@@ -164,8 +154,8 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static BV operator ~(BV x)
         {
-            ulong[] blocks = new ulong[x.Length];
-            for (int i = 0; i < x.Length; i++)
+            ulong[] blocks = new ulong[x._blocks.Length];
+            for (int i = 0; i < blocks.Length; i++)
                 blocks[i] = ~x._blocks[i];
             int j = x.Length % 64;
             if (j > 0)
@@ -222,7 +212,6 @@ namespace System.Text.RegularExpressions.SRM
             return SerializeToString();
         }
 
-
         public override bool Equals(object obj)
         {
             return CompareTo(obj) == 0;
@@ -249,7 +238,7 @@ namespace System.Text.RegularExpressions.SRM
                 return Length.CompareTo(that.Length);
             else
             {
-                for (int i = _blocks.Length; i >= 0; i--)
+                for (int i = _blocks.Length - 1; i >= 0; i--)
                 {
                     if (_blocks[i] < that._blocks[i])
                         return -1;
