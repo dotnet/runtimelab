@@ -212,7 +212,7 @@ namespace System.Text.RegularExpressions.Tests
             string pattern = "(" + pattern_orig + "===" + pattern_WL + ")+";
             var re = new Regex(pattern, DFA);
             string input = "=====" + pattern_orig + "===" + pattern_WL + pattern_orig + "===" + pattern_WL + "===" + pattern_orig + "===" + pattern_orig;
-            var match1 = re.Match(input);
+            var match1 = re.Match(input); 
             Assert.True(match1.Success);
             Assert.Equal(5, match1.Index);
             Assert.Equal(2*(pattern_orig.Length + 3 + pattern_WL.Length), match1.Length);

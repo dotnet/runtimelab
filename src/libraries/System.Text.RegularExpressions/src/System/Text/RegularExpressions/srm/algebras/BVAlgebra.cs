@@ -29,59 +29,29 @@ namespace System.Text.RegularExpressions.SRM
     /// </summary>
     internal class BVAlgebra : BVAlgebraBase, ICharAlgebra<BV>
     {
-        [NonSerialized]
         private MintermGenerator<BV> mtg;
-        [NonSerialized]
         private BV zero;
-        [NonSerialized]
         private BV ones;
-        [NonSerialized]
-        private ulong[] all0;
-        [NonSerialized]
-        private ulong[] all1;
-        [NonSerialized]
         internal BV[] atoms;
 
         public ulong ComputeDomainSize(BV set)
         {
             ulong size = 0;
-            for (int i = 0; i < atoms.Length; i++)
-            {
-                if (IsSatisfiable(set & atoms[i]))
+            for (int i = 0; i < _bits; i++)
+                if (set[i])
                     size += _cardinalities[i];
-            }
-            return (ulong)size;
+            return size;
         }
 
         public BVAlgebra(CharSetSolver solver, BDD[] minterms) :
             base(Classifier.Create(solver, minterms), Array.ConvertAll(minterms, solver.ComputeDomainSize), minterms)
         {
             mtg = new MintermGenerator<BV>(this);
-
-            var K = (_bits - 1) / 64;
-            int last = _bits % 64;
-            ulong lastMask = last == 0 ? ulong.MaxValue : (((ulong)1 << last) - 1);
-            all0 = new ulong[K];
-            all1 = new ulong[K];
-            for (int i = 0; i < K; i++)
-            {
-                if (i < K - 1)
-                {
-                    all1[i] = ulong.MaxValue;
-                }
-                else
-                {
-                    all1[i] = lastMask;
-                }
-            }
-            this.zero = new BV(0, all0);
-            this.ones = new BV((K == 0 ? lastMask : ulong.MaxValue), all1);
-            this.mtg = new MintermGenerator<BV>(this);
-            this.atoms = new BV[_bits];
+            zero = BV.MkFalse(_bits);
+            ones = BV.MkTrue(_bits);
+            atoms = new BV[_bits];
             for (int i = 0; i < _bits; i++)
-            {
-                atoms[i] = MkBV(i);
-            }
+                atoms[i] = zero.SetBit1(i);
         }
 
         public BV False => zero;
@@ -99,11 +69,7 @@ namespace System.Text.RegularExpressions.SRM
         {
             var and = ones;
             for (int i = 0; i < predicates.Length; i++)
-            {
                 and = and & predicates[i];
-                if (and.Equals(zero))
-                    return zero;
-            }
             return and;
         }
 
@@ -113,50 +79,27 @@ namespace System.Text.RegularExpressions.SRM
         public BV MkAnd(BV predicate1, BV predicate2) => predicate1 & predicate2;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public BV MkNot(BV predicate) => ones & ~predicate;
+        public BV MkNot(BV predicate) => ~predicate;
 
         public BV MkOr(IEnumerable<BV> predicates)
         {
             var res = zero;
             foreach (var p in predicates)
-            {
                 res = res | p;
-                if (res.Equals(ones))
-                    return ones;
-            }
             return res;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BV MkOr(BV predicate1, BV predicate2) => predicate1 | predicate2;
 
-        public BV MkBV(params int[] truebits)
-        {
-            ulong first = 0;
-            var more = new ulong[this.all0.Length];
-            for (int i = 0; i < truebits.Length; i++)
-            {
-                int b = truebits[i];
-                if (b >= _bits || b < 0)
-                    throw new AutomataException(AutomataExceptionKind.BitOutOfRange);
-                int k = b / 64;
-                int j = b % 64;
-                if (k == 0)
-                    first = first | ((ulong)1 << j);
-                else
-                    more[k-1] = more[k-1] | ((ulong)1 << j);
-            }
-            var bv = new BV(first, more);
-            return bv;
-        }
-
         public BV MkRangeConstraint(char lower, char upper, bool caseInsensitive = false) => throw new NotSupportedException(nameof(MkRangeConstraint));
 
         public BV MkCharConstraint(char c, bool caseInsensitive = false)
         {
+#if DEBUG
             if (caseInsensitive == true)
                 throw new AutomataException(AutomataExceptionKind.NotSupported);
-
+#endif
             int i = _classifier.Find(c);
             return this.atoms[i];
         }
@@ -169,40 +112,34 @@ namespace System.Text.RegularExpressions.SRM
         {
             if (set == null)
                 return null;
-
+#if DEBUG
             if (_partition == null)
                 throw new NotImplementedException(nameof(ConvertFromCharSet));
-
+#endif
             BV res = this.zero;
             for (int i = 0; i < _bits; i++)
             {
                 BDD bdd_i = _partition[i];
                 var conj = alg.MkAnd(bdd_i, set);
                 if (alg.IsSatisfiable(conj))
-                {
                     res = res | atoms[i];
-                }
             }
             return res;
         }
 
         public BDD ConvertToCharSet(BDDAlgebra solver, BV pred)
         {
+#if DEBUG
             if (_partition == null)
                 throw new NotImplementedException(nameof(ConvertToCharSet));
-
+#endif
             BDD res = solver.False;
             if (!pred.Equals(this.zero))
             {
-                for (int i = 0; i < atoms.Length; i++)
-                {
+                for (int i = 0; i < _bits; i++)
                     //construct the union of the corresponding atoms
-                    if (!(pred & atoms[i]).Equals(this.zero))
-                    {
-                        BDD bdd_i = _partition[i];
-                        res = solver.MkOr(res, bdd_i);
-                    }
-                }
+                    if (pred[i])
+                        res = solver.MkOr(res, _partition[i]);
             }
             return res;
         }
