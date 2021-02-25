@@ -216,7 +216,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// calls bv.Serialize()
         /// </summary>
-        public string SerializePredicate(BV bv) => bv.ToString();
+        public string SerializePredicate(BV bv) => bv.SerializeToString();
 
         /// <summary>
         /// calls BV.Deserialize(s)

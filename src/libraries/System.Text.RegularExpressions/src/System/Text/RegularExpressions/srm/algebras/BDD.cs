@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System.IO;
 
 namespace System.Text.RegularExpressions.SRM
 {
@@ -244,6 +246,8 @@ namespace System.Text.RegularExpressions.SRM
                 return s_False_repr; //represents False
             if (IsFull)
                 return s_True_repr; //represents True
+            if (IsLeaf)
+                return new long[] { 0, 0, -Ordinal };
 
             BDD[] nodes = TopSort();
 #if DEBUG
@@ -265,12 +269,14 @@ namespace System.Text.RegularExpressions.SRM
 
             //add 2 extra positions: index 0 and 1 are reserved for False and True
             long[] res = new long[nodes.Length + 2];
-            res[0] = ordinal_bits;
+            res[0] = Ordinal;
             res[1] = node_bits;
 
-            //the compacted bit layout is (one_id,zero_id,ordinal)
-            int zero_node_shift = ordinal_bits + node_bits;
-            int one_node_shift = ordinal_bits;
+            //use the following bit layout
+            int zero_node_shift;
+            int one_node_shift;
+            int ordinal_shift;
+            bitlayout(ordinal_bits, node_bits, out zero_node_shift, out one_node_shift, out ordinal_shift);
 
             //here we know that bdd is neither False nor True
             //but it could still be a MTBDD leaf if both children are null
@@ -289,7 +295,7 @@ namespace System.Text.RegularExpressions.SRM
                     res[i + 2] = -node.Ordinal;
                 else
                     //children ids are well-defined due to the topological order of nodes
-                    res[i + 2] = (node.Ordinal) | (idmap[node.One] << one_node_shift) | (idmap[node.Zero] << zero_node_shift);
+                    res[i + 2] = (node.Ordinal << ordinal_shift) | (idmap[node.One] << one_node_shift) | (idmap[node.Zero] << zero_node_shift);
             }
             return res;
         }
@@ -321,12 +327,17 @@ namespace System.Text.RegularExpressions.SRM
         private static BDD Deserialize_(long[] arcs, Func<int, BDD, BDD, BDD> mkBDD)
         {
             int k = arcs.Length;
-            int ordinal_bits = (int)arcs[0]; //how many bits are used in a nonterminal ordinal
+            int maxordinal = (int)arcs[0]; //the root ordinal
+            int ordinal_bits = 4;
+            while (maxordinal >= (1 << ordinal_bits))
+                ordinal_bits += 1;
             long ordinal_mask = (1 << ordinal_bits) - 1;
             int node_bits = (int)arcs[1];    //how many bits are used in a node id
             long node_mask = (1 << node_bits) - 1;
-            int zero_node_shift = ordinal_bits + node_bits;
-            int one_node_shift = ordinal_bits;
+            int zero_node_shift;
+            int one_node_shift;
+            int ordinal_shift;
+            bitlayout(ordinal_bits, node_bits, out zero_node_shift, out one_node_shift, out ordinal_shift);
             BDD[] nodes = new BDD[k];
             nodes[0] = False;
             nodes[1] = True;
@@ -337,9 +348,9 @@ namespace System.Text.RegularExpressions.SRM
                     nodes[i] = mkBDD((int)-arc, null, null);
                 else
                 {
-                    int ord = (int)(arc & ordinal_mask);
-                    int oneId = (int)((arcs[i] >> one_node_shift) & node_mask);
-                    int zeroId = (int)((arcs[i] >> zero_node_shift) & node_mask);
+                    int ord = (int)((arc >> ordinal_shift) & ordinal_mask);
+                    int oneId = (int)((arc >> one_node_shift) & node_mask);
+                    int zeroId = (int)((arc >> zero_node_shift) & node_mask);
                     nodes[i] = mkBDD(ord, nodes[oneId], nodes[zeroId]);
                 }
             }
@@ -348,21 +359,94 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
+        /// Use this bit layout in the serialization
+        /// </summary>
+        private static void bitlayout(int ordinal_bits, int node_bits, out int zero_node_shift, out int one_node_shift, out int ordinal_shift)
+        {
+            //this bit layout seems to work best: zero,one,ord
+            zero_node_shift = ordinal_bits + node_bits;
+            one_node_shift = ordinal_bits;
+            ordinal_shift = 0;
+        }
+
+        /// <summary>
         /// Invokes Serialize and appends the array as code_0.code_1. ... .code_{N-1} to sb
-        /// where N is the length of the array returned by Serialize() and code_i is the
-        /// decimal encoding of the i'th element.
+        /// where N is the length of the array returned by Serialize() and code_i is the cencoding of the i'th element.
         /// Uses '.' as separator.
         /// </summary>
         public void Serialize(StringBuilder sb)
         {
             long[] res = Serialize();
-            sb.Append(res[0].ToString("X"));
+            sb.Append(Int64ToString(res[0]));
             for (int i = 1; i < res.Length; i++)
             {
                 sb.Append('.');
-                sb.Append(res[i].ToString("X"));
+                sb.Append(Int64ToString(res[i]));
             }
         }
+
+        public string SerializeToString()
+        {
+            StringBuilder sb = new StringBuilder();
+            Serialize(sb);
+            return sb.ToString();
+        }
+
+        #region Custom Base64 representation for long
+        private static char[] s_customBase64alphabet = new char[64] {
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+            '+', '/'
+        };
+        private static byte[] s_customBase64lookup = new byte[128] {
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            62, //'+' maps to 62
+            0, 0, 0,
+            63, //'/' maps to 63
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, //digits map to 0..9
+            0, 0, 0, 0, 0, 0, 0,
+            10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, //uppercase letters
+            0, 0, 0, 0, 0, 0,
+            36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, //lowercase letters
+            0, 0, 0, 0, 0
+        };
+
+        /// <summary>
+        /// Custom Base64 serializer for long.
+        /// </summary>
+        private static string Int64ToString(long n)
+        {
+            if (n == 0)
+                return "0";
+
+            string negSign = (n < 0 ? "-" : "");
+            if (n < 0) n = -n;
+
+            string res = "";
+            while (n > 0)
+            {
+                res = s_customBase64alphabet[n & 0x3F] + res;
+                n = n >> 6;
+            }
+            return  negSign + res;
+        }
+
+        /// <summary>
+        /// Custom Base64 deserializer for long.
+        /// </summary>
+        private static long Int64FromString(string s)
+        {
+            bool isNegative = (s[0] == '-');
+            int start = (isNegative ? 1 : 0);
+            long res = 0;
+            for (int i = start; i < s.Length; i++)
+                res = (res << 6) | s_customBase64lookup[s[i]];
+            return res;
+        }
+        #endregion
 
         /// <summary>
         /// Recreates a BDD from an input string that has been created using Serialize.
@@ -375,9 +459,10 @@ namespace System.Text.RegularExpressions.SRM
         public static BDD Deserialize(string input, BDDAlgebra algebra = null)
         {
             string[] elems = input.Split('.');
-            long[] arcs = Array.ConvertAll(elems, x => long.Parse(x, Globalization.NumberStyles.HexNumber));
+            long[] arcs = Array.ConvertAll(elems, Int64FromString);
             return Deserialize(arcs, algebra);
         }
+
         #endregion
 
         /// <summary>
@@ -419,9 +504,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder();
-            Serialize(sb);
-            return sb.ToString();
+            return SerializeToString();
         }
 
         /// <summary>

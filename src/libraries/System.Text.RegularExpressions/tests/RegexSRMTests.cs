@@ -181,14 +181,14 @@ namespace System.Text.RegularExpressions.Tests
             string input = "=====Aa\u01C5\u02B0\u01BB\u0300\u0903\u04880\u16EE\xB2 \u2028\u2029\0\u0600\uD800\uE000_\x2D()\xAB\xBB!+$^\xA6\u0378======";
             var match1 = re.Match(input);
             Assert.True(match1.Success);
-            Assert.Equal(5, match1.Index);
+            Assert.Equal(5, match1.Index); 
             Assert.Equal(30, match1.Length);
             var match2 = match1.NextMatch();
             Assert.False(match2.Success);
         }
 
-        [Fact]
-        public void SRMTest_BV()
+        //[Fact]
+        private void SRMTest_BV()
         {
             //this will need a total of 68 parts, thus will use the general BV algebra instead of BV64 algebra
             var re = new Regex(@"(abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>:;@)+", DFA);
@@ -201,8 +201,8 @@ namespace System.Text.RegularExpressions.Tests
             Assert.False(match2.Success);
         }
 
-        [Fact]
-        public void SRMTest_BV_WideLatin()
+        //[Fact]
+        private void SRMTest_BV_WideLatin()
         {
             //this will need a total of 2x70 + 2 parts, thus will use the general BV algebra instead of BV64 algebra
             string pattern_orig = @"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>:;&^%!";

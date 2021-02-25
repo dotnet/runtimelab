@@ -217,6 +217,8 @@ namespace System.Text.RegularExpressions.SRM
             first = ulong.Parse(s.Substring(0, i), System.Globalization.NumberStyles.HexNumber);
             rest = Array.ConvertAll(s.Substring(i + 1).Split('_'), x => ulong.Parse(x, System.Globalization.NumberStyles.HexNumber));
         }
+
+        internal string SerializeToString() => throw new NotImplementedException();
         #endregion
     }
 }

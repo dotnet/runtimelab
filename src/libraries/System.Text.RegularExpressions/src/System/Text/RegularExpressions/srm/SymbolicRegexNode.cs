@@ -1365,7 +1365,7 @@ namespace System.Text.RegularExpressions.SRM
                 case SymbolicRegexKind.And:
                     return alts.ToString();
                 case SymbolicRegexKind.Concat:
-                    return left.ToString() + right.ToString();
+                    return "(" + left.ToString() + ")" + right.ToString();
                 case SymbolicRegexKind.Singleton:
                     return builder.solver.SerializePredicate(set);
                 default:
