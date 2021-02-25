@@ -5,6 +5,7 @@
 using System;
 using System.Diagnostics;
 #endif
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
@@ -195,6 +196,10 @@ namespace System.Diagnostics.Tracing
         /// </summary>
         /// <param name="property"></param>
         /// <returns></returns>
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+            Justification = "Instantiation over a reference type. See comments above.")]
+#endif
         private static Func<PropertyValue, PropertyValue> GetReferenceTypePropertyGetter(PropertyInfo property)
         {
             var helper = (TypeHelper)Activator.CreateInstance(typeof(ReferenceTypeHelper<>).MakeGenericType(property.DeclaringType!))!;
@@ -205,6 +210,10 @@ namespace System.Diagnostics.Tracing
         {
             public abstract Func<PropertyValue, PropertyValue> GetPropertyGetter(PropertyInfo property);
 
+#if !ES_BUILD_STANDALONE
+            [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+                Justification = "Instantiation over a reference type. See comments above.")]
+#endif
             protected static Delegate GetGetMethod(PropertyInfo property, Type propertyType)
             {
                 return property.GetMethod!.CreateDelegate(typeof(Func<,>).MakeGenericType(property.DeclaringType!, propertyType));
@@ -213,6 +222,9 @@ namespace System.Diagnostics.Tracing
 
         private sealed class ReferenceTypeHelper<TContainer> : TypeHelper where TContainer : class?
         {
+            private static Func<TContainer, TProperty> GetGetMethod<TProperty>(PropertyInfo property) =>
+                property.GetMethod!.CreateDelegate<Func<TContainer, TProperty>>();
+
             public override Func<PropertyValue, PropertyValue> GetPropertyGetter(PropertyInfo property)
             {
                 Type type = property.PropertyType;
@@ -227,25 +239,25 @@ namespace System.Diagnostics.Tracing
                     if (type.IsEnum)
                         type = Enum.GetUnderlyingType(type);
 
-                    if (type == typeof(bool)) { var f = (Func<TContainer, bool>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(byte)) { var f = (Func<TContainer, byte>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(sbyte)) { var f = (Func<TContainer, sbyte>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(char)) { var f = (Func<TContainer, char>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(short)) { var f = (Func<TContainer, short>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(ushort)) { var f = (Func<TContainer, ushort>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(int)) { var f = (Func<TContainer, int>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(uint)) { var f = (Func<TContainer, uint>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(long)) { var f = (Func<TContainer, long>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(ulong)) { var f = (Func<TContainer, ulong>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(IntPtr)) { var f = (Func<TContainer, IntPtr>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(UIntPtr)) { var f = (Func<TContainer, UIntPtr>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(float)) { var f = (Func<TContainer, float>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(double)) { var f = (Func<TContainer, double>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(Guid)) { var f = (Func<TContainer, Guid>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(DateTime)) { var f = (Func<TContainer, DateTime>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(DateTimeOffset)) { var f = (Func<TContainer, DateTimeOffset>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(TimeSpan)) { var f = (Func<TContainer, TimeSpan>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
-                    if (type == typeof(decimal)) { var f = (Func<TContainer, decimal>)GetGetMethod(property, type); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(bool)) { var f = GetGetMethod<bool>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(byte)) { var f = GetGetMethod<byte>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(sbyte)) { var f = GetGetMethod<sbyte>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(char)) { var f = GetGetMethod<char>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(short)) { var f = GetGetMethod<short>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(ushort)) { var f = GetGetMethod<ushort>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(int)) { var f = GetGetMethod<int>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(uint)) { var f = GetGetMethod<uint>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(long)) { var f = GetGetMethod<long>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(ulong)) { var f = GetGetMethod<ulong>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(IntPtr)) { var f = GetGetMethod<IntPtr>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(UIntPtr)) { var f = GetGetMethod<UIntPtr>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(float)) { var f = GetGetMethod<float>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(double)) { var f = GetGetMethod<double>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(Guid)) { var f = GetGetMethod<Guid>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(DateTime)) { var f = GetGetMethod<DateTime>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(DateTimeOffset)) { var f = GetGetMethod<DateTimeOffset>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(TimeSpan)) { var f = GetGetMethod<TimeSpan>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
+                    if (type == typeof(decimal)) { var f = GetGetMethod<decimal>(property); return container => new PropertyValue(f((TContainer)container.ReferenceValue!)); }
 
                     return container => new PropertyValue(property.GetValue(container.ReferenceValue));
                 }

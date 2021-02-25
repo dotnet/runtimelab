@@ -31,6 +31,8 @@ namespace Internal.IL
     {
         public static MethodDebugInformation None = new MethodDebugInformation();
 
+        public virtual bool IsStateMachineMoveNextMethod => false;
+
         public virtual IEnumerable<ILSequencePoint> GetSequencePoints()
         {
             return null;

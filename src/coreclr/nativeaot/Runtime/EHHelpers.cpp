@@ -451,10 +451,17 @@ int32_t __stdcall RhpHardwareExceptionHandler(uintptr_t faultCode, uintptr_t fau
 
 int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
 {
+    uintptr_t faultCode = pExPtrs->ExceptionRecord->ExceptionCode;
+
+    // Do not interfere with debugger exceptions
+    if (faultCode == STATUS_BREAKPOINT || faultCode == STATUS_SINGLE_STEP)
+    {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
     uintptr_t faultingIP = pExPtrs->ContextRecord->GetIp();
 
     ICodeManager * pCodeManager = GetRuntimeInstance()->FindCodeManagerByAddress((PTR_VOID)faultingIP);
-    uintptr_t faultCode = pExPtrs->ExceptionRecord->ExceptionCode;
     bool translateToManagedException = false;
     if (pCodeManager != NULL)
     {

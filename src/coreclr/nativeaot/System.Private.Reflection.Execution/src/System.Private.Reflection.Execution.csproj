@@ -59,9 +59,6 @@
     <Compile Include="$(CompilerCommonPath)\Internal\Runtime\MetadataBlob.cs" >
       <Link>Internal\Runtime\MetadataBlob.cs</Link>
     </Compile>
-    <Compile Include="$(AotCommonPath)\System\CommonRuntimeTypes.cs" >
-      <Link>System\CommonRuntimeTypes.cs</Link>
-    </Compile>
     <Compile Include="$(CommonPath)\System\NotImplemented.cs" >
       <Link>System\NotImplemented.cs</Link>
     </Compile>

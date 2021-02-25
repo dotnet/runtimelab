@@ -15,6 +15,7 @@
 #include "objwriter.h"
 #include "debugInfo/dwarf/dwarfTypeBuilder.h"
 #include "debugInfo/codeView/codeViewTypeBuilder.h"
+#include "cvconst.h"
 #include "llvm/DebugInfo/CodeView/CodeView.h"
 #include "llvm/DebugInfo/CodeView/Line.h"
 #include "llvm/DebugInfo/CodeView/SymbolRecord.h"
@@ -312,9 +313,11 @@ void ObjectWriter::SetCodeSectionAttribute(const char *SectionName,
 void ObjectWriter::EmitAlignment(int ByteAlignment) {
   int64_t fillValue = 0;
 
-  if (TMachine->getTargetTriple().getArch() == llvm::Triple::ArchType::x86 ||
-      TMachine->getTargetTriple().getArch() == llvm::Triple::ArchType::x86_64) {
-    fillValue = 0x90; // x86 nop
+  if (Streamer->getCurrentSectionOnly()->getKind().isText()) {
+    if (TMachine->getTargetTriple().getArch() == llvm::Triple::ArchType::x86 ||
+        TMachine->getTargetTriple().getArch() == llvm::Triple::ArchType::x86_64) {
+      fillValue = 0x90; // x86 nop
+    }
   }
 
   Streamer->EmitValueToAlignment(ByteAlignment, fillValue);
@@ -335,27 +338,31 @@ void ObjectWriter::EmitIntValue(uint64_t Value, unsigned Size) {
 void ObjectWriter::EmitSymbolDef(const char *SymbolName, bool global) {
   MCSymbol *Sym = OutContext->getOrCreateSymbol(Twine(SymbolName));
 
-  if (global) {
-    Streamer->EmitSymbolAttribute(Sym, MCSA_Global);
-  } else {
-    Streamer->EmitSymbolAttribute(Sym, MCSA_Local);
-  }
+  Streamer->EmitSymbolAttribute(Sym, MCSA_Global);
 
   Triple TheTriple = TMachine->getTargetTriple();
 
-  // A Thumb2 function symbol should be marked with an appropriate ELF
-  // attribute to make later computation of a relocation address value correct
-
-  if (TheTriple.getObjectFormat() == Triple::ELF &&
-      Streamer->getCurrentSectionOnly()->getKind().isText()) {
+  if (TheTriple.getObjectFormat() == Triple::ELF) {
+    // An ARM function symbol should be marked with an appropriate ELF attribute
+    // to make later computation of a relocation address value correct
+    if (Streamer->getCurrentSectionOnly()->getKind().isText()) {
       switch (TheTriple.getArch()) {
-        case Triple::thumb:
-        case Triple::aarch64:
-          Streamer->EmitSymbolAttribute(Sym, MCSA_ELF_TypeFunction);
-          break;
+      case Triple::arm:
+      case Triple::armeb:
+      case Triple::thumb:
+      case Triple::thumbeb:
+      case Triple::aarch64:
+      case Triple::aarch64_be:
+        Streamer->EmitSymbolAttribute(Sym, MCSA_ELF_TypeFunction);
+        break;
+      default:
+        break;
+      }
+    }
 
-        default:
-          break;
+    // Mark the symbol hidden if requested
+    if (!global) {
+      Streamer->EmitSymbolAttribute(Sym, MCSA_Hidden);
     }
   }
 
@@ -370,8 +377,6 @@ ObjectWriter::GetSymbolRefExpr(const char *SymbolName,
   Assembler->registerSymbol(*T);
   return MCSymbolRefExpr::create(T, Kind, *OutContext);
 }
-
-
 
 unsigned ObjectWriter::GetDFSize() {
   return Streamer->getOrCreateDataFragment()->getContents().size();
@@ -418,7 +423,7 @@ int ObjectWriter::EmitSymbolRef(const char *SymbolName,
   case RelocType::IMAGE_REL_BASED_DIR64:
     Size = 8;
     break;
-  case RelocType::IMAGE_REL_BASED_REL32: {
+  case RelocType::IMAGE_REL_BASED_REL32:
     Size = 4;
     IsPCRel = true;
     if (ObjFileInfo->getObjectFileType() == ObjFileInfo->IsELF) {
@@ -427,7 +432,6 @@ int ObjectWriter::EmitSymbolRef(const char *SymbolName,
       Kind = MCSymbolRefExpr::VK_PLT;
     }
     break;
-  }
   case RelocType::IMAGE_REL_BASED_RELPTR32:
     Size = 4;
     IsPCRel = true;
@@ -495,15 +499,23 @@ void ObjectWriter::EmitWinFrameInfo(const char *FunctionName, int StartOffset,
   const MCExpr *BaseRefRel =
       GetSymbolRefExpr(FunctionName, MCSymbolRefExpr::VK_COFF_IMGREL32);
 
+  Triple::ArchType Arch = TMachine->getTargetTriple().getArch();
+
+  if (Arch == Triple::thumb || Arch == Triple::thumbeb) {
+    StartOffset |= 1;
+  }
+
   // start Offset
   const MCExpr *StartOfs = MCConstantExpr::create(StartOffset, *OutContext);
   Streamer->EmitValue(
       MCBinaryExpr::createAdd(BaseRefRel, StartOfs, *OutContext), 4);
 
-  // end Offset
-  const MCExpr *EndOfs = MCConstantExpr::create(EndOffset, *OutContext);
-  Streamer->EmitValue(MCBinaryExpr::createAdd(BaseRefRel, EndOfs, *OutContext),
-                      4);
+  if (Arch == Triple::x86 || Arch == Triple::x86_64) {
+    // end Offset
+    const MCExpr *EndOfs = MCConstantExpr::create(EndOffset, *OutContext);
+    Streamer->EmitValue(
+        MCBinaryExpr::createAdd(BaseRefRel, EndOfs, *OutContext), 4);
+  }
 
   // frame symbol reference
   Streamer->EmitValue(
@@ -595,6 +607,57 @@ void ObjectWriter::EmitVarDefRange(const MCSymbol *Fn,
   Streamer->EmitIntValue(Range.Range, 2);
 }
 
+// Maps an ICorDebugInfo register number to the corresponding CodeView
+// register number
+CVRegNum ObjectWriter::GetCVRegNum(ICorDebugInfo::RegNum RegNum) {
+  static const CVRegNum CvRegMapAmd64[] = {
+    CV_AMD64_RAX, CV_AMD64_RCX, CV_AMD64_RDX, CV_AMD64_RBX,
+    CV_AMD64_RSP, CV_AMD64_RBP, CV_AMD64_RSI, CV_AMD64_RDI,
+    CV_AMD64_R8, CV_AMD64_R9, CV_AMD64_R10, CV_AMD64_R11,
+    CV_AMD64_R12, CV_AMD64_R13, CV_AMD64_R14, CV_AMD64_R15,
+  };
+
+  switch (TMachine->getTargetTriple().getArch()) {
+  case Triple::x86:
+    if (X86::ICorDebugInfo::REGNUM_EAX <= RegNum &&
+        RegNum <= X86::ICorDebugInfo::REGNUM_EDI) {
+      return RegNum - X86::ICorDebugInfo::REGNUM_EAX + CV_REG_EAX;
+    }
+    break;
+  case Triple::x86_64:
+    if (RegNum < sizeof(CvRegMapAmd64) / sizeof(CvRegMapAmd64[0])) {
+      return CvRegMapAmd64[RegNum];
+    }
+    break;
+  case Triple::arm:
+  case Triple::armeb:
+  case Triple::thumb:
+  case Triple::thumbeb:
+    if (Arm::ICorDebugInfo::REGNUM_R0 <= RegNum &&
+        RegNum <= Arm::ICorDebugInfo::REGNUM_PC) {
+      return RegNum - Arm::ICorDebugInfo::REGNUM_R0 + CV_ARM_R0;
+    }
+    break;
+  case Triple::aarch64:
+  case Triple::aarch64_be:
+    if (Arm64::ICorDebugInfo::REGNUM_X0 <= RegNum &&
+        RegNum < Arm64::ICorDebugInfo::REGNUM_PC) {
+      return RegNum - Arm64::ICorDebugInfo::REGNUM_X0 + CV_ARM64_X0;
+    }
+    // Special registers are ordered FP, LR, SP, PC in ICorDebugInfo's
+    // enumeration and FP, LR, SP, *ZR*, PC in CodeView's enumeration.
+    // For that reason handle the PC register separately.
+    if (RegNum == Arm64::ICorDebugInfo::REGNUM_PC) {
+      return CV_ARM64_PC;
+    }
+    break;
+  default:
+    assert(false && "Unexpected architecture");
+    break;
+  }
+  return CV_REG_NONE;
+}
+
 void ObjectWriter::EmitCVDebugVarInfo(const MCSymbol *Fn,
                                       const DebugVarInfo LocInfos[],
                                       int NumVarInfos) {
@@ -621,8 +684,8 @@ void ObjectWriter::EmitCVDebugVarInfo(const MCSymbol *Fn,
 
         // Currently only support integer registers.
         // TODO: support xmm registers
-        if (Range.loc.vlReg.vlrReg >=
-            sizeof(cvRegMapAmd64) / sizeof(cvRegMapAmd64[0])) {
+        CVRegNum CVReg = GetCVRegNum(Range.loc.vlReg.vlrReg);
+        if (CVReg == CV_REG_NONE) {
           break;
         }
         SymbolRecordKind SymbolKind = SymbolRecordKind::DefRangeRegisterSym;
@@ -635,8 +698,9 @@ void ObjectWriter::EmitCVDebugVarInfo(const MCSymbol *Fn,
         DefRangeRegisterSymbol.Range.Range =
             Range.endOffset - Range.startOffset;
         DefRangeRegisterSymbol.Range.ISectStart = 0;
-        DefRangeRegisterSymbol.Hdr.Register =
-            cvRegMapAmd64[Range.loc.vlReg.vlrReg];
+        DefRangeRegisterSymbol.Hdr.Register = CVReg;
+        DefRangeRegisterSymbol.Hdr.MayHaveNoName = 0;
+
         unsigned Length = sizeof(DefRangeRegisterSymbol.Hdr);
         Streamer->EmitBytes(
             StringRef((char *)&DefRangeRegisterSymbol.Hdr, Length));
@@ -647,15 +711,10 @@ void ObjectWriter::EmitCVDebugVarInfo(const MCSymbol *Fn,
       case ICorDebugInfo::VLT_STK: {
 
         // TODO: support REGNUM_AMBIENT_SP
-        if (Range.loc.vlStk.vlsBaseReg >=
-            sizeof(cvRegMapAmd64) / sizeof(cvRegMapAmd64[0])) {
+        CVRegNum CVReg = GetCVRegNum(Range.loc.vlStk.vlsBaseReg);
+        if (CVReg == CV_REG_NONE) {
           break;
         }
-
-        assert(Range.loc.vlStk.vlsBaseReg <
-                   sizeof(cvRegMapAmd64) / sizeof(cvRegMapAmd64[0]) &&
-               "Register number should be in the range of [REGNUM_RAX, "
-               "REGNUM_R15].");
 
         SymbolRecordKind SymbolKind = SymbolRecordKind::DefRangeRegisterRelSym;
         unsigned SizeofDefRangeRegisterRelSym =
@@ -668,8 +727,8 @@ void ObjectWriter::EmitCVDebugVarInfo(const MCSymbol *Fn,
         DefRangeRegisterRelSymbol.Range.Range =
             Range.endOffset - Range.startOffset;
         DefRangeRegisterRelSymbol.Range.ISectStart = 0;
-        DefRangeRegisterRelSymbol.Hdr.Register =
-            cvRegMapAmd64[Range.loc.vlStk.vlsBaseReg];
+        DefRangeRegisterRelSymbol.Hdr.Register = CVReg;
+        DefRangeRegisterRelSymbol.Hdr.Flags = 0;
         DefRangeRegisterRelSymbol.Hdr.BasePointerOffset =
             Range.loc.vlStk.vlsOffset;
 
@@ -1011,7 +1070,7 @@ void ObjectWriter::EmitARMExIdxPerOffset()
       break;
     case CFI_ADJUST_CFA_OFFSET:
       assert(Reg == DWARF_REG_ILLEGAL &&
-           "Unexpected Register Value for OpAdjustCfaOffset");
+          "Unexpected Register Value for OpAdjustCfaOffset");
       ATS.emitPad(CFIsPerOffset[i].Offset);
       break;
     case CFI_DEF_CFA_REGISTER:

@@ -82,13 +82,13 @@ namespace Internal.Reflection.Augments
                     break;
             }
 
-            if (type.Equals(CommonRuntimeTypes.String))
+            if (type == typeof(string))
                 return TypeCode.String;
 
-            if (type.Equals(CommonRuntimeTypes.DateTime))
+            if (type == typeof(DateTime))
                 return TypeCode.DateTime;
 
-            if (type.Equals(CommonRuntimeTypes.Decimal))
+            if (type == typeof(decimal))
                 return TypeCode.Decimal;
 
             if (eeType == DBNull.Value.EETypePtr)
@@ -158,7 +158,9 @@ namespace Internal.Reflection.Augments
         // V1 api: Creates open delegates to static methods only, relaxed signature checking disallowed.
         public abstract Delegate CreateDelegate(Type type, Type target, string method, bool ignoreCase, bool throwOnBindFailure);
 
+#if FEATURE_COMINTEROP
         public abstract Type GetTypeFromCLSID(Guid clsid, string server, bool throwOnError);
+#endif
 
         public abstract IntPtr GetFunctionPointer(RuntimeMethodHandle runtimeMethodHandle, RuntimeTypeHandle declaringTypeHandle);
 

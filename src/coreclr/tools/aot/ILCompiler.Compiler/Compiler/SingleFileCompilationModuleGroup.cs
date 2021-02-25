@@ -89,6 +89,16 @@ namespace ILCompiler
             {
                 return false;
             }
-        } 
+        }
+
+        public override bool AllowInstanceMethodOptimization(MethodDesc method)
+        {
+            return true;
+        }
+
+        public override bool AllowVirtualMethodOnAbstractTypeOptimization(MethodDesc method)
+        {
+            return true;
+        }
     }
 }

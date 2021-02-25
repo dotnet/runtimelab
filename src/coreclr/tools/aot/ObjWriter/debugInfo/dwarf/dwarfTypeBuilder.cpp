@@ -720,8 +720,8 @@ unsigned UserDefinedDwarfTypesBuilder::GetPointerTypeIndex(const PointerTypeDesc
 unsigned UserDefinedDwarfTypesBuilder::GetMemberFunctionTypeIndex(const MemberFunctionTypeDescriptor& MemberDescriptor,
     uint32_t const *const ArgumentTypes)
 {
-  unsigned TypeIndex = ArrayIndexToTypeIndex(DwarfTypes.size());
   bool IsStatic = MemberDescriptor.TypeIndexOfThisPointer == GetPrimitiveTypeIndex(PrimitiveTypeFlags::Void);
+  unsigned TypeIndex = ArrayIndexToTypeIndex(DwarfTypes.size());
   DwarfTypes.push_back(make_unique<DwarfMemberFunctionTypeInfo>(MemberDescriptor, ArgumentTypes, IsStatic));
   return TypeIndex;
 }

@@ -160,6 +160,7 @@ namespace System.Reflection.Runtime.MethodInfos
         }
     }
 
+#if FEATURE_COMINTEROP
     //-----------------------------------------------------------------------------------------------------------
     // Nullary constructor for types manufactured by Type.GetTypeFromCLSID().
     //-----------------------------------------------------------------------------------------------------------
@@ -170,6 +171,7 @@ namespace System.Reflection.Runtime.MethodInfos
             return new RuntimeCLSIDNullaryConstructorInfo(declaringType);
         }
     }
+#endif
 
     //-----------------------------------------------------------------------------------------------------------
     // MethodInfos for method definitions (i.e. Foo.Moo() or Foo.Moo<>() but not Foo.Moo<int>)

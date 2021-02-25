@@ -125,7 +125,7 @@ namespace Internal.Reflection.Extensions.NonPortable
 
                 // Optimization: We shouldn't have any public inheritable attributes on Object or ValueType so don't bother scanning this one.
                 //  Since many types derive directly from Object, this should a lot of type.
-                if (baseType.Equals(CommonRuntimeTypes.Object) || baseType.Equals(CommonRuntimeTypes.ValueType))
+                if (baseType == typeof(object) || baseType == typeof(ValueType))
                     return null;
 
                 return baseType;

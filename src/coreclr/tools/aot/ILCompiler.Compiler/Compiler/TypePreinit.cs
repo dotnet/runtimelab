@@ -76,11 +76,12 @@ namespace ILCompiler
 
             Debug.Assert(!type.IsCanonicalSubtype(CanonicalFormKind.Any));
 
-            var preinit = new TypePreinit(type, compilationGroup, ilProvider);
+            TypePreinit preinit = null;
 
             Status status;
             try
             {
+                preinit = new TypePreinit(type, compilationGroup, ilProvider);
                 status = preinit.TryScanMethod(type.GetStaticConstructor(), null, null, out _);
             }
             catch (TypeSystemException ex)

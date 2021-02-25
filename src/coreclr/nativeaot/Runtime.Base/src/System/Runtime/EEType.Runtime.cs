@@ -18,8 +18,8 @@ namespace Internal.Runtime
 #else
             fixed (EEType* pThis = &this)
             {
-                IntPtr pGetArrayEEType = (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType(new IntPtr(pThis), ClassLibFunctionId.GetSystemArrayEEType);
-                return (EEType*)CalliIntrinsics.Call<IntPtr>(pGetArrayEEType);
+                void* pGetArrayEEType = InternalCalls.RhpGetClasslibFunctionFromEEType(new IntPtr(pThis), ClassLibFunctionId.GetSystemArrayEEType);
+                return ((delegate* <EEType*>)pGetArrayEEType)();
             }
 #endif
         }
@@ -32,10 +32,10 @@ namespace Internal.Runtime
             DynamicModule* dynamicModule = this.DynamicModule;
             if (dynamicModule != null)
             {
-                IntPtr getRuntimeException = dynamicModule->GetRuntimeException;
-                if (getRuntimeException != IntPtr.Zero)
+                delegate* <System.Runtime.ExceptionIDs, System.Exception> getRuntimeException = dynamicModule->GetRuntimeException;
+                if (getRuntimeException != null)
                 {
-                    return CalliIntrinsics.Call<Exception>(getRuntimeException, id);
+                    return getRuntimeException(id);
                 }
             }
             if (IsParameterizedType)

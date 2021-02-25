@@ -224,7 +224,37 @@ namespace Internal.Reflection.Execution.PayForPlayExperience
             }
             else
             {
-                return null;
+                // First, see if Type.Name is available. If Type.Name is available, then we can be reasonably confident that it is safe to call Type.FullName.
+                // We'll still wrap the call in a try-catch as a failsafe.
+                string s = type.InternalNameIfAvailable;
+                if (s == null)
+                    return null;
+
+                try
+                {
+                    s = type.FullName;
+                }
+                catch (MissingMetadataException)
+                {
+                }
+
+                // Insert commas so that CreateConstructedGenericTypeStringIfAvailable can fill the blanks.
+                // This is not strictly correct for types nested under generic types, but at this point we're doing
+                // best effort within reason.
+                if (type.IsGenericTypeDefinition)
+                {
+                    s += "[";
+                    int genericArgCount = type.GetGenericArguments().Length;
+                    while (genericArgCount-- > 0)
+                    {
+                        genericParameterOffsets.Add(s.Length);
+                        if (genericArgCount > 0)
+                            s = s + ",";
+                    }
+                    s += "]";
+                }
+
+                return s;
             }
         }
 

@@ -21,6 +21,7 @@ namespace ILCompiler.DependencyAnalysis
         private DebugEHClauseInfo[] _debugEHClauseInfos;
         private DependencyList _nonRelocationDependencies;
         private bool _isFoldable;
+        private bool _isStateMachineMoveNextMethod;
 
         public MethodCodeNode(MethodDesc method)
         {
@@ -137,6 +138,8 @@ namespace ILCompiler.DependencyAnalysis
         public DebugVarInfo[] DebugVarInfos => _debugVarInfos;
         public DebugEHClauseInfo[] DebugEHClauseInfos => _debugEHClauseInfos;
 
+        public bool IsStateMachineMoveNextMethod => _isStateMachineMoveNextMethod;
+
         public void InitializeDebugLocInfos(DebugLocInfo[] debugLocInfos)
         {
             Debug.Assert(_debugLocInfos == null);
@@ -147,6 +150,11 @@ namespace ILCompiler.DependencyAnalysis
         {
             Debug.Assert(_debugVarInfos == null);
             _debugVarInfos = debugVarInfos;
+        }
+
+        public void InitializeIsStateMachineMoveNextMethod(bool value)
+        {
+            _isStateMachineMoveNextMethod = value;
         }
 
         public void InitializeDebugEHClauseInfos(DebugEHClauseInfo[] debugEHClauseInfos)

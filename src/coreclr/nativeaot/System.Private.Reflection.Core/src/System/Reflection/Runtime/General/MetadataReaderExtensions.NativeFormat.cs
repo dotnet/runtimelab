@@ -240,7 +240,7 @@ namespace System.Reflection.Runtime.General
                 {
                     case HandleType.ConstantByteValue:
                         {
-                            if (underlyingType != CommonRuntimeTypes.Byte)
+                            if (underlyingType != typeof(byte))
                                 throw new BadImageFormatException();
 
                             byte v = record.Value.ToConstantByteValueHandle(reader).GetConstantByteValue(reader).Value;
@@ -249,7 +249,7 @@ namespace System.Reflection.Runtime.General
                         }
                     case HandleType.ConstantSByteValue:
                         {
-                            if (underlyingType != CommonRuntimeTypes.SByte)
+                            if (underlyingType != typeof(sbyte))
                                 throw new BadImageFormatException();
 
                             sbyte v = record.Value.ToConstantSByteValueHandle(reader).GetConstantSByteValue(reader).Value;
@@ -258,7 +258,7 @@ namespace System.Reflection.Runtime.General
                         }
                     case HandleType.ConstantInt16Value:
                         {
-                            if (underlyingType != CommonRuntimeTypes.Int16)
+                            if (underlyingType != typeof(short))
                                 throw new BadImageFormatException();
 
                             short v = record.Value.ToConstantInt16ValueHandle(reader).GetConstantInt16Value(reader).Value;
@@ -267,7 +267,7 @@ namespace System.Reflection.Runtime.General
                         }
                     case HandleType.ConstantUInt16Value:
                         {
-                            if (underlyingType != CommonRuntimeTypes.UInt16)
+                            if (underlyingType != typeof(ushort))
                                 throw new BadImageFormatException();
 
                             ushort v = record.Value.ToConstantUInt16ValueHandle(reader).GetConstantUInt16Value(reader).Value;
@@ -276,7 +276,7 @@ namespace System.Reflection.Runtime.General
                         }
                     case HandleType.ConstantInt32Value:
                         {
-                            if (underlyingType != CommonRuntimeTypes.Int32)
+                            if (underlyingType != typeof(int))
                                 throw new BadImageFormatException();
 
                             int v = record.Value.ToConstantInt32ValueHandle(reader).GetConstantInt32Value(reader).Value;
@@ -285,7 +285,7 @@ namespace System.Reflection.Runtime.General
                         }
                     case HandleType.ConstantUInt32Value:
                         {
-                            if (underlyingType != CommonRuntimeTypes.UInt32)
+                            if (underlyingType != typeof(uint))
                                 throw new BadImageFormatException();
 
                             uint v = record.Value.ToConstantUInt32ValueHandle(reader).GetConstantUInt32Value(reader).Value;
@@ -294,7 +294,7 @@ namespace System.Reflection.Runtime.General
                         }
                     case HandleType.ConstantInt64Value:
                         {
-                            if (underlyingType != CommonRuntimeTypes.Int64)
+                            if (underlyingType != typeof(long))
                                 throw new BadImageFormatException();
 
                             long v = record.Value.ToConstantInt64ValueHandle(reader).GetConstantInt64Value(reader).Value;
@@ -303,7 +303,7 @@ namespace System.Reflection.Runtime.General
                         }
                     case HandleType.ConstantUInt64Value:
                         {
-                            if (underlyingType != CommonRuntimeTypes.UInt64)
+                            if (underlyingType != typeof(ulong))
                                 throw new BadImageFormatException();
 
                             ulong v = record.Value.ToConstantUInt64ValueHandle(reader).GetConstantUInt64Value(reader).Value;

@@ -430,6 +430,8 @@ typedef enum _EXCEPTION_DISPOSITION {
     ExceptionCollidedUnwind
 } EXCEPTION_DISPOSITION;
 
+#define STATUS_BREAKPOINT                              ((uint32_t   )0x80000003L)
+#define STATUS_SINGLE_STEP                             ((uint32_t   )0x80000004L)
 #define STATUS_ACCESS_VIOLATION                        ((uint32_t   )0xC0000005L)
 #define STATUS_STACK_OVERFLOW                          ((uint32_t   )0xC00000FDL)
 #define STATUS_REDHAWK_NULL_REFERENCE                  ((uint32_t   )0x00000000L)

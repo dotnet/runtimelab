@@ -135,13 +135,13 @@ namespace System.Reflection.Runtime.CustomAttributes
             if (value == null)
                 return string.Format(typed ? "null" : "({0})null", argumentType.Name);
 
-            if (argumentType.Equals(CommonRuntimeTypes.String))
+            if (argumentType == typeof(string))
                 return string.Format("\"{0}\"", value);
 
-            if (argumentType.Equals(CommonRuntimeTypes.Char))
+            if (argumentType == typeof(char))
                 return string.Format("'{0}'", value);
 
-            if (argumentType.Equals(CommonRuntimeTypes.Type))
+            if (argumentType == typeof(Type))
                 return string.Format("typeof({0})", ((Type)value).FullName);
 
             else if (argumentType.IsArray)
@@ -153,7 +153,7 @@ namespace System.Reflection.Runtime.CustomAttributes
                 result = string.Format(@"new {0}[{1}] {{ ", elementType.IsEnum ? elementType.FullName : elementType.Name, array.Count);
 
                 for (int i = 0; i < array.Count; i++)
-                    result += string.Format(i == 0 ? "{0}" : ", {0}", ComputeTypedArgumentString(array[i], elementType != CommonRuntimeTypes.Object));
+                    result += string.Format(i == 0 ? "{0}" : ", {0}", ComputeTypedArgumentString(array[i], elementType != typeof(object)));
 
                 return result += " }";
             }
@@ -176,13 +176,13 @@ namespace System.Reflection.Runtime.CustomAttributes
         //
         protected CustomAttributeTypedArgument WrapInCustomAttributeTypedArgument(object value, Type argumentType)
         {
-            if (argumentType.Equals(CommonRuntimeTypes.Object))
+            if (argumentType == typeof(object))
             {
                 // If the declared attribute type is System.Object, we must report the type based on the runtime value.
                 if (value == null)
-                    argumentType = CommonRuntimeTypes.String;  // Why is null reported as System.String? Because that's what the desktop CLR does.
+                    argumentType = typeof(string);  // Why is null reported as System.String? Because that's what the desktop CLR does.
                 else if (value is Type)
-                    argumentType = CommonRuntimeTypes.Type;    // value.GetType() will not actually be System.Type - rather it will be some internal implementation type. We only want to report it as System.Type.
+                    argumentType = typeof(Type);    // value.GetType() will not actually be System.Type - rather it will be some internal implementation type. We only want to report it as System.Type.
                 else
                     argumentType = value.GetType();
             }
