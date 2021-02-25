@@ -31,7 +31,6 @@
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\DataFlow\DataFlow.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HardwareIntrinsics\*.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Delegates\Delegates.csproj" />
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Exceptions\Exceptions.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\DynamicGenerics\DynamicGenerics.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\PInvoke\PInvoke.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\SharedLibrary\SharedLibrary.csproj" />
