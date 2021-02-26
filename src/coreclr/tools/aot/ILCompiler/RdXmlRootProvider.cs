@@ -160,7 +160,7 @@ namespace ILCompiler
 
                 for (int i = 0; i < method.Signature.Length; i++)
                 {
-                    if (method.Signature[i] != parameter[i])
+                    if (!method.Signature[i].IsSignatureVariable && method.Signature[i] != parameter[i])
                     {
                         return false;
                     }
