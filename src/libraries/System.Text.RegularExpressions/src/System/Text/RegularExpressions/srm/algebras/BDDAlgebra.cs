@@ -923,5 +923,7 @@ namespace System.Text.RegularExpressions.SRM
             cache[bdd] = res;
             return res;
         }
+
+        public void Serialize(StringBuilder sb) => throw new NotImplementedException();
     }
 }

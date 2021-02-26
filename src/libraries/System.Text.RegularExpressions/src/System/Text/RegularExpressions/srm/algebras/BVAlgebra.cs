@@ -159,6 +159,12 @@ namespace System.Text.RegularExpressions.SRM
         /// calls BV.Deserialize(s)
         /// </summary>
         public BV DeserializePredicate(string s) => BV.Deserialize(s);
+
+        public void Serialize(StringBuilder sb)
+        {
+
+
+        }
         #endregion
 
     }

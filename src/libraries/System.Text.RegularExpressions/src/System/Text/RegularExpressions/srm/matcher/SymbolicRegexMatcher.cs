@@ -86,7 +86,7 @@ namespace System.Text.RegularExpressions.SRM
     /// </summary>
     /// <typeparam name="S">character set type</typeparam>
     [Serializable]
-    internal class SymbolicRegex<S> : IMatcher, ISerializable
+    internal abstract class SymbolicRegex<S> : IMatcher, ISerializable
     {
         [NonSerialized]
         internal SymbolicRegexBuilder<S> builder;
@@ -283,145 +283,73 @@ namespace System.Text.RegularExpressions.SRM
         private State<S>?[] delta;
 
         #region custom serialization
-
-        [NonSerialized]
-        internal bool serializeInSimplifiedForm = false;
         /// <summary>
         /// This serialization method is invoked by BinaryFormatter.Serialize via Serialize method.
         /// </summary>
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            if (serializeInSimplifiedForm)
-            {
-                //#region special case for replacing all character classes with a single character
-                //BV64Algebra bvalg = this.builder.solver as BV64Algebra;
-                //if (bvalg == null)
-                //    throw new NotSupportedException("Simplified serialization is only supported for BV64Algebra");
-                //var simpl_bvalg = bvalg.ReplaceMintermsWithVisibleCharacters();
+            info.AddValue("solver", this.builder.solver);
+            info.AddValue("A", A.Serialize());
+            info.AddValue("Options", (object)Options);
+            info.AddValue("wordLetter", this.builder.wordLetterPredicate);
+            info.AddValue("newLine", this.builder.newLinePredicate);
 
-                //info.AddValue("solver", simpl_bvalg);
-                //info.AddValue("A", A.Serialize());
-                //info.AddValue("Options", (object)Options);
+            info.AddValue("A_StartSet", A_StartSet);
+            info.AddValue("A_startset", A_startset);
+            info.AddValue("A_StartSet_Size", A_StartSet_Size);
 
-                //ulong A_startset_ulong = (ulong)(object)A_startset;
-                //ulong wordLetter_ulong = (ulong)(object)builder.wordLetterPredicate;
-                //ulong newLine_ulong = (ulong)(object)builder.newLinePredicate;
+            info.AddValue("A_prefix", StringUtility.SerializeStringToCharCodeSequence(A_prefix));
+            info.AddValue("A_fixedPrefix_ignoreCase", A_fixedPrefix_ignoreCase);
+            info.AddValue("A_prefix_array", A_prefix_array);
 
-                //var simpl_precomputed = Array.ConvertAll(simpl_bvalg.dtree.precomputed, atomId => simpl_bvalg.IsSatisfiable(simpl_bvalg.MkAnd(simpl_bvalg.atoms[atomId], A_startset_ulong)));
-                //BDD simpl_A_StartSet;
-                //if (simpl_bvalg.IsSatisfiable(simpl_bvalg.MkAnd(simpl_bvalg.atoms[0], A_startset_ulong)))
-                //    simpl_A_StartSet = new BooleanDecisionTree(simpl_precomputed, new DecisionTree.BST(1, null, null));
-                //else
-                //    simpl_A_StartSet = new BooleanDecisionTree(simpl_precomputed, new DecisionTree.BST(0, null, null));
-                //var simpl_A_StartSet_Size = simpl_bvalg.ComputeDomainSize(A_startset_ulong);
-
-                //info.AddValue("A_StartSet", simpl_A_StartSet);
-                //info.AddValue("A_startset", A_startset_ulong);
-                //info.AddValue("wordLetter", wordLetter_ulong);
-                //info.AddValue("newLine", newLine_ulong);
-
-                //var simpl_A_prefix = "";
-
-                //for (int i = 0; i < A_prefix_array.Length; i++)
-                //{
-                //    ulong set = (ulong)(object)A_prefix_array[i];
-                //    ulong size = simpl_bvalg.ComputeDomainSize(set);
-                //    if (size > 1)
-                //        break;
-                //    else
-                //        simpl_A_prefix += simpl_bvalg.PrettyPrint(set);
-                //}
-
-                //info.AddValue("A_prefix", StringUtility.SerializeStringToCharCodeSequence(simpl_A_prefix));
-                //info.AddValue("A_fixedPrefix_ignoreCase", false);
-                //info.AddValue("A_prefix_array", A_prefix_array);
-
-                //var simpl_Ar_prefix = "";
-
-                //for (int i = 0; i < Ar_prefix_array.Length; i++)
-                //{
-                //    ulong set = (ulong)(object)Ar_prefix_array[i];
-                //    ulong size = simpl_bvalg.ComputeDomainSize(set);
-                //    if (size > 1)
-                //        break;
-                //    else
-                //        simpl_Ar_prefix += simpl_bvalg.PrettyPrint(set);
-                //}
-
-                //info.AddValue("Ar_prefix_array", Ar_prefix_array);
-                //info.AddValue("Ar_prefix", StringUtility.SerializeStringToCharCodeSequence(simpl_Ar_prefix));
-                //#endregion
-            }
-            else
-            {
-                info.AddValue("solver", this.builder.solver);
-                info.AddValue("A", A.Serialize());
-                info.AddValue("Options", (object)Options);
-                info.AddValue("wordLetter", this.builder.wordLetterPredicate);
-                info.AddValue("newLine", this.builder.newLinePredicate);
-
-                info.AddValue("StateLimit", StateLimit);
-                info.AddValue("StartSetSizeLimit", StartSetSizeLimit);
-
-                info.AddValue("A_StartSet", A_StartSet);
-                info.AddValue("A_startset", A_startset);
-                info.AddValue("A_StartSet_Size", A_StartSet_Size);
-
-                info.AddValue("A_prefix", StringUtility.SerializeStringToCharCodeSequence(A_prefix));
-                info.AddValue("A_fixedPrefix_ignoreCase", A_fixedPrefix_ignoreCase);
-                info.AddValue("A_prefix_array", A_prefix_array);
-
-                info.AddValue("Ar_prefix_array", Ar_prefix_array);
-                info.AddValue("Ar_prefix", StringUtility.SerializeStringToCharCodeSequence(Ar_prefix));
-            }
+            info.AddValue("Ar_prefix_array", Ar_prefix_array);
+            info.AddValue("Ar_prefix", StringUtility.SerializeStringToCharCodeSequence(Ar_prefix));
         }
-
-        ///// <summary>
-        ///// This deserialization constructor is invoked by IFormatter.Deserialize via Deserialize method
-        ///// </summary>
-        //public SymbolicRegex(SerializationInfo info, StreamingContext context)
-        //{
-        //    this.Options = (System.Text.RegularExpressions.RegexOptions)info.GetValue("Options", typeof(System.Text.RegularExpressions.RegexOptions));
-
-        //    var solver = (ICharAlgebra<S>)info.GetValue("solver", typeof(ICharAlgebra<S>));
-        //    this.builder = new SymbolicRegexBuilder<S>(solver);
-        //    this.builder.wordLetterPredicate = (S)info.GetValue("wordLetter", typeof(S));
-        //    this.builder.newLinePredicate = (S)info.GetValue("newLine", typeof(S));
-
-        //    this.atoms = builder.solver.GetPartition();
-        //    this.dt = ((BVAlgebraBase)builder.solver).dtree;
-
-        //    A = builder.Deserialize(info.GetString("A"));
-
-        //    InitializeRegexes();
-
-        //    this.A_startset = A.GetStartSet();
-        //    this.A_StartSet_Size = (int)builder.solver.ComputeDomainSize(A_startset);
-
-        //    this.A_StartSet = BooleanDecisionTree.Deserialize(info.GetString("A_StartSet"));
-        //    this.A_startset = (S)info.GetValue("A_startset", typeof(S));
-
-        //    this.A_prefix_array = info.GetValue("A_prefix_array", typeof(S[])) as S[];
-        //    this.A_prefix = StringUtility.DeserializeStringFromCharCodeSequence(info.GetString("A_prefix"));
-        //    this.A_prefixUTF8 = System.Text.UnicodeEncoding.UTF8.GetBytes(this.A_prefix);
-
-        //    this.A_fixedPrefix_ignoreCase = info.GetBoolean("A_fixedPrefix_ignoreCase");
-
-        //    this.Ar_prefix_array = (S[])info.GetValue("Ar_prefix_array", typeof(S[]));
-        //    this.Ar_prefix = StringUtility.DeserializeStringFromCharCodeSequence(info.GetString("Ar_prefix"));
-
-        //    //InitializeVectors();
-        //}
 
         /// <summary>
-        /// Parse a symbolic regex from its serialized form.
+        /// Append the custom format of this matcher into sb
         /// </summary>
-        /// <param name="symbolicregex">serialized form of a symbolic regex</param>
-        public SymbolicRegexNode<S> Parse(string symbolicregex)
+        public void Serialize(StringBuilder sb)
         {
-            return builder.Deserialize(symbolicregex);
+
         }
 
+        /// <summary>
+        /// This deserialization constructor is invoked by IFormatter.Deserialize via Deserialize method
+        /// </summary>
+        public SymbolicRegex(SerializationInfo info, StreamingContext context)
+        {
+            this.Options = (System.Text.RegularExpressions.RegexOptions)info.GetValue("Options", typeof(System.Text.RegularExpressions.RegexOptions));
+
+            var solver = (ICharAlgebra<S>)info.GetValue("solver", typeof(ICharAlgebra<S>));
+            this.builder = new SymbolicRegexBuilder<S>(solver);
+            this.builder.wordLetterPredicate = (S)info.GetValue("wordLetter", typeof(S));
+            this.builder.newLinePredicate = (S)info.GetValue("newLine", typeof(S));
+
+            this.atoms = builder.solver.GetPartition();
+            this.dt = ((BVAlgebraBase)builder.solver)._classifier;
+
+            A = builder.Deserialize(info.GetString("A"));
+
+            InitializeRegexes();
+
+            this.A_startset = A.GetStartSet();
+            this.A_StartSet_Size = (int)builder.solver.ComputeDomainSize(A_startset);
+
+            this.A_StartSet = BooleanClassifier.Deserialize(info.GetString("A_StartSet"));
+            this.A_startset = (S)info.GetValue("A_startset", typeof(S));
+
+            this.A_prefix_array = info.GetValue("A_prefix_array", typeof(S[])) as S[];
+            this.A_prefix = StringUtility.DeserializeStringFromCharCodeSequence(info.GetString("A_prefix"));
+            this.A_prefixUTF8 = System.Text.UnicodeEncoding.UTF8.GetBytes(this.A_prefix);
+
+            this.A_fixedPrefix_ignoreCase = info.GetBoolean("A_fixedPrefix_ignoreCase");
+
+            this.Ar_prefix_array = (S[])info.GetValue("Ar_prefix_array", typeof(S[]));
+            this.Ar_prefix = StringUtility.DeserializeStringFromCharCodeSequence(info.GetString("Ar_prefix"));
+
+            //InitializeVectors();
+        }
         #endregion
 
         /// <summary>

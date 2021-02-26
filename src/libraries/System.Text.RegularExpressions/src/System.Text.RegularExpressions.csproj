@@ -78,7 +78,6 @@
     <Compile Include="System\Text\RegularExpressions\srm\matcher\SymbolicRegexMatcher.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\matcher\UTF8Encoding.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\matcher\VectorizedIndexOf.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\printing\RegexCharSetPrinter.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\unicode\IgnoreCaseRelation.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\unicode\IgnoreCaseRelationGenerator.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\unicode\IgnoreCaseTransformer.cs" />

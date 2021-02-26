@@ -163,5 +163,7 @@ namespace System.Text.RegularExpressions.SRM
         #endregion
 
         public ulong MkCharPredicate(string name, ulong pred) => throw new NotImplementedException(nameof(MkCharPredicate));
+
+        public void Serialize(StringBuilder sb) => throw new NotImplementedException();
     }
 }
