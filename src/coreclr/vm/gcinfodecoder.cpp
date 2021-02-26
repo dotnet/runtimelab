@@ -1508,7 +1508,7 @@ OBJECTREF* GcInfoDecoder::GetRegisterSlot(
 
 }
 
-#ifdef TARGET_UNIX
+#if defined(TARGET_UNIX) && !defined(FEATURE_REDHAWK)
 OBJECTREF* GcInfoDecoder::GetCapturedRegister(
     int             regNum,
     PREGDISPLAY     pRD
@@ -1524,7 +1524,7 @@ OBJECTREF* GcInfoDecoder::GetCapturedRegister(
 
     return (OBJECTREF*)(pR0 + regNum);
 }
-#endif // TARGET_UNIX
+#endif // TARGET_UNIX && !FEATURE_REDHAWK
 
 
 bool GcInfoDecoder::IsScratchRegister(int regNum,  PREGDISPLAY pRD)
