@@ -12,7 +12,7 @@ jobs:
     - name: SourceRemote
       value: runtime
     - name: SourceBranch
-      value: master
+      value: main
     - name: TargetBranch
       value: runtime-master
     - group: DotNet-Maestro
