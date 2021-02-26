@@ -24,7 +24,7 @@ namespace ILCompiler
         protected readonly DependencyAnalyzerBase<NodeFactory> _dependencyGraph;
         protected readonly NodeFactory _nodeFactory;
         protected readonly Logger _logger;
-        private readonly DebugInformationProvider _debugInformationProvider;
+        protected readonly DebugInformationProvider _debugInformationProvider;
         private readonly DevirtualizationManager _devirtualizationManager;
         private readonly IInliningPolicy _inliningPolicy;
 

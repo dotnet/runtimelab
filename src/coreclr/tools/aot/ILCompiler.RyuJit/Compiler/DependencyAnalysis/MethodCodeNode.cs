@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
@@ -236,6 +237,53 @@ namespace ILCompiler.DependencyAnalysis
             _nonRelocationDependencies = dependencies;
         }
 
+        public IEnumerable<NativeSequencePoint> GetNativeSequencePoints()
+        {
+            var sequencePoints = new (string Document, int LineNumber)[_debugLocInfos.Length * 4 /* chosen empirically */];
+            try
+            {
+                foreach (var sequencePoint in _debugInfo.GetSequencePoints())
+                {
+                    int offset = sequencePoint.Offset;
+                    if (offset >= sequencePoints.Length)
+                    {
+                        int newLength = sequencePoints.Length;
+                        while (newLength <= offset)
+                            newLength *= 2;
+                        Array.Resize(ref sequencePoints, newLength);
+                    }
+                    sequencePoints[offset] = (sequencePoint.Document, sequencePoint.LineNumber);
+                }
+            }
+            catch (BadImageFormatException)
+            {
+                // Roslyn had a bug where it was generating bad sequence points:
+                // https://github.com/dotnet/roslyn/issues/20118
+                // Do not crash the compiler.
+                yield break;
+            }
+
+            int previousNativeOffset = -1;
+            foreach (var nativeMapping in _debugLocInfos)
+            {
+                if (nativeMapping.NativeOffset == previousNativeOffset)
+                    continue;
+
+                if (nativeMapping.ILOffset < sequencePoints.Length)
+                {
+                    var sequencePoint = sequencePoints[nativeMapping.ILOffset];
+                    if (sequencePoint.Document != null)
+                    {
+                        yield return new NativeSequencePoint(
+                            nativeMapping.NativeOffset,
+                            sequencePoint.Document,
+                            sequencePoint.LineNumber);
+                        previousNativeOffset = nativeMapping.NativeOffset;
+                    }
+                }
+            }
+        }
+
         public override int ClassCode => 788492407;
 
         public override int CompareToImpl(ISortableNode other, CompilerComparer comparer)
@@ -283,5 +331,14 @@ namespace ILCompiler.DependencyAnalysis
                 }
             }
         }
+    }
+
+    public readonly struct DebugLocInfo
+    {
+        public readonly int NativeOffset;
+        public readonly int ILOffset;
+
+        public DebugLocInfo(int nativeOffset, int ilOffset)
+            => (NativeOffset, ILOffset) = (nativeOffset, ilOffset);
     }
 }
