@@ -1,4 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+  </PropertyGroup>
+
   <ItemGroup>
     <ILLinkSubstitutionsXmls Include="ILLink\ILLink.Substitutions.xml" />
   </ItemGroup>
@@ -19,13 +23,6 @@
 
   <PropertyGroup>
     <DefineConstants Condition="'$(UseSyncTable)' == 'true'">FEATURE_SYNCTABLE;$(DefineConstants)</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup>
-    <FeatureCominterop>false</FeatureCominterop>
-    <FeatureCominterop Condition="'$(TargetsWindows)' == 'true'">true</FeatureCominterop>
-  </PropertyGroup>
-  <PropertyGroup>
-    <DefineConstants Condition="'$(FeatureCominterop)' == 'true'">FEATURE_COMINTEROP;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
   <PropertyGroup>
     <FeaturePortableThreadPool Condition="'$(FeaturePortableThreadPool)' == ''">false</FeaturePortableThreadPool>
@@ -394,12 +391,6 @@
     <Compile Include="$(AotCommonPath)\System\Runtime\CompilerServices\__BlockReflectionAttribute.cs">
       <Link>System\Runtime\CompilerServices\__BlockReflectionAttribute.cs</Link>
     </Compile>
-    <Compile Include="$(CommonPath)\System\NotImplemented.cs">
-      <Link>System\NotImplemented.cs</Link>
-    </Compile>
-    <Compile Include="$(AotCommonPath)\System\CommonRuntimeTypes.cs">
-      <Link>System\CommonRuntimeTypes.cs</Link>
-    </Compile>
     <Compile Include="$(CompilerCommonPath)\Internal\NativeFormat\NativeFormatReader.Primitives.cs">
       <Link>Internal\NativeFormat\NativeFormatReader.Primitives.cs</Link>
     </Compile>
@@ -482,6 +473,10 @@
   </ItemGroup>
 
   <Import Project="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System.Private.CoreLib.Shared.projitems" Label="Shared" />
+
+  <ItemGroup>
+    <ProjectReference Include="$(LibrariesProjectRoot)\System.Private.CoreLib\generators\System.Private.CoreLib.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- This is the T4 template service and is added by VS anytime you modify a T4 template. Required for .tt files. -->

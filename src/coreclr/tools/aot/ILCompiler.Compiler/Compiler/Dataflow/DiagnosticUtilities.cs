@@ -43,5 +43,41 @@ namespace ILCompiler.Dataflow
             else
                 return ((TypeDesc)parent).GetDisplayName();
         }
+
+        internal static string GetRequiresUnreferencedCodeAttributeMessage(MethodDesc method)
+        {
+            var ecmaMethod = method.GetTypicalMethodDefinition() as EcmaMethod;
+            if (ecmaMethod == null)
+                return null;
+
+            var decoded = ecmaMethod.GetDecodedCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresUnreferencedCodeAttribute");
+            if (decoded == null)
+                return null;
+
+            var decodedValue = decoded.Value;
+
+            if (decodedValue.FixedArguments.Length != 0)
+                return (string)decodedValue.FixedArguments[0].Value;
+
+            return null;
+        }
+
+        internal static string GetRequiresDynamicCodeAttributeMessage(MethodDesc method)
+        {
+            var ecmaMethod = method.GetTypicalMethodDefinition() as EcmaMethod;
+            if (ecmaMethod == null)
+                return null;
+
+            var decoded = ecmaMethod.GetDecodedCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresDynamicCodeAttribute");
+            if (decoded == null)
+                return null;
+
+            var decodedValue = decoded.Value;
+
+            if (decodedValue.FixedArguments.Length != 0)
+                return (string)decodedValue.FixedArguments[0].Value;
+
+            return null;
+        }
     }
 }

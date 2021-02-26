@@ -17,6 +17,7 @@ namespace ILCompiler
         protected DictionaryLayoutProvider _dictionaryLayoutProvider = new LazyDictionaryLayoutProvider();
         protected DebugInformationProvider _debugInformationProvider = new DebugInformationProvider();
         protected DevirtualizationManager _devirtualizationManager = new DevirtualizationManager();
+        protected IInliningPolicy _inliningPolicy;
         protected bool _methodBodyFolding;
         protected bool _singleThreaded;
         protected InstructionSetSupport _instructionSetSupport;
@@ -30,6 +31,12 @@ namespace ILCompiler
         public CompilationBuilder UseInstructionSetSupport(InstructionSetSupport support)
         {
             _instructionSetSupport = support;
+            return this;
+        }
+
+        public CompilationBuilder UseInliningPolicy(IInliningPolicy policy)
+        {
+            _inliningPolicy = policy;
             return this;
         }
 

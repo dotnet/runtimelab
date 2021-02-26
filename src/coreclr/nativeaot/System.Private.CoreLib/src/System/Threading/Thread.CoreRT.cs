@@ -204,7 +204,11 @@ namespace System.Threading
             }
         }
 
-        public int ManagedThreadId => _managedThreadId.Id;
+        public int ManagedThreadId
+        {
+            [Intrinsic]
+            get => _managedThreadId.Id;
+        }
 
         partial void ThreadNameChanged(string value)
         {

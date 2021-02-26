@@ -32,7 +32,8 @@ namespace ILCompiler.Dataflow
             return
                 GetIntrinsicIdForMethod(methodDefinition) > IntrinsicId.RequiresReflectionBodyScanner_Sentinel ||
                 flowAnnotations.RequiresDataflowAnalysis(methodDefinition) ||
-                methodDefinition.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresUnreferencedCodeAttribute");
+                methodDefinition.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresUnreferencedCodeAttribute") ||
+                methodDefinition.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresDynamicCodeAttribute");
         }
 
         public static bool RequiresReflectionMethodBodyScannerForMethodBody(FlowAnnotations flowAnnotations, MethodDesc methodDefinition)
@@ -50,6 +51,11 @@ namespace ILCompiler.Dataflow
         bool ShouldEnableReflectionPatternReporting(MethodDesc method)
         {
             return !method.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresUnreferencedCodeAttribute");
+        }
+
+        bool ShouldEnableAotPatternReporting(MethodDesc method)
+        {
+            return !method.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresDynamicCodeAttribute");
         }
 
         private ReflectionMethodBodyScanner(NodeFactory factory, FlowAnnotations flowAnnotations, Logger logger)
@@ -324,6 +330,9 @@ namespace ILCompiler.Dataflow
             Expression_New,
             Enum_GetValues,
             Marshal_SizeOf,
+            Marshal_PtrToStructure,
+            Marshal_DestroyStructure,
+            Marshal_GetDelegateForFunctionPointer,
             Activator_CreateInstance_Type,
             Activator_CreateInstance_AssemblyName_TypeName,
             Activator_CreateInstanceFrom,
@@ -419,6 +428,24 @@ namespace ILCompiler.Dataflow
                     && calledMethod.HasParameterOfType(0, "System", "Type")
                     && calledMethod.Signature.Length == 1
                     => IntrinsicId.Marshal_SizeOf,
+
+                // static object System.Runtime.InteropServices.Marshal.PtrToStructure (IntPtr, Type)
+                "PtrToStructure" when calledMethod.IsDeclaredOnType("System.Runtime.InteropServices", "Marshal")
+                    && calledMethod.HasParameterOfType(1, "System", "Type")
+                    && calledMethod.Signature.Length == 2
+                    => IntrinsicId.Marshal_PtrToStructure,
+
+                // static void System.Runtime.InteropServices.Marshal.DestroyStructure (IntPtr, Type)
+                "DestroyStructure" when calledMethod.IsDeclaredOnType("System.Runtime.InteropServices", "Marshal")
+                    && calledMethod.HasParameterOfType(1, "System", "Type")
+                    && calledMethod.Signature.Length == 2
+                    => IntrinsicId.Marshal_DestroyStructure,
+
+                // static Delegate System.Runtime.InteropServices.Marshal.GetDelegateForFunctionPointer (IntPtr, Type)
+                "GetDelegateForFunctionPointer" when calledMethod.IsDeclaredOnType("System.Runtime.InteropServices", "Marshal")
+                    && calledMethod.HasParameterOfType(1, "System", "Type")
+                    && calledMethod.Signature.Length == 2
+                    => IntrinsicId.Marshal_GetDelegateForFunctionPointer,
 
                 // static System.Type.GetType (string)
                 // static System.Type.GetType (string, Boolean)
@@ -604,6 +631,7 @@ namespace ILCompiler.Dataflow
 
             var callingMethodDefinition = callingMethodBody.OwningMethod;
             bool shouldEnableReflectionWarnings = ShouldEnableReflectionPatternReporting(callingMethodDefinition);
+            bool shouldEnableAotWarnings = ShouldEnableAotPatternReporting(callingMethodDefinition);
             var reflectionContext = new ReflectionPatternContext(_logger, shouldEnableReflectionWarnings, callingMethodBody, offset, new MethodOrigin(calledMethod));
 
             DynamicallyAccessedMemberTypes returnValueDynamicallyAccessedMemberTypes = 0;
@@ -615,7 +643,8 @@ namespace ILCompiler.Dataflow
                 returnValueDynamicallyAccessedMemberTypes = requiresDataFlowAnalysis ?
                     _flowAnnotations.GetReturnParameterAnnotation(calledMethod) : 0;
 
-                switch (GetIntrinsicIdForMethod(calledMethod))
+                var intrinsicId = GetIntrinsicIdForMethod(calledMethod);
+                switch (intrinsicId)
                 {
                     case IntrinsicId.IntrospectionExtensions_GetTypeInfo:
                         {
@@ -711,6 +740,9 @@ namespace ILCompiler.Dataflow
                                         $"It's not possible to guarantee the availability of requirements of the generic type.");
                                 }
                             }
+
+                            if (shouldEnableAotWarnings)
+                                LogDynamicCodeWarning(_logger, callingMethodBody, offset, calledMethod);
 
                             // We don't want to lose track of the type
                             // in case this is e.g. Activator.CreateInstance(typeof(Foo<>).MakeGenericType(...));
@@ -927,9 +959,9 @@ namespace ILCompiler.Dataflow
                                         _dependencies.Add(_factory.ConstructedTypeSymbol(systemTypeValue.TypeRepresented.MakeArrayType()), "Enum.GetValues");
                                     }
                                 }
-                                else
+                                else if (shouldEnableAotWarnings)
                                 {
-                                    _logger.LogWarning(Resources.Strings.IL9701, 9701, callingMethodBody, offset, MessageSubCategory.AotAnalysis);
+                                    LogDynamicCodeWarning(_logger, callingMethodBody, offset, calledMethod);
                                 }
                             }
                         }
@@ -939,11 +971,17 @@ namespace ILCompiler.Dataflow
                     // System.Runtime.InteropServices.Marshal
                     //
                     // static SizeOf (Type)
+                    // static PtrToStructure (IntPtr, Type)
+                    // static DestroyStructure (IntPtr, Type)
                     //
                     case IntrinsicId.Marshal_SizeOf:
+                    case IntrinsicId.Marshal_PtrToStructure:
+                    case IntrinsicId.Marshal_DestroyStructure:
                         {
+                            int paramIndex = intrinsicId == IntrinsicId.Marshal_SizeOf ? 0 : 1;
+
                             // We need the data to do struct marshalling.
-                            foreach (var value in methodParams[0].UniqueValues())
+                            foreach (var value in methodParams[paramIndex].UniqueValues())
                             {
                                 if (value is SystemTypeValue systemTypeValue
                                     && !systemTypeValue.TypeRepresented.IsGenericDefinition
@@ -951,12 +989,39 @@ namespace ILCompiler.Dataflow
                                 {
                                     if (systemTypeValue.TypeRepresented.IsDefType)
                                     {
-                                        _dependencies.Add(_factory.StructMarshallingData((DefType)systemTypeValue.TypeRepresented), "Marshal.SizeOf");
+                                        _dependencies.Add(_factory.StructMarshallingData((DefType)systemTypeValue.TypeRepresented), "Marshal API");
                                     }
                                 }
-                                else
+                                else if (shouldEnableAotWarnings)
                                 {
-                                    _logger.LogWarning(Resources.Strings.IL9702, 9702, callingMethodBody, offset, MessageSubCategory.AotAnalysis);
+                                    LogDynamicCodeWarning(_logger, callingMethodBody, offset, calledMethod);
+                                }
+                            }
+                        }
+                        break;
+
+                    //
+                    // System.Runtime.InteropServices.Marshal
+                    //
+                    // static GetDelegateForFunctionPointer (IntPtr, Type)
+                    //
+                    case IntrinsicId.Marshal_GetDelegateForFunctionPointer:
+                        {
+                            // We need the data to do delegate marshalling.
+                            foreach (var value in methodParams[1].UniqueValues())
+                            {
+                                if (value is SystemTypeValue systemTypeValue
+                                    && !systemTypeValue.TypeRepresented.IsGenericDefinition
+                                    && !systemTypeValue.TypeRepresented.ContainsSignatureVariables(treatGenericParameterLikeSignatureVariable: true))
+                                {
+                                    if (systemTypeValue.TypeRepresented.IsDefType)
+                                    {
+                                        _dependencies.Add(_factory.DelegateMarshallingData((DefType)systemTypeValue.TypeRepresented), "Marshal API");
+                                    }
+                                }
+                                else if (shouldEnableAotWarnings)
+                                {
+                                    LogDynamicCodeWarning(_logger, callingMethodBody, offset, calledMethod);
                                 }
                             }
                         }
@@ -1031,9 +1096,8 @@ namespace ILCompiler.Dataflow
                             reflectionContext.AnalyzingPattern();
 
                             var parameters = calledMethod.Signature;
-                            if ((parameters.Length == 3 && (methodParams[2].Kind == ValueNodeKind.MethodReturn || methodParams[2].Kind == ValueNodeKind.ConstInt || methodParams[2].Kind == ValueNodeKind.LoadField)
-                                && (methodParams[2].AsConstInt() == null || methodParams[2].AsConstInt() != 0)) ||
-                                (parameters.Length == 5 && (methodParams[4].AsConstInt() == null || methodParams[4].AsConstInt() != 0)))
+                            if ((parameters.Length == 3 && parameters[2].IsWellKnownType(WellKnownType.Boolean) && methodParams[2].AsConstInt() != 0) ||
+                                (parameters.Length == 5 && methodParams[4].AsConstInt() != 0))
                             {
                                 reflectionContext.RecordUnrecognizedPattern(2096, $"Call to '{calledMethod.GetDisplayName()}' can perform case insensitive lookup of the type, currently ILLink can not guarantee presence of all the matching types");
                                 break;
@@ -1616,6 +1680,9 @@ namespace ILCompiler.Dataflow
                             // We don't track MethodInfo values, so we can't determine if the MakeGenericMethod is problematic or not.
                             // Since some of the generic parameters may have annotations, all calls are potentially dangerous.
                             reflectionContext.RecordUnrecognizedPattern(2060, $"Call to `{calledMethod.GetDisplayName()}` can not be statically analyzed. It's not possible to guarantee the availability of requirements of the generic method.");
+
+                            if (shouldEnableAotWarnings)
+                                LogDynamicCodeWarning(_logger, callingMethodBody, offset, calledMethod);
                         }
                         break;
 
@@ -1639,10 +1706,13 @@ namespace ILCompiler.Dataflow
                         if (shouldEnableReflectionWarnings &&
                             calledMethod.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresUnreferencedCodeAttribute"))
                         {
+                            string attributeMessage = DiagnosticUtilities.GetRequiresUnreferencedCodeAttributeMessage(calledMethod);
+
+                            if (attributeMessage.Length > 0 && !attributeMessage.EndsWith('.'))
+                                attributeMessage += '.';
+
                             string message =
-                                $"Calling '{calledMethod.GetDisplayName()}' which has `RequiresUnreferencedCodeAttribute` can break functionality when trimming application code.";// +
-                                // TODO
-                                //$"{requiresUnreferencedCode.Message}.";
+                                $"Using method '{calledMethod.GetDisplayName()}' which has 'RequiresUnreferencedCodeAttribute' can break functionality when trimming application code. {attributeMessage}";
 
                             //if (requiresUnreferencedCode.Url != null)
                             //{
@@ -1650,6 +1720,31 @@ namespace ILCompiler.Dataflow
                             //}
 
                             _logger.LogWarning(message, 2026, callingMethodBody, offset, MessageSubCategory.TrimAnalysis);
+                        }
+
+                        
+
+                        if (shouldEnableAotWarnings &&                            
+                            calledMethod.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresDynamicCodeAttribute"))
+                        {
+                            LogDynamicCodeWarning(_logger, callingMethodBody, offset, calledMethod);
+                        }
+
+                        static void LogDynamicCodeWarning(Logger logger, MethodIL callingMethodBody, int offset, MethodDesc calledMethod)
+                        {
+                            string attributeMessage = DiagnosticUtilities.GetRequiresDynamicCodeAttributeMessage(calledMethod);
+
+                            if (attributeMessage.Length > 0 && !attributeMessage.EndsWith('.'))
+                                attributeMessage += '.';
+
+                            string message = $"{String.Format(Resources.Strings.IL9700, calledMethod.GetDisplayName())} {attributeMessage}";
+
+                            //if (requiresUnreferencedCode.Url != null)
+                            //{
+                            //    message += " " + requiresUnreferencedCode.Url;
+                            //}
+
+                            logger.LogWarning(message, 9700, callingMethodBody, offset, MessageSubCategory.AotAnalysis);
                         }
 
                         // To get good reporting of errors we need to track the origin of the value for all method calls
@@ -2303,8 +2398,7 @@ namespace ILCompiler.Dataflow
                 // Error codes > 6000 are reserved for custom steps and illink doesn't claim ownership of them
 
                 // TODO: these are all unique to NativeAOT - mono/linker repo is not aware this error code is used.
-                public const string IL9701 = "Enum.GetValues was called with an unknown enum type. It might not be possible to construct an array of this type at runtime.";
-                public const string IL9702 = "Marshal.SizeOf was called with an unknown type. It might not be possible to compute the marshalling size at runtime.";
+                public const string IL9700 = "Calling '{0}' which has `RequiresDynamicCodeAttribute` can break functionality when compiled fully ahead of time.";
             }
         }
     }

@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Serialization;
 using System.Reflection.Runtime.Assemblies;
 using System.Collections.Generic;
@@ -53,11 +54,13 @@ namespace System.Reflection.Runtime.Modules
 
         public abstract override int MetadataToken { get; }
 
+        [RequiresUnreferencedCode("Types might be removed")]
         public sealed override Type GetType(string name, bool throwOnError, bool ignoreCase)
         {
             return Assembly.GetType(name, throwOnError, ignoreCase);
         }
 
+        [RequiresUnreferencedCode("Types might be removed")]
         public sealed override Type[] GetTypes()
         {
             Debug.Assert(this.Equals(Assembly.ManifestModule)); // We only support single-module assemblies so we have to be the manifest module.

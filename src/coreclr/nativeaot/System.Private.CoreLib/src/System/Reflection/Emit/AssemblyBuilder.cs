@@ -1,12 +1,13 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.IO;
 
 namespace System.Reflection.Emit
 {
-    public sealed class AssemblyBuilder : Assembly
+    public sealed partial class AssemblyBuilder : Assembly
     {
         internal AssemblyBuilder()
         {
@@ -14,14 +15,6 @@ namespace System.Reflection.Emit
         }
 
         public override string FullName
-        {
-            get
-            {
-                return default;
-            }
-        }
-
-        public override bool IsDynamic
         {
             get
             {
@@ -37,12 +30,14 @@ namespace System.Reflection.Emit
             }
         }
 
+        [RequiresDynamicCode("Generating new code at runtime is not supported with native AOT.")]
         public static AssemblyBuilder DefineDynamicAssembly(AssemblyName name, AssemblyBuilderAccess access)
         {
             ReflectionEmitThrower.ThrowPlatformNotSupportedException();
             return default;
         }
 
+        [RequiresDynamicCode("Generating new code at runtime is not supported with native AOT.")]
         public static AssemblyBuilder DefineDynamicAssembly(AssemblyName name, AssemblyBuilderAccess access, IEnumerable<CustomAttributeBuilder> assemblyAttributes)
         {
             ReflectionEmitThrower.ThrowPlatformNotSupportedException();
@@ -65,21 +60,6 @@ namespace System.Reflection.Emit
         }
 
         public override int GetHashCode()
-        {
-            return default;
-        }
-
-        public override ManifestResourceInfo GetManifestResourceInfo(string resourceName)
-        {
-            return default;
-        }
-
-        public override string[] GetManifestResourceNames()
-        {
-            return default;
-        }
-
-        public override Stream GetManifestResourceStream(string name)
         {
             return default;
         }

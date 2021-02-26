@@ -214,7 +214,7 @@ namespace Internal.Reflection.Execution
 
         private static bool IsNullable(this Type type)
         {
-            return type.IsGenericType && object.ReferenceEquals(CommonRuntimeTypes.Nullable, type.GetGenericTypeDefinition());
+            return type.IsGenericType && typeof(Nullable<>) == type.GetGenericTypeDefinition();
         }
 
         private static Type GetNullableType(this Type type)
@@ -229,22 +229,22 @@ namespace Internal.Reflection.Execution
 
         private static bool IsSystemObject(this Type type)
         {
-            return object.ReferenceEquals(CommonRuntimeTypes.Object, type);
+            return typeof(object) == type;
         }
 
         private static bool IsSystemValueType(this Type type)
         {
-            return object.ReferenceEquals(CommonRuntimeTypes.ValueType, type);
+            return typeof(ValueType) == type;
         }
 
         private static bool IsSystemArray(this Type type)
         {
-            return object.ReferenceEquals(CommonRuntimeTypes.Array, type);
+            return typeof(Array) == type;
         }
 
         private static bool IsSystemVoid(this Type type)
         {
-            return object.ReferenceEquals(CommonRuntimeTypes.Void, type);
+            return typeof(void) == type;
         }
 
         [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
@@ -290,19 +290,19 @@ namespace Internal.Reflection.Execution
                 return 0;
             }
 
-            if (object.ReferenceEquals(CommonRuntimeTypes.Byte, normalizedType) || object.ReferenceEquals(CommonRuntimeTypes.SByte, normalizedType))
+            if (typeof(byte) == normalizedType || typeof(sbyte) == normalizedType)
                 return 1;
 
-            if (object.ReferenceEquals(CommonRuntimeTypes.UInt16, normalizedType) || object.ReferenceEquals(CommonRuntimeTypes.Int16, normalizedType))
+            if (typeof(ushort) == normalizedType || typeof(short) == normalizedType)
                 return 2;
 
-            if (object.ReferenceEquals(CommonRuntimeTypes.UInt32, normalizedType) || object.ReferenceEquals(CommonRuntimeTypes.Int32, normalizedType))
+            if (typeof(uint) == normalizedType || typeof(int) == normalizedType)
                 return 4;
 
-            if (object.ReferenceEquals(CommonRuntimeTypes.UInt64, normalizedType) || object.ReferenceEquals(CommonRuntimeTypes.Int64, normalizedType))
+            if (typeof(ulong) == normalizedType || typeof(long) == normalizedType)
                 return 8;
 
-            if (object.ReferenceEquals(CommonRuntimeTypes.UIntPtr, normalizedType) || object.ReferenceEquals(CommonRuntimeTypes.IntPtr, normalizedType))
+            if (typeof(UIntPtr) == normalizedType || typeof(IntPtr) == normalizedType)
                 return sizeof(IntPtr);
 
             return 0;

@@ -8,18 +8,17 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/CodeGen/AsmPrinter.h"
-#include "llvm/MC/MCCodeEmitter.h"
 #include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCObjectFileInfo.h"
 #include "llvm/Target/TargetOptions.h"
-#include "llvm/DebugInfo/CodeView/TypeTableBuilder.h"
+#include "llvm/DebugInfo/CodeView/SymbolRecord.h"
 
 #include "cfi.h"
 #include "jitDebugInfo.h"
-#include <string>
-#include <set>
-#include "debugInfo/typeBuilder.h"
 #include "debugInfo/dwarf/dwarfGen.h"
+
+#include <set>
+#include <string>
 
 using namespace llvm;
 using namespace llvm::codeview;
@@ -38,6 +37,8 @@ using namespace llvm::codeview;
 #else
 #define STDMETHODCALLTYPE
 #endif //  defined(HOST_X86) && !defined(HOST_UNIX)
+
+typedef uint16_t CVRegNum;
 
 enum CustomSectionAttributes : int32_t {
   CustomSectionAttributes_ReadOnly = 0x0000,
@@ -127,6 +128,8 @@ private:
   void EmitCOFFSecRel32Value(MCExpr const *Value);
 
   void EmitVarDefRange(const MCSymbol *Fn, const LocalVariableAddrRange &Range);
+
+  CVRegNum GetCVRegNum(ICorDebugInfo::RegNum RegNum);
   void EmitCVDebugVarInfo(const MCSymbol *Fn, const DebugVarInfo LocInfos[],
                           int NumVarInfos);
   void EmitCVDebugFunctionInfo(const char *FunctionName, int FunctionSize);

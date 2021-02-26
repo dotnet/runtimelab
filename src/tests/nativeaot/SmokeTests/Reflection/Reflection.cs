@@ -638,6 +638,8 @@ internal class ReflectionTest
 
         struct SecondNeverUsedType { }
 
+        struct ThirdNeverUsedType { }
+
         class Gen<T> { }
 
         class TypeAttribute : Attribute
@@ -667,20 +669,59 @@ internal class ReflectionTest
         [EnumArray(EnumArray = new MyEnum[] { 0 })]
         class Holder3 { }
 
+        [Type(SomeType = typeof(ThirdNeverUsedType))]
+        class Holder4 { }
+
         public static void Run()
         {
             Console.WriteLine(nameof(TestAttributeExpressions));
 
-            TypeAttribute attr1 = typeof(Holder1).GetCustomAttribute<TypeAttribute>();
-            if (attr1.SomeType.ToString() != "ReflectionTest+TestAttributeExpressions+FirstNeverUsedType*[,]")
-                throw new Exception();
+            // We don't create EETypes for types referenced from typeof which makes
+            // getting their constructed version to fail at runtime because
+            // we place restrictions on on the ability of getting System.Type for
+            // constructed types.
+            //
+            // The workaround is to put some dataflow annotations on the Type-typed
+            // parameter/property/fields.
+            //
+            // This is testing that we get an actionable exception message.
+            //
+            // The reason why we don't create EETypes for these is size -
+            // and one wouldn't be able to do much with just the type anyway.
+            // We would need at least some methods and at that point we have reflectable
+            // methods and therefore an EEType.
 
-            TypeAttribute attr2 = typeof(Holder2).GetCustomAttribute<TypeAttribute>();
-            if (attr2.SomeType.ToString() != "ReflectionTest+TestAttributeExpressions+Gen`1[ReflectionTest+TestAttributeExpressions+SecondNeverUsedType]")
+            try
+            {
+                typeof(Holder1).GetCustomAttribute<TypeAttribute>();
                 throw new Exception();
+            }
+            catch (Exception ex)
+            {
+                if (!ex.ToString().Contains("ReflectionTest+TestAttributeExpressions+FirstNeverUsedType*[,]"))
+                    throw;
+            }
+
+            try
+            {
+                typeof(Holder2).GetCustomAttribute<TypeAttribute>();
+            }
+            catch (Exception ex)
+            {
+                if (!ex.ToString().Contains("ReflectionTest+TestAttributeExpressions+Gen`1[ReflectionTest+TestAttributeExpressions+SecondNeverUsedType]"))
+                    throw;
+            }
+
+            // Make sure we created EEType for the enum array.
 
             EnumArrayAttribute attr3 = typeof(Holder3).GetCustomAttribute<EnumArrayAttribute>();
             if (attr3.EnumArray[0] != 0)
+                throw new Exception();
+
+            // Unconstructed types don't have the problem with missing EETypes described above
+
+            TypeAttribute attr4 = typeof(Holder4).GetCustomAttribute<TypeAttribute>();
+            if (attr4.SomeType.ToString() != "ReflectionTest+TestAttributeExpressions+ThirdNeverUsedType")
                 throw new Exception();
         }
     }

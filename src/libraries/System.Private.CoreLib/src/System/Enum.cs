@@ -323,12 +323,10 @@ namespace System
 
             return enumType.GetEnumUnderlyingType();
         }
-#endif
 
         public static TEnum[] GetValues<TEnum>() where TEnum : struct, Enum
             => (TEnum[])GetValues(typeof(TEnum));
 
-#if !CORERT
         public static Array GetValues(Type enumType)
         {
             if (enumType is null)
@@ -468,10 +466,10 @@ namespace System
             }
         }
 
-        public static bool TryParse<TEnum>(string? value, out TEnum result) where TEnum : struct =>
+        public static bool TryParse<TEnum>([NotNullWhen(true)] string? value, out TEnum result) where TEnum : struct =>
             TryParse<TEnum>(value, ignoreCase: false, out result);
 
-        public static bool TryParse<TEnum>(string? value, bool ignoreCase, out TEnum result) where TEnum : struct =>
+        public static bool TryParse<TEnum>([NotNullWhen(true)] string? value, bool ignoreCase, out TEnum result) where TEnum : struct =>
             TryParse<TEnum>(value, ignoreCase, throwOnFailure: false, out result);
 
         private static bool TryParse<TEnum>(string? value, bool ignoreCase, bool throwOnFailure, out TEnum result) where TEnum : struct

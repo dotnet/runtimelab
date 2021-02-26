@@ -39,8 +39,7 @@ namespace Internal.Reflection.Core.Execution
             if (thisObject == null)
                 throw new TargetException(SR.RFLCT_Targ_StatMethReqTarg);
 
-            RuntimeTypeHandle srcTypeHandle = thisObject.GetType().TypeHandle;
-            if (RuntimeAugments.IsAssignableFrom(declaringTypeHandle, srcTypeHandle))
+            if (RuntimeAugments.IsAssignable(thisObject, declaringTypeHandle))
                 return;
 
             if (RuntimeAugments.IsInterface(declaringTypeHandle))

@@ -36,6 +36,7 @@ namespace Internal.JitInterface
         private int SizeOfReversePInvokeTransitionFrame => 2 * PointerSize;
 
         private RyuJitCompilation _compilation;
+        private MethodDebugInformation _debugInfo;
         private MethodCodeNode _methodCodeNode;
         private DebugLocInfo[] _debugLocInfos;
         private DebugVarInfo[] _debugVarInfos;
@@ -541,6 +542,10 @@ namespace Internal.JitInterface
                     id = ReadyToRunHelper.TypeHandleToRuntimeTypeHandle;
                     break;
 
+                case CorInfoHelpFunc.CORINFO_HELP_GETCURRENTMANAGEDTHREADID:
+                    id = ReadyToRunHelper.GetCurrentManagedThreadId;
+                    break;
+
                 default:
                     throw new NotImplementedException(ftnNum.ToString());
             }
@@ -564,8 +569,12 @@ namespace Internal.JitInterface
             MethodDesc method = HandleToObject(ftn);
 
             // TODO: Implement MapMethodDeclToMethodImpl from CoreCLR
-            if (method.IsVirtual)
+            if (method.IsVirtual &&
+                method.OwningType is MetadataType mdType &&
+                mdType.VirtualMethodImplsForType.Length > 0)
+            {
                 throw new NotImplementedException("getFunctionEntryPoint");
+            }
 
             pResult = CreateConstLookupToSymbol(_compilation.NodeFactory.MethodEntrypoint(method));
         }
@@ -818,6 +827,8 @@ namespace Internal.JitInterface
             try
             {
                 MethodDebugInformation debugInfo = _compilation.GetDebugInfo(methodIL);
+
+                _debugInfo = debugInfo;
 
                 // TODO: NoLineNumbers
                 //if (!_compilation.Options.NoLineNumbers)
@@ -1707,6 +1718,11 @@ namespace Internal.JitInterface
 
             if (method.IsRawPInvoke())
                 return false;
+
+            // Stub is required to trigger precise static constructor
+            TypeDesc owningType = method.OwningType;
+            if (_compilation.HasLazyStaticConstructor(owningType) && !((MetadataType)owningType).IsBeforeFieldInit)
+                return true;
 
             // We could have given back the PInvoke stub IL to the JIT and let it inline it, without
             // checking whether there is any stub required. Save the JIT from doing the inlining by checking upfront.

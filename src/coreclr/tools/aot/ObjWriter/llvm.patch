@@ -1,3 +1,15 @@
+diff --git a/include/llvm/BinaryFormat/COFF.h b/include/llvm/BinaryFormat/COFF.h
+index b395db6eaa8..74820a8f79f 100644
+--- a/include/llvm/BinaryFormat/COFF.h
++++ b/include/llvm/BinaryFormat/COFF.h
+@@ -395,6 +395,7 @@ enum RelocationTypesARM64 {
+   IMAGE_REL_ARM64_ADDR64 = 0x000E,
+   IMAGE_REL_ARM64_BRANCH19 = 0x000F,
+   IMAGE_REL_ARM64_BRANCH14 = 0x0010,
++  IMAGE_REL_ARM64_REL32 = 0x0011,
+ };
+ 
+ enum COMDATType {
 diff --git a/include/llvm/MC/MCObjectStreamer.h b/include/llvm/MC/MCObjectStreamer.h
 index 7c1189e46ab..d1d77c97311 100644
 --- a/include/llvm/MC/MCObjectStreamer.h
@@ -36,6 +48,53 @@ index 5390e794242..5b258e76787 100644
    /// Functionally identical to EmitBytes. When emitting textual assembly, this
    /// method uses .byte directives instead of .ascii or .asciz for readability.
    virtual void EmitBinaryData(StringRef Data);
+diff --git a/include/llvm/Support/ManagedStatic.h b/include/llvm/Support/ManagedStatic.h
+index b4bf3210cc7..f7f7cbf781a 100644
+--- a/include/llvm/Support/ManagedStatic.h
++++ b/include/llvm/Support/ManagedStatic.h
+@@ -33,18 +33,41 @@ template <typename T, size_t N> struct object_deleter<T[N]> {
+   static void call(void *Ptr) { delete[](T *)Ptr; }
+ };
+ 
++// ManagedStatic must be initialized to zero, and it must *not* have a dynamic
++// initializer because managed statics are often created while running other
++// dynamic initializers. In standard C++11, the best way to accomplish this is
++// with a constexpr default constructor. However, different versions of the
++// Visual C++ compiler have had bugs where, even though the constructor may be
++// constexpr, a dynamic initializer may be emitted depending on optimization
++// settings. For the affected versions of MSVC, use the old linker
++// initialization pattern of not providing a constructor and leaving the fields
++// uninitialized. See http://llvm.org/PR41367 for details.
++#if !defined(_MSC_VER) || (_MSC_VER >= 1925) || defined(__clang__)
++#define LLVM_USE_CONSTEXPR_CTOR
++#endif
++
+ /// ManagedStaticBase - Common base class for ManagedStatic instances.
+ class ManagedStaticBase {
+ protected:
++#ifdef LLVM_USE_CONSTEXPR_CTOR
++  mutable std::atomic<void *> Ptr{};
++  mutable void (*DeleterFn)(void *) = nullptr;
++  mutable const ManagedStaticBase *Next = nullptr;
++#else
+   // This should only be used as a static variable, which guarantees that this
+   // will be zero initialized.
+   mutable std::atomic<void *> Ptr;
+-  mutable void (*DeleterFn)(void*);
++  mutable void (*DeleterFn)(void *);
+   mutable const ManagedStaticBase *Next;
++#endif
+ 
+   void RegisterManagedStatic(void *(*creator)(), void (*deleter)(void*)) const;
+ 
+ public:
++#ifdef LLVM_USE_CONSTEXPR_CTOR
++  constexpr ManagedStaticBase() = default;
++#endif
++
+   /// isConstructed - Return true if this object has not been created yet.
+   bool isConstructed() const { return Ptr != nullptr; }
+ 
 diff --git a/lib/MC/MCObjectStreamer.cpp b/lib/MC/MCObjectStreamer.cpp
 index 174397e2739..ef7161fb56c 100644
 --- a/lib/MC/MCObjectStreamer.cpp
@@ -79,8 +138,35 @@ index 2bfb9a63eed..a710098e798 100644
  void MCStreamer::EmitBinaryData(StringRef Data) { EmitBytes(Data); }
  void MCStreamer::EmitValueImpl(const MCExpr *Value, unsigned Size, SMLoc Loc) {
    visitUsedExpr(*Value);
+diff --git a/lib/MC/WinCOFFObjectWriter.cpp b/lib/MC/WinCOFFObjectWriter.cpp
+index 956ae70b38d..b8ac715f61a 100644
+--- a/lib/MC/WinCOFFObjectWriter.cpp
++++ b/lib/MC/WinCOFFObjectWriter.cpp
+@@ -790,7 +790,9 @@ void WinCOFFObjectWriter::recordRelocation(MCAssembler &Asm,
+   if ((Header.Machine == COFF::IMAGE_FILE_MACHINE_AMD64 &&
+        Reloc.Data.Type == COFF::IMAGE_REL_AMD64_REL32) ||
+       (Header.Machine == COFF::IMAGE_FILE_MACHINE_I386 &&
+-       Reloc.Data.Type == COFF::IMAGE_REL_I386_REL32))
++       Reloc.Data.Type == COFF::IMAGE_REL_I386_REL32) ||
++      (Header.Machine == COFF::IMAGE_FILE_MACHINE_ARM64 &&
++       Reloc.Data.Type == COFF::IMAGE_REL_ARM64_REL32))
+     FixedValue += 4;
+ 
+   if (Header.Machine == COFF::IMAGE_FILE_MACHINE_ARMNT) {
+diff --git a/lib/Object/COFFObjectFile.cpp b/lib/Object/COFFObjectFile.cpp
+index 0a2053477ca..049657d9bfa 100644
+--- a/lib/Object/COFFObjectFile.cpp
++++ b/lib/Object/COFFObjectFile.cpp
+@@ -1238,6 +1238,7 @@ void COFFObjectFile::getRelocationTypeName(
+     LLVM_COFF_SWITCH_RELOC_TYPE_NAME(IMAGE_REL_ARM64_ADDR64);
+     LLVM_COFF_SWITCH_RELOC_TYPE_NAME(IMAGE_REL_ARM64_BRANCH19);
+     LLVM_COFF_SWITCH_RELOC_TYPE_NAME(IMAGE_REL_ARM64_BRANCH14);
++    LLVM_COFF_SWITCH_RELOC_TYPE_NAME(IMAGE_REL_ARM64_REL32);
+     default:
+       Res = "Unknown";
+     }
 diff --git a/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp b/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
-index 2bd0cbf9f7c..e7643d5f66d 100644
+index 2bd0cbf9f7c..9af66be0fbd 100644
 --- a/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
 +++ b/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
 @@ -41,6 +41,15 @@ public:
@@ -128,17 +214,19 @@ index 89c3e5b4c76..ba105365d74 100644
      case FK_Data_8:
        if (IsILP32) {
 diff --git a/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp b/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
-index 31762b9e4cd..5d8c6d89efc 100644
+index 31762b9e4cd..d53ab3e3b61 100644
 --- a/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
 +++ b/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
-@@ -53,6 +53,7 @@ unsigned AArch64WinCOFFObjectWriter::getRelocType(
-   }
+@@ -65,6 +65,9 @@ unsigned AArch64WinCOFFObjectWriter::getRelocType(
+   case FK_Data_8:
+     return COFF::IMAGE_REL_ARM64_ADDR64;
  
-   case FK_Data_4:
 +  case FK_PCRel_4:
-     switch (Modifier) {
-     default:
-       return COFF::IMAGE_REL_ARM64_ADDR32;
++    return COFF::IMAGE_REL_ARM64_REL32;
++
+   case FK_SecRel_2:
+     return COFF::IMAGE_REL_ARM64_SECTION;
+ 
 diff --git a/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.cpp b/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.cpp
 index a77df7a2598..e1aa7526f9b 100644
 --- a/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.cpp

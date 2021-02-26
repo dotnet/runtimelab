@@ -10,6 +10,7 @@
 using System.IO;
 using System.Text;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection.Runtime.General;
 
@@ -19,9 +20,11 @@ namespace System.Reflection.Runtime.Assemblies
 {
     internal partial class RuntimeAssembly
     {
+        [RequiresUnreferencedCode("Types might be removed")]
         public sealed override Type[] GetExportedTypes() => ExportedTypes.ToArray();
         public sealed override Module[] GetLoadedModules(bool getResourceModules) => Modules.ToArray();
         public sealed override Module[] GetModules(bool getResourceModules) => Modules.ToArray();
+        [RequiresUnreferencedCode("Types might be removed")]
         public sealed override Type[] GetTypes() => DefinedTypes.ToArray();
 
         // "copiedName" only affects whether CodeBase is set to the assembly location before or after the shadow-copy.
@@ -171,10 +174,10 @@ namespace System.Reflection.Runtime.TypeInfos
 
         public sealed override bool IsGenericType => IsConstructedGenericType || IsGenericTypeDefinition;
         public sealed override Type[] GetInterfaces() => ImplementedInterfaces.ToArray();
-
         public sealed override string GetEnumName(object value) => Enum.GetName(this, value);
         public sealed override string[] GetEnumNames() => Enum.GetNames(this);
         public sealed override Type GetEnumUnderlyingType() => Enum.GetUnderlyingType(this);
+        [RequiresDynamicCode("It might not be possible to create an array of the enum type at runtime. Use Enum.GetValues<TEnum> instead.")]
         public sealed override Array GetEnumValues() => Enum.GetValues(this);
         public sealed override bool IsEnumDefined(object value) => Enum.IsDefined(this, value);
 

@@ -12,7 +12,14 @@
 #include <errno.h>
 #include <time.h>
 
+#if defined(TARGET_OSX)
+// So we can use the declaration of pthread_cond_timedwait_relative_np
+#undef _XOPEN_SOURCE
+#endif
 #include <pthread.h>
+#if defined(TARGET_OSX)
+#define _XOPEN_SOURCE
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // LowLevelMonitor - Represents a non-recursive mutex and condition
@@ -54,11 +61,7 @@ LowLevelMonitor* SystemNative_LowLevelMonitor_Create()
         return NULL;
     }
 
-#if HAVE_CLOCK_GETTIME_NSEC_NP
-    // Older versions of OSX don't support CLOCK_MONOTONIC, so we don't use pthread_condattr_setclock. See
-    // Wait(int32_t timeoutMilliseconds).
-    error = pthread_cond_init(&monitor->Condition, NULL);
-#else
+#if HAVE_PTHREAD_CONDATTR_SETCLOCK && HAVE_CLOCK_MONOTONIC
     pthread_condattr_t conditionAttributes;
     error = pthread_condattr_init(&conditionAttributes);
     if (error != 0)
@@ -79,6 +82,8 @@ LowLevelMonitor* SystemNative_LowLevelMonitor_Create()
     int condAttrDestroyError = pthread_condattr_destroy(&conditionAttributes);
     assert(condAttrDestroyError == 0);
     (void)condAttrDestroyError; // unused in release build
+#else
+    error = pthread_cond_init(&monitor->Condition, NULL);
 #endif
     if (error != 0)
     {

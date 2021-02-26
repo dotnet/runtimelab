@@ -95,6 +95,8 @@ namespace System.Reflection.Runtime.General
             return null;
         }
 
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode",
+            Justification = "Calling Assembly.GetType on a third-party Assembly class.")]
         public static Type GetTypeCore(this Assembly assembly, string name, bool ignoreCase)
         {
             if (assembly is RuntimeAssembly runtimeAssembly)

@@ -114,6 +114,8 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
+        public bool IsStateMachineMoveNextMethod => false;
+
         public override bool IsShareable => true;
 
         protected override DependencyList ComputeNonRelocationBasedDependencies(NodeFactory factory)

@@ -26,6 +26,8 @@ namespace ILCompiler.DependencyAnalysis
     
     public interface INodeWithDebugInfo
     {
+        bool IsStateMachineMoveNextMethod { get; }
+
         DebugLocInfo[] DebugLocInfos
         {
             get;

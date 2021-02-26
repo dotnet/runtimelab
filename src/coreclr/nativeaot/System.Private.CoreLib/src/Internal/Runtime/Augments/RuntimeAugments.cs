@@ -427,25 +427,25 @@ namespace Internal.Runtime.Augments
             switch (elementType)
             {
                 case EETypeElementType.Boolean:
-                    return CommonRuntimeTypes.Boolean;
+                    return typeof(bool);
                 case EETypeElementType.Char:
-                    return CommonRuntimeTypes.Char;
+                    return typeof(char);
                 case EETypeElementType.SByte:
-                    return CommonRuntimeTypes.SByte;
+                    return typeof(sbyte);
                 case EETypeElementType.Byte:
-                    return CommonRuntimeTypes.Byte;
+                    return typeof(byte);
                 case EETypeElementType.Int16:
-                    return CommonRuntimeTypes.Int16;
+                    return typeof(short);
                 case EETypeElementType.UInt16:
-                    return CommonRuntimeTypes.UInt16;
+                    return typeof(ushort);
                 case EETypeElementType.Int32:
-                    return CommonRuntimeTypes.Int32;
+                    return typeof(int);
                 case EETypeElementType.UInt32:
-                    return CommonRuntimeTypes.UInt32;
+                    return typeof(uint);
                 case EETypeElementType.Int64:
-                    return CommonRuntimeTypes.Int64;
+                    return typeof(long);
                 case EETypeElementType.UInt64:
-                    return CommonRuntimeTypes.UInt64;
+                    return typeof(ulong);
                 default:
                     throw new NotSupportedException();
             }

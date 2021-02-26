@@ -26,6 +26,7 @@ namespace ILCompiler
         protected readonly Logger _logger;
         private readonly DebugInformationProvider _debugInformationProvider;
         private readonly DevirtualizationManager _devirtualizationManager;
+        private readonly IInliningPolicy _inliningPolicy;
 
         public NameMangler NameMangler => _nodeFactory.NameMangler;
         public NodeFactory NodeFactory => _nodeFactory;
@@ -44,6 +45,7 @@ namespace ILCompiler
             ILProvider ilProvider,
             DebugInformationProvider debugInformationProvider,
             DevirtualizationManager devirtualizationManager,
+            IInliningPolicy inliningPolicy,
             Logger logger)
         {
             _dependencyGraph = dependencyGraph;
@@ -51,6 +53,7 @@ namespace ILCompiler
             _logger = logger;
             _debugInformationProvider = debugInformationProvider;
             _devirtualizationManager = devirtualizationManager;
+            _inliningPolicy = inliningPolicy;
 
             _dependencyGraph.ComputeDependencyRoutine += ComputeDependencyNodeDependencies;
             NodeFactory.AttachToDependencyGraph(_dependencyGraph);
@@ -90,7 +93,7 @@ namespace ILCompiler
 
         public bool CanInline(MethodDesc caller, MethodDesc callee)
         {
-            return NodeFactory.CompilationModuleGroup.CanInline(caller, callee);
+            return _inliningPolicy.CanInline(caller, callee);
         }
 
         public DelegateCreationInfo GetDelegateCtor(TypeDesc delegateType, MethodDesc target, bool followVirtualDispatch)
