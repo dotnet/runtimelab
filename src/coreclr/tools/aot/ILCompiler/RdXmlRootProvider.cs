@@ -180,7 +180,7 @@ namespace ILCompiler
                     continue;
 
                 if (instArgs.Count != method.Instantiation.Length)
-                    throw new Exception($"Could not instantiate Method {method} specified by a Runtime Directive. Method takes {method.Instantiation.Length} generic argument(s) but {instArgs.Count} were provided.");
+                    continue;
 
                 if (instArgs.Count > 0)
                 {
