@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-
 using Internal.TypeSystem;
 
 using Internal.Text;
@@ -67,6 +66,9 @@ namespace ILCompiler.DependencyAnalysis
                     arm64Emitter.Builder.RequireInitialAlignment(alignment);
                     arm64Emitter.Builder.AddSymbol(this);
                     return arm64Emitter.Builder.ToObjectData();
+
+                case TargetArchitecture.Wasm32:
+                    return new ObjectData(null, null, 0, null);
 
                 default:
                     throw new NotImplementedException();

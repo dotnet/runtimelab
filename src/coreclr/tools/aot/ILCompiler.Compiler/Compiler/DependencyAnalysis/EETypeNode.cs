@@ -279,8 +279,7 @@ namespace ILCompiler.DependencyAnalysis
                         // those can never be overriden by children anyway.
                         bool canUseTentativeMethod = isNonInterfaceAbstractType
                             && !decl.CanMethodBeInSealedVTable()
-                            && factory.CompilationModuleGroup.AllowVirtualMethodOnAbstractTypeOptimization(canonImpl)
-                            && !factory.IsCppCodegenTemporaryWorkaround;
+                            && factory.CompilationModuleGroup.AllowVirtualMethodOnAbstractTypeOptimization(canonImpl);
                         IMethodNode implNode = canUseTentativeMethod ?
                             factory.TentativeMethodEntrypoint(canonImpl, impl.OwningType.IsValueType) :
                             factory.MethodEntrypoint(canonImpl, impl.OwningType.IsValueType);
@@ -785,8 +784,7 @@ namespace ILCompiler.DependencyAnalysis
                         // in the children of that abstract type.
                         bool canUseTentativeEntrypoint = implType is MetadataType mdImplType && mdImplType.IsAbstract && !mdImplType.IsInterface
                             && implMethod.OwningType is MetadataType mdImplMethodType && mdImplMethodType.IsAbstract
-                            && factory.CompilationModuleGroup.AllowVirtualMethodOnAbstractTypeOptimization(canonImplMethod)
-                            && !factory.IsCppCodegenTemporaryWorkaround;
+                            && factory.CompilationModuleGroup.AllowVirtualMethodOnAbstractTypeOptimization(canonImplMethod);
 
                         IMethodNode implSymbol =  canUseTentativeEntrypoint ?
                             factory.TentativeMethodEntrypoint(canonImplMethod, implMethod.OwningType.IsValueType) :

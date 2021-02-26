@@ -87,5 +87,13 @@ namespace ILCompiler.DependencyAnalysis
         public override int ClassCode => 0x562912;
 
         public override bool IsShareable => ((ObjectNode)_methodNode).IsShareable;
+
+        protected override DependencyList ComputeNonRelocationBasedDependencies(NodeFactory factory)
+        {
+            Debug.Assert(factory.Target.Architecture == TargetArchitecture.Wasm32); // only Web Assembly target needs to add the ThrowHelpers.ThrowBodyRemoved dependency like this.
+            DependencyList dependencyList = base.ComputeNonRelocationBasedDependencies(factory) ?? new DependencyList();
+            dependencyList.Add(GetTarget(factory), "WebAssembly tentative node throw helper");
+            return dependencyList;
+        }
     }
 }
