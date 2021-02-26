@@ -195,7 +195,8 @@ namespace ILCompiler
             if (!rootedAnyMethod)
             {
                 string parameterString = parameter.Count > 0 ? "(" + string.Join(", ", parameter) + ")" : null;
-                throw new Exception($"Could not find Method(s) {containingType}.{methodName}{parameterString} specified by a Runtime Directive.");
+                string instantiationString = instArgs.Count > 0 ? "<" + string.Join(", ", instArgs) + ">" : null;
+                throw new Exception($"Could not find Method(s) {containingType}.{methodName}{instantiationString}{parameterString} specified by a Runtime Directive.");
             }
         }
     }
