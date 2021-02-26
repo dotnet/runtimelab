@@ -10,23 +10,94 @@ using System.Runtime.Serialization;
 namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
-    /// Represents a bitvector
+    /// Represents a bitvector of given Length (number of bits).
     /// </summary>
-    [Serializable]
-    internal class BV : IComparable, ISerializable
+    internal class BV : IComparable
     {
-        internal ulong first;
-        internal ulong[] more;
+        private ulong[] _blocks;
+
+        private const ulong UL1 = 1;
 
         /// <summary>
-        /// Constructs a bitvector
+        /// Number of bits.
         /// </summary>
-        /// <param name="first">first 64 bits</param>
-        /// <param name="more">remaining bits in 64 increments</param>
-        public BV(ulong first, params ulong[] more)
+        internal readonly int Length;
+
+        /// <summary>
+        /// Returns true iff the i'th bit is 1
+        /// </summary>
+        internal bool this[int i]
         {
-            this.first = first;
-            this.more = more;
+            get
+            {
+#if DEBUG
+                if (i < 0 || i >= Length)
+                    throw new ArgumentOutOfRangeException(nameof(i));
+#endif
+                int k = i / 64;
+                int j = i % 64;
+                return (_blocks[k] & (UL1 << j)) != 0;
+            }
+            private set
+            {
+#if DEBUG
+                if (i < 0 || i >= Length)
+                    throw new ArgumentOutOfRangeException(nameof(i));
+#endif
+                int k = i / 64;
+                int j = i % 64;
+                if (value)
+                    //set the j'th bit of the k'th block to 1
+                    _blocks[k] |= (UL1 << j);
+                else
+                    //set the j'th bit of the k'th block to 0
+                    _blocks[k] &= ~(UL1 << j);
+            }
+        }
+
+        private BV(int K)
+        {
+            Length = K;
+            _blocks = new ulong[((K - 1) / 64) + 1];
+        }
+
+        private BV(int K, ulong[] blocks)
+        {
+            Length = K;
+            _blocks = blocks;
+        }
+
+        /// <summary>
+        /// Constructs a bitvector of K bits initially all 0.
+        /// </summary>
+        public static BV MkFalse(int K) => new(K);
+
+        /// <summary>
+        /// Constructs a bitvector of K bits initially all 1.
+        /// </summary>
+        public static BV MkTrue(int K) => ~MkFalse(K);
+
+        /// <summary>
+        /// Returns the bitvector of length K with its i'th bit set to 1 all other bits are 0.
+        /// </summary>
+        public static BV MkBit1(int K, int i)
+        {
+            BV bv = new BV(K);
+            bv[i] = true;
+            return bv;
+        }
+
+        /// <summary>
+        /// Constructs a bitvector with the given bit valuation.
+        /// </summary>
+        public static BV Mk(params bool[] bits)
+        {
+            var bv = new BV(bits.Length);
+            //all bits are initially 0 so need not be set to 0
+            for (int i = 0; i < bits.Length; i++)
+                if (bits[i])
+                    bv[i] = true;
+            return bv;
         }
 
         /// <summary>
@@ -35,60 +106,72 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static BV operator &(BV x, BV y)
         {
-            int k = (x.more.Length <= y.more.Length ? x.more.Length : y.more.Length);
-            var first = x.first & y.first;
-            var more = new ulong[k];
-            for (int i = 0; i < k; i++)
-            {
-                more[i] = x.more[i] & y.more[i];
-            }
-            return new BV(first, more);
+#if DEBUG
+            if (x.Length != y.Length)
+                throw new InvalidOperationException();
+#endif
+            ulong[] blocks = new ulong[x._blocks.Length];
+            for (int i = 0; i < blocks.Length; i++)
+                blocks[i] = x._blocks[i] & y._blocks[i];
+            return new BV(x.Length, blocks);
         }
 
         /// <summary>
         /// Bitwise OR
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static BV operator |(BV x, BV y)
         {
-            int k = (x.more.Length <= y.more.Length ? x.more.Length : y.more.Length);
-            var first = x.first | y.first;
-            var more = new ulong[k];
-            for (int i = 0; i < k; i++)
-            {
-                more[i] = x.more[i] | y.more[i];
-            }
-            return new BV(first, more);
+#if DEBUG
+            if (x.Length != y.Length)
+                throw new InvalidOperationException();
+#endif
+            ulong[] blocks = new ulong[x._blocks.Length];
+            for (int i = 0; i < blocks.Length; i++)
+                blocks[i] = x._blocks[i] | y._blocks[i];
+            return new BV(x.Length, blocks);
         }
 
         /// <summary>
         /// Bitwise XOR
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static BV operator ^(BV x, BV y)
         {
-            int k = (x.more.Length <= y.more.Length ? x.more.Length : y.more.Length);
-            var first = x.first ^ y.first;
-            var more = new ulong[x.more.Length];
-            for (int i = 0; i < x.more.Length; i++)
-            {
-                more[i] = x.more[i] ^ y.more[i];
-            }
-            return new BV(first, more);
+#if DEBUG
+            if (x.Length != y.Length)
+                throw new InvalidOperationException();
+#endif
+            ulong[] blocks = new ulong[x._blocks.Length];
+            for (int i = 0; i < blocks.Length; i++)
+                blocks[i] = x._blocks[i] ^ y._blocks[i];
+            return new BV(x.Length, blocks);
         }
 
         /// <summary>
         /// Bitwise NOT
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static BV operator ~(BV x)
         {
-            var first_compl = ~x.first;
-            var more_compl = Array.ConvertAll(x.more, n => ~n);
-            var compl = new BV(first_compl, more_compl);
-            return compl;
+            ulong[] blocks = new ulong[x._blocks.Length];
+            for (int i = 0; i < blocks.Length; i++)
+                blocks[i] = ~x._blocks[i];
+            int j = x.Length % 64;
+            if (j > 0)
+            {
+                //the number of bits is not a precise multiple of 64
+                //so the last block has extra bits that need to be reset to 0
+                int last = (x.Length - 1) / 64;
+                blocks[last] &= (UL1 << j) - 1;
+            }
+            return new BV(x.Length, blocks);
         }
 
         /// <summary>
         /// less than
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator <(BV x, BV y)
         {
             return x.CompareTo(y) < 0;
@@ -97,6 +180,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// greater than
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator >(BV x, BV y)
         {
             return x.CompareTo(y) > 0;
@@ -105,6 +189,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// less than or equal
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator <=(BV x, BV y)
         {
             return x.CompareTo(y) <= 0;
@@ -113,46 +198,35 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// greater than or equal
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool operator >=(BV x, BV y)
         {
             return x.CompareTo(y) >= 0;
         }
 
         /// <summary>
-        /// Shows the serialized representation
+        /// Returns the serialized representation
         /// </summary>
         public override string ToString()
         {
-            return Serialize();
+            return SerializeToString();
         }
 
         public override bool Equals(object obj)
         {
-            BV that = obj as BV;
-            if (that == null)
-                return false;
-            if (this == that)
-                return true;
-            if (this.first != that.first)
-                return false;
-            if (that.more.Length != this.more.Length)
-                return false;
-            for (int i = 0; i < more.Length; i++)
-            {
-                if (more[i] != that.more[i])
-                    return false;
-            }
-            return true;
+            return CompareTo(obj) == 0;
         }
 
+        private int _hashcode;
         public override int GetHashCode()
         {
-            int h = first.GetHashCode();
-            for (int i = 0; i < more.Length; i++)
+            if (_hashcode == 0)
             {
-                h = (h << 5) ^ more[i].GetHashCode();
+                _hashcode = Length.GetHashCode();
+                for (int i = 0; i < _blocks.Length; i++)
+                    _hashcode = (_hashcode << 1) ^ _blocks[i].GetHashCode();
             }
-            return h;
+            return _hashcode;
         }
 
         public int CompareTo(object obj)
@@ -160,74 +234,58 @@ namespace System.Text.RegularExpressions.SRM
             BV that = obj as BV;
             if (that == null)
                 return 1;
-            else if (this.more.Length != that.more.Length)
-            {
-                return this.more.Length.CompareTo(that.more.Length);
-            }
+            else if (Length != that.Length)
+                return Length.CompareTo(that.Length);
             else
             {
-                int k = this.more.Length;
-                if (k > 0)
+                for (int i = _blocks.Length - 1; i >= 0; i--)
                 {
-                    int i = k - 1;
-                    while (i >= 0)
-                    {
-                        var comp = this.more[i].CompareTo(that.more[i]);
-                        if (comp == 0)
-                            i = i - 1;
-                        else
-                            return comp;
-                    }
+                    if (_blocks[i] < that._blocks[i])
+                        return -1;
+                    else if (_blocks[i] > that._blocks[i])
+                        return 1;
                 }
-                return this.first.CompareTo(that.first);
+                //all blocks were equal
+                return 0;
             }
         }
 
         #region serialization
         /// <summary>
-        /// Serialize
+        /// Serialize BV into a string of hexadecimal numerals separated by '-',
+        /// each numeral representing an unsigned 64-bit integer in hexadecimal in [0-9A-F]+.
+        /// The serialization starts with the Length and is ordered so that more significant blocks come first.
         /// </summary>
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        public void Serialize(StringBuilder sb)
         {
-            info.AddValue("bv", Serialize());
+            //start with the length
+            sb.Append(Length.ToString("X"));
+            sb.Append('-');
+            //then consider bits in higher blocks as being more significant in order
+            for (int i = _blocks.Length - 1; i > 0 ; i--)
+            {
+                sb.Append(_blocks[i].ToString("X"));
+                sb.Append('-');
+            }
+            sb.Append(_blocks[0].ToString("X"));
         }
-        /// <summary>
-        /// Deserialize
-        /// </summary>
-        public BV(SerializationInfo info, StreamingContext context)
+
+        public string SerializeToString()
         {
-            var s = info.GetString("bv");
-            Deserialize_Helper(s, out first, out more);
+            StringBuilder sb = new StringBuilder();
+            Serialize(sb);
+            return sb.ToString();
         }
 
         /// <summary>
-        /// Serialize BV into a string of hexadecimal numerals, separated by '.',
-        /// each numeral representing an unsigned 64-bit integer in hexadecimal using lowercase a-f
+        /// Deserialize BV from given string s that was produced by Serialize
         /// </summary>
-        /// <returns></returns>
-        public string Serialize()
-        {
-            string str = this.first.ToString("x") + "." + string.Join(".", Array.ConvertAll(this.more, x => x.ToString("x")));
-            return str;
-        }
-
-        /// <summary>
-        /// Deserialize BV from given string that was produced by Serialize
-        /// </summary>
-        /// <param name="s">BV in serialized form</param>
         public static BV Deserialize(string s)
         {
-            ulong first;
-            ulong[] rest;
-            Deserialize_Helper(s, out first, out rest);
-            return new BV(first, rest);
-        }
-
-        private static void Deserialize_Helper(string s, out ulong first, out ulong[] rest)
-        {
-            int i = s.IndexOf('.');
-            first = ulong.Parse(s.Substring(0, i), System.Globalization.NumberStyles.HexNumber);
-            rest = Array.ConvertAll(s.Substring(i + 1).Split('.'), x => ulong.Parse(x, System.Globalization.NumberStyles.HexNumber));
+            int i = s.IndexOf('-');
+            int K = int.Parse(s.Substring(0, i), Globalization.NumberStyles.HexNumber);
+            ulong[] blocks = Array.ConvertAll(s.Substring(i + 1).Split('-'), x => ulong.Parse(x, Globalization.NumberStyles.HexNumber));
+            return new BV(K, blocks);
         }
         #endregion
     }

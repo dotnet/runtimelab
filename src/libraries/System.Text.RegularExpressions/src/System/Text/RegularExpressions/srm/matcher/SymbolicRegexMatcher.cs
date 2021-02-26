@@ -29,7 +29,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         internal SymbolicRegexBV(SymbolicRegexNode<BDD> sr,
                                  CharSetSolver solver, SymbolicRegexBuilder<BDD> srBuilder, BDD[] minterms, System.Text.RegularExpressions.RegexOptions options)
-            : this(new SymbolicRegexBuilder<BV>(BVAlgebra.Create(solver, minterms)), sr,
+            : this(new SymbolicRegexBuilder<BV>(new BVAlgebra(solver, minterms)), sr,
                   solver, srBuilder, minterms, options)
         {
             //update the word letter predicate in the BV solver to the correct one
@@ -38,12 +38,12 @@ namespace System.Text.RegularExpressions.SRM
             this.builder.newLinePredicate = this.builder.solver.ConvertFromCharSet(solver, srBuilder.newLinePredicate);
         }
 
-        /// <summary>
-        /// Invoked by deserializer
-        /// </summary>
-        public SymbolicRegexBV(SerializationInfo info, StreamingContext context) : base(info, context)
-        {
-        }
+        ///// <summary>
+        ///// Invoked by deserializer
+        ///// </summary>
+        //public SymbolicRegexBV(SerializationInfo info, StreamingContext context) : base(info, context)
+        //{
+        //}
     }
 
     /// <summary>
@@ -68,17 +68,17 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         internal SymbolicRegexUInt64(SymbolicRegexNode<BDD> sr,
                                  CharSetSolver solver, SymbolicRegexBuilder<BDD> srBuilder, BDD[] minterms, System.Text.RegularExpressions.RegexOptions options)
-            : this(new SymbolicRegexBuilder<ulong>(BV64Algebra.Create(solver, minterms)), sr,
+            : this(new SymbolicRegexBuilder<ulong>(new BV64Algebra(solver, minterms)), sr,
                   solver, srBuilder, minterms, options)
         {
         }
 
-        /// <summary>
-        /// Invoked by deserializer
-        /// </summary>
-        public SymbolicRegexUInt64(SerializationInfo info, StreamingContext context) : base(info, context)
-        {
-        }
+        ///// <summary>
+        ///// Invoked by deserializer
+        ///// </summary>
+        //public SymbolicRegexUInt64(SerializationInfo info, StreamingContext context) : base(info, context)
+        //{
+        //}
     }
 
     /// <summary>
@@ -86,7 +86,7 @@ namespace System.Text.RegularExpressions.SRM
     /// </summary>
     /// <typeparam name="S">character set type</typeparam>
     [Serializable]
-    internal class SymbolicRegex<S> : IMatcher, ISerializable
+    internal abstract class SymbolicRegex<S> : IMatcher, ISerializable
     {
         [NonSerialized]
         internal SymbolicRegexBuilder<S> builder;
@@ -102,7 +102,7 @@ namespace System.Text.RegularExpressions.SRM
         /// Maps each character into a partition id in the range 0..K-1.
         /// </summary>
         [NonSerialized]
-        private DecisionTree dt;
+        private Classifier dt;
 
 #if UNSAFE
         /// <summary>
@@ -138,7 +138,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Set of elements that matter as first element of A.
         /// </summary>
-        internal BooleanDecisionTree A_StartSet;
+        internal BooleanClassifier A_StartSet;
 
         /// <summary>
         /// predicate over characters that make some progress
@@ -261,10 +261,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         /// <param name="c">character code</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private S GetAtom(int c)
-        {
-            return atoms[c < dt.precomputed.Length ? dt.precomputed[c] : dt.bst.Find(c)];
-        }
+        private S GetAtom(int c) => atoms[dt.Find(c)];
 
         /// <summary>
         /// Initial bound (1024) on the nr of states stored in delta.
@@ -286,97 +283,35 @@ namespace System.Text.RegularExpressions.SRM
         private State<S>?[] delta;
 
         #region custom serialization
-
-        [NonSerialized]
-        internal bool serializeInSimplifiedForm = false;
         /// <summary>
         /// This serialization method is invoked by BinaryFormatter.Serialize via Serialize method.
         /// </summary>
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            if (serializeInSimplifiedForm)
-            {
-                #region special case for replacing all character classes with a single character
-                BV64Algebra bvalg = this.builder.solver as BV64Algebra;
-                if (bvalg == null)
-                    throw new NotSupportedException("Simplified serialization is only supported for BV64Algebra");
-                var simpl_bvalg = bvalg.ReplaceMintermsWithVisibleCharacters();
+            info.AddValue("solver", this.builder.solver);
+            info.AddValue("A", A.Serialize());
+            info.AddValue("Options", (object)Options);
+            info.AddValue("wordLetter", this.builder.wordLetterPredicate);
+            info.AddValue("newLine", this.builder.newLinePredicate);
 
-                info.AddValue("solver", simpl_bvalg);
-                info.AddValue("A", A.Serialize());
-                info.AddValue("Options", (object)Options);
+            info.AddValue("A_StartSet", A_StartSet);
+            info.AddValue("A_startset", A_startset);
+            info.AddValue("A_StartSet_Size", A_StartSet_Size);
 
-                ulong A_startset_ulong = (ulong)(object)A_startset;
-                ulong wordLetter_ulong = (ulong)(object)builder.wordLetterPredicate;
-                ulong newLine_ulong = (ulong)(object)builder.newLinePredicate;
+            info.AddValue("A_prefix", StringUtility.SerializeStringToCharCodeSequence(A_prefix));
+            info.AddValue("A_fixedPrefix_ignoreCase", A_fixedPrefix_ignoreCase);
+            info.AddValue("A_prefix_array", A_prefix_array);
 
-                var simpl_precomputed = Array.ConvertAll(simpl_bvalg.dtree.precomputed, atomId => simpl_bvalg.IsSatisfiable(simpl_bvalg.MkAnd(simpl_bvalg.atoms[atomId], A_startset_ulong)));
-                BooleanDecisionTree simpl_A_StartSet;
-                if (simpl_bvalg.IsSatisfiable(simpl_bvalg.MkAnd(simpl_bvalg.atoms[0], A_startset_ulong)))
-                    simpl_A_StartSet = new BooleanDecisionTree(simpl_precomputed, new DecisionTree.BST(1, null, null));
-                else
-                    simpl_A_StartSet = new BooleanDecisionTree(simpl_precomputed, new DecisionTree.BST(0, null, null));
-                var simpl_A_StartSet_Size = simpl_bvalg.ComputeDomainSize(A_startset_ulong);
+            info.AddValue("Ar_prefix_array", Ar_prefix_array);
+            info.AddValue("Ar_prefix", StringUtility.SerializeStringToCharCodeSequence(Ar_prefix));
+        }
 
-                info.AddValue("A_StartSet", simpl_A_StartSet);
-                info.AddValue("A_startset", A_startset_ulong);
-                info.AddValue("wordLetter", wordLetter_ulong);
-                info.AddValue("newLine", newLine_ulong);
+        /// <summary>
+        /// Append the custom format of this matcher into sb
+        /// </summary>
+        public void Serialize(StringBuilder sb)
+        {
 
-                var simpl_A_prefix = "";
-
-                for (int i = 0; i < A_prefix_array.Length; i++)
-                {
-                    ulong set = (ulong)(object)A_prefix_array[i];
-                    ulong size = simpl_bvalg.ComputeDomainSize(set);
-                    if (size > 1)
-                        break;
-                    else
-                        simpl_A_prefix += simpl_bvalg.PrettyPrint(set);
-                }
-
-                info.AddValue("A_prefix", StringUtility.SerializeStringToCharCodeSequence(simpl_A_prefix));
-                info.AddValue("A_fixedPrefix_ignoreCase", false);
-                info.AddValue("A_prefix_array", A_prefix_array);
-
-                var simpl_Ar_prefix = "";
-
-                for (int i = 0; i < Ar_prefix_array.Length; i++)
-                {
-                    ulong set = (ulong)(object)Ar_prefix_array[i];
-                    ulong size = simpl_bvalg.ComputeDomainSize(set);
-                    if (size > 1)
-                        break;
-                    else
-                        simpl_Ar_prefix += simpl_bvalg.PrettyPrint(set);
-                }
-
-                info.AddValue("Ar_prefix_array", Ar_prefix_array);
-                info.AddValue("Ar_prefix", StringUtility.SerializeStringToCharCodeSequence(simpl_Ar_prefix));
-                #endregion
-            }
-            else
-            {
-                info.AddValue("solver", this.builder.solver);
-                info.AddValue("A", A.Serialize());
-                info.AddValue("Options", (object)Options);
-                info.AddValue("wordLetter", this.builder.wordLetterPredicate);
-                info.AddValue("newLine", this.builder.newLinePredicate);
-
-                info.AddValue("StateLimit", StateLimit);
-                info.AddValue("StartSetSizeLimit", StartSetSizeLimit);
-
-                info.AddValue("A_StartSet", A_StartSet);
-                info.AddValue("A_startset", A_startset);
-                info.AddValue("A_StartSet_Size", A_StartSet_Size);
-
-                info.AddValue("A_prefix", StringUtility.SerializeStringToCharCodeSequence(A_prefix));
-                info.AddValue("A_fixedPrefix_ignoreCase", A_fixedPrefix_ignoreCase);
-                info.AddValue("A_prefix_array", A_prefix_array);
-
-                info.AddValue("Ar_prefix_array", Ar_prefix_array);
-                info.AddValue("Ar_prefix", StringUtility.SerializeStringToCharCodeSequence(Ar_prefix));
-            }
         }
 
         /// <summary>
@@ -392,7 +327,7 @@ namespace System.Text.RegularExpressions.SRM
             this.builder.newLinePredicate = (S)info.GetValue("newLine", typeof(S));
 
             this.atoms = builder.solver.GetPartition();
-            this.dt = ((BVAlgebraBase)builder.solver).dtree;
+            this.dt = ((BVAlgebraBase)builder.solver)._classifier;
 
             A = builder.Deserialize(info.GetString("A"));
 
@@ -401,7 +336,7 @@ namespace System.Text.RegularExpressions.SRM
             this.A_startset = A.GetStartSet();
             this.A_StartSet_Size = (int)builder.solver.ComputeDomainSize(A_startset);
 
-            this.A_StartSet = (BooleanDecisionTree)info.GetValue("A_StartSet", typeof(BooleanDecisionTree));
+            this.A_StartSet = BooleanClassifier.Deserialize(info.GetString("A_StartSet"));
             this.A_startset = (S)info.GetValue("A_startset", typeof(S));
 
             this.A_prefix_array = info.GetValue("A_prefix_array", typeof(S[])) as S[];
@@ -415,16 +350,6 @@ namespace System.Text.RegularExpressions.SRM
 
             //InitializeVectors();
         }
-
-        /// <summary>
-        /// Parse a symbolic regex from its serialized form.
-        /// </summary>
-        /// <param name="symbolicregex">serialized form of a symbolic regex</param>
-        public SymbolicRegexNode<S> Parse(string symbolicregex)
-        {
-            return builder.Deserialize(symbolicregex);
-        }
-
         #endregion
 
         /// <summary>
@@ -441,23 +366,23 @@ namespace System.Text.RegularExpressions.SRM
             if (builder.solver is BV64Algebra)
             {
                 BV64Algebra bva = builder.solver as BV64Algebra;
-                atoms = bva.atoms as S[];
-                dt = bva.dtree;
+                atoms = bva.GetPartition() as S[];
+                dt = bva._classifier;
             }
             else if (builder.solver is BVAlgebra)
             {
                 BVAlgebra bva = builder.solver as BVAlgebra;
                 atoms = bva.atoms as S[];
-                dt = bva.dtree;
+                dt = bva._classifier;
             }
             else if (builder.solver is CharSetSolver)
             {
                 atoms = minterms as S[];
-                dt = DecisionTree.Create(builder.solver as CharSetSolver, minterms);
+                dt = Classifier.Create(builder.solver as CharSetSolver, minterms);
             }
             else
             {
-                throw new NotSupportedException(string.Format("only {0} or {1} or {2} algebra is supported", typeof(BV64Algebra), typeof(BVAlgebra), typeof(CharSetSolver)));
+                throw new NotSupportedException($"only {nameof(BV64Algebra)} or {nameof(BVAlgebra)} or {nameof(CharSetSolver)} algebra is supported");
             }
 
             this.A = sr;
@@ -466,10 +391,13 @@ namespace System.Text.RegularExpressions.SRM
 
             A_startset = A.GetStartSet();
             this.A_StartSet_Size = (int)builder.solver.ComputeDomainSize(A_startset);
+
+#if DEBUG
             if (this.A_StartSet_Size == 0)
                 throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + "characterless regex");
+#endif
 
-            this.A_StartSet = BooleanDecisionTree.Create(css, builder.solver.ConvertToCharSet(css, A_startset));
+            this.A_StartSet = BooleanClassifier.Create(css, builder.solver.ConvertToCharSet(css, A_startset));
 
             this.A_prefix_array = A.GetPrefix();
             this.A_prefix = A.GetFixedPrefix(css, out this.A_fixedPrefix_ignoreCase);
@@ -562,7 +490,7 @@ namespace System.Text.RegularExpressions.SRM
         {
             int c = input[i];
             // atom_id = atoms.Length represents \Z (last \n)
-            int atom_id = (c == 10 && i == input.Length ? atoms.Length : (c < dt.precomputed.Length ? dt.precomputed[c] : dt.bst.Find(c)));
+            int atom_id = (c == 10 && i == input.Length - 1 ? atoms.Length : dt.Find(c));
             int offset = (q.Id << K) | atom_id;
             var p = delta[offset];
             if (p == null)
@@ -981,7 +909,7 @@ namespace System.Text.RegularExpressions.SRM
                                 return 0;
                             else
                             {
-                                S nextCharAtom = atoms[nextChar < dt.precomputed.Length ? dt.precomputed[nextChar] : dt.bst.Find(nextChar)];
+                                S nextCharAtom = atoms[dt.Find(nextChar)];
                                 if (builder.solver.IsSatisfiable(builder.solver.MkAnd(builder.wordLetterPredicate, nextCharAtom)))
                                     return CharKindId.WordLetter;
                                 else
@@ -1484,11 +1412,9 @@ namespace System.Text.RegularExpressions.SRM
             int k = input.Length;
             while (i < k)
             {
-                var input_i = input[i];
-                if (input_i < A_StartSet.precomputed.Length ? A_StartSet.precomputed[input_i] : A_StartSet.bst.Find(input_i) == 1)
+                if (A_StartSet.Contains(input[i]))
                     break;
-                else
-                    i += 1;
+                i++;
             }
             if (i == k)
                 return -1;
@@ -1521,7 +1447,7 @@ namespace System.Text.RegularExpressions.SRM
                     }
                 }
 
-                if (c < A_StartSet.precomputed.Length ? A_StartSet.precomputed[c] : A_StartSet.bst.Find(c) == 1)
+                if (A_StartSet.Contains((ushort)c))
                     break;
                 else
                 {

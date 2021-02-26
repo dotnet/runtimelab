@@ -8,6 +8,8 @@
     <Compile Include="System\Collections\HashtableExtensions.cs" />
     <Compile Include="System\Collections\Generic\ValueListBuilder.Pop.cs" />
     <Compile Include="System\Text\RegularExpressions\Regex.Match.SRM.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\BooleanClassifier.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\Classifier.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\State.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexInfo.cs" />
     <Compile Include="System\Text\RegularExpressions\RegexCharClass.MappingTable.cs" />
@@ -70,16 +72,12 @@
     <Compile Include="System\Text\RegularExpressions\srm\algebras\CharSetSolver.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\algebras\IBooleanAlgebra.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\algebras\ICharAlgebra.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\algebras\IntervalSet.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\algebras\MintermGenerator.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\algebras\RangeConverter.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\matcher\BooleanDecisionTree.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\matcher\DecisionTree.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\matcher\IMatcher.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\matcher\SymbolicRegexMatcher.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\matcher\UTF8Encoding.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\matcher\VectorizedIndexOf.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\printing\RegexCharSetPrinter.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\unicode\IgnoreCaseRelation.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\unicode\IgnoreCaseRelationGenerator.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\unicode\IgnoreCaseTransformer.cs" />

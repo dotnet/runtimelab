@@ -112,5 +112,6 @@ namespace System.Text.RegularExpressions.SRM
         InternalError_SymbolicRegex,
         MustNotAcceptEmptyString,
         NrOfMintermsCanBeAtMost64,
+        SerializationError,
     }
 }
