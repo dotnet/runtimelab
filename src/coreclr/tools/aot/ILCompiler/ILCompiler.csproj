@@ -16,6 +16,7 @@
     <Configurations>Debug;Release;Checked</Configurations>
     <UseAppHost>true</UseAppHost>
     <ServerGarbageCollection>true</ServerGarbageCollection>
+    <TieredCompilation>false</TieredCompilation>
   </PropertyGroup>
 
   <PropertyGroup>
