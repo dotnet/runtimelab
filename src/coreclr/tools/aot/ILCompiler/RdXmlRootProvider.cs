@@ -153,21 +153,14 @@ namespace ILCompiler
                 }
             }
 
-            static bool SignatureMatches(MethodDesc method, List<TypeDesc> parameter, List<TypeDesc> instArgs)
+            static bool SignatureMatches(MethodDesc method, List<TypeDesc> parameter)
             {
                 if (parameter.Count != method.Signature.Length)
                     return false;
 
                 for (int i = 0; i < method.Signature.Length; i++)
                 {
-                    if (method.Signature[i] is SignatureMethodVariable sigMethodVar)
-                    {
-                        if (sigMethodVar.Index >= instArgs.Count || instArgs[sigMethodVar.Index] != parameter[i])
-                        {
-                            return false;
-                        }
-                    }
-                    else if (method.Signature[i] != parameter[i])
+                    if (!method.Signature[i].ContainsSignatureVariables() && method.Signature[i] != parameter[i])
                     {
                         return false;
                     }
@@ -183,7 +176,7 @@ namespace ILCompiler
                 if (method.Name != methodName)
                     continue;
 
-                if (parameter.Count > 0 && !SignatureMatches(method, parameter, instArgs))
+                if (parameter.Count > 0 && !SignatureMatches(method, parameter))
                     continue;
 
                 if (instArgs.Count != method.Instantiation.Length)
