@@ -153,97 +153,17 @@ namespace ILCompiler
                 }
             }
 
-            static bool InstantiationMatches(TypeDesc type, TypeDesc parameter, List<TypeDesc> instArgs)
-            {
-                if (!type.ContainsSignatureVariables())
-                {
-                    return type == parameter;
-                }
-
-                switch (type.Category)
-                {
-                    case TypeFlags.Array:
-                    case TypeFlags.SzArray:
-                    case TypeFlags.ByRef:
-                    case TypeFlags.Pointer:
-                        if (parameter is not ParameterizedType)
-                        {
-                            return false;
-                        }
-
-                        ParameterizedType parameterizedType = (ParameterizedType)type;
-                        ParameterizedType parameterizedParam = (ParameterizedType)parameter;
-                        return InstantiationMatches(parameterizedType.ParameterType, parameterizedParam.ParameterType, instArgs);
-
-                    case TypeFlags.FunctionPointer:
-                        if (parameter is not FunctionPointerType)
-                        {
-                            return false;
-                        }
-
-                        MethodSignature pointerSignatureType = ((FunctionPointerType)type).Signature;
-                        MethodSignature pointerSignatureParam = ((FunctionPointerType)parameter).Signature;
-
-                        for (int i = 0; i < pointerSignatureType.Length; i++)
-                        {
-                            if (!InstantiationMatches(pointerSignatureType[i], pointerSignatureParam[i], instArgs))
-                            {
-                                return false;
-                            }
-                        }
-
-                        return InstantiationMatches(pointerSignatureType.ReturnType, pointerSignatureParam.ReturnType, instArgs);
-
-                    case TypeFlags.SignatureMethodVariable:
-                        SignatureMethodVariable sigMethodVar = (SignatureMethodVariable)type;
-                        return sigMethodVar.Index < instArgs.Count && instArgs[sigMethodVar.Index] == parameter;
-
-                    case TypeFlags.SignatureTypeVariable:
-                        SignatureTypeVariable sigTypeVar = (SignatureTypeVariable)type;
-                        return sigTypeVar.Index < instArgs.Count && instArgs[sigTypeVar.Index] == parameter;
-
-                    case TypeFlags.GenericParameter:
-                        throw new ArgumentException();
-
-                    default:
-                        if (parameter.Instantiation.Length != type.Instantiation.Length)
-                        {
-                            return false;
-                        }
-
-                        for (int i = 0; i < type.Instantiation.Length; i++)
-                        {
-                            if (type.Instantiation[i].ContainsSignatureVariables())
-                            {
-                                if (!InstantiationMatches(type.Instantiation[i], parameter.Instantiation[i], instArgs))
-                                {
-                                    return false;
-                                }
-                            }
-                            else if (type.Instantiation[i] != parameter.Instantiation[i])
-                            {
-                                return false;
-                            }
-                        }
-
-                        return true;
-                }
-            }
-
-            static bool SignatureMatches(MethodDesc method, List<TypeDesc> parameter, List<TypeDesc> instArgs)
+            static bool SignatureMatches(MethodDesc method, List<TypeDesc> parameter)
             {
                 if (parameter.Count != method.Signature.Length)
-                {
                     return false;
-                }
 
                 for (int i = 0; i < method.Signature.Length; i++)
                 {
-                    if (!InstantiationMatches(method.Signature[i], parameter[i], instArgs))
-                    {
+                    if (method.Signature[i] != parameter[i])
                         return false;
-                    }
                 }
+
                 return true;
             }
 
@@ -255,9 +175,6 @@ namespace ILCompiler
                 if (method.Name != methodName)
                     continue;
 
-                if (parameter.Count > 0 && !SignatureMatches(method, parameter, instArgs))
-                    continue;
-
                 if (instArgs.Count != method.Instantiation.Length)
                     continue;
 
@@ -266,6 +183,9 @@ namespace ILCompiler
                     var methodInst = new Instantiation(instArgs.ToArray());
                     method = method.MakeInstantiatedMethod(methodInst);
                 }
+
+                if (parameter.Count > 0 && !SignatureMatches(method, parameter))
+                    continue;
 
                 RootingHelpers.RootMethod(rootProvider, method, "RD.XML root");
                 rootedAnyMethod = true;
