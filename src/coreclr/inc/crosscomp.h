@@ -26,6 +26,10 @@
 #endif
 #endif // TARGET_WINDOWS
 
+#ifdef TARGET_WASM
+#include "wasm.h"
+#endif
+
 #ifdef UNICODE
 #define MAKE_TARGET_DLLNAME(name) MAKE_TARGET_DLLNAME_W(name)
 #else

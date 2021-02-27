@@ -505,6 +505,11 @@ if (MSVC)
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4291>)
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd5105>)
 
+  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4244>)
+  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4267>)
+  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4141>)
+  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4310>)
+
   # Treat Warnings as Errors:
   # 4007: 'main' : must be __cdecl.
   # 4013: 'function' undefined - assuming extern returning int.

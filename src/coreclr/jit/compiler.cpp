@@ -23,6 +23,9 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #include "jittelemetry.h"
 #include "patchpointinfo.h"
 #include "jitstd/algorithm.h"
+#if defined(TARGET_WASM)
+#include "llvm.h"
+#endif
 
 #if defined(DEBUG)
 // Column settings for COMPlus_JitDumpIR.  We could(should) make these programmable.
@@ -4443,8 +4446,9 @@ void Compiler::EndPhase(Phases phase)
 #if defined(TARGET_WASM)
 inline void DoLlvmPhase(Compiler* pCompiler)
 {
-    void* llvmModule;
-    llvmModule = pCompiler->info.compCompHnd->getLlvmModule();
+    Llvm* llvm = new Llvm();
+    llvm->Compile(pCompiler);
+    delete llvm;
     fatal(CORJIT_SKIPPED);
     //assert(false);
 }
@@ -6632,7 +6636,7 @@ void Compiler::compInitVarScopeMap()
     compVarScopeMap = new (getAllocator()) VarNumToScopeDscMap(getAllocator());
 
     // 599 prime to limit huge allocations; for ex: duplicated scopes on single var.
-    compVarScopeMap->Reallocate(min(info.compVarScopesCount, 599));
+    compVarScopeMap->Reallocate(std::min(info.compVarScopesCount, 599U));
 
     for (unsigned i = 0; i < info.compVarScopesCount; ++i)
     {
@@ -7757,9 +7761,9 @@ void CompTimeSummaryInfo::AddInfo(CompTimeInfo& info, bool includePhases)
 
         // Update the totals and maxima.
         m_total.m_byteCodeBytes += info.m_byteCodeBytes;
-        m_maximum.m_byteCodeBytes = max(m_maximum.m_byteCodeBytes, info.m_byteCodeBytes);
+        m_maximum.m_byteCodeBytes = std::max(m_maximum.m_byteCodeBytes, info.m_byteCodeBytes);
         m_total.m_totalCycles += info.m_totalCycles;
-        m_maximum.m_totalCycles = max(m_maximum.m_totalCycles, info.m_totalCycles);
+        m_maximum.m_totalCycles = std::max(m_maximum.m_totalCycles, info.m_totalCycles);
 
 #if MEASURE_CLRAPI_CALLS
         // Update the CLR-API values.
@@ -7796,14 +7800,14 @@ void CompTimeSummaryInfo::AddInfo(CompTimeInfo& info, bool includePhases)
                 m_filtered.m_CLRcyclesByPhase[i] += info.m_CLRcyclesByPhase[i];
 #endif
             }
-            m_maximum.m_cyclesByPhase[i] = max(m_maximum.m_cyclesByPhase[i], info.m_cyclesByPhase[i]);
+            m_maximum.m_cyclesByPhase[i] = std::max(m_maximum.m_cyclesByPhase[i], info.m_cyclesByPhase[i]);
 
 #if MEASURE_CLRAPI_CALLS
             m_maximum.m_CLRcyclesByPhase[i] = max(m_maximum.m_CLRcyclesByPhase[i], info.m_CLRcyclesByPhase[i]);
 #endif
         }
         m_total.m_parentPhaseEndSlop += info.m_parentPhaseEndSlop;
-        m_maximum.m_parentPhaseEndSlop = max(m_maximum.m_parentPhaseEndSlop, info.m_parentPhaseEndSlop);
+        m_maximum.m_parentPhaseEndSlop = std::max(m_maximum.m_parentPhaseEndSlop, info.m_parentPhaseEndSlop);
     }
 #if MEASURE_CLRAPI_CALLS
     else

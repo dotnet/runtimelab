@@ -2371,6 +2371,11 @@ typedef S8PTR(const char)     PTR_CUTF8;
 typedef S16PTR(WCHAR)         PTR_WSTR;
 typedef S16PTR(const WCHAR)   PTR_CWSTR;
 
+#if TARGET_WASM
+#define T_CONTEXT CONTEXT
+#define PT_RUNTIME_FUNCTION PRUNTIME_FUNCTION
+#endif
+
 typedef DPTR(T_CONTEXT)                  PTR_CONTEXT;
 typedef DPTR(PTR_CONTEXT)                PTR_PTR_CONTEXT;
 typedef DPTR(struct _EXCEPTION_POINTERS) PTR_EXCEPTION_POINTERS;

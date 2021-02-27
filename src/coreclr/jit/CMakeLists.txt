@@ -3,6 +3,10 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 include_directories("./jitstd")
 include_directories("../inc")
 
+find_package(LLVM REQUIRED CONFIG PATHS E:/GitHub/llvm-project/build/lib/cmake/llvm)
+include_directories(${LLVM_INCLUDE_DIRS})
+add_definitions(${LLVM_DEFINITIONS})
+
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
   add_compile_options(-Wno-error)
@@ -69,10 +73,14 @@ function(create_standalone_jit)
   if (TARGETDETAILS_ARCH STREQUAL "wasm64")
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM64)
+    target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE USE_STL)
+    target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE PAL_STDCPP_COMPAT)
   endif ()
   if (TARGETDETAILS_ARCH STREQUAL "wasm32")
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM32)
+    target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE USE_STL)
+    target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE PAL_STDCPP_COMPAT)
   endif ()
 endfunction()
 
@@ -232,6 +240,7 @@ if (CLR_CMAKE_TARGET_WIN32)
     jitstd.h
     jittelemetry.h
     lir.h
+    llvm.h
     loopcloning.h
     loopcloningopts.h
     lower.h
@@ -272,6 +281,7 @@ if (CLR_CMAKE_TARGET_WIN32)
     valuenumtype.h
     varset.h
     vartype.h
+    wasm.h
   )
 
   if (CLR_CMAKE_TARGET_ARCH_ARM64 OR CLR_CMAKE_TARGET_ARCH_ARM)
@@ -323,6 +333,7 @@ set( JIT_WASM64_SOURCES
   unwindwasm.cpp
   hwintrinsicxarch.cpp
   hwintrinsiccodegenxarch.cpp
+  llvm.cpp
 )
 set( JIT_WASM32_SOURCES
   simd.cpp
@@ -332,6 +343,7 @@ set( JIT_WASM32_SOURCES
   unwindwasm.cpp
   hwintrinsicxarch.cpp
   hwintrinsiccodegenxarch.cpp
+  llvm.cpp
 )
 
 set( JIT_ARM_SOURCES
