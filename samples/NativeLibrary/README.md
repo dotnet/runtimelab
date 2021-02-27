@@ -55,10 +55,10 @@ void *handle = dlopen(path, RTLD_LAZY);
 
 the variable path is the string that holds the path to the .so/.dll file.
 From now on, the handle variable will "contain" a pointer to your shared library.
-Now we'll have to define what type does the function we want to call will return
+Now we'll have to define signature of the function we want to call
 
 ```c
-typedef  int (*myFunc)();
+typedef  int (*myFunc)(int,int);
 ```
 
 For example here, we'll refer to the C# function underneath, which returns the sum of two integers.
