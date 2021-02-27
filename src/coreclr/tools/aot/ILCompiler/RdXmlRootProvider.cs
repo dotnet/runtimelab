@@ -153,14 +153,49 @@ namespace ILCompiler
                 }
             }
 
-            static bool SignatureMatches(MethodDesc method, List<TypeDesc> parameter)
+            static bool InstantiationMatches(TypeDesc type, TypeDesc parameter, List<TypeDesc> instArgs)
+            {
+                if (type is SignatureMethodVariable sigMethodVar)
+                {
+                    return sigMethodVar.Index < instArgs.Count && instArgs[sigMethodVar.Index] == parameter;
+                }
+
+                if (parameter.Instantiation.Length != type.Instantiation.Length)
+                    return false;
+
+                for (int i = 0; i < type.Instantiation.Length; i++)
+                {
+                    if (type.Instantiation[i].ContainsSignatureVariables())
+                    {
+                        if (!InstantiationMatches(type.Instantiation[i], parameter.Instantiation[i], instArgs))
+                        {
+                            return false;
+                        }
+                    }
+                    else if (type.Instantiation[i] != parameter.Instantiation[i])
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            static bool SignatureMatches(MethodDesc method, List<TypeDesc> parameter, List<TypeDesc> instArgs)
             {
                 if (parameter.Count != method.Signature.Length)
                     return false;
 
                 for (int i = 0; i < method.Signature.Length; i++)
                 {
-                    if (!method.Signature[i].ContainsSignatureVariables() && method.Signature[i] != parameter[i])
+                    if (method.Signature[i].ContainsSignatureVariables())
+                    {
+                        if (!InstantiationMatches(method.Signature[i], parameter[i], instArgs))
+                        {
+                            return false;
+                        }
+                    }
+                    else if (method.Signature[i] != parameter[i])
                     {
                         return false;
                     }
@@ -176,7 +211,7 @@ namespace ILCompiler
                 if (method.Name != methodName)
                     continue;
 
-                if (parameter.Count > 0 && !SignatureMatches(method, parameter))
+                if (parameter.Count > 0 && !SignatureMatches(method, parameter, instArgs))
                     continue;
 
                 if (instArgs.Count != method.Instantiation.Length)
