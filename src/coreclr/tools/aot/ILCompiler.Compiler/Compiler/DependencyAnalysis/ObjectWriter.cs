@@ -484,14 +484,11 @@ namespace ILCompiler.DependencyAnalysis
             if (debugNode != null)
             {
                 IEnumerable<NativeSequencePoint> locs = debugNode.GetNativeSequencePoints();
-                if (locs != null)
+                foreach (var loc in locs)
                 {
-                    foreach (var loc in locs)
-                    {
-                        Debug.Assert(!_offsetToDebugLoc.ContainsKey(loc.NativeOffset));
-                        _offsetToDebugLoc[loc.NativeOffset] = loc;
-                        _byteInterruptionOffsets.Add(loc.NativeOffset);
-                    }
+                    Debug.Assert(!_offsetToDebugLoc.ContainsKey(loc.NativeOffset));
+                    _offsetToDebugLoc[loc.NativeOffset] = loc;
+                    _byteInterruptionOffsets.Add(loc.NativeOffset);
                 }
             }
         }
