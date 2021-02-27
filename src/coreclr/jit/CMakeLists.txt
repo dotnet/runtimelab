@@ -3,7 +3,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 include_directories("./jitstd")
 include_directories("../inc")
 
-find_package(LLVM REQUIRED CONFIG PATHS E:/GitHub/llvm-project/build/lib/cmake/llvm)
+find_package(LLVM REQUIRED CONFIG PATHS E:/llvm11/llvm-11.0.0.src/build/lib/cmake/llvm)
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
