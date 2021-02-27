@@ -310,9 +310,10 @@ done
 # Runtests
 ################################################################################
 
-if ((disableEventLogging == 0)); then
-    export COMPlus_EnableEventLog=1
-fi
+# Workaround for https://github.com/dotnet/runtime/issues/48407, remove once the SDK is updated to .NET 6 Preview3+
+# if ((disableEventLogging == 0)); then
+#     export COMPlus_EnableEventLog=1
+# fi
 
 export COMPlus_gcServer="$serverGC"
 

@@ -317,10 +317,14 @@ void NUMASupportInitialize()
         return;
     }
 
-    g_numaHandle = dlopen("libnuma.so", RTLD_LAZY);
+    g_numaHandle = dlopen("libnuma.so.1", RTLD_LAZY);
     if (g_numaHandle == 0)
     {
-        g_numaHandle = dlopen("libnuma.so.1", RTLD_LAZY);
+        g_numaHandle = dlopen("libnuma.so.1.0.0", RTLD_LAZY);
+        if (g_numaHandle == 0)
+        {
+            g_numaHandle = dlopen("libnuma.so", RTLD_LAZY);
+        }
     }
     if (g_numaHandle != 0)
     {
@@ -914,10 +918,10 @@ static size_t GetLogicalProcessorCacheSizeFromOS()
     if (cacheSize == 0)
     {
         //
-        // Fallback to retrieve cachesize via /sys/.. if sysconf was not available 
-        // for the platform. Currently musl and arm64 should be only cases to use  
+        // Fallback to retrieve cachesize via /sys/.. if sysconf was not available
+        // for the platform. Currently musl and arm64 should be only cases to use
         // this method to determine cache size.
-        // 
+        //
         size_t size;
 
         if (ReadMemoryValueFromFile("/sys/devices/system/cpu/cpu0/cache/index0/size", &size))
