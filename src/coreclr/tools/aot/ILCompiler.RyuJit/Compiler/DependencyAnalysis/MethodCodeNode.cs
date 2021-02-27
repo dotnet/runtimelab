@@ -247,9 +247,7 @@ namespace ILCompiler.DependencyAnalysis
                     int offset = sequencePoint.Offset;
                     if (offset >= sequencePoints.Length)
                     {
-                        int newLength = sequencePoints.Length;
-                        while (newLength <= offset)
-                            newLength *= 2;
+                        int newLength = Math.Max(2 * sequencePoints.Length, sequencePoint.Offset + 1);
                         Array.Resize(ref sequencePoints, newLength);
                     }
                     sequencePoints[offset] = (sequencePoint.Document, sequencePoint.LineNumber);
