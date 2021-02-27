@@ -55,6 +55,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <ItemGroup Condition="'$(TargetOS)' == 'OSX'">
       <NativeFramework Include="CoreFoundation" />
+      <NativeFramework Include="Foundation" />
       <NativeFramework Include="Security" />
       <NativeFramework Include="GSS" />
     </ItemGroup>
