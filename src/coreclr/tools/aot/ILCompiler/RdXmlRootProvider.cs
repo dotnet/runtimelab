@@ -161,7 +161,9 @@ namespace ILCompiler
                 }
 
                 if (parameter.Instantiation.Length != type.Instantiation.Length)
+                {
                     return false;
+                }
 
                 for (int i = 0; i < type.Instantiation.Length; i++)
                 {
@@ -184,7 +186,9 @@ namespace ILCompiler
             static bool SignatureMatches(MethodDesc method, List<TypeDesc> parameter, List<TypeDesc> instArgs)
             {
                 if (parameter.Count != method.Signature.Length)
+                {
                     return false;
+                }
 
                 for (int i = 0; i < method.Signature.Length; i++)
                 {
