@@ -147,7 +147,7 @@
 #if !defined(HOST_ARM64)
 #define _CROSS_COMPILER_
 #endif
-#elif defined(TARGET_WASM32)
+#elif defined(TARGET_WASM)
 #else
 #error Unsupported or unset target architecture
 #endif

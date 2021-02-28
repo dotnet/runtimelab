@@ -19,6 +19,7 @@ namespace ILCompiler.DependencyAnalysis
         void InitializeDebugLocInfos(DebugLocInfo[] debugLocInfos);
         void InitializeDebugVarInfos(DebugVarInfo[] debugVarInfos);
         void InitializeNonRelocationDependencies(DependencyNodeCore<NodeFactory>.DependencyList additionalDependencies);
+        void InitializeIsStateMachineMoveNextMethod(bool debugInfoIsStateMachineMoveNextMethod);
     }
 
     [DebuggerTypeProxy(typeof(MethodCodeNodeDebugView))]

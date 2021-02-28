@@ -90,6 +90,8 @@ namespace ILCompiler.DependencyAnalysis
         public void InitializeNonRelocationDependencies(DependencyList additionalDependencies)
         {
         }
+
+        public void InitializeIsStateMachineMoveNextMethod(bool debugInfoIsStateMachineMoveNextMethod) => throw new System.NotImplementedException();
     }
 
     internal class LlvmMethodBodyNode : LLVMMethodCodeNode, IMethodBodyNode

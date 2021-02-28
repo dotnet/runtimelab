@@ -14,12 +14,23 @@ The Native AOT toolchain can be currently built for Linux, macOS and Windows x64
 - This branch contains a version of the WebAssembly compiler that creates LLVM from the clrjit to take advantage of RyuJits optimisations.  It goes from RyuJIT IR -> LLVM instead of the NativeAOT-LLVM branch way of CIL -> LLVM.
 - It does not work, yet or maybe never.
 - Currently only tested on Windows
+- Download the LLVM 11.0.0 source from https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.0/llvm-11.0.0.src.tar.xz
+- Extract and create a subdirectory in the llvm-11.0.0.src folder called build.  cd to this build folder
+- Configure the LLVM source to use the same runtime as clrjit `cmake -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -D LLVM_USE_CRT_DEBUG=MTd ..`
+- Build LLVM either from the command line (`build`) or from VS 2019.  You only really need to build the LLVMCore project which is just 12 projects compared to the 400 odd projects when building all.  This will save some time.
+- Edit `src/coreclr/jit/CMakeLists.txt` and change `find_package(LLVM REQUIRED CONFIG PATHS E:/llvm11/llvm-11.0.0.src/build/lib/cmake/llvm)` to where you have built LLVM
 - Build the x64 libraries and compiler as per the Building section.
 - Run `build nativeaot+libs+nativeaot.packages -rc [Debug|Release] -lc [Debug|Release] -a wasm -os Browser -runtimeFlavor CoreCLR`
 - The compiler can now be debugged with the Wasm clrjit.  Load the clrjit_browser_wasm32_x64.vcxproj which can be found in artifacts\obj\coreclr\windows.x64.Debug\jit
 - Run Ilc with a .rsp file as normal for Web assembly, e.g. if you build the WebAssembly tests you can use artifacts\tests\coreclr\Browser.wasm.Debug\nativeaot\SmokeTests\HelloWasm\HelloWasm\native\HelloWasm.ilc.rsp
 - Add the package directory to your `nuget.config` as above.
 - Run `dotnet publish -r browser-wasm -c [Debug|Release] /p:Platform=wasm` to publish.
+
+- To work on the clr jit for LLVM:
+- Open the Ilc solution and add the clr jit project `clrjit_browser_wasm32_x64.vcxproj` from `artifacts\obj\coreclr\windows.x64.Debug\jit`
+- In the project properties General section, change the output folder to the full path for `artifacts\bin\coreclr\windows.x64.Debug\ilc\net5.0` e.g. `E:\GitHub\runtimelab\artifacts\bin\coreclr\windows.x64.Debug\ilc\net5.0`
+- Build `clrjit_browser_wasm32_x64` project and you should now be able to change and but breakpoints in the c++ code.
+
 
 ## Visual Studio Solutions
 
