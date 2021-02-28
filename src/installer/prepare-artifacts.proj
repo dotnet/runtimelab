@@ -260,9 +260,11 @@
 
     </ItemGroup>
 
+    <!--
     <Error
       Condition="'@(SymbolNupkgToPublishFile)' == ''"
       Text="No symbol packages found." />
+    -->
 
     <!--
       Duplicate RuntimeNupkgFile items mean artifact upload will fail, but only after another hour
