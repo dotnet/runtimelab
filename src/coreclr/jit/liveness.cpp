@@ -289,6 +289,8 @@ void Compiler::fgPerNodeLocalVarLiveness(GenTree* tree)
 
         // We'll assume these are use-then-defs of memory.
         case GT_LOCKADD:
+        case GT_XORR:
+        case GT_XAND:
         case GT_XADD:
         case GT_XCHG:
         case GT_CMPXCHG:
@@ -2058,6 +2060,8 @@ void Compiler::fgComputeLifeLIR(VARSET_TP& life, BasicBlock* block, VARSET_VALAR
                 break;
 
             case GT_LOCKADD:
+            case GT_XORR:
+            case GT_XAND:
             case GT_XADD:
             case GT_XCHG:
             case GT_CMPXCHG:

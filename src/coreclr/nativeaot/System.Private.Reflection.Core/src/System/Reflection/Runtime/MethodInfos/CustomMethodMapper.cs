@@ -17,12 +17,12 @@ namespace System.Reflection.Runtime.MethodInfos
         public static MethodInvoker GetCustomMethodInvokerIfNeeded(this MethodBase methodBase)
         {
             Type declaringType = methodBase.DeclaringType;
-            bool isNullable = declaringType.IsConstructedGenericType && declaringType.GetGenericTypeDefinition() == CommonRuntimeTypes.Nullable;
+            bool isNullable = declaringType.IsConstructedGenericType && declaringType.GetGenericTypeDefinition() == typeof(Nullable<>);
 
             Dictionary<MethodBase, CustomMethodInvokerAction> map;
             if (isNullable)
                 map = NullableActions.Map;
-            else if (declaringType == CommonRuntimeTypes.String)
+            else if (declaringType == typeof(string))
                 map = StringActions.Map;
             else
                 return null;

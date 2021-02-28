@@ -3,103 +3,10 @@
 
 include AsmMacros.inc
 
-EXTERN GetClasslibCCtorCheck        : PROC
 EXTERN memcpy                       : PROC
 EXTERN memcpyGCRefs                 : PROC
 EXTERN memcpyGCRefsWithWriteBarrier : PROC
 EXTERN memcpyAnyWithWriteBarrier    : PROC
-
-;;
-;; Checks whether the static class constructor for the type indicated by the context structure has been
-;; executed yet. If not the classlib is called via their CheckStaticClassConstruction callback which will
-;; execute the cctor and update the context to record this fact.
-;;
-;;  Input:
-;;      rax : Address of StaticClassConstructionContext structure
-;;
-;;  Output:
-;;      All volatile registers and the condition codes may be trashed.
-;;
-LEAF_ENTRY RhpCheckCctor, _TEXT
-
-        ;; Check the m_initialized field of the context. The cctor has been run only if this equals 1 (the
-        ;; initial state is 0 and the remaining values are reserved for classlib use). This check is
-        ;; unsynchronized; if we go down the slow path and call the classlib then it is responsible for
-        ;; synchronizing with other threads and re-checking the value.
-        cmp     dword ptr [rax + OFFSETOF__StaticClassConstructionContext__m_initialized], 1
-        jne     RhpCheckCctor__SlowPath
-        ret
-RhpCheckCctor__SlowPath:
-        mov     rdx, rax
-        jmp     RhpCheckCctor2 ; Tail-call the check cctor helper that can actually call the cctor
-LEAF_END RhpCheckCctor, _TEXT
-
-;;
-;; Checks whether the static class constructor for the type indicated by the context structure has been
-;; executed yet. If not the classlib is called via their CheckStaticClassConstruction callback which will
-;; execute the cctor and update the context to record this fact.
-;;
-;;  Input:
-;;      rax : Value that must be preserved in this register across the cctor check.
-;;      rdx : Address of StaticClassConstructionContext structure
-;;
-;;  Output:
-;;      All volatile registers other than rax may be trashed and the condition codes may also be trashed.
-;;
-LEAF_ENTRY RhpCheckCctor2, _TEXT
-
-        ;; Check the m_initialized field of the context. The cctor has been run only if this equals 1 (the
-        ;; initial state is 0 and the remaining values are reserved for classlib use). This check is
-        ;; unsynchronized; if we go down the slow path and call the classlib then it is responsible for
-        ;; synchronizing with other threads and re-checking the value.
-        cmp     dword ptr [rdx + OFFSETOF__StaticClassConstructionContext__m_initialized], 1
-        jne     RhpCheckCctor2__SlowPath
-        ret
-
-LEAF_END RhpCheckCctor2, _TEXT
-
-;;
-;; Slow path helper for RhpCheckCctor2.
-;;
-;;  Input:
-;;      rax : Value that must be preserved in this register across the cctor check.
-;;      rdx : Address of StaticClassConstructionContext structure
-;;
-;;  Output:
-;;      All volatile registers other than rax may be trashed and the condition codes may also be trashed.
-;;
-NESTED_ENTRY RhpCheckCctor2__SlowPath, _TEXT
-
-RhpCheckCctor2__SlowPath_FrameSize equ 20h + 10h + 8h ;; Scratch space + storage to save off rax/rdx value + align stack
-
-        alloc_stack RhpCheckCctor2__SlowPath_FrameSize
-        save_reg_postrsp    rdx, 20h
-        save_reg_postrsp    rax, 28h
-
-        END_PROLOGUE
-
-        ;; Call a C++ helper to retrieve the address of the classlib callback.
-
-        ;; The caller's return address is passed as the argument to the helper; it's an address in the module
-        ;; and is used by the helper to locate the classlib.
-        mov     rcx, [rsp + RhpCheckCctor2__SlowPath_FrameSize]
-
-        call    GetClasslibCCtorCheck
-
-        ;; Rax now contains the address of the classlib method to call. The single argument is the context
-        ;; structure address currently in stashed on the stack. Clean up and tail call to the classlib
-        ;; callback so we're not on the stack should a GC occur (so we don't need to worry about transition
-        ;; frames).
-        mov     rdx, [rsp + 20h]
-        mov     rcx, [rsp + 28h]
-        add     rsp, RhpCheckCctor2__SlowPath_FrameSize
-        ;; Tail-call the classlib cctor check function. Note that the incoming rax value is moved to rcx
-        ;; and the classlib cctor check function is required to return that value, so that rax is preserved
-        ;; across a RhpCheckCctor call.
-        TAILJMP_RAX
-
-NESTED_END RhpCheckCctor2__SlowPath, _TEXT
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

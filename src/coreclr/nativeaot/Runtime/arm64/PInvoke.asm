@@ -266,36 +266,64 @@ BadTransition
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;; RhpReversePInvokeReturn
+;; RhpPInvoke
 ;;
-;; IN:  x9: address of reverse pinvoke frame
-;;                  0: save slot for previous M->U transition frame
-;;                  8: save slot for thread pointer to avoid re-calc in epilog sequence
+;; IN: x0: address of pinvoke frame
 ;;
-;; TRASHES:     x10, x11
+;; TRASHES: x9
+;;
+;; This helper assumes that its callsite is as good to start the stackwalk as the actual PInvoke callsite.
+;; The codegenerator must treat the callsite of this helper as GC triggering and generate the GC info for it.
+;; Also, the codegenerator must ensure that there are no live GC references in callee saved registers.
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    LEAF_ENTRY RhpReversePInvokeReturn
+    NESTED_ENTRY RhpPInvoke, _TEXT
 
-        ldp         x10, x11, [x9]
+        str     fp, [x0, #OFFSETOF__PInvokeTransitionFrame__m_FramePointer]
+        str     lr, [x0, #OFFSETOF__PInvokeTransitionFrame__m_RIP]
+        mov     x9, sp
+        str     x9, [x0, #OFFSETOF__PInvokeTransitionFrame__m_PreservedRegs]
+        mov     x9, #PTFF_SAVE_SP
+        str     x9, [x0, #OFFSETOF__PInvokeTransitionFrame__m_Flags]
 
-        ;; x10: previous M->U transition frame
-        ;; x11: thread pointer
+        INLINE_GETTHREAD x1, x9
 
-        str         x10, [x11, #OFFSETOF__Thread__m_pTransitionFrame]
-        dmb         ish
+        str     x1, [x0, #OFFSETOF__PInvokeTransitionFrame__m_pThread]
+        str     x0, [x1, #OFFSETOF__Thread__m_pTransitionFrame]
 
-        ldr         x10, =RhpTrapThreads
-        ldr         w10, [x10]
-        tbnz        x10, #TrapThreadsFlags_TrapThreads_Bit, RareTrapThread
-
+        ldr     x9, =RhpTrapThreads
+        ldr     w9, [x9]
+        cbnz    w9, InvokeRareTrapThread  ;; TrapThreadsFlags_None = 0
         ret
 
-RareTrapThread
-        b           RhpWaitForSuspend
-
-    LEAF_END RhpReversePInvokeReturn
+InvokeRareTrapThread
+        b       RhpWaitForSuspend2
+    NESTED_END RhpPInvoke
 
     INLINE_GETTHREAD_CONSTANT_POOL
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; RhpPInvokeReturn
+;;
+;; IN: x0: address of pinvoke frame
+;;
+;; TRASHES: x9, x10
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    LEAF_ENTRY RhpPInvokeReturn, _TEXT
+        ldr     x9, [x0, #OFFSETOF__PInvokeTransitionFrame__m_pThread]
+        mov     x10, 0
+        str     x10, [x9, #OFFSETOF__Thread__m_pTransitionFrame]
+
+        ldr     x9, =RhpTrapThreads
+        ldr     w9, [x9]
+        cbnz    w9, %ft0 ;; TrapThreadsFlags_None = 0
+        ret
+0
+        ;; passing transition frame pointer in x0
+        b       RhpWaitForGC2
+    LEAF_END RhpPInvokeReturn
 
     end

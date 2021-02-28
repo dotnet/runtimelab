@@ -8,95 +8,10 @@
 
 include AsmMacros.inc
 
-EXTERN @GetClasslibCCtorCheck@4 : PROC
 EXTERN _memcpy                  : PROC
 EXTERN _memcpyGCRefs            : PROC
 EXTERN _memcpyGCRefsWithWriteBarrier  : PROC
 EXTERN _memcpyAnyWithWriteBarrier     : PROC
-
-;;
-;; Checks whether the static class constructor for the type indicated by the context structure has been
-;; executed yet. If not the classlib is called via their CheckStaticClassConstruction callback which will
-;; execute the cctor and update the context to record this fact.
-;;
-;;  Input:
-;;      eax : Address of StaticClassConstructionContext structure
-;;
-;;  Output:
-;;      All volatile registers and the condition codes may be trashed.
-;;
-FASTCALL_FUNC RhpCheckCctor, 4
-
-        ;; Check the m_initialized field of the context. The cctor has been run only if this equals 1 (the
-        ;; initial state is 0 and the remaining values are reserved for classlib use). This check is
-        ;; unsynchronized; if we go down the slow path and call the classlib then it is responsible for
-        ;; synchronizing with other threads and re-checking the value.
-        cmp     dword ptr [eax + OFFSETOF__StaticClassConstructionContext__m_initialized], 1
-        jne     RhpCheckCctor__SlowPath
-        ret
-
-RhpCheckCctor__SlowPath:
-        mov     edx, eax ; RhpCheckCctor2 takes the static class construction context pointer in the edx register
-        jmp     @RhpCheckCctor2@4
-FASTCALL_ENDFUNC
-
-;;
-;; Checks whether the static class constructor for the type indicated by the context structure has been
-;; executed yet. If not the classlib is called via their CheckStaticClassConstruction callback which will
-;; execute the cctor and update the context to record this fact.
-;;
-;;  Input:
-;;      eax : Value that must be preserved in this register across the cctor check.
-;;      edx : Address of StaticClassConstructionContext structure
-;;
-;;  Output:
-;;      All volatile registers other than eax may be trashed and the condition codes may also be trashed.
-;;
-FASTCALL_FUNC RhpCheckCctor2, 4
-
-        ;; Check the m_initialized field of the context. The cctor has been run only if this equals 1 (the
-        ;; initial state is 0 and the remaining values are reserved for classlib use). This check is
-        ;; unsynchronized; if we go down the slow path and call the classlib then it is responsible for
-        ;; synchronizing with other threads and re-checking the value.
-        cmp     dword ptr [edx + OFFSETOF__StaticClassConstructionContext__m_initialized], 1
-        jne     RhpCheckCctor2__SlowPath
-        ret
-
-;;  Input:
-;;      eax : Value that must be preserved in this register across the cctor check.
-;;      edx : Address of StaticClassConstructionContext structure
-;;
-;;  Output:
-;;      All volatile registers other than eax may be trashed and the condition codes may also be trashed.
-;;
-RhpCheckCctor2__SlowPath:
-        ;; Call a C++ helper to retrieve the address of the classlib callback. We need to preserve the context
-        ;; structure address in eax since it's needed for the actual call.
-        push    ebx
-        push    esi
-        mov     ebx, edx ; save cctor context pointer
-        mov     esi, eax ; save preserved return value
-
-        ;; The caller's return address is passed as the argument to the helper; it's an address in the module
-        ;; and is used by the helper to locate the classlib.
-        mov     ecx, [esp + 8] ; + 8 to skip past the saved ebx and esi
-
-        call    @GetClasslibCCtorCheck@4
-
-        ;; Eax now contains the address of the classlib method to call. The single argument is the context
-        ;; structure address currently in ebx. Clean up and tail call to the classlib callback so we're not on
-        ;; the stack should a GC occur (so we don't need to worry about transition frames).
-        mov     edx, ebx
-        mov     ecx, esi
-        pop     esi
-        pop     ebx
-        ;; Tail-call the classlib cctor check function. Note that the incoming eax value is moved to ecx
-        ;; and the classlib cctor check function is required to return that value, so that eax is preserved
-        ;; across a RhpCheckCctor call.
-        jmp     eax
-
-FASTCALL_ENDFUNC
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

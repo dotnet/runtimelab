@@ -132,3 +132,38 @@ or if you want instantiate generic method you can pass `<GenericArgument>`.
 ```
 
 Take note that methods are distinguished by their method name and parameters. The return value's type is not used in the method signature.
+
+## Rooting structure marshalling data
+
+The `Type` directive additionally support a `MarshalStructure` attribute. The only supported value for `MarshalStructure` is `Required All`. Specifying `MarshalStructure="Required All"` will ensure struct marshalling data structures get pregenerated.
+
+This can fix code like:
+
+```csharp
+using System;
+using System.Runtime.InteropServices;
+
+Console.WriteLine(GetTypeSize(typeof(MyClass)));
+
+// This is in a separate method since the compiler would be able to analyze `Marshal.SizeOf(typeof(MyClass))`,
+// but since a method call is involved, the compiler will lose track of the specific type.
+static int GetTypeSize(Type t) => Marshal.SizeOf(t);
+
+[StructLayout(LayoutKind.Sequential)]
+public class MyClass
+{
+    public string Field;
+}
+```
+
+The above code would throw a "System.Runtime.InteropServices.MissingInteropDataException: MyClass is missing structure marshalling data. To enable structure marshalling data, add a MarshalStructure directive to the application rd.xml file.". To fix this exception, one would use following RD.XML:
+
+```xml
+<Directives>
+  <Application>
+    <Assembly Name="repro">
+      <Type Name="MyClass" MarshalStructure="Required All" />
+    </Assembly>
+  </Application>
+</Directives>
+```

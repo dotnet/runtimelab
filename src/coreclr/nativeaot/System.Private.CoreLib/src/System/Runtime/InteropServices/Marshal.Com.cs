@@ -23,8 +23,7 @@ namespace System.Runtime.InteropServices
             if (pUnk == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(pUnk));
 
-            return CalliIntrinsics.StdCall__AddRef(((__com_IUnknown*)(void*)pUnk)->pVtable->
-                pfnAddRef, pUnk);
+            return ((delegate* unmanaged<IntPtr, int>)(*(*(void***)pUnk + 1 /* IUnknown.AddRef slot */)))(pUnk);
         }
 
         public static bool AreComObjectsAvailableForCleanup() => false;
@@ -224,28 +223,11 @@ namespace System.Runtime.InteropServices
             if (pUnk == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(pUnk));
 
-            IntPtr pComIUnk;
-            int hr;
-
-            fixed (Guid* unsafe_iid = &iid)
+            fixed (Guid* pIID = &iid)
+            fixed (IntPtr* p = &ppv)
             {
-                hr = CalliIntrinsics.StdCall__QueryInterface(((__com_IUnknown*)(void*)pUnk)->pVtable->
-                                pfnQueryInterface,
-                                pUnk,
-                                new IntPtr(unsafe_iid),
-                                new IntPtr(&pComIUnk));
+                return ((delegate* unmanaged<IntPtr, Guid*, IntPtr*, int>)(*(*(void***)pUnk + 0 /* IUnknown.QueryInterface slot */)))(pUnk, pIID, p);
             }
-
-            if (hr != 0)
-            {
-                ppv = default(IntPtr);
-            }
-            else
-            {
-                ppv = pComIUnk;
-            }
-
-            return hr;
         }
 
         [SupportedOSPlatform("windows")]
@@ -254,8 +236,7 @@ namespace System.Runtime.InteropServices
             if (pUnk == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(pUnk));
 
-            return CalliIntrinsics.StdCall__Release(((__com_IUnknown*)(void*)pUnk)->pVtable->
-                pfnRelease, pUnk);
+            return ((delegate* unmanaged<IntPtr, int>)(*(*(void***)pUnk + 2 /* IUnknown.Release slot */)))(pUnk);
         }
 
         [SupportedOSPlatform("windows")]
@@ -268,46 +249,6 @@ namespace System.Runtime.InteropServices
         public static bool SetComObjectData(object obj, object key, object? data)
         {
             throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private unsafe struct __com_IUnknown
-        {
-            internal __vtable_IUnknown* pVtable;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct __vtable_IUnknown
-        {
-            // IUnknown
-            internal IntPtr pfnQueryInterface;
-            internal IntPtr pfnAddRef;
-            internal IntPtr pfnRelease;
-        }
-
-        internal static unsafe partial class CalliIntrinsics
-        {
-            internal static int StdCall__QueryInterface(
-                       IntPtr pfn,
-                       IntPtr pComThis,
-                       IntPtr arg0,
-                       IntPtr arg1)
-            {
-                // This method is implemented elsewhere in the toolchain
-                return default(int);
-            }
-
-            internal static int StdCall__AddRef(System.IntPtr pfn, IntPtr pComThis)
-            {
-                // This method is implemented elsewhere in the toolchain
-                return default(int);
-            }
-
-            internal static int StdCall__Release(System.IntPtr pfn, IntPtr pComThis)
-            {
-                // This method is implemented elsewhere in the toolchain
-                return default(int);
-            }
         }
     }
 }

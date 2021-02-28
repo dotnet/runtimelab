@@ -4177,42 +4177,55 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
                                 costSz = 12;
                                 break;
 
-                            case NI_System_Math_Sin:
-                            case NI_System_Math_Cos:
-                            case NI_System_Math_Sqrt:
-                            case NI_System_Math_Cbrt:
-                            case NI_System_Math_Cosh:
-                            case NI_System_Math_Sinh:
-                            case NI_System_Math_Tan:
-                            case NI_System_Math_Tanh:
-                            case NI_System_Math_Asin:
-                            case NI_System_Math_Asinh:
-                            case NI_System_Math_Acos:
-                            case NI_System_Math_Acosh:
-                            case NI_System_Math_Atan:
-                            case NI_System_Math_Atanh:
-                            case NI_System_Math_Atan2:
-                            case NI_System_Math_Log10:
-                            case NI_System_Math_Pow:
-                            case NI_System_Math_Exp:
-                            case NI_System_Math_Ceiling:
-                            case NI_System_Math_Floor:
-                                // Giving intrinsics a large fixed execution cost is because we'd like to CSE
-                                // them, even if they are implemented by calls. This is different from modeling
-                                // user calls since we never CSE user calls.
-                                costEx = 36;
-                                costSz = 4;
-                                break;
-
                             case NI_System_Math_Abs:
                                 costEx = 5;
                                 costSz = 15;
                                 break;
 
+                            case NI_System_Math_Acos:
+                            case NI_System_Math_Acosh:
+                            case NI_System_Math_Asin:
+                            case NI_System_Math_Asinh:
+                            case NI_System_Math_Atan:
+                            case NI_System_Math_Atanh:
+                            case NI_System_Math_Atan2:
+                            case NI_System_Math_Cbrt:
+                            case NI_System_Math_Ceiling:
+                            case NI_System_Math_Cos:
+                            case NI_System_Math_Cosh:
+                            case NI_System_Math_Exp:
+                            case NI_System_Math_Floor:
+                            case NI_System_Math_FMod:
+                            case NI_System_Math_FusedMultiplyAdd:
+                            case NI_System_Math_ILogB:
+                            case NI_System_Math_Log:
+                            case NI_System_Math_Log2:
+                            case NI_System_Math_Log10:
+                            case NI_System_Math_Pow:
                             case NI_System_Math_Round:
-                                costEx = 3;
-                                costSz = 4;
+                            case NI_System_Math_Sin:
+                            case NI_System_Math_Sinh:
+                            case NI_System_Math_Sqrt:
+                            case NI_System_Math_Tan:
+                            case NI_System_Math_Tanh:
+                            {
+                                // Giving intrinsics a large fixed execution cost is because we'd like to CSE
+                                // them, even if they are implemented by calls. This is different from modeling
+                                // user calls since we never CSE user calls. We don't do this for target intrinsics
+                                // however as they typically represent single instruction calls
+
+                                if (IsIntrinsicImplementedByUserCall(intrinsic->gtIntrinsicName))
+                                {
+                                    costEx = 36;
+                                    costSz = 4;
+                                }
+                                else
+                                {
+                                    costEx = 3;
+                                    costSz = 4;
+                                }
                                 break;
+                            }
                         }
                     }
                     else
@@ -4903,6 +4916,9 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
             costEx = 5;
             costSz = 2;
 
+            GenTreeCall* call;
+            call = tree->AsCall();
+
             /* Evaluate the 'this' argument, if present */
 
             if (tree->AsCall()->gtCallThisArg != nullptr)
@@ -4920,10 +4936,10 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
 
             /* Evaluate the arguments, right to left */
 
-            if (tree->AsCall()->gtCallArgs != nullptr)
+            if (call->gtCallArgs != nullptr)
             {
                 const bool lateArgs = false;
-                lvl2                = gtSetCallArgsOrder(tree->AsCall()->Args(), lateArgs, &costEx, &costSz);
+                lvl2                = gtSetCallArgsOrder(call->Args(), lateArgs, &costEx, &costSz);
                 if (level < lvl2)
                 {
                     level = lvl2;
@@ -4934,23 +4950,23 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
              * This is a "hidden" list and its only purpose is to
              * extend the life of temps until we make the call */
 
-            if (tree->AsCall()->gtCallLateArgs != nullptr)
+            if (call->gtCallLateArgs != nullptr)
             {
                 const bool lateArgs = true;
-                lvl2                = gtSetCallArgsOrder(tree->AsCall()->LateArgs(), lateArgs, &costEx, &costSz);
+                lvl2                = gtSetCallArgsOrder(call->LateArgs(), lateArgs, &costEx, &costSz);
                 if (level < lvl2)
                 {
                     level = lvl2;
                 }
             }
 
-            if (tree->AsCall()->gtCallType == CT_INDIRECT)
+            if (call->gtCallType == CT_INDIRECT)
             {
                 // pinvoke-calli cookie is a constant, or constant indirection
-                assert(tree->AsCall()->gtCallCookie == nullptr || tree->AsCall()->gtCallCookie->gtOper == GT_CNS_INT ||
-                       tree->AsCall()->gtCallCookie->gtOper == GT_IND);
+                assert(call->gtCallCookie == nullptr || call->gtCallCookie->gtOper == GT_CNS_INT ||
+                       call->gtCallCookie->gtOper == GT_IND);
 
-                GenTree* indirect = tree->AsCall()->gtCallAddr;
+                GenTree* indirect = call->gtCallAddr;
 
                 lvl2 = gtSetEvalOrder(indirect);
                 if (level < lvl2)
@@ -4962,13 +4978,27 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
             }
             else
             {
+                if (call->IsVirtual())
+                {
+                    GenTree* controlExpr = call->gtControlExpr;
+                    if (controlExpr != nullptr)
+                    {
+                        lvl2 = gtSetEvalOrder(controlExpr);
+                        if (level < lvl2)
+                        {
+                            level = lvl2;
+                        }
+                        costEx += controlExpr->GetCostEx();
+                        costSz += controlExpr->GetCostSz();
+                    }
+                }
 #ifdef TARGET_ARM
-                if (tree->AsCall()->IsVirtualStub())
+                if (call->IsVirtualStub())
                 {
                     // We generate movw/movt/ldr
                     costEx += (1 + IND_COST_EX);
                     costSz += 8;
-                    if (tree->AsCall()->gtCallMoreFlags & GTF_CALL_M_VIRTSTUB_REL_INDIRECT)
+                    if (call->gtCallMoreFlags & GTF_CALL_M_VIRTSTUB_REL_INDIRECT)
                     {
                         // Must use R12 for the ldr target -- REG_JUMP_THUNK_PARAM
                         costSz += 2;
@@ -4981,6 +5011,7 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
                 }
                 costSz += 2;
 #endif
+
 #ifdef TARGET_XARCH
                 costSz += 3;
 #endif
@@ -4989,7 +5020,7 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
             level += 1;
 
             /* Virtual calls are a bit more expensive */
-            if (tree->AsCall()->IsVirtual())
+            if (call->IsVirtual())
             {
                 costEx += 2 * IND_COST_EX;
                 costSz += 2;
@@ -5190,13 +5221,9 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
             break;
 
         default:
-#ifdef DEBUG
-            if (verbose)
-            {
-                printf("unexpected operator in this tree:\n");
-                gtDispTree(tree);
-            }
-#endif
+            JITDUMP("unexpected operator in this tree:\n");
+            DISPTREE(tree);
+
             NO_WAY("unexpected operator");
     }
 
@@ -5948,7 +5975,7 @@ GenTree* GenTree::gtGetParent(GenTree*** parentChildPtrPtr) const
 
 bool GenTree::OperRequiresAsgFlag()
 {
-    if (OperIs(GT_ASG) || OperIs(GT_XADD, GT_XCHG, GT_LOCKADD, GT_CMPXCHG, GT_MEMORYBARRIER))
+    if (OperIs(GT_ASG) || OperIs(GT_XADD, GT_XORR, GT_XAND, GT_XCHG, GT_LOCKADD, GT_CMPXCHG, GT_MEMORYBARRIER))
     {
         return true;
     }
@@ -6023,6 +6050,8 @@ bool GenTree::OperIsImplicitIndir() const
     switch (gtOper)
     {
         case GT_LOCKADD:
+        case GT_XORR:
+        case GT_XAND:
         case GT_XADD:
         case GT_XCHG:
         case GT_CMPXCHG:
@@ -6790,6 +6819,7 @@ GenTreeCall* Compiler::gtNewCallNode(
 
 GenTree* Compiler::gtNewLclvNode(unsigned lnum, var_types type DEBUGARG(IL_OFFSETX ILoffs))
 {
+    assert(type != TYP_VOID);
     // We need to ensure that all struct values are normalized.
     // It might be nice to assert this in general, but we have assignments of int to long.
     if (varTypeIsStruct(type))
@@ -7072,6 +7102,7 @@ GenTree* Compiler::gtArgNodeByLateArgInx(GenTreeCall* call, unsigned lateArgInx)
 
 GenTreeOp* Compiler::gtNewAssignNode(GenTree* dst, GenTree* src)
 {
+    assert(!src->TypeIs(TYP_VOID));
     /* Mark the target as being assigned */
 
     if ((dst->gtOper == GT_LCL_VAR) || (dst->OperGet() == GT_LCL_FLD))
@@ -8573,7 +8604,7 @@ GenTreeCall* Compiler::gtCloneExprCallHelper(GenTreeCall* tree, unsigned addFlag
 
     copy->gtCallType    = tree->gtCallType;
     copy->gtReturnType  = tree->gtReturnType;
-    copy->gtControlExpr = tree->gtControlExpr;
+    copy->gtControlExpr = gtCloneExpr(tree->gtControlExpr, addFlags, deepVarNum, deepVarVal);
 
     /* Copy the union */
     if (tree->gtCallType == CT_INDIRECT)
@@ -10281,7 +10312,7 @@ void Compiler::gtDispNodeName(GenTree* tree)
         }
         if (tree->AsCall()->IsVirtualVtable())
         {
-            gtfType = " ind";
+            gtfType = " vt-ind";
         }
         else if (tree->AsCall()->IsVirtualStub())
         {
@@ -12045,43 +12076,11 @@ void Compiler::gtDispTree(GenTree*     tree,
             {
                 // named intrinsic
                 assert(intrinsic->gtIntrinsicName != NI_Illegal);
+
                 switch (intrinsic->gtIntrinsicName)
                 {
-                    case NI_System_Math_Sin:
-                        printf(" sin");
-                        break;
-                    case NI_System_Math_Cos:
-                        printf(" cos");
-                        break;
-                    case NI_System_Math_Cbrt:
-                        printf(" cbrt");
-                        break;
-                    case NI_System_Math_Sqrt:
-                        printf(" sqrt");
-                        break;
                     case NI_System_Math_Abs:
                         printf(" abs");
-                        break;
-                    case NI_System_Math_Round:
-                        printf(" round");
-                        break;
-                    case NI_System_Math_Cosh:
-                        printf(" cosh");
-                        break;
-                    case NI_System_Math_Sinh:
-                        printf(" sinh");
-                        break;
-                    case NI_System_Math_Tan:
-                        printf(" tan");
-                        break;
-                    case NI_System_Math_Tanh:
-                        printf(" tanh");
-                        break;
-                    case NI_System_Math_Asin:
-                        printf(" asin");
-                        break;
-                    case NI_System_Math_Asinh:
-                        printf(" asinh");
                         break;
                     case NI_System_Math_Acos:
                         printf(" acos");
@@ -12089,14 +12088,53 @@ void Compiler::gtDispTree(GenTree*     tree,
                     case NI_System_Math_Acosh:
                         printf(" acosh");
                         break;
+                    case NI_System_Math_Asin:
+                        printf(" asin");
+                        break;
+                    case NI_System_Math_Asinh:
+                        printf(" asinh");
+                        break;
                     case NI_System_Math_Atan:
                         printf(" atan");
+                        break;
+                    case NI_System_Math_Atanh:
+                        printf(" atanh");
                         break;
                     case NI_System_Math_Atan2:
                         printf(" atan2");
                         break;
-                    case NI_System_Math_Atanh:
-                        printf(" atanh");
+                    case NI_System_Math_Cbrt:
+                        printf(" cbrt");
+                        break;
+                    case NI_System_Math_Ceiling:
+                        printf(" ceiling");
+                        break;
+                    case NI_System_Math_Cos:
+                        printf(" cos");
+                        break;
+                    case NI_System_Math_Cosh:
+                        printf(" cosh");
+                        break;
+                    case NI_System_Math_Exp:
+                        printf(" exp");
+                        break;
+                    case NI_System_Math_Floor:
+                        printf(" floor");
+                        break;
+                    case NI_System_Math_FMod:
+                        printf(" fmod");
+                        break;
+                    case NI_System_Math_FusedMultiplyAdd:
+                        printf(" fma");
+                        break;
+                    case NI_System_Math_ILogB:
+                        printf(" ilogb");
+                        break;
+                    case NI_System_Math_Log:
+                        printf(" log");
+                        break;
+                    case NI_System_Math_Log2:
+                        printf(" log2");
                         break;
                     case NI_System_Math_Log10:
                         printf(" log10");
@@ -12104,14 +12142,23 @@ void Compiler::gtDispTree(GenTree*     tree,
                     case NI_System_Math_Pow:
                         printf(" pow");
                         break;
-                    case NI_System_Math_Exp:
-                        printf(" exp");
+                    case NI_System_Math_Round:
+                        printf(" round");
                         break;
-                    case NI_System_Math_Ceiling:
-                        printf(" ceiling");
+                    case NI_System_Math_Sin:
+                        printf(" sin");
                         break;
-                    case NI_System_Math_Floor:
-                        printf(" floor");
+                    case NI_System_Math_Sinh:
+                        printf(" sinh");
+                        break;
+                    case NI_System_Math_Sqrt:
+                        printf(" sqrt");
+                        break;
+                    case NI_System_Math_Tan:
+                        printf(" tan");
+                        break;
+                    case NI_System_Math_Tanh:
+                        printf(" tanh");
                         break;
 
                     default:
@@ -12970,27 +13017,33 @@ GenTree* Compiler::gtFoldExpr(GenTree* tree)
                     fgWalkTreePre(&colon_op2, gtClearColonCond);
                 }
 
+                JITDUMP("\nIdentical GT_COLON trees!\n");
+                DISPTREE(op2);
+
+                GenTree* op;
                 if (sideEffList == nullptr)
                 {
                     // No side-effects, just return colon_op2
-                    return colon_op2;
+                    JITDUMP("No side effects, bashing to second operand:\n");
+                    op = colon_op2;
                 }
                 else
                 {
-#ifdef DEBUG
-                    if (verbose)
-                    {
-                        printf("\nIdentical GT_COLON trees with side effects! Extracting side effects...\n");
-                        gtDispTree(sideEffList);
-                        printf("\n");
-                    }
-#endif
+                    JITDUMP("Extracting side effects...\n");
+                    DISPTREE(sideEffList);
+
                     // Change the GT_COLON into a GT_COMMA node with the side-effects
                     op2->ChangeOper(GT_COMMA);
                     op2->gtFlags |= (sideEffList->gtFlags & GTF_ALL_EFFECT);
                     op2->AsOp()->gtOp1 = sideEffList;
-                    return op2;
+
+                    JITDUMP("Transformed GT_COLON into GT_COMMA:\n");
+                    op = op2;
                 }
+
+                DISPTREE(op);
+
+                return op;
             }
         }
     }
@@ -13165,6 +13218,9 @@ GenTree* Compiler::gtFoldExprCompare(GenTree* tree)
 
     /* The node has beeen folded into 'cons' */
 
+    JITDUMP("\nFolding comparison with identical operands:\n");
+    DISPTREE(tree);
+
     if (fgGlobalMorph)
     {
         fgMorphTreeDone(cons);
@@ -13174,6 +13230,9 @@ GenTree* Compiler::gtFoldExprCompare(GenTree* tree)
         cons->gtNext = tree->gtNext;
         cons->gtPrev = tree->gtPrev;
     }
+
+    JITDUMP("Bashed to %s:\n", cons->AsIntConCommon()->IconValue() ? "true" : "false");
+    DISPTREE(cons);
 
     return cons;
 }
@@ -13607,7 +13666,8 @@ GenTree* Compiler::gtFoldExprSpecial(GenTree* tree)
             if (tree->IsUnsigned() && (val == 0) && (op1 == cons) && !opHasSideEffects)
             {
                 // unsigned (0 <= x) is always true
-                return NewMorphedIntConNode(1);
+                op = NewMorphedIntConNode(1);
+                goto DONE_FOLD;
             }
             break;
 
@@ -13615,7 +13675,8 @@ GenTree* Compiler::gtFoldExprSpecial(GenTree* tree)
             if (tree->IsUnsigned() && (val == 0) && (op2 == cons) && !opHasSideEffects)
             {
                 // unsigned (x >= 0) is always true
-                return NewMorphedIntConNode(1);
+                op = NewMorphedIntConNode(1);
+                goto DONE_FOLD;
             }
             break;
 
@@ -13623,7 +13684,8 @@ GenTree* Compiler::gtFoldExprSpecial(GenTree* tree)
             if (tree->IsUnsigned() && (val == 0) && (op2 == cons) && !opHasSideEffects)
             {
                 // unsigned (x < 0) is always false
-                return NewMorphedIntConNode(0);
+                op = NewMorphedIntConNode(0);
+                goto DONE_FOLD;
             }
             break;
 
@@ -13631,7 +13693,8 @@ GenTree* Compiler::gtFoldExprSpecial(GenTree* tree)
             if (tree->IsUnsigned() && (val == 0) && (op1 == cons) && !opHasSideEffects)
             {
                 // unsigned (0 > x) is always false
-                return NewMorphedIntConNode(0);
+                op = NewMorphedIntConNode(0);
+                goto DONE_FOLD;
             }
             FALLTHROUGH;
         case GT_EQ:
@@ -13855,6 +13918,11 @@ DONE_FOLD:
 
         op->gtFlags &= ~(GTF_VAR_USEASG | GTF_VAR_DEF);
     }
+
+    JITDUMP("\nFolding binary operator with a constant operand:\n");
+    DISPTREE(tree);
+    JITDUMP("Transformed into:\n");
+    DISPTREE(op);
 
     return op;
 }
@@ -14949,13 +15017,9 @@ GenTree* Compiler::gtFoldExprConst(GenTree* tree)
                     // We only fold a GT_ADD that involves a null reference.
                     if (((op1->TypeGet() == TYP_REF) && (i1 == 0)) || ((op2->TypeGet() == TYP_REF) && (i2 == 0)))
                     {
-#ifdef DEBUG
-                        if (verbose)
-                        {
-                            printf("\nFolding operator with constant nodes into a constant:\n");
-                            gtDispTree(tree);
-                        }
-#endif
+                        JITDUMP("\nFolding operator with constant nodes into a constant:\n");
+                        DISPTREE(tree);
+
                         // Fold into GT_IND of null byref
                         tree->ChangeOperConst(GT_CNS_INT);
                         tree->gtType                 = TYP_BYREF;
@@ -14965,13 +15029,10 @@ GenTree* Compiler::gtFoldExprConst(GenTree* tree)
                         {
                             fgValueNumberTreeConst(tree);
                         }
-#ifdef DEBUG
-                        if (verbose)
-                        {
-                            printf("\nFolded to null byref:\n");
-                            gtDispTree(tree);
-                        }
-#endif
+
+                        JITDUMP("\nFolded to null byref:\n");
+                        DISPTREE(tree);
+
                         goto DONE;
                     }
                     break;
@@ -15220,13 +15281,8 @@ GenTree* Compiler::gtFoldExprConst(GenTree* tree)
         CNS_INT:
         FOLD_COND:
 
-#ifdef DEBUG
-            if (verbose)
-            {
-                printf("\nFolding operator with constant nodes into a constant:\n");
-                gtDispTree(tree);
-            }
-#endif
+            JITDUMP("\nFolding operator with constant nodes into a constant:\n");
+            DISPTREE(tree);
 
 #ifdef TARGET_64BIT
             // Some operations are performed as 64 bit instead of 32 bit so the upper 32 bits
@@ -15246,13 +15302,10 @@ GenTree* Compiler::gtFoldExprConst(GenTree* tree)
             {
                 fgValueNumberTreeConst(tree);
             }
-#ifdef DEBUG
-            if (verbose)
-            {
-                printf("Bashed to int constant:\n");
-                gtDispTree(tree);
-            }
-#endif
+
+            JITDUMP("Bashed to int constant:\n");
+            DISPTREE(tree);
+
             goto DONE;
 
         /* This operation is going to cause an overflow exception. Morph into
@@ -15278,7 +15331,6 @@ GenTree* Compiler::gtFoldExprConst(GenTree* tree)
             // for global morphing phase.
             //
             // TODO-CQ: Once fgMorphArgs() is fixed this restriction could be removed.
-            CLANG_FORMAT_COMMENT_ANCHOR;
 
             if (!fgGlobalMorph)
             {
@@ -15320,13 +15372,10 @@ GenTree* Compiler::gtFoldExprConst(GenTree* tree)
             goto OVF;
 
         OVF:
-#ifdef DEBUG
-            if (verbose)
-            {
-                printf("\nFolding binary operator with constant nodes into a comma throw:\n");
-                gtDispTree(tree);
-            }
-#endif
+
+            JITDUMP("\nFolding binary operator with constant nodes into a comma throw:\n");
+            DISPTREE(tree);
+
             /* We will change the cast to a GT_COMMA and attach the exception helper as AsOp()->gtOp1.
              * The constant expression zero becomes op2. */
 
@@ -15640,13 +15689,9 @@ GenTree* Compiler::gtFoldExprConst(GenTree* tree)
                 return tree;
             }
 
-#ifdef DEBUG
-            if (verbose)
-            {
-                printf("\nFolding long operator with constant nodes into a constant:\n");
-                gtDispTree(tree);
-            }
-#endif
+            JITDUMP("\nFolding long operator with constant nodes into a constant:\n");
+            DISPTREE(tree);
+
             assert((GenTree::s_gtNodeSizes[GT_CNS_NATIVELONG] == TREE_NODE_SZ_SMALL) ||
                    (tree->gtDebugFlags & GTF_DEBUG_NODE_LARGE));
 
@@ -15657,13 +15702,9 @@ GenTree* Compiler::gtFoldExprConst(GenTree* tree)
                 fgValueNumberTreeConst(tree);
             }
 
-#ifdef DEBUG
-            if (verbose)
-            {
-                printf("Bashed to long constant:\n");
-                gtDispTree(tree);
-            }
-#endif
+            JITDUMP("Bashed to long constant:\n");
+            DISPTREE(tree);
+
             goto DONE;
 
         /*-------------------------------------------------------------------------
@@ -15692,12 +15733,8 @@ GenTree* Compiler::gtFoldExprConst(GenTree* tree)
 
             if (_isnan(d1) || _isnan(d2))
             {
-#ifdef DEBUG
-                if (verbose)
-                {
-                    printf("Double operator(s) is NaN\n");
-                }
-#endif
+                JITDUMP("Double operator(s) is NaN\n");
+
                 if (tree->OperKind() & GTK_RELOP)
                 {
                     if (tree->gtFlags & GTF_RELOP_NAN_UN)
@@ -15811,13 +15848,8 @@ GenTree* Compiler::gtFoldExprConst(GenTree* tree)
 
         CNS_DOUBLE:
 
-#ifdef DEBUG
-            if (verbose)
-            {
-                printf("\nFolding fp operator with constant nodes into a fp constant:\n");
-                gtDispTree(tree);
-            }
-#endif
+            JITDUMP("\nFolding fp operator with constant nodes into a fp constant:\n");
+            DISPTREE(tree);
 
             assert((GenTree::s_gtNodeSizes[GT_CNS_DBL] == TREE_NODE_SZ_SMALL) ||
                    (tree->gtDebugFlags & GTF_DEBUG_NODE_LARGE));
@@ -15828,13 +15860,10 @@ GenTree* Compiler::gtFoldExprConst(GenTree* tree)
             {
                 fgValueNumberTreeConst(tree);
             }
-#ifdef DEBUG
-            if (verbose)
-            {
-                printf("Bashed to fp constant:\n");
-                gtDispTree(tree);
-            }
-#endif
+
+            JITDUMP("Bashed to fp constant:\n");
+            DISPTREE(tree);
+
             goto DONE;
 
         default:
@@ -16450,12 +16479,7 @@ void Compiler::gtExtractSideEffList(GenTree*  expr,
                     if (node->OperIs(GT_ADDR) && node->gtGetOp1()->OperIsIndir() &&
                         (node->gtGetOp1()->TypeGet() == TYP_STRUCT))
                     {
-#ifdef DEBUG
-                        if (m_compiler->verbose)
-                        {
-                            printf("Keep the GT_ADDR and GT_IND together:\n");
-                        }
-#endif
+                        JITDUMP("Keep the GT_ADDR and GT_IND together:\n");
                         m_sideEffects.Push(node);
                         return Compiler::WALK_SKIP_SUBTREES;
                     }
@@ -18237,6 +18261,15 @@ CORINFO_CLASS_HANDLE Compiler::gtGetClassHandle(GenTree* tree, bool* pIsExact, b
                 if ((ni == NI_System_Array_Clone) || (ni == NI_System_Object_MemberwiseClone))
                 {
                     objClass = gtGetClassHandle(call->gtCallThisArg->GetNode(), pIsExact, pIsNonNull);
+                    break;
+                }
+
+                CORINFO_CLASS_HANDLE specialObjClass = impGetSpecialIntrinsicExactReturnType(call->gtCallMethHnd);
+                if (specialObjClass != nullptr)
+                {
+                    objClass    = specialObjClass;
+                    *pIsExact   = true;
+                    *pIsNonNull = true;
                     break;
                 }
             }

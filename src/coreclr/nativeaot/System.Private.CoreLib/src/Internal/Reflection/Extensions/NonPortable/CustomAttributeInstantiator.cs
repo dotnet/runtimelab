@@ -52,7 +52,7 @@ namespace Internal.Reflection.Extensions.NonPortable
                 {
                     Type parameterType = parameters[i].ParameterType;
                     if (!(parameterType.Equals(constructorArguments[i].ArgumentType) ||
-                          parameterType.Equals(typeof(object))))
+                          parameterType == typeof(object)))
                         break;
                 }
                 if (i == parameters.Length)

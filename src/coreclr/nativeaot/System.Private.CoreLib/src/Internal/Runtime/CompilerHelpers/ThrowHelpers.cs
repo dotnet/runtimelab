@@ -13,6 +13,21 @@ namespace Internal.Runtime.CompilerHelpers
     /// </summary>
     public static class ThrowHelpers
     {
+        internal static void ThrowBodyRemoved()
+        {
+            throw new NotSupportedException(SR.NotSupported_BodyRemoved);
+        }
+
+        internal static void ThrowFeatureBodyRemoved()
+        {
+            throw new NotSupportedException(SR.NotSupported_FeatureBodyRemoved);
+        }
+
+        internal static void ThrowInstanceBodyRemoved()
+        {
+            throw new NotSupportedException(SR.NotSupported_InstanceBodyRemoved);
+        }
+
         public static void ThrowOverflowException()
         {
             throw new OverflowException();

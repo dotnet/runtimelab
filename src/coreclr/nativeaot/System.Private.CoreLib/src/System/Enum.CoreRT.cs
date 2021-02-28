@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime;
 using System.Runtime.CompilerServices;
 using Internal.Runtime.CompilerServices;
@@ -243,6 +244,7 @@ namespace System
             return GetEnumInfo(enumType).UnderlyingType;
         }
 
+        [RequiresDynamicCode("It might not be possible to create an array of the enum type at runtime. Use the GetValues<TEnum> overload instead.")]
         public static Array GetValues(Type enumType)
         {
             if (enumType == null)
@@ -256,9 +258,6 @@ namespace System
 
             Array values = GetEnumInfo(enumType).ValuesAsUnderlyingType;
             int count = values.Length;
-#if PROJECTN
-            Array result = Array.CreateInstance(enumType, count);
-#else
             // Without universal shared generics, chances are slim that we'll have the appropriate
             // array type available. Offer an escape hatch that avoids a MissingMetadataException
             // at the cost of a small appcompat risk.
@@ -267,8 +266,15 @@ namespace System
                 result = Array.CreateInstance(Enum.GetUnderlyingType(enumType), count);
             else
                 result = Array.CreateInstance(enumType, count);
-#endif
             Array.CopyImplValueTypeArrayNoInnerGcRefs(values, 0, result, 0, count);
+            return result;
+        }
+
+        public static TEnum[] GetValues<TEnum>() where TEnum : struct, Enum
+        {
+            Array values = GetEnumInfo(typeof(TEnum)).ValuesAsUnderlyingType;
+            TEnum[] result = new TEnum[values.Length];
+            Array.CopyImplValueTypeArrayNoInnerGcRefs(values, 0, result, 0, values.Length);
             return result;
         }
 

@@ -3,99 +3,12 @@
 
 #include "AsmMacros.h"
 
-    EXTERN GetClasslibCCtorCheck
     EXTERN memcpy
     EXTERN memcpyGCRefs
     EXTERN memcpyGCRefsWithWriteBarrier
     EXTERN memcpyAnyWithWriteBarrier
 
     TEXTAREA
-
-;;
-;; Checks whether the static class constructor for the type indicated by the context structure has been
-;; executed yet. If not the classlib is called via their CheckStaticClassConstruction callback which will
-;; execute the cctor and update the context to record this fact.
-;;
-;;  Input:
-;;      r0 : Address of StaticClassConstructionContext structure
-;;
-;;  Output:
-;;      All volatile registers and the condition codes may be trashed.
-;;
-    LEAF_ENTRY RhpCheckCctor
-
-        ;; Check the m_initialized field of the context. The cctor has been run only if this equals 1 (the
-        ;; initial state is 0 and the remaining values are reserved for classlib use). This check is
-        ;; unsynchronized; if we go down the slow path and call the classlib then it is responsible for
-        ;; synchronizing with other threads and re-checking the value.
-        ldr     r12, [r0, #OFFSETOF__StaticClassConstructionContext__m_initialized]
-        cmp     r12, #1
-        bne     RhpCheckCctor__SlowPath
-        bx      lr
-RhpCheckCctor__SlowPath
-        mov     r1, r0
-        b       RhpCheckCctor2 ; tail-call the check cctor helper that actually has an implementation to call
-                               ; the cctor
-    LEAF_END RhpCheckCctor
-
-;;
-;; Checks whether the static class constructor for the type indicated by the context structure has been
-;; executed yet. If not the classlib is called via their CheckStaticClassConstruction callback which will
-;; execute the cctor and update the context to record this fact.
-;;
-;;  Input:
-;;      r0 : Value that must be preserved in this register across the cctor check.
-;;      r1 : Address of StaticClassConstructionContext structure
-;;
-;;  Output:
-;;      All volatile registers other than r0 may be trashed and the condition codes may also be trashed.
-;;
-    LEAF_ENTRY RhpCheckCctor2
-
-        ;; Check the m_initialized field of the context. The cctor has been run only if this equals 1 (the
-        ;; initial state is 0 and the remaining values are reserved for classlib use). This check is
-        ;; unsynchronized; if we go down the slow path and call the classlib then it is responsible for
-        ;; synchronizing with other threads and re-checking the value.
-        ldr     r12, [r1, #OFFSETOF__StaticClassConstructionContext__m_initialized]
-        cmp     r12, #1
-        bne     RhpCheckCctor2__SlowPath
-        bx      lr
-
-    LEAF_END RhpCheckCctor2
-
-;;
-;; Slow path helper for RhpCheckCctor.
-;;
-;;  Input:
-;;      r0 : Value that must be preserved in this register across the cctor check.
-;;      r1 : Address of StaticClassConstructionContext structure
-;;
-;;  Output:
-;;      All volatile registers other than r0 may be trashed and the condition codes may also be trashed.
-;;
-    NESTED_ENTRY RhpCheckCctor2__SlowPath
-
-        ;; Need to preserve r0, r1 and lr across helper call. r2 is also pushed to keep the stack 8 byte aligned.
-        PROLOG_PUSH {r0-r2,lr}
-
-        ;; Call a C++ helper to retrieve the address of the classlib callback. The caller's return address is
-        ;; passed as the argument to the helper; it's an address in the module and is used by the helper to
-        ;; locate the classlib.
-        mov     r0, lr
-        bl      GetClasslibCCtorCheck
-
-        ;; R0 now contains the address of the classlib method to call. The single argument is the context
-        ;; structure address currently in stashed on the stack. Clean up and tail call to the classlib
-        ;; callback so we're not on the stack should a GC occur (so we don't need to worry about transition
-        ;; frames).
-        mov     r12, r0
-        EPILOG_POP {r0-r2,lr}
-        ;; tail-call the class lib cctor check function. This function is required to return its first
-        ;; argument, so that r0 can be preserved.
-        EPILOG_BRANCH_REG r12
-
-    NESTED_END RhpCheckCctor__SlowPath2
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

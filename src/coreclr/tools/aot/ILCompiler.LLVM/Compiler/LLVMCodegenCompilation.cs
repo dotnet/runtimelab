@@ -34,7 +34,7 @@ namespace ILCompiler
             ILProvider ilProvider,
             DebugInformationProvider debugInformationProvider,
             Logger logger,
-            LLVMCodegenConfigProvider options,
+            IInliningPolicy inliningPolicy,
             DevirtualizationManager devirtualizationManager,
             InstructionSetSupport instructionSetSupport)
             : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, instructionSetSupport, 0)

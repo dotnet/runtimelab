@@ -34,9 +34,10 @@ namespace ILCompiler
             DebugInformationProvider debugInformationProvider,
             Logger logger,
             DevirtualizationManager devirtualizationManager,
+            IInliningPolicy inliningPolicy,
             InstructionSetSupport instructionSetSupport,
             RyuJitCompilationOptions options)
-            : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, devirtualizationManager, logger)
+            : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, devirtualizationManager, inliningPolicy, logger)
         {
             _compilationOptions = options;
             _hardwareIntrinsicFlags = new ExternSymbolMappedField(nodeFactory.TypeSystemContext.GetWellKnownType(WellKnownType.Int32), "g_cpuFeatures");

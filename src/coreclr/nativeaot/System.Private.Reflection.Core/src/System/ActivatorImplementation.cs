@@ -134,7 +134,7 @@ namespace System
             Type elementType = type;
             while (elementType.HasElementType)
                 elementType = elementType.GetElementType();
-            if (elementType.Equals(CommonRuntimeTypes.Void))
+            if (elementType == typeof(void))
                 throw new NotSupportedException(SR.Acc_CreateVoid);
         }
     }

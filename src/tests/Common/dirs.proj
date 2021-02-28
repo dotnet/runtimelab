@@ -31,7 +31,6 @@
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\DataFlow\DataFlow.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HardwareIntrinsics\*.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Delegates\Delegates.csproj" />
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Exceptions\Exceptions.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\DynamicGenerics\DynamicGenerics.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\PInvoke\PInvoke.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\SharedLibrary\SharedLibrary.csproj" />
@@ -39,6 +38,7 @@
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Preinitialization\Preinitialization.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Threading\Threading.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Reflection\Reflection.csproj" />
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\DeadCodeElimination\DeadCodeElimination.csproj" />
     </ItemGroup>
 
     <!-- Temporarily don't build because we don't restore Microsoft.CodeAnalysis in external.csproj - DO NOT BRING THIS HACK OVER to dotnet/runtime -->

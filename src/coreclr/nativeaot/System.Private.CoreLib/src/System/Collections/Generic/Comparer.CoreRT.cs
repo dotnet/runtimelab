@@ -35,6 +35,7 @@ namespace System.Collections.Generic
 
         public static Comparer<T> Default
         {
+            [Intrinsic]
             get
             {
                 // Lazy initialization produces smaller code for CoreRT than initialization in constructor

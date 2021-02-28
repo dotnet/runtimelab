@@ -69,13 +69,13 @@ namespace Internal.IL.Stubs.StartupCode
                 }
             }
             
-            MetadataType startup = Context.GetHelperType("StartupCodeHelpers");
+            MetadataType startup = Context.GetOptionalHelperType("StartupCodeHelpers");
 
             // Initialize command line args if the class library supports this
             string initArgsName = (Context.Target.OperatingSystem == TargetOS.Windows)
                                 ? "InitializeCommandLineArgsW"
                                 : "InitializeCommandLineArgs";
-            MethodDesc initArgs = startup.GetMethod(initArgsName, null);
+            MethodDesc initArgs = startup?.GetMethod(initArgsName, null);
             if (initArgs != null)
             {
                 codeStream.Emit(ILOpcode.ldarg_0); // argc
@@ -84,7 +84,7 @@ namespace Internal.IL.Stubs.StartupCode
             }
 
             // Initialize the entrypoint assembly if the class library supports this
-            MethodDesc initEntryAssembly = startup.GetMethod("InitializeEntryAssembly", null);
+            MethodDesc initEntryAssembly = startup?.GetMethod("InitializeEntryAssembly", null);
             if (initEntryAssembly != null)
             {
                 ModuleDesc entrypointModule = ((MetadataType)_mainMethod.WrappedMethod.OwningType).Module;
@@ -93,7 +93,7 @@ namespace Internal.IL.Stubs.StartupCode
             }
 
             // Initialize COM apartment
-            MethodDesc initApartmentState = startup.GetMethod("InitializeApartmentState", null);
+            MethodDesc initApartmentState = startup?.GetMethod("InitializeApartmentState", null);
             if (initApartmentState != null)
             {
                 if (_mainMethod.HasCustomAttribute("System", "STAThreadAttribute"))
@@ -121,8 +121,8 @@ namespace Internal.IL.Stubs.StartupCode
             codeStream.MarkDebuggerStepInPoint();
             codeStream.Emit(ILOpcode.call, emitter.NewToken(_mainMethod));
 
-            MethodDesc setLatchedExitCode = startup.GetMethod("SetLatchedExitCode", null);
-            MethodDesc shutdown = startup.GetMethod("Shutdown", null);
+            MethodDesc setLatchedExitCode = startup?.GetMethod("SetLatchedExitCode", null);
+            MethodDesc shutdown = startup?.GetMethod("Shutdown", null);
 
             // The class library either supports "advanced shutdown", or doesn't. No half-implementations allowed.
             Debug.Assert((setLatchedExitCode != null) == (shutdown != null));

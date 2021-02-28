@@ -38,7 +38,7 @@ namespace System.Runtime
         FailFast = 1,
         // UnhandledExceptionHandler = 2, // unused
         AppendExceptionStackFrame = 3,
-        CheckStaticClassConstruction = 4,
+        // unused = 4,
         GetSystemArrayEEType = 5,
         OnFirstChance = 6,
         DebugFuncEvalHelper = 7,

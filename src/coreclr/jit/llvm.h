@@ -13,7 +13,8 @@
 // these break std::min/max
 #undef min
 #undef max
-#include "llvm/ADT/APFloat.h"
+// this breaks StringMap.h
+#undef NumItems
 #ifdef TARGET_WASM
 
 

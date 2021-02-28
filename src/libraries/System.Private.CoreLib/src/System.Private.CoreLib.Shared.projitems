@@ -10,7 +10,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <Nullable>enable</Nullable>
-    <IsOSXLike Condition="'$(TargetsOSX)' == 'true' or '$(TargetsiOS)' == 'true' or '$(TargetstvOS)' == 'true'">true</IsOSXLike>
+    <IsOSXLike Condition="'$(TargetsOSX)' == 'true' or '$(TargetsMacCatalyst)' == 'true' or '$(TargetsiOS)' == 'true' or '$(TargetstvOS)' == 'true'">true</IsOSXLike>
     <SupportsArmIntrinsics Condition="'$(Platform)' == 'arm64'">true</SupportsArmIntrinsics>
     <SupportsX86Intrinsics Condition="'$(Platform)' == 'x64' or ('$(Platform)' == 'x86' and '$(TargetsUnix)' != 'true')">true</SupportsX86Intrinsics>
     <ILLinkSharedDirectory>$(MSBuildThisFileDirectory)ILLink\</ILLinkSharedDirectory>
@@ -24,6 +24,7 @@
     <DefineConstants Condition="'$(TargetsUnix)' == 'true'">$(DefineConstants);TARGET_UNIX</DefineConstants>
     <DefineConstants Condition="'$(TargetsWindows)' == 'true'">$(DefineConstants);TARGET_WINDOWS</DefineConstants>
     <DefineConstants Condition="'$(TargetsOSX)' == 'true'">$(DefineConstants);TARGET_OSX</DefineConstants>
+    <DefineConstants Condition="'$(TargetsMacCatalyst)' == 'true'">$(DefineConstants);TARGET_MACCATALYST</DefineConstants>
     <DefineConstants Condition="'$(TargetsiOS)' == 'true'">$(DefineConstants);TARGET_IOS</DefineConstants>
     <DefineConstants Condition="'$(TargetstvOS)' == 'true'">$(DefineConstants);TARGET_TVOS</DefineConstants>
     <DefineConstants Condition="'$(TargetsBrowser)' == 'true'">$(DefineConstants);TARGET_BROWSER</DefineConstants>
@@ -40,6 +41,9 @@
     <ILLinkSubstitutionsXmls Include="$(ILLinkSharedDirectory)ILLink.Substitutions.NoX86Intrinsics.xml" Condition="'$(SupportsX86Intrinsics)' != 'true'" />
     <ILLinkLinkAttributesXmls Include="$(ILLinkSharedDirectory)ILLink.LinkAttributes.Shared.xml" />
   </ItemGroup>
+  <PropertyGroup>
+    <ILLinkTrimXmlLibraryBuild>$(ILLinkSharedDirectory)ILLinkTrim_LibraryBuild.xml</ILLinkTrimXmlLibraryBuild>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)Internal\AssemblyAttributes.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Internal\Console.cs" />
@@ -232,6 +236,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\DefaultBinder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Delegate.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\CodeAnalysis\RequiresAssemblyFilesAttribute.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\CodeAnalysis\RequiresDynamicCodeAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\CodeAnalysis\RequiresUnreferencedCodeAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\CodeAnalysis\DynamicallyAccessedMemberTypes.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\CodeAnalysis\DynamicallyAccessedMembersAttribute.cs" />
@@ -536,6 +541,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\Reflection\CustomAttributeNamedArgument.cs" Condition="'$(TargetsCoreRT)' != 'true'" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Reflection\CustomAttributeTypedArgument.cs" Condition="'$(TargetsCoreRT)' != 'true'" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Reflection\DefaultMemberAttribute.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Reflection\Emit\AssemblyBuilder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Reflection\Emit\AssemblyBuilderAccess.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Reflection\Emit\EmptyCAHolder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Reflection\Emit\FlowControl.cs" />
@@ -590,6 +596,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\Reflection\ReflectionTypeLoadException.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Reflection\ResourceAttributes.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Reflection\ResourceLocation.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Reflection\RuntimeMethodBody.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Reflection\RuntimeReflectionExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Reflection\SignatureArrayType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Reflection\SignatureByRefType.cs" />
@@ -749,6 +756,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\ComTypes\ITypeLib.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\ComTypes\ITypeLib2.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\ComVisibleAttribute.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\ComWrappers.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\CriticalHandle.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\CULong.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\InteropServices\CurrencyWrapper.cs" />
@@ -960,6 +968,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\CancellationTokenRegistration.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\CancellationTokenSource.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\CompressedStack.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Threading\StackCrawlMark.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\DeferredDisposableLifetime.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\EventResetMode.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\EventWaitHandle.cs" />
@@ -1125,6 +1134,9 @@
     <Compile Include="$(CommonPath)System\HResults.cs">
       <Link>Common\System\HResults.cs</Link>
     </Compile>
+    <Compile Include="$(CommonPath)System\NotImplemented.cs">
+      <Link>Common\System\NotImplemented.cs</Link>
+    </Compile>
     <Compile Include="$(CommonPath)System\Obsoletions.cs">
       <Link>Common\System\Obsoletions.cs</Link>
     </Compile>
@@ -1191,7 +1203,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\Tracing\IEventProvider.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\Tracing\IncrementingEventCounter.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\Tracing\IncrementingPollingCounter.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\Tracing\NativeRuntimeEventSource.cs" Condition="'$(FeaturePerfTracing)' == 'true'" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\Tracing\NativeRuntimeEventSource.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\Tracing\PollingCounter.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\Tracing\RuntimeEventSource.cs" Condition="'$(FeaturePerfTracing)' == 'true'" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\Tracing\Winmeta.cs" />
@@ -1822,7 +1834,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\Environment.NoRegistry.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Environment.UnixOrBrowser.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Environment.OSVersion.OSX.cs" Condition="'$(IsOSXLike)' == 'true'" />
-    <Compile Include="$(MSBuildThisFileDirectory)System\Environment.GetFolderPathCore.Unix.cs" Condition="'$(TargetsiOS)' != 'true' and '$(TargetstvOS)' != 'true'" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Environment.GetFolderPathCore.Unix.cs" Condition="'$(TargetsMacCatalyst)' != 'true' and '$(TargetsiOS)' != 'true' and '$(TargetstvOS)' != 'true'" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Globalization\CalendarData.Unix.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Globalization\CultureData.Unix.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Globalization\CultureInfo.Unix.cs" />
@@ -1953,7 +1965,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\ThreadPool.Portable.cs" Condition="'$(FeatureCoreCLR)' != 'true'" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\ThreadPoolBoundHandle.PlatformNotSupported.cs" Condition="'$(FeatureCoreCLR)' != 'true'" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\PortableThreadPool.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)System\Threading\PortableThreadPoolEventSource.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Threading\NativeRuntimeEventSource.PortableThreadPool.cs" Condition="'$(FeatureCoreCLR)' != 'true'" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\PortableThreadPool.GateThread.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\PortableThreadPool.HillClimbing.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\PortableThreadPool.HillClimbing.Complex.cs" />

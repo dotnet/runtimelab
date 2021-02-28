@@ -51,7 +51,7 @@ namespace System.Reflection.Runtime.MethodInfos
 
         public sealed override Delegate CreateDelegate(RuntimeTypeHandle delegateType, object target, bool isStatic, bool isVirtual, bool isOpen)
         {
-            if (_thisType.IsConstructedGenericType && _thisType.GetGenericTypeDefinition() == CommonRuntimeTypes.Nullable)
+            if (_thisType.IsConstructedGenericType && _thisType.GetGenericTypeDefinition() == typeof(Nullable<>))
             {
                 // Desktop compat: MethodInfos to Nullable<T> methods cannot be turned into delegates.
                 throw new ArgumentException(SR.Arg_DlgtTargMeth);

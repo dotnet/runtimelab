@@ -880,7 +880,7 @@ namespace Internal.IL
                 LLVMMetadataRef compileUnitMetadata = _compilation.DIBuilder.CreateCompileUnit(
                     LLVMDWARFSourceLanguage.LLVMDWARFSourceLanguageC,
                     fileMetadata, "ILC", 0 /* Optimized */, String.Empty, 1, String.Empty,
-                    LLVMDWARFEmissionKind.LLVMDWARFEmissionFull, 0, 0, 0);
+                    LLVMDWARFEmissionKind.LLVMDWARFEmissionFull, 0, 0, 0, String.Empty, String.Empty);
                 Module.AddNamedMetadataOperand("llvm.dbg.cu", compileUnitMetadata);
 
                 debugMetadata = new DebugMetadata(fileMetadata, compileUnitMetadata);
@@ -1236,7 +1236,7 @@ namespace Internal.IL
                 if (IsStruct(f.FieldType) && llvmValue.TypeOf.IsPackedStruct)
                 {
                     LLVMValueRef targetAddress = _builder.BuildGEP(address, new[] { BuildConstInt32(f.Offset.AsInt) });
-                    uint index = LLVMSharpInterop.ElementAtOffset(_compilation.TargetData, llvmValue.TypeOf, (ulong)f.Offset.AsInt);
+                    uint index = (uint)_compilation.TargetData.ElementAtOffset(llvmValue.TypeOf, (ulong)f.Offset.AsInt);
                     LLVMValueRef fieldValue = _builder.BuildExtractValue(llvmValue, index);
                     //recurse into struct
                     StoreStruct(targetAddress, fieldValue, f.FieldType, CastToPointerToTypeDesc(targetAddress, f.FieldType), true);
@@ -1247,7 +1247,7 @@ namespace Internal.IL
                     LLVMValueRef fieldValue;
                     if (llvmValue.TypeOf.IsPackedStruct)
                     {
-                        uint index = LLVMSharpInterop.ElementAtOffset(_compilation.TargetData, llvmValue.TypeOf, (ulong) f.Offset.AsInt);
+                        uint index = (uint)_compilation.TargetData.ElementAtOffset(llvmValue.TypeOf, (ulong) f.Offset.AsInt);
                         fieldValue = _builder.BuildExtractValue(llvmValue, index);
                         Debug.Assert(fieldValue.TypeOf.Kind == LLVMTypeKind.LLVMPointerTypeKind, "expected an LLVM pointer type");
                     }

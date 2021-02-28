@@ -356,7 +356,7 @@ namespace System.Reflection.Runtime.MethodInfos
                     {
                         // The invoker is going to dereference and box (for structs) the result of the invocation
                         // on behalf of the caller. Can't box byref-like types and can't box void.
-                        if (ReturnType.GetElementType().IsByRefLike || ReturnType.GetElementType() == CommonRuntimeTypes.Void)
+                        if (ReturnType.GetElementType().IsByRefLike || ReturnType.GetElementType() == typeof(void))
                             throw new NotSupportedException();
                     }
                     methodInvoker = _lazyMethodInvoker = this.UncachedMethodInvoker;

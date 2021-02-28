@@ -55,7 +55,6 @@ struct gc_alloc_context
 //
 COOP_PINVOKE_HELPER(Object *, RhpNewFast, (EEType* pEEType))
 {
-    ASSERT(!pEEType->RequiresAlign8());
     ASSERT(!pEEType->HasFinalizer());
 
     Thread * pCurThread = ThreadStore::GetCurrentThread();
@@ -93,7 +92,6 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFast, (EEType* pEEType))
 
 COOP_PINVOKE_HELPER(Object *, RhpNewFinalizable, (EEType* pEEType))
 {
-    ASSERT(!pEEType->RequiresAlign8());
     ASSERT(pEEType->HasFinalizer());
 
     size_t size = pEEType->get_BaseSize();
@@ -113,8 +111,6 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFinalizable, (EEType* pEEType))
 
 COOP_PINVOKE_HELPER(Array *, RhpNewArray, (EEType * pArrayEEType, int numElements))
 {
-    ASSERT_MSG(!pArrayEEType->RequiresAlign8(), "NYI");
-
     Thread * pCurThread = ThreadStore::GetCurrentThread();
     gc_alloc_context * acontext = pCurThread->GetAllocContext();
     Array * pObject;
@@ -195,7 +191,6 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFinalizableAlign8, (EEType* pEEType))
 #ifndef HOST_64BIT
 COOP_PINVOKE_HELPER(Object *, RhpNewFastAlign8, (EEType* pEEType))
 {
-    ASSERT(pEEType->RequiresAlign8());
     ASSERT(!pEEType->HasFinalizer());
 
     Thread* pCurThread = ThreadStore::GetCurrentThread();
@@ -297,8 +292,6 @@ COOP_PINVOKE_HELPER(Object*, RhpNewFastMisalign, (EEType* pEEType))
 
 COOP_PINVOKE_HELPER(Array *, RhpNewArrayAlign8, (EEType * pArrayEEType, int numElements))
 {
-    ASSERT_MSG(pArrayEEType->RequiresAlign8(), "RhpNewArrayAlign8 called for a type that is not aligned 8");
-
     Thread* pCurThread = ThreadStore::GetCurrentThread();
     gc_alloc_context* acontext = pCurThread->GetAllocContext();
     Array* pObject;
