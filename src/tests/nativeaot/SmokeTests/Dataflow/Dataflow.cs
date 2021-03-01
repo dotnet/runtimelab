@@ -17,6 +17,7 @@ class Program
         TestAttributeDataflow.Run();
         TestGenericDataflow.Run();
         TestArrayDataflow.Run();
+        TestAllDataflow.Run();
 
         return 100;
     }
@@ -259,6 +260,29 @@ class Program
             Assert.Equal(1, typeof(int[]).GetConstructors().Length);
         }
     }
+
+    class TestAllDataflow
+    {
+        class Base
+        {
+            private static int GetNumber() => 42;
+        }
+
+        class Derived : Base
+        {
+        }
+
+        private static MethodInfo GetPrivateMethod([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type t)
+        {
+            return t.BaseType.GetMethod("GetNumber", BindingFlags.Static | BindingFlags.NonPublic);
+        }
+
+        public static void Run()
+        {
+            if ((int)GetPrivateMethod(typeof(Derived)).Invoke(null, Array.Empty<object>()) != 42)
+                throw new Exception();
+        }
+    }
 }
 
 static class Assert
@@ -278,16 +302,28 @@ static class Assert
 
 static class Helpers
 {
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+        Justification = "That's the point")]
     public static int CountConstructors(this Type t)
         => t.GetConstructors(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic).Length;
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+        Justification = "That's the point")]
     public static int CountPublicConstructors(this Type t)
         => t.GetConstructors(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public).Length;
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+        Justification = "That's the point")]
     public static int CountMethods(this Type t)
         => t.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly).Length;
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+        Justification = "That's the point")]
     public static int CountPublicMethods(this Type t)
         => t.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.DeclaredOnly).Length;
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+        Justification = "That's the point")]
     public static int CountFields(this Type t)
         => t.GetFields(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly).Length;
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+        Justification = "That's the point")]
     public static int CountProperties(this Type t)
         => t.GetProperties(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly).Length;
 }
