@@ -610,7 +610,7 @@ void ObjectWriter::EmitVarDefRange(const MCSymbol *Fn,
 // Maps an ICorDebugInfo register number to the corresponding CodeView
 // register number
 CVRegNum ObjectWriter::GetCVRegNum(ICorDebugInfo::RegNum RegNum) {
-  static const CVRegNum CvRegMapAmd64[] = {
+  static const CVRegNum CVRegMapAmd64[] = {
     CV_AMD64_RAX, CV_AMD64_RCX, CV_AMD64_RDX, CV_AMD64_RBX,
     CV_AMD64_RSP, CV_AMD64_RBP, CV_AMD64_RSI, CV_AMD64_RDI,
     CV_AMD64_R8, CV_AMD64_R9, CV_AMD64_R10, CV_AMD64_R11,
@@ -619,35 +619,35 @@ CVRegNum ObjectWriter::GetCVRegNum(ICorDebugInfo::RegNum RegNum) {
 
   switch (TMachine->getTargetTriple().getArch()) {
   case Triple::x86:
-    if (X86::ICorDebugInfo::REGNUM_EAX <= RegNum &&
-        RegNum <= X86::ICorDebugInfo::REGNUM_EDI) {
+    if (X86::ICorDebugInfo::REGNUM_EAX <= (int)RegNum &&
+        (int)RegNum <= X86::ICorDebugInfo::REGNUM_EDI) {
       return RegNum - X86::ICorDebugInfo::REGNUM_EAX + CV_REG_EAX;
     }
     break;
   case Triple::x86_64:
-    if (RegNum < sizeof(CvRegMapAmd64) / sizeof(CvRegMapAmd64[0])) {
-      return CvRegMapAmd64[RegNum];
+    if (RegNum < sizeof(CVRegMapAmd64) / sizeof(CVRegMapAmd64[0])) {
+      return CVRegMapAmd64[RegNum];
     }
     break;
   case Triple::arm:
   case Triple::armeb:
   case Triple::thumb:
   case Triple::thumbeb:
-    if (Arm::ICorDebugInfo::REGNUM_R0 <= RegNum &&
-        RegNum <= Arm::ICorDebugInfo::REGNUM_PC) {
+    if (Arm::ICorDebugInfo::REGNUM_R0 <= (int)RegNum &&
+        (int)RegNum <= Arm::ICorDebugInfo::REGNUM_PC) {
       return RegNum - Arm::ICorDebugInfo::REGNUM_R0 + CV_ARM_R0;
     }
     break;
   case Triple::aarch64:
   case Triple::aarch64_be:
-    if (Arm64::ICorDebugInfo::REGNUM_X0 <= RegNum &&
-        RegNum < Arm64::ICorDebugInfo::REGNUM_PC) {
+    if (Arm64::ICorDebugInfo::REGNUM_X0 <= (int)RegNum &&
+        (int)RegNum < Arm64::ICorDebugInfo::REGNUM_PC) {
       return RegNum - Arm64::ICorDebugInfo::REGNUM_X0 + CV_ARM64_X0;
     }
     // Special registers are ordered FP, LR, SP, PC in ICorDebugInfo's
     // enumeration and FP, LR, SP, *ZR*, PC in CodeView's enumeration.
     // For that reason handle the PC register separately.
-    if (RegNum == Arm64::ICorDebugInfo::REGNUM_PC) {
+    if ((int)RegNum == Arm64::ICorDebugInfo::REGNUM_PC) {
       return CV_ARM64_PC;
     }
     break;

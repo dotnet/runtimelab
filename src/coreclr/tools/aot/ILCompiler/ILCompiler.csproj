@@ -33,8 +33,8 @@
   <PropertyGroup>
     <ILCompilerVersion>6.0.0-preview.2.21122.4</ILCompilerVersion>
 
-    <ObjWriterArtifactPath Condition="'$(TargetsWindows)' == 'true'">$(ArtifactsDir)llvm\build\bin\RelWithDebInfo\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
-    <ObjWriterArtifactPath Condition="'$(TargetsWindows)' != 'true'">$(ArtifactsDir)llvm\build\lib\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
+    <ObjWriterArtifactPath Condition="'$(TargetsWindows)' == 'true'">$(ArtifactsDir)llvm\build\$(TargetArchitecture)\bin\Release\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
+    <ObjWriterArtifactPath Condition="'$(TargetsWindows)' != 'true'">$(ArtifactsDir)llvm\build\$(TargetArchitecture)\lib\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
 
     <!-- CoreDisTools are used in debugging visualizers. -->
     <IncludeCoreDisTools Condition="'$(Configuration)' != 'Release'">true</IncludeCoreDisTools>
@@ -42,26 +42,24 @@
 
   <Import Project="$(RepositoryEngineeringDir)coredistools.targets" Condition="'$(DotNetBuildFromSource)' != 'true' and '$(IncludeCoreDisTools)' == 'true'" />
 
-  <ItemGroup Condition="'$(TargetArchitecture)' != 'arm64'">
-    <PackageReference Condition="!Exists('$(ObjWriterArtifactPath)')" Include="Microsoft.DotNet.ILCompiler">
-      <Version>$(ILCompilerVersion)</Version>
-    </PackageReference>
+  <ItemGroup Condition="Exists('$(ObjWriterArtifactPath)')">
+    <Content Include="$(ObjWriterArtifactPath)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+      <Pack>false</Pack>
+    </Content>
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetArchitecture)' != 'arm64'">
-    <Content Condition="Exists('$(ObjWriterArtifactPath)')" Include="$(ObjWriterArtifactPath)">
+  <ItemGroup Condition="!Exists('$(ObjWriterArtifactPath)') and '$(TargetArchitecture)' != 'arm64'">
+    <PackageReference Include="Microsoft.DotNet.ILCompiler">
+      <Version>$(ILCompilerVersion)</Version>
+    </PackageReference>
+
+    <Content Include="$(NuGetPackageRoot)runtime.$(ILCompilerRuntimeIdentifier).microsoft.dotnet.ilcompiler\$(ILCompilerVersion)\tools\$(LibPrefix)objwriter$(LibSuffix)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
     </Content>
-
-    <Content Condition="!Exists('$(ObjWriterArtifactPath)')"
-      Include="$(NuGetPackageRoot)runtime.$(ILCompilerRuntimeIdentifier).microsoft.dotnet.ilcompiler\$(ILCompilerVersion)\tools\$(LibPrefix)objwriter$(LibSuffix)">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Visible>false</Visible>
-      <Pack>false</Pack>
-    </Content>
-
   </ItemGroup>
 
   <ItemGroup>
