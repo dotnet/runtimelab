@@ -92,7 +92,14 @@ namespace System.Text.Json.Serialization.Metadata
                 DetermineSerializationCapabilities(ignoreCondition, MemberInfo!.MemberType);
                 DeterminePropertyName();
                 DetermineIgnoreCondition(ignoreCondition);
-                DetermineNumberHandlingForProperty(parentTypeNumberHandling);
+
+                JsonNumberHandling? propertyNumberHandling = null;
+                JsonNumberHandlingAttribute? attribute = GetAttribute<JsonNumberHandlingAttribute>(MemberInfo);
+                if (attribute != null)
+                {
+                    propertyNumberHandling = attribute.Handling;
+                }
+                DetermineNumberHandlingForProperty(parentTypeNumberHandling, propertyNumberHandling);
             }
         }
 
@@ -239,22 +246,20 @@ namespace System.Text.Json.Serialization.Metadata
 #pragma warning restore CS0618 // IgnoreNullValues is obsolete
         }
 
-        private void DetermineNumberHandlingForClassInfo(JsonNumberHandling? parentTypeNumberHandling)
+        internal void DetermineNumberHandlingForClassInfo(JsonNumberHandling? numberHandling)
         {
-            bool numberHandlingIsApplicable = NumberHandingIsApplicable();
-
-            if (parentTypeNumberHandling != null && !ConverterBase.IsInternalConverter)
+            if (numberHandling != null && !ConverterBase.IsInternalConverter)
             {
                 ThrowHelper.ThrowInvalidOperationException_NumberHandlingOnPropertyInvalid(this);
             }
 
-            if (numberHandlingIsApplicable)
+            if (NumberHandingIsApplicable())
             {
                 // This logic is to honor JsonNumberHandlingAttribute placed on
                 // custom collections e.g. public class MyNumberList : List<int>.
 
                 // Priority 1: Get handling from the type (parent type in this case is the type itself).
-                NumberHandling = parentTypeNumberHandling;
+                NumberHandling = numberHandling;
 
                 // Priority 2: Get handling from JsonSerializerOptions instance.
                 if (!NumberHandling.HasValue && Options.NumberHandling != JsonNumberHandling.Strict)
@@ -264,22 +269,14 @@ namespace System.Text.Json.Serialization.Metadata
             }
         }
 
-        private void DetermineNumberHandlingForProperty(JsonNumberHandling? parentTypeNumberHandling)
+        internal void DetermineNumberHandlingForProperty(JsonNumberHandling? parentTypeNumberHandling, JsonNumberHandling? propertyNumberHandling)
         {
-            Debug.Assert(MemberInfo != null);
-
             bool numberHandlingIsApplicable = NumberHandingIsApplicable();
-
-            JsonNumberHandlingAttribute? attribute = GetAttribute<JsonNumberHandlingAttribute>(MemberInfo);
-            if (attribute != null && !numberHandlingIsApplicable)
-            {
-                ThrowHelper.ThrowInvalidOperationException_NumberHandlingOnPropertyInvalid(this);
-            }
 
             if (numberHandlingIsApplicable)
             {
                 // Priority 1: Get handling from attribute on property or field.
-                JsonNumberHandling? handling = attribute?.Handling;
+                JsonNumberHandling? handling = propertyNumberHandling;
 
                 // Priority 2: Get handling from attribute on parent class type.
                 handling ??= parentTypeNumberHandling;
@@ -291,6 +288,10 @@ namespace System.Text.Json.Serialization.Metadata
                 }
 
                 NumberHandling = handling;
+            }
+            else if (propertyNumberHandling.HasValue)
+            {
+                ThrowHelper.ThrowInvalidOperationException_NumberHandlingOnPropertyInvalid(this);
             }
         }
 
@@ -368,13 +369,11 @@ namespace System.Text.Json.Serialization.Metadata
         }
 
         internal abstract void SourceGenInitializePropertyInfoForClassInfo(
-            Type parentClassType,
             Type declaredPropertyType,
             Type? runtimePropertyType,
             ClassType runtimeClassType,
             JsonClassInfo runtimeClassInfo,
             JsonConverter converter,
-            JsonIgnoreCondition? ignoreCondition,
             JsonNumberHandling? parentTypeNumberHandling,
             JsonSerializerOptions options);
 

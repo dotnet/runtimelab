@@ -1,18 +1,48 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Tests;
 using System.Text.Json.Tests;
 using System.Threading.Tasks;
 using Xunit;
+
+[assembly: JsonSerializable(typeof(byte))]
+[assembly: JsonSerializable(typeof(sbyte))]
+[assembly: JsonSerializable(typeof(short))]
+[assembly: JsonSerializable(typeof(int), CanBeDynamic = true)]
+[assembly: JsonSerializable(typeof(long))]
+[assembly: JsonSerializable(typeof(ushort))]
+[assembly: JsonSerializable(typeof(uint))]
+[assembly: JsonSerializable(typeof(ulong))]
+[assembly: JsonSerializable(typeof(float), CanBeDynamic = true)]
+[assembly: JsonSerializable(typeof(double))]
+[assembly: JsonSerializable(typeof(decimal))]
+[assembly: JsonSerializable(typeof(byte?))]
+[assembly: JsonSerializable(typeof(sbyte?))]
+[assembly: JsonSerializable(typeof(short?))]
+[assembly: JsonSerializable(typeof(int?), CanBeDynamic = true)]
+[assembly: JsonSerializable(typeof(long?))]
+[assembly: JsonSerializable(typeof(ushort?))]
+[assembly: JsonSerializable(typeof(uint?))]
+[assembly: JsonSerializable(typeof(ulong?))]
+[assembly: JsonSerializable(typeof(float?), CanBeDynamic = true)]
+[assembly: JsonSerializable(typeof(double?))]
+[assembly: JsonSerializable(typeof(decimal?))]
+[assembly: JsonSerializable(typeof(DateTime), CanBeDynamic = true)]
+[assembly: JsonSerializable(typeof(Guid?), CanBeDynamic = true)]
+[assembly: JsonSerializable(typeof(NumberHandlingTests.Class_With_BoxedNumbers))]
+[assembly: JsonSerializable(typeof(NumberHandlingTests.Class_With_BoxedNonNumbers))]
 
 namespace System.Text.Json.Serialization.Tests
 {
@@ -200,6 +230,10 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Need collections support (IList)
+#endif
         public async Task Number_AsBoxed_CollectionRootType_Element()
         {
             int @int = 1;

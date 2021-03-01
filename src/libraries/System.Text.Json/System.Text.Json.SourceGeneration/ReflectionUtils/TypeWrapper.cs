@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -33,7 +34,51 @@ namespace System.Reflection
 
         public override Assembly Assembly => new AssemblyWrapper(_typeSymbol.ContainingAssembly, _metadataLoadContext);
 
-        public override string AssemblyQualifiedName => throw new NotImplementedException();
+        private string? _assemblyQualifiedName;
+
+        public override string AssemblyQualifiedName
+        {
+            get
+            {
+                if (_assemblyQualifiedName == null)
+                {
+                    StringBuilder sb = new();
+
+                    AssemblyIdentity identity = _typeSymbol.ContainingAssembly.Identity;
+
+                    sb.Append(FullName);
+
+                    sb.Append(", ");
+                    sb.Append(identity.Name);
+
+                    sb.Append(", Version=");
+                    sb.Append(identity.Version);
+
+                    if (string.IsNullOrWhiteSpace(identity.CultureName))
+                    {
+                        sb.Append(", Culture=neutral");
+                    }
+
+                    sb.Append(", PublicKeyToken=");
+                    ImmutableArray<byte> publicKeyToken = identity.PublicKeyToken;
+                    if (publicKeyToken.Length > 0)
+                    {
+                        foreach (byte b in publicKeyToken)
+                        {
+                            sb.Append(b.ToString("x2"));
+                        }
+                    }
+                    else
+                    {
+                        sb.Append("null");
+                    }
+
+                    _assemblyQualifiedName = sb.ToString();
+                }
+
+                return _assemblyQualifiedName;
+            }
+        }
 
         public override Type BaseType => _typeSymbol.BaseType!.AsType(_metadataLoadContext);
 
@@ -46,16 +91,26 @@ namespace System.Reflection
                 if (_fullName == null)
                 {
                     StringBuilder sb = new();
-                    sb.Append(Name);
 
-                    for (ISymbol currentSymbol = _typeSymbol.ContainingSymbol; currentSymbol != null && currentSymbol.Kind != SymbolKind.Namespace; currentSymbol = currentSymbol.ContainingSymbol)
+                    if (this.IsNullableValueType(out Type? underlyingType))
                     {
-                        sb.Insert(0, $"{currentSymbol.Name}+");
+                        sb.Append("System.Nullable`1[[");
+                        sb.Append(underlyingType.AssemblyQualifiedName);
+                        sb.Append("]]");
                     }
-
-                    if (!string.IsNullOrWhiteSpace(Namespace))
+                    else
                     {
-                        sb.Insert(0, $"{Namespace}.");
+                        sb.Append(Name);
+
+                        for (ISymbol currentSymbol = _typeSymbol.ContainingSymbol; currentSymbol != null && currentSymbol.Kind != SymbolKind.Namespace; currentSymbol = currentSymbol.ContainingSymbol)
+                        {
+                            sb.Insert(0, $"{currentSymbol.Name}+");
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(Namespace))
+                        {
+                            sb.Insert(0, $"{Namespace}.");
+                        }
                     }
 
                     _fullName = sb.ToString();

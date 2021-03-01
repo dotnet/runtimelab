@@ -7,7 +7,12 @@ namespace System.Text.Json.Serialization
     /// Determines how <see cref="JsonSerializer"/> handles numbers when serializing and deserializing.
     /// </summary>
     [Flags]
-    public enum JsonNumberHandling
+#if BUILDING_SOURCE_GENERATOR
+    internal
+#else
+    public
+#endif
+    enum JsonNumberHandling
     {
         /// <summary>
         /// Numbers will only be read from <see cref="JsonTokenType.Number"/> tokens and will only be written as JSON numbers (without quotes).

@@ -16,6 +16,8 @@ namespace System.Text.Json.Serialization.Metadata
     {
         private HashSet<string>? _ignoredMembers;
 
+        private JsonNumberHandling? _numberHandling;
+
         internal JsonObjectInfo(Type type, JsonSerializerOptions options) :
             base(type, options, ClassType.Object)
         { }
@@ -24,16 +26,18 @@ namespace System.Text.Json.Serialization.Metadata
         /// todo
         /// </summary>
         /// <param name="createObjectFunc"></param>
+        /// <param name="numberHandling"></param>
         /// <param name="options"></param>
         public JsonObjectInfo(
             ConstructorDelegate? createObjectFunc,
+            JsonNumberHandling? numberHandling,
             JsonSerializerOptions options) : base(typeof(T), options, ClassType.Object)
         {
             CreateObject = createObjectFunc;
+            _numberHandling = numberHandling;
             JsonConverter converter = new ObjectDefaultConverter<T>();
-
             ConverterBase = converter;
-            PropertyInfoForClassInfo = SourceGenCreatePropertyInfoForClassInfo(Type, Type, runtimeClassInfo: this, converter, Options);
+            PropertyInfoForClassInfo = SourceGenCreatePropertyInfoForClassInfo(Type, Type, runtimeClassInfo: this, converter, numberHandling, Options);
         }
 
         /// <summary>
@@ -48,6 +52,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// <param name="setter"></param>
         /// <param name="jsonPropertyName"></param>
         /// <param name="ignoreCondition"></param>
+        /// <param name="numberHandling"></param>
         public JsonPropertyInfo<TProperty> AddProperty<TProperty>(
             string clrPropertyName,
             MemberTypes memberType,
@@ -56,7 +61,8 @@ namespace System.Text.Json.Serialization.Metadata
             Func<object, TProperty>? getter = null,
             Action<object, TProperty>? setter = null,
             string? jsonPropertyName = null,
-            JsonIgnoreCondition? ignoreCondition = null)
+            JsonIgnoreCondition? ignoreCondition = null,
+            JsonNumberHandling? numberHandling = null)
         {
             if (clrPropertyName == null)
             {
@@ -114,6 +120,7 @@ namespace System.Text.Json.Serialization.Metadata
 
                 jsonPropertyInfo.DeterminePropertyName(clrPropertyName, jsonPropertyName);
                 jsonPropertyInfo.DetermineIgnoreCondition(ignoreCondition);
+                jsonPropertyInfo.DetermineNumberHandlingForProperty(parentTypeNumberHandling: _numberHandling, propertyNumberHandling: numberHandling);
                 jsonPropertyInfo.DetermineSerializationCapabilities(ignoreCondition, memberType);
             }
 

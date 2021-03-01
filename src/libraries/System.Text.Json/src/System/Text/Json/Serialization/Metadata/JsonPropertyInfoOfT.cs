@@ -76,17 +76,14 @@ namespace System.Text.Json.Serialization.Metadata
         }
 
         internal override void SourceGenInitializePropertyInfoForClassInfo(
-            Type parentClassType,
             Type declaredPropertyType,
             Type? runtimePropertyType,
             ClassType runtimeClassType,
             JsonClassInfo runtimeClassInfo,
             JsonConverter converter,
-            JsonIgnoreCondition? ignoreCondition,
-            JsonNumberHandling? parentTypeNumberHandling,
+            JsonNumberHandling? numberHandling,
             JsonSerializerOptions options)
         {
-            ParentClassType = parentClassType;
             DeclaredPropertyType = declaredPropertyType;
             RuntimePropertyType = runtimePropertyType;
             ClassType = runtimeClassType;
@@ -101,6 +98,7 @@ namespace System.Text.Json.Serialization.Metadata
             _converterIsExternalAndPolymorphic = !converter.IsInternalConverter && DeclaredPropertyType != converter.TypeToConvert;
             PropertyTypeCanBeNull = DeclaredPropertyType.CanBeNull();
             _propertyTypeEqualsTypeToConvert = typeof(T) == DeclaredPropertyType;
+            DetermineNumberHandlingForClassInfo(numberHandling);
         }
 
         private void InitializeAccessorsWithReflection(MemberInfo memberInfo)
@@ -293,7 +291,7 @@ namespace System.Text.Json.Serialization.Metadata
 
                 success = true;
             }
-            else if (Converter.CanUseDirectReadOrWrite && state.Current.NumberHandling == null)
+            else if (Converter.CanUseDirectReadOrWrite && !state.Current.NumberHandling.HasValue)
             {
                 // CanUseDirectReadOrWrite == false when using streams
                 Debug.Assert(!state.IsContinuation);
@@ -435,7 +433,7 @@ namespace System.Text.Json.Serialization.Metadata
             else
             {
                 // Optimize for internal converters by avoiding the extra call to TryRead.
-                if (Converter.CanUseDirectReadOrWrite && state.Current.NumberHandling == null)
+                if (Converter.CanUseDirectReadOrWrite && !state.Current.NumberHandling.HasValue)
                 {
                     // CanUseDirectReadOrWrite == false when using streams
                     Debug.Assert(!state.IsContinuation);

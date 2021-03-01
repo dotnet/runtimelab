@@ -33,6 +33,8 @@ namespace System.Text.Json.SourceGeneration
             JsonSerializableSyntaxReceiver receiver = (JsonSerializableSyntaxReceiver)executionContext.SyntaxReceiver;
             MetadataLoadContext metadataLoadContext = new(executionContext.Compilation);
 
+            TypeExtensions.NullableOfTType = metadataLoadContext.Resolve(typeof(Nullable<>));
+
             // Discover serializable types indicated by JsonSerializableAttribute.
             foreach (CompilationUnitSyntax compilationUnit in receiver.CompilationUnits)
             {
@@ -73,7 +75,7 @@ namespace System.Text.Json.SourceGeneration
 
                         // TODO: define behavior for when type.Namespace == "<global namespace>".
 
-                        // Last JsonSerializableAttribute instance for a specified type wins.
+                        // TODO: make sure a type is only specified once here, to avoid errors with JsonSerializable.CanBeDynamic.
                         (SerializableTypes ??= new Dictionary<string, (Type, bool)>())[type.FullName] = (type, canBeDynamic);
                     }
                 }

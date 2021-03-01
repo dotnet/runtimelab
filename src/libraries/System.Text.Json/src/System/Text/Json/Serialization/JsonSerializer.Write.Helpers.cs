@@ -59,36 +59,5 @@ namespace System.Text.Json
             writer.Flush();
             return success;
         }
-
-        private static ReadOnlySpan<byte> WriteUsingMetadata<TValue>(in TValue value, JsonClassInfo? jsonClassInfo)
-        {
-            // TODO: this would be when to fallback to regular warm-up code-paths.
-            // For validation during development, we don't expect this to be null.
-            if (jsonClassInfo == null)
-            {
-                throw new ArgumentNullException(nameof(jsonClassInfo));
-            }
-
-            WriteStack state = default;
-            state.Initialize(jsonClassInfo);
-
-            JsonSerializerOptions options = jsonClassInfo.Options;
-
-            using (var output = new PooledByteBufferWriter(options.DefaultBufferSize))
-            {
-                using (var writer = new Utf8JsonWriter(output, options.GetWriterOptions()))
-                {
-                    JsonConverter? jsonConverter = jsonClassInfo.PropertyInfoForClassInfo.ConverterBase as JsonConverter<TValue>;
-                    if (jsonConverter == null)
-                    {
-                        throw new InvalidOperationException("todo: classInfo not compatible");
-                    }
-
-                    WriteCore(jsonConverter, writer, value, ref state, options);
-                }
-
-                return output.WrittenMemory.Span;
-            }
-        }
     }
 }

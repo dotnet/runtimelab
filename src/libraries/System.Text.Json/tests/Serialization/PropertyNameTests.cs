@@ -8,9 +8,9 @@ using System.Text.Json.Serialization.Tests;
 using System.Threading.Tasks;
 using Xunit;
 
-//[assembly: JsonSerializable(typeof(OverridePropertyNameDesignTime_TestClass))]
-//[assembly: JsonSerializable(typeof(EmptyPropertyName_TestClass))]
-//[assembly: JsonSerializable(typeof(ClassWithUnicodeProperty))]
+[assembly: JsonSerializable(typeof(OverridePropertyNameDesignTime_TestClass))]
+[assembly: JsonSerializable(typeof(EmptyPropertyName_TestClass))]
+[assembly: JsonSerializable(typeof(ClassWithUnicodeProperty))]
 
 namespace System.Text.Json.Serialization.Tests
 {

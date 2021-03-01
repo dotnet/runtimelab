@@ -10,6 +10,7 @@ using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using System.Runtime.Serialization.Json;
+using System.Text.Json.Serialization;
 
 namespace System.Text.Json.SourceGeneration
 {
@@ -20,7 +21,6 @@ namespace System.Text.Json.SourceGeneration
         private readonly Type _ienumerableOfTType;
         private readonly Type _ilistOfTType;
         private readonly Type _dictionaryType;
-        private readonly Type _nullableOfTType;
         private readonly Type _stringType;
 
         // Generation namespace for source generation code.
@@ -65,10 +65,9 @@ namespace System.Text.Json.SourceGeneration
             _ienumerableOfTType = metadataLoadContext.Resolve(typeof(IEnumerable<>));
             _ilistOfTType = metadataLoadContext.Resolve(typeof(IList<>));
             _dictionaryType = metadataLoadContext.Resolve(typeof(Dictionary<,>));
-            _nullableOfTType = metadataLoadContext.Resolve(typeof(Nullable<>));
             _stringType = metadataLoadContext.Resolve(typeof(string));
 
-            PopulateSimpleTypes(metadataLoadContext);
+            PopulateKnownTypes(metadataLoadContext);
             InitializeDiagnosticDescriptors();
         }
 
@@ -100,6 +99,8 @@ namespace System.Text.Json.SourceGeneration
 
         public void GenerateSerializationMetadataForType(TypeMetadata typeMetadata)
         {
+            Debug.Assert(typeMetadata != null);
+
             if (_typesWithMetadataGenerated.Contains(typeMetadata))
             {
                 return;
@@ -125,6 +126,18 @@ namespace System.Text.Json.SourceGeneration
                         // TODO: Generate code similar to ClassInfo for known types.
                         return;
                     }
+                case ClassType.Nullable:
+                    {
+                        _executionContext.AddSource(
+                            metadataFileName,
+                            SourceText.From(GenerateForNullableType(typeMetadata), Encoding.UTF8));
+
+                        _executionContext.ReportDiagnostic(Diagnostic.Create(_generatedTypeClass, Location.None, new string[] { typeMetadata.CompilableName }));
+
+                        // TODO: do we need to generate metadata for the underlying type?
+                        GenerateSerializationMetadataForType(typeMetadata.NullableUnderlyingTypeMetadata);
+                    }
+                    break;
                 case ClassType.Enumerable:
                     {
                         _executionContext.AddSource(
@@ -240,7 +253,45 @@ namespace {_generationNamespace}
             {{
                 if (_{typeFriendlyName} == null)
                 {{
-                    var typeInfo = new JsonValueInfo<{typeCompilableName}>(new {typeFriendlyName}Converter(), GetOptions());
+                    var typeInfo = new JsonValueInfo<{typeCompilableName}>(new {typeFriendlyName}Converter(), {GetNumberHandlingNamedArg(typeMetadata.NumberHandling)}, GetOptions());
+                    // TODO: remove this for types that can be dynamic since they are initialized in JsonContext ctor.
+                    typeInfo.CompleteInitialization(canBeDynamic: {GetBoolAsStr(typeMetadata.CanBeDynamic)});
+                    _{typeFriendlyName} = typeInfo;
+                }}
+
+                return _{typeFriendlyName};
+            }}
+        }}
+    }}
+}}
+";
+        }
+
+        private string GenerateForNullableType(TypeMetadata typeMetadata)
+        {
+            string typeCompilableName = typeMetadata.CompilableName;
+            string typeFriendlyName = typeMetadata.FriendlyName;
+
+            TypeMetadata? underlyingTypeMetadata = typeMetadata.NullableUnderlyingTypeMetadata;
+            Debug.Assert(underlyingTypeMetadata != null && _knownTypes.Contains(underlyingTypeMetadata.Type));
+            string underlyingTypeCompilableName = underlyingTypeMetadata.CompilableName;
+            string underlyingTypeFriendlyName = underlyingTypeMetadata.FriendlyName;
+
+            return @$"{GetUsingStatementsString(typeMetadata)}
+
+namespace {_generationNamespace}
+{{
+    {JsonContextDeclarationSource}
+    {{
+        private JsonTypeInfo<{typeCompilableName}> _{typeFriendlyName};
+        public JsonTypeInfo<{typeCompilableName}> {typeFriendlyName}
+        {{
+            get
+            {{
+                if (_{typeFriendlyName} == null)
+                {{
+                    // TODO: avoid new allocation for underlying type converter. Should this reuse converter from options.GetConverter()?
+                    var typeInfo = new JsonValueInfo<{typeCompilableName}>(new NullableConverter<{underlyingTypeCompilableName}>(new {underlyingTypeFriendlyName}Converter()), {GetNumberHandlingNamedArg(typeMetadata.NumberHandling)}, GetOptions());
                     // TODO: remove this for types that can be dynamic since they are initialized in JsonContext ctor.
                     typeInfo.CompleteInitialization(canBeDynamic: {GetBoolAsStr(typeMetadata.CanBeDynamic)});
                     _{typeFriendlyName} = typeInfo;
@@ -277,6 +328,8 @@ namespace {_generationNamespace}
                 ? "null"
                 : $"this.{valueTypeReadableName}";
 
+            string numberHandlingNamedArg = GetNumberHandlingNamedArg(typeMetadata.NumberHandling);
+
             CollectionType collectionType = typeMetadata.CollectionType;
 
             string collectionTypeInfoValue = collectionType switch
@@ -285,11 +338,11 @@ namespace {_generationNamespace}
                 CollectionType.List => GetEnumerableTypeInfoAssignment(),
                 CollectionType.IEnumerable => GetEnumerableTypeInfoAssignment(),
                 CollectionType.IList => GetEnumerableTypeInfoAssignment(),
-                CollectionType.Dictionary => $@"(JsonCollectionTypeInfo<{typeCompilableName}>)KnownDictionaryTypeInfos<{keyTypeCompilableName!}, {valueTypeCompilableName}>.Get{collectionType}({valueTypeMetadataPropertyName}, this)",
+                CollectionType.Dictionary => $@"(JsonCollectionTypeInfo<{typeCompilableName}>)KnownDictionaryTypeInfos<{keyTypeCompilableName!}, {valueTypeCompilableName}>.Get{collectionType}({valueTypeMetadataPropertyName}, this, {numberHandlingNamedArg})",
                 _ => throw new NotSupportedException()
             };
 
-            string GetEnumerableTypeInfoAssignment() => $@"(JsonCollectionTypeInfo<{typeCompilableName}>)KnownCollectionTypeInfos<{valueTypeCompilableName}>.Get{collectionType}({valueTypeMetadataPropertyName}, this)";
+            string GetEnumerableTypeInfoAssignment() => $@"(JsonCollectionTypeInfo<{typeCompilableName}>)KnownCollectionTypeInfos<{valueTypeCompilableName}>.Get{collectionType}({valueTypeMetadataPropertyName}, this, {numberHandlingNamedArg})";
 
             return @$"{GetUsingStatementsString(typeMetadata)}
 
@@ -335,7 +388,15 @@ namespace {_generationNamespace}
                 return typeMetadata!;
             }
 
-            _rootSerializableTypes.TryGetValue(type.FullName, out (Type, bool) typeInfo);
+            bool found = _rootSerializableTypes.TryGetValue(type.FullName, out (Type, bool) typeInfo);
+
+            if (!found && type.IsValueType)
+            {
+                // To help callers, check if `CanBeDynamic` was specified for the nullable equivalent.
+                string nullableTypeFullName = $"System.Nullable`1[[{type.AssemblyQualifiedName}]]";
+                _rootSerializableTypes.TryGetValue(nullableTypeFullName, out typeInfo);
+            }
+
             bool canBeDynamic = typeInfo.Item2;
             return GetTypeMetadata(type, canBeDynamic);
         }
@@ -349,16 +410,56 @@ namespace {_generationNamespace}
             ClassType classType;
             Type? collectionKeyType = null;
             Type? collectionValueType = null;
+            Type? nullableUnderlyingType = null;
             List<PropertyMetadata>? propertiesMetadata = null;
             CollectionType collectionType = CollectionType.NotApplicable;
             ObjectConstructionStrategy constructionStrategy = default;
+            JsonNumberHandling? numberHandling = null;
+
+            IList<CustomAttributeData> attributeDataList = CustomAttributeData.GetCustomAttributes(type);
+            foreach (CustomAttributeData attributeData in attributeDataList)
+            {
+                Type attributeType = attributeData.AttributeType;
+
+                if (attributeType.Assembly.FullName != "System.Text.Json")
+                {
+                    continue;
+                }
+
+                if (attributeType.FullName == "System.Text.Json.Serialization.JsonNumberHandlingAttribute")
+                {
+                    IList<CustomAttributeTypedArgument> ctorArgs = attributeData.ConstructorArguments;
+                    if (ctorArgs.Count != 1)
+                    {
+                        throw new InvalidOperationException($"Invalid use of 'JsonNumberHandlingAttribute' detected on '{type}'.");
+                    }
+
+                    numberHandling = (JsonNumberHandling)ctorArgs[0].Value;
+                }
+            }
 
             // TODO: first check for custom converter.
             if (_knownTypes.Contains(type))
             {
                 classType = ClassType.KnownType;
             }
-            else if (type.IsEnum || IsNullableValueType(type))
+            else if (type.IsNullableValueType(out Type underlyingType))
+            {
+                Debug.Assert(underlyingType != null);
+
+                // Limited support for nullable (temporary): underlying type should be primitive. This way we know what the converter's friendly name is.
+                // TODO: add full support.
+                if (_knownTypes.Contains(underlyingType))
+                {
+                    nullableUnderlyingType = underlyingType;
+                    classType = ClassType.Nullable;
+                }
+                else
+                {
+                    classType = ClassType.TypeUnsupportedBySourceGen;
+                }
+            }
+            else if (type.IsEnum)
             {
                 classType = ClassType.TypeUnsupportedBySourceGen;
             }
@@ -486,11 +587,13 @@ namespace {_generationNamespace}
                 classType,
                 isValueType: type.IsValueType,
                 canBeDynamic,
+                numberHandling,
                 propertiesMetadata,
                 collectionType,
                 collectionKeyTypeMetadata: collectionKeyType != null ? GetOrAddTypeMetadata(collectionKeyType) : null,
                 collectionValueTypeMetadata: collectionValueType != null ? GetOrAddTypeMetadata(collectionValueType) : null,
-                constructionStrategy);
+                constructionStrategy,
+                nullableUnderlyingTypeMetadata: nullableUnderlyingType != null ? GetOrAddTypeMetadata(nullableUnderlyingType) : null);
 
             return typeMetadata;
         }
@@ -518,6 +621,7 @@ namespace {_generationNamespace}
 
             bool hasJsonInclude = false;
             JsonIgnoreCondition? ignoreCondition = null;
+            JsonNumberHandling? numberHandling = null;
             string? jsonPropertyName = null;
 
             foreach (CustomAttributeData attributeData in attributeDataList)
@@ -552,19 +656,27 @@ namespace {_generationNamespace}
                             hasJsonInclude = true;
                         }
                         break;
+                    case "System.Text.Json.Serialization.JsonNumberHandlingAttribute":
+                        {
+                            IList<CustomAttributeTypedArgument> ctorArgs = attributeData.ConstructorArguments;
+                            if (ctorArgs.Count != 1)
+                            {
+                                throw new InvalidOperationException($"Invalid use of 'JsonNumberHandlingAttribute' detected on '{memberInfo.DeclaringType}.{memberInfo.Name}'.");
+                            }
+
+                            numberHandling = (JsonNumberHandling)ctorArgs[0].Value;
+                        }
+                        break;
                     case "System.Text.Json.Serialization.JsonPropertyNameAttribute":
                         {
                             IList<CustomAttributeTypedArgument> ctorArgs = attributeData.ConstructorArguments;
                             if (ctorArgs.Count != 1 || ctorArgs[0].ArgumentType != _stringType)
                             {
-                                throw new InvalidOperationException($"Invalid use of 'JsonPropertyNameAttribute' detected on '{memberInfo.DeclaringType}.{memberInfo.Name}'");
+                                throw new InvalidOperationException($"Invalid use of 'JsonPropertyNameAttribute' detected on '{memberInfo.DeclaringType}.{memberInfo.Name}'.");
                             }
 
                             jsonPropertyName = (string)ctorArgs[0].Value;
-                            if (jsonPropertyName == null)
-                            {
-                                throw new InvalidOperationException(@$"The JSON property name for '{memberInfo.DeclaringType}.{memberInfo.Name}' cannot be null.");
-                            }
+                            // Null check here is done at runtime within JsonSerializer.
                         }
                         break;
                     default:
@@ -614,6 +726,7 @@ namespace {_generationNamespace}
                 GetterIsVirtual = getterIsVirtual,
                 SetterIsVirtual = setterIsVirtual,
                 IgnoreCondition = ignoreCondition,
+                NumberHandling = numberHandling,
                 HasJsonInclude = hasJsonInclude,
                 TypeMetadata = GetOrAddTypeMetadata(memberCLRType),
                 DeclaringTypeCompilableName = memberInfo.DeclaringType.GetUniqueCompilableTypeName()
@@ -623,12 +736,7 @@ namespace {_generationNamespace}
         private static bool PropertyAccessorCanBeReferenced(MethodInfo? memberAccessor, bool hasJsonInclude) =>
             (memberAccessor != null && !memberAccessor.IsPrivate) && (memberAccessor.IsPublic || hasJsonInclude);
 
-        public bool IsNullableValueType(Type type)
-        {
-            return type.IsGenericType && type.GetGenericTypeDefinition() == _nullableOfTType;
-        }
-
-        private void PopulateSimpleTypes(MetadataLoadContext metadataLoadContext)
+        private void PopulateKnownTypes(MetadataLoadContext metadataLoadContext)
         {
             Debug.Assert(_knownTypes != null);
 
@@ -792,6 +900,11 @@ namespace {_generationNamespace}
 
             switch (typeMetadata.ClassType)
             {
+                case ClassType.Nullable:
+                    {
+                        AddUsingStatementsForType(typeMetadata.NullableUnderlyingTypeMetadata!);
+                    }
+                    break;
                 case ClassType.Enumerable:
                     {
                         AddUsingStatementsForType(typeMetadata.CollectionValueTypeMetadata);
@@ -894,10 +1007,9 @@ namespace {_generationNamespace}
 
             public void Initialize(JsonContext context)
             {{
-                JsonObjectInfo<{typeMetadata.CompilableName}> typeInfo = new({createObjectFuncTypeArg}, context.GetOptions());
+                JsonObjectInfo<{typeMetadata.CompilableName}> typeInfo = new({createObjectFuncTypeArg}, {GetNumberHandlingNamedArg(typeMetadata.NumberHandling)}, context.GetOptions());
                 TypeInfo = typeInfo;
             ");
-
 
             if (typeMetadata.PropertiesMetadata != null)
             {
@@ -949,7 +1061,8 @@ namespace {_generationNamespace}
                     {getterNamedArg},
                     {setterNamedArg},
                     {jsonPropertyNameNamedArg},
-                    {ignoreConditionNamedArg});
+                    {ignoreConditionNamedArg},
+                    {GetNumberHandlingNamedArg(memberMetadata.NumberHandling)});
                 ");
                 }
             }
@@ -970,5 +1083,10 @@ namespace {_generationNamespace}
                 return new {compilableName}();
             }}";
         }
+
+        private static string GetNumberHandlingNamedArg(JsonNumberHandling? numberHandling) =>
+             numberHandling.HasValue
+                ? $"numberHandling: (JsonNumberHandling){(int)numberHandling.Value}"
+                : "numberHandling: null";
     }
 }

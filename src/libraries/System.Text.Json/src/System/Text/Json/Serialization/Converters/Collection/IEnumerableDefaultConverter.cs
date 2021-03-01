@@ -54,7 +54,7 @@ namespace System.Text.Json.Serialization.Converters
                 CreateCollection(ref reader, ref state, options);
 
                 JsonConverter<TElement> elementConverter = GetElementConverter(elementClassInfo);
-                if (elementConverter.CanUseDirectReadOrWrite && state.Current.NumberHandling == null)
+                if (elementConverter.CanUseDirectReadOrWrite && !state.Current.NumberHandling.HasValue)
                 {
                     // Fast path that avoids validation and extra indirection.
                     while (true)

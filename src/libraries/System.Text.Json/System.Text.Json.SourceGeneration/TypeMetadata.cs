@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text.Json.Serialization;
 
 namespace System.Text.Json.SourceGeneration
 {
@@ -24,18 +25,22 @@ namespace System.Text.Json.SourceGeneration
 
         public bool CanBeDynamic { get; private set; }
 
-        public CollectionType CollectionType { get; private set; }
-
-        public TypeMetadata? CollectionKeyTypeMetadata { get; private set; }
-
-        public TypeMetadata? CollectionValueTypeMetadata { get; private set; }
+        public JsonNumberHandling? NumberHandling { get; private set; }
 
         /// <summary>
         /// Serialization metadata for the properties and fields on the type.
         /// </summary>
         public List<PropertyMetadata>? PropertiesMetadata { get; private set; }
 
+        public CollectionType CollectionType { get; private set; }
+
+        public TypeMetadata? CollectionKeyTypeMetadata { get; private set; }
+
+        public TypeMetadata? CollectionValueTypeMetadata { get; private set; }
+
         public ObjectConstructionStrategy ConstructionStrategy { get; private set; }
+
+        public TypeMetadata? NullableUnderlyingTypeMetadata { get; private set; }
 
         public void Initialize(
             string compilableName,
@@ -44,11 +49,13 @@ namespace System.Text.Json.SourceGeneration
             ClassType classType,
             bool isValueType,
             bool canBeDynamic,
+            JsonNumberHandling? numberHandling,
             List<PropertyMetadata>? propertiesMetadata,
             CollectionType collectionType,
             TypeMetadata? collectionKeyTypeMetadata,
             TypeMetadata? collectionValueTypeMetadata,
-            ObjectConstructionStrategy constructionStrategy)
+            ObjectConstructionStrategy constructionStrategy,
+            TypeMetadata? nullableUnderlyingTypeMetadata)
         {
             if (_hasBeenInitialized)
             {
@@ -63,16 +70,33 @@ namespace System.Text.Json.SourceGeneration
             ClassType = classType;
             IsValueType = isValueType;
             CanBeDynamic = canBeDynamic;
+            NumberHandling = numberHandling;
+
             PropertiesMetadata = propertiesMetadata;
+
             CollectionType = collectionType;
             CollectionKeyTypeMetadata = collectionKeyTypeMetadata;
             CollectionValueTypeMetadata = collectionValueTypeMetadata;
 
-            if (constructionStrategy != ObjectConstructionStrategy.NotApplicable && classType != ClassType.Object)
+            if (constructionStrategy != ObjectConstructionStrategy.NotApplicable)
             {
-                throw new InvalidOperationException($"ObjectConstructionStrategy not valid for class type. Stategy: {constructionStrategy} | Type: {type} | Class type: {classType}");
+                if (classType != ClassType.Object)
+                {
+                    throw new InvalidOperationException($"{nameof(constructionStrategy)} not valid for class type. Stategy: {constructionStrategy} | Type: {type} | Class type: {classType}");
+                }
+
+                ConstructionStrategy = constructionStrategy;
             }
-            ConstructionStrategy = constructionStrategy;
+
+            if (nullableUnderlyingTypeMetadata != null)
+            {
+                if (classType != ClassType.Nullable)
+                {
+                    throw new InvalidOperationException($"{nameof(nullableUnderlyingTypeMetadata)} not valid for class type. Underlying type: {nullableUnderlyingTypeMetadata} | Type: {type} | Class type: {classType}");
+                }
+
+                NullableUnderlyingTypeMetadata = nullableUnderlyingTypeMetadata;
+            }
         }
     }
 }

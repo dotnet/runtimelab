@@ -147,10 +147,15 @@ namespace System.Text.Json
 
         private static string SerializeUsingMetadata<TValue>(in TValue value, JsonClassInfo? jsonClassInfo)
         {
-            WriteStack state = default;
-            state.Initialize(jsonClassInfo ?? throw new ArgumentNullException(nameof(jsonClassInfo)));
+            if (jsonClassInfo == null)
+            {
+                throw new ArgumentNullException(nameof(jsonClassInfo));
+            }
 
             JsonSerializerOptions options = jsonClassInfo.Options;
+
+            WriteStack state = default;
+            state.Initialize(jsonClassInfo, options, supportContinuation: false);
 
             using (var output = new PooledByteBufferWriter(options.DefaultBufferSize))
             {

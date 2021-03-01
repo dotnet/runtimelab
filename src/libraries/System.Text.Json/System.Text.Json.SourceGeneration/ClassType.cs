@@ -15,5 +15,6 @@ namespace System.Text.Json.SourceGeneration
         TypeWithCustomConverter = 3,
         Enumerable = 4,
         Dictionary = 5,
+        Nullable = 6,
     }
 }

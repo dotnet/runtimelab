@@ -183,7 +183,7 @@ namespace System.Text.Json.Serialization.Metadata
             ClassType = converter.ClassType;
             JsonNumberHandling? typeNumberHandling = GetNumberHandlingForType(Type);
 
-            PropertyInfoForClassInfo = CreatePropertyInfoForClassInfo(Type, runtimeType, converter, Options);
+            PropertyInfoForClassInfo = CreatePropertyInfoForClassInfo(Type, runtimeType, converter, typeNumberHandling, Options);
 
             switch (ClassType)
             {
@@ -596,59 +596,50 @@ namespace System.Text.Json.Serialization.Metadata
                 throw new NotSupportedException("Built-in converters not initialized; thus no converter found for type.");
             }
 
-            runtimeType = GetRuntimeType(type, converter);
-
-            Debug.Assert(!IsInvalidForSerialization(runtimeType));
-
-            return converter;
-        }
-
-        internal static Type GetRuntimeType(Type declaredType, JsonConverter converter)
-        {
             // The runtimeType is the actual value being assigned to the property.
             // There are three types to consider for the runtimeType:
             // 1) The declared type (the actual property type).
             // 2) The converter.TypeToConvert (the T value that the converter supports).
             // 3) The converter.RuntimeType (used with interfaces such as IList).
-            Type runtimeType;
 
             Type converterRuntimeType = converter.RuntimeType;
-            if (declaredType == converterRuntimeType)
+            if (type == converterRuntimeType)
             {
-                runtimeType = declaredType;
+                runtimeType = type;
             }
             else
             {
-                if (declaredType.IsInterface)
+                if (type.IsInterface)
                 {
                     runtimeType = converterRuntimeType;
                 }
                 else if (converterRuntimeType.IsInterface)
                 {
-                    runtimeType = declaredType;
+                    runtimeType = type;
                 }
                 else
                 {
                     // Use the most derived version from the converter.RuntimeType or converter.TypeToConvert.
-                    if (declaredType.IsAssignableFrom(converterRuntimeType))
+                    if (type.IsAssignableFrom(converterRuntimeType))
                     {
                         runtimeType = converterRuntimeType;
                     }
-                    else if (converterRuntimeType.IsAssignableFrom(declaredType) || converter.TypeToConvert.IsAssignableFrom(declaredType))
+                    else if (converterRuntimeType.IsAssignableFrom(type) || converter.TypeToConvert.IsAssignableFrom(type))
                     {
-                        runtimeType = declaredType;
+                        runtimeType = type;
                     }
                     else
                     {
                         runtimeType = default!;
-                        ThrowHelper.ThrowNotSupportedException_SerializationNotSupported(declaredType);
+                        ThrowHelper.ThrowNotSupportedException_SerializationNotSupported(type);
                     }
                 }
             }
 
-            return runtimeType;
-        }
+            Debug.Assert(!IsInvalidForSerialization(runtimeType));
 
+            return converter;
+        }
         private static void ValidateType(Type type, Type? parentClassType, MemberInfo? memberInfo, JsonSerializerOptions options)
         {
             if (!options.TypeIsCached(type) && IsInvalidForSerialization(type))

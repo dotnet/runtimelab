@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace System.Text.Json.SourceGeneration
 {
@@ -47,6 +48,11 @@ namespace System.Text.Json.SourceGeneration
         /// The <see cref="JsonIgnoreCondition"/> for the property.
         /// </summary>
         public JsonIgnoreCondition? IgnoreCondition { get; init; }
+
+        /// <summary>
+        /// The <see cref="JsonNumberHandling"/> for the property.
+        /// </summary>
+        public JsonNumberHandling? NumberHandling { get; init; }
 
         /// <summary>
         /// Whether the property has the JsonIncludeAttribute. If so, non-public accessors can be used for (de)serialziation.

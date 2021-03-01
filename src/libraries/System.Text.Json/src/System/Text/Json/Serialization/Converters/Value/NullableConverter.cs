@@ -5,18 +5,29 @@ using System.Diagnostics;
 
 namespace System.Text.Json.Serialization.Converters
 {
-    internal class NullableConverter<T> : JsonConverter<T?> where T : struct
+    /// <summary>
+    /// TODO
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public sealed class NullableConverter<T> : JsonConverter<T?> where T : struct
     {
+        // TODO: is the underlying sentiment here still true?
         // It is possible to cache the underlying converter since this is an internal converter and
         // an instance is created only once for each JsonSerializerOptions instance.
         private readonly JsonConverter<T> _converter;
 
+        /// <summary>
+        /// TODO
+        /// </summary>
         public NullableConverter(JsonConverter<T> converter)
         {
             _converter = converter;
             IsInternalConverterForNumberType = converter.IsInternalConverterForNumberType;
         }
 
+        /// <summary>
+        /// TODO
+        /// </summary>
         public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             // We do not check _converter.HandleNull, as the underlying struct cannot be null.
@@ -30,6 +41,9 @@ namespace System.Text.Json.Serialization.Converters
             return value;
         }
 
+        /// <summary>
+        /// TODO
+        /// </summary>
         public override void Write(Utf8JsonWriter writer, T? value, JsonSerializerOptions options)
         {
             if (!value.HasValue)
