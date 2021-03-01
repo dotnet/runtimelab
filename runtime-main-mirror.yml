@@ -14,7 +14,7 @@ jobs:
     - name: SourceBranch
       value: main
     - name: TargetBranch
-      value: runtime-master
+      value: runtime-main
     - group: DotNet-Maestro
 
     steps:
