@@ -59,7 +59,12 @@ namespace ILCompiler
             var nodes = _dependencyGraph.MarkedNodeList;
 
             NodeFactory.SetMarkingComplete();
-            ObjectWriter.EmitObject(outputFile, nodes, NodeFactory, dumper);
+
+            ObjectWritingOptions options = default;
+            if (_debugInformationProvider is not NullDebugInformationProvider)
+                options |= ObjectWritingOptions.GenerateDebugInfo;
+
+            ObjectWriter.EmitObject(outputFile, nodes, NodeFactory, options, dumper);
         }
 
         protected override void ComputeDependencyNodeDependencies(List<DependencyNodeCore<NodeFactory>> obj)

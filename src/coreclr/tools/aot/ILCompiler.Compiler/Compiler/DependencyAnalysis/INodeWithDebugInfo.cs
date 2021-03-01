@@ -8,14 +8,14 @@ using Internal.TypeSystem;
 
 namespace ILCompiler.DependencyAnalysis
 {
-    public struct DebugLocInfo
+    public readonly struct NativeSequencePoint
     {
         public readonly int NativeOffset;
         public readonly string FileName;
         public readonly int LineNumber;
         public readonly int ColNumber;
 
-        public DebugLocInfo(int nativeOffset, string fileName, int lineNumber, int colNumber = 0)
+        public NativeSequencePoint(int nativeOffset, string fileName, int lineNumber, int colNumber = 0)
         {
             NativeOffset = nativeOffset;
             FileName = fileName;
@@ -28,10 +28,7 @@ namespace ILCompiler.DependencyAnalysis
     {
         bool IsStateMachineMoveNextMethod { get; }
 
-        DebugLocInfo[] DebugLocInfos
-        {
-            get;
-        }
+        IEnumerable<NativeSequencePoint> GetNativeSequencePoints();
 
         public IEnumerable<DebugVarInfoMetadata> GetDebugVars();
     }

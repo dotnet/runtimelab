@@ -22,6 +22,8 @@ namespace ILCompiler.DependencyAnalysis
     /// </summary>
     public class ObjectWriter : IDisposable, ITypesDebugInfoWriter
     {
+        private readonly ObjectWritingOptions _options;
+
         // This is used to build mangled names
         private Utf8StringBuilder _sb = new Utf8StringBuilder();
 
@@ -34,7 +36,7 @@ namespace ILCompiler.DependencyAnalysis
         private SortedSet<int> _byteInterruptionOffsets = new SortedSet<int>();
         // This is used to look up DebugLocInfo for the given native offset.
         // This is for individual node and should be flushed once node is emitted.
-        private Dictionary<int, DebugLocInfo> _offsetToDebugLoc = new Dictionary<int, DebugLocInfo>();
+        private Dictionary<int, NativeSequencePoint> _offsetToDebugLoc = new Dictionary<int, NativeSequencePoint>();
 
         // Code offset to defined names
         private Dictionary<int, List<ISymbolDefinitionNode>> _offsetToDefName = new Dictionary<int, List<ISymbolDefinitionNode>>();
@@ -443,7 +445,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public bool HasModuleDebugInfo()
         {
-            return _debugFileToId.Count > 0;
+            return (_options & ObjectWritingOptions.GenerateDebugInfo) != 0;
         }
 
         public bool HasFunctionDebugInfo()
@@ -457,32 +459,17 @@ namespace ILCompiler.DependencyAnalysis
             return false;
         }
 
-        public void BuildFileInfoMap(IEnumerable<DependencyNode> nodes)
+        private int GetDocumentId(string document)
         {
-            int fileId = 1;
-            foreach (DependencyNode node in nodes)
+            if (_debugFileToId.TryGetValue(document, out int result))
             {
-                if (node is INodeWithDebugInfo)
-                {
-                    DebugLocInfo[] debugLocInfos = ((INodeWithDebugInfo)node).DebugLocInfos;
-                    if (debugLocInfos != null)
-                    {
-                        foreach (DebugLocInfo debugLocInfo in debugLocInfos)
-                        {
-                            string fileName = debugLocInfo.FileName;
-                            if (!_debugFileToId.ContainsKey(fileName))
-                            {
-                                _debugFileToId.Add(fileName, fileId++);
-                            }
-                        }
-                    }
-                }
+                return result;
             }
 
-            foreach (var entry in _debugFileToId)
-            {
-                this.EmitDebugFileInfo(entry.Value, entry.Key);
-            }
+            result = _debugFileToId.Count + 1;
+            _debugFileToId.Add(document, result);
+            this.EmitDebugFileInfo(result, document);
+            return result;
         }
 
         public void BuildDebugLocInfoMap(ObjectNode node)
@@ -496,15 +483,12 @@ namespace ILCompiler.DependencyAnalysis
             INodeWithDebugInfo debugNode = node as INodeWithDebugInfo;
             if (debugNode != null)
             {
-                DebugLocInfo[] locs = debugNode.DebugLocInfos;
-                if (locs != null)
+                IEnumerable<NativeSequencePoint> locs = debugNode.GetNativeSequencePoints();
+                foreach (var loc in locs)
                 {
-                    foreach (var loc in locs)
-                    {
-                        Debug.Assert(!_offsetToDebugLoc.ContainsKey(loc.NativeOffset));
-                        _offsetToDebugLoc[loc.NativeOffset] = loc;
-                        _byteInterruptionOffsets.Add(loc.NativeOffset);
-                    }
+                    Debug.Assert(!_offsetToDebugLoc.ContainsKey(loc.NativeOffset));
+                    _offsetToDebugLoc[loc.NativeOffset] = loc;
+                    _byteInterruptionOffsets.Add(loc.NativeOffset);
                 }
             }
         }
@@ -748,12 +732,11 @@ namespace ILCompiler.DependencyAnalysis
 
         public void EmitDebugLocInfo(int offset)
         {
-            DebugLocInfo loc;
+            NativeSequencePoint loc;
             if (_offsetToDebugLoc.TryGetValue(offset, out loc))
             {
-                Debug.Assert(_debugFileToId.Count > 0);
                 EmitDebugLoc(offset,
-                    _debugFileToId[loc.FileName],
+                    GetDocumentId(loc.FileName),
                     loc.LineNumber,
                     loc.ColNumber);
             }
@@ -877,7 +860,7 @@ namespace ILCompiler.DependencyAnalysis
 
         private IntPtr _nativeObjectWriter = IntPtr.Zero;
 
-        public ObjectWriter(string objectFilePath, NodeFactory factory)
+        public ObjectWriter(string objectFilePath, NodeFactory factory, ObjectWritingOptions options)
         {
             var triple = GetLLVMTripleFromTarget(factory.Target);
 
@@ -890,6 +873,7 @@ namespace ILCompiler.DependencyAnalysis
             _targetPlatform = _nodeFactory.Target;
             _isSingleFileCompilation = _nodeFactory.CompilationModuleGroup.IsSingleFileCompilation;
             _userDefinedTypeDescriptor = new UserDefinedTypeDescriptor(this, factory);
+            _options = options;
         }
 
         public void Dispose()
@@ -963,9 +947,9 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        public static void EmitObject(string objectFilePath, IEnumerable<DependencyNode> nodes, NodeFactory factory, IObjectDumper dumper)
+        public static void EmitObject(string objectFilePath, IEnumerable<DependencyNode> nodes, NodeFactory factory, ObjectWritingOptions options, IObjectDumper dumper)
         {
-            ObjectWriter objectWriter = new ObjectWriter(objectFilePath, factory);
+            ObjectWriter objectWriter = new ObjectWriter(objectFilePath, factory, options);
             bool succeeded = false;
 
             try
@@ -983,9 +967,6 @@ namespace ILCompiler.DependencyAnalysis
                     objectWriter.SetSection(LsdaSection);
                 }
                 objectWriter.SetCodeSectionAttribute(managedCodeSection);
-
-                // Build file info map.
-                objectWriter.BuildFileInfoMap(nodes);
 
                 var listOfOffsets = new List<int>();
                 foreach (DependencyNode depNode in nodes)
@@ -1273,5 +1254,11 @@ namespace ILCompiler.DependencyAnalysis
 
             return $"{arch}{sub}-{vendor}-{sys}-{abi}";
         }
+    }
+
+    [Flags]
+    public enum ObjectWritingOptions
+    {
+        GenerateDebugInfo = 0x01,
     }
 }

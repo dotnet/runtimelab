@@ -403,8 +403,6 @@ namespace Internal.JitInterface
             _ehClauses = null;
 
 #if !READYTORUN
-            _sequencePoints = null;
-
             _debugInfo = null;
 
             _additionalDependencies = null;
