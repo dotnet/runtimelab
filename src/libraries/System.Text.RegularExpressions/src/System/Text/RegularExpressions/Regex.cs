@@ -143,7 +143,7 @@ namespace System.Text.RegularExpressions
             if ((options & RegexOptions.ECMAScript) != 0)
                 throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + RegexOptions.ECMAScript);
 
-            return new SRM.Regex(rootNode, options);
+            return SRM.Regex.Create(rootNode, options);
         }
 
         internal static void ValidatePattern(string pattern)

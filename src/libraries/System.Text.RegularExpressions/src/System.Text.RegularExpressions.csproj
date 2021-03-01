@@ -13,6 +13,7 @@
     <Compile Include="System\Text\RegularExpressions\srm\State.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexInfo.cs" />
     <Compile Include="System\Text\RegularExpressions\RegexCharClass.MappingTable.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\utils\Base64.cs" />
     <Compile Include="System\Text\SegmentStringBuilder.cs" />
     <Compile Include="System\Text\RegularExpressions\Capture.cs" />
     <Compile Include="System\Text\RegularExpressions\CaptureCollection.cs" />

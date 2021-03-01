@@ -33,78 +33,6 @@ namespace System.Text.RegularExpressions.SRM
     }
 
     /// <summary>
-    /// Special purpose 0-width input symbols that match corresponding anchors.
-    /// Beginning anchors are odd, end anchors are even.
-    /// </summary>
-    internal static class BorderSymbol
-    {
-        /// <summary>
-        /// NonWord Boundary
-        /// </summary>
-        internal const int NWB = 0;
-
-        /// <summary>
-        /// Beginning of line
-        /// </summary>
-        internal const int BOL = 1;
-
-        /// <summary>
-        /// End of line
-        /// </summary>
-        internal const int EOL = 2;
-
-        /// <summary>
-        /// Beginning of input
-        /// </summary>
-        internal const int Beg = 3;
-
-        /// <summary>
-        /// End of input
-        /// </summary>
-        internal const int End = 4;
-
-        /// <summary>
-        /// End of line before last final newline character
-        /// </summary>
-        internal const int EOLZ = 6;
-
-        /// <summary>
-        /// Word Boundary (it can be unioned with line symbols using |)
-        /// </summary>
-        internal const int WB = 8;
-
-        /// <summary>
-        /// Beginning of line and Word Boundary
-        /// </summary>
-        internal const int BOL_WB = 9;
-
-        /// <summary>
-        /// End of line and Word Boundary
-        /// </summary>
-        internal const int EOL_WB = 10;
-
-        /// <summary>
-        /// Beginning of input and Word Boundary
-        /// </summary>
-        internal const int Beg_WB = 11;
-
-        /// <summary>
-        /// End of input and Word Boundary
-        /// </summary>
-        internal const int End_WB = 12;
-
-        /// <summary>
-        /// End of line before last final newline character and Word Boundary
-        /// </summary>
-        internal const int EOLZ_WB = 14;
-
-        /// <summary>
-        /// Upper bound on symbols that also approximates their count
-        /// </summary>
-        internal const int Count = 16;
-    }
-
-    /// <summary>
     /// Represents an AST node of a symbolic regex.
     /// </summary>
     internal class SymbolicRegexNode<S>
@@ -158,14 +86,19 @@ namespace System.Text.RegularExpressions.SRM
         #region serialization
 
         /// <summary>
-        /// Produce the serialized from of this symbolic regex node.
+        /// Produce the serialized format of this symbolic regex node.
         /// </summary>
         public string Serialize()
         {
-            var sb = new System.Text.StringBuilder();
+            var sb = new StringBuilder();
             Serialize(this, sb);
             return sb.ToString();
         }
+
+        /// <summary>
+        /// Append the serialized from of this symbolic regex node into sb.
+        /// </summary>
+        public void Serialize(StringBuilder sb) => Serialize(this, sb);
 
         /// <summary>
         /// Append the serialized form of this symbolic regex node to the stringbuilder
@@ -658,7 +591,7 @@ namespace System.Text.RegularExpressions.SRM
         internal static SymbolicRegexNode<S> MkTrue(SymbolicRegexBuilder<S> builder)
         {
             var t = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, builder.solver.True, null, null);
-            t.info = SymbolicRegexInfo.Mk();
+            t.info = SymbolicRegexInfo.Mk(containsSomeCharacter: true);
             return t;
         }
 

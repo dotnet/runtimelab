@@ -22,6 +22,40 @@ namespace System.Text.RegularExpressions.SRM
             _bits = cardinalities.Length;
             _partition = partition;
         }
+
+        #region serialization
+        /// <summary>
+        /// Appends a string in [0-9A-Za-z/+.-,;]* to sb
+        /// </summary>
+        public void Serialize(StringBuilder sb)
+        {
+            //does not use ';'
+            Base64.Encode(_cardinalities, sb);
+            sb.Append(';'); //separator
+            //does not use ';'
+            _classifier.Serialize(sb);
+        }
+
+        /// <summary>
+        /// Reconstructs either a BV64Algebra or a BVAlgebra from the input.
+        /// </summary>
+        public static BVAlgebraBase Deserialize(string input)
+        {
+            string[] parts = input.Split(';');
+            if (parts.Length != 2)
+                throw new ArgumentException($"{nameof(BVAlgebraBase.Deserialize)} input error" );
+
+            ulong[] cardinalities = Base64.DecodeUInt64Array(parts[0]);
+            //here one could potentially pass in the global CharSetSolver as the second parameter.
+            //but it is not needed, practically speaking, because the functionality
+            //needed during matching will not use operations that need the BDD algebra.
+            Classifier cl = Classifier.Deserialize(parts[1]);
+            if (cardinalities.Length <= 64)
+                return new BV64Algebra(cl, cardinalities);
+            else
+                return new BVAlgebra(cl, cardinalities);
+        }
+        #endregion
     }
 
     /// <summary>
@@ -52,6 +86,19 @@ namespace System.Text.RegularExpressions.SRM
             atoms = new BV[_bits];
             for (int i = 0; i < _bits; i++)
                atoms[i] = BV.MkBit1(_bits, i);
+        }
+
+        /// <summary>
+        /// Constructor used by BVAlgebraBase.Deserialize. Here the minters and the CharSetSolver are unknown and set to null.
+        /// </summary>
+        public BVAlgebra(Classifier classifier, ulong[] cardinalities) : base(classifier, cardinalities, null)
+        {
+            mtg = new MintermGenerator<BV>(this);
+            zero = BV.MkFalse(_bits);
+            ones = BV.MkTrue(_bits);
+            atoms = new BV[_bits];
+            for (int i = 0; i < _bits; i++)
+                atoms[i] = BV.MkBit1(_bits, i);
         }
 
         public BV False => zero;
@@ -148,8 +195,6 @@ namespace System.Text.RegularExpressions.SRM
         public IEnumerable<char> GenerateAllCharacters(BV set) => throw new NotImplementedException(nameof(GenerateAllCharacters));
         public BV MkCharPredicate(string name, BV pred) => throw new NotImplementedException(nameof(GenerateAllCharacters));
 
-
-        #region serialization
         /// <summary>
         /// calls bv.Serialize()
         /// </summary>
@@ -159,13 +204,5 @@ namespace System.Text.RegularExpressions.SRM
         /// calls BV.Deserialize(s)
         /// </summary>
         public BV DeserializePredicate(string s) => BV.Deserialize(s);
-
-        public void Serialize(StringBuilder sb)
-        {
-
-
-        }
-        #endregion
-
     }
 }

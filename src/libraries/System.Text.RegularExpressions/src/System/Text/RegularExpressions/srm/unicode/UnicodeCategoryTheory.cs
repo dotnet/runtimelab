@@ -35,7 +35,7 @@ namespace System.Text.RegularExpressions.SRM
 
     internal class UnicodeCategoryTheory<PRED> : IUnicodeCategoryTheory<PRED>
     {
-        private ICharAlgebra<PRED> solver;
+        internal ICharAlgebra<PRED> solver;
         private PRED[] catConditions = new PRED[30];
         private PRED whiteSpaceCondition;
         private PRED wordLetterCondition;

@@ -12,96 +12,22 @@ using System.IO;
 namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
-    /// Wraps an instance of SymbolicRegex&lt;BV&gt;, the number of needed partition blocks is &gt; 64
-    /// </summary>
-    [Serializable]
-    internal class SymbolicRegexBV : SymbolicRegex<BV>
-    {
-        private SymbolicRegexBV(SymbolicRegexBuilder<BV> builder, SymbolicRegexNode<BDD> sr,
-                                CharSetSolver solver, SymbolicRegexBuilder<BDD> srBuilder, BDD[] minterms, System.Text.RegularExpressions.RegexOptions options)
-            : base(srBuilder.Transform(sr, builder, set => builder.solver.ConvertFromCharSet(solver, set)),
-                  solver, minterms, options)
-        {
-        }
-
-        /// <summary>
-        /// Is called with minterms.Length at least 65
-        /// </summary>
-        internal SymbolicRegexBV(SymbolicRegexNode<BDD> sr,
-                                 CharSetSolver solver, SymbolicRegexBuilder<BDD> srBuilder, BDD[] minterms, System.Text.RegularExpressions.RegexOptions options)
-            : this(new SymbolicRegexBuilder<BV>(new BVAlgebra(solver, minterms)), sr,
-                  solver, srBuilder, minterms, options)
-        {
-            //update the word letter predicate in the BV solver to the correct one
-            this.builder.wordLetterPredicate = this.builder.solver.ConvertFromCharSet(solver, srBuilder.wordLetterPredicate);
-            //update the \n predicate in the BV solver to the correct one
-            this.builder.newLinePredicate = this.builder.solver.ConvertFromCharSet(solver, srBuilder.newLinePredicate);
-        }
-
-        ///// <summary>
-        ///// Invoked by deserializer
-        ///// </summary>
-        //public SymbolicRegexBV(SerializationInfo info, StreamingContext context) : base(info, context)
-        //{
-        //}
-    }
-
-    /// <summary>
-    /// Wraps an instance of SymbolicRegex&lt;ulong&gt;, the number of needed partition blocks is &lt; 65
-    /// </summary>
-    [Serializable]
-    internal class SymbolicRegexUInt64 : SymbolicRegex<ulong>
-    {
-        private SymbolicRegexUInt64(SymbolicRegexBuilder<ulong> builder, SymbolicRegexNode<BDD> sr,
-                                CharSetSolver solver, SymbolicRegexBuilder<BDD> srBuilder, BDD[] minterms, System.Text.RegularExpressions.RegexOptions options)
-            : base(srBuilder.Transform(sr, builder, set => builder.solver.ConvertFromCharSet(solver, set)),
-                  solver, minterms, options)
-        {
-            //update the word letter predicate in the ulong solver to the correct one
-            this.builder.wordLetterPredicate = this.builder.solver.ConvertFromCharSet(solver, srBuilder.wordLetterPredicate);
-            //update the \n predicate in the BV solver to the correct one
-            this.builder.newLinePredicate = this.builder.solver.ConvertFromCharSet(solver, srBuilder.newLinePredicate);
-        }
-
-        /// <summary>
-        /// Is called with minterms.Length at most 64
-        /// </summary>
-        internal SymbolicRegexUInt64(SymbolicRegexNode<BDD> sr,
-                                 CharSetSolver solver, SymbolicRegexBuilder<BDD> srBuilder, BDD[] minterms, System.Text.RegularExpressions.RegexOptions options)
-            : this(new SymbolicRegexBuilder<ulong>(new BV64Algebra(solver, minterms)), sr,
-                  solver, srBuilder, minterms, options)
-        {
-        }
-
-        ///// <summary>
-        ///// Invoked by deserializer
-        ///// </summary>
-        //public SymbolicRegexUInt64(SerializationInfo info, StreamingContext context) : base(info, context)
-        //{
-        //}
-    }
-
-    /// <summary>
     /// Represents a precompiled form of a regex that implements match generation using symbolic derivatives.
     /// </summary>
     /// <typeparam name="S">character set type</typeparam>
-    [Serializable]
-    internal abstract class SymbolicRegex<S> : IMatcher, ISerializable
+    internal partial class SymbolicRegexMatcher<S> : IMatcher
     {
-        [NonSerialized]
         internal SymbolicRegexBuilder<S> builder;
 
         /// <summary>
         /// Partition of the input space of predicates.
         /// Length of atoms is K.
         /// </summary>
-        [NonSerialized]
         private S[] atoms;
 
         /// <summary>
         /// Maps each character into a partition id in the range 0..K-1.
         /// </summary>
-        [NonSerialized]
         private Classifier dt;
 
 #if UNSAFE
@@ -118,16 +44,9 @@ namespace System.Text.RegularExpressions.SRM
         ushort A_StartSet_singleton;
 #endif
 
-        ///// <summary>
-        ///// First byte of A_prefixUTF8 in vector
-        ///// </summary>
-        //[NonSerialized]
-        //private Vector<byte> A_prefixUTF8_first_byte;
-
         /// <summary>
         /// Original regex.
         /// </summary>
-        [NonSerialized]
         internal SymbolicRegexNode<S> A;
 
         /// <summary>
@@ -155,27 +74,24 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         private string A_prefix;
 
-        /// <summary>
-        /// if nonempty then A has that fixed prefix
-        /// </summary>>
-        [NonSerialized]
-        private byte[] A_prefixUTF8;
+        ///// <summary>
+        ///// if nonempty then A has that fixed prefix
+        ///// </summary>>
+        //private byte[] A_prefixUTF8;
 
-        /// <summary>
-        /// predicate array corresponding to fixed prefix of A
-        /// </summary>
-        private S[] A_prefix_array;
+        ///// <summary>
+        ///// predicate array corresponding to fixed prefix of A
+        ///// </summary>
+        //private S[] A_prefix_array;
 
         /// <summary>
         /// if true then the fixed prefix of A is idependent of case
         /// </summary>
-        [NonSerialized]
         private bool A_fixedPrefix_ignoreCase;
 
         /// <summary>
         /// Cached skip states from the initial state of A1 for the 6 possible previous character kinds.
         /// </summary>
-        [NonSerialized]
         private State<S>[] _A1_skipState = new State<S>[6];
 
         private State<S> GetA1_skipState(CharKindId prevCharKindId)
@@ -196,20 +112,18 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Reverse(A).
         /// </summary>
-        [NonSerialized]
         private SymbolicRegexNode<S> Ar;
 
-        /// <summary>
-        /// if nonempty then Ar has that fixed prefix of predicates
-        /// </summary>
-        private S[] Ar_prefix_array;
+        ///// <summary>
+        ///// if nonempty then Ar has that fixed prefix of predicates
+        ///// </summary>
+        //private S[] Ar_prefix_array;
 
         private string Ar_prefix;
 
         /// <summary>
         /// Cached skip states from the initial state of Ar for the 6 possible previous character kinds.
         /// </summary>
-        [NonSerialized]
         private State<S>[] _Ar_skipState = new State<S>[6];
 
         private State<S> GetAr_skipState(CharKindId prevCharKindId)
@@ -230,22 +144,17 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// .*A start regex
         /// </summary>
-        [NonSerialized]
         private SymbolicRegexNode<S> A1;
 
-        [NonSerialized]
         private State<S>[] _Aq0 = new State<S>[6];
 
-        [NonSerialized]
         private State<S>[] _A1q0 = new State<S>[6];
 
-        [NonSerialized]
         private State<S>[] _Arq0 = new State<S>[6];
 
         /// <summary>
-        /// Initialized to atoms.Length.
+        /// Initialized to the next power of 2 that is at least the number of atoms
         /// </summary>
-        [NonSerialized]
         private int K;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -279,83 +188,81 @@ namespace System.Text.RegularExpressions.SRM
         /// each transition q ---atoms[i]---> p is represented by entry p = delta[(q * K) + i].
         /// Length of delta is K*StateLimit. Entry delta[i]=null means that the state is still undefined.
         /// </summary>
-        [NonSerialized]
-        private State<S>?[] delta;
+        private State<S>[] delta;
 
-        #region custom serialization
+        #region custom serialization/deserialization
         /// <summary>
-        /// This serialization method is invoked by BinaryFormatter.Serialize via Serialize method.
-        /// </summary>
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            info.AddValue("solver", this.builder.solver);
-            info.AddValue("A", A.Serialize());
-            info.AddValue("Options", (object)Options);
-            info.AddValue("wordLetter", this.builder.wordLetterPredicate);
-            info.AddValue("newLine", this.builder.newLinePredicate);
-
-            info.AddValue("A_StartSet", A_StartSet);
-            info.AddValue("A_startset", A_startset);
-            info.AddValue("A_StartSet_Size", A_StartSet_Size);
-
-            info.AddValue("A_prefix", StringUtility.SerializeStringToCharCodeSequence(A_prefix));
-            info.AddValue("A_fixedPrefix_ignoreCase", A_fixedPrefix_ignoreCase);
-            info.AddValue("A_prefix_array", A_prefix_array);
-
-            info.AddValue("Ar_prefix_array", Ar_prefix_array);
-            info.AddValue("Ar_prefix", StringUtility.SerializeStringToCharCodeSequence(Ar_prefix));
-        }
-
-        /// <summary>
-        /// Append the custom format of this matcher into sb
+        /// Append the custom format of this matcher into sb. All characters are in visible ASCII.
+        /// Main fragments are separated by a custom separator character not used in any individual fragment.
         /// </summary>
         public void Serialize(StringBuilder sb)
         {
-
+            //------------ fragment 0 -----------
+            this.builder.solver.Serialize(sb);
+            sb.Append(Regex.s_top_level_separator);
+            //------------ fragment 1 -----------
+            A.Serialize(sb);
+            sb.Append(Regex.s_top_level_separator);
+            //------------ fragment 2 -----------
+            sb.Append(Base64.Encode((int)Options));
+            sb.Append(Regex.s_top_level_separator);
+            //------------ fragment 3 -----------
+            sb.Append(builder.solver.SerializePredicate(builder.wordLetterPredicate));
+            sb.Append(Regex.s_top_level_separator);
+            //------------ fragment 4 -----------
+            sb.Append(builder.solver.SerializePredicate(builder.newLinePredicate));
+            sb.Append(Regex.s_top_level_separator);
+            //------------ fragment 5 -----------
+            sb.Append(builder.solver.SerializePredicate(A_startset));
+            sb.Append(Regex.s_top_level_separator);
+            //------------ fragment 6 -----------
+            A_StartSet.Serialize(sb);
+            sb.Append(Regex.s_top_level_separator);
+            //------------ fragment 7 -----------
+            sb.Append(Base64.Encode(A_StartSet_Size));
+            sb.Append(Regex.s_top_level_separator);
+            //------------ fragment 8 -----------
+            Base64.Encode(A_prefix, sb);
+            sb.Append(Regex.s_top_level_separator);
+            //------------ fragment 9 -----------
+            sb.Append(A_fixedPrefix_ignoreCase);
+            sb.Append(Regex.s_top_level_separator);
+            //------------ fragment 10 -----------
+            Base64.Encode(Ar_prefix, sb);
+            sb.Append(Regex.s_top_level_separator);
+            //------------ fragment 11 -----------
+            dt.Serialize(sb);
         }
 
         /// <summary>
-        /// This deserialization constructor is invoked by IFormatter.Deserialize via Deserialize method
+        /// Invoked by Regex.Deserialize
         /// </summary>
-        public SymbolicRegex(SerializationInfo info, StreamingContext context)
+        internal SymbolicRegexMatcher(ICharAlgebra<S> solver, string[] fragments)
         {
-            this.Options = (System.Text.RegularExpressions.RegexOptions)info.GetValue("Options", typeof(System.Text.RegularExpressions.RegexOptions));
-
-            var solver = (ICharAlgebra<S>)info.GetValue("solver", typeof(ICharAlgebra<S>));
-            this.builder = new SymbolicRegexBuilder<S>(solver);
-            this.builder.wordLetterPredicate = (S)info.GetValue("wordLetter", typeof(S));
-            this.builder.newLinePredicate = (S)info.GetValue("newLine", typeof(S));
-
-            this.atoms = builder.solver.GetPartition();
-            this.dt = ((BVAlgebraBase)builder.solver)._classifier;
-
-            A = builder.Deserialize(info.GetString("A"));
-
+            //deserialize the components in the same order they were serialized
+            //Note: fragments[0] contains info that was used to construct the solver
+            builder = new SymbolicRegexBuilder<S>(solver);
+            atoms = solver.GetPartition();
+            A = builder.Deserialize(fragments[1]);
+            Options = (RegexOptions)Base64.DecodeInt(fragments[2]);
+            //these predicates are relevant only when anchors are used
+            builder.wordLetterPredicate = builder.solver.DeserializePredicate(fragments[3]);
+            builder.newLinePredicate = builder.solver.DeserializePredicate(fragments[4]);
+            A_startset = builder.solver.DeserializePredicate(fragments[5]);
+            A_StartSet = BooleanClassifier.Deserialize(fragments[6]);
+            A_StartSet_Size = Base64.DecodeInt(fragments[7]);
+            A_prefix = Base64.DecodeString(fragments[8]);
+            A_fixedPrefix_ignoreCase = bool.Parse(fragments[9]);
+            Ar_prefix = Base64.DecodeString(fragments[10]);
+            dt = Classifier.Deserialize(fragments[11]);
             InitializeRegexes();
-
-            this.A_startset = A.GetStartSet();
-            this.A_StartSet_Size = (int)builder.solver.ComputeDomainSize(A_startset);
-
-            this.A_StartSet = BooleanClassifier.Deserialize(info.GetString("A_StartSet"));
-            this.A_startset = (S)info.GetValue("A_startset", typeof(S));
-
-            this.A_prefix_array = info.GetValue("A_prefix_array", typeof(S[])) as S[];
-            this.A_prefix = StringUtility.DeserializeStringFromCharCodeSequence(info.GetString("A_prefix"));
-            this.A_prefixUTF8 = System.Text.UnicodeEncoding.UTF8.GetBytes(this.A_prefix);
-
-            this.A_fixedPrefix_ignoreCase = info.GetBoolean("A_fixedPrefix_ignoreCase");
-
-            this.Ar_prefix_array = (S[])info.GetValue("Ar_prefix_array", typeof(S[]));
-            this.Ar_prefix = StringUtility.DeserializeStringFromCharCodeSequence(info.GetString("Ar_prefix"));
-
-            //InitializeVectors();
         }
         #endregion
 
         /// <summary>
         /// Constructs matcher for given symbolic regex
         /// </summary>
-        internal SymbolicRegex(SymbolicRegexNode<S> sr, CharSetSolver css, BDD[] minterms, System.Text.RegularExpressions.RegexOptions options)
+        internal SymbolicRegexMatcher(SymbolicRegexNode<S> sr, CharSetSolver css, BDD[] minterms, System.Text.RegularExpressions.RegexOptions options)
         {
             if (sr.IsNullable)
                 throw new NotSupportedException( SRM.Regex._DFA_incompatible_with + "nullable regex (accepting the empty string)");
@@ -399,11 +306,12 @@ namespace System.Text.RegularExpressions.SRM
 
             this.A_StartSet = BooleanClassifier.Create(css, builder.solver.ConvertToCharSet(css, A_startset));
 
-            this.A_prefix_array = A.GetPrefix();
+            //this.A_prefix_array = A.GetPrefix();
             this.A_prefix = A.GetFixedPrefix(css, out this.A_fixedPrefix_ignoreCase);
-            this.A_prefixUTF8 = System.Text.UnicodeEncoding.UTF8.GetBytes(this.A_prefix);
-            this.Ar_prefix_array = Ar.GetPrefix();
-            this.Ar_prefix = new string(Array.ConvertAll(this.Ar_prefix_array, x => (char)css.GetMin(builder.solver.ConvertToCharSet(css, x))));
+            //this.A_prefixUTF8 = System.Text.UnicodeEncoding.UTF8.GetBytes(this.A_prefix);
+            //this.Ar_prefix_array = Ar.GetPrefix();
+            this.Ar_prefix = Ar.GetFixedPrefix(css, out _);
+            //new string(Array.ConvertAll(this.Ar_prefix_array, x => (char)css.GetMin(builder.solver.ConvertToCharSet(css, x))));
 
             //InitializeVectors();
         }
@@ -490,10 +398,11 @@ namespace System.Text.RegularExpressions.SRM
         {
             int c = input[i];
             // atom_id = atoms.Length represents \Z (last \n)
-            int atom_id = (c == 10 && i == input.Length - 1 ? atoms.Length : dt.Find(c));
+            int atom_id = (c == 10 && i == input.Length - 1 && q.Node.info.StartsWithLineAnchor ? atoms.Length : dt.Find(c));
             int offset = (q.Id << K) | atom_id;
             var p = delta[offset];
             if (p == null)
+                //transition atom False means that this is \Z
                 return CreateNewTransition(q, atom_id == atoms.Length ? builder.solver.False : atoms[atom_id], offset);
             else
                 return p;
@@ -705,11 +614,11 @@ namespace System.Text.RegularExpressions.SRM
             CharKindId prevKind = GetCharKindId(input, i + 1);
             State<S> q = _Arq0[(int)prevKind];
             //Ar may have a fixed prefix sequence
-            if (Ar_prefix_array.Length > 0)
+            if (Ar_prefix.Length > 0)
             {
                 //skip past the prefix portion of Ar
                 q = GetAr_skipState(prevKind);
-                i = i - this.Ar_prefix_array.Length;
+                i = i - this.Ar_prefix.Length;
             }
             if (i == -1)
             {
@@ -2017,6 +1926,5 @@ namespace System.Text.RegularExpressions.SRM
         //    return i;
         //}
         //#endregion
-
     }
 }
