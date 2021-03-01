@@ -11,6 +11,9 @@ namespace System.Text.RegularExpressions.SRM
 {
     internal class Regex
     {
+        /// <summary>
+        /// The unicode component includes the BDD algebra. It is being shared as a static member for efficiency.
+        /// </summary>
         private static readonly UnicodeCategoryTheory<BDD> s_unicode = new UnicodeCategoryTheory<BDD>(new CharSetSolver());
 
         internal const string _DFA_incompatible_with = "DFA option is incompatible with ";
@@ -30,7 +33,6 @@ namespace System.Text.RegularExpressions.SRM
             var partition = root.ComputeMinterms();
             if (partition.Length > 64)
             {
-                //matcher = new SymbolicRegexBV(root, solver, converter.srBuilder, partition, options);
                 //using BV to represent a predicate
                 BVAlgebra algBV = new(solver, partition);
                 SymbolicRegexBuilder<BV> builderBV = new(algBV);
@@ -45,7 +47,6 @@ namespace System.Text.RegularExpressions.SRM
             }
             else
             {
-                //matcher = new SymbolicRegexUInt64(root, solver, converter.srBuilder, partition, options);
                 //using ulong to represent a predicate
                 var alg64 = new BV64Algebra(solver, partition);
                 var builder64 = new SymbolicRegexBuilder<ulong>(alg64);
@@ -66,7 +67,7 @@ namespace System.Text.RegularExpressions.SRM
 #if DEBUG
             //test the serialization roundtrip
             //effectively, all tests in DEBUG mode are run with deserialized matchers, not the original ones
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new();
             regex.Serialize(sb);
             regex = Regex.Deserialize(sb.ToString());
 #endif
@@ -97,25 +98,25 @@ namespace System.Text.RegularExpressions.SRM
             //trim also whitespace from entries -- this implies for example that \r is removed if present in line endings
             string[] fragments = input.Split(s_top_level_separator, StringSplitOptions.TrimEntries);
             if (fragments.Length != 12)
-                throw new ArgumentException($"{nameof(Regex.Deserialize)} input error");
+                throw new ArgumentException($"{nameof(Regex.Deserialize)} error", nameof(input));
 
-            //try
-            //{
+            try
+            {
                 BVAlgebraBase alg = BVAlgebraBase.Deserialize(fragments[0]);
                 IMatcher matcher = alg is BV64Algebra ?
                     new SymbolicRegexMatcher<ulong>(alg as BV64Algebra, fragments) :
                     new SymbolicRegexMatcher<BV>(alg as BVAlgebra, fragments);
                 return new Regex(matcher);
-            //}
-            //catch (Exception e)
-            //{
-            //    throw new ArgumentException($"{nameof(Regex.Deserialize)} input error", e);
-            //}
+            }
+            catch (Exception e)
+            {
+                throw new ArgumentException($"{nameof(Regex.Deserialize)} error", nameof(input), e);
+            }
         }
 
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new();
             Serialize(sb);
             return sb.ToString();
         }

@@ -98,10 +98,12 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Deserializes the classifier from the string s created by Serialize.
         /// </summary>
-        public static Classifier Deserialize(string s, BDDAlgebra algebra = null)
+        public static Classifier Deserialize(string input, BDDAlgebra algebra = null)
         {
-            //first split the string using ','
-            string[] parts = s.Split(',');
+            string[] parts = input.Split(',');
+            if (parts.Length != 2)
+                throw new ArgumentException($"{nameof(Classifier.Deserialize)} invalid '{nameof(input)}' parameter");
+
             int[] precomp = Base64.DecodeIntArray(parts[0]);
             BDD bst = BDD.Deserialize(parts[1], algebra);
             return new Classifier(precomp, bst);
