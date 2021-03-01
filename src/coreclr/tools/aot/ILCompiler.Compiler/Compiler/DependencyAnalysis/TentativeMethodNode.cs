@@ -36,6 +36,17 @@ namespace ILCompiler.DependencyAnalysis
             return helper == null ? RealBody : factory.MethodEntrypoint(helper);
         }
 
+        protected override ObjectData GetObjectData(NodeFactory factory, ObjectDataBuilder builder)
+        {
+            if (factory.Target.Architecture == TargetArchitecture.Wasm32)
+            {
+                DependencyList dependencyList =  base.ComputeNonRelocationBasedDependencies(factory) ?? new DependencyList();
+                dependencyList.Add(GetTarget(factory), "WebAssembly tentative node throw helper");
+                return new ObjectData(null, new Relocation[] {new Relocation(RelocType.IMAGE_REL_BASED_HIGHLOW, 0, GetTarget(factory))}, 0, null);
+            }
+            return base.GetObjectData(factory, builder);
+        }
+
         public MethodDesc Method => _methodNode.Method;
 
         protected override string GetName(NodeFactory factory)
@@ -87,13 +98,5 @@ namespace ILCompiler.DependencyAnalysis
         public override int ClassCode => 0x562912;
 
         public override bool IsShareable => ((ObjectNode)_methodNode).IsShareable;
-
-        protected override DependencyList ComputeNonRelocationBasedDependencies(NodeFactory factory)
-        {
-            Debug.Assert(factory.Target.Architecture == TargetArchitecture.Wasm32); // only Web Assembly target needs to add the ThrowHelpers.ThrowBodyRemoved dependency like this.
-            DependencyList dependencyList = base.ComputeNonRelocationBasedDependencies(factory) ?? new DependencyList();
-            dependencyList.Add(GetTarget(factory), "WebAssembly tentative node throw helper");
-            return dependencyList;
-        }
     }
 }

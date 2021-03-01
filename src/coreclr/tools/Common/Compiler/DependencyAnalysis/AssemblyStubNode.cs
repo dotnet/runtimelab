@@ -3,7 +3,6 @@
 
 using System;
 using Internal.TypeSystem;
-
 using Internal.Text;
 
 namespace ILCompiler.DependencyAnalysis
@@ -44,31 +43,31 @@ namespace ILCompiler.DependencyAnalysis
                     EmitCode(factory, ref x64Emitter, relocsOnly);
                     x64Emitter.Builder.RequireInitialAlignment(alignment);
                     x64Emitter.Builder.AddSymbol(this);
-                    return x64Emitter.Builder.ToObjectData();
+                    return GetObjectData(factory, x64Emitter.Builder);
 
                 case TargetArchitecture.X86:
                     X86.X86Emitter x86Emitter = new X86.X86Emitter(factory, relocsOnly);
                     EmitCode(factory, ref x86Emitter, relocsOnly);
                     x86Emitter.Builder.RequireInitialAlignment(alignment);
                     x86Emitter.Builder.AddSymbol(this);
-                    return x86Emitter.Builder.ToObjectData();
+                    return GetObjectData(factory, x86Emitter.Builder);
 
                 case TargetArchitecture.ARM:
                     ARM.ARMEmitter armEmitter = new ARM.ARMEmitter(factory, relocsOnly);
                     EmitCode(factory, ref armEmitter, relocsOnly);
                     armEmitter.Builder.RequireInitialAlignment(alignment);
                     armEmitter.Builder.AddSymbol(this);
-                    return armEmitter.Builder.ToObjectData();
+                    return GetObjectData(factory, armEmitter.Builder);
 
                 case TargetArchitecture.ARM64:
                     ARM64.ARM64Emitter arm64Emitter = new ARM64.ARM64Emitter(factory, relocsOnly);
                     EmitCode(factory, ref arm64Emitter, relocsOnly);
                     arm64Emitter.Builder.RequireInitialAlignment(alignment);
                     arm64Emitter.Builder.AddSymbol(this);
-                    return arm64Emitter.Builder.ToObjectData();
+                    return GetObjectData(factory, arm64Emitter.Builder);
 
                 case TargetArchitecture.Wasm32:
-                    return new ObjectData(null, null, 0, null);
+                    return GetObjectData(factory, default);
 
                 default:
                     throw new NotImplementedException();
@@ -79,5 +78,10 @@ namespace ILCompiler.DependencyAnalysis
         protected abstract void EmitCode(NodeFactory factory, ref X86.X86Emitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref ARM.ARMEmitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref ARM64.ARM64Emitter instructionEncoder, bool relocsOnly);
+
+        protected virtual ObjectData GetObjectData(NodeFactory factory, ObjectDataBuilder builder)
+        {
+            return builder.ToObjectData();
+        }
     }
 }
