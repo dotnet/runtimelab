@@ -2353,6 +2353,9 @@ namespace ILCompiler.Dataflow
                     case EventPseudoDesc @event:
                         MarkEvent(ref reflectionContext, @event);
                         break;
+                    case null:
+                        MarkEntireType(ref reflectionContext, typeDefinition);
+                        break;
                     default:
                         Debug.Fail(member.GetType().ToString());
                         break;
@@ -2520,6 +2523,54 @@ namespace ILCompiler.Dataflow
         {
             foreach (var @event in type.GetEventsOnTypeHierarchy(filter, bindingFlags))
                 MarkEvent(ref reflectionContext, @event);
+        }
+
+        void MarkEntireType(ref ReflectionPatternContext reflectionContext, TypeDesc type, Stack<TypeDesc> typesVisited = null)
+        {
+            // We can end up with a cycle for things like
+            // class Base
+            // {
+            //     class Nested : Base { }
+            // }
+            if (typesVisited != null && typesVisited.Contains(type))
+                return;
+
+            typesVisited ??= new Stack<TypeDesc>();
+            typesVisited.Push(type);
+
+            foreach (var method in type.GetMethods())
+            {
+                MarkMethod(ref reflectionContext, method);
+            }
+
+            foreach (var field in type.GetFields())
+            {
+                MarkField(ref reflectionContext, field);
+            }
+
+            // We assume that reflection enabling the accessors enabled the properties/events
+            // If that ever changes, we need extra code here.
+
+            if (type.IsDefType)
+            {
+                foreach (var nestedType in ((MetadataType)type).GetNestedTypes())
+                {
+                    MarkEntireType(ref reflectionContext, nestedType, typesVisited);
+                }
+
+                foreach (var intf in ((MetadataType)type).ExplicitlyImplementedInterfaces)
+                {
+                    MarkEntireType(ref reflectionContext, intf, typesVisited);
+                }
+            }
+
+            if (type.HasBaseType)
+            {
+                MarkEntireType(ref reflectionContext, type.BaseType, typesVisited);
+            }
+
+            var popped = typesVisited.Pop();
+            Debug.Assert(popped == type);
         }
 
         static DynamicallyAccessedMemberTypes GetDynamicallyAccessedMemberTypesFromBindingFlagsForNestedTypes(BindingFlags? bindingFlags) =>
