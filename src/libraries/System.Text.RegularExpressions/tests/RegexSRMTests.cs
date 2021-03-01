@@ -6,6 +6,7 @@ using Xunit;
 using Xunit.Abstractions;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Serialization;
 
 namespace System.Text.RegularExpressions.Tests
 {
@@ -19,7 +20,7 @@ namespace System.Text.RegularExpressions.Tests
 #endif
         }
 
-        static RegexOptions DFA = (RegexOptions)0x400;
+        internal static RegexOptions DFA = (RegexOptions)0x400;
 
         [Fact]
         public void BasicSRMTestBorderAnchors()
@@ -1956,6 +1957,76 @@ namespace System.Text.RegularExpressions.Tests
                         throw new Xunit.Sdk.XunitException($"Actual: {string.Join(", ", actual)}{Environment.NewLine}Expected: {string.Join(", ", expected)}");
                     }
                 }
+            }
+        }
+    }
+
+    public class RegexSerializationTests
+    {
+        [Fact]
+        public void SRMTest_TestSerializer()
+        {
+            var re1 = new MyRegex(@"(a|\d)+", RegexOptions.IgnoreCase | RegexSRMTests.DFA);
+            var dfainfo = re1.Serialize();
+            var re = MyRegex.Deserialize(dfainfo);
+
+            var match1 = re.Match("-----aAAa----------a123Aa");
+            Assert.True(match1.Success);
+            Assert.Equal(5, match1.Index);
+            Assert.Equal(4, match1.Length);
+            Assert.Equal("aAAa", match1.Value);
+            var match2 = match1.NextMatch();
+            Assert.True(match2.Success);
+            Assert.Equal(19, match2.Index);
+            Assert.Equal(6, match2.Length);
+            Assert.Equal("a123Aa", match2.Value);
+            var match3 = match2.NextMatch();
+            Assert.False(match3.Success);
+        }
+
+        internal class MyRegex : Regex
+        {
+            private MyRegex(SerializationInfo info) : base(info, new StreamingContext()) { }
+
+            public MyRegex(string regex, RegexOptions options) : base(regex, options) { }
+
+            public static MyRegex Deserialize(string input)
+            {
+                var si = new SerializationInfo(typeof(void), DummyConverter.Dummy); ;
+                si.AddValue("DFA", input);
+                return new MyRegex(si);
+            }
+
+            public string Serialize()
+            {
+                var info = new SerializationInfo(typeof(void), DummyConverter.Dummy);
+                (this as ISerializable).GetObjectData(info, new StreamingContext());
+                return info.GetString("DFA");
+            }
+
+            internal class DummyConverter : IFormatterConverter
+            {
+                internal static DummyConverter Dummy = new DummyConverter();
+
+                internal DummyConverter() { }
+
+                public object Convert(object value, Type type) => throw new NotImplementedException();
+                public object Convert(object value, TypeCode typeCode) => throw new NotImplementedException();
+                public bool ToBoolean(object value) => throw new NotImplementedException();
+                public byte ToByte(object value) => throw new NotImplementedException();
+                public char ToChar(object value) => throw new NotImplementedException();
+                public DateTime ToDateTime(object value) => throw new NotImplementedException();
+                public decimal ToDecimal(object value) => throw new NotImplementedException();
+                public double ToDouble(object value) => throw new NotImplementedException();
+                public short ToInt16(object value) => throw new NotImplementedException();
+                public int ToInt32(object value) => throw new NotImplementedException();
+                public long ToInt64(object value) => throw new NotImplementedException();
+                public sbyte ToSByte(object value) => throw new NotImplementedException();
+                public float ToSingle(object value) => throw new NotImplementedException();
+                public string ToString(object value) => throw new NotImplementedException();
+                public ushort ToUInt16(object value) => throw new NotImplementedException();
+                public uint ToUInt32(object value) => throw new NotImplementedException();
+                public ulong ToUInt64(object value) => throw new NotImplementedException();
             }
         }
     }

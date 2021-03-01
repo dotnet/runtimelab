@@ -185,11 +185,37 @@ namespace System.Text.RegularExpressions
             }
         }
 
-        protected Regex(SerializationInfo info, StreamingContext context) =>
-            throw new PlatformNotSupportedException();
+        protected Regex(SerializationInfo info, StreamingContext context)
+        {
+            SerializationInfoEnumerator infoEnum = info.GetEnumerator();
+            SRM.Regex srmregex = null;
+            while (infoEnum.MoveNext())
+            {
+                if (infoEnum.Current.Name.Equals("DFA") && infoEnum.Current.ObjectType == typeof(string))
+                {
+                    string srmregexinfo = infoEnum.Current.Value as string;
+                    srmregex = SRM.Regex.Deserialize(srmregexinfo);
+                    break;
+                }
+            }
+            if (srmregex == null)
+                throw new PlatformNotSupportedException();
 
-        void ISerializable.GetObjectData(SerializationInfo si, StreamingContext context) =>
-            throw new PlatformNotSupportedException();
+            _useSRM = true;
+            _srm = srmregex;
+        }
+
+        void ISerializable.GetObjectData(SerializationInfo si, StreamingContext context)
+        {
+            if (_useSRM)
+            {
+                StringBuilder sb = new();
+                _srm.Serialize(sb);
+                si.AddValue("DFA", sb.ToString());
+            }
+            else
+                throw new PlatformNotSupportedException();
+        }
 
         [CLSCompliant(false), DisallowNull]
         protected IDictionary? Caps
