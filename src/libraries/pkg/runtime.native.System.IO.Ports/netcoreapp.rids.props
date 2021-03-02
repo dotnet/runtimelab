@@ -1,5 +1,6 @@
 ﻿<Project>
   <ItemGroup>
+    <BuildRID Include="freebsd-x64" />
     <BuildRID Include="linux-arm">
       <Platform>arm</Platform>
     </BuildRID>
