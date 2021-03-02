@@ -4,11 +4,15 @@
   <PropertyGroup>
     <BuildScriptName Condition="'$(TargetOS)' == 'windows'">build.cmd</BuildScriptName>
     <BuildScriptName Condition="'$(TargetOS)' != 'windows'">build.sh</BuildScriptName>
+
+    <BuildArguments>&quot;$(ArtifactsDir)&quot; &quot;$(RepoRoot)&quot;</BuildArguments>
+    <BuildArguments>$(BuildArguments) $(BuildArchitecture) $(TargetArchitecture)</BuildArguments>
   </PropertyGroup>
 
-  <Target Name="Build">
+  <!-- Cross-building on Linux is not yet supported -->
+  <Target Name="Build" Condition="'$(TargetOS)' == 'windows' or '$(TargetArchitecture)' == '$(BuildArchitecture)'">
     <!-- Use IgnoreStandardErrorWarningFormat because Arcade sets WarnAsError and there are multiple warnings in the LLVM build -->
-    <Exec Command="&quot;$(MSBuildThisFileDirectory)$(BuildScriptName)&quot; $(ArtifactsDir) $(RepoRoot)"
+    <Exec Command="&quot;$(MSBuildThisFileDirectory)$(BuildScriptName)&quot; $(BuildArguments)"
           IgnoreStandardErrorWarningFormat="true" />
   </Target>
 </Project>
