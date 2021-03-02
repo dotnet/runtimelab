@@ -187,15 +187,21 @@ namespace System.Text.RegularExpressions
 
         protected Regex(SerializationInfo info, StreamingContext context)
         {
-            SerializationInfoEnumerator infoEnum = info.GetEnumerator();
             SRM.Regex srmregex = null;
-            while (infoEnum.MoveNext())
+            if (info != null)
             {
-                if (infoEnum.Current.Name.Equals("DFA") && infoEnum.Current.ObjectType == typeof(string))
+                SerializationInfoEnumerator infoEnum = info.GetEnumerator();
+                if (infoEnum.MoveNext() && infoEnum.Current.ObjectType == typeof(string))
                 {
-                    string srmregexinfo = infoEnum.Current.Value as string;
-                    srmregex = SRM.Regex.Deserialize(srmregexinfo);
-                    break;
+                    try
+                    {
+                        string srmregexinfo = infoEnum.Current.Value as string;
+                        srmregex = SRM.Regex.Deserialize(srmregexinfo);
+                    }
+                    catch
+                    {
+                        throw new PlatformNotSupportedException();
+                    }
                 }
             }
             if (srmregex == null)
