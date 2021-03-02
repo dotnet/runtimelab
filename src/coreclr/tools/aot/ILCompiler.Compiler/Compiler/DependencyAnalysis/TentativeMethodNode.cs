@@ -36,15 +36,15 @@ namespace ILCompiler.DependencyAnalysis
             return helper == null ? RealBody : factory.MethodEntrypoint(helper);
         }
 
-        protected override ObjectData GetObjectData(NodeFactory factory, ObjectDataBuilder builder)
+        public override ObjectData GetData(NodeFactory factory, bool relocsOnly)
         {
             if (factory.Target.Architecture == TargetArchitecture.Wasm32)
             {
-                DependencyList dependencyList =  base.ComputeNonRelocationBasedDependencies(factory) ?? new DependencyList();
+                DependencyList dependencyList = base.ComputeNonRelocationBasedDependencies(factory) ?? new DependencyList();
                 dependencyList.Add(GetTarget(factory), "WebAssembly tentative node throw helper");
-                return new ObjectData(null, new Relocation[] {new Relocation(RelocType.IMAGE_REL_BASED_HIGHLOW, 0, GetTarget(factory))}, 0, null);
+                return new ObjectData(null, new Relocation[] { new Relocation(RelocType.IMAGE_REL_BASED_HIGHLOW, 0, GetTarget(factory)) }, 0, null);
             }
-            return base.GetObjectData(factory, builder);
+            return base.GetData(factory, relocsOnly);
         }
 
         public MethodDesc Method => _methodNode.Method;
