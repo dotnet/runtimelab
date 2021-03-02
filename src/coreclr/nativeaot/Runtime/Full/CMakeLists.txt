@@ -8,27 +8,23 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 add_definitions(-DFEATURE_RX_THUNKS)
 
-# For Windows ARM/ARM64 .asm files in this list are replaced with the corresponding .obj files
-set(RUNTIME_SOURCES_ARCH_ASM_RESOLVED "${RUNTIME_SOURCES_ARCH_ASM}")
-
 if (CLR_CMAKE_TARGET_WIN32)
   if (CLR_CMAKE_HOST_ARCH_ARM OR CLR_CMAKE_HOST_ARCH_ARM64)
     # Needed to include AsmOffsets.inc
     include_directories(BEFORE ${CMAKE_CURRENT_BINARY_DIR})
     preprocess_files(RUNTIME_SOURCES_ARCH_ASM ${RUNTIME_SOURCES_ARCH_ASM})
-    set(RUNTIME_SOURCES_ARCH_ASM_RESOLVED "${RUNTIME_SOURCES_ARCH_ASM}")
     if (CMAKE_GENERATOR MATCHES "Visual Studio")
-      compile_asm(TARGET Runtime ASM_FILES ${RUNTIME_SOURCES_ARCH_ASM} OUTPUT_OBJECTS RUNTIME_SOURCES_ARCH_ASM_RESOLVED)
+      # Replaces .asm files in RUNTIME_SOURCES_ARCH_ASM with the corresponding .obj files
+      compile_asm(TARGET Runtime ASM_FILES ${RUNTIME_SOURCES_ARCH_ASM} OUTPUT_OBJECTS RUNTIME_SOURCES_ARCH_ASM)
     endif()
   endif()
 endif (CLR_CMAKE_TARGET_WIN32)
 
-add_library(Runtime STATIC ${COMMON_RUNTIME_SOURCES} ${FULL_RUNTIME_SOURCES} ${RUNTIME_SOURCES_ARCH_ASM_RESOLVED})
+add_library(Runtime STATIC ${COMMON_RUNTIME_SOURCES} ${FULL_RUNTIME_SOURCES} ${RUNTIME_SOURCES_ARCH_ASM})
 
-add_library(Runtime.ServerGC STATIC ${COMMON_RUNTIME_SOURCES} ${FULL_RUNTIME_SOURCES} ${RUNTIME_SOURCES_ARCH_ASM_RESOLVED} ${SERVER_GC_SOURCES})
+add_library(Runtime.ServerGC STATIC ${COMMON_RUNTIME_SOURCES} ${FULL_RUNTIME_SOURCES} ${RUNTIME_SOURCES_ARCH_ASM} ${SERVER_GC_SOURCES})
 
 target_compile_definitions(Runtime.ServerGC PRIVATE -DFEATURE_SVR_GC)
-
 
 # Get the current list of definitions
 get_compile_definitions(DEFINITIONS)
@@ -62,37 +58,14 @@ add_custom_command(
 set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/AsmOffsets.inc" PROPERTIES GENERATED TRUE)
 
 # Runtime and Runtime.ServerGC share AsmOffsets.inc and assembler helpers (for Windows ARM/ARM64).
-# Avoid race condition during a build using a separate target.
+# Avoid a race condition by adding this target as a dependency for both libraries.
 add_custom_target(
   RuntimeAsmHelpers
-  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/AsmOffsets.inc" "${RUNTIME_SOURCES_ARCH_ASM_RESOLVED}"
+  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/AsmOffsets.inc" "${RUNTIME_SOURCES_ARCH_ASM}"
 )
 
 add_dependencies(Runtime RuntimeAsmHelpers)
 add_dependencies(Runtime.ServerGC RuntimeAsmHelpers)
-
-# REVIEW: COMPILE_DEFINITIONS_LIST is not defined here. Should we remove the following code?
-
-# Extract the definitions for the ASM code. Since there is a bug in the cmake that prevents us from
-# using the generator expressions, we split the definitions into lists based on the configuration.
-foreach(DEFINITION IN LISTS COMPILE_DEFINITIONS_LIST)
-    if (${DEFINITION} MATCHES "^\\$<\\$<CONFIG:([^>]+)>:([^>]+)>$")
-        # The entry contains generator expression, so insert the definition into a definitions list
-        # corresponding to the config
-       string(TOUPPER ${CMAKE_MATCH_1} CONFIG)
-       set(ASM_DEFINITIONS_${CONFIG} ${ASM_DEFINITIONS_${CONFIG}} ${CMAKE_MATCH_2})
-    else()
-        list(APPEND ASM_DEFINITIONS ${DEFINITION})
-    endif()
-endforeach()
-
-# Add defines for the ASM. Unfortunately setting it on the target is ignored for asm by the cmake, so we have
-# to set it on the sources.
-set_property(SOURCE ${RUNTIME_SOURCES_ARCH_ASM} PROPERTY COMPILE_DEFINITIONS ${ASM_DEFINITIONS})
-foreach(CONFIG IN LISTS CMAKE_CONFIGURATION_TYPES)
-    string(TOUPPER ${CONFIG} CONFIG)
-    set_property(SOURCE ${RUNTIME_SOURCES_ARCH_ASM} PROPERTY COMPILE_DEFINITIONS_${CONFIG} ${ASM_DEFINITIONS_${CONFIG}})
-endforeach()
 
 # Install the static Runtime library
 install (TARGETS Runtime Runtime.ServerGC DESTINATION aotsdk)
