@@ -8,20 +8,24 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 add_definitions(-DFEATURE_RX_THUNKS)
 
+# For Windows ARM/ARM64 .asm files in this list are replaced with the corresponding .obj files
+set(RUNTIME_SOURCES_ARCH_ASM_RESOLVED "${RUNTIME_SOURCES_ARCH_ASM}")
+
 if (CLR_CMAKE_TARGET_WIN32)
   if (CLR_CMAKE_HOST_ARCH_ARM OR CLR_CMAKE_HOST_ARCH_ARM64)
     # Needed to include AsmOffsets.inc
     include_directories(BEFORE ${CMAKE_CURRENT_BINARY_DIR})
     preprocess_files(RUNTIME_SOURCES_ARCH_ASM ${RUNTIME_SOURCES_ARCH_ASM})
+    set(RUNTIME_SOURCES_ARCH_ASM_RESOLVED "${RUNTIME_SOURCES_ARCH_ASM}")
     if (CMAKE_GENERATOR MATCHES "Visual Studio")
-      compile_asm(TARGET Runtime ASM_FILES ${RUNTIME_SOURCES_ARCH_ASM} OUTPUT_OBJECTS RUNTIME_SOURCES_ARCH_ASM)
+      compile_asm(TARGET Runtime ASM_FILES ${RUNTIME_SOURCES_ARCH_ASM} OUTPUT_OBJECTS RUNTIME_SOURCES_ARCH_ASM_RESOLVED)
     endif()
   endif()
 endif (CLR_CMAKE_TARGET_WIN32)
 
-add_library(Runtime STATIC ${COMMON_RUNTIME_SOURCES} ${FULL_RUNTIME_SOURCES} ${RUNTIME_SOURCES_ARCH_ASM})
+add_library(Runtime STATIC ${COMMON_RUNTIME_SOURCES} ${FULL_RUNTIME_SOURCES} ${RUNTIME_SOURCES_ARCH_ASM_RESOLVED})
 
-add_library(Runtime.ServerGC STATIC ${COMMON_RUNTIME_SOURCES} ${FULL_RUNTIME_SOURCES} ${RUNTIME_SOURCES_ARCH_ASM} ${SERVER_GC_SOURCES})
+add_library(Runtime.ServerGC STATIC ${COMMON_RUNTIME_SOURCES} ${FULL_RUNTIME_SOURCES} ${RUNTIME_SOURCES_ARCH_ASM_RESOLVED} ${SERVER_GC_SOURCES})
 
 target_compile_definitions(Runtime.ServerGC PRIVATE -DFEATURE_SVR_GC)
 
@@ -57,14 +61,17 @@ add_custom_command(
 
 set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/AsmOffsets.inc" PROPERTIES GENERATED TRUE)
 
+# Runtime and Runtime.ServerGC share AsmOffsets.inc and assembler helpers (for Windows ARM/ARM64).
+# Avoid race condition during a build using a separate target.
 add_custom_target(
-  AsmOffsets
-  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/AsmOffsets.inc"
+  RuntimeAsmHelpers
+  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/AsmOffsets.inc" "${RUNTIME_SOURCES_ARCH_ASM_RESOLVED}"
 )
 
-# The AsmOffsets.inc will be built as a dependency of the Runtime
-add_dependencies(Runtime AsmOffsets)
-add_dependencies(Runtime.ServerGC AsmOffsets)
+add_dependencies(Runtime RuntimeAsmHelpers)
+add_dependencies(Runtime.ServerGC RuntimeAsmHelpers)
+
+# REVIEW: COMPILE_DEFINITIONS_LIST is not defined here. Should we remove the following code?
 
 # Extract the definitions for the ASM code. Since there is a bug in the cmake that prevents us from
 # using the generator expressions, we split the definitions into lists based on the configuration.
