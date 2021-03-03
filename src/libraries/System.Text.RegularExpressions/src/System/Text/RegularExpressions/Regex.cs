@@ -187,40 +187,12 @@ namespace System.Text.RegularExpressions
 
         protected Regex(SerializationInfo info, StreamingContext context)
         {
-            SRM.Regex srmregex = null;
-            if (info != null)
-            {
-                SerializationInfoEnumerator infoEnum = info.GetEnumerator();
-                if (infoEnum.MoveNext() && infoEnum.Current.ObjectType == typeof(string))
-                {
-                    try
-                    {
-                        string srmregexinfo = infoEnum.Current.Value as string;
-                        srmregex = SRM.Regex.Deserialize(srmregexinfo);
-                    }
-                    catch
-                    {
-                        throw new PlatformNotSupportedException();
-                    }
-                }
-            }
-            if (srmregex == null)
-                throw new PlatformNotSupportedException();
-
-            _useSRM = true;
-            _srm = srmregex;
+            throw new PlatformNotSupportedException();
         }
 
         void ISerializable.GetObjectData(SerializationInfo si, StreamingContext context)
         {
-            if (_useSRM)
-            {
-                StringBuilder sb = new();
-                _srm.Serialize(sb);
-                si.AddValue("DFA", sb.ToString());
-            }
-            else
-                throw new PlatformNotSupportedException();
+            throw new PlatformNotSupportedException();
         }
 
         [CLSCompliant(false), DisallowNull]
