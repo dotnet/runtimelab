@@ -1,7 +1,7 @@
-// Licensed to the .NET Foundation under one or more agreements.
+﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-namespace System.Text.Json.Serialization
+namespace System.Text.Json.SourceGeneration
 {
     /// <summary>
     /// When specified on <see cref="JsonSerializerOptions.DefaultIgnoreCondition"/>,
@@ -10,7 +10,7 @@ namespace System.Text.Json.Serialization
     /// a property is ignored during serialization and deserialization. This option
     /// overrides the setting on <see cref="JsonSerializerOptions.DefaultIgnoreCondition"/>.
     /// </summary>
-    public enum JsonIgnoreCondition
+    internal enum JsonIgnoreCondition
     {
         /// <summary>
         /// Property is never ignored during serialization or deserialization.

@@ -4,72 +4,209 @@
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Numerics;
+using System.Threading.Tasks;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Tests;
 using Xunit;
+
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithNewSlotField))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithInternalField))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithNewSlotDecimalField))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithNewSlotAttributedDecimalField))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithIgnoredPropertyPolicyConflictPrivate))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithMissingCollectionProperty))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithClassProperty_IgnoreConditionWhenWritingDefault), CanBeDynamic = true)]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithNoSetter))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithInternalProperty))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithStructProperty_IgnoreConditionNever))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithPropertyNamingConflict))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithStructProperty_IgnoreConditionWhenWritingDefault))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithMissingObjectProperty))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithInitOnlyProperty))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.StructWithInitOnlyProperty))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.MyClassWithValueTypeInterfaceProperty))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithNonPublicProperties))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithProperty_IgnoreConditionAlways))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.Class_PropertyWith_PrivateInitOnlySetter))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithBadIgnoreAttribute))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.StructWithBadIgnoreAttribute))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.Class_PropertyWith_InternalInitOnlySetter))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.Class_PropertyWith_ProtectedInitOnlySetter))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithIgnoredPublicPropertyAndNewSlotPrivate))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithIgnoredPropertyPolicyConflictPublic))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithIgnoredPropertyNamingConflictPrivate))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithIgnoredNewSlotProperty))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithPublicGetterAndPrivateSetter))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithInitializedProps))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithNewSlotInternalProperty))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithNewSlotInternalProperty))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithNewSlotInternalProperty))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithNewSlotInternalProperty))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithNewSlotInternalProperty))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithNewSlotInternalProperty))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithPropertyPolicyConflict))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithPrivateSetterAndGetter))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithIgnoreAttributeProperty))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithIgnoredNewSlotField))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.MyStruct_WithNonPublicAccessors_WithTypeAttribute))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.MyStruct_WithNonPublicAccessors_WithTypeAttribute))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithReadOnlyFields))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.MyValueTypeWithBoxedPrimitive))]
+[assembly: JsonSerializable(typeof(int), CanBeDynamic = true)]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithNoGetter))]
+[assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithPropsAndIgnoreAttributes))]
+[assembly: JsonSerializable(typeof(List<bool>))]
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class PropertyVisibilityTests
+#if !GENERATE_JSON_METADATA
+    public sealed class PropertyVisibilityTests_DynamicSerializer : PropertyVisibilityTests
     {
+        public PropertyVisibilityTests_DynamicSerializer() : base(SerializationWrapper.StringSerializer, DeserializationWrapper.StringDeserializer) { }
+
+        [Theory]
+        [InlineData(typeof(ClassWithInitOnlyProperty))]
+        [InlineData(typeof(StructWithInitOnlyProperty))]
+        public async override Task InitOnlyProperties(Type type)
+        {
+            // Init-only property included by default.
+            object obj = await Deserializer.DeserializeWrapper(@"{""MyInt"":1}", type);
+            Assert.Equal(1, (int)type.GetProperty("MyInt").GetValue(obj));
+
+            // Init-only properties can be serialized.
+            Assert.Equal(@"{""MyInt"":1}", await Serializer.SerializeWrapper(obj));
+        }
+
         [Fact]
-        public static void Serialize_NewSlotPublicField()
+        public override async Task JsonSerializablePropertyAttribute_OnProperties_WithNonPublicAccessors()
+        {
+            string json = @"{
+                ""MyInt"":1,
+                ""MyString"":""Hello"",
+                ""MyFloat"":2,
+                ""MyUri"":""https://microsoft.com""
+            }";
+
+            var obj = await Deserializer.DeserializeWrapper<MyClass_WithNonPublicAccessors_WithPropertyAttributes>(json);
+            Assert.Equal(1, obj.MyInt);
+            Assert.Equal("Hello", obj.MyString);
+            Assert.Equal(2f, obj.GetMyFloat);
+            Assert.Equal(new Uri("https://microsoft.com"), obj.MyUri);
+
+            json = await Serializer.SerializeWrapper(obj);
+            Assert.Contains(@"""MyInt"":1", json);
+            Assert.Contains(@"""MyString"":""Hello""", json);
+            Assert.Contains(@"""MyFloat"":2", json);
+            Assert.Contains(@"""MyUri"":""https://microsoft.com""", json);
+        }
+    }
+#else
+    public sealed class PropertyVisibilityTests_MetadataBasedSerializer : PropertyVisibilityTests
+    {
+        public PropertyVisibilityTests_MetadataBasedSerializer() : base(SerializationWrapper.StringMetadataSerializer, DeserializationWrapper.StringMetadataDeserialzer) { }
+
+        [Theory]
+        [InlineData(typeof(ClassWithInitOnlyProperty))]
+        [InlineData(typeof(StructWithInitOnlyProperty))]
+        public override async Task InitOnlyProperties(Type type)
+        {
+            // Init-only property can't be set with static code.
+            object obj = await Deserializer.DeserializeWrapper(@"{""MyInt"":1}", type);
+            Assert.Equal(0, (int)type.GetProperty("MyInt").GetValue(obj));
+
+            // Init-only properties can be serialized.
+            Assert.Equal(@"{""MyInt"":0}", await Serializer.SerializeWrapper(obj));
+        }
+
+        [Fact]
+        public override async Task JsonSerializablePropertyAttribute_OnProperties_WithNonPublicAccessors()
+        {
+            string json = @"{
+                ""MyInt"":1,
+                ""MyString"":""Hello"",
+                ""MyFloat"":2,
+                ""MyUri"":""https://microsoft.com""
+            }";
+
+            var obj = await Deserializer.DeserializeWrapper<MyClass_WithNonPublicAccessors_WithPropertyAttributes>(json);
+            Assert.Equal(0, obj.MyInt); // Private setter can't be used without reflection.
+            Assert.Equal("Hello", obj.MyString);
+            Assert.Equal(2f, obj.GetMyFloat);
+            Assert.Equal(new Uri("https://microsoft.com"), obj.MyUri);
+
+            json = await Serializer.SerializeWrapper(obj);
+            Assert.Contains(@"""MyInt"":0", json);
+            Assert.Contains(@"""MyString"":""Hello""", json);
+            Assert.DoesNotContain(@"""MyFloat"":", json); // Private getter can't be used without reflection.
+            Assert.Contains(@"""MyUri"":""https://microsoft.com""", json);
+        }
+    }
+#endif
+
+    public abstract partial class PropertyVisibilityTests : SerializerTests
+    {
+        public PropertyVisibilityTests(SerializationWrapper serializer, DeserializationWrapper deserializer) : base(serializer, deserializer) { }
+
+        [Fact]
+        public async Task Serialize_NewSlotPublicField()
         {
             // Serialize
             var obj = new ClassWithNewSlotField();
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
 
             Assert.Equal(@"{""MyString"":""NewDefaultValue""}", json);
 
             // Deserialize
             json = @"{""MyString"":""NewValue""}";
-            obj = JsonSerializer.Deserialize<ClassWithNewSlotField>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithNewSlotField>(json);
 
             Assert.Equal("NewValue", ((ClassWithNewSlotField)obj).MyString);
             Assert.Equal("DefaultValue", ((ClassWithInternalField)obj).MyString);
         }
 
         [Fact]
-        public static void Serialize_NewSlotPublicProperty()
+        public async Task Serialize_NewSlotPublicProperty()
         {
             // Serialize
             var obj = new ClassWithNewSlotProperty();
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
 
             Assert.Equal(@"{""MyString"":""NewDefaultValue""}", json);
 
             // Deserialize
             json = @"{""MyString"":""NewValue""}";
-            obj = JsonSerializer.Deserialize<ClassWithNewSlotProperty>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithNewSlotProperty>(json);
 
             Assert.Equal("NewValue", ((ClassWithNewSlotProperty)obj).MyString);
             Assert.Equal("DefaultValue", ((ClassWithInternalProperty)obj).MyString);
         }
 
         [Fact]
-        public static void Serialize_BasePublicProperty_ConflictWithDerivedPrivate()
+        public async Task Serialize_BasePublicProperty_ConflictWithDerivedPrivate()
         {
             // Serialize
             var obj = new ClassWithNewSlotInternalProperty();
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
 
             Assert.Equal(@"{""MyString"":""DefaultValue""}", json);
 
             // Deserialize
             json = @"{""MyString"":""NewValue""}";
-            obj = JsonSerializer.Deserialize<ClassWithNewSlotInternalProperty>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithNewSlotInternalProperty>(json);
 
             Assert.Equal("NewValue", ((ClassWithPublicProperty)obj).MyString);
             Assert.Equal("NewDefaultValue", ((ClassWithNewSlotInternalProperty)obj).MyString);
         }
 
         [Fact]
-        public static void Serialize_PublicProperty_ConflictWithPrivateDueAttributes()
+        public async Task Serialize_PublicProperty_ConflictWithPrivateDueAttributes()
         {
             // Serialize
             var obj = new ClassWithPropertyNamingConflict();
 
             // Newtonsoft.Json throws JsonSerializationException here because
             // non-public properties are included when [JsonProperty] is placed on them.
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
 
             Assert.Equal(@"{""MyString"":""DefaultValue""}", json);
 
@@ -78,172 +215,188 @@ namespace System.Text.Json.Serialization.Tests
 
             // Newtonsoft.Json throws JsonSerializationException here because
             // non-public properties are included when [JsonProperty] is placed on them.
-            obj = JsonSerializer.Deserialize<ClassWithPropertyNamingConflict>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithPropertyNamingConflict>(json);
 
             Assert.Equal("NewValue", obj.MyString);
             Assert.Equal("ConflictingValue", obj.ConflictingString);
         }
 
         [Fact]
-        public static void Serialize_PublicProperty_ConflictWithPrivateDuePolicy()
+        public async Task Serialize_PublicProperty_ConflictWithPrivateDuePolicy()
         {
             var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
             // Serialize
             var obj = new ClassWithPropertyPolicyConflict();
-            string json = JsonSerializer.Serialize(obj, options);
+            string json = await Serializer.SerializeWrapper(obj, options);
 
             Assert.Equal(@"{""myString"":""DefaultValue""}", json);
 
             // Deserialize
             json = @"{""myString"":""NewValue""}";
-            obj = JsonSerializer.Deserialize<ClassWithPropertyPolicyConflict>(json, options);
+            obj = await Deserializer.DeserializeWrapper<ClassWithPropertyPolicyConflict>(json, options);
 
             Assert.Equal("NewValue", obj.MyString);
             Assert.Equal("ConflictingValue", obj.myString);
         }
 
         [Fact]
-        public static void Serialize_NewSlotPublicProperty_ConflictWithBasePublicProperty()
+        public async Task Serialize_NewSlotPublicProperty_ConflictWithBasePublicProperty()
         {
             // Serialize
             var obj = new ClassWithNewSlotDecimalProperty();
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
 
             Assert.Equal(@"{""MyNumeric"":1.5}", json);
 
             // Deserialize
             json = @"{""MyNumeric"":2.5}";
-            obj = JsonSerializer.Deserialize<ClassWithNewSlotDecimalProperty>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithNewSlotDecimalProperty>(json);
 
             Assert.Equal(2.5M, obj.MyNumeric);
         }
 
         [Fact]
-        public static void Serialize_NewSlotPublicField_ConflictWithBasePublicProperty()
+        public async Task Serialize_NewSlotPublicField_ConflictWithBasePublicProperty()
         {
             // Serialize
             var obj = new ClassWithNewSlotDecimalField();
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
 
             Assert.Equal(@"{""MyNumeric"":1.5}", json);
 
             // Deserialize
             json = @"{""MyNumeric"":2.5}";
-            obj = JsonSerializer.Deserialize<ClassWithNewSlotDecimalField>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithNewSlotDecimalField>(json);
 
             Assert.Equal(2.5M, obj.MyNumeric);
         }
 
         [Fact]
-        public static void Serialize_NewSlotPublicField_SpecifiedJsonPropertyName()
+        public async Task Serialize_NewSlotPublicField_SpecifiedJsonPropertyName()
         {
             // Serialize
             var obj = new ClassWithNewSlotAttributedDecimalField();
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
 
             Assert.Contains(@"""MyNewNumeric"":1.5", json);
             Assert.Contains(@"""MyNumeric"":1", json);
 
             // Deserialize
             json = @"{""MyNewNumeric"":2.5,""MyNumeric"":4}";
-            obj = JsonSerializer.Deserialize<ClassWithNewSlotAttributedDecimalField>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithNewSlotAttributedDecimalField>(json);
 
             Assert.Equal(4, ((ClassWithHiddenByNewSlotIntProperty)obj).MyNumeric);
             Assert.Equal(2.5M, ((ClassWithNewSlotAttributedDecimalField)obj).MyNumeric);
         }
 
         [Fact]
-        public static void Serialize_NewSlotPublicProperty_SpecifiedJsonPropertyName()
+        public async Task Serialize_NewSlotPublicProperty_SpecifiedJsonPropertyName()
         {
             // Serialize
             var obj = new ClassWithNewSlotAttributedDecimalProperty();
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
 
             Assert.Contains(@"""MyNewNumeric"":1.5", json);
             Assert.Contains(@"""MyNumeric"":1", json);
 
             // Deserialize
             json = @"{""MyNewNumeric"":2.5,""MyNumeric"":4}";
-            obj = JsonSerializer.Deserialize<ClassWithNewSlotAttributedDecimalProperty>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithNewSlotAttributedDecimalProperty>(json);
 
             Assert.Equal(4, ((ClassWithHiddenByNewSlotIntProperty)obj).MyNumeric);
             Assert.Equal(2.5M, ((ClassWithNewSlotAttributedDecimalProperty)obj).MyNumeric);
         }
 
         [Fact]
-        public static void Ignore_NonPublicProperty()
+        public async Task Ignore_NonPublicProperty()
         {
             // Serialize
             var obj = new ClassWithInternalProperty();
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
 
             Assert.Equal(@"{}", json);
 
             // Deserialize
             json = @"{""MyString"":""NewValue""}";
-            obj = JsonSerializer.Deserialize<ClassWithInternalProperty>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithInternalProperty>(json);
 
             Assert.Equal("DefaultValue", obj.MyString);
         }
 
         [Fact]
-        public static void Ignore_NewSlotPublicFieldIgnored()
+        public async Task Honor_NonPublicProperty_WithJsonInclude()
         {
             // Serialize
-            var obj = new ClassWithIgnoredNewSlotField();
-            string json = JsonSerializer.Serialize(obj);
+            var obj = new ClassWithInternalProperty();
+            string json = await Serializer.SerializeWrapper(obj);
 
             Assert.Equal(@"{}", json);
 
             // Deserialize
             json = @"{""MyString"":""NewValue""}";
-            obj = JsonSerializer.Deserialize<ClassWithIgnoredNewSlotField>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithInternalProperty>(json);
+
+            Assert.Equal("DefaultValue", obj.MyString);
+        }
+
+        [Fact]
+        public async Task Ignore_NewSlotPublicFieldIgnored()
+        {
+            // Serialize
+            var obj = new ClassWithIgnoredNewSlotField();
+            string json = await Serializer.SerializeWrapper(obj);
+
+            Assert.Equal(@"{}", json);
+
+            // Deserialize
+            json = @"{""MyString"":""NewValue""}";
+            obj = await Deserializer.DeserializeWrapper<ClassWithIgnoredNewSlotField>(json);
 
             Assert.Equal("NewDefaultValue", ((ClassWithIgnoredNewSlotField)obj).MyString);
             Assert.Equal("DefaultValue", ((ClassWithInternalField)obj).MyString);
         }
 
         [Fact]
-        public static void Ignore_NewSlotPublicPropertyIgnored()
+        public async Task Ignore_NewSlotPublicPropertyIgnored()
         {
             // Serialize
             var obj = new ClassWithIgnoredNewSlotProperty();
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
 
             Assert.Equal(@"{}", json);
 
             // Deserialize
             json = @"{""MyString"":""NewValue""}";
-            obj = JsonSerializer.Deserialize<ClassWithIgnoredNewSlotProperty>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithIgnoredNewSlotProperty>(json);
 
             Assert.Equal("NewDefaultValue", ((ClassWithIgnoredNewSlotProperty)obj).MyString);
             Assert.Equal("DefaultValue", ((ClassWithInternalProperty)obj).MyString);
         }
 
         [Fact]
-        public static void Ignore_BasePublicPropertyIgnored_ConflictWithDerivedPrivate()
+        public async Task Ignore_BasePublicPropertyIgnored_ConflictWithDerivedPrivate()
         {
             // Serialize
             var obj = new ClassWithIgnoredPublicPropertyAndNewSlotPrivate();
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
 
             Assert.Equal(@"{}", json);
 
             // Deserialize
             json = @"{""MyString"":""NewValue""}";
-            obj = JsonSerializer.Deserialize<ClassWithIgnoredPublicPropertyAndNewSlotPrivate>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithIgnoredPublicPropertyAndNewSlotPrivate>(json);
 
             Assert.Equal("DefaultValue", ((ClassWithIgnoredPublicProperty)obj).MyString);
             Assert.Equal("NewDefaultValue", ((ClassWithIgnoredPublicPropertyAndNewSlotPrivate)obj).MyString);
         }
 
         [Fact]
-        public static void Ignore_PublicProperty_ConflictWithPrivateDueAttributes()
+        public async Task Ignore_PublicProperty_ConflictWithPrivateDueAttributes()
         {
             // Serialize
             var obj = new ClassWithIgnoredPropertyNamingConflictPrivate();
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
 
             Assert.Equal(@"{}", json);
 
@@ -252,7 +405,7 @@ namespace System.Text.Json.Serialization.Tests
 
             // Deserialize
             json = @"{""MyString"":""NewValue""}";
-            obj = JsonSerializer.Deserialize<ClassWithIgnoredPropertyNamingConflictPrivate>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithIgnoredPropertyNamingConflictPrivate>(json);
 
             Assert.Equal("DefaultValue", obj.MyString);
             Assert.Equal("ConflictingValue", obj.ConflictingString);
@@ -263,95 +416,95 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Ignore_PublicProperty_ConflictWithPrivateDuePolicy()
+        public async Task Ignore_PublicProperty_ConflictWithPrivateDuePolicy()
         {
             var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
             // Serialize
             var obj = new ClassWithIgnoredPropertyPolicyConflictPrivate();
-            string json = JsonSerializer.Serialize(obj, options);
+            string json = await Serializer.SerializeWrapper(obj, options);
 
             Assert.Equal(@"{}", json);
 
             // Deserialize
             json = @"{""myString"":""NewValue""}";
-            obj = JsonSerializer.Deserialize<ClassWithIgnoredPropertyPolicyConflictPrivate>(json, options);
+            obj = await Deserializer.DeserializeWrapper<ClassWithIgnoredPropertyPolicyConflictPrivate>(json, options);
 
             Assert.Equal("DefaultValue", obj.MyString);
             Assert.Equal("ConflictingValue", obj.myString);
         }
 
         [Fact]
-        public static void Ignore_PublicProperty_ConflictWithPublicDueAttributes()
+        public async Task Ignore_PublicProperty_ConflictWithPublicDueAttributes()
         {
             // Serialize
             var obj = new ClassWithIgnoredPropertyNamingConflictPublic();
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
 
             Assert.Equal(@"{""MyString"":""ConflictingValue""}", json);
 
             // Deserialize
             json = @"{""MyString"":""NewValue""}";
-            obj = JsonSerializer.Deserialize<ClassWithIgnoredPropertyNamingConflictPublic>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithIgnoredPropertyNamingConflictPublic>(json);
 
             Assert.Equal("DefaultValue", obj.MyString);
             Assert.Equal("NewValue", obj.ConflictingString);
         }
 
         [Fact]
-        public static void Ignore_PublicProperty_ConflictWithPublicDuePolicy()
+        public async Task Ignore_PublicProperty_ConflictWithPublicDuePolicy()
         {
             var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
             // Serialize
             var obj = new ClassWithIgnoredPropertyPolicyConflictPublic();
-            string json = JsonSerializer.Serialize(obj, options);
+            string json = await Serializer.SerializeWrapper(obj, options);
 
             Assert.Equal(@"{""myString"":""ConflictingValue""}", json);
 
             // Deserialize
             json = @"{""myString"":""NewValue""}";
-            obj = JsonSerializer.Deserialize<ClassWithIgnoredPropertyPolicyConflictPublic>(json, options);
+            obj = await Deserializer.DeserializeWrapper<ClassWithIgnoredPropertyPolicyConflictPublic>(json, options);
 
             Assert.Equal("DefaultValue", obj.MyString);
             Assert.Equal("NewValue", obj.myString);
         }
 
         [Fact]
-        public static void Throw_PublicProperty_ConflictDueAttributes()
+        public async Task Throw_PublicProperty_ConflictDueAttributes()
         {
             // Serialize
             var obj = new ClassWithPropertyNamingConflictWhichThrows();
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Serialize(obj));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Serializer.SerializeWrapper(obj));
 
             // Deserialize
             string json = @"{""MyString"":""NewValue""}";
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Deserialize<ClassWithPropertyNamingConflictWhichThrows>(json));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Deserializer.DeserializeWrapper<ClassWithPropertyNamingConflictWhichThrows>(json));
         }
 
         [Fact]
-        public static void Throw_PublicPropertyAndField_ConflictDueAttributes()
+        public async Task Throw_PublicPropertyAndField_ConflictDueAttributes()
         {
             // Serialize
             var obj = new ClassWithPropertyFieldNamingConflictWhichThrows();
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Serialize(obj));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Serializer.SerializeWrapper(obj));
 
             // Deserialize
             string json = @"{""MyString"":""NewValue""}";
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Deserialize<ClassWithPropertyFieldNamingConflictWhichThrows>(json));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Deserializer.DeserializeWrapper<ClassWithPropertyFieldNamingConflictWhichThrows>(json));
         }
 
         [Fact]
-        public static void Throw_PublicProperty_ConflictDueAttributes_SingleInheritance()
+        public async Task Throw_PublicProperty_ConflictDueAttributes_SingleInheritance()
         {
             // Serialize
             var obj = new ClassInheritedWithPropertyNamingConflictWhichThrows();
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Serialize(obj));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Serializer.SerializeWrapper(obj));
 
             // The output for Newtonsoft.Json is:
             // {"MyString":"ConflictingValue"}
@@ -360,8 +513,8 @@ namespace System.Text.Json.Serialization.Tests
 
             // Deserialize
             string json = @"{""MyString"":""NewValue""}";
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Deserialize<ClassInheritedWithPropertyNamingConflictWhichThrows>(json));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Deserializer.DeserializeWrapper<ClassInheritedWithPropertyNamingConflictWhichThrows>(json));
 
             // The output for Newtonsoft.Json is:
             // obj.ConflictingString = "NewValue"
@@ -369,12 +522,12 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Throw_PublicPropertyAndField_ConflictDueAttributes_SingleInheritance()
+        public async Task Throw_PublicPropertyAndField_ConflictDueAttributes_SingleInheritance()
         {
             // Serialize
             var obj = new ClassInheritedWithPropertyFieldNamingConflictWhichThrows();
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Serialize(obj));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Serializer.SerializeWrapper(obj));
 
             // The output for Newtonsoft.Json is:
             // {"MyString":"ConflictingValue"}
@@ -383,8 +536,8 @@ namespace System.Text.Json.Serialization.Tests
 
             // Deserialize
             string json = @"{""MyString"":""NewValue""}";
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Deserialize<ClassInheritedWithPropertyFieldNamingConflictWhichThrows>(json));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Deserializer.DeserializeWrapper<ClassInheritedWithPropertyFieldNamingConflictWhichThrows>(json));
 
             // The output for Newtonsoft.Json is:
             // obj.ConflictingString = "NewValue"
@@ -392,12 +545,12 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Throw_PublicProperty_ConflictDueAttributes_DoubleInheritance()
+        public async Task Throw_PublicProperty_ConflictDueAttributes_DoubleInheritance()
         {
             // Serialize
             var obj = new ClassTwiceInheritedWithPropertyNamingConflictWhichThrows();
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Serialize(obj));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Serializer.SerializeWrapper(obj));
 
             // The output for Newtonsoft.Json is:
             // {"MyString":"ConflictingValue"}
@@ -407,8 +560,8 @@ namespace System.Text.Json.Serialization.Tests
             // Deserialize
             string json = @"{""MyString"":""NewValue""}";
 
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Deserialize<ClassTwiceInheritedWithPropertyNamingConflictWhichThrows>(json));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Deserializer.DeserializeWrapper<ClassTwiceInheritedWithPropertyNamingConflictWhichThrows>(json));
 
             // The output for Newtonsoft.Json is:
             // obj.ConflictingString = "NewValue"
@@ -416,12 +569,12 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Throw_PublicPropertyAndField_ConflictDueAttributes_DoubleInheritance()
+        public async Task Throw_PublicPropertyAndField_ConflictDueAttributes_DoubleInheritance()
         {
             // Serialize
             var obj = new ClassTwiceInheritedWithPropertyFieldNamingConflictWhichThrows();
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Serialize(obj));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Serializer.SerializeWrapper(obj));
 
             // The output for Newtonsoft.Json is:
             // {"MyString":"ConflictingValue"}
@@ -431,8 +584,8 @@ namespace System.Text.Json.Serialization.Tests
             // Deserialize
             string json = @"{""MyString"":""NewValue""}";
 
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Deserialize<ClassTwiceInheritedWithPropertyFieldNamingConflictWhichThrows>(json));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Deserializer.DeserializeWrapper<ClassTwiceInheritedWithPropertyFieldNamingConflictWhichThrows>(json));
 
             // The output for Newtonsoft.Json is:
             // obj.ConflictingString = "NewValue"
@@ -440,47 +593,47 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Throw_PublicProperty_ConflictDuePolicy()
+        public async Task Throw_PublicProperty_ConflictDuePolicy()
         {
             var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
             // Serialize
             var obj = new ClassWithPropertyPolicyConflictWhichThrows();
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Serialize(obj, options));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Serializer.SerializeWrapper(obj, options));
 
             // Deserialize
             string json = @"{""MyString"":""NewValue""}";
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Deserialize<ClassWithPropertyPolicyConflictWhichThrows>(json, options));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Deserializer.DeserializeWrapper<ClassWithPropertyPolicyConflictWhichThrows>(json, options));
         }
 
         [Fact]
-        public static void Throw_PublicPropertyAndField_ConflictDuePolicy()
+        public async Task Throw_PublicPropertyAndField_ConflictDuePolicy()
         {
             var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
             // Serialize
             var obj = new ClassWithPropertyFieldPolicyConflictWhichThrows();
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Serialize(obj, options));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Serializer.SerializeWrapper(obj, options));
 
             // Deserialize
             string json = @"{""MyString"":""NewValue""}";
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Deserialize<ClassWithPropertyFieldPolicyConflictWhichThrows>(json, options));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Deserializer.DeserializeWrapper<ClassWithPropertyFieldPolicyConflictWhichThrows>(json, options));
         }
 
         [Fact]
-        public static void Throw_PublicProperty_ConflictDuePolicy_SingleInheritance()
+        public async Task Throw_PublicProperty_ConflictDuePolicy_SingleInheritance()
         {
             var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
             // Serialize
             var obj = new ClassInheritedWithPropertyPolicyConflictWhichThrows();
 
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Serialize(obj, options));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Serializer.SerializeWrapper(obj, options));
 
             // The output for Newtonsoft.Json is:
             // {"myString":"ConflictingValue"}
@@ -489,8 +642,8 @@ namespace System.Text.Json.Serialization.Tests
 
             // Deserialize
             string json = @"{""MyString"":""NewValue""}";
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Deserialize<ClassInheritedWithPropertyPolicyConflictWhichThrows>(json, options));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Deserializer.DeserializeWrapper<ClassInheritedWithPropertyPolicyConflictWhichThrows>(json, options));
 
             // The output for Newtonsoft.Json is:
             // obj.myString = "NewValue"
@@ -498,15 +651,15 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Throw_PublicPropertyAndField_ConflictDuePolicy_SingleInheritance()
+        public async Task Throw_PublicPropertyAndField_ConflictDuePolicy_SingleInheritance()
         {
             var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
             // Serialize
             var obj = new ClassInheritedWithPropertyFieldPolicyConflictWhichThrows();
 
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Serialize(obj, options));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Serializer.SerializeWrapper(obj, options));
 
             // The output for Newtonsoft.Json is:
             // {"myString":"ConflictingValue"}
@@ -515,8 +668,8 @@ namespace System.Text.Json.Serialization.Tests
 
             // Deserialize
             string json = @"{""MyString"":""NewValue""}";
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Deserialize<ClassInheritedWithPropertyFieldPolicyConflictWhichThrows>(json, options));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Deserializer.DeserializeWrapper<ClassInheritedWithPropertyFieldPolicyConflictWhichThrows>(json, options));
 
             // The output for Newtonsoft.Json is:
             // obj.myString = "NewValue"
@@ -524,15 +677,15 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Throw_PublicProperty_ConflictDuePolicy_DobuleInheritance()
+        public async Task Throw_PublicProperty_ConflictDuePolicy_DobuleInheritance()
         {
             var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
             // Serialize
             var obj = new ClassTwiceInheritedWithPropertyPolicyConflictWhichThrows();
 
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Serialize(obj, options));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Serializer.SerializeWrapper(obj, options));
 
             // The output for Newtonsoft.Json is:
             // {"myString":"ConflictingValue"}
@@ -542,8 +695,8 @@ namespace System.Text.Json.Serialization.Tests
             // Deserialize
             string json = @"{""MyString"":""NewValue""}";
 
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Deserialize<ClassTwiceInheritedWithPropertyPolicyConflictWhichThrows>(json, options));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Deserializer.DeserializeWrapper<ClassTwiceInheritedWithPropertyPolicyConflictWhichThrows>(json, options));
 
             // The output for Newtonsoft.Json is:
             // obj.myString = "NewValue"
@@ -551,15 +704,15 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Throw_PublicPropertyAndField_ConflictDuePolicy_DobuleInheritance()
+        public async Task Throw_PublicPropertyAndField_ConflictDuePolicy_DobuleInheritance()
         {
             var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
             // Serialize
             var obj = new ClassTwiceInheritedWithPropertyFieldPolicyConflictWhichThrows();
 
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Serialize(obj, options));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Serializer.SerializeWrapper(obj, options));
 
             // The output for Newtonsoft.Json is:
             // {"myString":"ConflictingValue"}
@@ -569,8 +722,8 @@ namespace System.Text.Json.Serialization.Tests
             // Deserialize
             string json = @"{""MyString"":""NewValue""}";
 
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Deserialize<ClassTwiceInheritedWithPropertyFieldPolicyConflictWhichThrows>(json, options));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Deserializer.DeserializeWrapper<ClassTwiceInheritedWithPropertyFieldPolicyConflictWhichThrows>(json, options));
 
             // The output for Newtonsoft.Json is:
             // obj.myString = "NewValue"
@@ -578,42 +731,42 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void HiddenPropertiesIgnored_WhenOverridesIgnored()
+        public async Task HiddenPropertiesIgnored_WhenOverridesIgnored()
         {
-            string serialized = JsonSerializer.Serialize(new DerivedClass_With_IgnoredOverride());
+            string serialized = await Serializer.SerializeWrapper(new DerivedClass_With_IgnoredOverride());
             Assert.Equal(@"{}", serialized);
 
-            serialized = JsonSerializer.Serialize(new DerivedClass_WithVisibleProperty_Of_DerivedClass_With_IgnoredOverride());
+            serialized = await Serializer.SerializeWrapper(new DerivedClass_WithVisibleProperty_Of_DerivedClass_With_IgnoredOverride());
             Assert.Equal(@"{""MyProp"":false}", serialized);
 
-            serialized = JsonSerializer.Serialize(new DerivedClass_With_IgnoredOverride_And_ConflictingPropertyName());
+            serialized = await Serializer.SerializeWrapper(new DerivedClass_With_IgnoredOverride_And_ConflictingPropertyName());
             Assert.Equal(@"{""MyProp"":null}", serialized);
 
-            serialized = JsonSerializer.Serialize(new DerivedClass_With_Ignored_NewProperty());
+            serialized = await Serializer.SerializeWrapper(new DerivedClass_With_Ignored_NewProperty());
             Assert.Equal(@"{""MyProp"":false}", serialized);
 
-            serialized = JsonSerializer.Serialize(new DerivedClass_WithConflictingNewMember());
+            serialized = await Serializer.SerializeWrapper(new DerivedClass_WithConflictingNewMember());
             Assert.Equal(@"{""MyProp"":false}", serialized);
 
-            serialized = JsonSerializer.Serialize(new DerivedClass_WithConflictingNewMember_Of_DifferentType());
+            serialized = await Serializer.SerializeWrapper(new DerivedClass_WithConflictingNewMember_Of_DifferentType());
             Assert.Equal(@"{""MyProp"":0}", serialized);
 
-            serialized = JsonSerializer.Serialize(new DerivedClass_With_Ignored_ConflictingNewMember());
+            serialized = await Serializer.SerializeWrapper(new DerivedClass_With_Ignored_ConflictingNewMember());
             Assert.Equal(@"{""MyProp"":false}", serialized);
 
-            serialized = JsonSerializer.Serialize(new DerivedClass_With_Ignored_ConflictingNewMember_Of_DifferentType());
+            serialized = await Serializer.SerializeWrapper(new DerivedClass_With_Ignored_ConflictingNewMember_Of_DifferentType());
             Assert.Equal(@"{""MyProp"":false}", serialized);
 
-            serialized = JsonSerializer.Serialize(new DerivedClass_With_NewProperty_And_ConflictingPropertyName());
+            serialized = await Serializer.SerializeWrapper(new DerivedClass_With_NewProperty_And_ConflictingPropertyName());
             Assert.Equal(@"{""MyProp"":null}", serialized);
 
-            serialized = JsonSerializer.Serialize(new DerivedClass_With_Ignored_NewProperty_Of_DifferentType());
+            serialized = await Serializer.SerializeWrapper(new DerivedClass_With_Ignored_NewProperty_Of_DifferentType());
             Assert.Equal(@"{""MyProp"":false}", serialized);
 
-            serialized = JsonSerializer.Serialize(new DerivedClass_With_Ignored_NewProperty_Of_DifferentType_And_ConflictingPropertyName());
+            serialized = await Serializer.SerializeWrapper(new DerivedClass_With_Ignored_NewProperty_Of_DifferentType_And_ConflictingPropertyName());
             Assert.Equal(@"{""MyProp"":null}", serialized);
 
-            serialized = JsonSerializer.Serialize(new FurtherDerivedClass_With_ConflictingPropertyName());
+            serialized = await Serializer.SerializeWrapper(new FurtherDerivedClass_With_ConflictingPropertyName());
             Assert.Equal(@"{""MyProp"":null}", serialized);
 
             // Here we differ from Newtonsoft.Json, where the output would be
@@ -621,9 +774,9 @@ namespace System.Text.Json.Serialization.Tests
             // Conflicts at different type-hierarchy levels that are not caused by
             // deriving or the new keyword are allowed. Properties on more derived types win.
             // This is invalid in System.Text.Json.
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new DerivedClass_WithConflictingPropertyName()));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new DerivedClass_WithConflictingPropertyName()));
 
-            serialized = JsonSerializer.Serialize(new FurtherDerivedClass_With_IgnoredOverride());
+            serialized = await Serializer.SerializeWrapper(new FurtherDerivedClass_With_IgnoredOverride());
             Assert.Equal(@"{""MyProp"":null}", serialized);
         }
 
@@ -954,21 +1107,21 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void IgnoreReadOnlyProperties()
+        public async Task IgnoreReadOnlyProperties()
         {
             var options = new JsonSerializerOptions();
             options.IgnoreReadOnlyProperties = true;
 
             var obj = new ClassWithNoSetter();
 
-            string json = JsonSerializer.Serialize(obj, options);
+            string json = await Serializer.SerializeWrapper(obj, options);
 
             // Collections are always serialized unless they have [JsonIgnore].
             Assert.Equal(@"{""MyInts"":[1,2]}", json);
         }
 
         [Fact]
-        public static void IgnoreReadOnlyFields()
+        public async Task IgnoreReadOnlyFields()
         {
             var options = new JsonSerializerOptions();
             options.IncludeFields = true;
@@ -976,30 +1129,30 @@ namespace System.Text.Json.Serialization.Tests
 
             var obj = new ClassWithReadOnlyFields();
 
-            string json = JsonSerializer.Serialize(obj, options);
+            string json = await Serializer.SerializeWrapper(obj, options);
 
             // Collections are always serialized unless they have [JsonIgnore].
             Assert.Equal(@"{""MyInts"":[1,2]}", json);
         }
 
         [Fact]
-        public static void NoSetter()
+        public async Task NoSetter()
         {
             var obj = new ClassWithNoSetter();
 
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
             Assert.Contains(@"""MyString"":""DefaultValue""", json);
             Assert.Contains(@"""MyInts"":[1,2]", json);
 
-            obj = JsonSerializer.Deserialize<ClassWithNoSetter>(@"{""MyString"":""IgnoreMe"",""MyInts"":[0]}");
+            obj = await Deserializer.DeserializeWrapper<ClassWithNoSetter>(@"{""MyString"":""IgnoreMe"",""MyInts"":[0]}");
             Assert.Equal("DefaultValue", obj.MyString);
             Assert.Equal(2, obj.MyInts.Length);
         }
 
         [Fact]
-        public static void NoGetter()
+        public async Task NoGetter()
         {
-            ClassWithNoGetter objWithNoGetter = JsonSerializer.Deserialize<ClassWithNoGetter>(
+            ClassWithNoGetter objWithNoGetter = await Deserializer.DeserializeWrapper<ClassWithNoGetter>(
                 @"{""MyString"":""Hello"",""MyIntArray"":[0],""MyIntList"":[0]}");
 
             Assert.Equal("Hello", objWithNoGetter.GetMyString());
@@ -1010,64 +1163,64 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void PrivateGetter()
+        public async Task PrivateGetter()
         {
             var obj = new ClassWithPrivateSetterAndGetter();
             obj.SetMyString("Hello");
 
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
             Assert.Equal(@"{}", json);
         }
 
         [Fact]
-        public static void PrivateSetter()
+        public async Task PrivateSetter()
         {
             string json = @"{""MyString"":""Hello""}";
 
-            ClassWithPrivateSetterAndGetter objCopy = JsonSerializer.Deserialize<ClassWithPrivateSetterAndGetter>(json);
+            ClassWithPrivateSetterAndGetter objCopy = await Deserializer.DeserializeWrapper<ClassWithPrivateSetterAndGetter>(json);
             Assert.Null(objCopy.GetMyString());
         }
 
         [Fact]
-        public static void PrivateSetterPublicGetter()
+        public async Task PrivateSetterPublicGetter()
         {
             // https://github.com/dotnet/runtime/issues/29503
             ClassWithPublicGetterAndPrivateSetter obj
-                = JsonSerializer.Deserialize<ClassWithPublicGetterAndPrivateSetter>(@"{ ""Class"": {} }");
+                = await Deserializer.DeserializeWrapper<ClassWithPublicGetterAndPrivateSetter>(@"{ ""Class"": {} }");
 
             Assert.NotNull(obj);
             Assert.Null(obj.Class);
         }
 
         [Fact]
-        public static void MissingObjectProperty()
+        public async Task MissingObjectProperty()
         {
             ClassWithMissingObjectProperty obj
-                = JsonSerializer.Deserialize<ClassWithMissingObjectProperty>(@"{ ""Object"": {} }");
+                = await Deserializer.DeserializeWrapper<ClassWithMissingObjectProperty>(@"{ ""Object"": {} }");
 
             Assert.Null(obj.Collection);
         }
 
         [Fact]
-        public static void MissingCollectionProperty()
+        public async Task MissingCollectionProperty()
         {
             ClassWithMissingCollectionProperty obj
-                = JsonSerializer.Deserialize<ClassWithMissingCollectionProperty>(@"{ ""Collection"": [] }");
+                = await Deserializer.DeserializeWrapper<ClassWithMissingCollectionProperty>(@"{ ""Collection"": [] }");
 
             Assert.Null(obj.Object);
         }
 
-        private class ClassWithPublicGetterAndPrivateSetter
+        public class ClassWithPublicGetterAndPrivateSetter
         {
             public NestedClass Class { get; private set; }
         }
 
-        private class NestedClass
+        public class NestedClass
         {
         }
 
         [Fact]
-        public static void JsonIgnoreAttribute()
+        public async Task JsonIgnoreAttribute()
         {
             var options = new JsonSerializerOptions { IncludeFields = true };
 
@@ -1080,7 +1233,7 @@ namespace System.Text.Json.Serialization.Tests
             Assert.Equal(3.14M, obj.MyNumeric);
 
             // Verify serialize.
-            string json = JsonSerializer.Serialize(obj, options);
+            string json = await Serializer.SerializeWrapper(obj, options);
             Assert.Contains(@"""MyString""", json);
             Assert.DoesNotContain(@"MyStringWithIgnore", json);
             Assert.DoesNotContain(@"MyStringsWithIgnore", json);
@@ -1088,7 +1241,7 @@ namespace System.Text.Json.Serialization.Tests
             Assert.DoesNotContain(@"MyNumeric", json);
 
             // Verify deserialize default.
-            obj = JsonSerializer.Deserialize<ClassWithIgnoreAttributeProperty>(@"{}", options);
+            obj = await Deserializer.DeserializeWrapper<ClassWithIgnoreAttributeProperty>(@"{}", options);
             Assert.Equal(@"MyString", obj.MyString);
             Assert.Equal(@"MyStringWithIgnore", obj.MyStringWithIgnore);
             Assert.Equal(2, obj.MyStringsWithIgnore.Length);
@@ -1096,7 +1249,7 @@ namespace System.Text.Json.Serialization.Tests
             Assert.Equal(3.14M, obj.MyNumeric);
 
             // Verify deserialize ignores the json for MyStringWithIgnore and MyStringsWithIgnore.
-            obj = JsonSerializer.Deserialize<ClassWithIgnoreAttributeProperty>(
+            obj = await Deserializer.DeserializeWrapper<ClassWithIgnoreAttributeProperty>(
                 @"{""MyString"":""Hello"", ""MyStringWithIgnore"":""IgnoreMe"", ""MyStringsWithIgnore"":[""IgnoreMe""], ""MyDictionaryWithIgnore"":{""Key"":9}, ""MyNumeric"": 2.71828}", options);
             Assert.Contains(@"Hello", obj.MyString);
             Assert.Equal(@"MyStringWithIgnore", obj.MyStringWithIgnore);
@@ -1106,7 +1259,11 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void JsonIgnoreAttribute_UnsupportedCollection()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Need nullable support
+#endif
+        public async Task JsonIgnoreAttribute_UnsupportedCollection()
         {
             string json =
                     @"{
@@ -1136,7 +1293,7 @@ namespace System.Text.Json.Serialization.Tests
                     }";
 
             // Unsupported collections will throw on deserialize by default.
-            Assert.Throws<NotSupportedException>(() => JsonSerializer.Deserialize<ClassWithUnsupportedDictionary>(json));
+            await Assert.ThrowsAsync<NotSupportedException>(async () => await Deserializer.DeserializeWrapper<ClassWithUnsupportedDictionary>(json));
 
             // Using new options instance to prevent using previously cached metadata.
             JsonSerializerOptions options = new JsonSerializerOptions();
@@ -1162,64 +1319,68 @@ namespace System.Text.Json.Serialization.Tests
                 MyIDict = dictionary
             };
 
-            Assert.Throws<NotSupportedException>(() => JsonSerializer.Serialize(instance, options));
+            await Assert.ThrowsAsync<NotSupportedException>(async () => await Serializer.SerializeWrapper(instance, options));
 
             // Unsupported collections will throw on deserialize by default if they contain elements.
             options = new JsonSerializerOptions();
-            Assert.Throws<NotSupportedException>(() => JsonSerializer.Deserialize<WrapperForClassWithUnsupportedDictionary>(wrapperJson, options));
+            await Assert.ThrowsAsync<NotSupportedException>(async () => await Deserializer.DeserializeWrapper<WrapperForClassWithUnsupportedDictionary>(wrapperJson, options));
 
             options = new JsonSerializerOptions();
             // Unsupported collections will throw on serialize by default if they contain elements.
-            Assert.Throws<NotSupportedException>(() => JsonSerializer.Serialize(instance, options));
+            await Assert.ThrowsAsync<NotSupportedException>(async () => await Serializer.SerializeWrapper(instance, options));
 
             // When ignored, we can serialize and deserialize without exceptions.
             options = new JsonSerializerOptions();
 
-            Assert.NotNull(JsonSerializer.Serialize(instanceWithIgnore, options));
+            Assert.NotNull(await Serializer.SerializeWrapper(instanceWithIgnore, options));
 
-            ClassWithIgnoredUnsupportedDictionary obj = JsonSerializer.Deserialize<ClassWithIgnoredUnsupportedDictionary>(json, options);
+            ClassWithIgnoredUnsupportedDictionary obj = await Deserializer.DeserializeWrapper<ClassWithIgnoredUnsupportedDictionary>(json, options);
             Assert.Null(obj.MyDict);
 
             options = new JsonSerializerOptions();
-            Assert.Equal("{}", JsonSerializer.Serialize(new ClassWithIgnoredUnsupportedDictionary()));
+            Assert.Equal("{}", await Serializer.SerializeWrapper(new ClassWithIgnoredUnsupportedDictionary()));
 
             options = new JsonSerializerOptions();
-            WrapperForClassWithIgnoredUnsupportedDictionary wrapperObj = JsonSerializer.Deserialize<WrapperForClassWithIgnoredUnsupportedDictionary>(wrapperJson, options);
+            WrapperForClassWithIgnoredUnsupportedDictionary wrapperObj = await Deserializer.DeserializeWrapper<WrapperForClassWithIgnoredUnsupportedDictionary>(wrapperJson, options);
             Assert.Null(wrapperObj.MyClass.MyDict);
 
             options = new JsonSerializerOptions();
-            Assert.Equal(@"{""MyClass"":{}}", JsonSerializer.Serialize(new WrapperForClassWithIgnoredUnsupportedDictionary()
+            Assert.Equal(@"{""MyClass"":{}}", await Serializer.SerializeWrapper(new WrapperForClassWithIgnoredUnsupportedDictionary()
             {
                 MyClass = new ClassWithIgnoredUnsupportedDictionary(),
             }, options)); ;
         }
 
         [Fact]
-        public static void JsonIgnoreAttribute_UnsupportedBigInteger()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Need nullable support
+#endif
+        public async Task JsonIgnoreAttribute_UnsupportedBigInteger()
         {
             string json = @"{""MyBigInteger"":1}";
             string wrapperJson = @"{""MyClass"":{""MyBigInteger"":1}}";
 
             // Unsupported types will throw by default.
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ClassWithUnsupportedBigInteger>(json));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<ClassWithUnsupportedBigInteger>(json));
             // Using new options instance to prevent using previously cached metadata.
             JsonSerializerOptions options = new JsonSerializerOptions();
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<WrapperForClassWithUnsupportedBigInteger>(wrapperJson, options));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<WrapperForClassWithUnsupportedBigInteger>(wrapperJson, options));
 
             // When ignored, we can serialize and deserialize without exceptions.
             options = new JsonSerializerOptions();
-            ClassWithIgnoredUnsupportedBigInteger obj = JsonSerializer.Deserialize<ClassWithIgnoredUnsupportedBigInteger>(json, options);
+            ClassWithIgnoredUnsupportedBigInteger obj = await Deserializer.DeserializeWrapper<ClassWithIgnoredUnsupportedBigInteger>(json, options);
             Assert.Null(obj.MyBigInteger);
 
             options = new JsonSerializerOptions();
-            Assert.Equal("{}", JsonSerializer.Serialize(new ClassWithIgnoredUnsupportedBigInteger()));
+            Assert.Equal("{}", await Serializer.SerializeWrapper(new ClassWithIgnoredUnsupportedBigInteger()));
 
             options = new JsonSerializerOptions();
-            WrapperForClassWithIgnoredUnsupportedBigInteger wrapperObj = JsonSerializer.Deserialize<WrapperForClassWithIgnoredUnsupportedBigInteger>(wrapperJson, options);
+            WrapperForClassWithIgnoredUnsupportedBigInteger wrapperObj = await Deserializer.DeserializeWrapper<WrapperForClassWithIgnoredUnsupportedBigInteger>(wrapperJson, options);
             Assert.Null(wrapperObj.MyClass.MyBigInteger);
 
             options = new JsonSerializerOptions();
-            Assert.Equal(@"{""MyClass"":{}}", JsonSerializer.Serialize(new WrapperForClassWithIgnoredUnsupportedBigInteger()
+            Assert.Equal(@"{""MyClass"":{}}", await Serializer.SerializeWrapper(new WrapperForClassWithIgnoredUnsupportedBigInteger()
             {
                 MyClass = new ClassWithIgnoredUnsupportedBigInteger(),
             }, options));
@@ -1430,16 +1591,20 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void OverrideJsonIgnorePropertyUsingJsonPropertyName()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Need enum support
+#endif
+        public async Task OverrideJsonIgnorePropertyUsingJsonPropertyName()
         {
             const string json = @"{""EnumValue"":""Case2""}";
 
-            StructWithOverride obj = JsonSerializer.Deserialize<StructWithOverride>(json);
+            StructWithOverride obj = await Deserializer.DeserializeWrapper<StructWithOverride>(json);
 
             Assert.Equal(MyEnum.Case2, obj.EnumValue);
             Assert.Equal("Case2", obj.EnumString);
 
-            string jsonSerialized = JsonSerializer.Serialize(obj);
+            string jsonSerialized = await Serializer.SerializeWrapper(obj);
             Assert.Equal(json, jsonSerialized);
         }
 
@@ -1472,38 +1637,42 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void OverrideJsonIgnorePropertyUsingJsonPropertyNameReversed()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Need enum support
+#endif
+        public async Task OverrideJsonIgnorePropertyUsingJsonPropertyNameReversed()
         {
             const string json = @"{""EnumValue"":""Case2""}";
 
-            ClassWithOverrideReversed obj = JsonSerializer.Deserialize<ClassWithOverrideReversed>(json);
+            ClassWithOverrideReversed obj = await Deserializer.DeserializeWrapper<ClassWithOverrideReversed>(json);
 
             Assert.Equal(MyEnum.Case2, obj.EnumValue);
             Assert.Equal("Case2", obj.EnumString);
 
-            string jsonSerialized = JsonSerializer.Serialize(obj);
+            string jsonSerialized = await Serializer.SerializeWrapper(obj);
             Assert.Equal(json, jsonSerialized);
         }
 
         [Theory]
         [InlineData(typeof(ClassWithProperty_IgnoreConditionAlways))]
-        [InlineData(typeof(ClassWithProperty_IgnoreConditionAlways_Ctor))]
-        public static void JsonIgnoreConditionSetToAlwaysWorks(Type type)
+        // [InlineData(typeof(ClassWithProperty_IgnoreConditionAlways_Ctor))] // TODO: support parameterized ctors in source gen.
+        public async Task JsonIgnoreConditionSetToAlwaysWorks(Type type)
         {
             string json = @"{""MyString"":""Random"",""MyDateTime"":""2020-03-23"",""MyInt"":4}";
 
-            object obj = JsonSerializer.Deserialize(json, type);
+            object obj = await Deserializer.DeserializeWrapper(json, type);
             Assert.Equal("Random", (string)type.GetProperty("MyString").GetValue(obj));
             Assert.Equal(default, (DateTime)type.GetProperty("MyDateTime").GetValue(obj));
             Assert.Equal(4, (int)type.GetProperty("MyInt").GetValue(obj));
 
-            string serialized = JsonSerializer.Serialize(obj);
+            string serialized = await Serializer.SerializeWrapper(obj);
             Assert.Contains(@"""MyString"":""Random""", serialized);
             Assert.Contains(@"""MyInt"":4", serialized);
             Assert.DoesNotContain(@"""MyDateTime"":", serialized);
         }
 
-        private class ClassWithProperty_IgnoreConditionAlways
+        public class ClassWithProperty_IgnoreConditionAlways
         {
             public string MyString { get; set; }
             [JsonIgnore(Condition = JsonIgnoreCondition.Always)]
@@ -1527,17 +1696,17 @@ namespace System.Text.Json.Serialization.Tests
 
         [Theory]
         [MemberData(nameof(JsonIgnoreConditionWhenWritingDefault_ClassProperty_TestData))]
-        public static void JsonIgnoreConditionWhenWritingDefault_ClassProperty(Type type, JsonSerializerOptions options)
+        public async Task JsonIgnoreConditionWhenWritingDefault_ClassProperty(Type type, JsonSerializerOptions options)
         {
             // Property shouldn't be ignored if it isn't null.
             string json = @"{""Int1"":1,""MyString"":""Random"",""Int2"":2}";
 
-            object obj = JsonSerializer.Deserialize(json, type, options);
+            object obj = await Deserializer.DeserializeWrapper(json, type, options);
             Assert.Equal(1, (int)type.GetProperty("Int1").GetValue(obj));
             Assert.Equal("Random", (string)type.GetProperty("MyString").GetValue(obj));
             Assert.Equal(2, (int)type.GetProperty("Int2").GetValue(obj));
 
-            string serialized = JsonSerializer.Serialize(obj, options);
+            string serialized = await Serializer.SerializeWrapper(obj, options);
             Assert.Contains(@"""Int1"":1", serialized);
             Assert.Contains(@"""MyString"":""Random""", serialized);
             Assert.Contains(@"""Int2"":2", serialized);
@@ -1545,7 +1714,7 @@ namespace System.Text.Json.Serialization.Tests
             // Property should be ignored when null.
             json = @"{""Int1"":1,""MyString"":null,""Int2"":2}";
 
-            obj = JsonSerializer.Deserialize(json, type, options);
+            obj = await Deserializer.DeserializeWrapper(json, type, options);
             Assert.Equal(1, (int)type.GetProperty("Int1").GetValue(obj));
 
             if (options.IgnoreNullValues)
@@ -1563,13 +1732,13 @@ namespace System.Text.Json.Serialization.Tests
             // Set property to be ignored to null.
             type.GetProperty("MyString").SetValue(obj, null);
 
-            serialized = JsonSerializer.Serialize(obj, options);
+            serialized = await Serializer.SerializeWrapper(obj, options);
             Assert.Contains(@"""Int1"":1", serialized);
             Assert.Contains(@"""Int2"":2", serialized);
             Assert.DoesNotContain(@"""MyString"":", serialized);
         }
 
-        private class ClassWithClassProperty_IgnoreConditionWhenWritingDefault
+        public class ClassWithClassProperty_IgnoreConditionWhenWritingDefault
         {
             public int Int1 { get; set; }
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -1577,7 +1746,7 @@ namespace System.Text.Json.Serialization.Tests
             public int Int2 { get; set; }
         }
 
-        private class ClassWithClassProperty_IgnoreConditionWhenWritingDefault_Ctor
+        public class ClassWithClassProperty_IgnoreConditionWhenWritingDefault_Ctor
         {
             public int Int1 { get; set; }
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -1596,32 +1765,33 @@ namespace System.Text.Json.Serialization.Tests
         private static IEnumerable<object[]> JsonIgnoreConditionWhenWritingDefault_ClassProperty_TestData()
         {
             yield return new object[] { typeof(ClassWithClassProperty_IgnoreConditionWhenWritingDefault), new JsonSerializerOptions() };
-            yield return new object[] { typeof(ClassWithClassProperty_IgnoreConditionWhenWritingDefault_Ctor), new JsonSerializerOptions { IgnoreNullValues = true } };
+            // TODO: enable this test cases after parameterized ctor support is added to source generator.
+            //yield return new object[] { typeof(ClassWithClassProperty_IgnoreConditionWhenWritingDefault_Ctor), new JsonSerializerOptions { IgnoreNullValues = true } };
         }
 
         [Theory]
         [MemberData(nameof(JsonIgnoreConditionWhenWritingDefault_StructProperty_TestData))]
-        public static void JsonIgnoreConditionWhenWritingDefault_StructProperty(Type type, JsonSerializerOptions options)
+        public async Task JsonIgnoreConditionWhenWritingDefault_StructProperty(Type type, JsonSerializerOptions options)
         {
             // Property shouldn't be ignored if it isn't null.
             string json = @"{""Int1"":1,""MyInt"":3,""Int2"":2}";
 
-            object obj = JsonSerializer.Deserialize(json, type, options);
+            object obj = await Deserializer.DeserializeWrapper(json, type, options);
             Assert.Equal(1, (int)type.GetProperty("Int1").GetValue(obj));
             Assert.Equal(3, (int)type.GetProperty("MyInt").GetValue(obj));
             Assert.Equal(2, (int)type.GetProperty("Int2").GetValue(obj));
 
-            string serialized = JsonSerializer.Serialize(obj, options);
+            string serialized = await Serializer.SerializeWrapper(obj, options);
             Assert.Contains(@"""Int1"":1", serialized);
             Assert.Contains(@"""MyInt"":3", serialized);
             Assert.Contains(@"""Int2"":2", serialized);
 
             // Null being assigned to non-nullable types is invalid.
             json = @"{""Int1"":1,""MyInt"":null,""Int2"":2}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize(json, type, options));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper(json, type, options));
         }
 
-        private class ClassWithStructProperty_IgnoreConditionWhenWritingDefault
+        public class ClassWithStructProperty_IgnoreConditionWhenWritingDefault
         {
             public int Int1 { get; set; }
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -1648,22 +1818,22 @@ namespace System.Text.Json.Serialization.Tests
         private static IEnumerable<object[]> JsonIgnoreConditionWhenWritingDefault_StructProperty_TestData()
         {
             yield return new object[] { typeof(ClassWithStructProperty_IgnoreConditionWhenWritingDefault), new JsonSerializerOptions() };
-            yield return new object[] { typeof(StructWithStructProperty_IgnoreConditionWhenWritingDefault_Ctor), new JsonSerializerOptions { IgnoreNullValues = true } };
+            //yield return new object[] { typeof(StructWithStructProperty_IgnoreConditionWhenWritingDefault_Ctor), new JsonSerializerOptions { IgnoreNullValues = true } }; TODO: parameterized ctor support in source gen
         }
 
         [Theory]
         [MemberData(nameof(JsonIgnoreConditionNever_TestData))]
-        public static void JsonIgnoreConditionNever(Type type)
+        public async Task JsonIgnoreConditionNever(Type type)
         {
             // Property should always be (de)serialized, even when null.
             string json = @"{""Int1"":1,""MyString"":""Random"",""Int2"":2}";
 
-            object obj = JsonSerializer.Deserialize(json, type);
+            object obj = await Deserializer.DeserializeWrapper(json, type);
             Assert.Equal(1, (int)type.GetProperty("Int1").GetValue(obj));
             Assert.Equal("Random", (string)type.GetProperty("MyString").GetValue(obj));
             Assert.Equal(2, (int)type.GetProperty("Int2").GetValue(obj));
 
-            string serialized = JsonSerializer.Serialize(obj);
+            string serialized = await Serializer.SerializeWrapper(obj);
             Assert.Contains(@"""Int1"":1", serialized);
             Assert.Contains(@"""MyString"":""Random""", serialized);
             Assert.Contains(@"""Int2"":2", serialized);
@@ -1671,12 +1841,12 @@ namespace System.Text.Json.Serialization.Tests
             // Property should always be (de)serialized, even when null.
             json = @"{""Int1"":1,""MyString"":null,""Int2"":2}";
 
-            obj = JsonSerializer.Deserialize(json, type);
+            obj = await Deserializer.DeserializeWrapper(json, type);
             Assert.Equal(1, (int)type.GetProperty("Int1").GetValue(obj));
             Assert.Null((string)type.GetProperty("MyString").GetValue(obj));
             Assert.Equal(2, (int)type.GetProperty("Int2").GetValue(obj));
 
-            serialized = JsonSerializer.Serialize(obj);
+            serialized = await Serializer.SerializeWrapper(obj);
             Assert.Contains(@"""Int1"":1", serialized);
             Assert.Contains(@"""MyString"":null", serialized);
             Assert.Contains(@"""Int2"":2", serialized);
@@ -1684,18 +1854,18 @@ namespace System.Text.Json.Serialization.Tests
 
         [Theory]
         [MemberData(nameof(JsonIgnoreConditionNever_TestData))]
-        public static void JsonIgnoreConditionNever_IgnoreNullValues_True(Type type)
+        public async Task JsonIgnoreConditionNever_IgnoreNullValues_True(Type type)
         {
             // Property should always be (de)serialized.
             string json = @"{""Int1"":1,""MyString"":""Random"",""Int2"":2}";
             var options = new JsonSerializerOptions { IgnoreNullValues = true };
 
-            object obj = JsonSerializer.Deserialize(json, type, options);
+            object obj = await Deserializer.DeserializeWrapper(json, type, options);
             Assert.Equal(1, (int)type.GetProperty("Int1").GetValue(obj));
             Assert.Equal("Random", (string)type.GetProperty("MyString").GetValue(obj));
             Assert.Equal(2, (int)type.GetProperty("Int2").GetValue(obj));
 
-            string serialized = JsonSerializer.Serialize(obj, options);
+            string serialized = await Serializer.SerializeWrapper(obj, options);
             Assert.Contains(@"""Int1"":1", serialized);
             Assert.Contains(@"""MyString"":""Random""", serialized);
             Assert.Contains(@"""Int2"":2", serialized);
@@ -1703,18 +1873,18 @@ namespace System.Text.Json.Serialization.Tests
             // Property should always be (de)serialized, even when null.
             json = @"{""Int1"":1,""MyString"":null,""Int2"":2}";
 
-            obj = JsonSerializer.Deserialize(json, type, options);
+            obj = await Deserializer.DeserializeWrapper(json, type, options);
             Assert.Equal(1, (int)type.GetProperty("Int1").GetValue(obj));
             Assert.Null((string)type.GetProperty("MyString").GetValue(obj));
             Assert.Equal(2, (int)type.GetProperty("Int2").GetValue(obj));
 
-            serialized = JsonSerializer.Serialize(obj, options);
+            serialized = await Serializer.SerializeWrapper(obj, options);
             Assert.Contains(@"""Int1"":1", serialized);
             Assert.Contains(@"""MyString"":null", serialized);
             Assert.Contains(@"""Int2"":2", serialized);
         }
 
-        private class ClassWithStructProperty_IgnoreConditionNever
+        public class ClassWithStructProperty_IgnoreConditionNever
         {
             public int Int1 { get; set; }
             [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
@@ -1738,11 +1908,11 @@ namespace System.Text.Json.Serialization.Tests
         private static IEnumerable<object[]> JsonIgnoreConditionNever_TestData()
         {
             yield return new object[] { typeof(ClassWithStructProperty_IgnoreConditionNever) };
-            yield return new object[] { typeof(ClassWithStructProperty_IgnoreConditionNever_Ctor) };
+            //yield return new object[] { typeof(ClassWithStructProperty_IgnoreConditionNever_Ctor) }; // Implement parameterized ctor support in source gen.
         }
 
         [Fact]
-        public static void JsonIgnoreCondition_LastOneWins()
+        public async Task JsonIgnoreCondition_LastOneWins()
         {
             string json = @"{""MyString"":""Random"",""MYSTRING"":null}";
 
@@ -1751,17 +1921,21 @@ namespace System.Text.Json.Serialization.Tests
                 IgnoreNullValues = true,
                 PropertyNameCaseInsensitive = true
             };
-            var obj = JsonSerializer.Deserialize<ClassWithStructProperty_IgnoreConditionNever>(json, options);
+            var obj = await Deserializer.DeserializeWrapper<ClassWithStructProperty_IgnoreConditionNever>(json, options);
 
             Assert.Null(obj.MyString);
         }
 
         [Fact]
-        public static void ClassWithComplexObjectsUsingIgnoreWhenWritingDefaultAttribute()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Need SimpleTestClass support
+#endif
+        public async Task ClassWithComplexObjectsUsingIgnoreWhenWritingDefaultAttribute()
         {
             string json = @"{""Class"":{""MyInt16"":18}, ""Dictionary"":null}";
 
-            ClassUsingIgnoreWhenWritingDefaultAttribute obj = JsonSerializer.Deserialize<ClassUsingIgnoreWhenWritingDefaultAttribute>(json);
+            ClassUsingIgnoreWhenWritingDefaultAttribute obj = await Deserializer.DeserializeWrapper<ClassUsingIgnoreWhenWritingDefaultAttribute>(json);
 
             // Class is deserialized.
             Assert.NotNull(obj.Class);
@@ -1771,7 +1945,7 @@ namespace System.Text.Json.Serialization.Tests
             Assert.Null(obj.Dictionary);
 
             obj = new ClassUsingIgnoreWhenWritingDefaultAttribute();
-            json = JsonSerializer.Serialize(obj);
+            json = await Serializer.SerializeWrapper(obj);
             Assert.Equal(@"{""Dictionary"":{""Key"":""Value""}}", json);
         }
 
@@ -1785,12 +1959,16 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ClassWithComplexObjectUsingIgnoreNeverAttribute()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Need SimpleTestClass
+#endif
+        public async Task ClassWithComplexObjectUsingIgnoreNeverAttribute()
         {
             string json = @"{""Class"":null, ""Dictionary"":null}";
             var options = new JsonSerializerOptions { IgnoreNullValues = true };
 
-            var obj = JsonSerializer.Deserialize<ClassUsingIgnoreNeverAttribute>(json, options);
+            var obj = await Deserializer.DeserializeWrapper<ClassUsingIgnoreNeverAttribute>(json, options);
 
             // Class is not deserialized because it is null in json.
             Assert.NotNull(obj.Class);
@@ -1804,7 +1982,7 @@ namespace System.Text.Json.Serialization.Tests
             obj.Class = null;
             obj.Dictionary = null;
 
-            json = JsonSerializer.Serialize(obj, options);
+            json = await Serializer.SerializeWrapper(obj, options);
 
             // Class is not included in json because it was null, Dictionary is included regardless of being null.
             Assert.Equal(@"{""Dictionary"":null}", json);
@@ -1819,74 +1997,78 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void IgnoreConditionNever_WinsOver_IgnoreReadOnlyProperties()
+        public async Task IgnoreConditionNever_WinsOver_IgnoreReadOnlyProperties()
         {
             var options = new JsonSerializerOptions { IgnoreReadOnlyProperties = true };
 
             // Baseline
-            string json = JsonSerializer.Serialize(new ClassWithReadOnlyStringProperty("Hello"), options);
+            string json = await Serializer.SerializeWrapper(new ClassWithReadOnlyStringProperty("Hello"), options);
             Assert.Equal("{}", json);
 
             // With condition to never ignore
-            json = JsonSerializer.Serialize(new ClassWithReadOnlyStringProperty_IgnoreNever("Hello"), options);
+            json = await Serializer.SerializeWrapper(new ClassWithReadOnlyStringProperty_IgnoreNever("Hello"), options);
             Assert.Equal(@"{""MyString"":""Hello""}", json);
 
-            json = JsonSerializer.Serialize(new ClassWithReadOnlyStringProperty_IgnoreNever(null), options);
+            json = await Serializer.SerializeWrapper(new ClassWithReadOnlyStringProperty_IgnoreNever(null), options);
             Assert.Equal(@"{""MyString"":null}", json);
         }
 
         [Fact]
-        public static void IgnoreConditionWhenWritingDefault_WinsOver_IgnoreReadOnlyProperties()
+        public async Task IgnoreConditionWhenWritingDefault_WinsOver_IgnoreReadOnlyProperties()
         {
             var options = new JsonSerializerOptions { IgnoreReadOnlyProperties = true };
 
             // Baseline
-            string json = JsonSerializer.Serialize(new ClassWithReadOnlyStringProperty("Hello"), options);
+            string json = await Serializer.SerializeWrapper(new ClassWithReadOnlyStringProperty("Hello"), options);
             Assert.Equal("{}", json);
 
             // With condition to ignore when null
-            json = JsonSerializer.Serialize(new ClassWithReadOnlyStringProperty_IgnoreWhenWritingDefault("Hello"), options);
+            json = await Serializer.SerializeWrapper(new ClassWithReadOnlyStringProperty_IgnoreWhenWritingDefault("Hello"), options);
             Assert.Equal(@"{""MyString"":""Hello""}", json);
 
-            json = JsonSerializer.Serialize(new ClassWithReadOnlyStringProperty_IgnoreWhenWritingDefault(null), options);
+            json = await Serializer.SerializeWrapper(new ClassWithReadOnlyStringProperty_IgnoreWhenWritingDefault(null), options);
             Assert.Equal(@"{}", json);
         }
 
         [Fact]
-        public static void IgnoreConditionNever_WinsOver_IgnoreReadOnlyFields()
+        public async Task IgnoreConditionNever_WinsOver_IgnoreReadOnlyFields()
         {
             var options = new JsonSerializerOptions { IgnoreReadOnlyProperties = true };
 
             // Baseline
-            string json = JsonSerializer.Serialize(new ClassWithReadOnlyStringField("Hello"), options);
+            string json = await Serializer.SerializeWrapper(new ClassWithReadOnlyStringField("Hello"), options);
             Assert.Equal("{}", json);
 
             // With condition to never ignore
-            json = JsonSerializer.Serialize(new ClassWithReadOnlyStringField_IgnoreNever("Hello"), options);
+            json = await Serializer.SerializeWrapper(new ClassWithReadOnlyStringField_IgnoreNever("Hello"), options);
             Assert.Equal(@"{""MyString"":""Hello""}", json);
 
-            json = JsonSerializer.Serialize(new ClassWithReadOnlyStringField_IgnoreNever(null), options);
+            json = await Serializer.SerializeWrapper(new ClassWithReadOnlyStringField_IgnoreNever(null), options);
             Assert.Equal(@"{""MyString"":null}", json);
         }
 
         [Fact]
-        public static void IgnoreConditionWhenWritingDefault_WinsOver_IgnoreReadOnlyFields()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Need parameterized ctor support
+#endif
+        public async Task IgnoreConditionWhenWritingDefault_WinsOver_IgnoreReadOnlyFields()
         {
             var options = new JsonSerializerOptions { IgnoreReadOnlyProperties = true };
 
             // Baseline
-            string json = JsonSerializer.Serialize(new ClassWithReadOnlyStringField("Hello"), options);
+            string json = await Serializer.SerializeWrapper(new ClassWithReadOnlyStringField("Hello"), options);
             Assert.Equal("{}", json);
 
             // With condition to ignore when null
-            json = JsonSerializer.Serialize(new ClassWithReadOnlyStringField_IgnoreWhenWritingDefault("Hello"), options);
+            json = await Serializer.SerializeWrapper(new ClassWithReadOnlyStringField_IgnoreWhenWritingDefault("Hello"), options);
             Assert.Equal(@"{""MyString"":""Hello""}", json);
 
-            json = JsonSerializer.Serialize(new ClassWithReadOnlyStringField_IgnoreWhenWritingDefault(null), options);
+            json = await Serializer.SerializeWrapper(new ClassWithReadOnlyStringField_IgnoreWhenWritingDefault(null), options);
             Assert.Equal(@"{}", json);
         }
 
-        private class ClassWithReadOnlyStringProperty
+        public class ClassWithReadOnlyStringProperty
         {
             public string MyString { get; }
 
@@ -1909,7 +2091,7 @@ namespace System.Text.Json.Serialization.Tests
             public ClassWithReadOnlyStringProperty_IgnoreWhenWritingDefault(string myString) => MyString = myString;
         }
 
-        private class ClassWithReadOnlyStringField
+        public class ClassWithReadOnlyStringField
         {
             public string MyString { get; }
 
@@ -1933,19 +2115,19 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void NonPublicMembersAreNotIncluded()
+        public async Task NonPublicMembersAreNotIncluded()
         {
-            Assert.Equal("{}", JsonSerializer.Serialize(new ClassWithNonPublicProperties()));
+            Assert.Equal("{}", await Serializer.SerializeWrapper(new ClassWithNonPublicProperties()));
 
             string json = @"{""MyInt"":1,""MyString"":""Hello"",""MyFloat"":2,""MyDouble"":3}";
-            var obj = JsonSerializer.Deserialize<ClassWithNonPublicProperties>(json);
+            var obj = await Deserializer.DeserializeWrapper<ClassWithNonPublicProperties>(json);
             Assert.Equal(0, obj.MyInt);
             Assert.Null(obj.MyString);
             Assert.Equal(0, obj.GetMyFloat);
             Assert.Equal(0, obj.GetMyDouble);
         }
 
-        private class ClassWithNonPublicProperties
+        public class ClassWithNonPublicProperties
         {
             internal int MyInt { get; set; }
             internal string MyString { get; private set; }
@@ -1957,15 +2139,15 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void IgnoreCondition_WhenWritingDefault_Globally_Works()
+        public async Task IgnoreCondition_WhenWritingDefault_Globally_Works()
         {
             // Baseline - default values written.
             string expected = @"{""MyString"":null,""MyInt"":0,""MyPoint"":{""X"":0,""Y"":0}}";
             var obj = new ClassWithProps();
-            JsonTestHelper.AssertJsonEqual(expected, JsonSerializer.Serialize(obj));
+            JsonTestHelper.AssertJsonEqual(expected, await Serializer.SerializeWrapper(obj));
 
             // Default values ignored when specified.
-            Assert.Equal("{}", JsonSerializer.Serialize(obj, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault }));
+            Assert.Equal("{}", await Serializer.SerializeWrapper(obj, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault }));
         }
 
         private class ClassWithProps
@@ -1976,13 +2158,13 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void IgnoreCondition_WhenWritingDefault_PerProperty_Works()
+        public async Task IgnoreCondition_WhenWritingDefault_PerProperty_Works()
         {
             // Default values ignored when specified.
-            Assert.Equal(@"{""MyInt"":0}", JsonSerializer.Serialize(new ClassWithPropsAndIgnoreAttributes()));
+            Assert.Equal(@"{""MyInt"":0}", await Serializer.SerializeWrapper(new ClassWithPropsAndIgnoreAttributes()));
         }
 
-        private class ClassWithPropsAndIgnoreAttributes
+        public class ClassWithPropsAndIgnoreAttributes
         {
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
             public string MyString { get; set; }
@@ -1992,22 +2174,22 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void IgnoreCondition_WhenWritingDefault_DoesNotApplyToCollections()
+        public async Task IgnoreCondition_WhenWritingDefault_DoesNotApplyToCollections()
         {
             var list = new List<bool> { false, true };
 
             var options = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault };
-            Assert.Equal("[false,true]", JsonSerializer.Serialize(list, options));
+            Assert.Equal("[false,true]", await Serializer.SerializeWrapper(list, options));
         }
 
         [Fact]
-        public static void IgnoreCondition_WhenWritingDefault_DoesNotApplyToDeserialization()
+        public async Task IgnoreCondition_WhenWritingDefault_DoesNotApplyToDeserialization()
         {
             // Baseline - null values are ignored on deserialization when using IgnoreNullValues (for compat with initial support).
             string json = @"{""MyString"":null,""MyInt"":0,""MyPoint"":{""X"":0,""Y"":0}}";
 
             var options = new JsonSerializerOptions { IgnoreNullValues = true };
-            ClassWithInitializedProps obj = JsonSerializer.Deserialize<ClassWithInitializedProps>(json, options);
+            ClassWithInitializedProps obj = await Deserializer.DeserializeWrapper<ClassWithInitializedProps>(json, options);
 
             Assert.Equal("Default", obj.MyString);
             // Value types are not ignored.
@@ -2018,14 +2200,14 @@ namespace System.Text.Json.Serialization.Tests
             // Test - default values (both null and default for value types) are not ignored when using
             // JsonIgnoreCondition.WhenWritingDefault (as the option name implies)
             options = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault };
-            obj = JsonSerializer.Deserialize<ClassWithInitializedProps>(json, options);
+            obj = await Deserializer.DeserializeWrapper<ClassWithInitializedProps>(json, options);
             Assert.Null(obj.MyString);
             Assert.Equal(0, obj.MyInt);
             Assert.Equal(0, obj.MyPoint.X);
             Assert.Equal(0, obj.MyPoint.X);
         }
 
-        private class ClassWithInitializedProps
+        public class ClassWithInitializedProps
         {
             public string MyString { get; set; } = "Default";
             public int MyInt { get; set; } = -1;
@@ -2033,14 +2215,18 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ValueType_Properties_NotIgnoredWhen_IgnoreNullValues_Active_ClassTest()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Need nullable and parameterized ctor support.
+#endif
+        public async Task ValueType_Properties_NotIgnoredWhen_IgnoreNullValues_Active_ClassTest()
         {
             var options = new JsonSerializerOptions { IgnoreNullValues = true };
 
             // Deserialization.
             string json = @"{""MyString"":null,""MyInt"":0,""MyBool"":null,""MyPointClass"":null,""MyPointStruct"":{""X"":0,""Y"":0}}";
 
-            ClassWithValueAndReferenceTypes obj = JsonSerializer.Deserialize<ClassWithValueAndReferenceTypes>(json, options);
+            ClassWithValueAndReferenceTypes obj = await Deserializer.DeserializeWrapper<ClassWithValueAndReferenceTypes>(json, options);
 
             // Null values ignored for reference types/nullable value types.
             Assert.Equal("Default", obj.MyString);
@@ -2059,21 +2245,25 @@ namespace System.Text.Json.Serialization.Tests
             obj.MyPointClass = null;
             obj.MyBool = null;
 
-            json = JsonSerializer.Serialize(obj, options);
+            json = await Serializer.SerializeWrapper(obj, options);
 
             // Null values not serialized, default values for value types serialized.
             JsonTestHelper.AssertJsonEqual(@"{""MyInt"":0,""MyPointStruct"":{""X"":0,""Y"":0}}", json);
         }
 
         [Fact]
-        public static void ValueType_Properties_NotIgnoredWhen_IgnoreNullValues_Active_LargeStructTest()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Need nullable and parameterized ctor support.
+#endif
+        public async Task ValueType_Properties_NotIgnoredWhen_IgnoreNullValues_Active_LargeStructTest()
         {
             var options = new JsonSerializerOptions { IgnoreNullValues = true };
 
             // Deserialization.
             string json = @"{""MyString"":null,""MyInt"":0,""MyBool"":null,""MyPointClass"":null,""MyPointStruct"":{""X"":0,""Y"":0}}";
 
-            LargeStructWithValueAndReferenceTypes obj = JsonSerializer.Deserialize<LargeStructWithValueAndReferenceTypes>(json, options);
+            LargeStructWithValueAndReferenceTypes obj = await Deserializer.DeserializeWrapper<LargeStructWithValueAndReferenceTypes>(json, options);
 
             // Null values ignored for reference types.
 
@@ -2092,21 +2282,25 @@ namespace System.Text.Json.Serialization.Tests
             // Make all members their default CLR value.
             obj = new LargeStructWithValueAndReferenceTypes(null, new Point_2D_Struct(0, 0), null, 0, null);
 
-            json = JsonSerializer.Serialize(obj, options);
+            json = await Serializer.SerializeWrapper(obj, options);
 
             // Null values not serialized, default values for value types serialized.
             JsonTestHelper.AssertJsonEqual(@"{""MyInt"":0,""MyPointStruct"":{""X"":0,""Y"":0}}", json);
         }
 
         [Fact]
-        public static void ValueType_Properties_NotIgnoredWhen_IgnoreNullValues_Active_SmallStructTest()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Need nullable support
+#endif
+        public async Task ValueType_Properties_NotIgnoredWhen_IgnoreNullValues_Active_SmallStructTest()
         {
             var options = new JsonSerializerOptions { IgnoreNullValues = true };
 
             // Deserialization.
             string json = @"{""MyString"":null,""MyInt"":0,""MyBool"":null,""MyPointStruct"":{""X"":0,""Y"":0}}";
 
-            SmallStructWithValueAndReferenceTypes obj = JsonSerializer.Deserialize<SmallStructWithValueAndReferenceTypes>(json, options);
+            SmallStructWithValueAndReferenceTypes obj = await Deserializer.DeserializeWrapper<SmallStructWithValueAndReferenceTypes>(json, options);
 
             // Null values ignored for reference types.
             Assert.Equal("Default", obj.MyString);
@@ -2122,7 +2316,7 @@ namespace System.Text.Json.Serialization.Tests
             // Make all members their default CLR value.
             obj = new SmallStructWithValueAndReferenceTypes(new Point_2D_Struct(0, 0), null, 0, null);
 
-            json = JsonSerializer.Serialize(obj, options);
+            json = await Serializer.SerializeWrapper(obj, options);
 
             // Null values not serialized, default values for value types serialized.
             JsonTestHelper.AssertJsonEqual(@"{""MyInt"":0,""MyPointStruct"":{""X"":0,""Y"":0}}", json);
@@ -2185,7 +2379,11 @@ namespace System.Text.Json.Serialization.Tests
         public class PointClass { }
 
         [Fact]
-        public static void Ignore_WhenWritingNull_Globally()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Need nullable support
+#endif
+        public async Task Ignore_WhenWritingNull_Globally()
         {
             var options = new JsonSerializerOptions
             {
@@ -2207,7 +2405,7 @@ namespace System.Text.Json.Serialization.Tests
 }";
 
             // All members should correspond to JSON contents, as ignore doesn't apply to deserialization.
-            ClassWithThingsToIgnore obj = JsonSerializer.Deserialize<ClassWithThingsToIgnore>(json, options);
+            ClassWithThingsToIgnore obj = await Deserializer.DeserializeWrapper<ClassWithThingsToIgnore>(json, options);
             Assert.NotNull(obj.MyPointClass2_IgnoredWhenWritingNull);
             Assert.Equal("Default", obj.MyString1_IgnoredWhenWritingNull);
             Assert.Null(obj.MyNullableBool1_IgnoredWhenWritingNull);
@@ -2231,7 +2429,7 @@ namespace System.Text.Json.Serialization.Tests
 ""MyNullableBool2_IgnoredWhenWritingNull"":true,
 ""MyPointStruct1"":{""X"":0,""Y"":0}
 }";
-            JsonTestHelper.AssertJsonEqual(expectedJson, JsonSerializer.Serialize(obj, options));
+            JsonTestHelper.AssertJsonEqual(expectedJson, await Serializer.SerializeWrapper(obj, options));
         }
 
         public class ClassWithThingsToIgnore
@@ -2258,7 +2456,11 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Ignore_WhenWritingNull_PerProperty()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Need nullable support
+#endif
+        public async Task Ignore_WhenWritingNull_PerProperty()
         {
             var options = new JsonSerializerOptions
             {
@@ -2279,7 +2481,7 @@ namespace System.Text.Json.Serialization.Tests
 }";
 
             // All members should correspond to JSON contents, as ignore doesn't apply to deserialization.
-            ClassWithThingsToIgnore_PerProperty obj = JsonSerializer.Deserialize<ClassWithThingsToIgnore_PerProperty>(json, options);
+            ClassWithThingsToIgnore_PerProperty obj = await Deserializer.DeserializeWrapper<ClassWithThingsToIgnore_PerProperty>(json, options);
             Assert.NotNull(obj.MyPointClass2_IgnoredWhenWritingNull);
             Assert.Equal("Default", obj.MyString1_IgnoredWhenWritingNull);
             Assert.Null(obj.MyNullableBool1_IgnoredWhenWritingNull);
@@ -2303,7 +2505,7 @@ namespace System.Text.Json.Serialization.Tests
 ""MyNullableBool2_IgnoredWhenWritingNull"":true,
 ""MyPointStruct1"":{""X"":0,""Y"":0}
 }";
-            JsonTestHelper.AssertJsonEqual(expectedJson, JsonSerializer.Serialize(obj, options));
+            JsonTestHelper.AssertJsonEqual(expectedJson, await Serializer.SerializeWrapper(obj, options));
         }
 
         public class ClassWithThingsToIgnore_PerProperty
@@ -2338,16 +2540,16 @@ namespace System.Text.Json.Serialization.Tests
         [Theory]
         [InlineData(typeof(ClassWithBadIgnoreAttribute))]
         [InlineData(typeof(StructWithBadIgnoreAttribute))]
-        public static void JsonIgnoreCondition_WhenWritingNull_OnValueType_Fail(Type type)
+        public async Task JsonIgnoreCondition_WhenWritingNull_OnValueType_Fail(Type type)
         {
-            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize("", type));
+            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper("", type));
             string exAsStr = ex.ToString();
             Assert.Contains("JsonIgnoreCondition.WhenWritingNull", exAsStr);
             Assert.Contains("MyBadMember", exAsStr);
             Assert.Contains(type.ToString(), exAsStr);
             Assert.Contains("JsonIgnoreCondition.WhenWritingDefault", exAsStr);
 
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(Activator.CreateInstance(type)));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(Activator.CreateInstance(type)));
             exAsStr = ex.ToString();
             Assert.Contains("JsonIgnoreCondition.WhenWritingNull", exAsStr);
             Assert.Contains("MyBadMember", exAsStr);
@@ -2355,13 +2557,13 @@ namespace System.Text.Json.Serialization.Tests
             Assert.Contains("JsonIgnoreCondition.WhenWritingDefault", exAsStr);
         }
 
-        private class ClassWithBadIgnoreAttribute
+        public class ClassWithBadIgnoreAttribute
         {
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
             public int MyBadMember { get; set; }
         }
 
-        private struct StructWithBadIgnoreAttribute
+        public struct StructWithBadIgnoreAttribute
         {
             [JsonInclude]
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -2403,13 +2605,17 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void JsonIgnoreCondition_WhenWritingDefault_OnValueTypeWithCustomConverter()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Need custom converter support
+#endif
+        public async Task JsonIgnoreCondition_WhenWritingDefault_OnValueTypeWithCustomConverter()
         {
             var obj = new MyClassWithValueType();
 
             // Baseline without custom options.
             Assert.True(EqualityComparer<MyValueTypeWithProperties>.Default.Equals(default, obj.Value));
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
             Assert.Equal("{\"Value\":100}", json);
 
             var options = new JsonSerializerOptions
@@ -2419,45 +2625,53 @@ namespace System.Text.Json.Serialization.Tests
 
             // Verify ignored.
             Assert.True(EqualityComparer<MyValueTypeWithProperties>.Default.Equals(default, obj.Value));
-            json = JsonSerializer.Serialize(obj, options);
+            json = await Serializer.SerializeWrapper(obj, options);
             Assert.Equal("{}", json);
 
             // Change a primitive value so it's no longer a default value.
             obj.Value = new MyValueTypeWithProperties { PrimitiveValue = 1 };
             Assert.False(EqualityComparer<MyValueTypeWithProperties>.Default.Equals(default, obj.Value));
-            json = JsonSerializer.Serialize(obj, options);
+            json = await Serializer.SerializeWrapper(obj, options);
             Assert.Equal("{\"Value\":101}", json);
 
             // Change reference value so it's no longer a default value.
             obj.Value = new MyValueTypeWithProperties { RefValue = 1 };
             Assert.False(EqualityComparer<MyValueTypeWithProperties>.Default.Equals(default, obj.Value));
-            json = JsonSerializer.Serialize(obj, options);
+            json = await Serializer.SerializeWrapper(obj, options);
             Assert.Equal("{\"Value\":100}", json);
         }
 
         [Fact]
-        public static void JsonIgnoreCondition_ConverterCalledOnDeserialize()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Need nullable support
+#endif
+        public async Task JsonIgnoreCondition_ConverterCalledOnDeserialize()
         {
             // Verify converter is called.
-            Assert.Throws<NotImplementedException>(() => JsonSerializer.Deserialize<MyValueTypeWithProperties>("{}"));
+            await Assert.ThrowsAsync<NotImplementedException>(async () => await Deserializer.DeserializeWrapper<MyValueTypeWithProperties>("{}"));
 
             var options = new JsonSerializerOptions
             {
                 IgnoreNullValues = true
             };
 
-            Assert.Throws<NotImplementedException>(() => JsonSerializer.Deserialize<MyValueTypeWithProperties>("{}", options));
+            await Assert.ThrowsAsync<NotImplementedException>(async () => await Deserializer.DeserializeWrapper<MyValueTypeWithProperties>("{}", options));
         }
 
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Need nullable support
+#endif
         [Fact]
-        public static void JsonIgnoreCondition_WhenWritingNull_OnValueTypeWithCustomConverter()
+        public async Task JsonIgnoreCondition_WhenWritingNull_OnValueTypeWithCustomConverter()
         {
             string json;
             var obj = new MyClassWithValueType();
 
             // Baseline without custom options.
             Assert.True(EqualityComparer<MyValueTypeWithProperties>.Default.Equals(default, obj.Value));
-            json = JsonSerializer.Serialize(obj);
+            json = await Serializer.SerializeWrapper(obj);
             Assert.Equal("{\"Value\":100}", json);
 
             var options = new JsonSerializerOptions
@@ -2467,22 +2681,22 @@ namespace System.Text.Json.Serialization.Tests
 
             // Verify not ignored; MyValueTypeWithProperties is not null.
             Assert.True(EqualityComparer<MyValueTypeWithProperties>.Default.Equals(default, obj.Value));
-            json = JsonSerializer.Serialize(obj, options);
+            json = await Serializer.SerializeWrapper(obj, options);
             Assert.Equal("{\"Value\":100}", json);
         }
 
         [Fact]
-        public static void JsonIgnoreCondition_WhenWritingDefault_OnRootTypes()
+        public async Task JsonIgnoreCondition_WhenWritingDefault_OnRootTypes()
         {
             string json;
             int i = 0;
             object obj = null;
 
             // Baseline without custom options.
-            json = JsonSerializer.Serialize(obj);
+            json = await Serializer.SerializeWrapper(obj);
             Assert.Equal("null", json);
 
-            json = JsonSerializer.Serialize(i);
+            json = await Serializer.SerializeWrapper(i);
             Assert.Equal("0", json);
 
             var options = new JsonSerializerOptions
@@ -2492,27 +2706,27 @@ namespace System.Text.Json.Serialization.Tests
 
             // We don't ignore when applied to root types; only properties.
 
-            json = JsonSerializer.Serialize(obj, options);
+            json = await Serializer.SerializeWrapper(obj, options);
             Assert.Equal("null", json);
 
-            json = JsonSerializer.Serialize(i, options);
+            json = await Serializer.SerializeWrapper(i, options);
             Assert.Equal("0", json);
         }
 
-        private struct MyValueTypeWithBoxedPrimitive
+        public struct MyValueTypeWithBoxedPrimitive
         {
             public object BoxedPrimitive { get; set; }
         }
 
         [Fact]
-        public static void JsonIgnoreCondition_WhenWritingDefault_OnBoxedPrimitive()
+        public async Task JsonIgnoreCondition_WhenWritingDefault_OnBoxedPrimitive()
         {
             string json;
 
             MyValueTypeWithBoxedPrimitive obj = new MyValueTypeWithBoxedPrimitive { BoxedPrimitive = 0 };
 
             // Baseline without custom options.
-            json = JsonSerializer.Serialize(obj);
+            json = await Serializer.SerializeWrapper(obj);
             Assert.Equal("{\"BoxedPrimitive\":0}", json);
 
             var options = new JsonSerializerOptions
@@ -2521,15 +2735,15 @@ namespace System.Text.Json.Serialization.Tests
             };
 
             // No check if the boxed object's value type is a default value (0 in this case).
-            json = JsonSerializer.Serialize(obj, options);
+            json = await Serializer.SerializeWrapper(obj, options);
             Assert.Equal("{\"BoxedPrimitive\":0}", json);
 
             obj = new MyValueTypeWithBoxedPrimitive();
-            json = JsonSerializer.Serialize(obj, options);
+            json = await Serializer.SerializeWrapper(obj, options);
             Assert.Equal("{}", json);
         }
 
-        private class MyClassWithValueTypeInterfaceProperty
+        public class MyClassWithValueTypeInterfaceProperty
         {
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
             public IInterface MyProp { get; set; }
@@ -2539,16 +2753,16 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void JsonIgnoreCondition_WhenWritingDefault_OnInterface()
+        public async Task JsonIgnoreCondition_WhenWritingDefault_OnInterface()
         {
             // MyProp should be ignored due to [JsonIgnore].
             var obj = new MyClassWithValueTypeInterfaceProperty();
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
             Assert.Equal("{}", json);
 
             // No check if the interface property's value type is a default value.
             obj = new MyClassWithValueTypeInterfaceProperty { MyProp = new MyClassWithValueTypeInterfaceProperty.MyStruct() };
-            json = JsonSerializer.Serialize(obj);
+            json = await Serializer.SerializeWrapper(obj);
             Assert.Equal("{\"MyProp\":{}}", json);
         }
     }

@@ -183,7 +183,7 @@ namespace System.Text.Json.Serialization.Metadata
             ClassType = converter.ClassType;
             JsonNumberHandling? typeNumberHandling = GetNumberHandlingForType(Type);
 
-            PropertyInfoForClassInfo = CreatePropertyInfoForClassInfo(Type, runtimeType, converter, Options);
+            PropertyInfoForClassInfo = CreatePropertyInfoForClassInfo(Type, runtimeType, converter, typeNumberHandling, Options);
 
             switch (ClassType)
             {
@@ -299,6 +299,9 @@ namespace System.Text.Json.Serialization.Metadata
             _isInitialized = true;
         }
 
+        /// <summary>
+        /// Changes here should be reflected in <see cref="JsonObjectInfo{T}.CacheMember"/>
+        /// </summary>
         private void CacheMember(
             Type declaringType,
             Type memberType,
@@ -327,8 +330,8 @@ namespace System.Text.Json.Serialization.Metadata
                     !jsonPropertyInfo.IsIgnored &&
                     // Is the current property hidden by the previously cached property
                     // (with `new` keyword, or by overriding)?
-                    other.MemberInfo!.Name != memberName &&
-                    // Was a property with the same CLR name was ignored? That property hid the current property,
+                    other.ClrName! != memberName &&
+                    // Was a property with the same CLR name ignored? That property hid the current property,
                     // thus, if it was ignored, the current property should be ignored too.
                     ignoredMembers?.ContainsKey(memberName) != true)
                 {
@@ -472,6 +475,7 @@ namespace System.Text.Json.Serialization.Metadata
             ParameterCache = parameterCache;
             ParameterCount = parameters.Length;
         }
+
         private static bool PropertyIsOverridenAndIgnored(MemberInfo currentMember, Dictionary<string, MemberInfo>? ignoredMembers)
         {
             if (ignoredMembers == null || !ignoredMembers.TryGetValue(currentMember.Name, out MemberInfo? ignoredProperty))
@@ -636,7 +640,6 @@ namespace System.Text.Json.Serialization.Metadata
 
             return converter;
         }
-
         private static void ValidateType(Type type, Type? parentClassType, MemberInfo? memberInfo, JsonSerializerOptions options)
         {
             if (!options.TypeIsCached(type) && IsInvalidForSerialization(type))

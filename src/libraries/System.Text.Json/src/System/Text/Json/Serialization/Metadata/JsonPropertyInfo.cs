@@ -41,7 +41,7 @@ namespace System.Text.Json.Serialization.Metadata
 
         // Create a property that is ignored at run-time. It uses the same type (typeof(sbyte)) to help
         // prevent issues with unsupported types and helps ensure we don't accidently (de)serialize it.
-        internal static JsonPropertyInfo CreateIgnoredPropertyPlaceholder(MemberInfo memberInfo, JsonSerializerOptions options)
+        internal static JsonPropertyInfo CreateIgnoredPropertyPlaceholder(MemberInfo? memberInfo, JsonSerializerOptions options)
         {
             JsonPropertyInfo jsonPropertyInfo = new JsonPropertyInfo<sbyte>();
             jsonPropertyInfo.Options = options;
@@ -55,17 +55,52 @@ namespace System.Text.Json.Serialization.Metadata
             return jsonPropertyInfo;
         }
 
+        // Create a property that is ignored at run-time. It uses the same type (typeof(sbyte)) to help
+        // prevent issues with unsupported types and helps ensure we don't accidently (de)serialize it.
+        internal static JsonPropertyInfo<TProperty> CreateIgnoredPropertyPlaceholder<TProperty>(
+            string clrPropertyName,
+            JsonSerializerOptions options,
+            string? jsonPropertyName)
+        {
+            JsonPropertyInfo<TProperty> jsonPropertyInfo = new();
+            jsonPropertyInfo.Options = options;
+            // TODO: test [JsonIgnore] + [JsonPropertyName(name)] for both code gen and non-code-gen paths.
+            jsonPropertyInfo.DeterminePropertyName(clrPropertyName, jsonPropertyName);
+            jsonPropertyInfo.IsIgnored = true;
+
+            Debug.Assert(!jsonPropertyInfo.ShouldDeserialize);
+            Debug.Assert(!jsonPropertyInfo.ShouldSerialize);
+
+            return jsonPropertyInfo;
+        }
+
         /// <summary>
         /// todo
         /// </summary>
         public Type DeclaredPropertyType { get; internal set; } = null!;
 
-        internal virtual void GetPolicies(JsonIgnoreCondition? ignoreCondition, JsonNumberHandling? parentTypeNumberHandling, bool defaultValueIsNull)
+        internal virtual void GetPolicies(JsonIgnoreCondition? ignoreCondition, JsonNumberHandling? parentTypeNumberHandling)
         {
-            DetermineSerializationCapabilities(ignoreCondition);
-            DeterminePropertyName();
-            DetermineIgnoreCondition(ignoreCondition, defaultValueIsNull);
-            DetermineNumberHandling(parentTypeNumberHandling);
+            if (IsForClassInfo)
+            {
+                Debug.Assert(MemberInfo == null);
+                DetermineNumberHandlingForClassInfo(parentTypeNumberHandling);
+            }
+            else
+            {
+                Debug.Assert(MemberInfo != null);
+                DetermineSerializationCapabilities(ignoreCondition, MemberInfo!.MemberType);
+                DeterminePropertyName();
+                DetermineIgnoreCondition(ignoreCondition);
+
+                JsonNumberHandling? propertyNumberHandling = null;
+                JsonNumberHandlingAttribute? attribute = GetAttribute<JsonNumberHandlingAttribute>(MemberInfo);
+                if (attribute != null)
+                {
+                    propertyNumberHandling = attribute.Handling;
+                }
+                DetermineNumberHandlingForProperty(parentTypeNumberHandling, propertyNumberHandling);
+            }
         }
 
         private void DeterminePropertyName()
@@ -75,40 +110,58 @@ namespace System.Text.Json.Serialization.Metadata
                 return;
             }
 
+            string? jsonPropertyName;
             JsonPropertyNameAttribute? nameAttribute = GetAttribute<JsonPropertyNameAttribute>(MemberInfo);
-            if (nameAttribute != null)
-            {
-                string name = nameAttribute.Name;
-                if (name == null)
-                {
-                    ThrowHelper.ThrowInvalidOperationException_SerializerPropertyNameNull(ParentClassType, this);
-                }
 
-                NameAsString = name;
-            }
-            else if (Options.PropertyNamingPolicy != null)
+            if (nameAttribute == null)
             {
-                string name = Options.PropertyNamingPolicy.ConvertName(MemberInfo.Name);
-                if (name == null)
-                {
-                    ThrowHelper.ThrowInvalidOperationException_SerializerPropertyNameNull(ParentClassType, this);
-                }
-
-                NameAsString = name;
+                jsonPropertyName = null;
             }
             else
             {
-                NameAsString = MemberInfo.Name;
+                jsonPropertyName = nameAttribute.Name;
+                if (jsonPropertyName == null)
+                {
+                    ThrowHelper.ThrowInvalidOperationException_SerializerPropertyNameNull(ParentClassType, this);
+                }
+            }
+
+            DeterminePropertyName(MemberInfo.Name, jsonPropertyName);
+        }
+
+        internal void DeterminePropertyName(string clrPropertyName, string? jsonPropertyName)
+        {
+            ClrName = clrPropertyName;
+
+            Debug.Assert(Options != null);
+
+            if (jsonPropertyName != null)
+            {
+                NameAsString = jsonPropertyName;
+            }
+            else if (Options.PropertyNamingPolicy != null)
+            {
+                Debug.Assert(clrPropertyName != null);
+                NameAsString = Options.PropertyNamingPolicy.ConvertName(clrPropertyName);
+                if (NameAsString == null)
+                {
+                    ThrowHelper.ThrowInvalidOperationException_SerializerPropertyNameNull(ParentClassType, this);
+                }
+            }
+            else
+            {
+                NameAsString = clrPropertyName;
             }
 
             Debug.Assert(NameAsString != null);
-
             NameAsUtf8Bytes = Encoding.UTF8.GetBytes(NameAsString);
             EscapedNameSection = JsonHelpers.GetEscapedPropertyNameSection(NameAsUtf8Bytes, Options.Encoder);
         }
 
-        private void DetermineSerializationCapabilities(JsonIgnoreCondition? ignoreCondition)
+        internal void DetermineSerializationCapabilities(JsonIgnoreCondition? ignoreCondition, MemberTypes memberType)
         {
+            Debug.Assert(memberType == MemberTypes.Property || memberType == MemberTypes.Field);
+
             if ((ClassType & (ClassType.Enumerable | ClassType.Dictionary)) == 0)
             {
                 Debug.Assert(ignoreCondition != JsonIgnoreCondition.Always);
@@ -117,7 +170,7 @@ namespace System.Text.Json.Serialization.Metadata
                 // null = JsonIgnore was not placed on this property, global IgnoreReadOnlyProperties/Fields wins
                 // WhenNull = only ignore when null, global IgnoreReadOnlyProperties/Fields loses
                 // Never = never ignore (always include), global IgnoreReadOnlyProperties/Fields loses
-                bool serializeReadOnlyProperty = ignoreCondition != null || (MemberInfo is PropertyInfo
+                bool serializeReadOnlyProperty = ignoreCondition != null || (memberType == MemberTypes.Property
                     ? !Options.IgnoreReadOnlyProperties
                     : !Options.IgnoreReadOnlyFields);
 
@@ -143,11 +196,12 @@ namespace System.Text.Json.Serialization.Metadata
             }
         }
 
-        private void DetermineIgnoreCondition(JsonIgnoreCondition? ignoreCondition, bool defaultValueIsNull)
+        internal void DetermineIgnoreCondition(JsonIgnoreCondition? ignoreCondition)
         {
             if (ignoreCondition != null)
             {
-                Debug.Assert(MemberInfo != null);
+                // This is not true for CodeGen scenarios since we do not cache this as of yet.
+                // Debug.Assert(MemberInfo != null);
                 Debug.Assert(ignoreCondition != JsonIgnoreCondition.Always);
 
                 if (ignoreCondition == JsonIgnoreCondition.WhenWritingDefault)
@@ -156,13 +210,13 @@ namespace System.Text.Json.Serialization.Metadata
                 }
                 else if (ignoreCondition == JsonIgnoreCondition.WhenWritingNull)
                 {
-                    if (defaultValueIsNull)
+                    if (PropertyTypeCanBeNull)
                     {
                         IgnoreDefaultValuesOnWrite = true;
                     }
                     else
                     {
-                        ThrowHelper.ThrowInvalidOperationException_IgnoreConditionOnValueTypeInvalid(this);
+                        ThrowHelper.ThrowInvalidOperationException_IgnoreConditionOnValueTypeInvalid(ClrName!, ParentClassType);
                     }
                 }
             }
@@ -170,7 +224,7 @@ namespace System.Text.Json.Serialization.Metadata
             else if (Options.IgnoreNullValues)
             {
                 Debug.Assert(Options.DefaultIgnoreCondition == JsonIgnoreCondition.Never);
-                if (defaultValueIsNull)
+                if (PropertyTypeCanBeNull)
                 {
                     IgnoreDefaultValuesOnRead = true;
                     IgnoreDefaultValuesOnWrite = true;
@@ -179,7 +233,7 @@ namespace System.Text.Json.Serialization.Metadata
             else if (Options.DefaultIgnoreCondition == JsonIgnoreCondition.WhenWritingNull)
             {
                 Debug.Assert(!Options.IgnoreNullValues);
-                if (defaultValueIsNull)
+                if (PropertyTypeCanBeNull)
                 {
                     IgnoreDefaultValuesOnWrite = true;
                 }
@@ -192,63 +246,62 @@ namespace System.Text.Json.Serialization.Metadata
 #pragma warning restore CS0618 // IgnoreNullValues is obsolete
         }
 
-        private void DetermineNumberHandling(JsonNumberHandling? parentTypeNumberHandling)
+        internal void DetermineNumberHandlingForClassInfo(JsonNumberHandling? numberHandling)
         {
-            bool numberHandlingIsApplicable = ConverterBase.IsInternalConverterForNumberType || TypeIsCollectionOfNumbersWithInternalConverter();
-
-            if (IsForClassInfo)
+            if (numberHandling != null && !ConverterBase.IsInternalConverter)
             {
-                if (parentTypeNumberHandling != null && !ConverterBase.IsInternalConverter)
-                {
-                    ThrowHelper.ThrowInvalidOperationException_NumberHandlingOnPropertyInvalid(this);
-                }
-
-                if (numberHandlingIsApplicable)
-                {
-                    // This logic is to honor JsonNumberHandlingAttribute placed on
-                    // custom collections e.g. public class MyNumberList : List<int>.
-
-                    // Priority 1: Get handling from the type (parent type in this case is the type itself).
-                    NumberHandling = parentTypeNumberHandling;
-
-                    // Priority 2: Get handling from JsonSerializerOptions instance.
-                    if (!NumberHandling.HasValue && Options.NumberHandling != JsonNumberHandling.Strict)
-                    {
-                        NumberHandling = Options.NumberHandling;
-                    }
-                }
+                ThrowHelper.ThrowInvalidOperationException_NumberHandlingOnPropertyInvalid(this);
             }
-            else
+
+            if (NumberHandingIsApplicable())
             {
-                Debug.Assert(MemberInfo != null);
+                // This logic is to honor JsonNumberHandlingAttribute placed on
+                // custom collections e.g. public class MyNumberList : List<int>.
 
-                JsonNumberHandlingAttribute? attribute = GetAttribute<JsonNumberHandlingAttribute>(MemberInfo);
-                if (attribute != null && !numberHandlingIsApplicable)
+                // Priority 1: Get handling from the type (parent type in this case is the type itself).
+                NumberHandling = numberHandling;
+
+                // Priority 2: Get handling from JsonSerializerOptions instance.
+                if (!NumberHandling.HasValue && Options.NumberHandling != JsonNumberHandling.Strict)
                 {
-                    ThrowHelper.ThrowInvalidOperationException_NumberHandlingOnPropertyInvalid(this);
-                }
-
-                if (numberHandlingIsApplicable)
-                {
-                    // Priority 1: Get handling from attribute on property or field.
-                    JsonNumberHandling? handling = attribute?.Handling;
-
-                    // Priority 2: Get handling from attribute on parent class type.
-                    handling ??= parentTypeNumberHandling;
-
-                    // Priority 3: Get handling from JsonSerializerOptions instance.
-                    if (!handling.HasValue && Options.NumberHandling != JsonNumberHandling.Strict)
-                    {
-                        handling = Options.NumberHandling;
-                    }
-
-                    NumberHandling = handling;
+                    NumberHandling = Options.NumberHandling;
                 }
             }
         }
 
-        private bool TypeIsCollectionOfNumbersWithInternalConverter()
+        internal void DetermineNumberHandlingForProperty(JsonNumberHandling? parentTypeNumberHandling, JsonNumberHandling? propertyNumberHandling)
         {
+            bool numberHandlingIsApplicable = NumberHandingIsApplicable();
+
+            if (numberHandlingIsApplicable)
+            {
+                // Priority 1: Get handling from attribute on property or field.
+                JsonNumberHandling? handling = propertyNumberHandling;
+
+                // Priority 2: Get handling from attribute on parent class type.
+                handling ??= parentTypeNumberHandling;
+
+                // Priority 3: Get handling from JsonSerializerOptions instance.
+                if (!handling.HasValue && Options.NumberHandling != JsonNumberHandling.Strict)
+                {
+                    handling = Options.NumberHandling;
+                }
+
+                NumberHandling = handling;
+            }
+            else if (propertyNumberHandling.HasValue)
+            {
+                ThrowHelper.ThrowInvalidOperationException_NumberHandlingOnPropertyInvalid(this);
+            }
+        }
+
+        private bool NumberHandingIsApplicable()
+        {
+            if (ConverterBase.IsInternalConverterForNumberType)
+            {
+                return true;
+            }
+
             if (!ConverterBase.IsInternalConverter ||
                 ((ClassType.Enumerable | ClassType.Dictionary) & ClassType) == 0)
             {
@@ -305,6 +358,7 @@ namespace System.Text.Json.Serialization.Metadata
         {
             Debug.Assert(converter != null);
 
+            ClrName = memberInfo?.Name;
             ParentClassType = parentClassType;
             DeclaredPropertyType = declaredPropertyType;
             RuntimePropertyType = runtimePropertyType;
@@ -314,6 +368,15 @@ namespace System.Text.Json.Serialization.Metadata
             Options = options;
         }
 
+        internal abstract void SourceGenInitializePropertyInfoForClassInfo(
+            Type declaredPropertyType,
+            Type? runtimePropertyType,
+            ClassType runtimeClassType,
+            JsonClassInfo runtimeClassInfo,
+            JsonConverter converter,
+            JsonNumberHandling? parentTypeNumberHandling,
+            JsonSerializerOptions options);
+
         internal bool IgnoreDefaultValuesOnRead { get; private set; }
         internal bool IgnoreDefaultValuesOnWrite { get; private set; }
 
@@ -321,6 +384,8 @@ namespace System.Text.Json.Serialization.Metadata
         /// True if the corresponding cref="JsonClassInfo.PropertyInfoForClassInfo"/> is this instance.
         /// </summary>
         internal bool IsForClassInfo { get; set; }
+
+        internal string? ClrName { get; private set; }
 
         // There are 3 copies of the property name:
         // 1) NameAsString. The unescaped property name.
@@ -422,7 +487,10 @@ namespace System.Text.Json.Serialization.Metadata
             return true;
         }
 
-        internal Type ParentClassType { get; private set; } = null!;
+        /// <summary>
+        /// TODO
+        /// </summary>
+        internal Type ParentClassType { get; set; } = null!;
 
         internal MemberInfo? MemberInfo { get; private set; }
 
@@ -465,5 +533,17 @@ namespace System.Text.Json.Serialization.Metadata
 
         //  Whether the property type can be null.
         internal bool PropertyTypeCanBeNull { get; set; }
+
+        /// <summary>
+        /// Returns true if the property's converter is external (a user's custom converter)
+        /// and the type to convert is not the same as the declared property type (polymorphic).
+        /// Used to determine whether to perform additional validation on the value returned by the
+        /// converter on deserialization.
+        /// </summary>
+        internal bool _converterIsExternalAndPolymorphic;
+
+        // Since a converter's TypeToConvert (which is the T value in this type) can be different than
+        // the property's type, we track that and whether the property type can be null.
+        internal bool _propertyTypeEqualsTypeToConvert;
     }
 }

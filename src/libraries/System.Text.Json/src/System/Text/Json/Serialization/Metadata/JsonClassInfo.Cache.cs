@@ -117,20 +117,45 @@ namespace System.Text.Json.Serialization.Metadata
             Type declaredPropertyType,
             Type runtimePropertyType,
             JsonConverter converter,
+            JsonNumberHandling? numberHandling,
             JsonSerializerOptions options)
         {
-            JsonNumberHandling? numberHandling = JsonHelpers.DisableJsonSerializerDynamicFallback
-                ? null // TODO: populate this properly in source gen
-                : GetNumberHandlingForType(declaredPropertyType);
-
             JsonPropertyInfo jsonPropertyInfo = CreateProperty(
                 declaredPropertyType: declaredPropertyType,
                 runtimePropertyType: runtimePropertyType,
                 memberInfo: null, // Not a real property so this is null.
-                parentClassType: JsonClassInfo.ObjectType, // a dummy value (not used)
+                parentClassType: ObjectType, // a dummy value (not used)
                 converter: converter,
                 options,
                 parentTypeNumberHandling: numberHandling);
+
+            Debug.Assert(jsonPropertyInfo.IsForClassInfo);
+            return jsonPropertyInfo;
+        }
+
+        /// <summary>
+        /// Create a <see cref="JsonPropertyInfo"/> for a given Type.
+        /// See <seealso cref="PropertyInfoForClassInfo"/>.
+        /// </summary>
+        internal static JsonPropertyInfo SourceGenCreatePropertyInfoForClassInfo(
+            Type declaredPropertyType,
+            Type runtimePropertyType,
+            JsonClassInfo runtimeClassInfo,
+            JsonConverter converter,
+            JsonNumberHandling? numberHandling,
+            JsonSerializerOptions options)
+        {
+            // Create the JsonPropertyInfo instance.
+            JsonPropertyInfo jsonPropertyInfo = converter.CreateJsonPropertyInfo();
+
+            jsonPropertyInfo.SourceGenInitializePropertyInfoForClassInfo(
+                declaredPropertyType,
+                runtimePropertyType,
+                runtimeClassType: converter.ClassType,
+                runtimeClassInfo,
+                converter,
+                numberHandling,
+                options);
 
             Debug.Assert(jsonPropertyInfo.IsForClassInfo);
             return jsonPropertyInfo;

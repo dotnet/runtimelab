@@ -5,7 +5,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Xunit;
 #if GENERATE_JSON_METADATA
-using JsonCodeGeneration;
+using System.Text.Json.Tests.JsonSourceGeneration;
 #endif
 
 namespace System.Text.Json.Serialization.Tests
@@ -15,6 +15,10 @@ namespace System.Text.Json.Serialization.Tests
     /// </summary>
     public abstract class DeserializationWrapper
     {
+#if GENERATE_JSON_METADATA
+        private static JsonSerializerOptions _sourceGenOptions = new();
+#endif
+
         private static readonly JsonSerializerOptions _optionsWithSmallBuffer = new JsonSerializerOptions { DefaultBufferSize = 1 };
 
         public static DeserializationWrapper StringDeserializer => new StringDeserializerWrapper();
@@ -98,14 +102,14 @@ namespace System.Text.Json.Serialization.Tests
         {
 #if GENERATE_JSON_METADATA
             protected internal override Task<T> DeserializeWrapper<T>(string json, JsonSerializerOptions options = null) =>
-                Task.FromResult(JsonSerializer.Deserialize<T>(json, new JsonContext(options)));
+                Task.FromResult(JsonSerializer.Deserialize<T>(json, new JsonContext(options ?? _sourceGenOptions)));
 
             // TODO: update this to use new ROS<byte> + metadata based overload.
             protected internal override Task<T> DeserializeWrapper<T>(byte[] utf8Json, JsonSerializerOptions options = null) =>
-                Task.FromResult(JsonSerializer.Deserialize<T>(Encoding.UTF8.GetString(utf8Json), new JsonContext(options)));
+                Task.FromResult(JsonSerializer.Deserialize<T>(Encoding.UTF8.GetString(utf8Json), new JsonContext(options ?? _sourceGenOptions)));
 
             protected internal override Task<object> DeserializeWrapper(string json, Type type, JsonSerializerOptions options = null) =>
-                Task.FromResult(JsonSerializer.Deserialize(json, type, new JsonContext(options)));
+                Task.FromResult(JsonSerializer.Deserialize(json, type, new JsonContext(options ?? _sourceGenOptions)));
 #else
             protected internal override Task<T> DeserializeWrapper<T>(string json, JsonSerializerOptions options = null)
             {
@@ -139,7 +143,7 @@ namespace System.Text.Json.Serialization.Tests
 
                 using (MemoryStream stream = new MemoryStream(Encoding.UTF8.GetBytes(json)))
                 {
-                    return await JsonSerializer.DeserializeAsync<T>(stream, new JsonContext(options));
+                    return await JsonSerializer.DeserializeAsync<T>(stream, new JsonContext(options ?? _sourceGenOptions));
                 }
             }
 
@@ -155,7 +159,7 @@ namespace System.Text.Json.Serialization.Tests
 
                 using (MemoryStream stream = new MemoryStream(Encoding.UTF8.GetBytes(json)))
                 {
-                    return await JsonSerializer.DeserializeAsync(stream, type, new JsonContext(options));
+                    return await JsonSerializer.DeserializeAsync(stream, type, new JsonContext(options ?? _sourceGenOptions));
                 }
             }
 #else

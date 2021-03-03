@@ -75,10 +75,8 @@ namespace System.Text.Json
             return Initialize(jsonClassInfo, options, supportContinuation);
         }
 
-        private JsonConverter Initialize(JsonClassInfo jsonClassInfo, JsonSerializerOptions options, bool supportContinuation)
+        internal JsonConverter Initialize(JsonClassInfo jsonClassInfo, JsonSerializerOptions options, bool supportContinuation)
         {
-            Current.JsonClassInfo = jsonClassInfo;
-
             Current.JsonClassInfo = jsonClassInfo;
             Current.DeclaredJsonPropertyInfo = jsonClassInfo.PropertyInfoForClassInfo;
             Current.NumberHandling = Current.DeclaredJsonPropertyInfo.NumberHandling;
@@ -91,25 +89,6 @@ namespace System.Text.Json
             SupportContinuation = supportContinuation;
 
             return jsonClassInfo.PropertyInfoForClassInfo.ConverterBase;
-        }
-
-        /// <summary>
-        /// Initialize the state without delayed initialization of the JsonClassInfo.
-        /// </summary>
-        internal void Initialize(JsonClassInfo jsonClassInfo)
-        {
-            Current.JsonClassInfo = jsonClassInfo;
-
-            if ((jsonClassInfo.ClassType & (ClassType.Enumerable | ClassType.Dictionary)) == 0)
-            {
-                Current.DeclaredJsonPropertyInfo = jsonClassInfo.PropertyInfoForClassInfo;
-            }
-
-            JsonSerializerOptions options = jsonClassInfo.Options;
-            if (options.ReferenceHandler != null)
-            {
-                ReferenceResolver = options.ReferenceHandler!.CreateResolver(writing: true);
-            }
         }
 
         internal void Push()

@@ -3,106 +3,145 @@
 
 using System.Collections.Generic;
 using System.Text.Encodings.Web;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Tests;
+using System.Threading.Tasks;
 using Xunit;
+
+[assembly: JsonSerializable(typeof(OverridePropertyNameDesignTime_TestClass))]
+[assembly: JsonSerializable(typeof(EmptyPropertyName_TestClass))]
+[assembly: JsonSerializable(typeof(ClassWithUnicodeProperty))]
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static class PropertyNameTests
+#if !GENERATE_JSON_METADATA
+    public class PropertyNameTests_DynamicSerializer : PropertyNameTests
     {
+        public PropertyNameTests_DynamicSerializer() : base(SerializationWrapper.StringSerializer, DeserializationWrapper.StringDeserializer) { }
+    }
+#else
+    public class PropertyNameTests_MetadataBasedSerializer : PropertyNameTests
+    {
+        public PropertyNameTests_MetadataBasedSerializer() : base(SerializationWrapper.StringMetadataSerializer, DeserializationWrapper.StringMetadataDeserialzer) { }
+    }
+#endif
+
+    public abstract class PropertyNameTests : SerializerTests
+    {
+        public PropertyNameTests(SerializationWrapper serializer, DeserializationWrapper deserializer) : base(serializer, deserializer) { }
+
         [Fact]
-        public static void CamelCaseDeserializeNoMatch()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task CamelCaseDeserializeNoMatch()
         {
             var options = new JsonSerializerOptions();
             options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 
-            SimpleTestClass obj = JsonSerializer.Deserialize<SimpleTestClass>(@"{""MyInt16"":1}", options);
+            SimpleTestClass obj = await Deserializer.DeserializeWrapper<SimpleTestClass>(@"{""MyInt16"":1}", options);
 
             // This is 0 (default value) because the data does not match the property "MyInt16" that is assuming camel-casing of "myInt16".
             Assert.Equal(0, obj.MyInt16);
         }
 
         [Fact]
-        public static void CamelCaseDeserializeMatch()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task CamelCaseDeserializeMatch()
         {
             var options = new JsonSerializerOptions();
             options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 
-            SimpleTestClass obj = JsonSerializer.Deserialize<SimpleTestClass>(@"{""myInt16"":1}", options);
+            SimpleTestClass obj = await Deserializer.DeserializeWrapper<SimpleTestClass>(@"{""myInt16"":1}", options);
 
             // This is 1 because the data matches the property "MyInt16" that is assuming camel-casing of "myInt16".
             Assert.Equal(1, obj.MyInt16);
         }
 
         [Fact]
-        public static void CamelCaseSerialize()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task CamelCaseSerialize()
         {
             var options = new JsonSerializerOptions();
             options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 
-            SimpleTestClass obj = JsonSerializer.Deserialize<SimpleTestClass>(@"{}", options);
+            SimpleTestClass obj = await Deserializer.DeserializeWrapper<SimpleTestClass>(@"{}", options);
 
-            string json = JsonSerializer.Serialize(obj, options);
+            string json = await Serializer.SerializeWrapper(obj, options);
             Assert.Contains(@"""myInt16"":0", json);
             Assert.Contains(@"""myInt32"":0", json);
         }
 
         [Fact]
-        public static void CustomNamePolicy()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task CustomNamePolicy()
         {
             var options = new JsonSerializerOptions();
             options.PropertyNamingPolicy = new UppercaseNamingPolicy();
 
-            SimpleTestClass obj = JsonSerializer.Deserialize<SimpleTestClass>(@"{""MYINT16"":1}", options);
+            SimpleTestClass obj = await Deserializer.DeserializeWrapper<SimpleTestClass>(@"{""MYINT16"":1}", options);
 
             // This is 1 because the data matches the property "MYINT16" that is uppercase of "myInt16".
             Assert.Equal(1, obj.MyInt16);
         }
 
         [Fact]
-        public static void NullNamePolicy()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task NullNamePolicy()
         {
             var options = new JsonSerializerOptions();
             options.PropertyNamingPolicy = new NullNamingPolicy();
 
             // A policy that returns null is not allowed.
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<SimpleTestClass>(@"{}", options));
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new SimpleTestClass(), options));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<SimpleTestClass>(@"{}", options));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new SimpleTestClass(), options));
         }
 
         [Fact]
-        public static void IgnoreCase()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task IgnoreCase()
         {
             {
                 // A non-match scenario with no options (case-sensitive by default).
-                SimpleTestClass obj = JsonSerializer.Deserialize<SimpleTestClass>(@"{""myint16"":1}");
+                SimpleTestClass obj = await Deserializer.DeserializeWrapper<SimpleTestClass>(@"{""myint16"":1}");
                 Assert.Equal(0, obj.MyInt16);
             }
 
             {
                 // A non-match scenario with default options (case-sensitive by default).
                 var options = new JsonSerializerOptions();
-                SimpleTestClass obj = JsonSerializer.Deserialize<SimpleTestClass>(@"{""myint16"":1}", options);
+                SimpleTestClass obj = await Deserializer.DeserializeWrapper<SimpleTestClass>(@"{""myint16"":1}", options);
                 Assert.Equal(0, obj.MyInt16);
             }
 
             {
                 var options = new JsonSerializerOptions();
                 options.PropertyNameCaseInsensitive = true;
-                SimpleTestClass obj = JsonSerializer.Deserialize<SimpleTestClass>(@"{""myint16"":1}", options);
+                SimpleTestClass obj = await Deserializer.DeserializeWrapper<SimpleTestClass>(@"{""myint16"":1}", options);
                 Assert.Equal(1, obj.MyInt16);
             }
         }
 
         [Fact]
-        public static void JsonPropertyNameAttribute()
+        public async Task JsonPropertyNameAttribute()
         {
             {
-                OverridePropertyNameDesignTime_TestClass obj = JsonSerializer.Deserialize<OverridePropertyNameDesignTime_TestClass>(@"{""Blah"":1}");
+                OverridePropertyNameDesignTime_TestClass obj = await Deserializer.DeserializeWrapper<OverridePropertyNameDesignTime_TestClass>(@"{""Blah"":1}");
                 Assert.Equal(1, obj.myInt);
 
                 obj.myObject = 2;
 
-                string json = JsonSerializer.Serialize(obj);
+                string json = await Serializer.SerializeWrapper(obj);
                 Assert.Contains(@"""Blah"":1", json);
                 Assert.Contains(@"""BlahObject"":2", json);
             }
@@ -113,73 +152,79 @@ namespace System.Text.Json.Serialization.Tests
                 options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
                 options.PropertyNameCaseInsensitive = true;
 
-                OverridePropertyNameDesignTime_TestClass obj = JsonSerializer.Deserialize<OverridePropertyNameDesignTime_TestClass>(@"{""Blah"":1}", options);
+                OverridePropertyNameDesignTime_TestClass obj = await Deserializer.DeserializeWrapper<OverridePropertyNameDesignTime_TestClass>(@"{""Blah"":1}", options);
                 Assert.Equal(1, obj.myInt);
 
-                string json = JsonSerializer.Serialize(obj);
+                string json = await Serializer.SerializeWrapper(obj);
                 Assert.Contains(@"""Blah"":1", json);
             }
         }
 
         [Fact]
-        public static void JsonNameAttributeDuplicateDesignTimeFail()
+        public async Task JsonNameAttributeDuplicateDesignTimeFail()
         {
             {
                 var options = new JsonSerializerOptions();
-                Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<DuplicatePropertyNameDesignTime_TestClass>("{}", options));
+                await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<DuplicatePropertyNameDesignTime_TestClass>("{}", options));
             }
 
             {
                 var options = new JsonSerializerOptions();
-                Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new DuplicatePropertyNameDesignTime_TestClass(), options));
+                await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new DuplicatePropertyNameDesignTime_TestClass(), options));
             }
         }
 
         [Fact]
-        public static void JsonNullNameAttribute()
+        public async Task JsonNullNameAttribute()
         {
             var options = new JsonSerializerOptions();
             options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
             options.PropertyNameCaseInsensitive = true;
 
             // A null name in JsonPropertyNameAttribute is not allowed.
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new NullPropertyName_TestClass(), options));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new NullPropertyName_TestClass(), options));
         }
 
         [Fact]
-        public static void JsonNameConflictOnCamelCasingFail()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task JsonNameConflictOnCamelCasingFail()
         {
             {
                 // Baseline comparison - no options set.
-                IntPropertyNamesDifferentByCaseOnly_TestClass obj = JsonSerializer.Deserialize<IntPropertyNamesDifferentByCaseOnly_TestClass>("{}");
-                JsonSerializer.Serialize(obj);
+                IntPropertyNamesDifferentByCaseOnly_TestClass obj = await Deserializer.DeserializeWrapper<IntPropertyNamesDifferentByCaseOnly_TestClass>("{}");
+                await Serializer.SerializeWrapper(obj);
             }
 
             {
                 var options = new JsonSerializerOptions();
                 options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 
-                Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<IntPropertyNamesDifferentByCaseOnly_TestClass>("{}", options));
-                Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new IntPropertyNamesDifferentByCaseOnly_TestClass(), options));
+                await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<IntPropertyNamesDifferentByCaseOnly_TestClass>("{}", options));
+                await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new IntPropertyNamesDifferentByCaseOnly_TestClass(), options));
             }
 
             {
                 // Baseline comparison - no options set.
-                ObjectPropertyNamesDifferentByCaseOnly_TestClass obj = JsonSerializer.Deserialize<ObjectPropertyNamesDifferentByCaseOnly_TestClass>("{}");
-                JsonSerializer.Serialize(obj);
+                ObjectPropertyNamesDifferentByCaseOnly_TestClass obj = await Deserializer.DeserializeWrapper<ObjectPropertyNamesDifferentByCaseOnly_TestClass>("{}");
+                await Serializer.SerializeWrapper(obj);
             }
 
             {
                 var options = new JsonSerializerOptions();
                 options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 
-                Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<ObjectPropertyNamesDifferentByCaseOnly_TestClass>("{}", options));
-                Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new ObjectPropertyNamesDifferentByCaseOnly_TestClass(), options));
+                await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<ObjectPropertyNamesDifferentByCaseOnly_TestClass>("{}", options));
+                await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new ObjectPropertyNamesDifferentByCaseOnly_TestClass(), options));
             }
         }
 
         [Fact]
-        public static void JsonNameConflictOnCaseInsensitiveFail()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task JsonNameConflictOnCaseInsensitiveFail()
         {
             string json = @"{""myInt"":1,""MyInt"":2}";
 
@@ -187,17 +232,20 @@ namespace System.Text.Json.Serialization.Tests
                 var options = new JsonSerializerOptions();
                 options.PropertyNameCaseInsensitive = true;
 
-                Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<IntPropertyNamesDifferentByCaseOnly_TestClass>(json, options));
-                Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new IntPropertyNamesDifferentByCaseOnly_TestClass(), options));
+                await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<IntPropertyNamesDifferentByCaseOnly_TestClass>(json, options));
+                await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new IntPropertyNamesDifferentByCaseOnly_TestClass(), options));
             }
         }
 
         [Fact]
-        public static void JsonOutputNotAffectedByCasingPolicy()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task JsonOutputNotAffectedByCasingPolicy()
         {
             {
                 // Baseline.
-                string json = JsonSerializer.Serialize(new SimpleTestClass());
+                string json = await Serializer.SerializeWrapper(new SimpleTestClass());
                 Assert.Contains(@"""MyInt16"":0", json);
             }
 
@@ -206,13 +254,13 @@ namespace System.Text.Json.Serialization.Tests
                 var options = new JsonSerializerOptions();
                 options.PropertyNameCaseInsensitive = true;
 
-                string json = JsonSerializer.Serialize(new SimpleTestClass(), options);
+                string json = await Serializer.SerializeWrapper(new SimpleTestClass(), options);
                 Assert.Contains(@"""MyInt16"":0", json);
             }
         }
 
         [Fact]
-        public static void EmptyPropertyName()
+        public async Task EmptyPropertyName()
         {
             string json = @"{"""":1}";
 
@@ -220,22 +268,25 @@ namespace System.Text.Json.Serialization.Tests
                 var obj = new EmptyPropertyName_TestClass();
                 obj.MyInt1 = 1;
 
-                string jsonOut = JsonSerializer.Serialize(obj);
+                string jsonOut = await Serializer.SerializeWrapper(obj);
                 Assert.Equal(json, jsonOut);
             }
 
             {
-                EmptyPropertyName_TestClass obj = JsonSerializer.Deserialize<EmptyPropertyName_TestClass>(json);
+                EmptyPropertyName_TestClass obj = await Deserializer.DeserializeWrapper<EmptyPropertyName_TestClass>(json);
                 Assert.Equal(1, obj.MyInt1);
             }
         }
 
         [Fact]
-        public static void EmptyPropertyNameInExtensionData()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task EmptyPropertyNameInExtensionData()
         {
             {
                 string json = @"{"""":42}";
-                EmptyClassWithExtensionProperty obj = JsonSerializer.Deserialize<EmptyClassWithExtensionProperty>(json);
+                EmptyClassWithExtensionProperty obj = await Deserializer.DeserializeWrapper<EmptyClassWithExtensionProperty>(json);
                 Assert.Equal(1, obj.MyOverflow.Count);
                 Assert.Equal(42, obj.MyOverflow[""].GetInt32());
             }
@@ -243,14 +294,17 @@ namespace System.Text.Json.Serialization.Tests
             {
                 // Verify that last-in wins.
                 string json = @"{"""":42, """":43}";
-                EmptyClassWithExtensionProperty obj = JsonSerializer.Deserialize<EmptyClassWithExtensionProperty>(json);
+                EmptyClassWithExtensionProperty obj = await Deserializer.DeserializeWrapper<EmptyClassWithExtensionProperty>(json);
                 Assert.Equal(1, obj.MyOverflow.Count);
                 Assert.Equal(43, obj.MyOverflow[""].GetInt32());
             }
         }
 
         [Fact]
-        public static void EmptyPropertyName_WinsOver_ExtensionDataEmptyPropertyName()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task EmptyPropertyName_WinsOver_ExtensionDataEmptyPropertyName()
         {
             string json = @"{"""":1}";
 
@@ -260,13 +314,16 @@ namespace System.Text.Json.Serialization.Tests
             JsonSerializerOptions options = new JsonSerializerOptions();
 
             // Verify the real property wins over the extension data property.
-            obj = JsonSerializer.Deserialize<ClassWithEmptyPropertyNameAndExtensionProperty>(json, options);
+            obj = await Deserializer.DeserializeWrapper<ClassWithEmptyPropertyNameAndExtensionProperty>(json, options);
             Assert.Equal(1, obj.MyInt1);
             Assert.Null(obj.MyOverflow);
         }
 
         [Fact]
-        public static void EmptyPropertyNameAndExtensionData_ExtDataFirst()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task EmptyPropertyNameAndExtensionData_ExtDataFirst()
         {
             // Verify any caching treats real property (with empty name) differently than a missing property.
 
@@ -277,20 +334,23 @@ namespace System.Text.Json.Serialization.Tests
 
             // First populate cache with a missing property name.
             string json = @"{""DoesNotExist"":42}";
-            obj = JsonSerializer.Deserialize<ClassWithEmptyPropertyNameAndExtensionProperty>(json, options);
+            obj = await Deserializer.DeserializeWrapper<ClassWithEmptyPropertyNameAndExtensionProperty>(json, options);
             Assert.Equal(0, obj.MyInt1);
             Assert.Equal(1, obj.MyOverflow.Count);
             Assert.Equal(42, obj.MyOverflow["DoesNotExist"].GetInt32());
 
             // Then use an empty property.
             json = @"{"""":43}";
-            obj = JsonSerializer.Deserialize<ClassWithEmptyPropertyNameAndExtensionProperty>(json, options);
+            obj = await Deserializer.DeserializeWrapper<ClassWithEmptyPropertyNameAndExtensionProperty>(json, options);
             Assert.Equal(43, obj.MyInt1);
             Assert.Null(obj.MyOverflow);
         }
 
         [Fact]
-        public static void EmptyPropertyAndExtensionData_PropertyFirst()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task EmptyPropertyAndExtensionData_PropertyFirst()
         {
             // Verify any caching treats real property (with empty name) differently than a missing property.
 
@@ -301,75 +361,78 @@ namespace System.Text.Json.Serialization.Tests
 
             // First use an empty property.
             string json = @"{"""":43}";
-            obj = JsonSerializer.Deserialize<ClassWithEmptyPropertyNameAndExtensionProperty>(json, options);
+            obj = await Deserializer.DeserializeWrapper<ClassWithEmptyPropertyNameAndExtensionProperty>(json, options);
             Assert.Equal(43, obj.MyInt1);
             Assert.Null(obj.MyOverflow);
 
             // Then populate cache with a missing property name.
             json = @"{""DoesNotExist"":42}";
-            obj = JsonSerializer.Deserialize<ClassWithEmptyPropertyNameAndExtensionProperty>(json, options);
+            obj = await Deserializer.DeserializeWrapper<ClassWithEmptyPropertyNameAndExtensionProperty>(json, options);
             Assert.Equal(0, obj.MyInt1);
             Assert.Equal(1, obj.MyOverflow.Count);
             Assert.Equal(42, obj.MyOverflow["DoesNotExist"].GetInt32());
         }
 
         [Fact]
-        public static void UnicodePropertyNames()
+        public async Task UnicodePropertyNames()
         {
-            ClassWithUnicodeProperty obj = JsonSerializer.Deserialize<ClassWithUnicodeProperty>("{\"A\u0467\":1}");
+            ClassWithUnicodeProperty obj = await Deserializer.DeserializeWrapper<ClassWithUnicodeProperty>("{\"A\u0467\":1}");
             Assert.Equal(1, obj.A\u0467);
 
             // Specifying encoder on options does not impact deserialize.
             var options = new JsonSerializerOptions();
             options.Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
 
-            obj = JsonSerializer.Deserialize<ClassWithUnicodeProperty>("{\"A\u0467\":1}", options);
+            obj = await Deserializer.DeserializeWrapper<ClassWithUnicodeProperty>("{\"A\u0467\":1}", options);
             Assert.Equal(1, obj.A\u0467);
 
             string json;
 
             // Verify the name is escaped after serialize.
-            json = JsonSerializer.Serialize(obj);
+            json = await Serializer.SerializeWrapper(obj);
             Assert.Contains(@"""A\u0467"":1", json);
 
             // With custom escaper
-            json = JsonSerializer.Serialize(obj, options);
+            json = await Serializer.SerializeWrapper(obj, options);
             Assert.Contains("\"A\u0467\":1", json);
 
             // Verify the name is unescaped after deserialize.
-            obj = JsonSerializer.Deserialize<ClassWithUnicodeProperty>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithUnicodeProperty>(json);
             Assert.Equal(1, obj.A\u0467);
 
             // With custom escaper
-            obj = JsonSerializer.Deserialize<ClassWithUnicodeProperty>(json, options);
+            obj = await Deserializer.DeserializeWrapper<ClassWithUnicodeProperty>(json, options);
             Assert.Equal(1, obj.A\u0467);
         }
 
         [Fact]
-        public static void UnicodePropertyNamesWithPooledAlloc()
+        public async Task UnicodePropertyNamesWithPooledAlloc()
         {
             // We want to go over StackallocThreshold=256 to force a pooled allocation, so this property is 400 chars and 401 bytes.
-            ClassWithUnicodeProperty obj = JsonSerializer.Deserialize<ClassWithUnicodeProperty>("{\"A\u046734567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\":1}");
+            ClassWithUnicodeProperty obj = await Deserializer.DeserializeWrapper<ClassWithUnicodeProperty>("{\"A\u046734567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\":1}");
             Assert.Equal(1, obj.A\u046734567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890);
 
             // Verify the name is escaped after serialize.
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
             Assert.Contains(@"""A\u046734567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"":1", json);
 
             // Verify the name is unescaped after deserialize.
-            obj = JsonSerializer.Deserialize<ClassWithUnicodeProperty>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithUnicodeProperty>(json);
             Assert.Equal(1, obj.A\u046734567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890);
         }
 
         [Fact]
-        public static void ExtensionDataDictionarySerialize_DoesNotHonor()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task ExtensionDataDictionarySerialize_DoesNotHonor()
         {
             var options = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             };
 
-            EmptyClassWithExtensionProperty obj = JsonSerializer.Deserialize<EmptyClassWithExtensionProperty>(@"{""Key1"": 1}", options);
+            EmptyClassWithExtensionProperty obj = await Deserializer.DeserializeWrapper<EmptyClassWithExtensionProperty>(@"{""Key1"": 1}", options);
 
             // Ignore naming policy for extension data properties by default.
             Assert.False(obj.MyOverflow.ContainsKey("key1"));
@@ -410,7 +473,10 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void CachingKeys()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+#endif
+        public async Task CachingKeys()
         {
             ClassWithPropertyNamePermutations obj;
 
@@ -470,12 +536,12 @@ namespace System.Text.Json.Serialization.Tests
             // Verify baseline.
             Verify();
 
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
 
             // Verify the length is consistent with a verified value.
             Assert.Equal(354, json.Length);
 
-            obj = JsonSerializer.Deserialize<ClassWithPropertyNamePermutations>(json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithPropertyNamePermutations>(json);
 
             // Verify round-tripped object.
             Verify();
@@ -492,14 +558,18 @@ namespace System.Text.Json.Serialization.Tests
         [InlineData(0x1000, '\u0467')]
         [InlineData(0x10000, 'v')]
         [InlineData(0x10000, '\u0467')]
-        public static void LongPropertyNames(int propertyLength, char ch)
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Needs support for JsonExtensionData
+#endif
+        public async Task LongPropertyNames(int propertyLength, char ch)
         {
             // Although the CLR may limit member length to 1023 bytes, the serializer doesn't have a hard limit.
 
             string val = new string(ch, propertyLength);
             string json = @"{""" + val + @""":1}";
 
-            EmptyClassWithExtensionProperty obj = JsonSerializer.Deserialize<EmptyClassWithExtensionProperty>(json);
+            EmptyClassWithExtensionProperty obj = await Deserializer.DeserializeWrapper<EmptyClassWithExtensionProperty>(json);
 
             Assert.True(obj.MyOverflow.ContainsKey(val));
 
@@ -509,12 +579,12 @@ namespace System.Text.Json.Serialization.Tests
                 Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             };
 
-            string jsonRoundTripped = JsonSerializer.Serialize(obj, options);
+            string jsonRoundTripped = await Serializer.SerializeWrapper(obj, options);
             Assert.Equal(json, jsonRoundTripped);
         }
 
         [Fact]
-        public static void BadNamingPolicy_ThrowsInvalidOperation()
+        public async Task BadNamingPolicy_ThrowsInvalidOperation()
         {
             var options = new JsonSerializerOptions { DictionaryKeyPolicy = new NullNamingPolicy() };
 
@@ -523,14 +593,14 @@ namespace System.Text.Json.Serialization.Tests
                 { "validKey", 1 }
             };
 
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(inputPrimitive, options));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(inputPrimitive, options));
 
             var inputClass = new Dictionary<string, OverridePropertyNameDesignTime_TestClass>
             {
                 { "validKey", new OverridePropertyNameDesignTime_TestClass() }
             };
 
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(inputClass, options));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(inputClass, options));
         }
     }
 

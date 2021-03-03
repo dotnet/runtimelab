@@ -4,7 +4,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
-using System.Text.Json.Serialization;
 
 namespace System.Text.Json.Serialization.Metadata
 {
@@ -16,18 +15,6 @@ namespace System.Text.Json.Serialization.Metadata
     public sealed class JsonPropertyInfo<T> : JsonPropertyInfo
     {
         private static readonly T s_defaultValue = default!;
-
-        /// <summary>
-        /// Returns true if the property's converter is external (a user's custom converter)
-        /// and the type to convert is not the same as the declared property type (polymorphic).
-        /// Used to determine whether to perform additional validation on the value returned by the
-        /// converter on deserialization.
-        /// </summary>
-        private bool _converterIsExternalAndPolymorphic;
-
-        // Since a converter's TypeToConvert (which is the T value in this type) can be different than
-        // the property's type, we track that and whether the property type can be null.
-        private bool _propertyTypeEqualsTypeToConvert;
 
         /// <summary>
         /// todo
@@ -85,7 +72,33 @@ namespace System.Text.Json.Serialization.Metadata
             PropertyTypeCanBeNull = DeclaredPropertyType.CanBeNull();
             _propertyTypeEqualsTypeToConvert = typeof(T) == DeclaredPropertyType;
 
-            GetPolicies(ignoreCondition, parentTypeNumberHandling, defaultValueIsNull: PropertyTypeCanBeNull);
+            GetPolicies(ignoreCondition, parentTypeNumberHandling);
+        }
+
+        internal override void SourceGenInitializePropertyInfoForClassInfo(
+            Type declaredPropertyType,
+            Type? runtimePropertyType,
+            ClassType runtimeClassType,
+            JsonClassInfo runtimeClassInfo,
+            JsonConverter converter,
+            JsonNumberHandling? numberHandling,
+            JsonSerializerOptions options)
+        {
+            DeclaredPropertyType = declaredPropertyType;
+            RuntimePropertyType = runtimePropertyType;
+            ClassType = runtimeClassType;
+            RuntimeClassInfo = runtimeClassInfo;
+            ConverterBase = converter;
+            Options = options;
+
+            IsForClassInfo = true;
+            HasGetter = true;
+            HasSetter = true;
+
+            _converterIsExternalAndPolymorphic = !converter.IsInternalConverter && DeclaredPropertyType != converter.TypeToConvert;
+            PropertyTypeCanBeNull = DeclaredPropertyType.CanBeNull();
+            _propertyTypeEqualsTypeToConvert = typeof(T) == DeclaredPropertyType;
+            DetermineNumberHandlingForClassInfo(numberHandling);
         }
 
         private void InitializeAccessorsWithReflection(MemberInfo memberInfo)
@@ -278,7 +291,7 @@ namespace System.Text.Json.Serialization.Metadata
 
                 success = true;
             }
-            else if (Converter.CanUseDirectReadOrWrite && state.Current.NumberHandling == null)
+            else if (Converter.CanUseDirectReadOrWrite && !state.Current.NumberHandling.HasValue)
             {
                 // CanUseDirectReadOrWrite == false when using streams
                 Debug.Assert(!state.IsContinuation);
@@ -420,7 +433,7 @@ namespace System.Text.Json.Serialization.Metadata
             else
             {
                 // Optimize for internal converters by avoiding the extra call to TryRead.
-                if (Converter.CanUseDirectReadOrWrite && state.Current.NumberHandling == null)
+                if (Converter.CanUseDirectReadOrWrite && !state.Current.NumberHandling.HasValue)
                 {
                     // CanUseDirectReadOrWrite == false when using streams
                     Debug.Assert(!state.IsContinuation);

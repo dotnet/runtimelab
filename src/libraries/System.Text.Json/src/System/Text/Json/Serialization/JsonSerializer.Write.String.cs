@@ -136,28 +136,32 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(jsonSerializerContext));
             }
 
+            Type type = typeof(TValue) == typeof(object) && value != null
+                ? value.GetType()
+                : typeof(TValue);
+
             return SerializeUsingMetadata(
                 value,
-                JsonHelpers.GetJsonClassInfo(jsonSerializerContext, typeof(TValue)));
+                JsonHelpers.GetJsonClassInfo(jsonSerializerContext, type));
         }
 
         private static string SerializeUsingMetadata<TValue>(in TValue value, JsonClassInfo? jsonClassInfo)
         {
-            WriteStack state = default;
-            state.Initialize(jsonClassInfo ?? throw new ArgumentNullException(nameof(jsonClassInfo)));
+            if (jsonClassInfo == null)
+            {
+                throw new ArgumentNullException(nameof(jsonClassInfo));
+            }
 
             JsonSerializerOptions options = jsonClassInfo.Options;
+
+            WriteStack state = default;
+            state.Initialize(jsonClassInfo, options, supportContinuation: false);
 
             using (var output = new PooledByteBufferWriter(options.DefaultBufferSize))
             {
                 using (var writer = new Utf8JsonWriter(output, options.GetWriterOptions()))
                 {
-                    JsonConverter? jsonConverter = jsonClassInfo.PropertyInfoForClassInfo.ConverterBase as JsonConverter<TValue>;
-                    if (jsonConverter == null)
-                    {
-                        throw new InvalidOperationException("todo: classInfo not compatible");
-                    }
-
+                    JsonConverter? jsonConverter = jsonClassInfo.PropertyInfoForClassInfo.ConverterBase;
                     WriteCore(jsonConverter, writer, value, ref state, options);
                 }
 

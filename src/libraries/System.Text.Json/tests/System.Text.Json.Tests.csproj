@@ -101,7 +101,7 @@
     <Compile Include="Serialization\InvalidTypeTests.cs" />
     <Compile Include="Serialization\JsonDocumentTests.cs" />
     <Compile Include="Serialization\JsonElementTests.cs" />
-    <Compile Include="Serialization\JsonSerializableTypes.cs" />
+    <Compile Include="Serialization\SerializerTests.cs" />
     <Compile Include="Serialization\Null.ReadTests.cs" />
     <Compile Include="Serialization\Null.WriteTests.cs" />
     <Compile Include="Serialization\NullableTests.cs" />
@@ -172,11 +172,11 @@
     <ProjectReference Include="$(LibrariesProjectRoot)System.Collections.Immutable\src\System.Collections.Immutable.csproj" />
     <ProjectReference Include="..\src\System.Text.Json.csproj" />
   </ItemGroup>
-  <!-- Configuration to run JSON source generator -->
+  <!-- TODO: remove before shipping.
+       Configuration to run JSON source generator -->
   <PropertyGroup Condition="'$(GenerateJsonMetadata)' == 'true'">
     <DefineConstants>$(DefineConstants);GENERATE_JSON_METADATA</DefineConstants>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <_ExtraTrimmerArgs>--feature System.Text.Json.DisableJsonSerializerDynamicFallback true</_ExtraTrimmerArgs>
   </PropertyGroup>
   <ItemGroup Condition="'$(GenerateJsonMetadata)' == 'true'">
     <ProjectReference Include="..\System.Text.Json.SourceGeneration\System.Text.Json.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />

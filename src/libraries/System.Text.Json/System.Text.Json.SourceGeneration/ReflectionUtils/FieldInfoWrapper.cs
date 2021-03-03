@@ -21,13 +21,41 @@ namespace System.Reflection
             _metadataLoadContext = metadataLoadContext;
         }
 
-        public override FieldAttributes Attributes => throw new NotImplementedException();
+        private FieldAttributes? _attributes;
+
+        public override FieldAttributes Attributes
+        {
+            get
+            {
+                if (!_attributes.HasValue)
+                {
+                    _attributes = default(FieldAttributes);
+
+                    if (_field.IsStatic)
+                    {
+                        _attributes |= FieldAttributes.Static;
+                    }
+
+                    switch (_field.DeclaredAccessibility)
+                    {
+                        case Accessibility.Public:
+                            _attributes |= FieldAttributes.Public;
+                            break;
+                        case Accessibility.Private:
+                            _attributes |= FieldAttributes.Private;
+                            break;
+                    }
+                }
+
+                return _attributes.Value;
+            }
+        }
 
         public override RuntimeFieldHandle FieldHandle => throw new NotImplementedException();
 
         public override Type FieldType => _field.Type.AsType(_metadataLoadContext);
 
-        public override Type DeclaringType => throw new NotImplementedException();
+        public override Type DeclaringType => _field.ContainingType.AsType(_metadataLoadContext);
 
         public override string Name => _field.Name;
 

@@ -18,12 +18,12 @@ namespace System.Text.Json.Serialization.Metadata
         /// todo
         /// </summary>
         // TODO: Should this return JsonCollectionTypeInfo<T>?
-        public static JsonTypeInfo<Dictionary<TKey, TValue>> GetDictionary(JsonClassInfo elementInfo, JsonSerializerContext context)
+        public static JsonTypeInfo<Dictionary<TKey, TValue>> GetDictionary(JsonClassInfo elementInfo, JsonSerializerContext context, JsonNumberHandling? numberHandling)
         {
             if (s_dictionaryOfTKeyTValue == null)
             {
                 // TODO: We should also be passing the classInfo for the key type.
-                s_dictionaryOfTKeyTValue = new JsonCollectionTypeInfo<Dictionary<TKey, TValue>>(CreateDictionary, new DictionaryOfTKeyTValueConverter<Dictionary<TKey, TValue>, TKey, TValue>(), elementInfo, context._options);
+                s_dictionaryOfTKeyTValue = new JsonCollectionTypeInfo<Dictionary<TKey, TValue>>(CreateDictionary, new DictionaryOfTKeyTValueConverter<Dictionary<TKey, TValue>, TKey, TValue>(), elementInfo, numberHandling, context._options);
             }
 
             return s_dictionaryOfTKeyTValue;

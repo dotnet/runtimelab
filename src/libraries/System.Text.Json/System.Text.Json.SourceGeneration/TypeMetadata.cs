@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text.Json.Serialization;
 
 namespace System.Text.Json.SourceGeneration
 {
@@ -24,17 +25,22 @@ namespace System.Text.Json.SourceGeneration
 
         public bool CanBeDynamic { get; private set; }
 
+        public JsonNumberHandling? NumberHandling { get; private set; }
+
+        /// <summary>
+        /// Serialization metadata for the properties and fields on the type.
+        /// </summary>
+        public List<PropertyMetadata>? PropertiesMetadata { get; private set; }
+
         public CollectionType CollectionType { get; private set; }
 
         public TypeMetadata? CollectionKeyTypeMetadata { get; private set; }
 
         public TypeMetadata? CollectionValueTypeMetadata { get; private set; }
 
-        public List<PropertyMetadata>? PropertiesMetadata { get; private set; }
+        public ObjectConstructionStrategy ConstructionStrategy { get; private set; }
 
-        // TODO: perhaps this can be consolidated to PropertiesMetadata above, even when field support is added;
-        // unless we have to distiguish here to only allow support based on static or runtime opt-in.
-        public List<PropertyMetadata>? FieldsMetadata { get; private set; }
+        public TypeMetadata? NullableUnderlyingTypeMetadata { get; private set; }
 
         public void Initialize(
             string compilableName,
@@ -43,11 +49,13 @@ namespace System.Text.Json.SourceGeneration
             ClassType classType,
             bool isValueType,
             bool canBeDynamic,
+            JsonNumberHandling? numberHandling,
             List<PropertyMetadata>? propertiesMetadata,
-            List<PropertyMetadata>? fieldsMetadata,
             CollectionType collectionType,
             TypeMetadata? collectionKeyTypeMetadata,
-            TypeMetadata? collectionValueTypeMetadata)
+            TypeMetadata? collectionValueTypeMetadata,
+            ObjectConstructionStrategy constructionStrategy,
+            TypeMetadata? nullableUnderlyingTypeMetadata)
         {
             if (_hasBeenInitialized)
             {
@@ -62,11 +70,33 @@ namespace System.Text.Json.SourceGeneration
             ClassType = classType;
             IsValueType = isValueType;
             CanBeDynamic = canBeDynamic;
+            NumberHandling = numberHandling;
+
             PropertiesMetadata = propertiesMetadata;
-            FieldsMetadata = fieldsMetadata;
+
             CollectionType = collectionType;
             CollectionKeyTypeMetadata = collectionKeyTypeMetadata;
             CollectionValueTypeMetadata = collectionValueTypeMetadata;
+
+            if (constructionStrategy != ObjectConstructionStrategy.NotApplicable)
+            {
+                if (classType != ClassType.Object)
+                {
+                    throw new InvalidOperationException($"{nameof(constructionStrategy)} not valid for class type. Stategy: {constructionStrategy} | Type: {type} | Class type: {classType}");
+                }
+
+                ConstructionStrategy = constructionStrategy;
+            }
+
+            if (nullableUnderlyingTypeMetadata != null)
+            {
+                if (classType != ClassType.Nullable)
+                {
+                    throw new InvalidOperationException($"{nameof(nullableUnderlyingTypeMetadata)} not valid for class type. Underlying type: {nullableUnderlyingTypeMetadata} | Type: {type} | Class type: {classType}");
+                }
+
+                NullableUnderlyingTypeMetadata = nullableUnderlyingTypeMetadata;
+            }
         }
     }
 }

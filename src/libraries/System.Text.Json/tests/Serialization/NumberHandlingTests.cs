@@ -1,23 +1,67 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Tests;
 using System.Text.Json.Tests;
 using System.Threading.Tasks;
 using Xunit;
 
+[assembly: JsonSerializable(typeof(byte))]
+[assembly: JsonSerializable(typeof(sbyte))]
+[assembly: JsonSerializable(typeof(short))]
+[assembly: JsonSerializable(typeof(int), CanBeDynamic = true)]
+[assembly: JsonSerializable(typeof(long))]
+[assembly: JsonSerializable(typeof(ushort))]
+[assembly: JsonSerializable(typeof(uint))]
+[assembly: JsonSerializable(typeof(ulong))]
+[assembly: JsonSerializable(typeof(float), CanBeDynamic = true)]
+[assembly: JsonSerializable(typeof(double))]
+[assembly: JsonSerializable(typeof(decimal))]
+[assembly: JsonSerializable(typeof(byte?))]
+[assembly: JsonSerializable(typeof(sbyte?))]
+[assembly: JsonSerializable(typeof(short?))]
+[assembly: JsonSerializable(typeof(int?), CanBeDynamic = true)]
+[assembly: JsonSerializable(typeof(long?))]
+[assembly: JsonSerializable(typeof(ushort?))]
+[assembly: JsonSerializable(typeof(uint?))]
+[assembly: JsonSerializable(typeof(ulong?))]
+[assembly: JsonSerializable(typeof(float?), CanBeDynamic = true)]
+[assembly: JsonSerializable(typeof(double?))]
+[assembly: JsonSerializable(typeof(decimal?))]
+[assembly: JsonSerializable(typeof(DateTime), CanBeDynamic = true)]
+[assembly: JsonSerializable(typeof(Guid?), CanBeDynamic = true)]
+[assembly: JsonSerializable(typeof(NumberHandlingTests.Class_With_BoxedNumbers))]
+[assembly: JsonSerializable(typeof(NumberHandlingTests.Class_With_BoxedNonNumbers))]
+
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class NumberHandlingTests
+#if !GENERATE_JSON_METADATA
+    public class NumberHandlingTests_DynamicSerializer : NumberHandlingTests
     {
+        public NumberHandlingTests_DynamicSerializer() : base(SerializationWrapper.StringSerializer, DeserializationWrapper.StringDeserializer) { }
+    }
+#else
+    public class NumberHandlingTests_MetadataBasedSerializer : NumberHandlingTests
+    {
+        public NumberHandlingTests_MetadataBasedSerializer() : base(SerializationWrapper.StringMetadataSerializer, DeserializationWrapper.StringMetadataDeserialzer) { }
+    }
+#endif
+
+    public abstract class NumberHandlingTests : SerializerTests
+    {
+        public NumberHandlingTests(SerializationWrapper serializer, DeserializationWrapper deserializer) : base(serializer, deserializer) { }
+
         private static readonly JsonSerializerOptions s_optionReadFromStr = new JsonSerializerOptions
         {
             NumberHandling = JsonNumberHandling.AllowReadingFromString
@@ -49,40 +93,40 @@ namespace System.Text.Json.Serialization.Tests
         };
 
         [Fact]
-        public static void Number_AsRootType_RoundTrip()
+        public async Task Number_AsRootType_RoundTrip()
         {
-            RunAsRootTypeTest(JsonNumberTestData.Bytes);
-            RunAsRootTypeTest(JsonNumberTestData.SBytes);
-            RunAsRootTypeTest(JsonNumberTestData.Shorts);
-            RunAsRootTypeTest(JsonNumberTestData.Ints);
-            RunAsRootTypeTest(JsonNumberTestData.Longs);
-            RunAsRootTypeTest(JsonNumberTestData.UShorts);
-            RunAsRootTypeTest(JsonNumberTestData.UInts);
-            RunAsRootTypeTest(JsonNumberTestData.ULongs);
-            RunAsRootTypeTest(JsonNumberTestData.Floats);
-            RunAsRootTypeTest(JsonNumberTestData.Doubles);
-            RunAsRootTypeTest(JsonNumberTestData.Decimals);
-            RunAsRootTypeTest(JsonNumberTestData.NullableBytes);
-            RunAsRootTypeTest(JsonNumberTestData.NullableSBytes);
-            RunAsRootTypeTest(JsonNumberTestData.NullableShorts);
-            RunAsRootTypeTest(JsonNumberTestData.NullableInts);
-            RunAsRootTypeTest(JsonNumberTestData.NullableLongs);
-            RunAsRootTypeTest(JsonNumberTestData.NullableUShorts);
-            RunAsRootTypeTest(JsonNumberTestData.NullableUInts);
-            RunAsRootTypeTest(JsonNumberTestData.NullableULongs);
-            RunAsRootTypeTest(JsonNumberTestData.NullableFloats);
-            RunAsRootTypeTest(JsonNumberTestData.NullableDoubles);
-            RunAsRootTypeTest(JsonNumberTestData.NullableDecimals);
+            await RunAsRootTypeTest(JsonNumberTestData.Bytes);
+            await RunAsRootTypeTest(JsonNumberTestData.SBytes);
+            await RunAsRootTypeTest(JsonNumberTestData.Shorts);
+            await RunAsRootTypeTest(JsonNumberTestData.Ints);
+            await RunAsRootTypeTest(JsonNumberTestData.Longs);
+            await RunAsRootTypeTest(JsonNumberTestData.UShorts);
+            await RunAsRootTypeTest(JsonNumberTestData.UInts);
+            await RunAsRootTypeTest(JsonNumberTestData.ULongs);
+            await RunAsRootTypeTest(JsonNumberTestData.Floats);
+            await RunAsRootTypeTest(JsonNumberTestData.Doubles);
+            await RunAsRootTypeTest(JsonNumberTestData.Decimals);
+            await RunAsRootTypeTest(JsonNumberTestData.NullableBytes);
+            await RunAsRootTypeTest(JsonNumberTestData.NullableSBytes);
+            await RunAsRootTypeTest(JsonNumberTestData.NullableShorts);
+            await RunAsRootTypeTest(JsonNumberTestData.NullableInts);
+            await RunAsRootTypeTest(JsonNumberTestData.NullableLongs);
+            await RunAsRootTypeTest(JsonNumberTestData.NullableUShorts);
+            await RunAsRootTypeTest(JsonNumberTestData.NullableUInts);
+            await RunAsRootTypeTest(JsonNumberTestData.NullableULongs);
+            await RunAsRootTypeTest(JsonNumberTestData.NullableFloats);
+            await RunAsRootTypeTest(JsonNumberTestData.NullableDoubles);
+            await RunAsRootTypeTest(JsonNumberTestData.NullableDecimals);
         }
 
-        private static void RunAsRootTypeTest<T>(List<T> numbers)
+        private async Task RunAsRootTypeTest<T>(List<T> numbers)
         {
             foreach (T number in numbers)
             {
                 string numberAsString = GetNumberAsString(number);
                 string json = $"{numberAsString}";
                 string jsonWithNumberAsString = @$"""{numberAsString}""";
-                PerformAsRootTypeSerialization(number, json, jsonWithNumberAsString);
+                await PerformAsRootTypeSerialization(number, json, jsonWithNumberAsString);
             }
         }
 
@@ -97,38 +141,38 @@ namespace System.Text.Json.Serialization.Tests
             };
         }
 
-        private static void PerformAsRootTypeSerialization<T>(T number, string jsonWithNumberAsNumber, string jsonWithNumberAsString)
+        private async Task PerformAsRootTypeSerialization<T>(T number, string jsonWithNumberAsNumber, string jsonWithNumberAsString)
         {
             // Option: read from string
 
             // Deserialize
-            Assert.Equal(number, JsonSerializer.Deserialize<T>(jsonWithNumberAsNumber, s_optionReadFromStr));
-            Assert.Equal(number, JsonSerializer.Deserialize<T>(jsonWithNumberAsString, s_optionReadFromStr));
+            Assert.Equal(number, await Deserializer.DeserializeWrapper<T>(jsonWithNumberAsNumber, s_optionReadFromStr));
+            Assert.Equal(number, await Deserializer.DeserializeWrapper<T>(jsonWithNumberAsString, s_optionReadFromStr));
 
             // Serialize
-            Assert.Equal(jsonWithNumberAsNumber, JsonSerializer.Serialize(number, s_optionReadFromStr));
+            Assert.Equal(jsonWithNumberAsNumber, await Serializer.SerializeWrapper(number, s_optionReadFromStr));
 
             // Option: write as string
 
             // Deserialize
-            Assert.Equal(number, JsonSerializer.Deserialize<T>(jsonWithNumberAsNumber, s_optionWriteAsStr));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<T>(jsonWithNumberAsString, s_optionWriteAsStr));
+            Assert.Equal(number, await Deserializer.DeserializeWrapper<T>(jsonWithNumberAsNumber, s_optionWriteAsStr));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<T>(jsonWithNumberAsString, s_optionWriteAsStr));
 
             // Serialize
-            Assert.Equal(jsonWithNumberAsString, JsonSerializer.Serialize(number, s_optionWriteAsStr));
+            Assert.Equal(jsonWithNumberAsString, await Serializer.SerializeWrapper(number, s_optionWriteAsStr));
 
             // Option: read and write from/to string
 
             // Deserialize
-            Assert.Equal(number, JsonSerializer.Deserialize<T>(jsonWithNumberAsNumber, s_optionReadAndWriteFromStr));
-            Assert.Equal(number, JsonSerializer.Deserialize<T>(jsonWithNumberAsString, s_optionReadAndWriteFromStr));
+            Assert.Equal(number, await Deserializer.DeserializeWrapper<T>(jsonWithNumberAsNumber, s_optionReadAndWriteFromStr));
+            Assert.Equal(number, await Deserializer.DeserializeWrapper<T>(jsonWithNumberAsString, s_optionReadAndWriteFromStr));
 
             // Serialize
-            Assert.Equal(jsonWithNumberAsString, JsonSerializer.Serialize(number, s_optionReadAndWriteFromStr));
+            Assert.Equal(jsonWithNumberAsString, await Serializer.SerializeWrapper(number, s_optionReadAndWriteFromStr));
         }
 
         [Fact]
-        public static void Number_AsBoxed_RootType()
+        public async Task Number_AsBoxed_RootType()
         {
             string numberAsString = @"""2""";
 
@@ -137,19 +181,19 @@ namespace System.Text.Json.Serialization.Tests
             int? nullableInt = 2;
             float? nullableFloat = 2;
 
-            Assert.Equal(numberAsString, JsonSerializer.Serialize((object)@int, s_optionReadAndWriteFromStr));
-            Assert.Equal(numberAsString, JsonSerializer.Serialize((object)@float, s_optionReadAndWriteFromStr));
-            Assert.Equal(numberAsString, JsonSerializer.Serialize((object)nullableInt, s_optionReadAndWriteFromStr));
-            Assert.Equal(numberAsString, JsonSerializer.Serialize((object)nullableFloat, s_optionReadAndWriteFromStr));
+            Assert.Equal(numberAsString, await Serializer.SerializeWrapper((object)@int, s_optionReadAndWriteFromStr));
+            Assert.Equal(numberAsString, await Serializer.SerializeWrapper((object)@float, s_optionReadAndWriteFromStr));
+            Assert.Equal(numberAsString, await Serializer.SerializeWrapper((object)nullableInt, s_optionReadAndWriteFromStr));
+            Assert.Equal(numberAsString, await Serializer.SerializeWrapper((object)nullableFloat, s_optionReadAndWriteFromStr));
 
-            Assert.Equal(2, (int)JsonSerializer.Deserialize(numberAsString, typeof(int), s_optionReadAndWriteFromStr));
-            Assert.Equal(2, (float)JsonSerializer.Deserialize(numberAsString, typeof(float), s_optionReadAndWriteFromStr));
-            Assert.Equal(2, (int?)JsonSerializer.Deserialize(numberAsString, typeof(int?), s_optionReadAndWriteFromStr));
-            Assert.Equal(2, (float?)JsonSerializer.Deserialize(numberAsString, typeof(float?), s_optionReadAndWriteFromStr));
+            Assert.Equal(2, (int)await Deserializer.DeserializeWrapper(numberAsString, typeof(int), s_optionReadAndWriteFromStr));
+            Assert.Equal(2, (float)await Deserializer.DeserializeWrapper(numberAsString, typeof(float), s_optionReadAndWriteFromStr));
+            Assert.Equal(2, (int?)await Deserializer.DeserializeWrapper(numberAsString, typeof(int?), s_optionReadAndWriteFromStr));
+            Assert.Equal(2, (float?)await Deserializer.DeserializeWrapper(numberAsString, typeof(float?), s_optionReadAndWriteFromStr));
         }
 
         [Fact]
-        public static void Number_AsBoxed_Property()
+        public async Task Number_AsBoxed_Property()
         {
             int @int = 1;
             float? nullableFloat = 2;
@@ -162,10 +206,10 @@ namespace System.Text.Json.Serialization.Tests
                 MyNullableFloat = nullableFloat
             };
 
-            string serialized = JsonSerializer.Serialize(obj);
+            string serialized = await Serializer.SerializeWrapper(obj);
             JsonTestHelper.AssertJsonEqual(expected, serialized);
 
-            obj = JsonSerializer.Deserialize<Class_With_BoxedNumbers>(serialized);
+            obj = await Deserializer.DeserializeWrapper<Class_With_BoxedNumbers>(serialized);
 
             JsonElement el = Assert.IsType<JsonElement>(obj.MyInt);
             Assert.Equal(JsonValueKind.String, el.ValueKind);
@@ -186,7 +230,11 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Number_AsBoxed_CollectionRootType_Element()
+#if GENERATE_JSON_METADATA
+        [ActiveIssue("https://github.com/dotnet/runtimelab/projects/1#card-48716081")]
+        // Need collections support (IList)
+#endif
+        public async Task Number_AsBoxed_CollectionRootType_Element()
         {
             int @int = 1;
             float? nullableFloat = 2;
@@ -194,10 +242,10 @@ namespace System.Text.Json.Serialization.Tests
             string expected = @"[""1""]";
 
             var obj = new List<object> { @int };
-            string serialized = JsonSerializer.Serialize(obj, s_optionReadAndWriteFromStr);
+            string serialized = await Serializer.SerializeWrapper(obj, s_optionReadAndWriteFromStr);
             Assert.Equal(expected, serialized);
 
-            obj = JsonSerializer.Deserialize<List<object>>(serialized, s_optionReadAndWriteFromStr);
+            obj = await Deserializer.DeserializeWrapper<List<object>>(serialized, s_optionReadAndWriteFromStr);
 
             JsonElement el = Assert.IsType<JsonElement>(obj[0]);
             Assert.Equal(JsonValueKind.String, el.ValueKind);
@@ -206,10 +254,10 @@ namespace System.Text.Json.Serialization.Tests
             expected = @"[""2""]";
 
             IList obj2 = new object[] { nullableFloat };
-            serialized = JsonSerializer.Serialize(obj2, s_optionReadAndWriteFromStr);
+            serialized = await Serializer.SerializeWrapper(obj2, s_optionReadAndWriteFromStr);
             Assert.Equal(expected, serialized);
 
-            obj2 = JsonSerializer.Deserialize<IList>(serialized, s_optionReadAndWriteFromStr);
+            obj2 = await Deserializer.DeserializeWrapper<IList>(serialized, s_optionReadAndWriteFromStr);
 
             el = Assert.IsType<JsonElement>(obj2[0]);
             Assert.Equal(JsonValueKind.String, el.ValueKind);
@@ -217,7 +265,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Number_AsBoxed_CollectionProperty_Element()
+        public async Task Number_AsBoxed_CollectionProperty_Element()
         {
             int @int = 2;
             float? nullableFloat = 2;
@@ -230,10 +278,10 @@ namespace System.Text.Json.Serialization.Tests
                 MyNullableFloats = new object[] { nullableFloat }
             };
 
-            string serialized = JsonSerializer.Serialize(obj);
+            string serialized = await Serializer.SerializeWrapper(obj);
             JsonTestHelper.AssertJsonEqual(expected, serialized);
 
-            obj = JsonSerializer.Deserialize<Class_With_ListsOfBoxedNumbers>(serialized);
+            obj = await Deserializer.DeserializeWrapper<Class_With_ListsOfBoxedNumbers>(serialized);
 
             JsonElement el = Assert.IsType<JsonElement>(obj.MyInts[0]);
             Assert.Equal(JsonValueKind.String, el.ValueKind);
@@ -254,12 +302,12 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void NonNumber_AsBoxed_Property()
+        public async Task NonNumber_AsBoxed_Property()
         {
             DateTime dateTime = DateTime.Now;
             Guid? nullableGuid = Guid.NewGuid();
 
-            string expected = @$"{{""MyDateTime"":{JsonSerializer.Serialize(dateTime)},""MyNullableGuid"":{JsonSerializer.Serialize(nullableGuid)}}}";
+            string expected = @$"{{""MyDateTime"":{await Serializer.SerializeWrapper(dateTime)},""MyNullableGuid"":{await Serializer.SerializeWrapper(nullableGuid)}}}";
 
             var obj = new Class_With_BoxedNonNumbers
             {
@@ -267,10 +315,10 @@ namespace System.Text.Json.Serialization.Tests
                 MyNullableGuid = nullableGuid
             };
 
-            string serialized = JsonSerializer.Serialize(obj);
+            string serialized = await Serializer.SerializeWrapper(obj);
             JsonTestHelper.AssertJsonEqual(expected, serialized);
 
-            obj = JsonSerializer.Deserialize<Class_With_BoxedNonNumbers>(serialized);
+            obj = await Deserializer.DeserializeWrapper<Class_With_BoxedNonNumbers>(serialized);
 
             JsonElement el = Assert.IsType<JsonElement>(obj.MyDateTime);
             Assert.Equal(JsonValueKind.String, el.ValueKind);
@@ -291,30 +339,30 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void NonNumber_AsBoxed_CollectionRootType_Element()
+        public async Task NonNumber_AsBoxed_CollectionRootType_Element()
         {
             DateTime dateTime = DateTime.Now;
             Guid? nullableGuid = Guid.NewGuid();
 
-            string expected = @$"[{JsonSerializer.Serialize(dateTime)}]";
+            string expected = @$"[{await Serializer.SerializeWrapper(dateTime)}]";
 
             var obj = new List<object> { dateTime };
-            string serialized = JsonSerializer.Serialize(obj, s_optionReadAndWriteFromStr);
+            string serialized = await Serializer.SerializeWrapper(obj, s_optionReadAndWriteFromStr);
             Assert.Equal(expected, serialized);
 
-            obj = JsonSerializer.Deserialize<List<object>>(serialized, s_optionReadAndWriteFromStr);
+            obj = await Deserializer.DeserializeWrapper<List<object>>(serialized, s_optionReadAndWriteFromStr);
 
             JsonElement el = Assert.IsType<JsonElement>(obj[0]);
             Assert.Equal(JsonValueKind.String, el.ValueKind);
             Assert.Equal(dateTime, el.GetDateTime());
 
-            expected = @$"[{JsonSerializer.Serialize(nullableGuid)}]";
+            expected = @$"[{await Serializer.SerializeWrapper(nullableGuid)}]";
 
             IList obj2 = new object[] { nullableGuid };
-            serialized = JsonSerializer.Serialize(obj2, s_optionReadAndWriteFromStr);
+            serialized = await Serializer.SerializeWrapper(obj2, s_optionReadAndWriteFromStr);
             Assert.Equal(expected, serialized);
 
-            obj2 = JsonSerializer.Deserialize<IList>(serialized, s_optionReadAndWriteFromStr);
+            obj2 = await Deserializer.DeserializeWrapper<IList>(serialized, s_optionReadAndWriteFromStr);
 
             el = Assert.IsType<JsonElement>(obj2[0]);
             Assert.Equal(JsonValueKind.String, el.ValueKind);
@@ -322,12 +370,12 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void NonNumber_AsBoxed_CollectionProperty_Element()
+        public async Task NonNumber_AsBoxed_CollectionProperty_Element()
         {
             DateTime dateTime = DateTime.Now;
             Guid? nullableGuid = Guid.NewGuid();
 
-            string expected = @$"{{""MyDateTimes"":[{JsonSerializer.Serialize(dateTime)}],""MyNullableGuids"":[{JsonSerializer.Serialize(nullableGuid)}]}}";
+            string expected = @$"{{""MyDateTimes"":[{await Serializer.SerializeWrapper(dateTime)}],""MyNullableGuids"":[{await Serializer.SerializeWrapper(nullableGuid)}]}}";
 
             var obj = new Class_With_ListsOfBoxedNonNumbers
             {
@@ -335,10 +383,10 @@ namespace System.Text.Json.Serialization.Tests
                 MyNullableGuids = new object[] { nullableGuid }
             };
 
-            string serialized = JsonSerializer.Serialize(obj);
+            string serialized = await Serializer.SerializeWrapper(obj);
             JsonTestHelper.AssertJsonEqual(expected, serialized);
 
-            obj = JsonSerializer.Deserialize<Class_With_ListsOfBoxedNonNumbers>(serialized);
+            obj = await Deserializer.DeserializeWrapper<Class_With_ListsOfBoxedNonNumbers>(serialized);
 
             JsonElement el = Assert.IsType<JsonElement>(obj.MyDateTimes[0]);
             Assert.Equal(JsonValueKind.String, el.ValueKind);
@@ -359,33 +407,33 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Number_AsCollectionElement_RoundTrip()
+        public async Task Number_AsCollectionElement_RoundTrip()
         {
-            RunAsCollectionElementTest(JsonNumberTestData.Bytes);
-            RunAsCollectionElementTest(JsonNumberTestData.SBytes);
-            RunAsCollectionElementTest(JsonNumberTestData.Shorts);
-            RunAsCollectionElementTest(JsonNumberTestData.Ints);
-            RunAsCollectionElementTest(JsonNumberTestData.Longs);
-            RunAsCollectionElementTest(JsonNumberTestData.UShorts);
-            RunAsCollectionElementTest(JsonNumberTestData.UInts);
-            RunAsCollectionElementTest(JsonNumberTestData.ULongs);
-            RunAsCollectionElementTest(JsonNumberTestData.Floats);
-            RunAsCollectionElementTest(JsonNumberTestData.Doubles);
-            RunAsCollectionElementTest(JsonNumberTestData.Decimals);
-            RunAsCollectionElementTest(JsonNumberTestData.NullableBytes);
-            RunAsCollectionElementTest(JsonNumberTestData.NullableSBytes);
-            RunAsCollectionElementTest(JsonNumberTestData.NullableShorts);
-            RunAsCollectionElementTest(JsonNumberTestData.NullableInts);
-            RunAsCollectionElementTest(JsonNumberTestData.NullableLongs);
-            RunAsCollectionElementTest(JsonNumberTestData.NullableUShorts);
-            RunAsCollectionElementTest(JsonNumberTestData.NullableUInts);
-            RunAsCollectionElementTest(JsonNumberTestData.NullableULongs);
-            RunAsCollectionElementTest(JsonNumberTestData.NullableFloats);
-            RunAsCollectionElementTest(JsonNumberTestData.NullableDoubles);
-            RunAsCollectionElementTest(JsonNumberTestData.NullableDecimals);
+            await RunAsCollectionElementTest(JsonNumberTestData.Bytes);
+            await RunAsCollectionElementTest(JsonNumberTestData.SBytes);
+            await RunAsCollectionElementTest(JsonNumberTestData.Shorts);
+            await RunAsCollectionElementTest(JsonNumberTestData.Ints);
+            await RunAsCollectionElementTest(JsonNumberTestData.Longs);
+            await RunAsCollectionElementTest(JsonNumberTestData.UShorts);
+            await RunAsCollectionElementTest(JsonNumberTestData.UInts);
+            await RunAsCollectionElementTest(JsonNumberTestData.ULongs);
+            await RunAsCollectionElementTest(JsonNumberTestData.Floats);
+            await RunAsCollectionElementTest(JsonNumberTestData.Doubles);
+            await RunAsCollectionElementTest(JsonNumberTestData.Decimals);
+            await RunAsCollectionElementTest(JsonNumberTestData.NullableBytes);
+            await RunAsCollectionElementTest(JsonNumberTestData.NullableSBytes);
+            await RunAsCollectionElementTest(JsonNumberTestData.NullableShorts);
+            await RunAsCollectionElementTest(JsonNumberTestData.NullableInts);
+            await RunAsCollectionElementTest(JsonNumberTestData.NullableLongs);
+            await RunAsCollectionElementTest(JsonNumberTestData.NullableUShorts);
+            await RunAsCollectionElementTest(JsonNumberTestData.NullableUInts);
+            await RunAsCollectionElementTest(JsonNumberTestData.NullableULongs);
+            await RunAsCollectionElementTest(JsonNumberTestData.NullableFloats);
+            await RunAsCollectionElementTest(JsonNumberTestData.NullableDoubles);
+            await RunAsCollectionElementTest(JsonNumberTestData.NullableDecimals);
         }
 
-        private static void RunAsCollectionElementTest<T>(List<T> numbers)
+        private async Task RunAsCollectionElementTest<T>(List<T> numbers)
         {
             StringBuilder jsonBuilder_NumbersAsNumbers = new StringBuilder();
             StringBuilder jsonBuilder_NumbersAsStrings = new StringBuilder();
@@ -428,7 +476,7 @@ namespace System.Text.Json.Serialization.Tests
 
             string jsonNumbersAsStrings = jsonBuilder_NumbersAsStrings.ToString();
 
-            PerformAsCollectionElementSerialization(
+            await PerformAsCollectionElementSerialization(
                 numbers,
                 jsonBuilder_NumbersAsNumbers.ToString(),
                 jsonNumbersAsStrings,
@@ -436,10 +484,10 @@ namespace System.Text.Json.Serialization.Tests
                 jsonBuilder_NumbersAsNumbersAndStrings_Alternate.ToString());
 
             // Reflection based tests for every collection type.
-            RunAllCollectionsRoundTripTest<T>(jsonNumbersAsStrings);
+            await RunAllCollectionsRoundTripTest<T>(jsonNumbersAsStrings);
         }
 
-        private static void PerformAsCollectionElementSerialization<T>(
+        private async Task PerformAsCollectionElementSerialization<T>(
             List<T> numbers,
             string json_NumbersAsNumbers,
             string json_NumbersAsStrings,
@@ -451,53 +499,53 @@ namespace System.Text.Json.Serialization.Tests
             // Option: read from string
 
             // Deserialize
-            deserialized = JsonSerializer.Deserialize<List<T>>(json_NumbersAsNumbers, s_optionReadFromStr);
+            deserialized = await Deserializer.DeserializeWrapper<List<T>>(json_NumbersAsNumbers, s_optionReadFromStr);
             AssertIEnumerableEqual(numbers, deserialized);
 
-            deserialized = JsonSerializer.Deserialize<List<T>>(json_NumbersAsStrings, s_optionReadFromStr);
+            deserialized = await Deserializer.DeserializeWrapper<List<T>>(json_NumbersAsStrings, s_optionReadFromStr);
             AssertIEnumerableEqual(numbers, deserialized);
 
-            deserialized = JsonSerializer.Deserialize<List<T>>(json_NumbersAsNumbersAndStrings, s_optionReadFromStr);
+            deserialized = await Deserializer.DeserializeWrapper<List<T>>(json_NumbersAsNumbersAndStrings, s_optionReadFromStr);
             AssertIEnumerableEqual(numbers, deserialized);
 
-            deserialized = JsonSerializer.Deserialize<List<T>>(json_NumbersAsNumbersAndStrings_Alternate, s_optionReadFromStr);
+            deserialized = await Deserializer.DeserializeWrapper<List<T>>(json_NumbersAsNumbersAndStrings_Alternate, s_optionReadFromStr);
             AssertIEnumerableEqual(numbers, deserialized);
 
             // Serialize
-            Assert.Equal(json_NumbersAsNumbers, JsonSerializer.Serialize(numbers, s_optionReadFromStr));
+            Assert.Equal(json_NumbersAsNumbers, await Serializer.SerializeWrapper(numbers, s_optionReadFromStr));
 
             // Option: write as string
 
             // Deserialize
-            deserialized = JsonSerializer.Deserialize<List<T>>(json_NumbersAsNumbers, s_optionWriteAsStr);
+            deserialized = await Deserializer.DeserializeWrapper<List<T>>(json_NumbersAsNumbers, s_optionWriteAsStr);
             AssertIEnumerableEqual(numbers, deserialized);
 
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<List<T>>(json_NumbersAsStrings, s_optionWriteAsStr));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<List<T>>(json_NumbersAsStrings, s_optionWriteAsStr));
 
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<List<T>>(json_NumbersAsNumbersAndStrings, s_optionWriteAsStr));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<List<T>>(json_NumbersAsNumbersAndStrings, s_optionWriteAsStr));
 
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<List<T>>(json_NumbersAsNumbersAndStrings_Alternate, s_optionWriteAsStr));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<List<T>>(json_NumbersAsNumbersAndStrings_Alternate, s_optionWriteAsStr));
 
             // Serialize
-            Assert.Equal(json_NumbersAsStrings, JsonSerializer.Serialize(numbers, s_optionWriteAsStr));
+            Assert.Equal(json_NumbersAsStrings, await Serializer.SerializeWrapper(numbers, s_optionWriteAsStr));
 
             // Option: read and write from/to string
 
             // Deserialize
-            deserialized = JsonSerializer.Deserialize<List<T>>(json_NumbersAsNumbers, s_optionReadAndWriteFromStr);
+            deserialized = await Deserializer.DeserializeWrapper<List<T>>(json_NumbersAsNumbers, s_optionReadAndWriteFromStr);
             AssertIEnumerableEqual(numbers, deserialized);
 
-            deserialized = JsonSerializer.Deserialize<List<T>>(json_NumbersAsStrings, s_optionReadAndWriteFromStr);
+            deserialized = await Deserializer.DeserializeWrapper<List<T>>(json_NumbersAsStrings, s_optionReadAndWriteFromStr);
             AssertIEnumerableEqual(numbers, deserialized);
 
-            deserialized = JsonSerializer.Deserialize<List<T>>(json_NumbersAsNumbersAndStrings, s_optionReadAndWriteFromStr);
+            deserialized = await Deserializer.DeserializeWrapper<List<T>>(json_NumbersAsNumbersAndStrings, s_optionReadAndWriteFromStr);
             AssertIEnumerableEqual(numbers, deserialized);
 
-            deserialized = JsonSerializer.Deserialize<List<T>>(json_NumbersAsNumbersAndStrings_Alternate, s_optionReadAndWriteFromStr);
+            deserialized = await Deserializer.DeserializeWrapper<List<T>>(json_NumbersAsNumbersAndStrings_Alternate, s_optionReadAndWriteFromStr);
             AssertIEnumerableEqual(numbers, deserialized);
 
             // Serialize
-            Assert.Equal(json_NumbersAsStrings, JsonSerializer.Serialize(numbers, s_optionReadAndWriteFromStr));
+            Assert.Equal(json_NumbersAsStrings, await Serializer.SerializeWrapper(numbers, s_optionReadAndWriteFromStr));
         }
 
         private static void AssertIEnumerableEqual<T>(IEnumerable<T> list1, IEnumerable<T> list2)
@@ -514,16 +562,16 @@ namespace System.Text.Json.Serialization.Tests
             Assert.False(enumerator2.MoveNext());
         }
 
-        private static void RunAllCollectionsRoundTripTest<T>(string json)
+        private async Task RunAllCollectionsRoundTripTest<T>(string json)
         {
             foreach (Type type in CollectionTestTypes.DeserializableGenericEnumerableTypes<T>())
             {
                 if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(HashSet<>))
                 {
-                    HashSet<T> obj1 = (HashSet<T>)JsonSerializer.Deserialize(json, type, s_optionReadAndWriteFromStr);
-                    string serialized = JsonSerializer.Serialize(obj1, s_optionReadAndWriteFromStr);
+                    HashSet<T> obj1 = (HashSet<T>)await Deserializer.DeserializeWrapper(json, type, s_optionReadAndWriteFromStr);
+                    string serialized = await Serializer.SerializeWrapper(obj1, s_optionReadAndWriteFromStr);
 
-                    HashSet<T> obj2 = (HashSet<T>)JsonSerializer.Deserialize(serialized, type, s_optionReadAndWriteFromStr);
+                    HashSet<T> obj2 = (HashSet<T>)await Deserializer.DeserializeWrapper(serialized, type, s_optionReadAndWriteFromStr);
 
                     Assert.Equal(obj1.Count, obj2.Count);
                     foreach (T element in obj1)
@@ -533,8 +581,8 @@ namespace System.Text.Json.Serialization.Tests
                 }
                 else if (type != typeof(byte[]))
                 {
-                    object obj = JsonSerializer.Deserialize(json, type, s_optionReadAndWriteFromStr);
-                    string serialized = JsonSerializer.Serialize(obj, s_optionReadAndWriteFromStr);
+                    object obj = await Deserializer.DeserializeWrapper(json, type, s_optionReadAndWriteFromStr);
+                    string serialized = await Serializer.SerializeWrapper(obj, s_optionReadAndWriteFromStr);
                     Assert.Equal(json, serialized);
                 }
             }
@@ -542,24 +590,24 @@ namespace System.Text.Json.Serialization.Tests
             foreach (Type type in CollectionTestTypes.DeserializableNonGenericEnumerableTypes())
             {
                 // Deserialized as collection of JsonElements.
-                object obj = JsonSerializer.Deserialize(json, type, s_optionReadAndWriteFromStr);
+                object obj = await Deserializer.DeserializeWrapper(json, type, s_optionReadAndWriteFromStr);
                 // Serialized as strings with escaping.
-                string serialized = JsonSerializer.Serialize(obj, s_optionReadAndWriteFromStr);
+                string serialized = await Serializer.SerializeWrapper(obj, s_optionReadAndWriteFromStr);
 
                 // Ensure escaped values were serialized accurately
-                List<T> list = JsonSerializer.Deserialize<List<T>>(serialized, s_optionReadAndWriteFromStr);
-                serialized = JsonSerializer.Serialize(list, s_optionReadAndWriteFromStr);
+                List<T> list = await Deserializer.DeserializeWrapper<List<T>>(serialized, s_optionReadAndWriteFromStr);
+                serialized = await Serializer.SerializeWrapper(list, s_optionReadAndWriteFromStr);
                 Assert.Equal(json, serialized);
 
                 // Serialize instance which is a collection of numbers (not JsonElements).
                 obj = Activator.CreateInstance(type, new[] { list });
-                serialized = JsonSerializer.Serialize(obj, s_optionReadAndWriteFromStr);
+                serialized = await Serializer.SerializeWrapper(obj, s_optionReadAndWriteFromStr);
                 Assert.Equal(json, serialized);
             }
         }
 
         [Fact]
-        public static void Number_AsDictionaryElement_RoundTrip()
+        public async Task Number_AsDictionaryElement_RoundTrip()
         {
             var dict = new Dictionary<int, float>();
             for (int i = 0; i < 10; i++)
@@ -568,14 +616,14 @@ namespace System.Text.Json.Serialization.Tests
             }
 
             // Serialize
-            string serialized = JsonSerializer.Serialize(dict, s_optionReadAndWriteFromStr);
+            string serialized = await Serializer.SerializeWrapper(dict, s_optionReadAndWriteFromStr);
             AssertDictionaryElements_StringValues(serialized);
 
             // Deserialize
-            dict = JsonSerializer.Deserialize<Dictionary<int, float>>(serialized, s_optionReadAndWriteFromStr);
+            dict = await Deserializer.DeserializeWrapper<Dictionary<int, float>>(serialized, s_optionReadAndWriteFromStr);
 
             // Test roundtrip
-            JsonTestHelper.AssertJsonEqual(serialized, JsonSerializer.Serialize(dict, s_optionReadAndWriteFromStr));
+            JsonTestHelper.AssertJsonEqual(serialized, await Serializer.SerializeWrapper(dict, s_optionReadAndWriteFromStr));
         }
 
         private static void AssertDictionaryElements_StringValues(string serialized)
@@ -602,14 +650,14 @@ namespace System.Text.Json.Serialization.Tests
         [Fact]
         [ActiveIssue("https://github.com/dotnet/runtime/issues/39674", typeof(PlatformDetection), nameof(PlatformDetection.IsMonoInterpreter))]
         [SkipOnCoreClr("https://github.com/dotnet/runtime/issues/45464", RuntimeConfiguration.Checked)]
-        public static void DictionariesRoundTrip()
+        public async Task DictionariesRoundTrip()
         {
-            RunAllDictionariessRoundTripTest(JsonNumberTestData.ULongs);
-            RunAllDictionariessRoundTripTest(JsonNumberTestData.Floats);
-            RunAllDictionariessRoundTripTest(JsonNumberTestData.Doubles);
+            await RunAllDictionariessRoundTripTest(JsonNumberTestData.ULongs);
+            await RunAllDictionariessRoundTripTest(JsonNumberTestData.Floats);
+            await RunAllDictionariessRoundTripTest(JsonNumberTestData.Doubles);
         }
 
-        private static void RunAllDictionariessRoundTripTest<T>(List<T> numbers)
+        private async Task RunAllDictionariessRoundTripTest<T>(List<T> numbers)
         {
             StringBuilder jsonBuilder_NumbersAsStrings = new StringBuilder();
 
@@ -631,23 +679,23 @@ namespace System.Text.Json.Serialization.Tests
 
             foreach (Type type in CollectionTestTypes.DeserializableDictionaryTypes<string, T>())
             {
-                object obj = JsonSerializer.Deserialize(jsonNumbersAsStrings, type, s_optionReadAndWriteFromStr);
-                JsonTestHelper.AssertJsonEqual(jsonNumbersAsStrings, JsonSerializer.Serialize(obj, s_optionReadAndWriteFromStr));
+                object obj = await Deserializer.DeserializeWrapper(jsonNumbersAsStrings, type, s_optionReadAndWriteFromStr);
+                JsonTestHelper.AssertJsonEqual(jsonNumbersAsStrings, await Serializer.SerializeWrapper(obj, s_optionReadAndWriteFromStr));
             }
 
             foreach (Type type in CollectionTestTypes.DeserializableNonGenericDictionaryTypes())
             {
-                Dictionary<T, T> dict = JsonSerializer.Deserialize<Dictionary<T, T>>(jsonNumbersAsStrings, s_optionReadAndWriteFromStr);
+                Dictionary<T, T> dict = await Deserializer.DeserializeWrapper<Dictionary<T, T>>(jsonNumbersAsStrings, s_optionReadAndWriteFromStr);
 
                 // Serialize instance which is a dictionary of numbers (not JsonElements).
                 object obj = Activator.CreateInstance(type, new[] { dict });
-                string serialized = JsonSerializer.Serialize(obj, s_optionReadAndWriteFromStr);
+                string serialized = await Serializer.SerializeWrapper(obj, s_optionReadAndWriteFromStr);
                 JsonTestHelper.AssertJsonEqual(jsonNumbersAsStrings, serialized);
             }
         }
 
         [Fact]
-        public static void Number_AsPropertyValue_RoundTrip()
+        public async Task Number_AsPropertyValue_RoundTrip()
         {
             var obj = new Class_With_NullableUInt64_And_Float()
             {
@@ -656,13 +704,13 @@ namespace System.Text.Json.Serialization.Tests
             };
 
             // Serialize
-            string serialized = JsonSerializer.Serialize(obj, s_optionReadAndWriteFromStr);
+            string serialized = await Serializer.SerializeWrapper(obj, s_optionReadAndWriteFromStr);
 
             // Deserialize
-            obj = JsonSerializer.Deserialize<Class_With_NullableUInt64_And_Float>(serialized, s_optionReadAndWriteFromStr);
+            obj = await Deserializer.DeserializeWrapper<Class_With_NullableUInt64_And_Float>(serialized, s_optionReadAndWriteFromStr);
 
             // Test roundtrip
-            JsonTestHelper.AssertJsonEqual(serialized, JsonSerializer.Serialize(obj, s_optionReadAndWriteFromStr));
+            JsonTestHelper.AssertJsonEqual(serialized, await Serializer.SerializeWrapper(obj, s_optionReadAndWriteFromStr));
         }
 
         private class Class_With_NullableUInt64_And_Float
@@ -673,33 +721,33 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Number_AsKeyValuePairValue_RoundTrip()
+        public async Task Number_AsKeyValuePairValue_RoundTrip()
         {
             var obj = new KeyValuePair<ulong?, List<float>>(JsonNumberTestData.NullableULongs.LastOrDefault(), JsonNumberTestData.Floats);
 
             // Serialize
-            string serialized = JsonSerializer.Serialize(obj, s_optionReadAndWriteFromStr);
+            string serialized = await Serializer.SerializeWrapper(obj, s_optionReadAndWriteFromStr);
 
             // Deserialize
-            obj = JsonSerializer.Deserialize<KeyValuePair<ulong?, List<float>>>(serialized, s_optionReadAndWriteFromStr);
+            obj = await Deserializer.DeserializeWrapper<KeyValuePair<ulong?, List<float>>>(serialized, s_optionReadAndWriteFromStr);
 
             // Test roundtrip
-            JsonTestHelper.AssertJsonEqual(serialized, JsonSerializer.Serialize(obj, s_optionReadAndWriteFromStr));
+            JsonTestHelper.AssertJsonEqual(serialized, await Serializer.SerializeWrapper(obj, s_optionReadAndWriteFromStr));
         }
 
         [Fact]
-        public static void Number_AsObjectWithParameterizedCtor_RoundTrip()
+        public async Task Number_AsObjectWithParameterizedCtor_RoundTrip()
         {
             var obj = new MyClassWithNumbers(JsonNumberTestData.NullableULongs.LastOrDefault(), JsonNumberTestData.Floats);
 
             // Serialize
-            string serialized = JsonSerializer.Serialize(obj, s_optionReadAndWriteFromStr);
+            string serialized = await Serializer.SerializeWrapper(obj, s_optionReadAndWriteFromStr);
 
             // Deserialize
-            obj = JsonSerializer.Deserialize<MyClassWithNumbers>(serialized, s_optionReadAndWriteFromStr);
+            obj = await Deserializer.DeserializeWrapper<MyClassWithNumbers>(serialized, s_optionReadAndWriteFromStr);
 
             // Test roundtrip
-            JsonTestHelper.AssertJsonEqual(serialized, JsonSerializer.Serialize(obj, s_optionReadAndWriteFromStr));
+            JsonTestHelper.AssertJsonEqual(serialized, await Serializer.SerializeWrapper(obj, s_optionReadAndWriteFromStr));
         }
 
         private class MyClassWithNumbers
@@ -715,18 +763,18 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Number_AsObjectWithParameterizedCtor_PropHasAttribute()
+        public async Task Number_AsObjectWithParameterizedCtor_PropHasAttribute()
         {
             string json = @"{""ListOfFloats"":[""1""]}";
             // Strict handling on property overrides loose global policy.
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<MyClassWithNumbers_PropsHasAttribute>(json, s_optionReadFromStr));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<MyClassWithNumbers_PropsHasAttribute>(json, s_optionReadFromStr));
 
             // Serialize
             json = @"{""ListOfFloats"":[1]}";
-            MyClassWithNumbers_PropsHasAttribute obj = JsonSerializer.Deserialize<MyClassWithNumbers_PropsHasAttribute>(json);
+            MyClassWithNumbers_PropsHasAttribute obj = await Deserializer.DeserializeWrapper<MyClassWithNumbers_PropsHasAttribute>(json);
 
             // Number serialized as JSON number due to strict handling on property which overrides loose global policy.
-            Assert.Equal(json, JsonSerializer.Serialize(obj, s_optionReadAndWriteFromStr));
+            Assert.Equal(json, await Serializer.SerializeWrapper(obj, s_optionReadAndWriteFromStr));
         }
 
         private class MyClassWithNumbers_PropsHasAttribute
@@ -741,18 +789,18 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void FloatingPointConstants_Pass()
+        public async Task FloatingPointConstants_Pass()
         {
             // Valid values
-            PerformFloatingPointSerialization("NaN");
-            PerformFloatingPointSerialization("Infinity");
-            PerformFloatingPointSerialization("-Infinity");
+            await PerformFloatingPointSerialization("NaN");
+            await PerformFloatingPointSerialization("Infinity");
+            await PerformFloatingPointSerialization("-Infinity");
 
-            PerformFloatingPointSerialization("\u004EaN"); // NaN
-            PerformFloatingPointSerialization("Inf\u0069ni\u0074y"); // Infinity
-            PerformFloatingPointSerialization("\u002DInf\u0069nity"); // -Infinity
+            await PerformFloatingPointSerialization("\u004EaN"); // NaN
+            await PerformFloatingPointSerialization("Inf\u0069ni\u0074y"); // Infinity
+            await PerformFloatingPointSerialization("\u002DInf\u0069nity"); // -Infinity
 
-            static void PerformFloatingPointSerialization(string testString)
+            async Task PerformFloatingPointSerialization(string testString)
             {
                 string testStringAsJson = $@"""{testString}""";
                 string testJson = @$"{{""FloatNumber"":{testStringAsJson},""DoubleNumber"":{testStringAsJson}}}";
@@ -761,39 +809,39 @@ namespace System.Text.Json.Serialization.Tests
                 switch (testString)
                 {
                     case "NaN":
-                        obj = JsonSerializer.Deserialize<StructWithNumbers>(testJson, s_optionsAllowFloatConstants);
+                        obj = await Deserializer.DeserializeWrapper<StructWithNumbers>(testJson, s_optionsAllowFloatConstants);
                         Assert.Equal(float.NaN, obj.FloatNumber);
                         Assert.Equal(double.NaN, obj.DoubleNumber);
 
-                        obj = JsonSerializer.Deserialize<StructWithNumbers>(testJson, s_optionReadFromStr);
+                        obj = await Deserializer.DeserializeWrapper<StructWithNumbers>(testJson, s_optionReadFromStr);
                         Assert.Equal(float.NaN, obj.FloatNumber);
                         Assert.Equal(double.NaN, obj.DoubleNumber);
                         break;
                     case "Infinity":
-                        obj = JsonSerializer.Deserialize<StructWithNumbers>(testJson, s_optionsAllowFloatConstants);
+                        obj = await Deserializer.DeserializeWrapper<StructWithNumbers>(testJson, s_optionsAllowFloatConstants);
                         Assert.Equal(float.PositiveInfinity, obj.FloatNumber);
                         Assert.Equal(double.PositiveInfinity, obj.DoubleNumber);
 
-                        obj = JsonSerializer.Deserialize<StructWithNumbers>(testJson, s_optionReadFromStr);
+                        obj = await Deserializer.DeserializeWrapper<StructWithNumbers>(testJson, s_optionReadFromStr);
                         Assert.Equal(float.PositiveInfinity, obj.FloatNumber);
                         Assert.Equal(double.PositiveInfinity, obj.DoubleNumber);
                         break;
                     case "-Infinity":
-                        obj = JsonSerializer.Deserialize<StructWithNumbers>(testJson, s_optionsAllowFloatConstants);
+                        obj = await Deserializer.DeserializeWrapper<StructWithNumbers>(testJson, s_optionsAllowFloatConstants);
                         Assert.Equal(float.NegativeInfinity, obj.FloatNumber);
                         Assert.Equal(double.NegativeInfinity, obj.DoubleNumber);
 
-                        obj = JsonSerializer.Deserialize<StructWithNumbers>(testJson, s_optionReadFromStr);
+                        obj = await Deserializer.DeserializeWrapper<StructWithNumbers>(testJson, s_optionReadFromStr);
                         Assert.Equal(float.NegativeInfinity, obj.FloatNumber);
                         Assert.Equal(double.NegativeInfinity, obj.DoubleNumber);
                         break;
                     default:
-                        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<StructWithNumbers>(testJson, s_optionsAllowFloatConstants));
+                        await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<StructWithNumbers>(testJson, s_optionsAllowFloatConstants));
                         return;
                 }
 
-                JsonTestHelper.AssertJsonEqual(testJson, JsonSerializer.Serialize(obj, s_optionsAllowFloatConstants));
-                JsonTestHelper.AssertJsonEqual(testJson, JsonSerializer.Serialize(obj, s_optionWriteAsStr));
+                JsonTestHelper.AssertJsonEqual(testJson, await Serializer.SerializeWrapper(obj, s_optionsAllowFloatConstants));
+                JsonTestHelper.AssertJsonEqual(testJson, await Serializer.SerializeWrapper(obj, s_optionWriteAsStr));
             }
         }
 
@@ -825,40 +873,40 @@ namespace System.Text.Json.Serialization.Tests
         [InlineData("\u0020Inf\u0069ni\u0074y")] // " Infinity"
         [InlineData("\u002BInf\u0069nity")] // "+Infinity"
 #pragma warning restore xUnit1025
-        public static void FloatingPointConstants_Fail(string testString)
+        public async Task FloatingPointConstants_Fail(string testString)
         {
             string testStringAsJson = $@"""{testString}""";
 
             string testJson = @$"{{""FloatNumber"":{testStringAsJson}}}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<StructWithNumbers>(testJson, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<StructWithNumbers>(testJson, s_optionReadFromStr));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<StructWithNumbers>(testJson, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<StructWithNumbers>(testJson, s_optionReadFromStr));
 
             testJson = @$"{{""DoubleNumber"":{testStringAsJson}}}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<StructWithNumbers>(testJson, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<StructWithNumbers>(testJson, s_optionReadFromStr));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<StructWithNumbers>(testJson, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<StructWithNumbers>(testJson, s_optionReadFromStr));
         }
 
         [Fact]
-        public static void AllowFloatingPointConstants_WriteAsNumber_IfNotConstant()
+        public async Task AllowFloatingPointConstants_WriteAsNumber_IfNotConstant()
         {
             float @float = 1;
             // Not written as "1"
-            Assert.Equal("1", JsonSerializer.Serialize(@float, s_optionsAllowFloatConstants));
+            Assert.Equal("1", await Serializer.SerializeWrapper(@float, s_optionsAllowFloatConstants));
 
             double @double = 1;
             // Not written as "1"
-            Assert.Equal("1", JsonSerializer.Serialize(@double, s_optionsAllowFloatConstants));
+            Assert.Equal("1", await Serializer.SerializeWrapper(@double, s_optionsAllowFloatConstants));
         }
 
         [Theory]
         [InlineData("NaN")]
         [InlineData("Infinity")]
         [InlineData("-Infinity")]
-        public static void Unquoted_FloatingPointConstants_Read_Fail(string testString)
+        public async Task Unquoted_FloatingPointConstants_Read_Fail(string testString)
         {
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<float>(testString, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<double?>(testString, s_optionReadFromStr));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<double>(testString, s_optionReadFromStrAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<float>(testString, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<double?>(testString, s_optionReadFromStr));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<double>(testString, s_optionReadFromStrAllowFloatConstants));
         }
 
         private struct StructWithNumbers
@@ -868,22 +916,22 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ReadFromString_AllowFloatingPoint()
+        public async Task ReadFromString_AllowFloatingPoint()
         {
             string json = @"{""IntNumber"":""1"",""FloatNumber"":""NaN""}";
-            ClassWithNumbers obj = JsonSerializer.Deserialize<ClassWithNumbers>(json, s_optionReadFromStrAllowFloatConstants);
+            ClassWithNumbers obj = await Deserializer.DeserializeWrapper<ClassWithNumbers>(json, s_optionReadFromStrAllowFloatConstants);
 
             Assert.Equal(1, obj.IntNumber);
             Assert.Equal(float.NaN, obj.FloatNumber);
 
-            JsonTestHelper.AssertJsonEqual(@"{""IntNumber"":1,""FloatNumber"":""NaN""}", JsonSerializer.Serialize(obj, s_optionReadFromStrAllowFloatConstants));
+            JsonTestHelper.AssertJsonEqual(@"{""IntNumber"":1,""FloatNumber"":""NaN""}", await Serializer.SerializeWrapper(obj, s_optionReadFromStrAllowFloatConstants));
         }
 
         [Fact]
-        public static void WriteAsString_AllowFloatingPoint()
+        public async Task WriteAsString_AllowFloatingPoint()
         {
             string json = @"{""IntNumber"":""1"",""FloatNumber"":""NaN""}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ClassWithNumbers>(json, s_optionWriteAsStrAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<ClassWithNumbers>(json, s_optionWriteAsStrAllowFloatConstants));
 
             var obj = new ClassWithNumbers
             {
@@ -891,7 +939,7 @@ namespace System.Text.Json.Serialization.Tests
                 FloatNumber = float.NaN
             };
 
-            JsonTestHelper.AssertJsonEqual(json, JsonSerializer.Serialize(obj, s_optionWriteAsStrAllowFloatConstants));
+            JsonTestHelper.AssertJsonEqual(json, await Serializer.SerializeWrapper(obj, s_optionWriteAsStrAllowFloatConstants));
         }
 
         public class ClassWithNumbers
@@ -901,29 +949,29 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void FloatingPointConstants_IncompatibleNumber()
+        public async Task FloatingPointConstants_IncompatibleNumber()
         {
-            AssertFloatingPointIncompatible_Fails<byte>();
-            AssertFloatingPointIncompatible_Fails<sbyte>();
-            AssertFloatingPointIncompatible_Fails<short>();
-            AssertFloatingPointIncompatible_Fails<int>();
-            AssertFloatingPointIncompatible_Fails<long>();
-            AssertFloatingPointIncompatible_Fails<ushort>();
-            AssertFloatingPointIncompatible_Fails<uint>();
-            AssertFloatingPointIncompatible_Fails<ulong>();
-            AssertFloatingPointIncompatible_Fails<decimal>();
-            AssertFloatingPointIncompatible_Fails<byte?>();
-            AssertFloatingPointIncompatible_Fails<sbyte?>();
-            AssertFloatingPointIncompatible_Fails<short?>();
-            AssertFloatingPointIncompatible_Fails<int?>();
-            AssertFloatingPointIncompatible_Fails<long?>();
-            AssertFloatingPointIncompatible_Fails<ushort?>();
-            AssertFloatingPointIncompatible_Fails<uint?>();
-            AssertFloatingPointIncompatible_Fails<ulong?>();
-            AssertFloatingPointIncompatible_Fails<decimal?>();
+            await AssertFloatingPointIncompatible_Fails<byte>();
+            await AssertFloatingPointIncompatible_Fails<sbyte>();
+            await AssertFloatingPointIncompatible_Fails<short>();
+            await AssertFloatingPointIncompatible_Fails<int>();
+            await AssertFloatingPointIncompatible_Fails<long>();
+            await AssertFloatingPointIncompatible_Fails<ushort>();
+            await AssertFloatingPointIncompatible_Fails<uint>();
+            await AssertFloatingPointIncompatible_Fails<ulong>();
+            await AssertFloatingPointIncompatible_Fails<decimal>();
+            await AssertFloatingPointIncompatible_Fails<byte?>();
+            await AssertFloatingPointIncompatible_Fails<sbyte?>();
+            await AssertFloatingPointIncompatible_Fails<short?>();
+            await AssertFloatingPointIncompatible_Fails<int?>();
+            await AssertFloatingPointIncompatible_Fails<long?>();
+            await AssertFloatingPointIncompatible_Fails<ushort?>();
+            await AssertFloatingPointIncompatible_Fails<uint?>();
+            await AssertFloatingPointIncompatible_Fails<ulong?>();
+            await AssertFloatingPointIncompatible_Fails<decimal?>();
         }
 
-        private static void AssertFloatingPointIncompatible_Fails<T>()
+        private async Task AssertFloatingPointIncompatible_Fails<T>()
         {
             string[] testCases = new[]
             {
@@ -934,36 +982,36 @@ namespace System.Text.Json.Serialization.Tests
 
             foreach (string test in testCases)
             {
-                Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<T>(test, s_optionReadFromStrAllowFloatConstants));
+                await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<T>(test, s_optionReadFromStrAllowFloatConstants));
             }
         }
 
         [Fact]
-        public static void UnsupportedFormats()
+        public async Task UnsupportedFormats()
         {
-            AssertUnsupportedFormatThrows<byte>();
-            AssertUnsupportedFormatThrows<sbyte>();
-            AssertUnsupportedFormatThrows<short>();
-            AssertUnsupportedFormatThrows<int>();
-            AssertUnsupportedFormatThrows<long>();
-            AssertUnsupportedFormatThrows<ushort>();
-            AssertUnsupportedFormatThrows<uint>();
-            AssertUnsupportedFormatThrows<ulong>();
-            AssertUnsupportedFormatThrows<float>();
-            AssertUnsupportedFormatThrows<decimal>();
-            AssertUnsupportedFormatThrows<byte?>();
-            AssertUnsupportedFormatThrows<sbyte?>();
-            AssertUnsupportedFormatThrows<short?>();
-            AssertUnsupportedFormatThrows<int?>();
-            AssertUnsupportedFormatThrows<long?>();
-            AssertUnsupportedFormatThrows<ushort?>();
-            AssertUnsupportedFormatThrows<uint?>();
-            AssertUnsupportedFormatThrows<ulong?>();
-            AssertUnsupportedFormatThrows<float?>();
-            AssertUnsupportedFormatThrows<decimal?>();
+            await AssertUnsupportedFormatThrows<byte>();
+            await AssertUnsupportedFormatThrows<sbyte>();
+            await AssertUnsupportedFormatThrows<short>();
+            await AssertUnsupportedFormatThrows<int>();
+            await AssertUnsupportedFormatThrows<long>();
+            await AssertUnsupportedFormatThrows<ushort>();
+            await AssertUnsupportedFormatThrows<uint>();
+            await AssertUnsupportedFormatThrows<ulong>();
+            await AssertUnsupportedFormatThrows<float>();
+            await AssertUnsupportedFormatThrows<decimal>();
+            await AssertUnsupportedFormatThrows<byte?>();
+            await AssertUnsupportedFormatThrows<sbyte?>();
+            await AssertUnsupportedFormatThrows<short?>();
+            await AssertUnsupportedFormatThrows<int?>();
+            await AssertUnsupportedFormatThrows<long?>();
+            await AssertUnsupportedFormatThrows<ushort?>();
+            await AssertUnsupportedFormatThrows<uint?>();
+            await AssertUnsupportedFormatThrows<ulong?>();
+            await AssertUnsupportedFormatThrows<float?>();
+            await AssertUnsupportedFormatThrows<decimal?>();
         }
 
-        private static void AssertUnsupportedFormatThrows<T>()
+        private async Task AssertUnsupportedFormatThrows<T>()
         {
             string[] testCases = new[]
             {
@@ -975,12 +1023,12 @@ namespace System.Text.Json.Serialization.Tests
 
             foreach (string test in testCases)
             {
-                Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<T>(test, s_optionReadFromStr));
+                await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<T>(test, s_optionReadFromStr));
             }
         }
 
         [Fact]
-        public static void EscapingTest()
+        public async Task EscapingTest()
         {
             // Cause all characters to be escaped.
             var encoderSettings = new TextEncoderSettings();
@@ -992,28 +1040,28 @@ namespace System.Text.Json.Serialization.Tests
                 Encoder = encoder
             };
 
-            PerformEscapingTest(JsonNumberTestData.Bytes, options);
-            PerformEscapingTest(JsonNumberTestData.SBytes, options);
-            PerformEscapingTest(JsonNumberTestData.Shorts, options);
-            PerformEscapingTest(JsonNumberTestData.Ints, options);
-            PerformEscapingTest(JsonNumberTestData.Longs, options);
-            PerformEscapingTest(JsonNumberTestData.UShorts, options);
-            PerformEscapingTest(JsonNumberTestData.UInts, options);
-            PerformEscapingTest(JsonNumberTestData.ULongs, options);
-            PerformEscapingTest(JsonNumberTestData.Floats, options);
-            PerformEscapingTest(JsonNumberTestData.Doubles, options);
-            PerformEscapingTest(JsonNumberTestData.Decimals, options);
+            await PerformEscapingTest(JsonNumberTestData.Bytes, options);
+            await PerformEscapingTest(JsonNumberTestData.SBytes, options);
+            await PerformEscapingTest(JsonNumberTestData.Shorts, options);
+            await PerformEscapingTest(JsonNumberTestData.Ints, options);
+            await PerformEscapingTest(JsonNumberTestData.Longs, options);
+            await PerformEscapingTest(JsonNumberTestData.UShorts, options);
+            await PerformEscapingTest(JsonNumberTestData.UInts, options);
+            await PerformEscapingTest(JsonNumberTestData.ULongs, options);
+            await PerformEscapingTest(JsonNumberTestData.Floats, options);
+            await PerformEscapingTest(JsonNumberTestData.Doubles, options);
+            await PerformEscapingTest(JsonNumberTestData.Decimals, options);
         }
 
-        private static void PerformEscapingTest<T>(List<T> numbers, JsonSerializerOptions options)
+        private async Task PerformEscapingTest<T>(List<T> numbers, JsonSerializerOptions options)
         {
             // All input characters are escaped
             IEnumerable<string> numbersAsStrings = numbers.Select(num => GetNumberAsString(num));
-            string input = JsonSerializer.Serialize(numbersAsStrings, options);
+            string input = await Serializer.SerializeWrapper(numbersAsStrings, options);
             AssertListNumbersEscaped(input);
 
             // Unescaping works
-            List<T> deserialized = JsonSerializer.Deserialize<List<T>>(input, options);
+            List<T> deserialized = await Deserializer.DeserializeWrapper<List<T>>(input, options);
             Assert.Equal(numbers.Count, deserialized.Count);
             for (int i = 0; i < numbers.Count; i++)
             {
@@ -1021,7 +1069,7 @@ namespace System.Text.Json.Serialization.Tests
             }
 
             // Every number is written as a string, and custom escaping is not honored.
-            string serialized = JsonSerializer.Serialize(deserialized, options);
+            string serialized = await Serializer.SerializeWrapper(deserialized, options);
             AssertListNumbersUnescaped(serialized);
         }
 
@@ -1062,86 +1110,86 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Number_RoundtripNull()
+        public async Task Number_RoundtripNull()
         {
-            Perform_Number_RoundTripNull_Test<byte>();
-            Perform_Number_RoundTripNull_Test<sbyte>();
-            Perform_Number_RoundTripNull_Test<short>();
-            Perform_Number_RoundTripNull_Test<int>();
-            Perform_Number_RoundTripNull_Test<long>();
-            Perform_Number_RoundTripNull_Test<ushort>();
-            Perform_Number_RoundTripNull_Test<uint>();
-            Perform_Number_RoundTripNull_Test<ulong>();
-            Perform_Number_RoundTripNull_Test<float>();
-            Perform_Number_RoundTripNull_Test<decimal>();
+            await Perform_Number_RoundTripNull_Test<byte>();
+            await Perform_Number_RoundTripNull_Test<sbyte>();
+            await Perform_Number_RoundTripNull_Test<short>();
+            await Perform_Number_RoundTripNull_Test<int>();
+            await Perform_Number_RoundTripNull_Test<long>();
+            await Perform_Number_RoundTripNull_Test<ushort>();
+            await Perform_Number_RoundTripNull_Test<uint>();
+            await Perform_Number_RoundTripNull_Test<ulong>();
+            await Perform_Number_RoundTripNull_Test<float>();
+            await Perform_Number_RoundTripNull_Test<decimal>();
         }
 
-        private static void Perform_Number_RoundTripNull_Test<T>()
-        {
-            string nullAsJson = "null";
-            string nullAsQuotedJson = $@"""{nullAsJson}""";
-
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<T>(nullAsJson, s_optionReadAndWriteFromStr));
-            Assert.Equal("0", JsonSerializer.Serialize(default(T)));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<T>(nullAsQuotedJson, s_optionReadAndWriteFromStr));
-        }
-
-        [Fact]
-        public static void NullableNumber_RoundtripNull()
-        {
-            Perform_NullableNumber_RoundTripNull_Test<byte?>();
-            Perform_NullableNumber_RoundTripNull_Test<sbyte?>();
-            Perform_NullableNumber_RoundTripNull_Test<short?>();
-            Perform_NullableNumber_RoundTripNull_Test<int?>();
-            Perform_NullableNumber_RoundTripNull_Test<long?>();
-            Perform_NullableNumber_RoundTripNull_Test<ushort?>();
-            Perform_NullableNumber_RoundTripNull_Test<uint?>();
-            Perform_NullableNumber_RoundTripNull_Test<ulong?>();
-            Perform_NullableNumber_RoundTripNull_Test<float?>();
-            Perform_NullableNumber_RoundTripNull_Test<decimal?>();
-        }
-
-        private static void Perform_NullableNumber_RoundTripNull_Test<T>()
+        private async Task Perform_Number_RoundTripNull_Test<T>()
         {
             string nullAsJson = "null";
             string nullAsQuotedJson = $@"""{nullAsJson}""";
 
-            Assert.Null(JsonSerializer.Deserialize<T>(nullAsJson, s_optionReadAndWriteFromStr));
-            Assert.Equal(nullAsJson, JsonSerializer.Serialize(default(T)));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<T>(nullAsQuotedJson, s_optionReadAndWriteFromStr));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<T>(nullAsJson, s_optionReadAndWriteFromStr));
+            Assert.Equal("0", await Serializer.SerializeWrapper(default(T)));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<T>(nullAsQuotedJson, s_optionReadAndWriteFromStr));
         }
 
         [Fact]
-        public static void Disallow_ArbritaryStrings_On_AllowFloatingPointConstants()
+        public async Task NullableNumber_RoundtripNull()
+        {
+            await Perform_NullableNumber_RoundTripNull_Test<byte?>();
+            await Perform_NullableNumber_RoundTripNull_Test<sbyte?>();
+            await Perform_NullableNumber_RoundTripNull_Test<short?>();
+            await Perform_NullableNumber_RoundTripNull_Test<int?>();
+            await Perform_NullableNumber_RoundTripNull_Test<long?>();
+            await Perform_NullableNumber_RoundTripNull_Test<ushort?>();
+            await Perform_NullableNumber_RoundTripNull_Test<uint?>();
+            await Perform_NullableNumber_RoundTripNull_Test<ulong?>();
+            await Perform_NullableNumber_RoundTripNull_Test<float?>();
+            await Perform_NullableNumber_RoundTripNull_Test<decimal?>();
+        }
+
+        private async Task Perform_NullableNumber_RoundTripNull_Test<T>()
+        {
+            string nullAsJson = "null";
+            string nullAsQuotedJson = $@"""{nullAsJson}""";
+
+            Assert.Null(await Deserializer.DeserializeWrapper<T>(nullAsJson, s_optionReadAndWriteFromStr));
+            Assert.Equal(nullAsJson, await Serializer.SerializeWrapper(default(T)));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<T>(nullAsQuotedJson, s_optionReadAndWriteFromStr));
+        }
+
+        [Fact]
+        public async Task Disallow_ArbritaryStrings_On_AllowFloatingPointConstants()
         {
             string json = @"""12345""";
 
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<byte>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<sbyte>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<short>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<int>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<long>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ushort>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<uint>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ulong>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<float>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<double>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<decimal>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<byte?>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<sbyte?>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<short?>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<int?>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<long?>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ushort?>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<uint?>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ulong?>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<float?>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<double?>(json, s_optionsAllowFloatConstants));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<decimal?>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<byte>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<sbyte>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<short>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<int>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<long>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<ushort>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<uint>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<ulong>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<float>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<double>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<decimal>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<byte?>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<sbyte?>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<short?>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<int?>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<long?>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<ushort?>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<uint?>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<ulong?>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<float?>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<double?>(json, s_optionsAllowFloatConstants));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<decimal?>(json, s_optionsAllowFloatConstants));
         }
 
         [Fact]
-        public static void Attributes_OnMembers_Work()
+        public async Task Attributes_OnMembers_Work()
         {
             // Bad JSON because Int should not be string.
             string intIsString = @"{""Float"":""1234.5"",""Int"":""12345""}";
@@ -1152,18 +1200,18 @@ namespace System.Text.Json.Serialization.Tests
             // Good JSON because Float can be number.
             string floatIsNumber = @"{""Float"":1234.5,""Int"":12345}";
 
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ClassWith_Attribute_OnNumber>(intIsString));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<ClassWith_Attribute_OnNumber>(intIsString));
 
-            ClassWith_Attribute_OnNumber obj = JsonSerializer.Deserialize<ClassWith_Attribute_OnNumber>(floatIsString);
+            ClassWith_Attribute_OnNumber obj = await Deserializer.DeserializeWrapper<ClassWith_Attribute_OnNumber>(floatIsString);
             Assert.Equal(1234.5, obj.Float);
             Assert.Equal(12345, obj.Int);
 
-            obj = JsonSerializer.Deserialize<ClassWith_Attribute_OnNumber>(floatIsNumber);
+            obj = await Deserializer.DeserializeWrapper<ClassWith_Attribute_OnNumber>(floatIsNumber);
             Assert.Equal(1234.5, obj.Float);
             Assert.Equal(12345, obj.Int);
 
             // Per options, float should be written as string.
-            JsonTestHelper.AssertJsonEqual(floatIsString, JsonSerializer.Serialize(obj));
+            JsonTestHelper.AssertJsonEqual(floatIsString, await Serializer.SerializeWrapper(obj));
         }
 
         private class ClassWith_Attribute_OnNumber
@@ -1175,7 +1223,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Attribute_OnRootType_Works()
+        public async Task Attribute_OnRootType_Works()
         {
             // Not allowed
             string floatIsString = @"{""Float"":""1234"",""Int"":123}";
@@ -1183,13 +1231,13 @@ namespace System.Text.Json.Serialization.Tests
             // Allowed
             string floatIsNan = @"{""Float"":""NaN"",""Int"":123}";
 
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Type_AllowFloatConstants>(floatIsString));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<Type_AllowFloatConstants>(floatIsString));
 
-            Type_AllowFloatConstants obj = JsonSerializer.Deserialize<Type_AllowFloatConstants>(floatIsNan);
+            Type_AllowFloatConstants obj = await Deserializer.DeserializeWrapper<Type_AllowFloatConstants>(floatIsNan);
             Assert.Equal(float.NaN, obj.Float);
             Assert.Equal(123, obj.Int);
 
-            JsonTestHelper.AssertJsonEqual(floatIsNan, JsonSerializer.Serialize(obj));
+            JsonTestHelper.AssertJsonEqual(floatIsNan, await Serializer.SerializeWrapper(obj));
         }
 
         [JsonNumberHandling(JsonNumberHandling.AllowNamedFloatingPointLiterals)]
@@ -1201,20 +1249,20 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void AttributeOnType_WinsOver_GlobalOption()
+        public async Task AttributeOnType_WinsOver_GlobalOption()
         {
             // Global options strict, type options loose
             string json = @"{""Float"":""12345""}";
-            var obj1 = JsonSerializer.Deserialize<ClassWith_LooseAttribute>(json);
+            var obj1 = await Deserializer.DeserializeWrapper<ClassWith_LooseAttribute>(json);
 
-            Assert.Equal(@"{""Float"":""12345""}", JsonSerializer.Serialize(obj1));
+            Assert.Equal(@"{""Float"":""12345""}", await Serializer.SerializeWrapper(obj1));
 
             // Global options loose, type options strict
             json = @"{""Float"":""12345""}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ClassWith_StrictAttribute>(json, s_optionReadAndWriteFromStr));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<ClassWith_StrictAttribute>(json, s_optionReadAndWriteFromStr));
 
             var obj2 = new ClassWith_StrictAttribute() { Float = 12345 };
-            Assert.Equal(@"{""Float"":12345}", JsonSerializer.Serialize(obj2, s_optionReadAndWriteFromStr));
+            Assert.Equal(@"{""Float"":12345}", await Serializer.SerializeWrapper(obj2, s_optionReadAndWriteFromStr));
         }
 
         [JsonNumberHandling(JsonNumberHandling.Strict)]
@@ -1230,13 +1278,13 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void AttributeOnMember_WinsOver_AttributeOnType()
+        public async Task AttributeOnMember_WinsOver_AttributeOnType()
         {
             string json = @"{""Double"":""NaN""}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ClassWith_Attribute_On_TypeAndMember>(json));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<ClassWith_Attribute_On_TypeAndMember>(json));
 
             var obj = new ClassWith_Attribute_On_TypeAndMember { Double = float.NaN };
-            Assert.Throws<ArgumentException>(() => JsonSerializer.Serialize(obj));
+            await Assert.ThrowsAsync<ArgumentException>(async () => await Serializer.SerializeWrapper(obj));
         }
 
         [JsonNumberHandling(JsonNumberHandling.AllowNamedFloatingPointLiterals)]
@@ -1247,14 +1295,14 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Attribute_OnNestedType_Works()
+        public async Task Attribute_OnNestedType_Works()
         {
             string jsonWithShortProperty = @"{""Short"":""1""}";
-            ClassWith_ReadAsStringAttribute obj = JsonSerializer.Deserialize<ClassWith_ReadAsStringAttribute>(jsonWithShortProperty);
+            ClassWith_ReadAsStringAttribute obj = await Deserializer.DeserializeWrapper<ClassWith_ReadAsStringAttribute>(jsonWithShortProperty);
             Assert.Equal(1, obj.Short);
 
             string jsonWithMyObjectProperty = @"{""MyObject"":{""Float"":""1""}}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ClassWith_ReadAsStringAttribute>(jsonWithMyObjectProperty));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<ClassWith_ReadAsStringAttribute>(jsonWithMyObjectProperty));
         }
 
         [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
@@ -1266,25 +1314,25 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void MemberAttributeAppliesToCollection_SimpleElements()
+        public async Task MemberAttributeAppliesToCollection_SimpleElements()
         {
-            RunTest<int[]>();
-            RunTest<ConcurrentQueue<int>>();
-            RunTest<GenericICollectionWrapper<int>>();
-            RunTest<IEnumerable<int>>();
-            RunTest<Collection<int>>();
-            RunTest<ImmutableList<int>>();
-            RunTest<HashSet<int>>();
-            RunTest<List<int>>();
-            RunTest<IList<int>>();
-            RunTest<IList>();
-            RunTest<Queue<int>>();
+            await RunTest<int[]>();
+            await RunTest<ConcurrentQueue<int>>();
+            await RunTest<GenericICollectionWrapper<int>>();
+            await RunTest<IEnumerable<int>>();
+            await RunTest<Collection<int>>();
+            await RunTest<ImmutableList<int>>();
+            await RunTest<HashSet<int>>();
+            await RunTest<List<int>>();
+            await RunTest<IList<int>>();
+            await RunTest<IList>();
+            await RunTest<Queue<int>>();
 
-            static void RunTest<T>()
+            async Task RunTest<T>()
             {
                 string json = @"{""MyList"":[""1"",""2""]}";
-                ClassWithSimpleCollectionProperty<T> obj = global::System.Text.Json.JsonSerializer.Deserialize<ClassWithSimpleCollectionProperty<T>>(json);
-                Assert.Equal(json, global::System.Text.Json.JsonSerializer.Serialize(obj));
+                ClassWithSimpleCollectionProperty<T> obj = await Deserializer.DeserializeWrapper<ClassWithSimpleCollectionProperty<T>>(json);
+                Assert.Equal(json, await Serializer.SerializeWrapper(obj));
             }
         }
 
@@ -1295,18 +1343,18 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void NestedCollectionElementTypeHandling_Overrides_GlobalOption()
+        public async Task NestedCollectionElementTypeHandling_Overrides_GlobalOption()
         {
             // Strict policy on the collection element type overrides read-as-string on the collection property
             string json = @"{""MyList"":[{""Float"":""1""}]}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ClassWithComplexListProperty>(json, s_optionReadAndWriteFromStr));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<ClassWithComplexListProperty>(json, s_optionReadAndWriteFromStr));
 
             // Strict policy on the collection element type overrides write-as-string on the collection property
             var obj = new ClassWithComplexListProperty
             {
                 MyList = new List<ClassWith_StrictAttribute> { new ClassWith_StrictAttribute { Float = 1 } }
             };
-            Assert.Equal(@"{""MyList"":[{""Float"":1}]}", JsonSerializer.Serialize(obj, s_optionReadAndWriteFromStr));
+            Assert.Equal(@"{""MyList"":[{""Float"":1}]}", await Serializer.SerializeWrapper(obj, s_optionReadAndWriteFromStr));
         }
 
         public class ClassWithComplexListProperty
@@ -1315,12 +1363,12 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void NumberHandlingAttribute_NotAllowedOn_CollectionOfNonNumbers()
+        public async Task NumberHandlingAttribute_NotAllowedOn_CollectionOfNonNumbers()
         {
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<ClassWith_AttributeOnComplexListProperty>(""));
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new ClassWith_AttributeOnComplexListProperty()));
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<ClassWith_AttributeOnComplexDictionaryProperty>(""));
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new ClassWith_AttributeOnComplexDictionaryProperty()));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<ClassWith_AttributeOnComplexListProperty>(""));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new ClassWith_AttributeOnComplexListProperty()));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<ClassWith_AttributeOnComplexDictionaryProperty>(""));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new ClassWith_AttributeOnComplexDictionaryProperty()));
         }
 
         public class ClassWith_AttributeOnComplexListProperty
@@ -1336,10 +1384,10 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void MemberAttributeAppliesToDictionary_SimpleElements()
+        public async Task MemberAttributeAppliesToDictionary_SimpleElements()
         {
             string json = @"{""First"":""1"",""Second"":""2""}";
-            ClassWithSimpleDictionaryProperty obj = JsonSerializer.Deserialize<ClassWithSimpleDictionaryProperty>(json);
+            ClassWithSimpleDictionaryProperty obj = await Deserializer.DeserializeWrapper<ClassWithSimpleDictionaryProperty>(json);
         }
 
         public class ClassWithSimpleDictionaryProperty
@@ -1349,18 +1397,18 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void NestedDictionaryElementTypeHandling_Overrides_GlobalOption()
+        public async Task NestedDictionaryElementTypeHandling_Overrides_GlobalOption()
         {
             // Strict policy on the dictionary element type overrides read-as-string on the collection property.
             string json = @"{""MyDictionary"":{""Key"":{""Float"":""1""}}}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ClassWithComplexDictionaryProperty>(json, s_optionReadFromStr));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<ClassWithComplexDictionaryProperty>(json, s_optionReadFromStr));
 
             // Strict policy on the collection element type overrides write-as-string on the collection property
             var obj = new ClassWithComplexDictionaryProperty
             {
                 MyDictionary = new Dictionary<string, ClassWith_StrictAttribute> { ["Key"] = new ClassWith_StrictAttribute { Float = 1 } }
             };
-            Assert.Equal(@"{""MyDictionary"":{""Key"":{""Float"":1}}}", JsonSerializer.Serialize(obj, s_optionReadFromStr));
+            Assert.Equal(@"{""MyDictionary"":{""Key"":{""Float"":1}}}", await Serializer.SerializeWrapper(obj, s_optionReadFromStr));
         }
 
         public class ClassWithComplexDictionaryProperty
@@ -1369,22 +1417,22 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void TypeAttributeAppliesTo_CustomCollectionElements()
+        public async Task TypeAttributeAppliesTo_CustomCollectionElements()
         {
             string json = @"[""1""]";
-            MyCustomList obj = JsonSerializer.Deserialize<MyCustomList>(json);
-            Assert.Equal(json, JsonSerializer.Serialize(obj));
+            MyCustomList obj = await Deserializer.DeserializeWrapper<MyCustomList>(json);
+            Assert.Equal(json, await Serializer.SerializeWrapper(obj));
         }
 
         [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
         public class MyCustomList : List<int> { }
 
         [Fact]
-        public static void TypeAttributeAppliesTo_CustomCollectionElements_HonoredWhenProperty()
+        public async Task TypeAttributeAppliesTo_CustomCollectionElements_HonoredWhenProperty()
         {
             string json = @"{""List"":[""1""]}";
-            ClassWithCustomList obj = JsonSerializer.Deserialize<ClassWithCustomList>(json);
-            Assert.Equal(json, JsonSerializer.Serialize(obj));
+            ClassWithCustomList obj = await Deserializer.DeserializeWrapper<ClassWithCustomList>(json);
+            Assert.Equal(json, await Serializer.SerializeWrapper(obj));
         }
 
         public class ClassWithCustomList
@@ -1393,22 +1441,22 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void TypeAttributeAppliesTo_CustomDictionaryElements()
+        public async Task TypeAttributeAppliesTo_CustomDictionaryElements()
         {
             string json = @"{""Key"":""1""}";
-            MyCustomDictionary obj = JsonSerializer.Deserialize<MyCustomDictionary>(json);
-            Assert.Equal(json, JsonSerializer.Serialize(obj));
+            MyCustomDictionary obj = await Deserializer.DeserializeWrapper<MyCustomDictionary>(json);
+            Assert.Equal(json, await Serializer.SerializeWrapper(obj));
         }
 
         [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
         public class MyCustomDictionary : Dictionary<string, int> { }
 
         [Fact]
-        public static void TypeAttributeAppliesTo_CustomDictionaryElements_HonoredWhenProperty()
+        public async Task TypeAttributeAppliesTo_CustomDictionaryElements_HonoredWhenProperty()
         {
             string json = @"{""Dictionary"":{""Key"":""1""}}";
-            ClassWithCustomDictionary obj = JsonSerializer.Deserialize<ClassWithCustomDictionary>(json);
-            Assert.Equal(json, JsonSerializer.Serialize(obj));
+            ClassWithCustomDictionary obj = await Deserializer.DeserializeWrapper<ClassWithCustomDictionary>(json);
+            Assert.Equal(json, await Serializer.SerializeWrapper(obj));
         }
 
         public class ClassWithCustomDictionary
@@ -1417,18 +1465,18 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Attribute_OnType_NotRecursive()
+        public async Task Attribute_OnType_NotRecursive()
         {
             // Recursive behavior, where number handling setting on a property is applied to subsequent
             // properties in its type closure, would allow a string number. This is not supported.
             string json = @"{""NestedClass"":{""MyInt"":""1""}}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<AttributeAppliedToFirstLevelProp>(json));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<AttributeAppliedToFirstLevelProp>(json));
 
             var obj = new AttributeAppliedToFirstLevelProp
             {
                 NestedClass = new BadProperty { MyInt = 1 }
             };
-            Assert.Equal(@"{""NestedClass"":{""MyInt"":1}}", JsonSerializer.Serialize(obj));
+            Assert.Equal(@"{""NestedClass"":{""MyInt"":1}}", await Serializer.SerializeWrapper(obj));
         }
 
         [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
@@ -1443,16 +1491,16 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void HandlingOnMemberOverridesHandlingOnType_Enumerable()
+        public async Task HandlingOnMemberOverridesHandlingOnType_Enumerable()
         {
             string json = @"{""List"":[""1""]}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<MyCustomListWrapper>(json));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<MyCustomListWrapper>(json));
 
             var obj = new MyCustomListWrapper
             {
                 List = new MyCustomList { 1 }
             };
-            Assert.Equal(@"{""List"":[1]}", JsonSerializer.Serialize(obj));
+            Assert.Equal(@"{""List"":[1]}", await Serializer.SerializeWrapper(obj));
         }
 
         public class MyCustomListWrapper
@@ -1462,16 +1510,16 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void HandlingOnMemberOverridesHandlingOnType_Dictionary()
+        public async Task HandlingOnMemberOverridesHandlingOnType_Dictionary()
         {
             string json = @"{""Dictionary"":{""Key"":""1""}}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<MyCustomDictionaryWrapper>(json));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<MyCustomDictionaryWrapper>(json));
 
             var obj1 = new MyCustomDictionaryWrapper
             {
                 Dictionary = new MyCustomDictionary { ["Key"] = 1 }
             };
-            Assert.Equal(@"{""Dictionary"":{""Key"":1}}", JsonSerializer.Serialize(obj1));
+            Assert.Equal(@"{""Dictionary"":{""Key"":1}}", await Serializer.SerializeWrapper(obj1));
         }
 
         public class MyCustomDictionaryWrapper
@@ -1481,15 +1529,15 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Attribute_NotAllowed_On_NonNumber_NonCollection_Property()
+        public async Task Attribute_NotAllowed_On_NonNumber_NonCollection_Property()
         {
             string json = @"";
-            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<ClassWith_NumberHandlingOn_ObjectProperty>(json));
+            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<ClassWith_NumberHandlingOn_ObjectProperty>(json));
             string exAsStr = ex.ToString();
             Assert.Contains("MyProp", exAsStr);
             Assert.Contains(typeof(ClassWith_NumberHandlingOn_ObjectProperty).ToString(), exAsStr);
 
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new ClassWith_NumberHandlingOn_ObjectProperty()));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new ClassWith_NumberHandlingOn_ObjectProperty()));
             exAsStr = ex.ToString();
             Assert.Contains("MyProp", exAsStr);
             Assert.Contains(typeof(ClassWith_NumberHandlingOn_ObjectProperty).ToString(), exAsStr);
@@ -1502,15 +1550,15 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Attribute_NotAllowed_On_Property_WithCustomConverter()
+        public async Task Attribute_NotAllowed_On_Property_WithCustomConverter()
         {
             string json = @"";
-            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<ClassWith_NumberHandlingOn_Property_WithCustomConverter>(json));
+            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<ClassWith_NumberHandlingOn_Property_WithCustomConverter>(json));
             string exAsStr = ex.ToString();
             Assert.Contains(typeof(ConverterForInt32).ToString(), exAsStr);
             Assert.Contains(typeof(ClassWith_NumberHandlingOn_Property_WithCustomConverter).ToString(), exAsStr);
 
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new ClassWith_NumberHandlingOn_Property_WithCustomConverter()));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new ClassWith_NumberHandlingOn_Property_WithCustomConverter()));
             exAsStr = ex.ToString();
             Assert.Contains(typeof(ConverterForInt32).ToString(), exAsStr);
             Assert.Contains(typeof(ClassWith_NumberHandlingOn_Property_WithCustomConverter).ToString(), exAsStr);
@@ -1524,15 +1572,15 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void Attribute_NotAllowed_On_Type_WithCustomConverter()
+        public async Task Attribute_NotAllowed_On_Type_WithCustomConverter()
         {
             string json = @"";
-            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<ClassWith_NumberHandlingOn_Type_WithCustomConverter>(json));
+            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<ClassWith_NumberHandlingOn_Type_WithCustomConverter>(json));
             string exAsStr = ex.ToString();
             Assert.Contains(typeof(ConverterForMyType).ToString(), exAsStr);
             Assert.Contains(typeof(ClassWith_NumberHandlingOn_Type_WithCustomConverter).ToString(), exAsStr);
 
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new ClassWith_NumberHandlingOn_Type_WithCustomConverter()));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new ClassWith_NumberHandlingOn_Type_WithCustomConverter()));
             exAsStr = ex.ToString();
             Assert.Contains(typeof(ConverterForMyType).ToString(), exAsStr);
             Assert.Contains(typeof(ClassWith_NumberHandlingOn_Type_WithCustomConverter).ToString(), exAsStr);
@@ -1558,7 +1606,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void CustomConverterOverridesBuiltInLogic()
+        public async Task CustomConverterOverridesBuiltInLogic()
         {
             var options = new JsonSerializerOptions(s_optionReadAndWriteFromStr)
             {
@@ -1568,18 +1616,18 @@ namespace System.Text.Json.Serialization.Tests
             string json = @"""32""";
 
             // Converter returns 25 regardless of input.
-            Assert.Equal(25, JsonSerializer.Deserialize<int>(json, options));
+            Assert.Equal(25, await Deserializer.DeserializeWrapper<int>(json, options));
 
             // Converter throws this exception regardless of input.
-            Assert.Throws<NotImplementedException>(() => JsonSerializer.Serialize(4, options));
+            await Assert.ThrowsAsync<NotImplementedException>(async () => await Serializer.SerializeWrapper(4, options));
 
             json = @"""NaN""";
 
             // Converter returns 25 if NaN.
-            Assert.Equal(25, JsonSerializer.Deserialize<float?>(json, options));
+            Assert.Equal(25, await Deserializer.DeserializeWrapper<float?>(json, options));
 
             // Converter writes 25 if NaN.
-            Assert.Equal("25", JsonSerializer.Serialize((float?)float.NaN, options));
+            Assert.Equal("25", await Serializer.SerializeWrapper((float?)float.NaN, options));
         }
 
         public class ConverterForFloat : JsonConverter<float?>
@@ -1626,22 +1674,17 @@ namespace System.Text.Json.Serialization.Tests
 
     public class NumberHandlingTests_StreamOverload : NumberHandlingTests_OverloadSpecific
     {
-        public NumberHandlingTests_StreamOverload() : base(DeserializationWrapper.StreamDeserializer) { }
+        public NumberHandlingTests_StreamOverload() : base(SerializationWrapper.StreamSerializer, DeserializationWrapper.StreamDeserializer) { }
     }
 
     public class NumberHandlingTests_SyncOverload : NumberHandlingTests_OverloadSpecific
     {
-        public NumberHandlingTests_SyncOverload() : base(DeserializationWrapper.StringDeserializer) { }
+        public NumberHandlingTests_SyncOverload() : base(SerializationWrapper.StringSerializer, DeserializationWrapper.StringDeserializer) { }
     }
 
-    public abstract class NumberHandlingTests_OverloadSpecific
+    public abstract class NumberHandlingTests_OverloadSpecific : SerializerTests
     {
-        private DeserializationWrapper Deserializer { get; }
-
-        public NumberHandlingTests_OverloadSpecific(DeserializationWrapper deserializer)
-        {
-            Deserializer = deserializer;
-        }
+        public NumberHandlingTests_OverloadSpecific(SerializationWrapper serializer, DeserializationWrapper deserializer) : base(serializer, deserializer) { }
 
         [Theory]
         [MemberData(nameof(NumberHandling_ForPropsReadAfter_DeserializingCtorParams_TestData))]
@@ -1654,7 +1697,7 @@ namespace System.Text.Json.Serialization.Tests
             };
 
             Result result = await Deserializer.DeserializeWrapper<Result>(json, options);
-            JsonTestHelper.AssertJsonEqual(json, JsonSerializer.Serialize(result, options));
+            JsonTestHelper.AssertJsonEqual(json, await Serializer.SerializeWrapper(result, options));
         }
 
         private static IEnumerable<object[]> NumberHandling_ForPropsReadAfter_DeserializingCtorParams_TestData()

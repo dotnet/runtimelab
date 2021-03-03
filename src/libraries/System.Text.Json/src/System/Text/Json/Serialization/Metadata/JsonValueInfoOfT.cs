@@ -13,13 +13,15 @@ namespace System.Text.Json.Serialization.Metadata
         /// todo
         /// </summary>
         /// <param name="converter"></param>
+        /// <param name="numberHandling"></param>
         /// <param name="options"></param>
         public JsonValueInfo(
             JsonConverter<T> converter,
+            JsonNumberHandling? numberHandling,
             JsonSerializerOptions options) : base(typeof(T), options, ClassType.Value)
         {
             ConverterBase = converter;
-            PropertyInfoForClassInfo = CreatePropertyInfoForClassInfo(Type, Type, converter, Options);
+            PropertyInfoForClassInfo = SourceGenCreatePropertyInfoForClassInfo(Type, Type, runtimeClassInfo: this, converter, numberHandling, Options);
         }
 
         /// <summary>
@@ -31,7 +33,7 @@ namespace System.Text.Json.Serialization.Metadata
 
             if (canBeDynamic)
             {
-                Options.AddJsonClassInfo(this);
+                Options.AddJsonClassInfoToCompleteInitialization(this);
             }
         }
     }

@@ -5,7 +5,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Xunit;
 #if GENERATE_JSON_METADATA
-using JsonCodeGeneration;
+using System.Text.Json.Tests.JsonSourceGeneration;
 #endif
 
 namespace System.Text.Json.Serialization.Tests
@@ -15,6 +15,10 @@ namespace System.Text.Json.Serialization.Tests
     /// </summary>
     public abstract class SerializationWrapper
     {
+#if GENERATE_JSON_METADATA
+        private static JsonSerializerOptions _sourceGenOptions = new();
+#endif
+
         private static readonly JsonSerializerOptions _optionsWithSmallBuffer = new JsonSerializerOptions { DefaultBufferSize = 1 };
 
         public static SerializationWrapper SpanSerializer => new SpanSerializerWrapper();
@@ -116,12 +120,12 @@ namespace System.Text.Json.Serialization.Tests
 #if GENERATE_JSON_METADATA
             protected internal override Task<string> SerializeWrapper(object value, Type inputType, JsonSerializerOptions options = null)
             {
-                return Task.FromResult(JsonSerializer.Serialize(value, inputType, new JsonContext(options)));
+                return Task.FromResult(JsonSerializer.Serialize(value, inputType, new JsonContext(options ?? _sourceGenOptions)));
             }
 
             protected internal override Task<string> SerializeWrapper<T>(T value, JsonSerializerOptions options = null)
             {
-                return Task.FromResult(JsonSerializer.Serialize<T>(value, new JsonContext(options)));
+                return Task.FromResult(JsonSerializer.Serialize<T>(value, new JsonContext(options ?? _sourceGenOptions)));
             }
 #else
             protected internal override Task<string> SerializeWrapper(object value, Type inputType, JsonSerializerOptions options = null)

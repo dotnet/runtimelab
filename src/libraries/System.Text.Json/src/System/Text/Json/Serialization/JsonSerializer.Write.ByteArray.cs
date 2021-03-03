@@ -37,10 +37,15 @@ namespace System.Text.Json
             TValue value,
             JsonTypeInfo<TValue> jsonTypeInfo)
         {
-            WriteStack state = default;
-            state.Initialize(jsonTypeInfo ?? throw new ArgumentNullException(nameof(jsonTypeInfo)));
+            if (jsonTypeInfo == null)
+            {
+                throw new ArgumentNullException(nameof(jsonTypeInfo));
+            }
 
             JsonSerializerOptions options = jsonTypeInfo.Options;
+
+            WriteStack state = default;
+            state.Initialize(jsonTypeInfo, options, supportContinuation: false);
 
             using (var output = new PooledByteBufferWriter(options.DefaultBufferSize))
             {

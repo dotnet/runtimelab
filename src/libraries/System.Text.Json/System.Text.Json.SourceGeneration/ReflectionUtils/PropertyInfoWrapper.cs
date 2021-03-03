@@ -8,12 +8,12 @@ using Microsoft.CodeAnalysis;
 
 namespace System.Reflection
 {
-    internal class PropertyWrapper : PropertyInfo
+    internal class PropertyInfoWrapper : PropertyInfo
     {
         private readonly IPropertySymbol _property;
         private MetadataLoadContext _metadataLoadContext;
 
-        public PropertyWrapper(IPropertySymbol property, MetadataLoadContext metadataLoadContext)
+        public PropertyInfoWrapper(IPropertySymbol property, MetadataLoadContext metadataLoadContext)
         {
             _property = property;
             _metadataLoadContext = metadataLoadContext;

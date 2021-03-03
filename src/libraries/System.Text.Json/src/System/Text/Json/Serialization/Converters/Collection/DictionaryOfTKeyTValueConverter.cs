@@ -55,7 +55,7 @@ namespace System.Text.Json.Serialization.Converters
             JsonConverter<TKey> keyConverter = _keyConverter ??= GetKeyConverter(KeyType, options);
             JsonConverter<TValue> valueConverter = _valueConverter ??= GetValueConverter(elementClassInfo);
 
-            if (!state.SupportContinuation && valueConverter.CanUseDirectReadOrWrite && state.Current.NumberHandling == null)
+            if (!state.SupportContinuation && valueConverter.CanUseDirectReadOrWrite && !state.Current.NumberHandling.HasValue)
             {
                 // Fast path that avoids validation and extra indirection.
                 do

@@ -69,7 +69,7 @@ namespace System.Text.Json.Serialization.Converters
                 CreateCollection(ref reader, ref state);
 
                 JsonConverter<TValue> valueConverter = _valueConverter ??= GetValueConverter(elementClassInfo);
-                if (valueConverter.CanUseDirectReadOrWrite && state.Current.NumberHandling == null)
+                if (valueConverter.CanUseDirectReadOrWrite && !state.Current.NumberHandling.HasValue)
                 {
                     // Process all elements.
                     while (true)
