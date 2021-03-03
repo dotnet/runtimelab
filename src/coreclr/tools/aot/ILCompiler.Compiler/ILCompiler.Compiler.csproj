@@ -29,6 +29,12 @@
     <Compile Include="..\..\Common\Compiler\Logging\MessageOrigin.cs">
       <Link>Compiler\Logging\MessageOrigin.cs</Link>
     </Compile>
+    <Compile Include="..\..\Common\Compiler\Logging\DocumentationSignatureParser.cs">
+      <Link>Compiler\Logging\DocumentationSignatureParser.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Common\Compiler\Logging\DocumentationSignatureGenerator.PartVisitor.cs">
+      <Link>Compiler\Logging\DocumentationSignatureGenerator.PartVisitor.cs</Link>
+    </Compile>
     <Compile Include="..\..\Common\Internal\Runtime\GCDescEncoder.cs">
       <Link>Common\GCDescEncoder.cs</Link>
     </Compile>
@@ -186,6 +192,7 @@
     <Compile Include="Compiler\DependencyAnalysis\DataflowAnalyzedMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\DefaultConstructorMapNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\DelegateMarshallingDataNode.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\DynamicDependencyAttributeAlgorithm.cs" />
     <Compile Include="Compiler\DependencyAnalysis\DynamicInvokeTemplateNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ExternSymbolsImportedNodeProvider.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ExternSymbolsWithIndirectionImportedNodeProvider.cs" />

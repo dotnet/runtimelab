@@ -2,13 +2,12 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
-using Mono.Cecil;
 
-namespace Mono.Linker
+using Internal.TypeSystem;
+
+namespace ILCompiler.Logging
 {
 
     public sealed partial class DocumentationSignatureGenerator
@@ -19,7 +18,7 @@ namespace Mono.Linker
         ///  Adapted from Roslyn's DocumentattionCommentIDVisitor.PartVisitor:
         ///  https://github.com/dotnet/roslyn/blob/master/src/Compilers/CSharp/Portable/DocumentationComments/DocumentationCommentIDVisitor.PartVisitor.cs
         /// </summary>
-        internal sealed class PartVisitor
+        internal sealed class PartVisitor : TypeNameFormatter
         {
             internal static readonly PartVisitor Instance = new PartVisitor();
 
@@ -27,25 +26,23 @@ namespace Mono.Linker
             {
             }
 
-            public void VisitArrayType(ArrayType arrayType, StringBuilder builder)
+            public override void AppendName(StringBuilder builder, ArrayType arrayType)
             {
-                VisitTypeReference(arrayType.ElementType, builder);
+                AppendName(builder, arrayType.ElementType);
 
                 // Rank-one arrays are displayed different than rectangular arrays
-                if (arrayType.IsVector)
+                if (arrayType.IsSzArray)
                 {
                     builder.Append("[]");
                 }
                 else
                 {
                     // C# arrays only support zero lower bounds
-                    if (arrayType.Dimensions[0].LowerBound != 0)
-                        throw new NotImplementedException();
                     builder.Append("[0:");
                     for (int i = 1; i < arrayType.Rank; i++)
                     {
-                        if (arrayType.Dimensions[0].LowerBound != 0)
-                            throw new NotImplementedException();
+                        //if (arrayType.Dimensions[0].LowerBound != 0)
+                        //    throw new NotImplementedException();
                         builder.Append(",0:");
                     }
 
@@ -53,6 +50,7 @@ namespace Mono.Linker
                 }
             }
 
+#if false
             public void VisitField(FieldDefinition field, StringBuilder builder)
             {
                 VisitTypeReference(field.DeclaringType, builder);
@@ -115,18 +113,24 @@ namespace Mono.Linker
                 VisitTypeReference(evt.DeclaringType, builder);
                 builder.Append('.').Append(GetEscapedMetadataName(evt));
             }
+#endif
 
-            public static void VisitGenericParameter(GenericParameter genericParameter, StringBuilder builder)
+            public override void AppendName(StringBuilder builder, FunctionPointerType type)
             {
-                Debug.Assert(genericParameter.DeclaringMethod == null ^ genericParameter.DeclaringType == null);
+                // Not defined how this should look like
+                // https://github.com/dotnet/roslyn/issues/48363
+            }
+
+            public override void AppendName(StringBuilder builder, GenericParameterDesc genericParameter)
+            {
                 // Is this a type parameter on a type?
-                if (genericParameter.DeclaringMethod != null)
+                if (genericParameter.Kind == GenericParameterKind.Method)
                 {
                     builder.Append("``");
                 }
                 else
                 {
-                    Debug.Assert(genericParameter.DeclaringType != null);
+                    Debug.Assert(genericParameter.Kind == GenericParameterKind.Type);
 
                     // If the containing type is nested within other types.
                     // e.g. A<T>.B<U>.M<V>(T t, U u, V v) should be M(`0, `1, ``0).
@@ -135,84 +139,78 @@ namespace Mono.Linker
                     builder.Append('`');
                 }
 
-                builder.Append(genericParameter.Position);
+                builder.Append(genericParameter.Index);
             }
 
-            public void VisitTypeReference(TypeReference typeReference, StringBuilder builder)
+            public override void AppendName(StringBuilder builder, SignatureMethodVariable type) => builder.Append("``").Append(type.Index);
+            public override void AppendName(StringBuilder builder, SignatureTypeVariable type) => builder.Append('`').Append(type.Index);
+
+            protected override void AppendNameForNestedType(StringBuilder sb, DefType nestedType, DefType containingType)
             {
-                switch (typeReference)
+                AppendName(sb, containingType);
+                sb.Append('.');
+                sb.Append(nestedType.Name);
+            }
+
+            protected override void AppendNameForNamespaceType(StringBuilder sb, DefType type)
+            {
+                string @namespace = type.Namespace;
+                if (!string.IsNullOrEmpty(@namespace))
+                    sb.Append(@namespace).Append('.');
+                sb.Append(type.Name);
+            }
+
+            protected override void AppendNameForInstantiatedType(StringBuilder builder, DefType type)
+            {
+                int containingArity = 0;
+                DefType containingType = type.ContainingType;
+                if (containingType != null)
                 {
-                    case ByReferenceType byReferenceType:
-                        VisitByReferenceType(byReferenceType, builder);
-                        return;
-                    case PointerType pointerType:
-                        VisitPointerType(pointerType, builder);
-                        return;
-                    case ArrayType arrayType:
-                        VisitArrayType(arrayType, builder);
-                        return;
-                    case GenericParameter genericParameter:
-                        VisitGenericParameter(genericParameter, builder);
-                        return;
+                    AppendName(builder, containingType);
+                    containingArity = containingType.Instantiation.Length;
+                }
+                else
+                {
+                    string @namespace = type.Namespace;
+                    if (!string.IsNullOrEmpty(@namespace))
+                        builder.Append(@namespace).Append('.');
                 }
 
-                if (typeReference.IsNested)
-                {
-                    VisitTypeReference(typeReference.GetInflatedDeclaringType(), builder);
-                    builder.Append('.');
-                }
+                string unmangledName = type.Name;
+                int totalArity = type.Instantiation.Length;
+                string expectedSuffix = $"`{totalArity.ToString()}";
+                if (unmangledName.EndsWith(expectedSuffix))
+                    unmangledName = unmangledName.Substring(0, unmangledName.Length - expectedSuffix.Length);
 
-                if (!String.IsNullOrEmpty(typeReference.Namespace))
-                    builder.Append(typeReference.Namespace).Append('.');
-
-                // This includes '`n' for mangled generic types
-                builder.Append(typeReference.Name);
-
-                // For uninstantiated generic types (we already built the mangled name)
-                // or non-generic types, we are done.
-                if (typeReference.HasGenericParameters || !typeReference.IsGenericInstance)
-                    return;
-
-                var genericInstance = typeReference as GenericInstanceType;
-
-                // Compute arity counting only the newly-introduced generic parameters
-                var declaringType = genericInstance.DeclaringType;
-                var declaringArity = 0;
-                if (declaringType != null && declaringType.HasGenericParameters)
-                    declaringArity = declaringType.GenericParameters.Count;
-                var totalArity = genericInstance.GenericArguments.Count;
-                var arity = totalArity - declaringArity;
-
-                // Un-mangle the generic type name
-                var suffixLength = arity.ToString().Length + 1;
-                builder.Remove(builder.Length - suffixLength, suffixLength);
+                builder.Append(unmangledName);
 
                 // Append type arguments excluding arguments for re-declared parent generic parameters
                 builder.Append('{');
                 bool needsComma = false;
-                for (int i = totalArity - arity; i < totalArity; ++i)
+                for (int i = containingArity; i < totalArity; ++i)
                 {
                     if (needsComma)
                         builder.Append(',');
-                    var typeArgument = genericInstance.GenericArguments[i];
-                    VisitTypeReference(typeArgument, builder);
+                    var typeArgument = type.Instantiation[i];
+                    AppendName(builder, typeArgument);
                     needsComma = true;
                 }
                 builder.Append('}');
             }
 
-            public void VisitPointerType(PointerType pointerType, StringBuilder builder)
+            public override void AppendName(StringBuilder builder, PointerType type)
             {
-                VisitTypeReference(pointerType.ElementType, builder);
+                AppendName(builder, type.ParameterType);
                 builder.Append('*');
             }
 
-            public void VisitByReferenceType(ByReferenceType byReferenceType, StringBuilder builder)
+            public override void AppendName(StringBuilder builder, ByRefType type)
             {
-                VisitTypeReference(byReferenceType.ElementType, builder);
+                AppendName(builder, type.ParameterType);
                 builder.Append('@');
             }
 
+#if false
             private static string GetEscapedMetadataName(IMemberDefinition member)
             {
                 var name = member.Name.Replace('.', '#');
@@ -220,6 +218,7 @@ namespace Mono.Linker
                 // they are included to match Roslyn.
                 return name.Replace('<', '{').Replace('>', '}');
             }
+#endif
         }
     }
 }

@@ -2,17 +2,15 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-#nullable enable
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using Mono.Cecil;
-using Mono.Collections.Generic;
 
-namespace Mono.Linker
+using Internal.TypeSystem;
+
+namespace ILCompiler.Logging
 {
     /// <summary>
     ///  Parses a signature for a member, in the format used for C# Documentation Comments:
@@ -40,7 +38,7 @@ namespace Mono.Linker
             All = Method | Field | Type | Property | Event
         }
 
-        public static IEnumerable<IMemberDefinition> GetMembersForDocumentationSignature(string id, ModuleDefinition module)
+        public static IEnumerable<TypeSystemEntity> GetMembersForDocumentationSignature(string id, ModuleDesc module)
         {
             if (id == null)
                 throw new ArgumentNullException(nameof(id));
@@ -48,41 +46,41 @@ namespace Mono.Linker
             if (module == null)
                 throw new ArgumentNullException(nameof(module));
 
-            var results = new List<IMemberDefinition>();
+            var results = new List<TypeSystemEntity>();
             ParseDocumentationSignature(id, module, results);
             return results;
         }
 
         // Takes a documentation signature (not including the documentation member type prefix) and resolves it to a type
         // in the assembly.
-        public static TypeDefinition? GetTypeByDocumentationSignature(AssemblyDefinition assembly, string signature)
+        public static TypeDesc GetTypeByDocumentationSignature(IAssemblyDesc assembly, string signature)
         {
             int index = 0;
-            var results = new List<IMemberDefinition>();
-            DocumentationSignatureParser.ParseSignaturePart(signature, ref index, assembly.MainModule, DocumentationSignatureParser.MemberType.Type, results);
+            var results = new List<TypeSystemEntity>();
+            DocumentationSignatureParser.ParseSignaturePart(signature, ref index, (ModuleDesc)assembly, DocumentationSignatureParser.MemberType.Type, results);
             Debug.Assert(results.Count <= 1);
-            return results.Count == 0 ? null : (TypeDefinition)results[0];
+            return results.Count == 0 ? null : (TypeDesc)results[0];
         }
 
         // Takes a member signature (not including the declaring type) and returns the matching members on the type.
-        public static IEnumerable<IMemberDefinition> GetMembersByDocumentationSignature(TypeDefinition type, string signature, bool acceptName = false)
+        public static IEnumerable<TypeSystemEntity> GetMembersByDocumentationSignature(MetadataType type, string signature, bool acceptName = false)
         {
             int index = 0;
-            var results = new List<IMemberDefinition>();
+            var results = new List<TypeSystemEntity>();
             var nameBuilder = new StringBuilder();
             var (name, arity) = DocumentationSignatureParser.ParseTypeOrNamespaceName(signature, ref index, nameBuilder);
             DocumentationSignatureParser.GetMatchingMembers(signature, ref index, type.Module, type, name, arity, DocumentationSignatureParser.MemberType.All, results, acceptName);
             return results;
         }
 
-        static string GetSignaturePart(TypeReference type)
+        static string GetSignaturePart(TypeDesc type)
         {
             var builder = new StringBuilder();
-            DocumentationSignatureGenerator.PartVisitor.Instance.VisitTypeReference(type, builder);
+            DocumentationSignatureGenerator.PartVisitor.Instance.AppendName(builder, type);
             return builder.ToString();
         }
 
-        static bool ParseDocumentationSignature(string id, ModuleDefinition module, List<IMemberDefinition> results)
+        static bool ParseDocumentationSignature(string id, ModuleDesc module, List<TypeSystemEntity> results)
         {
             if (id == null)
                 return false;
@@ -96,7 +94,7 @@ namespace Mono.Linker
             return results.Count > 0;
         }
 
-        static void ParseSignature(string id, ref int index, ModuleDefinition module, List<IMemberDefinition> results)
+        static void ParseSignature(string id, ref int index, ModuleDesc module, List<TypeSystemEntity> results)
         {
             Debug.Assert(results.Count == 0);
             var memberTypeChar = PeekNextChar(id, index);
@@ -137,13 +135,13 @@ namespace Mono.Linker
 
         // Parses and resolves a fully-qualified (namespace and nested types but no assembly) member signature,
         // without the member type prefix. The results include all members matching the specified member types.
-        public static void ParseSignaturePart(string id, ref int index, ModuleDefinition module, MemberType memberTypes, List<IMemberDefinition> results)
+        public static void ParseSignaturePart(string id, ref int index, ModuleDesc module, MemberType memberTypes, List<TypeSystemEntity> results)
         {
             // Roslyn resolves types by searching namespaces top-down.
             // We don't have namespace info. Instead try treating each part of a
             // dotted name as a type first, then as a namespace if it fails
             // to resolve to a type.
-            TypeDefinition? containingType = null;
+            TypeDesc containingType = null;
             var nameBuilder = new StringBuilder();
 
             string name;
@@ -173,9 +171,9 @@ namespace Mono.Linker
                 {
                     // the name resolved to a type
                     var result = results.Single();
-                    Debug.Assert(result is TypeDefinition);
+                    Debug.Assert(result is TypeDesc);
                     // result becomes the new container
-                    containingType = result as TypeDefinition;
+                    containingType = result as TypeDesc;
                     nameBuilder.Clear();
                     results.Clear();
                     continue;
@@ -198,7 +196,7 @@ namespace Mono.Linker
         // Gets all members of the specified member kinds of the containing type, with
         // mathing name, arity, and signature at the current index (for methods and properties).
         // This will also resolve types from the given module if no containing type is given.
-        public static void GetMatchingMembers(string id, ref int index, ModuleDefinition module, TypeDefinition? containingType, string memberName, int arity, MemberType memberTypes, List<IMemberDefinition> results, bool acceptName = false)
+        public static void GetMatchingMembers(string id, ref int index, ModuleDesc module, TypeDesc containingType, string memberName, int arity, MemberType memberTypes, List<TypeSystemEntity> results, bool acceptName = false)
         {
             if (memberTypes.HasFlag(MemberType.Type))
                 GetMatchingTypes(module, containingType, memberName, arity, results);
@@ -216,17 +214,21 @@ namespace Mono.Linker
                 index = startIndex;
             }
 
+#if false
             if (memberTypes.HasFlag(MemberType.Property))
             {
                 GetMatchingProperties(id, ref index, containingType, memberName, results, acceptName);
                 endIndex = index;
                 index = startIndex;
             }
+#endif
 
             index = endIndex;
 
+#if false
             if (memberTypes.HasFlag(MemberType.Event))
                 GetMatchingEvents(containingType, memberName, results);
+#endif
 
             if (memberTypes.HasFlag(MemberType.Field))
                 GetMatchingFields(containingType, memberName, results);
@@ -277,7 +279,7 @@ namespace Mono.Linker
         // To avoid looking for types by name in all referenced assemblies, we just represent types
         // that are part of a signature by their doc comment strings, and we check for matching
         // strings when looking for matching member signatures.
-        static string? ParseTypeSymbol(string id, ref int index, IGenericParameterProvider? typeParameterContext)
+        static string ParseTypeSymbol(string id, ref int index, TypeSystemEntity typeParameterContext)
         {
             var results = new List<string>();
             ParseTypeSymbol(id, ref index, typeParameterContext, results);
@@ -288,7 +290,7 @@ namespace Mono.Linker
             return null;
         }
 
-        static void ParseTypeSymbol(string id, ref int index, IGenericParameterProvider? typeParameterContext, List<string> results)
+        static void ParseTypeSymbol(string id, ref int index, TypeSystemEntity typeParameterContext, List<string> results)
         {
             // Note: Roslyn has a special case that deviates from the language spec, which
             // allows context expressions embedded in a type reference => <context-definition>:<type-parameter>
@@ -349,7 +351,7 @@ namespace Mono.Linker
             index = endIndex;
         }
 
-        static void ParseTypeParameterSymbol(string id, ref int index, IGenericParameterProvider? typeParameterContext, List<string> results)
+        static void ParseTypeParameterSymbol(string id, ref int index, TypeSystemEntity typeParameterContext, List<string> results)
         {
             // skip the first `
             Debug.Assert(PeekNextChar(id, index) == '`');
@@ -357,8 +359,8 @@ namespace Mono.Linker
 
             Debug.Assert(
                 typeParameterContext == null ||
-                (typeParameterContext is MethodDefinition && typeParameterContext.GenericParameterType == GenericParameterType.Method) ||
-                (typeParameterContext is TypeDefinition && typeParameterContext.GenericParameterType == GenericParameterType.Type)
+                typeParameterContext is MethodDesc ||
+                typeParameterContext is TypeDesc
             );
 
             if (PeekNextChar(id, index) == '`')
@@ -367,9 +369,9 @@ namespace Mono.Linker
                 index++;
                 var methodTypeParameterIndex = ReadNextInteger(id, ref index);
 
-                if (typeParameterContext is MethodDefinition methodContext)
+                if (typeParameterContext is MethodDesc methodContext)
                 {
-                    var count = methodContext.HasGenericParameters ? methodContext.GenericParameters.Count : 0;
+                    var count = methodContext.Instantiation.Length;
                     if (count > 0 && methodTypeParameterIndex < count)
                     {
                         results.Add("``" + methodTypeParameterIndex);
@@ -381,12 +383,12 @@ namespace Mono.Linker
                 // regular type parameter
                 var typeParameterIndex = ReadNextInteger(id, ref index);
 
-                var typeContext = typeParameterContext is MethodDefinition methodContext
-                    ? methodContext.DeclaringType
-                    : typeParameterContext as TypeDefinition;
+                var typeContext = typeParameterContext is MethodDesc methodContext
+                    ? methodContext.OwningType
+                    : typeParameterContext as TypeDesc;
 
                 if (typeParameterIndex >= 0 ||
-                    typeParameterIndex < typeContext?.GenericParameters.Count)
+                    typeParameterIndex < typeContext?.Instantiation.Length)
                 {
                     // No need to look at declaring types like Roslyn, because type parameters are redeclared.
                     results.Add("`" + typeParameterIndex);
@@ -394,7 +396,7 @@ namespace Mono.Linker
             }
         }
 
-        static void ParseNamedTypeSymbol(string id, ref int index, IGenericParameterProvider? typeParameterContext, List<string> results)
+        static void ParseNamedTypeSymbol(string id, ref int index, TypeSystemEntity typeParameterContext, List<string> results)
         {
             Debug.Assert(results.Count == 0);
             var nameBuilder = new StringBuilder();
@@ -407,7 +409,7 @@ namespace Mono.Linker
 
                 nameBuilder.Append(name);
 
-                List<string>? typeArguments = null;
+                List<string> typeArguments = null;
                 int arity = 0;
 
                 // type arguments
@@ -492,7 +494,7 @@ namespace Mono.Linker
             return bounds;
         }
 
-        static bool ParseTypeArguments(string id, ref int index, IGenericParameterProvider? typeParameterContext, List<string> typeArguments)
+        static bool ParseTypeArguments(string id, ref int index, TypeSystemEntity typeParameterContext, List<string> typeArguments)
         {
             index++; // skip over {
 
@@ -527,13 +529,27 @@ namespace Mono.Linker
             return true;
         }
 
-        static void GetMatchingTypes(ModuleDefinition module, TypeDefinition? declaringType, string name, int arity, List<IMemberDefinition> results)
+        static void GetMatchingTypes(ModuleDesc module, TypeDesc declaringType, string name, int arity, List<TypeSystemEntity> results)
         {
             Debug.Assert(module != null);
 
             if (declaringType == null)
             {
-                var type = module.ResolveType(name);
+                int indexOfLastDot = name.LastIndexOf('.');
+                string namespacepart;
+                string namepart;
+                if (indexOfLastDot > 0 && indexOfLastDot < name.Length - 1)
+                {
+                    namespacepart = name.Substring(indexOfLastDot - 1);
+                    namepart = name.Substring(indexOfLastDot + 1, name.Length - indexOfLastDot - 1);
+                }
+                else
+                {
+                    namespacepart = "";
+                    namepart = name;
+                }
+
+                var type = module.GetType(namespacepart, namepart, throwIfNotFound: false);
                 if (type != null)
                 {
                     results.Add(type);
@@ -541,18 +557,18 @@ namespace Mono.Linker
                 return;
             }
 
-            if (!declaringType.HasNestedTypes)
+            if (declaringType is not MetadataType mdDeclaringType)
                 return;
 
-            foreach (var nestedType in declaringType.NestedTypes)
+            foreach (var nestedType in mdDeclaringType.GetNestedTypes())
             {
                 Debug.Assert(String.IsNullOrEmpty(nestedType.Namespace));
                 if (nestedType.Name != name)
                     continue;
 
                 // Compute arity counting only the newly-introduced generic parameters
-                var declaringArity = declaringType.HasGenericParameters ? declaringType.GenericParameters.Count : 0;
-                int totalArity = nestedType.HasGenericParameters ? nestedType.GenericParameters.Count : 0;
+                var declaringArity = declaringType.Instantiation.Length;
+                int totalArity = nestedType.Instantiation.Length;
                 var nestedTypeArity = totalArity - declaringArity;
                 if (nestedTypeArity != arity)
                     continue;
@@ -562,7 +578,7 @@ namespace Mono.Linker
             }
         }
 
-        static void GetMatchingMethods(string id, ref int index, TypeDefinition? type, string memberName, int arity, List<IMemberDefinition> results, bool acceptName = false)
+        static void GetMatchingMethods(string id, ref int index, TypeDesc type, string memberName, int arity, List<TypeSystemEntity> results, bool acceptName = false)
         {
             if (type == null)
                 return;
@@ -571,13 +587,13 @@ namespace Mono.Linker
             var startIndex = index;
             var endIndex = index;
 
-            foreach (var method in type.Methods)
+            foreach (var method in type.GetMethods())
             {
                 index = startIndex;
                 if (method.Name != memberName)
                     continue;
 
-                var methodArity = method.HasGenericParameters ? method.GenericParameters.Count : 0;
+                var methodArity = method.Instantiation.Length;
                 if (methodArity != arity)
                     continue;
 
@@ -597,19 +613,19 @@ namespace Mono.Linker
                 {
                     isNameOnly = false;
                     index++;
-                    string? returnType = ParseTypeSymbol(id, ref index, method);
+                    string returnType = ParseTypeSymbol(id, ref index, method);
                     if (returnType == null)
                         continue;
 
                     // if return type is specified, then it must match
-                    if (GetSignaturePart(method.ReturnType) != returnType)
+                    if (GetSignaturePart(method.Signature.ReturnType) != returnType)
                         continue;
                 }
 
                 if (!isNameOnly || !acceptName)
                 {
                     // check parameters unless we are matching a name only
-                    if (!AllParametersMatch(method.Parameters, parameters))
+                    if (!AllParametersMatch(method.Signature, parameters))
                         continue;
                 }
 
@@ -619,7 +635,8 @@ namespace Mono.Linker
             index = endIndex;
         }
 
-        static void GetMatchingProperties(string id, ref int index, TypeDefinition? type, string memberName, List<IMemberDefinition> results, bool acceptName = false)
+#if false
+        static void GetMatchingProperties(string id, ref int index, TypeDesc type, string memberName, List<TypeSystemEntity> results, bool acceptName = false)
         {
             if (type == null)
                 return;
@@ -627,7 +644,7 @@ namespace Mono.Linker
             int startIndex = index;
             int endIndex = index;
 
-            List<string>? parameters = null;
+            List<string> parameters = null;
             // Unlike Roslyn, we don't need to decode property names because we are working
             // directly with IL.
             foreach (var property in type.Properties)
@@ -661,12 +678,13 @@ namespace Mono.Linker
 
             index = endIndex;
         }
+#endif
 
-        static void GetMatchingFields(TypeDefinition? type, string memberName, List<IMemberDefinition> results)
+        static void GetMatchingFields(TypeDesc type, string memberName, List<TypeSystemEntity> results)
         {
             if (type == null)
                 return;
-            foreach (var field in type.Fields)
+            foreach (var field in type.GetFields())
             {
                 if (field.Name != memberName)
                     continue;
@@ -674,7 +692,8 @@ namespace Mono.Linker
             }
         }
 
-        static void GetMatchingEvents(TypeDefinition? type, string memberName, List<IMemberDefinition> results)
+#if false
+        static void GetMatchingEvents(TypeDesc type, string memberName, List<TypeSystemEntity> results)
         {
             if (type == null)
                 return;
@@ -685,22 +704,23 @@ namespace Mono.Linker
                 results.Add(evt);
             }
         }
+#endif
 
-        static bool AllParametersMatch(Collection<ParameterDefinition> methodParameters, List<string> expectedParameters)
+        static bool AllParametersMatch(MethodSignature methodParameters, List<string> expectedParameters)
         {
-            if (methodParameters.Count != expectedParameters.Count)
+            if (methodParameters.Length != expectedParameters.Count)
                 return false;
 
             for (int i = 0; i < expectedParameters.Count; i++)
             {
-                if (GetSignaturePart(methodParameters[i].ParameterType) != expectedParameters[i])
+                if (GetSignaturePart(methodParameters[i]) != expectedParameters[i])
                     return false;
             }
 
             return true;
         }
 
-        static bool ParseParameterList(string id, ref int index, IGenericParameterProvider typeParameterContext, List<string> parameters)
+        static bool ParseParameterList(string id, ref int index, TypeSystemEntity typeParameterContext, List<string> parameters)
         {
             System.Diagnostics.Debug.Assert(typeParameterContext != null);
 
@@ -713,7 +733,7 @@ namespace Mono.Linker
                 return true;
             }
 
-            string? parameter = ParseTypeSymbol(id, ref index, typeParameterContext);
+            string parameter = ParseTypeSymbol(id, ref index, typeParameterContext);
             if (parameter == null)
                 return false;
 
