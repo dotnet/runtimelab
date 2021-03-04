@@ -18,7 +18,6 @@ namespace System.Runtime.InteropServices
 
         internal static Guid IID_IUnknown = new Guid(0x00000000, 0x0000, 0x0000, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
 
-        const int DispatchAlignmentThisPtr = 16;
         private static readonly ConditionalWeakTable<object, ManagedObjectWrapperHolder> CCWTable = new ConditionalWeakTable<object, ManagedObjectWrapperHolder>();
 
         /// <summary>
@@ -26,6 +25,8 @@ namespace System.Runtime.InteropServices
         /// </summary>
         public partial struct ComInterfaceDispatch
         {
+            internal IntPtr Vtable;
+            internal ManagedObjectWrapper* thisPtr;
             /// <summary>
             /// Given a <see cref="System.IntPtr"/> from a generated Vtable, convert to the target type.
             /// </summary>
@@ -40,10 +41,7 @@ namespace System.Runtime.InteropServices
 
             internal static unsafe ManagedObjectWrapper* ToManagedObjectWrapper(ComInterfaceDispatch* dispatchPtr)
             {
-                // See the dispatch section in the runtime for details on the masking below.
-                const long DispatchThisPtrMask = ~0xfL;
-                ManagedObjectWrapper* comInstance = *(ManagedObjectWrapper**)(((long)dispatchPtr) & DispatchThisPtrMask);
-                return comInstance;
+                return dispatchPtr->thisPtr;
             }
         }
 
@@ -190,9 +188,6 @@ namespace System.Runtime.InteropServices
         /// </summary>
         private static ComWrappers? s_globalInstanceForMarshalling;
 
-        private static long s_instanceCounter;
-        private readonly long id = Interlocked.Increment(ref s_instanceCounter);
-
         /// <summary>
         /// Create a COM representation of the supplied object that can be passed to a non-managed environment.
         /// </summary>
@@ -232,8 +227,8 @@ namespace System.Runtime.InteropServices
             bool success = true;
             ManagedObjectWrapperHolder ccwValue = CCWTable.GetValue(instance, (c) =>
             {
-                var value = CreateCCW(impl, c, flags);
-                success = value != null;
+                ManagedObjectWrapper*
+value = CreateCCW(impl, c, flags);
                 return new ManagedObjectWrapperHolder(value);
             });
             retValue = ccwValue.ComIp;
@@ -277,9 +272,6 @@ namespace System.Runtime.InteropServices
             IntPtr wrapperMem = Marshal.AllocCoTaskMem(
                 sizeof(ManagedObjectWrapper) + totalRuntimeDefinedSize + totalDispatchSectionSize + AlignmentThisPtrMaxPadding);
 
-            if (wrapperMem == IntPtr.Zero)
-                ThrowHelper.ThrowOutOfMemoryException();
-
             // Compute Runtime defined offset.
             IntPtr runtimeDefinedOffset = wrapperMem + sizeof(ManagedObjectWrapper);
 
@@ -293,22 +285,15 @@ namespace System.Runtime.InteropServices
             }
 
             // Compute the dispatch section offset and ensure it is aligned.
-            IntPtr dispatchSectionOffset = runtimeDefinedOffset + totalRuntimeDefinedSize;
-            dispatchSectionOffset = AlignDispatchSection(dispatchSectionOffset, AlignmentThisPtrMaxPadding);
-            Debug.Assert(dispatchSectionOffset != IntPtr.Zero);
-
-            // Define the sets for the tables to insert
-            EntrySet[] AllEntries =
-            {
-                new EntrySet(runtimeDefined, runtimeDefinedCount),
-                new EntrySet(userDefined, userDefinedCount)
-            };
-
             ManagedObjectWrapper* mow = (ManagedObjectWrapper*)wrapperMem;
-            PopulateDispatchSection(
-                mow,
-                (DispatchSectionEntry*)dispatchSectionOffset,
-                AllEntries);
+                        
+            // Dispatches follow immediately after ManagedObjectWrapper
+            ComInterfaceDispatch* pDispatches = (ComInterfaceDispatch*)(wrapperMem + sizeof(ManagedObjectWrapper));
+            for (int i = 0; i < totalDefinedCount; i++)
+            {
+                pDispatches[i].Vtable = (i < userDefinedCount) ? userDefined[i].VTable : runtimeDefinedVTables[i - userDefinedCount];
+                pDispatches[i].thisPtr = mow;
+            }
             mow->Target = IntPtr.Zero;
             mow->RefCount = 1;
             mow->RuntimeDefinedCount = runtimeDefinedCount;
@@ -318,36 +303,6 @@ namespace System.Runtime.InteropServices
             mow->Flags = (CreateComInterfaceFlagsEx)flags;
             mow->Dispatches = (DispatchSectionEntry*)dispatchSectionOffset;
             return mow;
-        }
-
-        internal unsafe struct DispatchSectionEntry
-        {
-            public ManagedObjectWrapper* thisPtr;
-            public IntPtr Vtable;
-        }
-
-        // Given a pointer and a padding allowance, attempt to find an offset into
-        // the memory that is properly aligned for the dispatch section.
-        static unsafe IntPtr AlignDispatchSection(IntPtr section, int extraPadding)
-        {
-            // If the dispatch section is not properly aligned by default, we
-            // utilize the padding to make sure the dispatch section is aligned.
-            while ((section.ToInt32() % DispatchAlignmentThisPtr) != 0)
-            {
-                // Check if there is padding to attempt an alignment.
-                if (extraPadding <= 0)
-                    return IntPtr.Zero;
-
-                extraPadding -= sizeof(void*);
-#if DEBUG
-                // Poison unused portions of the section.
-                new Span<byte>((void*)section, sizeof(void*)).Fill(0xff);
-#endif
-
-                section += sizeof(void*);
-            }
-
-            return section;
         }
 
         // Populate the dispatch section with the entry sets
@@ -477,10 +432,6 @@ namespace System.Runtime.InteropServices
             throw new NotImplementedException();
         }
 
-        // Call to execute the virtual instance function
-        internal static void CallReleaseObjects(ComWrappers? comWrappersImpl, IEnumerable objects)
-            => (comWrappersImpl ?? s_globalInstanceForTrackerSupport!).ReleaseObjects(objects);
-
         /// <summary>
         /// Register a <see cref="ComWrappers" /> instance to be used as the global instance for reference tracker support.
         /// </summary>
@@ -550,13 +501,6 @@ namespace System.Runtime.InteropServices
             }
 
             return (int)customQueryInterface.GetInterface(ref iid, out ppObject);
-        }
-
-        private static unsafe int ComputeThisPtrForDispatchSection(int dispatchCount)
-        {
-            // For 64 bit architeture that always would be the case.
-            const int EntriesPerThisPtr = 1;
-            return (dispatchCount / EntriesPerThisPtr) + ((dispatchCount % EntriesPerThisPtr) == 0 ? 0 : 1);
         }
 
         [UnmanagedCallersOnly]
