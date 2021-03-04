@@ -5,20 +5,19 @@ using System;
 using System.Diagnostics;
 using System.Security;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 
-namespace Microsoft.Win32.SafeHandles
+namespace System.Security.Cryptography
 {
-    internal sealed class SafeEcKeyHandle : SafeHandle
+    internal sealed class SafeRsaHandle : SafeHandle
     {
-        public SafeEcKeyHandle() :
+        public SafeRsaHandle() :
             base(IntPtr.Zero, ownsHandle: true)
         {
         }
 
         protected override bool ReleaseHandle()
         {
-            Interop.AndroidCrypto.EcKeyDestroy(handle);
+            Interop.AndroidCrypto.RsaDestroy(handle);
             SetHandle(IntPtr.Zero);
             return true;
         }
@@ -28,15 +27,15 @@ namespace Microsoft.Win32.SafeHandles
             get { return handle == IntPtr.Zero; }
         }
 
-        internal static SafeEcKeyHandle DuplicateHandle(IntPtr handle)
+        internal static SafeRsaHandle DuplicateHandle(IntPtr handle)
         {
             Debug.Assert(handle != IntPtr.Zero);
 
-            // Reliability: Allocate the SafeHandle before calling EC_KEY_up_ref so
+            // Reliability: Allocate the SafeHandle before calling RSA_up_ref so
             // that we don't lose a tracked reference in low-memory situations.
-            SafeEcKeyHandle safeHandle = new SafeEcKeyHandle();
+            SafeRsaHandle safeHandle = new SafeRsaHandle();
 
-            if (!Interop.AndroidCrypto.EcKeyUpRef(handle))
+            if (!Interop.AndroidCrypto.RsaUpRef(handle))
             {
                 throw new CryptographicException();
             }
@@ -44,7 +43,5 @@ namespace Microsoft.Win32.SafeHandles
             safeHandle.SetHandle(handle);
             return safeHandle;
         }
-
-        internal SafeEcKeyHandle DuplicateHandle() => DuplicateHandle(DangerousGetHandle());
     }
 }
