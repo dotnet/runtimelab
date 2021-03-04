@@ -14,7 +14,7 @@ set
 dir C:\python3.7.0
 call python emsdk.py install 2.0.12
 if %errorlevel% NEQ 0 goto fail
-call emsdk activate 2.0.8
+call emsdk activate 2.0.12
 if %errorlevel% NEQ 0 goto fail
 
 exit /b 0
