@@ -25,7 +25,7 @@ namespace ILCompiler.Dataflow
         private readonly FlowAnnotations _flowAnnotations;
         private readonly Logger _logger;
         private readonly NodeFactory _factory;
-        private readonly DependencyList _dependencies = new DependencyList();
+        private DependencyList _dependencies = new DependencyList();
 
         public static bool RequiresReflectionMethodBodyScannerForCallSite(FlowAnnotations flowAnnotations, MethodDesc methodDefinition)
         {
@@ -2371,84 +2371,7 @@ namespace ILCompiler.Dataflow
 
         void MarkMethod(ref ReflectionPatternContext reflectionContext, MethodDesc method)
         {
-            // Code below assumes we need to specialize generic methods
-            Debug.Assert(method.IsMethodDefinition);
-
-            // If there's any genericness involved, try to create a fitting instantiation that would be usable at runtime.
-            // This is not a complete solution to the problem.
-            // If we ever decide that MakeGenericType/MakeGenericMethod should simply be considered unsafe, this code can be deleted
-            // and instantiations that are not fully closed can be ignored.
-            if (method.OwningType.IsGenericDefinition || method.OwningType.ContainsSignatureVariables(treatGenericParameterLikeSignatureVariable: true))
-            {
-                TypeDesc owningType = method.OwningType.GetTypeDefinition();
-                Instantiation inst = ILCompiler.TypeExtensions.GetInstantiationThatMeetsConstraints(owningType.Instantiation, allowCanon: false);
-                if (inst.IsNull)
-                {
-                    if (_logger.IsVerbose)
-                        _logger.Writer.WriteLine($"Would mark {method} but can't get a good owning type");
-                    return;
-                }
-
-                method = method.Context.GetMethodForInstantiatedType(
-                    method.GetTypicalMethodDefinition(),
-                    ((MetadataType)owningType).MakeInstantiatedType(inst));
-            }
-
-            if (method.HasInstantiation)
-            {
-                Instantiation inst = ILCompiler.TypeExtensions.GetInstantiationThatMeetsConstraints(method.Instantiation, allowCanon: false);
-                if (inst.IsNull)
-                {
-                    if (_logger.IsVerbose)
-                        _logger.Writer.WriteLine($"Would mark {method} but can't get a good instantiation");
-                    return;
-                }
-
-                method = method.MakeInstantiatedMethod(inst);
-            }
-
-            string reason = reflectionContext.MemberWithRequirements.ToString();
-
-            // For the method to be actually usable with reflection, we need to add the constructed type.
-            _dependencies.Add(_factory.MaximallyConstructableType(method.OwningType), reason);
-
-            if (!MetadataManager.IsMethodSupportedInReflectionInvoke(method))
-            {
-                if (_logger.IsVerbose)
-                    _logger.Writer.WriteLine($"Would mark {method} but it's not usable for reflection invoke");
-                // TODO: do we need to drop a MethodMetadata node into the dependencies here?
-            }
-            else
-            {
-                if (method.IsVirtual)
-                {
-                    if (method.HasInstantiation)
-                    {
-                        _dependencies.Add(_factory.GVMDependencies(method), reason);
-                    }
-                    else
-                    {
-                        // Virtual method use is tracked on the slot defining method only.
-                        MethodDesc slotDefiningMethod = MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(method);
-                        if (!_factory.VTable(slotDefiningMethod.OwningType).HasFixedSlots)
-                            _dependencies.Add(_factory.VirtualMethodUse(slotDefiningMethod), reason);
-                    }
-
-                    if (method.IsAbstract)
-                    {
-                        _dependencies.Add(_factory.ReflectableMethod(method), reason);
-                    }
-                }
-
-                if (!method.IsAbstract)
-                {
-                    _dependencies.Add(_factory.CanonicalEntrypoint(method), reason);
-                    if (method.HasInstantiation
-                        && method != method.GetCanonMethodTarget(CanonicalFormKind.Specific))
-                        _dependencies.Add(_factory.MethodGenericDictionary(method), reason);
-                }
-            }
-
+            RootingHelpers.TryGetDependenciesForReflectedMethod(ref _dependencies, _factory, method, reflectionContext.MemberWithRequirements.ToString());
             reflectionContext.RecordHandledPattern();
         }
 
@@ -2459,26 +2382,19 @@ namespace ILCompiler.Dataflow
 
         void MarkField(ref ReflectionPatternContext reflectionContext, FieldDesc field)
         {
-            reflectionContext.RecordRecognizedPattern(() => { if (_logger.IsVerbose) _logger.Writer.WriteLine($"Marking {field.GetDisplayName()}"); });
+            RootingHelpers.TryGetDependenciesForReflectedField(ref _dependencies, _factory, field, reflectionContext.MemberWithRequirements.ToString());
+            reflectionContext.RecordHandledPattern();
         }
 
         void MarkProperty(ref ReflectionPatternContext reflectionContext, PropertyPseudoDesc property)
         {
-            if (property.GetMethod != null)
-                MarkMethod(ref reflectionContext, property.GetMethod);
-            if (property.SetMethod != null)
-                MarkMethod(ref reflectionContext, property.SetMethod);
-
+            RootingHelpers.TryGetDependenciesForReflectedProperty(ref _dependencies, _factory, property, reflectionContext.MemberWithRequirements.ToString());
             reflectionContext.RecordHandledPattern();
         }
 
         void MarkEvent(ref ReflectionPatternContext reflectionContext, EventPseudoDesc @event)
         {
-            if (@event.AddMethod != null)
-                MarkMethod(ref reflectionContext, @event.AddMethod);
-            if (@event.RemoveMethod != null)
-                MarkMethod(ref reflectionContext, @event.RemoveMethod);
-
+            RootingHelpers.TryGetDependenciesForReflectedEvent(ref _dependencies, _factory, @event, reflectionContext.MemberWithRequirements.ToString());
             reflectionContext.RecordHandledPattern();
         }
 
@@ -2525,52 +2441,10 @@ namespace ILCompiler.Dataflow
                 MarkEvent(ref reflectionContext, @event);
         }
 
-        void MarkEntireType(ref ReflectionPatternContext reflectionContext, TypeDesc type, Stack<TypeDesc> typesVisited = null)
+        void MarkEntireType(ref ReflectionPatternContext reflectionContext, TypeDesc type)
         {
-            // We can end up with a cycle for things like
-            // class Base
-            // {
-            //     class Nested : Base { }
-            // }
-            if (typesVisited != null && typesVisited.Contains(type))
-                return;
-
-            typesVisited ??= new Stack<TypeDesc>();
-            typesVisited.Push(type);
-
-            foreach (var method in type.GetMethods())
-            {
-                MarkMethod(ref reflectionContext, method);
-            }
-
-            foreach (var field in type.GetFields())
-            {
-                MarkField(ref reflectionContext, field);
-            }
-
-            // We assume that reflection enabling the accessors enabled the properties/events
-            // If that ever changes, we need extra code here.
-
-            if (type.IsDefType)
-            {
-                foreach (var nestedType in ((MetadataType)type).GetNestedTypes())
-                {
-                    MarkEntireType(ref reflectionContext, nestedType, typesVisited);
-                }
-
-                foreach (var intf in ((MetadataType)type).ExplicitlyImplementedInterfaces)
-                {
-                    MarkEntireType(ref reflectionContext, intf, typesVisited);
-                }
-            }
-
-            if (type.HasBaseType)
-            {
-                MarkEntireType(ref reflectionContext, type.BaseType, typesVisited);
-            }
-
-            var popped = typesVisited.Pop();
-            Debug.Assert(popped == type);
+            RootingHelpers.GetDependenciesForEntireReflectedType(ref _dependencies, _factory, type, reflectionContext.MemberWithRequirements.ToString());
+            reflectionContext.RecordHandledPattern();
         }
 
         static DynamicallyAccessedMemberTypes GetDynamicallyAccessedMemberTypesFromBindingFlagsForNestedTypes(BindingFlags? bindingFlags) =>
