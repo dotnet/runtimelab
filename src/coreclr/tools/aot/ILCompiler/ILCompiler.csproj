@@ -12,7 +12,6 @@
     <OutputPath>$(RuntimeBinDir)ilc</OutputPath>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
     <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
-    <RuntimeIdentifiers>linux-x64;linux-musl-x64;win-x64;osx-x64</RuntimeIdentifiers>
     <Configurations>Debug;Release;Checked</Configurations>
     <UseAppHost>true</UseAppHost>
     <ServerGarbageCollection>true</ServerGarbageCollection>
@@ -52,7 +51,7 @@
     </Content>
   </ItemGroup>
 
-  <ItemGroup Condition="!Exists('$(ObjWriterArtifactPath)') and '$(TargetArchitecture)' != 'arm64'">
+  <ItemGroup Condition="!Exists('$(ObjWriterArtifactPath)') and '$(TargetArchitecture)' != 'arm64' and '$(__DistroRid)' != 'linux-musl-x64'">
     <PackageReference Include="Microsoft.DotNet.ILCompiler">
       <Version>$(ILCompilerVersion)</Version>
     </PackageReference>
