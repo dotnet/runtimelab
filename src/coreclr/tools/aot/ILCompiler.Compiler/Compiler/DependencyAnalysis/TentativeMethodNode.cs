@@ -40,8 +40,6 @@ namespace ILCompiler.DependencyAnalysis
         {
             if (factory.Target.Architecture == TargetArchitecture.Wasm32)
             {
-                DependencyList dependencyList = base.ComputeNonRelocationBasedDependencies(factory) ?? new DependencyList();
-                dependencyList.Add(GetTarget(factory), "WebAssembly tentative node throw helper");
                 return new ObjectData(null, new Relocation[] { new Relocation(RelocType.IMAGE_REL_BASED_HIGHLOW, 0, GetTarget(factory)) }, 0, null);
             }
             return base.GetData(factory, relocsOnly);
