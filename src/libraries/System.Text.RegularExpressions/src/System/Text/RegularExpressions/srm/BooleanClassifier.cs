@@ -40,8 +40,8 @@ namespace System.Text.RegularExpressions.SRM
                 lower |= (domain.Contains(i) ? (ulong)1 << i : 0);
             for (int i = 64; i < 128; i++)
                 upper |= (domain.Contains(i) ? (ulong)1 << (i - 64) : 0);
-            //remove the ASCII characters from the domain
-            BDD bdd = solver.MkAnd(solver.nonascii, domain);
+            //remove the ASCII characters from the domain if the domain is not everything
+            BDD bdd = (domain.IsFull ? domain : solver.MkAnd(solver.nonascii, domain));
             return new BooleanClassifier(lower, upper, bdd);
         }
 
@@ -53,18 +53,21 @@ namespace System.Text.RegularExpressions.SRM
         public void Serialize(StringBuilder sb)
         {
             //use comma to separate the elements, comma is not used in _bdd.Serialize
-            sb.Append(_lower.ToString("X"));
+            sb.Append(Base64.Encode(_lower));
             sb.Append(',');
-            sb.Append(_upper.ToString("X"));
+            sb.Append(Base64.Encode(_upper));
             sb.Append(',');
             _bdd.Serialize(sb);
         }
 
-        public static BooleanClassifier Deserialize(string s, BDDAlgebra solver = null)
+        public static BooleanClassifier Deserialize(string input, BDDAlgebra solver = null)
         {
-            string[] parts = s.Split(',');
-            ulong lower = ulong.Parse(parts[0], Globalization.NumberStyles.HexNumber);
-            ulong upper = ulong.Parse(parts[1], Globalization.NumberStyles.HexNumber);
+            string[] parts = input.Split(',');
+            if (parts.Length != 3)
+                throw new ArgumentException($"{nameof(BooleanClassifier.Deserialize)} invalid '{nameof(input)}' parameter");
+
+            ulong lower = Base64.DecodeUInt64(parts[0]);
+            ulong upper = Base64.DecodeUInt64(parts[1]);
             BDD bdd = BDD.Deserialize(parts[2], solver);
             return new BooleanClassifier(lower, upper, bdd);
         }

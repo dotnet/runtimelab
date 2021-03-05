@@ -143,7 +143,7 @@ namespace System.Text.RegularExpressions
             if ((options & RegexOptions.ECMAScript) != 0)
                 throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + RegexOptions.ECMAScript);
 
-            return new SRM.Regex(rootNode, options);
+            return SRM.Regex.Create(rootNode, options);
         }
 
         internal static void ValidatePattern(string pattern)
@@ -185,11 +185,15 @@ namespace System.Text.RegularExpressions
             }
         }
 
-        protected Regex(SerializationInfo info, StreamingContext context) =>
+        protected Regex(SerializationInfo info, StreamingContext context)
+        {
             throw new PlatformNotSupportedException();
+        }
 
-        void ISerializable.GetObjectData(SerializationInfo si, StreamingContext context) =>
+        void ISerializable.GetObjectData(SerializationInfo si, StreamingContext context)
+        {
             throw new PlatformNotSupportedException();
+        }
 
         [CLSCompliant(false), DisallowNull]
         protected IDictionary? Caps

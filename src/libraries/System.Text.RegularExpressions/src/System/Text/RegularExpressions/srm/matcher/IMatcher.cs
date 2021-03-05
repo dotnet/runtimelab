@@ -25,5 +25,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="startat">start position in the input, default is 0</param>
         /// <param name="endat">end position in the input, -1 means that the value is unspecified and taken to be input.Length-1</param>
         public Match FindMatch(bool isMatch, string input, int startat = 0, int endat = -1);
+
+        public void Serialize(StringBuilder sb);
     }
 }

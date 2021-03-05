@@ -38,6 +38,20 @@ namespace System.Text.RegularExpressions.SRM
             _True = _bits == 64 ? ulong.MaxValue : ulong.MaxValue >> (64 - _bits);
         }
 
+        /// <summary>
+        /// Constructor used by BVAlgebraBase.Deserialize. Here the minters and the CharSetSolver are unknown and set to null.
+        /// </summary>
+        public BV64Algebra(Classifier classifier, ulong[] cardinalities) : base(classifier, cardinalities, null)
+        {
+#if DEBUG
+            if (cardinalities.Length > 64)
+                throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
+#endif
+            _mtg = new MintermGenerator<ulong>(this);
+            _False = 0;
+            _True = _bits == 64 ? ulong.MaxValue : ulong.MaxValue >> (64 - _bits);
+        }
+
         public bool IsExtensional => true;
         public bool HashCodesRespectEquivalence => true;
 
@@ -145,25 +159,22 @@ namespace System.Text.RegularExpressions.SRM
 
         #region serialization
         /// <summary>
-        /// Serialize pred as a hexadecimal numeral using uppercase letters
+        /// Serialize pred using Base64.Encode
         /// </summary>
         public string SerializePredicate(ulong pred)
         {
-            return pred.ToString("X");
+            return Base64.Encode(pred);
         }
 
         /// <summary>
         /// Deserialize s from a string created by SerializePredicate
         /// </summary>
-        /// <param name="s">given hexadecimal numeral representation</param>
         public ulong DeserializePredicate(string s)
         {
-            return ulong.Parse(s, System.Globalization.NumberStyles.HexNumber);
+            return Base64.DecodeUInt64(s);
         }
         #endregion
 
         public ulong MkCharPredicate(string name, ulong pred) => throw new NotImplementedException(nameof(MkCharPredicate));
-
-        public void Serialize(StringBuilder sb) => throw new NotImplementedException();
     }
 }

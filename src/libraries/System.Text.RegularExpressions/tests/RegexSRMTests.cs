@@ -6,6 +6,7 @@ using Xunit;
 using Xunit.Abstractions;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Serialization;
 
 namespace System.Text.RegularExpressions.Tests
 {
@@ -19,7 +20,7 @@ namespace System.Text.RegularExpressions.Tests
 #endif
         }
 
-        static RegexOptions DFA = (RegexOptions)0x400;
+        internal static RegexOptions DFA = (RegexOptions)0x400;
 
         [Fact]
         public void BasicSRMTestBorderAnchors()
@@ -99,6 +100,39 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Equal("1\ta\u0130Aa", match2.Value);
             var match3 = match2.NextMatch();
             Assert.False(match3.Success);
+        }
+
+        [Fact]
+        public void BasicSRMTest_WhiteSpace()
+        {
+            var re = new Regex(@"\s+", DFA);
+            var match1 = re.Match("===== \n\t\v\r ====");
+            Assert.True(match1.Success);
+            Assert.Equal(5, match1.Index);
+            Assert.Equal(6, match1.Length);
+            Assert.Equal(" \n\t\v\r ", match1.Value);
+        }
+
+        [Fact]
+        public void BasicSRMTest_FFFF()
+        {
+            var re = new Regex(@"(\uFFFE\uFFFF)+", DFA);
+            var match1 = re.Match("=====\uFFFE\uFFFF\uFFFE\uFFFF\uFFFE====");
+            Assert.True(match1.Success);
+            Assert.Equal(5, match1.Index);
+            Assert.Equal(4, match1.Length);
+            Assert.Equal("\uFFFE\uFFFF\uFFFE\uFFFF", match1.Value);
+        }
+
+        [Fact]
+        public void BasicSRMTest_NoPartition()
+        {
+            var re = new Regex(@"(...)+", DFA | RegexOptions.Singleline);
+            var match1 = re.Match("abcdefgh");
+            Assert.True(match1.Success);
+            Assert.Equal(0, match1.Index);
+            Assert.Equal(6, match1.Length);
+            Assert.Equal("abcdef", match1.Value);
         }
 
         [Fact]
@@ -358,6 +392,22 @@ namespace System.Text.RegularExpressions.Tests
             Assert.True(match.Success);
             Assert.Equal(0, match.Index);
             Assert.Equal(7, match.Length);
+        }
+
+        [Fact]
+        public void SRMTest_NewLine()
+        {
+            var re = new Regex("\n", DFA);
+            var match = re.Match("\n");
+            Assert.True(match.Success);
+            Assert.Equal(0, match.Index);
+            Assert.Equal(1, match.Length);
+            //---
+            var re2 = new Regex("[^a]", DFA);
+            var match2 = re2.Match("\n");
+            Assert.True(match2.Success);
+            Assert.Equal(0, match2.Index);
+            Assert.Equal(1, match2.Length);
         }
 
         static int _NotSupportedException_count;

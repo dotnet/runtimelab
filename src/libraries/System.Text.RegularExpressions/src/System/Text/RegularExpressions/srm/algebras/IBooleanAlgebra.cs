@@ -96,7 +96,7 @@ namespace System.Text.RegularExpressions.SRM
         string SerializePredicate(S s);
 
         /// <summary>
-        /// Deserialize the predicate from a string constructed with Serialize
+        /// Deserialize the predicate from a string constructed with SerializePredicate
         /// </summary>
         /// <param name="s">given serialized predicate</param>
         S DeserializePredicate(string s);

@@ -17,7 +17,7 @@ namespace System.Text.RegularExpressions
             if (startat > endat)
                 return System.Text.RegularExpressions.Match.Empty;
 
-            var match = _srm.matcher.FindMatch(quick, input, startat, endat);
+            var match = _srm._matcher.FindMatch(quick, input, startat, endat);
             if (quick)
             {
                 if (match is null)

@@ -83,38 +83,34 @@ namespace System.Text.RegularExpressions.SRM
 
         #region serialization
         /// <summary>
-        /// Appends a string in [0-9A-F.,]+ to sb
+        /// Appends a string in [0-9A-Za-z/+.-,]* to sb
         /// </summary>
         public void Serialize(StringBuilder sb)
         {
-            if (_precomputed.Length > 0)
-            {
-                sb.Append(_precomputed[0].ToString("X"));
-                for (int i = 1; i < _precomputed.Length; i++)
-                {
-                    sb.Append('.');
-                    sb.Append(_precomputed[i].ToString("X"));
-                }
-            }
-            //separate the precomputed serialization from the BDD serialization using a comma
+            //this encoding does not use ','
+            Base64.Encode(_precomputed, sb);
+            //separate the precomputed serialization from the BDD serialization using ','
             sb.Append(',');
+            //this encoding does not use ','
             _mtbdd.Serialize(sb);
         }
 
         /// <summary>
-        /// Deserializes the classifier from the string s created by Serialize or ToString.
+        /// Deserializes the classifier from the string s created by Serialize.
         /// </summary>
-        public static Classifier Deserialize(string s, BDDAlgebra algebra = null)
+        public static Classifier Deserialize(string input, BDDAlgebra algebra = null)
         {
-            //first split the string using comma
-            string[] parts = s.Split(',');
-            int[] precomp = Array.ConvertAll(parts[0].Split('.'), x => int.Parse(x, Globalization.NumberStyles.HexNumber));
+            string[] parts = input.Split(',');
+            if (parts.Length != 2)
+                throw new ArgumentException($"{nameof(Classifier.Deserialize)} invalid '{nameof(input)}' parameter");
+
+            int[] precomp = Base64.DecodeIntArray(parts[0]);
             BDD bst = BDD.Deserialize(parts[1], algebra);
             return new Classifier(precomp, bst);
         }
 
         /// <summary>
-        /// Returns the serialized format of the classifier
+        /// Returns the serialized format of the classifier for Debugging.
         /// </summary>
         public override string ToString()
         {

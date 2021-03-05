@@ -252,27 +252,19 @@ namespace System.Text.RegularExpressions.SRM
 
         #region serialization
         /// <summary>
-        /// Serialize BV into a string of hexadecimal numerals separated by '-',
-        /// each numeral representing an unsigned 64-bit integer in hexadecimal in [0-9A-F]+.
-        /// The serialization starts with the Length and is ordered so that more significant blocks come first.
+        /// Serialize BV into a string of Base64 numerals, number of bits separated by '-' at the start,
         /// </summary>
         public void Serialize(StringBuilder sb)
         {
-            //start with the length
-            sb.Append(Length.ToString("X"));
+            //start with the length, i.e., the number of bits
+            sb.Append(Base64.Encode(Length));
             sb.Append('-');
-            //then consider bits in higher blocks as being more significant in order
-            for (int i = _blocks.Length - 1; i > 0 ; i--)
-            {
-                sb.Append(_blocks[i].ToString("X"));
-                sb.Append('-');
-            }
-            sb.Append(_blocks[0].ToString("X"));
+            Base64.Encode(_blocks, sb);
         }
 
         public string SerializeToString()
         {
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new();
             Serialize(sb);
             return sb.ToString();
         }
@@ -283,8 +275,9 @@ namespace System.Text.RegularExpressions.SRM
         public static BV Deserialize(string s)
         {
             int i = s.IndexOf('-');
-            int K = int.Parse(s.Substring(0, i), Globalization.NumberStyles.HexNumber);
-            ulong[] blocks = Array.ConvertAll(s.Substring(i + 1).Split('-'), x => ulong.Parse(x, Globalization.NumberStyles.HexNumber));
+            int K = Base64.DecodeInt(s.Substring(0, i));
+            string blocks_str = s.Substring(i + 1);
+            ulong[] blocks = Base64.DecodeUInt64Array(blocks_str);
             return new BV(K, blocks);
         }
         #endregion

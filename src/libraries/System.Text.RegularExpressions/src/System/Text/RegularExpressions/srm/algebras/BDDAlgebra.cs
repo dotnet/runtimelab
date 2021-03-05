@@ -794,7 +794,7 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
-        /// Two equuivalent BDDs need not be identical
+        /// Two equivalent BDDs need not be identical
         /// </summary>
         public bool IsExtensional
         {
@@ -900,6 +900,10 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public BDD ReplaceTrue(BDD bdd, int terminal)
         {
+#if DEBUG
+            if (terminal < 0)
+                throw new ArgumentOutOfRangeException(nameof(terminal));
+#endif
             lock (this)
             {
                 BDD leaf = MkBDD(terminal, null, null);
@@ -924,6 +928,6 @@ namespace System.Text.RegularExpressions.SRM
             return res;
         }
 
-        public void Serialize(StringBuilder sb) => throw new NotImplementedException();
+        public void Serialize(StringBuilder sb) => throw new NotSupportedException(nameof(BDDAlgebra.Serialize));
     }
 }
