@@ -6,10 +6,29 @@ RepoRoot="$2"
 BuildArch="$3"
 TargetArch="$4"
 BuildType="${5:-Release}"
+CompilerId="$(echo "$6" | tr "[:upper:]" "[:lower:]")"
 
 # Check that we have enough arguments
 if [ $# -lt 4 ]; then
-    echo "Usage: $(basename $0) ArtifactsDir RepoRoot BuildArch TargetArch [BuildType]"
+    echo "Usage: $(basename $0) ArtifactsDir RepoRoot BuildArch TargetArch [BuildType [CompilerId]]"
+    exit 1
+fi
+
+if [ -z "$CompilerId" ]; then
+    Compiler=clang
+    CompilerMajorVer=
+    CompilerMinorVer=
+# Expecting a compiler id similar to -clang9 or -gcc10.2. See also eng/native/build-commons.sh.
+elif [[ "$CompilerId" =~ ^-?([a-z]+)(-?([0-9]+)(\.([0-9]+))?)?$ ]]; then
+    Compiler=${BASH_REMATCH[1]}
+    CompilerMajorVer=${BASH_REMATCH[3]}
+    CompilerMinorVer=${BASH_REMATCH[5]}
+    if [[ "$Compiler" == "clang" && -n "$CompilerMajorVer" && "$CompilerMajorVer" -le 6
+        && -z "$CompilerMinorVer" ]]; then
+        CompilerMinorVer=0
+    fi
+else
+    echo "Unexpected compiler identifier '$6'"
     exit 1
 fi
 
@@ -54,7 +73,8 @@ fi
 #   <compiler> <compiler major version> <compiler minor version>
 #   [build flavor] [ninja] [scan-build] [cmakeargs]
 "${RepoRoot}eng/native/gen-buildsys.sh" \
-    "$PWD" "$PWD/build/$TargetArch" "$TargetArch" clang "9" "" "$BuildType" \
+    "$PWD" "$PWD/build/$TargetArch" "$TargetArch" \
+    "$Compiler" "$CompilerMajorVer" "$CompilerMinorVer" "$BuildType" \
     -DCMAKE_BUILD_TYPE="$BuildType" \
     -DCMAKE_INSTALL_PREFIX=install \
     -DLLVM_BUILD_TOOLS=0 \

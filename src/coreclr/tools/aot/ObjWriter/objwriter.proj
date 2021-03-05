@@ -5,7 +5,9 @@
     <BuildScriptName Condition="'$(TargetOS)' == 'windows'">build.cmd</BuildScriptName>
     <BuildScriptName Condition="'$(TargetOS)' != 'windows'">build.sh</BuildScriptName>
 
-    <BuildArguments>"$(ArtifactsDir)" "$(RepoRoot)" $(BuildArchitecture) $(TargetArchitecture)</BuildArguments>
+    <BuildArguments>"$(ArtifactsDir)" "$(RepoRoot)"</BuildArguments>
+    <BuildArguments>$(BuildArguments) $(BuildArchitecture) $(TargetArchitecture)</BuildArguments>
+    <BuildArguments>$(BuildArguments) Release $(Compiler)</BuildArguments>
   </PropertyGroup>
 
   <Target Name="Build">
