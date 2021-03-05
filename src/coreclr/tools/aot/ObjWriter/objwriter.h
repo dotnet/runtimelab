@@ -129,7 +129,7 @@ private:
 
   void EmitVarDefRange(const MCSymbol *Fn, const LocalVariableAddrRange &Range);
 
-  CVRegNum GetCVRegNum(ICorDebugInfo::RegNum RegNum);
+  CVRegNum GetCVRegNum(unsigned RegNum);
   void EmitCVDebugVarInfo(const MCSymbol *Fn, const DebugVarInfo LocInfos[],
                           int NumVarInfos);
   void EmitCVDebugFunctionInfo(const char *FunctionName, int FunctionSize);

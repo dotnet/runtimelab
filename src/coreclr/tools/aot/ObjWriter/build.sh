@@ -13,11 +13,6 @@ if [ $# -lt 4 ]; then
     exit 1
 fi
 
-if [ "$TargetArch" != "$BuildArch" ]; then
-    echo "Error: Cross-building of objwriter is not supported"
-    exit 1
-fi
-
 cd "$ArtifactsDir" || exit 1
 PatchApplied=0
 
@@ -48,12 +43,18 @@ if [ "$PatchApplied" -ne 1 ]; then
 fi
 
 # Configure and build objwriter
-mkdir -p "build/$TargetArch"
-cd "build/$TargetArch" || exit 1
+mkdir -p "build/$TargetArch" || exit 1
 
-# Do not use the -S and -B options to support older CMake versions
-cmake ../../ \
-    -DCMAKE_TOOLCHAIN_FILE="$ScriptDir/toolchain.cmake" \
+if [ "$TargetArch" != "$BuildArch" ]; then
+    export CROSSCOMPILE=1
+fi
+
+# Script arguments:
+#   <path to top-level CMakeLists.txt> <path to intermediate directory> <architecture>
+#   <compiler> <compiler major version> <compiler minor version>
+#   [build flavor] [ninja] [scan-build] [cmakeargs]
+"${RepoRoot}eng/native/gen-buildsys.sh" \
+    "$PWD" "$PWD/build/$TargetArch" "$TargetArch" clang "9" "" "$BuildType" \
     -DCMAKE_BUILD_TYPE="$BuildType" \
     -DCMAKE_INSTALL_PREFIX=install \
     -DLLVM_BUILD_TOOLS=0 \
@@ -68,4 +69,4 @@ cmake ../../ \
     -DCORECLR_INCLUDE_DIR="${RepoRoot}src/coreclr/inc" \
     || exit 1
 
-cmake --build . --config "$BuildType" --target objwriter -j 10 || exit 1
+cmake --build "build/$TargetArch" --config "$BuildType" --target objwriter -j 10 || exit 1
