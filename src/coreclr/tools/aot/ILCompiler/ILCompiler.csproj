@@ -12,7 +12,7 @@
     <OutputPath>$(RuntimeBinDir)ilc</OutputPath>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
     <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
-    <RuntimeIdentifiers>linux-x64;win-x64;osx-x64</RuntimeIdentifiers>
+    <RuntimeIdentifiers>linux-x64;linux-musl-x64;win-x64;osx-x64</RuntimeIdentifiers>
     <Configurations>Debug;Release;Checked</Configurations>
     <UseAppHost>true</UseAppHost>
     <ServerGarbageCollection>true</ServerGarbageCollection>
@@ -23,6 +23,7 @@
     <ILCompilerRuntimeIdentifier Condition="'$(TargetsWindows)' == 'true'">win-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
     <ILCompilerRuntimeIdentifier Condition="'$(TargetsLinux)' == 'true'">linux-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
     <ILCompilerRuntimeIdentifier Condition="'$(TargetsOSX)' == 'true'">osx-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
+    <ILCompilerRuntimeIdentifier Condition="'$(__DistroRid)' == 'linux-musl-x64'">linux-musl-x64</ILCompilerRuntimeIdentifier>
   </PropertyGroup>
 
   <PropertyGroup>
