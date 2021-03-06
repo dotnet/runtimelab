@@ -47,10 +47,10 @@ namespace ILCompiler.DependencyAnalysis
                 // * DynamicallyAccessedMembers enum
 
                 var fixedArgs = attribute.FixedArguments;
+                TypeDesc targetType;
+
                 if (fixedArgs.Length > 0 && fixedArgs[0].Value is string sigFromAttribute)
                 {
-                    TypeDesc targetType;
-
                     if (fixedArgs.Length == 1)
                     {
                         // DynamicDependencyAttribute(String)
@@ -89,8 +89,6 @@ namespace ILCompiler.DependencyAnalysis
                 }
                 else if (fixedArgs.Length > 0 && fixedArgs[0].Value is int memberTypesFromAttribute)
                 {
-                    TypeDesc targetType;
-
                     if (fixedArgs.Length == 2 && fixedArgs[1].Value is TypeDesc typeFromAttribute)
                     {
                         // DynamicDependencyAttribute(DynamicallyAccessedMemberTypes, Type)
@@ -128,7 +126,36 @@ namespace ILCompiler.DependencyAnalysis
                     continue;
                 }
 
-                // TODO: actually root the discovered members
+                const string reason = "DynamicDependencyAttribute";
+
+                // Now root the discovered members
+                foreach (var member in members)
+                {
+                    switch (member)
+                    {
+                        case MethodDesc m:
+                            RootingHelpers.TryGetDependenciesForReflectedMethod(ref dependencies, factory, m, reason);
+                            break;
+                        case FieldDesc field:
+                            RootingHelpers.TryGetDependenciesForReflectedField(ref dependencies, factory, field, reason);
+                            break;
+                        case MetadataType nestedType:
+                            RootingHelpers.TryGetDependenciesForReflectedType(ref dependencies, factory, nestedType, reason);
+                            break;
+                        case PropertyPseudoDesc property:
+                            RootingHelpers.TryGetDependenciesForReflectedProperty(ref dependencies, factory, property, reason);
+                            break;
+                        case EventPseudoDesc @event:
+                            RootingHelpers.TryGetDependenciesForReflectedEvent(ref dependencies, factory, @event, reason);
+                            break;
+                        case null:
+                            RootingHelpers.GetDependenciesForEntireReflectedType(ref dependencies, factory, targetType, reason);
+                            break;
+                        default:
+                            Debug.Fail(member.GetType().ToString());
+                            break;
+                    }
+                }
             }
         }
     }
