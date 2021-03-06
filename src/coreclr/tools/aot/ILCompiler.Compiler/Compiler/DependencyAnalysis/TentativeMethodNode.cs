@@ -36,6 +36,15 @@ namespace ILCompiler.DependencyAnalysis
             return helper == null ? RealBody : factory.MethodEntrypoint(helper);
         }
 
+        public override ObjectData GetData(NodeFactory factory, bool relocsOnly)
+        {
+            if (factory.Target.Architecture == TargetArchitecture.Wasm32)
+            {
+                return new ObjectData(null, new Relocation[] { new Relocation(RelocType.IMAGE_REL_BASED_HIGHLOW, 0, GetTarget(factory)) }, 0, null);
+            }
+            return base.GetData(factory, relocsOnly);
+        }
+
         public MethodDesc Method => _methodNode.Method;
 
         protected override string GetName(NodeFactory factory)

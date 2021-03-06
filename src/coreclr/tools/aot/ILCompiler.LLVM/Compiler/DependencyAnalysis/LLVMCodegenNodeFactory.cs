@@ -47,6 +47,10 @@ namespace ILCompiler.DependencyAnalysis
             }
             if (CompilationModuleGroup.ContainsMethodBody(method, false))
             {
+                // We might be able to optimize the method body away if the owning type was never seen as allocated.
+                if (method.NotCallableWithoutOwningEEType() && CompilationModuleGroup.AllowInstanceMethodOptimization(method))
+                    return new TentativeInstanceMethodNode(new LlvmMethodBodyNode(method));
+
                 return new LlvmMethodBodyNode(method);
             }
             else

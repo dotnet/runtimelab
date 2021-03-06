@@ -542,7 +542,7 @@ namespace ILCompiler.DependencyAnalysis
                 return pointerSize;
             }
             int offsetFromBase = GetNumericOffsetFromBaseSymbolValue(target) + target.Offset;
-            return EmitSymbolRef(realSymbolName, offsetFromBase, target is LLVMMethodCodeNode || target is LLVMBlockRefNode, relocType, delta);
+            return EmitSymbolRef(realSymbolName, offsetFromBase, target is LLVMMethodCodeNode || target is LLVMBlockRefNode || target is TentativeMethodNode, relocType, delta);
         }
 
         public void EmitBlobWithRelocs(byte[] blob, Relocation[] relocs)
@@ -726,6 +726,12 @@ namespace ILCompiler.DependencyAnalysis
                     if (node is ReadyToRunGenericHelperNode readyToRunGenericHelperNode)
                     {
                         objectWriter.GetCodeForReadyToRunGenericHelper(compilation, readyToRunGenericHelperNode, factory);
+                        continue;
+                    }
+
+                    if (node is TentativeMethodNode tentativeMethodNode)
+                    {
+                        objectWriter.GetCodeForTentativeMethod(compilation, tentativeMethodNode, factory);
                         continue;
                     }
 
@@ -1018,10 +1024,24 @@ namespace ILCompiler.DependencyAnalysis
             {
                 builder.BuildRet(resVar);
             }
-             else
+            else
             {
                 builder.BuildRetVoid();
             }
+        }
+
+        private void GetCodeForTentativeMethod(LLVMCodegenCompilation compilation, TentativeMethodNode node, NodeFactory factory)
+        {
+            LLVMBuilderRef builder = compilation.Module.Context.CreateBuilder();
+            MethodDesc method = node.Method;
+            LLVMValueRef tentativeStub = Module.AddFunction(node.GetMangledName(factory.NameMangler), ILImporter.GetLLVMSignatureForMethod(method.Signature, method.RequiresInstArg()));
+            LLVMBasicBlockRef block = tentativeStub.AppendBasicBlock("tentativeStub");
+            builder.PositionAtEnd(block);
+            MethodDesc helperMethod = factory.TypeSystemContext.GetOptionalHelperEntryPoint("ThrowHelpers", "ThrowBodyRemoved");
+            string mangledName = compilation.NodeFactory.MethodEntrypoint(helperMethod).GetMangledName(compilation.NameMangler);
+            LLVMValueRef fn = Module.GetNamedFunction(mangledName);
+            builder.BuildCall(fn, new LLVMValueRef[] { tentativeStub.GetParam(0) }, string.Empty);
+            builder.BuildUnreachable();
         }
 
         private LLVMValueRef OutputCodeForDictionaryLookup(LLVMBuilderRef builder, NodeFactory factory,

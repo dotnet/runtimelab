@@ -2318,7 +2318,7 @@ namespace Internal.IL
             return asFunc;
         }
 
-        private LLVMTypeRef GetLLVMSignatureForMethod(MethodSignature signature, bool hasHiddenParam)
+        internal static LLVMTypeRef GetLLVMSignatureForMethod(MethodSignature signature, bool hasHiddenParam)
         {
             TypeDesc returnType = signature.ReturnType;
             LLVMTypeRef llvmReturnType;
@@ -2336,7 +2336,7 @@ namespace Internal.IL
             List<LLVMTypeRef> signatureTypes = new List<LLVMTypeRef>();
             signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // Shadow stack pointer
 
-            if (!returnOnStack && returnType != GetWellKnownType(WellKnownType.Void))
+            if (!returnOnStack && !signature.ReturnType.IsVoid)
             {
                 signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
             }
