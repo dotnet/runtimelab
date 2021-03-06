@@ -690,7 +690,9 @@ namespace Internal.Runtime.TypeLoader
                                 argumentRuntimeTypeHandle = thArgType.GetRuntimeTypeHandle();
                             }
 
+                            IntPtr argSetupStatePtr = conversionParams.GetArgSetupStateDataPointer();
                             object invokeParam = InvokeUtils.DynamicInvokeParamHelperCore(
+                                argSetupStatePtr,
                                 argumentRuntimeTypeHandle,
                                 out paramLookupType,
                                 out index,
