@@ -45,6 +45,8 @@ namespace Internal.JitInterface
             AMD64 = 0x8664,
             ARM = 0x01c4,
             ARM64 = 0xaa64,
+            WASM32 = 0xffff, // matches llvm.h - TODO better to just #if out this check in compiler.cpp?
+            WASM64 = 0xfffe,
         }
         private enum CFI_OPCODE
         {
@@ -3388,7 +3390,9 @@ namespace Internal.JitInterface
                 case TargetArchitecture.ARM64:
                     return (uint)ImageFileMachine.ARM64;
                 case TargetArchitecture.Wasm32:
-                    return (uint)ImageFileMachine.AMD64; // TODO
+                    return (uint)ImageFileMachine.WASM32;
+                case TargetArchitecture.Wasm64:
+                    return (uint)ImageFileMachine.WASM64;
                 default:
                     throw new NotImplementedException("Expected target architecture is not supported");
             }

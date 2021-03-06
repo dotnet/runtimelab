@@ -5629,6 +5629,8 @@ int Compiler::compCompile(CORINFO_MODULE_HANDLE classPtr,
     CORINFO_EE_INFO* eeInfo = eeGetEEInfo();
 #ifdef TARGET_UNIX
     info.compMatchedVM = info.compMatchedVM && (eeInfo->osType == CORINFO_UNIX);
+#elif TARGET_WASM
+    // TODO: do we need a CORINFO_WASM (or CORINFO_LLVM/CORINFO_BROWSER even though wasm can run outside the browser)
 #else
     info.compMatchedVM        = info.compMatchedVM && (eeInfo->osType == CORINFO_WINNT);
 #endif

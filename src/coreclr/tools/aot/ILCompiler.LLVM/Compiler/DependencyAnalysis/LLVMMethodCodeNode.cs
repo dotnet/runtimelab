@@ -12,6 +12,8 @@ namespace ILCompiler.DependencyAnalysis
 {
     internal abstract class LLVMMethodCodeNode : DependencyNodeCore<NodeFactory>, IMethodCodeNode
     {
+        private bool _isStateMachineMoveNextMethod;
+
         protected readonly MethodDesc _method;
         protected DependencyList _dependencies;
 
@@ -91,7 +93,10 @@ namespace ILCompiler.DependencyAnalysis
         {
         }
 
-        public void InitializeIsStateMachineMoveNextMethod(bool debugInfoIsStateMachineMoveNextMethod) => throw new System.NotImplementedException();
+        public void InitializeIsStateMachineMoveNextMethod(bool value)
+        {
+            _isStateMachineMoveNextMethod = value;
+        }
     }
 
     internal class LlvmMethodBodyNode : LLVMMethodCodeNode, IMethodBodyNode

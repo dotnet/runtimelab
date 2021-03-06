@@ -17,8 +17,13 @@
 #undef NumItems
 #ifdef TARGET_WASM
 
+#define IMAGE_FILE_MACHINE_WASM32             0xFFFF
+#define IMAGE_FILE_MACHINE_WASM64             0xFFFE // TODO: appropriate values for this?  Used to check compilation is for intended target
 
-extern "C" void registerLlvmCallbacks(void* thisPtr, const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*));
+
+
+
+extern "C" void registerLlvmCallbacks(void* thisPtr, const char* outputFileName, const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*));
 
 class Llvm
 {

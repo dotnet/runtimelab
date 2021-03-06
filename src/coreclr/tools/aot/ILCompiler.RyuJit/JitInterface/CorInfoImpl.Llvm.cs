@@ -22,14 +22,14 @@ namespace Internal.JitInterface
         }
 
         [DllImport(JitLibrary)]
-        private extern static void registerLlvmCallbacks(IntPtr thisHandle, delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*> getMangedMethodNamePtr);
+        private extern static void registerLlvmCallbacks(IntPtr thisHandle, byte* outputFileName, delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*> getMangedMethodNamePtr);
 
-        public void RegisterLlvmCallbacks()
+        public void RegisterLlvmCallbacks(string outputFileName)
         {
             CorInfoImpl _this = this;
             _thisStatic = this;
 
-            registerLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref _this), (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>) &getMangledMethodName);
+            registerLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref _this), (byte*)_thisStatic.GetPin(StringToUTF8(outputFileName)), (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>) &getMangledMethodName);
         }
     }
 }

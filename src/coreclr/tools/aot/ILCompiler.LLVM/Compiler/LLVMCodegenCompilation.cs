@@ -20,7 +20,7 @@ namespace ILCompiler
     public sealed class LLVMCodegenCompilation : RyuJitCompilation
     {
         private readonly ConditionalWeakTable<Thread, CorInfoImpl> _corinfos = new ConditionalWeakTable<Thread, CorInfoImpl>();
-        // private CountdownEvent _compilationCountdown;
+        private string _outputFile;
 
         internal LLVMCodegenConfigProvider Options { get; }
         internal LLVMModuleRef Module { get; }
@@ -59,6 +59,7 @@ namespace ILCompiler
 
         protected override void CompileInternal(string outputFile, ObjectDumper dumper)
         {
+            _outputFile = outputFile;
             _dependencyGraph.ComputeMarkedNodes();
 
             var nodes = _dependencyGraph.MarkedNodeList;
@@ -99,7 +100,7 @@ namespace ILCompiler
             CorInfoImpl corInfo = _corinfos.GetValue(Thread.CurrentThread, thread =>
             {
                 var impl = new CorInfoImpl(this);
-                impl.RegisterLlvmCallbacks();
+                impl.RegisterLlvmCallbacks(_outputFile);
                 return impl;
             });
 
@@ -125,8 +126,13 @@ namespace ILCompiler
 
             try
             {
-                corInfo.CompileMethod(methodCodeNodeNeedingCode);
-                ryuJitMethodCount++;
+                var sig = method.Signature;
+                if (sig.Length == 0 && sig.ReturnType == TypeSystemContext.GetWellKnownType(WellKnownType.Void)) // speed up
+                {
+                    corInfo.CompileMethod(methodCodeNodeNeedingCode);
+                    ryuJitMethodCount++;
+                }
+                else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
             catch (CodeGenerationFailedException)
             {
