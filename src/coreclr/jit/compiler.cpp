@@ -25,6 +25,11 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #include "jitstd/algorithm.h"
 #if defined(TARGET_WASM)
 #include "llvm.h"
+#else
+// TODO: how to get different exports.def for the different clrjits?
+void registerLlvmCallbacks(void* thisPtr, const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*))
+{
+}
 #endif
 
 #if defined(DEBUG)
@@ -1504,7 +1509,9 @@ void Compiler::compStartup()
 #endif
 
     /* Initialize the emitter */
-#ifndef TARGET_WASM
+#ifdef TARGET_WASM
+    Llvm::Init();
+#else
     emitter::emitInit();
 #endif // !TARGET_WASM
 
@@ -1540,7 +1547,9 @@ void Compiler::compShutdown()
     DisplayNowayAssertMap();
 #endif // MEASURE_NOWAY
 
-#ifndef TARGET_WASM
+#ifdef TARGET_WASM
+    Llvm::llvmShutdown();
+#else
     /* Shut down the emitter */
 
     emitter::emitDone();
@@ -4438,7 +4447,6 @@ inline void DoLlvmPhase(Compiler* pCompiler)
     Llvm* llvm = new Llvm();
     llvm->Compile(pCompiler);
     delete llvm;
-    fatal(CORJIT_SKIPPED);
     //assert(false);
 }
 #endif
@@ -5768,7 +5776,7 @@ int Compiler::compCompile(CORINFO_MODULE_HANDLE classPtr,
     }
     endErrorTrap() // ERROR TRAP: End
 
-        return param.result;
+    return param.result;
 }
 
 #if defined(DEBUG) || defined(INLINE_DATA)

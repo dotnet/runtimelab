@@ -47,19 +47,11 @@ namespace Internal.JitInterface
         private readonly UnboxingMethodDescFactory _unboxingThunkFactory = new UnboxingMethodDescFactory();
         private bool _isFallbackBodyCompilation;
         private DependencyList _additionalDependencies;
-        private IntPtr _llvmModuleHandle;
 
         public CorInfoImpl(RyuJitCompilation compilation)
             : this()
         {
             _compilation = compilation;
-        }
-
-        public CorInfoImpl(RyuJitCompilation compilation, IntPtr llvmModuleRef)
-            : this()
-        {
-            _compilation = compilation;
-            _llvmModuleHandle = llvmModuleRef;
         }
 
         private MethodDesc getUnboxingThunk(MethodDesc method)

@@ -145,6 +145,9 @@ enum CheckedWriteBarrierKinds {
 #include "corjithost.h"
 
 extern "C" void jitStartup(ICorJitHost* host);
+#if TARGET_WASM
+extern "C" void jitShutdown(bool processIsTerminating);
+#endif
 
 class ICorJitCompiler;
 class ICorJitInfo;

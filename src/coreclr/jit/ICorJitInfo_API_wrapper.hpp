@@ -1163,14 +1163,6 @@ uint32_t WrapICorJitInfo::getThreadTLSIndex(
     return temp;
 }
 
-void* WrapICorJitInfo::getLlvmModule()
-{
-    API_ENTER(getLlvmModule);
-    void* temp = wrapHnd->getLlvmModule();
-    API_LEAVE(getLlvmModule);
-    return temp;
-}
-
 const void* WrapICorJitInfo::getInlinedCallFrameVptr(
           void** ppIndirection)
 {

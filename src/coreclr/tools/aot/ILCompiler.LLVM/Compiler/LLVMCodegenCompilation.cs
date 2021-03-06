@@ -63,8 +63,11 @@ namespace ILCompiler
 
             var nodes = _dependencyGraph.MarkedNodeList;
 
-            Console.WriteLine($"RyuJIT compilation results, total methods {totalMethodCount} RyuJit Methods {ryuJitMethodCount} % {((decimal)ryuJitMethodCount * 100 / totalMethodCount):n4}");
             LLVMObjectWriter.EmitObject(outputFile, nodes, NodeFactory, this, dumper);
+
+            CorInfoImpl.Shutdown(); // writes the LLVM bitcode
+
+            Console.WriteLine($"RyuJIT compilation results, total methods {totalMethodCount} RyuJit Methods {ryuJitMethodCount} % {((decimal)ryuJitMethodCount * 100 / totalMethodCount):n4}");
         }
 
         protected override void ComputeDependencyNodeDependencies(List<DependencyNodeCore<NodeFactory>> obj)
@@ -93,7 +96,12 @@ namespace ILCompiler
 
         private void CompileSingleThreaded(List<LLVMMethodCodeNode> methodsToCompile)
         {
-            CorInfoImpl corInfo = _corinfos.GetValue(Thread.CurrentThread, thread => new CorInfoImpl(this, Module.Handle));
+            CorInfoImpl corInfo = _corinfos.GetValue(Thread.CurrentThread, thread =>
+            {
+                var impl = new CorInfoImpl(this);
+                impl.RegisterLlvmCallbacks();
+                return impl;
+            });
 
             foreach (LLVMMethodCodeNode methodCodeNodeNeedingCode in methodsToCompile)
             {

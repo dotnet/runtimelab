@@ -951,12 +951,6 @@ uint32_t interceptor_ICJI::getThreadTLSIndex(
     return original_ICorJitInfo->getThreadTLSIndex(ppIndirection);
 }
 
-void* interceptor_ICJI::getLlvmModule()
-{
-    mcs->AddCall("getLlvmModule");
-    return original_ICorJitInfo->getLlvmModule();
-}
-
 const void* interceptor_ICJI::getInlinedCallFrameVptr(
           void** ppIndirection)
 {

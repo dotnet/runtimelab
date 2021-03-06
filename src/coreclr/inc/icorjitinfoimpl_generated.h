@@ -484,8 +484,6 @@ bool getSystemVAmd64PassStructInRegisterDescriptor(
 uint32_t getThreadTLSIndex(
           void** ppIndirection) override;
 
-void* getLlvmModule() override;
-
 const void* getInlinedCallFrameVptr(
           void** ppIndirection) override;
 

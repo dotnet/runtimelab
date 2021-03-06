@@ -72,6 +72,9 @@ namespace Internal.JitInterface
         private extern static IntPtr jitStartup(IntPtr host);
 
         [DllImport(JitLibrary)]
+        private extern static void jitShutdown([MarshalAs(UnmanagedType.I1)] bool processIsTerminating);
+
+        [DllImport(JitLibrary)]
         private extern static IntPtr getJit();
 
         [DllImport(JitSupportLibrary)]
@@ -121,6 +124,11 @@ namespace Internal.JitInterface
         public static void Startup()
         {
             jitStartup(GetJitHost(JitConfigProvider.Instance.UnmanagedInstance));
+        }
+
+        public static void Shutdown()
+        {
+            jitShutdown(true);
         }
 
         public CorInfoImpl()
@@ -3470,12 +3478,6 @@ namespace Internal.JitInterface
 
             return (uint)sizeof(CORJIT_FLAGS);
         }
-
-        private void* getLlvmModule()
-        {
-            return _llvmModuleHandle.ToPointer();
-        }
-
 
 #if READYTORUN
         InstructionSetFlags _actualInstructionSetSupported;

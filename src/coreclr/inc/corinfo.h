@@ -2844,10 +2844,6 @@ public:
         /* OUT */   SYSTEMV_AMD64_CORINFO_STRUCT_REG_PASSING_DESCRIPTOR* structPassInRegDescPtr
         ) = 0;
 
-    // return the LLVM Module.  This is static as there is only one module.
-    virtual void* getLlvmModule(
-    ) = 0;
-
 };
 
 /*****************************************************************************

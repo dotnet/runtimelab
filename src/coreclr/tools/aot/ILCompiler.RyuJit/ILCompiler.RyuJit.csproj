@@ -94,4 +94,8 @@
       <Link>Pgo\TypeSystemEntityOrUnknown.cs</Link>
     </Compile>
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="JitInterface\CorInfoImpl.Llvm.cs" />
+  </ItemGroup>
 </Project>

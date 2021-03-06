@@ -18,11 +18,14 @@
 #ifdef TARGET_WASM
 
 
-//llvm::detail::DoubleAPFloat(const llvm::detail::DoubleAPFloat &) = default;
+extern "C" void registerLlvmCallbacks(void* thisPtr, const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*));
 
 class Llvm
 {
 public:
+    static void Init();
+    static void llvmShutdown();
+
     void Compile(Compiler* pCompiler);
 };
 

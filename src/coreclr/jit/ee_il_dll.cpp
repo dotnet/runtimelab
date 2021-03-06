@@ -123,6 +123,9 @@ extern "C" DLLEXPORT void jitStartup(ICorJitHost* jitHost)
     g_jitInitialized = true;
 }
 
+#if TARGET_WASM
+extern "C" DLLEXPORT
+#endif
 void jitShutdown(bool processIsTerminating)
 {
     if (!g_jitInitialized)

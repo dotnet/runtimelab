@@ -82,7 +82,7 @@ function(create_standalone_jit)
     find_package(LLVM REQUIRED CONFIG PATHS E:/llvm11/llvm-11.0.0.src/build/lib/cmake/llvm)
     include_directories(${LLVM_INCLUDE_DIRS})
     add_definitions(${LLVM_DEFINITIONS})
-    llvm_map_components_to_libnames(llvm_libs core)
+    llvm_map_components_to_libnames(llvm_libs core bitwriter)
     target_link_libraries(${TARGETDETAILS_TARGET} ${llvm_libs})
   endif ()
 

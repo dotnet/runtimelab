@@ -130,7 +130,6 @@ struct JitInterfaceCallbacks
     size_t (* findNameOfToken)(void * thisHandle, CorInfoExceptionClass** ppException, CORINFO_MODULE_HANDLE moduleHandle, unsigned int token, char* szFQName, size_t FQNameCapacity);
     bool (* getSystemVAmd64PassStructInRegisterDescriptor)(void * thisHandle, CorInfoExceptionClass** ppException, CORINFO_CLASS_HANDLE structHnd, SYSTEMV_AMD64_CORINFO_STRUCT_REG_PASSING_DESCRIPTOR* structPassInRegDescPtr);
     uint32_t (* getThreadTLSIndex)(void * thisHandle, CorInfoExceptionClass** ppException, void** ppIndirection);
-    void* (* getLlvmModule)(void * thisHandle, CorInfoExceptionClass** ppException);
     const void* (* getInlinedCallFrameVptr)(void * thisHandle, CorInfoExceptionClass** ppException, void** ppIndirection);
     int32_t* (* getAddrOfCaptureThreadGlobal)(void * thisHandle, CorInfoExceptionClass** ppException, void** ppIndirection);
     void* (* getHelperFtn)(void * thisHandle, CorInfoExceptionClass** ppException, CorInfoHelpFunc ftnNum, void** ppIndirection);
@@ -1329,14 +1328,6 @@ public:
 {
     CorInfoExceptionClass* pException = nullptr;
     uint32_t temp = _callbacks->getThreadTLSIndex(_thisHandle, &pException, ppIndirection);
-    if (pException != nullptr) throw pException;
-    return temp;
-}
-
-    virtual void* getLlvmModule()
-{
-    CorInfoExceptionClass* pException = nullptr;
-    void* temp = _callbacks->getLlvmModule(_thisHandle, &pException);
     if (pException != nullptr) throw pException;
     return temp;
 }
