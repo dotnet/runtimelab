@@ -19,16 +19,9 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <ILCompilerRuntimeIdentifier Condition="'$(TargetsWindows)' == 'true'">win-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
-    <ILCompilerRuntimeIdentifier Condition="'$(TargetsLinux)' == 'true'">linux-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
-    <ILCompilerRuntimeIdentifier Condition="'$(TargetsOSX)' == 'true'">osx-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
-    <ILCompilerRuntimeIdentifier Condition="'$(__DistroRid)' == 'linux-musl-x64'">linux-musl-x64</ILCompilerRuntimeIdentifier>
-  </PropertyGroup>
-
-  <PropertyGroup>
     <SelfContained>true</SelfContained>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <RuntimeIdentifier>$(ILCompilerRuntimeIdentifier)</RuntimeIdentifier>
+    <RuntimeIdentifier>$(__DistroRid)</RuntimeIdentifier>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -56,7 +49,7 @@
       <Version>$(ILCompilerVersion)</Version>
     </PackageReference>
 
-    <Content Include="$(NuGetPackageRoot)runtime.$(ILCompilerRuntimeIdentifier).microsoft.dotnet.ilcompiler\$(ILCompilerVersion)\tools\$(LibPrefix)objwriter$(LibSuffix)">
+    <Content Include="$(NuGetPackageRoot)runtime.$(RuntimeIdentifier).microsoft.dotnet.ilcompiler\$(ILCompilerVersion)\tools\$(LibPrefix)objwriter$(LibSuffix)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
