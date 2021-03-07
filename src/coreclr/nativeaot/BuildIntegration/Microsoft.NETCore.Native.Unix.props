@@ -83,7 +83,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <LinkerArg Include="@(NativeFramework->'-framework %(Identity)')" Condition="'$(TargetOS)' == 'OSX'" />
     </ItemGroup>
 
-    <Exec Command="command -v $(CppLinker)" IgnoreExitCode="true">
+    <Exec Command="command -v $(CppLinker)" IgnoreExitCode="true" StandardOutputImportance="Low">
       <Output TaskParameter="ExitCode" PropertyName="_WhereLinker"/>
     </Exec>
     <Error Condition="'$(_WhereLinker)' != '0' and '$(TargetOS)' == 'OSX'" Text="Platform linker ('$(CppLinker)') not found. Try installing Xcode to resolve the problem." />
