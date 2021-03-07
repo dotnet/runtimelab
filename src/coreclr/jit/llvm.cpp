@@ -26,22 +26,26 @@ static LLVMContext _llvmContext;
 static void* _thisPtr;
 static const char* (*_getMangledMethodName)(void*, CORINFO_METHOD_STRUCT_*);
 static char* _outputFileName;
+static Function* _doNothingFunction;
 
-extern "C" DLLEXPORT void registerLlvmCallbacks(void* thisPtr, const char* outputFileName, const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*))
+extern "C" DLLEXPORT void registerLlvmCallbacks(void* thisPtr, const char* outputFileName, const char* triple, const char* dataLayout, const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*))
 {
     _thisPtr = thisPtr;
     _getMangledMethodName = getMangledMethodNamePtr;
+    _module = new Module(llvm::StringRef("netscripten"), _llvmContext);
+    _module->setTargetTriple(triple);
+    _module->setDataLayout(dataLayout);
+
 //    _outputFileName = getAllocator(CMK_DebugOnly).allocate<char>(strlen(outputFileName) + 1)
     _outputFileName = (char*)malloc(strlen(outputFileName) + 7);
     strcpy(_outputFileName, "1.txt"); // ??? without this _outputFileName is corrupted
     strcpy(_outputFileName, outputFileName);
-    strcpy(_outputFileName + strlen(_outputFileName) - 4, "clrjit"); // use different module output name for now, TODO: delete if old LLVM gen does not create a module
+    strcpy(_outputFileName + strlen(_outputFileName) - 3, "clrjit"); // use different module output name for now, TODO: delete if old LLVM gen does not create a module
     strcat(_outputFileName, ".bc");
 }
 
 void Llvm::Init()
 {
-    _module = new Module(llvm::StringRef("netscripten-clrjit"), _llvmContext);
 }
 
 void Llvm::llvmShutdown()
@@ -60,12 +64,29 @@ void Llvm::llvmShutdown()
 //    Module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 }
 
+void EmitDoNothingCall(llvm::IRBuilder<>& builder)
+{
+    if (_doNothingFunction == nullptr)
+    {
+        _doNothingFunction = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext), ArrayRef<Type*>(), false), Function::ExternalLinkage, 0U, "llvm.donothing", _module);
+    }
+    builder.CreateCall(_doNothingFunction);
+}
+
 bool visitNode(llvm::IRBuilder<> &builder, GenTree* node)
 {
-    switch (node->gtOper)
+    switch (node->OperGet())
     {
-    default:
-        return false;
+        case GT_IL_OFFSET:
+            break;
+        case GT_NO_OP:
+            EmitDoNothingCall(builder);
+            break;
+        case GT_RETURN:
+            builder.CreateRetVoid();
+            break;
+        default:
+             return false;
     }
     return true;
 }
@@ -91,10 +112,11 @@ void Llvm::Compile(Compiler* pCompiler)
     {
         llvm::BasicBlock* entry = llvm::BasicBlock::Create(_llvmContext, "", function);
         builder.SetInsertPoint(entry);
-
-        for (Statement* stmt = block->bbStmtList; stmt; stmt = stmt->GetNextStmt())
+  //      GenTree* firstGt = block->GetFirstLIRNode();
+//        firstGt->VisitOperands();
+        for (GenTree* node = block->GetFirstLIRNode(); node; node = node->gtNext)
         {
-            if (!visitNode(builder, stmt->GetRootNode()))
+            if (!visitNode(builder, node))
             {
                 // delete created function , dont want duplicate symbols
                 function->removeFromParent();
@@ -102,6 +124,5 @@ void Llvm::Compile(Compiler* pCompiler)
             }
         }
     }
-    builder.CreateRetVoid();
 }
 #endif

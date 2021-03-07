@@ -23,7 +23,7 @@
 
 
 
-extern "C" void registerLlvmCallbacks(void* thisPtr, const char* outputFileName, const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*));
+extern "C" void registerLlvmCallbacks(void* thisPtr, const char* outputFileName, const char* triple, const char* dataLayout, const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*));
 
 class Llvm
 {

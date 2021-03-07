@@ -100,7 +100,7 @@ namespace ILCompiler
             CorInfoImpl corInfo = _corinfos.GetValue(Thread.CurrentThread, thread =>
             {
                 var impl = new CorInfoImpl(this);
-                impl.RegisterLlvmCallbacks(_outputFile);
+                impl.RegisterLlvmCallbacks(_outputFile, Module.Target, Module.DataLayout);
                 return impl;
             });
 
@@ -127,9 +127,12 @@ namespace ILCompiler
             try
             {
                 var sig = method.Signature;
-                if (sig.Length == 0 && sig.ReturnType == TypeSystemContext.GetWellKnownType(WellKnownType.Void)) // speed up
+                if (sig.Length == 0 && sig.ReturnType == TypeSystemContext.GetWellKnownType(WellKnownType.Void) &&
+                    sig.IsStatic && method.Name == "Initialize" && method.OwningType.ToString().Contains("GCStress")) // speed up
                 {
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);
+                    methodCodeNodeNeedingCode.CompilationCompleted = true;
+                    methodCodeNodeNeedingCode.SetDependencies(new DependencyNodeCore<NodeFactory>.DependencyList()); // TODO: how to track - check RyuJITCompilation
                     ryuJitMethodCount++;
                 }
                 else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
