@@ -353,14 +353,12 @@ namespace System
         internal static unsafe object CallDynamicInvokeMethod(
             object thisPtr,
             IntPtr methodToCall,
-            object thisPtrDynamicInvokeMethod,
             IntPtr dynamicInvokeHelperMethod,
             IntPtr dynamicInvokeHelperGenericDictionary,
             object targetMethodOrDelegate,
             object[] parameters,
             BinderBundle binderBundle,
             bool wrapInTargetInvocationException,
-            bool invokeMethodHelperIsThisCall = true,
             bool methodToCallIsThisCall = true)
         {
             // This assert is needed because we've double-purposed "targetMethodOrDelegate" (which is actually a MethodBase anytime a custom binder is used)
@@ -368,7 +366,6 @@ namespace System
             // isn't always the exact type (byref stripped off, enums converted to int, etc.)
             Debug.Assert(!(binderBundle != null && !(targetMethodOrDelegate is MethodBase)), "The only callers that can pass a custom binder are those servicing MethodBase.Invoke() apis.");
 
-            bool parametersNeedCopyBack = false;
             ArgSetupState argSetupState = new ArgSetupState
             {
                 binderBundle = binderBundle,
@@ -382,7 +379,6 @@ namespace System
                 {
                     argSetupState.parameters = new object[parameters.Length];
                     Array.Copy(parameters, argSetupState.parameters, parameters.Length);
-                    parametersNeedCopyBack = true;
                 }
                 else
                 {
@@ -392,14 +388,6 @@ namespace System
                 object result;
                 try
                 {
-                    if (invokeMethodHelperIsThisCall)
-                    {
-                        Debug.Assert(methodToCallIsThisCall == true);
-                        result = ((delegate*<object, object, IntPtr, ref ArgSetupState, object>)dynamicInvokeHelperMethod)
-                            (thisPtrDynamicInvokeMethod, thisPtr, methodToCall, ref argSetupState);
-                        System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
-                    }
-                    else
                     {
                         if (dynamicInvokeHelperGenericDictionary != IntPtr.Zero)
                         {
@@ -421,7 +409,7 @@ namespace System
                 }
                 finally
                 {
-                    if (parametersNeedCopyBack)
+                    if (argSetupState.parameters != parameters)
                     {
                         Array.Copy(argSetupState.parameters, parameters, parameters.Length);
                     }
@@ -467,94 +455,6 @@ namespace System
         {
             // argSetupStatePtr is a pointer to a *pinned* ArgSetupState object
             DynamicInvokeArgSetupComplete(ref Unsafe.As<byte, ArgSetupState>(ref *(byte*)argSetupStatePtr));
-        }
-
-        // Template function that is used to call dynamically
-        internal static object DynamicInvokeThisCallTemplate(object thisPtr, IntPtr methodToCall, ref ArgSetupState argSetupState)
-        {
-            // This function will look like
-            //
-            // !For each parameter to the method
-            //    !if (parameter is In Parameter)
-            //       localX is TypeOfParameterX&
-            //       ldtoken TypeOfParameterX
-            //       call DynamicInvokeParamHelperIn(RuntimeTypeHandle)
-            //       stloc localX
-            //    !else
-            //       localX is TypeOfParameter
-            //       ldtoken TypeOfParameterX
-            //       call DynamicInvokeParamHelperRef(RuntimeTypeHandle)
-            //       stloc localX
-
-            // ldarg.2
-            // call DynamicInvokeArgSetupComplete(ref ArgSetupState)
-
-            // ldarg.0 // Load this pointer
-            // !For each parameter
-            //    !if (parameter is In Parameter)
-            //       ldloc localX
-            //       ldobj TypeOfParameterX
-            //    !else
-            //       ldloc localX
-            // ldarg.1
-            // calli ReturnType thiscall(TypeOfParameter1, ...)
-            // !if ((ReturnType != void) && !(ReturnType is a byref)
-            //    ldnull
-            // !else
-            //    box ReturnType
-            // ret
-            return null;
-        }
-
-        internal static object DynamicInvokeCallTemplate(object thisPtr, IntPtr methodToCall, ref ArgSetupState argSetupState, bool targetIsThisCall)
-        {
-            // This function will look like
-            //
-            // !For each parameter to the method
-            //    !if (parameter is In Parameter)
-            //       localX is TypeOfParameterX&
-            //       ldtoken TypeOfParameterX
-            //       call DynamicInvokeParamHelperIn(RuntimeTypeHandle)
-            //       stloc localX
-            //    !else
-            //       localX is TypeOfParameter
-            //       ldtoken TypeOfParameterX
-            //       call DynamicInvokeParamHelperRef(RuntimeTypeHandle)
-            //       stloc localX
-
-            // ldarg.2
-            // call DynamicInvokeArgSetupComplete(ref ArgSetupState)
-
-            // !if (targetIsThisCall)
-            //    ldarg.0 // Load this pointer
-            //    !For each parameter
-            //       !if (parameter is In Parameter)
-            //          ldloc localX
-            //          ldobj TypeOfParameterX
-            //       !else
-            //          ldloc localX
-            //    ldarg.1
-            //    calli ReturnType thiscall(TypeOfParameter1, ...)
-            //    !if ((ReturnType != void) && !(ReturnType is a byref)
-            //       ldnull
-            //    !else
-            //       box ReturnType
-            //    ret
-            // !else
-            //    !For each parameter
-            //       !if (parameter is In Parameter)
-            //          ldloc localX
-            //          ldobj TypeOfParameterX
-            //       !else
-            //          ldloc localX
-            //    ldarg.1
-            //    calli ReturnType (TypeOfParameter1, ...)
-            //    !if ((ReturnType != void) && !(ReturnType is a byref)
-            //       ldnull
-            //    !else
-            //       box ReturnType
-            //    ret
-            return null;
         }
 
         private static void DynamicInvokeUnboxIntoActualNullable(object actualBoxedNullable, object boxedFillObject, EETypePtr nullableType)

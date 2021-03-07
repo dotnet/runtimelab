@@ -310,7 +310,7 @@ namespace System
                     }
                 }
 
-                object result = InvokeUtils.CallDynamicInvokeMethod(this.m_firstParameter, this.m_functionPointer, null, invokeThunk, genericDictionary, this, args, binderBundle: null, wrapInTargetInvocationException: true, invokeMethodHelperIsThisCall: false);
+                object result = InvokeUtils.CallDynamicInvokeMethod(this.m_firstParameter, this.m_functionPointer, invokeThunk, genericDictionary, this, args, binderBundle: null, wrapInTargetInvocationException: true);
                 DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
                 return result;
             }
