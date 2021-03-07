@@ -1,6 +1,11 @@
 @ECHO OFF
 SETLOCAL
 
+IF "%~1"=="" (
+    ECHO Usage: %~nx0 ^<arch^>
+    GOTO :ERROR
+)
+
 SET vswherePath=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe
 IF NOT EXIST "%vswherePath%" GOTO :ERROR
 
@@ -31,7 +36,10 @@ FOR /F "delims=" %%W IN ('where link') DO (
     GOTO :CAPTURE_LIB_PATHS
 )
 
+GOTO :ERROR
+
 :CAPTURE_LIB_PATHS
+IF "%LIB%"=="" GOTO :ERROR
 ECHO %LIB%
 
 ENDLOCAL
