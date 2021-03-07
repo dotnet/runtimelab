@@ -382,27 +382,23 @@ namespace Internal.Runtime.Augments
         public static object CallDynamicInvokeMethod(
             object thisPtr,
             IntPtr methodToCall,
-            object thisPtrDynamicInvokeMethod,
             IntPtr dynamicInvokeHelperMethod,
             IntPtr dynamicInvokeHelperGenericDictionary,
             object defaultParametersContext,
             object[] parameters,
             BinderBundle binderBundle,
             bool wrapInTargetInvocationException,
-            bool invokeMethodHelperIsThisCall,
             bool methodToCallIsThisCall)
         {
             object result = InvokeUtils.CallDynamicInvokeMethod(
                 thisPtr,
                 methodToCall,
-                thisPtrDynamicInvokeMethod,
                 dynamicInvokeHelperMethod,
                 dynamicInvokeHelperGenericDictionary,
                 defaultParametersContext,
                 parameters,
                 binderBundle,
                 wrapInTargetInvocationException,
-                invokeMethodHelperIsThisCall,
                 methodToCallIsThisCall);
             System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
             return result;

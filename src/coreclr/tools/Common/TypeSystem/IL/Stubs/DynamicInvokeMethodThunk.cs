@@ -321,13 +321,15 @@ namespace Internal.IL.Stubs
             // !For each parameter to the method
             //    !if (parameter is In Parameter)
             //       localX is TypeOfParameterX&
+            //       ldarg.2
             //       ldtoken TypeOfParameterX
-            //       call DynamicInvokeParamHelperIn(RuntimeTypeHandle)
+            //       call DynamicInvokeParamHelperIn(ref ArgSetupState, RuntimeTypeHandle)
             //       stloc localX
             //    !else
             //       localX is TypeOfParameter
+            //       ldarg.2
             //       ldtoken TypeOfParameterX
-            //       call DynamicInvokeParamHelperRef(RuntimeTypeHandle)
+            //       call DynamicInvokeParamHelperRef(ref ArgSetupState, RuntimeTypeHandle)
             //       stloc localX
 
             // ldarg.2
@@ -411,6 +413,7 @@ namespace Internal.IL.Stubs
                 thisCallSiteSetupStream.EmitLdLoc(local);
                 staticCallSiteSetupStream.EmitLdLoc(local);
 
+                argSetupStream.EmitLdArg(2); // argSetupState
                 argSetupStream.Emit(ILOpcode.ldtoken, tokParamType);
 
                 if (paramKind == DynamicInvokeMethodParameterKind.Reference)

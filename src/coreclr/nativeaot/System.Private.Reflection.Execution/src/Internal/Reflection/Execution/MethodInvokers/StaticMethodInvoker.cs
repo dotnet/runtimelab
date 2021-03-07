@@ -29,14 +29,12 @@ namespace Internal.Reflection.Execution.MethodInvokers
             object result = RuntimeAugments.CallDynamicInvokeMethod(
                 thisObject,
                 MethodInvokeInfo.LdFtnResult,
-                null /*thisPtrDynamicInvokeMethod*/,
                 MethodInvokeInfo.DynamicInvokeMethod,
                 MethodInvokeInfo.DynamicInvokeGenericDictionary,
                 MethodInvokeInfo.MethodInfo,
                 arguments,
                 binderBundle,
                 wrapInTargetInvocationException: wrapInTargetInvocationException,
-                invokeMethodHelperIsThisCall: false,
                 methodToCallIsThisCall: false);
             System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
             return result;
