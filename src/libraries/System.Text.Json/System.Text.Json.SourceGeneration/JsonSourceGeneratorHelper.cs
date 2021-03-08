@@ -1030,7 +1030,7 @@ namespace {_generationNamespace}
                         : "jsonPropertyName: null";
 
                     string getterNamedArg = memberMetadata.HasGetter
-                        ? $"getter: (obj) => {{ return (({declaringTypeCompilableName})obj).{clrPropertyName}; }}"
+                        ? $"getter: static (obj) => {{ return (({declaringTypeCompilableName})obj).{clrPropertyName}; }}"
                         : "getter: null";
 
                     string setterNamedArg;
@@ -1040,7 +1040,7 @@ namespace {_generationNamespace}
                             ? @$"{{ Unsafe.Unbox<{declaringTypeCompilableName}>(obj).{clrPropertyName} = value; }}"
                             : $@"{{ (({declaringTypeCompilableName})obj).{clrPropertyName} = value; }}";
 
-                        setterNamedArg = $"setter: (obj, value) => {propMutation}";
+                        setterNamedArg = $"setter: static (obj, value) => {propMutation}";
                     }
                     else
                     {
