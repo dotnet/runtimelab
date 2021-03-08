@@ -25,7 +25,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <ILCompilerVersion>6.0.0-preview.2.21122.4</ILCompilerVersion>
+    <ILCompilerVersion>6.0.0-preview.3.21155.4</ILCompilerVersion>
 
     <ObjWriterArtifactPath Condition="'$(TargetsWindows)' == 'true'">$(ArtifactsDir)llvm\build\$(TargetArchitecture)\bin\Release\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
     <ObjWriterArtifactPath Condition="'$(TargetsWindows)' != 'true'">$(ArtifactsDir)llvm\build\$(TargetArchitecture)\lib\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
@@ -44,7 +44,7 @@
     </Content>
   </ItemGroup>
 
-  <ItemGroup Condition="!Exists('$(ObjWriterArtifactPath)') and '$(TargetArchitecture)' != 'arm64' and '$(__DistroRid)' != 'linux-musl-x64'">
+  <ItemGroup Condition="!Exists('$(ObjWriterArtifactPath)')">
     <PackageReference Include="Microsoft.DotNet.ILCompiler">
       <Version>$(ILCompilerVersion)</Version>
     </PackageReference>
