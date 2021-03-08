@@ -22,6 +22,9 @@
     <SelfContained>true</SelfContained>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <RuntimeIdentifier>$(__DistroRid)</RuntimeIdentifier>
+
+    <!-- Makes Visual Studio work since DistroRid is injected through environment variables in build scripts -->
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' and '$(TargetsWindows)' == 'true'">win-$(TargetArchitecture)</RuntimeIdentifier>
   </PropertyGroup>
 
   <PropertyGroup>
