@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>$(NetCoreAppCurrent)</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="System\IO\FlushType.cs" />
+    <Compile Include="System\IO\IEnhancedStream.cs" />
+    <Compile Include="System\Net\Http\Primitives\Headers\AcceptEncodingHeader.cs" />
+    <Compile Include="System\Net\Http\Primitives\Headers\MethodHeader.cs" />
+    <Compile Include="System\Net\Http\Primitives\Headers\PathHeader.cs" />
+    <Compile Include="System\Net\Http\Primitives\Headers\SchemeHeader.cs" />
+    <Compile Include="System\Net\Http\Primitives\Headers\StatusHeader.cs" />
+    <Compile Include="System\Net\Http\Primitives\HPack.cs" />
+    <Compile Include="System\Net\Http\Primitives\Http1Connection.cs" />
+    <Compile Include="System\Net\Http\Primitives\Http1Connection.Parsers.cs" />
+    <Compile Include="System\Net\Http\Primitives\Http1Request.cs" />
+    <Compile Include="System\Net\Http\Primitives\HttpBaseConnection.cs" />
+    <Compile Include="System\Net\Http\Primitives\HttpConnection.cs" />
+    <Compile Include="System\Net\Http\Primitives\HttpConnectionStatus.cs" />
+    <Compile Include="System\Net\Http\Primitives\HttpHeaderFlags.cs" />
+    <Compile Include="System\Net\Http\Primitives\HttpPrimitiveVersion.cs" />
+    <Compile Include="System\Net\Http\Primitives\HttpReadType.cs" />
+    <Compile Include="System\Net\Http\Primitives\HttpRequest.cs" />
+    <Compile Include="System\Net\Http\Primitives\IHttpHeadersSink.cs" />
+    <Compile Include="System\Net\Http\Primitives\IntrusiveLinkedList.cs" />
+    <Compile Include="System\Net\Http\Primitives\NullHttpHeaderSink.cs" />
+    <Compile Include="System\Net\Http\Primitives\PreparedHeader.cs" />
+    <Compile Include="System\Net\Http\Primitives\PreparedHeaderName.cs" />
+    <Compile Include="System\Net\Http\Primitives\PreparedHeaderSet.cs" />
+    <Compile Include="System\Net\Http\Primitives\ResettableValueTaskSource.cs" />
+    <Compile Include="System\Net\Http\Primitives\Tools.cs" />
+    <Compile Include="System\Net\Http\Primitives\ValueHttpRequest.cs" />
+    <Compile Include="$(CommonPath)System\Net\ArrayBuffer.cs" Link="Common\System\Net\ArrayBuffer.cs" />
+    <Compile Include="$(CommonPath)System\Net\VectorArrayBuffer.cs" Link="Common\System\Net\VectorArrayBuffer.cs" />
+    <Compile Include="$(CommonPath)System\Threading\Tasks\TaskToApm.cs" Link="Common\System\Threading\Tasks\TaskToApm.cs" />
+    <Compile Include="System\IO\WriteBufferingStream.cs" />
+    <Compile Include="System\Net\Sockets\EnhancedNetworkStream.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System.Runtime" />
+    <Reference Include="System.Runtime.Intrinsics" />
+    <Reference Include="System.Runtime.CompilerServices.Unsafe" />
+    <Reference Include="System.Collections" />
+    <Reference Include="System.Collections.Concurrent" />
+    <Reference Include="System.Memory" />
+    <Reference Include="System.Threading" />
+    <Reference Include="System.Net" />
+    <Reference Include="System.Net.Primitives" />
+    <Reference Include="System.Net.Sockets" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="Microsoft.Win32.Primitives" />
+  </ItemGroup>
+</Project>
