@@ -128,11 +128,14 @@ namespace ILCompiler
             {
                 var sig = method.Signature;
                 if (sig.Length == 0 && sig.ReturnType == TypeSystemContext.GetWellKnownType(WellKnownType.Void) &&
-                    sig.IsStatic && method.Name == "Initialize" && method.OwningType.ToString().Contains("GCStress")) // speed up
+                    sig.IsStatic) // speed up
                 {
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
                     methodCodeNodeNeedingCode.SetDependencies(new DependencyNodeCore<NodeFactory>.DependencyList()); // TODO: how to track - check RyuJITCompilation
+                    // TODO: delete this external function when old module is gone
+                    LLVMValueRef externFunc = Module.AddFunction(NodeFactory.NameMangler.GetMangledMethodName(method).ToString(), GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
+                    externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
                     ryuJitMethodCount++;
                 }
                 else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
@@ -182,6 +185,61 @@ namespace ILCompiler
             }
 
             return type.ConvertToCanonForm(policy);
+        }
+
+        public LLVMTypeRef GetLLVMSignatureForMethod(MethodSignature signature, bool hasHiddenParam)
+        {
+            TypeDesc returnType = signature.ReturnType;
+            LLVMTypeRef llvmReturnType;
+            bool returnOnStack = false;
+            if (!NeedsReturnStackSlot(signature))
+            {
+                returnOnStack = true;
+                llvmReturnType = ILImporter.GetLLVMTypeForTypeDesc(returnType);
+            }
+            else
+            {
+                llvmReturnType = LLVMTypeRef.Void;
+            }
+
+            List<LLVMTypeRef> signatureTypes = new List<LLVMTypeRef>();
+            signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // Shadow stack pointer
+
+            if (!returnOnStack && returnType != GetWellKnownType(WellKnownType.Void))
+            {
+                signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
+            }
+
+            if (hasHiddenParam)
+            {
+                signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // *EEType
+            }
+
+            // Intentionally skipping the 'this' pointer since it could always be a GC reference
+            // and thus must be on the shadow stack
+            foreach (TypeDesc type in signature)
+            {
+                if (ILImporter.CanStoreTypeOnStack(type))
+                {
+                    signatureTypes.Add(ILImporter.GetLLVMTypeForTypeDesc(type));
+                }
+            }
+
+            return LLVMTypeRef.CreateFunction(llvmReturnType, signatureTypes.ToArray(), false);
+        }
+
+        /// <summary>
+        /// Returns true if the method returns a type that must be kept
+        /// on the shadow stack
+        /// </summary>
+        public bool NeedsReturnStackSlot(MethodSignature signature)
+        {
+            return !signature.ReturnType.IsVoid && !ILImporter.CanStoreTypeOnStack(signature.ReturnType);
+        }
+
+        public TypeDesc GetWellKnownType(WellKnownType wellKnownType)
+        {
+            return TypeSystemContext.GetWellKnownType(wellKnownType);
         }
     }
 }

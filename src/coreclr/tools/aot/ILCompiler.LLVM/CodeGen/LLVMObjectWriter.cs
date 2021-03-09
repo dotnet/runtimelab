@@ -308,6 +308,10 @@ namespace ILCompiler.DependencyAnalysis
 
             public LLVMValueRef ToLLVMValueRef(LLVMModuleRef module)
             {
+                if (SymbolName == "S_P_CoreLib_System_Diagnostics_Tracing_EventListener___cctor")
+                {
+
+                }
                 LLVMValueRef valRef = IsFunction ? module.GetNamedFunction(SymbolName) : module.GetNamedGlobal(SymbolName);
 
                 if (Offset != 0 && valRef.Handle != IntPtr.Zero)
