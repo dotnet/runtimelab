@@ -527,12 +527,12 @@ void DwarfPointerTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefinedD
 // DwarfVoidPtrTypeInfo
 
 void DwarfVoidPtrTypeInfo::DumpStrings(MCObjectStreamer* Streamer) {
-    // nothing to dump
+  // nothing to dump
 }
 
 void DwarfVoidPtrTypeInfo::DumpTypeInfo(MCObjectStreamer* Streamer, UserDefinedDwarfTypesBuilder* TypeBuilder) {
-    // Abbrev Number
-    Streamer->EmitULEB128IntValue(DwarfAbbrev::VoidPointerType);
+  // Abbrev Number
+  Streamer->EmitULEB128IntValue(DwarfAbbrev::VoidPointerType);
 }
 
 // DwarfMemberFunctionTypeInfo
@@ -750,7 +750,7 @@ unsigned UserDefinedDwarfTypesBuilder::GetPointerTypeIndex(const PointerTypeDesc
   // We resort to this kludge to generate the exact same debug info for void* that
   // clang would generate (pointer type with no element type specified).
   if (PointerDescriptor.ElementType == VoidTypeIndex)
-      DwarfTypes.push_back(make_unique<DwarfVoidPtrTypeInfo>());
+    DwarfTypes.push_back(make_unique<DwarfVoidPtrTypeInfo>());
   else
     DwarfTypes.push_back(make_unique<DwarfPointerTypeInfo>(PointerDescriptor));
 
