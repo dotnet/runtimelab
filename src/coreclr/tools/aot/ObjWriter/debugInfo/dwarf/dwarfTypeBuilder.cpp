@@ -171,16 +171,16 @@ void DwarfPrimitiveTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefine
 // DwarfVoidTypeInfo
 
 void DwarfVoidTypeInfo::DumpStrings(MCObjectStreamer* Streamer) {
-    Streamer->EmitBytes(StringRef("void"));
-    Streamer->EmitIntValue(0, 1);
+  Streamer->EmitBytes(StringRef("void"));
+  Streamer->EmitIntValue(0, 1);
 }
 
 void DwarfVoidTypeInfo::DumpTypeInfo(MCObjectStreamer* Streamer, UserDefinedDwarfTypesBuilder* TypeBuilder) {
-    // Abbrev Number
-    Streamer->EmitULEB128IntValue(DwarfAbbrev::VoidType);
+  // Abbrev Number
+  Streamer->EmitULEB128IntValue(DwarfAbbrev::VoidType);
 
-    // DW_AT_name
-    EmitSectionOffset(Streamer, StrSymbol, 4);
+  // DW_AT_name
+  EmitSectionOffset(Streamer, StrSymbol, 4);
 }
 
 // DwarfEnumerator
