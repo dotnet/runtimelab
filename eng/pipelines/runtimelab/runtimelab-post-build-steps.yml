@@ -10,7 +10,7 @@ parameters:
   uploadIntermediateArtifacts: false
 
 steps:
-- ${{ if and(ne(parameters.archType, 'arm64'), ne(parameters.platform, 'Linux_musl_x64')) }}:
+- ${{ if ne(parameters.archType, 'arm64') }}:
   # Build coreclr native test output
   - ${{ if eq(parameters.osGroup, 'windows') }}:
     - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} /p:NativeAotMultimodule=true /p:SmokeTestsOnly=${{ parameters.smokeTestsOnly }}
