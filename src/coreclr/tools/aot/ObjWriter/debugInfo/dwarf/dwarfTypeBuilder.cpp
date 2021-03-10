@@ -115,7 +115,6 @@ struct PrimitiveTypeDesc {
 
 static PrimitiveTypeDesc GetPrimitiveTypeDesc(PrimitiveTypeFlags Type, unsigned TargetPointerSize) {
   switch (Type) {
-    case PrimitiveTypeFlags::Void:    return {"void",           dwarf::DW_ATE_address,  0};
     case PrimitiveTypeFlags::Boolean: return {"bool",           dwarf::DW_ATE_boolean,  1};
     case PrimitiveTypeFlags::Char:    return {"char16_t",       dwarf::DW_ATE_UTF,      2};
     case PrimitiveTypeFlags::SByte:   return {"sbyte",          dwarf::DW_ATE_signed,   1};
@@ -167,6 +166,21 @@ void DwarfPrimitiveTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefine
 
   // DW_AT_byte_size
   Streamer->EmitIntValue(TD.ByteSize, 1);
+}
+
+// DwarfVoidTypeInfo
+
+void DwarfVoidTypeInfo::DumpStrings(MCObjectStreamer* Streamer) {
+  Streamer->EmitBytes(StringRef("void"));
+  Streamer->EmitIntValue(0, 1);
+}
+
+void DwarfVoidTypeInfo::DumpTypeInfo(MCObjectStreamer* Streamer, UserDefinedDwarfTypesBuilder* TypeBuilder) {
+  // Abbrev Number
+  Streamer->EmitULEB128IntValue(DwarfAbbrev::VoidType);
+
+  // DW_AT_name
+  EmitSectionOffset(Streamer, StrSymbol, 4);
 }
 
 // DwarfEnumerator
@@ -510,6 +524,17 @@ void DwarfPointerTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefinedD
   Streamer->EmitIntValue(TypeDesc.Is64Bit ? 8 : 4, 1);
 }
 
+// DwarfVoidPtrTypeInfo
+
+void DwarfVoidPtrTypeInfo::DumpStrings(MCObjectStreamer* Streamer) {
+  // nothing to dump
+}
+
+void DwarfVoidPtrTypeInfo::DumpTypeInfo(MCObjectStreamer* Streamer, UserDefinedDwarfTypesBuilder* TypeBuilder) {
+  // Abbrev Number
+  Streamer->EmitULEB128IntValue(DwarfAbbrev::VoidPointerType);
+}
+
 // DwarfMemberFunctionTypeInfo
 
 DwarfMemberFunctionTypeInfo::DwarfMemberFunctionTypeInfo(
@@ -712,8 +737,23 @@ unsigned UserDefinedDwarfTypesBuilder::GetArrayTypeIndex(
 
 unsigned UserDefinedDwarfTypesBuilder::GetPointerTypeIndex(const PointerTypeDescriptor& PointerDescriptor)
 {
+  unsigned VoidTypeIndex = GetPrimitiveTypeIndex(PrimitiveTypeFlags::Void);
+
   unsigned TypeIndex = ArrayIndexToTypeIndex(DwarfTypes.size());
-  DwarfTypes.push_back(make_unique<DwarfPointerTypeInfo>(PointerDescriptor));
+
+  // Creating a pointer to what DWARF considers Void type (DW_TAG_unspecified_type -
+  // per http://eagercon.com/dwarf/issues/minutes-001017.htm) leads to unhappines
+  // since debuggers don't really know how to handle that. The Clang symbol parser
+  // in LLDB only handles DW_TAG_unspecified_type if it's named
+  // "nullptr_t" or "decltype(nullptr)".
+  //
+  // We resort to this kludge to generate the exact same debug info for void* that
+  // clang would generate (pointer type with no element type specified).
+  if (PointerDescriptor.ElementType == VoidTypeIndex)
+    DwarfTypes.push_back(make_unique<DwarfVoidPtrTypeInfo>());
+  else
+    DwarfTypes.push_back(make_unique<DwarfPointerTypeInfo>(PointerDescriptor));
+
   return TypeIndex;
 }
 
@@ -754,7 +794,11 @@ unsigned UserDefinedDwarfTypesBuilder::GetPrimitiveTypeIndex(PrimitiveTypeFlags 
     return Iter->second;
 
   unsigned TypeIndex = ArrayIndexToTypeIndex(DwarfTypes.size());
-  DwarfTypes.push_back(make_unique<DwarfPrimitiveTypeInfo>(Type));
+
+  if (Type == PrimitiveTypeFlags::Void)
+    DwarfTypes.push_back(make_unique<DwarfVoidTypeInfo>());
+  else 
+    DwarfTypes.push_back(make_unique<DwarfPrimitiveTypeInfo>(Type));
 
   PrimitiveDwarfTypes.insert(std::make_pair(Type, TypeIndex));
 
