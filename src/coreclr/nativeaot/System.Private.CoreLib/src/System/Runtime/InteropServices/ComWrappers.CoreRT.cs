@@ -1,7 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Collections;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -23,10 +22,10 @@ namespace System.Runtime.InteropServices
         /// <summary>
         /// ABI for function dispatch of a COM interface.
         /// </summary>
-        public partial struct ComInterfaceDispatch
+        public unsafe partial struct ComInterfaceDispatch
         {
-            internal IntPtr Vtable;
             internal ManagedObjectWrapper* thisPtr;
+
             /// <summary>
             /// Given a <see cref="System.IntPtr"/> from a generated Vtable, convert to the target type.
             /// </summary>
@@ -64,11 +63,9 @@ namespace System.Runtime.InteropServices
             public volatile IntPtr Target; // This is GC Handle
             public long RefCount;
 
-            public int RuntimeDefinedCount;
             public int UserDefinedCount;
-            public ComInterfaceEntry* RuntimeDefined;
             public ComInterfaceEntry* UserDefined;
-            internal DispatchSectionEntry* Dispatches;
+            internal ComInterfaceDispatch* Dispatches;
 
             internal volatile CreateComInterfaceFlagsEx Flags;
             const ulong ComRefCountMask = 0x000000007fffffffUL;
@@ -119,11 +116,11 @@ namespace System.Runtime.InteropServices
 
             IntPtr AsRuntimeDefined(in Guid riid)
             {
-                for (int i = 0; i < RuntimeDefinedCount; ++i)
+                if ((Flags & CreateComInterfaceFlagsEx.CallerDefinedIUnknown) == CreateComInterfaceFlagsEx.None)
                 {
-                    if (RuntimeDefined[i].IID == riid)
+                    if (riid == IID_IUnknown)
                     {
-                        return Dispatches[i].Vtable;
+                        return Dispatches[UserDefinedCount + 1].Vtable;
                     }
                 }
 
@@ -136,22 +133,11 @@ namespace System.Runtime.InteropServices
                 {
                     if (UserDefined[i].IID == riid)
                     {
-                        return Dispatches[i + RuntimeDefinedCount].Vtable;
+                        return Dispatches[i].Vtable;
                     }
                 }
 
                 return IntPtr.Zero;
-            }
-        }
-        internal unsafe struct EntrySet
-        {
-            public ComInterfaceEntry* Start;
-            public int Count;
-
-            public EntrySet(ComInterfaceEntry* start, int count)
-            {
-                this.Start = start;
-                this.Count = count;
             }
         }
 
@@ -199,40 +185,22 @@ namespace System.Runtime.InteropServices
         /// this <see cref="ComWrappers" /> instance, the previously created COM interface will be returned.
         /// If not, a new one will be created.
         /// </remarks>
-        public IntPtr GetOrCreateComInterfaceForObject(object instance, CreateComInterfaceFlags flags)
-        {
-            IntPtr ptr;
-            if (!TryGetOrCreateComInterfaceForObjectInternal(this, instance, flags, out ptr))
-                throw new ArgumentException(null, nameof(instance));
-
-            return ptr;
-        }
-
-        /// <summary>
-        /// Create a COM representation of the supplied object that can be passed to a non-managed environment.
-        /// </summary>
-        /// <param name="impl">The <see cref="ComWrappers" /> implementation to use when creating the COM representation.</param>
-        /// <param name="instance">The managed object to expose outside the .NET runtime.</param>
-        /// <param name="flags">Flags used to configure the generated interface.</param>
-        /// <param name="retValue">The generated COM interface that can be passed outside the .NET runtime or IntPtr.Zero if it could not be created.</param>
-        /// <returns>Returns <c>true</c> if a COM representation could be created, <c>false</c> otherwise</returns>
-        /// <remarks>
-        /// If <paramref name="impl" /> is <c>null</c>, the global instance (if registered) will be used.
-        /// </remarks>
-        private static unsafe bool TryGetOrCreateComInterfaceForObjectInternal(ComWrappers impl, object instance, CreateComInterfaceFlags flags, out IntPtr retValue)
+        public unsafe IntPtr GetOrCreateComInterfaceForObject(object instance, CreateComInterfaceFlags flags)
         {
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
 
-            bool success = true;
-            ManagedObjectWrapperHolder ccwValue = CCWTable.GetValue(instance, (c) =>
+            if (CCWTable.TryGetValue(instance, out ManagedObjectWrapperHolder ccwValue))
             {
-                ManagedObjectWrapper*
-value = CreateCCW(impl, c, flags);
+                return ccwValue.ComIp;
+            }
+
+            ManagedObjectWrapperHolder newValue = CCWTable.GetValue(instance, (c) =>
+            {
+                ManagedObjectWrapper* value = CreateCCW(this, c, flags);
                 return new ManagedObjectWrapperHolder(value);
             });
-            retValue = ccwValue.ComIp;
-            return success;
+            return newValue.ComIp;
         }
 
         private static unsafe ManagedObjectWrapper* CreateCCW(ComWrappers impl, object instance, CreateComInterfaceFlags flags)
@@ -248,7 +216,7 @@ value = CreateCCW(impl, c, flags);
             {
                 ComInterfaceEntry curr = runtimeDefinedLocal[runtimeDefinedCount++];
                 curr.IID = IID_IUnknown;
-                curr.Vtable = ComWrappers.DefaultIUnknownVftblPtr;
+                curr.Vtable = DefaultIUnknownVftblPtr;
             }
 
             // Check if the caller wants tracker support.
@@ -264,74 +232,34 @@ value = CreateCCW(impl, c, flags);
             int totalDefinedCount = runtimeDefinedCount + userDefinedCount;
 
             // Compute the total entry size of dispatch section.
-            int totalDispatchSectionCount = ComputeThisPtrForDispatchSection(totalDefinedCount) + totalDefinedCount;
-            int totalDispatchSectionSize = totalDispatchSectionCount * sizeof(void*);
+            int totalDispatchSectionSize = totalDefinedCount * sizeof(ComInterfaceDispatch);
 
             // Allocate memory for the ManagedObjectWrapper.
-            int AlignmentThisPtrMaxPadding = DispatchAlignmentThisPtr - sizeof(void*);
             IntPtr wrapperMem = Marshal.AllocCoTaskMem(
-                sizeof(ManagedObjectWrapper) + totalRuntimeDefinedSize + totalDispatchSectionSize + AlignmentThisPtrMaxPadding);
+                sizeof(ManagedObjectWrapper) + totalRuntimeDefinedSize + totalDispatchSectionSize);
 
             // Compute Runtime defined offset.
-            IntPtr runtimeDefinedOffset = wrapperMem + sizeof(ManagedObjectWrapper);
-
-            // Copy in runtime supplied COM interface entries.
-            ComInterfaceEntry* runtimeDefined = null;
-            if (0 < runtimeDefinedCount)
-            {
-                // FIXME: I may have to get rid of using Span, since it's more pain to implement using that API.
-                runtimeDefinedLocal.Slice(0, runtimeDefinedCount).CopyTo(new Span<ComInterfaceEntry>((void*)runtimeDefinedOffset, runtimeDefinedCount));
-                runtimeDefined = (ComInterfaceEntry*)(runtimeDefinedOffset);
-            }
+            IntPtr runtimeDefinedOffset = wrapperMem + totalDispatchSectionSize + sizeof(ManagedObjectWrapper);
 
             // Compute the dispatch section offset and ensure it is aligned.
             ManagedObjectWrapper* mow = (ManagedObjectWrapper*)wrapperMem;
-                        
+
             // Dispatches follow immediately after ManagedObjectWrapper
             ComInterfaceDispatch* pDispatches = (ComInterfaceDispatch*)(wrapperMem + sizeof(ManagedObjectWrapper));
             for (int i = 0; i < totalDefinedCount; i++)
             {
-                pDispatches[i].Vtable = (i < userDefinedCount) ? userDefined[i].VTable : runtimeDefinedVTables[i - userDefinedCount];
+                pDispatches[i].Vtable = (i < userDefinedCount) ? userDefined[i].Vtable : runtimeDefinedLocal[i - userDefinedCount].Vtable;
                 pDispatches[i].thisPtr = mow;
             }
+
             mow->Target = IntPtr.Zero;
             mow->RefCount = 1;
-            mow->RuntimeDefinedCount = runtimeDefinedCount;
-            mow->RuntimeDefined = runtimeDefined;
             mow->UserDefinedCount = userDefinedCount;
             mow->UserDefined = userDefined;
             mow->Flags = (CreateComInterfaceFlagsEx)flags;
-            mow->Dispatches = (DispatchSectionEntry*)dispatchSectionOffset;
+            mow->Dispatches = pDispatches;
             return mow;
         }
-
-        // Populate the dispatch section with the entry sets
-        static unsafe void PopulateDispatchSection(
-            ManagedObjectWrapper* thisPtr,
-            DispatchSectionEntry* dispatchSection,
-            Span<EntrySet> entrySets)
-        {
-            // Define dispatch section iterator.
-            DispatchSectionEntry* currDisp = dispatchSection;
-
-            // Iterate over all interface entry sets.
-            foreach (var curr in entrySets)
-            {
-                ComInterfaceEntry* currEntry = curr.Start;
-                int entryCount = curr.Count;
-
-                // Update dispatch section with 'this' pointer and vtables.
-                for (int i = 0; i < entryCount; ++i, ++currEntry, currDisp++)
-                {
-                    // Insert the 'this' pointer at the appropriate locations
-                    currDisp->thisPtr = thisPtr;
-
-                    // Fill in the dispatch entry
-                    currDisp->Vtable = currEntry->Vtable;
-                }
-            }
-        }
-
 
         /// <summary>
         /// Get the currently registered managed object or creates a new managed object and registers it.
