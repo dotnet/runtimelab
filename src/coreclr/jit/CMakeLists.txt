@@ -78,8 +78,7 @@ function(create_standalone_jit)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE USE_STL)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE PAL_STDCPP_COMPAT)
 
-    # TODO LLVM build location?
-    find_package(LLVM REQUIRED CONFIG PATHS E:/llvm11/llvm-11.0.0.src/build/lib/cmake/llvm)
+    find_package(LLVM REQUIRED CONFIG PATHS  $ENV{LLVM_CMAKE_CONFIG})
     include_directories(${LLVM_INCLUDE_DIRS})
     add_definitions(${LLVM_DEFINITIONS})
     llvm_map_components_to_libnames(llvm_libs core bitwriter)
