@@ -425,7 +425,7 @@ namespace System.Runtime.InteropServices
         {
             if (s_globalInstanceForMarshalling == null)
             {
-                throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+                throw new InvalidOperationException(SR.InvalidOperation_ComInteropRequireComWrapperInstance);
             }
 
             return s_globalInstanceForMarshalling.GetOrCreateComInterfaceForObject(instance, CreateComInterfaceFlags.None);

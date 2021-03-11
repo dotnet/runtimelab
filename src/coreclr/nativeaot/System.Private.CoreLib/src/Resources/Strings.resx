@@ -3109,4 +3109,7 @@
   <data name="ResourceManager_ReflectionNotAllowed" xml:space="preserve">
     <value>Use of ResourceManager for custom types is disabled. Set the MSBuild Property CustomResourceTypesSupport to true in order to enable it.</value>
   </data>
+  <data name="InvalidOperation_ComInteropRequireComWrapperInstance" xml:space="preserve">
+    <value>COM Interop requrie ComWrapper instance registered for marshalling.</value>
+  </data>
 </root>
