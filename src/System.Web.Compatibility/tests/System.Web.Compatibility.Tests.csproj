@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netcoreapp2.1</TargetFrameworks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Set ReferenceSourceTarget to workaround https://github.com/dotnet/sdk/issues/12301 -->
+    <!-- Treat the ProjectReference as a regular Reference by setting ReferenceOutputAssembly and OutputItemType 
+         so that it is fed into conflict-resolution.
+         Workaround for https://github.com/dotnet/sdk/issues/2674 -->
+    <ProjectReference Include="..\src\System.Web.Compatibility.csproj" 
+                      ReferenceSourceTarget="NotAProjectReference" 
+                      ReferenceOutputAssembly="false" 
+                      OutputItemType="Reference" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+  </ItemGroup>
+
+</Project>

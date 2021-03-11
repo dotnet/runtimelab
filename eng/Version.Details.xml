@@ -1,15 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Dependencies>
-  <ProductDependencies>
-    <Dependency Name="Microsoft.NETCore.App" Version="6.0.0-alpha.1.20514.9">
-      <Uri>https://github.com/dotnet/runtime</Uri>
-      <Sha>d67cc2cceb4dc8ecd15f5b6663d93f79de3954fd</Sha>
-    </Dependency>
-  </ProductDependencies>
   <ToolsetDependencies>
-    <Dependency Name="Microsoft.DotNet.Arcade.Sdk" Version="6.0.0-beta.20509.12">
+    <Dependency Name="Microsoft.DotNet.Arcade.Sdk" Version="6.0.0-beta.21058.3">
       <Uri>https://github.com/dotnet/arcade</Uri>
-      <Sha>f2f45f7a856fe4949735e574f7a0350bda48264f</Sha>
+      <Sha>1571d6b095014ad63fdb48b10f5dea912f96872e</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.DotNet.GenAPI" Version="6.0.0-beta.21058.3">
+      <Uri>https://github.com/dotnet/arcade</Uri>
+      <Sha>1571d6b095014ad63fdb48b10f5dea912f96872e</Sha>
     </Dependency>
   </ToolsetDependencies>
 </Dependencies>
