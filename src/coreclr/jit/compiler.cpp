@@ -23,6 +23,10 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #include "jittelemetry.h"
 #include "patchpointinfo.h"
 #include "jitstd/algorithm.h"
+
+#undef min
+#undef max
+
 #if defined(TARGET_WASM)
 #include "llvm.h"
 #else
@@ -6655,11 +6659,7 @@ void Compiler::compInitVarScopeMap()
     compVarScopeMap = new (getAllocator()) VarNumToScopeDscMap(getAllocator());
 
     // 599 prime to limit huge allocations; for ex: duplicated scopes on single var.
-#ifdef TARGET_WASM
     compVarScopeMap->Reallocate(std::min(info.compVarScopesCount, 599U));
-#else
-    compVarScopeMap->Reallocate(min(info.compVarScopesCount, 599U));
-#endif
 
     for (unsigned i = 0; i < info.compVarScopesCount; ++i)
     {
@@ -7784,24 +7784,16 @@ void CompTimeSummaryInfo::AddInfo(CompTimeInfo& info, bool includePhases)
 
         // Update the totals and maxima.
         m_total.m_byteCodeBytes += info.m_byteCodeBytes;
-#ifdef TARGET_WASM
         m_maximum.m_byteCodeBytes = std::max(m_maximum.m_byteCodeBytes, info.m_byteCodeBytes);
-#else
-        m_maximum.m_byteCodeBytes = max(m_maximum.m_byteCodeBytes, info.m_byteCodeBytes);
-#endif
         m_total.m_totalCycles += info.m_totalCycles;
-#ifdef TARGET_WASM
         m_maximum.m_totalCycles = std::max(m_maximum.m_totalCycles, info.m_totalCycles);
-#else
-        m_maximum.m_totalCycles = max(m_maximum.m_totalCycles, info.m_totalCycles);
-#endif
 
 #if MEASURE_CLRAPI_CALLS
         // Update the CLR-API values.
         m_total.m_allClrAPIcalls += info.m_allClrAPIcalls;
-        m_maximum.m_allClrAPIcalls = max(m_maximum.m_allClrAPIcalls, info.m_allClrAPIcalls);
+        m_maximum.m_allClrAPIcalls = std::max(m_maximum.m_allClrAPIcalls, info.m_allClrAPIcalls);
         m_total.m_allClrAPIcycles += info.m_allClrAPIcycles;
-        m_maximum.m_allClrAPIcycles = max(m_maximum.m_allClrAPIcycles, info.m_allClrAPIcycles);
+        m_maximum.m_allClrAPIcycles = std::max(m_maximum.m_allClrAPIcycles, info.m_allClrAPIcycles);
 #endif
 
         if (includeInFiltered)
@@ -7831,22 +7823,14 @@ void CompTimeSummaryInfo::AddInfo(CompTimeInfo& info, bool includePhases)
                 m_filtered.m_CLRcyclesByPhase[i] += info.m_CLRcyclesByPhase[i];
 #endif
             }
-#ifdef TARGET_WASM
             m_maximum.m_cyclesByPhase[i] = std::max(m_maximum.m_cyclesByPhase[i], info.m_cyclesByPhase[i]);
-#else
-            m_maximum.m_cyclesByPhase[i] = max(m_maximum.m_cyclesByPhase[i], info.m_cyclesByPhase[i]);
-#endif
 
 #if MEASURE_CLRAPI_CALLS
             m_maximum.m_CLRcyclesByPhase[i] = max(m_maximum.m_CLRcyclesByPhase[i], info.m_CLRcyclesByPhase[i]);
 #endif
         }
         m_total.m_parentPhaseEndSlop += info.m_parentPhaseEndSlop;
-#ifdef TARGET_WASM
         m_maximum.m_parentPhaseEndSlop = std::max(m_maximum.m_parentPhaseEndSlop, info.m_parentPhaseEndSlop);
-#else
-        m_maximum.m_parentPhaseEndSlop = max(m_maximum.m_parentPhaseEndSlop, info.m_parentPhaseEndSlop);
-#endif
     }
 #if MEASURE_CLRAPI_CALLS
     else
