@@ -10,7 +10,7 @@
 #include "jitpch.h"
 #include <new>
 
-// these break std::min/max
+// these break std::min/max in LLVM's headers
 #undef min
 #undef max
 // this breaks StringMap.h
