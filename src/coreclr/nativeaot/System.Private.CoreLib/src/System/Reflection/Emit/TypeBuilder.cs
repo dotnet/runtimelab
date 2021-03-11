@@ -218,13 +218,13 @@ namespace System.Reflection.Emit
         public void AddInterfaceImplementation([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type interfaceType) { }
 
         [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-        public Type CreateType()
+        public Type? CreateType()
         {
             return default;
         }
 
         [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-        public TypeInfo CreateTypeInfo()
+        public TypeInfo? CreateTypeInfo()
         {
             return default;
         }
