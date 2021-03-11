@@ -24,8 +24,6 @@ namespace System.Runtime.InteropServices
         /// </summary>
         public unsafe partial struct ComInterfaceDispatch
         {
-            internal ManagedObjectWrapper* thisPtr;
-
             /// <summary>
             /// Given a <see cref="System.IntPtr"/> from a generated Vtable, convert to the target type.
             /// </summary>
@@ -40,8 +38,14 @@ namespace System.Runtime.InteropServices
 
             internal static unsafe ManagedObjectWrapper* ToManagedObjectWrapper(ComInterfaceDispatch* dispatchPtr)
             {
-                return dispatchPtr->thisPtr;
+                return ((InternalComInterfaceDispatch*)dispatchPtr)->thisPtr;
             }
+        }
+
+        internal unsafe struct InternalComInterfaceDispatch
+        {
+            public IntPtr Vtable;
+            internal ManagedObjectWrapper* thisPtr;
         }
 
         internal enum CreateComInterfaceFlagsEx
@@ -65,7 +69,7 @@ namespace System.Runtime.InteropServices
 
             public int UserDefinedCount;
             public ComInterfaceEntry* UserDefined;
-            internal ComInterfaceDispatch* Dispatches;
+            internal InternalComInterfaceDispatch* Dispatches;
 
             internal volatile CreateComInterfaceFlagsEx Flags;
             const ulong ComRefCountMask = 0x000000007fffffffUL;
@@ -208,15 +212,13 @@ namespace System.Runtime.InteropServices
             ComInterfaceEntry* userDefined = impl.ComputeVtables(instance, flags, out int userDefinedCount);
 
             // Maximum number of runtime supplied vtables.
-            Span<ComInterfaceEntry> runtimeDefinedLocal = stackalloc ComInterfaceEntry[4];
+            Span<IntPtr> runtimeDefinedVtable = stackalloc IntPtr[4];
             int runtimeDefinedCount = 0;
 
             // Check if the caller will provide the IUnknown table.
             if ((flags & CreateComInterfaceFlags.CallerDefinedIUnknown) == CreateComInterfaceFlags.None)
             {
-                ComInterfaceEntry curr = runtimeDefinedLocal[runtimeDefinedCount++];
-                curr.IID = IID_IUnknown;
-                curr.Vtable = DefaultIUnknownVftblPtr;
+                runtimeDefinedVtable[runtimeDefinedCount++] = DefaultIUnknownVftblPtr;
             }
 
             // Check if the caller wants tracker support.
@@ -228,7 +230,6 @@ namespace System.Runtime.InteropServices
             // }
 
             // Compute size for ManagedObjectWrapper instance.
-            int totalRuntimeDefinedSize = runtimeDefinedCount * sizeof(ComInterfaceEntry);
             int totalDefinedCount = runtimeDefinedCount + userDefinedCount;
 
             // Compute the total entry size of dispatch section.
@@ -236,7 +237,7 @@ namespace System.Runtime.InteropServices
 
             // Allocate memory for the ManagedObjectWrapper.
             IntPtr wrapperMem = Marshal.AllocCoTaskMem(
-                sizeof(ManagedObjectWrapper) + totalRuntimeDefinedSize + totalDispatchSectionSize);
+                sizeof(ManagedObjectWrapper) + totalDispatchSectionSize);
 
             // Compute Runtime defined offset.
             IntPtr runtimeDefinedOffset = wrapperMem + totalDispatchSectionSize + sizeof(ManagedObjectWrapper);
@@ -245,10 +246,10 @@ namespace System.Runtime.InteropServices
             ManagedObjectWrapper* mow = (ManagedObjectWrapper*)wrapperMem;
 
             // Dispatches follow immediately after ManagedObjectWrapper
-            ComInterfaceDispatch* pDispatches = (ComInterfaceDispatch*)(wrapperMem + sizeof(ManagedObjectWrapper));
+            InternalComInterfaceDispatch* pDispatches = (InternalComInterfaceDispatch*)(wrapperMem + sizeof(ManagedObjectWrapper));
             for (int i = 0; i < totalDefinedCount; i++)
             {
-                pDispatches[i].Vtable = (i < userDefinedCount) ? userDefined[i].Vtable : runtimeDefinedLocal[i - userDefinedCount].Vtable;
+                pDispatches[i].Vtable = (i < userDefinedCount) ? userDefined[i].Vtable : runtimeDefinedVtable[i - userDefinedCount];
                 pDispatches[i].thisPtr = mow;
             }
 
