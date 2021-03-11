@@ -412,7 +412,9 @@ namespace Internal.Runtime.CompilerHelpers
                 return IntPtr.Zero;
             }
 
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+#pragma warning disable CA1416
+            return ComWrappers.ComInterfaceForObject(pUnk);
+#pragma warning restore CA1416
         }
 
         public static object ConvertNativeComInterfaceToManaged(IntPtr pUnk)

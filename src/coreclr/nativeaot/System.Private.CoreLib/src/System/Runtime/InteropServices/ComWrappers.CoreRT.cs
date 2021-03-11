@@ -421,6 +421,16 @@ namespace System.Runtime.InteropServices
             fpRelease = (IntPtr)(delegate* unmanaged<IntPtr, uint>)&ComWrappers.IUnknown_Release;
         }
 
+        internal static IntPtr ComInterfaceForObject(object instance)
+        {
+            if (s_globalInstanceForMarshalling == null)
+            {
+                throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            }
+
+            return s_globalInstanceForMarshalling.GetOrCreateComInterfaceForObject(instance, CreateComInterfaceFlags.None);
+        }
+
         internal static int CallICustomQueryInterface(object customQueryInterfaceMaybe, ref Guid iid, out IntPtr ppObject)
         {
             var customQueryInterface = customQueryInterfaceMaybe as ICustomQueryInterface;
