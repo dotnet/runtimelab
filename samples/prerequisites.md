@@ -20,11 +20,11 @@ Then launch the bootstrapper passing the installation path and the two required 
 ```cmd
 vs_buildtools.exe --installPath C:\VS2019 --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 Microsoft.VisualStudio.Component.Windows10SDK.19041 --passive --norestart --nocache
 ```
-Alternatively you may launch the bootstrapper without any options and use Visual Studio Installer UI to enable "C++ x64/x86 build tools" and "Windows 10 SDK" individual components.
+Alternatively you may launch the bootstrapper without any options and use Visual Studio Installer UI to enable C++ x64/x86 build tools and Windows 10 SDK individual components.
 
 Notes:
-- You may skip the `Windows10SDK` component if you already have Windows 10 SDK installed on your machine.
-- To target Windows ARM64, you need to add the `Microsoft.VisualStudio.Component.VC.Tools.ARM64` ("C++ ARM64 build tools") component instead.
+- You may skip the `Windows10SDK.19041` component if you already have Windows 10 SDK installed on your machine.
+- To target Windows ARM64, you need to add the `Microsoft.VisualStudio.Component.VC.Tools.ARM64` (C++ ARM64 build tools) component instead.
 - The `--installPath` option affects Build Tools installation only. Visual Studio Installer is always installed into
 the `%ProgramFiles(x86)%\Microsoft Visual Studio\Installer` directory.
 
