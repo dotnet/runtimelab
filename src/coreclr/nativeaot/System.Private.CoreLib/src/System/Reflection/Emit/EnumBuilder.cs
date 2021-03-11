@@ -125,7 +125,13 @@ namespace System.Reflection.Emit
         }
 
         [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-        public TypeInfo CreateTypeInfo()
+        public Type? CreateType()
+        {
+            return default;
+        }
+
+        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        public TypeInfo? CreateTypeInfo()
         {
             return default;
         }
