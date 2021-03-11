@@ -556,7 +556,7 @@ namespace Internal.TypeSystem.Interop
                 if (nativeType == NativeTypeKind.AsAny)
                     return isAnsi ? MarshallerKind.AsAnyA : MarshallerKind.AsAnyW;
                 else
-                    return MarshallerKind.ComInterface;
+                    return MarshallerKind.Invalid;
             }
             else if (InteropTypes.IsStringBuilder(context, type))
             {
