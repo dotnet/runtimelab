@@ -35,11 +35,6 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ItemGroup>
 
     <ItemGroup>
-      <!-- libicu loader in System.Globalization.Native is not compatible with static linking -->
-      <IlcArg Include="--removefeature:Globalization" Condition="'$(StaticallyLinked)' == 'true'" />
-    </ItemGroup>
-
-    <ItemGroup>
       <NetCoreAppNativeLibrary Include="System.Native" />
       <NetCoreAppNativeLibrary Include="System.Globalization.Native" />
       <NetCoreAppNativeLibrary Include="System.IO.Compression.Native" />
