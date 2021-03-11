@@ -118,26 +118,26 @@ namespace System.Runtime.InteropServices
                 return typeMaybe;
             }
 
-            IntPtr AsRuntimeDefined(in Guid riid)
+            unsafe IntPtr AsRuntimeDefined(in Guid riid)
             {
                 if ((Flags & CreateComInterfaceFlagsEx.CallerDefinedIUnknown) == CreateComInterfaceFlagsEx.None)
                 {
                     if (riid == IID_IUnknown)
                     {
-                        return Dispatches[UserDefinedCount + 1].Vtable;
+                        return (IntPtr)(Dispatches + UserDefinedCount);
                     }
                 }
 
                 return IntPtr.Zero;
             }
 
-            IntPtr AsUserDefined(in Guid riid)
+            unsafe IntPtr AsUserDefined(in Guid riid)
             {
                 for (int i = 0; i < UserDefinedCount; ++i)
                 {
                     if (UserDefined[i].IID == riid)
                     {
-                        return Dispatches[i].Vtable;
+                        return (IntPtr)(Dispatches + i);
                     }
                 }
 
@@ -157,6 +157,8 @@ namespace System.Runtime.InteropServices
 
             ~ManagedObjectWrapperHolder()
             {
+                // Release GC handle created when MOW was built.
+                RuntimeImports.RhHandleFree(this.wrapper->Target);
                 Marshal.FreeCoTaskMem((IntPtr)this.wrapper);
             }
         }
@@ -254,7 +256,7 @@ namespace System.Runtime.InteropServices
                 pDispatches[i].thisPtr = mow;
             }
 
-            mow->Target = IntPtr.Zero;
+            mow->Target = RuntimeImports.RhHandleAlloc(instance, GCHandleType.Normal);
             mow->RefCount = 1;
             mow->UserDefinedCount = userDefinedCount;
             mow->UserDefined = userDefined;
