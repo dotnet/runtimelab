@@ -194,17 +194,18 @@ namespace System.Runtime.InteropServices
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
 
-            if (CCWTable.TryGetValue(instance, out ManagedObjectWrapperHolder ccwValue))
+            ManagedObjectWrapperHolder ccwValue;
+            if (CCWTable.TryGetValue(instance, out ccwValue))
             {
                 return ccwValue.ComIp;
             }
 
-            ManagedObjectWrapperHolder newValue = CCWTable.GetValue(instance, (c) =>
+            ccwValue = CCWTable.GetValue(instance, (c) =>
             {
                 ManagedObjectWrapper* value = CreateCCW(this, c, flags);
                 return new ManagedObjectWrapperHolder(value);
             });
-            return newValue.ComIp;
+            return ccwValue.ComIp;
         }
 
         private static unsafe ManagedObjectWrapper* CreateCCW(ComWrappers impl, object instance, CreateComInterfaceFlags flags)
