@@ -48,13 +48,6 @@ namespace System.Runtime.InteropServices
             internal ManagedObjectWrapper* _thisPtr;
         }
 
-        internal enum CreateComInterfaceFlagsEx
-        {
-            None = CreateComInterfaceFlags.None,
-            CallerDefinedIUnknown = CreateComInterfaceFlags.CallerDefinedIUnknown,
-            TrackerSupport = CreateComInterfaceFlags.TrackerSupport,
-        }
-
         internal unsafe struct ManagedObjectWrapper
         {
             public IntPtr Target; // This is GC Handle
@@ -64,7 +57,7 @@ namespace System.Runtime.InteropServices
             public ComInterfaceEntry* UserDefined;
             internal InternalComInterfaceDispatch* Dispatches;
 
-            internal CreateComInterfaceFlagsEx Flags;
+            internal CreateComInterfaceFlags Flags;
 
             public uint AddRef()
             {
@@ -103,7 +96,7 @@ namespace System.Runtime.InteropServices
 
             private unsafe IntPtr AsRuntimeDefined(in Guid riid)
             {
-                if ((Flags & CreateComInterfaceFlagsEx.CallerDefinedIUnknown) == CreateComInterfaceFlagsEx.None)
+                if ((Flags & CreateComInterfaceFlags.CallerDefinedIUnknown) == CreateComInterfaceFlags.None)
                 {
                     if (riid == IID_IUnknown)
                     {
@@ -238,7 +231,7 @@ namespace System.Runtime.InteropServices
             mow->RefCount = 1;
             mow->UserDefinedCount = userDefinedCount;
             mow->UserDefined = userDefined;
-            mow->Flags = (CreateComInterfaceFlagsEx)flags;
+            mow->Flags = flags;
             mow->Dispatches = pDispatches;
             return mow;
         }
