@@ -175,12 +175,6 @@ namespace System.Text.Json.SourceGeneration
                         // Add declarations for JsonContext and the JsonTypeInfo<T> property for the type.
                         sb.Append(Get_ContextClass_And_TypeInfoProperty_Declarations(typeMetadata));
 
-                        // Add declarations for the JsonTypeInfo<T> wrapper and nested property.
-                        sb.Append(Get_TypeInfoClassWrapper(typeMetadata));
-
-                        // Add constructor which initializers the JsonPropertyInfo<T>s for the type.
-                        sb.Append(GetTypeInfoConstructorAndInitializeMethod(typeMetadata));
-
                         // Add end braces.
                         sb.Append($@"
         }}
@@ -945,64 +939,32 @@ namespace {_generationNamespace}
 
         private static string FormatAsUsingStatement(string @namespace) => $"using {@namespace};";
 
-        // Includes necessary imports, namespace decl and initializes class.
         private string Get_ContextClass_And_TypeInfoProperty_Declarations(TypeMetadata typeMetadata)
         {
             string typeCompilableName = typeMetadata.CompilableName;
             string typeFriendlyName = typeMetadata.FriendlyName;
 
-            return $@"
+            string createObjectFuncTypeArg = typeMetadata.ConstructionStrategy == ObjectConstructionStrategy.ParameterlessConstructor
+                ? $"createObjectFunc: static () => new {typeMetadata.CompilableName}()"
+                : "createObjectFunc: null";
+
+            StringBuilder sb = new();
+
+            sb.Append($@"
 
 namespace {_generationNamespace}
 {{
     {JsonContextDeclarationSource}
     {{
-        private {typeFriendlyName}TypeInfo _{typeFriendlyName};
+        private JsonObjectInfo<{typeCompilableName}> _{typeFriendlyName};
         public JsonTypeInfo<{typeCompilableName}> {typeFriendlyName}
         {{
             get
             {{
                 if (_{typeFriendlyName} == null)
                 {{
-                    _{typeFriendlyName} = new {typeFriendlyName}TypeInfo();
-                    _{typeFriendlyName}.Initialize(this);
-                }}
-
-                return _{typeFriendlyName}.TypeInfo;
-            }}
-        }}
-";
-        }
-
-        private static string Get_TypeInfoClassWrapper (TypeMetadata typeMetadata) {
-            return $@"
-        private class {typeMetadata.FriendlyName}TypeInfo 
-        {{
-            public JsonTypeInfo<{typeMetadata.CompilableName}> TypeInfo {{ get; private set; }}
-        ";
-        }
-
-        private static string GetTypeInfoConstructorAndInitializeMethod(TypeMetadata typeMetadata)
-        {
-            string typeCompilableName = typeMetadata.CompilableName;
-            string typeFriendlyName = typeMetadata.FriendlyName;
-
-            StringBuilder sb = new();
-
-            string createObjectFuncTypeArg = typeMetadata.ConstructionStrategy == ObjectConstructionStrategy.ParameterlessConstructor
-                ? $"createObjectFunc: static () => new {typeMetadata.CompilableName}()"
-                : "createObjectFunc: null";
-
-            sb.Append($@"
-            internal {typeMetadata.FriendlyName}TypeInfo()
-            {{
-            }}
-
-            public void Initialize(JsonContext context)
-            {{
-                JsonObjectInfo<{typeMetadata.CompilableName}> typeInfo = new({createObjectFuncTypeArg}, {GetNumberHandlingNamedArg(typeMetadata.NumberHandling)}, context.GetOptions());
-                TypeInfo = typeInfo;
-            ");
+                    _{typeFriendlyName} = new({createObjectFuncTypeArg}, {GetNumberHandlingNamedArg(typeMetadata.NumberHandling)}, this.GetOptions());
+");
 
             if (typeMetadata.PropertiesMetadata != null)
             {
@@ -1016,7 +978,7 @@ namespace {_generationNamespace}
 
                     string typeClassInfoNamedArg = memberTypeMetadata.ClassType == ClassType.TypeUnsupportedBySourceGen
                         ? "classInfo: null"
-                        : $"classInfo: context.{memberTypeMetadata.FriendlyName}";
+                        : $"classInfo: this.{memberTypeMetadata.FriendlyName}";
 
                     string jsonPropertyNameNamedArg = memberMetadata.JsonPropertyName != null
                         ? @$"jsonPropertyName: ""{memberMetadata.JsonPropertyName}"""
@@ -1046,24 +1008,27 @@ namespace {_generationNamespace}
                         : "ignoreCondition: null";
 
                     sb.Append($@"
-                typeInfo.AddProperty(
-                    clrPropertyName: ""{clrPropertyName}"",
-                    memberType: System.Reflection.MemberTypes.{memberMetadata.MemberType},
-                    declaringType: typeof({memberMetadata.DeclaringTypeCompilableName}),
-                    {typeClassInfoNamedArg},
-                    {getterNamedArg},
-                    {setterNamedArg},
-                    {jsonPropertyNameNamedArg},
-                    {ignoreConditionNamedArg},
-                    {GetNumberHandlingNamedArg(memberMetadata.NumberHandling)});
+                    _{typeFriendlyName}.AddProperty(
+                        clrPropertyName: ""{clrPropertyName}"",
+                        memberType: System.Reflection.MemberTypes.{memberMetadata.MemberType},
+                        declaringType: typeof({memberMetadata.DeclaringTypeCompilableName}),
+                        {typeClassInfoNamedArg},
+                        {getterNamedArg},
+                        {setterNamedArg},
+                        {jsonPropertyNameNamedArg},
+                        {ignoreConditionNamedArg},
+                        {GetNumberHandlingNamedArg(memberMetadata.NumberHandling)});
                 ");
                 }
             }
 
-            sb.Append($@"
-                typeInfo.CompleteInitialization(canBeDynamic: {GetBoolAsStr(typeMetadata.CanBeDynamic)});
-            }}
-");
+
+            sb.Append(@$"
+                    _{typeFriendlyName}.CompleteInitialization(canBeDynamic: {GetBoolAsStr(typeMetadata.CanBeDynamic)});
+                }}
+
+                return _{typeFriendlyName};
+            }}");
 
             return sb.ToString();
         }
