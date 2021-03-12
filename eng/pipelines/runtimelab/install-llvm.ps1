@@ -7,7 +7,7 @@ Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/ll
 
 dir
 
-./xz -d -Force llvm-11.0.0.src.tar.xz
+./xz -d --force llvm-11.0.0.src.tar.xz
 
 tar -xf llvm-11.0.0.src.tar
 
