@@ -769,13 +769,13 @@ namespace System.Text.Json.Serialization.Metadata
     public sealed partial class JsonCollectionTypeInfo<T> : System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>
     {
         public JsonCollectionTypeInfo(System.Text.Json.Serialization.Metadata.JsonClassInfo.ConstructorDelegate createObjectFunc, System.Text.Json.Serialization.JsonConverter<T> converter, System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.Serialization.JsonNumberHandling? numberHandling, System.Text.Json.JsonSerializerOptions options) { }
-        public override void CompleteInitialization(bool canBeDynamic) { }
+        public void CompleteInitialization() { }
     }
     public sealed partial class JsonObjectInfo<T> : System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>
     {
         public JsonObjectInfo(System.Text.Json.Serialization.Metadata.JsonClassInfo.ConstructorDelegate? createObjectFunc, System.Text.Json.Serialization.JsonNumberHandling? numberHandling, System.Text.Json.JsonSerializerOptions options) { }
         public System.Text.Json.Serialization.Metadata.JsonPropertyInfo<TProperty> AddProperty<TProperty>(string clrPropertyName, System.Reflection.MemberTypes memberType, System.Type declaringType, System.Text.Json.Serialization.Metadata.JsonTypeInfo<TProperty> classInfo, System.Func<object, TProperty>? getter = null, System.Action<object, TProperty>? setter = null, string? jsonPropertyName = null, System.Text.Json.Serialization.JsonIgnoreCondition? ignoreCondition = null, System.Text.Json.Serialization.JsonNumberHandling? numberHandling = null) { throw null; }
-        public override void CompleteInitialization(bool canBeDynamic) { }
+        public void CompleteInitialization(bool canBeDynamic) { }
     }
     public abstract partial class JsonPropertyInfo
     {
@@ -803,22 +803,21 @@ namespace System.Text.Json.Serialization.Metadata
     public abstract partial class JsonTypeInfo<T> : System.Text.Json.Serialization.Metadata.JsonClassInfo
     {
         internal JsonTypeInfo() { }
-        public abstract void CompleteInitialization(bool canBeDynamic);
     }
     public sealed partial class JsonValueInfo<T> : System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>
     {
         public JsonValueInfo(System.Text.Json.Serialization.JsonConverter<T> converter, System.Text.Json.Serialization.JsonNumberHandling? numberHandling, System.Text.Json.JsonSerializerOptions options) { }
-        public override void CompleteInitialization(bool canBeDynamic) { }
+        public void CompleteInitialization() { }
     }
     public static partial class KnownCollectionTypeInfos<T>
     {
-        public static System.Text.Json.Serialization.Metadata.JsonTypeInfo<T[]> GetArray(System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.Serialization.JsonSerializerContext context, System.Text.Json.Serialization.JsonNumberHandling? numberHandling) { throw null; }
-        public static System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.IEnumerable<T>> GetIEnumerable(System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.Serialization.JsonSerializerContext context, System.Text.Json.Serialization.JsonNumberHandling? numberHandling) { throw null; }
-        public static System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.IList<T>> GetIList(System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.Serialization.JsonSerializerContext context, System.Text.Json.Serialization.JsonNumberHandling? numberHandling) { throw null; }
-        public static System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.List<T>> GetList(System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.Serialization.JsonSerializerContext context, System.Text.Json.Serialization.JsonNumberHandling? numberHandling) { throw null; }
+        public static System.Text.Json.Serialization.Metadata.JsonCollectionTypeInfo<T[]> GetArray(System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.Serialization.JsonSerializerContext context, System.Text.Json.Serialization.JsonNumberHandling? numberHandling) { throw null; }
+        public static System.Text.Json.Serialization.Metadata.JsonCollectionTypeInfo<System.Collections.Generic.IEnumerable<T>> GetIEnumerable(System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.Serialization.JsonSerializerContext context, System.Text.Json.Serialization.JsonNumberHandling? numberHandling) { throw null; }
+        public static System.Text.Json.Serialization.Metadata.JsonCollectionTypeInfo<System.Collections.Generic.IList<T>> GetIList(System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.Serialization.JsonSerializerContext context, System.Text.Json.Serialization.JsonNumberHandling? numberHandling) { throw null; }
+        public static System.Text.Json.Serialization.Metadata.JsonCollectionTypeInfo<System.Collections.Generic.List<T>> GetList(System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.Serialization.JsonSerializerContext context, System.Text.Json.Serialization.JsonNumberHandling? numberHandling) { throw null; }
     }
     public static partial class KnownDictionaryTypeInfos<TKey, TValue> where TKey : notnull
     {
-        public static System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.Dictionary<TKey, TValue>> GetDictionary(System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.Serialization.JsonSerializerContext context, JsonNumberHandling? numberHandling) { throw null; }
+        public static System.Text.Json.Serialization.Metadata.JsonCollectionTypeInfo<System.Collections.Generic.Dictionary<TKey, TValue>> GetDictionary(System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.Serialization.JsonSerializerContext context, JsonNumberHandling? numberHandling) { throw null; }
     }
 }

@@ -178,7 +178,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public override void CompleteInitialization(bool canBeDynamic)
+        public void CompleteInitialization(bool canBeDynamic)
         {
             _ignoredMembers = null;
             CompleteObjectInitialization();
