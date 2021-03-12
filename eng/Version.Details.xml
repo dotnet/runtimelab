@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Dependencies>
   <ToolsetDependencies>
-    <Dependency Name="Microsoft.DotNet.Arcade.Sdk" Version="6.0.0-beta.21058.3">
+    <Dependency Name="Microsoft.DotNet.Arcade.Sdk" Version="6.0.0-beta.21160.7">
       <Uri>https://github.com/dotnet/arcade</Uri>
-      <Sha>1571d6b095014ad63fdb48b10f5dea912f96872e</Sha>
+      <Sha>7f13798e5f567b72ffe63205bf49839245f0f8c1</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.DotNet.GenAPI" Version="6.0.0-beta.21058.3">
+    <Dependency Name="Microsoft.DotNet.GenAPI" Version="6.0.0-beta.21160.7">
       <Uri>https://github.com/dotnet/arcade</Uri>
-      <Sha>1571d6b095014ad63fdb48b10f5dea912f96872e</Sha>
+      <Sha>7f13798e5f567b72ffe63205bf49839245f0f8c1</Sha>
     </Dependency>
   </ToolsetDependencies>
 </Dependencies>
