@@ -1057,17 +1057,16 @@ namespace PInvokeTests
             ReleaseComPointer();
 
             GC.Collect();
-
             ThrowIfNotEquals(false, comPointerHolder.IsAlive, ".NET object should be disposed by then");
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private static WeakReference CreateComReference()
         {
             ComObject target = new ComObject();
             WeakReference comPointerHolder = new WeakReference(target);
 
             CaptureComPointer(target);
-            target = null;
 
             return comPointerHolder;
         }
@@ -1120,44 +1119,28 @@ namespace PInvokeTests
     {
         static ComInterfaceEntry* wrapperEntry;
 
-        internal static Guid IComInterface_GUID = new Guid("D6DD68D1-86FD-4332-8666-9ABEDEA2D24C");
-
         static SimpleComWrapper()
         {
-            GetIUnknownImpl(out IntPtr fpQueryInteface, out IntPtr fpAddRef, out IntPtr fpRelease);
-
-            var vtbl = new IComInterfaceVtbl()
-            {
-                IUnknownImpl = new IUnknownVtbl()
-                {
-                    QueryInterface = fpQueryInteface,
-                    AddRef = fpAddRef,
-                    Release = fpRelease
-                },
-                DoWork = &IComInterfaceProxy.DoWork,
-            };
-            var vtblRaw = RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IComInterfaceVtbl), sizeof(IComInterfaceVtbl));
-            Marshal.StructureToPtr(vtbl, vtblRaw, false);
+            IntPtr* vtblRaw = (IntPtr*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IComInterfaceVtbl), sizeof(IComInterfaceVtbl));
+            GetIUnknownImpl(out vtbl[0], out out vtbl[1], out out vtbl[2]);
+            vtbl[3] = (IntPtr)(delegate* unmanaged<IntPtr, void>)&DoWork
 
             var comInterfaceEntryMemory = RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IComInterfaceVtbl), sizeof(ComInterfaceEntry));
-            wrapperEntry = (ComInterfaceEntry*)comInterfaceEntryMemory.ToPointer();
-            wrapperEntry->IID = IComInterface_GUID;
+            wrapperEntry = (ComInterfaceEntry*)comInterfaceEntryMemory;
+            wrapperEntry->IID = new Guid("D6DD68D1-86FD-4332-8666-9ABEDEA2D24C");
             wrapperEntry->Vtable = vtblRaw;
-
-            //wrapperEntry = entry;
         }
 
         protected override unsafe ComInterfaceEntry* ComputeVtables(object obj, CreateComInterfaceFlags flags, out int count)
         {
-            // count = 0;
-            // return null;
+            if (obj is not IComInterface)
+                throw new Exception();
             count = 1;
             return wrapperEntry;
         }
 
         protected override object CreateObject(IntPtr externalComObject, CreateObjectFlags flags)
         {
-            // Return NULL works,
             return null;
         }
 
@@ -1181,6 +1164,7 @@ namespace PInvokeTests
 
     internal unsafe class IComInterfaceProxy
     {
+        [UnmanagedCallersOnly]
         public static void DoWork(IntPtr thisPtr)
         {
             var inst = ComWrappers.ComInterfaceDispatch.GetInstance<IComInterface>((ComWrappers.ComInterfaceDispatch*)thisPtr);
