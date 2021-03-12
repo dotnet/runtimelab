@@ -17,7 +17,7 @@ namespace System.Text.Json.Serialization.Metadata
     // also add a sealed version of these for internal use (JsonObjectInfoInternal JsonClassInfoInternal)
     public partial class JsonClassInfo
     {
-        internal bool _isInitialized;
+        //internal bool _isInitialized;
         // todo: add immutable checks in all setters like we do in JsonSerializerOptions
 
         /// <summary>
@@ -42,10 +42,10 @@ namespace System.Text.Json.Serialization.Metadata
             }
             set
             {
-                if (_isInitialized)
-                {
-                    throw new InvalidOperationException("todo");
-                }
+                //if (_isInitialized)
+                //{
+                //    throw new InvalidOperationException("todo");
+                //}
 
                 _createObject = value;
             }
@@ -296,7 +296,7 @@ namespace System.Text.Json.Serialization.Metadata
                     throw new InvalidOperationException();
             }
 
-            _isInitialized = true;
+            //_isInitialized = true;
         }
 
         /// <summary>
@@ -363,7 +363,7 @@ namespace System.Text.Json.Serialization.Metadata
                 InitializeConstructorParameters(converter.ConstructorInfo!);
             }
 
-            _isInitialized = true;
+            //_isInitialized = true;
         }
 
         private sealed class ParameterLookupKey

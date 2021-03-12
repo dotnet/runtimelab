@@ -13,12 +13,12 @@ namespace System.Text.Json.Serialization.Metadata
     /// <typeparam name="TValue"></typeparam>
     public static class KnownDictionaryTypeInfos<TKey, TValue> where TKey : notnull
     {
-        private static JsonTypeInfo<Dictionary<TKey, TValue>>? s_dictionaryOfTKeyTValue;
+        private static JsonCollectionTypeInfo<Dictionary<TKey, TValue>>? s_dictionaryOfTKeyTValue;
         /// <summary>
         /// todo
         /// </summary>
         // TODO: Should this return JsonCollectionTypeInfo<T>?
-        public static JsonTypeInfo<Dictionary<TKey, TValue>> GetDictionary(JsonClassInfo elementInfo, JsonSerializerContext context, JsonNumberHandling? numberHandling)
+        public static JsonCollectionTypeInfo<Dictionary<TKey, TValue>> GetDictionary(JsonClassInfo elementInfo, JsonSerializerContext context, JsonNumberHandling? numberHandling)
         {
             if (s_dictionaryOfTKeyTValue == null)
             {

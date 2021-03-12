@@ -27,14 +27,10 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public override void CompleteInitialization(bool canBeDynamic)
+        public void CompleteInitialization()
         {
-            _isInitialized = true;
-
-            if (canBeDynamic)
-            {
-                Options.AddJsonClassInfoToCompleteInitialization(this);
-            }
+            //_isInitialized = true;
+            Options.AddJsonClassInfoToCompleteInitialization(this);
         }
     }
 }

@@ -233,17 +233,14 @@ namespace {_generationNamespace}
 {{
     {JsonContextDeclarationSource}
     {{
-        private JsonTypeInfo<{typeCompilableName}> _{typeFriendlyName};
+        private JsonValueInfo<{typeCompilableName}> _{typeFriendlyName};
         public JsonTypeInfo<{typeCompilableName}> {typeFriendlyName}
         {{
             get
             {{
                 if (_{typeFriendlyName} == null)
                 {{
-                    var typeInfo = new JsonValueInfo<{typeCompilableName}>(new {typeFriendlyName}Converter(), {GetNumberHandlingNamedArg(typeMetadata.NumberHandling)}, GetOptions());
-                    // TODO: remove this for types that can be dynamic since they are initialized in JsonContext ctor.
-                    typeInfo.CompleteInitialization(canBeDynamic: {GetBoolAsStr(typeMetadata.CanBeDynamic)});
-                    _{typeFriendlyName} = typeInfo;
+                    _{typeFriendlyName} = new JsonValueInfo<{typeCompilableName}>(new {typeFriendlyName}Converter(), {GetNumberHandlingNamedArg(typeMetadata.NumberHandling)}, GetOptions());
                 }}
 
                 return _{typeFriendlyName};
@@ -279,8 +276,6 @@ namespace {_generationNamespace}
                 {{
                     // TODO: avoid new allocation for underlying type converter. Should this reuse converter from options.GetConverter()?
                     var typeInfo = new JsonValueInfo<{typeCompilableName}>(new NullableConverter<{underlyingTypeCompilableName}>(new {underlyingTypeFriendlyName}Converter()), {GetNumberHandlingNamedArg(typeMetadata.NumberHandling)}, GetOptions());
-                    // TODO: remove this for types that can be dynamic since they are initialized in JsonContext ctor.
-                    typeInfo.CompleteInitialization(canBeDynamic: {GetBoolAsStr(typeMetadata.CanBeDynamic)});
                     _{typeFriendlyName} = typeInfo;
                 }}
       
@@ -325,11 +320,11 @@ namespace {_generationNamespace}
                 CollectionType.List => GetEnumerableTypeInfoAssignment(),
                 CollectionType.IEnumerable => GetEnumerableTypeInfoAssignment(),
                 CollectionType.IList => GetEnumerableTypeInfoAssignment(),
-                CollectionType.Dictionary => $@"(JsonCollectionTypeInfo<{typeCompilableName}>)KnownDictionaryTypeInfos<{keyTypeCompilableName!}, {valueTypeCompilableName}>.Get{collectionType}({valueTypeMetadataPropertyName}, this, {numberHandlingNamedArg})",
+                CollectionType.Dictionary => $@"KnownDictionaryTypeInfos<{keyTypeCompilableName!}, {valueTypeCompilableName}>.Get{collectionType}({valueTypeMetadataPropertyName}, this, {numberHandlingNamedArg})",
                 _ => throw new NotSupportedException()
             };
 
-            string GetEnumerableTypeInfoAssignment() => $@"(JsonCollectionTypeInfo<{typeCompilableName}>)KnownCollectionTypeInfos<{valueTypeCompilableName}>.Get{collectionType}({valueTypeMetadataPropertyName}, this, {numberHandlingNamedArg})";
+            string GetEnumerableTypeInfoAssignment() => $@"KnownCollectionTypeInfos<{valueTypeCompilableName}>.Get{collectionType}({valueTypeMetadataPropertyName}, this, {numberHandlingNamedArg})";
 
             return @$"{GetUsingStatementsString(typeMetadata)}
 
@@ -337,17 +332,14 @@ namespace {_generationNamespace}
 {{
     {JsonContextDeclarationSource}
     {{
-        private JsonTypeInfo<{typeCompilableName}> _{typeFriendlyName};
+        private JsonCollectionTypeInfo<{typeCompilableName}> _{typeFriendlyName};
         public JsonTypeInfo<{typeCompilableName}> {typeFriendlyName}
         {{
             get
             {{
                 if (_{typeFriendlyName} == null)
                 {{
-                    var typeInfo = {collectionTypeInfoValue};
-                    // TODO: remove this for types that can be dynamic since they are initialized in JsonContext ctor.
-                    typeInfo.CompleteInitialization(canBeDynamic: {GetBoolAsStr(typeMetadata.CanBeDynamic)});
-                    _{typeFriendlyName} = typeInfo;
+                    _{typeFriendlyName} = {collectionTypeInfoValue};
                 }}
       
                 return _{typeFriendlyName};
@@ -761,6 +753,11 @@ namespace {_generationNamespace}
         // Base source generation context partial class.
         private string BaseJsonContextImplementation()
         {
+            bool typesCanBeSerializedDynamically = TryGetInitializationForDynamicallySerializableTypes(out string initializationSource);
+            string initializeMethodCallStatement = typesCanBeSerializedDynamically
+                ? "Initialize();"
+                : null;
+
             StringBuilder sb = new();
             sb.Append(@$"using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -785,33 +782,59 @@ namespace {_generationNamespace}
 
         private JsonContext()
         {{
-            Initialize();
+            {initializeMethodCallStatement}
         }}
 
         public JsonContext(JsonSerializerOptions options) : base(options)
         {{
-            Initialize();
+            {initializeMethodCallStatement}
         }}
 
-        private void Initialize()
-        {{");
+        {initializationSource}
+    }}
+}}
+");
+
+            return sb.ToString();
+        }
+
+        private bool TryGetInitializationForDynamicallySerializableTypes(out string initializationSource)
+        {
+            StringBuilder sb = new();
+
+            sb.Append(@"private void Initialize()
+        {");
+
+            bool typesCanBeSerializedDynamically = false;
 
             foreach (TypeMetadata typeMetadata in _typesWithMetadataGenerated)
             {
                 if (typeMetadata.ClassType != ClassType.TypeUnsupportedBySourceGen && typeMetadata.CanBeDynamic)
                 {
+                    string arg = typeMetadata.ClassType == ClassType.Object ? "canBeDynamic: true" : "";
+                    string friendlyName = typeMetadata.FriendlyName;
                     sb.Append(@$"
-            this.{typeMetadata.FriendlyName}.CompleteInitialization(canBeDynamic: true);");
+            // Force assignment of backing field.
+            _ = this.{friendlyName};
+            // Initialize backing field.
+            this._{friendlyName}.CompleteInitialization({arg});");
+
+                    typesCanBeSerializedDynamically = true;
                 }
             }
 
             sb.Append(@"
         }
-    }
-}
 ");
 
-            return sb.ToString();
+            if (typesCanBeSerializedDynamically)
+            {
+                initializationSource = sb.ToString();
+                return true;
+            }
+
+            initializationSource = "";
+            return false;
         }
 
         private string Get_GetClassInfo_Implementation()
@@ -1022,9 +1045,14 @@ namespace {_generationNamespace}
                 }
             }
 
+            // Initialization for types that can be dynamic is done inside JsonContext ctor instead.
+            if (!typeMetadata.CanBeDynamic)
+            {
+                sb.Append(@$"
+                    _{typeFriendlyName}.CompleteInitialization(canBeDynamic: false);");
+            }
 
             sb.Append(@$"
-                    _{typeFriendlyName}.CompleteInitialization(canBeDynamic: {GetBoolAsStr(typeMetadata.CanBeDynamic)});
                 }}
 
                 return _{typeFriendlyName};

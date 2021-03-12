@@ -12,11 +12,5 @@ namespace System.Text.Json.Serialization.Metadata
         internal JsonTypeInfo(Type type, JsonSerializerOptions options, ClassType classType) :
             base(type, options, classType)
         { }
-
-        /// <summary>
-        /// todo
-        /// </summary>
-        /// <param name="canBeDynamic"></param>
-        public abstract void CompleteInitialization(bool canBeDynamic);
     }
 }
