@@ -1,4 +1,3 @@
-
 # LLVM is supplied in a gz file which Windows doesn't native understand, so we need gz to unpack it - TODO this is liable to fail randomly when a new version comes out and the version number changes
 Invoke-WebRequest -Uri https://tukaani.org/xz/xz-5.2.5-windows.zip -OutFile xz.zip
 Expand-Archive -LiteralPath xz.zip -DestinationPath .
@@ -17,12 +16,14 @@ cd llvm-11.0.0.src
 mkdir build
 dir
 cd build
-# TODO Release build
-cmake -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -DLLVM_USE_CRT_DEBUG=MTd  ..
 
-msbuild LLVM.sln /t:LLVMCore
-msbuild LLVM.sln /t:LLVMBitWriter
-#msbuild LLVM.sln /t:LLVMDebugInfoDwarf
+
+# TODO Release build
+"$env:CMakePath" -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -DLLVM_USE_CRT_DEBUG=MTd  ..
+
+$env:BUILD_SOURCESDIRECTORY\eng\common\msbuild.ps1 LLVM.sln /t:LLVMCore
+$env:BUILD_SOURCESDIRECTORY\eng\common\msbuild.ps1 LLVM.sln /t:LLVMBitWriter
+#$env:BUILD_SOURCESDIRECTORY\eng\common\msbuild.ps1 LLVM.sln /t:LLVMDebugInfoDwarf
 
 dir
 
