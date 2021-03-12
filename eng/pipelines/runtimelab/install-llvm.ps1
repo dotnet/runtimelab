@@ -21,9 +21,9 @@ cd build
 # TODO Release build
 & "$env:CMakePath" -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -DLLVM_USE_CRT_DEBUG=MTd  ..
 
-& "$env:BUILD_SOURCESDIRECTORY\eng\common\msbuild.ps1" LLVM.sln /t:LLVMCore
-& "$env:BUILD_SOURCESDIRECTORY\eng\common\msbuild.ps1" LLVM.sln /t:LLVMBitWriter
-#$env:BUILD_SOURCESDIRECTORY\eng\common\msbuild.ps1 LLVM.sln /t:LLVMDebugInfoDwarf
+& "$env:CMakePath" --build . --target LLVMCore
+& "$env:CMakePath" --build . --target LLVMBitWriter
+#& "$env:CMakePath" --build . --target LLVMDebugInfoDwarf
 
 dir
 
