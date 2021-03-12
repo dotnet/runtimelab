@@ -1,6 +1,11 @@
 mkdir "%1" 2>nul
 cd /D "%1"
 
+:: Set CMakePath by evaluating the output from set-cmake-path.ps1
+call "%RepoRoot%src\coreclr\setup_vs_tools.cmd" || exit /b 1
+for /f "delims=" %%a in ('powershell -NoProfile -ExecutionPolicy ByPass "& ""%RepoRoot%eng\native\set-cmake-path.ps1"""') do %%a
+echo Using CMake at "%CMakePath%"
+
 set
 
 powershell -NoProfile -NoLogo -ExecutionPolicy ByPass -command "& """%~dp0install-llvm.ps1""" %*"
