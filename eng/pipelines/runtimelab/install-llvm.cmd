@@ -1,7 +1,7 @@
 mkdir "%1" 2>nul
 cd /D "%1"
 
-set RepoRoot="%2"
+set RepoRoot="%2\"
 
 set
 :: Set CMakePath by evaluating the output from set-cmake-path.ps1
