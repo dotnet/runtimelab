@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <RunSettingsInputFilePath>$(MSBuildThisFileDirectory).runsettings</RunSettingsInputFilePath>
-    <RunSettingsAppOutputFilePath>$(OutDir).runsettings</RunSettingsAppOutputFilePath>
+    <RunSettingsAppOutputFilePath>$(OutputPath).runsettings</RunSettingsAppOutputFilePath>
 
     <RunSettingsOutputFilePath>$(RunSettingsAppOutputFilePath)</RunSettingsOutputFilePath>
 
@@ -13,6 +13,7 @@
   </PropertyGroup>
 
   <Target Name="GenerateRunSettingsFile"
+          Condition="'$(MSBuildRestoreSessionId)' == '' and '$(IsCrossTargetingBuild)' != 'true'"
           Inputs="$(RunSettingsInputFilePath)"
           Outputs="$(RunSettingsOutputFilePath)">
 
