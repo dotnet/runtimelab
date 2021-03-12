@@ -181,13 +181,6 @@ namespace System.Text.Json.SourceGeneration
                         // Add constructor which initializers the JsonPropertyInfo<T>s for the type.
                         sb.Append(GetTypeInfoConstructorAndInitializeMethod(typeMetadata));
 
-
-                        if (typeMetadata.ConstructionStrategy == ObjectConstructionStrategy.ParameterlessConstructor)
-                        {
-                            // Add CreateObjectFunc.
-                            sb.Append(GetCreateObjectFunc(typeMetadata.CompilableName));
-                        }
-
                         // Add end braces.
                         sb.Append($@"
         }}
@@ -997,7 +990,7 @@ namespace {_generationNamespace}
             StringBuilder sb = new();
 
             string createObjectFuncTypeArg = typeMetadata.ConstructionStrategy == ObjectConstructionStrategy.ParameterlessConstructor
-                ? "createObjectFunc: CreateObjectFunc"
+                ? $"createObjectFunc: static () => new {typeMetadata.CompilableName}()"
                 : "createObjectFunc: null";
 
             sb.Append($@"
@@ -1073,15 +1066,6 @@ namespace {_generationNamespace}
 ");
 
             return sb.ToString();
-        }
-
-        private static string GetCreateObjectFunc(string compilableName)
-        {
-            return $@"
-            private object CreateObjectFunc()
-            {{
-                return new {compilableName}();
-            }}";
         }
 
         private static string GetNumberHandlingNamedArg(JsonNumberHandling? numberHandling) =>
