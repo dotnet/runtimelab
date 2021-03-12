@@ -275,6 +275,12 @@ namespace PInvokeTests
         public static int callbackFunc1() { return 1; }
         public static int callbackFunc2() { return 2; }
 
+        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall)]
+        static extern void CaptureComPointer(IComInterface foo);
+
+        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall)]
+        static extern void ReleaseComPointer();
+
         public static int Main(string[] args)
         {
             TestBlittableType();
@@ -298,7 +304,11 @@ namespace PInvokeTests
             TestForwardDelegateWithUnmanagedCallersOnly();
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
                 TestComInteropNullPointers();
+                TestComInteropRegistrationReqired();
+                TestComInteropReleaseProcess();
+            }
 
             return 100;
         }
@@ -360,7 +370,7 @@ namespace PInvokeTests
 
             Foo[] arr_foo = null;
             ThrowIfNotEquals(true, IsNULL(arr_foo), "Blittable array null check failed");
-            
+
             arr_foo = new Foo[ArraySize];
             for (int i = 0; i < ArraySize; i++)
             {
@@ -801,7 +811,7 @@ namespace PInvokeTests
                 ssa[i].f1 = 0;
                 ssa[i].f1 = i;
                 ssa[i].f2 = i*i;
-                ssa[i].f3 = i.LowLevelToString(); 
+                ssa[i].f3 = i.LowLevelToString();
             }
             ThrowIfNotEquals(true, StructTest_Array(ssa, ssa.Length), "Array of struct marshalling failed");
 
@@ -1019,6 +1029,48 @@ namespace PInvokeTests
             var result = IsNULL(comPointer);
             ThrowIfNotEquals(true, IsNULL(comPointer), "COM interface marshalling null check failed");
         }
+
+        public static void TestComInteropRegistrationReqired()
+        {
+            Console.WriteLine("Testing COM Interop registration process");
+            ComObject target = new ComObject();
+            try
+            {
+                CaptureComPointer(target);
+                throw new Exception("Cannot work without ComWrappers.RegisterForMarshalling called");
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+
+        public static void TestComInteropReleaseProcess()
+        {
+            Console.WriteLine("Testing CCW release process");
+            ComWrappers wrapper = new SimpleComWrapper();
+            ComWrappers.RegisterForMarshalling(wrapper);
+            WeakReference comPointerHolder = CreateComReference();
+
+            GC.Collect();
+            ThrowIfNotEquals(true, comPointerHolder.IsAlive, ".NET object should be alive");
+
+            ReleaseComPointer();
+
+            GC.Collect();
+
+            ThrowIfNotEquals(false, comPointerHolder.IsAlive, ".NET object should be disposed by then");
+        }
+
+        private static WeakReference CreateComReference()
+        {
+            ComObject target = new ComObject();
+            WeakReference comPointerHolder = new WeakReference(target);
+
+            CaptureComPointer(target);
+            target = null;
+
+            return comPointerHolder;
+        }
     }
 
     public class SafeMemoryHandle : SafeHandle //SafeHandle subclass
@@ -1053,6 +1105,87 @@ namespace PInvokeTests
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     public interface IComInterface
     {
+        void DoWork();
+    }
+
+    public class ComObject : IComInterface
+    {
+        public void DoWork()
+        {
+            Console.WriteLine("Do work called.");
+        }
+    }
+
+    internal unsafe class SimpleComWrapper : ComWrappers
+    {
+        static ComInterfaceEntry* wrapperEntry;
+
+        internal static Guid IComInterface_GUID = new Guid("D6DD68D1-86FD-4332-8666-9ABEDEA2D24C");
+
+        static SimpleComWrapper()
+        {
+            GetIUnknownImpl(out IntPtr fpQueryInteface, out IntPtr fpAddRef, out IntPtr fpRelease);
+
+            var vtbl = new IComInterfaceVtbl()
+            {
+                IUnknownImpl = new IUnknownVtbl()
+                {
+                    QueryInterface = fpQueryInteface,
+                    AddRef = fpAddRef,
+                    Release = fpRelease
+                },
+                DoWork = &IComInterfaceProxy.DoWork,
+            };
+            var vtblRaw = RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IComInterfaceVtbl), sizeof(IComInterfaceVtbl));
+            Marshal.StructureToPtr(vtbl, vtblRaw, false);
+
+            var comInterfaceEntryMemory = RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IComInterfaceVtbl), sizeof(ComInterfaceEntry));
+            wrapperEntry = (ComInterfaceEntry*)comInterfaceEntryMemory.ToPointer();
+            wrapperEntry->IID = IComInterface_GUID;
+            wrapperEntry->Vtable = vtblRaw;
+
+            //wrapperEntry = entry;
+        }
+
+        protected override unsafe ComInterfaceEntry* ComputeVtables(object obj, CreateComInterfaceFlags flags, out int count)
+        {
+            // count = 0;
+            // return null;
+            count = 1;
+            return wrapperEntry;
+        }
+
+        protected override object CreateObject(IntPtr externalComObject, CreateObjectFlags flags)
+        {
+            // Return NULL works,
+            return null;
+        }
+
+        protected override void ReleaseObjects(System.Collections.IEnumerable objects)
+        {
+        }
+    }
+
+    public unsafe struct IComInterfaceVtbl
+    {
+        public IUnknownVtbl IUnknownImpl;
+        public delegate*<IntPtr, void> DoWork;
+    }
+
+    public struct IUnknownVtbl
+    {
+        public IntPtr QueryInterface;
+        public IntPtr AddRef;
+        public IntPtr Release;
+    }
+
+    internal unsafe class IComInterfaceProxy
+    {
+        public static void DoWork(IntPtr thisPtr)
+        {
+            var inst = ComWrappers.ComInterfaceDispatch.GetInstance<IComInterface>((ComWrappers.ComInterfaceDispatch*)thisPtr);
+            inst.DoWork();
+        }
     }
 
     public static class LowLevelExtensions

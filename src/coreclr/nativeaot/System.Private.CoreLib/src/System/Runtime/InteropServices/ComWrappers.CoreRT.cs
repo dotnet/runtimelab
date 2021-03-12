@@ -56,6 +56,7 @@ namespace System.Runtime.InteropServices
             public int UserDefinedCount;
             public ComInterfaceEntry* UserDefined;
             internal InternalComInterfaceDispatch* Dispatches;
+            public bool Destroyed;
 
             internal CreateComInterfaceFlags Flags;
 
@@ -92,6 +93,21 @@ namespace System.Runtime.InteropServices
                     typeMaybe = AsUserDefined(in riid);
 
                 return typeMaybe;
+            }
+
+            public unsafe void Destroy()
+            {
+                if (Destroyed)
+                {
+                    return;
+                }
+
+                Destroyed = true;
+                if (Target != IntPtr.Zero)
+                {
+                    RuntimeImports.RhHandleFree(Target);
+                    Target = IntPtr.Zero;
+                }
             }
 
             private unsafe IntPtr AsRuntimeDefined(in Guid riid)
@@ -135,7 +151,7 @@ namespace System.Runtime.InteropServices
             ~ManagedObjectWrapperHolder()
             {
                 // Release GC handle created when MOW was built.
-                RuntimeImports.RhHandleFree(_wrapper->Target);
+                _wrapper->Destroy();
                 Marshal.FreeCoTaskMem((IntPtr)_wrapper);
             }
         }
@@ -228,11 +244,12 @@ namespace System.Runtime.InteropServices
             }
 
             mow->Target = RuntimeImports.RhHandleAlloc(instance, GCHandleType.Normal);
-            mow->RefCount = 1;
+            mow->RefCount = 0;
             mow->UserDefinedCount = userDefinedCount;
             mow->UserDefined = userDefined;
             mow->Flags = flags;
             mow->Dispatches = pDispatches;
+            mow->Destroyed = false;
             return mow;
         }
 
@@ -422,7 +439,13 @@ namespace System.Runtime.InteropServices
         internal static unsafe uint IUnknown_Release(IntPtr pThis)
         {
             ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)pThis);
-            return wrapper->Release();
+            uint refcount = wrapper->Release();
+            if (refcount == 0)
+            {
+                wrapper->Destroy();
+            }
+
+            return refcount;
         }
 
         private static unsafe IntPtr CreateDefaultIUnknownVftbl()
