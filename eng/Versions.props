@@ -12,6 +12,7 @@
     <UseVSTestRunner>true</UseVSTestRunner>
     <UsingToolXliff>false</UsingToolXliff>
     <!-- Libs -->
+    <MicrosoftDotNetApiCompatVersion>6.0.0-beta.21160.7</MicrosoftDotNetApiCompatVersion>
     <MicrosoftDotNetGenAPIVersion>6.0.0-beta.21160.7</MicrosoftDotNetGenAPIVersion>
     <MicrosoftNETTestSdkVersion>16.7.1</MicrosoftNETTestSdkVersion>
     <XUnitVersion>2.4.1</XUnitVersion>

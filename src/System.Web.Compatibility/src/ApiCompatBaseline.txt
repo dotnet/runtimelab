@@ -1,0 +1,34 @@
+// TypeForwards to System.Web.Security.dll.  We could add another project to make this work if it was interesting.
+TypesMustExist : Type 'System.Web.Security.MembershipCreateStatus' does not exist in the implementation but it does exist in the contract.
+TypesMustExist : Type 'System.Web.Security.MembershipCreateUserException' does not exist in the implementation but it does exist in the contract.
+TypesMustExist : Type 'System.Web.Security.MembershipPasswordException' does not exist in the implementation but it does exist in the contract.
+TypesMustExist : Type 'System.Web.Security.MembershipPasswordFormat' does not exist in the implementation but it does exist in the contract.
+TypesMustExist : Type 'System.Web.Security.MembershipProvider' does not exist in the implementation but it does exist in the contract.
+TypesMustExist : Type 'System.Web.Security.MembershipProviderCollection' does not exist in the implementation but it does exist in the contract.
+TypesMustExist : Type 'System.Web.Security.MembershipUser' does not exist in the implementation but it does exist in the contract.
+TypesMustExist : Type 'System.Web.Security.MembershipUserCollection' does not exist in the implementation but it does exist in the contract.
+TypesMustExist : Type 'System.Web.Security.MembershipValidatePasswordEventHandler' does not exist in the implementation but it does exist in the contract.
+TypesMustExist : Type 'System.Web.Security.RoleProvider' does not exist in the implementation but it does exist in the contract.
+TypesMustExist : Type 'System.Web.Security.ValidatePasswordEventArgs' does not exist in the implementation but it does exist in the contract.
+
+// Don't care about these missing attributes
+CannotRemoveAttribute : Attribute 'System.Web.WebSysDescriptionAttribute' exists on 'System.Web.UI.WebControls.AccessDataSource' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.Web.WebSysDisplayNameAttribute' exists on 'System.Web.UI.WebControls.AccessDataSource' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.Web.UI.ControlBuilderAttribute' exists on 'System.Web.UI.WebControls.Content' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.Web.UI.ControlBuilderAttribute' exists on 'System.Web.UI.WebControls.ContentPlaceHolder' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.ComponentModel.TypeConverterAttribute' exists on 'System.Web.UI.WebControls.EmbeddedMailObject' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.ComponentModel.TypeConverterAttribute' exists on 'System.Web.UI.WebControls.HorizontalAlign' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.ComponentModel.TypeConverterAttribute' exists on 'System.Web.UI.WebControls.MailDefinition' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.Web.WebSysDescriptionAttribute' exists on 'System.Web.UI.WebControls.ObjectDataSource' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.Web.WebSysDisplayNameAttribute' exists on 'System.Web.UI.WebControls.ObjectDataSource' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.Web.WebSysDescriptionAttribute' exists on 'System.Web.UI.WebControls.SiteMapDataSource' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.Web.WebSysDisplayNameAttribute' exists on 'System.Web.UI.WebControls.SiteMapDataSource' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.Web.WebSysDescriptionAttribute' exists on 'System.Web.UI.WebControls.SqlDataSource' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.Web.WebSysDisplayNameAttribute' exists on 'System.Web.UI.WebControls.SqlDataSource' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.ComponentModel.TypeConverterAttribute' exists on 'System.Web.UI.WebControls.Style' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.ComponentModel.TypeConverterAttribute' exists on 'System.Web.UI.WebControls.VerticalAlign' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.Web.WebSysDescriptionAttribute' exists on 'System.Web.UI.WebControls.XmlDataSource' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.Web.WebSysDisplayNameAttribute' exists on 'System.Web.UI.WebControls.XmlDataSource' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.ComponentModel.TypeConverterAttribute' exists on 'System.Web.UI.WebControls.WebParts.WebPartPersonalization' in the contract but not the implementation.
+CannotRemoveAttribute : Attribute 'System.ComponentModel.TypeConverterAttribute' exists on 'System.Web.UI.WebControls.WebParts.WebPartVerb' in the contract but not the implementation.
+
