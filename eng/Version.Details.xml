@@ -9,5 +9,9 @@
       <Uri>https://github.com/dotnet/arcade</Uri>
       <Sha>7f13798e5f567b72ffe63205bf49839245f0f8c1</Sha>
     </Dependency>
+    <Dependency Name="Microsoft.DotNet.ApiCompat" Version="6.0.0-beta.21160.7">
+      <Uri>https://github.com/dotnet/arcade</Uri>
+      <Sha>7f13798e5f567b72ffe63205bf49839245f0f8c1</Sha>
+    </Dependency>
   </ToolsetDependencies>
 </Dependencies>

@@ -32,6 +32,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.DotNet.GenAPI" PrivateAssets="All" Version="$(MicrosoftDotNetGenAPIVersion)" />
+    <PackageReference Include="Microsoft.DotNet.ApiCompat" PrivateAssets="All" Version="$(MicrosoftDotNetApiCompatVersion)" />
 
     <!-- we don't want to reference netcoreapp reference assemblies
          but need System.Web.HttpUtility for a type-forward target -->
