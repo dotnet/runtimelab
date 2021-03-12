@@ -1,6 +1,8 @@
 mkdir "%1" 2>nul
 cd /D "%1"
 
+set
+
 powershell -NoProfile -NoLogo -ExecutionPolicy ByPass -command "& """%~dp0install-llvm.ps1""" %*"
 if %errorlevel% NEQ 0 goto fail
 
