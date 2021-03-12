@@ -725,7 +725,7 @@ namespace System.Runtime
             // This is supported only on arrays
             Debug.Assert(array.EEType->IsArray, "first argument must be an array");
 
-            if (index >= array.Length)
+            if ((uint)index >= (uint)array.Length)
             {
                 throw array.EEType->GetClasslibException(ExceptionIDs.IndexOutOfRange);
             }
