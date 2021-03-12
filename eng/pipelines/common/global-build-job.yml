@@ -125,7 +125,7 @@ jobs:
       # Install Wasm dependencies: emscripten, LLVM
       - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-emscripten.cmd $(Build.SourcesDirectory)\wasm-tools
         displayName: Install/activate emscripten
-      - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.cmd $(Build.SourcesDirectory)\wasm-tools
+      - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.cmd $(Build.SourcesDirectory)\wasm-tools $(Build.SourcesDirectory)
         displayName: Install/build LLVM
 
     # Build
