@@ -1121,14 +1121,14 @@ namespace PInvokeTests
 
         static SimpleComWrapper()
         {
-            IntPtr* vtblRaw = (IntPtr*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IComInterfaceVtbl), sizeof(IComInterfaceVtbl));
-            GetIUnknownImpl(out vtbl[0], out out vtbl[1], out out vtbl[2]);
-            vtbl[3] = (IntPtr)(delegate* unmanaged<IntPtr, void>)&DoWork
+            IntPtr* vtbl = (IntPtr*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IComInterfaceVtbl), sizeof(IComInterfaceVtbl));
+            GetIUnknownImpl(out vtbl[0], out vtbl[1], out vtbl[2]);
+            vtbl[3] = (IntPtr)(delegate* unmanaged<IntPtr, void>)&IComInterfaceProxy.DoWork;
 
             var comInterfaceEntryMemory = RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IComInterfaceVtbl), sizeof(ComInterfaceEntry));
             wrapperEntry = (ComInterfaceEntry*)comInterfaceEntryMemory;
             wrapperEntry->IID = new Guid("D6DD68D1-86FD-4332-8666-9ABEDEA2D24C");
-            wrapperEntry->Vtable = vtblRaw;
+            wrapperEntry->Vtable = (IntPtr)vtbl;
         }
 
         protected override unsafe ComInterfaceEntry* ComputeVtables(object obj, CreateComInterfaceFlags flags, out int count)
