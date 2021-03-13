@@ -98,9 +98,9 @@ namespace System.Text.Json
             JsonConverter GetEnumConverter()
                 => (JsonConverter)Activator.CreateInstance(
                         typeof(EnumConverter<>).MakeGenericType(keyType),
-                        BindingFlags.Instance | BindingFlags.Public,
+                        BindingFlags.Instance | BindingFlags.NonPublic,
                         binder: null,
-                        new object[] { EnumConverterOptions.AllowStrings | EnumConverterOptions.AllowNumbers, this },
+                        new object[] { EnumConverterOptions.AllowStrings | EnumConverterOptions.AllowNumbers, null!, this },
                         culture: null)!;
         }
 

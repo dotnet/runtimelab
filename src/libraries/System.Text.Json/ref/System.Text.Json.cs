@@ -666,6 +666,12 @@ namespace System.Text.Json.Serialization.Converters
         public override double Read(ref System.Text.Json.Utf8JsonReader reader, System.Type typeToConvert, System.Text.Json.JsonSerializerOptions options) { throw null; }
         public override void Write(System.Text.Json.Utf8JsonWriter writer, double value, System.Text.Json.JsonSerializerOptions options) { }
     }
+    public sealed class EnumConverter<T> : JsonConverter<T> where T : struct, Enum
+    {
+        public EnumConverter(System.Text.Json.JsonSerializerOptions serializerOptions) { }
+        public override T Read(ref System.Text.Json.Utf8JsonReader reader, System.Type typeToConvert, System.Text.Json.JsonSerializerOptions options) { throw null; }
+        public override void Write(System.Text.Json.Utf8JsonWriter writer, T value, System.Text.Json.JsonSerializerOptions options) { }
+    }
     public sealed class GuidConverter : System.Text.Json.Serialization.JsonConverter<System.Guid>
     {
         public GuidConverter() { }
