@@ -56,7 +56,6 @@ namespace System.Runtime.InteropServices
             public int UserDefinedCount;
             public ComInterfaceEntry* UserDefined;
             internal InternalComInterfaceDispatch* Dispatches;
-            public bool Destroyed;
 
             internal CreateComInterfaceFlags Flags;
 
@@ -97,17 +96,13 @@ namespace System.Runtime.InteropServices
 
             public unsafe void Destroy()
             {
-                if (Destroyed)
+                if (Target == IntPtr.Zero)
                 {
                     return;
                 }
 
-                Destroyed = true;
-                if (Target != IntPtr.Zero)
-                {
-                    RuntimeImports.RhHandleFree(Target);
-                    Target = IntPtr.Zero;
-                }
+                RuntimeImports.RhHandleFree(Target);
+                Target = IntPtr.Zero;
             }
 
             private unsafe IntPtr AsRuntimeDefined(in Guid riid)
@@ -249,7 +244,6 @@ namespace System.Runtime.InteropServices
             mow->UserDefined = userDefined;
             mow->Flags = flags;
             mow->Dispatches = pDispatches;
-            mow->Destroyed = false;
             return mow;
         }
 
