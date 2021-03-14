@@ -649,6 +649,7 @@ DLL_EXPORT void* __stdcall GetFunctionPointer()
     return (void*)&SetLastErrorFunc;
 }
 
+#ifdef TARGET_WINDOWS
 IUnknown* capturedComObject;
 DLL_EXPORT void __stdcall CaptureComPointer(IUnknown* pUnk)
 {
@@ -660,6 +661,7 @@ DLL_EXPORT void ReleaseComPointer()
 {
     capturedComObject->Release();
 }
+#endif
 
 typedef struct {
     int c;
