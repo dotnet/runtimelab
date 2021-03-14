@@ -9,7 +9,11 @@ using System.Text.Encodings.Web;
 
 namespace System.Text.Json.Serialization.Converters
 {
-    internal sealed class EnumConverter<T> : JsonConverter<T>
+    /// <summary>
+    /// TODO
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public sealed class EnumConverter<T> : JsonConverter<T>
         where T : struct, Enum
     {
         private static readonly TypeCode s_enumTypeCode = Type.GetTypeCode(typeof(T));
@@ -29,17 +33,23 @@ namespace System.Text.Json.Serialization.Converters
         // Since multiple threads can add to the cache, a few more values might be added.
         private const int NameCacheSizeSoftLimit = 64;
 
+        /// <summary>
+        /// TODO
+        /// </summary>
         public override bool CanConvert(Type type)
         {
             return type.IsEnum;
         }
 
-        public EnumConverter(EnumConverterOptions converterOptions, JsonSerializerOptions serializerOptions)
-            : this(converterOptions, namingPolicy: null, serializerOptions)
+        /// <summary>
+        /// TODO
+        /// </summary>
+        public EnumConverter(JsonSerializerOptions serializerOptions)
+            : this(converterOptions: EnumConverterOptions.AllowNumbers, namingPolicy: null, serializerOptions)
         {
         }
 
-        public EnumConverter(EnumConverterOptions converterOptions, JsonNamingPolicy? namingPolicy, JsonSerializerOptions serializerOptions)
+        internal EnumConverter(EnumConverterOptions converterOptions, JsonNamingPolicy? namingPolicy, JsonSerializerOptions serializerOptions)
         {
             _converterOptions = converterOptions;
             _namingPolicy = namingPolicy;
@@ -70,6 +80,9 @@ namespace System.Text.Json.Serialization.Converters
             }
         }
 
+        /// <summary>
+        /// TODO
+        /// </summary>
         public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             JsonTokenType token = reader.TokenType;
@@ -149,6 +162,9 @@ namespace System.Text.Json.Serialization.Converters
             return default;
         }
 
+        /// <summary>
+        /// TODO
+        /// </summary>
         public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
         {
             // If strings are allowed, attempt to write it out as a string value

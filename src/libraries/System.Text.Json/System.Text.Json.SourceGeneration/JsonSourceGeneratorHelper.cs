@@ -130,12 +130,20 @@ namespace System.Text.Json.SourceGeneration
                     {
                         _executionContext.AddSource(
                             metadataFileName,
-                            SourceText.From(GenerateForNullableType(typeMetadata), Encoding.UTF8));
+                            SourceText.From(GenerateForNullable(typeMetadata), Encoding.UTF8));
 
                         _executionContext.ReportDiagnostic(Diagnostic.Create(_generatedTypeClass, Location.None, new string[] { typeMetadata.CompilableName }));
 
-                        // TODO: do we need to generate metadata for the underlying type?
                         GenerateSerializationMetadataForType(typeMetadata.NullableUnderlyingTypeMetadata);
+                    }
+                    break;
+                case ClassType.Enum:
+                    {
+                        _executionContext.AddSource(
+                            metadataFileName,
+                            SourceText.From(GenerateForEnum(typeMetadata), Encoding.UTF8));
+
+                        _executionContext.ReportDiagnostic(Diagnostic.Create(_generatedTypeClass, Location.None, new string[] { typeMetadata.CompilableName }));
                     }
                     break;
                 case ClassType.Enumerable:
@@ -251,7 +259,7 @@ namespace {_generationNamespace}
 ";
         }
 
-        private string GenerateForNullableType(TypeMetadata typeMetadata)
+        private string GenerateForNullable(TypeMetadata typeMetadata)
         {
             string typeCompilableName = typeMetadata.CompilableName;
             string typeFriendlyName = typeMetadata.FriendlyName;
@@ -267,7 +275,7 @@ namespace {_generationNamespace}
 {{
     {JsonContextDeclarationSource}
     {{
-        private JsonTypeInfo<{typeCompilableName}> _{typeFriendlyName};
+        private JsonValueInfo<{typeCompilableName}> _{typeFriendlyName};
         public JsonTypeInfo<{typeCompilableName}> {typeFriendlyName}
         {{
             get
@@ -275,10 +283,39 @@ namespace {_generationNamespace}
                 if (_{typeFriendlyName} == null)
                 {{
                     // TODO: avoid new allocation for underlying type converter. Should this reuse converter from options.GetConverter()?
-                    var typeInfo = new JsonValueInfo<{typeCompilableName}>(new NullableConverter<{underlyingTypeCompilableName}>(new {underlyingTypeFriendlyName}Converter()), {GetNumberHandlingNamedArg(typeMetadata.NumberHandling)}, GetOptions());
-                    _{typeFriendlyName} = typeInfo;
+                    _{typeFriendlyName} = new JsonValueInfo<{typeCompilableName}>(new NullableConverter<{underlyingTypeCompilableName}>(new {underlyingTypeFriendlyName}Converter()), {GetNumberHandlingNamedArg(typeMetadata.NumberHandling)}, GetOptions());
                 }}
       
+                return _{typeFriendlyName};
+            }}
+        }}
+    }}
+}}
+";
+        }
+
+        private string GenerateForEnum(TypeMetadata typeMetadata)
+        {
+            string typeCompilableName = typeMetadata.CompilableName;
+            string typeFriendlyName = typeMetadata.FriendlyName;
+
+            return @$"{GetUsingStatementsString(typeMetadata)}
+
+namespace {_generationNamespace}
+{{
+    {JsonContextDeclarationSource}
+    {{
+        private JsonValueInfo<{typeCompilableName}> _{typeFriendlyName};
+        public JsonTypeInfo<{typeCompilableName}> {typeFriendlyName}
+        {{
+            get
+            {{
+                if (_{typeFriendlyName} == null)
+                {{
+                    JsonSerializerOptions options = GetOptions();
+                    _{typeFriendlyName} = new JsonValueInfo<{typeCompilableName}>(new EnumConverter<{typeCompilableName}>(options), {GetNumberHandlingNamedArg(typeMetadata.NumberHandling)}, options);
+                }}
+
                 return _{typeFriendlyName};
             }}
         }}
@@ -440,7 +477,7 @@ namespace {_generationNamespace}
             }
             else if (type.IsEnum)
             {
-                classType = ClassType.TypeUnsupportedBySourceGen;
+                classType = ClassType.Enum;
             }
             else if (_ienumerableType.IsAssignableFrom(type))
             {

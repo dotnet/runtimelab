@@ -2,11 +2,32 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Tests;
+using System.Threading.Tasks;
 using Xunit;
+
+[assembly: JsonSerializable(typeof(SimpleTestClass))]
+[assembly: JsonSerializable(typeof(SampleEnumSByte))]
+[assembly: JsonSerializable(typeof(SampleEnumInt16))]
+[assembly: JsonSerializable(typeof(SampleEnumInt32))]
+[assembly: JsonSerializable(typeof(SampleEnumInt64))]
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static class EnumTests
+#if !GENERATE_JSON_METADATA
+    public sealed class EnumTests_DynamicSerializer : EnumTests
+    {
+        public EnumTests_DynamicSerializer() : base(SerializationWrapper.StringSerializer, DeserializationWrapper.StringDeserializer) { }
+    }
+#else
+    public sealed class EnumTests_MetadataSerializer : EnumTests
+    {
+        public EnumTests_MetadataSerializer() : base(SerializationWrapper.StringMetadataSerializer, DeserializationWrapper.StringMetadataDeserialzer) { }
+    }
+#endif
+
+    public abstract class EnumTests : SerializerTests
     {
         private const string UInt64MaxPlus1 = "18446744073709551616"; // ulong.MaxValue + 1;
         private const string MinusUInt64MaxMinus1 = "-18446744073709551616"; // -ulong.MaxValue - 1
@@ -32,71 +53,73 @@ namespace System.Text.Json.Serialization.Tests
         private const string SByteMaxPlus1 = "128"; // sbyte.MaxValue + 1;
         private const string MinusSByteMaxMinus1 = "-129"; // -sbyte.MaxValue - 1
 
+        public EnumTests(SerializationWrapper serializer, DeserializationWrapper deserializer) : base(serializer, deserializer) { }
+
         [Fact]
-        public static void EnumAsStringFail()
+        public async Task EnumAsStringFail()
         {
             string json = @"{ ""MyEnum"" : ""Two"" }";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<SimpleTestClass>(json));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<SimpleTestClass>(json));
         }
 
         [Theory]
         [MemberData(nameof(Parse_OutOfRange))]
-        public static void Parse_OutOfRange_Throws(object value, string name)
+        public async Task Parse_OutOfRange_Throws(object value, string name)
         {
             string json = $"{{ \"{ name }\" : { value } }}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<SimpleTestClass>(json));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<SimpleTestClass>(json));
             json = $"{{ \"{ name }\" : \"{ value }\" }}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<SimpleTestClass>(json));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<SimpleTestClass>(json));
         }
 
         [Theory]
         [MemberData(nameof(Parse_WithinRange_SignedAsString))]
-        public static void Parse_WithinRange_Signed_ReturnsWithCorrectType(Type expectedType, string value, string name)
+        public async Task Parse_WithinRange_Signed_ReturnsWithCorrectType(Type expectedType, string value, string name)
         {
             string json = $"{{ \"{ name }\" : { value } }}";
-            SimpleTestClass result = JsonSerializer.Deserialize<SimpleTestClass>(json);
+            SimpleTestClass result = await Deserializer.DeserializeWrapper<SimpleTestClass>(json);
             object expected = Enum.ToObject(expectedType, long.Parse(value));
             Assert.Equal(expected, GetProperty(result, name));
 
             json = $"{{ \"{ name }\" : \"{ value }\" }}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<SimpleTestClass>(json));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<SimpleTestClass>(json));
         }
 
         [Theory]
         [MemberData(nameof(Parse_WithinRange_Signed))]
-        public static void Parse_WithinRange_Signed_ReturnsExpected(object expected, long value, string name)
+        public async Task Parse_WithinRange_Signed_ReturnsExpected(object expected, long value, string name)
         {
             string json = $"{{ \"{ name }\" : { value } }}";
-            SimpleTestClass result = JsonSerializer.Deserialize<SimpleTestClass>(json);
+            SimpleTestClass result = await Deserializer.DeserializeWrapper<SimpleTestClass>(json);
             Assert.Equal(expected, GetProperty(result, name));
 
             json = $"{{ \"{ name }\" : \"{ value }\" }}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<SimpleTestClass>(json));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<SimpleTestClass>(json));
         }
 
         [Theory]
         [MemberData(nameof(Parse_WithinRange_UnsignedAsString))]
-        public static void Parse_WithinRange_Unsigned_ReturnsWithCorrectType(Type expectedType, string value, string name)
+        public async Task Parse_WithinRange_Unsigned_ReturnsWithCorrectType(Type expectedType, string value, string name)
         {
             string json = $"{{ \"{ name }\" : { value } }}";
-            SimpleTestClass result = JsonSerializer.Deserialize<SimpleTestClass>(json);
+            SimpleTestClass result = await Deserializer.DeserializeWrapper<SimpleTestClass>(json);
             object expected = Enum.ToObject(expectedType, ulong.Parse(value));
             Assert.Equal(expected, GetProperty(result, name));
 
             json = $"{{ \"{ name }\" : \"{ value }\" }}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<SimpleTestClass>(json));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<SimpleTestClass>(json));
         }
 
         [Theory]
         [MemberData(nameof(Parse_WithinRange_Unsigned))]
-        public static void Parse_WithinRange_Unsigned_ReturnsExpected(object expected, ulong value, string name)
+        public async Task Parse_WithinRange_Unsigned_ReturnsExpected(object expected, ulong value, string name)
         {
             string json = $"{{ \"{ name }\" : { value } }}";
-            SimpleTestClass result = JsonSerializer.Deserialize<SimpleTestClass>(json);
+            SimpleTestClass result = await Deserializer.DeserializeWrapper<SimpleTestClass>(json);
             Assert.Equal(expected, GetProperty(result, name));
 
             json = $"{{ \"{ name }\" : \"{ value }\" }}";
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<SimpleTestClass>(json));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<SimpleTestClass>(json));
         }
 
         private static object GetProperty(SimpleTestClass testClass, string propertyName)
@@ -104,18 +127,18 @@ namespace System.Text.Json.Serialization.Tests
 
         [Theory]
         [MemberData(nameof(ToString_WithinRange))]
-        public static void ToString_WithinRange_ReturnsSameValue(object expected, object enumValue)
+        public async Task ToString_WithinRange_ReturnsSameValue(object expected, object enumValue)
         {
-            string json = JsonSerializer.Serialize(enumValue);
+            string json = await Serializer.SerializeWrapper(enumValue);
             Assert.Equal(expected.ToString(), json);
         }
 
         [Theory]
         [MemberData(nameof(ToString_ExceedMaxCapacity))]
-        public static void ToString_ExceedMaxCapacity_ResetsBackToMinimum(int timesOverflow, string maxCapacity, Type type, long expected)
+        public async Task ToString_ExceedMaxCapacity_ResetsBackToMinimum(int timesOverflow, string maxCapacity, Type type, long expected)
         {
             object enumValue = Enum.ToObject(type, long.Parse(maxCapacity) * timesOverflow);
-            string json = JsonSerializer.Serialize(enumValue);
+            string json = await Serializer.SerializeWrapper(enumValue);
             Assert.Equal(expected.ToString(), json);
         }
 

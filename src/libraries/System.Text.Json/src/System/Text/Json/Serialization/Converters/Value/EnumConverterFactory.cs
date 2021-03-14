@@ -22,7 +22,7 @@ namespace System.Text.Json.Serialization.Converters
                 typeof(EnumConverter<>).MakeGenericType(type),
                 BindingFlags.Instance | BindingFlags.Public,
                 binder: null,
-                new object[] { EnumConverterOptions.AllowNumbers, options },
+                new object[] { options },
                 culture: null)!;
 
             return converter;

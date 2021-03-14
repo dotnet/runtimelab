@@ -56,7 +56,7 @@ namespace System.Text.Json.Serialization
         {
             JsonConverter converter = (JsonConverter)Activator.CreateInstance(
                 typeof(EnumConverter<>).MakeGenericType(typeToConvert),
-                BindingFlags.Instance | BindingFlags.Public,
+                BindingFlags.Instance | BindingFlags.NonPublic,
                 binder: null,
                 new object?[] { _converterOptions, _namingPolicy, options },
                 culture: null)!;
