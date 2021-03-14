@@ -10,6 +10,7 @@
 **
 ===========================================================*/
 
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime;
 
 using Internal.Runtime.CompilerServices;
@@ -31,7 +32,7 @@ namespace System
         }
 
 #if PROJECTN
-        public override bool Equals(object? obj)
+        public override bool Equals([NotNullWhen(true)] object? obj)
         {
             return RuntimeAugments.Callbacks.ValueTypeEqualsUsingReflection(this, obj);
         }
@@ -57,7 +58,7 @@ namespace System
             return UseFastHelper;
         }
 
-        public override bool Equals(object? obj)
+        public override bool Equals([NotNullWhen(true)] object? obj)
         {
             if (obj == null || obj.EETypePtr != this.EETypePtr)
                 return false;
