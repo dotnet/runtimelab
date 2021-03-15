@@ -111,28 +111,13 @@ namespace Internal.Runtime.CallInterceptor
             Unsafe.Write<T>((void*)address, value);
         }
 
-        /// <summary>
-        /// Copy a byref from source to to this local variable set. Instead of copying the data a, la Get/Set,
-        /// copy the actual byref pointer. This function may be used with pointer types as well, (although
-        /// more interesting is the case where its a translation between a pinned byref and a pointer)
-        /// </summary>
-        public unsafe void SetByRef(int targetIndex, ref LocalVariableSet sourceLocalSet, int sourceIndex)
-        {
-            if ((targetIndex >= _types.Length) || (sourceIndex >= sourceLocalSet._types.Length))
-                throw new ArgumentOutOfRangeException();
-
-            *((IntPtr*)_pbMemory[targetIndex]) = *((IntPtr*)sourceLocalSet._pbMemory[sourceIndex]);
-        }
-
+#if CCCONVERTER_TRACE
         /// <summary>
         /// Get the address of the variable data. This function must not be used with a non-pinned byref type
         /// (IntPtr isn't GC protected in that case)
         /// </summary>
-        public unsafe IntPtr GetAddressOfVarData(int index)
+        private unsafe IntPtr GetAddressOfVarData(int index)
         {
-            if (index >= _types.Length)
-                throw new ArgumentOutOfRangeException();
-
             if (_types[index].ByRef)
             {
                 return *((IntPtr*)_pbMemory[index]);
@@ -142,6 +127,7 @@ namespace Internal.Runtime.CallInterceptor
                 return _pbMemory[index];
             }
         }
+#endif
 
         internal unsafe IntPtr* GetRawMemoryPointer()
         {

@@ -82,17 +82,12 @@ namespace Internal.Reflection.Execution
                 throw new BadImageFormatException();
             }
 
-            checked
+            if (resourceInfo.Index < 0 || resourceInfo.Length < 0 || (uint)(resourceInfo.Index + resourceInfo.Length) > cbBlob)
             {
-                if (resourceInfo.Index > cbBlob || resourceInfo.Index + resourceInfo.Length > cbBlob)
-                {
-                    throw new BadImageFormatException();
-                }
+                throw new BadImageFormatException();
             }
 
-            UnmanagedMemoryStream stream = new UnmanagedMemoryStream(pBlob + resourceInfo.Index, resourceInfo.Length);
-
-            return stream;
+            return new UnmanagedMemoryStream(pBlob + resourceInfo.Index, resourceInfo.Length);
         }
 
         private LowLevelList<ResourceInfo> GetExtractedResources(Assembly assembly)
