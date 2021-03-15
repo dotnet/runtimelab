@@ -50,13 +50,6 @@ namespace System.Runtime.InteropServices
             new DelayedFinalizer(this);
         }
 
-        // Used by internal callers to avoid declaring a bool to pass by ref
-        internal void DangerousAddRef()
-        {
-            bool success = false;
-            DangerousAddRef(ref success);
-        }
-
         // Used by Interop marshalling code
         internal void InitializeHandle(IntPtr _handle)
         {

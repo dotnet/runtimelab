@@ -29,7 +29,7 @@ namespace System
         // block so that the correct exceptions are generated. Also, it handles the cases where the T type doesn't have
         // a default constructor.
         [DebuggerGuidedStepThrough]
-        public static T CreateInstance<T>()
+        public static T CreateInstance<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]T>()
         {
             if (!RuntimeHelpers.IsReference<T>())
             {

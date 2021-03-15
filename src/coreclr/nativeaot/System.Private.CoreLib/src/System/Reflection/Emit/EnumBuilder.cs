@@ -287,7 +287,7 @@ namespace System.Reflection.Emit
             return default;
         }
 
-        public override bool IsAssignableFrom(TypeInfo typeInfo)
+        public override bool IsAssignableFrom([NotNullWhen(true)] TypeInfo? typeInfo)
         {
             return default;
         }

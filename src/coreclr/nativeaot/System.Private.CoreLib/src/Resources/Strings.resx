@@ -1810,6 +1810,9 @@
   <data name="Task_ContinueWith_NotOnAnything" xml:space="preserve">
     <value>The specified TaskContinuationOptions excluded all continuation kinds.</value>
   </data>
+  <data name="Task_InvalidTimerTimeSpan" xml:space="preserve">
+    <value>The value needs to translate in milliseconds to -1 (signifying an infinite timeout), 0, or a positive integer less than or equal to the maximum allowed timer duration.</value>
+  </data>
   <data name="Task_RunSynchronously_AlreadyStarted" xml:space="preserve">
     <value>RunSynchronously may not be called on a task that was already started.</value>
   </data>
