@@ -78,7 +78,7 @@ function(create_standalone_jit)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE USE_STL)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE PAL_STDCPP_COMPAT)
 
-    find_package(LLVM REQUIRED CONFIG PATHS  $ENV{LLVM_CMAKE_CONFIG})
+    find_package(LLVM REQUIRED CONFIG PATHS $ENV{LLVM_CMAKE_CONFIG})
     include_directories(${LLVM_INCLUDE_DIRS})
     add_definitions(${LLVM_DEFINITIONS})
     llvm_map_components_to_libnames(llvm_libs core bitwriter)
@@ -547,17 +547,21 @@ if (CLR_CMAKE_BUILD_SUBSET_ALLJITS AND NOT CLR_CROSS_COMPONENTS_BUILD)
   create_standalone_jit(TARGET clrjit_unix_arm_${ARCH_HOST_NAME} OS unix ARCH arm)
   create_standalone_jit(TARGET clrjit_win_arm_${ARCH_HOST_NAME} OS win ARCH arm)
   create_standalone_jit(TARGET clrjit_win_x86_${ARCH_HOST_NAME} OS win ARCH x86)
+  if (NOT CLR_CMAKE_HOST_UNIX AND $ENV{BUILD_WASM_JIT})
+    # LLVM clrjit has an extra export - registerLlvmCallbacks
+    set(CLRJIT_EXPORTS ${CMAKE_CURRENT_LIST_DIR}/ClrJit.Llvm.exports)
+    set(JIT_EXPORTS_FILE ${CMAKE_CURRENT_BINARY_DIR}/ClrJit.Llvm.exports.def)
+    preprocess_file (${CLRJIT_EXPORTS} ${JIT_EXPORTS_FILE})
+    set(JIT_DEF_FILE ${JIT_EXPORTS_FILE})
+    create_standalone_jit(TARGET clrjit_browser_wasm32_${ARCH_HOST_NAME} OS browser ARCH wasm32)
+    # uncomment to enable 8 byte pointer size version of the wasm clrjit.dll
+    #create_standalone_jit(TARGET clrjit_browser_wasm64_${ARCH_HOST_NAME} OS browser ARCH wasm64)
+  endif (NOT CLR_CMAKE_HOST_UNIX AND $ENV{BUILD_WASM_JIT})
 else()
   if (CLR_CMAKE_TARGET_UNIX)
     create_standalone_jit(TARGET clrjit_unix_${ARCH_TARGET_NAME}_${ARCH_HOST_NAME} OS unix ARCH ${ARCH_TARGET_NAME})
   endif(CLR_CMAKE_TARGET_UNIX)
 endif (CLR_CMAKE_BUILD_SUBSET_ALLJITS AND NOT CLR_CROSS_COMPONENTS_BUILD)
-
-if (TARGETDETAILS_ARCH STREQUAL "wasm64" OR TARGETDETAILS_ARCH STREQUAL "wasm32")
-    create_standalone_jit(TARGET clrjit_browser_wasm32_${ARCH_HOST_NAME} OS browser ARCH wasm32)
-    # uncomment to enable 8 byte pointer size version of the wasm clrjit.dll
-    #create_standalone_jit(TARGET clrjit_browser_wasm64_${ARCH_HOST_NAME} OS browser ARCH wasm64)
-endif (TARGETDETAILS_ARCH STREQUAL "wasm64" OR TARGETDETAILS_ARCH STREQUAL "wasm32")
 
 if (CLR_CMAKE_TARGET_WIN32 AND CLR_CMAKE_PGO_INSTRUMENT)
   # Copy PGO dependency to target dir

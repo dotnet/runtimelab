@@ -19,7 +19,7 @@ cd build
 
 
 # TODO Release build
-& "$env:CMakePath" -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -DLLVM_USE_CRT_DEBUG=MTd  ..
+& "$env:CMakePath" -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -DLLVM_USE_CRT_DEBUG=MTd -Thost=x64 ..
 
 & "$env:CMakePath" --build . --target LLVMCore
 & "$env:CMakePath" --build . --target LLVMBitWriter
