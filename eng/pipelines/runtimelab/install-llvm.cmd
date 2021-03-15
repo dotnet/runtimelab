@@ -16,7 +16,6 @@ if %errorlevel% NEQ 0 goto fail
 
 echo setting LLVM_CMAKE_CONFIG to %1\llvm-11.0.0.src\build
 echo "##vso[task.setvariable variable=LLVM_CMAKE_CONFIG]%1\llvm-11.0.0.src\build"
-echo "##vso[task.setvariable variable=BUILD_WASM_JIT]1"
 
 exit /b 0
 
