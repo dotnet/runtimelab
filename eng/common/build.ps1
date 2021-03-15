@@ -143,6 +143,7 @@ try {
     }
     if ($properties.Contains('/p:TargetArchitecture=wasm') -and $runtimeFlavor -eq "CoreCLR") {
       . $PSScriptRoot\..\..\wasm-tools\emsdk\emsdk_env.ps1
+      $Env:LLVM_CMAKE_CONFIG = "$PSScriptRoot\..\..\wasm-tools\llvm-11.0.0.src\build\lib\cmake\llvm"
     }
     $nodeReuse = $false
   }
