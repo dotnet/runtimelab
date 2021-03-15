@@ -276,7 +276,6 @@
     <Compile Include="Internal\Runtime\TypeLoader\CallConverterThunk.CallConversionParameters.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\CallConverterThunk.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\CallingConventions.cs" />
-    <Compile Include="Internal\Runtime\TypeLoader\CallInterceptor.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\CanonicallyEquivalentEntryLocator.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\DispatchCellInfo.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\EEType.Runtime.cs" />
