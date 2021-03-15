@@ -49,7 +49,7 @@
   <Target Name="BuildRuntimeWasmClrJit"
         AfterTargets="BuildRuntime" Condition="'$(TargetArchitecture)' == 'wasm'">
     <PropertyGroup>
-      <CMakeArgs Condition="'$(CMakeArgs)' != ''">$(CMakeArgs) -D BUILD_WASM_JIT=1</CMakeArgs>
+      <CMakeArgs Condition="'$(CMakeArgs)' != ''">$(CMakeArgs) -DBUILD_WASM_JIT=1</CMakeArgs>
       <CMakeArgs Condition="'$(CMakeArgs)' == ''">-DBUILD_WASM_JIT=1</CMakeArgs>
     </PropertyGroup>
     <ItemGroup>
