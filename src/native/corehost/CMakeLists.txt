@@ -31,7 +31,6 @@ if (NOT RUNTIME_FLAVOR STREQUAL Mono OR CLR_CMAKE_TARGET_ARCH_S390X)
     add_subdirectory(apphost)
     add_subdirectory(dotnet)
     add_subdirectory(nethost)
-    add_subdirectory(test_fx_ver)
     add_subdirectory(test)
 
     if(CLR_CMAKE_TARGET_WIN32)
