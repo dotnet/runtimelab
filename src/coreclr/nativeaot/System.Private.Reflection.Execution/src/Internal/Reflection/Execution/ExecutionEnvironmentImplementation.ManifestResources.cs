@@ -84,7 +84,7 @@ namespace Internal.Reflection.Execution
             }
 
             // resourceInfo is read from the executable image, so check it only in debug builds
-            Debug.Assert(resourceInfo.Index >= 0 || resourceInfo.Length >= 0 || (uint)(resourceInfo.Index + resourceInfo.Length) <= cbBlob);
+            Debug.Assert(resourceInfo.Index >= 0 && resourceInfo.Length >= 0 && (uint)(resourceInfo.Index + resourceInfo.Length) <= cbBlob);
             return new UnmanagedMemoryStream(pBlob + resourceInfo.Index, resourceInfo.Length);
         }
 
