@@ -348,7 +348,7 @@ namespace Internal.IL
             // Keep track of where we are in the llvm signature, starting after the
             // shadow stack pointer and return address
             int signatureIndex = 1;
-            if (NeedsReturnStackSlot(_signature))
+            if (_compilation.NeedsReturnStackSlot(_signature))
             {
                 signatureIndex++;
             }
@@ -510,7 +510,7 @@ namespace Internal.IL
 
         private LLVMValueRef CreateLLVMFunction(string mangledName, MethodSignature signature, bool hasHiddenParameter)
         {
-            return Module.AddFunction(mangledName, GetLLVMSignatureForMethod(signature, hasHiddenParameter));
+            return Module.AddFunction(mangledName, _compilation.GetLLVMSignatureForMethod(signature, hasHiddenParameter));
         }
 
         private LLVMValueRef GetOrCreateLLVMFunction(string mangledName, MethodSignature signature, bool hasHiddenParam)
@@ -1653,7 +1653,7 @@ namespace Internal.IL
         /// Returns true if the type can be stored on the local stack
         /// instead of the shadow stack in this method.
         /// </summary>
-        private static bool CanStoreTypeOnStack(TypeDesc type)
+        internal static bool CanStoreTypeOnStack(TypeDesc type)
         {
             if (type is DefType defType)
             {
@@ -1668,15 +1668,6 @@ namespace Internal.IL
             }
 
             return false;
-        }
-
-        /// <summary>
-        /// Returns true if the method returns a type that must be kept
-        /// on the shadow stack
-        /// </summary>
-        private static bool NeedsReturnStackSlot(MethodSignature signature)
-        {
-            return !signature.ReturnType.IsVoid && !CanStoreTypeOnStack(signature.ReturnType);
         }
 
         private int GetTotalParameterOffset()
@@ -1922,7 +1913,7 @@ namespace Internal.IL
             LLVMTypeRef valueType = GetLLVMTypeForTypeDesc(_signature.ReturnType);
             LLVMValueRef castValue = retVal.ValueAsType(valueType, _builder);
 
-            if (NeedsReturnStackSlot(_signature))
+            if (_compilation.NeedsReturnStackSlot(_signature))
             {
                 var retParam = _llvmFunction.GetParam(1);
                 ImportStoreHelper(castValue, valueType, retParam, 0);
@@ -2277,7 +2268,7 @@ namespace Internal.IL
 
             LLVMValueRef slot = GetOrCreateMethodSlot(runtimeDeterminedMethod, callee);
 
-            LLVMTypeRef llvmSignature = GetLLVMSignatureForMethod(runtimeDeterminedMethod.Signature, false);
+            LLVMTypeRef llvmSignature = _compilation.GetLLVMSignatureForMethod(runtimeDeterminedMethod.Signature, false);
             LLVMValueRef functionPtr;
             ThrowIfNull(thisPointer);
             if (runtimeDeterminedMethod.OwningType.IsInterface)
@@ -2387,49 +2378,8 @@ namespace Internal.IL
                 new LLVMBasicBlockRef[] { fatBranch, notFatBranch }, 2);
 
             // dont know the type for sure, but will generate for no hidden dict param and change if necessary before calling.
-            var asFunc = CastIfNecessary(_builder, loadPtr, LLVMTypeRef.CreatePointer(GetLLVMSignatureForMethod(runtimeDeterminedMethod.Signature, false), 0) , "castToFunc");
+            var asFunc = CastIfNecessary(_builder, loadPtr, LLVMTypeRef.CreatePointer(_compilation.GetLLVMSignatureForMethod(runtimeDeterminedMethod.Signature, false), 0) , "castToFunc");
             return asFunc;
-        }
-
-        private LLVMTypeRef GetLLVMSignatureForMethod(MethodSignature signature, bool hasHiddenParam)
-        {
-            TypeDesc returnType = signature.ReturnType;
-            LLVMTypeRef llvmReturnType;
-            bool returnOnStack = false;
-            if (!NeedsReturnStackSlot(signature))
-            {
-                returnOnStack = true;
-                llvmReturnType = GetLLVMTypeForTypeDesc(returnType);
-            }
-            else
-            {
-                llvmReturnType = LLVMTypeRef.Void;
-            }
-
-            List<LLVMTypeRef> signatureTypes = new List<LLVMTypeRef>();
-            signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // Shadow stack pointer
-
-            if (!returnOnStack && returnType != GetWellKnownType(WellKnownType.Void))
-            {
-                signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
-            }
-
-            if (hasHiddenParam)
-            {
-                signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // *EEType
-            }
-
-            // Intentionally skipping the 'this' pointer since it could always be a GC reference
-            // and thus must be on the shadow stack
-            foreach (TypeDesc type in signature)
-            {
-                if (CanStoreTypeOnStack(type))
-                {
-                    signatureTypes.Add(GetLLVMTypeForTypeDesc(type));
-                }
-            }
-
-            return LLVMTypeRef.CreateFunction(llvmReturnType, signatureTypes.ToArray(), false);
         }
 
         private ExpressionEntry AllocateObject(StackEntry eeType, TypeDesc forcedReturnType = null)
@@ -2771,7 +2721,7 @@ namespace Internal.IL
 
             TypeDesc returnType = signature.ReturnType;
 
-            bool needsReturnSlot = NeedsReturnStackSlot(signature);
+            bool needsReturnSlot = _compilation.NeedsReturnStackSlot(signature);
             SpilledExpressionEntry returnSlot = null;
             var actualReturnType = forcedReturnType ?? returnType;
             if (needsReturnSlot)
@@ -2831,7 +2781,7 @@ namespace Internal.IL
                     {
                         if (_isUnboxingThunk && _method.RequiresInstArg())
                         {
-                            hiddenParam = _currentFunclet.GetParam((uint)(1 + (NeedsReturnStackSlot(_signature) ? 1 : 0)));
+                            hiddenParam = _currentFunclet.GetParam((uint)(1 + (_compilation.NeedsReturnStackSlot(_signature) ? 1 : 0)));
                         }
                         else if (canonMethod.RequiresInstMethodDescArg())
                         {
@@ -2921,7 +2871,7 @@ namespace Internal.IL
 
                 // else
                 builder.PositionAtEnd(fatBranch);
-                var fnWithDict = builder.BuildCast(LLVMOpcode.LLVMBitCast, fn, LLVMTypeRef.CreatePointer(GetLLVMSignatureForMethod(runtimeDeterminedMethod.Signature, true), 0), "fnWithDict");
+                var fnWithDict = builder.BuildCast(LLVMOpcode.LLVMBitCast, fn, LLVMTypeRef.CreatePointer(_compilation.GetLLVMSignatureForMethod(runtimeDeterminedMethod.Signature, true), 0), "fnWithDict");
                 var dictDereffed = builder.BuildLoad(builder.BuildLoad( dict, "l1"), "l2");
                 llvmArgs.Insert(needsReturnSlot ? 2 : 1, dictDereffed);
                 LLVMValueRef fatReturn = CallOrInvoke(fromLandingPad, builder, currentTryRegion, fnWithDict, llvmArgs.ToArray(), ref nextInstrBlock);
@@ -3411,7 +3361,7 @@ namespace Internal.IL
             List<LLVMValueRef> llvmArgs = new List<LLVMValueRef>();
             llvmArgs.Add(calleeFrame);
 
-            bool needsReturnSlot = NeedsReturnStackSlot(method.Signature);
+            bool needsReturnSlot = _compilation.NeedsReturnStackSlot(method.Signature);
 
             if (needsReturnSlot)
             {
@@ -3465,8 +3415,8 @@ namespace Internal.IL
         {
             MethodSignature methodSignature = (MethodSignature)_canonMethodIL.GetObject(token);
 
-            var noHiddenParamSig = GetLLVMSignatureForMethod(methodSignature, false);
-            var hddenParamSig = GetLLVMSignatureForMethod(methodSignature, true);
+            var noHiddenParamSig = _compilation.GetLLVMSignatureForMethod(methodSignature, false);
+            var hddenParamSig = _compilation.GetLLVMSignatureForMethod(methodSignature, true);
             var target = ((ExpressionEntry)_stack.Pop()).ValueAsType(LLVMTypeRef.CreatePointer(noHiddenParamSig, 0), _builder);
 
             var functionPtrAsInt = _builder.BuildPtrToInt(target, LLVMTypeRef.Int32, "ptrToInt");
@@ -5252,7 +5202,7 @@ namespace Internal.IL
 
         uint GetHiddenContextParamNo()
         {
-            return 1 + (NeedsReturnStackSlot(_method.Signature) ? (uint)1 : 0);
+            return 1 + (_compilation.NeedsReturnStackSlot(_method.Signature) ? (uint)1 : 0);
         }
 
         bool FuncletsRequireHiddenContext()
@@ -5478,7 +5428,7 @@ namespace Internal.IL
 
         private TypeDesc GetWellKnownType(WellKnownType wellKnownType)
         {
-            return _compilation.TypeSystemContext.GetWellKnownType(wellKnownType);
+            return _compilation.GetWellKnownType(wellKnownType);
         }
 
         private void ReportInvalidBranchTarget(int targetOffset)

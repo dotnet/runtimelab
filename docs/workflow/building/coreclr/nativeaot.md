@@ -18,7 +18,7 @@ The Native AOT toolchain can be currently built for Linux, macOS and Windows x64
 - Extract and create a subdirectory in the llvm-11.0.0.src folder called build.  cd to this build folder
 - Configure the LLVM source to use the same runtime as clrjit `cmake -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -D LLVM_USE_CRT_DEBUG=MTd ..`
 - Build LLVM either from the command line (`build`) or from VS 2019.  You only really need to build the LLVMCore and LLVMBitWriter projects which takes less time than the 400 odd projects when building all.  This will save some time.
-- set an enviroment variable to locate the LLVM config, e.g.  `set LLVM_CMAKE_CONFIG=E:/llvm11/llvm-11.0.0.src/build/lib/cmake/llvm`
+- set the enviroment variable LLVM_CMAKE_CONFIG to locate the LLVM config, e.g.  `set LLVM_CMAKE_CONFIG=E:/llvm11/llvm-11.0.0.src/build/lib/cmake/llvm` .   This location should contain the file `LLVMConfig.cmake`
 - Build the x64 libraries and compiler as per the Building section.
 - Run `build nativeaot+libs+nativeaot.packages -rc [Debug|Release] -lc [Debug|Release] -a wasm -os Browser -runtimeFlavor CoreCLR`
 - The compiler can now be debugged with the Wasm clrjit.  Load the clrjit_browser_wasm32_x64.vcxproj which can be found in artifacts\obj\coreclr\windows.x64.Debug\jit

@@ -28,11 +28,13 @@ static const char* (*_getMangledMethodName)(void*, CORINFO_METHOD_STRUCT_*);
 static char* _outputFileName;
 static Function* _doNothingFunction;
 
+Compiler::Info _info;
+
 extern "C" DLLEXPORT void registerLlvmCallbacks(void* thisPtr, const char* outputFileName, const char* triple, const char* dataLayout, const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*))
 {
     _thisPtr = thisPtr;
     _getMangledMethodName = getMangledMethodNamePtr;
-    _module = new Module(llvm::StringRef("netscripten"), _llvmContext);
+    _module = new Module(llvm::StringRef("netscripten-clrjit"), _llvmContext);
     _module->setTargetTriple(triple);
     _module->setDataLayout(dataLayout);
 
@@ -61,7 +63,19 @@ void Llvm::llvmShutdown()
 #endif //DEBUG
     llvm::raw_fd_ostream OS(_outputFileName, ec);
     llvm::WriteBitcodeToFile(*_module, OS);
+    //_module->end();
+    delete _module;
 //    Module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
+}
+
+FunctionType* GetFunctionTypeForMethod(Compiler::Info info)
+{
+    if (info.compArgsCount != 0 || info.compRetType != TYP_VOID)
+    {
+        fatal(CORJIT_SKIPPED);
+    }
+    // all functions have shadow stack as first arg (i8*)
+    return FunctionType::get(Type::getVoidTy(_llvmContext), ArrayRef<Type*>(Type::getInt8PtrTy(_llvmContext)), false);
 }
 
 void EmitDoNothingCall(llvm::IRBuilder<>& builder)
@@ -96,20 +110,22 @@ bool visitNode(llvm::IRBuilder<> &builder, GenTree* node)
 //
 void Llvm::Compile(Compiler* pCompiler)
 {
-    Compiler::Info info = pCompiler->info;
+    _info = pCompiler->info;
 
-    //TODO: delete
-    if (info.compArgsCount != 0 || info.compRetType != TYP_VOID)
-    {
-        fatal(CORJIT_SKIPPED);
-    }
-    const char* mangledName = (*_getMangledMethodName)(_thisPtr, info.compMethodHnd);
-    Function* function = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext), ArrayRef<Type*>(), false), Function::InternalLinkage, 0U, mangledName, _module);
+    const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
+    Function* function = Function::Create(GetFunctionTypeForMethod(_info), Function::ExternalLinkage, 0U, mangledName, _module); // TODO: ExternalLinkage forced as linked from old module
 
     BasicBlock* firstBb = pCompiler->fgFirstBB;
     llvm::IRBuilder<> builder(_llvmContext);
     for (BasicBlock* block = firstBb; block; block = block->bbNext)
     {
+        if (block->hasTryIndex())
+        {
+            function->dropAllReferences();
+            function->eraseFromParent();
+            fatal(CORJIT_SKIPPED); // TODO: skip anything with a try block for now
+        }
+
         llvm::BasicBlock* entry = llvm::BasicBlock::Create(_llvmContext, "", function);
         builder.SetInsertPoint(entry);
   //      GenTree* firstGt = block->GetFirstLIRNode();
@@ -119,7 +135,8 @@ void Llvm::Compile(Compiler* pCompiler)
             if (!visitNode(builder, node))
             {
                 // delete created function , dont want duplicate symbols
-                function->removeFromParent();
+                function->dropAllReferences();
+                function->eraseFromParent();
                 fatal(CORJIT_SKIPPED); // visitNode incomplete
             }
         }
