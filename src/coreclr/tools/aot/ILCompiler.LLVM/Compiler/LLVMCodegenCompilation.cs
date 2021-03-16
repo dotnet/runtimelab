@@ -187,7 +187,7 @@ namespace ILCompiler
             return type.ConvertToCanonForm(policy);
         }
 
-        public LLVMTypeRef GetLLVMSignatureForMethod(MethodSignature signature, bool hasHiddenParam)
+        internal static LLVMTypeRef GetLLVMSignatureForMethod(MethodSignature signature, bool hasHiddenParam)
         {
             TypeDesc returnType = signature.ReturnType;
             LLVMTypeRef llvmReturnType;
@@ -205,7 +205,7 @@ namespace ILCompiler
             List<LLVMTypeRef> signatureTypes = new List<LLVMTypeRef>();
             signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // Shadow stack pointer
 
-            if (!returnOnStack && returnType != GetWellKnownType(WellKnownType.Void))
+            if (!returnOnStack && !signature.ReturnType.IsVoid)
             {
                 signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
             }
@@ -232,7 +232,7 @@ namespace ILCompiler
         /// Returns true if the method returns a type that must be kept
         /// on the shadow stack
         /// </summary>
-        public bool NeedsReturnStackSlot(MethodSignature signature)
+        internal static bool NeedsReturnStackSlot(MethodSignature signature)
         {
             return !signature.ReturnType.IsVoid && !ILImporter.CanStoreTypeOnStack(signature.ReturnType);
         }
