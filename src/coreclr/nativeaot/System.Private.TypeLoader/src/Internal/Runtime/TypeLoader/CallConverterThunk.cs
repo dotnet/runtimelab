@@ -706,7 +706,7 @@ namespace Internal.Runtime.TypeLoader
                             else
                             {
                                 Debug.Assert(paramLookupType == InvokeUtils.DynamicInvokeParamLookupType.IndexIntoObjectArrayReturned);
-                                Debug.Assert((invokeParam is object[]) && index < ((object[])invokeParam).Length);
+                                Debug.Assert((invokeParam is object[]) && (uint)index < (uint)((object[])invokeParam).Length);
 
                                 CallConversionParameters.s_pinnedGCHandles._dynamicInvokeArgHandle.Target = ((object[])invokeParam)[index];
                                 pinnedResultObject = CallConversionParameters.s_pinnedGCHandles._dynamicInvokeArgHandle.GetRawTargetAddress();

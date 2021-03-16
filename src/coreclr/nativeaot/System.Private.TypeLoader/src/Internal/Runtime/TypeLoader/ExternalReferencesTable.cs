@@ -2,12 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Runtime;
-using Internal.Runtime;
 using Internal.Runtime.Augments;
-using Debug = System.Diagnostics.Debug;
-
-using TableElement = System.UInt32;
 
 namespace Internal.Runtime.TypeLoader
 {

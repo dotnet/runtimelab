@@ -3,7 +3,6 @@
 using System;
 using Internal.NativeFormat;
 using Internal.Runtime.Augments;
-using Internal.Runtime.CallInterceptor;
 using Internal.Runtime.CompilerServices;
 using Internal.Runtime.TypeLoader;
 using Internal.TypeSystem;
