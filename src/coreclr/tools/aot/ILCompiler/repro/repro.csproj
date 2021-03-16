@@ -32,7 +32,6 @@
       <ReproResponseLines Include="--stacktracedata" />
       <ReproResponseLines Include="--scanreflection" />
       <ReproResponseLines Include="--feature:System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization=false" />
-      <ReproResponseLines Include="--removefeature:SerializationGuard" />
     </ItemGroup>
 
     <WriteLinesToFile File="$(OutputPath)\compile-with-$(LibrariesConfiguration)-libs.rsp"
