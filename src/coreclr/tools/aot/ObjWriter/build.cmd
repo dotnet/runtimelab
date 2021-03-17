@@ -46,8 +46,10 @@ git apply "%ScriptDir%llvm.patch" || goto Error
 
 :PatchApplied
 
+:: Init VS environment
+call "%RepoRoot%eng\native\init-vs-env.cmd" || goto Error
+
 :: Set CMakePath by evaluating the output from set-cmake-path.ps1
-call "%RepoRoot%src\coreclr\setup_vs_tools.cmd" || goto Error
 for /f "delims=" %%a in ('powershell -NoProfile -ExecutionPolicy ByPass "& ""%RepoRoot%eng\native\set-cmake-path.ps1"""') do %%a
 echo Using CMake at "%CMakePath%"
 
