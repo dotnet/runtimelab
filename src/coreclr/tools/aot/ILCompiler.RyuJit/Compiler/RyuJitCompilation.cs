@@ -162,10 +162,16 @@ namespace ILCompiler
                 MethodIL throwingIL = TypeSystemThrowingILEmitter.EmitIL(method, ex);
                 corInfo.CompileMethod(methodCodeNodeNeedingCode, throwingIL);
 
-                // TODO: Log as a warning. For now, just log to the logger; but this needs to
-                // have an error code, be supressible, the method name/sig needs to be properly formatted, etc.
-                // https://github.com/dotnet/corert/issues/72
-                Logger.Writer.WriteLine($"Warning: Method `{method}` will always throw because: {ex.Message}");
+                if (ex is TypeSystemException.InvalidProgramException
+                    && method.OwningType is MetadataType mdOwningType
+                    && mdOwningType.HasCustomAttribute("System.Runtime.InteropServices", "ClassInterfaceAttribute"))
+                {
+                    Logger.LogWarning("COM interop is not supported with full ahead of time compilation", 9701, method, MessageSubCategory.AotAnalysis);
+                }
+                else
+                {
+                    Logger.LogWarning($"Method will always throw because: {ex.Message}", 1005, method, MessageSubCategory.AotAnalysis);
+                }
             }
             finally
             {

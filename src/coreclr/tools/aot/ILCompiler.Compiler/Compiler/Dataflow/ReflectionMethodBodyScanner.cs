@@ -2507,6 +2507,7 @@ namespace ILCompiler.Dataflow
 
                 // TODO: these are all unique to NativeAOT - mono/linker repo is not aware this error code is used.
                 public const string IL9700 = "Calling '{0}' which has `RequiresDynamicCodeAttribute` can break functionality when compiled fully ahead of time.";
+                // IL9701 - COM
             }
         }
     }
