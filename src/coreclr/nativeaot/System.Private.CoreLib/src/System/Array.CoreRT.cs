@@ -365,9 +365,17 @@ namespace System
                 }
                 else if (sourceElementEEType.IsPrimitive && destinationElementEEType.IsPrimitive)
                 {
-                    // The only case remaining is that primitive types could have a widening conversion between the source element type and the destination
-                    // If a widening conversion does not exist we are going to throw an ArrayTypeMismatchException from it.
-                    CopyImplPrimitiveTypeWithWidening(sourceArray, sourceIndex, destinationArray, destinationIndex, length, reliable);
+                    if (RuntimeImports.AreTypesAssignable(sourceArray.EETypePtr, destinationArray.EETypePtr))
+                    {
+                        // If we're okay casting between these two, we're also okay blitting the values over
+                        CopyImplValueTypeArrayNoInnerGcRefs(sourceArray, sourceIndex, destinationArray, destinationIndex, length);
+                    }
+                    else
+                    {
+                        // The only case remaining is that primitive types could have a widening conversion between the source element type and the destination
+                        // If a widening conversion does not exist we are going to throw an ArrayTypeMismatchException from it.
+                        CopyImplPrimitiveTypeWithWidening(sourceArray, sourceIndex, destinationArray, destinationIndex, length, reliable);
+                    }
                 }
                 else
                 {
