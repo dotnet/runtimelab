@@ -316,18 +316,7 @@ namespace System
                 throw new ArgumentException(SR.Arg_DefaultValueMissingException);
             }
 
-            object defaultValue;
-            bool hasDefaultValue;
-            Delegate delegateInstance = targetMethodOrDelegate as Delegate;
-            if (delegateInstance != null)
-            {
-                hasDefaultValue = delegateInstance.TryGetDefaultParameterValue(thType, argIndex, out defaultValue);
-            }
-            else
-            {
-                hasDefaultValue = RuntimeAugments.Callbacks.TryGetDefaultParameterValue(targetMethodOrDelegate, thType, argIndex, out defaultValue);
-            }
-
+            bool hasDefaultValue = RuntimeAugments.Callbacks.TryGetDefaultParameterValue(targetMethodOrDelegate, thType, argIndex, out object defaultValue);
             if (!hasDefaultValue)
             {
                 throw new ArgumentException(SR.Arg_DefaultValueMissingException);

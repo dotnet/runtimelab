@@ -46,9 +46,6 @@ namespace System
         internal IntPtr m_extraFunctionPointerOrData;
         internal IntPtr m_functionPointer;
 
-        [ThreadStatic]
-        private static string s_DefaultValueString;
-
         // WARNING: These constants are also declared in System.Private.TypeLoader\Internal\Runtime\TypeLoader\CallConverterThunk.cs
         // Do not change their values without updating the values in the calling convention converter component
         private protected const int MulticastThunk = 0;
@@ -78,11 +75,6 @@ namespace System
             return IntPtr.Zero;
 #endif
         }
-
-        //
-        // If there is a default value string, the overridden function should set the
-        // s_DefaultValueString field and return true.
-        private protected virtual bool LoadDefaultValueString() { return false; }
 
         /// <summary>
         /// Used by various parts of the runtime as a replacement for Delegate.Method
