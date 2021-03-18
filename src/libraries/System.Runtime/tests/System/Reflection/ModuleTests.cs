@@ -179,7 +179,7 @@ namespace System.Reflection.Tests
         public static IEnumerable<object[]> Types =>
             Module.GetTypes().Select(t => new object[] { t });
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(Types))]
         public void ResolveType(Type t)
         {
@@ -194,7 +194,7 @@ namespace System.Reflection.Tests
             }
             .Union(NullTokens);
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(BadResolveTypes))]
         public void ResolveTypeFail(int token)
         {
@@ -207,7 +207,7 @@ namespace System.Reflection.Tests
         public static IEnumerable<object[]> Methods =>
             Module.GetMethods().Select(m => new object[] { m });
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(Methods))]
         public void ResolveMethod(MethodInfo t)
         {
@@ -223,7 +223,7 @@ namespace System.Reflection.Tests
             }
             .Union(NullTokens);
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(BadResolveMethods))]
         public void ResolveMethodFail(int token)
         {
@@ -236,7 +236,7 @@ namespace System.Reflection.Tests
         public static IEnumerable<object[]> Fields =>
             Module.GetFields().Select(f => new object[] { f });
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(Fields))]
         public void ResolveField(FieldInfo t)
         {
@@ -252,7 +252,7 @@ namespace System.Reflection.Tests
             }
             .Union(NullTokens);
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(BadResolveFields))]
         public void ResolveFieldFail(int token)
         {
@@ -271,7 +271,7 @@ namespace System.Reflection.Tests
             }
             .Union(NullTokens);
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(BadResolveStrings))]
         public void ResolveStringFail(int token)
         {
@@ -281,7 +281,7 @@ namespace System.Reflection.Tests
             });
         }
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(Types))]
         [MemberData(nameof(Methods))]
         [MemberData(nameof(Fields))]
@@ -290,7 +290,7 @@ namespace System.Reflection.Tests
             Assert.Equal(member, Module.ResolveMember(member.MetadataToken));
         }
 
-        [Fact]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         public void ResolveMethodOfGenericClass()
         {
             Type t = typeof(Foo<>);

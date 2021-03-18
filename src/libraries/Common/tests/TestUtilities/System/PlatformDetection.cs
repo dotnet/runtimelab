@@ -129,6 +129,28 @@ namespace System
             }
         }
 
+        private static volatile Tuple<bool> s_lazyMetadataTokensSupported;
+        public static bool IsMetadataTokenSupported
+        {
+            get
+            {
+                if (s_lazyMetadataTokensSupported == null)
+                {
+                    bool metadataTokensSupported = false;
+                    try
+                    {
+                        _ = typeof(PlatformDetection).MetadataToken;
+                        metadataTokensSupported = true;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                    }
+                    s_lazyMetadataTokensSupported = Tuple.Create<bool>(metadataTokensSupported);
+                }
+                return s_lazyMetadataTokensSupported.Item1;
+            }
+        }
+
         public static bool IsDomainJoinedMachine => !Environment.MachineName.Equals(Environment.UserDomainName, StringComparison.OrdinalIgnoreCase);
         public static bool IsNotDomainJoinedMachine => !IsDomainJoinedMachine;
 
