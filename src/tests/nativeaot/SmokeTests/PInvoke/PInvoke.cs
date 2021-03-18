@@ -306,7 +306,7 @@ namespace PInvokeTests
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 TestComInteropNullPointers();
-                TestComInteropRegistrationReqired();
+                TestComInteropRegistrationRequired();
                 TestComInteropReleaseProcess();
             }
 
@@ -1030,7 +1030,7 @@ namespace PInvokeTests
             ThrowIfNotEquals(true, IsNULL(comPointer), "COM interface marshalling null check failed");
         }
 
-        public static void TestComInteropRegistrationReqired()
+        public static void TestComInteropRegistrationRequired()
         {
             Console.WriteLine("Testing COM Interop registration process");
             ComObject target = new ComObject();
@@ -1121,11 +1121,11 @@ namespace PInvokeTests
 
         static SimpleComWrapper()
         {
-            IntPtr* vtbl = (IntPtr*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IComInterfaceVtbl), sizeof(IComInterfaceVtbl));
+            IntPtr* vtbl = (IntPtr*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IComInterface), 4 * sizeof(IntPtr));
             GetIUnknownImpl(out vtbl[0], out vtbl[1], out vtbl[2]);
             vtbl[3] = (IntPtr)(delegate* unmanaged<IntPtr, void>)&IComInterfaceProxy.DoWork;
 
-            var comInterfaceEntryMemory = RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IComInterfaceVtbl), sizeof(ComInterfaceEntry));
+            var comInterfaceEntryMemory = RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IComInterface), sizeof(ComInterfaceEntry));
             wrapperEntry = (ComInterfaceEntry*)comInterfaceEntryMemory;
             wrapperEntry->IID = new Guid("D6DD68D1-86FD-4332-8666-9ABEDEA2D24C");
             wrapperEntry->Vtable = (IntPtr)vtbl;
@@ -1147,19 +1147,6 @@ namespace PInvokeTests
         protected override void ReleaseObjects(System.Collections.IEnumerable objects)
         {
         }
-    }
-
-    public unsafe struct IComInterfaceVtbl
-    {
-        public IUnknownVtbl IUnknownImpl;
-        public delegate*<IntPtr, void> DoWork;
-    }
-
-    public struct IUnknownVtbl
-    {
-        public IntPtr QueryInterface;
-        public IntPtr AddRef;
-        public IntPtr Release;
     }
 
     internal unsafe class IComInterfaceProxy
