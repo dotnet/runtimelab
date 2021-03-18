@@ -64,7 +64,7 @@ stages:
       jobParameters:
         testGroup: innerloop
         nameSuffix: AllSubsets_Mono
-        buildArgs: -s mono+libs+libs.tests+host+packs -c $(_BuildConfig) /p:ArchiveTests=true /p:SkipDisableds390xTests=true
+        buildArgs: -s mono+libs+libs.tests+host+packs -c $(_BuildConfig) /p:ArchiveTests=true
         timeoutInMinutes: 120
         # extra steps, run tests
         extraStepsTemplate: /eng/pipelines/libraries/helix.yml
