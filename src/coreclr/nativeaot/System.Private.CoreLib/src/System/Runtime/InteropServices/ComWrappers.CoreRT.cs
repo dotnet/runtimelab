@@ -218,7 +218,7 @@ namespace System.Runtime.InteropServices
             int totalDefinedCount = runtimeDefinedCount + userDefinedCount;
 
             // Compute the total entry size of dispatch section.
-            int totalDispatchSectionSize = totalDefinedCount * sizeof(ComInterfaceDispatch);
+            int totalDispatchSectionSize = totalDefinedCount * sizeof(InternalComInterfaceDispatch);
 
             // Allocate memory for the ManagedObjectWrapper.
             IntPtr wrapperMem = Marshal.AllocCoTaskMem(
