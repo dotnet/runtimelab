@@ -214,7 +214,6 @@
     <Compile Include="System\String.Intern.cs" />
     <Compile Include="System\Array.CoreRT.cs" />
     <Compile Include="System\Delegate.cs" />
-    <Compile Include="System\Delegate.DefaultParameters.cs" />
     <Compile Include="System\RuntimeTypeHandle.cs" />
     <Compile Include="System\Exception.CoreRT.cs" />
     <Compile Include="System\RuntimeExceptionHelpers.cs" />

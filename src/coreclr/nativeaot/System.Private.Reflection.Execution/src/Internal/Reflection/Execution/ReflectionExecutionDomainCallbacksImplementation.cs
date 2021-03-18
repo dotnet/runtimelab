@@ -2,7 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Text;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -231,9 +231,27 @@ namespace Internal.Reflection.Execution
         {
             defaultValue = null;
 
-            if (!(defaultParametersContext is MethodBase methodBase))
+            MethodBase methodBase = defaultParametersContext as MethodBase;
+            if (methodBase is null)
             {
-                return false;
+                if (defaultParametersContext is Delegate)
+                {
+                    methodBase = GetDelegateInvokeMethod(defaultParametersContext.GetType());
+                }
+
+                if (methodBase is null)
+                {
+                    return false;
+                }
+
+                [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+                    Justification = "Delegates always generate metadata for the Invoke method")]
+                static MethodBase GetDelegateInvokeMethod(Type delegateType)
+                {
+                    MethodInfo result = delegateType.GetMethod("Invoke", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+                    Debug.Assert(result != null);
+                    return result;
+                }
             }
 
             ParameterInfo parameterInfo = methodBase.GetParametersNoCopy()[argIndex];
