@@ -268,7 +268,7 @@ namespace System.Reflection.Runtime.General
             if (target == null)
                 throw new ArgumentNullException(nameof(target));
             if (target.ContainsGenericParameters)
-                throw new ArgumentException(SR.Arg_UnboundGenParam);
+                throw new ArgumentException(SR.Arg_UnboundGenParam, nameof(target));
             if (method == null)
                 throw new ArgumentNullException(nameof(method));
 
