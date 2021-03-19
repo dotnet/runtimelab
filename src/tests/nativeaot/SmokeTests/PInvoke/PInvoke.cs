@@ -275,12 +275,6 @@ namespace PInvokeTests
         public static int callbackFunc1() { return 1; }
         public static int callbackFunc2() { return 2; }
 
-        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall)]
-        static extern void CaptureComPointer(IComInterface foo);
-
-        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall)]
-        static extern void ReleaseComPointer();
-
         public static int Main(string[] args)
         {
             TestBlittableType();
@@ -1015,6 +1009,12 @@ namespace PInvokeTests
             GC.Collect();
         }
 
+        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall)]
+        static extern int CaptureComPointer(IComInterface foo);
+
+        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall)]
+        static extern void ReleaseComPointer();
+
         public static unsafe void TestForwardDelegateWithUnmanagedCallersOnly()
         {
             Console.WriteLine("Testing Forward Delegate with UnmanagedCallersOnly");
@@ -1066,7 +1066,9 @@ namespace PInvokeTests
             ComObject target = new ComObject();
             WeakReference comPointerHolder = new WeakReference(target);
 
-            CaptureComPointer(target);
+            int result = CaptureComPointer(target);
+            ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave stragerly.");
+            ThrowIfNotEquals(11, target.TestResult, "Call to method should work");
 
             return comPointerHolder;
         }
@@ -1100,18 +1102,20 @@ namespace PInvokeTests
 
     [ComImport]
     [ComVisible(true)]
-    [Guid("D6DD68D1-86FD-4332-8666-9ABEDEA2D24C")]
+    [Guid("111e91ef-1887-4afd-81e3-70cf08e715d8")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     public interface IComInterface
     {
-        void DoWork();
+        void DoWork(int param);
     }
 
     public class ComObject : IComInterface
     {
-        public void DoWork()
+        public int TestResult;
+        public void DoWork(int param)
         {
             Console.WriteLine("Do work called.");
+            this.TestResult += param;
         }
     }
 
@@ -1123,11 +1127,11 @@ namespace PInvokeTests
         {
             IntPtr* vtbl = (IntPtr*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IComInterface), 4 * sizeof(IntPtr));
             GetIUnknownImpl(out vtbl[0], out vtbl[1], out vtbl[2]);
-            vtbl[3] = (IntPtr)(delegate* unmanaged<IntPtr, void>)&IComInterfaceProxy.DoWork;
+            vtbl[3] = (IntPtr)(delegate* unmanaged<IntPtr, int, void>)&IComInterfaceProxy.DoWork;
 
             var comInterfaceEntryMemory = RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IComInterface), sizeof(ComInterfaceEntry));
             wrapperEntry = (ComInterfaceEntry*)comInterfaceEntryMemory;
-            wrapperEntry->IID = new Guid("D6DD68D1-86FD-4332-8666-9ABEDEA2D24C");
+            wrapperEntry->IID = new Guid("111e91ef-1887-4afd-81e3-70cf08e715d8");
             wrapperEntry->Vtable = (IntPtr)vtbl;
         }
 
@@ -1152,10 +1156,10 @@ namespace PInvokeTests
     internal unsafe class IComInterfaceProxy
     {
         [UnmanagedCallersOnly]
-        public static void DoWork(IntPtr thisPtr)
+        public static void DoWork(IntPtr thisPtr, int param)
         {
             var inst = ComWrappers.ComInterfaceDispatch.GetInstance<IComInterface>((ComWrappers.ComInterfaceDispatch*)thisPtr);
-            inst.DoWork();
+            inst.DoWork(param);
         }
     }
 
