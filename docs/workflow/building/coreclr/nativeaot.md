@@ -29,7 +29,7 @@ The Native AOT toolchain can be currently built for Linux, macOS and Windows x64
 - To work on the clr jit for LLVM:
 - Open the Ilc solution and add the clr jit project `clrjit_browser_wasm32_x64.vcxproj` from `artifacts\obj\coreclr\windows.x64.Debug\jit`
 - In the project properties General section, change the output folder to the full path for `artifacts\bin\coreclr\windows.x64.Debug\ilc\net5.0` e.g. `E:\GitHub\runtimelab\artifacts\bin\coreclr\windows.x64.Debug\ilc\net5.0`
-- Build `clrjit_browser_wasm32_x64` project and you should now be able to change and but breakpoints in the c++ code.
+- Build `clrjit_browser_wasm32_x64` project and you should now be able to change and put breakpoints in the c++ code.
 
 
 ## Visual Studio Solutions
