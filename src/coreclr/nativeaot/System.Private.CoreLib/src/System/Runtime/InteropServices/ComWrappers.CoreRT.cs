@@ -18,6 +18,7 @@ namespace System.Runtime.InteropServices
         internal static Guid IID_IUnknown = new Guid(0x00000000, 0x0000, 0x0000, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
 
         private readonly ConditionalWeakTable<object, ManagedObjectWrapperHolder> _ccwTable = new ConditionalWeakTable<object, ManagedObjectWrapperHolder>();
+        private readonly ConditionalWeakTable<object, NativeObjectWrapper> _rcwTable = new ConditionalWeakTable<object, NativeObjectWrapper>();
 
         /// <summary>
         /// ABI for function dispatch of a COM interface.
@@ -151,11 +152,31 @@ namespace System.Runtime.InteropServices
             }
         }
 
-        internal unsafe struct IUnknownVftbl
+        internal unsafe class NativeObjectWrapper
         {
-            public delegate* unmanaged<IntPtr, ref Guid, out IntPtr, int> QueryInterface;
-            public delegate* unmanaged<IntPtr, uint> AddRef;
-            public delegate* unmanaged<IntPtr, uint> Release;
+            private IntPtr _externalComObject;
+
+            public NativeObjectWrapper(IntPtr externalComObject)
+            {
+                _externalComObject = externalComObject;
+            }
+
+            public uint AddRef()
+            {
+                return ((delegate* unmanaged<IntPtr, uint>)IUnknownVtbl[1])(_externalComObject);
+            }
+
+            public uint Release()
+            {
+                return ((delegate* unmanaged<IntPtr, uint>)IUnknownVtbl[2])(_externalComObject);
+            }
+
+            private IntPtr* IUnknownVtbl => (IntPtr*)_externalComObject;
+
+            ~NativeObjectWrapper()
+            {
+                Release();
+            }
         }
 
 #if false
@@ -332,8 +353,31 @@ namespace System.Runtime.InteropServices
                 throw new NotImplementedException();
 
             object? wrapperMaybeLocal = wrapperMaybe;
-            retValue = null;
-            throw new NotImplementedException();
+            retValue = impl.CreateObject(externalComObject, flags);
+            if (retValue == null)
+            {
+                // If ComWrappers instance cannot create wrapper, we can do nothing here.
+                return false;
+            }
+
+            if (flags.HasFlag(CreateObjectFlags.UniqueInstance))
+            {
+                // No need to cache NativeObjectWrapper for unique instances. They are not cached.
+                return true;
+            }
+
+            NativeObjectWrapper wrapper;
+            if (impl._rcwTable.TryGetValue(retValue, out wrapper))
+            {
+                return true;
+            }
+
+            wrapper = impl._rcwTable.GetValue(retValue, (c) =>
+            {
+                return new NativeObjectWrapper(externalComObject);
+            });
+            wrapper.AddRef();
+            return true;
         }
 
         /// <summary>
@@ -399,16 +443,6 @@ namespace System.Runtime.InteropServices
             fpRelease = (IntPtr)(delegate* unmanaged<IntPtr, uint>)&ComWrappers.IUnknown_Release;
         }
 
-        internal static IntPtr ComInterfaceForObject(object instance)
-        {
-            if (s_globalInstanceForMarshalling == null)
-            {
-                throw new InvalidOperationException(SR.InvalidOperation_ComInteropRequireComWrapperInstance);
-            }
-
-            return s_globalInstanceForMarshalling.GetOrCreateComInterfaceForObject(instance, CreateComInterfaceFlags.None);
-        }
-
         internal static unsafe IntPtr ComInterfaceForObject(object instance, Guid targetIID)
         {
             IntPtr unknownPtr = ComInterfaceForObject(instance);
@@ -421,6 +455,16 @@ namespace System.Runtime.InteropServices
             }
 
             return comObjectInterface;
+        }
+
+        internal static object ComObjectForInterface(IntPtr externalComObject)
+        {
+            if (s_globalInstanceForMarshalling == null)
+            {
+                throw new InvalidOperationException(SR.InvalidOperation_ComInteropRequireComWrapperInstance);
+            }
+
+            return s_globalInstanceForMarshalling.CreateObject(externalComObject, CreateObjectFlags.None);
         }
 
         [UnmanagedCallersOnly]
