@@ -217,15 +217,9 @@ namespace System.Runtime.InteropServices
             // Compute size for ManagedObjectWrapper instance.
             int totalDefinedCount = runtimeDefinedCount + userDefinedCount;
 
-            // Compute the total entry size of dispatch section.
-            int totalDispatchSectionSize = totalDefinedCount * sizeof(InternalComInterfaceDispatch);
-
             // Allocate memory for the ManagedObjectWrapper.
             IntPtr wrapperMem = Marshal.AllocCoTaskMem(
-                sizeof(ManagedObjectWrapper) + totalDispatchSectionSize);
-
-            // Compute Runtime defined offset.
-            IntPtr runtimeDefinedOffset = wrapperMem + totalDispatchSectionSize + sizeof(ManagedObjectWrapper);
+                sizeof(ManagedObjectWrapper) + totalDefinedCount * sizeof(InternalComInterfaceDispatch));
 
             // Compute the dispatch section offset and ensure it is aligned.
             ManagedObjectWrapper* mow = (ManagedObjectWrapper*)wrapperMem;
