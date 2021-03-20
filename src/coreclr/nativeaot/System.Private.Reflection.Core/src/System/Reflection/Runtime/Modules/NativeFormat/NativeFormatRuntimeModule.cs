@@ -64,6 +64,20 @@ namespace System.Reflection.Runtime.Modules.NativeFormat
             }
         }
 
+        public sealed override FieldInfo GetField(string name, BindingFlags bindingAttr)
+        {
+            QScopeDefinition scope = _assembly.Scope;
+            MetadataReader reader = scope.Reader;
+            return scope.ScopeDefinition.GlobalModuleType.GetNamedType(reader).GetField(name, bindingAttr);
+        }
+
+        public sealed override FieldInfo[] GetFields(BindingFlags bindingFlags)
+        {
+            QScopeDefinition scope = _assembly.Scope;
+            MetadataReader reader = scope.Reader;
+            return scope.ScopeDefinition.GlobalModuleType.GetNamedType(reader).GetFields(bindingFlags);
+        }
+
         private readonly NativeFormatRuntimeAssembly _assembly;
     }
 }
