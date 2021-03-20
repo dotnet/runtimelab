@@ -1106,16 +1106,16 @@ namespace PInvokeTests
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     public interface IComInterface
     {
-        void DoWork(int param);
+        int DoWork(int param);
     }
 
     public class ComObject : IComInterface
     {
         public int TestResult;
-        public void DoWork(int param)
+        public int DoWork(int param)
         {
-            Console.WriteLine("Do work called.");
             this.TestResult += param;
+            return 0;
         }
     }
 
@@ -1127,7 +1127,7 @@ namespace PInvokeTests
         {
             IntPtr* vtbl = (IntPtr*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IComInterface), 4 * sizeof(IntPtr));
             GetIUnknownImpl(out vtbl[0], out vtbl[1], out vtbl[2]);
-            vtbl[3] = (IntPtr)(delegate* unmanaged<IntPtr, int, void>)&IComInterfaceProxy.DoWork;
+            vtbl[3] = (IntPtr)(delegate* unmanaged<IntPtr, int, int>)&IComInterfaceProxy.DoWork;
 
             var comInterfaceEntryMemory = RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(IComInterface), sizeof(ComInterfaceEntry));
             wrapperEntry = (ComInterfaceEntry*)comInterfaceEntryMemory;
@@ -1156,10 +1156,10 @@ namespace PInvokeTests
     internal unsafe class IComInterfaceProxy
     {
         [UnmanagedCallersOnly]
-        public static void DoWork(IntPtr thisPtr, int param)
+        public static int DoWork(IntPtr thisPtr, int param)
         {
             var inst = ComWrappers.ComInterfaceDispatch.GetInstance<IComInterface>((ComWrappers.ComInterfaceDispatch*)thisPtr);
-            inst.DoWork(param);
+            return inst.DoWork(param);
         }
     }
 
