@@ -308,17 +308,26 @@ namespace System
             if (destinationArray is null)
                 ThrowHelper.ThrowArgumentNullException(ExceptionArgument.destinationArray);
 
-            int sourceRank = sourceArray.Rank;
-            int destinationRank = destinationArray.Rank;
-            if (sourceRank != destinationRank)
-                throw new RankException(SR.Rank_MultiDimNotSupported);
+            if (sourceArray.GetType() != destinationArray.GetType() && sourceArray.Rank != destinationArray.Rank)
+                throw new RankException(SR.Rank_MustMatch);
 
-            if ((sourceIndex < 0) || (destinationIndex < 0) || (length < 0))
-                throw new ArgumentOutOfRangeException();
-            if ((length > sourceArray.Length) || length > destinationArray.Length)
-                throw new ArgumentException();
-            if ((length > sourceArray.Length - sourceIndex) || (length > destinationArray.Length - destinationIndex))
-                throw new ArgumentException();
+            if (length < 0)
+                throw new ArgumentOutOfRangeException(nameof(length), SR.ArgumentOutOfRange_NeedNonNegNum);
+
+            const int srcLB = 0;
+            if (sourceIndex < srcLB || sourceIndex - srcLB < 0)
+                throw new ArgumentOutOfRangeException(nameof(sourceIndex), SR.ArgumentOutOfRange_ArrayLB);
+            sourceIndex -= srcLB;
+
+            const int dstLB = 0;
+            if (destinationIndex < dstLB || destinationIndex - dstLB < 0)
+                throw new ArgumentOutOfRangeException(nameof(destinationIndex), SR.ArgumentOutOfRange_ArrayLB);
+            destinationIndex -= dstLB;
+
+            if ((uint)(sourceIndex + length) > (nuint)sourceArray.LongLength)
+                throw new ArgumentException(SR.Arg_LongerThanSrcArray, nameof(sourceArray));
+            if ((uint)(destinationIndex + length) > (nuint)destinationArray.LongLength)
+                throw new ArgumentException(SR.Arg_LongerThanDestArray, nameof(destinationArray));
 
             EETypePtr sourceElementEEType = sourceArray.ElementEEType;
             EETypePtr destinationElementEEType = destinationArray.ElementEEType;
