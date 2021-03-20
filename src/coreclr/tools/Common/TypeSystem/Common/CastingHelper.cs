@@ -307,7 +307,7 @@ namespace Internal.TypeSystem
 
         public static bool IsArrayElementTypeCastableBySize(TypeDesc elementType)
         {
-            switch (elementType.Category)
+            switch (elementType.UnderlyingType.Category)
             {
                 case TypeFlags.Byte:
                 case TypeFlags.SByte:
