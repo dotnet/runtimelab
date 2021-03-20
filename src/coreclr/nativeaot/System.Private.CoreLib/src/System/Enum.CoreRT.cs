@@ -254,7 +254,7 @@ namespace System
                 return enumType.GetEnumValues();
 
             if (!enumType.IsEnum)
-                throw new ArgumentException(SR.Arg_MustBeEnum);
+                throw new ArgumentException(SR.Arg_MustBeEnum, nameof(enumType));
 
             Array values = GetEnumInfo(enumType).ValuesAsUnderlyingType;
             int count = values.Length;
