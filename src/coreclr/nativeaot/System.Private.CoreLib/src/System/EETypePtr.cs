@@ -163,7 +163,7 @@ namespace System
         {
             get
             {
-                return ElementType < EETypeElementType.ValueType;
+                return _value->IsPrimitive;
             }
         }
 
