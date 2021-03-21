@@ -9,7 +9,7 @@ XX                                                                           XX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 */
-#ifndef TARGET_WASM
+
 #include "jitpch.h"
 #ifdef _MSC_VER
 #pragma hdrstop
@@ -8586,4 +8586,3 @@ regMaskTP emitter::emitGetGCRegsKilledByNoGCCall(CorInfoHelpFunc helper)
 
     return result;
 }
-#endif // TARGET_WASM

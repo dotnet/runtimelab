@@ -14,7 +14,6 @@ XX                                                                           XX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 */
-#ifndef TARGET_WASM
 
 #include "jitpch.h"
 #ifdef _MSC_VER
@@ -6693,4 +6692,3 @@ bool Lowering::TryTransformStoreObjAsStoreInd(GenTreeBlk* blkNode)
     LowerStoreIndirCommon(blkNode);
     return true;
 }
-#endif // !TARGET_WASM

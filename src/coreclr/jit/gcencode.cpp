@@ -11,7 +11,7 @@ XX                                                                           XX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 */
-#ifndef TARGET_WASM
+
 #include "jitpch.h"
 #ifdef _MSC_VER
 #pragma hdrstop
@@ -4832,7 +4832,6 @@ void GCInfo::gcInfoRecordGCStackArgsDead(GcInfoEncoder* gcInfoEncoder,
 #undef GCENCODER_WITH_LOGGING
 
 #endif // !JIT32_GCENCODER
-#endif // !TARGET_WASM
 
 /*****************************************************************************/
 /*****************************************************************************/

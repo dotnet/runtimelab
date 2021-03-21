@@ -5781,7 +5781,9 @@ private:
     bool     fgCheckStmtAfterTailCall();
     GenTree* fgMorphTailCallViaHelpers(GenTreeCall* call, CORINFO_TAILCALL_HELPERS& help);
     bool fgCanTailCallViaJitHelper();
+#ifdef TARGET_X86
     void fgMorphTailCallViaJitHelper(GenTreeCall* call);
+#endif
     GenTree* fgCreateCallDispatcherAndGetResult(GenTreeCall*          origCall,
                                                 CORINFO_METHOD_HANDLE callTargetStubHnd,
                                                 CORINFO_METHOD_HANDLE dispatcherHnd);
@@ -11293,14 +11295,10 @@ const instruction INS_SQRT = INS_fsqrt;
 
 /*****************************************************************************/
 
-#ifndef TARGET_WASM
 extern const BYTE genTypeSizes[];
-#endif //!TARGET_WASM
 extern const BYTE genTypeAlignments[];
-#ifndef TARGET_WASM
 extern const BYTE genTypeStSzs[];
 extern const BYTE genActualTypes[];
-#endif //!TARGET_WASM
 
 /*****************************************************************************/
 

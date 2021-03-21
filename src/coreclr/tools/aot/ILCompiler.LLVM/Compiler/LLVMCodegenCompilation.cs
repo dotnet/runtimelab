@@ -97,12 +97,7 @@ namespace ILCompiler
 
         private void CompileSingleThreaded(List<LLVMMethodCodeNode> methodsToCompile)
         {
-            CorInfoImpl corInfo = _corinfos.GetValue(Thread.CurrentThread, thread =>
-            {
-                var impl = new CorInfoImpl(this);
-                impl.RegisterLlvmCallbacks(_outputFile, Module.Target, Module.DataLayout);
-                return impl;
-            });
+            CorInfoImpl corInfo = _corinfos.GetValue(Thread.CurrentThread, thread => new CorInfoImpl(this));
 
             foreach (LLVMMethodCodeNode methodCodeNodeNeedingCode in methodsToCompile)
             {
@@ -120,7 +115,7 @@ namespace ILCompiler
 
         static int totalMethodCount;
         static int ryuJitMethodCount;
-        private void CompileSingleMethod(CorInfoImpl corInfo, LLVMMethodCodeNode methodCodeNodeNeedingCode)
+        private unsafe void CompileSingleMethod(CorInfoImpl corInfo, LLVMMethodCodeNode methodCodeNodeNeedingCode)
         {
             MethodDesc method = methodCodeNodeNeedingCode.Method;
 
@@ -130,6 +125,7 @@ namespace ILCompiler
                 if (sig.Length == 0 && sig.ReturnType == TypeSystemContext.GetWellKnownType(WellKnownType.Void) &&
                     sig.IsStatic) // speed up
                 {
+                    corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target, Module.DataLayout);
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
                     methodCodeNodeNeedingCode.SetDependencies(new DependencyNodeCore<NodeFactory>.DependencyList()); // TODO: how to track - check RyuJITCompilation

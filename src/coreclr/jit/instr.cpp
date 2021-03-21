@@ -11,7 +11,6 @@ XX                                                                           XX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 */
-#ifndef TARGET_WASM
 
 #include "jitpch.h"
 #ifdef _MSC_VER
@@ -64,15 +63,6 @@ const char* CodeGen::genInsName(instruction ins)
         #define INST5(id, nm, ldst, fmt, e1, e2, e3, e4, e5                 ) nm,
         #define INST6(id, nm, ldst, fmt, e1, e2, e3, e4, e5, e6             ) nm,
         #define INST9(id, nm, ldst, fmt, e1, e2, e3, e4, e5, e6, e7, e8, e9 ) nm,
-        #include "instrs.h"
-
-#elif defined(TARGET_WASM)
-        #define INST0(id, nm, um, mr,                 flags) nm,
-        #define INST1(id, nm, um, mr,                 flags) nm,
-        #define INST2(id, nm, um, mr, mi,             flags) nm,
-        #define INST3(id, nm, um, mr, mi, rm,         flags) nm,
-        #define INST4(id, nm, um, mr, mi, rm, a4,     flags) nm,
-        #define INST5(id, nm, um, mr, mi, rm, a4, rr, flags) nm,
         #include "instrs.h"
 
 #else
@@ -1859,7 +1849,7 @@ instruction CodeGen::ins_Copy(regNumber srcReg, var_types dstType)
     {
         return ins_Copy(dstType);
     }
-#if defined(TARGET_XARCH) || defined(TARGET_WASM) // TODO Wasm
+#if defined(TARGET_XARCH)
     return INS_movd;
 #elif defined(TARGET_ARM64)
     if (dstIsFloatReg)
@@ -2318,7 +2308,7 @@ void CodeGen::instGen_MemoryBarrier(BarrierKind barrierKind)
     }
 #endif // DEBUG
 
-#if defined(TARGET_XARCH) || defined(TARGET_WASM) // TODO Wasm
+#if defined(TARGET_XARCH)
     // only full barrier needs to be emitted on Xarch
     if (barrierKind != BARRIER_FULL)
     {
@@ -2380,7 +2370,7 @@ void CodeGen::instGen_Compare_Reg_To_Zero(emitAttr size, regNumber reg)
  */
 void CodeGen::instGen_Compare_Reg_To_Reg(emitAttr size, regNumber reg1, regNumber reg2)
 {
-#if defined(TARGET_XARCH) || defined(TARGET_ARMARCH) || defined(TARGET_WASM) // TODO Wasm
+#if defined(TARGET_XARCH) || defined(TARGET_ARMARCH)
     GetEmitter()->emitIns_R_R(INS_cmp, size, reg1, reg2);
 #else
 #error "Unknown TARGET"
@@ -2400,7 +2390,7 @@ void CodeGen::instGen_Compare_Reg_To_Imm(emitAttr size, regNumber reg, target_ss
     }
     else
     {
-#if defined(TARGET_XARCH) || defined(TARGET_WASM) // TODO Wasm
+#if defined(TARGET_XARCH)
 #if defined(TARGET_AMD64)
         if ((EA_SIZE(size) == EA_8BYTE) && (((int)imm != (ssize_t)imm) || EA_IS_CNS_RELOC(size)))
         {
@@ -2456,7 +2446,6 @@ void CodeGen::instGen_Store_Reg_Into_Lcl(var_types dstType, regNumber srcReg, in
 
     GetEmitter()->emitIns_S_R(ins_Store(dstType), size, srcReg, varNum, offs);
 }
-#endif // !TARGET_WASM
 
 /*****************************************************************************/
 /*****************************************************************************/

@@ -9,7 +9,6 @@ XX                                                                           XX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 */
-#ifndef TARGET_WASM
 #include "jitpch.h"
 #ifdef _MSC_VER
 #pragma hdrstop
@@ -2649,4 +2648,3 @@ void CodeGen::genCodeForSetcc(GenTreeCC* setcc)
     inst_SETCC(setcc->gtCondition, setcc->TypeGet(), setcc->GetRegNum());
     genProduceReg(setcc);
 }
-#endif // TARGET_WASM

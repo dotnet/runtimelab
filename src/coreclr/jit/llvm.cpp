@@ -21,9 +21,9 @@ using llvm::LLVMContext;
 using llvm::ArrayRef;
 using llvm::Module;
 
-static Module* _module;
+static Module* _module = nullptr;
 static LLVMContext _llvmContext;
-static void* _thisPtr;
+static void* _thisPtr; // TODO: workaround for not changing the JIT/EE interface.  As this is static, it will probably fail if multithreaded compilation is attempted
 static const char* (*_getMangledMethodName)(void*, CORINFO_METHOD_STRUCT_*);
 static char* _outputFileName;
 static Function* _doNothingFunction;
@@ -34,16 +34,17 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void* thisPtr, const char* outpu
 {
     _thisPtr = thisPtr;
     _getMangledMethodName = getMangledMethodNamePtr;
-    _module = new Module(llvm::StringRef("netscripten-clrjit"), _llvmContext);
-    _module->setTargetTriple(triple);
-    _module->setDataLayout(dataLayout);
-
-//    _outputFileName = getAllocator(CMK_DebugOnly).allocate<char>(strlen(outputFileName) + 1)
-    _outputFileName = (char*)malloc(strlen(outputFileName) + 7);
-    strcpy(_outputFileName, "1.txt"); // ??? without this _outputFileName is corrupted
-    strcpy(_outputFileName, outputFileName);
-    strcpy(_outputFileName + strlen(_outputFileName) - 3, "clrjit"); // use different module output name for now, TODO: delete if old LLVM gen does not create a module
-    strcat(_outputFileName, ".bc");
+    if (_module == nullptr) // registerLlvmCallbacks is called for each method to compile, but must only created the module once.  Better perhaps to split this into 2 calls.
+    {
+        _module = new Module(llvm::StringRef("netscripten-clrjit"), _llvmContext);
+        _module->setTargetTriple(triple);
+        _module->setDataLayout(dataLayout);
+        _outputFileName = (char*)malloc(strlen(outputFileName) + 7);
+        strcpy(_outputFileName, "1.txt"); // ??? without this _outputFileName is corrupted
+        strcpy(_outputFileName, outputFileName);
+        strcpy(_outputFileName + strlen(_outputFileName) - 3, "clrjit"); // use different module output name for now, TODO: delete if old LLVM gen does not create a module
+        strcat(_outputFileName, ".bc");
+    }
 }
 
 void Llvm::Init()
@@ -63,7 +64,6 @@ void Llvm::llvmShutdown()
 #endif //DEBUG
     llvm::raw_fd_ostream OS(_outputFileName, ec);
     llvm::WriteBitcodeToFile(*_module, OS);
-    //_module->end();
     delete _module;
 //    Module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 }

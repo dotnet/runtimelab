@@ -48,14 +48,6 @@ enum instruction : unsigned
 
     INS_lea,   // Not a real instruction. It is used for load the address of stack locals
 
-#elif defined(TARGET_WASM)
-#define INST0(id, nm, um, mr,                 flags) INS_##id,
-#define INST1(id, nm, um, mr,                 flags) INS_##id,
-#define INST2(id, nm, um, mr, mi,             flags) INS_##id,
-#define INST3(id, nm, um, mr, mi, rm,         flags) INS_##id,
-#define INST4(id, nm, um, mr, mi, rm, a4,     flags) INS_##id,
-#define INST5(id, nm, um, mr, mi, rm, a4, rr, flags) INS_##id,
-#include "instrs.h"
 #else
 #error Unsupported target architecture
 #endif

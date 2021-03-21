@@ -329,7 +329,6 @@ set( JIT_WASM64_SOURCES
   simdashwintrinsic.cpp
   simdcodegenxarch.cpp
   targetwasm.cpp
-  unwindwasm.cpp
   hwintrinsicxarch.cpp
   hwintrinsiccodegenxarch.cpp
   llvm.cpp
@@ -339,7 +338,6 @@ set( JIT_WASM32_SOURCES
   simdashwintrinsic.cpp
   simdcodegenxarch.cpp
   targetwasm.cpp
-  unwindwasm.cpp
   hwintrinsicxarch.cpp
   hwintrinsiccodegenxarch.cpp
   llvm.cpp
@@ -548,11 +546,26 @@ if (CLR_CMAKE_BUILD_SUBSET_ALLJITS AND NOT CLR_CROSS_COMPONENTS_BUILD)
   create_standalone_jit(TARGET clrjit_win_arm_${ARCH_HOST_NAME} OS win ARCH arm)
   create_standalone_jit(TARGET clrjit_win_x86_${ARCH_HOST_NAME} OS win ARCH x86)
   if (NOT CLR_CMAKE_HOST_UNIX AND BUILD_WASM_JIT)
+    # the LLVM clrjit needs to be the last clrjit to use create_standalone_jit as it modifies some cmake variables
     # LLVM clrjit has an extra export - registerLlvmCallbacks
     set(CLRJIT_EXPORTS ${CMAKE_CURRENT_LIST_DIR}/ClrJit.Llvm.exports)
     set(JIT_EXPORTS_FILE ${CMAKE_CURRENT_BINARY_DIR}/ClrJit.Llvm.exports.def)
     preprocess_file (${CLRJIT_EXPORTS} ${JIT_EXPORTS_FILE})
     set(JIT_DEF_FILE ${JIT_EXPORTS_FILE})
+
+    # exclude cpp files that are not required when not processing beyond rationalized LIR
+    # use REGEX as this list conatins the absolute paths
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX stacklevelsetter\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX codegencommon\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX codegenlinear\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX emit\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX gcencode\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX instr\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX lower\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX lsra\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX lsrabuild\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX regalloc\.cpp)
+
     create_standalone_jit(TARGET clrjit_browser_wasm32_${ARCH_HOST_NAME} OS browser ARCH wasm32)
     # uncomment to enable 8 byte pointer size version of the wasm clrjit.dll
     #create_standalone_jit(TARGET clrjit_browser_wasm64_${ARCH_HOST_NAME} OS browser ARCH wasm64)

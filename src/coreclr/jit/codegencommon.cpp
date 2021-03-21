@@ -13,7 +13,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 // TODO-Cleanup: There are additional methods in CodeGen*.cpp that are almost
 // identical, and which should probably be moved here.
-#ifndef TARGET_WASM
+
 #include "jitpch.h"
 #ifdef _MSC_VER
 #pragma hdrstop
@@ -12997,4 +12997,3 @@ void CodeGenInterface::VariableLiveKeeper::dumpLvaVariableLiveRanges() const
 }
 #endif // DEBUG
 #endif // USING_VARIABLE_LIVE_RANGE
-#endif // TARGET_WASM

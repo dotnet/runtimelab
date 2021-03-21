@@ -109,7 +109,6 @@ bool Compiler::shouldDoubleAlign(unsigned             refCntStk,
 }
 #endif // DOUBLE_ALIGN
 
-#ifndef TARGET_WASM
 // The code to set the regState for each arg is outlined for shared use
 // by linear scan. (It is not shared for System V AMD64 platform.)
 regNumber Compiler::raUpdateRegStateForArg(RegState* regState, LclVarDsc* argDsc)
@@ -195,7 +194,6 @@ regNumber Compiler::raUpdateRegStateForArg(RegState* regState, LclVarDsc* argDsc
 
     return inArgReg;
 }
-#endif // !TARGET_WASM
 
 /****************************************************************************/
 /* Returns true when we must create an EBP frame
@@ -387,11 +385,7 @@ void Compiler::raMarkStkVars()
                                   // stack frame
 
     NOT_STK:;
-#ifndef TARGET_WASM
         varDsc->lvFramePointerBased = codeGen->isFramePointerUsed();
-#else
-        varDsc->lvFramePointerBased = false; // TODO Wasm sensible default?
-#endif
 
 #if DOUBLE_ALIGN
 

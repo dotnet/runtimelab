@@ -1764,7 +1764,7 @@ private:
     int BuildGCWriteBarrier(GenTree* tree);
     int BuildCast(GenTreeCast* cast);
 
-#ifdef TARGET_XARCH
+#if defined(TARGET_XARCH)
     // returns true if the tree can use the read-modify-write memory instruction form
     bool isRMWRegOper(GenTree* tree);
     int BuildMul(GenTree* tree);

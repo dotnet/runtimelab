@@ -29,11 +29,6 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 #if defined(TARGET_WASM)
 #include "llvm.h"
-#else
-// TODO: how to get different exports.def for the different clrjits?
-void registerLlvmCallbacks(void* thisPtr, const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*))
-{
-}
 #endif
 
 #if defined(DEBUG)
@@ -4475,7 +4470,6 @@ inline void DoLlvmPhase(Compiler* pCompiler)
     Llvm* llvm = new Llvm();
     llvm->Compile(pCompiler);
     delete llvm;
-    //assert(false);
 }
 #endif
 
@@ -5180,8 +5174,7 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     rat.Run();
 
 #if defined(TARGET_WASM)
-    // TODO:after rat, but better before?
-    DoLlvmPhase(this); // DoPhase?
+    DoLlvmPhase(this);
 #else
 
     // Here we do "simple lowering".  When the RyuJIT backend works for all
