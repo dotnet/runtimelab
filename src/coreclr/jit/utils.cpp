@@ -333,8 +333,16 @@ void dspRegMask(regMaskTP regMask, size_t minSiz)
                     inRegRange = true;
                     sep        = "-";
                 }
-#elif defined(TARGET_X86)
+#elif defined(TARGET_X86) 
 // No register ranges
+#elif defined(TARGET_WASM) // TODO Wasm
+                // For AMD64, create ranges for int registers R8 through R15, but not the "old" registers.
+                if (regNum >= REG_R8)
+                {
+                    regHead = regNum;
+                    inRegRange = true;
+                    sep = "-";
+                }
 #else // TARGET*
 #error Unsupported or unset target architecture
 #endif // TARGET*

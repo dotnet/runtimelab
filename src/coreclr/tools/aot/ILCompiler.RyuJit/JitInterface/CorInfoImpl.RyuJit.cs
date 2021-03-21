@@ -22,7 +22,7 @@ using RyuJitCompilation = ILCompiler.Compilation;
 
 namespace Internal.JitInterface
 {
-    unsafe partial class CorInfoImpl
+    unsafe public partial class CorInfoImpl
     {
         private struct SequencePoint
         {
@@ -37,7 +37,7 @@ namespace Internal.JitInterface
 
         private RyuJitCompilation _compilation;
         private MethodDebugInformation _debugInfo;
-        private MethodCodeNode _methodCodeNode;
+        private IMethodCodeNode _methodCodeNode;
         private DebugLocInfo[] _debugLocInfos;
         private DebugVarInfo[] _debugVarInfos;
         private Dictionary<int, SequencePoint> _sequencePoints;
@@ -59,7 +59,7 @@ namespace Internal.JitInterface
             return _unboxingThunkFactory.GetUnboxingMethod(method);
         }
 
-        public void CompileMethod(MethodCodeNode methodCodeNodeNeedingCode, MethodIL methodIL = null)
+        public void CompileMethod(IMethodCodeNode methodCodeNodeNeedingCode, MethodIL methodIL = null)
         {
             _methodCodeNode = methodCodeNodeNeedingCode;
             _isFallbackBodyCompilation = methodIL != null;

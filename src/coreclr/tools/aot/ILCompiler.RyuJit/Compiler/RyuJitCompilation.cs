@@ -16,7 +16,7 @@ using Internal.JitInterface;
 
 namespace ILCompiler
 {
-    public sealed class RyuJitCompilation : Compilation
+    public class RyuJitCompilation : Compilation
     {
         private readonly ConditionalWeakTable<Thread, CorInfoImpl> _corinfos = new ConditionalWeakTable<Thread, CorInfoImpl>();
         internal readonly RyuJitCompilationOptions _compilationOptions;
@@ -26,7 +26,7 @@ namespace ILCompiler
 
         public InstructionSetSupport InstructionSetSupport { get; }
 
-        internal RyuJitCompilation(
+        public RyuJitCompilation(
             DependencyAnalyzerBase<NodeFactory> dependencyGraph,
             NodeFactory nodeFactory,
             IEnumerable<ICompilationRootProvider> roots,

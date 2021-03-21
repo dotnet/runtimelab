@@ -189,6 +189,7 @@ void RegSet::rsRemoveRegsModified(regMaskTP mask)
 
 void RegSet::SetMaskVars(regMaskTP newMaskVars)
 {
+#ifndef TARGET_WASM
 #ifdef DEBUG
     if (m_rsCompiler->verbose)
     {
@@ -208,6 +209,7 @@ void RegSet::SetMaskVars(regMaskTP newMaskVars)
         printf("\n");
     }
 #endif // DEBUG
+#endif // !TARGET_WASM
 
     _rsMaskVars = newMaskVars;
 }
@@ -431,7 +433,11 @@ void RegSet::rsSpillTree(regNumber reg, GenTree* tree, unsigned regIdx /* =0 */)
     // Generate the code to spill the register
     var_types storeType = floatSpill ? treeType : tempType;
 
+#ifndef TARGET_WASM
     m_rsCompiler->codeGen->spillReg(storeType, temp, reg);
+#else
+    assert(false); // TODO
+#endif // !TARGET_WASM
 
     // Mark the tree node as having been spilled
     rsMarkSpill(tree, reg);

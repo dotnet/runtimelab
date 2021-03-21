@@ -1810,6 +1810,20 @@ instruction CodeGen::ins_Copy(var_types dstType)
     {
         return INS_mov;
     }
+#elif defined(TARGET_WASM)
+    if (varTypeIsSIMD(dstType))
+    {
+        return INS_movaps;
+    }
+    else if (varTypeIsFloating(dstType))
+    {
+        // Both float and double copy can use movaps
+        return INS_movaps;
+    }
+    else
+    {
+        return INS_mov;
+    }
 #else // TARGET_*
 #error "Unknown TARGET_"
 #endif
@@ -1983,7 +1997,7 @@ instruction CodeGenInterface::ins_StoreFromSrc(regNumber srcReg, var_types dstTy
     return ins;
 }
 
-#if defined(TARGET_XARCH)
+#if defined(TARGET_XARCH) || defined(TARGET_WASM)
 
 bool CodeGen::isMoveIns(instruction ins)
 {
@@ -2323,6 +2337,8 @@ void CodeGen::instGen_Set_Reg_To_Zero(emitAttr size, regNumber reg, insFlags fla
     GetEmitter()->emitIns_R_R(INS_xor, size, reg, reg);
 #elif defined(TARGET_ARMARCH)
     GetEmitter()->emitIns_R_I(INS_mov, size, reg, 0 ARM_ARG(flags));
+#elif defined(TARGET_WASM)
+    GetEmitter()->emitIns_R_R(INS_xor, size, reg, reg);
 #else
 #error "Unknown TARGET"
 #endif
@@ -2340,6 +2356,8 @@ void CodeGen::instGen_Compare_Reg_To_Zero(emitAttr size, regNumber reg)
     GetEmitter()->emitIns_R_R(INS_test, size, reg, reg);
 #elif defined(TARGET_ARMARCH)
     GetEmitter()->emitIns_R_I(INS_cmp, size, reg, 0);
+#elif defined(TARGET_WASM)
+    GetEmitter()->emitIns_R_R(INS_test, size, reg, reg);
 #else
 #error "Unknown TARGET"
 #endif

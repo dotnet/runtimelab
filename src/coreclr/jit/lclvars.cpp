@@ -344,12 +344,14 @@ void Compiler::lvaInitTypeRef()
     // emitter when the varNum is greater that 32767 (see emitLclVarAddr::initLclVarAddr)
     lvaAllocOutgoingArgSpaceVar();
 
+#ifndef TARGET_WASM
 #ifdef DEBUG
     if (verbose)
     {
         lvaTableDump(INITIAL_FRAME_LAYOUT);
     }
 #endif
+#endif //!TARGET_WASM
 }
 
 /*****************************************************************************/
@@ -423,8 +425,10 @@ void Compiler::lvaInitArgs(InitVarDscInfo* varDscInfo)
     noway_assert(varDscInfo->varNum == info.compArgsCount);
     assert(varDscInfo->intRegArgNum <= MAX_REG_ARG);
 
+#ifndef TARGET_WASM
     codeGen->intRegState.rsCalleeRegArgCount   = varDscInfo->intRegArgNum;
     codeGen->floatRegState.rsCalleeRegArgCount = varDscInfo->floatRegArgNum;
+#endif // !TARGET_WASM
 
 #if FEATURE_FASTTAILCALL
     // Save the stack usage information
@@ -2524,6 +2528,7 @@ void Compiler::lvaPromoteLongVars()
         }
     }
 
+#ifndef TARGET_WASM
 #ifdef DEBUG
     if (verbose)
     {
@@ -2531,6 +2536,7 @@ void Compiler::lvaPromoteLongVars()
         lvaTableDump();
     }
 #endif // DEBUG
+#endif //!TARGET_WASM
 }
 #endif // !defined(TARGET_64BIT)
 
@@ -4587,6 +4593,7 @@ inline void Compiler::lvaIncrementFrameSize(unsigned size)
     compLclFrameSize += size;
 }
 
+#ifndef TARGET_WASM
 /****************************************************************************
 *
 *  Return true if absolute offsets of temps are larger than vars, or in other
@@ -5705,7 +5712,7 @@ int Compiler::lvaAssignVirtualFrameOffsetToArg(unsigned lclNum,
 
 #if defined(TARGET_X86)
         argOffs += TARGET_POINTER_SIZE;
-#elif defined(TARGET_AMD64)
+#elif defined(TARGET_AMD64) || defined(TARGET_WASM) // TODO Wasm
         // Register arguments on AMD64 also takes stack space. (in the backing store)
         varDsc->SetStackOffset(argOffs);
         argOffs += TARGET_POINTER_SIZE;
@@ -7718,6 +7725,7 @@ int Compiler::lvaGetInitialSPRelativeOffset(unsigned varNum)
 
     return lvaToInitialSPRelativeOffset(varDsc->GetStackOffset(), varDsc->lvFramePointerBased);
 }
+#endif // !TARGET_WASM
 
 // Given a local variable offset, and whether that offset is frame-pointer based, return its offset from Initial-SP.
 // This is used, for example, to figure out the offset of the frame pointer from Initial-SP.

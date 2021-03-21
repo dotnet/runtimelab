@@ -49,6 +49,22 @@ namespace std
     {   // forward _Arg, given explicitly specified type parameter
         return ((T&&)_Arg);
     }
+
+    template <class T>
+    constexpr const T&
+    (min)(const T& _Left, const T& _Right)
+    {
+        // return smaller of _Left and _Right
+        return _Right < _Left ? _Right : _Left;
+    }
+
+    template <class T>
+    constexpr const T&
+    (max)(const T& _Left, const T& _Right)
+    {
+        // return larger of _Left and _Right
+        return _Left < _Right ? _Right : _Left;
+    }
 }
 
 namespace std

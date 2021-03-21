@@ -3783,7 +3783,7 @@ GenTree* Compiler::impIntrinsic(GenTree*                newobjThis,
         GenTree* op1;
         GenTree* op2;
 
-#if defined(TARGET_XARCH) || defined(TARGET_ARM64)
+#if defined(TARGET_XARCH) || defined(TARGET_ARM64) || defined(TARGET_WASM) // TODO Wasm
         // TODO-ARM-CQ: reenable treating Interlocked operation as intrinsic
 
         // Note that CORINFO_INTRINSIC_InterlockedAdd32/64 are not actually used.
@@ -19774,7 +19774,7 @@ void Compiler::impInlineInitVars(InlineInfo* pInlineInfo)
                         return;
                     }
                 }
-                else if (genTypeSize(sigType) < EA_PTRSIZE)
+                else if (genTypeSize(sigType) < TARGET_POINTER_SIZE)
                 {
                     // Narrowing cast.
                     if (inlArgNode->OperIs(GT_LCL_VAR))

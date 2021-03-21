@@ -3,13 +3,27 @@
 
 using System.Diagnostics;
 using System.Text;
+using ILCompiler.DependencyAnalysisFramework;
 using Internal.Text;
 using Internal.TypeSystem;
 
 namespace ILCompiler.DependencyAnalysis
 {
+    public interface IMethodCodeNode : IMethodNode, ISymbolDefinitionNode
+    {
+        void SetCode(ObjectNode.ObjectData data, bool isFoldable);
+        void InitializeFrameInfos(FrameInfo[] frameInfos);
+        void InitializeDebugEHClauseInfos(DebugEHClauseInfo[] debugEhClauseInfos);
+        void InitializeGCInfo(byte[] gcInfo);
+        void InitializeEHInfo(ObjectNode.ObjectData ehInfo);
+        void InitializeDebugLocInfos(DebugLocInfo[] debugLocInfos);
+        void InitializeDebugVarInfos(DebugVarInfo[] debugVarInfos);
+        void InitializeNonRelocationDependencies(DependencyNodeCore<NodeFactory>.DependencyList additionalDependencies);
+        void InitializeIsStateMachineMoveNextMethod(bool debugInfoIsStateMachineMoveNextMethod);
+    }
+
     [DebuggerTypeProxy(typeof(MethodCodeNodeDebugView))]
-    public class MethodCodeNode : ObjectNode, IMethodBodyNode, INodeWithCodeInfo, INodeWithDebugInfo, ISymbolDefinitionNode, ISpecialUnboxThunkNode
+    public class MethodCodeNode : ObjectNode, IMethodBodyNode, INodeWithCodeInfo, INodeWithDebugInfo, ISymbolDefinitionNode, ISpecialUnboxThunkNode, IMethodCodeNode
     {
         private MethodDesc _method;
         private ObjectData _methodCode;

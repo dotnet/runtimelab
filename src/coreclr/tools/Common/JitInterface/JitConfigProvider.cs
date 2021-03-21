@@ -131,13 +131,15 @@ namespace Internal.JitInterface
 
         private static string GetTargetSpec(TargetDetails target)
         {
-            string targetOSComponent = (target.OperatingSystem == TargetOS.Windows ? "win" : "unix");
+            string targetOSComponent = (target.OperatingSystem == TargetOS.Windows ? "win" : (target.OperatingSystem == TargetOS.WebAssembly ? "browser" : "unix"));
             string targetArchComponent = target.Architecture switch
             {
                 TargetArchitecture.X86 => "x86",
                 TargetArchitecture.X64 => "x64",
                 TargetArchitecture.ARM => "arm",
                 TargetArchitecture.ARM64 => "arm64",
+                TargetArchitecture.Wasm32 => "wasm32",
+                TargetArchitecture.Wasm64 => "wasm64",
                 _ => throw new NotImplementedException(target.Architecture.ToString())
             };
 

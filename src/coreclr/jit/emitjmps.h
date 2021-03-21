@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 // clang-format off
+#ifndef TARGET_WASM
 #ifndef JMP_SMALL
 #error Must define JMP_SMALL macro before including this file
 #endif
@@ -53,5 +54,6 @@ JMP_SMALL(le    , gt    , ble    )  // LE
 /*****************************************************************************/
 #undef JMP_SMALL
 /*****************************************************************************/
+#endif // TARGET_WASM
 
 // clang-format on

@@ -1817,7 +1817,7 @@ public:
         unsigned roundedByteSize = roundUp(byteSize, TARGET_POINTER_SIZE);
 #endif // OSX_ARM64_ABI
 
-#if !defined(TARGET_ARM)
+#if !defined(TARGET_ARM) && !defined(TARGET_WASM32)
         // Arm32 could have a struct with 8 byte alignment
         // which rounded size % 8 is not 0.
         assert(m_byteAlignment != 0);
@@ -2570,7 +2570,9 @@ public:
     }
 
     void* ehEmitCookie(BasicBlock* block);
+#ifndef TARGET_WASM
     UNATIVE_OFFSET ehCodeOffset(BasicBlock* block);
+#endif // !TARGET_WASM
 
     EHblkDsc* ehInitHndRange(BasicBlock* src, IL_OFFSET* hndBeg, IL_OFFSET* hndEnd, bool* inFilter);
 
@@ -3422,8 +3424,10 @@ public:
     void lvaDumpRegLocation(unsigned lclNum);
     void lvaDumpFrameLocation(unsigned lclNum);
     void lvaDumpEntry(unsigned lclNum, FrameLayoutState curState, size_t refCntWtdWidth = 6);
+#ifndef TARGET_WASM
     void lvaTableDump(FrameLayoutState curState = NO_FRAME_LAYOUT); // NO_FRAME_LAYOUT means use the current frame
                                                                     // layout state defined by lvaDoneFrameLayout
+#endif //!TARGET_WASM
 #endif
 
 // Limit frames size to 1GB. The maximum is 2GB in theory - make it intentionally smaller
@@ -4739,7 +4743,9 @@ public:
 
     bool fgMorphBlockStmt(BasicBlock* block, Statement* stmt DEBUGARG(const char* msg));
 
+#ifndef TARGET_WASM
     void fgSetOptions();
+#endif // !TARGET_WASM
 
 #ifdef DEBUG
     static fgWalkPreFn fgAssertNoQmark;
@@ -5775,7 +5781,9 @@ private:
     bool     fgCheckStmtAfterTailCall();
     GenTree* fgMorphTailCallViaHelpers(GenTreeCall* call, CORINFO_TAILCALL_HELPERS& help);
     bool fgCanTailCallViaJitHelper();
+#ifdef TARGET_X86
     void fgMorphTailCallViaJitHelper(GenTreeCall* call);
+#endif
     GenTree* fgCreateCallDispatcherAndGetResult(GenTreeCall*          origCall,
                                                 CORINFO_METHOD_HANDLE callTargetStubHnd,
                                                 CORINFO_METHOD_HANDLE dispatcherHnd);
@@ -7348,8 +7356,9 @@ protected:
     */
 
 public:
+#ifndef TARGET_WASM
     regNumber raUpdateRegStateForArg(RegState* regState, LclVarDsc* argDsc);
-
+#endif
     void raMarkStkVars();
 
 protected:
@@ -7553,6 +7562,17 @@ public:
 #elif defined(TARGET_ARM64)
             reg     = REG_R11;
             regMask = RBM_R11;
+#elif defined(TARGET_WASM)  //TODO: empty better?
+            if (isCoreRTABI)
+            {
+                reg = REG_R10;
+                regMask = RBM_R10;
+            }
+            else
+            {
+                reg = REG_R11;
+                regMask = RBM_R11;
+            }
 #else
 #error Unsupported or unset target architecture
 #endif
@@ -7617,6 +7637,7 @@ public:
 
     unsigned eeVarsCount;
 
+#ifndef TARGET_WASM
     struct VarResultInfo
     {
         UNATIVE_OFFSET             startOffset;
@@ -7636,6 +7657,7 @@ public:
     void eeDispVar(ICorDebugInfo::NativeVarInfo* var);
     void eeDispVars(CORINFO_METHOD_HANDLE ftn, ULONG32 cVars, ICorDebugInfo::NativeVarInfo* vars);
 #endif // DEBUG
+#endif
 
     // ICorJitInfo wrappers
 
@@ -7717,7 +7739,7 @@ public:
     CodeGenInterface* codeGen;
 
     //  The following holds information about instr offsets in terms of generated code.
-
+#ifndef TARGET_WASM
     struct IPmappingDsc
     {
         IPmappingDsc* ipmdNext;      // next line# record
@@ -7725,11 +7747,11 @@ public:
         IL_OFFSETX    ipmdILoffsx;   // the instr offset
         bool          ipmdIsLabel;   // Can this code be a branch label?
     };
-
     // Record the instr offset mapping to the generated code
 
     IPmappingDsc* genIPmappingList;
     IPmappingDsc* genIPmappingLast;
+#endif
 
     // Managed RetVal - A side hash table meant to record the mapping from a
     // GT_CALL node to its IL offset.  This info is used to emit sequence points
@@ -7752,6 +7774,7 @@ public:
     // convenience and backward compatibility, but the properties can only be set by invoking
     // the setter on CodeGenContext directly.
 
+#ifndef TARGET_WASM
     emitter* GetEmitter() const
     {
         return codeGen->GetEmitter();
@@ -7761,14 +7784,21 @@ public:
     {
         return codeGen->isFramePointerUsed();
     }
-
+#endif
     bool GetInterruptible()
     {
+#ifdef TARGET_WASM
+        return false;
+#else
         return codeGen->GetInterruptible();
+#endif
     }
     void SetInterruptible(bool value)
     {
+#ifndef TARGET_WASM
         codeGen->SetInterruptible(value);
+#else
+#endif // !TARGET_WASM
     }
 
 #ifdef TARGET_ARMARCH
@@ -7798,11 +7828,18 @@ public:
 
     bool IsFullPtrRegMapRequired()
     {
+#ifndef TARGET_WASM
         return codeGen->IsFullPtrRegMapRequired();
+#else
+        return false; // For GCInfo TODO: sensible default?
+#endif // TARGET_WASM
     }
     void SetFullPtrRegMapRequired(bool value)
     {
+#ifndef TARGET_WASM
         codeGen->SetFullPtrRegMapRequired(value);
+#else
+#endif // TARGET_WASM
     }
 
 // Things that MAY belong either in CodeGen or CodeGenContext
@@ -8000,7 +8037,7 @@ private:
 
     UNATIVE_OFFSET unwindGetCurrentOffset(FuncInfoDsc* func);
 
-#if defined(TARGET_AMD64)
+#if defined(TARGET_AMD64) || defined(TARGET_WASM) // TODO: delete?
 
     void unwindBegPrologWindows();
     void unwindPushWindows(regNumber reg);
@@ -8070,6 +8107,9 @@ private:
 
         // min bar is SSE2
         return SIMD_SSE2_Supported;
+#elif defined(TARGET_WASM)
+        assert(!"WASM supports SIMD so what to do here?");
+        return SIMD_Not_Supported;
 #else
         assert(!"Available instruction set(s) for SIMD codegen is not defined for target arch");
         unreached();
@@ -9651,7 +9691,7 @@ public:
     // In case of Amd64 this doesn't include float regs saved on stack.
     unsigned compCalleeRegsPushed;
 
-#if defined(TARGET_XARCH)
+#if defined(TARGET_XARCH) || defined(TARGET_WASM) // TODO Wasm
     // Mask of callee saved float regs on stack.
     regMaskTP compCalleeFPRegsSavedMask;
 #endif

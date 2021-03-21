@@ -1519,6 +1519,7 @@ inline void Compiler::fgMarkLoopHead(BasicBlock* block)
         }
     }
 
+#ifndef TARGET_WASM
     /*
      *  We have to make this method fully interruptible since we can not
      *  ensure that this loop will execute a call every time it loops.
@@ -1527,6 +1528,7 @@ inline void Compiler::fgMarkLoopHead(BasicBlock* block)
      */
 
     assert(!codeGen->isGCTypeFixed());
+#endif // !TARGET_WASM
 
     if (!compCanEncodePtrArgCntMax())
     {

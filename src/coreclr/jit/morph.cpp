@@ -3065,6 +3065,9 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
 #elif defined(TARGET_X86)
 
         passUsingFloatRegs = false;
+#elif defined(TARGET_WASM)
+
+        passUsingFloatRegs = varTypeIsFloating(argx);
 
 #else
 #error Unsupported or unset target architecture
@@ -3115,7 +3118,7 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
                 assert(structSize == info.compCompHnd->getClassSize(objClass));
             }
         }
-#if defined(TARGET_AMD64)
+#if defined(TARGET_AMD64) || defined(TARGET_WASM) // TODO Wasm
 #ifdef UNIX_AMD64_ABI
         if (!isStructArg)
         {
@@ -7497,11 +7500,13 @@ GenTree* Compiler::fgMorphPotentialTailCall(GenTreeCall* call)
 
         // On x86 we have a faster mechanism than the general one which we use
         // in almost all cases. See fgCanTailCallViaJitHelper for more information.
+#ifdef TARGET_X86
         if (fgCanTailCallViaJitHelper())
         {
             tailCallViaJitHelper = true;
         }
-        else
+#endif
+        if (!tailCallViaJitHelper)
         {
             // Make sure we can get the helpers. We do this last as the runtime
             // will likely be required to generate these.
@@ -7741,6 +7746,7 @@ GenTree* Compiler::fgMorphPotentialTailCall(GenTreeCall* call)
 
         // Do some target-specific transformations (before we process the args,
         // etc.) for the JIT helper case.
+#ifdef TARGET_X86
         if (tailCallViaJitHelper)
         {
             fgMorphTailCallViaJitHelper(call);
@@ -7749,7 +7755,7 @@ GenTree* Compiler::fgMorphPotentialTailCall(GenTreeCall* call)
             // argument list, invalidating the argInfo.
             call->fgArgInfo = nullptr;
         }
-
+#endif
         // Tail call via JIT helper: The VM can't use return address hijacking
         // if we're not going to return and the helper doesn't have enough info
         // to safely poll, so we poll before the tail call, if the block isn't
@@ -8457,6 +8463,7 @@ GenTree* Compiler::getTokenHandleTree(CORINFO_RESOLVED_TOKEN* pResolvedToken, bo
     return result;
 }
 
+#ifdef TARGET_X86
 /*****************************************************************************
  *
  *  Transform the given GT_CALL tree for tail call via JIT helper.
@@ -8654,6 +8661,7 @@ void Compiler::fgMorphTailCallViaJitHelper(GenTreeCall* call)
     JITDUMP("fgMorphTailCallViaJitHelper (after):\n");
     DISPTREE(call);
 }
+#endif //TARGET_X86
 
 //------------------------------------------------------------------------
 // fgGetStubAddrArg: Return the virtual stub address for the given call.
@@ -17086,6 +17094,7 @@ void Compiler::fgMergeBlockReturn(BasicBlock* block)
     }
 }
 
+#ifndef TARGET_WASM
 /*****************************************************************************
  *
  *  Make some decisions about the kind of code to generate.
@@ -17196,6 +17205,7 @@ void Compiler::fgSetOptions()
 
     // printf("method will %s be fully interruptible\n", GetInterruptible() ? "   " : "not");
 }
+#endif // !TARGET_WASM
 
 /*****************************************************************************/
 
@@ -17886,7 +17896,9 @@ void Compiler::fgPromoteStructs()
     if (verbose)
     {
         printf("\nlvaTable before fgPromoteStructs\n");
+#ifndef TARGET_WASM
         lvaTableDump();
+#endif //!TARGET_WASM
     }
 #endif // DEBUG
 
@@ -17958,7 +17970,9 @@ void Compiler::fgPromoteStructs()
     if (verbose)
     {
         printf("\nlvaTable after fgPromoteStructs\n");
+#ifndef TARGET_WASM
         lvaTableDump();
+#endif //!TARGET_WASM
     }
 #endif // DEBUG
 }
@@ -19106,6 +19120,7 @@ bool Compiler::fgCheckStmtAfterTailCall()
     return nextMorphStmt == nullptr;
 }
 
+#ifdef TARGET_X86
 //------------------------------------------------------------------------
 // fgCanTailCallViaJitHelper: check whether we can use the faster tailcall
 // JIT helper on x86.
@@ -19115,17 +19130,13 @@ bool Compiler::fgCheckStmtAfterTailCall()
 //
 bool Compiler::fgCanTailCallViaJitHelper()
 {
-#ifndef TARGET_X86
-    // On anything except X86 we have no faster mechanism available.
-    return false;
-#else
     // The JIT helper does not properly handle the case where localloc was used.
     if (compLocallocUsed)
         return false;
 
     return true;
-#endif
 }
+#endif
 
 static const int      numberOfTrackedFlags               = 5;
 static const unsigned trackedFlags[numberOfTrackedFlags] = {GTF_ASG, GTF_CALL, GTF_EXCEPT, GTF_GLOB_REF,

@@ -2478,7 +2478,9 @@ bool Compiler::fgOptimizeEmptyBlock(BasicBlock* block)
                         {
                             LIR::AsRange(block).InsertAtEnd(nop);
                             LIR::ReadOnlyRange range(nop, nop);
+#ifndef TARGET_WASM
                             m_pLowering->LowerRange(block, range);
+#endif // TARGET_WASM
                         }
                         else
                         {
@@ -2821,7 +2823,9 @@ bool Compiler::fgOptimizeSwitchBranches(BasicBlock* block)
         {
             blockRange->InsertAfter(switchVal, zeroConstNode, condNode);
             LIR::ReadOnlyRange range(zeroConstNode, switchTree);
+#ifndef TARGET_WASM
             m_pLowering->LowerRange(block, range);
+#endif // TARGET_WASM
         }
         else if (fgStmtListThreaded)
         {

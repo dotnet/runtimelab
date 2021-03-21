@@ -11,10 +11,26 @@ The Native AOT toolchain can be currently built for Linux, macOS and Windows x64
    - Run `dotnet publish --packages pkg -r [win-x64|linux-x64|osx-64] -c [Debug|Release]` to publish your project. `--packages pkg` option restores the package into a local directory that is easy to cleanup once you are done. It avoids polluting the global nuget cache with your locally built dev package.
 
 ## Building for Web Assembly
+- This branch contains a version of the WebAssembly compiler that creates LLVM from the clrjit to take advantage of RyuJits optimisations.  It goes from RyuJIT IR -> LLVM instead of the NativeAOT-LLVM branch way of CIL -> LLVM.
+- It does not work, yet or maybe never.
 - Currently only tested on Windows
+- Download the LLVM 11.0.0 source from https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.0/llvm-11.0.0.src.tar.xz
+- Extract and create a subdirectory in the llvm-11.0.0.src folder called build.  cd to this build folder
+- Configure the LLVM source to use the same runtime as clrjit `cmake -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -D LLVM_USE_CRT_DEBUG=MTd ..`
+- Build LLVM either from the command line (`build`) or from VS 2019.  You only really need to build the LLVMCore and LLVMBitWriter projects which takes less time than the 400 odd projects when building all.  This will save some time.
+- set the enviroment variable LLVM_CMAKE_CONFIG to locate the LLVM config, e.g.  `set LLVM_CMAKE_CONFIG=E:/llvm11/llvm-11.0.0.src/build/lib/cmake/llvm` .   This location should contain the file `LLVMConfig.cmake`
+- Build the x64 libraries and compiler as per the Building section.
 - Run `build nativeaot+libs+nativeaot.packages -rc [Debug|Release] -lc [Debug|Release] -a wasm -os Browser -runtimeFlavor CoreCLR`
+- The compiler can now be debugged with the Wasm clrjit.  Load the clrjit_browser_wasm32_x64.vcxproj which can be found in artifacts\obj\coreclr\windows.x64.Debug\jit
+- Run Ilc with a .rsp file as normal for Web assembly, e.g. if you build the WebAssembly tests you can use artifacts\tests\coreclr\Browser.wasm.Debug\nativeaot\SmokeTests\HelloWasm\HelloWasm\native\HelloWasm.ilc.rsp
 - Add the package directory to your `nuget.config` as above.
 - Run `dotnet publish -r browser-wasm -c [Debug|Release] /p:Platform=wasm` to publish.
+
+- To work on the clr jit for LLVM:
+- Open the Ilc solution and add the clr jit project `clrjit_browser_wasm32_x64.vcxproj` from `artifacts\obj\coreclr\windows.x64.Debug\jit`
+- In the project properties General section, change the output folder to the full path for `artifacts\bin\coreclr\windows.x64.Debug\ilc\net5.0` e.g. `E:\GitHub\runtimelab\artifacts\bin\coreclr\windows.x64.Debug\ilc\net5.0`
+- Build `clrjit_browser_wasm32_x64` project and you should now be able to change and put breakpoints in the c++ code.
+
 
 ## Visual Studio Solutions
 
@@ -40,6 +56,7 @@ The workflow looks like this:
 - Open the ilc.sln solution described above. This solution contains the compiler, but also an unrelated project named "repro". This repro project is a small Hello World. You can place any piece of C# you would like to compile in it. Building the project will compile the source code into IL, but also generate a response file that is suitable to pass to the AOT compiler.
 - Make sure you set the solution configuration in VS to the configuration you just built (e.g. x64 Debug).
 - In the ILCompiler project properties, on the Debug tab, set the "Application arguments" to the generated response file. This will be a file such as "C:\runtimelab\artifacts\bin\repro\x64\Debug\compile-with-Release-libs.rsp". Prefix the path to the file with "@" to indicate this is a response file so that the "Application arguments" field looks like "@some\path\to\file.rsp".
+- For WebAssembly, edit the .rsp file and 
 - Build & run ILCompiler using **F5**. This will compile the repro project into an `.obj` file. You can debug the compiler and set breakpoints in it at this point.
 - The last step is linking the file into an executable so that we can launch the result of the AOT compilation.
 - Open the src\coreclr\tools\aot\ILCompiler\reproNative\reproNative.vcxproj project in Visual Studio. This project is configured to pick up the `.obj` file we just compiled and link it with the rest of the runtime.

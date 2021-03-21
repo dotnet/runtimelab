@@ -6,7 +6,7 @@
 // of a method, except for the target-specific elements, which are
 // primarily in the Target class.
 //
-
+#ifndef TARGET_WASM
 #ifndef _CODEGEN_H_
 #define _CODEGEN_H_
 #include "codegeninterface.h"
@@ -1608,3 +1608,4 @@ inline void DoPhase(CodeGen* _codeGen, Phases _phase, void (CodeGen::*_action)()
 }
 
 #endif // _CODEGEN_H_
+#endif // TARGET_WASM

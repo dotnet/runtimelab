@@ -122,9 +122,11 @@ jobs:
         displayName: Disk Usage before Build
 
     - ${{ if and(eq(parameters.runtimeFlavor, 'coreclr'), and(eq(parameters.osGroup, 'windows'), eq(parameters.platform, 'Browser_wasm'))) }}:
-      # Install Wasm dependencies: emscripten
+      # Install Wasm dependencies: emscripten, LLVM
       - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-emscripten.cmd $(Build.SourcesDirectory)\wasm-tools
         displayName: Install/activate emscripten
+      - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.cmd $(Build.SourcesDirectory)\wasm-tools $(Build.SourcesDirectory)
+        displayName: Install/build LLVM
 
     # Build
     - script: $(Build.SourcesDirectory)$(dir)build$(scriptExt) -ci -arch ${{ parameters.archType }} $(_osParameter) ${{ parameters.buildArgs }} $(_officialBuildParameter) $(_crossBuildPropertyArg) $(_cxx11Parameter) $(_richCodeNavigationParam)

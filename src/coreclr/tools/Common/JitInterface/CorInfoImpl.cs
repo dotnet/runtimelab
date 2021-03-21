@@ -33,7 +33,7 @@ using ILCompiler.DependencyAnalysis.ReadyToRun;
 
 namespace Internal.JitInterface
 {
-    internal unsafe sealed partial class CorInfoImpl
+    public unsafe sealed partial class CorInfoImpl
     {
         //
         // Global initialization and state
@@ -45,6 +45,8 @@ namespace Internal.JitInterface
             AMD64 = 0x8664,
             ARM = 0x01c4,
             ARM64 = 0xaa64,
+            WASM32 = 0xffff, // matches llvm.h - TODO better to just #if out this check in compiler.cpp?
+            WASM64 = 0xfffe,
         }
         private enum CFI_OPCODE
         {
@@ -72,6 +74,9 @@ namespace Internal.JitInterface
         private extern static IntPtr jitStartup(IntPtr host);
 
         [DllImport(JitLibrary)]
+        private extern static void jitShutdown([MarshalAs(UnmanagedType.I1)] bool processIsTerminating);
+
+        [DllImport(JitLibrary)]
         private extern static IntPtr getJit();
 
         [DllImport(JitSupportLibrary)]
@@ -88,7 +93,7 @@ namespace Internal.JitInterface
         }
 
         [DllImport(JitSupportLibrary)]
-        private extern static CorJitResult JitCompileMethod(out IntPtr exception,
+        internal extern static CorJitResult JitCompileMethod(out IntPtr exception,
             IntPtr jit, IntPtr thisHandle, IntPtr callbacks,
             ref CORINFO_METHOD_INFO info, uint flags, out IntPtr nativeEntry, out uint codeSize);
 
@@ -121,6 +126,11 @@ namespace Internal.JitInterface
         public static void Startup()
         {
             jitStartup(GetJitHost(JitConfigProvider.Instance.UnmanagedInstance));
+        }
+
+        public static void Shutdown()
+        {
+            jitShutdown(true);
         }
 
         public CorInfoImpl()
@@ -3284,7 +3294,7 @@ namespace Internal.JitInterface
                 default:
                     Debug.Fail("Invalid RelocType: " + fRelocType);
                     return 0;
-            };
+            }
         }
 
         private void recordRelocation(void* location, void* target, ushort fRelocType, ushort slotNum, int addlDelta)
@@ -3379,6 +3389,10 @@ namespace Internal.JitInterface
                     return (uint)ImageFileMachine.ARM;
                 case TargetArchitecture.ARM64:
                     return (uint)ImageFileMachine.ARM64;
+                case TargetArchitecture.Wasm32:
+                    return (uint)ImageFileMachine.WASM32;
+                case TargetArchitecture.Wasm64:
+                    return (uint)ImageFileMachine.WASM64;
                 default:
                     throw new NotImplementedException("Expected target architecture is not supported");
             }
@@ -3468,7 +3482,6 @@ namespace Internal.JitInterface
 
             return (uint)sizeof(CORJIT_FLAGS);
         }
-
 
 #if READYTORUN
         InstructionSetFlags _actualInstructionSetSupported;

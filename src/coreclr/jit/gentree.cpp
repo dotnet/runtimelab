@@ -2855,6 +2855,466 @@ bool Compiler::gtCanSwapOrder(GenTree* firstNode, GenTree* secondNode)
     return canSwap;
 }
 
+#ifdef TARGET_WASM
+bool genCreateAddrMode(Compiler* compiler, GenTree* addr,
+    bool      fold,
+    bool* revPtr,
+    GenTree** rv1Ptr,
+    GenTree** rv2Ptr,
+#if SCALED_ADDR_MODES
+    unsigned* mulPtr,
+#endif // SCALED_ADDR_MODES
+    ssize_t* cnsPtr)
+{
+    /*
+        The following indirections are valid address modes on x86/x64:
+
+            [                  icon]      * not handled here
+            [reg                   ]
+            [reg             + icon]
+            [reg1 +     reg2       ]
+            [reg1 +     reg2 + icon]
+            [reg1 + 2 * reg2       ]
+            [reg1 + 4 * reg2       ]
+            [reg1 + 8 * reg2       ]
+            [       2 * reg2 + icon]
+            [       4 * reg2 + icon]
+            [       8 * reg2 + icon]
+            [reg1 + 2 * reg2 + icon]
+            [reg1 + 4 * reg2 + icon]
+            [reg1 + 8 * reg2 + icon]
+
+        The following indirections are valid address modes on arm64:
+
+            [reg]
+            [reg  + icon]
+            [reg1 + reg2]
+            [reg1 + reg2 * natural-scale]
+
+     */
+
+     /* All indirect address modes require the address to be an addition */
+
+    if (addr->gtOper != GT_ADD)
+    {
+        return false;
+    }
+
+    // Can't use indirect addressing mode as we need to check for overflow.
+    // Also, can't use 'lea' as it doesn't set the flags.
+
+    if (addr->gtOverflow())
+    {
+        return false;
+    }
+
+    GenTree* rv1 = nullptr;
+    GenTree* rv2 = nullptr;
+
+    GenTree* op1;
+    GenTree* op2;
+
+    ssize_t cns;
+#if SCALED_ADDR_MODES
+    unsigned mul;
+#endif // SCALED_ADDR_MODES
+
+    GenTree* tmp;
+
+    /* What order are the sub-operands to be evaluated */
+
+    if (addr->gtFlags & GTF_REVERSE_OPS)
+    {
+        op1 = addr->AsOp()->gtOp2;
+        op2 = addr->AsOp()->gtOp1;
+    }
+    else
+    {
+        op1 = addr->AsOp()->gtOp1;
+        op2 = addr->AsOp()->gtOp2;
+    }
+
+    bool rev = false; // Is op2 first in the evaluation order?
+
+    /*
+        A complex address mode can combine the following operands:
+
+            op1     ...     base address
+            op2     ...     optional scaled index
+#if SCALED_ADDR_MODES
+            mul     ...     optional multiplier (2/4/8) for op2
+#endif
+            cns     ...     optional displacement
+
+        Here we try to find such a set of operands and arrange for these
+        to sit in registers.
+     */
+
+    cns = 0;
+#if SCALED_ADDR_MODES
+    mul = 0;
+#endif // SCALED_ADDR_MODES
+
+AGAIN:
+    /* We come back to 'AGAIN' if we have an add of a constant, and we are folding that
+       constant, or we have gone through a GT_NOP or GT_COMMA node. We never come back
+       here if we find a scaled index.
+    */
+    CLANG_FORMAT_COMMENT_ANCHOR;
+
+#if SCALED_ADDR_MODES
+    assert(mul == 0);
+#endif // SCALED_ADDR_MODES
+
+    /* Special case: keep constants as 'op2' */
+
+    if (op1->IsCnsIntOrI())
+    {
+        // Presumably op2 is assumed to not be a constant (shouldn't happen if we've done constant folding)?
+        tmp = op1;
+        op1 = op2;
+        op2 = tmp;
+    }
+
+    /* Check for an addition of a constant */
+
+    if (op2->IsIntCnsFitsInI32() && (op2->gtType != TYP_REF) && FitsIn<INT32>(cns + op2->AsIntConCommon()->IconValue()))
+    {
+        // We should not be building address modes out of non-foldable constants
+        assert(op2->AsIntConCommon()->ImmedValCanBeFolded(compiler, addr->OperGet()));
+
+        /* We're adding a constant */
+
+        cns += op2->AsIntConCommon()->IconValue();
+
+#if defined(TARGET_ARMARCH)
+        if (cns == 0)
+#endif
+        {
+            /* Inspect the operand the constant is being added to */
+
+            switch (op1->gtOper)
+            {
+            case GT_ADD:
+
+                if (op1->gtOverflow())
+                {
+                    break;
+                }
+
+                op2 = op1->AsOp()->gtOp2;
+                op1 = op1->AsOp()->gtOp1;
+
+                goto AGAIN;
+
+#if SCALED_ADDR_MODES && !defined(TARGET_ARMARCH)
+                // TODO-ARM64-CQ, TODO-ARM-CQ: For now we don't try to create a scaled index.
+            case GT_MUL:
+                if (op1->gtOverflow())
+                {
+                    return false; // Need overflow check
+                }
+
+                FALLTHROUGH;
+
+            case GT_LSH:
+
+                mul = op1->GetScaledIndex();
+                if (mul)
+                {
+                    /* We can use "[mul*rv2 + icon]" */
+
+                    rv1 = nullptr;
+                    rv2 = op1->AsOp()->gtOp1;
+
+                    goto FOUND_AM;
+                }
+                break;
+#endif // SCALED_ADDR_MODES && !defined(TARGET_ARMARCH)
+
+            default:
+                break;
+            }
+        }
+
+        /* The best we can do is "[rv1 + icon]" */
+
+        rv1 = op1;
+        rv2 = nullptr;
+
+        goto FOUND_AM;
+    }
+
+    // op2 is not a constant. So keep on trying.
+
+    /* Neither op1 nor op2 are sitting in a register right now */
+
+    switch (op1->gtOper)
+    {
+#if !defined(TARGET_ARMARCH)
+        // TODO-ARM64-CQ, TODO-ARM-CQ: For now we don't try to create a scaled index.
+    case GT_ADD:
+
+        if (op1->gtOverflow())
+        {
+            break;
+        }
+
+        if (op1->AsOp()->gtOp2->IsIntCnsFitsInI32() &&
+            FitsIn<INT32>(cns + op1->AsOp()->gtOp2->AsIntCon()->gtIconVal))
+        {
+            cns += op1->AsOp()->gtOp2->AsIntCon()->gtIconVal;
+            op1 = op1->AsOp()->gtOp1;
+
+            goto AGAIN;
+        }
+
+        break;
+
+#if SCALED_ADDR_MODES
+
+    case GT_MUL:
+
+        if (op1->gtOverflow())
+        {
+            break;
+        }
+
+        FALLTHROUGH;
+
+    case GT_LSH:
+
+        mul = op1->GetScaledIndex();
+        if (mul)
+        {
+            /* 'op1' is a scaled value */
+
+            rv1 = op2;
+            rv2 = op1->AsOp()->gtOp1;
+
+            int argScale;
+            while ((rv2->gtOper == GT_MUL || rv2->gtOper == GT_LSH) && (argScale = rv2->GetScaledIndex()) != 0)
+            {
+                if (jitIsScaleIndexMul(argScale * mul))
+                {
+                    mul = mul * argScale;
+                    rv2 = rv2->AsOp()->gtOp1;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            noway_assert(rev == false);
+            rev = true;
+
+            goto FOUND_AM;
+        }
+        break;
+
+#endif // SCALED_ADDR_MODES
+#endif // !TARGET_ARMARCH
+
+    case GT_NOP:
+
+        op1 = op1->AsOp()->gtOp1;
+        goto AGAIN;
+
+    case GT_COMMA:
+
+        op1 = op1->AsOp()->gtOp2;
+        goto AGAIN;
+
+    default:
+        break;
+    }
+
+    noway_assert(op2);
+    switch (op2->gtOper)
+    {
+#if !defined(TARGET_ARMARCH)
+        // TODO-ARM64-CQ, TODO-ARM-CQ: For now we don't try to create a scaled index.
+    case GT_ADD:
+
+        if (op2->gtOverflow())
+        {
+            break;
+        }
+
+        if (op2->AsOp()->gtOp2->IsIntCnsFitsInI32() &&
+            FitsIn<INT32>(cns + op2->AsOp()->gtOp2->AsIntCon()->gtIconVal))
+        {
+            cns += op2->AsOp()->gtOp2->AsIntCon()->gtIconVal;
+            op2 = op2->AsOp()->gtOp1;
+
+            goto AGAIN;
+        }
+
+        break;
+
+#if SCALED_ADDR_MODES
+
+    case GT_MUL:
+
+        if (op2->gtOverflow())
+        {
+            break;
+        }
+
+        FALLTHROUGH;
+
+    case GT_LSH:
+
+        mul = op2->GetScaledIndex();
+        if (mul)
+        {
+            // 'op2' is a scaled value...is it's argument also scaled?
+            int argScale;
+            rv2 = op2->AsOp()->gtOp1;
+            while ((rv2->gtOper == GT_MUL || rv2->gtOper == GT_LSH) && (argScale = rv2->GetScaledIndex()) != 0)
+            {
+                if (jitIsScaleIndexMul(argScale * mul))
+                {
+                    mul = mul * argScale;
+                    rv2 = rv2->AsOp()->gtOp1;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            rv1 = op1;
+
+            goto FOUND_AM;
+        }
+        break;
+
+#endif // SCALED_ADDR_MODES
+#endif // !TARGET_ARMARCH
+
+    case GT_NOP:
+
+        op2 = op2->AsOp()->gtOp1;
+        goto AGAIN;
+
+    case GT_COMMA:
+
+        op2 = op2->AsOp()->gtOp2;
+        goto AGAIN;
+
+    default:
+        break;
+    }
+
+    /* The best we can do "[rv1 + rv2]" or "[rv1 + rv2 + cns]" */
+
+    rv1 = op1;
+    rv2 = op2;
+#ifdef TARGET_ARM64
+    assert(cns == 0);
+#endif
+
+FOUND_AM:
+
+    if (rv2)
+    {
+        /* Make sure a GC address doesn't end up in 'rv2' */
+
+        if (varTypeIsGC(rv2->TypeGet()))
+        {
+            noway_assert(rv1 && !varTypeIsGC(rv1->TypeGet()));
+
+            tmp = rv1;
+            rv1 = rv2;
+            rv2 = tmp;
+
+            rev = !rev;
+        }
+
+        /* Special case: constant array index (that is range-checked) */
+
+        if (fold)
+        {
+            ssize_t  tmpMul;
+            GenTree* index;
+
+            if ((rv2->gtOper == GT_MUL || rv2->gtOper == GT_LSH) && (rv2->AsOp()->gtOp2->IsCnsIntOrI()))
+            {
+                /* For valuetype arrays where we can't use the scaled address
+                   mode, rv2 will point to the scaled index. So we have to do
+                   more work */
+                assert(false); //TODO: this method is copied from Compiler, but not properly refactored so this call is not available, put off for now and investigate when it gets hit
+                index = NULL;
+                tmpMul = 1; // compiler->optGetArrayRefScaleAndIndex(rv2, &index DEBUGARG(false));
+                if (mul)
+                {
+                    tmpMul *= mul;
+                }
+            }
+            else
+            {
+                /* May be a simple array. rv2 will points to the actual index */
+
+                index = rv2;
+                tmpMul = mul;
+            }
+
+            /* Get hold of the array index and see if it's a constant */
+            if (index->IsIntCnsFitsInI32())
+            {
+                /* Get hold of the index value */
+                ssize_t ixv = index->AsIntConCommon()->IconValue();
+
+#if SCALED_ADDR_MODES
+                /* Scale the index if necessary */
+                if (tmpMul)
+                {
+                    ixv *= tmpMul;
+                }
+#endif
+
+                if (FitsIn<INT32>(cns + ixv))
+                {
+                    /* Add the scaled index to the offset value */
+
+                    cns += ixv;
+
+#if SCALED_ADDR_MODES
+                    /* There is no scaled operand any more */
+                    mul = 0;
+#endif
+                    rv2 = nullptr;
+                }
+            }
+        }
+    }
+
+    // We shouldn't have [rv2*1 + cns] - this is equivalent to [rv1 + cns]
+    noway_assert(rv1 || mul != 1);
+
+    noway_assert(FitsIn<INT32>(cns));
+
+    if (rv1 == nullptr && rv2 == nullptr)
+    {
+        return false;
+    }
+
+    /* Success - return the various components to the caller */
+
+    *revPtr = rev;
+    *rv1Ptr = rv1;
+    *rv2Ptr = rv2;
+#if SCALED_ADDR_MODES
+    * mulPtr = mul;
+#endif
+    * cnsPtr = cns;
+
+    return true;
+}
+#endif // TARGET_WASM
+
 //------------------------------------------------------------------------
 // Given an address expression, compute its costs and addressing mode opportunities,
 // and mark addressing mode candidates as GTF_DONT_CSE.
@@ -2884,7 +3344,11 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
     GenTree* base; // This is the base of the address.
     GenTree* idx;  // This is the index.
 
+#ifdef TARGET_WASM
+    if (genCreateAddrMode(this, addr, false /*fold*/, &rev, &base, &idx,
+#else
     if (codeGen->genCreateAddrMode(addr, false /*fold*/, &rev, &base, &idx,
+#endif
 #if SCALED_ADDR_MODES
                                    &mul,
 #endif // SCALED_ADDR_MODES
@@ -2894,7 +3358,7 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
         // nodes with GTF_ADDRMODE_NO_CSE and calculate a more accurate cost.
 
         addr->gtFlags |= GTF_ADDRMODE_NO_CSE;
-#ifdef TARGET_XARCH
+#if defined(TARGET_XARCH) || defined(TARGET_WASM) // TODO Wasm
         // addrmodeCount is the count of items that we used to form
         // an addressing mode.  The maximum value is 4 when we have
         // all of these:   { base, idx, cns, mul }
@@ -3025,7 +3489,7 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
                 }
             }
         }
-#elif defined TARGET_ARM64
+#elif defined TARGET_ARM64 
         if (base)
         {
             *pCostEx += base->GetCostEx();
@@ -3088,7 +3552,7 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
         // we have already found either a non-ADD op1 or a non-constant op2.
         gtWalkOp(&op1, &op2, nullptr, true);
 
-#if defined(TARGET_XARCH)
+#if defined(TARGET_XARCH) || defined(TARGET_WASM)
         // For XARCH we will fold GT_ADDs in the op2 position into the addressing mode, so we call
         // gtWalkOp on both operands of the original GT_ADD.
         // This is not done for ARMARCH. Though the stated reason is that we don't try to create a
@@ -3098,7 +3562,7 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
         // into the addressing mode.
         // Walk op2 looking for non-overflow GT_ADDs of constants.
         gtWalkOp(&op2, &op1, nullptr, true);
-#endif // defined(TARGET_XARCH)
+#endif // defined(TARGET_XARCH) || defined(TARGET_WASM)
 
         // OK we are done walking the tree
         // Now assert that op1 and op2 correspond with base and idx
@@ -3331,7 +3795,7 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
                 goto COMMON_CNS;
             }
 
-#elif defined TARGET_XARCH
+#elif defined(TARGET_XARCH) || defined(TARGET_WASM) // TODO Wasm
 
             case GT_CNS_STR:
 #ifdef TARGET_AMD64
@@ -3657,6 +4121,16 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
                         costSz = 4;
                     }
 #elif defined(TARGET_XARCH)
+                    costEx = 1;
+                    costSz = 2;
+
+                    if (isflt || varTypeIsFloating(op1->TypeGet()))
+                    {
+                        /* cast involving floats always go through memory */
+                        costEx = IND_COST_EX * 2;
+                        costSz = 6;
+                    }
+#elif defined(TARGET_WASM)
                     costEx = 1;
                     costSz = 2;
 

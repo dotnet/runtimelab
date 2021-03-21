@@ -81,6 +81,10 @@ namespace ILCompiler
                 if (potentialType.Namespace != "System.Runtime.Intrinsics.Arm")
                     return "";
             }
+            else if (architecture == TargetArchitecture.Wasm32 || architecture == TargetArchitecture.Wasm64)
+            {
+                return ""; // No "hardware" for Wasm at all.
+            }
             else
             {
                 throw new InternalCompilerErrorException("Unknown architecture");

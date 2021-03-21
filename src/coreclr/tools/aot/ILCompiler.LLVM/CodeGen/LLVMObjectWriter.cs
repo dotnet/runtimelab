@@ -1034,7 +1034,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             LLVMBuilderRef builder = compilation.Module.Context.CreateBuilder();
             MethodDesc method = node.Method;
-            LLVMValueRef tentativeStub = Module.AddFunction(node.GetMangledName(factory.NameMangler), ILImporter.GetLLVMSignatureForMethod(method.Signature, method.RequiresInstArg()));
+            LLVMValueRef tentativeStub = Module.AddFunction(node.GetMangledName(factory.NameMangler), LLVMCodegenCompilation.GetLLVMSignatureForMethod(method.Signature, method.RequiresInstArg()));
             LLVMBasicBlockRef block = tentativeStub.AppendBasicBlock("tentativeStub");
             builder.PositionAtEnd(block);
             MethodDesc helperMethod = factory.TypeSystemContext.GetOptionalHelperEntryPoint("ThrowHelpers", "ThrowBodyRemoved");

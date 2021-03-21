@@ -33,6 +33,21 @@ enum SIMDLevel
     // Vector<T> length is 256-bit and SIMD instructions are VEX-256 encoded.
     // Floating-point instructions are VEX-128 encoded.
     SIMD_AVX2_Supported = 3
+#elif defined(TARGET_WASM)
+    // SSE2 - The min bar of SIMD ISA on x86/x64.
+    // Vector<T> length is 128-bit.
+    // Floating-point instructions are legacy SSE encoded.
+    SIMD_SSE2_Supported = 1,
+
+    // SSE4 - RyuJIT may generate SSE3, SSSE3, SSE4.1 and SSE4.2 instructions for certain intrinsics.
+    // Vector<T> length is 128-bit.
+    // Floating-point instructions are legacy SSE encoded.
+    SIMD_SSE4_Supported = 2,
+
+    // AVX2 - Hardware has AVX and AVX2 instruction set.
+    // Vector<T> length is 256-bit and SIMD instructions are VEX-256 encoded.
+    // Floating-point instructions are VEX-128 encoded.
+    SIMD_AVX2_Supported = 3
 #endif
 };
 

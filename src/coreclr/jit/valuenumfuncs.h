@@ -184,6 +184,8 @@ ValueNumFuncDef(HWI_##isa##_##name, argCount, false, false, false)   // All of t
 
 #elif defined (TARGET_ARM)
 // No Hardware Intrinsics on ARM32
+#elif defined(TARGET_WASM)
+// No Hardware Intrinsics on WebAssembly
 #else
 #error Unsupported platform
 #endif

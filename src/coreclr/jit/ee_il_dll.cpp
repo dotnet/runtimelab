@@ -123,6 +123,9 @@ extern "C" DLLEXPORT void jitStartup(ICorJitHost* jitHost)
     g_jitInitialized = true;
 }
 
+#if TARGET_WASM
+extern "C" DLLEXPORT
+#endif
 void jitShutdown(bool processIsTerminating)
 {
     if (!g_jitInitialized)
@@ -574,6 +577,7 @@ void Compiler::eeGetStmtOffsets()
     info.compCompHnd->freeArray(offsets);
 }
 
+#ifndef TARGET_WASM
 /*****************************************************************************
  *
  *                  Debugging support - Local var info
@@ -635,6 +639,7 @@ void Compiler::eeSetLVdone()
 
     eeVars = nullptr; // We give up ownership after setVars()
 }
+#endif // !TARGET_WASM
 
 void Compiler::eeGetVars()
 {
@@ -763,6 +768,7 @@ void Compiler::eeGetVars()
 }
 
 #ifdef DEBUG
+#ifndef TARGET_WASM
 void Compiler::eeDispVar(ICorDebugInfo::NativeVarInfo* var)
 {
     const char* name = nullptr;
@@ -878,6 +884,7 @@ void Compiler::eeDispVars(CORINFO_METHOD_HANDLE ftn, ULONG32 cVars, ICorDebugInf
         eeDispVar(&vars[i]);
     }
 }
+#endif // !TARGET_WASM
 #endif // DEBUG
 
 /*****************************************************************************
@@ -1111,6 +1118,7 @@ WORD Compiler::eeGetRelocTypeHint(void* target)
     }
 }
 
+#ifndef TARGET_WASM
 CORINFO_FIELD_HANDLE Compiler::eeFindJitDataOffs(unsigned dataOffs)
 {
     // Data offsets are marked by the fact that the low two bits are 0b01 0x1
@@ -1148,6 +1156,7 @@ int Compiler::eeGetJitDataOffs(CORINFO_FIELD_HANDLE field)
         return -1;
     }
 }
+#endif // !TARGET_WASM
 
 /*****************************************************************************
  *

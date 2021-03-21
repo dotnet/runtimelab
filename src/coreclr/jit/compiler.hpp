@@ -2034,6 +2034,7 @@ inline int Compiler::lvaCachedGenericContextArgOffset()
     return lvaCachedGenericContextArgOffs;
 }
 
+#ifndef TARGET_WASM
 //------------------------------------------------------------------------
 // lvaFrameAddress: Determine the stack frame offset of the given variable,
 // and how to generate an address to that stack frame.
@@ -2244,6 +2245,7 @@ inline
 
     return varOffset;
 }
+#endif
 
 inline bool Compiler::lvaIsParameter(unsigned varNum)
 {

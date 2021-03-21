@@ -3,6 +3,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 include_directories("./jitstd")
 include_directories("../inc")
 
+
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
   add_compile_options(-Wno-error)
@@ -23,7 +24,11 @@ function(create_standalone_jit)
     endif()
     set(JIT_ARCH_LINK_LIBRARIES gcinfo_unix_arm64)
   else()
-    set(JIT_ARCH_LINK_LIBRARIES gcinfo_${TARGETDETAILS_OS}_${TARGETDETAILS_ARCH})
+    if(TARGETDETAILS_OS STREQUAL "browser")
+      set(JIT_ARCH_LINK_LIBRARIES gcinfo_win_x64) # TODO: Wasm
+    else()
+      set(JIT_ARCH_LINK_LIBRARIES gcinfo_${TARGETDETAILS_OS}_${TARGETDETAILS_ARCH})
+    endif()
   endif()
 
   if(TARGETDETAILS_ARCH STREQUAL "x64")
@@ -34,6 +39,10 @@ function(create_standalone_jit)
     set(JIT_ARCH_SOURCES ${JIT_I386_SOURCES})
   elseif(TARGETDETAILS_ARCH STREQUAL "arm64")
     set(JIT_ARCH_SOURCES ${JIT_ARM64_SOURCES})
+  elseif(TARGETDETAILS_ARCH STREQUAL "wasm64")
+    set(JIT_ARCH_SOURCES ${JIT_WASM64_SOURCES})
+  elseif(TARGETDETAILS_ARCH STREQUAL "wasm32")
+    set(JIT_ARCH_SOURCES ${JIT_WASM32_SOURCES})
   else()
     clr_unknown_arch()
   endif()
@@ -57,6 +66,25 @@ function(create_standalone_jit)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE FEATURE_SIMD)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE FEATURE_HW_INTRINSICS)
   endif ()
+
+  if (TARGETDETAILS_ARCH STREQUAL "wasm64" OR TARGETDETAILS_ARCH STREQUAL "wasm32")
+    set(CLR_CMAKE_TARGET_ARCH_WASM 1)
+    target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM)
+    if (TARGETDETAILS_ARCH STREQUAL "wasm32")
+      target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM32)
+    elseif (TARGETDETAILS_ARCH STREQUAL "wasm64")
+      target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM64)
+    endif()
+    target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE USE_STL)
+    target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE PAL_STDCPP_COMPAT)
+
+    find_package(LLVM REQUIRED CONFIG PATHS $ENV{LLVM_CMAKE_CONFIG})
+    include_directories(${LLVM_INCLUDE_DIRS})
+    add_definitions(${LLVM_DEFINITIONS})
+    llvm_map_components_to_libnames(llvm_libs core bitwriter)
+    target_link_libraries(${TARGETDETAILS_TARGET} ${llvm_libs})
+  endif ()
+
 endfunction()
 
 if (CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_ARM64 OR (CLR_CMAKE_TARGET_ARCH_I386 AND NOT CLR_CMAKE_HOST_UNIX))
@@ -211,6 +239,7 @@ if (CLR_CMAKE_TARGET_WIN32)
     jitstd.h
     jittelemetry.h
     lir.h
+    llvm.h
     loopcloning.h
     loopcloningopts.h
     lower.h
@@ -251,6 +280,7 @@ if (CLR_CMAKE_TARGET_WIN32)
     valuenumtype.h
     varset.h
     vartype.h
+    wasm.h
   )
 
   if (CLR_CMAKE_TARGET_ARCH_ARM64 OR CLR_CMAKE_TARGET_ARCH_ARM)
@@ -291,6 +321,26 @@ set( JIT_AMD64_SOURCES
   unwindamd64.cpp
   hwintrinsicxarch.cpp
   hwintrinsiccodegenxarch.cpp
+)
+
+# TODO this is just a copy of AMD64_SOURCES to get started - e.g. simd,hwintrinsics doesn't make sense for wasm
+set( JIT_WASM64_SOURCES
+  simd.cpp
+  simdashwintrinsic.cpp
+  simdcodegenxarch.cpp
+  targetwasm.cpp
+  hwintrinsicxarch.cpp
+  hwintrinsiccodegenxarch.cpp
+  llvm.cpp
+)
+set( JIT_WASM32_SOURCES
+  simd.cpp
+  simdashwintrinsic.cpp
+  simdcodegenxarch.cpp
+  targetwasm.cpp
+  hwintrinsicxarch.cpp
+  hwintrinsiccodegenxarch.cpp
+  llvm.cpp
 )
 
 set( JIT_ARM_SOURCES
@@ -363,6 +413,8 @@ convert_to_absolute_path(JIT_AMD64_SOURCES ${JIT_AMD64_SOURCES})
 convert_to_absolute_path(JIT_ARM_SOURCES ${JIT_ARM_SOURCES})
 convert_to_absolute_path(JIT_I386_SOURCES ${JIT_I386_SOURCES})
 convert_to_absolute_path(JIT_ARM64_SOURCES ${JIT_ARM64_SOURCES})
+convert_to_absolute_path(JIT_WASM64_SOURCES ${JIT_WASM64_SOURCES})
+convert_to_absolute_path(JIT_WASM32_SOURCES ${JIT_WASM32_SOURCES})
 
 set(JIT_DLL_MAIN_FILE ${CMAKE_CURRENT_LIST_DIR}/dllmain.cpp)
 
@@ -493,12 +545,36 @@ if (CLR_CMAKE_BUILD_SUBSET_ALLJITS AND NOT CLR_CROSS_COMPONENTS_BUILD)
   create_standalone_jit(TARGET clrjit_unix_arm_${ARCH_HOST_NAME} OS unix ARCH arm)
   create_standalone_jit(TARGET clrjit_win_arm_${ARCH_HOST_NAME} OS win ARCH arm)
   create_standalone_jit(TARGET clrjit_win_x86_${ARCH_HOST_NAME} OS win ARCH x86)
+  if (NOT CLR_CMAKE_HOST_UNIX AND BUILD_WASM_JIT)
+    # the LLVM clrjit needs to be the last clrjit to use create_standalone_jit as it modifies some cmake variables
+    # LLVM clrjit has an extra export - registerLlvmCallbacks
+    set(CLRJIT_EXPORTS ${CMAKE_CURRENT_LIST_DIR}/ClrJit.Llvm.exports)
+    set(JIT_EXPORTS_FILE ${CMAKE_CURRENT_BINARY_DIR}/ClrJit.Llvm.exports.def)
+    preprocess_file (${CLRJIT_EXPORTS} ${JIT_EXPORTS_FILE})
+    set(JIT_DEF_FILE ${JIT_EXPORTS_FILE})
+
+    # exclude cpp files that are not required when not processing beyond rationalized LIR
+    # use REGEX as this list conatins the absolute paths
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX stacklevelsetter\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX codegencommon\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX codegenlinear\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX emit\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX gcencode\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX instr\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX lower\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX lsra\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX lsrabuild\.cpp)
+    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX regalloc\.cpp)
+
+    create_standalone_jit(TARGET clrjit_browser_wasm32_${ARCH_HOST_NAME} OS browser ARCH wasm32)
+    # uncomment to enable 8 byte pointer size version of the wasm clrjit.dll
+    #create_standalone_jit(TARGET clrjit_browser_wasm64_${ARCH_HOST_NAME} OS browser ARCH wasm64)
+  endif (NOT CLR_CMAKE_HOST_UNIX AND BUILD_WASM_JIT)
 else()
   if (CLR_CMAKE_TARGET_UNIX)
     create_standalone_jit(TARGET clrjit_unix_${ARCH_TARGET_NAME}_${ARCH_HOST_NAME} OS unix ARCH ${ARCH_TARGET_NAME})
   endif(CLR_CMAKE_TARGET_UNIX)
 endif (CLR_CMAKE_BUILD_SUBSET_ALLJITS AND NOT CLR_CROSS_COMPONENTS_BUILD)
-
 
 if (CLR_CMAKE_TARGET_WIN32 AND CLR_CMAKE_PGO_INSTRUMENT)
   # Copy PGO dependency to target dir

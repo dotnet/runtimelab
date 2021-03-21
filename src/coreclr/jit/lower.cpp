@@ -1371,7 +1371,9 @@ void Lowering::LowerArg(GenTreeCall* call, GenTree** ppArg)
             // For longs, we will replace the GT_LONG with a GT_FIELD_LIST, and put that under a PUTARG_STK.
             // Although the hi argument needs to be pushed first, that will be handled by the general case,
             // in which the fields will be reversed.
+#ifdef DEBUG_ARG_SLOTS
             assert(info->numSlots == 2);
+#endif
             newArg->SetRegNum(REG_STK);
             BlockRange().InsertBefore(arg, fieldList, newArg);
         }
@@ -5354,7 +5356,7 @@ GenTree* Lowering::LowerConstIntDivOrMod(GenTree* node)
             return nullptr;
         }
 
-#if defined(TARGET_XARCH) || defined(TARGET_ARM64)
+#if defined(TARGET_XARCH) || defined(TARGET_ARM64) || defined(TARGET_WASM) // TODO Wasm
         ssize_t magic;
         int     shift;
 
@@ -5818,7 +5820,7 @@ PhaseStatus Lowering::DoPhase()
         InsertPInvokeMethodProlog();
     }
 
-#if !defined(TARGET_64BIT)
+#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32)
     DecomposeLongs decomp(comp); // Initialize the long decomposition class.
     if (comp->compLongUsed)
     {
@@ -5831,7 +5833,7 @@ PhaseStatus Lowering::DoPhase()
         /* Make the block publicly available */
         comp->compCurBB = block;
 
-#if !defined(TARGET_64BIT)
+#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32)
         if (comp->compLongUsed)
         {
             decomp.DecomposeBlock(block);

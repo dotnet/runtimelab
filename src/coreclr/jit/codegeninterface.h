@@ -17,6 +17,7 @@
 // accessed from members of Compiler.
 //
 
+#ifndef TARGET_WASM
 #ifndef _CODEGEN_INTERFACE_H_
 #define _CODEGEN_INTERFACE_H_
 
@@ -775,3 +776,4 @@ public:
 };
 
 #endif // _CODEGEN_INTERFACE_H_
+#endif // TARGET_WASM

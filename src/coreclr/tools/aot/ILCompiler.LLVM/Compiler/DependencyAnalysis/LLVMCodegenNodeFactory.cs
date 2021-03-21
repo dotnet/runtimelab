@@ -83,7 +83,7 @@ namespace ILCompiler.DependencyAnalysis
 
         protected override ISymbolNode CreateReadyToRunHelperNode(ReadyToRunHelperKey helperCall)
         {
-            throw new NotSupportedException();
+            return new ReadyToRunHelperNode(helperCall.HelperId, helperCall.Target);
         }
 
         protected override ISymbolNode CreateGenericLookupFromDictionaryNode(ReadyToRunGenericHelperKey helperKey)

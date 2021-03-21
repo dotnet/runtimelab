@@ -15,6 +15,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #pragma hdrstop
 #endif
 
+#ifndef TARGET_WASM
 #if defined(FEATURE_EH_FUNCLETS)
 
 //------------------------------------------------------------------------
@@ -116,6 +117,7 @@ void Compiler::unwindGetFuncLocations(FuncInfoDsc*             func,
 }
 
 #endif // FEATURE_EH_FUNCLETS
+#endif // !TARGET_WASM
 
 #if defined(TARGET_UNIX)
 
@@ -378,6 +380,7 @@ void Compiler::DumpCfiInfo(bool                  isHotCode,
 
 #endif // TARGET_UNIX
 
+#ifndef TARGET_WASM
 //------------------------------------------------------------------------
 // Compiler::unwindGetCurrentOffset: Calculate the current byte offset of the
 // prolog being generated.
@@ -408,6 +411,7 @@ UNATIVE_OFFSET Compiler::unwindGetCurrentOffset(FuncInfoDsc* func)
 
     return offset;
 }
+#endif // !TARGET_WASM
 
 #if defined(TARGET_AMD64)
 
@@ -424,6 +428,8 @@ UNATIVE_OFFSET Compiler::unwindGetCurrentOffset(FuncInfoDsc* func)
 #elif defined(TARGET_X86)
 
 // See unwindX86.cpp
+
+#elif defined(TARGET_WASM) // TODO
 
 #else // TARGET*
 
