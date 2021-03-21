@@ -108,6 +108,9 @@ namespace System
 
         public static bool IsNotIntMaxValueArrayIndexSupported => s_largeArrayIsNotSupported.Value;
 
+        public static bool IsAssemblyLoadingSupported => !IsNativeAot;
+        public static bool IsMethodBodySupported => !IsNativeAot;
+
         private static volatile Tuple<bool> s_lazyNonZeroLowerBoundArraySupported;
         public static bool IsNonZeroLowerBoundArraySupported
         {
