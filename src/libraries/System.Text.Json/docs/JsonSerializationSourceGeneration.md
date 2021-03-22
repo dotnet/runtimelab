@@ -1,238 +1,272 @@
-# System.Text.Json build-time generation for serializers using SourceGenerators
+# Compile-time source generation for System.Text.Json
 
-## Motivation
+## Background
 
-There are comprehensive [documents](https://github.com/dotnet/designs/pull/113) detailing the needs and benefits of generating JSON serializers at compile time. Some of these benefits are faster throughput, **improved startup time**, and **reduction in private memory usage** for serialization/deserialization. After discussing some approaches and pros/cons of some of them we decided to go ahead and implement this feature using [Roslyn Source Generators](https://github.com/dotnet/roslyn/blob/master/docs/features/source-generators.cookbook.md). This document will outline the roadmap for the initial experiment and highlight actionable items for the base prototype.
+The “JSON Serializer recommendations for 5.0” [document](https://github.com/dotnet/designs/blob/ab7ea05a8831177f95cae8eb015ed73e105c13b5/accepted/2020/serializer/SerializerGoals5.0.md) details the benefits of generating additional source code specific to serializable .NET types. These include reach, faster cold startup performance, reducing memory usage, improved runtime throughput, and smaller size-on-disk of consuming applications. After evaluating various approaches, we decided to go implement a source generator to aid JSON serialization using [Roslyn C# source generator](https://devblogs.microsoft.com/dotnet/introducing-c-source-generators/) infrasture. This document will outline the roadmap, design considerations, and implementation details for this endeavor.
 
-## Feature Behavior
-There are 3 main points in this project: type discovery, source code generation and generated source code integration (with user applications):
+## Goals
 
-### Type Discovery
+### Faster start up and run-time performance ([“Developers apps using JSON serialization start up and run faster”](https://github.com/dotnet/runtime/issues/1568) user story for .NET 6.0)
 
-Type discovery can be divided into two different models, an implicit model (where the user does not have to specify which types to generate code for) and an explicit model (user specifically specifies through code which types they want us to generate code for). 
+- Reduced start-up time
+- Reduced private bytes usage
+- Improved run-time throughput* 
 
-#### Implicit Model
-Various implicit approaches have been discussed such as source generating all partial classes or scanning for calls into the serializer using the Roslyn tree scanning. These models can be revisited in the future as the value/feasibility of the approach becomes clearer based on user feedback. It is important to note that some downsides to such model can result in missing types to source generate or source generating types when not needed due to a bug or edge cases we didn’t consider. 
+*Little improvement targeted here for .NET 6.0. No noticeable regression expected; can achieve this with knobs in future.
 
-#### Proposed Explicit Model
-There are two scenarios within the proposed explicit model:
+### Reduced application size and ILLinker warnings ([“Developers can safely trim their apps which use System.Text.Json to reduce the size of their apps”](https://github.com/dotnet/runtime/issues/45441) user story for .NET 6.0)
 
-1. Base case: Code generates a facade ```JsonClassInfo``` for the attribute target class/struct.
+- Reduced application size when System.Text.Json is used (post ILLinker trimming)
+- Reduced ILLinker warnings due to avoiding runtime reflection (reflection based code-paths trimmed)
 
-```c#
- // (Base Case) Codegen (De)Serialization ExampleLoginClassInfo. 
-[JsonSerializable] 
-public class ExampleLogin
-{ 
-    public string Email { get; set; } 
-    public string Password { get; set; } 
-}
-```
-2. Pass in type: Code generates a ```JsonClassInfo``` for the attribute target class/struct using the passed in type. This scenario can be used if you don't own the serializable class.
+## Overview
 
-```c#
-// (Pass in Type) Codegen (De)Serialization to create ExampleExternalClassInfo using ExternClass. 
-[JsonSerializable(typeof(ExternalClass))] 
-public static class ExampleExternal { }
-```
+The System.Text.Json source generator is a Roslyn source generator that generates serialization metadata for JSON serializable types in a project. These serializable types are indicated to the source generator via a new `[JsonSerializable]` attribute. The generator then proceeds to generate metadata for each type in the object graphs of each type indicated to the serializer. The metadata generated for a type contains structured information in a format that can be optimally utilized by the serializer to serialize and deserialize instances of that type to and from JSON representations.
 
-The output of this phase would be a list of reflection-type-like models where we can iterate through the type's members in order to codegen recursively. The scope of this phase is to only find the root serializable types instead of the whole type-graph since we want to recursively codegen without storing the whole type-graph in-memory. 
+Given a POCO:
 
-We believe that an explicit model using attributes would be a simple first-approach to the problem given that the source code generation needs the user to declare their type class as partial anyway. We can then use Roslyn tree to find the JsonSerializable attribute for both types the user owns and doesn’t own to source generate using Roslyn Source Generators.
-
-#### New API Proposal
-
-```C#
-namespace System.Text.Json.Serialization
+```cs
+public class MyClass
 {
-    /// <summary>
-    /// When placed on a type, will source generate (de)serialization for the specified type and all types in it's object graph.
-    /// </summary>
-    /// <remarks>
-    /// Must take into account that type discovery using this attribute is at compile time using Source Generators.
-    /// </remarks>
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false)]
-    public sealed class JsonSerializableAttribute : JsonAttribute
-    {
-        /// <summary>
-        /// Takes target class/struct to construct a facade JsonClassInfo as TargetNameClassInfo.
-        /// </summary>
-        public JsonSerializableAttribute() { }
-
-        /// <summary>
-        /// Takes type as an argument and uses it to create a facade JsonClassInfo as TargetNameClassInfo.
-        /// </summary>
-        public JsonSerializableAttribute(Type type) { }
-    }
+    public int MyInt { get; set; }
+    public string MyString { get; set; }
 }
 ```
 
-#### Validation and Testing
+With the existing `JsonSerializer` functionality, this POCO may be serialized and deserialized as follows:
 
-For validations we will handle cases where the type representation has missing required fields to source generate. This can be done in the current phase or the Source Code Generation phase but must be handled in both.
+```cs
+MyClass obj = new()
+{
+    MyInt = 1,
+    MyString = "Hello",
+};
 
-Testing for this phase will consist of unit tests where given different source code and referenced assemblies, we verify that the source generation pass detects and creates all of the type representation with necessary data.
+byte[] serialized = JsonSerializer.SerializeToUtf8Bytes(obj);
+obj = JsonSerializer.Deserialize<MyClass>(serialized);
 
-### Source Code Generation
-This phase consist of taking the discovered types and recursively codegenerating ```JsonClassInfo``` along with its registration.
-
-#### Proposed Approach
-
-The design for the generated source focuses mainly on performance gains and extendibility to the current codebase. This approach improves performance in two ways. The first would be during the first-time/warm-up performance for both CPU and memory by avoiding costly reflection to build up a Type metadata cache mentioned [here](https://github.com/dotnet/runtime/issues/38982). The second would be throughput improvement by avoiding the initial metadata-dictionary lookup on calls to the serializer by generating ```CreateObjectFunc```, ```SerializeFunc``` and ```DeserializeFunc``` when creating its ```JsonClassInfo``` (metadata) that would be used to (de)serialize with overloaded JsonSerializer functions using a wrapper which will be mentioned in the integration phase. 
-
-The proposed approach consist of an initialization phase where generated code will call an initialization method within the created facade class where a ```JsonClassInfo``` is created with the functions mentioned above and registered into options with the necessary ```JsonPropertyInfo```. For each call into the serializer using the generated code, the POCO would call a public overload into the ```JsonSerializer``` that also take the metadata ```JsonClassInfo``` created during the initialization method.
-
-#### Sketch of SourceGenerated Code (for simple POCO using SerializableClass)
-
-Class variables for code generated ```ExampleLoginClassInfo```:
-```c#
-private static bool _s_isInitiated;
-private static JsonClassInfo _s_classInfo;
-
-private static JsonPropertyInfo<string> _s_Property_Email;
-private static JsonPropertyInfo<string> _s_Property_Password;
+Console.WriteLine(obj.MyInt); // 1
+Console.WriteLine(obj.MyString); // “Hello”
 ```
 
-These functions would used to create a ```JsonClassInfo```:
+With source generation, the serializable type may be indicated to the generator via `JsonSerializableAttribute`:
 
-```c#
-// CreateObjectFunc
-private static object CreateObjectFunc()
-{
-    return new ExampleLogin();
-}
+```cs
+[assembly: JsonSerializable(typeof(MyClass))]
 ```
 
-```c#
-// SerializeFunc
-private static void SerializeFunc(Utf8JsonWriter writer, object value, ref WriteStack writeStack, JsonSerializerOptions options)
+<details>
+
+<summary>
+The generator will then generate structured type metadata to the compilation assembly (click to view).
+</summary>
+
+`JsonContext.g.cs`
+
+```cs
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace ConsoleAfter.JsonSourceGeneration
 {
-    ExampleLogin obj = (ExampleLogin)value;
-
-    _s_Property_Email.WriteValue(obj.Email, writer);
-    _s_Property_Password.WriteValue(obj.Password, writer);
-}
-```
-
-```c#
-// DeserializeFunc
-private static ExampleLogin DeserializeFunc(ref Utf8JsonReader reader, ref ReadStack readStack, JsonSerializerOptions options)
-{
-    bool ReadPropertyName(ref Utf8JsonReader reader)
+    internal partial sealed class JsonContext : JsonSerializerContext
     {
-    return reader.Read() && reader.TokenType == JsonTokenType.PropertyName;
-    }
-
-    ReadOnlySpan<byte> propertyName;
-    ExampleLogin obj = new ExampleLogin();
-
-    if (!ReadPropertyName(ref reader)) goto Done;
-    propertyName = reader.ValueSpan;
-
-    if (propertyName.SequenceEqual(_s_Property_Email.NameAsUtf8Bytes))
-    {
-        reader.Read();
-        _s_Property_Email.ReadValueAndSetMember(ref reader, ref readStack, obj);
-        if (!ReadPropertyName(ref reader)) goto Done;
-        propertyName = reader.ValueSpan;
-    }
-
-    if (propertyName.SequenceEqual(_s_Property_Password.NameAsUtf8Bytes))
-    {
-        reader.Read();
-        _s_Property_Password.ReadValueAndSetMember(ref reader, ref readStack, obj);
-        if (!ReadPropertyName(ref reader)) goto Done;
-        propertyName = reader.ValueSpan;
-    }
-
-    reader.Read();
-
-    Done:
-        if (reader.TokenType != JsonTokenType.EndObject)
+        private static JsonContext s_default;
+        public static JsonContext Default
         {
-            throw new JsonException("Could not deserialize object");
+            get
+            {
+                s_default ??= new JsonContext();
+                return s_default;
+            }
         }
 
-        return obj;
+        private JsonContext()
+        {
+        }
+
+        public JsonContext(JsonSerializerOptions options) : base(options)
+        {   
+        }
     }
 }
 ```
 
-User faced methods for (de)serialization (assuming ExampleLoginClassInfo is initialized):
-```c#
-public static ExampleLogin Deserialize(string json)
-{
-    return JsonSerializer.Deserialize<ExampleLogin>(json, this._s_classInfo);
-}
+`MyClass.g.cs`
 
-public static string Serialize()
+```cs
+using ConsoleAfter;
+using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Converters;
+using System.Text.Json.Serialization.Metadata;
+
+namespace ConsoleAfter.JsonSourceGeneration
 {
-    return JsonSerializer.Serialize(this, this._s_classInfo);
+    internal partial sealed class JsonContext : JsonSerializerContext
+    {
+        private JsonObjectInfo<ConsoleAfter.MyClass> _MyClass;
+        public JsonTypeInfo<ConsoleAfter.MyClass> MyClass
+        {
+            get
+            {
+                if (_MyClass == null)
+                {
+                    _MyClass = new(createObjectFunc: static () => new ConsoleAfter.MyClass(), numberHandling: null, this.GetOptions());
+
+                    _MyClass.AddProperty(
+                        clrPropertyName: "MyInt",
+                        memberType: System.Reflection.MemberTypes.Property,
+                        declaringType: typeof(ConsoleAfter.MyClass),
+                        classInfo: this.Int32,
+                        getter: static (obj) => { return ((ConsoleAfter.MyClass)obj).MyInt; },
+                        setter: static (obj, value) => { ((ConsoleAfter.MyClass)obj).MyInt = value; },
+                        jsonPropertyName: null,
+                        ignoreCondition: null,
+                        numberHandling: null);
+                
+                    _MyClass.AddProperty(
+                        clrPropertyName: "MyString",
+                        memberType: System.Reflection.MemberTypes.Property,
+                        declaringType: typeof(ConsoleAfter.MyClass),
+                        classInfo: this.String,
+                        getter: static (obj) => { return ((ConsoleAfter.MyClass)obj).MyString; },
+                        setter: static (obj, value) => { ((ConsoleAfter.MyClass)obj).MyString = value; },
+                        jsonPropertyName: null,
+                        ignoreCondition: null,
+                        numberHandling: null);
+                
+                    _MyClass.CompleteInitialization(canBeDynamic: false);
+                }
+
+                return _MyClass;
+            }
+        }
+    }
 }
 ```
 
-It is also important to notice that in case there are nested types within the root type we are recursing over, a new class with name ```FoundTypeNameClassInfo``` will have to be created in order to completely serialize and deserialize.
+`Int32.g.cs`
 
-Even if the source generation fails, we can always fallback to the slower status quo by using ```Reflection``` at runtime.
+```cs
+using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Converters;
+using System.Text.Json.Serialization.Metadata;
 
-#### Validations and Tests
-
-Validations for this phase will happen for each type where we will use Roslyn's API to verify that the code we are generating is valid C# syntax code. If validations fail we will only include in the output the generated code that do not contain errors and leave the rest for fallback methods. These validation errors should produce output to users at compile time.
-
-There will be unit tests that checks the source code generation by checking output source code generation given multiple types that could be discovered in the Type Discovery phase.
-
-#### Alternatives
-An alternative approach involving the creation of individual JsonConverter for each type was talked about. However, we believe that the current design provides the potential perf benefits of that approach in a way that is more serviceable, scalable, and has better integration with the serializer (to utilize support for more complex features).
-
-### Generated Source Code Integration
-There are [discussions](https://gist.github.com/steveharter/d71cdfc25df53a8f60f1a3563d13cf0f) regarding integration of the approach mentioned above.
-
-The proposed approach consists of the generator creating a context class (```JsonSerializerContext```) which takes an options instance that contains references to the generated ```JsonClassInfo```s for each type seen above. This relies on the creation of new overloads to the current serializer that take ```JsonClassInfo```s  that can be retrieved from the context. An example of the overload and usage can be seen [here](https://github.com/dotnet/runtimelab/compare/master...steveharter:ApiAdds) while examples and details of the end to end approach can be seen as follows: 
-
-```c#
-public class JsonSerializerContext : IDisposable
+namespace ConsoleAfter.JsonSourceGeneration
 {
-    public JsonSerializerContext();
-    public JsonSerializerContext(JsonSerializerOptions options);
-    public JsonSerializerOptions JsonSerializerOptions { get; };
+    internal partial class JsonContext : JsonSerializerContext
+    {
+        private JsonValueInfo<System.Int32> _Int32;
+        public JsonTypeInfo<System.Int32> Int32
+        {
+            get
+            {
+                if (_Int32 == null)
+                {
+                    _Int32 = new JsonValueInfo<System.Int32>(new Int32Converter(), numberHandling: null, GetOptions());
+                }
 
-    // Generated JsonClassInfos.
-    public JsonClassInfo<ExampleLogin> ExampleLoginClassInfo { get; }
-    public JsonClassInfo<ExampleExternal> ExampleExternalClassInfo { get; }
+                return _Int32;
+            }
+        }
+    }
 }
 ```
 
-For cases where users may not have enough context to call more specific overloads proposed (such as ASP.NET) we are considering ways of looking up the type's metadata that points to the type's ```JsonClassInfo``` so part of this feature's benefits could be received.
+`String.g.cs`
 
-#### Example Usage
+```cs
+using System;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Converters;
+using System.Text.Json.Serialization.Metadata;
 
-```C#
- // (Base Case) Codegen (De)Serialization of ExampleLogin into ExampleLoginClassInfo. 
-[JsonSerializable] 
-public class ExampleLogin
-{ 
-    public string Email { get; set; } 
-    public string Password { get; set; } 
-}
-
-// (Pass in Type) Codegen (De)Serialization of ExampleExternal into ExampleExternalClassInfo using ExternalClass. 
-[JsonSerializable(typeof(ExternalClass))] 
-public static class ExampleExternal { }
-
-// High level usage of serialization using JsonSerializableContext.
-using (var context = new MyJsonSerializerContext(options))
+namespace ConsoleAfter.JsonSourceGeneration
 {
-    ExampleLogin obj = context.ExampleLoginClassInfo.Deserialize(json);
-    ExternalClass obj = context.ExampleExternalClassInfo.Deserialize(json);
+    internal partial class JsonContext : JsonSerializerContext
+    {
+        private JsonValueInfo<System.String> _String;
+        public JsonTypeInfo<System.String> String
+        {
+            get
+            {
+                if (_String == null)
+                {
+                    _String = new JsonValueInfo<System.String>(new StringConverter(), numberHandling: null, GetOptions());
+                }
+
+                return _String;
+            }
+        }
+    }
 }
 ```
+</details>
 
-#### Validations and Tests
+<br>
 
-Validations for this tests will be mostly burdened by Roslyn's API error handling where if something goes wrong in the first two phases, it won't include any generated code into the final compilation along with the validations mentioned in the previous phases. However, there will be end to end tests that verify the error handling, generated source code and types that were generated given source codes.
+The generated type metadata can then be passed to new (de)serialization overloads as follows:
 
-## Future Considerations
+```cs
+MyClass obj = new()
+{
+    MyInt = 1,
+    MyString = "Hello",
+};
 
-* **Versioning**: This will be needed in order to determine compatibility and to be able to detect the bugs related to the different releases of this feature.
-* **Error Handling**: Currently if something goes wrong in the source generation or code generation, Roslyn's SourceGenerator default message is shown to the user. This needs to be handled to show compilation errors from the source generated code to the user to be more verbose. 
-* **Linker Trimming**: Adding linker trimming test to ensure we have everything for both generated code and application code will be necessary.
+byte[] serialized = JsonSerializer.SerializeToUtf8Bytes(obj, JsonContext.Default.MyClass);
+obj = JsonSerializer.Deserialize<MyClass>(serialized, JsonContext.Default.MyClass);
+
+Console.WriteLine(obj.MyInt); // 1
+Console.WriteLine(obj.MyString); // “Hello”
+```
+
+## Type discovery
+
+TODO.
+
+Type discovery refers to how the source generator. For v1 we provide an explicit approach where each root serializable type is indicated to the generator via `System.Text.Json.Serialization.JsonSerializableAttribute`. This model is safe and ensures that we do not skip any types, or include unwanted types. In the future we can scan for `T`s and `System.Type` instances passed to the various serialization overloads.
+
+## Generated metadata
+
+TODO: deep dive into different types of generated metadata.
+
+
+There are three major classes of types, corresponding to three major generated-metadata representations: primitives, POCOs (types that map to JSON object representations), and collections.
+
+## How generating metadata helps meet performance goals
+
+## Performance
+
+TODO. Summarize perf characteristics
+
+Theoretical:
+
+Real-world:
+
+## Size
+
+Console app:
+Blazor: contributes ~70 KB compressed size reduction in default Blazor app.
+
+## API Proposal
+
+TODO.
+See https://github.com/dotnet/runtimelab/blob/feature/JsonCodeGen/src/libraries/System.Text.Json/ref/System.Text.Json.cs.
+
+
+## Versioning
+
+TODO. How to ensure we don't invoke stale/buggy metadata implementations?
+
+Integer property or generated JsonContext class(es) which we can check at runtime.
+
+## Compatibility with existing `JsonSerializer` functionality
+
+TODO. Assert that all functionality that exists today will continue to in source-gen mode. Discuss how new features need to be honored by generator (not only implemented by serializer internals) moving foward.
