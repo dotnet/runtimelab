@@ -31,6 +31,18 @@
     "any",
     "base"
   ],
+  "alpine-s390x": [
+    "alpine-s390x",
+    "alpine",
+    "linux-musl-s390x",
+    "linux-musl",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "alpine-x64": [
     "alpine-x64",
     "alpine",
@@ -96,6 +108,28 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "alpine.3.10-s390x": [
+    "alpine.3.10-s390x",
+    "alpine.3.10",
+    "alpine.3.9-s390x",
+    "alpine.3.9",
+    "alpine.3.8-s390x",
+    "alpine.3.8",
+    "alpine.3.7-s390x",
+    "alpine.3.7",
+    "alpine.3.6-s390x",
+    "alpine.3.6",
+    "alpine-s390x",
+    "alpine",
+    "linux-musl-s390x",
+    "linux-musl",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -180,6 +214,30 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "alpine.3.11-s390x": [
+    "alpine.3.11-s390x",
+    "alpine.3.11",
+    "alpine.3.10-s390x",
+    "alpine.3.10",
+    "alpine.3.9-s390x",
+    "alpine.3.9",
+    "alpine.3.8-s390x",
+    "alpine.3.8",
+    "alpine.3.7-s390x",
+    "alpine.3.7",
+    "alpine.3.6-s390x",
+    "alpine.3.6",
+    "alpine-s390x",
+    "alpine",
+    "linux-musl-s390x",
+    "linux-musl",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -271,6 +329,32 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "alpine.3.12-s390x": [
+    "alpine.3.12-s390x",
+    "alpine.3.12",
+    "alpine.3.11-s390x",
+    "alpine.3.11",
+    "alpine.3.10-s390x",
+    "alpine.3.10",
+    "alpine.3.9-s390x",
+    "alpine.3.9",
+    "alpine.3.8-s390x",
+    "alpine.3.8",
+    "alpine.3.7-s390x",
+    "alpine.3.7",
+    "alpine.3.6-s390x",
+    "alpine.3.6",
+    "alpine-s390x",
+    "alpine",
+    "linux-musl-s390x",
+    "linux-musl",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -373,6 +457,34 @@
     "any",
     "base"
   ],
+  "alpine.3.13-s390x": [
+    "alpine.3.13-s390x",
+    "alpine.3.13",
+    "alpine.3.12-s390x",
+    "alpine.3.12",
+    "alpine.3.11-s390x",
+    "alpine.3.11",
+    "alpine.3.10-s390x",
+    "alpine.3.10",
+    "alpine.3.9-s390x",
+    "alpine.3.9",
+    "alpine.3.8-s390x",
+    "alpine.3.8",
+    "alpine.3.7-s390x",
+    "alpine.3.7",
+    "alpine.3.6-s390x",
+    "alpine.3.6",
+    "alpine-s390x",
+    "alpine",
+    "linux-musl-s390x",
+    "linux-musl",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "alpine.3.13-x64": [
     "alpine.3.13-x64",
     "alpine.3.13",
@@ -438,6 +550,20 @@
     "any",
     "base"
   ],
+  "alpine.3.6-s390x": [
+    "alpine.3.6-s390x",
+    "alpine.3.6",
+    "alpine-s390x",
+    "alpine",
+    "linux-musl-s390x",
+    "linux-musl",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "alpine.3.6-x64": [
     "alpine.3.6-x64",
     "alpine.3.6",
@@ -490,6 +616,22 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "alpine.3.7-s390x": [
+    "alpine.3.7-s390x",
+    "alpine.3.7",
+    "alpine.3.6-s390x",
+    "alpine.3.6",
+    "alpine-s390x",
+    "alpine",
+    "linux-musl-s390x",
+    "linux-musl",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -553,6 +695,24 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "alpine.3.8-s390x": [
+    "alpine.3.8-s390x",
+    "alpine.3.8",
+    "alpine.3.7-s390x",
+    "alpine.3.7",
+    "alpine.3.6-s390x",
+    "alpine.3.6",
+    "alpine-s390x",
+    "alpine",
+    "linux-musl-s390x",
+    "linux-musl",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -623,6 +783,26 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "alpine.3.9-s390x": [
+    "alpine.3.9-s390x",
+    "alpine.3.9",
+    "alpine.3.8-s390x",
+    "alpine.3.8",
+    "alpine.3.7-s390x",
+    "alpine.3.7",
+    "alpine.3.6-s390x",
+    "alpine.3.6",
+    "alpine-s390x",
+    "alpine",
+    "linux-musl-s390x",
+    "linux-musl",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -1878,6 +2058,16 @@
     "any",
     "base"
   ],
+  "debian-s390x": [
+    "debian-s390x",
+    "debian",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "debian-x64": [
     "debian-x64",
     "debian",
@@ -1938,6 +2128,18 @@
     "linux-armel",
     "linux",
     "unix-armel",
+    "unix",
+    "any",
+    "base"
+  ],
+  "debian.10-s390x": [
+    "debian.10-s390x",
+    "debian.10",
+    "debian-s390x",
+    "debian",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -2010,6 +2212,18 @@
     "any",
     "base"
   ],
+  "debian.8-s390x": [
+    "debian.8-s390x",
+    "debian.8",
+    "debian-s390x",
+    "debian",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "debian.8-x64": [
     "debian.8-x64",
     "debian.8",
@@ -2078,6 +2292,18 @@
     "any",
     "base"
   ],
+  "debian.9-s390x": [
+    "debian.9-s390x",
+    "debian.9",
+    "debian-s390x",
+    "debian",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "debian.9-x64": [
     "debian.9-x64",
     "debian.9",
@@ -2136,6 +2362,16 @@
     "any",
     "base"
   ],
+  "fedora-s390x": [
+    "fedora-s390x",
+    "fedora",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "fedora-x64": [
     "fedora-x64",
     "fedora",
@@ -2162,6 +2398,18 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "fedora.23-s390x": [
+    "fedora.23-s390x",
+    "fedora.23",
+    "fedora-s390x",
+    "fedora",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -2198,6 +2446,18 @@
     "any",
     "base"
   ],
+  "fedora.24-s390x": [
+    "fedora.24-s390x",
+    "fedora.24",
+    "fedora-s390x",
+    "fedora",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "fedora.24-x64": [
     "fedora.24-x64",
     "fedora.24",
@@ -2226,6 +2486,18 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "fedora.25-s390x": [
+    "fedora.25-s390x",
+    "fedora.25",
+    "fedora-s390x",
+    "fedora",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -2262,6 +2534,18 @@
     "any",
     "base"
   ],
+  "fedora.26-s390x": [
+    "fedora.26-s390x",
+    "fedora.26",
+    "fedora-s390x",
+    "fedora",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "fedora.26-x64": [
     "fedora.26-x64",
     "fedora.26",
@@ -2290,6 +2574,18 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "fedora.27-s390x": [
+    "fedora.27-s390x",
+    "fedora.27",
+    "fedora-s390x",
+    "fedora",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -2326,6 +2622,18 @@
     "any",
     "base"
   ],
+  "fedora.28-s390x": [
+    "fedora.28-s390x",
+    "fedora.28",
+    "fedora-s390x",
+    "fedora",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "fedora.28-x64": [
     "fedora.28-x64",
     "fedora.28",
@@ -2354,6 +2662,18 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "fedora.29-s390x": [
+    "fedora.29-s390x",
+    "fedora.29",
+    "fedora-s390x",
+    "fedora",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -2390,6 +2710,18 @@
     "any",
     "base"
   ],
+  "fedora.30-s390x": [
+    "fedora.30-s390x",
+    "fedora.30",
+    "fedora-s390x",
+    "fedora",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "fedora.30-x64": [
     "fedora.30-x64",
     "fedora.30",
@@ -2418,6 +2750,18 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "fedora.31-s390x": [
+    "fedora.31-s390x",
+    "fedora.31",
+    "fedora-s390x",
+    "fedora",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -2454,6 +2798,18 @@
     "any",
     "base"
   ],
+  "fedora.32-s390x": [
+    "fedora.32-s390x",
+    "fedora.32",
+    "fedora-s390x",
+    "fedora",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "fedora.32-x64": [
     "fedora.32-x64",
     "fedora.32",
@@ -2482,6 +2838,18 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "fedora.33-s390x": [
+    "fedora.33-s390x",
+    "fedora.33",
+    "fedora-s390x",
+    "fedora",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -2518,6 +2886,18 @@
     "any",
     "base"
   ],
+  "fedora.34-s390x": [
+    "fedora.34-s390x",
+    "fedora.34",
+    "fedora-s390x",
+    "fedora",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "fedora.34-x64": [
     "fedora.34-x64",
     "fedora.34",
@@ -2546,6 +2926,18 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "fedora.35-s390x": [
+    "fedora.35-s390x",
+    "fedora.35",
+    "fedora-s390x",
+    "fedora",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -3089,6 +3481,16 @@
     "any",
     "base"
   ],
+  "linux-musl-s390x": [
+    "linux-musl-s390x",
+    "linux-musl",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "linux-musl-x64": [
     "linux-musl-x64",
     "linux-musl",
@@ -3105,6 +3507,14 @@
     "linux-x86",
     "linux",
     "unix-x86",
+    "unix",
+    "any",
+    "base"
+  ],
+  "linux-s390x": [
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -4592,6 +5002,16 @@
     "any",
     "base"
   ],
+  "rhel-s390x": [
+    "rhel-s390x",
+    "rhel",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "rhel-x64": [
     "rhel-x64",
     "rhel",
@@ -4630,6 +5050,18 @@
     "any",
     "base"
   ],
+  "rhel.7-s390x": [
+    "rhel.7-s390x",
+    "rhel.7",
+    "rhel-s390x",
+    "rhel",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "rhel.7-x64": [
     "rhel.7-x64",
     "rhel.7",
@@ -4647,6 +5079,20 @@
     "rhel.7",
     "rhel",
     "linux",
+    "unix",
+    "any",
+    "base"
+  ],
+  "rhel.7.0-s390x": [
+    "rhel.7.0-s390x",
+    "rhel.7.0",
+    "rhel.7-s390x",
+    "rhel.7",
+    "rhel-s390x",
+    "rhel",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -4675,6 +5121,22 @@
     "any",
     "base"
   ],
+  "rhel.7.1-s390x": [
+    "rhel.7.1-s390x",
+    "rhel.7.1",
+    "rhel.7.0-s390x",
+    "rhel.7.0",
+    "rhel.7-s390x",
+    "rhel.7",
+    "rhel-s390x",
+    "rhel",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "rhel.7.1-x64": [
     "rhel.7.1-x64",
     "rhel.7.1",
@@ -4698,6 +5160,24 @@
     "rhel.7",
     "rhel",
     "linux",
+    "unix",
+    "any",
+    "base"
+  ],
+  "rhel.7.2-s390x": [
+    "rhel.7.2-s390x",
+    "rhel.7.2",
+    "rhel.7.1-s390x",
+    "rhel.7.1",
+    "rhel.7.0-s390x",
+    "rhel.7.0",
+    "rhel.7-s390x",
+    "rhel.7",
+    "rhel-s390x",
+    "rhel",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -4732,6 +5212,26 @@
     "any",
     "base"
   ],
+  "rhel.7.3-s390x": [
+    "rhel.7.3-s390x",
+    "rhel.7.3",
+    "rhel.7.2-s390x",
+    "rhel.7.2",
+    "rhel.7.1-s390x",
+    "rhel.7.1",
+    "rhel.7.0-s390x",
+    "rhel.7.0",
+    "rhel.7-s390x",
+    "rhel.7",
+    "rhel-s390x",
+    "rhel",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "rhel.7.3-x64": [
     "rhel.7.3-x64",
     "rhel.7.3",
@@ -4761,6 +5261,28 @@
     "rhel.7",
     "rhel",
     "linux",
+    "unix",
+    "any",
+    "base"
+  ],
+  "rhel.7.4-s390x": [
+    "rhel.7.4-s390x",
+    "rhel.7.4",
+    "rhel.7.3-s390x",
+    "rhel.7.3",
+    "rhel.7.2-s390x",
+    "rhel.7.2",
+    "rhel.7.1-s390x",
+    "rhel.7.1",
+    "rhel.7.0-s390x",
+    "rhel.7.0",
+    "rhel.7-s390x",
+    "rhel.7",
+    "rhel-s390x",
+    "rhel",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -4801,6 +5323,30 @@
     "any",
     "base"
   ],
+  "rhel.7.5-s390x": [
+    "rhel.7.5-s390x",
+    "rhel.7.5",
+    "rhel.7.4-s390x",
+    "rhel.7.4",
+    "rhel.7.3-s390x",
+    "rhel.7.3",
+    "rhel.7.2-s390x",
+    "rhel.7.2",
+    "rhel.7.1-s390x",
+    "rhel.7.1",
+    "rhel.7.0-s390x",
+    "rhel.7.0",
+    "rhel.7-s390x",
+    "rhel.7",
+    "rhel-s390x",
+    "rhel",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "rhel.7.5-x64": [
     "rhel.7.5-x64",
     "rhel.7.5",
@@ -4836,6 +5382,32 @@
     "rhel.7",
     "rhel",
     "linux",
+    "unix",
+    "any",
+    "base"
+  ],
+  "rhel.7.6-s390x": [
+    "rhel.7.6-s390x",
+    "rhel.7.6",
+    "rhel.7.5-s390x",
+    "rhel.7.5",
+    "rhel.7.4-s390x",
+    "rhel.7.4",
+    "rhel.7.3-s390x",
+    "rhel.7.3",
+    "rhel.7.2-s390x",
+    "rhel.7.2",
+    "rhel.7.1-s390x",
+    "rhel.7.1",
+    "rhel.7.0-s390x",
+    "rhel.7.0",
+    "rhel.7-s390x",
+    "rhel.7",
+    "rhel-s390x",
+    "rhel",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -4886,6 +5458,18 @@
     "any",
     "base"
   ],
+  "rhel.8-s390x": [
+    "rhel.8-s390x",
+    "rhel.8",
+    "rhel-s390x",
+    "rhel",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "rhel.8-x64": [
     "rhel.8-x64",
     "rhel.8",
@@ -4917,6 +5501,20 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "rhel.8.0-s390x": [
+    "rhel.8.0-s390x",
+    "rhel.8.0",
+    "rhel.8-s390x",
+    "rhel.8",
+    "rhel-s390x",
+    "rhel",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -4961,6 +5559,22 @@
     "any",
     "base"
   ],
+  "rhel.8.1-s390x": [
+    "rhel.8.1-s390x",
+    "rhel.8.1",
+    "rhel.8.0-s390x",
+    "rhel.8.0",
+    "rhel.8-s390x",
+    "rhel.8",
+    "rhel-s390x",
+    "rhel",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "rhel.8.1-x64": [
     "rhel.8.1-x64",
     "rhel.8.1",
@@ -4997,6 +5611,18 @@
     "any",
     "base"
   ],
+  "rhel.9-s390x": [
+    "rhel.9-s390x",
+    "rhel.9",
+    "rhel-s390x",
+    "rhel",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "rhel.9-x64": [
     "rhel.9-x64",
     "rhel.9",
@@ -5016,6 +5642,16 @@
     "any",
     "base"
   ],
+  "sles-s390x": [
+    "sles-s390x",
+    "sles",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "sles-x64": [
     "sles-x64",
     "sles",
@@ -5030,6 +5666,18 @@
     "sles.12",
     "sles",
     "linux",
+    "unix",
+    "any",
+    "base"
+  ],
+  "sles.12-s390x": [
+    "sles.12-s390x",
+    "sles.12",
+    "sles-s390x",
+    "sles",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -5055,6 +5703,20 @@
     "any",
     "base"
   ],
+  "sles.12.1-s390x": [
+    "sles.12.1-s390x",
+    "sles.12.1",
+    "sles.12-s390x",
+    "sles.12",
+    "sles-s390x",
+    "sles",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "sles.12.1-x64": [
     "sles.12.1-x64",
     "sles.12.1",
@@ -5075,6 +5737,22 @@
     "sles.12",
     "sles",
     "linux",
+    "unix",
+    "any",
+    "base"
+  ],
+  "sles.12.2-s390x": [
+    "sles.12.2-s390x",
+    "sles.12.2",
+    "sles.12.1-s390x",
+    "sles.12.1",
+    "sles.12-s390x",
+    "sles.12",
+    "sles-s390x",
+    "sles",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -5106,6 +5784,24 @@
     "any",
     "base"
   ],
+  "sles.12.3-s390x": [
+    "sles.12.3-s390x",
+    "sles.12.3",
+    "sles.12.2-s390x",
+    "sles.12.2",
+    "sles.12.1-s390x",
+    "sles.12.1",
+    "sles.12-s390x",
+    "sles.12",
+    "sles-s390x",
+    "sles",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "sles.12.3-x64": [
     "sles.12.3-x64",
     "sles.12.3",
@@ -5132,6 +5828,26 @@
     "sles.12",
     "sles",
     "linux",
+    "unix",
+    "any",
+    "base"
+  ],
+  "sles.12.4-s390x": [
+    "sles.12.4-s390x",
+    "sles.12.4",
+    "sles.12.3-s390x",
+    "sles.12.3",
+    "sles.12.2-s390x",
+    "sles.12.2",
+    "sles.12.1-s390x",
+    "sles.12.1",
+    "sles.12-s390x",
+    "sles.12",
+    "sles-s390x",
+    "sles",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -5169,6 +5885,28 @@
     "any",
     "base"
   ],
+  "sles.15-s390x": [
+    "sles.15-s390x",
+    "sles.15",
+    "sles.12.4-s390x",
+    "sles.12.4",
+    "sles.12.3-s390x",
+    "sles.12.3",
+    "sles.12.2-s390x",
+    "sles.12.2",
+    "sles.12.1-s390x",
+    "sles.12.1",
+    "sles.12-s390x",
+    "sles.12",
+    "sles-s390x",
+    "sles",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "sles.15-x64": [
     "sles.15-x64",
     "sles.15",
@@ -5201,6 +5939,30 @@
     "sles.12",
     "sles",
     "linux",
+    "unix",
+    "any",
+    "base"
+  ],
+  "sles.15.1-s390x": [
+    "sles.15.1-s390x",
+    "sles.15.1",
+    "sles.15-s390x",
+    "sles.15",
+    "sles.12.4-s390x",
+    "sles.12.4",
+    "sles.12.3-s390x",
+    "sles.12.3",
+    "sles.12.2-s390x",
+    "sles.12.2",
+    "sles.12.1-s390x",
+    "sles.12.1",
+    "sles.12-s390x",
+    "sles.12",
+    "sles-s390x",
+    "sles",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -5767,6 +6529,18 @@
     "any",
     "base"
   ],
+  "ubuntu-s390x": [
+    "ubuntu-s390x",
+    "ubuntu",
+    "debian-s390x",
+    "debian",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "ubuntu-x64": [
     "ubuntu-x64",
     "ubuntu",
@@ -6032,6 +6806,20 @@
     "any",
     "base"
   ],
+  "ubuntu.16.04-s390x": [
+    "ubuntu.16.04-s390x",
+    "ubuntu.16.04",
+    "ubuntu-s390x",
+    "ubuntu",
+    "debian-s390x",
+    "debian",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "ubuntu.16.04-x64": [
     "ubuntu.16.04-x64",
     "ubuntu.16.04",
@@ -6093,6 +6881,20 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "ubuntu.16.10-s390x": [
+    "ubuntu.16.10-s390x",
+    "ubuntu.16.10",
+    "ubuntu-s390x",
+    "ubuntu",
+    "debian-s390x",
+    "debian",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -6162,6 +6964,20 @@
     "any",
     "base"
   ],
+  "ubuntu.17.04-s390x": [
+    "ubuntu.17.04-s390x",
+    "ubuntu.17.04",
+    "ubuntu-s390x",
+    "ubuntu",
+    "debian-s390x",
+    "debian",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "ubuntu.17.04-x64": [
     "ubuntu.17.04-x64",
     "ubuntu.17.04",
@@ -6223,6 +7039,20 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "ubuntu.17.10-s390x": [
+    "ubuntu.17.10-s390x",
+    "ubuntu.17.10",
+    "ubuntu-s390x",
+    "ubuntu",
+    "debian-s390x",
+    "debian",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -6292,6 +7122,20 @@
     "any",
     "base"
   ],
+  "ubuntu.18.04-s390x": [
+    "ubuntu.18.04-s390x",
+    "ubuntu.18.04",
+    "ubuntu-s390x",
+    "ubuntu",
+    "debian-s390x",
+    "debian",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "ubuntu.18.04-x64": [
     "ubuntu.18.04-x64",
     "ubuntu.18.04",
@@ -6353,6 +7197,20 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "ubuntu.18.10-s390x": [
+    "ubuntu.18.10-s390x",
+    "ubuntu.18.10",
+    "ubuntu-s390x",
+    "ubuntu",
+    "debian-s390x",
+    "debian",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -6422,6 +7280,20 @@
     "any",
     "base"
   ],
+  "ubuntu.19.04-s390x": [
+    "ubuntu.19.04-s390x",
+    "ubuntu.19.04",
+    "ubuntu-s390x",
+    "ubuntu",
+    "debian-s390x",
+    "debian",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "ubuntu.19.04-x64": [
     "ubuntu.19.04-x64",
     "ubuntu.19.04",
@@ -6483,6 +7355,20 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "ubuntu.19.10-s390x": [
+    "ubuntu.19.10-s390x",
+    "ubuntu.19.10",
+    "ubuntu-s390x",
+    "ubuntu",
+    "debian-s390x",
+    "debian",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -6552,6 +7438,20 @@
     "any",
     "base"
   ],
+  "ubuntu.20.04-s390x": [
+    "ubuntu.20.04-s390x",
+    "ubuntu.20.04",
+    "ubuntu-s390x",
+    "ubuntu",
+    "debian-s390x",
+    "debian",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "ubuntu.20.04-x64": [
     "ubuntu.20.04-x64",
     "ubuntu.20.04",
@@ -6613,6 +7513,20 @@
     "linux-arm64",
     "linux",
     "unix-arm64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "ubuntu.20.10-s390x": [
+    "ubuntu.20.10-s390x",
+    "ubuntu.20.10",
+    "ubuntu-s390x",
+    "ubuntu",
+    "debian-s390x",
+    "debian",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
     "unix",
     "any",
     "base"
@@ -6682,6 +7596,20 @@
     "any",
     "base"
   ],
+  "ubuntu.21.04-s390x": [
+    "ubuntu.21.04-s390x",
+    "ubuntu.21.04",
+    "ubuntu-s390x",
+    "ubuntu",
+    "debian-s390x",
+    "debian",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "ubuntu.21.04-x64": [
     "ubuntu.21.04-x64",
     "ubuntu.21.04",
@@ -6747,6 +7675,20 @@
     "any",
     "base"
   ],
+  "ubuntu.21.10-s390x": [
+    "ubuntu.21.10-s390x",
+    "ubuntu.21.10",
+    "ubuntu-s390x",
+    "ubuntu",
+    "debian-s390x",
+    "debian",
+    "linux-s390x",
+    "linux",
+    "unix-s390x",
+    "unix",
+    "any",
+    "base"
+  ],
   "ubuntu.21.10-x64": [
     "ubuntu.21.10-x64",
     "ubuntu.21.10",
@@ -6800,6 +7742,12 @@
   ],
   "unix-mips64": [
     "unix-mips64",
+    "unix",
+    "any",
+    "base"
+  ],
+  "unix-s390x": [
+    "unix-s390x",
     "unix",
     "any",
     "base"
