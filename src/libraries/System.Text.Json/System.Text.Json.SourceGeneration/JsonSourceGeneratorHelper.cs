@@ -201,7 +201,7 @@ namespace System.Text.Json.SourceGeneration
                         // If type had its JsonTypeInfo name changed, report to the user.
                         if (type.Name != typeMetadata.FriendlyName)
                         {
-                            // "Duplicate type name detected. Setting the JsonTypeInfo<T> property for type {0} in assembly {1} to {2}. To use please call JsonContext.Instance.{2}",
+                            // "Duplicate type name detected. Setting the JsonTypeInfo<T> property for type {0} in assembly {1} to {2}. To use please call JsonContext.Default.{2}",
                             _executionContext.ReportDiagnostic(Diagnostic.Create(
                                 _typeNameClash,
                                 Location.None,
@@ -803,19 +803,8 @@ namespace {_generationNamespace}
 {{
     {JsonContextDeclarationSource}
     {{
-        private static JsonContext s_instance;
-        public static JsonContext Instance
-        {{
-            get
-            {{
-                if (s_instance == null)
-                {{
-                    s_instance = new JsonContext();
-                }}
-
-                return s_instance;
-            }}
-        }}
+        private static JsonContext s_default;
+        public static JsonContext Default => s_default ??= new JsonContext();
 
         private JsonContext()
         {{
@@ -861,8 +850,7 @@ namespace {_generationNamespace}
             }
 
             sb.Append(@"
-        }
-");
+        }");
 
             if (typesCanBeSerializedDynamically)
             {

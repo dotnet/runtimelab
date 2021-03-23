@@ -31,8 +31,8 @@ namespace System.Text.Json.SourceGeneration.Tests
             // is another type with the name Location,  that the generator processed first
             // (in this case due to JsonSerializableAttribute ordering).
             // A warning to the user is displayed with this detail at compile time.
-            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.SystemTextJsonSourceGenerationTestsLocation);
-            Location obj = JsonSerializer.Deserialize(json, JsonContext.Instance.SystemTextJsonSourceGenerationTestsLocation);
+            string json = JsonSerializer.Serialize(expected, JsonContext.Default.SystemTextJsonSourceGenerationTestsLocation);
+            Location obj = JsonSerializer.Deserialize(json, JsonContext.Default.SystemTextJsonSourceGenerationTestsLocation);
 
             VerifyLocation(expected, obj);
         }
@@ -42,8 +42,8 @@ namespace System.Text.Json.SourceGeneration.Tests
         {
             IndexViewModel expected = CreateIndexViewModel();
 
-            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.IndexViewModel);
-            IndexViewModel obj = JsonSerializer.Deserialize(json, JsonContext.Instance.IndexViewModel);
+            string json = JsonSerializer.Serialize(expected, JsonContext.Default.IndexViewModel);
+            IndexViewModel obj = JsonSerializer.Deserialize(json, JsonContext.Default.IndexViewModel);
 
             VerifyIndexViewModel(expected, obj);
         }
@@ -53,8 +53,8 @@ namespace System.Text.Json.SourceGeneration.Tests
         {
             CampaignSummaryViewModel expected = CreateCampaignSummaryViewModel();
 
-            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.CampaignSummaryViewModel);
-            CampaignSummaryViewModel obj = JsonSerializer.Deserialize(json, JsonContext.Instance.CampaignSummaryViewModel);
+            string json = JsonSerializer.Serialize(expected, JsonContext.Default.CampaignSummaryViewModel);
+            CampaignSummaryViewModel obj = JsonSerializer.Deserialize(json, JsonContext.Default.CampaignSummaryViewModel);
 
             VerifyCampaignSummaryViewModel(expected, obj);
         }
@@ -64,8 +64,8 @@ namespace System.Text.Json.SourceGeneration.Tests
         {
             ActiveOrUpcomingEvent expected = CreateActiveOrUpcomingEvent();
 
-            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.ActiveOrUpcomingEvent);
-            ActiveOrUpcomingEvent obj = JsonSerializer.Deserialize(json, JsonContext.Instance.ActiveOrUpcomingEvent);
+            string json = JsonSerializer.Serialize(expected, JsonContext.Default.ActiveOrUpcomingEvent);
+            ActiveOrUpcomingEvent obj = JsonSerializer.Deserialize(json, JsonContext.Default.ActiveOrUpcomingEvent);
 
             VerifyActiveOrUpcomingEvent(expected, obj);
         }
@@ -75,8 +75,8 @@ namespace System.Text.Json.SourceGeneration.Tests
         {
             WeatherForecastWithPOCOs expected = CreateWeatherForecastWithPOCOs();
 
-            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.WeatherForecastWithPOCOs);
-            WeatherForecastWithPOCOs obj = JsonSerializer.Deserialize(json, JsonContext.Instance.WeatherForecastWithPOCOs);
+            string json = JsonSerializer.Serialize(expected, JsonContext.Default.WeatherForecastWithPOCOs);
+            WeatherForecastWithPOCOs obj = JsonSerializer.Deserialize(json, JsonContext.Default.WeatherForecastWithPOCOs);
 
             VerifyWeatherForecastWithPOCOs(expected, obj);
         }
@@ -86,8 +86,8 @@ namespace System.Text.Json.SourceGeneration.Tests
         {
             EmptyPoco expected = CreateEmptyPoco();
 
-            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.EmptyPoco);
-            EmptyPoco obj = JsonSerializer.Deserialize(json, JsonContext.Instance.EmptyPoco);
+            string json = JsonSerializer.Serialize(expected, JsonContext.Default.EmptyPoco);
+            EmptyPoco obj = JsonSerializer.Deserialize(json, JsonContext.Default.EmptyPoco);
 
             VerifyEmptyPoco(expected, obj);
         }
@@ -97,8 +97,8 @@ namespace System.Text.Json.SourceGeneration.Tests
         {
             RepeatedTypes.Location expected = CreateRepeatedLocation();
 
-            string json = JsonSerializer.Serialize(expected, JsonContext.Instance.Location);
-            RepeatedTypes.Location obj = JsonSerializer.Deserialize(json, JsonContext.Instance.Location);
+            string json = JsonSerializer.Serialize(expected, JsonContext.Default.Location);
+            RepeatedTypes.Location obj = JsonSerializer.Deserialize(json, JsonContext.Default.Location);
 
             VerifyRepeatedLocation(expected, obj);
         }
@@ -324,14 +324,14 @@ namespace System.Text.Json.SourceGeneration.Tests
         public static void NestedSameTypeWorks()
         {
             MyType myType = new() { Type = new() };
-            string json = JsonSerializer.Serialize(myType, JsonContext.Instance.MyType);
-            myType = JsonSerializer.Deserialize(json, JsonContext.Instance.MyType);
-            Assert.Equal(json, JsonSerializer.Serialize(myType, JsonContext.Instance.MyType));
+            string json = JsonSerializer.Serialize(myType, JsonContext.Default.MyType);
+            myType = JsonSerializer.Deserialize(json, JsonContext.Default.MyType);
+            Assert.Equal(json, JsonSerializer.Serialize(myType, JsonContext.Default.MyType));
 
             MyType2 myType2 = new() { Type = new MyIntermediateType() { Type = myType } };
-            json = JsonSerializer.Serialize(myType2, JsonContext.Instance.MyType2);
-            myType2 = JsonSerializer.Deserialize(json, JsonContext.Instance.MyType2);
-            Assert.Equal(json, JsonSerializer.Serialize(myType2, JsonContext.Instance.MyType2));
+            json = JsonSerializer.Serialize(myType2, JsonContext.Default.MyType2);
+            myType2 = JsonSerializer.Deserialize(json, JsonContext.Default.MyType2);
+            Assert.Equal(json, JsonSerializer.Serialize(myType2, JsonContext.Default.MyType2));
         }
 
         [Fact]
@@ -340,13 +340,13 @@ namespace System.Text.Json.SourceGeneration.Tests
             IndexViewModel index = CreateIndexViewModel();
             CampaignSummaryViewModel campaignSummary = CreateCampaignSummaryViewModel();
 
-            string json = JsonSerializer.Serialize(new object[] { index, campaignSummary }, JsonContext.Instance.ObjectArray);
-            object[] arr = JsonSerializer.Deserialize(json, JsonContext.Instance.ObjectArray);
+            string json = JsonSerializer.Serialize(new object[] { index, campaignSummary }, JsonContext.Default.ObjectArray);
+            object[] arr = JsonSerializer.Deserialize(json, JsonContext.Default.ObjectArray);
 
             JsonElement indexAsJsonElement = (JsonElement)arr[0];
             JsonElement campaignSummeryAsJsonElement = (JsonElement)arr[1];
-            VerifyIndexViewModel(index, JsonSerializer.Deserialize(indexAsJsonElement.GetRawText(), JsonContext.Instance.IndexViewModel));
-            VerifyCampaignSummaryViewModel(campaignSummary, JsonSerializer.Deserialize(campaignSummeryAsJsonElement.GetRawText(), JsonContext.Instance.CampaignSummaryViewModel));
+            VerifyIndexViewModel(index, JsonSerializer.Deserialize(indexAsJsonElement.GetRawText(), JsonContext.Default.IndexViewModel));
+            VerifyCampaignSummaryViewModel(campaignSummary, JsonSerializer.Deserialize(campaignSummeryAsJsonElement.GetRawText(), JsonContext.Default.CampaignSummaryViewModel));
         }
 
         [Fact]
@@ -386,13 +386,13 @@ namespace System.Text.Json.SourceGeneration.Tests
         public static void HandlesNestedTypes()
         {
             string json = @"{""MyInt"":5}";
-            MyNestedClass obj = JsonSerializer.Deserialize<MyNestedClass>(json, JsonContext.Instance.MyNestedClass);
+            MyNestedClass obj = JsonSerializer.Deserialize<MyNestedClass>(json, JsonContext.Default.MyNestedClass);
             Assert.Equal(5, obj.MyInt);
-            Assert.Equal(json, JsonSerializer.Serialize(obj, JsonContext.Instance.MyNestedClass));
+            Assert.Equal(json, JsonSerializer.Serialize(obj, JsonContext.Default.MyNestedClass));
 
-            MyNestedClass.MyNestedNestedClass obj2 = JsonSerializer.Deserialize<MyNestedClass.MyNestedNestedClass>(json, JsonContext.Instance.MyNestedNestedClass);
+            MyNestedClass.MyNestedNestedClass obj2 = JsonSerializer.Deserialize<MyNestedClass.MyNestedNestedClass>(json, JsonContext.Default.MyNestedNestedClass);
             Assert.Equal(5, obj2.MyInt);
-            Assert.Equal(json, JsonSerializer.Serialize(obj2, JsonContext.Instance.MyNestedNestedClass));
+            Assert.Equal(json, JsonSerializer.Serialize(obj2, JsonContext.Default.MyNestedNestedClass));
         }
 
         public class MyNestedClass

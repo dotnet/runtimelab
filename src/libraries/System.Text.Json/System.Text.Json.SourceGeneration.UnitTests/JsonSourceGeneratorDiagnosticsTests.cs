@@ -145,7 +145,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             };
             // Expected warning logs.
             string[] expectedWarningDiagnostics = new string[] {
-                "Duplicate type name detected. Setting the JsonTypeInfo<T> property for type HelloWorld.Location in assembly TestAssembly to HelloWorldLocation. To use please call JsonContext.Instance.HelloWorldLocation" };
+                "Duplicate type name detected. Setting the JsonTypeInfo<T> property for type HelloWorld.Location in assembly TestAssembly to HelloWorldLocation. To use please call JsonContext.Default.HelloWorldLocation" };
 
             CheckDiagnosticMessages(generatorDiags, DiagnosticSeverity.Info, expectedInfoDiagnostics);
             CheckDiagnosticMessages(generatorDiags, DiagnosticSeverity.Warning, expectedWarningDiagnostics);
