@@ -38,7 +38,7 @@ namespace System.Text.Json.SourceGeneration
                 new DiagnosticDescriptor(
                     "JsonSourceGeneration",
                     "Two types with the same name",
-                    "Duplicate type name detected. Setting the JsonTypeInfo<T> property for type {0} in assembly {1} to {2}. To use please call JsonContext.Instance.{2}",
+                    "Duplicate type name detected. Setting the JsonTypeInfo<T> property for type {0} in assembly {1} to {2}. To use please call JsonContext.Default.{2}",
                     "category",
                     DiagnosticSeverity.Warning,
                     isEnabledByDefault: true);
