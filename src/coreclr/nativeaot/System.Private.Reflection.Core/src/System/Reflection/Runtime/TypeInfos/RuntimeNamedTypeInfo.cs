@@ -43,8 +43,12 @@ namespace System.Reflection.Runtime.TypeInfos
                 foreach (CustomAttributeData cad in TrueCustomAttributes)
                     yield return cad;
 
-                if (0 != (Attributes & TypeAttributes.Import))
+                TypeAttributes attributes = Attributes;
+                if (0 != (attributes & TypeAttributes.Import))
                     yield return new RuntimePseudoCustomAttributeData(typeof(ComImportAttribute), null, null);
+
+                if (0 != (attributes & TypeAttributes.Serializable))
+                    yield return new RuntimePseudoCustomAttributeData(typeof(SerializableAttribute), null, null);
             }
         }
 

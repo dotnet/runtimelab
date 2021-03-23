@@ -339,7 +339,7 @@ namespace System.Runtime.CompilerServices
 
             if (RuntimeImports.AreTypesAssignable(eeTypePtr, EETypePtr.EETypePtrOf<Delegate>()))
             {
-                throw new ArgumentException(SR.Argument_InvalidValue);
+                throw new MemberAccessException();
             }
 
             if (eeTypePtr.IsAbstract)

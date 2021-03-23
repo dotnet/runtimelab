@@ -98,7 +98,7 @@ namespace System
         public static bool IsReflectionEmitSupported => true;
 #endif
 
-        public static bool IsInvokingStaticConstructorsSupported => true;
+        public static bool IsInvokingStaticConstructorsSupported => !IsNativeAot;
 
         // System.Security.Cryptography.Xml.XmlDsigXsltTransform.GetOutput() relies on XslCompiledTransform which relies
         // heavily on Reflection.Emit
