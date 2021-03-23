@@ -107,6 +107,9 @@ The .NET Foundation licenses this file to you under the MIT license.
     <!-- Exclude System.IO.Compression.Native.dll -->
     <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\*.Native.dll" />
   </ItemGroup>
+  <ItemGroup Condition="'$(IlcPgoOptimize)' == 'true'">
+    <MibcFile Include="$(IlcPath)\mibc\*.mibc" />
+  </ItemGroup>
 
   <ItemGroup>
     <DefaultFrameworkAssemblies Include="@(FrameworkAssemblies)" />
@@ -143,6 +146,9 @@ The .NET Foundation licenses this file to you under the MIT license.
     <ItemGroup>
       <!-- Exclude System.IO.Compression.Native.dll -->
       <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\*.Native.dll" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(IlcPgoOptimize)' == 'true'">
+      <MibcFile Include="$(IlcPath)\mibc\*.mibc" />
     </ItemGroup>
 
     <ItemGroup>
@@ -199,6 +205,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Include="@(IlcCompileInput)" />
       <IlcArg Include="-o:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename)$(IlcOutputFileExt)" />
       <IlcArg Include="@(IlcReference->'-r:%(Identity)')" />
+      <IlcArg Include="@(MibcFile->'--mibc:%(Identity)')" />
       <IlcArg Condition="$(IlcGenerateMetadataLog) == 'true'" Include="--metadatalog:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).metadata.csv" />
       <IlcArg Condition="$(IlcMultiModule) == 'true'" Include="--multifile" />
       <IlcArg Condition="$(Optimize) == 'true'" Include="-O" />

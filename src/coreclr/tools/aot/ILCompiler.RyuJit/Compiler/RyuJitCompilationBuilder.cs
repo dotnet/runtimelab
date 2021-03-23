@@ -21,11 +21,18 @@ namespace ILCompiler
         // calling the Use/Configure methods and still get something reasonable back.
         private KeyValuePair<string, string>[] _ryujitOptions = Array.Empty<KeyValuePair<string, string>>();
         private ILProvider _ilProvider = new CoreRTILProvider();
+        private ProfileDataManager _profileDataManager;
 
         public RyuJitCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group)
             : base(context, group,
                   new CoreRTNameMangler(context.Target.IsWindows ? (NodeMangler)new WindowsNodeMangler() : (NodeMangler)new UnixNodeMangler(), false))
         {
+        }
+
+        public RyuJitCompilationBuilder UseProfileData(IEnumerable<string> mibcFiles)
+        {
+            _profileDataManager = new ProfileDataManager(mibcFiles, _context);
+            return this;
         }
 
         public override CompilationBuilder UseBackendOptions(IEnumerable<string> options)
@@ -87,6 +94,11 @@ namespace ILCompiler
                     break;
             }
 
+            if (_optimizationMode != OptimizationMode.None && _profileDataManager != null)
+            {
+                jitFlagBuilder.Add(CorJitFlag.CORJIT_FLAG_BBOPT);
+            }
+
             // Do not bother with debug information if the debug info provider never gives anything.
             if (!(_debugInformationProvider is NullDebugInformationProvider))
                 jitFlagBuilder.Add(CorJitFlag.CORJIT_FLAG_DEBUG_INFO);
@@ -102,7 +114,7 @@ namespace ILCompiler
 
             JitConfigProvider.Initialize(_context.Target, jitFlagBuilder.ToArray(), _ryujitOptions);
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(new CompilerComparer()));
-            return new RyuJitCompilation(graph, factory, _compilationRoots, _ilProvider, _debugInformationProvider, _logger, _devirtualizationManager, _inliningPolicy ?? _compilationGroup, _instructionSetSupport, options);
+            return new RyuJitCompilation(graph, factory, _compilationRoots, _ilProvider, _debugInformationProvider, _logger, _devirtualizationManager, _inliningPolicy ?? _compilationGroup, _instructionSetSupport, _profileDataManager, options);
         }
     }
 }

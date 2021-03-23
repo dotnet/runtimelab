@@ -23,6 +23,7 @@ namespace ILCompiler
         private readonly ExternSymbolMappedField _hardwareIntrinsicFlags;
         private CountdownEvent _compilationCountdown;
         private readonly Dictionary<string, InstructionSet> _instructionSetMap;
+        private readonly ProfileDataManager _profileDataManager;
 
         public InstructionSetSupport InstructionSetSupport { get; }
 
@@ -36,6 +37,7 @@ namespace ILCompiler
             DevirtualizationManager devirtualizationManager,
             IInliningPolicy inliningPolicy,
             InstructionSetSupport instructionSetSupport,
+            ProfileDataManager profileDataManager,
             RyuJitCompilationOptions options)
             : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, devirtualizationManager, inliningPolicy, logger)
         {
@@ -51,7 +53,11 @@ namespace ILCompiler
 
                 _instructionSetMap.Add(instructionSetInfo.ManagedName, instructionSetInfo.InstructionSet);
             }
+
+            _profileDataManager = profileDataManager;
         }
+
+        public ProfileDataManager ProfileData => _profileDataManager;
 
         protected override void CompileInternal(string outputFile, ObjectDumper dumper)
         {

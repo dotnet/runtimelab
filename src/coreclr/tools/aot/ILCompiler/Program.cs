@@ -84,6 +84,8 @@ namespace ILCompiler
         private IReadOnlyList<string> _rootedAssemblies = Array.Empty<string>();
         private IReadOnlyList<string> _conditionallyRootedAssemblies = Array.Empty<string>();
 
+        public IReadOnlyList<string> _mibcFilePaths = Array.Empty<string>();
+
         private bool _help;
 
         private Program()
@@ -163,6 +165,7 @@ namespace ILCompiler
                 syntax.DefineOption("O", ref optimize, "Enable optimizations");
                 syntax.DefineOption("Os", ref optimizeSpace, "Enable optimizations, favor code space");
                 syntax.DefineOption("Ot", ref optimizeTime, "Enable optimizations, favor code speed");
+                syntax.DefineOptionList("m|mibc", ref _mibcFilePaths, "Mibc file(s) for profile guided optimization"); ;
                 syntax.DefineOption("g", ref _enableDebugInfo, "Emit debugging information");
                 syntax.DefineOption("nativelib", ref _nativeLib, "Compile as static or shared library");
                 syntax.DefineOption("exportsfile", ref _exportsFile, "File to write exported method definitions");
@@ -586,6 +589,9 @@ namespace ILCompiler
 
             string compilationUnitPrefix = _multiFile ? System.IO.Path.GetFileNameWithoutExtension(_outputFilePath) : "";
             builder.UseCompilationUnitPrefix(compilationUnitPrefix);
+
+            if (_mibcFilePaths.Count > 0)
+                ((RyuJitCompilationBuilder)builder).UseProfileData(_mibcFilePaths);
 
             PInvokeILEmitterConfiguration pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target, _directPInvokes, _directPInvokeLists);
 
