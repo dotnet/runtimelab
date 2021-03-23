@@ -281,12 +281,12 @@ namespace ILCompiler
                     return false;
                 }
 
-                // Exempt fields on custom attributes from blocking. We use a heuristic instead of
-                // unconditionally walking the base class hierarchy as a perf optimization.
-                // Reflection blocking will be active for framework assemblies and those follow the
-                // attribute naming guidelines.
-                if (owningType.Name.EndsWith("Attribute")
-                    && AttributeType != null
+                // Exempt fields on custom attributes from blocking.
+                // Attribute.Equals and Attribute.GetHashCode depends on being able to
+                // walk all fields on custom attributes using reflection.
+                // We're opening this hole in hopes that the fields won't have any "interesting"
+                // types (that would be themselves blocked). Doing that could be problematic.
+                if (AttributeType != null
                     && owningType.CanCastTo(AttributeType))
                 {
                     return false;
