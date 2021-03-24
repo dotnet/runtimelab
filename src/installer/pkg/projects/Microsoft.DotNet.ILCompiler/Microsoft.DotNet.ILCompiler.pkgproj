@@ -26,6 +26,9 @@
       <File Include="$(CoreCLRAotSdkDir)*">
         <TargetPath>sdk</TargetPath>
       </File>
+      <File Include="$(MibcOptimizationDataDir)/$(TargetOS)/$(TargetArchitecture)/**/*.mibc">
+        <TargetPath>mibc</TargetPath>
+      </File>
     </ItemGroup>
 
     <ItemGroup>
