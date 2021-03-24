@@ -46,6 +46,25 @@ namespace ILCompiler
             return (DefType)type;
         }
 
+        public static MethodDesc GetConstructorForCreateInstanceIntrinsic(this TypeDesc type)
+        {
+            MethodDesc ctor = type.GetDefaultConstructor();
+            if (ctor == null)
+            {
+                MetadataType activatorType = type.Context.SystemModule.GetKnownType("System", "Activator");
+                if (type.IsValueType && type.GetParameterlessConstructor() == null)
+                {
+                    ctor = activatorType.GetKnownMethod("ValueTypeWithNoConstructorMethod", null);
+                }
+                else
+                {
+                    ctor = activatorType.GetKnownMethod("MissingConstructorMethod", null);
+                }
+            }
+
+            return ctor;
+        }
+
         /// <summary>
         /// Gets a value indicating whether the method requires a hidden instantiation argument in addition
         /// to the formal arguments defined in the method signature.

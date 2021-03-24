@@ -395,6 +395,10 @@ namespace System.Runtime
     internal unsafe class RawCalliHelper
     {
         [MethodImplAttribute(MethodImplOptions.AggressiveInlining)]
+        public static void Call(System.IntPtr pfn, ref byte data)
+            => ((delegate*<ref byte, void>)pfn)(ref data);
+
+        [MethodImplAttribute(MethodImplOptions.AggressiveInlining)]
         public static T Call<T>(System.IntPtr pfn, IntPtr arg)
             => ((delegate*<IntPtr, T>)pfn)(arg);
 

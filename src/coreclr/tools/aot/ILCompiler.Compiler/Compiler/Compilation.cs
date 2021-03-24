@@ -269,14 +269,8 @@ namespace ILCompiler
                     return NodeFactory.RuntimeFieldHandle((FieldDesc)targetOfLookup);
                 case ReadyToRunHelperId.DefaultConstructor:
                     {
-                        var type = (TypeDesc)targetOfLookup;   
-                        MethodDesc ctor = type.GetDefaultConstructor();
-                        if (ctor == null)
-                        {
-                            MetadataType activatorType = TypeSystemContext.SystemModule.GetKnownType("System", "Activator");
-                            MetadataType classWithMissingCtor = activatorType.GetKnownNestedType("ClassWithMissingConstructor");
-                            ctor = classWithMissingCtor.GetParameterlessConstructor();
-                        }
+                        var type = (TypeDesc)targetOfLookup;
+                        MethodDesc ctor = type.GetConstructorForCreateInstanceIntrinsic();
                         return NodeFactory.CanonicalEntrypoint(ctor);
                     }
                 case ReadyToRunHelperId.ObjectAllocator:

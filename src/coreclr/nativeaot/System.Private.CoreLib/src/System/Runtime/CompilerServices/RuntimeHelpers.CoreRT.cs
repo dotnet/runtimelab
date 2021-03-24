@@ -234,6 +234,14 @@ namespace System.Runtime.CompilerServices
         }
 
         [Intrinsic]
+        internal static bool IsValueTypeWithNoParameterlessConstructor<T>()
+        {
+            // No good way to write a fallback. Only used in optimizations
+            // so being conservative is fine.
+            return false;
+        }
+
+        [Intrinsic]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static bool IsBitwiseEquatable<T>()
         {
