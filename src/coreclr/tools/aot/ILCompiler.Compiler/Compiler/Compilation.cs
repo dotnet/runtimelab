@@ -244,6 +244,25 @@ namespace ILCompiler
                 : ReadyToRunHelperId.NecessaryTypeHandle;
         }
 
+        public static MethodDesc GetConstructorForCreateInstanceIntrinsic(TypeDesc type)
+        {
+            MethodDesc ctor = type.GetDefaultConstructor();
+            if (ctor == null)
+            {
+                MetadataType activatorType = type.Context.SystemModule.GetKnownType("System", "Activator");
+                if (type.IsValueType && type.GetParameterlessConstructor() == null)
+                {
+                    ctor = activatorType.GetKnownMethod("ValueTypeWithNoConstructorMethod", null);
+                }
+                else
+                {
+                    ctor = activatorType.GetKnownMethod("MissingConstructorMethod", null);
+                }
+            }
+
+            return ctor;
+        }
+
         public ISymbolNode ComputeConstantLookup(ReadyToRunHelperId lookupKind, object targetOfLookup)
         {
             switch (lookupKind)
@@ -270,7 +289,7 @@ namespace ILCompiler
                 case ReadyToRunHelperId.DefaultConstructor:
                     {
                         var type = (TypeDesc)targetOfLookup;
-                        MethodDesc ctor = type.GetConstructorForCreateInstanceIntrinsic();
+                        MethodDesc ctor = GetConstructorForCreateInstanceIntrinsic(type);
                         return NodeFactory.CanonicalEntrypoint(ctor);
                     }
                 case ReadyToRunHelperId.ObjectAllocator:

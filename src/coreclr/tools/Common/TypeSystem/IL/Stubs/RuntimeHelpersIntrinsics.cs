@@ -47,10 +47,6 @@ namespace Internal.IL.Stubs
             {
                 result = elementType.IsGCPointer || (elementType is DefType defType && defType.ContainsGCPointers);
             }
-            else if (methodName == "IsValueTypeWithNoParameterlessConstructor")
-            {
-                result = elementType.IsValueType && elementType.GetParameterlessConstructor() == null;
-            }
             else if (methodName == "IsReference")
             {
                 result = elementType.IsGCPointer;

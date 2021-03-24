@@ -28,14 +28,12 @@ namespace System
         // This method is the public surface area. It wraps the CreateInstance intrinsic with the appropriate try/catch
         // block so that the correct exceptions are generated. Also, it handles the cases where the T type doesn't have
         // a default constructor.
+        //
+        // This method is intrinsic. The compiler might replace it with more efficient implementation.
         [DebuggerGuidedStepThrough]
+        [Intrinsic]
         public static unsafe T CreateInstance<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]T>()
         {
-            if (RuntimeHelpers.IsValueTypeWithNoParameterlessConstructor<T>())
-            {
-                return default;
-            }
-
             // Grab the pointer to the default constructor of the type. If T doesn't have a default
             // constructor, the intrinsic returns a marker pointer that we check for.
             IntPtr defaultConstructor = DefaultConstructorOf<T>();
