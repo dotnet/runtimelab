@@ -675,7 +675,9 @@ namespace System.Runtime.InteropServices
                 case HResults.COR_E_EXCEPTION:
                     return new System.Exception();
                 case HResults.COR_E_EXECUTIONENGINE:
+#pragma warning disable CS0618 // ExecutionEngineException is obsolete
                     return new System.ExecutionEngineException();
+#pragma warning restore CS0618
                 case HResults.COR_E_FIELDACCESS:
                     return new System.FieldAccessException();
                 case HResults.COR_E_FILELOAD:

@@ -973,7 +973,7 @@ namespace Internal.Runtime.Augments
             return Delegate.CreateObjectArrayDelegate(delegateType, invoker);
         }
 
-        internal class RawCalliHelper
+        internal static class RawCalliHelper
         {
             [DebuggerHidden]
             [DebuggerStepThrough]
