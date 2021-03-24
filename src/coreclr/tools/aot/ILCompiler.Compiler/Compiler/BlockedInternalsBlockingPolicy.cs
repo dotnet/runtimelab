@@ -156,6 +156,7 @@ namespace ILCompiler
         private MetadataType ArrayOfTType { get; }
         private MetadataType SerializationInfoType { get; }
         private MetadataType ISerializableType { get; }
+        private MetadataType AttributeType { get; }
 
         public BlockedInternalsBlockingPolicy(TypeSystemContext context)
         {
@@ -164,6 +165,7 @@ namespace ILCompiler
             ArrayOfTType = context.SystemModule.GetType("System", "Array`1", false);
             SerializationInfoType = context.SystemModule.GetType("System.Runtime.Serialization", "SerializationInfo", false);
             ISerializableType = context.SystemModule.GetType("System.Runtime.Serialization", "ISerializable", false);
+            AttributeType = context.SystemModule.GetType("System", "Attribute", false);
         }
 
         public override bool IsBlocked(MetadataType type)
@@ -278,6 +280,18 @@ namespace ILCompiler
                 {
                     return false;
                 }
+
+                // Exempt fields on custom attributes from blocking.
+                // Attribute.Equals and Attribute.GetHashCode depends on being able to
+                // walk all fields on custom attributes using reflection.
+                // We're opening this hole in hopes that the fields won't have any "interesting"
+                // types (that would be themselves blocked). Doing that could be problematic.
+                if (AttributeType != null
+                    && owningType.CanCastTo(AttributeType))
+                {
+                    return false;
+                }
+
                 return true;
             }
 
