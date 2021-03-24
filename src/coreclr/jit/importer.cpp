@@ -5324,22 +5324,20 @@ bool Compiler::verMergeEntryStates(BasicBlock* block, bool* changed)
 /*****************************************************************************
  * 'logMsg' is true if a log message needs to be logged. false if the caller has
  *   already logged it (presumably in a more detailed fashion than done here)
- * 'bVerificationException' is true for a verification exception, false for a
- *   "call unauthorized by host" exception.
  */
 
 void Compiler::verConvertBBToThrowVerificationException(BasicBlock* block DEBUGARG(bool logMsg))
 {
     block->bbJumpKind = BBJ_THROW;
     block->bbFlags |= BBF_FAILED_VERIFICATION;
+    block->bbFlags &= ~BBF_IMPORTED;
 
     impCurStmtOffsSet(block->bbCodeOffs);
 
-#ifdef DEBUG
-    // we need this since BeginTreeList asserts otherwise
+    // Clear the statement list as it exists so far; we're only going to have a verification exception.
     impStmtList = impLastStmt = nullptr;
-    block->bbFlags &= ~BBF_IMPORTED;
 
+#ifdef DEBUG
     if (logMsg)
     {
         JITLOG((LL_ERROR, "Verification failure: while compiling %s near IL offset %x..%xh \n", info.compFullName,
@@ -10576,7 +10574,7 @@ void Compiler::impResetLeaveBlock(BasicBlock* block, unsigned jmpAddr)
         //  d) as internal
         //  e) as rarely run
         dupBlock->bbRefs   = 0;
-        dupBlock->bbWeight = 0;
+        dupBlock->bbWeight = BB_ZERO_WEIGHT;
         dupBlock->bbFlags |= BBF_IMPORTED | BBF_INTERNAL | BBF_RUN_RARELY;
 
         // Insert the block right after the block which is getting reset so that BBJ_CALLFINALLY and BBJ_ALWAYS
@@ -19775,7 +19773,7 @@ void Compiler::impInlineInitVars(InlineInfo* pInlineInfo)
                         return;
                     }
                 }
-                else if (genTypeSize(sigType) < EA_PTRSIZE)
+                else if (genTypeSize(sigType) < TARGET_POINTER_SIZE)
                 {
                     // Narrowing cast.
                     if (inlArgNode->OperIs(GT_LCL_VAR))
