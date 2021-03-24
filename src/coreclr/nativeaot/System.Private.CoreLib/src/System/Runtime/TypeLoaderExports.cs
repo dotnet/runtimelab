@@ -392,7 +392,7 @@ namespace System.Runtime
     [ReflectionBlocked]
     public delegate IntPtr RuntimeObjectFactory(IntPtr context, IntPtr signature, object contextObject, ref IntPtr auxResult);
 
-    internal unsafe class RawCalliHelper
+    internal static unsafe class RawCalliHelper
     {
         [MethodImplAttribute(MethodImplOptions.AggressiveInlining)]
         public static T Call<T>(System.IntPtr pfn, IntPtr arg)

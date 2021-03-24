@@ -97,7 +97,7 @@ namespace Internal.Runtime.TypeLoader
         }
     }
 
-    internal class MemoryHelpers
+    internal static class MemoryHelpers
     {
         public static int AlignUp(int val, int alignment)
         {
@@ -133,7 +133,7 @@ namespace Internal.Runtime.TypeLoader
         }
     }
 
-    internal unsafe class EETypeCreator
+    internal static unsafe class EETypeCreator
     {
         private static IntPtr s_emptyGCDesc;
 

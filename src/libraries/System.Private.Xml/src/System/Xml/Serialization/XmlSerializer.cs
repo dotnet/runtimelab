@@ -956,7 +956,7 @@ namespace System.Xml.Serialization
             return o;
         }
 
-        private class XmlSerializerMappingKey
+        private sealed class XmlSerializerMappingKey
         {
             public XmlMapping Mapping;
             public XmlSerializerMappingKey(XmlMapping mapping)
