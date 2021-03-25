@@ -728,6 +728,23 @@ namespace ILCompiler
                 return _factory.CustomAttributeMetadata(new ReflectableCustomAttribute(module, caHandle)).Marked;
             }
 
+            public bool GeneratesMetadata(EcmaModule module, ExportedTypeHandle exportedTypeHandle)
+            {
+                try
+                {
+                    // Generate the forwarder only if we generated the target type.
+                    // If the target type is in a different compilation group, assume we generated it there.
+                    var targetType = (MetadataType)module.GetObject(exportedTypeHandle);
+                    return GeneratesMetadata(targetType) || !_factory.CompilationModuleGroup.ContainsType(targetType);
+                }
+                catch (TypeSystemException)
+                {
+                    // No harm in generating a forwarder that didn't resolve.
+                    // We'll get matching behavior at runtime.
+                    return true;
+                }
+            }
+
             public bool IsBlocked(MetadataType typeDef)
             {
                 return _blockingPolicy.IsBlocked(typeDef);
