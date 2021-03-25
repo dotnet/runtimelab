@@ -769,13 +769,12 @@ namespace System.Text.Json.Serialization.Metadata
     public sealed partial class JsonCollectionTypeInfo<T> : System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>
     {
         public JsonCollectionTypeInfo(System.Text.Json.Serialization.Metadata.JsonClassInfo.ConstructorDelegate createObjectFunc, System.Text.Json.Serialization.JsonConverter<T> converter, System.Text.Json.Serialization.Metadata.JsonClassInfo elementInfo, System.Text.Json.Serialization.JsonNumberHandling? numberHandling, System.Text.Json.JsonSerializerOptions options) { }
-        public void CompleteInitialization() { }
     }
     public sealed partial class JsonObjectInfo<T> : System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>
     {
         public JsonObjectInfo(System.Text.Json.Serialization.Metadata.JsonClassInfo.ConstructorDelegate? createObjectFunc, System.Text.Json.Serialization.JsonNumberHandling? numberHandling, System.Text.Json.JsonSerializerOptions options) { }
         public void AddProperty(System.Text.Json.Serialization.Metadata.JsonPropertyInfo jsonPropertyInfo) { throw null; }
-        public void CompleteInitialization(bool canBeDynamic) { }
+        public void CompleteInitialization() { }
     }
     public abstract partial class JsonPropertyInfo
     {
@@ -806,11 +805,11 @@ namespace System.Text.Json.Serialization.Metadata
     public abstract partial class JsonTypeInfo<T> : System.Text.Json.Serialization.Metadata.JsonClassInfo
     {
         internal JsonTypeInfo() { }
+        public void RegisterToOptions() { }
     }
     public sealed partial class JsonValueInfo<T> : System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>
     {
-        public JsonValueInfo(System.Text.Json.Serialization.JsonConverter<T> converter, System.Text.Json.Serialization.JsonNumberHandling? numberHandling, System.Text.Json.JsonSerializerOptions options) { }
-        public void CompleteInitialization() { }
+        public JsonValueInfo(System.Text.Json.Serialization.JsonConverter converter, System.Text.Json.Serialization.JsonNumberHandling? numberHandling, System.Text.Json.JsonSerializerOptions options) { }
     }
     public static partial class KnownCollectionTypeInfos<T>
     {

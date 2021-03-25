@@ -1,14 +1,29 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+#if !GENERATE_JSON_METADATA
+    public class CustomConverterTests_DynamicSerializer : CustomConverterTests
     {
+        public CustomConverterTests_DynamicSerializer() : base(SerializationWrapper.StringSerializer, DeserializationWrapper.StringDeserializer) { }
+    }
+#else
+    public class CustomConverterTests_MetadataBasedSerializer : CustomConverterTests
+    {
+        public CustomConverterTests_MetadataBasedSerializer() : base(SerializationWrapper.StringMetadataSerializer, DeserializationWrapper.StringMetadataDeserialzer) { }
+    }
+#endif
+
+    public abstract partial class CustomConverterTests : SerializerTests
+    {
+        public CustomConverterTests(SerializationWrapper serializer, DeserializationWrapper deserializer) : base(serializer, deserializer) { }
+
         [Fact]
-        public static void MultipleConvertersInObjectArray()
+        public async Task MultipleConvertersInObjectArray()
         {
             const string expectedJson = @"[""?"",{""TypeDiscriminator"":1,""CreditLimit"":100,""Name"":""C""},null]";
 
@@ -23,20 +38,20 @@ namespace System.Text.Json.Serialization.Tests
             MyBoolEnum myBoolEnum = MyBoolEnum.Unknown;
             MyBoolEnum? myNullBoolEnum = null;
 
-            string json = JsonSerializer.Serialize(new object[] { myBoolEnum, customer, myNullBoolEnum }, options);
+            string json = await Serializer.SerializeWrapper(new object[] { myBoolEnum, customer, myNullBoolEnum }, options);
             Assert.Equal(expectedJson, json);
 
-            JsonElement jsonElement = JsonSerializer.Deserialize<JsonElement>(json, options);
+            JsonElement jsonElement = await Deserializer.DeserializeWrapper<JsonElement>(json, options);
             string jsonElementString = jsonElement.ToString();
             Assert.Equal(expectedJson, jsonElementString);
         }
 
         [Fact]
-        public static void OptionsArePassedToCreateConverter()
+        public async Task OptionsArePassedToCreateConverter()
         {
             TestFactory factory = new TestFactory();
             JsonSerializerOptions options = new JsonSerializerOptions { Converters = { factory } };
-            string json = JsonSerializer.Serialize("Test", options);
+            string json = await Serializer.SerializeWrapper("Test", options);
             Assert.Equal(@"""Test""", json);
             Assert.Same(options, factory.Options);
         }
@@ -86,7 +101,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void VerifyConverterWithTrailingWhitespace()
+        public async Task VerifyConverterWithTrailingWhitespace()
         {
             string json = "{}   ";
 
@@ -96,13 +111,13 @@ namespace System.Text.Json.Serialization.Tests
             byte[] utf8 = Encoding.UTF8.GetBytes(json);
 
             // The serializer will finish reading the whitespace and no exception will be thrown.
-            Customer c = JsonSerializer.Deserialize<Customer>(utf8, options);
+            Customer c = await Deserializer.DeserializeWrapper<Customer>(utf8, options);
 
             Assert.Null(c);
         }
 
         [Fact]
-        public static void VerifyConverterWithTrailingComments()
+        public async Task VerifyConverterWithTrailingComments()
         {
             string json = "{}  //";
             byte[] utf8 = Encoding.UTF8.GetBytes(json);
@@ -116,7 +131,7 @@ namespace System.Text.Json.Serialization.Tests
             options = new JsonSerializerOptions();
             options.Converters.Add(new ConverterReturningNull());
             options.ReadCommentHandling = JsonCommentHandling.Skip;
-            Customer c = JsonSerializer.Deserialize<Customer>(utf8, options);
+            Customer c = await Deserializer.DeserializeWrapper<Customer>(utf8, options);
             Assert.Null(c);
         }
 
@@ -144,7 +159,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void VerifyObjectConverterWithPreservedReferences()
+        public async Task VerifyObjectConverterWithPreservedReferences()
         {
             var json = "true";
             byte[] utf8 = Encoding.UTF8.GetBytes(json);
@@ -155,7 +170,7 @@ namespace System.Text.Json.Serialization.Tests
             };
             options.Converters.Add(new ObjectBoolConverter());
 
-            object obj = (JsonSerializer.Deserialize<object>(utf8, options));
+            object obj = await Deserializer.DeserializeWrapper<object>(utf8, options);
 
             Assert.IsType<bool>(obj);
             Assert.Equal(true, obj);

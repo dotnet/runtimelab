@@ -2,11 +2,12 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         // Test class for a contravariant converter (IDictionary->Dictionary).
         private class ContravariantDictionaryConverter : JsonConverter<IDictionary<string, long>>
@@ -75,14 +76,14 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void CustomDictionaryConverterContravariant()
+        public async Task CustomDictionaryConverterContravariant()
         {
             const string Json = @"{""Key1"":1,""Key2"":2}";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new ContravariantDictionaryConverter(10));
 
-            Dictionary<string, long> dictionary = JsonSerializer.Deserialize<Dictionary<string, long>>(Json, options);
+            Dictionary<string, long> dictionary = await Deserializer.DeserializeWrapper<Dictionary<string, long>>(Json, options);
             Assert.Equal(11, dictionary["Key1"]);
             Assert.Equal(12, dictionary["Key2"]);
 
@@ -90,14 +91,14 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ClassHavingDictionaryFieldWhichUsingCustomConverterTest()
+        public async Task ClassHavingDictionaryFieldWhichUsingCustomConverterTest()
         {
             const string Json = @"{""MyInt"":32,""MyDictionary"":{""Key1"":1,""Key2"":2},""MyString"":""Hello""}";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new ContravariantDictionaryConverter(10));
 
-            ClassHavingDictionaryFieldWhichUsesCustomConverter dictionary = JsonSerializer.Deserialize<ClassHavingDictionaryFieldWhichUsesCustomConverter>(Json, options);
+            ClassHavingDictionaryFieldWhichUsesCustomConverter dictionary = await Deserializer.DeserializeWrapper<ClassHavingDictionaryFieldWhichUsesCustomConverter>(Json, options);
             Assert.Equal(11, dictionary.MyDictionary["Key1"]);
             Assert.Equal(12, dictionary.MyDictionary["Key2"]);
             Assert.Equal(32, dictionary.MyInt);

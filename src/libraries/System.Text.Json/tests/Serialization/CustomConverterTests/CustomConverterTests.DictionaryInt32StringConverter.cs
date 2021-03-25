@@ -2,11 +2,12 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         /// <summary>
         /// Demonstrates a <see cref="Dictionary{int, string}"> converter using a JSON object with property names representing keys.
@@ -59,18 +60,18 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void IntToStringDictionaryObjectConverter()
+        public async Task IntToStringDictionaryObjectConverter()
         {
             const string json = @"{""1"":""ValueOne"",""2"":""ValueTwo""}";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new DictionaryInt32StringConverter());
 
-            Dictionary<int, string> dictionary = JsonSerializer.Deserialize<Dictionary<int, string>>(json, options);
+            Dictionary<int, string> dictionary = await Deserializer.DeserializeWrapper<Dictionary<int, string>>(json, options);
             Assert.Equal("ValueOne", dictionary[1]);
             Assert.Equal("ValueTwo", dictionary[2]);
 
-            string jsonSerialized = JsonSerializer.Serialize(dictionary, options);
+            string jsonSerialized = await Serializer.SerializeWrapper(dictionary, options);
             Assert.Equal(json, jsonSerialized);
         }
     }

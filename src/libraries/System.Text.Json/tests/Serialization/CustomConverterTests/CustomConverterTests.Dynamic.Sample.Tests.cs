@@ -1,15 +1,15 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Collections.Generic;
-using System.Dynamic;
+using System.Threading.Tasks;
 using System.Text.Json.Serialization.Samples;
 using Xunit;
+
 using static System.Text.Json.Serialization.Samples.JsonSerializerExtensions;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         private const string ExpectedDomJson = "{\"MyString\":\"Hello!\",\"MyNull\":null,\"MyBoolean\":false,\"MyArray\":[2,3,42]," +
             "\"MyInt\":43,\"MyDateTime\":\"2020-07-08T00:00:00\",\"MyGuid\":\"ed957609-cdfe-412f-88c1-02daca1b4f51\"," +
@@ -23,13 +23,13 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void VerifyPrimitives()
+        public async Task VerifyPrimitives()
         {
             var options = new JsonSerializerOptions();
             options.EnableDynamicTypes();
             options.Converters.Add(new JsonStringEnumConverter());
 
-            dynamic obj = JsonSerializer.Deserialize<dynamic>(DynamicTests.Json, options);
+            dynamic obj = await Deserializer.DeserializeWrapper<dynamic>(DynamicTests.Json, options);
             Assert.IsType<JsonDynamicObject>(obj);
 
             // JsonDynamicString has an implicit cast to string.
@@ -55,7 +55,7 @@ namespace System.Text.Json.Serialization.Tests
             Assert.Equal(MyCustomEnum.FortyTwo, (MyCustomEnum)obj.MyInt);
 
             // Verify floating point.
-            obj = JsonSerializer.Deserialize<dynamic>("4.2", options);
+            obj = await Deserializer.DeserializeWrapper<dynamic>("4.2", options);
             Assert.IsType<JsonDynamicNumber>(obj);
 
             double dbl = (double)obj;
@@ -68,13 +68,13 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void VerifyArray()
+        public async Task VerifyArray()
         {
             var options = new JsonSerializerOptions();
             options.EnableDynamicTypes();
             options.Converters.Add(new JsonStringEnumConverter());
 
-            dynamic obj = JsonSerializer.Deserialize<dynamic>(DynamicTests.Json, options);
+            dynamic obj = await Deserializer.DeserializeWrapper<dynamic>(DynamicTests.Json, options);
             Assert.IsType<JsonDynamicObject>(obj);
 
             Assert.IsType<JsonDynamicObject>(obj);
@@ -98,7 +98,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void JsonDynamicTypes_Serialize()
+        public async Task JsonDynamicTypes_Serialize()
         {
             var options = new JsonSerializerOptions();
             options.EnableDynamicTypes();
@@ -109,13 +109,13 @@ namespace System.Text.Json.Serialization.Tests
 
             dynamic dynamicString = new JsonDynamicString(GuidJson, options);
             Assert.Equal(DynamicTests.MyGuid, (Guid)dynamicString);
-            string json = JsonSerializer.Serialize(dynamicString, options);
+            string json = await Serializer.SerializeWrapper(dynamicString, options);
             Assert.Equal(GuidJsonWithQuotes, json);
 
             // char (string)
             dynamicString = new JsonDynamicString("a", options);
             Assert.Equal('a', (char)dynamicString);
-            json = JsonSerializer.Serialize(dynamicString, options);
+            json = await Serializer.SerializeWrapper(dynamicString, options);
             Assert.Equal("\"a\"", json);
 
             // Number (JsonElement)
@@ -123,21 +123,21 @@ namespace System.Text.Json.Serialization.Tests
             {
                 dynamic dynamicNumber = new JsonDynamicNumber(doc.RootElement, options);
                 Assert.Equal<decimal>(decimal.MaxValue, (decimal)dynamicNumber);
-                json = JsonSerializer.Serialize(dynamicNumber, options);
+                json = await Serializer.SerializeWrapper(dynamicNumber, options);
                 Assert.Equal(decimal.MaxValue.ToString(), json);
             }
 
             // Boolean
             dynamic dynamicBool = new JsonDynamicBoolean(true, options);
             Assert.True(dynamicBool);
-            json = JsonSerializer.Serialize(dynamicBool, options);
+            json = await Serializer.SerializeWrapper(dynamicBool, options);
             Assert.Equal("true", json);
 
             // Array
             dynamic arr = new JsonDynamicArray(options);
             arr.Add(1);
             arr.Add(2);
-            json = JsonSerializer.Serialize(arr, options);
+            json = await Serializer.SerializeWrapper(arr, options);
             Assert.Equal("[1,2]", json);
 
             // Object
@@ -145,49 +145,49 @@ namespace System.Text.Json.Serialization.Tests
             dynamicObject["One"] = 1;
             dynamicObject["Two"] = 2;
 
-            json = JsonSerializer.Serialize(dynamicObject, options);
+            json = await Serializer.SerializeWrapper(dynamicObject, options);
             JsonTestHelper.AssertJsonEqual("{\"One\":1,\"Two\":2}", json);
         }
 
         [Fact]
-        public static void JsonDynamicTypes_Deserialize()
+        public async Task JsonDynamicTypes_Deserialize()
         {
             var options = new JsonSerializerOptions();
             options.EnableDynamicTypes();
 
-            JsonSerializer.Deserialize<JsonDynamicType>("{}", options);
-            JsonSerializer.Deserialize<JsonDynamicArray>("[]", options);
-            JsonSerializer.Deserialize<JsonDynamicBoolean>("true", options);
-            JsonSerializer.Deserialize<JsonDynamicNumber>("0", options);
-            JsonSerializer.Deserialize<JsonDynamicNumber>("1.2", options);
-            JsonSerializer.Deserialize<JsonDynamicObject>("{}", options);
-            JsonSerializer.Deserialize<JsonDynamicString>("\"str\"", options);
+            await Deserializer.DeserializeWrapper<JsonDynamicType>("{}", options);
+            await Deserializer.DeserializeWrapper<JsonDynamicArray>("[]", options);
+            await Deserializer.DeserializeWrapper<JsonDynamicBoolean>("true", options);
+            await Deserializer.DeserializeWrapper<JsonDynamicNumber>("0", options);
+            await Deserializer.DeserializeWrapper<JsonDynamicNumber>("1.2", options);
+            await Deserializer.DeserializeWrapper<JsonDynamicObject>("{}", options);
+            await Deserializer.DeserializeWrapper<JsonDynamicString>("\"str\"", options);
         }
 
         [Fact]
-        public static void JsonDynamicTypes_Deserialize_AsObject()
+        public async Task JsonDynamicTypes_Deserialize_AsObject()
         {
             var options = new JsonSerializerOptions();
             options.EnableDynamicTypes();
 
-            Assert.IsType<JsonDynamicArray>(JsonSerializer.Deserialize<object>("[]", options));
-            Assert.IsType<JsonDynamicBoolean>(JsonSerializer.Deserialize<object>("true", options));
-            Assert.IsType<JsonDynamicNumber>(JsonSerializer.Deserialize<object>("0", options));
-            Assert.IsType<JsonDynamicNumber>(JsonSerializer.Deserialize<object>("1.2", options));
-            Assert.IsType<JsonDynamicObject>(JsonSerializer.Deserialize<object>("{}", options));
-            Assert.IsType<JsonDynamicString>(JsonSerializer.Deserialize<object>("\"str\"", options));
+            Assert.IsType<JsonDynamicArray>(await Deserializer.DeserializeWrapper<object>("[]", options));
+            Assert.IsType<JsonDynamicBoolean>(await Deserializer.DeserializeWrapper<object>("true", options));
+            Assert.IsType<JsonDynamicNumber>(await Deserializer.DeserializeWrapper<object>("0", options));
+            Assert.IsType<JsonDynamicNumber>(await Deserializer.DeserializeWrapper<object>("1.2", options));
+            Assert.IsType<JsonDynamicObject>(await Deserializer.DeserializeWrapper<object>("{}", options));
+            Assert.IsType<JsonDynamicString>(await Deserializer.DeserializeWrapper<object>("\"str\"", options));
         }
 
         /// <summary>
         /// Use a mutable DOM with the 'dynamic' keyword.
         /// </summary>
         [Fact]
-        public static void VerifyMutableDom_UsingDynamicKeyword()
+        public async Task VerifyMutableDom_UsingDynamicKeyword()
         {
             var options = new JsonSerializerOptions();
             options.EnableDynamicTypes();
 
-            dynamic obj = JsonSerializer.Deserialize<dynamic>(DynamicTests.Json, options);
+            dynamic obj = await Deserializer.DeserializeWrapper<dynamic>(DynamicTests.Json, options);
             Assert.IsType<JsonDynamicObject>(obj);
 
             // Change some primitives.
@@ -214,7 +214,7 @@ namespace System.Text.Json.Serialization.Tests
             // Add an element.
             arr.Add(42);
 
-            string json = JsonSerializer.Serialize(obj, options);
+            string json = await Serializer.SerializeWrapper(obj, options);
             JsonTestHelper.AssertJsonEqual(ExpectedDomJson, json);
         }
 
@@ -222,12 +222,12 @@ namespace System.Text.Json.Serialization.Tests
         /// Use a mutable DOM without the 'dynamic' keyword.
         /// </summary>
         [Fact]
-        public static void VerifyMutableDom_WithoutUsingDynamicKeyword()
+        public async Task VerifyMutableDom_WithoutUsingDynamicKeyword()
         {
             var options = new JsonSerializerOptions();
             options.EnableDynamicTypes();
 
-            JsonDynamicObject obj = (JsonDynamicObject)JsonSerializer.Deserialize<object>(DynamicTests.Json, options);
+            JsonDynamicObject obj = (JsonDynamicObject)await Deserializer.DeserializeWrapper<object>(DynamicTests.Json, options);
 
             // Change some primitives.
             obj["MyString"] = "Hello!";
@@ -255,7 +255,7 @@ namespace System.Text.Json.Serialization.Tests
             // Add an element.
             arr.Add(42);
 
-            string json = JsonSerializer.Serialize(obj, options);
+            string json = await Serializer.SerializeWrapper(obj, options);
             JsonTestHelper.AssertJsonEqual(ExpectedDomJson, json);
         }
 
@@ -264,19 +264,19 @@ namespace System.Text.Json.Serialization.Tests
         /// meaning the 'JsonDynamicType' values are used instead of raw primitives.
         /// </summary>
         [Fact]
-        public static void VerifyMutableDom_WithoutUsingDynamicKeyword_JsonDynamicType()
+        public async Task VerifyMutableDom_WithoutUsingDynamicKeyword_JsonDynamicType()
         {
             var options = new JsonSerializerOptions();
             options.EnableDynamicTypes();
 
-            JsonDynamicObject obj = (JsonDynamicObject)JsonSerializer.Deserialize<object>(DynamicTests.Json, options);
-            Verify();
+            JsonDynamicObject obj = (JsonDynamicObject)await Deserializer.DeserializeWrapper<object>(DynamicTests.Json, options);
+            await Verify();
 
             // Verify the values are round-trippable.
             ((JsonDynamicArray)obj["MyArray"]).RemoveAt(2);
-            Verify();
+            await Verify();
 
-            void Verify()
+            async Task Verify()
             {
                 // Change some primitives.
                 ((JsonDynamicType)obj["MyString"]).SetValue("Hello!");
@@ -301,28 +301,28 @@ namespace System.Text.Json.Serialization.Tests
                 // Add an element.
                 arr.Add(new JsonDynamicNumber(42, options));
 
-                string json = JsonSerializer.Serialize(obj, options);
+                string json = await Serializer.SerializeWrapper(obj, options);
                 JsonTestHelper.AssertJsonEqual(ExpectedDomJson, json);
             }
         }
 
         [Fact]
-        public static void DynamicObject_MissingProperty()
+        public async Task DynamicObject_MissingProperty()
         {
             var options = new JsonSerializerOptions();
             options.EnableDynamicTypes();
-            dynamic obj = JsonSerializer.Deserialize<dynamic>("{}", options);
+            dynamic obj = await Deserializer.DeserializeWrapper<dynamic>("{}", options);
 
             // We return null here; ExpandoObject throws for missing properties.
             Assert.Equal(null, obj.NonExistingProperty);
         }
 
         [Fact]
-        public static void DynamicObject_CaseSensitivity()
+        public async Task DynamicObject_CaseSensitivity()
         {
             var options = new JsonSerializerOptions();
             options.EnableDynamicTypes();
-            dynamic obj = JsonSerializer.Deserialize<dynamic>("{\"MyProperty\":42}", options);
+            dynamic obj = await Deserializer.DeserializeWrapper<dynamic>("{\"MyProperty\":42}", options);
 
             Assert.Equal(42, (int)obj.MyProperty);
             Assert.Null(obj.myproperty);
@@ -331,7 +331,7 @@ namespace System.Text.Json.Serialization.Tests
             options = new JsonSerializerOptions();
             options.EnableDynamicTypes();
             options.PropertyNameCaseInsensitive = true;
-            obj = JsonSerializer.Deserialize<dynamic>("{\"MyProperty\":42}", options);
+            obj = await Deserializer.DeserializeWrapper<dynamic>("{\"MyProperty\":42}", options);
 
             Assert.Equal(42, (int)obj.MyProperty);
             Assert.Equal(42, (int)obj.myproperty);
@@ -339,7 +339,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void NamingPoliciesAreNotUsed()
+        public async Task NamingPoliciesAreNotUsed()
         {
             const string Json = "{\"myProperty\":42}";
 
@@ -347,53 +347,53 @@ namespace System.Text.Json.Serialization.Tests
             options.EnableDynamicTypes();
             options.PropertyNamingPolicy = new SimpleSnakeCasePolicy();
 
-            dynamic obj = JsonSerializer.Deserialize<dynamic>(Json, options);
+            dynamic obj = await Deserializer.DeserializeWrapper<dynamic>(Json, options);
 
-            string json = JsonSerializer.Serialize(obj, options);
+            string json = await Serializer.SerializeWrapper(obj, options);
             JsonTestHelper.AssertJsonEqual(Json, json);
         }
 
         [Fact]
-        public static void NullHandling()
+        public async Task NullHandling()
         {
             var options = new JsonSerializerOptions();
             options.EnableDynamicTypes();
 
-            dynamic obj = JsonSerializer.Deserialize<dynamic>("null", options);
+            dynamic obj = await Deserializer.DeserializeWrapper<dynamic>("null", options);
             Assert.Null(obj);
         }
 
         [Fact]
-        public static void QuotedNumbers_Deserialize()
+        public async Task QuotedNumbers_Deserialize()
         {
             var options = new JsonSerializerOptions();
             options.EnableDynamicTypes();
             options.NumberHandling = JsonNumberHandling.AllowReadingFromString |
                 JsonNumberHandling.AllowNamedFloatingPointLiterals;
 
-            dynamic obj = JsonSerializer.Deserialize<dynamic>("\"42\"", options);
+            dynamic obj = await Deserializer.DeserializeWrapper<dynamic>("\"42\"", options);
             Assert.IsType<JsonDynamicString>(obj);
             Assert.Equal(42, (int)obj);
 
-            obj = JsonSerializer.Deserialize<dynamic>("\"NaN\"", options);
+            obj = await Deserializer.DeserializeWrapper<dynamic>("\"NaN\"", options);
             Assert.IsType<JsonDynamicString>(obj);
             Assert.Equal(double.NaN, (double)obj);
             Assert.Equal(float.NaN, (float)obj);
         }
 
         [Fact]
-        public static void QuotedNumbers_Serialize()
+        public async Task QuotedNumbers_Serialize()
         {
             var options = new JsonSerializerOptions();
             options.EnableDynamicTypes();
             options.NumberHandling = JsonNumberHandling.WriteAsString;
 
             dynamic obj = 42L;
-            string json = JsonSerializer.Serialize<dynamic>(obj, options);
+            string json = await Serializer.SerializeWrapper<dynamic>(obj, options);
             Assert.Equal("\"42\"", json);
 
             obj = double.NaN;
-            json = JsonSerializer.Serialize<dynamic>(obj, options);
+            json = await Serializer.SerializeWrapper<dynamic>(obj, options);
             Assert.Equal("\"NaN\"", json);
         }
     }

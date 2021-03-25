@@ -1,11 +1,12 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         /// <summary>
         /// A converter that uses Object as it's type.
@@ -44,7 +45,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void CustomObjectConverter()
+        public async Task CustomObjectConverter()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new ObjectToCustomerOrIntConverter());
@@ -54,29 +55,29 @@ namespace System.Text.Json.Serialization.Tests
                 string json = JsonSerializer.Serialize<object>(customer, options);
                 Assert.Contains(typeof(Customer).ToString(), json);
 
-                json = JsonSerializer.Serialize(customer, options);
+                json = await Serializer.SerializeWrapper(customer, options);
                 Assert.Contains(typeof(Customer).ToString(), json);
             }
 
             {
-                string json = JsonSerializer.Serialize(42, options);
+                string json = await Serializer.SerializeWrapper(42, options);
                 Assert.Contains(typeof(int).ToString(), json);
             }
 
             {
-                object obj = JsonSerializer.Deserialize<Customer>("{}", options);
+                object obj = await Deserializer.DeserializeWrapper<Customer>("{}", options);
                 Assert.IsType<Customer>(obj);
                 Assert.Equal("HelloWorld", ((Customer)obj).Name);
             }
 
             {
                 // The converter doesn't handle object.
-                object obj = JsonSerializer.Deserialize<object>("{}", options);
+                object obj = await Deserializer.DeserializeWrapper<object>("{}", options);
                 Assert.IsType<JsonElement>(obj);
             }
 
             {
-                int obj = JsonSerializer.Deserialize<int>("0", options);
+                int obj = await Deserializer.DeserializeWrapper<int>("0", options);
                 Assert.Equal(42, obj);
             }
         }
@@ -116,25 +117,25 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void CustomObjectBoolConverter()
+        public async Task CustomObjectBoolConverter()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new ObjectToBoolConverter());
 
             {
-                object obj = JsonSerializer.Deserialize<object>("true", options);
+                object obj = await Deserializer.DeserializeWrapper<object>("true", options);
                 Assert.IsType<bool>(obj);
                 Assert.True((bool)obj);
             }
 
             {
-                object obj = JsonSerializer.Deserialize<object>("false", options);
+                object obj = await Deserializer.DeserializeWrapper<object>("false", options);
                 Assert.IsType<bool>(obj);
                 Assert.False((bool)obj);
             }
 
             {
-                object obj = JsonSerializer.Deserialize<object>("{}", options);
+                object obj = await Deserializer.DeserializeWrapper<object>("{}", options);
                 Assert.IsType<JsonElement>(obj);
             }
         }
@@ -206,7 +207,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ClassWithFieldHavingCustomConverterTest()
+        public async Task ClassWithFieldHavingCustomConverterTest()
         {
             TestClassWithFieldsHavingCustomConverter testObject = new TestClassWithFieldsHavingCustomConverter
             {
@@ -228,7 +229,7 @@ namespace System.Text.Json.Serialization.Tests
             var options = new JsonSerializerOptions();
             options.Converters.Add(new ObjectToCustomerConverter());
 
-            string json = JsonSerializer.Serialize(testObject, options);
+            string json = await Serializer.SerializeWrapper(testObject, options);
 
             Assert.Equal("{\"Name\":\"John Doe\"," +
                 "\"Customer\":{\"Name\":\"Customer Doe\",\"CreditLimit\":1000,\"Address\":null}," +
@@ -237,7 +238,7 @@ namespace System.Text.Json.Serialization.Tests
                 "\"IntValue\":32," +
                 "\"Message\":null}", json);
 
-            TestClassWithFieldsHavingCustomConverter testObj = JsonSerializer.Deserialize<TestClassWithFieldsHavingCustomConverter>(json, options);
+            TestClassWithFieldsHavingCustomConverter testObj = await Deserializer.DeserializeWrapper<TestClassWithFieldsHavingCustomConverter>(json, options);
 
             Assert.Equal(32, testObj.IntValue);
             Assert.Equal("John Doe", testObj.Name);
@@ -393,7 +394,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ClassWithPrimitivesObjectConverter()
+        public async Task ClassWithPrimitivesObjectConverter()
         {
             string expected = @"{
 ""MyIntProperty"":123,
@@ -423,13 +424,13 @@ namespace System.Text.Json.Serialization.Tests
                     MyStringField = "World",
                 };
 
-                json = JsonSerializer.Serialize(obj, options);
+                json = await Serializer.SerializeWrapper(obj, options);
 
                 Assert.Equal(6, converter.WriteCallCount);
                 JsonTestHelper.AssertJsonEqual(expected, json);
             }
             {
-                var obj = JsonSerializer.Deserialize<ClassWithPrimitives>(json, options);
+                var obj = await Deserializer.DeserializeWrapper<ClassWithPrimitives>(json, options);
 
                 Assert.Equal(6, converter.ReadCallCount);
 
@@ -455,7 +456,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ClassWithNullablePrimitivesObjectConverter()
+        public async Task ClassWithNullablePrimitivesObjectConverter()
         {
             string expected = @"{
 ""MyIntProperty"":123,
@@ -485,13 +486,13 @@ namespace System.Text.Json.Serialization.Tests
                     MyStringField = "World",
                 };
 
-                json = JsonSerializer.Serialize(obj, options);
+                json = await Serializer.SerializeWrapper(obj, options);
 
                 Assert.Equal(6, converter.WriteCallCount);
                 JsonTestHelper.AssertJsonEqual(expected, json);
             }
             {
-                var obj = JsonSerializer.Deserialize<ClassWithNullablePrimitives>(json, options);
+                var obj = await Deserializer.DeserializeWrapper<ClassWithNullablePrimitives>(json, options);
 
                 Assert.Equal(123, obj.MyIntProperty);
                 Assert.True(obj.MyBoolProperty);
@@ -503,7 +504,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void SystemObjectNewtonsoftCompatibleConverterDeserialize()
+        public async Task SystemObjectNewtonsoftCompatibleConverterDeserialize()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new SystemObjectNewtonsoftCompatibleConverter());
@@ -511,7 +512,7 @@ namespace System.Text.Json.Serialization.Tests
             {
                 const string Value = @"null";
 
-                object obj = JsonSerializer.Deserialize<object>(Value, options);
+                object obj = await Deserializer.DeserializeWrapper<object>(Value, options);
                 Assert.Null(obj);
 
                 object newtonsoftObj = Newtonsoft.Json.JsonConvert.DeserializeObject<object>(Value);
@@ -521,7 +522,7 @@ namespace System.Text.Json.Serialization.Tests
             {
                 const string Value = @"""mystring""";
 
-                object obj = JsonSerializer.Deserialize<object>(Value, options);
+                object obj = await Deserializer.DeserializeWrapper<object>(Value, options);
                 Assert.IsType<string>(obj);
                 Assert.Equal("mystring", obj);
 
@@ -533,7 +534,7 @@ namespace System.Text.Json.Serialization.Tests
             {
                 const string Value = "true";
 
-                object obj = JsonSerializer.Deserialize<object>(Value, options);
+                object obj = await Deserializer.DeserializeWrapper<object>(Value, options);
                 Assert.IsType<bool>(obj);
                 Assert.True((bool)obj);
 
@@ -545,7 +546,7 @@ namespace System.Text.Json.Serialization.Tests
             {
                 const string Value = "false";
 
-                object obj = JsonSerializer.Deserialize<object>(Value, options);
+                object obj = await Deserializer.DeserializeWrapper<object>(Value, options);
                 Assert.IsType<bool>(obj);
                 Assert.False((bool)obj);
 
@@ -557,7 +558,7 @@ namespace System.Text.Json.Serialization.Tests
             {
                 const string Value = "123";
 
-                object obj = JsonSerializer.Deserialize<object>(Value, options);
+                object obj = await Deserializer.DeserializeWrapper<object>(Value, options);
                 Assert.IsType<long>(obj);
                 Assert.Equal((long)123, obj);
 
@@ -569,7 +570,7 @@ namespace System.Text.Json.Serialization.Tests
             {
                 const string Value = "123.45";
 
-                object obj = JsonSerializer.Deserialize<object>(Value, options);
+                object obj = await Deserializer.DeserializeWrapper<object>(Value, options);
                 Assert.IsType<double>(obj);
                 Assert.Equal(123.45d, obj);
 
@@ -581,7 +582,7 @@ namespace System.Text.Json.Serialization.Tests
             {
                 const string Value = @"""2019-01-30T12:01:02Z""";
 
-                object obj = JsonSerializer.Deserialize<object>(Value, options);
+                object obj = await Deserializer.DeserializeWrapper<object>(Value, options);
                 Assert.IsType<DateTime>(obj);
                 Assert.Equal(new DateTime(2019, 1, 30, 12, 1, 2, DateTimeKind.Utc), obj);
 
@@ -593,7 +594,7 @@ namespace System.Text.Json.Serialization.Tests
             {
                 const string Value = @"""2019-01-30T12:01:02+01:00""";
 
-                object obj = JsonSerializer.Deserialize<object>(Value, options);
+                object obj = await Deserializer.DeserializeWrapper<object>(Value, options);
                 Assert.IsType<DateTime>(obj);
 
                 object newtonsoftObj = Newtonsoft.Json.JsonConvert.DeserializeObject<object>(Value);
@@ -604,7 +605,7 @@ namespace System.Text.Json.Serialization.Tests
             {
                 const string Value = "{}";
 
-                object obj = JsonSerializer.Deserialize<object>(Value, options);
+                object obj = await Deserializer.DeserializeWrapper<object>(Value, options);
                 Assert.IsType<JsonElement>(obj);
 
                 // Types are different.
@@ -615,7 +616,7 @@ namespace System.Text.Json.Serialization.Tests
             {
                 const string Value = "[]";
 
-                object obj = JsonSerializer.Deserialize<object>(Value, options);
+                object obj = await Deserializer.DeserializeWrapper<object>(Value, options);
                 Assert.IsType<JsonElement>(obj);
 
                 // Types are different.

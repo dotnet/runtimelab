@@ -61,7 +61,10 @@ namespace System.Text.Json.SourceGeneration
         public void Execute(GeneratorExecutionContext executionContext)
         {
 #if LAUNCH_DEBUGGER_ON_EXECUTE
-            Debugger.Launch();
+            if (!Debugger.IsAttached)
+            {
+                Debugger.Launch();
+            }
             try
             {
 #endif

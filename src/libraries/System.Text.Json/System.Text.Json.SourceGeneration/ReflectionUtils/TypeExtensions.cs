@@ -10,7 +10,7 @@ using Microsoft.CodeAnalysis;
 
 namespace System.Reflection
 {
-    public static class TypeExtensions 
+    internal static class TypeExtensions 
     {
         public static string GetUniqueCompilableTypeName(this Type type) => GetCompilableTypeName(type, type.FullName);
 
@@ -64,6 +64,23 @@ namespace System.Reflection
 
             underlyingType = null;
             return false;
+        }
+
+        public static Type? GetCompatibleBaseClass(this Type type, string baseTypeFullName)
+        {
+            Type? baseTypeToCheck = type;
+
+            while (baseTypeToCheck != null && baseTypeToCheck != typeof(object))
+            {
+                if (baseTypeToCheck.FullName == baseTypeFullName)
+                {
+                    return baseTypeToCheck;
+                }
+
+                baseTypeToCheck = baseTypeToCheck.BaseType;
+            }
+
+            return null;
         }
     }
 }

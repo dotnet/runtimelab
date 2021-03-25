@@ -16,21 +16,12 @@ namespace System.Text.Json.Serialization.Metadata
         /// <param name="numberHandling"></param>
         /// <param name="options"></param>
         public JsonValueInfo(
-            JsonConverter<T> converter,
+            JsonConverter converter,
             JsonNumberHandling? numberHandling,
             JsonSerializerOptions options) : base(typeof(T), options, ClassType.Value)
         {
             ConverterBase = converter;
             PropertyInfoForClassInfo = SourceGenCreatePropertyInfoForClassInfo(Type, Type, runtimeClassInfo: this, converter, numberHandling, Options);
-        }
-
-        /// <summary>
-        /// todo
-        /// </summary>
-        public void CompleteInitialization()
-        {
-            //_isInitialized = true;
-            Options.AddJsonClassInfoToCompleteInitialization(this);
         }
     }
 }

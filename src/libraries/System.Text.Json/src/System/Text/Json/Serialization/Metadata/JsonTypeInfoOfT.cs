@@ -12,5 +12,14 @@ namespace System.Text.Json.Serialization.Metadata
         internal JsonTypeInfo(Type type, JsonSerializerOptions options, ClassType classType) :
             base(type, options, classType)
         { }
+
+        /// <summary>
+        /// todo
+        /// </summary>
+        public void RegisterToOptions()
+        {
+            //_isInitialized = true;
+            Options.AddJsonClassInfoToCompleteInitialization(this);
+        }
     }
 }

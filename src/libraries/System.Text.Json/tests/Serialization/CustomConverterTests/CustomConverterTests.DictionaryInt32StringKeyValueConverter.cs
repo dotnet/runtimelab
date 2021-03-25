@@ -3,11 +3,12 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         /// <summary>
         /// Demonstrates a <see cref="Dictionary{int, string}"> converter using a JSON array containing KeyValuePair objects.
@@ -68,18 +69,18 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void VerifyDictionaryInt32StringKeyValueConverter()
+        public async Task VerifyDictionaryInt32StringKeyValueConverter()
         {
             const string json = @"[{""Key"":1,""Value"":""ValueOne""},{""Key"":2,""Value"":""ValueTwo""}]";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new DictionaryInt32StringKeyValueConverter(options));
 
-            Dictionary<int, string> dictionary = JsonSerializer.Deserialize<Dictionary<int, string>>(json, options);
+            Dictionary<int, string> dictionary = await Deserializer.DeserializeWrapper<Dictionary<int, string>>(json, options);
             Assert.Equal("ValueOne", dictionary[1]);
             Assert.Equal("ValueTwo", dictionary[2]);
 
-            string jsonSerialized = JsonSerializer.Serialize(dictionary, options);
+            string jsonSerialized = await Serializer.SerializeWrapper(dictionary, options);
             Assert.Equal(json, jsonSerialized);
         }
     }

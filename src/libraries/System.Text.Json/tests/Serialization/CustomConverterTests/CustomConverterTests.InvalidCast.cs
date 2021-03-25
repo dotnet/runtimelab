@@ -1,14 +1,15 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         [Fact]
-        public static void InvalidCastRefTypedPropertyFails()
+        public async Task InvalidCastRefTypedPropertyFails()
         {
             var obj = new ObjectWrapperWithProperty
             {
@@ -19,13 +20,13 @@ namespace System.Text.Json.Serialization.Tests
                 }
             };
 
-            var json = JsonSerializer.Serialize(obj);
+            var json = await Serializer.SerializeWrapper(obj);
 
-            var ex = Assert.Throws<InvalidCastException>(() => JsonSerializer.Deserialize<ObjectWrapperWithProperty>(json));
+            var ex = await Assert.ThrowsAsync<InvalidCastException>(async () => await Deserializer.DeserializeWrapper<ObjectWrapperWithProperty>(json));
         }
 
         [Fact]
-        public static void InvalidCastRefTypedFieldFails()
+        public async Task InvalidCastRefTypedFieldFails()
         {
             var options = new JsonSerializerOptions { IncludeFields = true };
             var obj = new ObjectWrapperWithField
@@ -37,9 +38,9 @@ namespace System.Text.Json.Serialization.Tests
                 }
             };
 
-            var json = JsonSerializer.Serialize(obj);
+            var json = await Serializer.SerializeWrapper(obj);
 
-            var ex = Assert.Throws<InvalidCastException>(() => JsonSerializer.Deserialize<ObjectWrapperWithField>(json, options));
+            var ex = await Assert.ThrowsAsync<InvalidCastException>(async () => await Deserializer.DeserializeWrapper<ObjectWrapperWithField>(json, options));
         }
 
         /// <summary>
@@ -86,37 +87,37 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void CastDerivedWorks()
+        public async Task CastDerivedWorks()
         {
             var options = new JsonSerializerOptions { IncludeFields = true };
-            var obj = JsonSerializer.Deserialize<ObjectWrapperDerived>(@"{""DerivedProperty"":"""",""DerivedField"":""""}", options);
+            var obj = await Deserializer.DeserializeWrapper<ObjectWrapperDerived>(@"{""DerivedProperty"":"""",""DerivedField"":""""}", options);
 
             Assert.IsType<Derived>(obj.DerivedField);
             Assert.IsType<Derived>(obj.DerivedProperty);
         }
 
         [Fact]
-        public static void CastBaseWorks()
+        public async Task CastBaseWorks()
         {
             var options = new JsonSerializerOptions { IncludeFields = true };
-            var obj = JsonSerializer.Deserialize<ObjectWrapperBase>(@"{""BaseProperty"":"""",""BaseField"":""""}", options);
+            var obj = await Deserializer.DeserializeWrapper<ObjectWrapperBase>(@"{""BaseProperty"":"""",""BaseField"":""""}", options);
 
             Assert.IsType<Derived>(obj.BaseField);
             Assert.IsType<Derived>(obj.BaseProperty);
         }
 
         [Fact]
-        public static void CastBasePropertyFails()
+        public async Task CastBasePropertyFails()
         {
             var options = new JsonSerializerOptions { IncludeFields = true };
-            var ex = Assert.Throws<InvalidCastException>(() => JsonSerializer.Deserialize<ObjectWrapperDerivedWithProperty>(@"{""DerivedProperty"":""""}", options));
+            var ex = await Assert.ThrowsAsync<InvalidCastException>(async () => await Deserializer.DeserializeWrapper<ObjectWrapperDerivedWithProperty>(@"{""DerivedProperty"":""""}", options));
         }
 
         [Fact]
-        public static void CastBaseFieldFails()
+        public async Task CastBaseFieldFails()
         {
             var options = new JsonSerializerOptions { IncludeFields = true };
-            var ex = Assert.Throws<InvalidCastException>(() => JsonSerializer.Deserialize<ObjectWrapperDerivedWithField>(@"{""DerivedField"":""""}", options));
+            var ex = await Assert.ThrowsAsync<InvalidCastException>(async () => await Deserializer.DeserializeWrapper<ObjectWrapperDerivedWithField>(@"{""DerivedField"":""""}", options));
         }
 
         /// <summary>

@@ -3,11 +3,12 @@
 
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         private static void VerifyClassWithStringProperties(ClassWithStringProperties obj, int stringSize)
         {
@@ -77,7 +78,7 @@ namespace System.Text.Json.Serialization.Tests
             InlineData(1000),
             InlineData(10000),
             InlineData(25000)]
-        public static void ReadAheadFromRoot(int stringSize)
+        public async Task ReadAheadFromRoot(int stringSize)
         {
             string json = CreateTestStringProperty(stringSize);
 
@@ -95,7 +96,7 @@ namespace System.Text.Json.Serialization.Tests
 
                 VerifyClassWithStringProperties(obj, stringSize);
 
-                string jsonSerialized = JsonSerializer.Serialize(obj, options);
+                string jsonSerialized = await Serializer.SerializeWrapper(obj, options);
                 Assert.Equal(json, jsonSerialized);
             }
 
@@ -106,7 +107,7 @@ namespace System.Text.Json.Serialization.Tests
 
                 VerifyExtensionDataStringProperties(obj, stringSize);
 
-                string jsonSerialized = JsonSerializer.Serialize(obj, options);
+                string jsonSerialized = await Serializer.SerializeWrapper(obj, options);
                 Assert.Equal(json, jsonSerialized);
             }
         }
@@ -117,7 +118,7 @@ namespace System.Text.Json.Serialization.Tests
             InlineData(100),
             InlineData(1000),
             InlineData(10000)]
-        public static void ReadAheadFromProperties(int stringSize)
+        public async Task ReadAheadFromProperties(int stringSize)
         {
             string jsonProperties = CreateTestStringProperty(stringSize);
 
@@ -149,7 +150,7 @@ namespace System.Text.Json.Serialization.Tests
                 VerifyClassWithStringProperties(obj.Property2, stringSize);
                 VerifyClassWithStringProperties(obj.Property3, stringSize);
 
-                string jsonSerialized = JsonSerializer.Serialize(obj, options);
+                string jsonSerialized = await Serializer.SerializeWrapper(obj, options);
                 Assert.Equal(json, jsonSerialized);
             }
 
@@ -161,7 +162,7 @@ namespace System.Text.Json.Serialization.Tests
                 Assert.NotNull(obj.MyOverflow["Property2"]);
                 Assert.NotNull(obj.MyOverflow["Property3"]);
 
-                string jsonSerialized = JsonSerializer.Serialize(obj, options);
+                string jsonSerialized = await Serializer.SerializeWrapper(obj, options);
                 Assert.Equal(json, jsonSerialized);
             }
         }
@@ -172,7 +173,7 @@ namespace System.Text.Json.Serialization.Tests
             InlineData(100),
             InlineData(1000),
             InlineData(10000)]
-        public static void ReadAheadFromArray(int stringSize)
+        public async Task ReadAheadFromArray(int stringSize)
         {
             StringBuilder builder = new StringBuilder("[");
             for (int i = 0; i < 10; i++)
@@ -204,7 +205,7 @@ namespace System.Text.Json.Serialization.Tests
                 Assert.Equal(new string(i.ToString()[0], stringSize), arr[i]);
             }
 
-            string jsonSerialized = JsonSerializer.Serialize(arr, options);
+            string jsonSerialized = await Serializer.SerializeWrapper(arr, options);
             Assert.Equal(json, jsonSerialized);
         }
 

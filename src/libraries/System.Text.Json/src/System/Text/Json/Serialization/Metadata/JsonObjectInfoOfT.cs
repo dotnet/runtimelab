@@ -50,14 +50,9 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public void CompleteInitialization(bool canBeDynamic)
+        public void CompleteInitialization()
         {
-            CompleteObjectInitialization();
-
-            if (canBeDynamic)
-            {
-                Options.AddJsonClassInfoToCompleteInitialization(this);
-            }
+            CompleteObjectInitializationInternal();
         }
     }
 }

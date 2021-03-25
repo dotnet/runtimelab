@@ -3,11 +3,12 @@
 
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         /// <summary>
         /// Demonstrates a <see cref="Dictionary{Guid, TValue}"> converter using a JSON object with property names representing keys.
@@ -128,7 +129,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void GuidToStringConverter()
+        public async Task GuidToStringConverter()
         {
             Guid guid1 = Guid.NewGuid();
             Guid guid2 = Guid.NewGuid();
@@ -138,16 +139,16 @@ namespace System.Text.Json.Serialization.Tests
             var options = new JsonSerializerOptions();
             options.Converters.Add(new DictionaryGuidConverter());
 
-            Dictionary<Guid, string> dictionary = JsonSerializer.Deserialize<Dictionary<Guid, string>>(json, options);
+            Dictionary<Guid, string> dictionary = await Deserializer.DeserializeWrapper<Dictionary<Guid, string>>(json, options);
             Assert.Equal("One", dictionary[guid1]);
             Assert.Equal("Two", dictionary[guid2]);
 
-            string jsonSerialized = JsonSerializer.Serialize(dictionary, options);
+            string jsonSerialized = await Serializer.SerializeWrapper(dictionary, options);
             Assert.Equal(json, jsonSerialized);
         }
 
         [Fact]
-        public static void GuidToEntityConverter()
+        public async Task GuidToEntityConverter()
         {
             Guid guid1 = Guid.NewGuid();
             Guid guid2 = Guid.NewGuid();
@@ -176,8 +177,8 @@ namespace System.Text.Json.Serialization.Tests
             var options = new JsonSerializerOptions();
             options.Converters.Add(new DictionaryGuidConverter());
 
-            string json = JsonSerializer.Serialize(dictionary, options);
-            dictionary = JsonSerializer.Deserialize<Dictionary<Guid, Entity>>(json, options);
+            string json = await Serializer.SerializeWrapper(dictionary, options);
+            dictionary = await Deserializer.DeserializeWrapper<Dictionary<Guid, Entity>>(json, options);
 
             // Verify.
             Verify();
