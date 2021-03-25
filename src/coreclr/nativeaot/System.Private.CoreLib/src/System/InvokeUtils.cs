@@ -319,7 +319,7 @@ namespace System
             bool hasDefaultValue = RuntimeAugments.Callbacks.TryGetDefaultParameterValue(targetMethodOrDelegate, thType, argIndex, out object defaultValue);
             if (!hasDefaultValue)
             {
-                throw new ArgumentException(SR.Arg_DefaultValueMissingException);
+                throw new ArgumentException(SR.Arg_DefaultValueMissingException, "parameters");
             }
 
             // Note that we might return null even for value types which cannot have null value here.
