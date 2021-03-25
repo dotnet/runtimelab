@@ -355,7 +355,7 @@ namespace Internal.IL
                     }
                     else
                     {
-                        MethodDesc ctor = method.Instantiation[0].GetConstructorForCreateInstanceIntrinsic();
+                        MethodDesc ctor = Compilation.GetConstructorForCreateInstanceIntrinsic(method.Instantiation[0]);
                         _dependencies.Add(_factory.CanonicalEntrypoint(ctor), reason);
                     }
 
