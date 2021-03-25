@@ -222,7 +222,7 @@ namespace System
                 return enumType.GetEnumNames();
 
             if (!enumType.IsEnum)
-                throw new ArgumentException(SR.Arg_MustBeEnum);
+                throw new ArgumentException(SR.Arg_MustBeEnum, nameof(enumType));
 
             string[] ret = GetEnumInfo(enumType).Names;
 

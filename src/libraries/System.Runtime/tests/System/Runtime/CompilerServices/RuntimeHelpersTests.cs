@@ -273,6 +273,7 @@ namespace System.Runtime.CompilerServices.Tests
             }
         }
 
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/155" /* NativeAot */)]
         [Fact]
         public static void GetUninitalizedObject_DoesNotRunBeforeFieldInitCctors()
         {

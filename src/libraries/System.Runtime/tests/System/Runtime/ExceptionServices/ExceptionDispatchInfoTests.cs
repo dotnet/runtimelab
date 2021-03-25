@@ -29,6 +29,7 @@ namespace System.Runtime.ExceptionServices.Tests
         }
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/831" /* NativeAot */)]
         public static void SetCurrentStackTrace_Invalid_Throws()
         {
             Exception e;
@@ -49,6 +50,7 @@ namespace System.Runtime.ExceptionServices.Tests
         }
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/831" /* NativeAot */)]
         public static void SetCurrentStackTrace_IncludedInExceptionStackTrace()
         {
             Exception e;

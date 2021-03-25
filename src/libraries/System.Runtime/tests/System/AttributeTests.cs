@@ -154,6 +154,8 @@ namespace System.Tests
             public int Field = 0;
         }
 
+
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/803" /* NativeAot */)]
         [Fact]
         [StringValue("\uDFFF")]
         public static void StringArgument_InvalidCodeUnits_FallbackUsed()
