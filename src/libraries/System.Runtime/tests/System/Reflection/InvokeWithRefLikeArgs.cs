@@ -17,6 +17,7 @@ namespace System.Reflection.Tests
         }
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/155" /* NativeAot */)]
         public static void MethodTakesRefStructAsArg_DoesNotCopyValueBack()
         {
             MethodInfo mi = GetMethod(nameof(TestClass.TakesRefStructAsArg));
@@ -28,6 +29,7 @@ namespace System.Reflection.Tests
         }
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/155" /* NativeAot */)]
         public static void MethodTakesRefStructAsArgWithDefaultValue_DoesNotCopyValueBack()
         {
             MethodInfo mi = GetMethod(nameof(TestClass.TakesRefStructAsArgWithDefaultValue));
@@ -77,6 +79,7 @@ namespace System.Reflection.Tests
         }
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/155" /* NativeAot */)]
         public static void PropertyIndexerWithRefStructArg_DoesNotCopyValueBack()
         {
             PropertyInfo pi = typeof(TestClassWithIndexerWithRefStructArg).GetProperty("Item");
