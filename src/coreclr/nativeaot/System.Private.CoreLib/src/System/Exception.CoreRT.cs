@@ -22,7 +22,7 @@ namespace System
                 if (!HasBeenThrown)
                     return null;
 
-                return new StackFrame(_corDbgStackTrace[_idxFirstFreeStackTraceEntry - 1], needFileInfo: false).GetMethod();
+                return new StackFrame(_corDbgStackTrace[0], needFileInfo: false).GetMethod();
             }
         }
 
