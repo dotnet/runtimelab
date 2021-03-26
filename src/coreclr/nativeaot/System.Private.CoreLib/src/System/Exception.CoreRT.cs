@@ -15,9 +15,16 @@ namespace System
 {
     public partial class Exception
     {
-        // TargetSite is not supported on CoreRT. Because it's likely use is diagnostic logging, returning null (a permitted return value)
-        // seems more useful than throwing a PlatformNotSupportedException here.
-        public MethodBase TargetSite => null;
+        public MethodBase TargetSite
+        {
+            get
+            {
+                if (!HasBeenThrown)
+                    return null;
+
+                return new StackFrame(_corDbgStackTrace[0], needFileInfo: false).GetMethod();
+            }
+        }
 
         private IDictionary CreateDataContainer() => new ListDictionaryInternal();
 
