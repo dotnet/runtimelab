@@ -282,6 +282,7 @@ namespace System.Reflection.Tests
             Assert.Equal(0, properties.Length);
         }
 
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/865" /* NativeAot */)]
         [Fact]
         public static void HideDetectionHappensAfterPrivateInBaseClassChecks()
         {

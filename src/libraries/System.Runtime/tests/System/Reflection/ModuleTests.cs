@@ -154,6 +154,7 @@ namespace System.Reflection.Tests
             Assert.NotNull(ex.Message);
         }
 
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/193" /* NativeAOT */)]
         [Fact]
         public void GetField()
         {

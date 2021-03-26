@@ -952,6 +952,7 @@ namespace System.Tests
             };
         }
 
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/861" /* NativeAot */)]
         [Theory]
         [MemberData(nameof(GetInterfaceMap_TestData))]
         // Android-only, change to TestPlatforms.Android once arcade dependency is updated
