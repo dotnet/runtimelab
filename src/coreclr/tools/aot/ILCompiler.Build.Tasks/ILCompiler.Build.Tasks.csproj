@@ -26,10 +26,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Note that S.R.M depends on S.C.I. Their versions have to be in sync. -->
     <Content Include="$(NuGetPackageRoot)\system.reflection.metadata\$(SystemReflectionMetadataVersion)\lib\netstandard2.0\System.Reflection.Metadata.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="$(NuGetPackageRoot)\system.collections.immutable\5.0.0\lib\netstandard2.0\System.Collections.Immutable.dll">
+    <Content Include="$(NuGetPackageRoot)\system.collections.immutable\$(SystemReflectionMetadataVersion)\lib\netstandard2.0\System.Collections.Immutable.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
