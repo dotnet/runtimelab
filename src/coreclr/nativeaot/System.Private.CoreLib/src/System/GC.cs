@@ -10,7 +10,9 @@ using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
+
 using Internal.Runtime.CompilerServices;
+using Internal.Runtime;
 
 namespace System
 {
@@ -835,14 +837,6 @@ namespace System
         internal static ulong GetSegmentSize()
         {
             return RuntimeImports.RhGetGCSegmentSize();
-        }
-
-        // keep in sync with GC_ALLOC_FLAGS in gcinterface.h
-        internal enum GC_ALLOC_FLAGS
-        {
-            GC_ALLOC_NO_FLAGS = 0,
-            GC_ALLOC_ZEROING_OPTIONAL = 16,
-            GC_ALLOC_PINNED_OBJECT_HEAP = 64,
         }
 
         /// <summary>

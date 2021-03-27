@@ -107,7 +107,6 @@ namespace ILCompiler.DependencyAnalysis
 
                         AddrMode loadFromResult = new AddrMode(encoder.TargetRegister.Result, null, 0, 0, AddrModeSize.Int64);
                         encoder.EmitMOV(encoder.TargetRegister.Result, ref loadFromResult);
-                        encoder.EmitMOV(encoder.TargetRegister.Result, ref loadFromResult);
 
                         if (!factory.PreinitializationManager.HasLazyStaticConstructor(target))
                         {

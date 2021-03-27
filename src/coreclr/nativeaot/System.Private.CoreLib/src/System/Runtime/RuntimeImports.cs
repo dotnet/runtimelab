@@ -210,6 +210,9 @@ namespace System.Runtime
         [DllImport(RuntimeLibrary, ExactSpelling = true)]
         internal static unsafe extern void RhAllocateNewArray(IntPtr pArrayEEType, uint numElements, uint flags, void* pResult);
 
+        [DllImport(RuntimeLibrary, ExactSpelling = true)]
+        internal static unsafe extern void RhAllocateNewObject(IntPtr pEEType, uint flags, void* pResult);
+
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhCompareObjectContentsAndPadding")]
         internal static extern bool RhCompareObjectContentsAndPadding(object obj1, object obj2);
