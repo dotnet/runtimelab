@@ -4,13 +4,11 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.InteropServices;
 
 using Internal.IL;
 using Internal.TypeSystem;
 using Internal.ReadyToRunConstants;
-using Internal.Pgo;
 
 using ILCompiler;
 using ILCompiler.DependencyAnalysis;
@@ -39,15 +37,6 @@ namespace Internal.JitInterface
         private readonly UnboxingMethodDescFactory _unboxingThunkFactory = new UnboxingMethodDescFactory();
         private bool _isFallbackBodyCompilation;
         private DependencyList _additionalDependencies;
-
-        private struct PgoInstrumentationResults
-        {
-            public PgoInstrumentationSchema* pSchema;
-            public uint countSchemaItems;
-            public byte* pInstrumentationData;
-            public HRESULT hr;
-        }
-        Dictionary<MethodDesc, PgoInstrumentationResults> _pgoResults = new Dictionary<MethodDesc, PgoInstrumentationResults>();
 
         public CorInfoImpl(RyuJitCompilation compilation)
             : this()
@@ -1513,96 +1502,6 @@ namespace Internal.JitInterface
         private unsafe HRESULT allocPgoInstrumentationBySchema(CORINFO_METHOD_STRUCT_* ftnHnd, PgoInstrumentationSchema* pSchema, uint countSchemaItems, byte** pInstrumentationData)
         {
             throw new NotImplementedException("allocPgoInstrumentationBySchema");
-        }
-
-        private PgoSchemaElem[] getPgoInstrumentationResults(MethodDesc method)
-        {
-            return _compilation.ProfileData[method]?.SchemaData;
-        }
-
-        private HRESULT getPgoInstrumentationResults(CORINFO_METHOD_STRUCT_* ftnHnd, ref PgoInstrumentationSchema* pSchema, ref uint countSchemaItems, byte** pInstrumentationData)
-        {
-            MethodDesc methodDesc = HandleToObject(ftnHnd);
-
-            if (!_pgoResults.TryGetValue(methodDesc, out PgoInstrumentationResults pgoResults))
-            {
-                var pgoResultsSchemas = getPgoInstrumentationResults(methodDesc);
-                if (pgoResultsSchemas == null)
-                {
-                    pgoResults.hr = HRESULT.E_NOTIMPL;
-                }
-                else
-                {
-                    PgoInstrumentationSchema[] nativeSchemas = new PgoInstrumentationSchema[pgoResultsSchemas.Length];
-                    MemoryStream msInstrumentationData = new MemoryStream();
-                    BinaryWriter bwInstrumentationData = new BinaryWriter(msInstrumentationData);
-                    for (int i = 0; i < nativeSchemas.Length; i++)
-                    {
-                        if ((bwInstrumentationData.BaseStream.Position % 8) == 4)
-                        {
-                            bwInstrumentationData.Write(0);
-                        }
-
-                        Debug.Assert((bwInstrumentationData.BaseStream.Position % 8) == 0);
-                        nativeSchemas[i].Offset = new IntPtr(checked((int)bwInstrumentationData.BaseStream.Position));
-                        nativeSchemas[i].ILOffset = pgoResultsSchemas[i].ILOffset;
-                        nativeSchemas[i].Count = pgoResultsSchemas[i].Count;
-                        nativeSchemas[i].Other = pgoResultsSchemas[i].Other;
-                        nativeSchemas[i].InstrumentationKind = (PgoInstrumentationKind)pgoResultsSchemas[i].InstrumentationKind;
-
-                        if (pgoResultsSchemas[i].DataObject == null)
-                        {
-                            bwInstrumentationData.Write(pgoResultsSchemas[i].DataLong);
-                        }
-                        else
-                        {
-                            object dataObject = pgoResultsSchemas[i].DataObject;
-                            if (dataObject is int[] intArray)
-                            {
-                                foreach (int intVal in intArray)
-                                    bwInstrumentationData.Write(intVal);
-                            }
-                            else if (dataObject is long[] longArray)
-                            {
-                                foreach (long longVal in longArray)
-                                    bwInstrumentationData.Write(longVal);
-                            }
-                            else if (dataObject is TypeSystemEntityOrUnknown[] typeArray)
-                            {
-                                foreach (TypeSystemEntityOrUnknown typeVal in typeArray)
-                                {
-                                    IntPtr ptrVal = IntPtr.Zero;
-                                    if (typeVal.AsType != null)
-                                        ptrVal = (IntPtr)ObjectToHandle(typeVal.AsType);
-                                    else
-                                    {
-                                        // The "Unknown types are the values from 1-33
-                                        ptrVal = new IntPtr((typeVal.AsUnknown % 32) + 1);
-                                    }
-
-                                    if (IntPtr.Size == 4)
-                                        bwInstrumentationData.Write((int)ptrVal);
-                                    else
-                                        bwInstrumentationData.Write((long)ptrVal);
-                                }
-                            }
-                        }
-                    }
-
-                    bwInstrumentationData.Flush();
-                    pgoResults.pInstrumentationData = (byte*)GetPin(msInstrumentationData.ToArray());
-                    pgoResults.countSchemaItems = (uint)nativeSchemas.Length;
-                    pgoResults.pSchema = (PgoInstrumentationSchema*)GetPin(nativeSchemas);
-                    pgoResults.hr = HRESULT.S_OK;
-                }
-
-                _pgoResults.Add(methodDesc, pgoResults);
-            }
-
-            pSchema = pgoResults.pSchema;
-            countSchemaItems = pgoResults.countSchemaItems;
-            *pInstrumentationData = pgoResults.pInstrumentationData;
-            return pgoResults.hr;
         }
 
         private CORINFO_CLASS_STRUCT_* getLikelyClass(CORINFO_METHOD_STRUCT_* ftnHnd, CORINFO_CLASS_STRUCT_* baseHnd, uint IlOffset, ref uint pLikelihood, ref uint pNumberOfClasses)
