@@ -36,6 +36,9 @@ namespace System.Reflection.Runtime.General
 {
     internal static partial class TypeUnifier
     {
+        // This can be replaced at native compile time using a feature switch.
+        internal static bool IsTypeConstructionEagerlyValidated => true;
+
         public static RuntimeTypeInfo GetArrayType(this RuntimeTypeInfo elementType)
         {
             return RuntimeArrayTypeInfo.GetArrayTypeInfo(elementType, multiDim: false, rank: 1);
@@ -284,7 +287,8 @@ namespace System.Reflection.Runtime.TypeInfos
 
             // We only permit creating parameterized types if the pay-for-play policy specifically allows them *or* if the result
             // type would be an open type.
-            if (typeHandle.IsNull() && !elementType.ContainsGenericParameters
+            if (TypeUnifier.IsTypeConstructionEagerlyValidated
+                && typeHandle.IsNull() && !elementType.ContainsGenericParameters
 #if FEATURE_COMINTEROP
                 && !(elementType is RuntimeCLSIDTypeInfo)
 #endif
@@ -440,7 +444,8 @@ namespace System.Reflection.Runtime.TypeInfos
 
                 // We only permit creating parameterized types if the pay-for-play policy specifically allows them *or* if the result
                 // type would be an open type.
-                if (key.TypeHandle.IsNull() && !atLeastOneOpenType)
+                if (TypeUnifier.IsTypeConstructionEagerlyValidated
+                    && key.TypeHandle.IsNull() && !atLeastOneOpenType)
                     throw ReflectionCoreExecution.ExecutionDomain.CreateMissingConstructedGenericTypeException(key.GenericTypeDefinition, key.GenericTypeArguments.CloneTypeArray());
 
                 return new RuntimeConstructedGenericTypeInfo(key);
