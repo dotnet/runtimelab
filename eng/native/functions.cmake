@@ -339,6 +339,17 @@ function(install_symbols symbol_file destination_path)
   endif()
 endfunction()
 
+function(install_static_library targetName destination)
+  install (TARGETS ${targetName} DESTINATION ${destination})
+  if (WIN32)
+    set_target_properties(${targetName} PROPERTIES
+        COMPILE_PDB_NAME "${targetName}"
+        COMPILE_PDB_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+    )
+    install (FILES "$<TARGET_FILE_DIR:${targetName}>/${targetName}.pdb" DESTINATION ${destination})
+  endif()
+endfunction()
+
 # install_clr(TARGETS TARGETS targetName [targetName2 ...] [ADDITIONAL_DESTINATIONS destination])
 function(install_clr)
   set(multiValueArgs TARGETS ADDITIONAL_DESTINATIONS)

@@ -122,7 +122,4 @@ if (GEN_SHARED_LIB)
     install (FILES $<TARGET_PDB_FILE:System.IO.Compression.Native> DESTINATION .)
 endif()
 
-install (TARGETS System.IO.Compression.Native-Static DESTINATION ${STATIC_LIB_DESTINATION})
-if(WIN32)
-    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/System.IO.Compression.Native-Static.dir/$<CONFIG>/System.IO.Compression.Native-Static.pdb DESTINATION ${STATIC_LIB_DESTINATION})
-endif()
+install_static_library(System.IO.Compression.Native-Static ${STATIC_LIB_DESTINATION})

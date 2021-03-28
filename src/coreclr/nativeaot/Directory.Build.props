@@ -45,6 +45,9 @@
     <DisableImplicitConfigurationDefines>true</DisableImplicitConfigurationDefines>
 
     <DocumentationFile>$(OutputPath)$(MSBuildProjectName).xml</DocumentationFile>
+
+    <!-- Send .deps.json to intermediate directory to avoid polluting published package -->
+    <ProjectDepsFilePath>$(IntermediateOutputPath)$(MSBuildProjectName).deps.json</ProjectDepsFilePath>
   </PropertyGroup>
 
   <PropertyGroup>
