@@ -1,5 +1,7 @@
 project(System.IO.Compression.Native)
 
+include(../../../../../eng/native/functions.cmake)
+
 if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
     message(FATAL_ERROR "Binary directory isn't being correctly set before calling Cmake. Tree must be built in separate directory from source.")
 endif()
