@@ -120,20 +120,12 @@ namespace ILCompiler
 
                 DefType containingType = type.ContainingType;
                 var typeDefinition = type.MetadataReader.GetTypeDefinition(type.Handle);
-
-                // [Serializable] types may be serialized by reflection-based serializers, so we need to 
-                // permit limited reflection over them. Details are at https://msdn.microsoft.com/en-us/library/system.serializableattribute(v=vs.110).aspx
-                bool blockIfNotVisibleOrAccessible = true;
-                if (type.IsSerializable)
-                {
-                    blockIfNotVisibleOrAccessible = false;
-                }
                 
                 if (containingType == null)
                 {
                     if ((typeDefinition.Attributes & TypeAttributes.Public) == 0)
                     {
-                        return blockIfNotVisibleOrAccessible;
+                        return true;
                     }
                 }
                 else
@@ -144,7 +136,7 @@ namespace ILCompiler
                     }
                     else
                     {
-                        return blockIfNotVisibleOrAccessible || ComputeIsBlocked((EcmaType)containingType, blockingMode);
+                        return true;
                     }
                 }
 
@@ -154,8 +146,6 @@ namespace ILCompiler
         private BlockedTypeHashtable _blockedTypes;
 
         private MetadataType ArrayOfTType { get; }
-        private MetadataType SerializationInfoType { get; }
-        private MetadataType ISerializableType { get; }
         private MetadataType AttributeType { get; }
 
         public BlockedInternalsBlockingPolicy(TypeSystemContext context)
@@ -163,8 +153,6 @@ namespace ILCompiler
             _blockedTypes = new BlockedTypeHashtable(_blockedModules);
 
             ArrayOfTType = context.SystemModule.GetType("System", "Array`1", false);
-            SerializationInfoType = context.SystemModule.GetType("System.Runtime.Serialization", "SerializationInfo", false);
-            ISerializableType = context.SystemModule.GetType("System.Runtime.Serialization", "ISerializable", false);
             AttributeType = context.SystemModule.GetType("System", "Attribute", false);
         }
 
@@ -205,31 +193,6 @@ namespace ILCompiler
                 && accessibility != MethodAttributes.FamORAssem
                 && accessibility != MethodAttributes.Public)
             {
-                // Non-public and non-protected methods should be blocked, but binary serialization
-                // forces us to exclude a couple things if the type is serializable.
-                if (owningType.IsSerializable)
-                {
-                    MethodSignature signature = ecmaMethod.Signature;
-
-                    if (ecmaMethod.IsConstructor
-                        && signature.Length == 2
-                        && signature[0] == SerializationInfoType
-                        /* && ecmaMethod.Signature[1] is StreamingContext */)
-                    {
-                        return false;
-                    }
-
-                    // Methods with these attributes can be called during serialization
-                    if (signature.Length == 1 && !signature.IsStatic && signature.ReturnType.IsVoid &&
-                        (ecmaMethod.HasCustomAttribute("System.Runtime.Serialization", "OnSerializingAttribute")
-                        || ecmaMethod.HasCustomAttribute("System.Runtime.Serialization", "OnSerializedAttribute")
-                        || ecmaMethod.HasCustomAttribute("System.Runtime.Serialization", "OnDeserializingAttribute")
-                        || ecmaMethod.HasCustomAttribute("System.Runtime.Serialization", "OnDeserializedAttribute")))
-                    {
-                        return false;
-                    }
-                }
-
                 return true;
             }
 
@@ -270,17 +233,6 @@ namespace ILCompiler
                 && accessibility != FieldAttributes.FamORAssem
                 && accessibility != FieldAttributes.Public)
             {
-                // Non-public and non-protected fields should be blocked, but binary serialization
-                // forces us to exclude some fields if the type is serializable.
-                if (owningType.IsSerializable
-                    && !ecmaField.IsStatic
-                    && !ecmaField.IsNotSerialized
-                    && ISerializableType != null
-                    && !owningType.CanCastTo(ISerializableType))
-                {
-                    return false;
-                }
-
                 // Exempt fields on custom attributes from blocking.
                 // Attribute.Equals and Attribute.GetHashCode depends on being able to
                 // walk all fields on custom attributes using reflection.
