@@ -20,9 +20,7 @@ namespace Internal.Reflection.Execution.FieldAccessors
         {
             if (FieldBase == FieldTableFlags.GCStatic)
             {
-                // The _staticsBase variable points to a GC handle, which points at the GC statics base of the type.
-                // We need to perform a double indirection in a GC-safe manner.
-                object gcStaticsRegion = RuntimeAugments.LoadReferenceTypeField(*(IntPtr*)StaticsBase);
+                object gcStaticsRegion = RuntimeAugments.LoadReferenceTypeField(StaticsBase);
                 return RuntimeAugments.LoadPointerTypeField(gcStaticsRegion, FieldOffset, FieldTypeHandle);
             }
             else if (FieldBase == FieldTableFlags.NonGCStatic)
@@ -39,9 +37,7 @@ namespace Internal.Reflection.Execution.FieldAccessors
         {
             if (FieldBase == FieldTableFlags.GCStatic)
             {
-                // The _staticsBase variable points to a GC handle, which points at the GC statics base of the type.
-                // We need to perform a double indirection in a GC-safe manner.
-                object gcStaticsRegion = RuntimeAugments.LoadReferenceTypeField(*(IntPtr*)StaticsBase);
+                object gcStaticsRegion = RuntimeAugments.LoadReferenceTypeField(StaticsBase);
                 RuntimeAugments.StoreValueTypeField(gcStaticsRegion, FieldOffset, value, typeof(IntPtr).TypeHandle);
             }
             else if (FieldBase == FieldTableFlags.NonGCStatic)

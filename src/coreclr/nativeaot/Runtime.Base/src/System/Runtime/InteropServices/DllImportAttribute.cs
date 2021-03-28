@@ -10,6 +10,8 @@ namespace System.Runtime.InteropServices
 
         public string EntryPoint;
 
+        public bool ExactSpelling;
+
         public DllImportAttribute(string dllName)
         {
         }

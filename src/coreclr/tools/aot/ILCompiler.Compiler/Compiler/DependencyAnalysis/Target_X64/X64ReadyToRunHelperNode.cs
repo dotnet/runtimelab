@@ -108,7 +108,6 @@ namespace ILCompiler.DependencyAnalysis
                         encoder.EmitLEAQ(encoder.TargetRegister.Result, factory.TypeGCStaticsSymbol(target));
                         AddrMode loadFromRax = new AddrMode(encoder.TargetRegister.Result, null, 0, 0, AddrModeSize.Int64);
                         encoder.EmitMOV(encoder.TargetRegister.Result, ref loadFromRax);
-                        encoder.EmitMOV(encoder.TargetRegister.Result, ref loadFromRax);
 
                         if (!factory.PreinitializationManager.HasLazyStaticConstructor(target))
                         {

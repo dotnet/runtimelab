@@ -214,19 +214,8 @@ bool RedhawkGCInterface::InitializeSubsystems()
 }
 #endif // !DACCESS_COMPILE
 
-// Allocate an object on the GC heap.
-//  pEEType         -  type of the object
-//  uFlags          -  GC type flags (see gc.h GC_ALLOC_*)
-//  cbSize          -  size in bytes of the final object
-//  pTransitionFrame-  transition frame to make stack crawable
-// Returns a pointer to the object allocated or NULL on failure.
-
-COOP_PINVOKE_HELPER(void*, RhpGcAlloc, (EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame))
+void* GcAllocInternal(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, Thread* pThread)
 {
-    Thread * pThread = ThreadStore::GetCurrentThread();
-
-    pThread->SetCurrentThreadPInvokeTunnelForGcAlloc(pTransitionFrame);
-
     ASSERT(!pThread->IsDoNotTriggerGcSet());
 
     size_t max_object_size;
@@ -285,6 +274,23 @@ COOP_PINVOKE_HELPER(void*, RhpGcAlloc, (EEType *pEEType, uint32_t uFlags, uintpt
 
     return pObject;
 }
+
+// Allocate an object on the GC heap.
+//  pEEType         -  type of the object
+//  uFlags          -  GC type flags (see gc.h GC_ALLOC_*)
+//  cbSize          -  size in bytes of the final object
+//  pTransitionFrame-  transition frame to make stack crawable
+// Returns a pointer to the object allocated or NULL on failure.
+
+COOP_PINVOKE_HELPER(void*, RhpGcAlloc, (EEType* pEEType, uint32_t uFlags, uintptr_t cbSize, void* pTransitionFrame))
+{
+    Thread* pThread = ThreadStore::GetCurrentThread();
+
+    pThread->SetCurrentThreadPInvokeTunnelForGcAlloc(pTransitionFrame);
+
+    return GcAllocInternal(pEEType, uFlags, cbSize, pThread);
+}
+
 
 // returns the object pointer for caller's convenience
 COOP_PINVOKE_HELPER(void*, RhpPublishObject, (void* pObject, uintptr_t cbSize))
