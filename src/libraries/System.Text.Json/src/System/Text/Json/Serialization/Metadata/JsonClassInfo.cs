@@ -299,9 +299,6 @@ namespace System.Text.Json.Serialization.Metadata
             //_isInitialized = true;
         }
 
-        /// <summary>
-        /// Changes here should be reflected in <see cref="JsonObjectInfo{T}.CacheMember"/>
-        /// </summary>
         private void CacheMember(
             Type declaringType,
             Type memberType,

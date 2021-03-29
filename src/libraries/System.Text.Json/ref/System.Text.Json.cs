@@ -774,31 +774,34 @@ namespace System.Text.Json.Serialization.Metadata
     public sealed partial class JsonObjectInfo<T> : System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>
     {
         public JsonObjectInfo(System.Text.Json.Serialization.Metadata.JsonClassInfo.ConstructorDelegate? createObjectFunc, System.Text.Json.Serialization.JsonNumberHandling? numberHandling, System.Text.Json.JsonSerializerOptions options) { }
-        public System.Text.Json.Serialization.Metadata.JsonPropertyInfo<TProperty> AddProperty<TProperty>(string clrPropertyName, System.Reflection.MemberTypes memberType, System.Type declaringType, System.Text.Json.Serialization.Metadata.JsonTypeInfo<TProperty> classInfo, System.Func<object, TProperty>? getter = null, System.Action<object, TProperty>? setter = null, string? jsonPropertyName = null, System.Text.Json.Serialization.JsonIgnoreCondition? ignoreCondition = null, System.Text.Json.Serialization.JsonNumberHandling? numberHandling = null) { throw null; }
+        public void AddProperty(System.Text.Json.Serialization.Metadata.JsonPropertyInfo jsonPropertyInfo) { throw null; }
         public void CompleteInitialization(bool canBeDynamic) { }
     }
     public abstract partial class JsonPropertyInfo
     {
         internal JsonPropertyInfo() { }
-        public byte[] EscapedNameSection;
-        public byte[] NameAsUtf8Bytes;
+        public byte[] EscapedNameSection { get { throw null; } set { } }
+        public byte[] NameAsUtf8Bytes { get { throw null; } set { } }
         public abstract System.Text.Json.Serialization.JsonConverter ConverterBase { get; set; }
-        public System.Type DeclaredPropertyType { get { throw null; } }
-        public string NameAsString { get { throw null; } }
+        public System.Type DeclaredPropertyType { get { throw null; } set { } }
+        public System.Type DeclaringType { get { throw null; } set { } }
+        public string NameAsString { get { throw null; } set { } }
         public bool ShouldDeserialize { get { throw null; } }
         public bool ShouldSerialize { get { throw null; } }
+        public System.Text.Json.Serialization.JsonIgnoreCondition? IgnoreCondition { get { throw null; } set { } }
+        public System.Text.Json.Serialization.JsonNumberHandling? NumberHandling { get { throw null; } set { } }
+        public System.Reflection.MemberTypes MemberType { get { throw null; } set { } }
+        public System.Text.Json.JsonSerializerOptions Options { get { throw null; } set { } }
+        public System.Text.Json.Serialization.Metadata.JsonClassInfo RuntimeClassInfo { get { throw null; } set { } }
     }
     public sealed partial class JsonPropertyInfo<T> : System.Text.Json.Serialization.Metadata.JsonPropertyInfo
     {
-        internal JsonPropertyInfo() { }
         public System.Text.Json.Serialization.JsonConverter<T> Converter { get { throw null; } }
         public override System.Text.Json.Serialization.JsonConverter ConverterBase { get { throw null; } set { } }
-        public System.Func<object, T>? Get { get { throw null; } }
-        public System.Action<object, T>? Set { get { throw null; } }
-        public void ReadAndSetMember(ref System.Text.Json.Utf8JsonReader reader, ref System.Text.Json.ReadStack state, object obj) { }
-        public void ReadValueAndSetMember(ref System.Text.Json.Utf8JsonReader reader, ref System.Text.Json.ReadStack state, object obj) { }
-        public void Write(in T value, ref System.Text.Json.WriteStack state, System.Text.Json.Utf8JsonWriter writer) { }
-        public void WriteValue(in T value, ref System.Text.Json.WriteStack state, System.Text.Json.Utf8JsonWriter writer) { }
+        public System.Func<object, T>? Get { get { throw null; } set { } }
+        public System.Action<object, T>? Set { get { throw null; } set { } }
+        public void CompleteInitialization() { }
+        public static System.Text.Json.Serialization.Metadata.JsonPropertyInfo<T> Create() { throw null; }
     }
     public abstract partial class JsonTypeInfo<T> : System.Text.Json.Serialization.Metadata.JsonClassInfo
     {
