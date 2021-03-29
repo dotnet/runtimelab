@@ -28,9 +28,4 @@ add_custom_command(
    DEPENDS "${RUNTIME_DIR}/AsmOffsets.cpp" "${RUNTIME_DIR}/AsmOffsets.h"
 )
 
-# Install the static Runtime library
-install (TARGETS PortableRuntime DESTINATION aotsdk)
-
-if(WIN32)
-    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/PortableRuntime.dir/$<CONFIG>/PortableRuntime.pdb DESTINATION aotsdk)
-endif()
+install_static_library(PortableRuntime aotsdk)

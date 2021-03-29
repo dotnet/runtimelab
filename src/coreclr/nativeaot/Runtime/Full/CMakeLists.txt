@@ -67,9 +67,5 @@ add_custom_target(
 add_dependencies(Runtime RuntimeAsmHelpers)
 add_dependencies(Runtime.ServerGC RuntimeAsmHelpers)
 
-# Install the static Runtime library
-install (TARGETS Runtime Runtime.ServerGC DESTINATION aotsdk)
-if(WIN32)
-    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/Runtime.dir/$<CONFIG>/Runtime.pdb DESTINATION aotsdk)
-    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/Runtime.ServerGC.dir/$<CONFIG>/Runtime.ServerGC.pdb DESTINATION aotsdk)
-endif()
+install_static_library(Runtime aotsdk)
+install_static_library(Runtime.ServerGC aotsdk)
