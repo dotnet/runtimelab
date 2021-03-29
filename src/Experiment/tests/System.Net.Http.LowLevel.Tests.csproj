@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\src\System.Net.Http.LowLevel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\src\TaskToApm.cs">
+      <Link>ProductCode\TaskToApm.cs</Link>
+    </Compile>
+    <Compile Include="..\src\ArrayBuffer.cs">
+      <Link>ProductCode\ArrayBuffer.cs</Link>
+    </Compile>
+    <Compile Include="..\src\IO\UnsafeSpanWrappingMemoryOwner.cs">
+      <Link>ProductCode\IO\UnsafeSpanWrappingMemoryOwner.cs</Link>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IO.Pipelines" Version="5.0.1" />
+  </ItemGroup>
+</Project>
