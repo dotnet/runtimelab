@@ -63,6 +63,23 @@ namespace System.Text.Json
                 converters.Add(converter.TypeToConvert, converter);
         }
 
+        private static void InitializeDefaultConverters()
+        {
+            s_defaultSimpleConverters ??= GetDefaultSimpleConverters();
+            s_defaultFactoryConverters ??= new JsonConverter[]
+            {
+                // Check for disallowed types.
+                new DisallowedTypeConverterFactory(),
+                // Nullable converter should always be next since it forwards to any nullable type.
+                new NullableConverterFactory(),
+                new EnumConverterFactory(),
+                // IEnumerable should always be second to last since they can convert any IEnumerable.
+                new IEnumerableConverterFactory(),
+                // Object should always be last since it converts any type.
+                new ObjectConverterFactory()
+            };
+        }
+
         /// <summary>
         /// The list of custom converters.
         /// </summary>
@@ -167,13 +184,13 @@ namespace System.Text.Json
             // Priority 4: Attempt to get built-in converter.
             if (converter == null)
             {
-                if (JsonHelpers.DisableJsonSerializerDynamicFallback)
+                if (s_defaultSimpleConverters == null || s_defaultFactoryConverters == null)
                 {
-                    return null;
+                    // This options instance was created with the CreateForSizeOpts methood.
+                    Debug.Assert(s_defaultSimpleConverters == null);
+                    Debug.Assert(s_defaultFactoryConverters == null);
+                    throw new NotSupportedException("Built-in converters not initialized; thus no converter found for type.");
                 }
-
-                Debug.Assert(s_defaultSimpleConverters != null);
-                Debug.Assert(s_defaultFactoryConverters != null);
 
                 if (s_defaultSimpleConverters.TryGetValue(typeToConvert, out JsonConverter? foundConverter))
                 {
@@ -223,23 +240,6 @@ namespace System.Text.Json
             }
 
             return converter;
-        }
-
-        private static void EnsureDefaultConvertersInitialized()
-        {
-            s_defaultSimpleConverters ??= GetDefaultSimpleConverters();
-            s_defaultFactoryConverters ??= new JsonConverter[]
-            {
-                // Check for disallowed types.
-                new DisallowedTypeConverterFactory(),
-                // Nullable converter should always be next since it forwards to any nullable type.
-                new NullableConverterFactory(),
-                new EnumConverterFactory(),
-                // IEnumerable should always be second to last since they can convert any IEnumerable.
-                new IEnumerableConverterFactory(),
-                // Object should always be last since it converts any type.
-                new ObjectConverterFactory()
-            };
         }
 
         private JsonConverter GetConverterFromAttribute(JsonConverterAttribute converterAttribute, Type typeToConvert, Type classTypeAttributeIsOn, MemberInfo? memberInfo)

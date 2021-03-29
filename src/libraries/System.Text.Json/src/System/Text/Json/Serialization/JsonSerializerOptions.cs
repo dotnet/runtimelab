@@ -19,14 +19,11 @@ namespace System.Text.Json
 
         private static JsonSerializerOptions? s_defaultOptions;
 
-        internal static JsonSerializerOptions DefaultOptions
-        {
-            get
-            {
-                s_defaultOptions ??= new JsonSerializerOptions();
-                return s_defaultOptions;
-            }
-        }
+        internal static JsonSerializerOptions DefaultOptions => s_defaultOptions ??= new JsonSerializerOptions();
+
+        private static JsonSerializerOptions? s_defaultSourceGenOptions;
+
+        internal static JsonSerializerOptions DefaultSourceGenOptions => s_defaultSourceGenOptions ??= CreateForSizeOpts();
 
         private readonly ConcurrentDictionary<Type, JsonClassInfo> _classes = new ConcurrentDictionary<Type, JsonClassInfo>();
 
@@ -56,17 +53,16 @@ namespace System.Text.Json
         private bool _propertyNameCaseInsensitive;
         private bool _writeIndented;
 
+        private readonly Func<Type, JsonSerializerOptions, JsonClassInfo> _classInfoCreationFunc = null!;
+
         /// <summary>
         /// Constructs a new <see cref="JsonSerializerOptions"/> instance.
         /// </summary>
         public JsonSerializerOptions()
         {
             Converters = new ConverterList(this);
-
-            if (!JsonHelpers.DisableJsonSerializerDynamicFallback)
-            {
-                EnsureDefaultConvertersInitialized();
-            }
+            InitializeDefaultConverters();
+            _classInfoCreationFunc = (type, options) => new JsonClassInfo(type, options);
         }
 
         /// <summary>
@@ -106,6 +102,8 @@ namespace System.Text.Json
             EffectiveMaxDepth = options.EffectiveMaxDepth;
             ReferenceHandlingStrategy = options.ReferenceHandlingStrategy;
 
+            _classInfoCreationFunc = options._classInfoCreationFunc;
+
             // _classes is not copied as sharing the JsonClassInfo and JsonPropertyInfo caches can result in
             // unnecessary references to type metadata, potentially hindering garbage collection on the source options.
 
@@ -117,6 +115,27 @@ namespace System.Text.Json
         /// </summary>
         /// <param name="defaults"> The <see cref="JsonSerializerDefaults"/> to reason about.</param>
         public JsonSerializerOptions(JsonSerializerDefaults defaults) : this()
+        {
+            InitializeWithDefaults(defaults);
+        }
+
+        /// <summary>
+        /// TODO
+        /// </summary>
+        /// <returns></returns>
+        public static JsonSerializerOptions CreateForSizeOpts(JsonSerializerDefaults defaults = default) => new JsonSerializerOptions(defaults, false);
+
+        private JsonSerializerOptions(JsonSerializerDefaults defaults, bool dummy)
+        {
+            InitializeWithDefaults(defaults);
+            _classInfoCreationFunc = (type, options) =>
+                throw new NotSupportedException(@$"Metadata for type {type} not provided to serializer - will not go down reflection-based code path.
+                                                   To workaround this, use an options instance instantiated with the default ctor or the ctor that takes
+                                                   web defaults. Alternatively, you can create the metadata by hand and pass that to the serializer.");
+            Converters = new ConverterList(this);
+        }
+
+        private void InitializeWithDefaults(JsonSerializerDefaults defaults)
         {
             if (defaults == JsonSerializerDefaults.Web)
             {
@@ -560,14 +579,7 @@ namespace System.Text.Json
             // https://github.com/dotnet/runtime/issues/32357
             if (!_classes.TryGetValue(type, out JsonClassInfo? result))
             {
-                if (JsonHelpers.DisableJsonSerializerDynamicFallback)
-                {
-                    throw new NotSupportedException($"Metadata for type {type} not provided to serializer - will not go down reflection-based code path.");
-                }
-                else
-                {
-                    result = _classes.GetOrAdd(type, new JsonClassInfo(type, this));
-                }
+                result = _classes.GetOrAdd(type, _classInfoCreationFunc(type, this));
             }
 
             return result;
@@ -622,7 +634,7 @@ namespace System.Text.Json
         internal void VerifyMutable()
         {
             // The default options are hidden and thus should be immutable.
-            Debug.Assert(this != DefaultOptions);
+            Debug.Assert(this != DefaultOptions && this != DefaultSourceGenOptions);
 
             if (_haveTypesBeenCreated)
             {

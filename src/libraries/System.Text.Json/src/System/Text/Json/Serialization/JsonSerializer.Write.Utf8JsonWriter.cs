@@ -28,7 +28,7 @@ namespace System.Text.Json
             TValue value,
             JsonSerializerOptions? options = null)
         {
-            Serialize<TValue>(writer, value, typeof(TValue), options);
+            Serialize(writer, value, typeof(TValue), options);
         }
 
         /// <summary>
@@ -76,13 +76,11 @@ namespace System.Text.Json
         /// <param name="value"></param>
         /// <param name="jsonTypeInfo"></param>
         /// <param name="state"></param>
-        /// <param name="options"></param>
         public static void Serialize<[DynamicallyAccessedMembers(MembersAccessedOnWrite)] TValue>(
             Utf8JsonWriter writer,
             TValue value,
-            JsonClassInfo jsonTypeInfo,
-            ref WriteStack state,
-            JsonSerializerOptions? options = null)
+            JsonTypeInfo<TValue> jsonTypeInfo,
+            ref WriteStack state)
         {
             if (writer == null)
             {
@@ -94,10 +92,8 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(jsonTypeInfo));
             }
 
-            if (options == null)
-            {
-                options = JsonSerializerOptions.DefaultOptions;
-            }
+            JsonSerializerOptions options = jsonTypeInfo.Options;
+            Debug.Assert(options != null);
 
             using (var output = new PooledByteBufferWriter(options.DefaultBufferSize))
             {
@@ -119,7 +115,7 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(writer));
             }
 
-            WriteCore<TValue>(writer, value, type, options);
+            WriteCore(writer, value, type, options);
         }
     }
 }

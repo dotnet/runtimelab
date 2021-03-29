@@ -80,6 +80,7 @@ namespace System.Text.Json
             }
 
             JsonSerializerOptions options = jsonTypeInfo.Options;
+            Debug.Assert(options != null);
 
             ReadStack state = default;
             state.Initialize(jsonTypeInfo, supportContinuation: false);
