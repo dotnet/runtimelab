@@ -1765,7 +1765,7 @@ namespace System.Text.Json.Serialization.Tests
             }
         }
 
-        private static IEnumerable<object[]> JsonIgnoreConditionWhenWritingDefault_ClassProperty_TestData()
+        public static IEnumerable<object[]> JsonIgnoreConditionWhenWritingDefault_ClassProperty_TestData()
         {
             yield return new object[] { typeof(ClassWithClassProperty_IgnoreConditionWhenWritingDefault), new JsonSerializerOptions() };
             // TODO: enable this test cases after parameterized ctor support is added to source generator.
@@ -1818,7 +1818,7 @@ namespace System.Text.Json.Serialization.Tests
             }
         }
 
-        private static IEnumerable<object[]> JsonIgnoreConditionWhenWritingDefault_StructProperty_TestData()
+        public static IEnumerable<object[]> JsonIgnoreConditionWhenWritingDefault_StructProperty_TestData()
         {
             yield return new object[] { typeof(ClassWithStructProperty_IgnoreConditionWhenWritingDefault), new JsonSerializerOptions() };
             //yield return new object[] { typeof(StructWithStructProperty_IgnoreConditionWhenWritingDefault_Ctor), new JsonSerializerOptions { IgnoreNullValues = true } }; TODO: parameterized ctor support in source gen
@@ -1908,7 +1908,7 @@ namespace System.Text.Json.Serialization.Tests
             }
         }
 
-        private static IEnumerable<object[]> JsonIgnoreConditionNever_TestData()
+        public static IEnumerable<object[]> JsonIgnoreConditionNever_TestData()
         {
             yield return new object[] { typeof(ClassWithStructProperty_IgnoreConditionNever) };
             //yield return new object[] { typeof(ClassWithStructProperty_IgnoreConditionNever_Ctor) }; // Implement parameterized ctor support in source gen.
