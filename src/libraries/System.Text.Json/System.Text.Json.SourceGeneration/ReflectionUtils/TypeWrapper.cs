@@ -347,6 +347,11 @@ namespace System.Reflection
                 {
                     _typeAttributes |= TypeAttributes.Interface;
                 }
+
+                if (_typeSymbol.ContainingType != null && _typeSymbol.DeclaredAccessibility == Accessibility.Private)
+                {
+                    _typeAttributes |= TypeAttributes.NestedPrivate;
+                }
             }
 
             return _typeAttributes.Value;
@@ -354,7 +359,30 @@ namespace System.Reflection
 
         protected override ConstructorInfo GetConstructorImpl(BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers)
         {
-            throw new NotImplementedException();
+            foreach (ConstructorInfo constructor in GetConstructors(bindingAttr))
+            {
+                ParameterInfo[] parameters = constructor.GetParameters();
+
+                if (parameters.Length == types.Length)
+                {
+                    bool mismatched = false;
+                    for (int i = 0; i < parameters.Length; i++)
+                    {
+                        if (parameters[i].ParameterType != types[i])
+                        {
+                            mismatched = true;
+                            break;
+                        }
+                    }
+
+                    if (!mismatched)
+                    {
+                        return constructor;
+                    }
+                }
+            }
+
+            return null;
         }
 
         protected override MethodInfo GetMethodImpl(string name, BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers)

@@ -42,6 +42,8 @@ namespace System.Text.Json.SourceGeneration
 
         public TypeMetadata? NullableUnderlyingTypeMetadata { get; private set; }
 
+        public string? ConverterInstantiationLogic { get; private set; }
+
         public void Initialize(
             string compilableName,
             string friendlyName,
@@ -55,7 +57,8 @@ namespace System.Text.Json.SourceGeneration
             TypeMetadata? collectionKeyTypeMetadata,
             TypeMetadata? collectionValueTypeMetadata,
             ObjectConstructionStrategy constructionStrategy,
-            TypeMetadata? nullableUnderlyingTypeMetadata)
+            TypeMetadata? nullableUnderlyingTypeMetadata,
+            string? converterInstantiationLogic)
         {
             if (_hasBeenInitialized)
             {
@@ -97,6 +100,8 @@ namespace System.Text.Json.SourceGeneration
 
                 NullableUnderlyingTypeMetadata = nullableUnderlyingTypeMetadata;
             }
+
+            ConverterInstantiationLogic = converterInstantiationLogic;
         }
     }
 }

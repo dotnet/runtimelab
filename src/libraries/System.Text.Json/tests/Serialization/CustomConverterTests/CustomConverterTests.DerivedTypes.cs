@@ -2,14 +2,15 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         [Fact]
-        public static void CustomDerivedTypeConverter()
+        public async Task CustomDerivedTypeConverter()
         {
             string json =
                 @"{
@@ -20,7 +21,7 @@ namespace System.Text.Json.Serialization.Tests
                 }";
 
             // Without converters, we deserialize as is.
-            DerivedTypesWrapper wrapper = JsonSerializer.Deserialize<DerivedTypesWrapper>(json);
+            DerivedTypesWrapper wrapper = await Deserializer.DeserializeWrapper<DerivedTypesWrapper>(json);
             int expected = 1;
             foreach (int value in wrapper.ListWrapper)
             {
@@ -33,7 +34,7 @@ namespace System.Text.Json.Serialization.Tests
             Assert.Equal(1, wrapper.DictionaryWrapper["key"]);
             Assert.Equal(2, wrapper.Dictionary["key"]);
 
-            string serialized = JsonSerializer.Serialize(wrapper);
+            string serialized = await Serializer.SerializeWrapper(wrapper);
             Assert.Contains(@"""ListWrapper"":[1,2,3]", serialized);
             Assert.Contains(@"""List"":[4,5,6]", serialized);
             Assert.Contains(@"""DictionaryWrapper"":{""key"":1}", serialized);
@@ -44,7 +45,7 @@ namespace System.Text.Json.Serialization.Tests
             options.Converters.Add(new ListWrapperConverter());
             options.Converters.Add(new DictionaryWrapperConverter());
 
-            DerivedTypesWrapper customWrapper = JsonSerializer.Deserialize<DerivedTypesWrapper>(json, options);
+            DerivedTypesWrapper customWrapper = await Deserializer.DeserializeWrapper<DerivedTypesWrapper>(json, options);
             Assert.Null(customWrapper.ListWrapper);
             expected = 4;
             foreach (int value in customWrapper.List)
@@ -59,7 +60,7 @@ namespace System.Text.Json.Serialization.Tests
             options.Converters.Add(new ListWrapperConverter());
             options.Converters.Add(new DictionaryWrapperConverter());
 
-            serialized = JsonSerializer.Serialize(wrapper, options);
+            serialized = await Serializer.SerializeWrapper(wrapper, options);
             Assert.Contains(@"""ListWrapper"":[]", serialized);
             Assert.Contains(@"""List"":[4,5,6]", serialized);
             Assert.Contains(@"""DictionaryWrapper"":{}", serialized);
@@ -67,7 +68,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void CustomUnsupportedDictionaryConverter()
+        public async Task CustomUnsupportedDictionaryConverter()
         {
             string json = @"{""DictionaryWrapper"": {""1"": 1}}";
 
@@ -78,14 +79,14 @@ namespace System.Text.Json.Serialization.Tests
             wrapper.DictionaryWrapper[new int[,] { }] = 1;
 
             // Without converter, we throw.
-            Assert.Throws<NotSupportedException>(() => JsonSerializer.Deserialize<UnsupportedDerivedTypesWrapper_Dictionary>(json));
-            Assert.Throws<NotSupportedException>(() => JsonSerializer.Serialize(wrapper));
+            await Assert.ThrowsAsync<NotSupportedException>(async () => await Deserializer.DeserializeWrapper<UnsupportedDerivedTypesWrapper_Dictionary>(json));
+            await Assert.ThrowsAsync<NotSupportedException>(async () => await Serializer.SerializeWrapper(wrapper));
 
             // With converter, we expect no values in the wrapper per converter's implementation.
             JsonSerializerOptions options = new JsonSerializerOptions();
             options.Converters.Add(new UnsupportedDictionaryWrapperConverter());
 
-            UnsupportedDerivedTypesWrapper_Dictionary customWrapper = JsonSerializer.Deserialize<UnsupportedDerivedTypesWrapper_Dictionary>(json, options);
+            UnsupportedDerivedTypesWrapper_Dictionary customWrapper = await Deserializer.DeserializeWrapper<UnsupportedDerivedTypesWrapper_Dictionary>(json, options);
             Assert.Null(customWrapper.DictionaryWrapper);
 
             // Clear metadata for serialize.
@@ -95,7 +96,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void CustomUnsupportedIEnumerableConverter()
+        public async Task CustomUnsupportedIEnumerableConverter()
         {
             string json = @"{""IEnumerableWrapper"": [""1"", ""2"", ""3""]}";
 
@@ -105,7 +106,7 @@ namespace System.Text.Json.Serialization.Tests
             };
 
             // Without converter, we throw on deserialize.
-            Assert.Throws<NotSupportedException>(() => JsonSerializer.Deserialize<UnsupportedDerivedTypesWrapper_IEnumerable>(json));
+            await Assert.ThrowsAsync<NotSupportedException>(async () => await Deserializer.DeserializeWrapper<UnsupportedDerivedTypesWrapper_IEnumerable>(json));
             // Without converter, we serialize as is.
             Assert.Equal(@"{""IEnumerableWrapper"":[""1"",""2"",""3""]}", JsonSerializer.Serialize(wrapper));
 
@@ -113,7 +114,7 @@ namespace System.Text.Json.Serialization.Tests
             JsonSerializerOptions options = new JsonSerializerOptions();
             options.Converters.Add(new UnsupportedIEnumerableWrapperConverter());
 
-            UnsupportedDerivedTypesWrapper_IEnumerable customWrapper = JsonSerializer.Deserialize<UnsupportedDerivedTypesWrapper_IEnumerable>(json, options);
+            UnsupportedDerivedTypesWrapper_IEnumerable customWrapper = await Deserializer.DeserializeWrapper<UnsupportedDerivedTypesWrapper_IEnumerable>(json, options);
             Assert.Null(customWrapper.IEnumerableWrapper);
 
             // Clear metadata for serialize.

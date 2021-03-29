@@ -1,11 +1,12 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         /// <summary>
         /// Allow both string and number values on deserialize.
@@ -37,18 +38,18 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void OverrideDefaultConverter()
+        public async Task OverrideDefaultConverter()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new Int32Converter());
 
             {
-                int myInt = JsonSerializer.Deserialize<int>("1", options);
+                int myInt = await Deserializer.DeserializeWrapper<int>("1", options);
                 Assert.Equal(1, myInt);
             }
 
             {
-                int myInt = JsonSerializer.Deserialize<int>(@"""1""", options);
+                int myInt = await Deserializer.DeserializeWrapper<int>(@"""1""", options);
                 Assert.Equal(1, myInt);
             }
         }

@@ -28,6 +28,7 @@
     <Compile Include="JsonSourceGenerator.Diagnostics.cs" />
     <Compile Include="JsonSourceGeneratorHelper.cs" />
     <Compile Include="JsonSerializableSyntaxReceiver.cs" />
+    <Compile Include="JsonSourceGeneratorHelper.Generate.cs" />
     <Compile Include="ObjectConstructionStrategy.cs" />
     <Compile Include="PropertyMetadata.cs" />
     <Compile Include="ReflectionUtils\AssemblyWrapper.cs" />

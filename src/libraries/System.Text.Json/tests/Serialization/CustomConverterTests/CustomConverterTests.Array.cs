@@ -2,11 +2,12 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         // A custom long[] converter as comma-delimited string "1,2,3".
         internal class LongArrayConverter : JsonConverter<long[]>
@@ -51,24 +52,24 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void CustomArrayConverterAsRoot()
+        public async Task CustomArrayConverterAsRoot()
         {
             const string json = @"""1,2,3""";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new LongArrayConverter());
 
-            long[] arr = JsonSerializer.Deserialize<long[]>(json, options);
+            long[] arr = await Deserializer.DeserializeWrapper<long[]>(json, options);
             Assert.Equal(1, arr[0]);
             Assert.Equal(2, arr[1]);
             Assert.Equal(3, arr[2]);
 
-            string jsonSerialized = JsonSerializer.Serialize(arr, options);
+            string jsonSerialized = await Serializer.SerializeWrapper(arr, options);
             Assert.Equal(json, jsonSerialized);
         }
 
         [Fact]
-        public static void CustomArrayConverterFail()
+        public async Task CustomArrayConverterFail()
         {
             string json = $"\"{Int64.MaxValue.ToString()}0\"";
 
@@ -77,7 +78,7 @@ namespace System.Text.Json.Serialization.Tests
 
             try
             {
-                JsonSerializer.Deserialize<long[]>(json, options);
+                await Deserializer.DeserializeWrapper<long[]>(json, options);
                 Assert.True(false, "Expected exception");
             }
             catch (JsonException ex)
@@ -95,21 +96,21 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void CustomArrayConverterInProperty()
+        public async Task CustomArrayConverterInProperty()
         {
             const string json = @"{""Array1"":""1,2,3"",""Array2"":""4,5""}";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new LongArrayConverter());
 
-            ClassWithProperty obj = JsonSerializer.Deserialize<ClassWithProperty>(json, options);
+            ClassWithProperty obj = await Deserializer.DeserializeWrapper<ClassWithProperty>(json, options);
             Assert.Equal(1, obj.Array1[0]);
             Assert.Equal(2, obj.Array1[1]);
             Assert.Equal(3, obj.Array1[2]);
             Assert.Equal(4, obj.Array2[0]);
             Assert.Equal(5, obj.Array2[1]);
 
-            string jsonSerialized = JsonSerializer.Serialize(obj, options);
+            string jsonSerialized = await Serializer.SerializeWrapper(obj, options);
             Assert.Equal(json, jsonSerialized);
         }
     }

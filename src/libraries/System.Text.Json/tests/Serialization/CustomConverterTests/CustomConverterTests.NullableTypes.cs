@@ -3,11 +3,12 @@
 
 using System.Diagnostics;
 using System.Reflection;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         private class JsonTestStructConverter : JsonConverter<TestStruct>
         {
@@ -57,73 +58,73 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void NullableCustomValueTypeUsingOptions()
+        public async Task NullableCustomValueTypeUsingOptions()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new JsonTestStructConverter());
 
             {
-                TestStruct myStruct = JsonSerializer.Deserialize<TestStruct>("1", options);
+                TestStruct myStruct = await Deserializer.DeserializeWrapper<TestStruct>("1", options);
                 Assert.Equal(1, myStruct.InnerValue);
             }
 
             {
-                TestStruct? myStruct = JsonSerializer.Deserialize<TestStruct?>("null", options);
+                TestStruct? myStruct = await Deserializer.DeserializeWrapper<TestStruct?>("null", options);
                 Assert.False(myStruct.HasValue);
             }
 
             {
-                TestStruct? myStruct = JsonSerializer.Deserialize<TestStruct?>("1", options);
+                TestStruct? myStruct = await Deserializer.DeserializeWrapper<TestStruct?>("1", options);
                 Assert.Equal(1, myStruct.Value.InnerValue);
             }
         }
 
         [Fact]
-        public static void NullableCustomValueTypeUsingAttributes()
+        public async Task NullableCustomValueTypeUsingAttributes()
         {
             {
-                TestStructClass myStructClass = JsonSerializer.Deserialize<TestStructClass>(@"{""MyStruct"":null}");
+                TestStructClass myStructClass = await Deserializer.DeserializeWrapper<TestStructClass>(@"{""MyStruct"":null}");
                 Assert.False(myStructClass.MyStruct.HasValue);
             }
 
             {
-                TestStructClass myStructClass = JsonSerializer.Deserialize<TestStructClass>(@"{""MyStruct"":1}");
+                TestStructClass myStructClass = await Deserializer.DeserializeWrapper<TestStructClass>(@"{""MyStruct"":1}");
                 Assert.True(myStructClass.MyStruct.HasValue);
                 Assert.Equal(1, myStructClass.MyStruct.Value.InnerValue);
             }
         }
 
         [Fact]
-        public static void NullableCustomValueTypeChoosesAttributeOverOptions()
+        public async Task NullableCustomValueTypeChoosesAttributeOverOptions()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new JsonTestStructThrowingConverter());
 
             // Chooses JsonTestStructThrowingConverter on options, which will throw.
-            Assert.Throws<NotSupportedException>(() => JsonSerializer.Deserialize<TestStruct?>("1", options));
+            await Assert.ThrowsAsync<NotSupportedException>(async () => await Deserializer.DeserializeWrapper<TestStruct?>("1", options));
 
             // Chooses JsonTestStructConverter on attribute, which will not throw.
-            TestStructClass myStructClass = JsonSerializer.Deserialize<TestStructClass>(@"{""MyStruct"":null}", options);
+            TestStructClass myStructClass = await Deserializer.DeserializeWrapper<TestStructClass>(@"{""MyStruct"":null}", options);
             Assert.False(myStructClass.MyStruct.HasValue);
         }
 
         [Fact]
-        public static void NullableCustomValueTypeNegativeTest()
+        public async Task NullableCustomValueTypeNegativeTest()
         {
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<TestStructInvalidClass>(@"{""MyInt"":null}"));
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<TestStructInvalidClass>(@"{""MyInt"":1}"));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<TestStructInvalidClass>(@"{""MyInt"":null}"));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<TestStructInvalidClass>(@"{""MyInt"":1}"));
         }
 
         [Fact]
-        public static void NullableStandardValueTypeTest()
+        public async Task NullableStandardValueTypeTest()
         {
             {
-                int? myInt = JsonSerializer.Deserialize<int?>("null");
+                int? myInt = await Deserializer.DeserializeWrapper<int?>("null");
                 Assert.False(myInt.HasValue);
             }
 
             {
-                int? myInt = JsonSerializer.Deserialize<int?>("1");
+                int? myInt = await Deserializer.DeserializeWrapper<int?>("1");
                 Assert.Equal(1, myInt.Value);
             }
         }
@@ -162,7 +163,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void NullableConverterIsNotPassedNull()
+        public async Task NullableConverterIsNotPassedNull()
         {
             // For compat, deserialize does not call converter for null token unless the type doesn't support
             // null or HandleNull is overridden and returns 'true'.
@@ -172,24 +173,24 @@ namespace System.Text.Json.Serialization.Tests
             options.Converters.Add(new NullIntTo42Converter());
 
             {
-                int? myInt = JsonSerializer.Deserialize<int?>("null", options);
+                int? myInt = await Deserializer.DeserializeWrapper<int?>("null", options);
                 Assert.Null(myInt);
             }
 
             {
-                string json = JsonSerializer.Serialize<int?>(null, options);
+                string json = await Serializer.SerializeWrapper<int?>(null, options);
                 Assert.Equal("null", json);
             }
 
             {
-                int?[] ints = JsonSerializer.Deserialize<int?[]>("[null, null]", options);
+                int?[] ints = await Deserializer.DeserializeWrapper<int?[]>("[null, null]", options);
                 Assert.Equal(2, ints.Length);
                 Assert.Null(ints[0]);
                 Assert.Null(ints[1]);
             }
 
             {
-                string json = JsonSerializer.Serialize<int?[]>(new int?[] { null, null }, options);
+                string json = await Serializer.SerializeWrapper<int?[]>(new int?[] { null, null }, options);
                 Assert.Equal("[null,null]", json);
             }
         }
@@ -239,66 +240,66 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ReferenceTypeConverterDoesntGetPassedNull()
+        public async Task ReferenceTypeConverterDoesntGetPassedNull()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new PocoFailOnNullConverter());
 
             {
-                PocoSingleInt poco = JsonSerializer.Deserialize<PocoSingleInt>("null", options);
+                PocoSingleInt poco = await Deserializer.DeserializeWrapper<PocoSingleInt>("null", options);
                 Assert.Null(poco);
 
-                poco = JsonSerializer.Deserialize<PocoSingleInt>("{}", options);
+                poco = await Deserializer.DeserializeWrapper<PocoSingleInt>("{}", options);
                 Assert.Equal(42, poco.MyInt);
             }
 
             {
-                PocoSingleInt[] pocos = JsonSerializer.Deserialize<PocoSingleInt[]>("[null, null]", options);
+                PocoSingleInt[] pocos = await Deserializer.DeserializeWrapper<PocoSingleInt[]>("[null, null]", options);
                 Assert.Equal(2, pocos.Length);
                 Assert.Null(pocos[0]);
                 Assert.Null(pocos[1]);
 
-                pocos = JsonSerializer.Deserialize<PocoSingleInt[]>("[{}, {}]", options);
+                pocos = await Deserializer.DeserializeWrapper<PocoSingleInt[]>("[{}, {}]", options);
                 Assert.Equal(2, pocos.Length);
                 Assert.Equal(42, pocos[0].MyInt);
                 Assert.Equal(42, pocos[1].MyInt);
             }
 
             {
-                string json = JsonSerializer.Serialize<PocoSingleInt>(null, options);
+                string json = await Serializer.SerializeWrapper<PocoSingleInt>(null, options);
                 Assert.Equal(@"null", json);
 
                 PocoSingleInt poco = new PocoSingleInt();
-                json = JsonSerializer.Serialize<PocoSingleInt>(poco, options);
+                json = await Serializer.SerializeWrapper<PocoSingleInt>(poco, options);
                 Assert.Equal(@"{""MyInt"":42}", json);
             }
 
             {
-                string json = JsonSerializer.Serialize<PocoSingleInt[]>(new PocoSingleInt[] { null, null }, options);
+                string json = await Serializer.SerializeWrapper<PocoSingleInt[]>(new PocoSingleInt[] { null, null }, options);
                 Assert.Equal(@"[null,null]", json);
 
                 PocoSingleInt poco = new PocoSingleInt();
-                json = JsonSerializer.Serialize<PocoSingleInt[]>(new PocoSingleInt[] { poco, poco }, options);
+                json = await Serializer.SerializeWrapper<PocoSingleInt[]>(new PocoSingleInt[] { poco, poco }, options);
                 Assert.Equal(@"[{""MyInt"":42},{""MyInt"":42}]", json);
             }
         }
 
         [Fact]
-        public static void StructConverter_SaysCanConvertNullableStruct_ConverterOnProperty()
+        public async Task StructConverter_SaysCanConvertNullableStruct_ConverterOnProperty()
         {
             string converterTypeAsStr = typeof(JsonTestStructValueChangingConverter).ToString();
             string structTypeAsStr = typeof(TestStruct).ToString();
             string nullableStructTypeAsStr = typeof(TestStruct?).ToString();
 
-            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Serialize(new ClassWithNullableStruct_ConverterOnProperty { MyStruct = new TestStruct() }));
+            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Serializer.SerializeWrapper(new ClassWithNullableStruct_ConverterOnProperty { MyStruct = new TestStruct() }));
             string exAsStr = ex.ToString();
             Assert.Contains(converterTypeAsStr, exAsStr);
             Assert.Contains(structTypeAsStr, exAsStr);
             Assert.Contains(nullableStructTypeAsStr, exAsStr);
 
-            ex = Assert.Throws<InvalidOperationException>(() =>
-                JsonSerializer.Deserialize<ClassWithNullableStruct_ConverterOnProperty>(""));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                await Deserializer.DeserializeWrapper<ClassWithNullableStruct_ConverterOnProperty>(""));
             exAsStr = ex.ToString();
             Assert.Contains(converterTypeAsStr, exAsStr);
             Assert.Contains(structTypeAsStr, exAsStr);
@@ -306,53 +307,53 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void StructConverter_SaysCanConvertNullableStruct_ConverterOnType()
+        public async Task StructConverter_SaysCanConvertNullableStruct_ConverterOnType()
         {
             // Converter cannot be applied directly to nullable type, so the serializer wraps the converter it with NullableConverter<T> as expected.
 
-            string serialized = JsonSerializer.Serialize(new ClassWithNullableStruct_ConverterOnType { MyStruct = new TestStructWithConverter { InnerValue = 5 } });
+            string serialized = await Serializer.SerializeWrapper(new ClassWithNullableStruct_ConverterOnType { MyStruct = new TestStructWithConverter { InnerValue = 5 } });
             Assert.Equal(@"{""MyStruct"":{""InnerValue"":10}}", serialized);
 
-            ClassWithNullableStruct_ConverterOnType obj = JsonSerializer.Deserialize<ClassWithNullableStruct_ConverterOnType>(serialized);
+            ClassWithNullableStruct_ConverterOnType obj = await Deserializer.DeserializeWrapper<ClassWithNullableStruct_ConverterOnType>(serialized);
             Assert.Equal(15, obj.MyStruct?.InnerValue);
         }
 
         [Fact]
-        public static void StructConverter_SaysCanConvertNullableStruct_ConverterOnOptions()
+        public async Task StructConverter_SaysCanConvertNullableStruct_ConverterOnOptions()
         {
             var options = new JsonSerializerOptions { Converters = { new JsonTestStructValueChangingConverter() } };
 
-            Assert.Throws<InvalidOperationException>(
-                () => JsonSerializer.Serialize(new ClassWithNullableStruct { MyStruct = new TestStruct() }, options));
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await Serializer.SerializeWrapper(new ClassWithNullableStruct { MyStruct = new TestStruct() }, options));
 
-            Assert.Throws<InvalidOperationException>(() =>
-                JsonSerializer.Deserialize<ClassWithNullableStruct>("", options));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                await Deserializer.DeserializeWrapper<ClassWithNullableStruct>("", options));
         }
 
         [Fact]
-        public static void StructConverter_SaysCanConvertNullableStruct_StructAsRootType_ConverterOnType()
+        public async Task StructConverter_SaysCanConvertNullableStruct_StructAsRootType_ConverterOnType()
         {
             // Converter cannot be applied directly to nullable type, so the serializer wraps the converter it with NullableConverter<T> as expected.
 
             TestStructWithConverter? obj = new TestStructWithConverter { InnerValue = 5 };
-            string serialized = JsonSerializer.Serialize(obj);
+            string serialized = await Serializer.SerializeWrapper(obj);
             Assert.Equal(@"{""InnerValue"":10}", serialized);
 
-            obj = JsonSerializer.Deserialize<TestStructWithConverter?>(serialized);
+            obj = await Deserializer.DeserializeWrapper<TestStructWithConverter?>(serialized);
             Assert.Equal(15, obj?.InnerValue);
         }
 
         [Fact]
-        public static void StructConverter_SaysCanConvertNullableStruct_StructAsRootType_ConverterOnOptions()
+        public async Task StructConverter_SaysCanConvertNullableStruct_StructAsRootType_ConverterOnOptions()
         {
             var options = new JsonSerializerOptions { Converters = { new JsonTestStructValueChangingConverter() } };
 
             TestStruct? obj = new TestStruct { InnerValue = 5 };
 
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(obj, options));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(obj, options));
 
-            Assert.Throws<InvalidOperationException>(() =>
-                JsonSerializer.Deserialize<TestStruct?>("", options));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                await Deserializer.DeserializeWrapper<TestStruct?>("", options));
         }
 
         private class ClassWithNullableStruct_ConverterOnProperty
@@ -434,7 +435,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void NonNullableConverter_ReturnedByJsonConverterFactory_CanBeUsedAsFallback_ForNullableProperty()
+        public async Task NonNullableConverter_ReturnedByJsonConverterFactory_CanBeUsedAsFallback_ForNullableProperty()
         {
             string json = @"{
 ""Property"": {
@@ -443,27 +444,27 @@ namespace System.Text.Json.Serialization.Tests
 }}";
             // Verify that below converters will be called -
             // serializer doesn't support ValueTuple unless field support is active.
-            ClassWithValueTuple obj0 = JsonSerializer.Deserialize<ClassWithValueTuple>(json);
+            ClassWithValueTuple obj0 = await Deserializer.DeserializeWrapper<ClassWithValueTuple>(json);
             Assert.Equal(0, obj0.Property.Item1);
             Assert.Equal(0, obj0.Property.Item2);
 
-            obj0 = JsonSerializer.Deserialize<ClassWithValueTuple>(json, new JsonSerializerOptions { IncludeFields = true });
+            obj0 = await Deserializer.DeserializeWrapper<ClassWithValueTuple>(json, new JsonSerializerOptions { IncludeFields = true });
             Assert.Equal(1, obj0.Property.Item1);
             Assert.Equal(2, obj0.Property.Item2);
 
             // Baseline: converter returned from factory can be used for non-nullable property.
-            ClassWithFactoryOn_NonNullableProperty obj1 = JsonSerializer.Deserialize<ClassWithFactoryOn_NonNullableProperty>(json);
+            ClassWithFactoryOn_NonNullableProperty obj1 = await Deserializer.DeserializeWrapper<ClassWithFactoryOn_NonNullableProperty>(json);
             Assert.Equal(1, obj1.Property.Item1);
             Assert.Equal(2, obj1.Property.Item2);
 
-            JsonTestHelper.AssertJsonEqual(json, JsonSerializer.Serialize(obj1));
+            JsonTestHelper.AssertJsonEqual(json, await Serializer.SerializeWrapper(obj1));
 
             // Test: converter returned from factory can be used for nullable property.
-            ClassWithFactoryOn_NullableProperty obj2 = JsonSerializer.Deserialize<ClassWithFactoryOn_NullableProperty>(json);
+            ClassWithFactoryOn_NullableProperty obj2 = await Deserializer.DeserializeWrapper<ClassWithFactoryOn_NullableProperty>(json);
             Assert.Equal(1, obj2.Property?.Item1);
             Assert.Equal(2, obj2.Property?.Item2);
 
-            JsonTestHelper.AssertJsonEqual(json, JsonSerializer.Serialize(obj2));
+            JsonTestHelper.AssertJsonEqual(json, await Serializer.SerializeWrapper(obj2));
         }
 
         private class ClassWithValueTuple

@@ -3,11 +3,12 @@
 
 using System.Collections.Generic;
 using System.Globalization;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         /// <summary>
         /// Allow a conversion of "null" to a 0 value.
@@ -31,31 +32,31 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ValueTypeConverterForNull()
+        public async Task ValueTypeConverterForNull()
         {
             // Baseline
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<int>("null"));
-            Assert.Equal(1, JsonSerializer.Deserialize<int>("1"));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<int>("null"));
+            Assert.Equal(1, await Deserializer.DeserializeWrapper<int>("1"));
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new Int32NullConverter());
 
-            Assert.Equal(0, JsonSerializer.Deserialize<int>("null", options));
-            Assert.Equal(1, JsonSerializer.Deserialize<int>("1", options));
+            Assert.Equal(0, await Deserializer.DeserializeWrapper<int>("null", options));
+            Assert.Equal(1, await Deserializer.DeserializeWrapper<int>("1", options));
         }
 
         [Fact]
-        public static void ValueTypeConverterForNullWithArray()
+        public async Task ValueTypeConverterForNullWithArray()
         {
             const string json = "[null, 1, null]";
 
             // Baseline
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<int[]>(json));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<int[]>(json));
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new Int32NullConverter());
 
-            int[] arr = JsonSerializer.Deserialize<int[]>(json, options);
+            int[] arr = await Deserializer.DeserializeWrapper<int[]>(json, options);
             Assert.Equal(0, arr[0]);
             Assert.Equal(1, arr[1]);
             Assert.Equal(0, arr[2]);
@@ -102,19 +103,19 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ValueConverterForNullableWithJsonConverterAttribute()
+        public async Task ValueConverterForNullableWithJsonConverterAttribute()
         {
             ClassWithNullableAndJsonConverterAttribute obj;
 
             const string BaselineJson = @"{""NullableValue"":""1989/01/01 11:22:33""}";
-            obj = JsonSerializer.Deserialize<ClassWithNullableAndJsonConverterAttribute>(BaselineJson);
+            obj = await Deserializer.DeserializeWrapper<ClassWithNullableAndJsonConverterAttribute>(BaselineJson);
             Assert.NotNull(obj.NullableValue);
 
             const string Json = @"{""NullableValue"":""""}";
-            obj = JsonSerializer.Deserialize<ClassWithNullableAndJsonConverterAttribute>(Json);
+            obj = await Deserializer.DeserializeWrapper<ClassWithNullableAndJsonConverterAttribute>(Json);
             Assert.Null(obj.NullableValue);
 
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
             Assert.Contains(@"""NullableValue"":null", json);
         }
 
@@ -125,22 +126,22 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ValueConverterForNullableWithoutJsonConverterAttribute()
+        public async Task ValueConverterForNullableWithoutJsonConverterAttribute()
         {
             const string Json = @"{""NullableValue"":"""", ""NullableValues"":[""""]}";
             ClassWithNullableAndWithoutJsonConverterAttribute obj;
 
             // The json is not valid with the default converter.
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ClassWithNullableAndWithoutJsonConverterAttribute>(Json));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<ClassWithNullableAndWithoutJsonConverterAttribute>(Json));
 
             JsonSerializerOptions options = new JsonSerializerOptions();
             options.Converters.Add(new JsonNullableDateTimeOffsetConverter());
 
-            obj = JsonSerializer.Deserialize<ClassWithNullableAndWithoutJsonConverterAttribute>(Json, options);
+            obj = await Deserializer.DeserializeWrapper<ClassWithNullableAndWithoutJsonConverterAttribute>(Json, options);
             Assert.Null(obj.NullableValue);
             Assert.Null(obj.NullableValues[0]);
 
-            string json = JsonSerializer.Serialize(obj);
+            string json = await Serializer.SerializeWrapper(obj);
             Assert.Contains(@"""NullableValue"":null", json);
             Assert.Contains(@"""NullableValues"":[null]", json);
         }
@@ -203,22 +204,22 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ConverterForClassThatCanBeNullDependingOnContent()
+        public async Task ConverterForClassThatCanBeNullDependingOnContent()
         {
             ClassThatCanBeNullDependingOnContent obj;
 
-            obj = JsonSerializer.Deserialize<ClassThatCanBeNullDependingOnContent>(@"{""MyInt"":5}");
+            obj = await Deserializer.DeserializeWrapper<ClassThatCanBeNullDependingOnContent>(@"{""MyInt"":5}");
             Assert.Equal(5, obj.MyInt);
 
             string json;
-            json = JsonSerializer.Serialize(obj);
+            json = await Serializer.SerializeWrapper(obj);
             Assert.Contains(@"""MyInt"":5", json);
 
             obj.MyInt = 0;
-            json = JsonSerializer.Serialize(obj);
+            json = await Serializer.SerializeWrapper(obj);
             Assert.Contains(@"""MyInt"":null", json);
 
-            obj = JsonSerializer.Deserialize<ClassThatCanBeNullDependingOnContent>(@"{""MyInt"":0}");
+            obj = await Deserializer.DeserializeWrapper<ClassThatCanBeNullDependingOnContent>(@"{""MyInt"":0}");
             Assert.Null(obj);
         }
     }

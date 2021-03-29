@@ -12,7 +12,7 @@ namespace System.Text.Json.SourceGeneration
         TypeUnsupportedBySourceGen = 0,
         Object = 1,
         KnownType = 2,
-        TypeWithCustomConverter = 3,
+        TypeWithDesignTimeProvidedCustomConverter = 3,
         Enumerable = 4,
         Dictionary = 5,
         Nullable = 6,

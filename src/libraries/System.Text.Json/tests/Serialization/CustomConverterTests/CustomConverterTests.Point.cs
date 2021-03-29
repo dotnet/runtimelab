@@ -1,11 +1,12 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         // A custom data type representing a point where JSON is "XValue,YValue".
         public struct Point
@@ -21,7 +22,8 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         // Converter for a custom data type that has additional state (coordinateOffset).
-        private class PointConverter : JsonConverter<Point>
+        // TODO: add codegen test here where PointConverter is private (not reachable in static source).
+        internal class PointConverter : JsonConverter<Point>
         {
             private int _coordinateOffset;
 
@@ -62,70 +64,70 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void CustomValueConverterFromArray()
+        public async Task CustomValueConverterFromArray()
         {
             const string json = @"[""1,2"",""3,4""]";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new PointConverter());
 
-            Point[] Points = JsonSerializer.Deserialize<Point[]>(json, options);
+            Point[] Points = await Deserializer.DeserializeWrapper<Point[]>(json, options);
             Assert.Equal(2, Points.Length);
             Assert.Equal(1, Points[0].X);
             Assert.Equal(2, Points[0].Y);
             Assert.Equal(3, Points[1].X);
             Assert.Equal(4, Points[1].Y);
 
-            string jsonSerialized = JsonSerializer.Serialize(Points, options);
+            string jsonSerialized = await Serializer.SerializeWrapper(Points, options);
             Assert.Equal(json, jsonSerialized);
         }
 
         [Fact]
-        public static void CustomValueConverterFromRoot()
+        public async Task CustomValueConverterFromRoot()
         {
             const string json = @"""1,2""";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new PointConverter());
 
-            Point obj = JsonSerializer.Deserialize<Point>(json, options);
+            Point obj = await Deserializer.DeserializeWrapper<Point>(json, options);
             Assert.Equal(1, obj.X);
             Assert.Equal(2, obj.Y);
 
-            string jsonSerialized = JsonSerializer.Serialize(obj, options);
+            string jsonSerialized = await Serializer.SerializeWrapper(obj, options);
             Assert.Equal(json, jsonSerialized);
         }
 
         [Fact]
-        public static void CustomValueConverterFromRootAndOptions()
+        public async Task CustomValueConverterFromRootAndOptions()
         {
             const string json = @"""1,2""";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new PointConverter(100));
 
-            Point obj = JsonSerializer.Deserialize<Point>(json, options);
+            Point obj = await Deserializer.DeserializeWrapper<Point>(json, options);
             Assert.Equal(101, obj.X);
             Assert.Equal(102, obj.Y);
 
-            string jsonSerialized = JsonSerializer.Serialize(obj, options);
+            string jsonSerialized = await Serializer.SerializeWrapper(obj, options);
             Assert.Equal(json, jsonSerialized);
         }
 
         [Fact]
-        public static void CustomValueConverterFromRootWithNullable()
+        public async Task CustomValueConverterFromRootWithNullable()
         {
             const string json = "null";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new PointConverter());
 
-            Point? obj = JsonSerializer.Deserialize<Point?>(json, options);
+            Point? obj = await Deserializer.DeserializeWrapper<Point?>(json, options);
             Assert.Null(obj);
         }
 
         [Fact]
-        public static void CustomValueConverterFromRootFail()
+        public async Task CustomValueConverterFromRootFail()
         {
             // Invalid JSON according to the converter.
             const string json = @"""1""";
@@ -133,22 +135,22 @@ namespace System.Text.Json.Serialization.Tests
             var options = new JsonSerializerOptions();
             options.Converters.Add(new PointConverter());
 
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Point>(json, options));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<Point>(json, options));
         }
 
         [Fact]
-        public static void CustomValueConverterStructFromRoot()
+        public async Task CustomValueConverterStructFromRoot()
         {
             const string json = @"""1,2""";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new PointConverter());
 
-            Point obj = JsonSerializer.Deserialize<Point>(json, options);
+            Point obj = await Deserializer.DeserializeWrapper<Point>(json, options);
             Assert.Equal(1, obj.X);
             Assert.Equal(2, obj.Y);
 
-            string jsonSerialized = JsonSerializer.Serialize(obj, options);
+            string jsonSerialized = await Serializer.SerializeWrapper(obj, options);
             Assert.Equal(json, jsonSerialized);
         }
 
@@ -210,37 +212,37 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void CustomObjectConverterInArray()
+        public async Task CustomObjectConverterInArray()
         {
             const string json = @"[{""COORD"":""1,2""},{""COORD"":""3,4""}]";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new PointObjectConverter());
 
-            Point[] Points = JsonSerializer.Deserialize<Point[]>(json, options);
+            Point[] Points = await Deserializer.DeserializeWrapper<Point[]>(json, options);
             Assert.Equal(2, Points.Length);
             Assert.Equal(1, Points[0].X);
             Assert.Equal(2, Points[0].Y);
             Assert.Equal(3, Points[1].X);
             Assert.Equal(4, Points[1].Y);
 
-            string jsonSerialized = JsonSerializer.Serialize(Points, options);
+            string jsonSerialized = await Serializer.SerializeWrapper(Points, options);
             Assert.Equal(json, jsonSerialized);
         }
 
         [Fact]
-        public static void CustomObjectConverterFromRoot()
+        public async Task CustomObjectConverterFromRoot()
         {
             const string json = @"{""COORD"":""1,2""}";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new PointObjectConverter());
 
-            Point obj = JsonSerializer.Deserialize<Point>(json, options);
+            Point obj = await Deserializer.DeserializeWrapper<Point>(json, options);
             Assert.Equal(1, obj.X);
             Assert.Equal(2, obj.Y);
 
-            string jsonSerialized = JsonSerializer.Serialize(obj, options);
+            string jsonSerialized = await Serializer.SerializeWrapper(obj, options);
             Assert.Equal(json, jsonSerialized);
         }
     }

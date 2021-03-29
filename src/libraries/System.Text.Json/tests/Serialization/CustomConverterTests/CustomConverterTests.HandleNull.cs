@@ -3,23 +3,24 @@
 
 using System.Buffers;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         [Fact]
-        public static void ValueTypeConverter_NoOverride()
+        public async Task ValueTypeConverter_NoOverride()
         {
             // Baseline
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<int>("null"));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<int>("null"));
 
             // Per null handling default value for value types (true), converter handles null.
             var options = new JsonSerializerOptions();
             options.Converters.Add(new Int32NullConverter_SpecialCaseNull());
 
-            Assert.Equal(-1, JsonSerializer.Deserialize<int>("null", options));
+            Assert.Equal(-1, await Deserializer.DeserializeWrapper<int>("null", options));
         }
 
         private class Int32NullConverter_SpecialCaseNull : JsonConverter<int>
@@ -41,17 +42,17 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ValueTypeConverter_OptOut()
+        public async Task ValueTypeConverter_OptOut()
         {
             // Per null handling opt-out, serializer handles null.
             var options = new JsonSerializerOptions();
             options.Converters.Add(new Int32NullConverter_OptOut());
 
             // Serializer throws JsonException if null is assigned to value that can't be null.
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<int>("null", options));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ClassWithInt>(@"{""MyInt"":null}", options));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<List<int>>("[null]", options));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Dictionary<string, int>>(@"{""MyInt"":null}", options));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<int>("null", options));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<ClassWithInt>(@"{""MyInt"":null}", options));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<List<int>>("[null]", options));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<Dictionary<string, int>>(@"{""MyInt"":null}", options));
         }
 
         private class Int32NullConverter_OptOut : Int32NullConverter_SpecialCaseNull
@@ -65,13 +66,13 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ValueTypeConverter_NullOptIn()
+        public async Task ValueTypeConverter_NullOptIn()
         {
             // Per null handling opt-in, converter handles null.
             var options = new JsonSerializerOptions();
             options.Converters.Add(new Int32NullConverter_NullOptIn());
 
-            Assert.Equal(-1, JsonSerializer.Deserialize<int>("null", options));
+            Assert.Equal(-1, await Deserializer.DeserializeWrapper<int>("null", options));
         }
 
         private class Int32NullConverter_NullOptIn : Int32NullConverter_SpecialCaseNull
@@ -80,16 +81,16 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ComplexValueTypeConverter_NoOverride()
+        public async Task ComplexValueTypeConverter_NoOverride()
         {
             // Baseline
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Point_2D_Struct>("null"));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<Point_2D_Struct>("null"));
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new PointStructConverter_SpecialCaseNull());
 
             // Per null handling default value for value types (true), converter handles null.
-            var obj = JsonSerializer.Deserialize<Point_2D_Struct>("null", options);
+            var obj = await Deserializer.DeserializeWrapper<Point_2D_Struct>("null", options);
             Assert.Equal(-1, obj.X);
             Assert.Equal(-1, obj.Y);
         }
@@ -113,18 +114,18 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ComplexValueTypeConverter_OptOut()
+        public async Task ComplexValueTypeConverter_OptOut()
         {
             // Per null handling opt-out, serializer handles null.
             var options = new JsonSerializerOptions();
             options.Converters.Add(new PointStructConverter_OptOut());
 
             // Serializer throws JsonException if null is assigned to value that can't be null.
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Point_2D_Struct>("null", options));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ClassWithPoint>(@"{""MyPoint"":null}", options));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ImmutableClassWithPoint>(@"{""MyPoint"":null}", options));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<List<Point_2D_Struct>>("[null]", options));
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Dictionary<string, Point_2D_Struct>>(@"{""MyPoint"":null}", options));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<Point_2D_Struct>("null", options));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<ClassWithPoint>(@"{""MyPoint"":null}", options));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<ImmutableClassWithPoint>(@"{""MyPoint"":null}", options));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<List<Point_2D_Struct>>("[null]", options));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<Dictionary<string, Point_2D_Struct>>(@"{""MyPoint"":null}", options));
         }
 
         private class PointStructConverter_OptOut : PointStructConverter_SpecialCaseNull
@@ -145,16 +146,16 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ComplexValueTypeConverter_NullOptIn()
+        public async Task ComplexValueTypeConverter_NullOptIn()
         {
             // Baseline
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Point_2D_Struct>("null"));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<Point_2D_Struct>("null"));
 
             // Per null handling opt-in, converter handles null.
             var options = new JsonSerializerOptions();
             options.Converters.Add(new PointStructConverter_NullOptIn());
 
-            var obj = JsonSerializer.Deserialize<Point_2D_Struct>("null", options);
+            var obj = await Deserializer.DeserializeWrapper<Point_2D_Struct>("null", options);
             Assert.Equal(-1, obj.X);
             Assert.Equal(-1, obj.Y);
         }
@@ -165,10 +166,10 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void NullableValueTypeConverter_NoOverride()
+        public async Task NullableValueTypeConverter_NoOverride()
         {
             // Baseline
-            int? val = JsonSerializer.Deserialize<int?>("null");
+            int? val = await Deserializer.DeserializeWrapper<int?>("null");
             Assert.Null(val);
             Assert.Equal("null", JsonSerializer.Serialize(val));
 
@@ -178,7 +179,7 @@ namespace System.Text.Json.Serialization.Tests
             var options = new JsonSerializerOptions();
             options.Converters.Add(new NullableInt32NullConverter_SpecialCaseNull());
 
-            val = JsonSerializer.Deserialize<int?>("null", options);
+            val = await Deserializer.DeserializeWrapper<int?>("null", options);
             Assert.Null(val);
 
             val = null;
@@ -210,10 +211,10 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void NullableValueTypeConverter_OptOut()
+        public async Task NullableValueTypeConverter_OptOut()
         {
             // Baseline
-            int? val = JsonSerializer.Deserialize<int?>("null");
+            int? val = await Deserializer.DeserializeWrapper<int?>("null");
             Assert.Null(val);
             Assert.Equal("null", JsonSerializer.Serialize(val));
 
@@ -221,7 +222,7 @@ namespace System.Text.Json.Serialization.Tests
             var options = new JsonSerializerOptions();
             options.Converters.Add(new NullableInt32NullConverter_NullOptOut());
 
-            val = JsonSerializer.Deserialize<int?>("null", options);
+            val = await Deserializer.DeserializeWrapper<int?>("null", options);
             Assert.Null(val);
             Assert.Equal("null", JsonSerializer.Serialize(val, options));
         }
@@ -232,10 +233,10 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ReferenceTypeConverter_NoOverride()
+        public async Task ReferenceTypeConverter_NoOverride()
         {
             // Baseline
-            Uri val = JsonSerializer.Deserialize<Uri>("null");
+            Uri val = await Deserializer.DeserializeWrapper<Uri>("null");
             Assert.Null(val);
             Assert.Equal("null", JsonSerializer.Serialize(val));
 
@@ -244,7 +245,7 @@ namespace System.Text.Json.Serialization.Tests
             options.Converters.Add(new UriNullConverter_SpecialCaseNull());
 
             // Serializer sets default value.
-            val = JsonSerializer.Deserialize<Uri>("null", options);
+            val = await Deserializer.DeserializeWrapper<Uri>("null", options);
             Assert.Null(val);
 
             // Serializer serializes null.
@@ -276,13 +277,13 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ReferenceTypeConverter_OptOut()
+        public async Task ReferenceTypeConverter_OptOut()
         {
             // Per null handling opt-out, serializer handles null.
             var options = new JsonSerializerOptions();
             options.Converters.Add(new UriNullConverter_OptOut());
 
-            Uri val = JsonSerializer.Deserialize<Uri>("null", options);
+            Uri val = await Deserializer.DeserializeWrapper<Uri>("null", options);
             Assert.Null(val);
             Assert.Equal("null", JsonSerializer.Serialize(val, options));
         }
@@ -293,13 +294,13 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ReferenceTypeConverter_NullOptIn()
+        public async Task ReferenceTypeConverter_NullOptIn()
         {
             // Per null handling opt-in, converter handles null.
             var options = new JsonSerializerOptions();
             options.Converters.Add(new UriNullConverter_NullOptIn());
 
-            Uri val = JsonSerializer.Deserialize<Uri>("null", options);
+            Uri val = await Deserializer.DeserializeWrapper<Uri>("null", options);
             Assert.Equal(new Uri("https://default"), val);
 
             val = null;
@@ -312,10 +313,10 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ComplexReferenceTypeConverter_NoOverride()
+        public async Task ComplexReferenceTypeConverter_NoOverride()
         {
             // Baseline
-            Point_2D obj = JsonSerializer.Deserialize<Point_2D>("null");
+            Point_2D obj = await Deserializer.DeserializeWrapper<Point_2D>("null");
             Assert.Null(obj);
             Assert.Equal("null", JsonSerializer.Serialize(obj));
 
@@ -323,7 +324,7 @@ namespace System.Text.Json.Serialization.Tests
             var options = new JsonSerializerOptions();
             options.Converters.Add(new PointClassConverter_SpecialCaseNull());
 
-            obj = JsonSerializer.Deserialize<Point_2D>("null", options);
+            obj = await Deserializer.DeserializeWrapper<Point_2D>("null", options);
             Assert.Null(obj);
             Assert.Equal("null", JsonSerializer.Serialize(obj));
         }
@@ -356,13 +357,13 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ComplexReferenceTypeConverter_NullOptIn()
+        public async Task ComplexReferenceTypeConverter_NullOptIn()
         {
             // Per null handling opt-in, converter handles null.
             var options = new JsonSerializerOptions();
             options.Converters.Add(new PointClassConverter_NullOptIn());
 
-            Point_2D obj = JsonSerializer.Deserialize<Point_2D>("null", options);
+            Point_2D obj = await Deserializer.DeserializeWrapper<Point_2D>("null", options);
             Assert.Equal(-1, obj.X);
             Assert.Equal(-1, obj.Y);
 
@@ -376,13 +377,13 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ConverterNotCalled_IgnoreNullValues()
+        public async Task ConverterNotCalled_IgnoreNullValues()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new UriNullConverter_NullOptIn());
 
             // Converter is called - JsonIgnoreCondition.WhenWritingDefault does not apply to deserialization.
-            ClassWithIgnoredUri obj = JsonSerializer.Deserialize<ClassWithIgnoredUri>(@"{""MyUri"":null}", options);
+            ClassWithIgnoredUri obj = await Deserializer.DeserializeWrapper<ClassWithIgnoredUri>(@"{""MyUri"":null}", options);
             Assert.Equal(new Uri("https://default"), obj.MyUri);
 
             obj.MyUri = null;
@@ -397,7 +398,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ConverterWritesBadAmount()
+        public async Task ConverterWritesBadAmount()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new BadUriConverter());
@@ -412,7 +413,7 @@ namespace System.Text.Json.Serialization.Tests
 
             using (Utf8JsonWriter writer = new Utf8JsonWriter(new ArrayBufferWriter<byte>(), writerOptions))
             {
-                Assert.Throws<JsonException>(() => JsonSerializer.Serialize(new StructWithObject(), options));
+                await Assert.ThrowsAsync<JsonException>(async () => await Serializer.SerializeWrapper(new StructWithObject(), options));
             }
         }
 
@@ -450,22 +451,22 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ObjectAsRootValue()
+        public async Task ObjectAsRootValue()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new ObjectConverter());
 
             object obj = null;
             Assert.Equal(@"""NullObject""", JsonSerializer.Serialize(obj, options));
-            Assert.Equal("NullObject", JsonSerializer.Deserialize<object>("null", options));
+            Assert.Equal("NullObject", await Deserializer.DeserializeWrapper<object>("null", options));
 
             options = new JsonSerializerOptions();
             options.Converters.Add(new BadObjectConverter());
-            Assert.Throws<JsonException>(() => JsonSerializer.Serialize(obj, options));
+            await Assert.ThrowsAsync<JsonException>(async () => await Serializer.SerializeWrapper(obj, options));
         }
 
         [Fact]
-        public static void ObjectAsCollectionElement()
+        public async Task ObjectAsCollectionElement()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new ObjectConverter());
@@ -473,14 +474,14 @@ namespace System.Text.Json.Serialization.Tests
             List<object> list = new List<object> {  null };
             Assert.Equal(@"[""NullObject""]", JsonSerializer.Serialize(list, options));
 
-            list = JsonSerializer.Deserialize<List<object>>("[null]", options);
+            list = await Deserializer.DeserializeWrapper<List<object>>("[null]", options);
             Assert.Equal("NullObject", list[0]);
 
             options = new JsonSerializerOptions();
             options.Converters.Add(new BadObjectConverter());
 
             list[0] = null;
-            Assert.Throws<JsonException>(() => JsonSerializer.Serialize(list, options));
+            await Assert.ThrowsAsync<JsonException>(async () => await Serializer.SerializeWrapper(list, options));
         }
 
         public class ObjectConverter : JsonConverter<object>
@@ -510,7 +511,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void SetterCalledWhenConverterReturnsNull()
+        public async Task SetterCalledWhenConverterReturnsNull()
         {
             var options = new JsonSerializerOptions
             {
@@ -521,12 +522,12 @@ namespace System.Text.Json.Serialization.Tests
             // Baseline - null values ignored, converter is not called.
             string json = @"{""MyUri"":null}";
 
-            ClassWithInitializedUri obj = JsonSerializer.Deserialize<ClassWithInitializedUri>(json, options);
+            ClassWithInitializedUri obj = await Deserializer.DeserializeWrapper<ClassWithInitializedUri>(json, options);
             Assert.Equal(new Uri("https://microsoft.com"), obj.MyUri);
 
             // Test - setter is called if payload is not null and converter returns null.
             json = @"{""MyUri"":""https://default""}";
-            obj = JsonSerializer.Deserialize<ClassWithInitializedUri>(json, options);
+            obj = await Deserializer.DeserializeWrapper<ClassWithInitializedUri>(json, options);
             Assert.Null(obj.MyUri);
         }
 

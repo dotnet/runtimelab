@@ -4,11 +4,12 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         /// <summary>
         /// Demonstrates a <see cref="Dictionary{TKey, TValue}"> converter using a JSON array containing KeyValuePair objects.
@@ -103,34 +104,34 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void IntStringKeyValuePairConverter()
+        public async Task IntStringKeyValuePairConverter()
         {
             const string json = @"[{""Key"":1,""Value"":""One""},{""Key"":2,""Value"":""Two""}]";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new DictionaryKeyValueConverter());
 
-            Dictionary<int, string> dictionary = JsonSerializer.Deserialize<Dictionary<int, string>>(json, options);
+            Dictionary<int, string> dictionary = await Deserializer.DeserializeWrapper<Dictionary<int, string>>(json, options);
             Assert.Equal("One", dictionary[1]);
             Assert.Equal("Two", dictionary[2]);
 
-            string jsonSerialized = JsonSerializer.Serialize(dictionary, options);
+            string jsonSerialized = await Serializer.SerializeWrapper(dictionary, options);
             Assert.Equal(json, jsonSerialized);
         }
 
         [Fact]
-        public static void NestedDictionaryConversion()
+        public async Task NestedDictionaryConversion()
         {
             const string json = @"[{""Key"":1,""Value"":[{""Key"":10,""Value"":11}]},{""Key"":2,""Value"":[{""Key"":20,""Value"":21}]}]";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new DictionaryKeyValueConverter());
 
-            Dictionary<int, Dictionary<int, int>> dictionary = JsonSerializer.Deserialize<Dictionary<int, Dictionary<int, int>>>(json, options);
+            Dictionary<int, Dictionary<int, int>> dictionary = await Deserializer.DeserializeWrapper<Dictionary<int, Dictionary<int, int>>>(json, options);
             Assert.Equal(11, dictionary[1][10]);
             Assert.Equal(21, dictionary[2][20]);
 
-            string jsonSerialized = JsonSerializer.Serialize(dictionary, options);
+            string jsonSerialized = await Serializer.SerializeWrapper(dictionary, options);
             Assert.Equal(json, jsonSerialized);
         }
 
@@ -156,7 +157,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void AllPrimitivesConversion()
+        public async Task AllPrimitivesConversion()
         {
             ClassWithDictionaries obj;
             Guid guid = Guid.NewGuid();
@@ -191,29 +192,29 @@ namespace System.Text.Json.Serialization.Tests
             // Verify baseline.
             Verify();
 
-            string json = JsonSerializer.Serialize(obj, options);
-            obj = JsonSerializer.Deserialize<ClassWithDictionaries>(json, options);
+            string json = await Serializer.SerializeWrapper(obj, options);
+            obj = await Deserializer.DeserializeWrapper<ClassWithDictionaries>(json, options);
 
             // Verify.
             Verify();
         }
 
         [Fact]
-        public static void EnumFail()
+        public async Task EnumFail()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new DictionaryKeyValueConverter());
             options.Converters.Add(new JsonStringEnumConverter()); // Use string for Enum instead of int.
 
             // Baseline.
-            Dictionary<MyEnum, int> dictionary = JsonSerializer.Deserialize<Dictionary<MyEnum, int>>(@"[{""Key"":""One"",""Value"":100}]", options);
+            Dictionary<MyEnum, int> dictionary = await Deserializer.DeserializeWrapper<Dictionary<MyEnum, int>>(@"[{""Key"":""One"",""Value"":100}]", options);
             Assert.Equal(100, dictionary[MyEnum.One]);
 
             // Invalid JSON.
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Dictionary<MyEnum, int>>(@"{x}", options));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<Dictionary<MyEnum, int>>(@"{x}", options));
 
             // Invalid enum value.
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Dictionary<MyEnum, int>>(@"[{""Key"":""BAD"",""Value"":100}]", options));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<Dictionary<MyEnum, int>>(@"[{""Key"":""BAD"",""Value"":100}]", options));
         }
     }
 }

@@ -2,11 +2,19 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Xunit;
+
+#if GENERATE_JSON_METADATA
+using System.Text.Json.Serialization.Tests;
+using System.Text.Json.SourceGeneration;
+
+[assembly: JsonSerializable(typeof(CustomConverterTests.InvalidTypeConverterClass))]
+#endif
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         private class PocoWithNoBaseClass { }
         private class DerivedCustomer : Customer { }
@@ -32,29 +40,29 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ContraVariantConverterFail()
+        public async Task ContraVariantConverterFail()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new BadCustomerConverter());
 
             // Incompatible types.
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<int>("0", options));
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(0, options));
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<PocoWithNoBaseClass>("{}", options));
-            Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new PocoWithNoBaseClass(), options));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<int>("0", options));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(0, options));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<PocoWithNoBaseClass>("{}", options));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new PocoWithNoBaseClass(), options));
 
             // Contravariant to Customer.
-            Assert.Throws<SuccessException>(() => JsonSerializer.Deserialize<DerivedCustomer>("{}", options));
-            Assert.Throws<SuccessException>(() => JsonSerializer.Serialize(new DerivedCustomer(), options));
+            await Assert.ThrowsAsync<SuccessException>(async () => await Deserializer.DeserializeWrapper<DerivedCustomer>("{}", options));
+            await Assert.ThrowsAsync<SuccessException>(async () => await Serializer.SerializeWrapper(new DerivedCustomer(), options));
 
             // Covariant to Customer.
-            Assert.Throws<SuccessException>(() => JsonSerializer.Deserialize<Customer>("{}", options));
-            Assert.Throws<SuccessException>(() => JsonSerializer.Serialize(new Customer(), options));
-            Assert.Throws<SuccessException>(() => JsonSerializer.Serialize<Customer>(new DerivedCustomer(), options));
+            await Assert.ThrowsAsync<SuccessException>(async () => await Deserializer.DeserializeWrapper<Customer>("{}", options));
+            await Assert.ThrowsAsync<SuccessException>(async () => await Serializer.SerializeWrapper(new Customer(), options));
+            await Assert.ThrowsAsync<SuccessException>(async () => await Serializer.SerializeWrapper<Customer>(new DerivedCustomer(), options));
 
-            Assert.Throws<SuccessException>(() => JsonSerializer.Deserialize<Person>("{}", options));
-            Assert.Throws<SuccessException>(() => JsonSerializer.Serialize<Person>(new Customer(), options));
-            Assert.Throws<SuccessException>(() => JsonSerializer.Serialize<Person>(new DerivedCustomer(), options));
+            await Assert.ThrowsAsync<SuccessException>(async () => await Deserializer.DeserializeWrapper<Person>("{}", options));
+            await Assert.ThrowsAsync<SuccessException>(async () => await Serializer.SerializeWrapper<Person>(new Customer(), options));
+            await Assert.ThrowsAsync<SuccessException>(async () => await Serializer.SerializeWrapper<Person>(new DerivedCustomer(), options));
         }
 
         private class InvalidConverterAttribute : JsonConverterAttribute
@@ -86,49 +94,49 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void AttributeCreateConverterFail()
+        public async Task AttributeCreateConverterFail()
         {
             InvalidOperationException ex;
 
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new PocoWithInvalidConverter()));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new PocoWithInvalidConverter()));
             // Message should be in the form "The converter specified on 'System.Text.Json.Serialization.Tests.CustomConverterTests+PocoWithInvalidConverter.MyInt' does not derive from JsonConverter or have a public parameterless constructor."
             Assert.Contains("'System.Text.Json.Serialization.Tests.CustomConverterTests+PocoWithInvalidConverter.MyInt'", ex.Message);
 
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<PocoWithInvalidConverter>("{}"));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<PocoWithInvalidConverter>("{}"));
             Assert.Contains("'System.Text.Json.Serialization.Tests.CustomConverterTests+PocoWithInvalidConverter.MyInt'", ex.Message);
 
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new PocoWithNullConverter()));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new PocoWithNullConverter()));
             // Message should be in the form "The converter specified on 'System.Text.Json.Serialization.Tests.CustomConverterTests+PocoWithNullConverter.MyInt'  is not compatible with the type 'System.Int32'."
             Assert.Contains("'System.Text.Json.Serialization.Tests.CustomConverterTests+PocoWithNullConverter.MyInt'", ex.Message);
             Assert.Contains("'System.Int32'", ex.Message);
 
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<PocoWithNullConverter>("{}"));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<PocoWithNullConverter>("{}"));
             Assert.Contains("'System.Text.Json.Serialization.Tests.CustomConverterTests+PocoWithNullConverter.MyInt'", ex.Message);
             Assert.Contains("'System.Int32'", ex.Message);
         }
 
-        private class InvalidTypeConverterClass
+        internal class InvalidTypeConverterClass
         {
             [JsonConverter(typeof(JsonStringEnumConverter))]
             public ICollection<InvalidTypeConverterEnum> MyEnumValues { get; set; }
         }
 
-        private enum InvalidTypeConverterEnum
+        internal enum InvalidTypeConverterEnum
         {
             Value1,
             Value2,
         }
 
         [Fact]
-        public static void AttributeOnPropertyFail()
+        public async Task AttributeOnPropertyFail()
         {
             InvalidOperationException ex;
 
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new InvalidTypeConverterClass()));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new InvalidTypeConverterClass()));
             // Message should be in the form "The converter specified on 'System.Text.Json.Serialization.Tests.CustomConverterTests+InvalidTypeConverterClass.MyEnumValues' is not compatible with the type 'System.Collections.Generic.ICollection`1[System.Text.Json.Serialization.Tests.CustomConverterTests+InvalidTypeConverterEnum]'."
             Assert.Contains("'System.Text.Json.Serialization.Tests.CustomConverterTests+InvalidTypeConverterClass.MyEnumValues'", ex.Message);
 
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<InvalidTypeConverterClass>("{}"));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<InvalidTypeConverterClass>("{}"));
             Assert.Contains("'System.Text.Json.Serialization.Tests.CustomConverterTests+InvalidTypeConverterClass.MyEnumValues'", ex.Message);
             Assert.Contains("'System.Collections.Generic.ICollection`1[System.Text.Json.Serialization.Tests.CustomConverterTests+InvalidTypeConverterEnum]'", ex.Message);
         }
@@ -137,20 +145,20 @@ namespace System.Text.Json.Serialization.Tests
         private class InvalidTypeConverterClassWithAttribute { }
 
         [Fact]
-        public static void AttributeOnClassFail()
+        public async Task AttributeOnClassFail()
         {
             const string expectedSubStr = "'System.Text.Json.Serialization.Tests.CustomConverterTests+InvalidTypeConverterClassWithAttribute'";
 
             InvalidOperationException ex;
 
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new InvalidTypeConverterClassWithAttribute()));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new InvalidTypeConverterClassWithAttribute()));
             // Message should be in the form "The converter specified on 'System.Text.Json.Serialization.Tests.CustomConverterTests+InvalidTypeConverterClassWithAttribute' is not compatible with the type 'System.Text.Json.Serialization.Tests.CustomConverterTests+InvalidTypeConverterClassWithAttribute'."
 
             int pos = ex.Message.IndexOf(expectedSubStr);
             Assert.True(pos > 0);
             Assert.Contains(expectedSubStr, ex.Message.Substring(pos + expectedSubStr.Length)); // The same string is repeated again.
 
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<InvalidTypeConverterClassWithAttribute>("{}"));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<InvalidTypeConverterClassWithAttribute>("{}"));
             pos = ex.Message.IndexOf(expectedSubStr);
             Assert.True(pos > 0);
             Assert.Contains(expectedSubStr, ex.Message.Substring(pos + expectedSubStr.Length));
@@ -171,20 +179,20 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ConverterThatReturnsNullFail()
+        public async Task ConverterThatReturnsNullFail()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new ConverterFactoryThatReturnsNull());
 
             // A null return value from CreateConverter() will generate a InvalidOperationException with the type name.
-            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(0, options));
+            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(0, options));
             Assert.Contains(typeof(ConverterFactoryThatReturnsNull).ToString(), ex.Message);
 
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<int>("0", options));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<int>("0", options));
             Assert.Contains(typeof(ConverterFactoryThatReturnsNull).ToString(), ex.Message);
 
             // This will invoke the Nullable converter which should detect a null converter.
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<int?>("0", options));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<int?>("0", options));
             Assert.Contains(typeof(ConverterFactoryThatReturnsNull).ToString(), ex.Message);
         }
 
@@ -251,7 +259,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ConverterReadTooLittle()
+        public async Task ConverterReadTooLittle()
         {
             const string json = @"{""Level2"":{""Level3s"":[{""ReadWriteTooMuch"":false}]}}";
 
@@ -260,7 +268,7 @@ namespace System.Text.Json.Serialization.Tests
 
             try
             {
-                JsonSerializer.Deserialize<Level1>(json, options);
+                await Deserializer.DeserializeWrapper<Level1>(json, options);
                 Assert.True(false, "Expected exception");
             }
             catch (JsonException ex)
@@ -271,7 +279,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ConverterReadTooMuch()
+        public async Task ConverterReadTooMuch()
         {
             const string json = @"{""Level2"":{""Level3s"":[{""ReadWriteTooMuch"":true}]}}";
 
@@ -280,7 +288,7 @@ namespace System.Text.Json.Serialization.Tests
 
             try
             {
-                JsonSerializer.Deserialize<Level1>(json, options);
+                await Deserializer.DeserializeWrapper<Level1>(json, options);
                 Assert.True(false, "Expected exception");
             }
             catch (JsonException ex)
@@ -291,18 +299,18 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ConverterWroteNothing()
+        public async Task ConverterWroteNothing()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new Level3ConverterThatsBad());
 
             // Not writing is allowed.
-            string str = JsonSerializer.Serialize(new Level1(), options);
+            string str = await Serializer.SerializeWrapper(new Level1(), options);
             Assert.False(string.IsNullOrEmpty(str));
         }
 
         [Fact]
-        public static void ConverterWroteTooMuch()
+        public async Task ConverterWroteTooMuch()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new Level3ConverterThatsBad());
@@ -312,7 +320,7 @@ namespace System.Text.Json.Serialization.Tests
                 var l1 = new Level1();
                 l1.Level2.Level3s[0].ReadWriteTooMuch = true;
 
-                JsonSerializer.Serialize(l1, options);
+                await Serializer.SerializeWrapper(l1, options);
                 Assert.True(false, "Expected exception");
             }
             catch (JsonException ex)
@@ -330,16 +338,16 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void PropertyHasMoreThanOneConverter()
+        public async Task PropertyHasMoreThanOneConverter()
         {
             InvalidOperationException ex;
 
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new PocoWithTwoConvertersOnProperty()));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new PocoWithTwoConvertersOnProperty()));
             // Message should be in the form "The attribute 'System.Text.Json.Serialization.JsonConverterAttribute' cannot exist more than once on 'System.Text.Json.Serialization.Tests.CustomConverterTests+PocoWithTwoConvertersOnProperty.MyInt'."
             Assert.Contains("'System.Text.Json.Serialization.JsonConverterAttribute'", ex.Message);
             Assert.Contains("'System.Text.Json.Serialization.Tests.CustomConverterTests+PocoWithTwoConvertersOnProperty.MyInt'", ex.Message);
 
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<PocoWithTwoConvertersOnProperty>("{}"));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<PocoWithTwoConvertersOnProperty>("{}"));
             Assert.Contains("'System.Text.Json.Serialization.JsonConverterAttribute'", ex.Message);
             Assert.Contains("'System.Text.Json.Serialization.Tests.CustomConverterTests+PocoWithTwoConvertersOnProperty.MyInt'", ex.Message);
         }
@@ -352,26 +360,26 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void TypeHasMoreThanOneConverter()
+        public async Task TypeHasMoreThanOneConverter()
         {
             InvalidOperationException ex;
 
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize(new PocoWithTwoConverters()));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Serializer.SerializeWrapper(new PocoWithTwoConverters()));
             // Message should be in the form "The attribute 'System.Text.Json.Serialization.JsonConverterAttribute' cannot exist more than once on 'System.Text.Json.Serialization.Tests.CustomConverterTests+PocoWithTwoConverters'."
             Assert.Contains("'System.Text.Json.Serialization.JsonConverterAttribute'", ex.Message);
             Assert.Contains("'System.Text.Json.Serialization.Tests.CustomConverterTests+PocoWithTwoConverters'", ex.Message);
 
-            ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<PocoWithTwoConverters>("{}"));
+            ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<PocoWithTwoConverters>("{}"));
             Assert.Contains("'System.Text.Json.Serialization.JsonConverterAttribute'", ex.Message);
             Assert.Contains("'System.Text.Json.Serialization.Tests.CustomConverterTests+PocoWithTwoConverters'", ex.Message);
         }
 
         [Fact]
-        public static void ConverterWithoutDefaultCtor()
+        public async Task ConverterWithoutDefaultCtor()
         {
             string json = @"{""MyType"":""ABC""}";
 
-            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Deserialize<ClassWithConverterWithoutPublicEmptyCtor>(json));
+            InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Deserializer.DeserializeWrapper<ClassWithConverterWithoutPublicEmptyCtor>(json));
             Assert.Contains("'System.Text.Json.Serialization.Tests.CustomConverterTests+ClassWithConverterWithoutPublicEmptyCtor'", ex.Message);
         }
 

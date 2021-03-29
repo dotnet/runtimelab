@@ -2,13 +2,13 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Reflection;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         /// <summary>
         /// Demonstrates a <see cref="Dictionary{TKey, TValue}"> converter where TKey is an <see cref="Enum"/> with the string
@@ -142,63 +142,63 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void VerifyDictionaryEnumToIntConverter()
+        public async Task VerifyDictionaryEnumToIntConverter()
         {
             const string Json = @"{""One"":1}";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new DictionaryEnumConverter());
 
-            Dictionary<MyEnum, int> obj = JsonSerializer.Deserialize<Dictionary<MyEnum, int>>(Json, options);
+            Dictionary<MyEnum, int> obj = await Deserializer.DeserializeWrapper<Dictionary<MyEnum, int>>(Json, options);
             Assert.Equal(1, obj.Count);
             Assert.Equal(1, obj[MyEnum.One]);
 
-            string jsonRoundTripped = JsonSerializer.Serialize(obj, options);
+            string jsonRoundTripped = await Serializer.SerializeWrapper(obj, options);
             Assert.Equal(Json, jsonRoundTripped);
         }
 
         [Fact]
-        public static void VerifyDictionaryEnumToIntConverterCaseInsensitive()
+        public async Task VerifyDictionaryEnumToIntConverterCaseInsensitive()
         {
             const string Json = @"{""one"":1}";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new DictionaryEnumConverter());
 
-            Dictionary<MyEnum, int> obj = JsonSerializer.Deserialize<Dictionary<MyEnum, int>>(Json, options);
+            Dictionary<MyEnum, int> obj = await Deserializer.DeserializeWrapper<Dictionary<MyEnum, int>>(Json, options);
             Assert.Equal(1, obj.Count);
             Assert.Equal(1, obj[MyEnum.One]);
 
             // The serialized JSON is cased per the enum's actual vales.
-            string jsonRoundTripped = JsonSerializer.Serialize(obj, options);
+            string jsonRoundTripped = await Serializer.SerializeWrapper(obj, options);
             Assert.Equal(@"{""One"":1}", jsonRoundTripped);
         }
 
         [Fact]
-        public static void VerifyDictionaryEnumToObjectConverter()
+        public async Task VerifyDictionaryEnumToObjectConverter()
         {
             const string Json = @"{""One"":{""Value"":""test""}}";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new DictionaryEnumConverter());
 
-            Dictionary<MyEnum, Entity> obj = JsonSerializer.Deserialize<Dictionary<MyEnum, Entity>>(Json, options);
+            Dictionary<MyEnum, Entity> obj = await Deserializer.DeserializeWrapper<Dictionary<MyEnum, Entity>>(Json, options);
             Assert.Equal(1, obj.Count);
             Assert.Equal("test", obj[MyEnum.One].Value);
 
-            string jsonRoundTripped = JsonSerializer.Serialize(obj, options);
+            string jsonRoundTripped = await Serializer.SerializeWrapper(obj, options);
             Assert.Equal(Json, jsonRoundTripped);
         }
 
         [Fact]
-        public static void VerifyDictionaryEnumConverterFail()
+        public async Task VerifyDictionaryEnumConverterFail()
         {
             const string Json = @"{""BAD"":2}";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new DictionaryEnumConverter());
 
-            JsonException ex = Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Dictionary<MyEnum, int>>(Json, options));
+            JsonException ex = await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<Dictionary<MyEnum, int>>(Json, options));
             Assert.Contains($"Unable to convert \"BAD\" to Enum \"{typeof(MyEnum)}\".", ex.Message);
         }
     }

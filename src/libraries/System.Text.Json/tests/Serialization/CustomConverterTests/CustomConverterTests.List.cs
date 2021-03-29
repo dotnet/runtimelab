@@ -5,11 +5,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         // A List{T} converter that used CreateConverter().
         private class ListConverter : JsonConverterFactory
@@ -122,7 +123,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ListConverterOpenGeneric()
+        public async Task ListConverterOpenGeneric()
         {
             const string json = "[1,2,3]";
 
@@ -130,40 +131,40 @@ namespace System.Text.Json.Serialization.Tests
             options.Converters.Add(new ListConverter(10));
 
             {
-                List<int> list = JsonSerializer.Deserialize<List<int>>(json, options);
+                List<int> list = await Deserializer.DeserializeWrapper<List<int>>(json, options);
                 Assert.Equal(11, list[0]);
                 Assert.Equal(12, list[1]);
                 Assert.Equal(13, list[2]);
 
-                string jsonSerialized = JsonSerializer.Serialize(list, options);
+                string jsonSerialized = await Serializer.SerializeWrapper(list, options);
                 Assert.Equal(json, jsonSerialized);
             }
 
             {
-                List<long> list = JsonSerializer.Deserialize<List<long>>(json, options);
+                List<long> list = await Deserializer.DeserializeWrapper<List<long>>(json, options);
                 Assert.Equal(11, list[0]);
                 Assert.Equal(12, list[1]);
                 Assert.Equal(13, list[2]);
 
-                string jsonSerialized = JsonSerializer.Serialize(list, options);
+                string jsonSerialized = await Serializer.SerializeWrapper(list, options);
                 Assert.Equal(json, jsonSerialized);
             }
         }
 
         [Fact]
-        public static void ListConverterClosedGeneric()
+        public async Task ListConverterClosedGeneric()
         {
             const string json = "[1,2,3]";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new ListConverter<int>(10));
 
-            List<int> list = JsonSerializer.Deserialize<List<int>>(json, options);
+            List<int> list = await Deserializer.DeserializeWrapper<List<int>>(json, options);
             Assert.Equal(11, list[0]);
             Assert.Equal(12, list[1]);
             Assert.Equal(13, list[2]);
 
-            string jsonSerialized = JsonSerializer.Serialize(list, options);
+            string jsonSerialized = await Serializer.SerializeWrapper(list, options);
             Assert.Equal(json, jsonSerialized);
         }
 
@@ -214,27 +215,27 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ListConverterPolymorphic()
+        public async Task ListConverterPolymorphic()
         {
             const string json = "[1,2,3]";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new IListConverter());
 
-            IList list = JsonSerializer.Deserialize<IList>(json, options);
+            IList list = await Deserializer.DeserializeWrapper<IList>(json, options);
             Assert.Equal(11, list[0]);
             Assert.Equal(12, list[1]);
             Assert.Equal(13, list[2]);
 
-            List<int> contraVariantList = JsonSerializer.Deserialize<List<int>>(json, options);
+            List<int> contraVariantList = await Deserializer.DeserializeWrapper<List<int>>(json, options);
             Assert.Equal(11, contraVariantList[0]);
             Assert.Equal(12, contraVariantList[1]);
             Assert.Equal(13, contraVariantList[2]);
 
-            string jsonSerialized = JsonSerializer.Serialize(list, options);
+            string jsonSerialized = await Serializer.SerializeWrapper(list, options);
             Assert.Equal(json, jsonSerialized);
 
-            jsonSerialized = JsonSerializer.Serialize(contraVariantList, options);
+            jsonSerialized = await Serializer.SerializeWrapper(contraVariantList, options);
             Assert.Equal(json, jsonSerialized);
         }
 
@@ -258,7 +259,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void CustomListWithJsonConverterAttribute()
+        public async Task CustomListWithJsonConverterAttribute()
         {
             const string Json =
                 @"{""ItemsList"":[""hello"",1,true]," +
@@ -266,7 +267,7 @@ namespace System.Text.Json.Serialization.Tests
                 @"""ItemsDictionary"":{""hello"":""hello"",""1"":1,""true"":true}}";
 
             // Baseline failure (no JsonConverterAttributes).
-            Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<MyModelWithNoConverterAttributes>(Json));
+            await Assert.ThrowsAsync<JsonException>(async () => await Deserializer.DeserializeWrapper<MyModelWithNoConverterAttributes>(Json));
 
             // Success case.
             MyModelWithConverterAttributes obj;
@@ -286,7 +287,7 @@ namespace System.Text.Json.Serialization.Tests
                 Assert.Equal("True", obj.ItemsDictionary["true"]);
             }
 
-            obj = JsonSerializer.Deserialize<MyModelWithConverterAttributes>(Json);
+            obj = await Deserializer.DeserializeWrapper<MyModelWithConverterAttributes>(Json);
             Verify();
 
             string jsonRoundTripped = JsonSerializer.Serialize<MyModelWithConverterAttributes>(obj);
@@ -296,7 +297,7 @@ namespace System.Text.Json.Serialization.Tests
                 @"""ItemsDictionary"":{""hello"":""hello"",""1"":""1"",""true"":""True""}}",
                 jsonRoundTripped);
  
-            obj = JsonSerializer.Deserialize<MyModelWithConverterAttributes>(jsonRoundTripped);
+            obj = await Deserializer.DeserializeWrapper<MyModelWithConverterAttributes>(jsonRoundTripped);
             Verify();
         }
 

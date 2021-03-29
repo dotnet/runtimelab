@@ -2,11 +2,12 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         /// <summary>
         /// A converter that calls back in the serializer.
@@ -43,18 +44,18 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ConverterWithCallback()
+        public async Task ConverterWithCallback()
         {
             const string json = @"{""Name"":""MyName""}";
 
             var options = new JsonSerializerOptions();
             options.Converters.Add(new CustomerCallbackConverter());
 
-            Customer customer = JsonSerializer.Deserialize<Customer>(json, options);
+            Customer customer = await Deserializer.DeserializeWrapper<Customer>(json, options);
             Assert.Equal("MyNameHello!", customer.Name);
 
-            string result = JsonSerializer.Serialize(customer, options);
-            int expectedLength = JsonSerializer.Serialize(customer).Length;
+            string result = await Serializer.SerializeWrapper(customer, options);
+            int expectedLength = (await Serializer.SerializeWrapper(customer)).Length;
             Assert.Equal(@"[{""CreditLimit"":0,""Name"":""MyNameHello!"",""Address"":{""City"":null}}," + $"{expectedLength}]", result);
         }
 
@@ -118,7 +119,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void ConverterWithReentryFail()
+        public async Task ConverterWithReentryFail()
         {
             const string Json = @"{""Child"":{""Child"":{""InvalidProperty"":{""NotSupported"":[1]}}}}";
 
@@ -131,7 +132,7 @@ namespace System.Text.Json.Serialization.Tests
             // - Path does not flow through to custom converters that re-enter the serializer.
             // - "Path:" is not repeated due to having two try\catch blocks (the second block does not append "Path:" again).
 
-            ex = Assert.Throws<NotSupportedException>(() => JsonSerializer.Deserialize<TopLevelPocoWithNoConverter>(Json, options));
+            ex = await Assert.ThrowsAsync<NotSupportedException>(async () => await Deserializer.DeserializeWrapper<TopLevelPocoWithNoConverter>(Json, options));
             Assert.Contains(typeof(int[,]).ToString(), ex.ToString());
             Assert.Contains(typeof(ChildPocoWithNoConverterAndInvalidProperty).ToString(), ex.ToString());
             Assert.Contains("Path: $.InvalidProperty | LineNumber: 0 | BytePositionInLine: 20.", ex.ToString());
@@ -151,7 +152,7 @@ namespace System.Text.Json.Serialization.Tests
                 }
             };
 
-            ex = Assert.Throws<NotSupportedException>(() => JsonSerializer.Serialize(poco, options));
+            ex = await Assert.ThrowsAsync<NotSupportedException>(async () => await Serializer.SerializeWrapper(poco, options));
             Assert.Contains(typeof(int[,]).ToString(), ex.ToString());
             Assert.Contains(typeof(ChildPocoWithNoConverterAndInvalidProperty).ToString(), ex.ToString());
             Assert.Contains("Path: $.InvalidProperty.", ex.ToString());

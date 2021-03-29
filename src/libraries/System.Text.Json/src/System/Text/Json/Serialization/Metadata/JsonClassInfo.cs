@@ -270,7 +270,7 @@ namespace System.Text.Json.Serialization.Metadata
                             PropertyCacheArray[PropertyCache.Count] = DataExtensionProperty;
                         }
 
-                        CompleteObjectInitialization();
+                        CompleteObjectInitializationInternal();
                     }
                     break;
                 case ClassType.Enumerable:
@@ -344,7 +344,7 @@ namespace System.Text.Json.Serialization.Metadata
             }
         }
 
-        internal void CompleteObjectInitialization()
+        internal void CompleteObjectInitializationInternal()
         {
             PropertyCacheArray ??= new JsonPropertyInfo[PropertyCache!.Count];
 

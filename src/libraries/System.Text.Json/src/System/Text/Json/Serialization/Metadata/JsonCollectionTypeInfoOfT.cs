@@ -32,14 +32,5 @@ namespace System.Text.Json.Serialization.Metadata
 
             PropertyInfoForClassInfo = SourceGenCreatePropertyInfoForClassInfo(Type, Type, runtimeClassInfo: this, converter, numberHandling, Options);
         }
-
-        /// <summary>
-        /// todo
-        /// </summary>
-        public void CompleteInitialization()
-        {
-            //_isInitialized = true;
-            Options.AddJsonClassInfoToCompleteInitialization(this);
-        }
     }
 }

@@ -3,11 +3,12 @@
 
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         public enum MyBoolEnum
         {
@@ -60,55 +61,55 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void CustomEnumConverter()
+        public async Task CustomEnumConverter()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new MyBoolEnumConverter());
 
             {
-                MyBoolEnum value = JsonSerializer.Deserialize<MyBoolEnum>(@"""TRUE""", options);
+                MyBoolEnum value = await Deserializer.DeserializeWrapper<MyBoolEnum>(@"""TRUE""", options);
                 Assert.Equal(MyBoolEnum.True, value);
                 Assert.Equal(@"""TRUE""", JsonSerializer.Serialize(value, options));
             }
 
             {
-                MyBoolEnum value = JsonSerializer.Deserialize<MyBoolEnum>(@"""FALSE""", options);
+                MyBoolEnum value = await Deserializer.DeserializeWrapper<MyBoolEnum>(@"""FALSE""", options);
                 Assert.Equal(MyBoolEnum.False, value);
                 Assert.Equal(@"""FALSE""", JsonSerializer.Serialize(value, options));
             }
 
             {
-                MyBoolEnum value = JsonSerializer.Deserialize<MyBoolEnum>(@"""?""", options);
+                MyBoolEnum value = await Deserializer.DeserializeWrapper<MyBoolEnum>(@"""?""", options);
                 Assert.Equal(MyBoolEnum.Unknown, value);
                 Assert.Equal(@"""?""", JsonSerializer.Serialize(value, options));
             }
         }
 
         [Fact]
-        public static void NullableCustomEnumConverter()
+        public async Task NullableCustomEnumConverter()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new MyBoolEnumConverter());
 
             {
-                MyBoolEnum? value = JsonSerializer.Deserialize<MyBoolEnum?>(@"null", options);
+                MyBoolEnum? value = await Deserializer.DeserializeWrapper<MyBoolEnum?>(@"null", options);
                 Assert.Null(value);
             }
 
             {
-                MyBoolEnum? value = JsonSerializer.Deserialize<MyBoolEnum?>(@"""TRUE""", options);
+                MyBoolEnum? value = await Deserializer.DeserializeWrapper<MyBoolEnum?>(@"""TRUE""", options);
                 Assert.Equal(MyBoolEnum.True, value);
                 Assert.Equal(@"""TRUE""", JsonSerializer.Serialize(value, options));
             }
 
             {
-                MyBoolEnum? value = JsonSerializer.Deserialize<MyBoolEnum?>(@"""FALSE""", options);
+                MyBoolEnum? value = await Deserializer.DeserializeWrapper<MyBoolEnum?>(@"""FALSE""", options);
                 Assert.Equal(MyBoolEnum.False, value);
                 Assert.Equal(@"""FALSE""", JsonSerializer.Serialize(value, options));
             }
 
             {
-                MyBoolEnum? value = JsonSerializer.Deserialize<MyBoolEnum?>(@"""?""", options);
+                MyBoolEnum? value = await Deserializer.DeserializeWrapper<MyBoolEnum?>(@"""?""", options);
                 Assert.Equal(MyBoolEnum.Unknown, value);
                 Assert.Equal(@"""?""", JsonSerializer.Serialize(value, options));
             }
@@ -226,7 +227,7 @@ namespace System.Text.Json.Serialization.Tests
         [Theory]
         [InlineData(@"[""PC"",""Tablet""]")]
         [InlineData(@"[""Tablet"",""PC""]")]
-        public static void EnumValue(string json)
+        public async Task EnumValue(string json)
         {
             eDevice obj;
 
@@ -235,12 +236,12 @@ namespace System.Text.Json.Serialization.Tests
                 Assert.Equal(eDevice.PC | eDevice.Tablet, obj);
             }
 
-            obj = JsonSerializer.Deserialize<eDevice>(json);
+            obj = await Deserializer.DeserializeWrapper<eDevice>(json);
             Verify();
 
             // Round-trip and verify.
-            json = JsonSerializer.Serialize(obj);
-            obj = JsonSerializer.Deserialize<eDevice>(json);
+            json = await Serializer.SerializeWrapper(obj);
+            obj = await Deserializer.DeserializeWrapper<eDevice>(json);
             Verify();
         }
 
@@ -257,7 +258,7 @@ namespace System.Text.Json.Serialization.Tests
         [Theory]
         [InlineData(@"{""Connections"":[{""Device"":[""PC"",""Tablet""]},{""Device"":[""PC"",""Laptop""]}]}")]
         [InlineData(@"{""Connections"":[{""Device"":[""Tablet"",""PC""]},{""Device"":[""Laptop"",""PC""]}]}")]
-        public static void EnumArray(string json)
+        public async Task EnumArray(string json)
         {
             ConnectionList obj;
 
@@ -268,12 +269,12 @@ namespace System.Text.Json.Serialization.Tests
                 Assert.Equal(eDevice.PC | eDevice.Laptop, obj.Connections[1].Device);
             }
 
-            obj = JsonSerializer.Deserialize<ConnectionList>(json);
+            obj = await Deserializer.DeserializeWrapper<ConnectionList>(json);
             Verify();
 
             // Round-trip and verify.
-            json = JsonSerializer.Serialize(obj);
-            obj = JsonSerializer.Deserialize<ConnectionList>(json);
+            json = await Serializer.SerializeWrapper(obj);
+            obj = await Deserializer.DeserializeWrapper<ConnectionList>(json);
             Verify();
         }
     }

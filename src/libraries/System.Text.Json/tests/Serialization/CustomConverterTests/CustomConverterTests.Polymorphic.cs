@@ -1,11 +1,12 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
 {
-    public static partial class CustomConverterTests
+    public abstract partial class CustomConverterTests
     {
         // A polymorphic POCO converter using a type discriminator.
         private class PersonConverterWithTypeDiscriminator : JsonConverter<Person>
@@ -116,7 +117,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void PersonConverterPolymorphicTypeDiscriminator()
+        public async Task PersonConverterPolymorphicTypeDiscriminator()
         {
             const string customerJson = @"{""TypeDiscriminator"":1,""CreditLimit"":100.00,""Name"":""C""}";
             const string employeeJson = @"{""TypeDiscriminator"":2,""OfficeNumber"":""77a"",""Name"":""E""}";
@@ -125,33 +126,33 @@ namespace System.Text.Json.Serialization.Tests
             options.Converters.Add(new PersonConverterWithTypeDiscriminator());
 
             {
-                Person person = JsonSerializer.Deserialize<Person>(customerJson, options);
+                Person person = await Deserializer.DeserializeWrapper<Person>(customerJson, options);
                 Assert.IsType<Customer>(person);
                 Assert.Equal(100, ((Customer)person).CreditLimit);
                 Assert.Equal("C", person.Name);
 
-                string json = JsonSerializer.Serialize(person, options);
+                string json = await Serializer.SerializeWrapper(person, options);
                 Assert.Equal(customerJson, json);
             }
 
             {
-                Person person = JsonSerializer.Deserialize<Person>(employeeJson, options);
+                Person person = await Deserializer.DeserializeWrapper<Person>(employeeJson, options);
                 Assert.IsType<Employee>(person);
                 Assert.Equal("77a", ((Employee)person).OfficeNumber);
                 Assert.Equal("E", person.Name);
 
-                string json = JsonSerializer.Serialize(person, options);
+                string json = await Serializer.SerializeWrapper(person, options);
                 Assert.Equal(employeeJson, json);
             }
         }
 
         [Fact]
-        public static void NullPersonConverterPolymorphicTypeDiscriminator()
+        public async Task NullPersonConverterPolymorphicTypeDiscriminator()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new PersonConverterWithTypeDiscriminator());
 
-            Person person = JsonSerializer.Deserialize<Person>("null");
+            Person person = await Deserializer.DeserializeWrapper<Person>("null");
             Assert.Null(person);
         }
 
@@ -170,7 +171,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
-        public static void PersonConverterSerializerPolymorphic()
+        public async Task PersonConverterSerializerPolymorphic()
         {
             var options = new JsonSerializerOptions();
             options.Converters.Add(new PersonPolymorphicSerializerConverter());
@@ -185,32 +186,32 @@ namespace System.Text.Json.Serialization.Tests
                 // Verify the polymorphic case.
                 Person person = customer;
 
-                string json = JsonSerializer.Serialize(person, options);
+                string json = await Serializer.SerializeWrapper(person, options);
                 Assert.Contains(@"""CreditLimit"":100", json);
                 Assert.Contains(@"""Name"":""C""", json);
-                Assert.Throws<NotSupportedException>(() => JsonSerializer.Deserialize<Person>(json, options));
+                await Assert.ThrowsAsync<NotSupportedException>(async () => await Deserializer.DeserializeWrapper<Person>(json, options));
 
-                string arrayJson = JsonSerializer.Serialize(new Person[] { person }, options);
+                string arrayJson = await Serializer.SerializeWrapper(new Person[] { person }, options);
                 Assert.Contains(@"""CreditLimit"":100", arrayJson);
                 Assert.Contains(@"""Name"":""C""", arrayJson);
-                Assert.Throws<NotSupportedException>(() => JsonSerializer.Deserialize<Person[]>(arrayJson, options));
+                await Assert.ThrowsAsync<NotSupportedException>(async () => await Deserializer.DeserializeWrapper<Person[]>(arrayJson, options));
             }
 
             {
                 // Ensure (de)serialization still works when using a Person-derived type. This does not call the custom converter.
-                string json = JsonSerializer.Serialize(customer, options);
+                string json = await Serializer.SerializeWrapper(customer, options);
                 Assert.Contains(@"""CreditLimit"":100", json);
                 Assert.Contains(@"""Name"":""C""", json);
 
-                customer = JsonSerializer.Deserialize<Customer>(json, options);
+                customer = await Deserializer.DeserializeWrapper<Customer>(json, options);
                 Assert.Equal(100, customer.CreditLimit);
                 Assert.Equal("C", customer.Name);
 
-                string arrayJson = JsonSerializer.Serialize(new Customer[] { customer }, options);
+                string arrayJson = await Serializer.SerializeWrapper(new Customer[] { customer }, options);
                 Assert.Contains(@"""CreditLimit"":100", arrayJson);
                 Assert.Contains(@"""Name"":""C""", arrayJson);
 
-                Customer[] customers = JsonSerializer.Deserialize<Customer[]>(arrayJson, options);
+                Customer[] customers = await Deserializer.DeserializeWrapper<Customer[]>(arrayJson, options);
                 Assert.Equal(100, customers[0].CreditLimit);
                 Assert.Equal("C", customers[0].Name);
             }
