@@ -798,6 +798,7 @@ namespace {_generationNamespace}
             StringBuilder sb = new();
             sb.Append(@$"using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace {_generationNamespace}
 {{
@@ -817,12 +818,69 @@ namespace {_generationNamespace}
         }}
 
         {initializationSource}
+
+        {CreatePropertyImplementation}
     }}
 }}
 ");
 
             return sb.ToString();
         }
+
+        private const string CreatePropertyImplementation =
+            @"public JsonPropertyInfo<TProperty> CreateProperty<TProperty>(
+                string clrPropertyName,
+                System.Reflection.MemberTypes memberType,
+                System.Type declaringType,
+                JsonTypeInfo<TProperty> classInfo,
+                System.Func<object, TProperty> getter,
+                System.Action<object, TProperty> setter,
+                string jsonPropertyName,
+                byte[] nameAsUtf8Bytes,
+                byte[] escapedNameSection,
+                JsonIgnoreCondition? ignoreCondition,
+                JsonNumberHandling? numberHandling)
+            {
+                JsonSerializerOptions options = GetOptions();
+
+                JsonPropertyInfo<TProperty> jsonPropertyInfo = JsonPropertyInfo<TProperty>.Create();
+                jsonPropertyInfo.Options = options;
+
+                // Property name settings.
+                // TODO: consider whether we need to examine options.Encoder here as well.
+                if (options.PropertyNamingPolicy == null && nameAsUtf8Bytes != null && escapedNameSection != null)
+                {
+                    jsonPropertyInfo.NameAsString = jsonPropertyName ?? clrPropertyName;
+                    jsonPropertyInfo.NameAsUtf8Bytes = nameAsUtf8Bytes;
+                    jsonPropertyInfo.EscapedNameSection = escapedNameSection;
+                }
+                else
+                {
+                    jsonPropertyInfo.NameAsString = jsonPropertyName
+                        ?? options.PropertyNamingPolicy?.ConvertName(clrPropertyName)
+                        ?? (options.PropertyNamingPolicy == null
+                                ? null
+                                : throw new System.InvalidOperationException(""TODO: PropertyNamingPolicy cannot return null.""));
+                    // NameAsUtf8Bytes and EscapedNameSection will be set in CompleteInitialization() below.
+                }
+
+                if (ignoreCondition != JsonIgnoreCondition.Always)
+                {
+                    jsonPropertyInfo.Get = getter;
+                    jsonPropertyInfo.Set = setter;
+
+                    jsonPropertyInfo.ConverterBase = classInfo?.ConverterBase ??
+                        throw new System.InvalidOperationException($""'JsonClassInfo' '{{classInfo}}' cannot return a 'null' converter."");
+                    jsonPropertyInfo.RuntimeClassInfo = classInfo;
+                    jsonPropertyInfo.DeclaredPropertyType = typeof(TProperty);
+                    jsonPropertyInfo.DeclaringType = declaringType;
+                    jsonPropertyInfo.IgnoreCondition = ignoreCondition;
+                    jsonPropertyInfo.MemberType = memberType;
+                }
+
+                jsonPropertyInfo.CompleteInitialization();
+                return jsonPropertyInfo;
+            }";
 
         private bool TryGetInitializationForDynamicallySerializableTypes(out string initializationSource)
         {
@@ -1055,8 +1113,28 @@ namespace {_generationNamespace}
                         ? $"ignoreCondition: JsonIgnoreCondition.{ignoreCondition.Value}"
                         : "ignoreCondition: null";
 
+                    string nameAsUtf8BytesNamedArg;
+                    string escapedNameSectionNamedArg;
+
+                    if (!ContainsNonAscii(clrPropertyName))
+                    {
+                        byte[] name = Encoding.UTF8.GetBytes(clrPropertyName);
+                        string nameAsStr = string.Join(",", name.Select(b => $"{b}"));
+                        string nameSection = @"34," + nameAsStr + @",34,58"; // code points for " and : are 34 and 58.
+
+                        nameAsUtf8BytesNamedArg = "nameAsUtf8Bytes: new byte[] {" + nameAsStr + "}";
+                        escapedNameSectionNamedArg = "escapedNameSection: new byte[] {" + nameSection + "}";
+                    }
+                    else
+                    {
+                        nameAsUtf8BytesNamedArg = "nameAsUtf8Bytes: null";
+                        escapedNameSectionNamedArg = "escapedNameSection: null";
+                    }
+
+                    string memberTypeCompilableName = memberTypeMetadata.CompilableName;
+
                     sb.Append($@"
-                    _{typeFriendlyName}.AddProperty(
+                    _{typeFriendlyName}.AddProperty(CreateProperty<{memberTypeCompilableName}>(
                         clrPropertyName: ""{clrPropertyName}"",
                         memberType: System.Reflection.MemberTypes.{memberMetadata.MemberType},
                         declaringType: typeof({memberMetadata.DeclaringTypeCompilableName}),
@@ -1065,7 +1143,9 @@ namespace {_generationNamespace}
                         {setterNamedArg},
                         {jsonPropertyNameNamedArg},
                         {ignoreConditionNamedArg},
-                        {GetNumberHandlingNamedArg(memberMetadata.NumberHandling)});
+                        {nameAsUtf8BytesNamedArg},
+                        {escapedNameSectionNamedArg},
+                        {GetNumberHandlingNamedArg(memberMetadata.NumberHandling)}));
                 ");
                 }
             }
@@ -1084,6 +1164,19 @@ namespace {_generationNamespace}
             }}");
 
             return sb.ToString();
+        }
+
+        private static bool ContainsNonAscii(string str)
+        {
+            foreach (char c in str)
+            {
+                if (c > 127)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static string GetNumberHandlingNamedArg(JsonNumberHandling? numberHandling) =>

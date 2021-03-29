@@ -19,6 +19,21 @@ namespace System.Text.Json.Serialization.Metadata
 
         internal ClassType ClassType;
 
+        /// <summary>
+        /// TODO
+        /// </summary>
+        public JsonIgnoreCondition? IgnoreCondition { get; set; }
+
+        /// <summary>
+        /// TODO
+        /// </summary>
+        public JsonNumberHandling? NumberHandling { get; set; }
+
+        /// <summary>
+        /// TODO
+        /// </summary>
+        public MemberTypes MemberType { get; set; }
+
         internal JsonPropertyInfo() { }
 
         /// <summary>
@@ -77,7 +92,9 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public Type DeclaredPropertyType { get; internal set; } = null!;
+        public Type DeclaredPropertyType { get; set; } = null!;
+
+        internal Type? RuntimePropertyType { get; set; }
 
         internal virtual void GetPolicies(JsonIgnoreCondition? ignoreCondition, JsonNumberHandling? parentTypeNumberHandling)
         {
@@ -99,7 +116,7 @@ namespace System.Text.Json.Serialization.Metadata
                 {
                     propertyNumberHandling = attribute.Handling;
                 }
-                DetermineNumberHandlingForProperty(parentTypeNumberHandling, propertyNumberHandling);
+                DetermineNumberHandlingForProperty(propertyNumberHandling ?? parentTypeNumberHandling);
             }
         }
 
@@ -122,7 +139,7 @@ namespace System.Text.Json.Serialization.Metadata
                 jsonPropertyName = nameAttribute.Name;
                 if (jsonPropertyName == null)
                 {
-                    ThrowHelper.ThrowInvalidOperationException_SerializerPropertyNameNull(ParentClassType, this);
+                    ThrowHelper.ThrowInvalidOperationException_SerializerPropertyNameNull(DeclaringType, this);
                 }
             }
 
@@ -145,7 +162,7 @@ namespace System.Text.Json.Serialization.Metadata
                 NameAsString = Options.PropertyNamingPolicy.ConvertName(clrPropertyName);
                 if (NameAsString == null)
                 {
-                    ThrowHelper.ThrowInvalidOperationException_SerializerPropertyNameNull(ParentClassType, this);
+                    ThrowHelper.ThrowInvalidOperationException_SerializerPropertyNameNull(DeclaringType, this);
                 }
             }
             else
@@ -216,7 +233,7 @@ namespace System.Text.Json.Serialization.Metadata
                     }
                     else
                     {
-                        ThrowHelper.ThrowInvalidOperationException_IgnoreConditionOnValueTypeInvalid(ClrName!, ParentClassType);
+                        ThrowHelper.ThrowInvalidOperationException_IgnoreConditionOnValueTypeInvalid(ClrName!, DeclaringType);
                     }
                 }
             }
@@ -269,19 +286,16 @@ namespace System.Text.Json.Serialization.Metadata
             }
         }
 
-        internal void DetermineNumberHandlingForProperty(JsonNumberHandling? parentTypeNumberHandling, JsonNumberHandling? propertyNumberHandling)
+        internal void DetermineNumberHandlingForProperty(JsonNumberHandling? propertyNumberHandling)
         {
             bool numberHandlingIsApplicable = NumberHandingIsApplicable();
 
             if (numberHandlingIsApplicable)
             {
-                // Priority 1: Get handling from attribute on property or field.
+                // Priority 1: Get handling from attribute on property/field, or its parent class type.
                 JsonNumberHandling? handling = propertyNumberHandling;
 
-                // Priority 2: Get handling from attribute on parent class type.
-                handling ??= parentTypeNumberHandling;
-
-                // Priority 3: Get handling from JsonSerializerOptions instance.
+                // Priority 2: Get handling from JsonSerializerOptions instance.
                 if (!handling.HasValue && Options.NumberHandling != JsonNumberHandling.Strict)
                 {
                     handling = Options.NumberHandling;
@@ -359,7 +373,7 @@ namespace System.Text.Json.Serialization.Metadata
             Debug.Assert(converter != null);
 
             ClrName = memberInfo?.Name;
-            ParentClassType = parentClassType;
+            DeclaringType = parentClassType;
             DeclaredPropertyType = declaredPropertyType;
             RuntimePropertyType = runtimePropertyType;
             ClassType = runtimeClassType;
@@ -398,20 +412,23 @@ namespace System.Text.Json.Serialization.Metadata
         /// the value specified in JsonPropertyNameAttribute,
         /// or the value returned from PropertyNamingPolicy(clrPropertyName).
         /// </summary>
-        public string NameAsString { get; internal set; } = null!;
+        public string NameAsString { get; set; } = null!;
 
         /// <summary>
         /// Utf8 version of NameAsString.
         /// </summary>
-        public byte[] NameAsUtf8Bytes = null!;
+        public byte[] NameAsUtf8Bytes { get; set; } = null!;
 
         /// <summary>
         /// The escaped name passed to the writer.
         /// </summary>
-        public byte[] EscapedNameSection = null!;
+        public byte[] EscapedNameSection { get; set; } = null!;
 
+        /// <summary>
+        /// TODO
+        /// </summary>
         // Options can be referenced here since all JsonPropertyInfos originate from a JsonClassInfo that is cached on JsonSerializerOptions.
-        internal JsonSerializerOptions Options { get; set; } = null!; // initialized in Init method
+        public JsonSerializerOptions Options { get; set; } = null!; // initialized in Init method
 
         internal bool ReadJsonAndAddExtensionProperty(object obj, ref ReadStack state, ref Utf8JsonReader reader)
         {
@@ -490,11 +507,14 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// TODO
         /// </summary>
-        internal Type ParentClassType { get; set; } = null!;
+        public Type DeclaringType { get; set; } = null!;
 
         internal MemberInfo? MemberInfo { get; private set; }
 
-        internal JsonClassInfo RuntimeClassInfo
+        /// <summary>
+        /// TODO
+        /// </summary>
+        public JsonClassInfo RuntimeClassInfo
         {
             get
             {
@@ -513,10 +533,6 @@ namespace System.Text.Json.Serialization.Metadata
             }
         }
 
-        internal Type? RuntimePropertyType { get; set; }
-
-        internal JsonNumberHandling? NumberHandling { get; private set; }
-
         internal abstract void SetExtensionDictionaryAsObject(object obj, object? extensionDict);
 
         /// <summary>
@@ -529,7 +545,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// </summary>
         public bool ShouldDeserialize { get; internal set; }
 
-        internal bool IsIgnored { get; private set; }
+        internal bool IsIgnored { get; set; }
 
         //  Whether the property type can be null.
         internal bool PropertyTypeCanBeNull { get; set; }
