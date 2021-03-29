@@ -575,12 +575,6 @@ namespace System.Text.Json.Serialization
         public JsonPropertyNameAttribute(string name) { }
         public string Name { get { throw null; } }
     }
-    [System.AttributeUsageAttribute(System.AttributeTargets.Assembly, AllowMultiple=true)]
-    public sealed partial class JsonSerializableAttribute : System.Text.Json.Serialization.JsonAttribute
-    {
-        public bool CanBeDynamic { get { throw null; } set { } }
-        public JsonSerializableAttribute(System.Type type) { }
-    }
     public partial class JsonSerializerContext : System.IDisposable
     {
         public JsonSerializerContext() { }

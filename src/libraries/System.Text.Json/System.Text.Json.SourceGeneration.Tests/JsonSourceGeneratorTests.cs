@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.Json.Serialization;
+using System.Text.Json.SourceGeneration;
 using System.Text.Json.SourceGeneration.Tests;
 using System.Text.Json.SourceGeneration.Tests.JsonSourceGeneration;
 using Xunit;

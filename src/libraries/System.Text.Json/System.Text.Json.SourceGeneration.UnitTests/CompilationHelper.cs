@@ -7,7 +7,6 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Reflection;
 using System.Runtime.Serialization;
-using System.Text.Json.Serialization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -26,7 +25,6 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             List<MetadataReference> references = new List<MetadataReference> {
                 MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
-                MetadataReference.CreateFromFile(typeof(JsonSerializableAttribute).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(JsonSerializerOptions).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(Type).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(KeyValuePair).Assembly.Location),
@@ -159,6 +157,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using System.Collections;
             using System.Collections.Generic;
             using System.Text.Json.Serialization;
+            using System.Text.Json.SourceGeneration;
 
             [assembly: JsonSerializable(typeof(Fake.Location))]
             [assembly: JsonSerializable(typeof(HelloWorld.Location))]

@@ -5,9 +5,11 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Numerics;
 using System.Threading.Tasks;
-using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Tests;
 using Xunit;
+
+#if GENERATE_JSON_METADATA
+using System.Text.Json.SourceGeneration;
+using System.Text.Json.Serialization.Tests;
 
 [assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithNewSlotField))]
 [assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithInternalField))]
@@ -56,6 +58,7 @@ using Xunit;
 [assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithNoGetter))]
 [assembly: JsonSerializable(typeof(PropertyVisibilityTests.ClassWithPropsAndIgnoreAttributes))]
 [assembly: JsonSerializable(typeof(List<bool>))]
+#endif
 
 namespace System.Text.Json.Serialization.Tests
 {

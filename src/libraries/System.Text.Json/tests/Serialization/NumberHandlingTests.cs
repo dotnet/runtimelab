@@ -1,21 +1,21 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text.Encodings.Web;
-using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Tests;
 using System.Text.Json.Tests;
 using System.Threading.Tasks;
 using Xunit;
+
+#if GENERATE_JSON_METADATA
+using System.Text.Json.SourceGeneration;
+using System.Text.Json.Serialization.Tests;
 
 [assembly: JsonSerializable(typeof(byte))]
 [assembly: JsonSerializable(typeof(sbyte))]
@@ -43,6 +43,7 @@ using Xunit;
 [assembly: JsonSerializable(typeof(Guid?), CanBeDynamic = true)]
 [assembly: JsonSerializable(typeof(NumberHandlingTests.Class_With_BoxedNumbers))]
 [assembly: JsonSerializable(typeof(NumberHandlingTests.Class_With_BoxedNonNumbers))]
+#endif
 
 namespace System.Text.Json.Serialization.Tests
 {

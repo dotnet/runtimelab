@@ -2,11 +2,15 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Xunit;
 
+#if GENERATE_JSON_METADATA
+using System.Text.Json.SourceGeneration;
+using System.Text.Json.Serialization.Tests;
+
 [assembly: JsonSerializable(typeof(int[]))]
+#endif
 
 namespace System.Text.Json.Serialization.Tests
 {

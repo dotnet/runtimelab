@@ -4,10 +4,12 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Tests;
 using System.Threading.Tasks;
 using Xunit;
+
+#if GENERATE_JSON_METADATA
+using System.Text.Json.SourceGeneration;
+using System.Text.Json.Serialization.Tests;
 
 [assembly: JsonSerializable(typeof(byte[]))]
 [assembly: JsonSerializable(typeof(byte[][]))]
@@ -17,6 +19,7 @@ using Xunit;
 [assembly: JsonSerializable(typeof(List<byte>))]
 [assembly: JsonSerializable(typeof(TestClassWithInitializedArray))]
 [assembly: JsonSerializable(typeof(TestClassWithStringArray))]
+#endif
 
 namespace System.Text.Json.Serialization.Tests
 {

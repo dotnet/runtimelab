@@ -16,6 +16,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
         {
             string source = @"
             using System.Text.Json.Serialization;
+            using System.Text.Json.SourceGeneration;
 
             [assembly: JsonSerializable(typeof(HelloWorld.MyType))]
 
@@ -80,6 +81,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             string source = @"
             using System.Text.Json.Serialization;
+            using System.Text.Json.SourceGeneration;
             using ReferencedAssembly;
 
             [assembly: JsonSerializable(typeof(HelloWorld.MyType))]
@@ -160,10 +162,11 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             string source = @"
             using System.Text.Json.Serialization;
+            using System.Text.Json.SourceGeneration;
             using ReferencedAssembly;
 
             using @JsonSerializable = System.Runtime.Serialization.ContractNamespaceAttribute;
-            using AliasedAttribute = System.Text.Json.Serialization.JsonSerializableAttribute;
+            using AliasedAttribute = System.Text.Json.SourceGeneration.JsonSerializableAttribute;
 
             [assembly: AliasedAttribute(typeof(HelloWorld.MyType))]
             [assembly: AliasedAttribute(typeof(ReferencedAssembly.Location))]
@@ -258,6 +261,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             using System.Collections;
             using System.Collections.Generic;
             using System.Text.Json.Serialization;
+            using System.Text.Json.SourceGeneration;
             using ReferencedAssembly;
 
             [assembly: JsonSerializable(typeof(HelloWorld.WeatherForecastWithPOCOs))]

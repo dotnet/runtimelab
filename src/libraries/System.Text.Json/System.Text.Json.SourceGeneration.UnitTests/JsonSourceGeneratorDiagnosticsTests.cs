@@ -27,6 +27,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             string source = @"
             using System.Collections.Generic;
             using System.Text.Json.Serialization;
+            using System.Text.Json.SourceGeneration;
             using ReferencedAssembly;
 
             [assembly: JsonSerializable(typeof(JsonSourceGenerator.IndexViewModel)]
@@ -84,8 +85,9 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             // Main source for current compilation.
             string source = @"
-            using System.Text.Json.Serialization;
             using System.Collections.Generic;
+            using System.Text.Json.SourceGeneration;
+            using System.Text.Json.Serialization;
             using ReferencedAssembly;
 
             [assembly: JsonSerializable(typeof(JsonSourceGenerator.IndexViewModel)]

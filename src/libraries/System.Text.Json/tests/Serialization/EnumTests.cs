@@ -7,11 +7,16 @@ using System.Text.Json.Serialization.Tests;
 using System.Threading.Tasks;
 using Xunit;
 
+#if GENERATE_JSON_METADATA
+using System.Text.Json.SourceGeneration;
+using System.Text.Json.Serialization.Tests;
+
 [assembly: JsonSerializable(typeof(SimpleTestClass))]
 [assembly: JsonSerializable(typeof(SampleEnumSByte))]
 [assembly: JsonSerializable(typeof(SampleEnumInt16))]
 [assembly: JsonSerializable(typeof(SampleEnumInt32))]
 [assembly: JsonSerializable(typeof(SampleEnumInt64))]
+#endif
 
 namespace System.Text.Json.Serialization.Tests
 {
