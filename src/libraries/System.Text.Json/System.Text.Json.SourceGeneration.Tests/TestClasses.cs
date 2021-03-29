@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using System.Text.Json.SourceGeneration;
 using System.Text.Json.SourceGeneration.Tests;
 
 [assembly: JsonSerializable(typeof(System.Text.Json.SourceGeneration.Tests.RepeatedTypes.Location))]

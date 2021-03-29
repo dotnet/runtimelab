@@ -21,7 +21,42 @@ namespace System.Text.Json.SourceGeneration
     [Generator]
     public sealed class JsonSourceGenerator : ISourceGenerator
     {
+        private const string JsonSerializableAttributeSource = @"using System;
+
+namespace System.Text.Json.SourceGeneration
+{
+    /// <summary>
+    /// Instructs the System.Text.Json source generator to generate serialization metadata for a specified type at compile time.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+    public sealed class JsonSerializableAttribute : Attribute
+    {
+        /// <summary>
+        /// Indicates whether the specified type might be the runtime type of an object instance which was declared as
+        /// a different type (polymorphic serialization).
+        /// </summary>
+        public bool CanBeDynamic { get; set; }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref=""JsonSerializableAttribute""/> with the specified type.
+        /// </summary>
+        /// <param name=""type"">The Type of the property.</param>
+        public JsonSerializableAttribute(Type type) { }
+    }
+}";
+
         public Dictionary<string, (Type, bool)>? SerializableTypes { get; private set; }
+
+        public void Initialize(GeneratorInitializationContext context)
+        {
+            context.RegisterForSyntaxNotifications(() => new JsonSerializableSyntaxReceiver());
+            context.RegisterForPostInitialization(PostInitialize);
+        }
+
+        public void PostInitialize(GeneratorPostInitializationContext context)
+        {
+            context.AddSource("JsonSerializableAttribute.g.cs", SourceText.From(JsonSerializableAttributeSource, Encoding.UTF8));
+        }
 
         public void Execute(GeneratorExecutionContext executionContext)
         {
@@ -45,7 +80,7 @@ namespace System.Text.Json.SourceGeneration
                     AttributeSyntax attributeSyntax = attributeListSyntax.Attributes.Single();
                     IMethodSymbol attributeSymbol = compilationSemanticModel.GetSymbolInfo(attributeSyntax).Symbol as IMethodSymbol;
 
-                    if (attributeSymbol?.ToString().StartsWith("System.Text.Json.Serialization.JsonSerializableAttribute") == true)
+                    if (attributeSymbol?.ToString().StartsWith("System.Text.Json.SourceGeneration.JsonSerializableAttribute") == true)
                     {
                         // Get JsonSerializableAttribute arguments.
                         IEnumerable<SyntaxNode> attributeArguments = attributeSyntax.DescendantNodes().Where(node => node is AttributeArgumentSyntax);
@@ -101,11 +136,6 @@ namespace System.Text.Json.SourceGeneration
                 throw e;
             }
 #endif
-        }
-
-        public void Initialize(GeneratorInitializationContext executionContext)
-        {
-            executionContext.RegisterForSyntaxNotifications(() => new JsonSerializableSyntaxReceiver());
         }
     }
 }

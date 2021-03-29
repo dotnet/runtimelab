@@ -3,14 +3,17 @@
 
 using System.Collections.Generic;
 using System.Text.Encodings.Web;
-using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Tests;
 using System.Threading.Tasks;
 using Xunit;
+
+#if GENERATE_JSON_METADATA
+using System.Text.Json.SourceGeneration;
+using System.Text.Json.Serialization.Tests;
 
 [assembly: JsonSerializable(typeof(OverridePropertyNameDesignTime_TestClass))]
 [assembly: JsonSerializable(typeof(EmptyPropertyName_TestClass))]
 [assembly: JsonSerializable(typeof(ClassWithUnicodeProperty))]
+#endif
 
 namespace System.Text.Json.Serialization.Tests
 {

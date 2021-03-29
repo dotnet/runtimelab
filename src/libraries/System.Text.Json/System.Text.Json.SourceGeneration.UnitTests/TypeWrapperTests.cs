@@ -44,6 +44,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
 
             string source = @"
             using System.Text.Json.Serialization;
+            using System.Text.Json.SourceGeneration;
             using ReferencedAssembly;
 
             [assembly: JsonSerializable(typeof(HelloWorld.MyType))]
@@ -81,6 +82,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             string source = @"
             using System;
             using System.Text.Json.Serialization;
+            using System.Text.Json.SourceGeneration;
 
             [assembly: JsonSerializable(typeof(HelloWorld.MyType))]
 
