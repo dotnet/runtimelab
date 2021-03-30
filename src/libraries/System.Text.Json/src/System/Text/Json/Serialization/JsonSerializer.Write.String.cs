@@ -89,7 +89,7 @@ namespace System.Text.Json
         /// <param name="value"></param>
         /// <param name="jsonTypeInfo"></param>
         /// <returns></returns>
-        public static string Serialize<TValue>(TValue value, JsonTypeInfo<TValue> jsonTypeInfo)
+        public static string Serialize<[DynamicallyAccessedMembers(MembersAccessedOnWrite)] TValue>(TValue value, JsonTypeInfo<TValue> jsonTypeInfo)
         {
             // null check for jsonTypeInfo occurs here.
             return SerializeUsingMetadata(value, jsonTypeInfo);

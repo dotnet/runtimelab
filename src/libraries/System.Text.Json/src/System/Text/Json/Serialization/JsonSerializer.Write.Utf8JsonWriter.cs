@@ -77,7 +77,12 @@ namespace System.Text.Json
         /// <param name="jsonTypeInfo"></param>
         /// <param name="state"></param>
         /// <param name="options"></param>
-        public static void Serialize<TValue>(Utf8JsonWriter writer, TValue value, JsonClassInfo jsonTypeInfo, ref WriteStack state, JsonSerializerOptions? options = null)
+        public static void Serialize<[DynamicallyAccessedMembers(MembersAccessedOnWrite)] TValue>(
+            Utf8JsonWriter writer,
+            TValue value,
+            JsonClassInfo jsonTypeInfo,
+            ref WriteStack state,
+            JsonSerializerOptions? options = null)
         {
             if (writer == null)
             {

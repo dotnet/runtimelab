@@ -40,6 +40,8 @@ namespace System.Text.Json.Serialization
 
         internal abstract Type? ElementType { get; }
 
+        internal abstract Type? KeyType { get; }
+
         /// <summary>
         /// Cached value of TypeToConvert.IsValueType, which is an expensive call.
         /// </summary>

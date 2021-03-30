@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics;
+
 namespace System.Text.Json.Serialization.Converters
 {
     /// <summary>
@@ -34,25 +36,20 @@ namespace System.Text.Json.Serialization.Converters
 
         internal override object ReadWithQuotes(ref Utf8JsonReader reader)
         {
-            ThrowHelper.ThrowNotSupportedException_DictionaryKeyTypeNotSupported(TypeToConvert);
+            ThrowHelper.ThrowNotSupportedException_DictionaryKeyTypeNotSupported(TypeToConvert, this);
             return null!;
         }
 
         internal override void WriteWithQuotes(Utf8JsonWriter writer, object value, JsonSerializerOptions options, ref WriteStack state)
         {
-            JsonConverter runtimeConverter = GetRuntimeConverter(value.GetType(), options);
-            runtimeConverter.WriteWithQuotesAsObject(writer, value, options, ref state);
-        }
-
-        private JsonConverter GetRuntimeConverter(Type runtimeType, JsonSerializerOptions options)
-        {
-            JsonConverter runtimeConverter = options.GetDictionaryKeyConverter(runtimeType);
+            Type runtimeType = value.GetType();
+            JsonConverter runtimeConverter = options.GetConverter(runtimeType)!;
             if (runtimeConverter == this)
             {
-                ThrowHelper.ThrowNotSupportedException_DictionaryKeyTypeNotSupported(runtimeType);
+                ThrowHelper.ThrowNotSupportedException_DictionaryKeyTypeNotSupported(runtimeType!, this);
             }
 
-            return runtimeConverter;
+            runtimeConverter.WriteWithQuotesAsObject(writer, value, options, ref state);
         }
 
         internal override object ReadNumberWithCustomHandling(ref Utf8JsonReader reader, JsonNumberHandling handling)

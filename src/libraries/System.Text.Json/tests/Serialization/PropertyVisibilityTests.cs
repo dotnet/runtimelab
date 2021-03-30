@@ -1351,7 +1351,7 @@ namespace System.Text.Json.Serialization.Tests
             Assert.Equal(@"{""MyClass"":{}}", await Serializer.SerializeWrapper(new WrapperForClassWithIgnoredUnsupportedDictionary()
             {
                 MyClass = new ClassWithIgnoredUnsupportedDictionary(),
-            }, options)); ;
+            }, options));
         }
 
         [Fact]

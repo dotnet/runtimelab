@@ -2787,9 +2787,11 @@ namespace System.Xml.Xsl
         public XslCompiledTransform() { }
         public XslCompiledTransform(bool enableDebug) { }
         public System.Xml.XmlWriterSettings? OutputSettings { get { throw null; } }
+        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("This method will call into constructors of the earlyBoundTypes array which cannot be statically analyzed.")]
         public void Load(System.Reflection.MethodInfo executeMethod, byte[] queryData, System.Type[]? earlyBoundTypes) { }
         public void Load(string stylesheetUri) { }
         public void Load(string stylesheetUri, System.Xml.Xsl.XsltSettings? settings, System.Xml.XmlResolver? stylesheetResolver) { }
+        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("This method will get fields and types from the assembly of the passed in compiledStylesheet and call their constructors which cannot be statically analyzed")]
         public void Load(System.Type compiledStylesheet) { }
         public void Load(System.Xml.XmlReader stylesheet) { }
         public void Load(System.Xml.XmlReader stylesheet, System.Xml.Xsl.XsltSettings? settings, System.Xml.XmlResolver? stylesheetResolver) { }
@@ -2815,9 +2817,11 @@ namespace System.Xml.Xsl
     {
         public XsltArgumentList() { }
         public event System.Xml.Xsl.XsltMessageEncounteredEventHandler XsltMessageEncountered { add { } remove { } }
+        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("The stylesheet may have calls to methods of the extension object passed in which cannot be statically analyzed by the trimmer. Ensure all methods that may be called are preserved.")]
         public void AddExtensionObject(string namespaceUri, object extension) { }
         public void AddParam(string name, string namespaceUri, object parameter) { }
         public void Clear() { }
+        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("The stylesheet may have calls to methods of the extension object passed in which cannot be statically analyzed by the trimmer. Ensure all methods that may be called are preserved.")]
         public object? GetExtensionObject(string namespaceUri) { throw null; }
         public object? GetParam(string name, string namespaceUri) { throw null; }
         public object? RemoveExtensionObject(string namespaceUri) { throw null; }

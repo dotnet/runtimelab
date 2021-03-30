@@ -409,6 +409,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/49936", TestPlatforms.Android)]
         public async Task Number_AsCollectionElement_RoundTrip()
         {
             await RunAsCollectionElementTest(JsonNumberTestData.Bytes);
@@ -1030,6 +1031,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/49936", TestPlatforms.Android)]
         public async Task EscapingTest()
         {
             // Cause all characters to be escaped.
