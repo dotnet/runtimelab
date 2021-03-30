@@ -17,11 +17,11 @@ namespace System.Text.Json.Serialization.Metadata
         /// todo
         /// </summary>
         // TODO: Should this return JsonCollectionTypeInfo<T>?
-        public static JsonCollectionTypeInfo<T[]> GetArray(JsonClassInfo elementInfo, JsonSerializerContext context, JsonNumberHandling? numberHandling)
+        public static JsonCollectionTypeInfo<T[]> GetArray(JsonClassInfo elementInfo, JsonSerializerContext context)
         {
             if (s_array == null)
             {
-                s_array = new JsonCollectionTypeInfo<T[]>(CreateList, new ArrayConverter<T[], T>(), elementInfo, numberHandling, context._options);
+                s_array = new JsonCollectionTypeInfo<T[]>(CreateList, new ArrayConverter<T[], T>(), elementInfo, context._options);
             }
 
             return s_array;
@@ -31,11 +31,11 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public static JsonCollectionTypeInfo<List<T>> GetList(JsonClassInfo elementInfo, JsonSerializerContext context, JsonNumberHandling? numberHandling)
+        public static JsonCollectionTypeInfo<List<T>> GetList(JsonClassInfo elementInfo, JsonSerializerContext context)
         {
             if (s_list == null)
             {
-                s_list = new JsonCollectionTypeInfo<List<T>>(CreateList, new ListOfTConverter<List<T>, T>(), elementInfo, numberHandling, context._options);
+                s_list = new JsonCollectionTypeInfo<List<T>>(CreateList, new ListOfTConverter<List<T>, T>(), elementInfo, context._options);
             }
 
             return s_list;
@@ -45,11 +45,11 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public static JsonCollectionTypeInfo<IEnumerable<T>> GetIEnumerable(JsonClassInfo elementInfo, JsonSerializerContext context, JsonNumberHandling? numberHandling)
+        public static JsonCollectionTypeInfo<IEnumerable<T>> GetIEnumerable(JsonClassInfo elementInfo, JsonSerializerContext context)
         {
             if (s_ienumerable == null)
             {
-                s_ienumerable = new JsonCollectionTypeInfo<IEnumerable<T>>(CreateList, new IEnumerableOfTConverter<IEnumerable<T>, T>(), elementInfo, numberHandling, context._options);
+                s_ienumerable = new JsonCollectionTypeInfo<IEnumerable<T>>(CreateList, new IEnumerableOfTConverter<IEnumerable<T>, T>(), elementInfo, context._options);
             }
 
             return s_ienumerable;
@@ -59,11 +59,11 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public static JsonCollectionTypeInfo<IList<T>> GetIList(JsonClassInfo elementInfo, JsonSerializerContext context, JsonNumberHandling? numberHandling)
+        public static JsonCollectionTypeInfo<IList<T>> GetIList(JsonClassInfo elementInfo, JsonSerializerContext context)
         {
             if (s_ilist == null)
             {
-                s_ilist = new JsonCollectionTypeInfo<IList<T>>(CreateList, new IListOfTConverter<IList<T>, T>(), elementInfo, numberHandling, context._options);
+                s_ilist = new JsonCollectionTypeInfo<IList<T>>(CreateList, new IListOfTConverter<IList<T>, T>(), elementInfo, context._options);
             }
 
             return s_ilist;

@@ -137,27 +137,27 @@ namespace System.Text.Json.Serialization.Metadata
         /// Create a <see cref="JsonPropertyInfo"/> for a given Type.
         /// See <seealso cref="PropertyInfoForClassInfo"/>.
         /// </summary>
-        internal static JsonPropertyInfo SourceGenCreatePropertyInfoForClassInfo(
+        internal static JsonPropertyInfo SourceGenCreatePropertyInfoForClassInfo<T>(
             Type declaredPropertyType,
-            Type runtimePropertyType,
             JsonClassInfo runtimeClassInfo,
             JsonConverter converter,
-            JsonNumberHandling? numberHandling,
             JsonSerializerOptions options)
         {
-            // Create the JsonPropertyInfo instance.
-            JsonPropertyInfo jsonPropertyInfo = converter.CreateJsonPropertyInfo();
-
-            jsonPropertyInfo.SourceGenInitializePropertyInfoForClassInfo(
-                declaredPropertyType,
-                runtimePropertyType,
-                runtimeClassType: converter.ClassType,
-                runtimeClassInfo,
-                converter,
-                numberHandling,
-                options);
-
-            Debug.Assert(jsonPropertyInfo.IsForClassInfo);
+            JsonPropertyInfo<T> jsonPropertyInfo = JsonPropertyInfo<T>.Create();
+            jsonPropertyInfo.DeclaredPropertyType = declaredPropertyType;
+            jsonPropertyInfo.RuntimePropertyType = declaredPropertyType;
+            jsonPropertyInfo.ClassType = converter.ClassType;
+            jsonPropertyInfo.RuntimeClassInfo = runtimeClassInfo;
+            jsonPropertyInfo.ConverterBase = converter;
+            jsonPropertyInfo.Options = options;
+            jsonPropertyInfo.IsForClassInfo = true;
+            jsonPropertyInfo.HasGetter = true;
+            jsonPropertyInfo.HasSetter = true;
+            // TODO (perf): can we pre-compute some of these values during source gen?
+            jsonPropertyInfo._converterIsExternalAndPolymorphic = !converter.IsInternalConverter && declaredPropertyType != converter.TypeToConvert;
+            jsonPropertyInfo.PropertyTypeCanBeNull = declaredPropertyType.CanBeNull();
+            jsonPropertyInfo._propertyTypeEqualsTypeToConvert = typeof(T) == declaredPropertyType;
+            // jsonPropertyInfo.DetermineNumberHandlingForClassInfo(numberHandling); TODO: honor numberhandling
             return jsonPropertyInfo;
         }
 

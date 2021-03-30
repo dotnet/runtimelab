@@ -21,7 +21,7 @@ namespace System.Text.Json.Serialization.Converters
         /// </summary>
         public NullableConverter(JsonConverter<T> converter)
         {
-            _converter = converter;
+            _converter = converter ?? throw new ArgumentNullException(nameof(converter));
             IsInternalConverterForNumberType = converter.IsInternalConverterForNumberType;
         }
 

@@ -32,7 +32,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// TODO
         /// </summary>
-        public MemberTypes MemberType { get; set; }
+        public MemberTypes MemberType { get; set; } // TODO: with some refactoring, we should be able to remove this.
 
         internal JsonPropertyInfo() { }
 
@@ -381,15 +381,6 @@ namespace System.Text.Json.Serialization.Metadata
             ConverterBase = converter;
             Options = options;
         }
-
-        internal abstract void SourceGenInitializePropertyInfoForClassInfo(
-            Type declaredPropertyType,
-            Type? runtimePropertyType,
-            ClassType runtimeClassType,
-            JsonClassInfo runtimeClassInfo,
-            JsonConverter converter,
-            JsonNumberHandling? parentTypeNumberHandling,
-            JsonSerializerOptions options);
 
         internal bool IgnoreDefaultValuesOnRead { get; private set; }
         internal bool IgnoreDefaultValuesOnWrite { get; private set; }
