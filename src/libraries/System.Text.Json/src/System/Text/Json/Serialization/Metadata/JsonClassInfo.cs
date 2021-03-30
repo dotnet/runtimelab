@@ -620,11 +620,7 @@ namespace System.Text.Json.Serialization.Metadata
             ValidateType(type, parentClassType, memberInfo, options);
 
             JsonConverter? converter = options.DetermineConverter(parentClassType, type, memberInfo);
-            if (converter == null)
-            {
-                Debug.Assert(JsonHelpers.DisableJsonSerializerDynamicFallback);
-                throw new NotSupportedException("Built-in converters not initialized; thus no converter found for type.");
-            }
+            Debug.Assert(converter != null);
 
             // The runtimeType is the actual value being assigned to the property.
             // There are three types to consider for the runtimeType:

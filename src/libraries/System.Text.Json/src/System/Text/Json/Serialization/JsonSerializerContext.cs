@@ -17,7 +17,7 @@ namespace System.Text.Json.Serialization
         /// </summary>
         public JsonSerializerContext()
         {
-            _options = JsonSerializerOptions.DefaultOptions;
+            _options = JsonSerializerOptions.DefaultSourceGenOptions;
         }
 
         /// <summary>
