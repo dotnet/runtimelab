@@ -18,8 +18,6 @@ namespace ILCompiler.DependencyAnalysis
         public abstract IEETypeNode ImportedEETypeNode(NodeFactory factory, TypeDesc type);
         public abstract ISortableSymbolNode ImportedGCStaticNode(NodeFactory factory, MetadataType type);
         public abstract ISortableSymbolNode ImportedNonGCStaticNode(NodeFactory factory, MetadataType type);
-        public abstract ISortableSymbolNode ImportedThreadStaticOffsetNode(NodeFactory factory, MetadataType type);
-        public abstract ISortableSymbolNode ImportedThreadStaticIndexNode(NodeFactory factory, MetadataType type);
         public abstract ISortableSymbolNode ImportedTypeDictionaryNode(NodeFactory factory, TypeDesc type);
         public abstract ISortableSymbolNode ImportedMethodDictionaryNode(NodeFactory factory, MethodDesc method);
         public abstract IMethodNode ImportedMethodCodeNode(NodeFactory factory, MethodDesc method, bool unboxingStub);
@@ -38,16 +36,6 @@ namespace ILCompiler.DependencyAnalysis
         }
 
         public override ISortableSymbolNode ImportedNonGCStaticNode(NodeFactory factory, MetadataType type)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override ISortableSymbolNode ImportedThreadStaticOffsetNode(NodeFactory factory, MetadataType type)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override ISortableSymbolNode ImportedThreadStaticIndexNode(NodeFactory factory, MetadataType type)
         {
             throw new NotSupportedException();
         }
