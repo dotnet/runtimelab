@@ -472,7 +472,6 @@ namespace ILCompiler.DependencyAnalysis
             });
 
             NativeLayout = new NativeLayoutHelper(this);
-            WindowsDebugData = new WindowsDebugDataHelper(this);
         }
 
         protected virtual ISymbolNode CreateGenericLookupFromDictionaryNode(ReadyToRunGenericHelperKey helperKey)
