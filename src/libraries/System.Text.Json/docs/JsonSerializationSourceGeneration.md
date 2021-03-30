@@ -231,7 +231,7 @@ Console.WriteLine(obj.MyString); // “Hello”
 
 TODO.
 
-Type discovery refers to how the source generator. For v1 we provide an explicit approach where each root serializable type is indicated to the generator via `System.Text.Json.Serialization.JsonSerializableAttribute`. This model is safe and ensures that we do not skip any types, or include unwanted types. In the future we can scan for `T`s and `System.Type` instances passed to the various serialization overloads.
+Type discovery refers to how the source generator. For v1 we provide an explicit approach where each root serializable type is indicated to the generator via `System.Text.Json.Serialization.JsonSerializableAttribute`. This model is safe and ensures that we do not skip any types, or include unwanted types. In the future we can scan for `T`s and `Type` instances passed to the various serialization overloads.
 
 ## Generated metadata
 
@@ -253,13 +253,339 @@ Real-world:
 ## Size
 
 Console app:
-Blazor: contributes ~70 KB compressed size reduction in default Blazor app.
+
+Blazor: JSON generation contributes to ~121 KB compressed DLL size reduction in default Blazor app.
 
 ## API Proposal
 
-TODO.
-See https://github.com/dotnet/runtimelab/blob/feature/JsonCodeGen/src/libraries/System.Text.Json/ref/System.Text.Json.cs.
+<details>
+<summary>(click to view)</summary>
 
+`System.Text.Json.SourceGeneration.dll`
+
+The following API will be generated into the compiling assembly, to mark serializable types.
+
+```cs
+namespace System.Text.Json.SourceGeneration
+{
+    /// <summary>
+    /// Instructs the System.Text.Json source generator to generate serialization metadata for a specified type at compile time.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+    public sealed class JsonSerializableAttribute : Attribute
+    {
+        /// <summary>
+        /// Indicates whether the specified type might be the runtime type of an object instance which was declared as
+        /// a different type (polymorphic serialization).
+        /// </summary>
+        public bool CanBeDynamic { get; set; }
+        /// <summary>
+        /// Initializes a new instance of <see cref=""JsonSerializableAttribute""/> with the specified type.
+        /// </summary>
+        /// <param name=""type"">The Type of the property.</param>
+        public JsonSerializableAttribute(Type type) { }
+    }
+}
+```
+
+`System.Text.Json.dll`
+
+```cs
+namespace System.Text.Json
+{
+    public static partial class JsonSerializer
+    {
+        public static object? Deserialize(string json, Type type, JsonSerializerContext jsonSerializerContext) { throw null; }
+        public static object? Deserialize(ref Utf8JsonReader reader, Type returnType, JsonSerializerContext jsonSerializerContext) { throw null; }
+        public static ValueTask<object?> DeserializeAsync(Stream utf8Json, Type returnType, JsonSerializerContext jsonSerializerContext, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+        public static ValueTask<TValue?> DeserializeAsync<TValue>(Stream utf8Json, JsonSerializerContext jsonSerializerContext, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+        public static ValueTask<TValue?> DeserializeAsync<TValue>(Stream utf8Json, JsonTypeInfo<TValue> jsonTypeInfo, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+        public static TValue? Deserialize<TValue>(System.ReadOnlySpan<byte> utf8Json, JsonTypeInfo<TValue> jsonTypeInfo) { throw null; }
+        public static TValue? Deserialize<TValue>(string json, JsonSerializerContext jsonSerializerContext) { throw null; }
+        public static TValue? Deserialize<TValue>(string json, JsonTypeInfo<TValue> jsonTypeInfo) { throw null; }
+        public static TValue? Deserialize<TValue>(ref Utf8JsonReader reader, JsonTypeInfo<TValue> jsonTypeInfo) { throw null; }
+        public static string Serialize(object? value, Type inputType, JsonSerializerContext jsonSerializerContext) { throw null; }
+        public static byte[] SerializeToUtf8Bytes<TValue>(TValue value, JsonTypeInfo<TValue> jsonTypeInfo) { throw null; }
+        public static string Serialize<TValue>(TValue value, JsonSerializerContext jsonSerializerContext) { throw null; }
+        public static string Serialize<TValue>(TValue value, JsonTypeInfo<TValue> jsonTypeInfo) { throw null; }
+    }
+
+    public sealed partial class JsonSerializerOptions
+    {
+        public static JsonSerializerOptions CreateForSizeOpts(JsonSerializerDefaults defaults = default) { throw null; }
+    }
+}
+
+namespace System.Text.Json.Serialization
+{
+    public partial class JsonSerializerContext : System.IDisposable
+    {
+        public JsonSerializerContext() { }
+        public JsonSerializerContext(JsonSerializerOptions options) { }
+        public void Dispose() { }
+        protected virtual void Dispose(bool disposing) { }
+        public virtual JsonClassInfo? GetJsonClassInfo(Type type) { throw null; }
+        public JsonSerializerOptions GetOptions() { throw null; }
+    }
+}
+
+namespace System.Text.Json.Serialization.Converters
+{
+    public sealed class BooleanConverter : JsonConverter<bool>
+    {
+        public BooleanConverter() { }
+        public override bool Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, bool value, JsonSerializerOptions options) {  }
+    }
+    public sealed class ByteArrayConverter : JsonConverter<byte[]>
+    {
+        public ByteArrayConverter() { }
+        public override byte[] Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, byte[] value, JsonSerializerOptions options) { }
+    }
+    public sealed class ByteConverter : JsonConverter<byte>
+    {
+        public ByteConverter() { }
+        public override byte Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, byte value, JsonSerializerOptions options) { }
+    }
+    public sealed class CharConverter : JsonConverter<char>
+    {
+        public CharConverter() { }
+        public override char Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, char value, JsonSerializerOptions options) { }
+    }
+    public sealed class DateTimeConverter : JsonConverter<System.DateTime>
+    {
+        public DateTimeConverter() { }
+        public override System.DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, System.DateTime value, JsonSerializerOptions options) { }
+    }
+    public sealed class DateTimeOffsetConverter : JsonConverter<System.DateTimeOffset>
+    {
+        public DateTimeOffsetConverter() { }
+        public override System.DateTimeOffset Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, System.DateTimeOffset value, JsonSerializerOptions options) { }
+    }
+    public sealed class DecimalConverter : JsonConverter<decimal>
+    {
+        public DecimalConverter() { }
+        public override decimal Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, decimal value, JsonSerializerOptions options) { }
+    }
+    public sealed class DoubleConverter : JsonConverter<double>
+    {
+        public DoubleConverter() { }
+        public override double Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, double value, JsonSerializerOptions options) { }
+    }
+    public sealed class EnumConverter<T> : JsonConverter<T> where T : struct, Enum
+    {
+        public EnumConverter(JsonSerializerOptions serializerOptions) { }
+        public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options) { }
+    }
+    public sealed class GuidConverter : JsonConverter<System.Guid>
+    {
+        public GuidConverter() { }
+        public override System.Guid Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, System.Guid value, JsonSerializerOptions options) { }
+    }
+    public sealed class Int16Converter : JsonConverter<short>
+    {
+        public Int16Converter() { }
+        public override short Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, short value, JsonSerializerOptions options) { }
+    }
+    public sealed class Int32Converter : JsonConverter<int>
+    {
+        public Int32Converter() { }
+        public override int Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, int value, JsonSerializerOptions options) { }
+    }
+    public sealed class Int64Converter : JsonConverter<long>
+    {
+        public Int64Converter() { }
+        public override long Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, long value, JsonSerializerOptions options) { }
+    }
+    public sealed class NullableConverter<T> : JsonConverter<T?> where T : struct
+    {
+        public NullableConverter(JsonConverter<T> converter) { }
+        public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, T? value, JsonSerializerOptions options) { }
+    }
+    public sealed class ObjectConverter : JsonConverter<object>
+    {
+        public ObjectConverter() { }
+        public override object Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, object value, JsonSerializerOptions options) { }
+    }
+    public sealed class SingleConverter : JsonConverter<float>
+    {
+        public SingleConverter() { }
+        public override float Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, float value, JsonSerializerOptions options) { }
+    }
+    [System.CLSCompliant(false)]
+    public sealed class SByteConverter : JsonConverter<sbyte>
+    {
+        public SByteConverter() { }
+        public override sbyte Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, sbyte value, JsonSerializerOptions options) { }
+    }
+    public sealed class StringConverter : JsonConverter<string>
+    {
+        public StringConverter() { }
+        public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) { }
+    }
+    [System.CLSCompliant(false)]
+    public sealed class UInt16Converter : JsonConverter<ushort>
+    {
+        public UInt16Converter() { }
+        public override ushort Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, ushort value, JsonSerializerOptions options) { }
+    }
+    [System.CLSCompliant(false)]
+    public sealed class UInt32Converter : JsonConverter<uint>
+    {
+        public UInt32Converter() { }
+        public override uint Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, uint value, JsonSerializerOptions options) { }
+    }
+    [System.CLSCompliant(false)]
+    public sealed class UInt64Converter : JsonConverter<ulong>
+    {
+        public UInt64Converter() { }
+        public override ulong Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, ulong value, JsonSerializerOptions options) { }
+    }
+    public sealed class UriConverter : JsonConverter<Uri>
+    {
+        public UriConverter() { }
+        public override Uri Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, Uri value, JsonSerializerOptions options) { }
+    }
+    public sealed class VersionConverter : JsonConverter<Version>
+    {
+        public VersionConverter() { }
+        public override Version Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) { throw null; }
+        public override void Write(Utf8JsonWriter writer, Version value, JsonSerializerOptions options) { }
+    }
+}
+
+namespace System.Text.Json.Serialization.Metadata
+{
+    public partial class JsonClassInfo
+    {
+        internal JsonClassInfo() { }
+        public JsonNumberHandling? NumberHandling { get { throw null; } set { } }
+        public JsonConverter ConverterBase { get { throw null; } }
+        public JsonClassInfo.ConstructorDelegate? CreateObject { get { throw null; } set { } }
+        public JsonSerializerOptions Options { get { throw null; } }
+        public Type Type { get { throw null; } }
+        public delegate object? ConstructorDelegate();
+    }
+    public sealed partial class JsonObjectInfo<T> : JsonTypeInfo<T>
+    {
+        public JsonObjectInfo(JsonClassInfo.ConstructorDelegate? createObjectFunc, JsonSerializerOptions options) { }
+        public void AddProperty(JsonPropertyInfo jsonPropertyInfo) { throw null; }
+        public void CompleteInitialization() { }
+    }
+    public abstract partial class JsonPropertyInfo
+    {
+        internal JsonPropertyInfo() { }
+        public byte[] EscapedNameSection { get { throw null; } set { } }
+        public byte[] NameAsUtf8Bytes { get { throw null; } set { } }
+        public abstract JsonConverter ConverterBase { get; set; }
+        public Type DeclaredPropertyType { get { throw null; } set { } }
+        public Type DeclaringType { get { throw null; } set { } }
+        public string NameAsString { get { throw null; } set { } }
+        public bool ShouldDeserialize { get { throw null; } }
+        public bool ShouldSerialize { get { throw null; } }
+        public System.Text.Json.Serialization.JsonIgnoreCondition? IgnoreCondition { get { throw null; } set { } }
+        public JsonNumberHandling? NumberHandling { get { throw null; } set { } }
+        public System.Reflection.MemberTypes MemberType { get { throw null; } set { } }
+        public JsonSerializerOptions Options { get { throw null; } set { } }
+        public JsonClassInfo RuntimeClassInfo { get { throw null; } set { } }
+    }
+    public sealed partial class JsonPropertyInfo<T> : JsonPropertyInfo
+    {
+        public JsonConverter<T> Converter { get { throw null; } }
+        public override JsonConverter ConverterBase { get { throw null; } set { } }
+        public Func<object, T>? Get { get { throw null; } set { } }
+        public Action<object, T>? Set { get { throw null; } set { } }
+        public void CompleteInitialization() { }
+        public static JsonPropertyInfo<T> Create() { throw null; }
+    }
+    public abstract partial class JsonTypeInfo<T> : JsonClassInfo
+    {
+        internal JsonTypeInfo() { }
+        public void RegisterToOptions() { }
+    }
+    public sealed partial class JsonValueInfo<T> : JsonTypeInfo<T>
+    {
+        public JsonValueInfo(JsonConverter converter, JsonSerializerOptions options) { }
+    }
+    public sealed partial class JsonCollectionTypeInfo<T> : JsonTypeInfo<T>
+    {
+        public JsonCollectionTypeInfo(JsonClassInfo.ConstructorDelegate createObjectFunc, JsonConverter<T> converter, JsonClassInfo elementClassInfo, JsonSerializerOptions options) { }
+        public JsonCollectionTypeInfo(JsonClassInfo.ConstructorDelegate createObjectFunc, JsonConverter<T> converter, JsonClassInfo elementClassInfo, JsonSerializerOptions options) { }
+    }
+    public static partial class KnownCollectionTypeInfos<T>
+    {
+        public static JsonCollectionTypeInfo<T[]> GetArray(JsonClassInfo elementClassInfo, JsonSerializerContext context) { throw null; }
+        public static JsonCollectionTypeInfo<IEnumerable<T>> GetIEnumerable(JsonClassInfo elementClassInfo, JsonSerializerContext context) { throw null; }
+        public static JsonCollectionTypeInfo<IList<T>> GetIList(JsonClassInfo elementClassInfo, JsonSerializerContext context) { throw null; }
+        public static JsonCollectionTypeInfo<List<T>> GetList(JsonClassInfo elementClassInfo, JsonSerializerContext context) { throw null; }
+    }
+    public static partial class KnownDictionaryTypeInfos<TKey, TValue> where TKey : notnull
+    {
+        public static JsonCollectionTypeInfo<Dictionary<TKey, TValue>> GetDictionary(JsonClassInfo keyClassInfo, JsonClassInfo valueClassInfo, JsonSerializerContext context) { throw null; }
+    }
+}
+```
+
+`System.Net.Http.Json.dll`
+
+```cs
+namespace System.Net.Http.Json
+{
+    public static partial class HttpClientJsonExtensions
+    {
+        public static Task<object?> GetFromJsonAsync(this HttpClient client, string? requestUri, Type type, JsonSerializerOptions? options, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+        public static Task<object?> GetFromJsonAsync(this HttpClient client, string? requestUri, Type type, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+        public static Task<object?> GetFromJsonAsync(this HttpClient client, Uri? requestUri, Type type, JsonSerializerOptions? options, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+        public static Task<object?> GetFromJsonAsync(this HttpClient client, Uri? requestUri, Type type, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+        public static Task<TValue?> GetFromJsonAsync<TValue>(this HttpClient client, string? requestUri, JsonSerializerContext? context, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+        public static Task<TValue?> GetFromJsonAsync<TValue>(this HttpClient client, string? requestUri, JsonSerializerOptions? options, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+        public static Task<TValue?> GetFromJsonAsync<TValue>(this HttpClient client, string? requestUri, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+        public static Task<TValue?> GetFromJsonAsync<TValue>(this HttpClient client, Uri? requestUri, JsonSerializerOptions? options, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+        public static Task<TValue?> GetFromJsonAsync<TValue>(this HttpClient client, Uri? requestUri, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+        public static Task<HttpResponseMessage> PostAsJsonAsync<TValue>(this HttpClient client, string? requestUri, TValue value, JsonSerializerOptions? options = null, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+        public static Task<HttpResponseMessage> PostAsJsonAsync<TValue>(this HttpClient client, string? requestUri, TValue value, CancellationToken cancellationToken) { throw null; }
+        public static Task<HttpResponseMessage> PostAsJsonAsync<TValue>(this HttpClient client, Uri? requestUri, TValue value, JsonSerializerOptions? options = null, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+        public static Task<HttpResponseMessage> PostAsJsonAsync<TValue>(this HttpClient client, Uri? requestUri, TValue value, CancellationToken cancellationToken) { throw null; }
+        public static Task<HttpResponseMessage> PutAsJsonAsync<TValue>(this HttpClient client, string? requestUri, TValue value, JsonSerializerOptions? options = null, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+        public static Task<HttpResponseMessage> PutAsJsonAsync<TValue>(this HttpClient client, string? requestUri, TValue value, CancellationToken cancellationToken) { throw null; }
+        public static Task<HttpResponseMessage> PutAsJsonAsync<TValue>(this HttpClient client, Uri? requestUri, TValue value, JsonSerializerOptions? options = null, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+        public static Task<HttpResponseMessage> PutAsJsonAsync<TValue>(this HttpClient client, Uri? requestUri, TValue value, CancellationToken cancellationToken) { throw null; }
+    }
+
+    public static partial class HttpContentJsonExtensions
+    {
+        public static Task<object?> ReadFromJsonAsync(this HttpContent content, Type type, JsonSerializerOptions? options = null, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+
+        public static Task<object?> ReadFromJsonAsync(this HttpContent content, JsonClassInfo jsonTypeInfo, JsonSerializerOptions? options = null, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+        public static Task<object?> ReadFromJsonAsync(this HttpContent content, JsonSerializerContext, JsonSerializerOptions? options = null, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+
+
+        public static Task<T?> ReadFromJsonAsync<T>(this HttpContent content, JsonSerializerOptions? options = null, CancellationToken cancellationToken = default(CancellationToken)) { throw null; }
+    }
+}
+```
+</details>
 
 ## Versioning
 
