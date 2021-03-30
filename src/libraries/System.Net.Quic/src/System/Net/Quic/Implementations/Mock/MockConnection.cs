@@ -1,7 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#nullable enable
 using System.Diagnostics;
 using System.Net;
 using System.Net.Security;
@@ -92,7 +91,9 @@ namespace System.Net.Quic.Implementations.Mock
         }
 
         // TODO: Should clone the endpoint since it is mutable
-        internal override IPEndPoint LocalEndPoint => _localEndPoint;
+        // TODO: could this be made back to non-nullable?
+        //       For inbound we have it immediately, for outbound after connect.
+        internal override IPEndPoint? LocalEndPoint => _localEndPoint;
 
         // TODO: Should clone the endpoint since it is mutable
         internal override EndPoint RemoteEndPoint => _remoteEndPoint!;

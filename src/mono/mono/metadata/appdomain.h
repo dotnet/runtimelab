@@ -43,7 +43,7 @@ MONO_API MONO_RT_EXTERNAL_ONLY void
 mono_runtime_init          (MonoDomain *domain, MonoThreadStartCB start_cb,
 			    MonoThreadAttachCB attach_cb);
 
-MONO_API void
+MONO_API MONO_RT_EXTERNAL_ONLY void
 mono_runtime_cleanup       (MonoDomain *domain);
 
 MONO_API void
@@ -106,10 +106,10 @@ mono_domain_foreach        (MonoDomainFunc func, void* user_data);
 MONO_API MONO_RT_EXTERNAL_ONLY MonoAssembly *
 mono_domain_assembly_open  (MonoDomain *domain, const char *name);
 
-MONO_API void
+MONO_API MONO_RT_EXTERNAL_ONLY void
 mono_domain_ensure_entry_assembly (MonoDomain *domain, MonoAssembly *assembly);
 
-MONO_API mono_bool
+MONO_API MONO_RT_EXTERNAL_ONLY mono_bool
 mono_domain_finalize       (MonoDomain *domain, uint32_t timeout);
 
 MONO_API void

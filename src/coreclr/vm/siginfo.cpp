@@ -189,7 +189,7 @@ void SigPointer::ConvertToInternalExactlyOne(Module* pSigModule, SigTypeContext 
 
     if (pTypeContext != NULL)
     {
-        ULONG varNum;
+        uint32_t varNum;
         if (typ == ELEMENT_TYPE_VAR)
         {
             IfFailThrowBF(GetData(&varNum), BFA_BAD_COMPLUS_SIG, pSigModule);
@@ -222,7 +222,7 @@ void SigPointer::ConvertToInternalExactlyOne(Module* pSigModule, SigTypeContext 
             case ELEMENT_TYPE_VAR:
             case ELEMENT_TYPE_MVAR:
                 {
-                    ULONG varNum;
+                    uint32_t varNum;
                     // Skip variable number
                     IfFailThrowBF(GetData(&varNum), BFA_BAD_COMPLUS_SIG, pSigModule);
                     pSigBuilder->AppendData(varNum);
@@ -248,30 +248,30 @@ void SigPointer::ConvertToInternalExactlyOne(Module* pSigModule, SigTypeContext 
                 {
                     ConvertToInternalExactlyOne(pSigModule, pTypeContext, pSigBuilder, bSkipCustomModifier);
 
-                    ULONG rank = 0; // Get rank
+                    uint32_t rank = 0; // Get rank
                     IfFailThrowBF(GetData(&rank), BFA_BAD_COMPLUS_SIG, pSigModule);
                     pSigBuilder->AppendData(rank);
 
                     if (rank)
                     {
-                        ULONG nsizes = 0;
+                        uint32_t nsizes = 0;
                         IfFailThrowBF(GetData(&nsizes), BFA_BAD_COMPLUS_SIG, pSigModule);
                         pSigBuilder->AppendData(nsizes);
 
                         while (nsizes--)
                         {
-                            ULONG data = 0;
+                            uint32_t data = 0;
                             IfFailThrowBF(GetData(&data), BFA_BAD_COMPLUS_SIG, pSigModule);
                             pSigBuilder->AppendData(data);
                         }
 
-                        ULONG nlbounds = 0;
+                        uint32_t nlbounds = 0;
                         IfFailThrowBF(GetData(&nlbounds), BFA_BAD_COMPLUS_SIG, pSigModule);
                         pSigBuilder->AppendData(nlbounds);
 
                         while (nlbounds--)
                         {
-                            ULONG data = 0;
+                            uint32_t data = 0;
                             IfFailThrowBF(GetData(&data), BFA_BAD_COMPLUS_SIG, pSigModule);
                             pSigBuilder->AppendData(data);
                         }
@@ -303,7 +303,7 @@ void SigPointer::ConvertToInternalExactlyOne(Module* pSigModule, SigTypeContext 
                     pSigBuilder->AppendElementType(ELEMENT_TYPE_INTERNAL);
                     pSigBuilder->AppendPointer(genericType.AsPtr());
 
-                    ULONG argCnt = 0; // Get number of parameters
+                    uint32_t argCnt = 0; // Get number of parameters
                     IfFailThrowBF(GetData(&argCnt), BFA_BAD_COMPLUS_SIG, pSigModule);
                     pSigBuilder->AppendData(argCnt);
 
@@ -353,13 +353,13 @@ void SigPointer::ConvertToInternalSignature(Module* pSigModule, SigTypeContext *
     // Skip type parameter count
     if (uCallConv & IMAGE_CEE_CS_CALLCONV_GENERIC)
     {
-        ULONG nParams = 0;
+        uint32_t nParams = 0;
         IfFailThrowBF(GetData(&nParams), BFA_BAD_COMPLUS_SIG, pSigModule);
         pSigBuilder->AppendData(nParams);
     }
 
     // Get arg count;
-    ULONG cArgs = 0;
+    uint32_t cArgs = 0;
     IfFailThrowBF(GetData(&cArgs), BFA_BAD_COMPLUS_SIG, pSigModule);
     pSigBuilder->AppendData(cArgs);
 
@@ -577,7 +577,7 @@ void MetaSig::Init(
     {
         case sigLocalVars:
         {
-            ULONG data = 0;
+            uint32_t data = 0;
             IfFailGo(psig.GetCallingConvInfo(&data)); // Store calling convention
             m_CallConv = (BYTE)data;
 
@@ -589,7 +589,7 @@ void MetaSig::Init(
         }
         case sigMember:
         {
-            ULONG data = 0;
+            uint32_t data = 0;
             IfFailGo(psig.GetCallingConvInfo(&data)); // Store calling convention
             m_CallConv = (BYTE)data;
 
@@ -607,7 +607,7 @@ void MetaSig::Init(
         }
         case sigField:
         {
-            ULONG data = 0;
+            uint32_t data = 0;
             IfFailGo(psig.GetCallingConvInfo(&data)); // Store calling convention
             m_CallConv = (BYTE)data;
 
@@ -1166,7 +1166,7 @@ TypeHandle SigPointer::GetTypeHandleThrowing(
         case ELEMENT_TYPE_MODULE_ZAPSIG:
         {
 #ifndef DACCESS_COMPILE
-            DWORD ix;
+            uint32_t ix;
             IfFailThrowBF(psig.GetData(&ix), BFA_BAD_SIGNATURE, pModule);
 #ifdef FEATURE_MULTICOREJIT
             if (pZapSigContext->externalTokens == ZapSig::MulticoreJitTokens)
@@ -1205,7 +1205,7 @@ TypeHandle SigPointer::GetTypeHandleThrowing(
         case ELEMENT_TYPE_VAR_ZAPSIG:
         {
 #ifndef DACCESS_COMPILE
-            DWORD rid;
+            RID rid;
             IfFailThrowBF(psig.GetData(&rid), BFA_BAD_SIGNATURE, pModule);
 
             mdGenericParam tkTyPar = TokenFromRid(rid, mdtGenericParam);
@@ -1248,11 +1248,11 @@ TypeHandle SigPointer::GetTypeHandleThrowing(
 #ifdef _DEBUG_IMPL
                 _ASSERTE(!FORBIDGC_LOADER_USE_ENABLED());
 #endif
-                DWORD index;
+                uint32_t index;
                 IfFailThrow(psig.GetData(&index));
 
                 SigPointer inst = pSubst->GetInst();
-                for (DWORD i = 0; i < index; i++)
+                for (uint32_t i = 0; i < index; i++)
                 {
                     IfFailThrowBF(inst.SkipExactlyOne(), BFA_BAD_SIGNATURE, pOrigModule);
                 }
@@ -1323,7 +1323,7 @@ TypeHandle SigPointer::GetTypeHandleThrowing(
             }
 
             // The number of type parameters follows
-            DWORD ntypars = 0;
+            uint32_t ntypars = 0;
             IfFailThrowBF(psig.GetData(&ntypars), BFA_BAD_SIGNATURE, pOrigModule);
 
             DWORD dwAllocaSize = 0;
@@ -1546,7 +1546,7 @@ TypeHandle SigPointer::GetTypeHandleThrowing(
                     break;
             }
 
-            ULONG rank = 0;
+            uint32_t rank = 0;
             if (typ == ELEMENT_TYPE_ARRAY) {
                 IfFailThrowBF(psig.SkipExactlyOne(), BFA_BAD_SIGNATURE, pOrigModule);
                 IfFailThrowBF(psig.GetData(&rank), BFA_BAD_SIGNATURE, pOrigModule);
@@ -1592,7 +1592,7 @@ TypeHandle SigPointer::GetTypeHandleThrowing(
         case ELEMENT_TYPE_FNPTR:
             {
 #ifndef DACCESS_COMPILE
-                ULONG uCallConv = 0;
+                uint32_t uCallConv = 0;
                 IfFailThrowBF(psig.GetData(&uCallConv), BFA_BAD_SIGNATURE, pOrigModule);
 
                 if ((uCallConv & IMAGE_CEE_CS_CALLCONV_MASK) == IMAGE_CEE_CS_CALLCONV_FIELD)
@@ -1602,12 +1602,12 @@ TypeHandle SigPointer::GetTypeHandleThrowing(
                     THROW_BAD_FORMAT(BFA_FNPTR_CANNOT_BE_GENERIC, pOrigModule);
 
                 // Get arg count;
-                ULONG cArgs = 0;
+                uint32_t cArgs = 0;
                 IfFailThrowBF(psig.GetData(&cArgs), BFA_BAD_SIGNATURE, pOrigModule);
 
-                ULONG cAllocaSize;
-                if (!ClrSafeInt<ULONG>::addition(cArgs, 1, cAllocaSize) ||
-                    !ClrSafeInt<ULONG>::multiply(cAllocaSize, sizeof(TypeHandle), cAllocaSize))
+                uint32_t cAllocaSize;
+                if (!ClrSafeInt<uint32_t>::addition(cArgs, 1, cAllocaSize) ||
+                    !ClrSafeInt<uint32_t>::multiply(cAllocaSize, sizeof(TypeHandle), cAllocaSize))
                 {
                     ThrowHR(COR_E_OVERFLOW);
                 }
@@ -1858,7 +1858,7 @@ TypeHandle SigPointer::GetTypeVariable(CorElementType et,
     }
     CONTRACT_END
 
-    DWORD index;
+    uint32_t index;
     if (FAILED(GetData(&index)))
     {
         TypeHandle thNull;
@@ -1954,11 +1954,11 @@ VarKind SigPointer::IsPolyType(const SigTypeContext *pTypeContext) const
             if (FAILED(psig.SkipExactlyOne()))
                 return hasNoVars;
 
-            ULONG ntypars;
+            uint32_t ntypars;
             if(FAILED(psig.GetData(&ntypars)))
                 return hasNoVars;
 
-            for (ULONG i = 0; i < ntypars; i++)
+            for (uint32_t i = 0; i < ntypars; i++)
             {
               k = (VarKind) (psig.IsPolyType(pTypeContext) | k);
               if (FAILED(psig.SkipExactlyOne()))
@@ -1982,7 +1982,7 @@ VarKind SigPointer::IsPolyType(const SigTypeContext *pTypeContext) const
                 return hasNoVars;
 
             // Get arg count;
-            ULONG cArgs;
+            uint32_t cArgs;
             if (FAILED(psig.GetData(&cArgs)))
                 return hasNoVars;
 
@@ -5128,7 +5128,7 @@ void MetaSig::EnsureSigValueTypesLoaded(MethodDesc *pMD)
     // Skip over calling convention.
     IfFailThrowBF(ptr.GetCallingConv(NULL), BFA_BAD_SIGNATURE, pModule);
 
-    ULONG numArgs = 0;
+    uint32_t numArgs = 0;
     IfFailThrowBF(ptr.GetData(&numArgs), BFA_BAD_SIGNATURE, pModule);
 
     // Force a load of value type arguments.
@@ -5167,14 +5167,14 @@ void MetaSig::CheckSigTypesCanBeLoaded(MethodDesc * pMD)
     // Skip over calling convention.
     IfFailThrowBF(ptr.GetCallingConv(NULL), BFA_BAD_SIGNATURE, pModule);
 
-    ULONG numArgs = 0;
+    uint32_t numArgs = 0;
     IfFailThrowBF(ptr.GetData(&numArgs), BFA_BAD_SIGNATURE, pModule);
 
     // must do a skip so we skip any class tokens associated with the return type
     IfFailThrowBF(ptr.SkipExactlyOne(), BFA_BAD_SIGNATURE, pModule);
 
     // Force a load of value type arguments.
-    for(ULONG i=0; i < numArgs; i++)
+    for(uint32_t i=0; i < numArgs; i++)
     {
         unsigned type = ptr.PeekElemTypeNormalized(pModule,&typeContext);
         if (type == ELEMENT_TYPE_VALUETYPE || type == ELEMENT_TYPE_CLASS)
@@ -5338,7 +5338,7 @@ MetaSig::TryGetUnmanagedCallingConventionFromModOpt(
 
     // Instantiations aren't relevant here
     SigPointer sigPtr(pSig, cSig);
-    ULONG sigCallConv = 0;
+    uint32_t sigCallConv = 0;
     IfFailRet(sigPtr.GetCallingConvInfo(&sigCallConv)); // call conv
     if (sigCallConv & IMAGE_CEE_CS_CALLCONV_GENERIC)
     {
@@ -5350,7 +5350,7 @@ MetaSig::TryGetUnmanagedCallingConventionFromModOpt(
     _ASSERTE(pWalk <= pSig + cSig);
 
     *callConvOut = CorInfoCallConvExtension::Managed;
-    bool found = false;
+    CallingConventionModifiers modifiers = CALL_CONV_MOD_NONE;
     while ((pWalk < (pSig + cSig)) && ((*pWalk == ELEMENT_TYPE_CMOD_OPT) || (*pWalk == ELEMENT_TYPE_CMOD_REQD)))
     {
         BOOL fIsOptional = (*pWalk == ELEMENT_TYPE_CMOD_OPT);
@@ -5378,42 +5378,113 @@ MetaSig::TryGetUnmanagedCallingConventionFromModOpt(
         if (::strcmp(typeNamespace, CMOD_CALLCONV_NAMESPACE) != 0)
             continue;
 
-        if (::strcmp(typeName, CMOD_CALLCONV_NAME_SUPPRESSGCTRANSITION) == 0)
+        if (!TryApplyModOptToCallingConvention(
+            typeName,
+            ::strlen(typeName),
+            CallConvModOptNameType::TypeName,
+            callConvOut,
+            &modifiers))
         {
-            *suppressGCTransitionOut = true;
-            continue;
-        }
-
-        const struct {
-            LPCSTR name;
-            CorInfoCallConvExtension value;
-        } knownCallConvs[] = {
-            { CMOD_CALLCONV_NAME_CDECL,     CorInfoCallConvExtension::C },
-            { CMOD_CALLCONV_NAME_STDCALL,   CorInfoCallConvExtension::Stdcall },
-            { CMOD_CALLCONV_NAME_THISCALL,  CorInfoCallConvExtension::Thiscall },
-            { CMOD_CALLCONV_NAME_FASTCALL,  CorInfoCallConvExtension::Fastcall } };
-
-        for (const auto &callConv : knownCallConvs)
-        {
-            // Look for a recognized calling convention in metadata.
-            if (::strcmp(typeName, callConv.name) == 0)
-            {
-                // Error if there are multiple recognized calling conventions
-                if (found)
-                {
-                    *errorResID = IDS_EE_MULTIPLE_CALLCONV_UNSUPPORTED;
-                    return COR_E_INVALIDPROGRAM;
-                }
-
-                *callConvOut = callConv.value;
-                found = true;
-            }
+            // Error if there are multiple recognized base calling conventions
+            *errorResID = IDS_EE_MULTIPLE_CALLCONV_UNSUPPORTED;
+            return COR_E_INVALIDPROGRAM;
         }
     }
 
-    return found ? S_OK : S_FALSE;
+    *suppressGCTransitionOut = ((modifiers & CALL_CONV_MOD_SUPPRESSGCTRANSITION) != 0);
+
+    if (modifiers & CALL_CONV_MOD_MEMBERFUNCTION)
+    {
+        if (*callConvOut == CorInfoCallConvExtension::Managed)
+        {
+            // In this case, the only specified calling convention is CallConvMemberFunction.
+            // Set *callConvOut to the default unmanaged calling convention.
+            *callConvOut = MetaSig::GetDefaultUnmanagedCallingConvention();
+        }
+
+        *callConvOut = MetaSig::GetMemberFunctionUnmanagedCallingConventionVariant(*callConvOut);
+    }
+
+    return *callConvOut != CorInfoCallConvExtension::Managed ? S_OK : S_FALSE;
 }
 
+// According to ECMA-335, type name strings are UTF-8. Since we are
+// looking for type names that are equivalent in ASCII and UTF-8,
+// using a const char constant is acceptable. Type name strings are
+// in Fully Qualified form, so we include the ',' delimiter.
+#define MAKE_FULLY_QUALIFIED_CALLCONV_TYPE_NAME_PREFIX(callConvTypeName) CMOD_CALLCONV_NAMESPACE "." callConvTypeName ","
+
+namespace
+{
+    // Templated function to compute if a char string begins with a constant string.
+    template<size_t S2LEN>
+    bool BeginsWith(size_t s1Len, const char* s1, const char (&s2)[S2LEN])
+    {
+        WRAPPER_NO_CONTRACT;
+
+        size_t s2Len = S2LEN - 1; // Remove null
+
+        if (s1Len < s2Len)
+            return false;
+
+        return (0 == strncmp(s1, s2, s2Len));
+    }
+}
+
+bool MetaSig::TryApplyModOptToCallingConvention(
+            _In_z_ LPCSTR callConvModOptName,
+            _In_ size_t callConvModOptNameLength,
+            _In_ CallConvModOptNameType nameType,
+            _Inout_ CorInfoCallConvExtension* pBaseCallConv,
+            _Inout_ CallingConventionModifiers* pCallConvModifiers)
+{
+    CONTRACTL
+    {
+        STANDARD_VM_CHECK;
+        PRECONDITION(CheckPointer(pBaseCallConv));
+        PRECONDITION(CheckPointer(pCallConvModifiers));
+    }
+    CONTRACTL_END;
+
+#define BASE_CALL_CONV(callConvModOptMetadataName, CallConvExtensionMember)       \
+    if (COMPARE_CALLCONV_NAME(callConvModOptName, callConvModOptMetadataName))    \
+    {                                                                             \
+        if (*pBaseCallConv != CorInfoCallConvExtension::Managed) return false; \
+        *pBaseCallConv = CorInfoCallConvExtension::CallConvExtensionMember;    \
+        return true;                                                              \
+    }
+                                                                      \
+#define CALL_CONV_MODIFIER(callConvModOptMetadataName, CallConvModifiersMember)                            \
+    if (COMPARE_CALLCONV_NAME(callConvModOptName, callConvModOptMetadataName))                             \
+    {                                                                                                      \
+        *pCallConvModifiers = (CallingConventionModifiers)(*pCallConvModifiers | CallConvModifiersMember); \
+        return true;                                                                                       \
+    }
+
+#define PARSE_CALL_CONVS \
+        BASE_CALL_CONV(CMOD_CALLCONV_NAME_CDECL, C) \
+        BASE_CALL_CONV(CMOD_CALLCONV_NAME_STDCALL, Stdcall) \
+        BASE_CALL_CONV(CMOD_CALLCONV_NAME_THISCALL, Thiscall) \
+        BASE_CALL_CONV(CMOD_CALLCONV_NAME_FASTCALL, Fastcall) \
+        CALL_CONV_MODIFIER(CMOD_CALLCONV_NAME_SUPPRESSGCTRANSITION, CALL_CONV_MOD_SUPPRESSGCTRANSITION) \
+        CALL_CONV_MODIFIER(CMOD_CALLCONV_NAME_MEMBERFUNCTION, CALL_CONV_MOD_MEMBERFUNCTION)                                                                                                    \
+
+    if (nameType == CallConvModOptNameType::TypeName)
+    {
+#define COMPARE_CALLCONV_NAME(userProvidedName, metadataName) ::strcmp(userProvidedName, metadataName) == 0
+        PARSE_CALL_CONVS;
+#undef COMPARE_CALLCONV_NAME
+    }
+    else
+    {
+        _ASSERTE(nameType == CallConvModOptNameType::FullyQualifiedName);
+
+#define COMPARE_CALLCONV_NAME(userProvidedName, metadataName) BeginsWith(callConvModOptNameLength, userProvidedName, MAKE_FULLY_QUALIFIED_CALLCONV_TYPE_NAME_PREFIX(metadataName))
+        PARSE_CALL_CONVS;
+#undef COMPARE_CALLCONV_NAME
+    }
+    return true;
+}
 //---------------------------------------------------------------------------------------
 //
 // Substitution from a token (TypeDef and TypeRef have empty instantiation, TypeSpec gets it from MetaData).

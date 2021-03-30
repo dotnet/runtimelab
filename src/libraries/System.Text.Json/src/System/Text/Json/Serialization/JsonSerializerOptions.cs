@@ -104,6 +104,7 @@ namespace System.Text.Json
 
             Converters = new ConverterList(this, (ConverterList)options.Converters);
             EffectiveMaxDepth = options.EffectiveMaxDepth;
+            ReferenceHandlingStrategy = options.ReferenceHandlingStrategy;
 
             // _classes is not copied as sharing the JsonClassInfo and JsonPropertyInfo caches can result in
             // unnecessary references to type metadata, potentially hindering garbage collection on the source options.
@@ -327,7 +328,7 @@ namespace System.Text.Json
 
         /// <summary>
         /// Determines whether read-only fields are ignored during serialization.
-        /// A property is read-only if it isn't marked with the <c>readonly</c> keyword.
+        /// A field is read-only if it is marked with the <c>readonly</c> keyword.
         /// The default value is false.
         /// </summary>
         /// <remarks>
@@ -350,7 +351,7 @@ namespace System.Text.Json
         }
 
         /// <summary>
-        /// Determines whether fields are handled serialization and deserialization.
+        /// Determines whether fields are handled on serialization and deserialization.
         /// The default value is false.
         /// </summary>
         /// <exception cref="InvalidOperationException">
@@ -502,8 +503,12 @@ namespace System.Text.Json
             {
                 VerifyMutable();
                 _referenceHandler = value;
+                ReferenceHandlingStrategy = value?.HandlingStrategy ?? ReferenceHandlingStrategy.None;
             }
         }
+
+        // The cached value used to determine if ReferenceHandler should use Preserve or IgnoreCycles semanitcs or None of them.
+        internal ReferenceHandlingStrategy ReferenceHandlingStrategy = ReferenceHandlingStrategy.None;
 
         internal MemberAccessor MemberAccessorStrategy
         {

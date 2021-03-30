@@ -71,7 +71,7 @@ namespace System.Text.Json
         /// <param name="jsonTypeInfo"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public static ValueTask<TValue?> DeserializeAsync<TValue>(
+        public static ValueTask<TValue?> DeserializeAsync<[DynamicallyAccessedMembers(MembersAccessedOnRead)] TValue>(
             Stream utf8Json,
             JsonTypeInfo<TValue> jsonTypeInfo,
             CancellationToken cancellationToken = default)
@@ -97,7 +97,7 @@ namespace System.Text.Json
         /// <param name="jsonSerializerContext"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public static ValueTask<TValue?> DeserializeAsync<TValue>(
+        public static ValueTask<TValue?> DeserializeAsync<[DynamicallyAccessedMembers(MembersAccessedOnRead)] TValue>(
             Stream utf8Json,
             JsonSerializerContext jsonSerializerContext,
             CancellationToken cancellationToken = default)
@@ -128,7 +128,7 @@ namespace System.Text.Json
         /// <returns></returns>
         public static ValueTask<object?> DeserializeAsync(
             Stream utf8Json,
-            Type returnType,
+            [DynamicallyAccessedMembers(MembersAccessedOnRead)] Type returnType,
             JsonSerializerContext jsonSerializerContext,
             CancellationToken cancellationToken = default)
         {

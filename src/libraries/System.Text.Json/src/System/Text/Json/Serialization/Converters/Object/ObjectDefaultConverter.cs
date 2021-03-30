@@ -76,7 +76,7 @@ namespace System.Text.Json.Serialization.Converters
                 // Handle the metadata properties.
                 if (state.Current.ObjectState < StackFrameObjectState.PropertyValue)
                 {
-                    if (options.ReferenceHandler != null)
+                    if (options.ReferenceHandlingStrategy == ReferenceHandlingStrategy.Preserve)
                     {
                         if (JsonSerializer.ResolveMetadataForJsonObject<T>(ref reader, ref state, options))
                         {
@@ -234,8 +234,7 @@ namespace System.Text.Json.Serialization.Converters
             if (!state.SupportContinuation)
             {
                 writer.WriteStartObject();
-
-                if (options.ReferenceHandler != null)
+                if (options.ReferenceHandlingStrategy == ReferenceHandlingStrategy.Preserve)
                 {
                     if (JsonSerializer.WriteReferenceForObject(this, objectValue, ref state, writer) == MetadataPropertyName.Ref)
                     {
@@ -290,8 +289,7 @@ namespace System.Text.Json.Serialization.Converters
                 if (!state.Current.ProcessedStartToken)
                 {
                     writer.WriteStartObject();
-
-                    if (options.ReferenceHandler != null)
+                    if (options.ReferenceHandlingStrategy == ReferenceHandlingStrategy.Preserve)
                     {
                         if (JsonSerializer.WriteReferenceForObject(this, objectValue, ref state, writer) == MetadataPropertyName.Ref)
                         {

@@ -1732,7 +1732,7 @@ void Compiler::fgCompactBlocks(BasicBlock* block, BasicBlock* bNext)
             block->bbWeight = bNext->bbWeight;
 
             block->bbFlags |= (bNext->bbFlags & BBF_PROF_WEIGHT); // Set the profile weight flag (if necessary)
-            assert(block->bbWeight != 0);
+            assert(block->bbWeight != BB_ZERO_WEIGHT);
             block->bbFlags &= ~BBF_RUN_RARELY; // Clear any RarelyRun flag
         }
     }
@@ -1914,7 +1914,8 @@ void Compiler::fgCompactBlocks(BasicBlock* block, BasicBlock* bNext)
         // In this case, there's no need to update the preorder and postorder numbering
         // since we're changing the bbNum, this makes the basic block all set.
         //
-        JITDUMP("Renumbering BB%02u to be BB%02u to preserve dominator information\n", block->bbNum, bNext->bbNum);
+        JITDUMP("Renumbering " FMT_BB " to be " FMT_BB " to preserve dominator information\n", block->bbNum,
+                bNext->bbNum);
 
         block->bbNum = bNext->bbNum;
 
@@ -2323,7 +2324,7 @@ bool Compiler::fgOptimizeBranchToEmptyUnconditional(BasicBlock* block, BasicBloc
                 {
                     newEdge2Max = BB_ZERO_WEIGHT;
                 }
-                edge2->setEdgeWeights(newEdge2Min, newEdge2Max);
+                edge2->setEdgeWeights(newEdge2Min, newEdge2Max, bDest);
             }
         }
 
@@ -2354,12 +2355,12 @@ bool Compiler::fgOptimizeEmptyBlock(BasicBlock* block)
     {
         case BBJ_COND:
         case BBJ_SWITCH:
-        case BBJ_THROW:
 
             /* can never happen */
-            noway_assert(!"Conditional, switch, or throw block with empty body!");
+            noway_assert(!"Conditional or switch block with empty body!");
             break;
 
+        case BBJ_THROW:
         case BBJ_CALLFINALLY:
         case BBJ_RETURN:
         case BBJ_EHCATCHRET:
@@ -2687,8 +2688,7 @@ bool Compiler::fgOptimizeSwitchBranches(BasicBlock* block)
     //
     if (block->NumSucc(this) == 1)
     {
-        // Use BBJ_ALWAYS for a switch with only a default clause, or with only one unique successor.
-        BasicBlock* uniqueSucc = jmpTab[0];
+// Use BBJ_ALWAYS for a switch with only a default clause, or with only one unique successor.
 
 #ifdef DEBUG
         if (verbose)
@@ -3661,15 +3661,17 @@ bool Compiler::fgOptimizeSwitchJumps()
 #pragma warning(push)
 #pragma warning(disable : 21000) // Suppress PREFast warning about overly large function
 #endif
-/*****************************************************************************
- *
- *  Function called to reorder the flowgraph of BasicBlocks such that any
- *  rarely run blocks are placed at the end of the block list.
- *  If we have profile information we also use that information to reverse
- *  all conditional jumps that would benefit.
- */
 
-void Compiler::fgReorderBlocks()
+//-----------------------------------------------------------------------------
+// fgReorderBlocks: reorder blocks to favor frequent fall through paths,
+//     move rare blocks to the end of the method/eh region, and move
+//     funclets to the ends of methods.
+//
+// Returns:
+//    True if anything got reordered. Reordering blocks may require changing
+//    IR to reverse branch conditions.
+//
+bool Compiler::fgReorderBlocks()
 {
     noway_assert(opts.compDbgCode == false);
 
@@ -3680,12 +3682,13 @@ void Compiler::fgReorderBlocks()
     // We can't relocate anything if we only have one block
     if (fgFirstBB->bbNext == nullptr)
     {
-        return;
+        return false;
     }
 
     bool newRarelyRun      = false;
     bool movedBlocks       = false;
     bool optimizedSwitches = false;
+    bool optimizedBranches = false;
 
     // First let us expand the set of run rarely blocks
     newRarelyRun |= fgExpandRarelyRunBlocks();
@@ -3787,7 +3790,7 @@ void Compiler::fgReorderBlocks()
                     // if the weight of bDest is greater or equal to the weight of block
                     // also the weight of bDest can't be zero.
                     //
-                    if ((bDest->bbWeight < block->bbWeight) || (bDest->bbWeight == 0))
+                    if ((bDest->bbWeight < block->bbWeight) || (bDest->bbWeight == BB_ZERO_WEIGHT))
                     {
                         reorderBlock = false;
                     }
@@ -4020,7 +4023,7 @@ void Compiler::fgReorderBlocks()
                         }
                     }
 
-                    if ((bTmp->bbFallsThrough() == false) || (bTmp->bbWeight == 0))
+                    if ((bTmp->bbFallsThrough() == false) || (bTmp->bbWeight == BB_ZERO_WEIGHT))
                     {
                         lastNonFallThroughBlock = bTmp;
                     }
@@ -4094,9 +4097,11 @@ void Compiler::fgReorderBlocks()
             // Check for an unconditional branch to a conditional branch
             // which also branches back to our next block
             //
-            if (fgOptimizeBranch(bPrev))
+            const bool optimizedBranch = fgOptimizeBranch(bPrev);
+            if (optimizedBranch)
             {
                 noway_assert(bPrev->bbJumpKind == BBJ_COND);
+                optimizedBranches = true;
             }
             continue;
         }
@@ -4816,7 +4821,7 @@ void Compiler::fgReorderBlocks()
 
     } // end of for loop(bPrev,block)
 
-    bool changed = movedBlocks || newRarelyRun || optimizedSwitches;
+    const bool changed = movedBlocks || newRarelyRun || optimizedSwitches || optimizedBranches;
 
     if (changed)
     {
@@ -4829,6 +4834,8 @@ void Compiler::fgReorderBlocks()
         }
 #endif // DEBUG
     }
+
+    return changed;
 }
 #ifdef _PREFAST_
 #pragma warning(pop)

@@ -100,7 +100,7 @@ namespace System.Text.Json
             Current.NumberHandling = Current.JsonPropertyInfo.NumberHandling;
 
             JsonSerializerOptions options = jsonClassInfo.Options;
-            bool preserveReferences = options.ReferenceHandler != null;
+            bool preserveReferences = options.ReferenceHandlingStrategy == ReferenceHandlingStrategy.Preserve;
             if (preserveReferences)
             {
                 ReferenceResolver = options.ReferenceHandler!.CreateResolver(writing: false);
