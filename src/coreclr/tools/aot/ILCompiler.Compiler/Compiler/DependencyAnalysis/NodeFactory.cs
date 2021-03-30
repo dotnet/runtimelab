@@ -1109,11 +1109,6 @@ namespace ILCompiler.DependencyAnalysis
             "__FrozenSegmentRegionEnd",
             new SortableDependencyNode.EmbeddedObjectNodeComparer(new CompilerComparer()));
 
-        public ArrayOfEmbeddedPointersNode<MrtProcessedImportAddressTableNode> ImportAddressTablesTable = new ArrayOfEmbeddedPointersNode<MrtProcessedImportAddressTableNode>(
-            "__ImportTablesTableStart",
-            "__ImportTablesTableEnd",
-            new SortableDependencyNode.ObjectNodeComparer(new CompilerComparer()));
-
         public InterfaceDispatchCellSectionNode InterfaceDispatchCellSection { get; }
 
         public ReadyToRunHeaderNode ReadyToRunHeader;
