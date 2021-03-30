@@ -207,15 +207,6 @@
     <Compile Include="Compiler\DependencyAnalysis\TentativeInstanceMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\TentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\VariantInterfaceMethodUseNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugILImagesSection.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugManagedNativeDictionaryInfoSection.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugMergedAssemblyRecordsSection.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugMethodMapSection.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugMethodInfoSection.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugNeedTypeIndicesStoreNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugPseudoAssemblySection.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugTypeRecordsSection.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugTypeSignatureMapSection.cs" />
     <Compile Include="Compiler\DependencyAnalysis\CustomAttributeBasedDependencyAlgorithm.cs" />
     <Compile Include="Compiler\DependencyAnalysis\FieldMetadataNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ILScanNodeFactory.cs" />
@@ -332,7 +323,6 @@
     <Compile Include="Compiler\DependencyAnalysis\NodeFactory.cs" />
     <Compile Include="Compiler\DependencyAnalysis\NodeFactory.GenericLookups.cs" />
     <Compile Include="Compiler\DependencyAnalysis\NodeFactory.NativeLayout.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\NodeFactory.WindowsDebugData.cs" />
     <Compile Include="Compiler\DependencyAnalysis\NonGCStaticsNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ObjectWriter.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ReadyToRunHelperNode.cs" />
@@ -368,7 +358,6 @@
     <Compile Include="Compiler\LibraryRootProvider.cs" />
     <Compile Include="Compiler\MainMethodRootProvider.cs" />
     <Compile Include="Compiler\ManagedBinaryEmitter.cs" />
-    <Compile Include="Compiler\MergedAssemblyRecords.cs" />
     <Compile Include="Compiler\MetadataManager.cs" />
     <Compile Include="Compiler\InteropStubManager.cs" />
     <Compile Include="Compiler\MethodExtensions.cs" />
@@ -463,14 +452,8 @@
     <Compile Include="..\..\Common\JitInterface\MemoryHelper.cs">
       <Link>JitInterface\MemoryHelper.cs</Link>
     </Compile>
-    <Compile Include="..\..\Common\TypeSystem\TypesDebugInfoWriter\PrimitiveTypeDescriptor.cs">
-      <Link>TypeSystem\TypesDebugInfoWriter\PrimitiveTypeDescriptor.cs</Link>
-    </Compile>
     <Compile Include="..\..\Common\TypeSystem\TypesDebugInfoWriter\TypesDebugInfoWriter.cs">
       <Link>TypeSystem\TypesDebugInfoWriter\TypesDebugInfoWriter.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Common\TypeSystem\TypesDebugInfoWriter\DebugInfoWriter.cs">
-      <Link>TypeSystem\TypesDebugInfoWriter\DebugInfoWriter.cs</Link>
     </Compile>
   </ItemGroup>
 </Project>
