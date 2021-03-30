@@ -341,7 +341,7 @@ namespace System.Text.Json.SourceGeneration
                     string escapedNameSectionNamedArg;
                     if (!ContainsNonAscii(clrPropertyName))
                     {
-                        byte[] name = Encoding.UTF8.GetBytes(clrPropertyName);
+                        byte[] name = Encoding.UTF8.GetBytes(memberMetadata.JsonPropertyName ?? clrPropertyName);
                         string nameAsStr = string.Join(",", name.Select(b => $"{b}"));
                         string nameSection = @"34," + nameAsStr + @",34,58"; // code points for " and : are 34 and 58.
 
@@ -446,14 +446,9 @@ namespace {_generationNamespace}
                 return source;
             }
 
-            return @$"// TODO (optimization): do not call this method if options.Converter.Length == 0.
-                    JsonConverter customConverter = {RuntimeCustomConverterFetchingMethodName}(typeof({typeCompilableName}), options);
-                    if (customConverter != null)
+            return @$"JsonConverter customConverter;
+                    if (options.Converters.Count > 0 && (customConverter = {RuntimeCustomConverterFetchingMethodName}(typeof({typeCompilableName}), options)) != null)
                     {{
-                        // TODO: should we tighten this to only allow a `T` which is == {typeCompilableName}?
-                        //JsonConverter<{typeCompilableName}> typedConverter = customConverter as JsonConverter<{typeCompilableName}>
-                        //    ?? throw new System.NotSupportedException($""The custom converter '{{customConverter.GetType()}}' for type '{typeFriendlyName}' must have it as the 'TypeToConvert'."");
-
                         _{typeFriendlyName} = new JsonValueInfo<{typeCompilableName}>(customConverter, {numberHandlingNamedArg}, options);
                     }}
                     else
@@ -472,7 +467,8 @@ namespace {_generationNamespace}
         {
             bool typesCanBeSerializedDynamically = TryGetInitializationForDynamicallySerializableTypes(out string initializationSource);
             string initializeMethodCallStatement = typesCanBeSerializedDynamically
-                ? "Initialize();"
+                ? @"
+            Initialize();"
                 : null;
 
             StringBuilder sb = new();
@@ -488,15 +484,12 @@ namespace {_generationNamespace}
         public static JsonContext Default => s_default ??= new JsonContext();
 
         private JsonContext()
-        {{
-            {initializeMethodCallStatement}
+        {{{initializeMethodCallStatement}
         }}
 
         public JsonContext(JsonSerializerOptions options) : base(options)
-        {{
-            {initializeMethodCallStatement}
+        {{{initializeMethodCallStatement}
         }}
-
         {initializationSource}
 
         {GetFetchLogicForRuntimeSpecifiedCustomConverter()}
@@ -513,7 +506,8 @@ namespace {_generationNamespace}
         {
             StringBuilder sb = new();
 
-            sb.Append(@"private void Initialize()
+            sb.Append(@"
+        private void Initialize()
         {");
 
             bool typesCanBeSerializedDynamically = false;
@@ -590,41 +584,42 @@ namespace {_generationNamespace}
                 byte[] escapedNameSection,
                 JsonIgnoreCondition? ignoreCondition,
                 JsonNumberHandling? numberHandling)
+        {
+            JsonSerializerOptions options = GetOptions();
+            JsonPropertyInfo<TProperty> jsonPropertyInfo = JsonPropertyInfo<TProperty>.Create();
+            jsonPropertyInfo.Options = options;
+            // Property name settings.
+            // TODO: consider whether we need to examine options.Encoder here as well.
+            if (nameAsUtf8Bytes != null && options.PropertyNamingPolicy == null)
             {
-                JsonSerializerOptions options = GetOptions();
-                JsonPropertyInfo<TProperty> jsonPropertyInfo = JsonPropertyInfo<TProperty>.Create();
-                jsonPropertyInfo.Options = options;
-                // Property name settings.
-                // TODO: consider whether we need to examine options.Encoder here as well.
-                if (options.PropertyNamingPolicy == null && nameAsUtf8Bytes != null && escapedNameSection != null)
-                {
-                    jsonPropertyInfo.NameAsString = jsonPropertyName ?? clrPropertyName;
-                    jsonPropertyInfo.NameAsUtf8Bytes = nameAsUtf8Bytes;
-                    jsonPropertyInfo.EscapedNameSection = escapedNameSection;
-                }
-                else
-                {
-                    jsonPropertyInfo.NameAsString = jsonPropertyName
-                        ?? options.PropertyNamingPolicy?.ConvertName(clrPropertyName)
-                        ?? (options.PropertyNamingPolicy == null
-                                ? null
-                                : throw new System.InvalidOperationException(""TODO: PropertyNamingPolicy cannot return null.""));
-                    // NameAsUtf8Bytes and EscapedNameSection will be set in CompleteInitialization() below.
-                }
-                if (ignoreCondition != JsonIgnoreCondition.Always)
-                {
-                    jsonPropertyInfo.Get = getter;
-                    jsonPropertyInfo.Set = setter;
-                    jsonPropertyInfo.ConverterBase = converter ?? throw new System.NotSupportedException(""TODO: need custom converter here?"");
-                    jsonPropertyInfo.RuntimeClassInfo = classInfo;
-                    jsonPropertyInfo.DeclaredPropertyType = typeof(TProperty);
-                    jsonPropertyInfo.DeclaringType = declaringType;
-                    jsonPropertyInfo.IgnoreCondition = ignoreCondition;
-                    jsonPropertyInfo.MemberType = memberType;
-                }
-                jsonPropertyInfo.CompleteInitialization();
-                return jsonPropertyInfo;
-            }";
+                jsonPropertyInfo.NameAsString = jsonPropertyName ?? clrPropertyName;
+                jsonPropertyInfo.NameAsUtf8Bytes = nameAsUtf8Bytes;
+                jsonPropertyInfo.EscapedNameSection = escapedNameSection;
+            }
+            else
+            {
+                jsonPropertyInfo.NameAsString = jsonPropertyName
+                    ?? options.PropertyNamingPolicy?.ConvertName(clrPropertyName)
+                    ?? (options.PropertyNamingPolicy == null
+                            ? null
+                            : throw new System.InvalidOperationException(""TODO: PropertyNamingPolicy cannot return null.""));
+                // NameAsUtf8Bytes and EscapedNameSection will be set in CompleteInitialization() below.
+            }
+            if (ignoreCondition != JsonIgnoreCondition.Always)
+            {
+                jsonPropertyInfo.Get = getter;
+                jsonPropertyInfo.Set = setter;
+                jsonPropertyInfo.ConverterBase = converter ?? throw new System.NotSupportedException(""TODO: need custom converter here?"");
+                jsonPropertyInfo.RuntimeClassInfo = classInfo;
+                jsonPropertyInfo.DeclaredPropertyType = typeof(TProperty);
+                jsonPropertyInfo.DeclaringType = declaringType;
+                jsonPropertyInfo.IgnoreCondition = ignoreCondition;
+                jsonPropertyInfo.NumberHandling = numberHandling;
+                jsonPropertyInfo.MemberType = memberType;
+            }
+            jsonPropertyInfo.CompleteInitialization();
+            return jsonPropertyInfo;
+        }";
 
         private string GetGetClassInfoImplementation()
         {
