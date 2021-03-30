@@ -145,32 +145,6 @@ namespace System.Text.Json.Serialization.Metadata
             }
         }
 
-        internal override void SourceGenInitializePropertyInfoForClassInfo(
-            Type declaredPropertyType,
-            Type? runtimePropertyType,
-            ClassType runtimeClassType,
-            JsonClassInfo runtimeClassInfo,
-            JsonConverter converter,
-            JsonNumberHandling? numberHandling,
-            JsonSerializerOptions options)
-        {
-            DeclaredPropertyType = declaredPropertyType;
-            RuntimePropertyType = runtimePropertyType;
-            ClassType = runtimeClassType;
-            RuntimeClassInfo = runtimeClassInfo;
-            ConverterBase = converter;
-            Options = options;
-
-            IsForClassInfo = true;
-            HasGetter = true;
-            HasSetter = true;
-
-            _converterIsExternalAndPolymorphic = !converter.IsInternalConverter && DeclaredPropertyType != converter.TypeToConvert;
-            PropertyTypeCanBeNull = DeclaredPropertyType.CanBeNull();
-            _propertyTypeEqualsTypeToConvert = typeof(T) == DeclaredPropertyType;
-            DetermineNumberHandlingForClassInfo(numberHandling);
-        }
-
         /// <summary>
         /// todo
         /// </summary>

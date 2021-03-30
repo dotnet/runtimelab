@@ -15,13 +15,11 @@ namespace System.Text.Json.Serialization.Metadata
         /// <param name="createObjectFunc"></param>
         /// <param name="converter"></param>
         /// <param name="elementInfo"></param>
-        /// <param name="numberHandling"></param>
         /// <param name="options"></param>
         public JsonCollectionTypeInfo(
             ConstructorDelegate createObjectFunc,
             JsonConverter<T> converter,
             JsonClassInfo elementInfo,
-            JsonNumberHandling? numberHandling,
             JsonSerializerOptions options) : base(typeof(T), options, ClassType.Enumerable)
         {
             ConverterBase = converter;
@@ -30,7 +28,7 @@ namespace System.Text.Json.Serialization.Metadata
             ElementClassInfo = elementInfo;
             CreateObject = createObjectFunc;
 
-            PropertyInfoForClassInfo = SourceGenCreatePropertyInfoForClassInfo(Type, Type, runtimeClassInfo: this, converter, numberHandling, Options);
+            PropertyInfoForClassInfo = SourceGenCreatePropertyInfoForClassInfo<T>(Type, runtimeClassInfo: this, converter, Options);
         }
     }
 }

@@ -22,17 +22,15 @@ namespace System.Text.Json.Serialization.Metadata
         /// todo
         /// </summary>
         /// <param name="createObjectFunc"></param>
-        /// <param name="numberHandling"></param>
         /// <param name="options"></param>
         public JsonObjectInfo(
             ConstructorDelegate? createObjectFunc,
-            JsonNumberHandling? numberHandling,
             JsonSerializerOptions options) : base(typeof(T), options, ClassType.Object)
         {
             CreateObject = createObjectFunc;
             JsonConverter converter = new ObjectDefaultConverter<T>();
             ConverterBase = converter;
-            PropertyInfoForClassInfo = SourceGenCreatePropertyInfoForClassInfo(Type, Type, runtimeClassInfo: this, converter, numberHandling, Options);
+            PropertyInfoForClassInfo = SourceGenCreatePropertyInfoForClassInfo<T>(Type, runtimeClassInfo: this, converter, Options);
         }
 
         /// <summary>

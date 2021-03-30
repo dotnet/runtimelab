@@ -13,15 +13,13 @@ namespace System.Text.Json.Serialization.Metadata
         /// todo
         /// </summary>
         /// <param name="converter"></param>
-        /// <param name="numberHandling"></param>
         /// <param name="options"></param>
         public JsonValueInfo(
             JsonConverter converter,
-            JsonNumberHandling? numberHandling,
             JsonSerializerOptions options) : base(typeof(T), options, ClassType.Value)
         {
             ConverterBase = converter;
-            PropertyInfoForClassInfo = SourceGenCreatePropertyInfoForClassInfo(Type, Type, runtimeClassInfo: this, converter, numberHandling, Options);
+            PropertyInfoForClassInfo = SourceGenCreatePropertyInfoForClassInfo<T>(Type, runtimeClassInfo: this, converter, Options);
         }
     }
 }

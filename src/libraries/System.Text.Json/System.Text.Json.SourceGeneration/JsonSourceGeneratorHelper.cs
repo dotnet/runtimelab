@@ -164,21 +164,10 @@ namespace System.Text.Json.SourceGeneration
             {
                 classType = ClassType.KnownType;
             }
-            else if (type.IsNullableValueType(out Type underlyingType))
+            else if (type.IsNullableValueType(out nullableUnderlyingType))
             {
-                Debug.Assert(underlyingType != null);
-
-                // Limited support for nullable (temporary): underlying type should be primitive. This way we know what the converter's friendly name is.
-                // TODO: add full support.
-                if (_knownTypes.Contains(underlyingType))
-                {
-                    nullableUnderlyingType = underlyingType;
-                    classType = ClassType.Nullable;
-                }
-                else
-                {
-                    classType = ClassType.TypeUnsupportedBySourceGen;
-                }
+                Debug.Assert(nullableUnderlyingType != null);
+                classType = ClassType.Nullable;
             }
             else if (type.IsEnum)
             {

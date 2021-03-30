@@ -62,7 +62,7 @@ namespace System.Text.Json
         {
             Converters = new ConverterList(this);
             InitializeDefaultConverters();
-            _classInfoCreationFunc = (type, options) => new JsonClassInfo(type, options);
+            _classInfoCreationFunc = static (type, options) => new JsonClassInfo(type, options);
         }
 
         /// <summary>
@@ -128,7 +128,7 @@ namespace System.Text.Json
         private JsonSerializerOptions(JsonSerializerDefaults defaults, bool dummy)
         {
             InitializeWithDefaults(defaults);
-            _classInfoCreationFunc = (type, options) =>
+            _classInfoCreationFunc = static (type, options) =>
                 throw new NotSupportedException(@$"Metadata for type {type} not provided to serializer - will not go down reflection-based code path.
                                                    To workaround this, use an options instance instantiated with the default ctor or the ctor that takes
                                                    web defaults. Alternatively, you can create the metadata by hand and pass that to the serializer.");

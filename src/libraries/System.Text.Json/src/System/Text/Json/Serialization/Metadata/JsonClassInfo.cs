@@ -69,6 +69,11 @@ namespace System.Text.Json.Serialization.Metadata
         public JsonConverter ConverterBase { get; internal set; }
 
         /// <summary>
+        /// TODO
+        /// </summary>
+        public JsonNumberHandling? NumberHandling { get; set; }
+
+        /// <summary>
         /// Return the JsonClassInfo for the element type, or null if the type is not an enumerable or dictionary.
         /// </summary>
         /// <remarks>
