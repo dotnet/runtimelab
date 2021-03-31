@@ -1080,12 +1080,6 @@ namespace Internal.Runtime.Augments
             RuntimeImports.RhpSendCustomEventToDebugger(payload, length);
         }
 
-        [CLSCompliant(false)]
-        public static unsafe uint RhpRecordDebuggeeInitiatedHandle(IntPtr objectHandle)
-        {
-            return RuntimeImports.RhpRecordDebuggeeInitiatedHandle((void*)objectHandle);
-        }
-
         public static IntPtr RhHandleAlloc(object value, GCHandleType type)
         {
             return RuntimeImports.RhHandleAlloc(value, type);
@@ -1099,11 +1093,6 @@ namespace Internal.Runtime.Augments
         public static IntPtr RhGetOSModuleForMrt()
         {
             return RuntimeImports.RhGetOSModuleForMrt();
-        }
-
-        public static void RhpVerifyDebuggerCleanup()
-        {
-            RuntimeImports.RhpVerifyDebuggerCleanup();
         }
 
         public static IntPtr RhpGetCurrentThread()

@@ -34,12 +34,6 @@ namespace System.Runtime
         internal static extern void RhpSendCustomEventToDebugger(IntPtr payload, int length);
 
         [DllImport(RuntimeLibrary, ExactSpelling = true, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern unsafe uint RhpRecordDebuggeeInitiatedHandle(void* objectHandle);
-
-        [DllImport(RuntimeLibrary, ExactSpelling = true, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern void RhpVerifyDebuggerCleanup();
-
-        [DllImport(RuntimeLibrary, ExactSpelling = true, CallingConvention = CallingConvention.Cdecl)]
         internal static extern IntPtr RhpGetCurrentThread();
 
         [MethodImpl(MethodImplOptions.InternalCall)]
