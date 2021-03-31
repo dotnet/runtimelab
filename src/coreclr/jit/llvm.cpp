@@ -199,7 +199,7 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
 
 void importStoreInd(llvm::IRBuilder<>& builder, GenTree* node)
 {
-    Value* address = getTreeIdValue(reinterpret_cast<GenTreeOp*>(node)->gtOp1);
+    Value* address = getTreeIdValue(node->AsOpRef()->gtOp1);
     Value* toStore = getTreeIdValue(reinterpret_cast<GenTreeOp*>(node)->gtOp2);
     // TODO: delete this temporary check for supported stores
     if (!address->getType()->isPointerTy() || !toStore->getType()->isPointerTy())
@@ -217,7 +217,7 @@ Value* visitNode(llvm::IRBuilder<> &builder, GenTree* node)
     switch (node->OperGet())
     {
         case GT_ADD:
-            return buildAdd(builder, node, getTreeIdValue(reinterpret_cast<GenTreeOp*>(node)->gtOp1), getTreeIdValue(reinterpret_cast<GenTreeOp*>(node)->gtOp2));
+            return buildAdd(builder, node, getTreeIdValue(node->AsOp()->gtOp1), getTreeIdValue(node->AsOp()->gtOp2));
         case GT_CALL:
             return buildCall(builder, node);
         case GT_CNS_INT:
