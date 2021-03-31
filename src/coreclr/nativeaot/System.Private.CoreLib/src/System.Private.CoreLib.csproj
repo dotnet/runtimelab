@@ -168,7 +168,6 @@
     <Compile Include="System\RuntimeMethodHandle.cs" />
     <Compile Include="System\Diagnostics\Debug.CoreRT.cs" />
     <Compile Include="System\Diagnostics\Debugger.cs" />
-    <Compile Include="System\Diagnostics\LowLevelDebugFuncEval.cs" />
     <Compile Include="System\Diagnostics\DebuggerGuidedStepThroughAttribute.cs" />
     <Compile Include="System\Diagnostics\DebugAnnotations.cs" />
     <Compile Include="System\Diagnostics\StackFrame.CoreRT.cs" />
@@ -395,9 +394,6 @@
     <DefineConstants Condition="'$(Platform)' == 'wasm'">FEATURE_64BIT_ALIGNMENT;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
   <ItemGroup Condition="'$(InPlaceRuntime)' == 'true'">
-    <Compile Include="$(RuntimeBasePath)System\Diagnostics\Eval.cs">
-      <Link>Runtime.Base\src\System\Diagnostics\Eval.cs</Link>
-    </Compile>
     <Compile Include="$(RuntimeBasePath)System\Runtime\CachedInterfaceDispatch.cs">
       <Link>Runtime.Base\src\System\Runtime\CachedInterfaceDispatch.cs</Link>
     </Compile>

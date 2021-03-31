@@ -11,9 +11,8 @@ namespace Internal.Runtime.TypeLoader
         private IntPtr _elements;
         private uint _elementsCount;
         private TypeManagerHandle _moduleHandle;
-        private ulong[] debuggerPreparedExternalReferences;
 
-        public bool IsInitialized() { return (debuggerPreparedExternalReferences != null) || !_moduleHandle.IsNull; }
+        public bool IsInitialized() { return !_moduleHandle.IsNull; }
 
         private unsafe bool Initialize(NativeFormatModuleInfo module, ReflectionMapBlob blobId)
         {
@@ -32,11 +31,6 @@ namespace Internal.Runtime.TypeLoader
             _elementsCount = (uint)(cbBlob / sizeof(uint));
 
             return true;
-        }
-
-        public void InitializeDebuggerReference(ulong[] debuggerPreparedExternalReferences)
-        {
-            this.debuggerPreparedExternalReferences = debuggerPreparedExternalReferences;
         }
 
         /// <summary>
@@ -88,14 +82,7 @@ namespace Internal.Runtime.TypeLoader
 
         public RuntimeTypeHandle GetRuntimeTypeHandleFromIndex(uint index)
         {
-            if (this.debuggerPreparedExternalReferences == null)
-            {
-                return RuntimeAugments.CreateRuntimeTypeHandle(GetIntPtrFromIndex(index));
-            }
-            else
-            {
-                return RuntimeAugments.CreateRuntimeTypeHandle((IntPtr)this.debuggerPreparedExternalReferences[index]);
-            }
+            return RuntimeAugments.CreateRuntimeTypeHandle(GetIntPtrFromIndex(index));
         }
 
         public IntPtr GetGenericDictionaryFromIndex(uint index)

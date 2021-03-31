@@ -1081,18 +1081,6 @@ namespace Internal.Runtime.Augments
         }
 
         [CLSCompliant(false)]
-        public static uint RhpGetFuncEvalParameterBufferSize()
-        {
-            return RuntimeImports.RhpGetFuncEvalParameterBufferSize();
-        }
-
-        [CLSCompliant(false)]
-        public static uint RhpGetFuncEvalMode()
-        {
-            return RuntimeImports.RhpGetFuncEvalMode();
-        }
-
-        [CLSCompliant(false)]
         public static unsafe uint RhpRecordDebuggeeInitiatedHandle(IntPtr objectHandle)
         {
             return RuntimeImports.RhpRecordDebuggeeInitiatedHandle((void*)objectHandle);

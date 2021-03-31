@@ -282,7 +282,6 @@ namespace Internal.Runtime.TypeLoader
                 out hasThis,
                 out parameters,
                 out parametersWithGenericDependentLayout,
-                null,
                 null);
         }
 
@@ -294,32 +293,20 @@ namespace Internal.Runtime.TypeLoader
             out bool hasThis,
             out TypeDesc[] parameters,
             out bool[] parametersWithGenericDependentLayout,
-            NativeReader nativeReader,
-            ulong[] debuggerPreparedExternalReferences)
+            NativeReader nativeReader)
         {
-            bool isNotDebuggerCall = debuggerPreparedExternalReferences == null ;
             hasThis = false;
             parameters = null;
 
             NativeLayoutInfoLoadContext nativeLayoutContext = new NativeLayoutInfoLoadContext();
 
-            nativeLayoutContext._module = isNotDebuggerCall ? (NativeFormatModuleInfo)methodSig.GetModuleInfo() : null;
+            nativeLayoutContext._module = (NativeFormatModuleInfo)methodSig.GetModuleInfo();
             nativeLayoutContext._typeSystemContext = context;
             nativeLayoutContext._typeArgumentHandles = typeInstantiation;
             nativeLayoutContext._methodArgumentHandles = methodInstantiation;
-            nativeLayoutContext._debuggerPreparedExternalReferences = debuggerPreparedExternalReferences;
 
-            NativeFormatModuleInfo module = null;
-            NativeReader reader = null;
-            if (isNotDebuggerCall)
-            {
-                reader = GetNativeLayoutInfoReader(methodSig);
-                module = ModuleList.Instance.GetModuleInfoByHandle(new TypeManagerHandle(methodSig.ModuleHandle));
-            }
-            else
-            {
-                reader = nativeReader;
-            }
+            NativeFormatModuleInfo module = ModuleList.Instance.GetModuleInfoByHandle(new TypeManagerHandle(methodSig.ModuleHandle));
+            NativeReader reader = GetNativeLayoutInfoReader(methodSig);
             NativeParser parser = new NativeParser(reader, methodSig.NativeLayoutOffset);
 
             MethodCallingConvention callingConvention = (MethodCallingConvention)parser.GetUnsigned();
