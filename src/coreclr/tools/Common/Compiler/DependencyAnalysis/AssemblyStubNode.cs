@@ -68,6 +68,10 @@ namespace ILCompiler.DependencyAnalysis
                     arm64Emitter.Builder.AddSymbol(this);
                     return arm64Emitter.Builder.ToObjectData();
 
+                case TargetArchitecture.Wasm32:
+                case TargetArchitecture.Wasm64:
+                    return new ObjectData(null, null, 0, null);
+
                 default:
                     throw new NotImplementedException();
             }

@@ -190,6 +190,10 @@ namespace ILCompiler
 
             return base.GetMethodIL(method);
         }
+
+        public virtual void AddOrReturnGlobalSymbol(ISortableSymbolNode gcStaticSymbol, NameMangler nameMangler)
+        {
+        }
     }
 
     [Flags]
