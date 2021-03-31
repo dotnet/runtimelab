@@ -199,8 +199,8 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
 
 void importStoreInd(llvm::IRBuilder<>& builder, GenTree* node)
 {
-    Value* address = getTreeIdValue(node->AsOpRef()->gtOp1);
-    Value* toStore = getTreeIdValue(reinterpret_cast<GenTreeOp*>(node)->gtOp2);
+    Value* address = getTreeIdValue(node->AsOp()->gtOp1);
+    Value* toStore = getTreeIdValue(node->AsOp()->gtOp2);
     // TODO: delete this temporary check for supported stores
     if (!address->getType()->isPointerTy() || !toStore->getType()->isPointerTy())
     {
