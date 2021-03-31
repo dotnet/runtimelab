@@ -126,7 +126,7 @@ namespace ILCompiler
                     sig.IsStatic) // speed up
                 {
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target, Module.DataLayout);
-                    corInfo.CompileMethod(methodCodeNodeNeedingCode);   
+                    corInfo.CompileMethod(methodCodeNodeNeedingCode);
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
                     // TODO: delete this external function when old module is gone
                     LLVMValueRef externFunc = Module.AddFunction(NodeFactory.NameMangler.GetMangledMethodName(method).ToString(), GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));

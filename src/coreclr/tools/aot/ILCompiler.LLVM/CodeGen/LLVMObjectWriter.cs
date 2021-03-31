@@ -95,10 +95,6 @@ namespace ILCompiler.DependencyAnalysis
             symbolAddress = module.AddGlobalInAddressSpace(intPtrType, symbolAddressGlobalName, 0);
             symbolAddress.IsGlobalConstant = true;
             symbolAddress.Linkage = LLVMLinkage.LLVMInternalLinkage;
-            if (symbolAddressGlobalName.Contains("NonGCStaticBase_Bool"))
-            {
-            }
-
             s_symbolValues.Add(symbolAddressGlobalName, symbolAddress);
             return symbolAddress;
         }
