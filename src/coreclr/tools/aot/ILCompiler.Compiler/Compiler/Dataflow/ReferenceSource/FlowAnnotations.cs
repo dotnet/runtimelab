@@ -105,7 +105,7 @@ namespace Mono.Linker.Dataflow
 
 		DynamicallyAccessedMemberTypes GetMemberTypesForDynamicallyAccessedMembersAttribute (ICustomAttributeProvider provider, IMemberDefinition locationMember = null)
 		{
-			if (!_context.CustomAttributes.HasCustomAttributes (provider))
+			if (!_context.CustomAttributes.HasAny (provider))
 				return DynamicallyAccessedMemberTypes.None;
 			foreach (var attribute in _context.CustomAttributes.GetCustomAttributes (provider)) {
 				if (!IsDynamicallyAccessedMembersAttribute (attribute))
@@ -272,7 +272,7 @@ namespace Mono.Linker.Dataflow
 							int offset = setMethod.HasImplicitThis () ? 1 : 0;
 							if (setMethod.Parameters.Count > 0) {
 								DynamicallyAccessedMemberTypes[] paramAnnotations = new DynamicallyAccessedMemberTypes[setMethod.Parameters.Count + offset];
-								paramAnnotations[offset] = annotation;
+								paramAnnotations[paramAnnotations.Length - 1] = annotation;
 								annotatedMethods.Add (new MethodAnnotations (setMethod, paramAnnotations, DynamicallyAccessedMemberTypes.None, null));
 							}
 						}
