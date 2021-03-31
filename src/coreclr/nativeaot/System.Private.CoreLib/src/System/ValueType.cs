@@ -31,17 +31,6 @@ namespace System
             return this.GetType().ToString();
         }
 
-#if PROJECTN
-        public override bool Equals([NotNullWhen(true)] object? obj)
-        {
-            return RuntimeAugments.Callbacks.ValueTypeEqualsUsingReflection(this, obj);
-        }
-
-        public override int GetHashCode()
-        {
-            return RuntimeAugments.Callbacks.ValueTypeGetHashCodeUsingReflection(this);
-        }
-#else
         private const int UseFastHelper = -1;
         private const int GetNumFields = -1;
 
@@ -197,6 +186,5 @@ namespace System
 
             return hashCode;
         }
-#endif
     }
 }
