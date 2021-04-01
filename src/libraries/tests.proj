@@ -394,10 +394,16 @@
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Threading.Timer/tests/System.Threading.Timer.Tests.csproj" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TestSingleFile)' == 'true'">
+  <ItemGroup Condition="'$(TestSingleFile)' == 'true' and '$(ClrNativeAot)' != 'true'">
     <!-- Run only a small randomly chosen set of passing test suites -->
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)*\tests\**\*.Tests.csproj" />
     <ProjectExclusions Remove="$(MSBuildThisFileDirectory)System.Collections\tests\System.Collections.Tests.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(ClrNativeAot)' == 'true'">
+    <!-- Run only a small randomly chosen set of passing test suites -->
+    <ProjectExclusions Include="$(MSBuildThisFileDirectory)*\tests\**\*.Tests.csproj" />
+    <ProjectExclusions Remove="$(MSBuildThisFileDirectory)System.IO.FileSystem\tests\System.IO.FileSystem.Tests.csproj" />
   </ItemGroup>
 
   <ItemGroup>

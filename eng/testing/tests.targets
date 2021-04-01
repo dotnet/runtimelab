@@ -21,6 +21,10 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <TestSingleFile Condition="'$(ClrNativeAot)' == 'true'">true</TestSingleFile>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <ArchiveTestsAfterTargets>PrepareForRun</ArchiveTestsAfterTargets>
 
     <!-- For browser we need to hook up the target with DependsOnTargets in PublishTestAsSelfContained
