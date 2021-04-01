@@ -46,11 +46,11 @@ namespace ILCompiler
             {
                 ModuleBlockingMode blockingMode = ModuleBlockingMode.None;
 
-                if (module.GetType("System.Runtime.CompilerServices", "__BlockAllReflectionAttribute", false) != null)
+                if (module.GetType("System.Runtime.CompilerServices", "__BlockAllReflectionAttribute", NotFoundBehavior.ReturnNull) != null)
                 {
                     blockingMode = ModuleBlockingMode.FullyBlocked;
                 }
-                else if (module.GetType("System.Runtime.CompilerServices", "__BlockReflectionAttribute", false) != null)
+                else if (module.GetType("System.Runtime.CompilerServices", "__BlockReflectionAttribute", NotFoundBehavior.ReturnNull) != null)
                 {
                     blockingMode = ModuleBlockingMode.BlockedInternals;
                 }
@@ -152,8 +152,8 @@ namespace ILCompiler
         {
             _blockedTypes = new BlockedTypeHashtable(_blockedModules);
 
-            ArrayOfTType = context.SystemModule.GetType("System", "Array`1", false);
-            AttributeType = context.SystemModule.GetType("System", "Attribute", false);
+            ArrayOfTType = context.SystemModule.GetType("System", "Array`1", NotFoundBehavior.ReturnNull);
+            AttributeType = context.SystemModule.GetType("System", "Attribute", NotFoundBehavior.ReturnNull);
         }
 
         public override bool IsBlocked(MetadataType type)

@@ -33,7 +33,7 @@ namespace ILCompiler.Metadata
                 return null;
 
             Ecma.BlobReader sigBlobReader = reader.GetBlobReader(propDef.Signature);
-            Cts.PropertySignature sig = new Cts.Ecma.EcmaSignatureParser(module, sigBlobReader).ParsePropertySignature();
+            Cts.PropertySignature sig = new Cts.Ecma.EcmaSignatureParser(module, sigBlobReader, Cts.NotFoundBehavior.Throw).ParsePropertySignature();
 
             Property result = new Property
             {

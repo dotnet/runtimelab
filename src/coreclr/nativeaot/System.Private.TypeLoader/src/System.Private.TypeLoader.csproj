@@ -210,6 +210,12 @@
     <Compile Include="$(CompilerCommonPath)\TypeSystem\Common\ModuleDesc.cs">
       <Link>Internal\TypeSystem\ModuleDesc.cs</Link>
     </Compile>
+    <Compile Include="$(CompilerCommonPath)\TypeSystem\Common\NotFoundBehavior.cs">
+      <Link>TypeSystem\Common\NotFoundBehavior.cs</Link>
+    </Compile>
+    <Compile Include="$(CompilerCommonPath)\TypeSystem\Common\ResolutionFailure.cs">
+      <Link>TypeSystem\Common\ResolutionFailure.cs</Link>
+    </Compile>
     <Compile Include="$(CompilerCommonPath)\TypeSystem\Common\ParameterizedType.cs">
       <Link>Internal\TypeSystem\ParameterizedType.cs</Link>
     </Compile>

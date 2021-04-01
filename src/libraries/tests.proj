@@ -12,7 +12,7 @@
     <TestPackages Condition="'$(TestPackages)' == ''">false</TestPackages>
     <TestTrimming Condition="'$(TestTrimming)' == ''">false</TestTrimming>
   </PropertyGroup>
-  
+
   <!-- Projects that don't support code coverage measurement. -->
   <ItemGroup Condition="'$(Coverage)' == 'true'">
     <ProjectExclusions Include="$(CommonTestPath)Common.Tests.csproj" />
@@ -56,6 +56,7 @@
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Globalization.Calendars\tests\System.Globalization.Calendars.Tests.csproj" />
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Globalization.Extensions\tests\System.Globalization.Extensions.Tests.csproj" />
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.IO.Compression\tests\System.IO.Compression.Tests.csproj" />
+    <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Net.Http\tests\FunctionalTests\System.Net.Http.Functional.Tests.csproj" />
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Net.NetworkInformation\tests\FunctionalTests\System.Net.NetworkInformation.Functional.Tests.csproj" />
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Net.Ping\tests\FunctionalTests\System.Net.Ping.Functional.Tests.csproj" />
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Net.Primitives\tests\FunctionalTests\System.Net.Primitives.Functional.Tests.csproj" />
@@ -66,6 +67,11 @@
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Security.Cryptography.X509Certificates\tests\System.Security.Cryptography.X509Certificates.Tests.csproj" />
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Text.Encoding\tests\System.Text.Encoding.Tests.csproj" />
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Text.RegularExpressions\tests\System.Text.RegularExpressions.Tests.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetOS)' == 'Android' and '$(TargetArchitecture)' == 'x86'">
+    <!-- https://github.com/dotnet/runtime/issues/50493 -->
+    <ProjectExclusions Include="$(RepoRoot)\src\tests\FunctionalTests\Android\Device_Emulator\AOT\Android.Device_Emulator.Aot.Test.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition="('$(TargetOS)' == 'iOS' or '$(TargetOS)' == 'iOSSimulator' or '$(TargetOS)' == 'tvOS' or '$(TargetOS)' == 'tvOSSimulator') and '$(RunDisablediOSTests)' != 'true'">
@@ -107,17 +113,17 @@
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Net.NameResolution\tests\UnitTests\System.Net.NameResolution.Unit.Tests.csproj" />
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Net.NetworkInformation\tests\FunctionalTests\System.Net.NetworkInformation.Functional.Tests.csproj" />
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Net.Ping\tests\FunctionalTests\System.Net.Ping.Functional.Tests.csproj" />
-    
+
     <!-- https://github.com/dotnet/runtime/issues/49191 -->
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Net.Quic\tests\FunctionalTests\System.Net.Quic.Functional.Tests.csproj" />
-    
+
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Net.Requests\tests\System.Net.Requests.Tests.csproj" />
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Net.Security\tests\FunctionalTests\System.Net.Security.Tests.csproj" />
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Net.Sockets\tests\FunctionalTests\System.Net.Sockets.Tests.csproj" />
-    
+
     <!-- https://github.com/dotnet/runtime/issues/49192-->
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Net.WebClient\tests\System.Net.WebClient.Tests.csproj" />
-    
+
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Net.WebSockets\tests\System.Net.WebSockets.Tests.csproj" />
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Net.WebSockets.Client\tests\System.Net.WebSockets.Client.Tests.csproj" />
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Numerics.Tensors\tests\System.Numerics.Tensors.Tests.csproj" />
@@ -320,6 +326,12 @@
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Threading.Timer/tests/System.Threading.Timer.Tests.csproj" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TestSingleFile)' == 'true'">
+    <!-- Run only a small randomly chosen set of passing test suites -->
+    <ProjectExclusions Include="$(MSBuildThisFileDirectory)*\tests\**\*.Tests.csproj" />
+    <ProjectExclusions Remove="$(MSBuildThisFileDirectory)System.Collections\tests\System.Collections.Tests.csproj" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="$(MSBuildThisFileDirectory)*\tests\**\*.Tests.csproj"
                       Exclude="@(ProjectExclusions)"
@@ -341,27 +353,29 @@
     <ProjectReference Include="$(MonoProjectRoot)sample\iOS\Program.csproj"
                       BuildInParallel="false" />
     <ProjectReference Include="$(RepoRoot)\src\tests\FunctionalTests\iOS\**\*.Test.csproj"
+                      Exclude="@(ProjectExclusions)"
                       BuildInParallel="false" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(ArchiveTests)' == 'true' and ('$(TargetOS)' == 'tvOS' or '$(TargetOS)' == 'tvOSSimulator')">
     <ProjectReference Include="$(RepoRoot)\src\tests\FunctionalTests\tvOS\**\*.Test.csproj"
+                      Exclude="@(ProjectExclusions)"
                       BuildInParallel="false" />
   </ItemGroup>
-  
+
   <ItemGroup Condition="'$(ArchiveTests)' == 'true' and '$(TargetOS)' == 'Android'">
     <ProjectReference Include="$(MonoProjectRoot)sample\Android\AndroidSampleApp.csproj"
                       BuildInParallel="false" />
-    <!-- Disable Android.Device_Emulator.Aot.Test.csproj temporarily due to https://github.com/dotnet/runtime/issues/49757 -->
     <ProjectReference Include="$(RepoRoot)\src\tests\FunctionalTests\Android\**\*.Test.csproj"
-                      Exclude="$(RepoRoot)\src\tests\FunctionalTests\Android\Device_Emulator\AOT\Android.Device_Emulator.Aot.Test.csproj"
+                      Exclude="@(ProjectExclusions)"
                       BuildInParallel="false" />
   </ItemGroup>
-  
+
   <ItemGroup Condition="'$(ArchiveTests)' == 'true' and '$(TargetOS)' == 'Browser'">
     <ProjectReference Include="$(MonoProjectRoot)sample\wasm\**\*.Sample.csproj"
                       BuildInParallel="false" />
     <ProjectReference Include="$(RepoRoot)\src\tests\FunctionalTests\WebAssembly\**\*.Test.csproj"
+                      Exclude="@(ProjectExclusions)"
                       BuildInParallel="false" />
   </ItemGroup>
 
