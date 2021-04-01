@@ -29,7 +29,7 @@ namespace System.Text.Json.SourceGeneration
     /// Instructs the System.Text.Json source generator to generate serialization metadata for a specified type at compile time.
     /// </summary>
     [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-    public sealed class JsonSerializableAttribute : Attribute
+    internal sealed class JsonSerializableAttribute : Attribute
     {
         /// <summary>
         /// Indicates whether the specified type might be the runtime type of an object instance which was declared as
