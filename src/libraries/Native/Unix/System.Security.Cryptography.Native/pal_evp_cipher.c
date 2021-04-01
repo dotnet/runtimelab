@@ -4,9 +4,55 @@
 #include "pal_evp_cipher.h"
 
 #include <assert.h>
+#include <string.h>
 
 #define SUCCESS 1
 #define KEEP_CURRENT_DIRECTION -1
+
+// With some versions of OpenSSL on some IBM Z models, when
+// hardware-accelerated cryptography routines are enabled,
+// calls to EVP_CipherInit_ex may have no effect unless a key
+// is provided.  To work around this problem, we pass any key
+// that was provided earlier to all subsequent EVP_CipherInit_ex
+// calls as well.  This requires saving that key in an extra
+// buffer, which we stash into the EVP_CIPHER_CTX using the
+// "app_data" mechanism.
+#ifdef __s390x__
+#define CIPHERINIT_REQUIRES_KEY
+#endif
+
+#ifdef CIPHERINIT_REQUIRES_KEY
+static uint8_t*
+SavedKey_Allocate(EVP_CIPHER_CTX* ctx)
+{
+    size_t keyLength = (size_t)EVP_CIPHER_CTX_key_length(ctx);
+    uint8_t* keyBuf = calloc(1, keyLength);
+    if (keyBuf)
+    {
+        EVP_CIPHER_CTX_set_app_data(ctx, keyBuf);
+    }
+    return keyBuf;
+}
+
+static void
+SavedKey_Free(EVP_CIPHER_CTX* ctx)
+{
+    size_t keyLength = (size_t)EVP_CIPHER_CTX_key_length(ctx);
+    uint8_t* keyBuf = EVP_CIPHER_CTX_get_app_data(ctx);
+    if (keyBuf)
+    {
+        EVP_CIPHER_CTX_set_app_data(ctx, NULL);
+        OPENSSL_cleanse(keyBuf, keyLength);
+        free(keyBuf);
+    }
+}
+
+static uint8_t*
+SavedKey_Lookup(EVP_CIPHER_CTX* ctx)
+{
+    return EVP_CIPHER_CTX_get_app_data(ctx);
+}
+#endif
 
 EVP_CIPHER_CTX*
 CryptoNative_EvpCipherCreate2(const EVP_CIPHER* type, uint8_t* key, int32_t keyLength, int32_t effectiveKeyLength, unsigned char* iv, int32_t enc)
@@ -62,6 +108,18 @@ CryptoNative_EvpCipherCreate2(const EVP_CIPHER* type, uint8_t* key, int32_t keyL
         return NULL;
     }
 
+    // On platforms where this is required, save the key so we can
+    // re-use it with subsequent EVP_CipherInit_ex calls.
+#ifdef CIPHERINIT_REQUIRES_KEY
+    uint8_t *keyBuf = SavedKey_Allocate(ctx);
+    if (!keyBuf)
+    {
+        EVP_CIPHER_CTX_free(ctx);
+        return NULL;
+    }
+    memcpy(keyBuf, key, (size_t)EVP_CIPHER_CTX_key_length(ctx));
+#endif
+
     return ctx;
 }
 
@@ -89,11 +147,32 @@ CryptoNative_EvpCipherCreatePartial(const EVP_CIPHER* type)
         return NULL;
     }
 
+    // On platforms where this is required, allocate a buffer to save the
+    // key so we can re-use it with subsequent EVP_CipherInit_ex calls.
+#ifdef CIPHERINIT_REQUIRES_KEY
+    uint8_t *keyBuf = SavedKey_Allocate(ctx);
+    if (!keyBuf)
+    {
+        EVP_CIPHER_CTX_free(ctx);
+        return NULL;
+    }
+#endif
+
     return ctx;
 }
 
 int32_t CryptoNative_EvpCipherSetKeyAndIV(EVP_CIPHER_CTX* ctx, uint8_t* key, unsigned char* iv, int32_t enc)
 {
+    // On platforms where this is required, save the key for future use if one
+    // is passed, and look up the key from a previous invocation otherwise.
+#ifdef CIPHERINIT_REQUIRES_KEY
+    uint8_t *keyBuf = SavedKey_Lookup(ctx);
+    if (!key)
+        key = keyBuf;
+    else if (keyBuf)
+        memcpy(keyBuf, key, (size_t)EVP_CIPHER_CTX_key_length(ctx));
+#endif
+
     // Perform final initialization specifying the remaining arguments
     return EVP_CipherInit_ex(ctx, NULL, NULL, key, iv, enc);
 }
@@ -112,12 +191,17 @@ void CryptoNative_EvpCipherDestroy(EVP_CIPHER_CTX* ctx)
 {
     if (ctx != NULL)
     {
+#ifdef CIPHERINIT_REQUIRES_KEY
+        SavedKey_Free(ctx);
+#endif
         EVP_CIPHER_CTX_free(ctx);
     }
 }
 
 int32_t CryptoNative_EvpCipherReset(EVP_CIPHER_CTX* ctx)
 {
+    uint8_t *key = NULL;
+
     // EVP_CipherInit_ex with all nulls preserves the algorithm, resets the IV,
     // and maintains the key.
     //
@@ -127,7 +211,11 @@ int32_t CryptoNative_EvpCipherReset(EVP_CIPHER_CTX* ctx)
     // But since we have a different object returned for CreateEncryptor
     // and CreateDecryptor we don't need to worry about that.
 
-    return EVP_CipherInit_ex(ctx, NULL, NULL, NULL, NULL, KEEP_CURRENT_DIRECTION);
+    // On platforms where this is required, pass in the previously saved key.
+#ifdef CIPHERINIT_REQUIRES_KEY
+    key = SavedKey_Lookup(ctx);
+#endif
+    return EVP_CipherInit_ex(ctx, NULL, NULL, key, NULL, KEEP_CURRENT_DIRECTION);
 }
 
 int32_t CryptoNative_EvpCipherCtxSetPadding(EVP_CIPHER_CTX* x, int32_t padding)

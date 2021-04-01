@@ -343,6 +343,9 @@ void SSL_get0_alpn_selected(const SSL* ssl, const unsigned char** protocol, unsi
     FALLBACK_FUNCTION(EVP_CIPHER_CTX_reset) \
     REQUIRED_FUNCTION(EVP_CIPHER_CTX_set_key_length) \
     REQUIRED_FUNCTION(EVP_CIPHER_CTX_set_padding) \
+    REQUIRED_FUNCTION(EVP_CIPHER_CTX_key_length) \
+    REQUIRED_FUNCTION(EVP_CIPHER_CTX_get_app_data) \
+    REQUIRED_FUNCTION(EVP_CIPHER_CTX_set_app_data) \
     REQUIRED_FUNCTION(EVP_CipherFinal_ex) \
     REQUIRED_FUNCTION(EVP_CipherInit_ex) \
     REQUIRED_FUNCTION(EVP_CipherUpdate) \
@@ -754,6 +757,9 @@ FOR_ALL_OPENSSL_FUNCTIONS
 #define EVP_CIPHER_CTX_reset EVP_CIPHER_CTX_reset_ptr
 #define EVP_CIPHER_CTX_set_key_length EVP_CIPHER_CTX_set_key_length_ptr
 #define EVP_CIPHER_CTX_set_padding EVP_CIPHER_CTX_set_padding_ptr
+#define EVP_CIPHER_CTX_key_length EVP_CIPHER_CTX_key_length_ptr
+#define EVP_CIPHER_CTX_get_app_data EVP_CIPHER_CTX_get_app_data_ptr
+#define EVP_CIPHER_CTX_set_app_data EVP_CIPHER_CTX_set_app_data_ptr
 #define EVP_CipherFinal_ex EVP_CipherFinal_ex_ptr
 #define EVP_CipherInit_ex EVP_CipherInit_ex_ptr
 #define EVP_CipherUpdate EVP_CipherUpdate_ptr
