@@ -143,7 +143,6 @@ namespace System
         private static IDictionary CreateDataContainer() => new ListDictionaryInternal();
 
         private static string? SerializationWatsonBuckets => null;
-        private string? SerializationRemoteStackTraceString => _remoteStackTraceString;
         private string? SerializationStackTraceString => GetStackTrace(true);
     }
 }
