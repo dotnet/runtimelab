@@ -941,9 +941,9 @@ namespace ILCompiler.DependencyAnalysis
         {
             int neededInterruptionsBytes = nodeContents.Data.Length + 1;
             if (_byteInterruptionOffsets == null || _byteInterruptionOffsets.Length < neededInterruptionsBytes)
-                _byteInterruptionOffsets = new bool[nodeContents.Data.Length + 1];
+                _byteInterruptionOffsets = new bool[neededInterruptionsBytes];
             else
-                Array.Fill(_byteInterruptionOffsets, false, 0, neededInterruptionsBytes);
+                Array.Clear(_byteInterruptionOffsets, 0, neededInterruptionsBytes);
 
             foreach (var reloc in nodeContents.Relocs)
             {
