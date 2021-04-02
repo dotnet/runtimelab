@@ -20,7 +20,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
             Assembly systemRuntimeAssembly = Assembly.Load("System.Runtime, Version=5.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a");
             Assembly systemCollectionsAssembly = Assembly.Load("System.Collections, Version=5.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a");
             string systemRuntimeAssemblyPath = systemRuntimeAssembly.Location;
-            string systemCollecitonsAssemblyPath = systemCollectionsAssembly.Location;
+            string systemCollectionsAssemblyPath = systemCollectionsAssembly.Location;
 
             List<MetadataReference> references = new List<MetadataReference> {
                 MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
@@ -30,7 +30,7 @@ namespace System.Text.Json.SourceGeneration.UnitTests
                 MetadataReference.CreateFromFile(typeof(KeyValuePair).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(ContractNamespaceAttribute).Assembly.Location),
                 MetadataReference.CreateFromFile(systemRuntimeAssemblyPath),
-                MetadataReference.CreateFromFile(systemCollecitonsAssemblyPath),
+                MetadataReference.CreateFromFile(systemCollectionsAssemblyPath),
             };
 
             // Add additional references as needed.

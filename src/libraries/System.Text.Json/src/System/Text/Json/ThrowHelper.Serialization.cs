@@ -157,9 +157,13 @@ namespace System.Text.Json
 
         [DoesNotReturn]
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void ThrowInvalidOperationException_SerializerOptionsImmutable()
+        public static void ThrowInvalidOperationException_SerializerOptionsImmutable(JsonSerializerContext? context)
         {
-            throw new InvalidOperationException(SR.SerializerOptionsImmutable);
+            string message = context == null
+                ? SR.SerializerOptionsImmutable
+                : SR.SerializerContextOptionsImmutable;
+
+            throw new InvalidOperationException(message);
         }
 
         [DoesNotReturn]

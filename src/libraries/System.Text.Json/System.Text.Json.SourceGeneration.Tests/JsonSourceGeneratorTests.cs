@@ -357,7 +357,7 @@ namespace System.Text.Json.SourceGeneration.Tests
             CampaignSummaryViewModel campaignSummary = CreateCampaignSummaryViewModel();
 
             JsonSerializerOptions options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-            JsonContext context = new JsonContext(options);
+            JsonContext context = JsonContext.From(options);
 
             string json = JsonSerializer.Serialize(new object[] { index, campaignSummary }, context.ObjectArray);
             object[] arr = JsonSerializer.Deserialize(json, context.ObjectArray);
@@ -372,7 +372,7 @@ namespace System.Text.Json.SourceGeneration.Tests
         public static void SerializeObjectArray_SimpleTypes_WithCustomOptions()
         {
             JsonSerializerOptions options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-            JsonContext context = new JsonContext(options);
+            JsonContext context = JsonContext.From(options);
 
             string json = JsonSerializer.Serialize(new object[] { "Hello", "World" }, context);
             object[] arr = JsonSerializer.Deserialize<object[]>(json, context);
@@ -404,6 +404,51 @@ namespace System.Text.Json.SourceGeneration.Tests
             {
                 public int MyInt { get; set; }
             }
+        }
+
+        [Fact]
+        public static void FromMethodClonesOptions()
+        {
+            JsonStringEnumConverter converter = new();
+            JsonSerializerOptions options = new()
+            {
+                PropertyNameCaseInsensitive = true,
+                Converters = { converter }
+            };
+
+            JsonContext context = JsonContext.From(options);
+            Assert.NotSame(options, context.Options);
+            Assert.Equal(options.PropertyNameCaseInsensitive, context.Options.PropertyNameCaseInsensitive);
+            Assert.Same(converter, context.Options.Converters[0]);
+        }
+
+        [Fact]
+        public static void JsonContextDefaultClonesDefaultOptions()
+        {
+            JsonContext context = JsonContext.Default;
+            Assert.Equal(0, context.Options.Converters.Count);
+        }
+
+        [Fact]
+        public static void JsonContextOptionsNotMutableAfterConstruction()
+        {
+            JsonContext context = JsonContext.Default;
+            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => context.Options.PropertyNameCaseInsensitive = true);
+            Assert.Contains("JsonContext.From", ex.ToString());
+
+            context = JsonContext.From(new JsonSerializerOptions());
+            ex = Assert.Throws<InvalidOperationException>(() => context.Options.PropertyNameCaseInsensitive = true);
+            Assert.Contains("JsonContext.From", ex.ToString());
+        }
+
+        [Fact]
+        public static void ContextOptionsGetConverterFetchesFromMetadataCache()
+        {
+            JsonContext context = JsonContext.Default;
+
+            // We know metadata was generated for this type.
+            JsonConverter converter = context.Options.GetConverter(typeof(HighLowTemps));
+            Assert.True(converter is JsonConverter<HighLowTemps>);
         }
     }
 }
