@@ -458,7 +458,7 @@ uintptr_t CoffNativeCodeManager::GetConservativeUpperBoundForOutgoingArgs(Method
             upperBound = dac_cast<TADDR>(pRegisterSet->GetFP() - ((PTR_UNWIND_INFO) pUnwindDataBlob)->FrameOffset);
         }
 
-#elif defined(TARGET_ARM64) || defined(TARGET_ARM64)
+#elif defined(TARGET_ARM) || defined(TARGET_ARM64)
         // Unwind the current method context to get the caller's stack pointer
         // and use it as the upper bound for the callee
         SIZE_T  EstablisherFrame;
