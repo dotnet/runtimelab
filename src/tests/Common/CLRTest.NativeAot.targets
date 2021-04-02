@@ -154,6 +154,7 @@ if defined RunNativeAot (
     <PlatformTarget>$(TargetArchitecture)</PlatformTarget>
     <Optimize>$(Optimize)</Optimize>
     <DebugSymbols>true</DebugSymbols>
+    <NETCoreSdkVersion>$(NETCoreSdkVersion)</NETCoreSdkVersion>
   </PropertyGroup>
 
   $(NativeAotProjectLines)
