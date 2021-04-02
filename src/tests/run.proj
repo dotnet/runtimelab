@@ -427,7 +427,7 @@ namespace $([System.String]::Copy($(Category)).Replace(".","_").Replace("\","").
     </PropertyGroup>
     <MSBuild Projects="$(CORE_ROOT)/nativeaot/build/BuildFrameworkNativeObjects.proj"
       Targets="CreateLib"
-      Properties="FrameworkLibPath=$(CORE_ROOT)/nativeaot/sdk;FrameworkObjPath=$(BaseIntermediateOutputPath)/NativeAOTFX;IlcPath=$(CORE_ROOT)/nativeaot;Optimize=$(_OptimizeFlagValue)" />
+      Properties="FrameworkLibPath=$(CORE_ROOT)/nativeaot/sdk;FrameworkObjPath=$(BaseIntermediateOutputPath)/NativeAOTFX;IlcPath=$(CORE_ROOT)/nativeaot;Optimize=$(_OptimizeFlagValue);NETCoreSdkVersion=$(NETCoreSdkVersion)" />
   </Target>
 
   <Target Name="CreateAllWrappers" DependsOnTargets="GetListOfTestCmds;FindCmdDirectories">
