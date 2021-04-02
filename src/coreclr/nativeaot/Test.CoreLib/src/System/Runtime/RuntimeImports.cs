@@ -85,6 +85,9 @@ namespace System.Runtime
         internal static unsafe Array RhNewArray(EETypePtr pEEType, int length)
             => RhNewArray(pEEType.ToPointer(), length);
 
+        [DllImport(RuntimeLibrary, ExactSpelling = true)]
+        internal static unsafe extern void RhAllocateNewObject(IntPtr pEEType, uint flags, void* pResult);
+
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpFallbackFailFast")]
         internal static extern unsafe void RhpFallbackFailFast();

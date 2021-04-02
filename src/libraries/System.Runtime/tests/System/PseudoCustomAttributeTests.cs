@@ -13,6 +13,7 @@ namespace System.Tests
 {
     public static partial class PseudoCustomAttributeTests
     {
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/830" /* NativeAot */)]
         [Theory]
         [MemberData(nameof(TestData_AttributeExists))]
         [MemberData(nameof(TestData_AttributeDoesNotExist))]
@@ -38,6 +39,7 @@ namespace System.Tests
             }
         }
 
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/830" /* NativeAot */)]
         [Theory]
         [MemberData(nameof(TestData_AttributeExists))]
         [MemberData(nameof(TestData_AttributeDoesNotExist))]
@@ -63,6 +65,7 @@ namespace System.Tests
             }
         }
 
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/830" /* NativeAot */)]
         [Theory]
         [MemberData(nameof(TestData_AttributeExists))]
         [MemberData(nameof(TestData_AttributeDoesNotExist))]

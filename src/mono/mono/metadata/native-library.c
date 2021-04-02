@@ -338,19 +338,6 @@ mono_global_loader_cache_init (void)
 	mono_coop_mutex_init (&native_library_module_lock);
 }
 
-void
-mono_global_loader_cache_cleanup (void)
-{
-	if (global_module_map != NULL) {
-		g_hash_table_foreach(global_module_map, remove_cached_module, NULL);
-
-		g_hash_table_destroy(global_module_map);
-		global_module_map = NULL;
-	}
-
-	// No need to clean up the native library hash tables since they're netcore-only, where this is never called
-}
-
 static gboolean
 is_absolute_path (const char *path)
 {
@@ -556,7 +543,6 @@ netcore_resolve_with_dll_import_resolver (MonoAssemblyLoadContext *alc, MonoAsse
 {
 	MonoDl *result = NULL;
 	gpointer lib = NULL;
-	MonoDomain *domain = mono_alc_domain (alc);
 
 	MONO_STATIC_POINTER_INIT (MonoMethod, resolve)
 
@@ -581,11 +567,11 @@ netcore_resolve_with_dll_import_resolver (MonoAssemblyLoadContext *alc, MonoAsse
 	HANDLE_FUNCTION_ENTER ();
 
 	MonoStringHandle scope_handle;
-	scope_handle = mono_string_new_handle (domain, scope, error);
+	scope_handle = mono_string_new_handle (scope, error);
 	goto_if_nok (error, leave);
 
 	MonoReflectionAssemblyHandle assembly_handle;
-	assembly_handle = mono_assembly_get_object_handle (domain, assembly, error);
+	assembly_handle = mono_assembly_get_object_handle (assembly, error);
 	goto_if_nok (error, leave);
 
 	gboolean has_search_flags;
@@ -645,7 +631,7 @@ netcore_resolve_with_load (MonoAssemblyLoadContext *alc, const char *scope, Mono
 	HANDLE_FUNCTION_ENTER ();
 
 	MonoStringHandle scope_handle;
-	scope_handle = mono_string_new_handle (mono_alc_domain (alc), scope, error);
+	scope_handle = mono_string_new_handle (scope, error);
 	goto_if_nok (error, leave);
 
 	gpointer gchandle;
@@ -685,7 +671,6 @@ netcore_resolve_with_resolving_event (MonoAssemblyLoadContext *alc, MonoAssembly
 {
 	MonoDl *result = NULL;
 	gpointer lib = NULL;
-	MonoDomain *domain = mono_alc_domain (alc);
 
 	MONO_STATIC_POINTER_INIT (MonoMethod, resolve)
 
@@ -709,11 +694,11 @@ netcore_resolve_with_resolving_event (MonoAssemblyLoadContext *alc, MonoAssembly
 	HANDLE_FUNCTION_ENTER ();
 
 	MonoStringHandle scope_handle;
-	scope_handle = mono_string_new_handle (domain, scope, error);
+	scope_handle = mono_string_new_handle (scope, error);
 	goto_if_nok (error, leave);
 
 	MonoReflectionAssemblyHandle assembly_handle;
-	assembly_handle = mono_assembly_get_object_handle (domain, assembly, error);
+	assembly_handle = mono_assembly_get_object_handle (assembly, error);
 	goto_if_nok (error, leave);
 
 	gpointer gchandle;
@@ -992,12 +977,12 @@ lookup_pinvoke_call_impl (MonoMethod *method, MonoLookupPInvokeStatus *status_ou
 		orig_scope = method_aux->dll;
 	}
 	else {
-		if (!piinfo->implmap_idx || piinfo->implmap_idx > im->rows)
+		if (!piinfo->implmap_idx || mono_metadata_table_bounds_check (image, MONO_TABLE_IMPLMAP, piinfo->implmap_idx))
 			goto exit;
 
 		mono_metadata_decode_row (im, piinfo->implmap_idx - 1, im_cols, MONO_IMPLMAP_SIZE);
 
-		if (!im_cols [MONO_IMPLMAP_SCOPE] || im_cols [MONO_IMPLMAP_SCOPE] > mr->rows)
+		if (!im_cols [MONO_IMPLMAP_SCOPE] || mono_metadata_table_bounds_check (image, MONO_TABLE_MODULEREF, im_cols [MONO_IMPLMAP_SCOPE]))
 			goto exit;
 
 		piinfo->piflags = im_cols [MONO_IMPLMAP_FLAGS];

@@ -355,13 +355,7 @@ namespace Internal.IL
                     }
                     else
                     {
-                        MethodDesc ctor = method.Instantiation[0].GetDefaultConstructor();
-                        if (ctor == null)
-                        {
-                            MetadataType activatorType = _compilation.TypeSystemContext.SystemModule.GetKnownType("System", "Activator");
-                            MetadataType classWithMissingCtor = activatorType.GetKnownNestedType("ClassWithMissingConstructor");
-                            ctor = classWithMissingCtor.GetParameterlessConstructor();
-                        }
+                        MethodDesc ctor = Compilation.GetConstructorForCreateInstanceIntrinsic(method.Instantiation[0]);
                         _dependencies.Add(_factory.CanonicalEntrypoint(ctor), reason);
                     }
 

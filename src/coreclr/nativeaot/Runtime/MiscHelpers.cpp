@@ -147,26 +147,6 @@ COOP_PINVOKE_HELPER(Boolean, RhFindBlob, (TypeManagerHandle *pTypeManagerHandle,
     return pBlob != NULL;
 }
 
-// This helper is not called directly but is used by the implementation of RhpCheckCctor to locate the
-// CheckStaticClassConstruction classlib callback. It must not trigger a GC. The return address passed points
-// to code in the caller's module and can be used in the lookup.
-COOP_PINVOKE_HELPER(void *, GetClasslibCCtorCheck, (void * pReturnAddress))
-{
-    // Locate the calling module from the context structure address (which is in writable memory in the
-    // module image).
-    ICodeManager * pCodeManager = GetRuntimeInstance()->FindCodeManagerByAddress(pReturnAddress);
-    ASSERT(pCodeManager);
-
-    // Lookup the callback registered by the classlib.
-    void * pCallback = pCodeManager->GetClasslibFunction(ClasslibFunctionId::CheckStaticClassConstruction);
-
-    // We have no fallback path if we got here but the classlib doesn't implement the callback.
-    if (pCallback == NULL)
-        RhFailFast();
-
-    return pCallback;
-}
-
 COOP_PINVOKE_HELPER(void *, RhGetTargetOfUnboxingAndInstantiatingStub, (void * pUnboxStub))
 {
     return GetRuntimeInstance()->GetTargetOfUnboxingAndInstantiatingStub(pUnboxStub);

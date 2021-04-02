@@ -602,9 +602,9 @@ namespace System.Runtime
                 // between array element types (indicated by fAllowSizeEquivalence). These are integer types
                 // of the same size (e.g. int and uint) and the base type of enums vs all integer types of the
                 // same size.
-                if (fAllowSizeEquivalence && pTargetType->IsValueType)
+                if (fAllowSizeEquivalence && pTargetType->IsPrimitive)
                 {
-                    if (ArePrimitveTypesEquivalentSize(pSourceType, pTargetType))
+                    if (GetNormalizedIntegralArrayElementType(pSourceType) == GetNormalizedIntegralArrayElementType(pTargetType))
                         return true;
 
                     // Non-identical value types aren't equivalent in any other case (since value types are
@@ -725,7 +725,7 @@ namespace System.Runtime
             // This is supported only on arrays
             Debug.Assert(array.EEType->IsArray, "first argument must be an array");
 
-            if (index >= array.Length)
+            if ((uint)index >= (uint)array.Length)
             {
                 throw array.EEType->GetClasslibException(ExceptionIDs.IndexOutOfRange);
             }
@@ -877,44 +877,20 @@ namespace System.Runtime
             throw pTargetType->GetClasslibException(ExceptionIDs.InvalidCast);
         }
 
-        // Returns true of the two types are equivalent primitive types. Used by array casts.
-        private static unsafe bool ArePrimitveTypesEquivalentSize(EEType* pType1, EEType* pType2)
+        private static unsafe EETypeElementType GetNormalizedIntegralArrayElementType(EEType* type)
         {
-            EETypeElementType sourceCorType = pType1->ElementType;
-            int sourcePrimitiveTypeEquivalenceSize = GetIntegralTypeMatchSize(sourceCorType);
-
-            // Quick check to see if the first type is even primitive.
-            if (sourcePrimitiveTypeEquivalenceSize == 0)
-                return false;
-
-            EETypeElementType targetCorType = pType2->ElementType;
-            int targetPrimitiveTypeEquivalenceSize = GetIntegralTypeMatchSize(targetCorType);
-
-            return sourcePrimitiveTypeEquivalenceSize == targetPrimitiveTypeEquivalenceSize;
-        }
-
-        private static unsafe int GetIntegralTypeMatchSize(EETypeElementType elementType)
-        {
+            EETypeElementType elementType = type->ElementType;
             switch (elementType)
             {
                 case EETypeElementType.Byte:
-                case EETypeElementType.SByte:
-                    return 1;
-                case EETypeElementType.Int16:
                 case EETypeElementType.UInt16:
-                    return 2;
-                case EETypeElementType.Int32:
                 case EETypeElementType.UInt32:
-                    return 4;
-                case EETypeElementType.Int64:
                 case EETypeElementType.UInt64:
-                    return 8;
-                case EETypeElementType.IntPtr:
                 case EETypeElementType.UIntPtr:
-                    return sizeof(IntPtr);
-                default:
-                    return 0;
+                    return elementType - 1;
             }
+
+            return elementType;
         }
 
         internal unsafe struct EETypePairList

@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <GeneratePackage>true</GeneratePackage>
     <IncludeSymbolsInPackage>true</IncludeSymbolsInPackage>
     <PackageDescription>Provides a native AOT compiler and runtime for .NET</PackageDescription>
   </PropertyGroup>
@@ -24,6 +25,9 @@
       </File>
       <File Include="$(CoreCLRAotSdkDir)*">
         <TargetPath>sdk</TargetPath>
+      </File>
+      <File Include="$(MibcOptimizationDataDir)/$(TargetOS)/$(TargetArchitecture)/**/*.mibc">
+        <TargetPath>mibc</TargetPath>
       </File>
     </ItemGroup>
 

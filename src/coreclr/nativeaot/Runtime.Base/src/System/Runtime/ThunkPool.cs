@@ -338,7 +338,7 @@ namespace System.Runtime
         }
     }
 
-    internal class ThunkBlocks
+    internal static class ThunkBlocks
     {
         private static IntPtr[] s_currentlyMappedThunkBlocks = new IntPtr[Constants.NumThunkBlocksPerMapping];
         private static int s_currentlyMappedThunkBlocksIndex = Constants.NumThunkBlocksPerMapping;

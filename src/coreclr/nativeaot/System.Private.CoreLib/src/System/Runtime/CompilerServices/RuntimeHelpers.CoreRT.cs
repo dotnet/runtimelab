@@ -253,10 +253,14 @@ namespace System.Runtime.CompilerServices
 
         public static void PrepareMethod(RuntimeMethodHandle method)
         {
+            if (method.Value == IntPtr.Zero)
+                throw new ArgumentException(SR.InvalidOperation_HandleIsNotInitialized, nameof(method));
         }
 
         public static void PrepareMethod(RuntimeMethodHandle method, RuntimeTypeHandle[] instantiation)
         {
+            if (method.Value == IntPtr.Zero)
+                throw new ArgumentException(SR.InvalidOperation_HandleIsNotInitialized, nameof(method));
         }
 
         /// <summary>
@@ -268,7 +272,7 @@ namespace System.Runtime.CompilerServices
         /// <returns>The allocated memory</returns>
         public static IntPtr AllocateTypeAssociatedMemory(Type type, int size)
         {
-            if (!type.IsRuntimeImplemented())
+            if (type is null || !type.IsRuntimeImplemented())
                 throw new ArgumentException(SR.Arg_MustBeType, nameof(type));
 
             if (size < 0)
@@ -280,8 +284,6 @@ namespace System.Runtime.CompilerServices
 
         public static void PrepareDelegate(Delegate d)
         {
-            if (d == null)
-                throw new ArgumentNullException(nameof(d));
         }
 
         [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2059:UnrecognizedReflectionPattern",
@@ -297,6 +299,16 @@ namespace System.Runtime.CompilerServices
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
             Type type)
         {
+            if (type is null)
+            {
+                throw new ArgumentNullException(nameof(type), SR.ArgumentNull_Type);
+            }
+
+            if (!type.IsRuntimeImplemented())
+            {
+                throw new SerializationException(SR.Format(SR.Serialization_InvalidType, type));
+            }
+
             if (type.HasElementType || type.IsGenericParameter)
             {
                 throw new ArgumentException(SR.Argument_InvalidValue);
@@ -314,9 +326,20 @@ namespace System.Runtime.CompilerServices
 
             EETypePtr eeTypePtr = type.TypeHandle.ToEETypePtr();
 
-            if (eeTypePtr == EETypePtr.EETypePtrOf<string>())
+            if (eeTypePtr.ElementType == Internal.Runtime.EETypeElementType.Void)
+            {
+                throw new ArgumentException(SR.Argument_InvalidValue);
+            }
+
+            // Don't allow strings (we already checked for arrays above)
+            if (eeTypePtr.ComponentSize != 0)
             {
                 throw new ArgumentException(SR.Argument_NoUninitializedStrings);
+            }
+
+            if (RuntimeImports.AreTypesAssignable(eeTypePtr, EETypePtr.EETypePtrOf<Delegate>()))
+            {
+                throw new MemberAccessException();
             }
 
             if (eeTypePtr.IsAbstract)

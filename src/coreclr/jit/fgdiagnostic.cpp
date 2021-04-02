@@ -764,7 +764,7 @@ bool Compiler::fgDumpFlowGraph(Phases phase)
     {
         if (createDotFile)
         {
-            fprintf(fgxFile, "    BB%02u [label = \"BB%02u\\n\\n", block->bbNum, block->bbNum);
+            fprintf(fgxFile, "    " FMT_BB " [label = \"" FMT_BB "\\n\\n", block->bbNum, block->bbNum);
 
             // "Raw" Profile weight
             if (block->hasProfileWeight())
@@ -822,10 +822,18 @@ bool Compiler::fgDumpFlowGraph(Phases phase)
             {
                 fprintf(fgxFile, "\n            loopHead=\"true\"");
             }
+
+            const char* rootTreeOpName = "n/a";
+            if (block->lastNode() != nullptr)
+            {
+                rootTreeOpName = GenTree::OpName(block->lastNode()->OperGet());
+            }
+
             fprintf(fgxFile, "\n            weight=");
             fprintfDouble(fgxFile, ((double)block->bbWeight) / weightDivisor);
             fprintf(fgxFile, "\n            codeEstimate=\"%d\"", fgGetCodeEstimate(block));
             fprintf(fgxFile, "\n            startOffset=\"%d\"", block->bbCodeOffs);
+            fprintf(fgxFile, "\n            rootTreeOp=\"%s\"", rootTreeOpName);
             fprintf(fgxFile, "\n            endOffset=\"%d\"", block->bbCodeOffsEnd);
             fprintf(fgxFile, ">");
             fprintf(fgxFile, "\n        </block>");
@@ -1617,13 +1625,8 @@ Compiler::fgWalkResult Compiler::fgStress64RsltMulCB(GenTree** pTree, fgWalkData
         return WALK_CONTINUE;
     }
 
-#ifdef DEBUG
-    if (pComp->verbose)
-    {
-        printf("STRESS_64RSLT_MUL before:\n");
-        pComp->gtDispTree(tree);
-    }
-#endif // DEBUG
+    JITDUMP("STRESS_64RSLT_MUL before:\n");
+    DISPTREE(tree);
 
     // To ensure optNarrowTree() doesn't fold back to the original tree.
     tree->AsOp()->gtOp1 = pComp->gtNewCastNode(TYP_LONG, tree->AsOp()->gtOp1, false, TYP_LONG);
@@ -1633,13 +1636,8 @@ Compiler::fgWalkResult Compiler::fgStress64RsltMulCB(GenTree** pTree, fgWalkData
     tree->gtType        = TYP_LONG;
     *pTree              = pComp->gtNewCastNode(TYP_INT, tree, false, TYP_INT);
 
-#ifdef DEBUG
-    if (pComp->verbose)
-    {
-        printf("STRESS_64RSLT_MUL after:\n");
-        pComp->gtDispTree(*pTree);
-    }
-#endif // DEBUG
+    JITDUMP("STRESS_64RSLT_MUL after:\n");
+    DISPTREE(*pTree);
 
     return WALK_SKIP_SUBTREES;
 }
@@ -1961,8 +1959,6 @@ void Compiler::fgDebugCheckBBlist(bool checkBBNum /* = false */, bool checkBBRef
         // so give up unless we've been told to try hard.
         return;
     }
-
-    DWORD startTickCount = GetTickCount();
 
 #if defined(FEATURE_EH_FUNCLETS)
     bool reachedFirstFunclet = false;
@@ -2481,6 +2477,12 @@ void Compiler::fgDebugCheckFlags(GenTree* tree)
                     chkFlags |= (call->gtCallAddr->gtFlags & GTF_SIDE_EFFECT);
                 }
 
+                if ((call->gtControlExpr != nullptr) && call->IsExpandedEarly() && call->IsVirtualVtable())
+                {
+                    fgDebugCheckFlags(call->gtControlExpr);
+                    chkFlags |= (call->gtControlExpr->gtFlags & GTF_SIDE_EFFECT);
+                }
+
                 if (call->IsUnmanaged() && (call->gtCallMoreFlags & GTF_CALL_M_UNMGD_THISCALL))
                 {
                     if (call->gtCallArgs->GetNode()->OperGet() == GT_NOP)
@@ -2614,6 +2616,7 @@ void Compiler::fgDebugCheckDispFlags(GenTree* tree, unsigned dispFlags, unsigned
     {
         printf("%c", (dispFlags & GTF_IND_INVARIANT) ? '#' : '-');
         printf("%c", (dispFlags & GTF_IND_NONFAULTING) ? 'n' : '-');
+        printf("%c", (dispFlags & GTF_IND_NONNULL) ? '@' : '-');
     }
     GenTree::gtDispFlags(dispFlags, debugFlags);
 }
@@ -2968,15 +2971,28 @@ public:
     }
 
     //------------------------------------------------------------------------
-    // CheckTreeId: Check that this tree was not visit before and memorize it as visited.
+    // CheckTreeId: Check that this tree was not visited before and memorize it as visited.
     //
     // Arguments:
     //    gtTreeID - identificator of GenTree.
     //
+    // Note:
+    //    This method causes an assert failure when we find a duplicated node in our tree
+    //
     void CheckTreeId(unsigned gtTreeID)
     {
-        assert(!BitVecOps::IsMember(&nodesVecTraits, uniqueNodes, gtTreeID));
-        BitVecOps::AddElemD(&nodesVecTraits, uniqueNodes, gtTreeID);
+        if (BitVecOps::IsMember(&nodesVecTraits, uniqueNodes, gtTreeID))
+        {
+            if (comp->verbose)
+            {
+                printf("Duplicate gtTreeID was found: %d\n", gtTreeID);
+            }
+            assert(!"Duplicate gtTreeID was found");
+        }
+        else
+        {
+            BitVecOps::AddElemD(&nodesVecTraits, uniqueNodes, gtTreeID);
+        }
     }
 
 private:
@@ -3008,6 +3024,68 @@ void Compiler::fgDebugCheckNodesUniqueness()
                 GenTree* root = stmt->GetRootNode();
                 fgWalkTreePre(&root, UniquenessCheckWalker::MarkTreeId, &walker);
             }
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+// fgDebugCheckLoopTable: checks that the loop table is valid.
+//    - If the method has natural loops, the loop table is not null
+//    - All basic blocks with loop numbers set have a corresponding loop in the table
+//    - All basic blocks without a loop number are not in a loop
+//    - All parents of the loop with the block contain that block
+//
+void Compiler::fgDebugCheckLoopTable()
+{
+    if (optLoopCount > 0)
+    {
+        assert(optLoopTable != nullptr);
+    }
+
+    for (BasicBlock* block = fgFirstBB; block != nullptr; block = block->bbNext)
+    {
+        if (optLoopCount == 0)
+        {
+            assert(block->bbNatLoopNum == BasicBlock::NOT_IN_LOOP);
+            continue;
+        }
+
+        // Walk the loop table and find the first loop that contains our block.
+        // It should be the innermost one.
+        int loopNum = BasicBlock::NOT_IN_LOOP;
+        for (int i = optLoopCount - 1; i >= 0; i--)
+        {
+            // Ignore removed loops
+            if (optLoopTable[i].lpFlags & LPFLG_REMOVED)
+            {
+                continue;
+            }
+            // Does this loop contain our block?
+            if (optLoopTable[i].lpContains(block))
+            {
+                loopNum = i;
+                break;
+            }
+        }
+
+        // If there is at least one loop that contains this block...
+        if (loopNum != BasicBlock::NOT_IN_LOOP)
+        {
+            // ...it must be the one pointed to by bbNatLoopNum.
+            assert(block->bbNatLoopNum == loopNum);
+        }
+        else
+        {
+            // Otherwise, this block should not point to a loop.
+            assert(block->bbNatLoopNum == BasicBlock::NOT_IN_LOOP);
+        }
+
+        // All loops that contain the innermost loop with this block must also contain this block.
+        while (loopNum != BasicBlock::NOT_IN_LOOP)
+        {
+            assert(optLoopTable[loopNum].lpContains(block));
+
+            loopNum = optLoopTable[loopNum].lpParent;
         }
     }
 }

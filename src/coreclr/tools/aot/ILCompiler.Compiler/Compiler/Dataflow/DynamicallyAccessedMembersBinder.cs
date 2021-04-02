@@ -16,6 +16,12 @@ namespace ILCompiler.Dataflow
         // Returns the members of the type bound by memberTypes.
         public static IEnumerable<TypeSystemEntity> GetDynamicallyAccessedMembers(this TypeDesc typeDefinition, DynamicallyAccessedMemberTypes memberTypes)
         {
+            if (memberTypes == DynamicallyAccessedMemberTypes.All)
+            {
+                yield return null;
+                yield break;
+            }
+
             if (memberTypes.HasFlag(DynamicallyAccessedMemberTypes.NonPublicConstructors))
             {
                 foreach (var c in typeDefinition.GetConstructorsOnType(filter: null, bindingFlags: BindingFlags.NonPublic))

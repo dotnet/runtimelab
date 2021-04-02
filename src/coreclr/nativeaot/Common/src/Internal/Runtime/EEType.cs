@@ -657,6 +657,15 @@ namespace Internal.Runtime
             }
         }
 
+        // Warning! UNLIKE the similarly named Reflection api, this method also returns "true" for Enums.
+        internal bool IsPrimitive
+        {
+            get
+            {
+                return ElementType < EETypeElementType.ValueType;
+            }
+        }
+
         internal bool HasGCPointers
         {
             get

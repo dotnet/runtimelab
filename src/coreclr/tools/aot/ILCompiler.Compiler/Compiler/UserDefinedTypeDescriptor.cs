@@ -41,6 +41,121 @@ namespace ILCompiler
             }
         }
 
+        public uint GetStateMachineThisVariableTypeIndex(TypeDesc type)
+        {
+            // If the state machine is a valuetype, the this parameter will be a byref
+            if (type.IsByRef)
+            {
+                type = type.GetParameterType();
+                Debug.Assert(type.IsValueType);
+            }
+
+            type = DebuggerCanonicalize(type);
+
+            lock (_lock)
+            {
+                if (!_knownStateMachineThisTypes.TryGetValue(type, out uint typeIndex))
+                {
+                    Debug.Assert(type.IsDefType);
+
+                    MetadataType defType = (MetadataType)type;
+                    ClassTypeDescriptor classTypeDescriptor = new ClassTypeDescriptor
+                    {
+                        IsStruct = 1,
+                        Name = $"StateMachineLocals_{System.Reflection.Metadata.Ecma335.MetadataTokens.GetToken(((EcmaType)defType.GetTypeDefinition()).Handle):X}",
+                        InstanceSize = defType.InstanceByteCount.IsIndeterminate ? 0 : (ulong)defType.InstanceByteCount.AsInt,
+                    };
+
+                    var fieldsDescs = new ArrayBuilder<DataFieldDescriptor>();
+
+                    foreach (var fieldDesc in defType.GetFields())
+                    {
+                        if (fieldDesc.IsStatic)
+                            continue;
+
+                        // We're going to parse the Roslyn-generated backing fields and unmangle them back to usable names.
+                        // We'll also skip some infrastructural fields that are not interesting (like the field that
+                        // holds the initial value of parameters, the current state, the current thread ID, etc.).
+                        // The set of fields we're going to touch is tagged as "parsed by the expression evaluator"
+                        // in the Roslyn codebase, so it's somewhat safe to do this.
+                        // https://github.com/dotnet/roslyn/blob/afd10305a37c0ffb2cfb2c2d8446154c68cfa87a/src/Compilers/CSharp/Portable/Symbols/Synthesized/GeneratedNameKind.cs#L15-L22
+                        string fieldNameEmit = fieldDesc.Name;
+                        if (fieldNameEmit.Length > 0 && fieldNameEmit[0] == '<')
+                        {
+                            if (TryGetGeneratedNameKind(fieldNameEmit, out char kind))
+                            {
+                                if (kind == '4' /* ThisProxy */)
+                                {
+                                    fieldNameEmit = "this";
+                                }
+                                else if (kind == '5' /* HoistedLocalField */)
+                                {
+                                    fieldNameEmit = fieldNameEmit.Substring(1, fieldNameEmit.IndexOf('>') - 1);
+                                }
+                                else
+                                {
+                                    // The rest of fields support the state machine infrastructure
+                                    continue;
+                                }
+                            }
+
+                            static bool TryGetGeneratedNameKind(string name, out char kind)
+                            {
+                                int endIndex = name.IndexOf('>');
+                                if (endIndex > 0 && endIndex + 1 < name.Length)
+                                {
+                                    kind = name[endIndex + 1];
+                                    return true;
+                                }
+                                kind = default;
+                                return false;
+                            }
+                        }
+
+                        LayoutInt fieldOffset = fieldDesc.Offset;
+                        int fieldOffsetEmit = fieldOffset.IsIndeterminate ? 0xBAAD : fieldOffset.AsInt;
+
+                        TypeDesc fieldType = GetFieldDebugType(fieldDesc);
+
+                        uint fieldTypeIndex = GetVariableTypeIndex(fieldType, false);
+
+                        DataFieldDescriptor field = new DataFieldDescriptor
+                        {
+                            FieldTypeIndex = fieldTypeIndex,
+                            Offset = (ulong)fieldOffsetEmit,
+                            Name = fieldNameEmit
+                        };
+
+                        fieldsDescs.Add(field);
+                    }
+
+                    LayoutInt elementSize = defType.GetElementSize();
+                    int elementSizeEmit = elementSize.IsIndeterminate ? 0xBAAD : elementSize.AsInt;
+                    ClassFieldsTypeDescriptor fieldsDescriptor = new ClassFieldsTypeDescriptor
+                    {
+                        Size = (ulong)elementSizeEmit,
+                        FieldsCount = fieldsDescs.Count,
+                    };
+
+                    uint completeTypeIndex = _objectWriter.GetCompleteClassTypeIndex(classTypeDescriptor, fieldsDescriptor, fieldsDescs.ToArray(), Array.Empty<StaticDataFieldDescriptor>());
+
+                    PointerTypeDescriptor descriptor = new PointerTypeDescriptor
+                    {
+                        ElementType = completeTypeIndex,
+                        Is64Bit = Is64Bit ? 1 : 0,
+                        IsConst = 0,
+                        IsReference = 1,
+                    };
+
+                    typeIndex = _objectWriter.GetPointerTypeIndex(descriptor);
+
+                    _knownStateMachineThisTypes.Add(type, typeIndex);
+                }
+
+                return typeIndex;
+            }
+        }
+
         // Get Type index for this pointer of specified type
         public uint GetThisTypeIndex(TypeDesc type)
         {
@@ -198,7 +313,7 @@ namespace ILCompiler
         /// <param name="type"></param>
         /// <param name="needsCompleteType"></param>
         /// <returns></returns>
-        private uint GetTypeIndex(TypeDesc type, bool needsCompleteType)
+        public uint GetTypeIndex(TypeDesc type, bool needsCompleteType)
         {
             uint typeIndex = 0;
             if (needsCompleteType ?
@@ -458,6 +573,11 @@ namespace ILCompiler
             {
                 classTypeDescriptor.BaseClassId = GetTypeIndex(defType.BaseType, true);
             }
+            else if (type.IsInterface)
+            {
+                // Allows debuggers to vtcast the types and see the real instance types.
+                classTypeDescriptor.BaseClassId = GetTypeIndex(type.Context.GetWellKnownType(WellKnownType.Object), true);
+            }
 
             List<DataFieldDescriptor> fieldsDescs = new List<DataFieldDescriptor>();
             List<DataFieldDescriptor> nonGcStaticFields = new List<DataFieldDescriptor>();
@@ -482,9 +602,43 @@ namespace ILCompiler
 
                 LayoutInt fieldOffset = fieldDesc.Offset;
                 int fieldOffsetEmit = fieldOffset.IsIndeterminate ? 0xBAAD : fieldOffset.AsInt;
+
+                TypeDesc fieldType = GetFieldDebugType(fieldDesc);
+
+                // We're going to drill into this type more deeply and it might be more than what the
+                // compiler already looked at. e.g. if this is a reference type instance field that
+                // has fields that don't resolve we might hit resolution exceptions in the process:
+                //
+                // class NeverInstantiated
+                // {
+                //     private UnresolvableType Foo;
+                // }
+                //
+                // class GeneratingDebugInfoForThis
+                // {
+                //     // Going to throw here because instance layout of UnresolvableType cannot be computed.
+                //     private NeverInstantiated Bar;
+                // }
+                //
+                // If this happens, just treat the field as Object or IntPtr. Better than crashing here.
+                //
+                // We are limiting this try/catch to when the type is not a valuetype. If it's a valuetype,
+                // we would generate a very invalid debug info. This should have been prevented elsewhere.
+                uint fieldTypeIndex;
+                try
+                {
+                    fieldTypeIndex = GetVariableTypeIndex(fieldType, false);
+                }
+                catch (TypeSystemException) when (!fieldType.IsValueType)
+                {
+                    fieldTypeIndex = fieldType.IsGCPointer ?
+                        GetVariableTypeIndex(fieldType.Context.GetWellKnownType(WellKnownType.Object))
+                        : GetVariableTypeIndex(fieldType.Context.GetWellKnownType(WellKnownType.IntPtr));
+                }
+
                 DataFieldDescriptor field = new DataFieldDescriptor
                 {
-                    FieldTypeIndex = GetVariableTypeIndex(GetFieldDebugType(fieldDesc), false),
+                    FieldTypeIndex = fieldTypeIndex,
                     Offset = (ulong)fieldOffsetEmit,
                     Name = fieldDesc.Name
                 };
@@ -640,6 +794,7 @@ namespace ILCompiler
         private Dictionary<TypeDesc, uint> _knownTypes = new Dictionary<TypeDesc, uint>();
         private Dictionary<TypeDesc, uint> _completeKnownTypes = new Dictionary<TypeDesc, uint>();
         private Dictionary<TypeDesc, uint> _knownReferenceWrappedTypes = new Dictionary<TypeDesc, uint>();
+        private Dictionary<TypeDesc, uint> _knownStateMachineThisTypes = new Dictionary<TypeDesc, uint>();
         private Dictionary<TypeDesc, uint> _pointerTypes = new Dictionary<TypeDesc, uint>();
         private Dictionary<TypeDesc, uint> _enumTypes = new Dictionary<TypeDesc, uint>();
         private Dictionary<TypeDesc, uint> _byRefTypes = new Dictionary<TypeDesc, uint>();

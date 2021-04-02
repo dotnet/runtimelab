@@ -50,7 +50,9 @@ enum DwarfAbbrev : uint16_t
   ClassInheritance,
   LexicalBlock,
   TryBlock,
-  CatchBlock
+  CatchBlock,
+  VoidType,
+  VoidPointerType,
 };
 
 void Dump(MCObjectStreamer *Streamer, uint16_t DwarfVersion, unsigned TargetPointerSize);

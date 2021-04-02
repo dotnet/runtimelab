@@ -83,7 +83,7 @@ namespace System
         public static System.Runtime.Remoting.ObjectHandle? CreateInstanceFrom(string assemblyFile, string typeName, bool ignoreCase, System.Reflection.BindingFlags bindingAttr, System.Reflection.Binder? binder, object?[]? args, System.Globalization.CultureInfo? culture, object?[]? activationAttributes) { throw null; }
         [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("Type and its constructor could be removed")]
         public static System.Runtime.Remoting.ObjectHandle? CreateInstanceFrom(string assemblyFile, string typeName, object?[]? activationAttributes) { throw null; }
-        public static T CreateInstance<T>() { throw null; }
+        public static T CreateInstance<[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]T>() { throw null; }
     }
     public partial class AggregateException : System.Exception
     {
@@ -1829,8 +1829,12 @@ namespace System
         public bool HasFlag(System.Enum flag) { throw null; }
         public static bool IsDefined(System.Type enumType, object value) { throw null; }
         public static bool IsDefined<TEnum>(TEnum value) where TEnum : struct, System.Enum { throw null; }
+        public static object Parse(System.Type enumType, System.ReadOnlySpan<char> value) { throw null; }
+        public static object Parse(System.Type enumType, System.ReadOnlySpan<char> value, bool ignoreCase) { throw null; }
         public static object Parse(System.Type enumType, string value) { throw null; }
         public static object Parse(System.Type enumType, string value, bool ignoreCase) { throw null; }
+        public static TEnum Parse<TEnum>(System.ReadOnlySpan<char> value) where TEnum : struct { throw null; }
+        public static TEnum Parse<TEnum>(System.ReadOnlySpan<char> value, bool ignoreCase) where TEnum : struct { throw null; }
         public static TEnum Parse<TEnum>(string value) where TEnum : struct { throw null; }
         public static TEnum Parse<TEnum>(string value, bool ignoreCase) where TEnum : struct { throw null; }
         bool System.IConvertible.ToBoolean(System.IFormatProvider? provider) { throw null; }
@@ -1867,9 +1871,13 @@ namespace System
         public string ToString(string? format) { throw null; }
         [System.ObsoleteAttribute("The provider argument is not used. Please use ToString(String).")]
         public string ToString(string? format, System.IFormatProvider? provider) { throw null; }
+        public static bool TryParse(System.Type enumType, System.ReadOnlySpan<char> value, bool ignoreCase, out object? result) { throw null; }
+        public static bool TryParse(System.Type enumType, System.ReadOnlySpan<char> value, out object? result) { throw null; }
         public static bool TryParse(System.Type enumType, string? value, bool ignoreCase, out object? result) { throw null; }
         public static bool TryParse(System.Type enumType, string? value, out object? result) { throw null; }
+        public static bool TryParse<TEnum>(System.ReadOnlySpan<char> value, bool ignoreCase, out TEnum result) where TEnum : struct { throw null; }
         public static bool TryParse<TEnum>([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] string? value, bool ignoreCase, out TEnum result) where TEnum : struct { throw null; }
+        public static bool TryParse<TEnum>(System.ReadOnlySpan<char> value, out TEnum result) where TEnum : struct { throw null; }
         public static bool TryParse<TEnum>([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] string? value, out TEnum result) where TEnum : struct { throw null; }
     }
     public static partial class Environment
@@ -2597,7 +2605,7 @@ namespace System
     {
         void Report(T value);
     }
-    public partial class Lazy<T>
+    public partial class Lazy<[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]T>
     {
         public Lazy() { }
         public Lazy(bool isThreadSafe) { }
@@ -2610,7 +2618,7 @@ namespace System
         public T Value { get { throw null; } }
         public override string? ToString() { throw null; }
     }
-    public partial class Lazy<T, TMetadata> : System.Lazy<T>
+    public partial class Lazy<[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]T, TMetadata> : System.Lazy<T>
     {
         public Lazy(System.Func<T> valueFactory, TMetadata metadata) { }
         public Lazy(System.Func<T> valueFactory, TMetadata metadata, bool isThreadSafe) { }
@@ -3547,7 +3555,7 @@ namespace System
         public bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] System.String? value) { throw null; }
         public static bool Equals(System.String? a, System.String? b) { throw null; }
         public static bool Equals(System.String? a, System.String? b, System.StringComparison comparisonType) { throw null; }
-        public bool Equals(System.String? value, System.StringComparison comparisonType) { throw null; }
+        public bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] System.String? value, System.StringComparison comparisonType) { throw null; }
         public static System.String Format(System.IFormatProvider? provider, System.String format, object? arg0) { throw null; }
         public static System.String Format(System.IFormatProvider? provider, System.String format, object? arg0, object? arg1) { throw null; }
         public static System.String Format(System.IFormatProvider? provider, System.String format, object? arg0, object? arg1, object? arg2) { throw null; }
@@ -3691,6 +3699,8 @@ namespace System
         public static System.StringComparer FromComparison(System.StringComparison comparisonType) { throw null; }
         public int GetHashCode(object obj) { throw null; }
         public abstract int GetHashCode(string obj);
+        public static bool IsWellKnownCultureAwareComparer(System.Collections.Generic.IEqualityComparer<string?>? comparer, [System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] out System.Globalization.CompareInfo? compareInfo, out System.Globalization.CompareOptions compareOptions) { throw null; }
+        public static bool IsWellKnownOrdinalComparer(System.Collections.Generic.IEqualityComparer<string?>? comparer, out bool ignoreCase) { throw null; }
     }
     public enum StringComparison
     {
@@ -3859,7 +3869,7 @@ namespace System
         public static System.TimeZoneInfo CreateCustomTimeZone(string id, System.TimeSpan baseUtcOffset, string? displayName, string? standardDisplayName, string? daylightDisplayName, System.TimeZoneInfo.AdjustmentRule[]? adjustmentRules) { throw null; }
         public static System.TimeZoneInfo CreateCustomTimeZone(string id, System.TimeSpan baseUtcOffset, string? displayName, string? standardDisplayName, string? daylightDisplayName, System.TimeZoneInfo.AdjustmentRule[]? adjustmentRules, bool disableDaylightSavingTime) { throw null; }
         public override bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? obj) { throw null; }
-        public bool Equals(System.TimeZoneInfo? other) { throw null; }
+        public bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] System.TimeZoneInfo? other) { throw null; }
         public static System.TimeZoneInfo FindSystemTimeZoneById(string id) { throw null; }
         public static System.TimeZoneInfo FromSerializedString(string source) { throw null; }
         public System.TimeZoneInfo.AdjustmentRule[] GetAdjustmentRules() { throw null; }
@@ -4027,7 +4037,7 @@ namespace System
         public override bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? obj) { throw null; }
         public override int GetHashCode() { throw null; }
         int System.Collections.IStructuralComparable.CompareTo(object? other, System.Collections.IComparer comparer) { throw null; }
-        bool System.Collections.IStructuralEquatable.Equals(object? other, System.Collections.IEqualityComparer comparer) { throw null; }
+        bool System.Collections.IStructuralEquatable.Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? other, System.Collections.IEqualityComparer comparer) { throw null; }
         int System.Collections.IStructuralEquatable.GetHashCode(System.Collections.IEqualityComparer comparer) { throw null; }
         int System.IComparable.CompareTo(object? obj) { throw null; }
         public override string ToString() { throw null; }
@@ -4042,7 +4052,7 @@ namespace System
         public override bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? obj) { throw null; }
         public override int GetHashCode() { throw null; }
         int System.Collections.IStructuralComparable.CompareTo(object? other, System.Collections.IComparer comparer) { throw null; }
-        bool System.Collections.IStructuralEquatable.Equals(object? other, System.Collections.IEqualityComparer comparer) { throw null; }
+        bool System.Collections.IStructuralEquatable.Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? other, System.Collections.IEqualityComparer comparer) { throw null; }
         int System.Collections.IStructuralEquatable.GetHashCode(System.Collections.IEqualityComparer comparer) { throw null; }
         int System.IComparable.CompareTo(object? obj) { throw null; }
         public override string ToString() { throw null; }
@@ -4058,7 +4068,7 @@ namespace System
         public override bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? obj) { throw null; }
         public override int GetHashCode() { throw null; }
         int System.Collections.IStructuralComparable.CompareTo(object? other, System.Collections.IComparer comparer) { throw null; }
-        bool System.Collections.IStructuralEquatable.Equals(object? other, System.Collections.IEqualityComparer comparer) { throw null; }
+        bool System.Collections.IStructuralEquatable.Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? other, System.Collections.IEqualityComparer comparer) { throw null; }
         int System.Collections.IStructuralEquatable.GetHashCode(System.Collections.IEqualityComparer comparer) { throw null; }
         int System.IComparable.CompareTo(object? obj) { throw null; }
         public override string ToString() { throw null; }
@@ -4075,7 +4085,7 @@ namespace System
         public override bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? obj) { throw null; }
         public override int GetHashCode() { throw null; }
         int System.Collections.IStructuralComparable.CompareTo(object? other, System.Collections.IComparer comparer) { throw null; }
-        bool System.Collections.IStructuralEquatable.Equals(object? other, System.Collections.IEqualityComparer comparer) { throw null; }
+        bool System.Collections.IStructuralEquatable.Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? other, System.Collections.IEqualityComparer comparer) { throw null; }
         int System.Collections.IStructuralEquatable.GetHashCode(System.Collections.IEqualityComparer comparer) { throw null; }
         int System.IComparable.CompareTo(object? obj) { throw null; }
         public override string ToString() { throw null; }
@@ -4093,7 +4103,7 @@ namespace System
         public override bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? obj) { throw null; }
         public override int GetHashCode() { throw null; }
         int System.Collections.IStructuralComparable.CompareTo(object? other, System.Collections.IComparer comparer) { throw null; }
-        bool System.Collections.IStructuralEquatable.Equals(object? other, System.Collections.IEqualityComparer comparer) { throw null; }
+        bool System.Collections.IStructuralEquatable.Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? other, System.Collections.IEqualityComparer comparer) { throw null; }
         int System.Collections.IStructuralEquatable.GetHashCode(System.Collections.IEqualityComparer comparer) { throw null; }
         int System.IComparable.CompareTo(object? obj) { throw null; }
         public override string ToString() { throw null; }
@@ -4112,7 +4122,7 @@ namespace System
         public override bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? obj) { throw null; }
         public override int GetHashCode() { throw null; }
         int System.Collections.IStructuralComparable.CompareTo(object? other, System.Collections.IComparer comparer) { throw null; }
-        bool System.Collections.IStructuralEquatable.Equals(object? other, System.Collections.IEqualityComparer comparer) { throw null; }
+        bool System.Collections.IStructuralEquatable.Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? other, System.Collections.IEqualityComparer comparer) { throw null; }
         int System.Collections.IStructuralEquatable.GetHashCode(System.Collections.IEqualityComparer comparer) { throw null; }
         int System.IComparable.CompareTo(object? obj) { throw null; }
         public override string ToString() { throw null; }
@@ -4132,7 +4142,7 @@ namespace System
         public override bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? obj) { throw null; }
         public override int GetHashCode() { throw null; }
         int System.Collections.IStructuralComparable.CompareTo(object? other, System.Collections.IComparer comparer) { throw null; }
-        bool System.Collections.IStructuralEquatable.Equals(object? other, System.Collections.IEqualityComparer comparer) { throw null; }
+        bool System.Collections.IStructuralEquatable.Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? other, System.Collections.IEqualityComparer comparer) { throw null; }
         int System.Collections.IStructuralEquatable.GetHashCode(System.Collections.IEqualityComparer comparer) { throw null; }
         int System.IComparable.CompareTo(object? obj) { throw null; }
         public override string ToString() { throw null; }
@@ -4153,7 +4163,7 @@ namespace System
         public override bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? obj) { throw null; }
         public override int GetHashCode() { throw null; }
         int System.Collections.IStructuralComparable.CompareTo(object? other, System.Collections.IComparer comparer) { throw null; }
-        bool System.Collections.IStructuralEquatable.Equals(object? other, System.Collections.IEqualityComparer comparer) { throw null; }
+        bool System.Collections.IStructuralEquatable.Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? other, System.Collections.IEqualityComparer comparer) { throw null; }
         int System.Collections.IStructuralEquatable.GetHashCode(System.Collections.IEqualityComparer comparer) { throw null; }
         int System.IComparable.CompareTo(object? obj) { throw null; }
         public override string ToString() { throw null; }
@@ -4289,13 +4299,13 @@ namespace System
         public abstract System.Type[] GetInterfaces();
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
         public System.Reflection.MemberInfo[] GetMember(string name) { throw null; }
-        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
+        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicProperties | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
         public virtual System.Reflection.MemberInfo[] GetMember(string name, System.Reflection.BindingFlags bindingAttr) { throw null; }
-        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
+        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicProperties | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
         public virtual System.Reflection.MemberInfo[] GetMember(string name, System.Reflection.MemberTypes type, System.Reflection.BindingFlags bindingAttr) { throw null; }
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
         public System.Reflection.MemberInfo[] GetMembers() { throw null; }
-        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
+        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicProperties | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
         public abstract System.Reflection.MemberInfo[] GetMembers(System.Reflection.BindingFlags bindingAttr);
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods)]
         public System.Reflection.MethodInfo? GetMethod(string name) { throw null; }
@@ -5052,7 +5062,7 @@ namespace System
     public abstract partial class ValueType
     {
         protected ValueType() { }
-        public override bool Equals(object? obj) { throw null; }
+        public override bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? obj) { throw null; }
         public override int GetHashCode() { throw null; }
         public override string? ToString() { throw null; }
     }
@@ -5073,7 +5083,7 @@ namespace System
         public int CompareTo(object? version) { throw null; }
         public int CompareTo(System.Version? value) { throw null; }
         public override bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? obj) { throw null; }
-        public bool Equals(System.Version? obj) { throw null; }
+        public bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] System.Version? obj) { throw null; }
         public override int GetHashCode() { throw null; }
         public static bool operator ==(System.Version? v1, System.Version? v2) { throw null; }
         public static bool operator >(System.Version? v1, System.Version? v2) { throw null; }
@@ -5643,7 +5653,8 @@ namespace System.ComponentModel
         public DefaultValueAttribute(sbyte value) { }
         public DefaultValueAttribute(float value) { }
         public DefaultValueAttribute(string? value) { }
-        public DefaultValueAttribute(System.Type type, string? value) { }
+        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode("Generic TypeConverters may require the generic types to be annotated. For example, NullableConverter requires the underlying type to be DynamicallyAccessedMembers All.")]
+        public DefaultValueAttribute([System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)] System.Type type, string? value) { }
         [System.CLSCompliantAttribute(false)]
         public DefaultValueAttribute(ushort value) { }
         [System.CLSCompliantAttribute(false)]
@@ -5903,7 +5914,7 @@ namespace System.Diagnostics.CodeAnalysis
         public DoesNotReturnIfAttribute(bool parameterValue) { }
         public bool ParameterValue { get { throw null; } }
     }
-    [System.AttributeUsageAttribute(System.AttributeTargets.Field | System.AttributeTargets.GenericParameter | System.AttributeTargets.Method | System.AttributeTargets.Parameter | System.AttributeTargets.Property | System.AttributeTargets.ReturnValue, Inherited=false)]
+    [System.AttributeUsageAttribute(System.AttributeTargets.Field | System.AttributeTargets.GenericParameter | System.AttributeTargets.Method | System.AttributeTargets.Parameter | System.AttributeTargets.Property | System.AttributeTargets.ReturnValue | AttributeTargets.Class | AttributeTargets.Interface | AttributeTargets.Struct, Inherited=false)]
     public sealed partial class DynamicallyAccessedMembersAttribute : System.Attribute
     {
         public DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes memberTypes) { }
@@ -6724,7 +6735,7 @@ namespace System.Globalization
         public SortVersion(int fullVersion, System.Guid sortId) { }
         public int FullVersion { get { throw null; } }
         public System.Guid SortId { get { throw null; } }
-        public bool Equals(System.Globalization.SortVersion? other) { throw null; }
+        public bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] System.Globalization.SortVersion? other) { throw null; }
         public override bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? obj) { throw null; }
         public override int GetHashCode() { throw null; }
         public static bool operator ==(System.Globalization.SortVersion? left, System.Globalization.SortVersion? right) { throw null; }
@@ -8293,9 +8304,9 @@ namespace System.Reflection
         System.Reflection.FieldInfo? GetField(string name, System.Reflection.BindingFlags bindingAttr);
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields)]
         System.Reflection.FieldInfo[] GetFields(System.Reflection.BindingFlags bindingAttr);
-        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
+        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicProperties | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
         System.Reflection.MemberInfo[] GetMember(string name, System.Reflection.BindingFlags bindingAttr);
-        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
+        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicProperties | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
         System.Reflection.MemberInfo[] GetMembers(System.Reflection.BindingFlags bindingAttr);
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods)]
         System.Reflection.MethodInfo? GetMethod(string name, System.Reflection.BindingFlags bindingAttr);
@@ -8869,9 +8880,9 @@ namespace System.Reflection
         public override System.Type? GetInterface(string name, bool ignoreCase) { throw null; }
         public override System.Reflection.InterfaceMapping GetInterfaceMap(System.Type interfaceType) { throw null; }
         public override System.Type[] GetInterfaces() { throw null; }
-        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
+        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicProperties | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
         public override System.Reflection.MemberInfo[] GetMember(string name, System.Reflection.MemberTypes type, System.Reflection.BindingFlags bindingAttr) { throw null; }
-        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
+        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicProperties | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
         public override System.Reflection.MemberInfo[] GetMembers(System.Reflection.BindingFlags bindingAttr) { throw null; }
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods)]
         protected override System.Reflection.MethodInfo? GetMethodImpl(string name, System.Reflection.BindingFlags bindingAttr, System.Reflection.Binder? binder, System.Reflection.CallingConventions callConvention, System.Type[]? types, System.Reflection.ParameterModifier[]? modifiers) { throw null; }
@@ -8968,14 +8979,14 @@ namespace System.Resources
         protected System.Reflection.Assembly? MainAssembly;
         protected ResourceManager() { }
         public ResourceManager(string baseName, System.Reflection.Assembly assembly) { }
-        public ResourceManager(string baseName, System.Reflection.Assembly assembly, System.Type? usingResourceSet) { }
+        public ResourceManager(string baseName, System.Reflection.Assembly assembly, [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicConstructors)] System.Type? usingResourceSet) { }
         public ResourceManager(System.Type resourceSource) { }
         public virtual string BaseName { get { throw null; } }
         protected System.Resources.UltimateResourceFallbackLocation FallbackLocation { get { throw null; } set { } }
         public virtual bool IgnoreCase { get { throw null; } set { } }
-        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicConstructors)]
+        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicConstructors)]
         public virtual System.Type ResourceSetType { get { throw null; } }
-        public static System.Resources.ResourceManager CreateFileBasedResourceManager(string baseName, string resourceDir, System.Type? usingResourceSet) { throw null; }
+        public static System.Resources.ResourceManager CreateFileBasedResourceManager(string baseName, string resourceDir, [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicConstructors)] System.Type? usingResourceSet) { throw null; }
         protected static System.Globalization.CultureInfo GetNeutralResourcesLanguage(System.Reflection.Assembly a) { throw null; }
         public virtual object? GetObject(string name) { throw null; }
         public virtual object? GetObject(string name, System.Globalization.CultureInfo? culture) { throw null; }
@@ -9105,7 +9116,7 @@ namespace System.Runtime.CompilerServices
     {
         public AsyncIteratorStateMachineAttribute(System.Type stateMachineType) : base (default(System.Type)) { }
     }
-    [System.AttributeUsageAttribute(System.AttributeTargets.Class | System.AttributeTargets.Delegate | System.AttributeTargets.Enum | System.AttributeTargets.Interface | System.AttributeTargets.Struct, Inherited=false, AllowMultiple=false)]
+    [System.AttributeUsageAttribute(System.AttributeTargets.Class | System.AttributeTargets.Delegate | System.AttributeTargets.Enum | System.AttributeTargets.Interface | System.AttributeTargets.Method | System.AttributeTargets.Struct, Inherited=false, AllowMultiple=false)]
     public sealed partial class AsyncMethodBuilderAttribute : System.Attribute
     {
         public AsyncMethodBuilderAttribute(System.Type builderType) { }
@@ -9189,6 +9200,10 @@ namespace System.Runtime.CompilerServices
     {
         public CallConvFastcall() { }
     }
+    public partial class CallConvMemberFunction
+    {
+        public CallConvMemberFunction() { }
+    }
     public partial class CallConvStdcall
     {
         public CallConvStdcall() { }
@@ -9244,7 +9259,7 @@ namespace System.Runtime.CompilerServices
     {
         public CompilerGlobalScopeAttribute() { }
     }
-    public sealed partial class ConditionalWeakTable<TKey, TValue> : System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<TKey, TValue>>, System.Collections.IEnumerable where TKey : class where TValue : class?
+    public sealed partial class ConditionalWeakTable<TKey, [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]TValue> : System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<TKey, TValue>>, System.Collections.IEnumerable where TKey : class where TValue : class?
     {
         public ConditionalWeakTable() { }
         public void Add(TKey key, TValue value) { }
@@ -9373,6 +9388,7 @@ namespace System.Runtime.CompilerServices
         public string DependentAssembly { get { throw null; } }
         public System.Runtime.CompilerServices.LoadHint LoadHint { get { throw null; } }
     }
+    [System.ObsoleteAttribute("DisablePrivateReflectionAttribute has no effect in .NET 6.0+ applications.", DiagnosticId = "SYSLIB0015", UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
     [System.AttributeUsageAttribute(System.AttributeTargets.Assembly, AllowMultiple=false, Inherited=false)]
     public sealed partial class DisablePrivateReflectionAttribute : System.Attribute
     {
@@ -9509,6 +9525,33 @@ namespace System.Runtime.CompilerServices
     public sealed partial class ModuleInitializerAttribute : System.Attribute
     {
         public ModuleInitializerAttribute() { }
+    }
+    public partial struct PoolingAsyncValueTaskMethodBuilder
+    {
+        private object _dummy;
+        private int _dummyPrimitive;
+        public System.Threading.Tasks.ValueTask Task { get { throw null; } }
+        public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine) where TAwaiter : System.Runtime.CompilerServices.INotifyCompletion where TStateMachine : System.Runtime.CompilerServices.IAsyncStateMachine { }
+        public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine) where TAwaiter : System.Runtime.CompilerServices.ICriticalNotifyCompletion where TStateMachine : System.Runtime.CompilerServices.IAsyncStateMachine { }
+        public static System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder Create() { throw null; }
+        public void SetException(System.Exception exception) { }
+        public void SetResult() { }
+        public void SetStateMachine(System.Runtime.CompilerServices.IAsyncStateMachine stateMachine) { }
+        public void Start<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : System.Runtime.CompilerServices.IAsyncStateMachine { }
+    }
+    public partial struct PoolingAsyncValueTaskMethodBuilder<TResult>
+    {
+        private TResult _result;
+        private object _dummy;
+        private int _dummyPrimitive;
+        public System.Threading.Tasks.ValueTask<TResult> Task { get { throw null; } }
+        public void AwaitOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine) where TAwaiter : System.Runtime.CompilerServices.INotifyCompletion where TStateMachine : System.Runtime.CompilerServices.IAsyncStateMachine { }
+        public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(ref TAwaiter awaiter, ref TStateMachine stateMachine) where TAwaiter : System.Runtime.CompilerServices.ICriticalNotifyCompletion where TStateMachine : System.Runtime.CompilerServices.IAsyncStateMachine { }
+        public static System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder<TResult> Create() { throw null; }
+        public void SetException(System.Exception exception) { }
+        public void SetResult(TResult result) { }
+        public void SetStateMachine(System.Runtime.CompilerServices.IAsyncStateMachine stateMachine) { }
+        public void Start<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : System.Runtime.CompilerServices.IAsyncStateMachine { }
     }
     [System.AttributeUsageAttribute(System.AttributeTargets.Method, AllowMultiple=false, Inherited=false)]
     public sealed partial class PreserveBaseOverridesAttribute : System.Attribute
@@ -9739,6 +9782,7 @@ namespace System.Runtime.ExceptionServices
         public System.Exception SourceException { get { throw null; } }
         public static System.Runtime.ExceptionServices.ExceptionDispatchInfo Capture(System.Exception source) { throw null; }
         public static System.Exception SetCurrentStackTrace(System.Exception source) { throw null; }
+        public static System.Exception SetRemoteStackTrace(System.Exception source, string stackTrace) { throw null; }
         [System.Diagnostics.CodeAnalysis.DoesNotReturnAttribute]
         public void Throw() => throw null;
         [System.Diagnostics.CodeAnalysis.DoesNotReturnAttribute]
@@ -10112,13 +10156,13 @@ namespace System.Runtime.Versioning
         public string Profile { get { throw null; } }
         public System.Version Version { get { throw null; } }
         public override bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] object? obj) { throw null; }
-        public bool Equals(System.Runtime.Versioning.FrameworkName? other) { throw null; }
+        public bool Equals([System.Diagnostics.CodeAnalysis.NotNullWhenAttribute(true)] System.Runtime.Versioning.FrameworkName? other) { throw null; }
         public override int GetHashCode() { throw null; }
         public static bool operator ==(System.Runtime.Versioning.FrameworkName? left, System.Runtime.Versioning.FrameworkName? right) { throw null; }
         public static bool operator !=(System.Runtime.Versioning.FrameworkName? left, System.Runtime.Versioning.FrameworkName? right) { throw null; }
         public override string ToString() { throw null; }
     }
-    [System.AttributeUsageAttribute(System.AttributeTargets.Assembly | System.AttributeTargets.Class | System.AttributeTargets.Constructor | System.AttributeTargets.Enum | System.AttributeTargets.Event | System.AttributeTargets.Field | System.AttributeTargets.Method | System.AttributeTargets.Module | System.AttributeTargets.Property | System.AttributeTargets.Struct, AllowMultiple = true, Inherited = false)]
+    [System.AttributeUsageAttribute(System.AttributeTargets.Assembly | System.AttributeTargets.Class | System.AttributeTargets.Constructor | System.AttributeTargets.Enum | System.AttributeTargets.Event | System.AttributeTargets.Field | System.AttributeTargets.Interface | System.AttributeTargets.Method | System.AttributeTargets.Module | System.AttributeTargets.Property | System.AttributeTargets.Struct, AllowMultiple = true, Inherited = false)]
     public sealed class SupportedOSPlatformAttribute : System.Runtime.Versioning.OSPlatformAttribute
     {
         public SupportedOSPlatformAttribute(string platformName) : base(platformName) { }
@@ -10128,7 +10172,7 @@ namespace System.Runtime.Versioning
         private protected OSPlatformAttribute(string platformName) { }
         public string PlatformName { get; }
     }
-    [System.AttributeUsageAttribute(System.AttributeTargets.Assembly | System.AttributeTargets.Class | System.AttributeTargets.Constructor | System.AttributeTargets.Enum | System.AttributeTargets.Event | System.AttributeTargets.Field | System.AttributeTargets.Method | System.AttributeTargets.Module | System.AttributeTargets.Property | System.AttributeTargets.Struct, AllowMultiple = true, Inherited = false)]
+    [System.AttributeUsageAttribute(System.AttributeTargets.Assembly | System.AttributeTargets.Class | System.AttributeTargets.Constructor | System.AttributeTargets.Enum | System.AttributeTargets.Event | System.AttributeTargets.Field | System.AttributeTargets.Interface | System.AttributeTargets.Method | System.AttributeTargets.Module | System.AttributeTargets.Property | System.AttributeTargets.Struct, AllowMultiple = true, Inherited = false)]
     public sealed class UnsupportedOSPlatformAttribute : System.Runtime.Versioning.OSPlatformAttribute
     {
         public UnsupportedOSPlatformAttribute(string platformName) : base(platformName) { }
@@ -11006,6 +11050,7 @@ namespace System.Threading
         public static System.Threading.CancellationTokenSource CreateLinkedTokenSource(params System.Threading.CancellationToken[] tokens) { throw null; }
         public void Dispose() { }
         protected virtual void Dispose(bool disposing) { }
+        public bool TryReset() { throw null; }
     }
     public enum LazyThreadSafetyMode
     {
@@ -11176,6 +11221,9 @@ namespace System.Threading.Tasks
         public static int WaitAny(System.Threading.Tasks.Task[] tasks, int millisecondsTimeout, System.Threading.CancellationToken cancellationToken) { throw null; }
         public static int WaitAny(System.Threading.Tasks.Task[] tasks, System.Threading.CancellationToken cancellationToken) { throw null; }
         public static int WaitAny(System.Threading.Tasks.Task[] tasks, System.TimeSpan timeout) { throw null; }
+        public Task WaitAsync(System.TimeSpan timeout) { throw null; }
+        public Task WaitAsync(System.Threading.CancellationToken cancellationToken) { throw null; }
+        public Task WaitAsync(System.TimeSpan timeout, System.Threading.CancellationToken cancellationToken) { throw null; }
         public static System.Threading.Tasks.Task WhenAll(System.Collections.Generic.IEnumerable<System.Threading.Tasks.Task> tasks) { throw null; }
         public static System.Threading.Tasks.Task WhenAll(params System.Threading.Tasks.Task[] tasks) { throw null; }
         public static System.Threading.Tasks.Task<TResult[]> WhenAll<TResult>(System.Collections.Generic.IEnumerable<System.Threading.Tasks.Task<TResult>> tasks) { throw null; }
@@ -11472,6 +11520,9 @@ namespace System.Threading.Tasks
         public System.Threading.Tasks.Task<TNewResult> ContinueWith<TNewResult>(System.Func<System.Threading.Tasks.Task<TResult>, TNewResult> continuationFunction, System.Threading.Tasks.TaskContinuationOptions continuationOptions) { throw null; }
         public System.Threading.Tasks.Task<TNewResult> ContinueWith<TNewResult>(System.Func<System.Threading.Tasks.Task<TResult>, TNewResult> continuationFunction, System.Threading.Tasks.TaskScheduler scheduler) { throw null; }
         public new System.Runtime.CompilerServices.TaskAwaiter<TResult> GetAwaiter() { throw null; }
+        public new System.Threading.Tasks.Task<TResult> WaitAsync(System.TimeSpan timeout) { throw null; }
+        public new System.Threading.Tasks.Task<TResult> WaitAsync(System.Threading.CancellationToken cancellationToken) { throw null; }
+        public new System.Threading.Tasks.Task<TResult> WaitAsync(System.TimeSpan timeout, System.Threading.CancellationToken cancellationToken) { throw null; }
     }
     public partial class UnobservedTaskExceptionEventArgs : System.EventArgs
     {

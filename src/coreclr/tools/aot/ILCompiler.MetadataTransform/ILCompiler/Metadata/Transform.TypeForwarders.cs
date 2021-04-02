@@ -22,6 +22,11 @@ namespace ILCompiler.Metadata
         {
             foreach (var exportedTypeHandle in module.MetadataReader.ExportedTypes)
             {
+                if (!_policy.GeneratesMetadata(module, exportedTypeHandle))
+                {
+                    continue;
+                }
+
                 Ecma.ExportedType exportedType = module.MetadataReader.GetExportedType(exportedTypeHandle);
                 if (exportedType.IsForwarder || exportedType.Implementation.Kind == Ecma.HandleKind.ExportedType)
                 {

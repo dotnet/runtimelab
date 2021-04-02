@@ -219,6 +219,7 @@ struct _MonoAssembly {
 	MonoAssemblyName aname;
 	MonoImage *image;
 	GSList *friend_assembly_names; /* Computed by mono_assembly_load_friends () */
+	GSList *ignores_checks_assembly_names; /* Computed by mono_assembly_load_friends () */
 	guint8 friend_assembly_names_inited;
 	guint8 dynamic;
 	MonoAssemblyContext context;
@@ -261,7 +262,6 @@ typedef struct {
 
 	GHashTable *native_func_wrapper_aot_cache;
 	GHashTable *native_func_wrapper_indirect_cache; /* Indexed by MonoMethodSignature. Protected by the marshal lock */
-	GHashTable *remoting_invoke_cache;
 	GHashTable *synchronized_cache;
 	GHashTable *unbox_wrapper_cache;
 	GHashTable *cominterop_invoke_cache;
@@ -276,7 +276,8 @@ typedef struct {
 
 struct _MonoTableInfo {
 	const char *base;
-	guint       rows     : 24;
+	guint       rows_     : 24;	/* don't access directly, use table_info_get_rows */
+
 	guint       row_size : 8;
 
 	/*
@@ -504,17 +505,7 @@ struct _MonoImage {
 	GHashTable *wrapper_param_names;
 	GHashTable *array_accessor_cache;
 
-	/*
-	 * indexed by MonoClass pointers
-	 */
-	GHashTable *ldfld_wrapper_cache;
-	GHashTable *ldflda_wrapper_cache;
-	GHashTable *stfld_wrapper_cache;
-	GHashTable *isinst_cache;
-
 	GHashTable *icall_wrapper_cache;
-	GHashTable *castclass_cache;
-	GHashTable *proxy_isinst_cache;
 	GHashTable *rgctx_template_hash; /* LOCKING: templates lock */
 
 	/* Contains rarely used fields of runtime structures belonging to this image */
@@ -685,17 +676,9 @@ struct _MonoDynamicImage {
 	GHashTable *blob_cache;
 	GHashTable *standalonesig_cache;
 	GList *array_methods;
-	GPtrArray *gen_params;
-	MonoGHashTable *token_fixups;
-	GHashTable *method_to_table_idx;
-	GHashTable *field_to_table_idx;
 	GHashTable *method_aux_hash;
 	GHashTable *vararg_aux_hash;
 	MonoGHashTable *generic_def_objects;
-	/*
-	 * Maps final token values to the object they describe.
-	 */
-	MonoGHashTable *remapped_tokens;
 	gboolean initial_image;
 	guint32 pe_kind, machine;
 	char *strong_name;
@@ -819,6 +802,12 @@ assembly_is_dynamic (MonoAssembly *assembly)
 #endif
 }
 
+static inline int
+table_info_get_rows (const MonoTableInfo *table)
+{
+	return table->rows_;
+}
+
 /* for use with allocated memory blocks (assumes alignment is to 8 bytes) */
 guint mono_aligned_addr_hash (gconstpointer ptr);
 
@@ -911,7 +900,7 @@ static inline void
 mono_image_effective_table (const MonoTableInfo **t, int *idx)
 {
 	if (G_UNLIKELY (mono_metadata_has_updates ())) {
-		if (G_UNLIKELY (*idx >= (*t)->rows)) {
+		if (G_UNLIKELY (*idx >= table_info_get_rows ((*t)))) {
 			mono_image_effective_table_slow (t, idx);
 		}
 	}
@@ -921,7 +910,7 @@ int
 mono_image_relative_delta_index (MonoImage *image_dmeta, int token);
 
 void
-mono_image_load_enc_delta (MonoDomain *domain, MonoImage *base_image, gconstpointer dmeta, uint32_t dmeta_len, gconstpointer dil, uint32_t dil_len, MonoError *error);
+mono_image_load_enc_delta (MonoImage *base_image, gconstpointer dmeta, uint32_t dmeta_len, gconstpointer dil, uint32_t dil_len, MonoError *error);
 #endif /* ENABLE_METADATA_UPDATE */
 
 gpointer
@@ -977,25 +966,23 @@ mono_metadata_clean_for_image (MonoImage *image);
 void
 mono_metadata_clean_generic_classes_for_image (MonoImage *image);
 
-MONO_API void
-mono_metadata_cleanup (void);
-
 #ifndef ENABLE_METADATA_UPDATE
 static inline gboolean
 mono_metadata_table_bounds_check (MonoImage *image, int table_index, int token_index)
 {
 	/* token_index is 1-based. TRUE means the token is out of bounds */
-	return token_index > image->tables [table_index].rows;
+	return token_index > image->tables [table_index].rows_;
 }
 #else
 gboolean
 mono_metadata_table_bounds_check_slow (MonoImage *image, int table_index, int token_index);
 
+/* token_index is 1-based */
 static inline gboolean
 mono_metadata_table_bounds_check (MonoImage *image, int table_index, int token_index)
 {
 	/* returns true if given index is not in bounds with provided table/index pair */
-	if (G_LIKELY (token_index <= image->tables [table_index].rows))
+	if (G_LIKELY (token_index <= table_info_get_rows (&image->tables [table_index])))
 		return FALSE;
 	return mono_metadata_table_bounds_check_slow (image, table_index, token_index);
 }
@@ -1089,8 +1076,6 @@ void mono_assembly_close_finish (MonoAssembly *assembly);
 gboolean mono_public_tokens_are_equal (const unsigned char *pubt1, const unsigned char *pubt2);
 
 void mono_config_parse_publisher_policy (const char *filename, MonoAssemblyBindingInfo *binding_info);
-void mono_config_parse_assembly_bindings (const char *filename, int major, int minor, void *user_data,
-					  void (*infocb)(MonoAssemblyBindingInfo *info, void *user_data));
 
 gboolean
 mono_assembly_name_parse_full 		     (const char	   *name,
@@ -1101,7 +1086,6 @@ mono_assembly_name_parse_full 		     (const char	   *name,
 
 gboolean
 mono_assembly_fill_assembly_name_full (MonoImage *image, MonoAssemblyName *aname, gboolean copyBlobs);
-
 
 MONO_API guint32 mono_metadata_get_generic_param_row (MonoImage *image, guint32 token, guint32 *owner);
 
@@ -1183,7 +1167,6 @@ MonoMethod *mono_get_method_constrained_checked (MonoImage *image, guint32 token
 
 void mono_type_set_alignment (MonoTypeEnum type, int align);
 
-MonoAotCacheConfig *mono_get_aot_cache_config (void);
 MonoType *
 mono_type_create_from_typespec_checked (MonoImage *image, guint32 type_spec, MonoError *error);
 

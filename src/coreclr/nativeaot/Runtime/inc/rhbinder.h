@@ -596,23 +596,6 @@ struct BlobHeader
     uint32_t m_size;   // Size of the individual blob excluding this header (DWORD aligned)
 };
 
-// Structure used in the runtime initialization of deferred static class constructors. Deferred here means
-// executed during normal code execution just prior to a static field on the type being accessed (as opposed
-// to eager cctors, which are run at module load time). This is the fixed portion of the context structure,
-// class libraries can add their own fields to the end.
-struct StaticClassConstructionContext
-{
-    // Pointer to the code for the static class constructor method. This is initialized by the
-    // binder/runtime.
-    TgtPTR_Void m_cctorMethodAddress;
-
-    // Initialization state of the class. This is initialized to 0. Every time managed code checks the
-    // cctor state the runtime will call the classlibrary's CheckStaticClassConstruction with this context
-    // structure unless initialized == 1. This check is specific to allow the classlibrary to store more
-    // than a binary state for each cctor if it so desires.
-    int32_t       m_initialized;
-};
-
 #ifdef FEATURE_CUSTOM_IMPORTS
 struct CustomImportDescriptor
 {

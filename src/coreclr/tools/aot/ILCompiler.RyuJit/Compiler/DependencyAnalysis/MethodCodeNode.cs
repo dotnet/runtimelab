@@ -1,8 +1,12 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+
+using Internal.IL;
 using Internal.Text;
 using Internal.TypeSystem;
 
@@ -21,6 +25,8 @@ namespace ILCompiler.DependencyAnalysis
         private DebugEHClauseInfo[] _debugEHClauseInfos;
         private DependencyList _nonRelocationDependencies;
         private bool _isFoldable;
+        private MethodDebugInformation _debugInfo;
+        private TypeDesc[] _localTypes;
 
         public MethodCodeNode(MethodDesc method)
         {
@@ -137,6 +143,8 @@ namespace ILCompiler.DependencyAnalysis
         public DebugVarInfo[] DebugVarInfos => _debugVarInfos;
         public DebugEHClauseInfo[] DebugEHClauseInfos => _debugEHClauseInfos;
 
+        public bool IsStateMachineMoveNextMethod => _debugInfo.IsStateMachineMoveNextMethod;
+
         public void InitializeDebugLocInfos(DebugLocInfo[] debugLocInfos)
         {
             Debug.Assert(_debugLocInfos == null);
@@ -149,15 +157,129 @@ namespace ILCompiler.DependencyAnalysis
             _debugVarInfos = debugVarInfos;
         }
 
+        public void InitializeDebugInfo(MethodDebugInformation debugInfo)
+        {
+            Debug.Assert(_debugInfo == null);
+            _debugInfo = debugInfo;
+        }
+
+        public void InitializeLocalTypes(TypeDesc[] localTypes)
+        {
+            Debug.Assert(_localTypes == null);
+            _localTypes = localTypes;
+        }
+
         public void InitializeDebugEHClauseInfos(DebugEHClauseInfo[] debugEHClauseInfos)
         {
             Debug.Assert(_debugEHClauseInfos == null);
             _debugEHClauseInfos = debugEHClauseInfos;
         }
 
+        public IEnumerable<DebugVarInfoMetadata> GetDebugVars()
+        {
+            MethodSignature sig = _method.Signature;
+            int offset = sig.IsStatic ? 0 : 1;
+
+            var parameterNames = new string[sig.Length + offset];
+            int i = 0;
+            foreach (var paramName in _debugInfo.GetParameterNames())
+            {
+                parameterNames[i] = paramName;
+                i++;
+            }
+
+            var localNames = new string[_localTypes.Length];
+
+            foreach (var local in _debugInfo.GetLocalVariables())
+            {
+                if (!local.CompilerGenerated && local.Slot < localNames.Length)
+                    localNames[local.Slot] = local.Name;
+            }
+
+            foreach (var varInfo in _debugVarInfos)
+            {
+                if (varInfo.VarNumber < parameterNames.Length)
+                {
+                    // This is a parameter
+                    TypeDesc varType;
+                    if (!sig.IsStatic && varInfo.VarNumber == 0)
+                    {
+                        varType = _method.OwningType.IsValueType ?
+                            _method.OwningType.MakeByRefType() :
+                            _method.OwningType;
+                    }
+                    else
+                    {
+                        varType = _method.Signature[(int)varInfo.VarNumber - offset];
+                    }
+
+                    string name = parameterNames[varInfo.VarNumber];
+                    if (name == null)
+                        continue;
+
+                    yield return new DebugVarInfoMetadata(name, varType, isParameter: true, varInfo);
+                }
+                else
+                {
+                    // This is a local
+                    int localNumber = (int)varInfo.VarNumber - sig.Length - offset;
+                    string name = localNames[localNumber];
+                    if (name == null)
+                        continue;
+
+                    yield return new DebugVarInfoMetadata(name, _localTypes[localNumber], isParameter: false, varInfo);
+                }
+            }
+        }
+
         public void InitializeNonRelocationDependencies(DependencyList dependencies)
         {
             _nonRelocationDependencies = dependencies;
+        }
+
+        public IEnumerable<NativeSequencePoint> GetNativeSequencePoints()
+        {
+            var sequencePoints = new (string Document, int LineNumber)[_debugLocInfos.Length * 4 /* chosen empirically */];
+            try
+            {
+                foreach (var sequencePoint in _debugInfo.GetSequencePoints())
+                {
+                    int offset = sequencePoint.Offset;
+                    if (offset >= sequencePoints.Length)
+                    {
+                        int newLength = Math.Max(2 * sequencePoints.Length, sequencePoint.Offset + 1);
+                        Array.Resize(ref sequencePoints, newLength);
+                    }
+                    sequencePoints[offset] = (sequencePoint.Document, sequencePoint.LineNumber);
+                }
+            }
+            catch (BadImageFormatException)
+            {
+                // Roslyn had a bug where it was generating bad sequence points:
+                // https://github.com/dotnet/roslyn/issues/20118
+                // Do not crash the compiler.
+                yield break;
+            }
+
+            int previousNativeOffset = -1;
+            foreach (var nativeMapping in _debugLocInfos)
+            {
+                if (nativeMapping.NativeOffset == previousNativeOffset)
+                    continue;
+
+                if (nativeMapping.ILOffset < sequencePoints.Length)
+                {
+                    var sequencePoint = sequencePoints[nativeMapping.ILOffset];
+                    if (sequencePoint.Document != null)
+                    {
+                        yield return new NativeSequencePoint(
+                            nativeMapping.NativeOffset,
+                            sequencePoint.Document,
+                            sequencePoint.LineNumber);
+                        previousNativeOffset = nativeMapping.NativeOffset;
+                    }
+                }
+            }
         }
 
         public override int ClassCode => 788492407;
@@ -207,5 +329,14 @@ namespace ILCompiler.DependencyAnalysis
                 }
             }
         }
+    }
+
+    public readonly struct DebugLocInfo
+    {
+        public readonly int NativeOffset;
+        public readonly int ILOffset;
+
+        public DebugLocInfo(int nativeOffset, int ilOffset)
+            => (NativeOffset, ILOffset) = (nativeOffset, ilOffset);
     }
 }

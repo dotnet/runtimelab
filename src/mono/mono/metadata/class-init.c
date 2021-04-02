@@ -433,7 +433,8 @@ mono_class_create_from_typedef (MonoImage *image, guint32 type_token, MonoError 
 
 	error_init (error);
 
-	if (mono_metadata_token_table (type_token) != MONO_TABLE_TYPEDEF || tidx > tt->rows) {
+	/* FIXME: metadata-update - this function needs extensive work */
+	if (mono_metadata_token_table (type_token) != MONO_TABLE_TYPEDEF || tidx > table_info_get_rows (tt)) {
 		mono_error_set_bad_image (error, image, "Invalid typedef token %x", type_token);
 		return NULL;
 	}
@@ -620,19 +621,19 @@ mono_class_create_from_typedef (MonoImage *image, guint32 type_token, MonoError 
 	first_method_idx = cols [MONO_TYPEDEF_METHOD_LIST] - 1;
 	mono_class_set_first_method_idx (klass, first_method_idx);
 
-	if (tt->rows > tidx){		
+	if (table_info_get_rows (tt) > tidx){		
 		mono_metadata_decode_row (tt, tidx, cols_next, MONO_TYPEDEF_SIZE);
 		field_last  = cols_next [MONO_TYPEDEF_FIELD_LIST] - 1;
 		method_last = cols_next [MONO_TYPEDEF_METHOD_LIST] - 1;
 	} else {
-		field_last  = image->tables [MONO_TABLE_FIELD].rows;
-		method_last = image->tables [MONO_TABLE_METHOD].rows;
+		field_last  = table_info_get_rows (&image->tables [MONO_TABLE_FIELD]);
+		method_last = table_info_get_rows (&image->tables [MONO_TABLE_METHOD]);
 	}
 
 	if (cols [MONO_TYPEDEF_FIELD_LIST] && 
-	    cols [MONO_TYPEDEF_FIELD_LIST] <= image->tables [MONO_TABLE_FIELD].rows)
+	    cols [MONO_TYPEDEF_FIELD_LIST] <= table_info_get_rows (&image->tables [MONO_TABLE_FIELD]))
 		mono_class_set_field_count (klass, field_last - first_field_idx);
-	if (cols [MONO_TYPEDEF_METHOD_LIST] <= image->tables [MONO_TABLE_METHOD].rows)
+	if (cols [MONO_TYPEDEF_METHOD_LIST] <= table_info_get_rows (&image->tables [MONO_TABLE_METHOD]))
 		mono_class_set_method_count (klass, method_last - first_method_idx);
 
 	/* reserve space to store vector pointer in arrays */
@@ -858,7 +859,7 @@ mono_class_create_generic_inst (MonoGenericClass *gclass)
 	}
 
 	if (mono_is_corlib_image (gklass->image) &&
-		(!strcmp (gklass->name, "Vector`1") || !strcmp (gklass->name, "Vector128`1") || !strcmp (gklass->name, "Vector256`1"))) {
+		(!strcmp (gklass->name, "Vector`1") || !strcmp (gklass->name, "Vector64`1") || !strcmp (gklass->name, "Vector128`1") || !strcmp (gklass->name, "Vector256`1"))) {
 		MonoType *etype = gclass->context.class_inst->type_argv [0];
 		if (mono_type_is_primitive (etype) && etype->type != MONO_TYPE_CHAR && etype->type != MONO_TYPE_BOOLEAN)
 			klass->simd_type = 1;
@@ -2767,11 +2768,6 @@ mono_class_init_internal (MonoClass *klass)
 	 * information and write it to @klass inside a lock.
 	 */
 
-	if (mono_verifier_is_enabled_for_class (klass) && !mono_verifier_verify_class (klass)) {
-		mono_class_set_type_load_failure (klass, "%s", concat_two_strings_with_zero (klass->image, klass->name, klass->image->assembly_name));
-		goto leave;
-	}
-
 	MonoType *klass_byval_arg;
 	klass_byval_arg = m_class_get_byval_arg (klass);
 	if (klass_byval_arg->type == MONO_TYPE_ARRAY || klass_byval_arg->type == MONO_TYPE_SZARRAY) {
@@ -3046,24 +3042,12 @@ mono_class_setup_parent (MonoClass *klass, MonoClass *parent)
 			return;
 		}
 
-#ifndef DISABLE_REMOTING
-		klass->marshalbyref = parent->marshalbyref;
-		klass->contextbound  = parent->contextbound;
-#endif
-
 		klass->delegate  = parent->delegate;
 
 		if (MONO_CLASS_IS_IMPORT (klass) || mono_class_is_com_object (parent))
 			mono_class_set_is_com_object (klass);
 		
 		if (system_namespace) {
-#ifndef DISABLE_REMOTING
-			if (klass->name [0] == 'M' && !strcmp (klass->name, "MarshalByRefObject"))
-				klass->marshalbyref = 1;
-
-			if (klass->name [0] == 'C' && !strcmp (klass->name, "ContextBoundObject")) 
-				klass->contextbound  = 1;
-#endif
 			if (klass->name [0] == 'D' && !strcmp (klass->name, "Delegate")) 
 				klass->delegate  = 1;
 		}
@@ -3976,52 +3960,6 @@ mono_class_setup_nested_types (MonoClass *klass)
 }
 
 /**
- * mono_class_setup_runtime_info:
- * \param klass the class to setup
- * \param domain the domain of the \p vtable
- * \param vtable
- *
- * Store \p vtable in \c klass->runtime_info.
- *
- * Sets the following field in MonoClass:
- *   -   runtime_info
- *
- * LOCKING: domain lock and loaderlock must be held.
- */
-void
-mono_class_setup_runtime_info (MonoClass *klass, MonoDomain *domain, MonoVTable *vtable)
-{
-	MonoClassRuntimeInfo *old_info = m_class_get_runtime_info (klass);
-	if (old_info && old_info->max_domain >= domain->domain_id) {
-		/* someone already created a large enough runtime info */
-		old_info->domain_vtables [domain->domain_id] = vtable;
-	} else {
-		int new_size = domain->domain_id;
-		if (old_info)
-			new_size = MAX (new_size, old_info->max_domain);
-		new_size++;
-		/* make the new size a power of two */
-		int i = 2;
-		while (new_size > i)
-			i <<= 1;
-		new_size = i;
-		/* this is a bounded memory retention issue: may want to 
-		 * handle it differently when we'll have a rcu-like system.
-		 */
-		MonoClassRuntimeInfo *runtime_info = (MonoClassRuntimeInfo *)mono_image_alloc0 (m_class_get_image (klass), MONO_SIZEOF_CLASS_RUNTIME_INFO + new_size * sizeof (gpointer));
-		runtime_info->max_domain = new_size - 1;
-		/* copy the stuff from the older info */
-		if (old_info) {
-			memcpy (runtime_info->domain_vtables, old_info->domain_vtables, (old_info->max_domain + 1) * sizeof (gpointer));
-		}
-		runtime_info->domain_vtables [domain->domain_id] = vtable;
-		/* keep this last*/
-		mono_memory_barrier ();
-		klass->runtime_info = runtime_info;
-	}
-}
-
-/**
  * mono_class_create_array_fill_type:
  *
  * Returns a \c MonoClass that is used by SGen to fill out nursery fragments before a collection.
@@ -4040,6 +3978,12 @@ mono_class_create_array_fill_type (void)
 	aklass.klass.name = "array_filler_type";
 
 	return &aklass.klass;
+}
+
+void
+mono_class_set_runtime_vtable (MonoClass *klass, MonoVTable *vtable)
+{
+	klass->runtime_vtable = vtable;
 }
 
 /**
@@ -4075,21 +4019,4 @@ mono_classes_init (void)
 							MONO_COUNTER_GENERICS | MONO_COUNTER_INT, &inflated_classes_size);
 	mono_counters_register ("MonoClass size",
 							MONO_COUNTER_METADATA | MONO_COUNTER_INT, &classes_size);
-}
-
-/**
- * mono_classes_cleanup:
- *
- * Free the resources used by this module.
- */
-void
-mono_classes_cleanup (void)
-{
-	mono_native_tls_free (setup_fields_tls_id);
-	mono_native_tls_free (init_pending_tls_id);
-
-	if (global_interface_bitset)
-		mono_bitset_free (global_interface_bitset);
-	global_interface_bitset = NULL;
-	mono_os_mutex_destroy (&classes_mutex);
 }

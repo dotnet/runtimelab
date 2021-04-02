@@ -73,8 +73,6 @@ namespace ILCompiler
 
         private IReadOnlyList<string> _runtimeOptions = Array.Empty<string>();
 
-        private IReadOnlyList<string> _removedFeatures = Array.Empty<string>();
-
         private IReadOnlyList<string> _featureSwitches = Array.Empty<string>();
 
         private IReadOnlyList<string> _suppressedWarnings = Array.Empty<string>();
@@ -85,6 +83,8 @@ namespace ILCompiler
 
         private IReadOnlyList<string> _rootedAssemblies = Array.Empty<string>();
         private IReadOnlyList<string> _conditionallyRootedAssemblies = Array.Empty<string>();
+
+        public IReadOnlyList<string> _mibcFilePaths = Array.Empty<string>();
 
         private bool _help;
 
@@ -165,6 +165,7 @@ namespace ILCompiler
                 syntax.DefineOption("O", ref optimize, "Enable optimizations");
                 syntax.DefineOption("Os", ref optimizeSpace, "Enable optimizations, favor code space");
                 syntax.DefineOption("Ot", ref optimizeTime, "Enable optimizations, favor code speed");
+                syntax.DefineOptionList("m|mibc", ref _mibcFilePaths, "Mibc file(s) for profile guided optimization"); ;
                 syntax.DefineOption("g", ref _enableDebugInfo, "Emit debugging information");
                 syntax.DefineOption("nativelib", ref _nativeLib, "Compile as static or shared library");
                 syntax.DefineOption("exportsfile", ref _exportsFile, "File to write exported method definitions");
@@ -193,7 +194,6 @@ namespace ILCompiler
                 syntax.DefineOptionList("appcontextswitch", ref _appContextSwitches, "System.AppContext switches to set");
                 syntax.DefineOptionList("feature", ref _featureSwitches, "Feature switches to apply (format: 'Namespace.Name=[true|false]'");
                 syntax.DefineOptionList("runtimeopt", ref _runtimeOptions, "Runtime options to set");
-                syntax.DefineOptionList("removefeature", ref _removedFeatures, "Framework features to remove");
                 syntax.DefineOption("singlethreaded", ref _singleThreaded, "Run compilation on a single thread");
                 syntax.DefineOption("instructionset", ref _instructionSet, "Instruction set to allow or disallow");
                 syntax.DefineOption("preinitstatics", ref _preinitStatics, "Interpret static constructors at compile time if possible (implied by -O)");
@@ -548,8 +548,6 @@ namespace ILCompiler
                     compilationRoots.Add(new ExpectedIsaFeaturesRootProvider(instructionSetSupport));
                 }
 
-                if (_rdXmlFilePaths.Count > 0)
-                    Console.WriteLine("Warning: RD.XML processing will change before release (https://github.com/dotnet/corert/issues/5001)");
                 foreach (var rdXmlFilePath in _rdXmlFilePaths)
                 {
                     compilationRoots.Add(new RdXmlRootProvider(typeSystemContext, rdXmlFilePath));
@@ -590,27 +588,12 @@ namespace ILCompiler
             string compilationUnitPrefix = _multiFile ? System.IO.Path.GetFileNameWithoutExtension(_outputFilePath) : "";
             builder.UseCompilationUnitPrefix(compilationUnitPrefix);
 
+            if (_mibcFilePaths.Count > 0)
+                ((RyuJitCompilationBuilder)builder).UseProfileData(_mibcFilePaths);
+
             PInvokeILEmitterConfiguration pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target, _directPInvokes, _directPInvokeLists);
 
-            RemovedFeature removedFeatures = 0;
-            foreach (string feature in _removedFeatures)
-            {
-                if (feature == "EventSource")
-                    removedFeatures |= RemovedFeature.Etw;
-                else if (feature == "Globalization")
-                    removedFeatures |= RemovedFeature.Globalization;
-                else if (feature == "Comparers")
-                    removedFeatures |= RemovedFeature.Comparers;
-                else if (feature == "SerializationGuard")
-                    removedFeatures |= RemovedFeature.SerializationGuard;
-                else if (feature == "XmlNonFileStream")
-                    removedFeatures |= RemovedFeature.XmlDownloadNonFileStream;
-            }
-
             ILProvider ilProvider = new CoreRTILProvider();
-
-            if (removedFeatures != 0)
-                ilProvider = new RemovingILProvider(ilProvider, removedFeatures);
 
             List<KeyValuePair<string, bool>> featureSwitches = new List<KeyValuePair<string, bool>>();
             foreach (var switchPair in _featureSwitches)

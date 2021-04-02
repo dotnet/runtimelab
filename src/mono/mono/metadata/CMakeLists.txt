@@ -34,24 +34,16 @@ set(metadata_win32_sources
     icall-windows.c
     marshal-windows.c
     mono-security-windows.c
-    w32mutex-win32.c
-    w32semaphore-win32.c
     w32event-win32.c
-    w32socket-win32.c
     w32error-win32.c)
 
 set(metadata_unix_sources
-    w32mutex-unix.c
-    w32semaphore-unix.c
     w32event-unix.c
     w32process-unix-osx.c
     w32process-unix-bsd.c
     w32process-unix-haiku.c
     w32process-unix-default.c
-    w32socket-unix.c
     w32file-unix.c
-    w32file-unix-glob.c
-    w32file-unix-glob.h
     w32error-unix.c)
 
 if(HOST_WIN32)
@@ -66,8 +58,6 @@ set(metadata_common_sources
     appdomain-icalls.h
     assembly.c
     assembly-internals.h
-    attach.h
-    attach.c
     cil-coff.h
     class.c
     class-getters.h
@@ -96,7 +86,6 @@ set(metadata_common_sources
     exception.h
     exception-internals.h
     w32file.h
-    w32file-internals.h
     gc-internals.h
     icall.c
     icall-internals.h
@@ -105,6 +94,7 @@ set(metadata_common_sources
     icall-eventpipe.c
     image.c
     image-internals.h
+    jit-info.h
     jit-info.c
     loader.c
     lock-tracer.c
@@ -117,7 +107,6 @@ set(metadata_common_sources
     mempool.h
     mempool-internals.h
     metadata.c
-    metadata-verify.c
     metadata-internals.h
     metadata-update.h
     metadata-update.c
@@ -140,24 +129,16 @@ set(metadata_common_sources
     mono-perfcounters.h
     mono-perfcounters-def.h
     mono-ptr-array.h
-    mono-route.c
     monitor.h
-    normalization-tables.h
-    number-formatter.h
-    number-ms.h
     object.c
     object-forward.h
     object-internals.h
     opcodes.c
     property-bag.h
     property-bag.c
-    w32socket.h
-    w32socket-internals.h
     w32process.h
     profiler.c
     profiler-private.h
-    remoting.h
-    remoting.c
     runtime.c
     security.h
     security-core-clr.c
@@ -170,7 +151,6 @@ set(metadata_common_sources
     threads.c
     threads-types.h
     verify.c
-    verify-internals.h
     wrapper-types.h
     dynamic-image-internals.h
     dynamic-stream.c
@@ -190,11 +170,7 @@ set(metadata_common_sources
     seq-points-data.c
     handle.c
     handle.h
-    w32mutex.h
-    w32semaphore.h
     w32event.h
-    w32handle-namespace.h
-    w32handle-namespace.c
     w32handle.h
     w32handle.c
     w32error.h

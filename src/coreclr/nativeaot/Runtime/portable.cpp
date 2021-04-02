@@ -429,10 +429,10 @@ void * ReturnFromCallDescrThunk;
 #endif
 
 #if defined(USE_PORTABLE_HELPERS) || defined(TARGET_UNIX)
-#if !defined (HOST_ARM64)
 //
 // Return address hijacking
 //
+#if !defined (HOST_ARM64)
 COOP_PINVOKE_HELPER(void, RhpGcProbeHijackScalar, ())
 {
     ASSERT_UNCONDITIONALLY("NYI");
@@ -457,7 +457,16 @@ COOP_PINVOKE_HELPER(void, RhpGcStressHijackByref, ())
 {
     ASSERT_UNCONDITIONALLY("NYI");
 }
-#endif
+#else // !defined (HOST_ARM64)
+COOP_PINVOKE_HELPER(void, RhpGcProbeHijack, ())
+{
+    ASSERT_UNCONDITIONALLY("NYI");
+}
+COOP_PINVOKE_HELPER(void, RhpGcStressHijack, ())
+{
+    ASSERT_UNCONDITIONALLY("NYI");
+}
+#endif // !defined (HOST_ARM64)
 #endif // defined(USE_PORTABLE_HELPERS) || defined(TARGET_UNIX)
 
 #if defined(USE_PORTABLE_HELPERS)

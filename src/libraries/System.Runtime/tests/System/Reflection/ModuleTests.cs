@@ -154,6 +154,7 @@ namespace System.Reflection.Tests
             Assert.NotNull(ex.Message);
         }
 
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/193" /* NativeAOT */)]
         [Fact]
         public void GetField()
         {
@@ -176,10 +177,64 @@ namespace System.Reflection.Tests
             Assert.Equal(TestModule.GetField("TestLong", BindingFlags.NonPublic | BindingFlags.Static), fields[1]);
         }
 
+        [Fact]
+        public void GetMethod_NullName()
+        {
+            var ex = AssertExtensions.Throws<ArgumentNullException>("name", () => Module.GetMethod(null));
+            Assert.Null(ex.InnerException);
+            Assert.NotNull(ex.Message);
+
+            ex = AssertExtensions.Throws<ArgumentNullException>("name", () => Module.GetMethod(null, Type.EmptyTypes));
+            Assert.Null(ex.InnerException);
+            Assert.NotNull(ex.Message);
+        }
+
+        [Fact]
+        public void GetMethod_NullTypes()
+        {
+            var ex = AssertExtensions.Throws<ArgumentNullException>("types", () => Module.GetMethod("TestMethodFoo", null));
+            Assert.Null(ex.InnerException);
+            Assert.NotNull(ex.Message);
+        }
+
+        [Fact]
+        public void GetMethod_AmbiguousMatch()
+        {
+            var ex = Assert.Throws<AmbiguousMatchException>(() => TestModule.GetMethod("TestMethodFoo"));
+            Assert.Null(ex.InnerException);
+            Assert.NotNull(ex.Message);
+        }
+
+        [Fact]
+        public void GetMethod()
+        {
+            var method = TestModule.GetMethod("TestMethodFoo", Type.EmptyTypes);
+            Assert.True(method.IsPublic);
+            Assert.True(method.IsStatic);
+            Assert.Equal(typeof(void), method.ReturnType);
+            Assert.Empty(method.GetParameters());
+
+            method = TestModule.GetMethod("TestMethodBar", BindingFlags.NonPublic | BindingFlags.Static, null, CallingConventions.Any, new[] { typeof(int) }, null);
+            Assert.False(method.IsPublic);
+            Assert.True(method.IsStatic);
+            Assert.Equal(typeof(int), method.ReturnType);
+            Assert.Equal(typeof(int), method.GetParameters().Single().ParameterType);
+        }
+
+        [Fact]
+        public void GetMethods()
+        {
+            var methodNames = TestModule.GetMethods().Select(m => m.Name).ToArray();
+            AssertExtensions.SequenceEqual(new[]{ "TestMethodFoo", "TestMethodFoo" }, methodNames );
+
+            methodNames = TestModule.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static).Select(m => m.Name).ToArray();
+            AssertExtensions.SequenceEqual(new[]{ "TestMethodFoo", "TestMethodFoo", "TestMethodBar" }, methodNames );
+        }
+
         public static IEnumerable<object[]> Types =>
             Module.GetTypes().Select(t => new object[] { t });
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(Types))]
         public void ResolveType(Type t)
         {
@@ -194,7 +249,7 @@ namespace System.Reflection.Tests
             }
             .Union(NullTokens);
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(BadResolveTypes))]
         public void ResolveTypeFail(int token)
         {
@@ -207,7 +262,7 @@ namespace System.Reflection.Tests
         public static IEnumerable<object[]> Methods =>
             Module.GetMethods().Select(m => new object[] { m });
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(Methods))]
         public void ResolveMethod(MethodInfo t)
         {
@@ -223,7 +278,7 @@ namespace System.Reflection.Tests
             }
             .Union(NullTokens);
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(BadResolveMethods))]
         public void ResolveMethodFail(int token)
         {
@@ -236,7 +291,7 @@ namespace System.Reflection.Tests
         public static IEnumerable<object[]> Fields =>
             Module.GetFields().Select(f => new object[] { f });
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(Fields))]
         public void ResolveField(FieldInfo t)
         {
@@ -252,7 +307,7 @@ namespace System.Reflection.Tests
             }
             .Union(NullTokens);
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(BadResolveFields))]
         public void ResolveFieldFail(int token)
         {
@@ -271,7 +326,7 @@ namespace System.Reflection.Tests
             }
             .Union(NullTokens);
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(BadResolveStrings))]
         public void ResolveStringFail(int token)
         {
@@ -281,7 +336,7 @@ namespace System.Reflection.Tests
             });
         }
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(Types))]
         [MemberData(nameof(Methods))]
         [MemberData(nameof(Fields))]
@@ -290,7 +345,7 @@ namespace System.Reflection.Tests
             Assert.Equal(member, Module.ResolveMember(member.MetadataToken));
         }
 
-        [Fact]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         public void ResolveMethodOfGenericClass()
         {
             Type t = typeof(Foo<>);

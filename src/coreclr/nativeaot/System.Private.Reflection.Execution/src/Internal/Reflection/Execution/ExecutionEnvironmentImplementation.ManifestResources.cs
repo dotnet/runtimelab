@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 using Internal.Runtime;
 using Internal.Runtime.Augments;
@@ -82,17 +83,9 @@ namespace Internal.Reflection.Execution
                 throw new BadImageFormatException();
             }
 
-            checked
-            {
-                if (resourceInfo.Index > cbBlob || resourceInfo.Index + resourceInfo.Length > cbBlob)
-                {
-                    throw new BadImageFormatException();
-                }
-            }
-
-            UnmanagedMemoryStream stream = new UnmanagedMemoryStream(pBlob + resourceInfo.Index, resourceInfo.Length);
-
-            return stream;
+            // resourceInfo is read from the executable image, so check it only in debug builds
+            Debug.Assert(resourceInfo.Index >= 0 && resourceInfo.Length >= 0 && (uint)(resourceInfo.Index + resourceInfo.Length) <= cbBlob);
+            return new UnmanagedMemoryStream(pBlob + resourceInfo.Index, resourceInfo.Length);
         }
 
         private LowLevelList<ResourceInfo> GetExtractedResources(Assembly assembly)

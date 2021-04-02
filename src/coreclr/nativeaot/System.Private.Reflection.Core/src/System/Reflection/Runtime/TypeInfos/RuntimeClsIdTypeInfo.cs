@@ -61,7 +61,7 @@ namespace System.Reflection.Runtime.TypeInfos
         protected sealed override TypeAttributes GetAttributeFlagsImpl() => TypeAttributes.Public;
         protected sealed override int InternalGetHashCode() => _key.GetHashCode();
 
-        internal sealed override Type BaseTypeWithoutTheGenericParameterQuirk => typeof(__ComObject);
+        internal sealed override Type BaseTypeWithoutTheGenericParameterQuirk => typeof(object);
         internal sealed override bool CanBrowseWithoutMissingMetadataExceptions => BaseType.CastToRuntimeTypeInfo().CanBrowseWithoutMissingMetadataExceptions;
         internal sealed override Type InternalDeclaringType => null;
         internal sealed override string InternalFullNameOfAssembly => BaseType.Assembly.FullName;

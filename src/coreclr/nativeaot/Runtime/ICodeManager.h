@@ -103,7 +103,7 @@ enum class ClasslibFunctionId
     FailFast = 1,
     UnhandledExceptionHandler = 2,
     AppendExceptionStackFrame = 3,
-    CheckStaticClassConstruction = 4,
+    // unused = 4,
     GetSystemArrayEEType = 5,
     OnFirstChanceException = 6,
     DebugFuncEvalHelper = 7,

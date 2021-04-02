@@ -17,6 +17,7 @@ namespace System.Reflection.Tests
         }
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/155" /* NativeAot */)]
         public static void MethodTakesRefStructAsArg_DoesNotCopyValueBack()
         {
             MethodInfo mi = GetMethod(nameof(TestClass.TakesRefStructAsArg));
@@ -28,6 +29,7 @@ namespace System.Reflection.Tests
         }
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/155" /* NativeAot */)]
         public static void MethodTakesRefStructAsArgWithDefaultValue_DoesNotCopyValueBack()
         {
             MethodInfo mi = GetMethod(nameof(TestClass.TakesRefStructAsArgWithDefaultValue));
@@ -38,7 +40,7 @@ namespace System.Reflection.Tests
             Assert.Null(args[0]); // no value should have been copied back
         }
 
-        [Fact]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsReflectionEmitSupported))] // Moq uses Reflection.Emit
         [SkipOnMono("https://github.com/dotnet/runtime/issues/40738")]
         public static void MethodTakesRefToRefStructAsArg_ThrowsNSE()
         {
@@ -77,6 +79,7 @@ namespace System.Reflection.Tests
         }
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/155" /* NativeAot */)]
         public static void PropertyIndexerWithRefStructArg_DoesNotCopyValueBack()
         {
             PropertyInfo pi = typeof(TestClassWithIndexerWithRefStructArg).GetProperty("Item");

@@ -22,6 +22,8 @@ namespace ILCompiler.DependencyAnalysis
     /// </summary>
     public class ObjectWriter : IDisposable, ITypesDebugInfoWriter
     {
+        private readonly ObjectWritingOptions _options;
+
         // This is used to build mangled names
         private Utf8StringBuilder _sb = new Utf8StringBuilder();
 
@@ -34,7 +36,7 @@ namespace ILCompiler.DependencyAnalysis
         private SortedSet<int> _byteInterruptionOffsets = new SortedSet<int>();
         // This is used to look up DebugLocInfo for the given native offset.
         // This is for individual node and should be flushed once node is emitted.
-        private Dictionary<int, DebugLocInfo> _offsetToDebugLoc = new Dictionary<int, DebugLocInfo>();
+        private Dictionary<int, NativeSequencePoint> _offsetToDebugLoc = new Dictionary<int, NativeSequencePoint>();
 
         // Code offset to defined names
         private Dictionary<int, List<ISymbolDefinitionNode>> _offsetToDefName = new Dictionary<int, List<ISymbolDefinitionNode>>();
@@ -337,23 +339,46 @@ namespace ILCompiler.DependencyAnalysis
         }
 
         [DllImport(NativeObjectWriterFileName)]
-        private static extern void EmitDebugVar(IntPtr objWriter, string name, UInt32 typeIndex, bool isParam, Int32 rangeCount, NativeVarInfo[] range);
+        private static extern void EmitDebugVar(IntPtr objWriter, string name, UInt32 typeIndex, bool isParam, Int32 rangeCount, ref NativeVarInfo range);
 
-        public void EmitDebugVar(DebugVarInfo debugVar)
+        public void EmitDebugVar(INodeWithDebugInfo owningNode, in DebugVarInfoMetadata debugVar)
         {
-            int rangeCount = debugVar.Ranges.Count;
             uint typeIndex;
-
+            string varName = debugVar.Name;
             try
             {
-                typeIndex = _userDefinedTypeDescriptor.GetVariableTypeIndex(debugVar.Type);
+                if (owningNode.IsStateMachineMoveNextMethod && debugVar.DebugVarInfo.VarNumber == 0)
+                {
+                    typeIndex = _userDefinedTypeDescriptor.GetStateMachineThisVariableTypeIndex(debugVar.Type);
+                    varName = "locals";
+                }
+                else
+                {
+                    typeIndex = _userDefinedTypeDescriptor.GetVariableTypeIndex(debugVar.Type);
+                }
             }
             catch (TypeSystemException)
             {
                 typeIndex = 0; // T_NOTYPE
             }
 
-            EmitDebugVar(_nativeObjectWriter, debugVar.Name, typeIndex, debugVar.IsParam, rangeCount, debugVar.Ranges.ToArray());
+            DebugVarRangeInfo[] rangeInfos = debugVar.DebugVarInfo.Ranges;
+            Span<NativeVarInfo> varInfos = rangeInfos.Length < 128 ?
+                stackalloc NativeVarInfo[rangeInfos.Length] :
+                new NativeVarInfo[rangeInfos.Length];
+
+            for (int i = 0; i < rangeInfos.Length; i++)
+            {
+                varInfos[i] = new NativeVarInfo
+                {
+                    endOffset = rangeInfos[i].EndOffset,
+                    startOffset = rangeInfos[i].StartOffset,
+                    varLoc = rangeInfos[i].VarLoc,
+                    varNumber = debugVar.DebugVarInfo.VarNumber,
+                };
+            }
+
+            EmitDebugVar(_nativeObjectWriter, varName, typeIndex, debugVar.IsParameter, varInfos.Length, ref varInfos[0]);
         }
 
         public void EmitDebugVarInfo(ObjectNode node)
@@ -362,13 +387,9 @@ namespace ILCompiler.DependencyAnalysis
             var nodeWithDebugInfo = node as INodeWithDebugInfo;
             if (nodeWithDebugInfo != null)
             {
-                DebugVarInfo[] vars = nodeWithDebugInfo.DebugVarInfos;
-                if (vars != null)
+                foreach (var debugVar in nodeWithDebugInfo.GetDebugVars())
                 {
-                    foreach (var v in vars)
-                    {
-                        EmitDebugVar(v);
-                    }
+                    EmitDebugVar(nodeWithDebugInfo, debugVar);
                 }
             }
         }
@@ -424,7 +445,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public bool HasModuleDebugInfo()
         {
-            return _debugFileToId.Count > 0;
+            return (_options & ObjectWritingOptions.GenerateDebugInfo) != 0;
         }
 
         public bool HasFunctionDebugInfo()
@@ -438,32 +459,17 @@ namespace ILCompiler.DependencyAnalysis
             return false;
         }
 
-        public void BuildFileInfoMap(IEnumerable<DependencyNode> nodes)
+        private int GetDocumentId(string document)
         {
-            int fileId = 1;
-            foreach (DependencyNode node in nodes)
+            if (_debugFileToId.TryGetValue(document, out int result))
             {
-                if (node is INodeWithDebugInfo)
-                {
-                    DebugLocInfo[] debugLocInfos = ((INodeWithDebugInfo)node).DebugLocInfos;
-                    if (debugLocInfos != null)
-                    {
-                        foreach (DebugLocInfo debugLocInfo in debugLocInfos)
-                        {
-                            string fileName = debugLocInfo.FileName;
-                            if (!_debugFileToId.ContainsKey(fileName))
-                            {
-                                _debugFileToId.Add(fileName, fileId++);
-                            }
-                        }
-                    }
-                }
+                return result;
             }
 
-            foreach (var entry in _debugFileToId)
-            {
-                this.EmitDebugFileInfo(entry.Value, entry.Key);
-            }
+            result = _debugFileToId.Count + 1;
+            _debugFileToId.Add(document, result);
+            this.EmitDebugFileInfo(result, document);
+            return result;
         }
 
         public void BuildDebugLocInfoMap(ObjectNode node)
@@ -477,15 +483,12 @@ namespace ILCompiler.DependencyAnalysis
             INodeWithDebugInfo debugNode = node as INodeWithDebugInfo;
             if (debugNode != null)
             {
-                DebugLocInfo[] locs = debugNode.DebugLocInfos;
-                if (locs != null)
+                IEnumerable<NativeSequencePoint> locs = debugNode.GetNativeSequencePoints();
+                foreach (var loc in locs)
                 {
-                    foreach (var loc in locs)
-                    {
-                        Debug.Assert(!_offsetToDebugLoc.ContainsKey(loc.NativeOffset));
-                        _offsetToDebugLoc[loc.NativeOffset] = loc;
-                        _byteInterruptionOffsets.Add(loc.NativeOffset);
-                    }
+                    Debug.Assert(!_offsetToDebugLoc.ContainsKey(loc.NativeOffset));
+                    _offsetToDebugLoc[loc.NativeOffset] = loc;
+                    _byteInterruptionOffsets.Add(loc.NativeOffset);
                 }
             }
         }
@@ -729,12 +732,11 @@ namespace ILCompiler.DependencyAnalysis
 
         public void EmitDebugLocInfo(int offset)
         {
-            DebugLocInfo loc;
+            NativeSequencePoint loc;
             if (_offsetToDebugLoc.TryGetValue(offset, out loc))
             {
-                Debug.Assert(_debugFileToId.Count > 0);
                 EmitDebugLoc(offset,
-                    _debugFileToId[loc.FileName],
+                    GetDocumentId(loc.FileName),
                     loc.LineNumber,
                     loc.ColNumber);
             }
@@ -841,12 +843,7 @@ namespace ILCompiler.DependencyAnalysis
                     AppendExternCPrefix(_sb);
                     name.AppendMangledName(_nodeFactory.NameMangler, _sb);
 
-                    // Emit all symbols as global on Windows because they matter only for the PDB.
-                    // Emit all symbols as global in multifile builds so that object files can
-                    // link against each other.
-                    bool isGlobal = _nodeFactory.Target.IsWindows || !_isSingleFileCompilation;
-
-                    EmitSymbolDef(_sb, isGlobal);
+                    EmitSymbolDef(_sb);
 
                     string alternateName = _nodeFactory.GetSymbolAlternateName(name);
                     if (alternateName != null)
@@ -863,7 +860,7 @@ namespace ILCompiler.DependencyAnalysis
 
         private IntPtr _nativeObjectWriter = IntPtr.Zero;
 
-        public ObjectWriter(string objectFilePath, NodeFactory factory)
+        public ObjectWriter(string objectFilePath, NodeFactory factory, ObjectWritingOptions options)
         {
             var triple = GetLLVMTripleFromTarget(factory.Target);
 
@@ -876,6 +873,7 @@ namespace ILCompiler.DependencyAnalysis
             _targetPlatform = _nodeFactory.Target;
             _isSingleFileCompilation = _nodeFactory.CompilationModuleGroup.IsSingleFileCompilation;
             _userDefinedTypeDescriptor = new UserDefinedTypeDescriptor(this, factory);
+            _options = options;
         }
 
         public void Dispose()
@@ -949,9 +947,9 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        public static void EmitObject(string objectFilePath, IEnumerable<DependencyNode> nodes, NodeFactory factory, IObjectDumper dumper)
+        public static void EmitObject(string objectFilePath, IEnumerable<DependencyNode> nodes, NodeFactory factory, ObjectWritingOptions options, IObjectDumper dumper)
         {
-            ObjectWriter objectWriter = new ObjectWriter(objectFilePath, factory);
+            ObjectWriter objectWriter = new ObjectWriter(objectFilePath, factory, options);
             bool succeeded = false;
 
             try
@@ -969,9 +967,6 @@ namespace ILCompiler.DependencyAnalysis
                     objectWriter.SetSection(LsdaSection);
                 }
                 objectWriter.SetCodeSectionAttribute(managedCodeSection);
-
-                // Build file info map.
-                objectWriter.BuildFileInfoMap(nodes);
 
                 var listOfOffsets = new List<int>();
                 foreach (DependencyNode depNode in nodes)
@@ -1143,6 +1138,11 @@ namespace ILCompiler.DependencyAnalysis
                         objectWriter.EmitDebugEHClauseInfo(node);
                         objectWriter.EmitDebugFunctionInfo(node, nodeContents.Data.Length);
                     }
+
+                    if (node is ConstructedEETypeNode eeType)
+                    {
+                        objectWriter._userDefinedTypeDescriptor.GetTypeIndex(eeType.Type, needsCompleteType: true);
+                    }
                 }
 
                 objectWriter.EmitDebugModuleInfo();
@@ -1254,5 +1254,11 @@ namespace ILCompiler.DependencyAnalysis
 
             return $"{arch}{sub}-{vendor}-{sys}-{abi}";
         }
+    }
+
+    [Flags]
+    public enum ObjectWritingOptions
+    {
+        GenerateDebugInfo = 0x01,
     }
 }

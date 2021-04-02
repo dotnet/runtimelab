@@ -665,7 +665,7 @@ namespace ILCompiler
             public override ILExceptionRegion[] GetExceptionRegions() => _ehRegions;
             public override byte[] GetILBytes() => _body;
             public override LocalVariableDefinition[] GetLocals() => _wrappedMethodIL.GetLocals();
-            public override object GetObject(int token) => _wrappedMethodIL.GetObject(token);
+            public override object GetObject(int token, NotFoundBehavior notFoundBehavior) => _wrappedMethodIL.GetObject(token, notFoundBehavior);
             public override MethodDebugInformation GetDebugInfo() => _debugInfo;
         }
 

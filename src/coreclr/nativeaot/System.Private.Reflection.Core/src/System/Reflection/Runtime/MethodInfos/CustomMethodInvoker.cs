@@ -53,8 +53,30 @@ namespace System.Reflection.Runtime.MethodInfos
         {
             if (_thisType.IsConstructedGenericType && _thisType.GetGenericTypeDefinition() == typeof(Nullable<>))
             {
-                // Desktop compat: MethodInfos to Nullable<T> methods cannot be turned into delegates.
-                throw new ArgumentException(SR.Arg_DlgtTargMeth);
+                if (isOpen)
+                {
+                    return DynamicDelegateAugments.CreateObjectArrayDelegate(Type.GetTypeFromHandle(delegateType),
+                        (args) =>
+                        {
+                            object[] arguments;
+                            if (args.Length > 1)
+                            {
+                                arguments = new object[args.Length - 1];
+                                Array.Copy(args, 1, arguments, 0, args.Length - 1);
+                            }
+                            else
+                            {
+                                arguments = Array.Empty<object>();
+                            }
+
+                            return _action(args[0], arguments, _thisType);
+                        });
+                }
+                else
+                {
+                    // Desktop compat: MethodInfos to Nullable<T> methods cannot be turned into delegates.
+                    throw new ArgumentException(SR.Arg_DlgtTargMeth);
+                }
             }
 
             throw new PlatformNotSupportedException();

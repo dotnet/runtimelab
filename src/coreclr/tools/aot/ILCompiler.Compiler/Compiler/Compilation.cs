@@ -24,7 +24,7 @@ namespace ILCompiler
         protected readonly DependencyAnalyzerBase<NodeFactory> _dependencyGraph;
         protected readonly NodeFactory _nodeFactory;
         protected readonly Logger _logger;
-        private readonly DebugInformationProvider _debugInformationProvider;
+        protected readonly DebugInformationProvider _debugInformationProvider;
         private readonly DevirtualizationManager _devirtualizationManager;
         private readonly IInliningPolicy _inliningPolicy;
 
@@ -244,6 +244,25 @@ namespace ILCompiler
                 : ReadyToRunHelperId.NecessaryTypeHandle;
         }
 
+        public static MethodDesc GetConstructorForCreateInstanceIntrinsic(TypeDesc type)
+        {
+            MethodDesc ctor = type.GetDefaultConstructor();
+            if (ctor == null)
+            {
+                MetadataType activatorType = type.Context.SystemModule.GetKnownType("System", "Activator");
+                if (type.IsValueType && type.GetParameterlessConstructor() == null)
+                {
+                    ctor = activatorType.GetKnownMethod("ValueTypeWithNoConstructorMethod", null);
+                }
+                else
+                {
+                    ctor = activatorType.GetKnownMethod("MissingConstructorMethod", null);
+                }
+            }
+
+            return ctor;
+        }
+
         public ISymbolNode ComputeConstantLookup(ReadyToRunHelperId lookupKind, object targetOfLookup)
         {
             switch (lookupKind)
@@ -269,14 +288,8 @@ namespace ILCompiler
                     return NodeFactory.RuntimeFieldHandle((FieldDesc)targetOfLookup);
                 case ReadyToRunHelperId.DefaultConstructor:
                     {
-                        var type = (TypeDesc)targetOfLookup;   
-                        MethodDesc ctor = type.GetDefaultConstructor();
-                        if (ctor == null)
-                        {
-                            MetadataType activatorType = TypeSystemContext.SystemModule.GetKnownType("System", "Activator");
-                            MetadataType classWithMissingCtor = activatorType.GetKnownNestedType("ClassWithMissingConstructor");
-                            ctor = classWithMissingCtor.GetParameterlessConstructor();
-                        }
+                        var type = (TypeDesc)targetOfLookup;
+                        MethodDesc ctor = GetConstructorForCreateInstanceIntrinsic(type);
                         return NodeFactory.CanonicalEntrypoint(ctor);
                     }
                 case ReadyToRunHelperId.ObjectAllocator:

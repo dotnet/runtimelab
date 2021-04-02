@@ -527,6 +527,7 @@ namespace System.Tests
         }
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/155" /* NativeAot */)]
         public void GetTypeByName_InvokeViaReflection_Success()
         {
             MethodInfo method = typeof(Type).GetMethod("GetType", new[] { typeof(string) });
@@ -951,6 +952,7 @@ namespace System.Tests
             };
         }
 
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/861" /* NativeAot */)]
         [Theory]
         [MemberData(nameof(GetInterfaceMap_TestData))]
         // Android-only, change to TestPlatforms.Android once arcade dependency is updated

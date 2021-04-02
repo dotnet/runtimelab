@@ -4,11 +4,15 @@
   <PropertyGroup>
     <BuildScriptName Condition="'$(TargetOS)' == 'windows'">build.cmd</BuildScriptName>
     <BuildScriptName Condition="'$(TargetOS)' != 'windows'">build.sh</BuildScriptName>
+
+    <BuildArguments>"$(ArtifactsDir)" "$(RepoRoot)"</BuildArguments>
+    <BuildArguments>$(BuildArguments) $(BuildArchitecture) $(TargetArchitecture)</BuildArguments>
+    <BuildArguments>$(BuildArguments) Release $(Compiler)</BuildArguments>
   </PropertyGroup>
 
   <Target Name="Build">
     <!-- Use IgnoreStandardErrorWarningFormat because Arcade sets WarnAsError and there are multiple warnings in the LLVM build -->
-    <Exec Command="&quot;$(MSBuildThisFileDirectory)$(BuildScriptName)&quot; $(ArtifactsDir) $(RepoRoot)"
+    <Exec Command="&quot;$(MSBuildThisFileDirectory)$(BuildScriptName)&quot; $(BuildArguments)"
           IgnoreStandardErrorWarningFormat="true" />
   </Target>
 </Project>

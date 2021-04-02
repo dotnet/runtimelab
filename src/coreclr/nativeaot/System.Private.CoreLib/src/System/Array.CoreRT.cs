@@ -125,6 +125,14 @@ namespace System
             if (lengths.Length == 0)
                 throw new ArgumentException(SR.Arg_NeedAtLeast1Rank);
 
+            // Check to make sure the lengths are all positive. Note that we check this here to give
+            // a good exception message if they are not; however we check this again inside the execution
+            // engine's low level allocation function after having made a copy of the array to prevent a
+            // malicious caller from mutating the array after this check.
+            for (int i = 0; i < lengths.Length; i++)
+                if (lengths[i] < 0)
+                    ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.lengths, i, ExceptionResource.ArgumentOutOfRange_NeedNonNegNum);
+
             if (lengths.Length == 1)
             {
                 int length = lengths[0];
@@ -308,17 +316,26 @@ namespace System
             if (destinationArray is null)
                 ThrowHelper.ThrowArgumentNullException(ExceptionArgument.destinationArray);
 
-            int sourceRank = sourceArray.Rank;
-            int destinationRank = destinationArray.Rank;
-            if (sourceRank != destinationRank)
-                throw new RankException(SR.Rank_MultiDimNotSupported);
+            if (sourceArray.GetType() != destinationArray.GetType() && sourceArray.Rank != destinationArray.Rank)
+                throw new RankException(SR.Rank_MustMatch);
 
-            if ((sourceIndex < 0) || (destinationIndex < 0) || (length < 0))
-                throw new ArgumentOutOfRangeException();
-            if ((length > sourceArray.Length) || length > destinationArray.Length)
-                throw new ArgumentException();
-            if ((length > sourceArray.Length - sourceIndex) || (length > destinationArray.Length - destinationIndex))
-                throw new ArgumentException();
+            if (length < 0)
+                throw new ArgumentOutOfRangeException(nameof(length), SR.ArgumentOutOfRange_NeedNonNegNum);
+
+            const int srcLB = 0;
+            if (sourceIndex < srcLB || sourceIndex - srcLB < 0)
+                throw new ArgumentOutOfRangeException(nameof(sourceIndex), SR.ArgumentOutOfRange_ArrayLB);
+            sourceIndex -= srcLB;
+
+            const int dstLB = 0;
+            if (destinationIndex < dstLB || destinationIndex - dstLB < 0)
+                throw new ArgumentOutOfRangeException(nameof(destinationIndex), SR.ArgumentOutOfRange_ArrayLB);
+            destinationIndex -= dstLB;
+
+            if ((uint)(sourceIndex + length) > (nuint)sourceArray.LongLength)
+                throw new ArgumentException(SR.Arg_LongerThanSrcArray, nameof(sourceArray));
+            if ((uint)(destinationIndex + length) > (nuint)destinationArray.LongLength)
+                throw new ArgumentException(SR.Arg_LongerThanDestArray, nameof(destinationArray));
 
             EETypePtr sourceElementEEType = sourceArray.ElementEEType;
             EETypePtr destinationElementEEType = destinationArray.ElementEEType;
@@ -365,9 +382,17 @@ namespace System
                 }
                 else if (sourceElementEEType.IsPrimitive && destinationElementEEType.IsPrimitive)
                 {
-                    // The only case remaining is that primitive types could have a widening conversion between the source element type and the destination
-                    // If a widening conversion does not exist we are going to throw an ArrayTypeMismatchException from it.
-                    CopyImplPrimitiveTypeWithWidening(sourceArray, sourceIndex, destinationArray, destinationIndex, length, reliable);
+                    if (RuntimeImports.AreTypesAssignable(sourceArray.EETypePtr, destinationArray.EETypePtr))
+                    {
+                        // If we're okay casting between these two, we're also okay blitting the values over
+                        CopyImplValueTypeArrayNoInnerGcRefs(sourceArray, sourceIndex, destinationArray, destinationIndex, length);
+                    }
+                    else
+                    {
+                        // The only case remaining is that primitive types could have a widening conversion between the source element type and the destination
+                        // If a widening conversion does not exist we are going to throw an ArrayTypeMismatchException from it.
+                        CopyImplPrimitiveTypeWithWidening(sourceArray, sourceIndex, destinationArray, destinationIndex, length, reliable);
+                    }
                 }
                 else
                 {

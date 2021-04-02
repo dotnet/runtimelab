@@ -50,8 +50,6 @@ namespace ILCompiler
 
         private readonly HashSet<string> _rootEntireAssembliesModules;
 
-        private readonly MetadataType _serializationInfoType;
-
         internal FlowAnnotations FlowAnnotations { get; }
 
         internal Logger Logger { get; }
@@ -75,8 +73,6 @@ namespace ILCompiler
             _hasPreciseFieldUsageInformation = false;
             _compilationModuleGroup = group;
             _generationOptions = generationOptions;
-
-            _serializationInfoType = typeSystemContext.SystemModule.GetType("System.Runtime.Serialization", "SerializationInfo", false);
 
             FlowAnnotations = flowAnnotations;
             Logger = logger;
@@ -244,35 +240,6 @@ namespace ILCompiler
                 }
             }
 
-            // If a type is marked [Serializable], make sure a couple things are also included.
-            if (type.IsSerializable && !type.IsGenericDefinition)
-            {
-                foreach (MethodDesc method in type.GetAllMethods())
-                {
-                    MethodSignature signature = method.Signature;
-
-                    if (method.IsConstructor
-                        && signature.Length == 2
-                        && signature[0] == _serializationInfoType
-                        /* && signature[1] is StreamingContext */)
-                    {
-                        dependencies = dependencies ?? new DependencyList();
-                        dependencies.Add(factory.CanonicalEntrypoint(method), "Binary serialization");
-                    }
-
-                    // Methods with these attributes can be called during serialization
-                    if (signature.Length == 1 && !signature.IsStatic && signature.ReturnType.IsVoid &&
-                        (method.HasCustomAttribute("System.Runtime.Serialization", "OnSerializingAttribute")
-                        || method.HasCustomAttribute("System.Runtime.Serialization", "OnSerializedAttribute")
-                        || method.HasCustomAttribute("System.Runtime.Serialization", "OnDeserializingAttribute")
-                        || method.HasCustomAttribute("System.Runtime.Serialization", "OnDeserializedAttribute")))
-                    {
-                        dependencies = dependencies ?? new DependencyList();
-                        dependencies.Add(factory.CanonicalEntrypoint(method), "Binary serialization");
-                    }
-                }
-            }
-
             // Event sources need their special nested types
             if (mdType != null && mdType.HasCustomAttribute("System.Diagnostics.Tracing", "EventSourceAttribute"))
             {
@@ -417,6 +384,11 @@ namespace ILCompiler
 
                     GetFlowDependenciesForInstantiation(ref dependencies, factory, owningType.Instantiation, owningTypeDefinition.Instantiation, owningType);
                 }
+            }
+
+            if (method.GetTypicalMethodDefinition() is Internal.TypeSystem.Ecma.EcmaMethod ecmaMethod)
+            {
+                DynamicDependencyAttributeAlgorithm.AddDependenciesDueToDynamicDependencyAttribute(ref dependencies, factory, ecmaMethod);
             }
         }
 
@@ -721,6 +693,23 @@ namespace ILCompiler
             public bool GeneratesMetadata(EcmaModule module, CustomAttributeHandle caHandle)
             {
                 return _factory.CustomAttributeMetadata(new ReflectableCustomAttribute(module, caHandle)).Marked;
+            }
+
+            public bool GeneratesMetadata(EcmaModule module, ExportedTypeHandle exportedTypeHandle)
+            {
+                try
+                {
+                    // Generate the forwarder only if we generated the target type.
+                    // If the target type is in a different compilation group, assume we generated it there.
+                    var targetType = (MetadataType)module.GetObject(exportedTypeHandle);
+                    return GeneratesMetadata(targetType) || !_factory.CompilationModuleGroup.ContainsType(targetType);
+                }
+                catch (TypeSystemException)
+                {
+                    // No harm in generating a forwarder that didn't resolve.
+                    // We'll get matching behavior at runtime.
+                    return true;
+                }
             }
 
             public bool IsBlocked(MetadataType typeDef)

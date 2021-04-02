@@ -83,7 +83,7 @@ namespace System.Collections.Generic
     /// Minimum comparer for Array.IndexOf/Contains which each Array needs. So it's important to be small.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    internal class EqualOnlyComparer<T>
+    internal static class EqualOnlyComparer<T>
     {
         // Force the compiler to inline this method. Normally the compiler will shy away from inlining such
         // a large function, however in this case the method compiles down to almost nothing so help the

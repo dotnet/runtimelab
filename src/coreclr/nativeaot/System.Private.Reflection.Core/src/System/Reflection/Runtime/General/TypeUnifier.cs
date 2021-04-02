@@ -36,6 +36,9 @@ namespace System.Reflection.Runtime.General
 {
     internal static partial class TypeUnifier
     {
+        // This can be replaced at native compile time using a feature switch.
+        internal static bool IsTypeConstructionEagerlyValidated => true;
+
         public static RuntimeTypeInfo GetArrayType(this RuntimeTypeInfo elementType)
         {
             return RuntimeArrayTypeInfo.GetArrayTypeInfo(elementType, multiDim: false, rank: 1);
@@ -284,7 +287,12 @@ namespace System.Reflection.Runtime.TypeInfos
 
             // We only permit creating parameterized types if the pay-for-play policy specifically allows them *or* if the result
             // type would be an open type.
-            if (typeHandle.IsNull() && !elementType.ContainsGenericParameters && !(elementType is RuntimeCLSIDTypeInfo))
+            if (TypeUnifier.IsTypeConstructionEagerlyValidated
+                && typeHandle.IsNull() && !elementType.ContainsGenericParameters
+#if FEATURE_COMINTEROP
+                && !(elementType is RuntimeCLSIDTypeInfo)
+#endif
+                )
                 throw ReflectionCoreExecution.ExecutionDomain.CreateMissingArrayTypeException(elementType, multiDim, rank);
         }
     }
@@ -436,7 +444,8 @@ namespace System.Reflection.Runtime.TypeInfos
 
                 // We only permit creating parameterized types if the pay-for-play policy specifically allows them *or* if the result
                 // type would be an open type.
-                if (key.TypeHandle.IsNull() && !atLeastOneOpenType)
+                if (TypeUnifier.IsTypeConstructionEagerlyValidated
+                    && key.TypeHandle.IsNull() && !atLeastOneOpenType)
                     throw ReflectionCoreExecution.ExecutionDomain.CreateMissingConstructedGenericTypeException(key.GenericTypeDefinition, key.GenericTypeArguments.CloneTypeArray());
 
                 return new RuntimeConstructedGenericTypeInfo(key);
@@ -446,6 +455,7 @@ namespace System.Reflection.Runtime.TypeInfos
         }
     }
 
+#if FEATURE_COMINTEROP
     internal sealed partial class RuntimeCLSIDTypeInfo
     {
         public static RuntimeCLSIDTypeInfo GetRuntimeCLSIDTypeInfo(Guid clsid, string server)
@@ -464,4 +474,5 @@ namespace System.Reflection.Runtime.TypeInfos
             public static readonly ClsIdTypeTable Table = new ClsIdTypeTable();
         }
     }
+#endif
 }

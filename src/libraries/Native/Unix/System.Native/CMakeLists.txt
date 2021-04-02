@@ -4,6 +4,12 @@ if (NOT CLR_CMAKE_TARGET_MACCATALYST AND NOT CLR_CMAKE_TARGET_IOS AND NOT CLR_CM
     add_definitions(-DHAS_CONSOLE_SIGNALS)
 endif ()
 
+if (CLR_CMAKE_HOST_ALPINE_LINUX)
+    # Fix up the thread stack size for MUSL to more reasonable size.
+    # TODO: https://github.com/dotnet/runtimelab/issues/791
+    add_definitions(-DENSURE_PRIMARY_STACK_SIZE)
+endif ()
+
 include_directories("${CLR_SRC_NATIVE_DIR}/common")
 
 set(NATIVE_SOURCES
@@ -31,19 +37,26 @@ set(NATIVE_SOURCES
     pal_sysctl.c
 )
 
+if (CLR_CMAKE_TARGET_OSX OR CLR_CMAKE_TARGET_MACCATALYST OR CLR_CMAKE_TARGET_IOS OR CLR_CMAKE_TARGET_TVOS)
+    list (APPEND NATIVE_SOURCES pal_autoreleasepool.m)
+    set_source_files_properties(pal_autoreleasepool.m PROPERTIES COMPILE_FLAGS -fno-objc-arc)
+else()
+    list (APPEND NATIVE_SOURCES pal_autoreleasepool.c)
+endif()
+
 if (CLR_CMAKE_TARGET_MACCATALYST OR CLR_CMAKE_TARGET_IOS OR CLR_CMAKE_TARGET_TVOS)
     set(NATIVE_SOURCES ${NATIVE_SOURCES}
         pal_log.m
         pal_searchpath.m)
 else ()
-    set(NATIVE_SOURCES ${NATIVE_SOURCES}
+    list (APPEND NATIVE_SOURCES
         pal_searchpath.c
         pal_console.c
         pal_log.c)
 endif ()
 
 if (NOT CLR_CMAKE_TARGET_BROWSER)
-    set(NATIVE_SOURCES ${NATIVE_SOURCES} pal_networkchange.c)
+    list (APPEND NATIVE_SOURCES pal_networkchange.c)
 endif ()
 
 include(${CMAKE_CURRENT_LIST_DIR}/extra_libs.cmake)

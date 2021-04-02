@@ -21,6 +21,7 @@ using Internal.TypeSystem;
 using Internal.TypeSystem.Ecma;
 using Internal.TypeSystem.Interop;
 using Internal.CorConstants;
+using Internal.Pgo;
 
 using ILCompiler;
 using ILCompiler.DependencyAnalysis;
@@ -68,10 +69,19 @@ namespace Internal.JitInterface
 
         private ExceptionDispatchInfo _lastException;
 
-        [DllImport(JitLibrary, CallingConvention = CallingConvention.StdCall)] // stdcall in CoreCLR!
+        private struct PgoInstrumentationResults
+        {
+            public PgoInstrumentationSchema* pSchema;
+            public uint countSchemaItems;
+            public byte* pInstrumentationData;
+            public HRESULT hr;
+        }
+        Dictionary<MethodDesc, PgoInstrumentationResults> _pgoResults = new Dictionary<MethodDesc, PgoInstrumentationResults>();
+
+        [DllImport(JitLibrary)]
         private extern static IntPtr jitStartup(IntPtr host);
 
-        [DllImport(JitLibrary, CallingConvention = CallingConvention.StdCall)]
+        [DllImport(JitLibrary)]
         private extern static IntPtr getJit();
 
         [DllImport(JitSupportLibrary)]
@@ -308,6 +318,14 @@ namespace Internal.JitInterface
             MethodIL methodIL = HandleToObject(_methodScope);
             CodeBasedDependencyAlgorithm.AddDependenciesDueToMethodCodePresence(ref _additionalDependencies, _compilation.NodeFactory, MethodBeingCompiled, methodIL);
             _methodCodeNode.InitializeNonRelocationDependencies(_additionalDependencies);
+            _methodCodeNode.InitializeDebugInfo(_debugInfo);
+
+            LocalVariableDefinition[] locals = methodIL.GetLocals();
+            TypeDesc[] localTypes = new TypeDesc[locals.Length];
+            for (int i = 0; i < localTypes.Length; i++)
+                localTypes[i] = locals[i].Type;
+
+            _methodCodeNode.InitializeLocalTypes(localTypes);
 #endif
 
             PublishProfileData();
@@ -395,11 +413,7 @@ namespace Internal.JitInterface
             _ehClauses = null;
 
 #if !READYTORUN
-            _sequencePoints = null;
-            _variableToTypeDesc = null;
-
-            _parameterIndexToNameMap = null;
-            _localSlotToInfoMap = null;
+            _debugInfo = null;
 
             _additionalDependencies = null;
 #endif
@@ -412,8 +426,9 @@ namespace Internal.JitInterface
             _inlinedMethods = new ArrayBuilder<MethodDesc>();
             _actualInstructionSetSupported = default(InstructionSetFlags);
             _actualInstructionSetUnsupported = default(InstructionSetFlags);
-            _pgoResults.Clear();
 #endif
+
+            _pgoResults.Clear();
         }
 
         private Dictionary<Object, IntPtr> _objectToHandle = new Dictionary<Object, IntPtr>();
@@ -556,6 +571,7 @@ namespace Internal.JitInterface
             }
 
             bool found = false;
+            bool memberFunctionVariant = false;
             foreach (CustomAttributeTypedArgument<TypeDesc> type in callConvArray)
             {
                 if (!(type.Value is DefType defType))
@@ -563,6 +579,12 @@ namespace Internal.JitInterface
 
                 if (defType.Namespace != "System.Runtime.CompilerServices")
                     continue;
+
+                if (defType.Name == "CallConvMemberFunction")
+                {
+                    memberFunctionVariant = true;
+                    continue;
+                }
 
                 CorInfoCallConvExtension? callConvLocal = GetCallingConventionForCallConvType(defType);
 
@@ -576,6 +598,12 @@ namespace Internal.JitInterface
                     found = true;
                 }
             }
+
+            if (found && memberFunctionVariant)
+            {
+                callConv = GetMemberFunctionCallingConventionVariant(callConv);
+            }
+
             return callConv;
         }
 
@@ -587,6 +615,7 @@ namespace Internal.JitInterface
                 return false;
 
             bool found = false;
+            bool memberFunctionVariant = false;
             foreach (EmbeddedSignatureData data in signature.GetEmbeddedSignatureData())
             {
                 if (data.kind != EmbeddedSignatureDataKind.OptionalCustomModifier)
@@ -608,6 +637,11 @@ namespace Internal.JitInterface
                     suppressGCTransition = true;
                     continue;
                 }
+                else if (defType.Name == "CallConvMemberFunction")
+                {
+                    memberFunctionVariant = true;
+                    continue;
+                }
 
                 CorInfoCallConvExtension? callConvLocal = GetCallingConventionForCallConvType(defType);
 
@@ -622,6 +656,11 @@ namespace Internal.JitInterface
                 }
             }
 
+            if (found && memberFunctionVariant)
+            {
+                callConv = GetMemberFunctionCallingConventionVariant(callConv);
+            }
+
             return found;
         }
 
@@ -634,6 +673,15 @@ namespace Internal.JitInterface
                 "CallConvFastcall" => CorInfoCallConvExtension.Fastcall,
                 "CallConvThiscall" => CorInfoCallConvExtension.Thiscall,
                 _ => null
+            };
+
+        private static CorInfoCallConvExtension GetMemberFunctionCallingConventionVariant(CorInfoCallConvExtension baseCallConv) =>
+            baseCallConv switch
+            {
+                CorInfoCallConvExtension.C => CorInfoCallConvExtension.CMemberFunction,
+                CorInfoCallConvExtension.Stdcall => CorInfoCallConvExtension.StdcallMemberFunction,
+                CorInfoCallConvExtension.Fastcall => CorInfoCallConvExtension.FastcallMemberFunction,
+                var c => c
             };
 
         private void Get_CORINFO_SIG_INFO(MethodSignature signature, CORINFO_SIG_INFO* sig)
@@ -1061,6 +1109,13 @@ namespace Internal.JitInterface
             }
 
             return result != null ? ObjectToHandle(result) : null;
+        }
+
+        private CORINFO_CLASS_STRUCT_* getDefaultComparerClass(CORINFO_CLASS_STRUCT_* elemType)
+        {
+            TypeDesc comparand = HandleToObject(elemType);
+            TypeDesc comparer = IL.Stubs.ComparerIntrinsics.GetComparerForType(comparand);
+            return comparer != null ? ObjectToHandle(comparer) : null;
         }
 
         private CORINFO_CLASS_STRUCT_* getDefaultEqualityComparerClass(CORINFO_CLASS_STRUCT_* elemType)
@@ -3454,11 +3509,107 @@ namespace Internal.JitInterface
             }
 
             if (this.MethodBeingCompiled.IsNoOptimization)
+            {
                 flags.Set(CorJitFlag.CORJIT_FLAG_MIN_OPT);
+            }
+
+            if (this.MethodBeingCompiled.Context.Target.Abi == TargetAbi.CoreRTArmel)
+            {
+                flags.Set(CorJitFlag.CORJIT_FLAG_SOFTFP_ABI);
+            }
 
             return (uint)sizeof(CORJIT_FLAGS);
         }
 
+        private PgoSchemaElem[] getPgoInstrumentationResults(MethodDesc method)
+        {
+            return _compilation.ProfileData[method]?.SchemaData;
+        }
+
+        private HRESULT getPgoInstrumentationResults(CORINFO_METHOD_STRUCT_* ftnHnd, ref PgoInstrumentationSchema* pSchema, ref uint countSchemaItems, byte** pInstrumentationData)
+        {
+            MethodDesc methodDesc = HandleToObject(ftnHnd);
+
+            if (!_pgoResults.TryGetValue(methodDesc, out PgoInstrumentationResults pgoResults))
+            {
+                var pgoResultsSchemas = getPgoInstrumentationResults(methodDesc);
+                if (pgoResultsSchemas == null)
+                {
+                    pgoResults.hr = HRESULT.E_NOTIMPL;
+                }
+                else
+                {
+                    PgoInstrumentationSchema[] nativeSchemas = new PgoInstrumentationSchema[pgoResultsSchemas.Length];
+                    MemoryStream msInstrumentationData = new MemoryStream();
+                    BinaryWriter bwInstrumentationData = new BinaryWriter(msInstrumentationData);
+                    for (int i = 0; i < nativeSchemas.Length; i++)
+                    {
+                        if ((bwInstrumentationData.BaseStream.Position % 8) == 4)
+                        {
+                            bwInstrumentationData.Write(0);
+                        }
+
+                        Debug.Assert((bwInstrumentationData.BaseStream.Position % 8) == 0);
+                        nativeSchemas[i].Offset = new IntPtr(checked((int)bwInstrumentationData.BaseStream.Position));
+                        nativeSchemas[i].ILOffset = pgoResultsSchemas[i].ILOffset;
+                        nativeSchemas[i].Count = pgoResultsSchemas[i].Count;
+                        nativeSchemas[i].Other = pgoResultsSchemas[i].Other;
+                        nativeSchemas[i].InstrumentationKind = (PgoInstrumentationKind)pgoResultsSchemas[i].InstrumentationKind;
+
+                        if (pgoResultsSchemas[i].DataObject == null)
+                        {
+                            bwInstrumentationData.Write(pgoResultsSchemas[i].DataLong);
+                        }
+                        else
+                        {
+                            object dataObject = pgoResultsSchemas[i].DataObject;
+                            if (dataObject is int[] intArray)
+                            {
+                                foreach (int intVal in intArray)
+                                    bwInstrumentationData.Write(intVal);
+                            }
+                            else if (dataObject is long[] longArray)
+                            {
+                                foreach (long longVal in longArray)
+                                    bwInstrumentationData.Write(longVal);
+                            }
+                            else if (dataObject is TypeSystemEntityOrUnknown[] typeArray)
+                            {
+                                foreach (TypeSystemEntityOrUnknown typeVal in typeArray)
+                                {
+                                    IntPtr ptrVal = IntPtr.Zero;
+                                    if (typeVal.AsType != null)
+                                        ptrVal = (IntPtr)ObjectToHandle(typeVal.AsType);
+                                    else
+                                    {
+                                        // The "Unknown types are the values from 1-33
+                                        ptrVal = new IntPtr((typeVal.AsUnknown % 32) + 1);
+                                    }
+
+                                    if (IntPtr.Size == 4)
+                                        bwInstrumentationData.Write((int)ptrVal);
+                                    else
+                                        bwInstrumentationData.Write((long)ptrVal);
+                                }
+                            }
+                        }
+                    }
+
+                    bwInstrumentationData.Flush();
+                    pgoResults.pInstrumentationData = (byte*)GetPin(msInstrumentationData.ToArray());
+                    pgoResults.countSchemaItems = (uint)nativeSchemas.Length;
+                    pgoResults.pSchema = (PgoInstrumentationSchema*)GetPin(nativeSchemas);
+                    pgoResults.hr = HRESULT.S_OK;
+                }
+
+                _pgoResults.Add(methodDesc, pgoResults);
+            }
+
+            pSchema = pgoResults.pSchema;
+            countSchemaItems = pgoResults.countSchemaItems;
+            *pInstrumentationData = pgoResults.pInstrumentationData;
+            return pgoResults.hr;
+        }
 
 #if READYTORUN
         InstructionSetFlags _actualInstructionSetSupported;

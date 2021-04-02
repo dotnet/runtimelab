@@ -97,7 +97,7 @@ namespace Internal.Runtime.TypeLoader
         }
     }
 
-    internal class MemoryHelpers
+    internal static class MemoryHelpers
     {
         public static int AlignUp(int val, int alignment)
         {
@@ -133,7 +133,7 @@ namespace Internal.Runtime.TypeLoader
         }
     }
 
-    internal unsafe class EETypeCreator
+    internal static unsafe class EETypeCreator
     {
         private static IntPtr s_emptyGCDesc;
 
@@ -146,7 +146,6 @@ namespace Internal.Runtime.TypeLoader
             IntPtr writableDataPtr = IntPtr.Zero;
             DynamicModule* dynamicModulePtr = null;
             IntPtr gcStaticData = IntPtr.Zero;
-            IntPtr gcStaticsIndirection = IntPtr.Zero;
             IntPtr nonGcStaticData = IntPtr.Zero;
             IntPtr genericComposition = IntPtr.Zero;
 
@@ -636,11 +635,7 @@ namespace Internal.Runtime.TypeLoader
                             object obj = RuntimeAugments.NewObject(((EEType*)state.GcStaticEEType)->ToRuntimeTypeHandle());
                             gcStaticData = RuntimeAugments.RhHandleAlloc(obj, GCHandleType.Normal);
 
-                            // CoreRT references statics through an extra level of indirection (a table in the image).
-                            gcStaticsIndirection = MemoryHelpers.AllocateMemory(IntPtr.Size);
-
-                            *((IntPtr*)gcStaticsIndirection) = gcStaticData;
-                            pEEType->DynamicGcStaticsData = gcStaticsIndirection;
+                            pEEType->DynamicGcStaticsData = gcStaticData;
                         }
                         else
                         {
@@ -712,8 +707,6 @@ namespace Internal.Runtime.TypeLoader
                         MemoryHelpers.FreeMemory(state.ThreadStaticDesc);
                     if (gcStaticData != IntPtr.Zero)
                         RuntimeAugments.RhHandleFree(gcStaticData);
-                    if (gcStaticsIndirection != IntPtr.Zero)
-                        MemoryHelpers.FreeMemory(gcStaticsIndirection);
                     if (genericComposition != IntPtr.Zero)
                         MemoryHelpers.FreeMemory(genericComposition);
                     if (nonGcStaticData != IntPtr.Zero)

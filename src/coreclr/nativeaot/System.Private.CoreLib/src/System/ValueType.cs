@@ -10,6 +10,7 @@
 **
 ===========================================================*/
 
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime;
 
 using Internal.Runtime.CompilerServices;
@@ -30,17 +31,6 @@ namespace System
             return this.GetType().ToString();
         }
 
-#if PROJECTN
-        public override bool Equals(object? obj)
-        {
-            return RuntimeAugments.Callbacks.ValueTypeEqualsUsingReflection(this, obj);
-        }
-
-        public override int GetHashCode()
-        {
-            return RuntimeAugments.Callbacks.ValueTypeGetHashCodeUsingReflection(this);
-        }
-#else
         private const int UseFastHelper = -1;
         private const int GetNumFields = -1;
 
@@ -57,7 +47,7 @@ namespace System
             return UseFastHelper;
         }
 
-        public override bool Equals(object? obj)
+        public override bool Equals([NotNullWhen(true)] object? obj)
         {
             if (obj == null || obj.EETypePtr != this.EETypePtr)
                 return false;
@@ -196,6 +186,5 @@ namespace System
 
             return hashCode;
         }
-#endif
     }
 }

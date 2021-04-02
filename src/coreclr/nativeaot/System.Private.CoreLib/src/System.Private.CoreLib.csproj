@@ -22,13 +22,6 @@
     <DefineConstants Condition="'$(UseSyncTable)' == 'true'">FEATURE_SYNCTABLE;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
   <PropertyGroup>
-    <FeatureCominterop>false</FeatureCominterop>
-    <FeatureCominterop Condition="'$(TargetsWindows)' == 'true'">true</FeatureCominterop>
-  </PropertyGroup>
-  <PropertyGroup>
-    <DefineConstants Condition="'$(FeatureCominterop)' == 'true'">FEATURE_COMINTEROP;$(DefineConstants)</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup>
     <FeaturePortableThreadPool Condition="'$(FeaturePortableThreadPool)' == ''">false</FeaturePortableThreadPool>
     <FeaturePortableThreadPool Condition="'$(TargetsUnix)' == 'true'">true</FeaturePortableThreadPool>
   </PropertyGroup>
@@ -169,9 +162,6 @@
     <Compile Include="System\Collections\Generic\Comparer.CoreRT.cs" />
     <Compile Include="System\Collections\Generic\EqualityComparer.CoreRT.cs" />
     <Compile Include="System\Collections\Generic\EqualOnlyComparer.cs" />
-    <Compile Include="System\Globalization\GlobalizationMode.cs" />
-    <Compile Include="System\Globalization\GlobalizationMode.Windows.cs" Condition="'$(TargetsWindows)'=='true'" />
-    <Compile Include="System\Globalization\GlobalizationMode.Unix.cs" Condition="'$(TargetsUnix)'=='true'" />
     <Compile Include="System\InvokeUtils.cs" />
     <Compile Include="System\IO\FileLoadException.CoreRT.cs" />
     <Compile Include="System\IO\Stream.CoreRT.cs" />
@@ -224,13 +214,11 @@
     <Compile Include="System\String.Intern.cs" />
     <Compile Include="System\Array.CoreRT.cs" />
     <Compile Include="System\Delegate.cs" />
-    <Compile Include="System\Delegate.DefaultParameters.cs" />
     <Compile Include="System\RuntimeTypeHandle.cs" />
     <Compile Include="System\Exception.CoreRT.cs" />
     <Compile Include="System\RuntimeExceptionHelpers.cs" />
     <Compile Include="System\EETypePtr.cs" />
     <Compile Include="System\Runtime\RuntimeImports.cs" />
-    <Compile Include="System\Attribute.CoreRT.cs" />
     <Compile Include="System\ModuleHandle.cs" />
     <Compile Include="System\RuntimeFieldHandle.cs" />
     <Compile Include="System\Text\StringBuilder.CoreRT.cs" />
@@ -247,7 +235,6 @@
     <Compile Include="System\Threading\ThreadBooleanCounter.cs" />
     <Compile Include="System\Threading\ThreadPool.CoreRT.cs" />
     <Compile Include="System\Threading\ThreadPoolCallbackWrapper.cs" />
-    <Compile Include="System\Threading\WaitHandle.CoreRT.cs" />
     <Compile Include="System\Type.CoreRT.cs" />
     <Compile Include="System\Type.Internal.cs" />
     <Compile Include="System\TypedReference.cs" />
@@ -298,9 +285,6 @@
     <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.GetCurrentProcessorNumber.cs">
       <Link>Interop\Windows\Kernel32\Interop.GetCurrentProcessorNumber.cs</Link>
     </Compile>
-    <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.Threading.cs">
-      <Link>Interop\Windows\Kernel32\Interop.Threading.cs</Link>
-    </Compile>
     <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.ThreadPool.cs">
       <Link>Interop\Windows\Kernel32\Interop.ThreadPool.cs</Link>
     </Compile>
@@ -313,7 +297,6 @@
     </Compile>
     <Compile Include="System\Threading\Thread.CoreRT.Windows.cs" />
     <Compile Include="System\Threading\ThreadPool.Windows.cs" Condition="'$(FeaturePortableThreadPool)' != 'true'" />
-    <Compile Include="System\Threading\WaitHandle.Windows.cs" />
     <Compile Include="System\Threading\Win32ThreadPoolBoundHandle.cs" Condition="'$(FeaturePortableThreadPool)' != 'true'" />
     <Compile Include="System\Threading\Win32ThreadPoolNativeOverlapped.cs" />
     <Compile Include="System\Threading\Win32ThreadPoolNativeOverlapped.ExecutionContextCallbackArgs.cs" />
@@ -321,9 +304,6 @@
     <Compile Include="System\Threading\Win32ThreadPoolPreAllocatedOverlapped.cs" />
     <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.ThreadPoolIO.cs">
       <Link>Interop\Windows\Kernel32\Interop.ThreadPoolIO.cs</Link>
-    </Compile>
-    <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.GetLastError.cs">
-      <Link>Interop\Windows\Kernel32\Interop.GetLastError.cs</Link>
     </Compile>
   </ItemGroup>
   <ItemGroup Condition="'$(TargetsUnix)'=='true'">

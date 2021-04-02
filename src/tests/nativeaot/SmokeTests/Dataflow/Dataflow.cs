@@ -17,6 +17,9 @@ class Program
         TestAttributeDataflow.Run();
         TestGenericDataflow.Run();
         TestArrayDataflow.Run();
+        TestAllDataflow.Run();
+        TestDynamicDependency.Run();
+        TestDynamicDependencyWithGenerics.Run();
 
         return 100;
     }
@@ -259,6 +262,146 @@ class Program
             Assert.Equal(1, typeof(int[]).GetConstructors().Length);
         }
     }
+
+    class TestAllDataflow
+    {
+        class Base
+        {
+            private static int GetNumber() => 42;
+        }
+
+        class Derived : Base
+        {
+        }
+
+        private static MethodInfo GetPrivateMethod([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type t)
+        {
+            return t.BaseType.GetMethod("GetNumber", BindingFlags.Static | BindingFlags.NonPublic);
+        }
+
+        public static void Run()
+        {
+            if ((int)GetPrivateMethod(typeof(Derived)).Invoke(null, Array.Empty<object>()) != 42)
+                throw new Exception();
+        }
+    }
+
+    class TestDynamicDependency
+    {
+        class TypeWithPublicMethodsKept
+        {
+            public int Method1() => throw null;
+            protected int Method2() => throw null;
+        }
+
+        class TypeWithAllMethodsKept
+        {
+            public int Method1() => throw null;
+            protected int Method2() => throw null;
+        }
+
+        class TypeWithSpecificMethodKept
+        {
+            public int Method1() => throw null;
+            public int Method2() => throw null;
+            public int Method3() => throw null;
+        }
+
+        class TypeWithSpecificOverloadKept
+        {
+            public int Method(int x, int y) => throw null;
+            public int Method(int x, char y) => throw null;
+        }
+
+        class TypeWithAllOverloadsKept
+        {
+            public int Method(int x, int y) => throw null;
+            public int Method(int x, char y) => throw null;
+        }
+
+        class TypeWithPublicPropertiesKept
+        {
+            public int Property1 { get; set; }
+            private int Property2 { get; set; }
+        }
+
+        public static void DependentMethod() => throw null;
+        public static void UnreachedMethod() => throw null;
+
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(TypeWithPublicMethodsKept))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods, typeof(TypeWithAllMethodsKept))]
+        [DynamicDependency("Method2", typeof(TypeWithSpecificMethodKept))]
+        [DynamicDependency("Method(System.Int32,System.Int32)", typeof(TypeWithSpecificOverloadKept))]
+        [DynamicDependency("Method", typeof(TypeWithAllOverloadsKept))]
+        [DynamicDependency(nameof(DependentMethod))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(TypeWithPublicPropertiesKept))]
+        public static void Run()
+        {
+            Assert.Equal(1, typeof(TypeWithPublicMethodsKept).CountMethods());
+            Assert.Equal(2, typeof(TypeWithAllMethodsKept).CountMethods());
+            Assert.Equal(1, typeof(TypeWithSpecificMethodKept).CountMethods());
+            Assert.Equal(1, typeof(TypeWithSpecificOverloadKept).CountMethods());
+            Assert.Equal(2, typeof(TypeWithAllOverloadsKept).CountMethods());
+            Assert.Equal(2, typeof(TestDynamicDependency).CountMethods());
+            Assert.Equal(1, typeof(TypeWithPublicPropertiesKept).CountProperties());
+        }
+    }
+
+    class TestDynamicDependencyWithGenerics
+    {
+        class TypeWithPublicMethodsKept<T>
+        {
+            public int Method1() => throw null;
+            protected int Method2() => throw null;
+        }
+
+        class TypeWithAllMethodsKept<T>
+        {
+            public int Method1() => throw null;
+            protected int Method2() => throw null;
+        }
+
+        class TypeWithSpecificMethodKept<T>
+        {
+            public int Method1() => throw null;
+            public int Method2() => throw null;
+            public int Method3() => throw null;
+        }
+
+        class TypeWithSpecificOverloadKept<T>
+        {
+            public int Method(int x, int y) => throw null;
+            public int Method(int x, char y) => throw null;
+        }
+
+        class TypeWithAllOverloadsKept<T>
+        {
+            public int Method(int x, int y) => throw null;
+            public int Method(int x, char y) => throw null;
+        }
+
+        class TypeWithPublicPropertiesKept<T>
+        {
+            public int Property1 { get; set; }
+            private int Property2 { get; set; }
+        }
+
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(TypeWithPublicMethodsKept<>))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods, typeof(TypeWithAllMethodsKept<>))]
+        [DynamicDependency("Method2", typeof(TypeWithSpecificMethodKept<>))]
+        [DynamicDependency("Method(System.Int32,System.Int32)", typeof(TypeWithSpecificOverloadKept<>))]
+        [DynamicDependency("Method", typeof(TypeWithAllOverloadsKept<>))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicProperties, typeof(TypeWithPublicPropertiesKept<>))]
+        public static void Run()
+        {
+            Assert.Equal(1, typeof(TypeWithPublicMethodsKept<>).CountMethods());
+            Assert.Equal(2, typeof(TypeWithAllMethodsKept<>).CountMethods());
+            Assert.Equal(1, typeof(TypeWithSpecificMethodKept<>).CountMethods());
+            Assert.Equal(1, typeof(TypeWithSpecificOverloadKept<>).CountMethods());
+            Assert.Equal(2, typeof(TypeWithAllOverloadsKept<>).CountMethods());
+            Assert.Equal(1, typeof(TypeWithPublicPropertiesKept<>).CountProperties());
+        }
+    }
 }
 
 static class Assert
@@ -278,16 +421,28 @@ static class Assert
 
 static class Helpers
 {
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+        Justification = "That's the point")]
     public static int CountConstructors(this Type t)
         => t.GetConstructors(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic).Length;
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+        Justification = "That's the point")]
     public static int CountPublicConstructors(this Type t)
         => t.GetConstructors(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public).Length;
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+        Justification = "That's the point")]
     public static int CountMethods(this Type t)
         => t.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly).Length;
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+        Justification = "That's the point")]
     public static int CountPublicMethods(this Type t)
         => t.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.DeclaredOnly).Length;
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+        Justification = "That's the point")]
     public static int CountFields(this Type t)
         => t.GetFields(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly).Length;
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+        Justification = "That's the point")]
     public static int CountProperties(this Type t)
         => t.GetProperties(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly).Length;
 }

@@ -268,7 +268,7 @@ namespace System.Reflection.Runtime.General
             if (target == null)
                 throw new ArgumentNullException(nameof(target));
             if (target.ContainsGenericParameters)
-                throw new ArgumentException(SR.Arg_UnboundGenParam);
+                throw new ArgumentException(SR.Arg_UnboundGenParam, nameof(target));
             if (method == null)
                 throw new ArgumentNullException(nameof(method));
 
@@ -332,12 +332,14 @@ namespace System.Reflection.Runtime.General
             return null;
         }
 
+#if FEATURE_COMINTEROP
         public sealed override Type GetTypeFromCLSID(Guid clsid, string server, bool throwOnError)
         {
             // Note: "throwOnError" is a vacuous parameter. Any errors due to the CLSID not being registered or the server not being found will happen
             // on the Activator.CreateInstance() call. GetTypeFromCLSID() merely wraps the data in a Type object without any validation.
             return RuntimeCLSIDTypeInfo.GetRuntimeCLSIDTypeInfo(clsid, server);
         }
+#endif
 
         public sealed override IntPtr GetFunctionPointer(RuntimeMethodHandle runtimeMethodHandle, RuntimeTypeHandle declaringTypeHandle)
         {
@@ -368,7 +370,7 @@ namespace System.Reflection.Runtime.General
             if (flds == null)
                 throw new ArgumentNullException(nameof(flds));
             if (flds.Length == 0)
-                throw new ArgumentException(SR.Arg_ArrayZeroError);
+                throw new ArgumentException(SR.Arg_ArrayZeroError, nameof(flds));
 
             offset = 0;
             Type targetType = target.GetType();

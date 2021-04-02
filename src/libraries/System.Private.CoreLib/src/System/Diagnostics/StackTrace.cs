@@ -187,7 +187,6 @@ namespace System.Diagnostics
             TrailingNewLine,        // include a trailing new line character
         }
 
-#if !CORERT
         /// <summary>
         /// Builds a readable representation of the stack trace, specifying
         /// the format for backwards compatibility.
@@ -199,6 +198,7 @@ namespace System.Diagnostics
             return sb.ToString();
         }
 
+#if !CORERT
         internal void ToString(TraceFormat traceFormat, StringBuilder sb)
         {
             // Passing a default string for "at" in case SR.UsingResourceKeys() is true
@@ -354,19 +354,28 @@ namespace System.Diagnostics
                 return false;
             }
 
-            if (mb.IsDefined(typeof(StackTraceHiddenAttribute), inherit: false))
+            try
             {
-                // Don't show where StackTraceHidden is applied to the method.
-                return false;
-            }
+                if (mb.IsDefined(typeof(StackTraceHiddenAttribute), inherit: false))
+                {
+                    // Don't show where StackTraceHidden is applied to the method.
+                    return false;
+                }
 
-            Type? declaringType = mb.DeclaringType;
-            // Methods don't always have containing types, for example dynamic RefEmit generated methods.
-            if (declaringType != null &&
-                declaringType.IsDefined(typeof(StackTraceHiddenAttribute), inherit: false))
+                Type? declaringType = mb.DeclaringType;
+                // Methods don't always have containing types, for example dynamic RefEmit generated methods.
+                if (declaringType != null &&
+                    declaringType.IsDefined(typeof(StackTraceHiddenAttribute), inherit: false))
+                {
+                    // Don't show where StackTraceHidden is applied to the containing Type of the method.
+                    return false;
+                }
+            }
+            catch
             {
-                // Don't show where StackTraceHidden is applied to the containing Type of the method.
-                return false;
+                // Getting the StackTraceHiddenAttribute has failed, behave as if it was not present.
+                // One of the reasons can be that the method mb or its declaring type use attributes
+                // defined in an assembly that is missing.
             }
 
             return true;

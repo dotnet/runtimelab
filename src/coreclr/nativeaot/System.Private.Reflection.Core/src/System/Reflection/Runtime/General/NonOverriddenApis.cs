@@ -114,6 +114,7 @@ namespace System.Reflection.Runtime.Modules
         public sealed override Type GetType(string className) => base.GetType(className);
         [RequiresUnreferencedCode("Types might be removed")]
         public sealed override Type GetType(string className, bool ignoreCase) => base.GetType(className, ignoreCase);
+        public sealed override string ToString() => base.ToString();
 #endif //DEBUG
     }
 }

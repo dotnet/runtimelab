@@ -64,6 +64,52 @@ namespace System.Reflection.Runtime.Modules.NativeFormat
             }
         }
 
+        public sealed override string ScopeName
+        {
+            get
+            {
+                QScopeDefinition scope = _assembly.Scope;
+                return scope.Reader.GetString(scope.ScopeDefinition.ModuleName);
+            }
+        }
+
+        public sealed override FieldInfo GetField(string name, BindingFlags bindingAttr)
+        {
+            QScopeDefinition scope = _assembly.Scope;
+            MetadataReader reader = scope.Reader;
+            return scope.ScopeDefinition.GlobalModuleType.GetNamedType(reader).GetField(name, bindingAttr);
+        }
+
+        public sealed override FieldInfo[] GetFields(BindingFlags bindingFlags)
+        {
+            QScopeDefinition scope = _assembly.Scope;
+            MetadataReader reader = scope.Reader;
+            return scope.ScopeDefinition.GlobalModuleType.GetNamedType(reader).GetFields(bindingFlags);
+        }
+
+        protected sealed override MethodInfo GetMethodImpl(string name, BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers)
+        {
+            QScopeDefinition scope = _assembly.Scope;
+            MetadataReader reader = scope.Reader;
+            TypeInfos.RuntimeTypeDefinitionTypeInfo runtimeType = scope.ScopeDefinition.GlobalModuleType.GetNamedType(reader);
+
+            if (types == null)
+            {
+                return runtimeType.GetMethod(name, bindingAttr);
+            }
+            else
+            {
+                return runtimeType.GetMethod(name, bindingAttr, binder, callConvention, types, modifiers);
+            }
+        }
+
+        public sealed override MethodInfo[] GetMethods(BindingFlags bindingFlags)
+        {
+            QScopeDefinition scope = _assembly.Scope;
+            MetadataReader reader = scope.Reader;
+            return scope.ScopeDefinition.GlobalModuleType.GetNamedType(reader).GetMethods(bindingFlags);
+        }
+
         private readonly NativeFormatRuntimeAssembly _assembly;
     }
 }

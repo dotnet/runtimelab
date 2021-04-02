@@ -15,14 +15,20 @@ namespace System
 {
     public partial class Exception
     {
-        // TargetSite is not supported on CoreRT. Because it's likely use is diagnostic logging, returning null (a permitted return value)
-        // seems more useful than throwing a PlatformNotSupportedException here.
-        public MethodBase TargetSite => null;
+        public MethodBase TargetSite
+        {
+            get
+            {
+                if (!HasBeenThrown)
+                    return null;
+
+                return new StackFrame(_corDbgStackTrace[0], needFileInfo: false).GetMethod();
+            }
+        }
 
         private IDictionary CreateDataContainer() => new ListDictionaryInternal();
 
         private string SerializationStackTraceString => StackTrace;
-        private string SerializationRemoteStackTraceString => null;
         private string SerializationWatsonBuckets => null;
 
         private string CreateSourceName() => HasBeenThrown ? "<unknown>" : null;
@@ -39,21 +45,29 @@ namespace System
         private int _HResult;     // HResult
 
         // To maintain compatibility across runtimes, if this object was deserialized, it will store its stack trace as a string
-        private string _stackTraceString;
+        private string? _stackTraceString;
+        private string? _remoteStackTraceString;
 
         // Returns the stack trace as a string.  If no stack trace is
         // available, null is returned.
-        public virtual string StackTrace
+        public virtual string? StackTrace
         {
             get
             {
-                if (_stackTraceString != null)
-                    return _stackTraceString;
+                string? stackTraceString = _stackTraceString;
+                string? remoteStackTraceString = _remoteStackTraceString;
 
+                // if no stack trace, try to get one
+                if (stackTraceString != null)
+                {
+                    return remoteStackTraceString + stackTraceString;
+                }
                 if (!HasBeenThrown)
-                    return null;
+                {
+                    return remoteStackTraceString;
+                }
 
-                return StackTraceHelper.FormatStackTrace(GetStackIPs(), true);
+                return remoteStackTraceString + StackTraceHelper.FormatStackTrace(GetStackIPs(), true);
             }
         }
 
@@ -225,12 +239,6 @@ namespace System
             }
         }
 
-        [StackTraceHidden]
-        internal void SetCurrentStackTrace()
-        {
-            // TODO: Exception.SetCurrentStackTrace
-        }
-
         // This is the object against which a lock will be taken
         // when attempt to restore the EDI. Since its static, its possible
         // that unrelated exception object restorations could get blocked
@@ -281,6 +289,20 @@ namespace System
 
                 return buffer;
             }
+        }
+
+        // Returns true if setting the _remoteStackTraceString field is legal, false if not (immutable exception).
+        // A false return value means the caller should early-exit the operation.
+        // Can also throw InvalidOperationException if a stack trace is already set or if object has been thrown.
+        private bool CanSetRemoteStackTrace()
+        {
+            // Check to see if the exception already has a stack set in it.
+            if (HasBeenThrown || _stackTraceString != null || _remoteStackTraceString != null)
+            {
+                ThrowHelper.ThrowInvalidOperationException();
+            }
+
+            return true; // CoreRT runtime doesn't have immutable agile exceptions, always return true
         }
     }
 }
