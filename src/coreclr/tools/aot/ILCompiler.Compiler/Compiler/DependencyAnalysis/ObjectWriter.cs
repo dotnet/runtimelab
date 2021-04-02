@@ -937,11 +937,17 @@ namespace ILCompiler.DependencyAnalysis
             return new ObjectNodeSection(standardSectionPrefix + section.Name, section.Type, key);
         }
 
-        public void ResetByteRunInterruptionOffsets(Relocation[] relocs)
+        public void ResetByteRunInterruptionOffsets(ObjectData nodeContents)
         {
-            for (int i = 0; i < relocs.Length; ++i)
+            int neededInterruptionsBytes = nodeContents.Data.Length + 1;
+            if (_byteInterruptionOffsets == null || _byteInterruptionOffsets.Length < neededInterruptionsBytes)
+                _byteInterruptionOffsets = new bool[nodeContents.Data.Length + 1];
+            else
+                Array.Fill(_byteInterruptionOffsets, false, 0, neededInterruptionsBytes);
+
+            foreach (var reloc in nodeContents.Relocs)
             {
-                _byteInterruptionOffsets[relocs[i].Offset] = true;
+                _byteInterruptionOffsets[reloc.Offset] = true;
             }
         }
 
@@ -1007,13 +1013,7 @@ namespace ILCompiler.DependencyAnalysis
                     objectWriter.SetSection(section);
                     objectWriter.EmitAlignment(nodeContents.Alignment);
 
-                    int neededInterruptionsBytes = nodeContents.Data.Length + 1;
-                    if (objectWriter._byteInterruptionOffsets == null || objectWriter._byteInterruptionOffsets.Length < neededInterruptionsBytes)
-                        objectWriter._byteInterruptionOffsets = new bool[nodeContents.Data.Length + 1];
-                    else
-                        Array.Fill(objectWriter._byteInterruptionOffsets, false);
-
-                    objectWriter.ResetByteRunInterruptionOffsets(nodeContents.Relocs);
+                    objectWriter.ResetByteRunInterruptionOffsets(nodeContents);
 
                     // Build symbol definition map.
                     objectWriter.BuildSymbolDefinitionMap(node, nodeContents.DefinedSymbols);
@@ -1100,7 +1100,7 @@ namespace ILCompiler.DependencyAnalysis
                         }
                         else
                         {
-                            int offsetIndex = Array.IndexOf(objectWriter._byteInterruptionOffsets, true, i + 1);
+                            int offsetIndex = Array.IndexOf(objectWriter._byteInterruptionOffsets, true, i + 1, nodeContents.Data.Length - i - 1);
                             
                             int nextOffset = offsetIndex == -1 ? nodeContents.Data.Length : offsetIndex;
                             
