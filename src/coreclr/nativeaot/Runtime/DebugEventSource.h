@@ -28,7 +28,6 @@ public:
     static void SendExceptionCatchHandlerFoundEvent(CORDB_ADDRESS handlerIP, CORDB_ADDRESS HandlerFrameSP);
     static void SendExceptionUnhandledEvent();
     static void SendExceptionFirstPassFrameEnteredEvent(CORDB_ADDRESS ipInFrame, CORDB_ADDRESS frameSP);
-    static void SendCustomEvent(void* payload, int length);
 private:
     static void SendRawEvent(DebugEventPayload* payload);
 };

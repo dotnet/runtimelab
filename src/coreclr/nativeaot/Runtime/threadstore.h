@@ -29,7 +29,6 @@ private:
 
     void                    LockThreadStore();
     void                    UnlockThreadStore();
-    void                    SuspendAllThreads(bool waitForGCEvent, bool fireDebugEvent);
 
 public:
     class Iterator

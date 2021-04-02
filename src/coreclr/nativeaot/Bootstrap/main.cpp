@@ -121,8 +121,6 @@ static const pfn c_classlibFunctions[] = {
     nullptr, // &CheckStaticClassConstruction,
     &GetSystemArrayEEType,
     &OnFirstChanceException,
-    nullptr, // &DebugFuncEvalHelper,
-    nullptr, // &DebugFuncEvalAbortHelper,
 };
 
 #ifndef _countof
