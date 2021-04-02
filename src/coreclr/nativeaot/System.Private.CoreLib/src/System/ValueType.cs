@@ -166,7 +166,15 @@ namespace System
                     // (we already have that part), and calls the entrypoint that expects a byref `this`, and use the
                     // data to decide between calling fast or regular hashcode helper.
                     var fieldValue = (ValueType)RuntimeImports.RhBox(fieldType, ref fieldData);
-                    hashCode = fieldValue.GetHashCodeImpl();
+                    if (fieldValue != null)
+                    {
+                        hashCode = fieldValue.GetHashCodeImpl();
+                    }
+                    else
+                    {
+                        // nullable type with no value, try next
+                        continue;
+                    }
                 }
                 else
                 {
