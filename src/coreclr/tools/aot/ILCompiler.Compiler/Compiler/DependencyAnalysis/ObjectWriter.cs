@@ -1007,7 +1007,12 @@ namespace ILCompiler.DependencyAnalysis
                     objectWriter.SetSection(section);
                     objectWriter.EmitAlignment(nodeContents.Alignment);
 
-                    objectWriter._byteInterruptionOffsets = new bool[nodeContents.Data.Length + 1];
+                    int neededInterruptionsBytes = nodeContents.Data.Length + 1;
+                    if (objectWriter._byteInterruptionOffsets == null || objectWriter._byteInterruptionOffsets.Length < neededInterruptionsBytes)
+                        objectWriter._byteInterruptionOffsets = new bool[nodeContents.Data.Length + 1];
+                    else
+                        Array.Fill(objectWriter._byteInterruptionOffsets, false);
+
                     objectWriter.ResetByteRunInterruptionOffsets(nodeContents.Relocs);
 
                     // Build symbol definition map.
