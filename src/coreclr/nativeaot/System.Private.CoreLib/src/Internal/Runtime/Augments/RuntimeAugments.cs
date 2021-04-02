@@ -1075,11 +1075,6 @@ namespace Internal.Runtime.Augments
             return typeHandle.LastResortToString;
         }
 
-        public static void RhpSendCustomEventToDebugger(IntPtr payload, int length)
-        {
-            RuntimeImports.RhpSendCustomEventToDebugger(payload, length);
-        }
-
         public static IntPtr RhHandleAlloc(object value, GCHandleType type)
         {
             return RuntimeImports.RhHandleAlloc(value, type);

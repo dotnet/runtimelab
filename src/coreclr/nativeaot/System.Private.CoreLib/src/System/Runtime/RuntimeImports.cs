@@ -29,10 +29,6 @@ namespace System.Runtime
         [SuppressGCTransition]
         internal static extern ulong PalGetTickCount64();
 
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "RhpSendCustomEventToDebugger")]
-        internal static extern void RhpSendCustomEventToDebugger(IntPtr payload, int length);
-
         [DllImport(RuntimeLibrary, ExactSpelling = true, CallingConvention = CallingConvention.Cdecl)]
         internal static extern IntPtr RhpGetCurrentThread();
 
