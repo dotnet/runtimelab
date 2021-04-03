@@ -3191,6 +3191,7 @@ namespace System
         public virtual float NextSingle() { throw null; }
         public virtual double NextDouble() { throw null; }
         protected virtual double Sample() { throw null; }
+        public static System.Random Shared { get { throw null; } }
     }
     public readonly partial struct Range : System.IEquatable<System.Range>
     {
@@ -6010,7 +6011,7 @@ namespace System.Diagnostics.CodeAnalysis
         public string? Message { get { throw null; } set { } }
         public string? Url { get { throw null; } set { } }
     }
-    [System.AttributeUsageAttribute(System.AttributeTargets.Constructor | System.AttributeTargets.Method, Inherited=false)]
+    [System.AttributeUsageAttribute(System.AttributeTargets.Class | System.AttributeTargets.Constructor | System.AttributeTargets.Method, Inherited=false)]
     public sealed partial class RequiresUnreferencedCodeAttribute : System.Attribute
     {
         public RequiresUnreferencedCodeAttribute(string message) { }
