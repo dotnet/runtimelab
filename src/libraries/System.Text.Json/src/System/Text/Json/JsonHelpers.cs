@@ -162,7 +162,7 @@ namespace System.Text.Json
             Debug.Assert(context != null);
             Debug.Assert(type != null);
 
-            return context.GetJsonTypeInfo(type) ??
+            return context.GetTypeInfo(type) ??
                 throw new InvalidOperationException($"GetJsonTypeInfo for context {context.GetType()} can't return null for type: {type}.");
         }
     }

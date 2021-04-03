@@ -295,17 +295,29 @@ namespace System.Text.Json.SourceGeneration
                 ? $"createObjectFunc: static () => new {typeMetadata.CompilableName}()"
                 : "createObjectFunc: null";
 
+            List<PropertyMetadata>? properties = typeMetadata.PropertiesMetadata;
+            string propertyArrayInstantiationValue = properties == null
+                ? "System.Array.Empty<JsonPropertyInfo>()"
+                : $"new JsonPropertyInfo[{properties.Count}]";
+
+            const string propertiesVarName = "properties";
+
             StringBuilder sb = new();
 
-            sb.Append($@"JsonObjectInfo<{typeCompilableName}> objectInfo = new({createObjectFuncTypeArg}, {OptionsInstanceVariableName});
-                    objectInfo.NumberHandling = {GetNumberHandlingAsStr(typeMetadata.NumberHandling)};
+            sb.Append($@"JsonObjectInfo<{typeCompilableName}> objectInfo = new({OptionsInstanceVariableName});
                     _{typeFriendlyName} = objectInfo;
 ");
 
-            if (typeMetadata.PropertiesMetadata != null)
+            sb.Append($@"
+                    JsonPropertyInfo[] {propertiesVarName} = {propertyArrayInstantiationValue};
+");
+
+            if (properties != null)
             {
-                foreach (PropertyMetadata memberMetadata in typeMetadata.PropertiesMetadata)
+                for (int i = 0; i < properties.Count; i++)
                 {
+                    PropertyMetadata memberMetadata = properties[i];
+
                     TypeMetadata memberTypeMetadata = memberMetadata.TypeMetadata;
 
                     string clrPropertyName = memberMetadata.ClrName;
@@ -383,7 +395,7 @@ namespace System.Text.Json.SourceGeneration
                     string memberTypeCompilableName = memberTypeMetadata.CompilableName;
 
                     sb.Append($@"
-                    objectInfo.AddProperty({PropertyCreationMethodName}<{memberTypeCompilableName}>(
+                    {propertiesVarName}[{i}] = {PropertyCreationMethodName}<{memberTypeCompilableName}>(
                         clrPropertyName: ""{clrPropertyName}"",
                         memberType: System.Reflection.MemberTypes.{memberMetadata.MemberType},
                         declaringType: typeof({memberMetadata.DeclaringTypeCompilableName}),
@@ -395,16 +407,30 @@ namespace System.Text.Json.SourceGeneration
                         {nameAsUtf8BytesNamedArg},
                         {escapedNameSectionNamedArg},
                         {ignoreConditionNamedArg},
-                        numberHandling: {GetNumberHandlingAsStr(memberMetadata.NumberHandling)}));
+                        numberHandling: {GetNumberHandlingAsStr(memberMetadata.NumberHandling)});
                 ");
                 }
             }
 
-            sb.Append(@$"
-                    objectInfo.CompleteInitialization();");
+            bool containsOnlyPrimitives = typeMetadata.ContainsOnlyPrimitives;
+            string serializeFuncName = $"{typeFriendlyName}SerializeFunc";
+            string serializeFuncNamedArg = containsOnlyPrimitives
+                ? $"serializeObjectFunc: {serializeFuncName}"
+                : "serializeObjectFunc: null";
+
+            sb.Append($@"
+                    objectInfo.Initialize(
+                        {createObjectFuncTypeArg},
+                        {serializeFuncNamedArg},
+                        {propertiesVarName},
+                        {GetNumberHandlingAsStr(typeMetadata.NumberHandling)});");
 
             string metadataInitSource = sb.ToString();
-            return GenerateForType(typeMetadata, metadataInitSource);
+            string? serializeFuncSource = containsOnlyPrimitives
+                ? GenerateFastPathSerializationLogic(typeCompilableName, serializeFuncName, typeMetadata.CanBeNull, properties)
+                : null;
+
+            return GenerateForType(typeMetadata, metadataInitSource, serializeFuncSource);
 
             static bool ContainsNonAscii(string str)
             {
@@ -419,7 +445,86 @@ namespace System.Text.Json.SourceGeneration
             }
         }
 
-        private string GenerateForType(TypeMetadata typeMetadata, string metadataInitSource)
+        private string GenerateFastPathSerializationLogic(
+            string typeCompilableName,
+            string serializeFuncName,
+            bool canBeNull,
+            List<PropertyMetadata> properties)
+        {
+            StringBuilder sb = new();
+
+            sb.Append(@$"
+
+        private void {serializeFuncName}(Utf8JsonWriter writer, {typeCompilableName} value, JsonSerializerOptions options)
+        {{");
+
+            if (canBeNull)
+            {
+                sb.Append(@"
+            if (value == null)
+            {
+                writer.WriteNullValue();
+                return;
+            }
+    ");
+            }
+
+            sb.Append(@"
+            writer.WriteStartObject();");
+
+            if (properties != null)
+            {
+                for (int i = 0; i < properties.Count; i++)
+                {
+                    PropertyMetadata propertyMetadata = properties[i];
+                    string name = propertyMetadata.JsonPropertyName ?? propertyMetadata.ClrName;
+                    Type propertyType = propertyMetadata.TypeMetadata.Type;
+                    string propertyNameArg = @$"""{name}""";
+                    string propertyValueArg = $"value.{propertyMetadata.ClrName}";
+                    string writeMethodArgs = $"{propertyNameArg}, {propertyValueArg}";
+
+                    if (IsStringBasedType(propertyType))
+                    {
+                        sb.Append(@$"
+            writer.WriteString({writeMethodArgs});");
+                    }
+                    else if (propertyType == _booleanType)
+                    {
+                        sb.Append(@$"
+            writer.WriteBoolean({writeMethodArgs});");
+                    }
+                    else if (propertyType == _byteArrayType)
+                    {
+                        sb.Append(@$"
+            writer.WriteBase64String({writeMethodArgs});");
+                    }
+                    else if (propertyType == _charType)
+                    {
+                        sb.Append(@$"
+            writer.WriteString({writeMethodArgs}.ToString());");
+                    }
+                    else if (propertyType == _dateTimeType)
+                    {
+                        sb.Append(@$"
+            writer.WriteString({writeMethodArgs});");
+                    }
+                    else if (_numberTypes.Contains(propertyType))
+                    {
+                        sb.Append(@$"
+            writer.WriteNumber({writeMethodArgs});");
+                    }
+                }
+            }
+
+            sb.Append(@"
+            writer.WriteEndObject();
+        }
+");
+
+            return sb.ToString();
+        }
+
+        private string GenerateForType(TypeMetadata typeMetadata, string metadataInitSource, string? additionalSource = null)
         {
             string typeCompilableName = typeMetadata.CompilableName;
             string typeFriendlyName = typeMetadata.FriendlyName;
@@ -442,7 +547,7 @@ namespace {_generationNamespace}
 
                 return _{typeFriendlyName};
             }}
-        }}
+        }}{additionalSource}
     }}
 }}
 ";
@@ -650,7 +755,7 @@ namespace {_generationNamespace}
 {{
     {JsonContextDeclarationSource}
     {{
-        public override JsonTypeInfo GetJsonTypeInfo(System.Type type)
+        public override JsonTypeInfo GetTypeInfo(System.Type type)
         {{");
 
             // TODO: Make this Dictionary-lookup-based if _handledType.Count > 64.

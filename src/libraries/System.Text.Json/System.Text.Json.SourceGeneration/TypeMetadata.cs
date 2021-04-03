@@ -23,6 +23,8 @@ namespace System.Text.Json.SourceGeneration
 
         public bool IsValueType { get; private set; }
 
+        public bool CanBeNull => !IsValueType || NullableUnderlyingTypeMetadata != null;
+
         public bool CanBeDynamic { get; private set; }
 
         public JsonNumberHandling? NumberHandling { get; private set; }
@@ -44,6 +46,8 @@ namespace System.Text.Json.SourceGeneration
 
         public string? ConverterInstantiationLogic { get; private set; }
 
+        public bool ContainsOnlyPrimitives { get; private set; }
+
         public void Initialize(
             string compilableName,
             string friendlyName,
@@ -58,7 +62,8 @@ namespace System.Text.Json.SourceGeneration
             TypeMetadata? collectionValueTypeMetadata,
             ObjectConstructionStrategy constructionStrategy,
             TypeMetadata? nullableUnderlyingTypeMetadata,
-            string? converterInstantiationLogic)
+            string? converterInstantiationLogic,
+            bool containsOnlyPrimitives)
         {
             if (_hasBeenInitialized)
             {
@@ -74,34 +79,14 @@ namespace System.Text.Json.SourceGeneration
             IsValueType = isValueType;
             CanBeDynamic = canBeDynamic;
             NumberHandling = numberHandling;
-
             PropertiesMetadata = propertiesMetadata;
-
             CollectionType = collectionType;
             CollectionKeyTypeMetadata = collectionKeyTypeMetadata;
             CollectionValueTypeMetadata = collectionValueTypeMetadata;
-
-            if (constructionStrategy != ObjectConstructionStrategy.NotApplicable)
-            {
-                if (classType != ClassType.Object)
-                {
-                    throw new InvalidOperationException($"{nameof(constructionStrategy)} not valid for class type. Stategy: {constructionStrategy} | Type: {type} | Class type: {classType}");
-                }
-
-                ConstructionStrategy = constructionStrategy;
-            }
-
-            if (nullableUnderlyingTypeMetadata != null)
-            {
-                if (classType != ClassType.Nullable)
-                {
-                    throw new InvalidOperationException($"{nameof(nullableUnderlyingTypeMetadata)} not valid for class type. Underlying type: {nullableUnderlyingTypeMetadata} | Type: {type} | Class type: {classType}");
-                }
-
-                NullableUnderlyingTypeMetadata = nullableUnderlyingTypeMetadata;
-            }
-
+            ConstructionStrategy = constructionStrategy;
+            NullableUnderlyingTypeMetadata = nullableUnderlyingTypeMetadata;
             ConverterInstantiationLogic = converterInstantiationLogic;
+            ContainsOnlyPrimitives = containsOnlyPrimitives;
         }
     }
 }

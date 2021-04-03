@@ -74,6 +74,13 @@ namespace System.Text.Json.Serialization.Metadata
         public JsonNumberHandling? NumberHandling { get; set; }
 
         /// <summary>
+        /// When serializing objects with source-gen'd converters, indicates whether the
+        /// configured <see cref="JsonSerializerOptions"/> is compatible with the generated
+        /// <see cref="JsonTypeInfo{T}.SerializeObject"/> func.
+        /// </summary>
+        internal virtual bool ObjectFastPathOnWrite { get; set; }
+
+        /// <summary>
         /// Return the JsonTypeInfo for the element type, or null if the type is not an enumerable or dictionary.
         /// </summary>
         /// <remarks>
@@ -302,7 +309,7 @@ namespace System.Text.Json.Serialization.Metadata
                             PropertyCacheArray[PropertyCache.Count] = DataExtensionProperty;
                         }
 
-                        CompleteObjectInitializationInternal();
+                        CompleteObjectInitialization();
                     }
                     break;
                 case ClassType.Enumerable:
@@ -382,7 +389,7 @@ namespace System.Text.Json.Serialization.Metadata
             }
         }
 
-        internal void CompleteObjectInitializationInternal()
+        internal void CompleteObjectInitialization()
         {
             PropertyCacheArray ??= new JsonPropertyInfo[PropertyCache!.Count];
 

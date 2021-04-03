@@ -11,43 +11,64 @@ namespace System.Text.Json.Serialization.Metadata
     /// <typeparam name="T"></typeparam>
     public sealed class JsonObjectInfo<T> : JsonTypeInfo<T>
     {
-        internal JsonObjectInfo(Type type, JsonSerializerOptions options) :
-            base(type, options, ClassType.Object)
-        { }
-
         /// <summary>
-        /// todo
+        /// TODO
         /// </summary>
-        /// <param name="createObjectFunc"></param>
         /// <param name="options"></param>
-        public JsonObjectInfo(
-            ConstructorDelegate? createObjectFunc,
-            JsonSerializerOptions options) : base(typeof(T), options, ClassType.Object)
+        public JsonObjectInfo(JsonSerializerOptions options) : base(typeof(T), options, ClassType.Object)
         {
-            CreateObject = createObjectFunc;
-            JsonConverter converter = new ObjectDefaultConverter<T>();
+            JsonConverter converter = new ObjectSourceGenConverter<T>();
             ConverterBase = converter;
             PropertyInfoForTypeInfo = SourceGenCreatePropertyInfoForTypeInfo<T>(Type, runtimeTypeInfo: this, converter, Options);
         }
 
         /// <summary>
-        /// todo
+        /// TODO
         /// </summary>
-        // TODO: leverage this method for property ordering on serialization.
-        public void AddProperty(JsonPropertyInfo jsonPropertyInfo)
+        /// <param name="createObjectFunc"></param>
+        /// <param name="serializeObjectFunc"></param>
+        /// <param name="properties"></param>
+        /// <param name="numberHandling"></param>
+        public void Initialize(
+            ConstructorDelegate? createObjectFunc,
+            SerializeObjectDelegate? serializeObjectFunc,
+            JsonPropertyInfo[] properties,
+            JsonNumberHandling? numberHandling)
         {
-            if (!JsonHelpers.TryAdd(PropertyCache!, jsonPropertyInfo.NameAsString, jsonPropertyInfo))
+            if (properties == null)
             {
-                ThrowHelper.ThrowInvalidOperationException_SerializerPropertyNameConflict(Type, jsonPropertyInfo);
+                throw new ArgumentNullException(nameof(properties));
             }
-        }
 
-        /// <summary>
-        /// todo
-        /// </summary>
-        public void CompleteInitialization()
-        {
-            CompleteObjectInitializationInternal();
+            CreateObject = createObjectFunc;
+            SerializeObject = serializeObjectFunc;
+            NumberHandling = numberHandling;
+
+            for (int i = 0; i < properties.Length; i++)
+            {
+                JsonPropertyInfo jsonPropertyInfo = properties[i];
+                if (jsonPropertyInfo == null)
+                {
+                    throw new InvalidOperationException("Cannot provide null JsonPropertyInfo.");
+                }
+
+                if (!JsonHelpers.TryAdd(PropertyCache!, jsonPropertyInfo.NameAsString, jsonPropertyInfo))
+                {
+                    ThrowHelper.ThrowInvalidOperationException_SerializerPropertyNameConflict(Type, jsonPropertyInfo);
+                }
+            }
+
+            if (SerializeObject != null)
+            {
+                ObjectFastPathOnWrite = Options.Encoder == null &&
+                    !Options.IgnoreReadOnlyProperties &&
+                    !Options.IgnoreReadOnlyFields &&
+                    Options.NumberHandling == JsonNumberHandling.Strict &&
+                    (Options.PropertyNamingPolicy == null || Options.PropertyNamingPolicy == JsonNamingPolicy.CamelCase) &&
+                    Options.ReferenceHandlingStrategy == ReferenceHandlingStrategy.None;
+            }
+
+            CompleteObjectInitialization();
         }
     }
 }

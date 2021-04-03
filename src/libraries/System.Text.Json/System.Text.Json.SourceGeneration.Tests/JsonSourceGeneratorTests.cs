@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using System.Text.Json.SourceGeneration;
 using System.Text.Json.SourceGeneration.Tests;
 using System.Text.Json.SourceGeneration.Tests.JsonSourceGeneration;
@@ -449,6 +450,16 @@ namespace System.Text.Json.SourceGeneration.Tests
             // We know metadata was generated for this type.
             JsonConverter converter = context.GetConverter(typeof(HighLowTemps));
             Assert.True(converter is JsonConverter<HighLowTemps>);
+        }
+
+        [Fact]
+        public static void ContextOptionsGetMetadata()
+        {
+            JsonContext context = JsonContext.Default;
+
+            // We know metadata was generated for this type.
+            JsonTypeInfo typeInfo = context.GetTypeInfo(typeof(HighLowTemps));
+            Assert.True(typeInfo.Type == typeof(HighLowTemps));
         }
     }
 }

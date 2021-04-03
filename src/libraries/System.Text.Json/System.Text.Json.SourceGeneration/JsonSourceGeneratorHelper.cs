@@ -21,7 +21,18 @@ namespace System.Text.Json.SourceGeneration
         private readonly Type _ienumerableOfTType;
         private readonly Type _ilistOfTType;
         private readonly Type _dictionaryType;
+
+        private readonly Type _booleanType;
+        private readonly Type _byteArrayType;
+        private readonly Type _charType;
+        private readonly Type _dateTimeType;
+        private readonly Type _dateTimeOffsetType;
+        private readonly Type _guidType;
         private readonly Type _stringType;
+        private readonly Type _uriType;
+        private readonly Type _versionType;
+
+        private readonly HashSet<Type> _numberTypes = new();
 
         private readonly HashSet<Type> _knownTypes = new();
 
@@ -57,7 +68,19 @@ namespace System.Text.Json.SourceGeneration
             _ienumerableOfTType = metadataLoadContext.Resolve(typeof(IEnumerable<>));
             _ilistOfTType = metadataLoadContext.Resolve(typeof(IList<>));
             _dictionaryType = metadataLoadContext.Resolve(typeof(Dictionary<,>));
+
+            _booleanType = metadataLoadContext.Resolve(typeof(bool));
+            _byteArrayType = metadataLoadContext.Resolve(typeof(byte[]));
+            _charType = metadataLoadContext.Resolve(typeof(char));
+            _dateTimeType = metadataLoadContext.Resolve(typeof(DateTime));
+            _dateTimeOffsetType = metadataLoadContext.Resolve(typeof(DateTimeOffset));
+            _guidType = metadataLoadContext.Resolve(typeof(Guid));
+
             _stringType = metadataLoadContext.Resolve(typeof(string));
+            // TODO: confirm that this is true.
+            // System.Private.Uri may not be loaded in input compilation.
+            _uriType = metadataLoadContext.Resolve(typeof(Uri));
+            _versionType = metadataLoadContext.Resolve(typeof(Version));
 
             PopulateKnownTypes(metadataLoadContext);
             InitializeDiagnosticDescriptors();
@@ -128,6 +151,7 @@ namespace System.Text.Json.SourceGeneration
             CollectionType collectionType = CollectionType.NotApplicable;
             ObjectConstructionStrategy constructionStrategy = default;
             JsonNumberHandling? numberHandling = null;
+            bool containsOnlyPrimitives = true;
 
             bool foundDesignTimeCustomConverter = false;
             string? converterInstatiationLogic = null;
@@ -259,6 +283,11 @@ namespace System.Text.Json.SourceGeneration
                         {
                             (propertiesMetadata ??= new()).Add(metadata);
                         }
+
+                        if (containsOnlyPrimitives && !IsPrimitive(propertyInfo.PropertyType))
+                        {
+                            containsOnlyPrimitives = false;
+                        }
                     }
 
                     foreach (FieldInfo fieldInfo in currentType.GetFields(bindingFlags))
@@ -304,7 +333,8 @@ namespace System.Text.Json.SourceGeneration
                 collectionValueTypeMetadata: collectionValueType != null ? GetOrAddTypeMetadata(collectionValueType) : null,
                 constructionStrategy,
                 nullableUnderlyingTypeMetadata: nullableUnderlyingType != null ? GetOrAddTypeMetadata(nullableUnderlyingType) : null,
-                converterInstatiationLogic);
+                converterInstatiationLogic,
+                containsOnlyPrimitives);
 
             return typeMetadata;
         }
@@ -473,39 +503,53 @@ namespace System.Text.Json.SourceGeneration
             return $"new {converterType.GetUniqueCompilableTypeName()}()";
         }
 
+        private void PopulateNumberTypes(MetadataLoadContext metadataLoadContext)
+        {
+            Debug.Assert(_numberTypes != null);
+            _numberTypes.Add(metadataLoadContext.Resolve(typeof(byte)));
+            _numberTypes.Add(metadataLoadContext.Resolve(typeof(Decimal)));
+            _numberTypes.Add(metadataLoadContext.Resolve(typeof(double)));
+            _numberTypes.Add(metadataLoadContext.Resolve(typeof(short)));
+            _numberTypes.Add(metadataLoadContext.Resolve(typeof(sbyte)));
+            _numberTypes.Add(metadataLoadContext.Resolve(typeof(int)));
+            _numberTypes.Add(metadataLoadContext.Resolve(typeof(long)));
+            _numberTypes.Add(metadataLoadContext.Resolve(typeof(float)));
+            _numberTypes.Add(metadataLoadContext.Resolve(typeof(ushort)));
+            _numberTypes.Add(metadataLoadContext.Resolve(typeof(uint)));
+            _numberTypes.Add(metadataLoadContext.Resolve(typeof(ulong)));
+        }
+
         private void PopulateKnownTypes(MetadataLoadContext metadataLoadContext)
         {
-            Debug.Assert(_knownTypes != null);
+            PopulateNumberTypes(metadataLoadContext);
 
-            _knownTypes.Add(metadataLoadContext.Resolve(typeof(bool)));
-            _knownTypes.Add(metadataLoadContext.Resolve(typeof(byte[])));
-            _knownTypes.Add(metadataLoadContext.Resolve(typeof(byte)));
-            _knownTypes.Add(metadataLoadContext.Resolve(typeof(char)));
-            _knownTypes.Add(metadataLoadContext.Resolve(typeof(DateTime)));
-            _knownTypes.Add(metadataLoadContext.Resolve(typeof(DateTimeOffset)));
-            _knownTypes.Add(metadataLoadContext.Resolve(typeof(Decimal)));
-            _knownTypes.Add(metadataLoadContext.Resolve(typeof(double)));
-            _knownTypes.Add(metadataLoadContext.Resolve(typeof(Guid)));
-            _knownTypes.Add(metadataLoadContext.Resolve(typeof(short)));
-            _knownTypes.Add(metadataLoadContext.Resolve(typeof(int)));
-            _knownTypes.Add(metadataLoadContext.Resolve(typeof(long)));
+            Debug.Assert(_knownTypes != null);
+            Debug.Assert(_numberTypes != null);
+
+            _knownTypes.UnionWith(_numberTypes);
+            _knownTypes.Add(_booleanType);
+            _knownTypes.Add(_byteArrayType);
+            _knownTypes.Add(_charType);
+            _knownTypes.Add(_dateTimeType);
+            _knownTypes.Add(_dateTimeOffsetType);
+            _knownTypes.Add(_guidType);
             _knownTypes.Add(metadataLoadContext.Resolve(typeof(object)));
-            _knownTypes.Add(metadataLoadContext.Resolve(typeof(sbyte)));
-            _knownTypes.Add(metadataLoadContext.Resolve(typeof(float)));
             _knownTypes.Add(_stringType);
-            _knownTypes.Add(metadataLoadContext.Resolve(typeof(ushort)));
-            _knownTypes.Add(metadataLoadContext.Resolve(typeof(uint)));
-            _knownTypes.Add(metadataLoadContext.Resolve(typeof(ulong)));
 
             // TODO: confirm that this is true.
             // System.Private.Uri may not be loaded in input compilation.
-            Type? uriType = metadataLoadContext.Resolve(typeof(Uri));
-            if (uriType != null)
+            if (_uriType != null)
             {
-                _knownTypes.Add(uriType);
+                _knownTypes.Add(_uriType);
             }
 
             _knownTypes.Add(metadataLoadContext.Resolve(typeof(Version)));
         }
+
+        private bool IsPrimitive(Type type)
+            => _knownTypes.Contains(type) && type != _uriType && type != _versionType;
+
+        private bool IsStringBasedType(Type type)
+            => type == _stringType || type == _dateTimeType || type == _dateTimeOffsetType || type == _guidType;
     }
 }

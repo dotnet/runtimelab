@@ -29,7 +29,7 @@ namespace System.Text.Json
 
         private Func<Type, JsonSerializerOptions, JsonTypeInfo>? _typeInfoCreationFunc = null!;
 
-        private readonly JsonSerializerContext? _context;
+        internal readonly JsonSerializerContext? _context;
 
         // Simple LRU cache for the public (de)serialize entry points that avoid some lookups in _classes.
         // Although this may be written by multiple threads, 'volatile' was not added since any local affinity is fine.

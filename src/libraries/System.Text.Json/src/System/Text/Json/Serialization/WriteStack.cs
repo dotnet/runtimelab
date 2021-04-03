@@ -45,6 +45,8 @@ namespace System.Text.Json
         /// </summary>
         internal bool SupportContinuation;
 
+        internal bool SourceGenUseFastPath;
+
         private void AddCurrent()
         {
             if (_previous == null)
@@ -88,6 +90,9 @@ namespace System.Text.Json
             }
 
             SupportContinuation = supportContinuation;
+
+            SourceGenUseFastPath = jsonTypeInfo.ObjectFastPathOnWrite;
+            Debug.Assert(!(SourceGenUseFastPath && options._context == null));
 
             return jsonTypeInfo.PropertyInfoForTypeInfo.ConverterBase;
         }
