@@ -407,6 +407,7 @@ namespace System.Text.Json.Serialization.Tests
         }
 
         [Fact]
+        [ActiveIssue("KeyValuePair converter is not a primitive JsonConverter<T>, so there's no way to properly flow the ReadStack state in the direct call to the serializer.")]
         public static void Options_GetConverter_GivesCorrectKeyValuePairConverter()
         {
             GenericConverterTestHelper<KeyValuePair<string, string>>(
@@ -436,7 +437,7 @@ namespace System.Text.Json.Serialization.Tests
             Utf8JsonReader reader = new Utf8JsonReader(data);
             reader.Read();
 
-            T valueRead = converter.Read(ref reader, typeof(T), nullOptionOkay ? null: options);
+            T valueRead = converter.Read(ref reader, typeof(T), nullOptionOkay ? null : options);
             Assert.Equal(objectValue, valueRead);
 
             if (reader.TokenType != JsonTokenType.EndObject)

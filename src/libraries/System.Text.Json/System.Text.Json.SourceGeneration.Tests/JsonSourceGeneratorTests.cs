@@ -447,7 +447,7 @@ namespace System.Text.Json.SourceGeneration.Tests
             JsonContext context = JsonContext.Default;
 
             // We know metadata was generated for this type.
-            JsonConverter converter = context.Options.GetConverter(typeof(HighLowTemps));
+            JsonConverter converter = context.GetConverter(typeof(HighLowTemps));
             Assert.True(converter is JsonConverter<HighLowTemps>);
         }
     }

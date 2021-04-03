@@ -51,6 +51,8 @@ namespace System.Text.Json
                 options = JsonSerializerOptions.DefaultOptions;
             }
 
+            options.EnableConvertersAndClassInfoCreator();
+
             ReadStack state = default;
             state.Initialize(typeof(TValue), options, supportContinuation: true);
             JsonConverter converter = state.Current.JsonPropertyInfo!.ConverterBase;
@@ -208,6 +210,7 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(returnType));
 
             options ??= JsonSerializerOptions.DefaultOptions;
+            options.EnableConvertersAndClassInfoCreator();
 
             ReadStack state = default;
             state.Initialize(returnType, options, supportContinuation: true);

@@ -42,11 +42,11 @@ namespace System.Text.Json.Serialization
         /// <param name="type"></param>
         public virtual JsonClassInfo GetJsonClassInfo(Type type) => throw new NotImplementedException();
 
-        internal IEnumerable<JsonClassInfo> GetAllJsonClassInfos() => GetAllJsonClassInfosImpl();
-
         /// <summary>
-        /// Gets all the <see cref="JsonClassInfo"/> instances defined in this context.
+        /// TODO
         /// </summary>
-        protected virtual IEnumerable<JsonClassInfo> GetAllJsonClassInfosImpl() => throw new NotImplementedException();
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public virtual JsonConverter GetConverter(Type type) => throw new NotImplementedException();
     }
 }

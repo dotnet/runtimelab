@@ -667,23 +667,28 @@ namespace {_generationNamespace}
                 }
             }
 
-            sb.Append(@$"
+            sb.Append(@"
             return null!;
-        }}
+        }
 
-        // TODO: provide implementation here once we decide final shape.
-        protected override System.Collections.Generic.IEnumerable<JsonClassInfo> GetAllJsonClassInfosImpl()
-        {{");
+        public override JsonConverter GetConverter(System.Type type)
+        {");
 
             foreach (TypeMetadata typeMetadata in _typesWithMetadataGenerated)
             {
                 if (typeMetadata.ClassType != ClassType.TypeUnsupportedBySourceGen)
                 {
-                    sb.Append($@"yield return this.{typeMetadata.FriendlyName};");
+                    sb.Append($@"
+            if (type == typeof({typeMetadata.Type.GetUniqueCompilableTypeName()}))
+            {{
+                return this.{typeMetadata.FriendlyName}.ConverterBase;
+            }}
+");
                 }
             }
 
             sb.Append(@"
+            return null!;
         }
     }
 }

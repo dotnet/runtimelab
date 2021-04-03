@@ -239,6 +239,8 @@ namespace System.Text.Json
                 options = JsonSerializerOptions.DefaultOptions;
             }
 
+            options.EnableConvertersAndClassInfoCreator();
+
             ReadStack state = default;
             state.Initialize(returnType, options, supportContinuation: false);
 

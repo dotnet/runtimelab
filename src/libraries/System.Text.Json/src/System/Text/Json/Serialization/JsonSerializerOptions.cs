@@ -27,13 +27,13 @@ namespace System.Text.Json
 
         private readonly ConcurrentDictionary<Type, JsonClassInfo> _classes = new ConcurrentDictionary<Type, JsonClassInfo>();
 
+        private Func<Type, JsonSerializerOptions, JsonClassInfo>? _classInfoCreationFunc = null!;
+
+        private readonly JsonSerializerContext? _context;
+
         // Simple LRU cache for the public (de)serialize entry points that avoid some lookups in _classes.
         // Although this may be written by multiple threads, 'volatile' was not added since any local affinity is fine.
         private JsonClassInfo? _lastClass { get; set; }
-
-        private readonly Func<Type, JsonSerializerOptions, JsonClassInfo>? _classInfoCreationFunc = null!;
-
-        private readonly JsonSerializerContext? _context;
 
         // For any new option added, adding it to the options copied in the copy constructor below must be considered.
 
@@ -63,8 +63,6 @@ namespace System.Text.Json
         public JsonSerializerOptions()
         {
             Converters = new ConverterList(this);
-            InitializeDefaultConverters();
-            _classInfoCreationFunc = static (type, options) => new JsonClassInfo(type, options);
         }
 
         /// <summary>

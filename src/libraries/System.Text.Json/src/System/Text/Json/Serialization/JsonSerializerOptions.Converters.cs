@@ -16,8 +16,6 @@ namespace System.Text.Json
     /// </summary>
     public sealed partial class JsonSerializerOptions
     {
-        private bool _loadedContextTypeInfos;
-
         // The global list of built-in simple converters.
         private static Dictionary<Type, JsonConverter>? s_defaultSimpleConverters;
 
@@ -27,6 +25,29 @@ namespace System.Text.Json
         // The cached converters (custom or built-in).
         // TODO: can we instantiate this lazily in GetConverter(Type) below?
         private readonly ConcurrentDictionary<Type, JsonConverter?> _converters = new ConcurrentDictionary<Type, JsonConverter?>();
+
+        internal void EnableConvertersAndClassInfoCreator()
+        {
+            InitializeDefaultConverters();
+            _classInfoCreationFunc = static (type, options) => new JsonClassInfo(type, options);
+        }
+
+        private void InitializeDefaultConverters()
+        {
+            s_defaultSimpleConverters ??= GetDefaultSimpleConverters();
+            s_defaultFactoryConverters ??= new JsonConverter[]
+            {
+                // Check for disallowed types.
+                new DisallowedTypeConverterFactory(),
+                // Nullable converter should always be next since it forwards to any nullable type.
+                new NullableConverterFactory(),
+                new EnumConverterFactory(),
+                // IEnumerable should always be second to last since they can convert any IEnumerable.
+                new IEnumerableConverterFactory(),
+                // Object should always be last since it converts any type.
+                new ObjectConverterFactory()
+            };
+        }
 
         private static Dictionary<Type, JsonConverter> GetDefaultSimpleConverters()
         {
@@ -65,23 +86,6 @@ namespace System.Text.Json
 
             void Add(JsonConverter converter) =>
                 converters.Add(converter.TypeToConvert, converter);
-        }
-
-        private static void InitializeDefaultConverters()
-        {
-            s_defaultSimpleConverters ??= GetDefaultSimpleConverters();
-            s_defaultFactoryConverters ??= new JsonConverter[]
-            {
-                // Check for disallowed types.
-                new DisallowedTypeConverterFactory(),
-                // Nullable converter should always be next since it forwards to any nullable type.
-                new NullableConverterFactory(),
-                new EnumConverterFactory(),
-                // IEnumerable should always be second to last since they can convert any IEnumerable.
-                new IEnumerableConverterFactory(),
-                // Object should always be last since it converts any type.
-                new ObjectConverterFactory()
-            };
         }
 
         /// <summary>
@@ -156,32 +160,17 @@ namespace System.Text.Json
         /// </exception>
         public JsonConverter? GetConverter(Type typeToConvert)
         {
-            if (!_loadedContextTypeInfos)
+            if (_context != null)
             {
-                IEnumerable<JsonClassInfo>? jsonClassInfos = _context?.GetAllJsonClassInfos();
-                if (jsonClassInfos != null)
-                {
-                    foreach (JsonClassInfo jsonClassInfo in jsonClassInfos)
-                    {
-                        if (!_converters.TryAdd(jsonClassInfo.Type, jsonClassInfo.ConverterBase))
-                        {
-                            throw new InvalidOperationException("Context returned invalid GetAllJsonClassInfos() implementation.");
-                        }
-                    }
-                }
-
-                _loadedContextTypeInfos = true;
+                throw new NotSupportedException("This options instance is associated with a 'JsonSerializerContext'. To fetch a converter, call 'JsonSerializerContext.GetConverter'.");
             }
+
+            InitializeDefaultConverters();
 
             if (_converters.TryGetValue(typeToConvert, out JsonConverter? converter))
             {
                 Debug.Assert(converter != null);
                 return converter;
-            }
-
-            if (_context != null)
-            {
-                throw new NotSupportedException("No converter for type was provided by context.");
             }
 
             if (_converters.TryGetValue(typeToConvert, out converter))

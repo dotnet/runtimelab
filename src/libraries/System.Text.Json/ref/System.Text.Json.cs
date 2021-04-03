@@ -582,7 +582,7 @@ namespace System.Text.Json.Serialization
         protected JsonSerializerContext() { }
         protected JsonSerializerContext(System.Text.Json.JsonSerializerOptions options) { }
         public virtual System.Text.Json.Serialization.Metadata.JsonClassInfo GetJsonClassInfo(System.Type type) { throw null; }
-        protected virtual System.Collections.Generic.IEnumerable<System.Text.Json.Serialization.Metadata.JsonClassInfo> GetAllJsonClassInfosImpl() { throw null; }
+        public virtual System.Text.Json.Serialization.JsonConverter GetConverter(System.Type type) { throw null; }
     }
     public sealed partial class JsonStringEnumConverter : System.Text.Json.Serialization.JsonConverterFactory
     {
