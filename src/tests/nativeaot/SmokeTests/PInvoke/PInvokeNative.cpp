@@ -658,14 +658,10 @@ public:
 GUID IID_IComInterface = { 0x111e91ef, 0x1887, 0x4afd, { 0x81, 0xe3, 0x70, 0xcf, 0x08, 0xe7, 0x15, 0xd8 } };
 
 IComInterface* capturedComObject;
-DLL_EXPORT int __stdcall CaptureComPointer(IUnknown* pUnk)
+DLL_EXPORT int __stdcall CaptureComPointer(IComInterface* pUnk)
 {
-    if (SUCCEEDED(pUnk->QueryInterface(IID_IComInterface, (void **)&capturedComObject)))
-    {
-        return capturedComObject->DoWork(11);
-    }
-
-    return -13;
+    capturedComObject = pUnk;
+    return capturedComObject->DoWork(11);
 }
 
 DLL_EXPORT void ReleaseComPointer()
