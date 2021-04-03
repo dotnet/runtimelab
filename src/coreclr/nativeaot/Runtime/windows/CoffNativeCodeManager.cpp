@@ -123,30 +123,31 @@ static PTR_VOID GetUnwindDataBlob(TADDR moduleBase, PTR_RUNTIME_FUNCTION pRuntim
 
     return pUnwindInfo;
 
-#elif defined(TARGET_ARM)
+#elif defined(TARGET_ARM) || defined(TARGET_ARM64)
 
     // if this function uses packed unwind data then at least one of the two least significant bits
     // will be non-zero.  if this is the case then there will be no xdata record to enumerate.
     ASSERT((pRuntimeFunction->UnwindData & 0x3) == 0);
 
     // compute the size of the unwind info
-    PTR_TADDR xdata = dac_cast<PTR_TADDR>(pRuntimeFunction->UnwindData + moduleBase);
+    PTR_UInt32 xdata = dac_cast<PTR_UInt32>(pRuntimeFunction->UnwindData + moduleBase);
+    int size = 4;
 
-    ULONG epilogScopes = 0;
-    ULONG unwindWords = 0;
-    ULONG size = 0;
+#if defined(TARGET_ARM)
+    // See https://docs.microsoft.com/en-us/cpp/build/arm-exception-handling
+    int unwindWords = xdata[0] >> 28;
+    int epilogScopes = (xdata[0] >> 23) & 0x1f;
+#else
+    // See https://docs.microsoft.com/en-us/cpp/build/arm64-exception-handling
+    int unwindWords = xdata[0] >> 27;
+    int epilogScopes = (xdata[0] >> 22) & 0x1f;
+#endif
 
-    if ((xdata[0] >> 23) != 0)
+    if (unwindWords == 0 && epilogScopes == 0)
     {
-        size = 4;
-        epilogScopes = (xdata[0] >> 23) & 0x1f;
-        unwindWords = (xdata[0] >> 28) & 0x0f;
-    }
-    else
-    {
-        size = 8;
-        epilogScopes = xdata[1] & 0xffff;
+        size += 4;
         unwindWords = (xdata[1] >> 16) & 0xff;
+        epilogScopes = xdata[1] & 0xffff;
     }
 
     if (!(xdata[0] & (1 << 21)))
@@ -379,10 +380,8 @@ void CoffNativeCodeManager::EnumGcRefs(MethodInfo *    pMethodInfo,
 
 uintptr_t CoffNativeCodeManager::GetConservativeUpperBoundForOutgoingArgs(MethodInfo * pMethodInfo, REGDISPLAY * pRegisterSet)
 {
-#if defined(TARGET_AMD64)
-
     // Return value
-    uintptr_t upperBound;
+    TADDR upperBound;
     CoffNativeMethodInfo* pNativeMethodInfo = (CoffNativeMethodInfo *) pMethodInfo;
 
     size_t unwindDataBlobSize;
@@ -395,10 +394,17 @@ uintptr_t CoffNativeCodeManager::GetConservativeUpperBoundForOutgoingArgs(Method
 
     if ((unwindBlockFlags & UBF_FUNC_REVERSE_PINVOKE) != 0)
     {
-        TADDR basePointer =  dac_cast<TADDR>(pRegisterSet->GetFP());
+        // Reverse PInvoke transition should be on the main function body only
+        assert(pNativeMethodInfo->mainRuntimeFunction == pNativeMethodInfo->runtimeFunction);
 
-        // Get the method's GC info
+        if ((unwindBlockFlags & UBF_FUNC_HAS_EHINFO) != 0)
+            p += sizeof(int32_t);
+
         GcInfoDecoder decoder(GCInfoToken(p), DECODE_REVERSE_PINVOKE_VAR);
+        INT32 slot = decoder.GetReversePInvokeFrameStackSlot();
+        assert(slot != NO_REVERSE_PINVOKE_FRAME);
+
+        TADDR basePointer;
         UINT32 stackBasedRegister = decoder.GetStackBaseRegister();
 
         if (stackBasedRegister == NO_STACK_BASE_REGISTER)
@@ -407,20 +413,22 @@ uintptr_t CoffNativeCodeManager::GetConservativeUpperBoundForOutgoingArgs(Method
         }
         else
         {
+            // REVIEW: Verify that stackBasedRegister is FP
             basePointer = dac_cast<TADDR>(pRegisterSet->GetFP());
         }
+
         // Reverse PInvoke case.  The embedded reverse PInvoke frame is guaranteed to reside above
         // all outgoing arguments.
-        INT32 slot = decoder.GetReversePInvokeFrameStackSlot();
-        upperBound =  (uintptr_t) dac_cast<TADDR>(basePointer + slot);
+        upperBound = dac_cast<TADDR>(basePointer + slot);
     }
     else
     {
+#if defined(TARGET_AMD64)
         // Check for a pushed RBP value
         if (GetFramePointer(pMethodInfo, pRegisterSet) == NULL)
         {
             // Unwind the current method context to get the caller's stack pointer
-            // and obtain the upper bound of the callee is the value just below the caller's return address on the stack
+            // and use it as the upper bound for the callee
             SIZE_T  EstablisherFrame;
             PVOID   HandlerData;
             CONTEXT context;
@@ -437,7 +445,8 @@ uintptr_t CoffNativeCodeManager::GetConservativeUpperBoundForOutgoingArgs(Method
                             &EstablisherFrame,
                             NULL);
 
-            upperBound = dac_cast<TADDR>(context.Rsp - sizeof (PVOID));
+            // Skip the return address immediately below the stack pointer
+            upperBound = dac_cast<TADDR>(context.Rsp - sizeof(TADDR));
         }
         else
         {
@@ -446,14 +455,37 @@ uintptr_t CoffNativeCodeManager::GetConservativeUpperBoundForOutgoingArgs(Method
             // the frame pointer generally points to a location that is separated from the pushed RBP
             // value by an offset that is recorded in the info header.  Recover the address of the
             // pushed RBP value by subtracting this offset.
-            upperBound = (uintptr_t) dac_cast<TADDR>(pRegisterSet->GetFP() - ((PTR_UNWIND_INFO) pUnwindDataBlob)->FrameOffset);
+            upperBound = dac_cast<TADDR>(pRegisterSet->GetFP() - ((PTR_UNWIND_INFO) pUnwindDataBlob)->FrameOffset);
         }
+
+#elif defined(TARGET_ARM) || defined(TARGET_ARM64)
+        // Unwind the current method context to get the caller's stack pointer
+        // and use it as the upper bound for the callee
+        SIZE_T  EstablisherFrame;
+        PVOID   HandlerData;
+        CONTEXT context;
+        context.Sp = pRegisterSet->GetSP();
+        context.Fp = pRegisterSet->GetFP();
+        context.Pc = pRegisterSet->GetIP();
+
+        RtlVirtualUnwind(NULL,
+                        dac_cast<TADDR>(m_moduleBase),
+                        pRegisterSet->IP,
+                        (PRUNTIME_FUNCTION)pNativeMethodInfo->runtimeFunction,
+                        &context,
+                        &HandlerData,
+                        &EstablisherFrame,
+                        NULL);
+
+        upperBound = dac_cast<TADDR>(context.Sp);
+
+#else
+        PORTABILITY_ASSERT("GetConservativeUpperBoundForOutgoingArgs");
+        upperBound = NULL;
+        RhFailFast();
+#endif
     }
     return upperBound;
-#else
-    assert(false);
-    return false;
-#endif
 }
 
 bool CoffNativeCodeManager::UnwindStackFrame(MethodInfo *    pMethodInfo,
@@ -581,7 +613,7 @@ bool CoffNativeCodeManager::UnwindStackFrame(MethodInfo *    pMethodInfo,
     pRegisterSet->SP = context.Sp;
     pRegisterSet->IP = context.Pc;
 
-    pRegisterSet->pIP = pRegisterSet->pLR;
+    pRegisterSet->pIP = contextPointers.Lr;
 
     for (int i = 8; i < 16; i++)
         pRegisterSet->D[i - 8] = context.V[i].Low;
