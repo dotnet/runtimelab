@@ -51,7 +51,7 @@ namespace System.Text.Json
                 options = JsonSerializerOptions.DefaultOptions;
             }
 
-            options.EnableConvertersAndClassInfoCreator();
+            options.EnableConvertersAndTypeInfoCreator();
 
             ReadStack state = default;
             state.Initialize(typeof(TValue), options, supportContinuation: true);
@@ -116,7 +116,7 @@ namespace System.Text.Json
 
             return DeserializeUsingMetadataAsync<TValue?>(
                 utf8Json,
-                JsonHelpers.GetJsonClassInfo(jsonSerializerContext, typeof(TValue)),
+                JsonHelpers.GetJsonTypeInfo(jsonSerializerContext, typeof(TValue)),
                 cancellationToken);
         }
 
@@ -145,31 +145,31 @@ namespace System.Text.Json
 
             return DeserializeUsingMetadataAsync<object?>(
                 utf8Json,
-                JsonHelpers.GetJsonClassInfo(jsonSerializerContext, returnType),
+                JsonHelpers.GetJsonTypeInfo(jsonSerializerContext, returnType),
                 cancellationToken);
         }
 
         private static ValueTask<TValue?> DeserializeUsingMetadataAsync<TValue>(
             Stream utf8Json,
-            JsonClassInfo? jsonClassInfo,
+            JsonTypeInfo? jsonTypeInfo,
             CancellationToken cancellationToken)
         {
             ReadStack state = default;
 
             // TODO: this would be when to fallback to regular warm-up code-paths.
             // For validation during development, we don't expect this to be null.
-            if (jsonClassInfo == null)
+            if (jsonTypeInfo == null)
             {
-                throw new ArgumentNullException(nameof(jsonClassInfo));
+                throw new ArgumentNullException(nameof(jsonTypeInfo));
             }
 
-            state.Initialize(jsonClassInfo, supportContinuation: true);
-            JsonConverter converter = jsonClassInfo.PropertyInfoForClassInfo.ConverterBase;
+            state.Initialize(jsonTypeInfo, supportContinuation: true);
+            JsonConverter converter = jsonTypeInfo.PropertyInfoForTypeInfo.ConverterBase;
 
             return ReadAsync<TValue>(
                 converter,
                 utf8Json,
-                jsonClassInfo.Options,
+                jsonTypeInfo.Options,
                 cancellationToken,
                 state);
         }
@@ -210,7 +210,7 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(returnType));
 
             options ??= JsonSerializerOptions.DefaultOptions;
-            options.EnableConvertersAndClassInfoCreator();
+            options.EnableConvertersAndTypeInfoCreator();
 
             ReadStack state = default;
             state.Initialize(returnType, options, supportContinuation: true);

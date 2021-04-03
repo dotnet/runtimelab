@@ -103,7 +103,7 @@ namespace System.Text.Json
                 options = JsonSerializerOptions.DefaultOptions;
             }
 
-            options.EnableConvertersAndClassInfoCreator();
+            options.EnableConvertersAndTypeInfoCreator();
 
             JsonWriterOptions writerOptions = options.GetWriterOptions();
 
@@ -111,7 +111,7 @@ namespace System.Text.Json
             using (var writer = new Utf8JsonWriter(bufferWriter, writerOptions))
             {
                 //  We treat typeof(object) special and allow polymorphic behavior.
-                if (inputType == JsonClassInfo.ObjectType && value != null)
+                if (inputType == JsonTypeInfo.ObjectType && value != null)
                 {
                     inputType = value!.GetType();
                 }

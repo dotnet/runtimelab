@@ -51,7 +51,7 @@ namespace System.Text.Json
             {
                 using (var writer = new Utf8JsonWriter(output, options.GetWriterOptions()))
                 {
-                    WriteCore(jsonTypeInfo.PropertyInfoForClassInfo.ConverterBase, writer, value, ref state, options);
+                    WriteCore(jsonTypeInfo.PropertyInfoForTypeInfo.ConverterBase, writer, value, ref state, options);
                 }
 
                 return output.WrittenMemory.Span.ToArray();

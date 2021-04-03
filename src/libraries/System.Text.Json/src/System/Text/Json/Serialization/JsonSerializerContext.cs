@@ -40,7 +40,7 @@ namespace System.Text.Json.Serialization
         /// todo
         /// </summary>
         /// <param name="type"></param>
-        public virtual JsonClassInfo GetJsonClassInfo(Type type) => throw new NotImplementedException();
+        public virtual JsonTypeInfo GetJsonTypeInfo(Type type) => throw new NotImplementedException();
 
         /// <summary>
         /// TODO

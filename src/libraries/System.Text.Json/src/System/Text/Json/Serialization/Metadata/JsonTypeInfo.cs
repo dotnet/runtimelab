@@ -13,9 +13,9 @@ namespace System.Text.Json.Serialization.Metadata
     /// todo
     /// </summary>
     [DebuggerDisplay("ClassType.{ClassType}, {Type.Name}")]
-    // todo: add JsonObjectInfo and JsonArrayInfo classes deriving from JsonClassInfo
-    // also add a sealed version of these for internal use (JsonObjectInfoInternal JsonClassInfoInternal)
-    public partial class JsonClassInfo
+    // todo: add JsonObjectInfo and JsonArrayInfo classes deriving from JsonTypeInfo
+    // also add a sealed version of these for internal use (JsonObjectInfoInternal JsonTypeInfoInternal)
+    public partial class JsonTypeInfo
     {
         //internal bool _isInitialized;
         // todo: add immutable checks in all setters like we do in JsonSerializerOptions
@@ -60,8 +60,8 @@ namespace System.Text.Json.Serialization.Metadata
 
         internal JsonPropertyInfo? DataExtensionProperty { get; private set; }
 
-        // If enumerable or dictionary, the JsonClassInfo for the element type.
-        private JsonClassInfo? _elementClassInfo;
+        // If enumerable or dictionary, the JsonTypeInfo for the element type.
+        private JsonTypeInfo? _elementTypeInfo;
 
         /// <summary>
         /// todo
@@ -74,58 +74,58 @@ namespace System.Text.Json.Serialization.Metadata
         public JsonNumberHandling? NumberHandling { get; set; }
 
         /// <summary>
-        /// Return the JsonClassInfo for the element type, or null if the type is not an enumerable or dictionary.
+        /// Return the JsonTypeInfo for the element type, or null if the type is not an enumerable or dictionary.
         /// </summary>
         /// <remarks>
-        /// This should not be called during warm-up (initial creation of JsonClassInfos) to avoid recursive behavior
+        /// This should not be called during warm-up (initial creation of JsonTypeInfos) to avoid recursive behavior
         /// which could result in a StackOverflowException.
         /// </remarks>
-        internal JsonClassInfo? ElementClassInfo
+        internal JsonTypeInfo? ElementTypeInfo
         {
             get
             {
-                if (_elementClassInfo == null && ElementType != null)
+                if (_elementTypeInfo == null && ElementType != null)
                 {
                     Debug.Assert(ClassType == ClassType.Enumerable ||
                         ClassType == ClassType.Dictionary);
 
-                    _elementClassInfo = Options.GetOrAddClass(ElementType);
+                    _elementTypeInfo = Options.GetOrAddClass(ElementType);
                 }
 
-                return _elementClassInfo;
+                return _elementTypeInfo;
             }
             set
             {
                 // Used with code-gen scenarios.
-                Debug.Assert(_elementClassInfo == null);
-                _elementClassInfo = value;
+                Debug.Assert(_elementTypeInfo == null);
+                _elementTypeInfo = value;
             }
         }
 
         internal Type? ElementType { get; set; }
 
-        // If dictionary, the JsonClassInfo for the key type.
-        private JsonClassInfo? _keyClassInfo;
+        // If dictionary, the JsonTypeInfo for the key type.
+        private JsonTypeInfo? _keyTypeInfo;
 
         /// <summary>
-        /// Return the JsonClassInfo for the key type, or null if the type is not a dictionary.
+        /// Return the JsonTypeInfo for the key type, or null if the type is not a dictionary.
         /// </summary>
         /// <remarks>
-        /// This should not be called during warm-up (initial creation of JsonClassInfos) to avoid recursive behavior
+        /// This should not be called during warm-up (initial creation of JsonTypeInfos) to avoid recursive behavior
         /// which could result in a StackOverflowException.
         /// </remarks>
-        internal JsonClassInfo? KeyClassInfo
+        internal JsonTypeInfo? KeyTypeInfo
         {
             get
             {
-                if (_keyClassInfo == null && KeyType != null)
+                if (_keyTypeInfo == null && KeyType != null)
                 {
                     Debug.Assert(ClassType == ClassType.Dictionary);
 
-                    _keyClassInfo = Options.GetOrAddClass(KeyType);
+                    _keyTypeInfo = Options.GetOrAddClass(KeyType);
                 }
 
-                return _keyClassInfo;
+                return _keyTypeInfo;
             }
         }
 
@@ -142,7 +142,7 @@ namespace System.Text.Json.Serialization.Metadata
         public Type Type { get; private set; }
 
         /// <summary>
-        /// The JsonPropertyInfo for this JsonClassInfo. It is used to obtain the converter for the ClassInfo.
+        /// The JsonPropertyInfo for this JsonTypeInfo. It is used to obtain the converter for the TypeInfo.
         /// </summary>
         /// <remarks>
         /// The returned JsonPropertyInfo does not represent a real property; instead it represents either:
@@ -151,13 +151,13 @@ namespace System.Text.Json.Serialization.Metadata
         /// a property type (if pushed to a new stack frame),
         /// or the root type passed into the root serialization APIs.
         /// For example, for a property returning <see cref="Collections.Generic.List{T}"/> where T is a string,
-        /// a JsonClassInfo will be created with .Type=typeof(string) and .PropertyInfoForClassInfo=JsonPropertyInfo{string}.
-        /// Without this property, a "Converter" property would need to be added to JsonClassInfo and there would be several more
+        /// a JsonTypeInfo will be created with .Type=typeof(string) and .PropertyInfoForTypeInfo=JsonPropertyInfo{string}.
+        /// Without this property, a "Converter" property would need to be added to JsonTypeInfo and there would be several more
         /// `if` statements to obtain the converter from either the actual JsonPropertyInfo (for a real property) or from the
-        /// ClassInfo (for the cases mentioned above). In addition, methods that have a JsonPropertyInfo argument would also likely
-        /// need to add an argument for JsonClassInfo.
+        /// TypeInfo (for the cases mentioned above). In addition, methods that have a JsonPropertyInfo argument would also likely
+        /// need to add an argument for JsonTypeInfo.
         /// </remarks>
-        internal JsonPropertyInfo PropertyInfoForClassInfo { get; set; }
+        internal JsonPropertyInfo PropertyInfoForTypeInfo { get; set; }
 
         private GenericMethodHolder? _genericMethods;
 
@@ -178,14 +178,14 @@ namespace System.Text.Json.Serialization.Metadata
             }
         }
 
-        internal JsonClassInfo(Type type, JsonSerializerOptions options, ClassType classType)
+        internal JsonTypeInfo(Type type, JsonSerializerOptions options, ClassType classType)
         {
             Type = type;
 
             Options = options ?? throw new ArgumentNullException(nameof(options));
 
             // todo: fix up nullability to avoid this.
-            PropertyInfoForClassInfo = null!;
+            PropertyInfoForTypeInfo = null!;
             ConverterBase = null!;
 
             if (classType == ClassType.Object)
@@ -199,15 +199,15 @@ namespace System.Text.Json.Serialization.Metadata
             ClassType = classType;
         }
 
-        internal JsonClassInfo(Type type, JsonSerializerOptions options)
+        internal JsonTypeInfo(Type type, JsonSerializerOptions options)
         {
             Type = type;
             Options = options;
 
             JsonConverter converter = GetConverter(
                 Type,
-                parentClassType: null, // A ClassInfo never has a "parent" class.
-                memberInfo: null, // A ClassInfo never has a "parent" property.
+                parentClassType: null, // A TypeInfo never has a "parent" class.
+                memberInfo: null, // A TypeInfo never has a "parent" property.
                 out Type runtimeType,
                 Options);
 
@@ -215,7 +215,7 @@ namespace System.Text.Json.Serialization.Metadata
             ClassType = converter.ClassType;
             JsonNumberHandling? typeNumberHandling = GetNumberHandlingForType(Type);
 
-            PropertyInfoForClassInfo = CreatePropertyInfoForClassInfo(Type, runtimeType, converter, typeNumberHandling, Options);
+            PropertyInfoForTypeInfo = CreatePropertyInfoForTypeInfo(Type, runtimeType, converter, typeNumberHandling, Options);
 
             switch (ClassType)
             {
@@ -389,7 +389,7 @@ namespace System.Text.Json.Serialization.Metadata
             // Copy the dictionary cache to the array cache.
             PropertyCache!.Values.CopyTo(PropertyCacheArray, 0);
 
-            JsonConverter converter = PropertyInfoForClassInfo.ConverterBase;
+            JsonConverter converter = PropertyInfoForTypeInfo.ConverterBase;
 
             // Allow constructor parameter logic to remove items from the dictionary since the JSON
             // property values will be passed to the constructor and do not call a property setter.

@@ -59,7 +59,7 @@ namespace System.Text.Json
             {
                 options = JsonSerializerOptions.DefaultOptions;
             }
-            options.EnableConvertersAndClassInfoCreator();
+            options.EnableConvertersAndTypeInfoCreator();
 
             ReadStack state = default;
             state.Initialize(typeof(TValue), options, supportContinuation: false);
@@ -145,7 +145,7 @@ namespace System.Text.Json
             {
                 options = JsonSerializerOptions.DefaultOptions;
             }
-            options.EnableConvertersAndClassInfoCreator();
+            options.EnableConvertersAndTypeInfoCreator();
 
             ReadStack state = default;
             state.Initialize(returnType, options, supportContinuation: false);
@@ -175,12 +175,12 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(jsonSerializerContext));
             }
 
-            JsonClassInfo jsonClassInfo = JsonHelpers.GetJsonClassInfo(jsonSerializerContext, returnType);
+            JsonTypeInfo jsonTypeInfo = JsonHelpers.GetJsonTypeInfo(jsonSerializerContext, returnType);
 
-            JsonSerializerOptions options = jsonClassInfo.Options;
+            JsonSerializerOptions options = jsonTypeInfo.Options;
 
             ReadStack state = default;
-            state.Initialize(jsonClassInfo, supportContinuation: false);
+            state.Initialize(jsonTypeInfo, supportContinuation: false);
 
             return ReadValueCore<object>(options, ref reader, ref state);
         }

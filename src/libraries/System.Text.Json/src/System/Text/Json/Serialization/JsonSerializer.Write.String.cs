@@ -119,7 +119,7 @@ namespace System.Text.Json
 
             return SerializeUsingMetadata(
                 value,
-                JsonHelpers.GetJsonClassInfo(jsonSerializerContext, inputType));
+                JsonHelpers.GetJsonTypeInfo(jsonSerializerContext, inputType));
         }
 
         /// <summary>
@@ -142,26 +142,26 @@ namespace System.Text.Json
 
             return SerializeUsingMetadata(
                 value,
-                JsonHelpers.GetJsonClassInfo(jsonSerializerContext, type));
+                JsonHelpers.GetJsonTypeInfo(jsonSerializerContext, type));
         }
 
-        private static string SerializeUsingMetadata<TValue>(in TValue value, JsonClassInfo? jsonClassInfo)
+        private static string SerializeUsingMetadata<TValue>(in TValue value, JsonTypeInfo? jsonTypeInfo)
         {
-            if (jsonClassInfo == null)
+            if (jsonTypeInfo == null)
             {
-                throw new ArgumentNullException(nameof(jsonClassInfo));
+                throw new ArgumentNullException(nameof(jsonTypeInfo));
             }
 
-            JsonSerializerOptions options = jsonClassInfo.Options;
+            JsonSerializerOptions options = jsonTypeInfo.Options;
 
             WriteStack state = default;
-            state.Initialize(jsonClassInfo, options, supportContinuation: false);
+            state.Initialize(jsonTypeInfo, options, supportContinuation: false);
 
             using (var output = new PooledByteBufferWriter(options.DefaultBufferSize))
             {
                 using (var writer = new Utf8JsonWriter(output, options.GetWriterOptions()))
                 {
-                    JsonConverter? jsonConverter = jsonClassInfo.PropertyInfoForClassInfo.ConverterBase;
+                    JsonConverter? jsonConverter = jsonTypeInfo.PropertyInfoForTypeInfo.ConverterBase;
                     WriteCore(jsonConverter, writer, value, ref state, options);
                 }
 

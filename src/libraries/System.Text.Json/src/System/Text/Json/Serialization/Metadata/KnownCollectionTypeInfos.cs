@@ -17,7 +17,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// todo
         /// </summary>
         // TODO: Should this return JsonCollectionTypeInfo<T>?
-        public static JsonCollectionTypeInfo<T[]> GetArray(JsonClassInfo elementInfo, JsonSerializerContext context)
+        public static JsonCollectionTypeInfo<T[]> GetArray(JsonTypeInfo elementInfo, JsonSerializerContext context)
         {
             if (s_array == null)
             {
@@ -31,7 +31,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public static JsonCollectionTypeInfo<List<T>> GetList(JsonClassInfo elementInfo, JsonSerializerContext context)
+        public static JsonCollectionTypeInfo<List<T>> GetList(JsonTypeInfo elementInfo, JsonSerializerContext context)
         {
             if (s_list == null)
             {
@@ -45,7 +45,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public static JsonCollectionTypeInfo<IEnumerable<T>> GetIEnumerable(JsonClassInfo elementInfo, JsonSerializerContext context)
+        public static JsonCollectionTypeInfo<IEnumerable<T>> GetIEnumerable(JsonTypeInfo elementInfo, JsonSerializerContext context)
         {
             if (s_ienumerable == null)
             {
@@ -59,7 +59,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public static JsonCollectionTypeInfo<IList<T>> GetIList(JsonClassInfo elementInfo, JsonSerializerContext context)
+        public static JsonCollectionTypeInfo<IList<T>> GetIList(JsonTypeInfo elementInfo, JsonSerializerContext context)
         {
             if (s_ilist == null)
             {

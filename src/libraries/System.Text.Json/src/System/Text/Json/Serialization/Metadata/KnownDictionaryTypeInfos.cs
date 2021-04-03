@@ -18,8 +18,8 @@ namespace System.Text.Json.Serialization.Metadata
         /// todo
         /// </summary>
         // TODO: Should this return JsonCollectionTypeInfo<T>?
-        public static JsonCollectionTypeInfo<Dictionary<TKey, TValue>> GetDictionary(JsonClassInfo elementInfo, JsonSerializerContext context)
-            // TODO: We should also be passing the classInfo for the key type.
+        public static JsonCollectionTypeInfo<Dictionary<TKey, TValue>> GetDictionary(JsonTypeInfo elementInfo, JsonSerializerContext context)
+            // TODO: We should also be passing the typeInfo for the key type.
             => s_dictionaryOfTKeyTValue ??= new JsonCollectionTypeInfo<Dictionary<TKey, TValue>>(
                 CreateDictionary,
                 new DictionaryOfTKeyTValueConverter<Dictionary<TKey, TValue>, TKey, TValue>(),

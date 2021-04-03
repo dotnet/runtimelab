@@ -26,10 +26,10 @@ namespace System.Text.Json
         // TODO: can we instantiate this lazily in GetConverter(Type) below?
         private readonly ConcurrentDictionary<Type, JsonConverter?> _converters = new ConcurrentDictionary<Type, JsonConverter?>();
 
-        internal void EnableConvertersAndClassInfoCreator()
+        internal void EnableConvertersAndTypeInfoCreator()
         {
             InitializeDefaultConverters();
-            _classInfoCreationFunc = static (type, options) => new JsonClassInfo(type, options);
+            _typeInfoCreationFunc = static (type, options) => new JsonTypeInfo(type, options);
         }
 
         private void InitializeDefaultConverters()

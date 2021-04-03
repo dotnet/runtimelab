@@ -25,15 +25,15 @@ namespace System.Text.Json
 
         internal static JsonSerializerOptions DefaultSourceGenOptions => s_defaultSourceGenOptions ??= CreateForSizeOpts();
 
-        private readonly ConcurrentDictionary<Type, JsonClassInfo> _classes = new ConcurrentDictionary<Type, JsonClassInfo>();
+        private readonly ConcurrentDictionary<Type, JsonTypeInfo> _classes = new ConcurrentDictionary<Type, JsonTypeInfo>();
 
-        private Func<Type, JsonSerializerOptions, JsonClassInfo>? _classInfoCreationFunc = null!;
+        private Func<Type, JsonSerializerOptions, JsonTypeInfo>? _typeInfoCreationFunc = null!;
 
         private readonly JsonSerializerContext? _context;
 
         // Simple LRU cache for the public (de)serialize entry points that avoid some lookups in _classes.
         // Although this may be written by multiple threads, 'volatile' was not added since any local affinity is fine.
-        private JsonClassInfo? _lastClass { get; set; }
+        private JsonTypeInfo? _lastClass { get; set; }
 
         // For any new option added, adding it to the options copied in the copy constructor below must be considered.
 
@@ -80,7 +80,7 @@ namespace System.Text.Json
             }
 
             CopyOptions(options);
-            _classInfoCreationFunc = options._classInfoCreationFunc;
+            _typeInfoCreationFunc = options._typeInfoCreationFunc;
             Converters = new ConverterList(this, (ConverterList)options.Converters);
         }
 
@@ -111,7 +111,7 @@ namespace System.Text.Json
             Debug.Assert(context != null);
             _context = context;
             CopyOptions(options);
-            _classInfoCreationFunc = options._classInfoCreationFunc;
+            _typeInfoCreationFunc = options._typeInfoCreationFunc;
             Converters = new ConverterList(this, (ConverterList)options.Converters);
         }
 
@@ -155,7 +155,7 @@ namespace System.Text.Json
             EffectiveMaxDepth = options.EffectiveMaxDepth;
             ReferenceHandlingStrategy = options.ReferenceHandlingStrategy;
 
-            // _classes is not copied as sharing the JsonClassInfo and JsonPropertyInfo caches can result in
+            // _classes is not copied as sharing the JsonTypeInfo and JsonPropertyInfo caches can result in
             // unnecessary references to type metadata, potentially hindering garbage collection on the source options.
 
             // _haveTypesBeenCreated is not copied; it's okay to make changes to this options instance as (de)serialization has not occurred.
@@ -558,64 +558,64 @@ namespace System.Text.Json
             }
         }
 
-        internal void AddJsonClassInfoToCompleteInitialization(JsonClassInfo jsonClassInfo)
+        internal void AddJsonTypeInfoToCompleteInitialization(JsonTypeInfo jsonTypeInfo)
         {
             // todo: for performance, consider not adding to internal dictionary.
             // For compat, calling options.GetConverter() however would need to lazily populate
             // the dictionary from the context(s) associated with the options class.
 
-            _classes.GetOrAdd(jsonClassInfo.Type, jsonClassInfo);
+            _classes.GetOrAdd(jsonTypeInfo.Type, jsonTypeInfo);
 
             // TODO: should we verify mutable here?
             // VerifyMutable();
 
             // TODO: re: should we verify mutable here?
-            // OR: Should we make last jsonClassInfo added wins:
-            // _classes[jsonClassInfo.Type] = jsonClassInfo;
+            // OR: Should we make last jsonTypeInfo added wins:
+            // _classes[jsonTypeInfo.Type] = jsonTypeInfo;
 
             // TODO: reason about what would happen if we change the code to the following.
             // - Should multiple context instances be allowed to add metadata to a single options instance?
             // - Should a single context instance add metadata for the same type to the options instance?
             // - Is the existing behavior consistent with the dynamic serializer?
-            //if (!_classes.TryAdd(jsonClassInfo.Type, jsonClassInfo))
+            //if (!_classes.TryAdd(jsonTypeInfo.Type, jsonTypeInfo))
             //{
-            //    throw new InvalidOperationException($"Metadata for type {jsonClassInfo.Type} already provided to serializer - {_classes[jsonClassInfo.Type]}.");
+            //    throw new InvalidOperationException($"Metadata for type {jsonTypeInfo.Type} already provided to serializer - {_classes[jsonTypeInfo.Type]}.");
             //}
         }
 
-        internal JsonClassInfo GetOrAddClass(Type type)
+        internal JsonTypeInfo GetOrAddClass(Type type)
         {
             _haveTypesBeenCreated = true;
 
-            // todo: for performance and reduced instances, consider using the converters and JsonClassInfo from s_defaultOptions by cloning (or reference directly if no changes).
+            // todo: for performance and reduced instances, consider using the converters and JsonTypeInfo from s_defaultOptions by cloning (or reference directly if no changes).
             // https://github.com/dotnet/runtime/issues/32357
-            if (!_classes.TryGetValue(type, out JsonClassInfo? result))
+            if (!_classes.TryGetValue(type, out JsonTypeInfo? result))
             {
-                if (_classInfoCreationFunc == null)
+                if (_typeInfoCreationFunc == null)
                 {
                     throw new NotSupportedException(@$"Metadata for type {type} not provided to serializer - will not go down reflection-based code path.");
                 }
 
-                result = _classes.GetOrAdd(type, _classInfoCreationFunc(type, this));
+                result = _classes.GetOrAdd(type, _typeInfoCreationFunc(type, this));
             }
 
             return result;
         }
 
         /// <summary>
-        /// Return the ClassInfo for root API calls.
+        /// Return the TypeInfo for root API calls.
         /// This has a LRU cache that is intended only for public API calls that specify the root type.
         /// </summary>
-        internal JsonClassInfo GetOrAddClassForRootType(Type type)
+        internal JsonTypeInfo GetOrAddClassForRootType(Type type)
         {
-            JsonClassInfo? jsonClassInfo = _lastClass;
-            if (jsonClassInfo?.Type != type)
+            JsonTypeInfo? jsonTypeInfo = _lastClass;
+            if (jsonTypeInfo?.Type != type)
             {
-                jsonClassInfo = GetOrAddClass(type);
-                _lastClass = jsonClassInfo;
+                jsonTypeInfo = GetOrAddClass(type);
+                _lastClass = jsonTypeInfo;
             }
 
-            return jsonClassInfo;
+            return jsonTypeInfo;
         }
 
         // todo:

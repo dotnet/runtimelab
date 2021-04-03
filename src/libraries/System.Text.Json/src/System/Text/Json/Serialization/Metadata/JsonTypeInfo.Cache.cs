@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 namespace System.Text.Json.Serialization.Metadata
 {
     [DebuggerDisplay("ClassType.{ClassType}, {Type.Name}")]
-    public partial class JsonClassInfo
+    public partial class JsonTypeInfo
     {
         /// <summary>
         /// Cached typeof(object). It is faster to cache this than to call typeof(object) multiple times.
@@ -111,9 +111,9 @@ namespace System.Text.Json.Serialization.Metadata
 
         /// <summary>
         /// Create a <see cref="JsonPropertyInfo"/> for a given Type.
-        /// See <seealso cref="PropertyInfoForClassInfo"/>.
+        /// See <seealso cref="PropertyInfoForTypeInfo"/>.
         /// </summary>
-        internal static JsonPropertyInfo CreatePropertyInfoForClassInfo(
+        internal static JsonPropertyInfo CreatePropertyInfoForTypeInfo(
             Type declaredPropertyType,
             Type runtimePropertyType,
             JsonConverter converter,
@@ -129,17 +129,17 @@ namespace System.Text.Json.Serialization.Metadata
                 options,
                 parentTypeNumberHandling: numberHandling);
 
-            Debug.Assert(jsonPropertyInfo.IsForClassInfo);
+            Debug.Assert(jsonPropertyInfo.IsForTypeInfo);
             return jsonPropertyInfo;
         }
 
         /// <summary>
         /// Create a <see cref="JsonPropertyInfo"/> for a given Type.
-        /// See <seealso cref="PropertyInfoForClassInfo"/>.
+        /// See <seealso cref="PropertyInfoForTypeInfo"/>.
         /// </summary>
-        internal static JsonPropertyInfo SourceGenCreatePropertyInfoForClassInfo<T>(
+        internal static JsonPropertyInfo SourceGenCreatePropertyInfoForTypeInfo<T>(
             Type declaredPropertyType,
-            JsonClassInfo runtimeClassInfo,
+            JsonTypeInfo runtimeTypeInfo,
             JsonConverter converter,
             JsonSerializerOptions options)
         {
@@ -147,17 +147,17 @@ namespace System.Text.Json.Serialization.Metadata
             jsonPropertyInfo.DeclaredPropertyType = declaredPropertyType;
             jsonPropertyInfo.RuntimePropertyType = declaredPropertyType;
             jsonPropertyInfo.ClassType = converter.ClassType;
-            jsonPropertyInfo.RuntimeClassInfo = runtimeClassInfo;
+            jsonPropertyInfo.RuntimeTypeInfo = runtimeTypeInfo;
             jsonPropertyInfo.ConverterBase = converter;
             jsonPropertyInfo.Options = options;
-            jsonPropertyInfo.IsForClassInfo = true;
+            jsonPropertyInfo.IsForTypeInfo = true;
             jsonPropertyInfo.HasGetter = true;
             jsonPropertyInfo.HasSetter = true;
             // TODO (perf): can we pre-compute some of these values during source gen?
             jsonPropertyInfo._converterIsExternalAndPolymorphic = !converter.IsInternalConverter && declaredPropertyType != converter.TypeToConvert;
             jsonPropertyInfo.PropertyTypeCanBeNull = declaredPropertyType.CanBeNull();
             jsonPropertyInfo._propertyTypeEqualsTypeToConvert = typeof(T) == declaredPropertyType;
-            // jsonPropertyInfo.DetermineNumberHandlingForClassInfo(numberHandling); TODO: honor numberhandling
+            // jsonPropertyInfo.DetermineNumberHandlingForTypeInfo(numberHandling); TODO: honor numberhandling
             return jsonPropertyInfo;
         }
 

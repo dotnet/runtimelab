@@ -80,8 +80,8 @@ namespace System.Text.Json.SourceGeneration
             // Add base default instance source.
             AddBaseJsonContextImplementation();
 
-            // Add GetJsonClassInfo override implementation.
-            _executionContext.AddSource("JsonContext.GetJsonClassInfo.g.cs", SourceText.From(GetGetClassInfoImplementation(), Encoding.UTF8));
+            // Add GetJsonTypeInfo override implementation.
+            _executionContext.AddSource("JsonContext.GetJsonTypeInfo.g.cs", SourceText.From(GetGetTypeInfoImplementation(), Encoding.UTF8));
         }
 
         private TypeMetadata GetOrAddTypeMetadata(Type type, bool canBeDynamic)
