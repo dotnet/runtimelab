@@ -17,9 +17,9 @@ namespace System.Text.Json.Serialization.Converters
         protected abstract void CreateCollection(ref Utf8JsonReader reader, ref ReadStack state, JsonSerializerOptions options);
         protected virtual void ConvertCollection(ref ReadStack state, JsonSerializerOptions options) { }
 
-        protected static JsonConverter<TElement> GetElementConverter(JsonClassInfo elementClassInfo)
+        protected static JsonConverter<TElement> GetElementConverter(JsonTypeInfo elementTypeInfo)
         {
-            JsonConverter<TElement> converter = (JsonConverter<TElement>)elementClassInfo.PropertyInfoForClassInfo.ConverterBase;
+            JsonConverter<TElement> converter = (JsonConverter<TElement>)elementTypeInfo.PropertyInfoForTypeInfo.ConverterBase;
             Debug.Assert(converter != null); // It should not be possible to have a null converter at this point.
 
             return converter;
@@ -40,7 +40,7 @@ namespace System.Text.Json.Serialization.Converters
             ref ReadStack state,
             [MaybeNullWhen(false)] out TCollection value)
         {
-            JsonClassInfo elementClassInfo = state.Current.JsonClassInfo.ElementClassInfo!;
+            JsonTypeInfo typeTypeInfo = state.Current.JsonTypeInfo.ElementTypeInfo!;
 
             if (state.UseFastPath)
             {
@@ -53,7 +53,7 @@ namespace System.Text.Json.Serialization.Converters
 
                 CreateCollection(ref reader, ref state, options);
 
-                JsonConverter<TElement> elementConverter = GetElementConverter(elementClassInfo);
+                JsonConverter<TElement> elementConverter = GetElementConverter(typeTypeInfo);
                 if (elementConverter.CanUseDirectReadOrWrite && !state.Current.NumberHandling.HasValue)
                 {
                     // Fast path that avoids validation and extra indirection.
@@ -135,13 +135,13 @@ namespace System.Text.Json.Serialization.Converters
                 if (state.Current.ObjectState < StackFrameObjectState.CreatedObject)
                 {
                     CreateCollection(ref reader, ref state, options);
-                    state.Current.JsonPropertyInfo = state.Current.JsonClassInfo.ElementClassInfo!.PropertyInfoForClassInfo;
+                    state.Current.JsonPropertyInfo = state.Current.JsonTypeInfo.ElementTypeInfo!.PropertyInfoForTypeInfo;
                     state.Current.ObjectState = StackFrameObjectState.CreatedObject;
                 }
 
                 if (state.Current.ObjectState < StackFrameObjectState.ReadElements)
                 {
-                    JsonConverter<TElement> elementConverter = GetElementConverter(elementClassInfo);
+                    JsonConverter<TElement> elementConverter = GetElementConverter(typeTypeInfo);
 
                     // Process all elements.
                     while (true)
@@ -252,7 +252,7 @@ namespace System.Text.Json.Serialization.Converters
                         writer.WriteStartArray();
                     }
 
-                    state.Current.DeclaredJsonPropertyInfo = state.Current.JsonClassInfo.ElementClassInfo!.PropertyInfoForClassInfo;
+                    state.Current.DeclaredJsonPropertyInfo = state.Current.JsonTypeInfo.ElementTypeInfo!.PropertyInfoForTypeInfo;
                 }
 
                 success = OnWriteResume(writer, value, options, ref state);

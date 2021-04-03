@@ -19,7 +19,7 @@ namespace System.Text.Json.Serialization.Metadata
             JsonSerializerOptions options) : base(typeof(T), options, ClassType.Value)
         {
             ConverterBase = converter;
-            PropertyInfoForClassInfo = SourceGenCreatePropertyInfoForClassInfo<T>(Type, runtimeClassInfo: this, converter, Options);
+            PropertyInfoForTypeInfo = SourceGenCreatePropertyInfoForTypeInfo<T>(Type, runtimeTypeInfo: this, converter, Options);
         }
     }
 }

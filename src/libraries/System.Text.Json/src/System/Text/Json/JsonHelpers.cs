@@ -157,13 +157,13 @@ namespace System.Text.Json
             }
         }
 
-        public static JsonClassInfo GetJsonClassInfo(JsonSerializerContext context, Type type)
+        public static JsonTypeInfo GetJsonTypeInfo(JsonSerializerContext context, Type type)
         {
             Debug.Assert(context != null);
             Debug.Assert(type != null);
 
-            return context.GetJsonClassInfo(type) ??
-                throw new InvalidOperationException($"GetJsonClassInfo for context {context.GetType()} can't return null for type: {type}.");
+            return context.GetJsonTypeInfo(type) ??
+                throw new InvalidOperationException($"GetJsonTypeInfo for context {context.GetType()} can't return null for type: {type}.");
         }
     }
 }

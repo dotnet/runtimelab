@@ -63,7 +63,7 @@ namespace System.Text.Json
             ReadStack state = default;
             state.Initialize(jsonTypeInfo);
 
-            return ReadCore<TValue>(jsonTypeInfo.PropertyInfoForClassInfo.ConverterBase, ref reader, options, ref state);
+            return ReadCore<TValue>(jsonTypeInfo.PropertyInfoForTypeInfo.ConverterBase, ref reader, options, ref state);
         }
 
         /// <summary>

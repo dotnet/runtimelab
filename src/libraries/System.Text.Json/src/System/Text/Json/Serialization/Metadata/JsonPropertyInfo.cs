@@ -15,7 +15,7 @@ namespace System.Text.Json.Serialization.Metadata
     {
         internal static readonly JsonPropertyInfo s_missingProperty = GetPropertyPlaceholder();
 
-        private JsonClassInfo? _runtimeClassInfo;
+        private JsonTypeInfo? _runtimeTypeInfo;
 
         internal ClassType ClassType;
 
@@ -45,7 +45,7 @@ namespace System.Text.Json.Serialization.Metadata
         {
             JsonPropertyInfo info = new JsonPropertyInfo<object>();
 
-            Debug.Assert(!info.IsForClassInfo);
+            Debug.Assert(!info.IsForTypeInfo);
             Debug.Assert(!info.ShouldDeserialize);
             Debug.Assert(!info.ShouldSerialize);
 
@@ -98,10 +98,10 @@ namespace System.Text.Json.Serialization.Metadata
 
         internal virtual void GetPolicies(JsonIgnoreCondition? ignoreCondition, JsonNumberHandling? parentTypeNumberHandling)
         {
-            if (IsForClassInfo)
+            if (IsForTypeInfo)
             {
                 Debug.Assert(MemberInfo == null);
-                DetermineNumberHandlingForClassInfo(parentTypeNumberHandling);
+                DetermineNumberHandlingForTypeInfo(parentTypeNumberHandling);
             }
             else
             {
@@ -263,7 +263,7 @@ namespace System.Text.Json.Serialization.Metadata
 #pragma warning restore CS0618 // IgnoreNullValues is obsolete
         }
 
-        internal void DetermineNumberHandlingForClassInfo(JsonNumberHandling? numberHandling)
+        internal void DetermineNumberHandlingForTypeInfo(JsonNumberHandling? numberHandling)
         {
             if (numberHandling != null && !ConverterBase.IsInternalConverter)
             {
@@ -338,7 +338,7 @@ namespace System.Text.Json.Serialization.Metadata
                 elementType == typeof(ushort) ||
                 elementType == typeof(uint) ||
                 elementType == typeof(ulong) ||
-                elementType == JsonClassInfo.ObjectType)
+                elementType == JsonTypeInfo.ObjectType)
             {
                 return true;
             }
@@ -386,9 +386,9 @@ namespace System.Text.Json.Serialization.Metadata
         internal bool IgnoreDefaultValuesOnWrite { get; private set; }
 
         /// <summary>
-        /// True if the corresponding cref="JsonClassInfo.PropertyInfoForClassInfo"/> is this instance.
+        /// True if the corresponding cref="JsonTypeInfo.PropertyInfoForTypeInfo"/> is this instance.
         /// </summary>
-        internal bool IsForClassInfo { get; set; }
+        internal bool IsForTypeInfo { get; set; }
 
         internal string? ClrName { get; private set; }
 
@@ -418,7 +418,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// TODO
         /// </summary>
-        // Options can be referenced here since all JsonPropertyInfos originate from a JsonClassInfo that is cached on JsonSerializerOptions.
+        // Options can be referenced here since all JsonPropertyInfos originate from a JsonTypeInfo that is cached on JsonSerializerOptions.
         public JsonSerializerOptions Options { get; set; } = null!; // initialized in Init method
 
         internal bool ReadJsonAndAddExtensionProperty(object obj, ref ReadStack state, ref Utf8JsonReader reader)
@@ -436,7 +436,7 @@ namespace System.Text.Json.Serialization.Metadata
                 }
                 else
                 {
-                    JsonConverter<object> converter = (JsonConverter<object>)Options.GetConverter(JsonClassInfo.ObjectType)!;
+                    JsonConverter<object> converter = (JsonConverter<object>)Options.GetConverter(JsonTypeInfo.ObjectType)!;
                     Debug.Assert(converter != null);
 
                     if (!converter.TryRead(ref reader, typeof(JsonElement), Options, ref state, out object? value))
@@ -474,9 +474,9 @@ namespace System.Text.Json.Serialization.Metadata
 
         internal bool ReadJsonExtensionDataValue(ref ReadStack state, ref Utf8JsonReader reader, out object? value)
         {
-            Debug.Assert(this == state.Current.JsonClassInfo.DataExtensionProperty);
+            Debug.Assert(this == state.Current.JsonTypeInfo.DataExtensionProperty);
 
-            if (RuntimeClassInfo.ElementType == JsonClassInfo.ObjectType && reader.TokenType == JsonTokenType.Null)
+            if (RuntimeTypeInfo.ElementType == JsonTypeInfo.ObjectType && reader.TokenType == JsonTokenType.Null)
             {
                 value = null;
                 return true;
@@ -505,22 +505,22 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// TODO
         /// </summary>
-        public JsonClassInfo RuntimeClassInfo
+        public JsonTypeInfo RuntimeTypeInfo
         {
             get
             {
-                if (_runtimeClassInfo == null)
+                if (_runtimeTypeInfo == null)
                 {
-                    _runtimeClassInfo = Options.GetOrAddClass(RuntimePropertyType!);
+                    _runtimeTypeInfo = Options.GetOrAddClass(RuntimePropertyType!);
                 }
 
-                return _runtimeClassInfo;
+                return _runtimeTypeInfo;
             }
             set
             {
                 // Used with code-gen
-                Debug.Assert(_runtimeClassInfo == null);
-                _runtimeClassInfo = value;
+                Debug.Assert(_runtimeTypeInfo == null);
+                _runtimeTypeInfo = value;
             }
         }
 

@@ -7,7 +7,7 @@ namespace System.Text.Json.Serialization.Metadata
     /// todo
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public abstract class JsonTypeInfo<T> : JsonClassInfo
+    public abstract class JsonTypeInfo<T> : JsonTypeInfo
     {
         internal JsonTypeInfo(Type type, JsonSerializerOptions options, ClassType classType) :
             base(type, options, classType)
@@ -19,7 +19,7 @@ namespace System.Text.Json.Serialization.Metadata
         public void RegisterToOptions()
         {
             //_isInitialized = true;
-            Options.AddJsonClassInfoToCompleteInitialization(this);
+            Options.AddJsonTypeInfoToCompleteInitialization(this);
         }
     }
 }

@@ -11,7 +11,7 @@ namespace System.Text.Json
     /// <summary>
     /// todo
     /// </summary>
-    [DebuggerDisplay("Path:{PropertyPath()} Current: ClassType.{Current.JsonClassInfo.ClassType}, {Current.JsonClassInfo.Type.Name}")]
+    [DebuggerDisplay("Path:{PropertyPath()} Current: ClassType.{Current.JsonTypeInfo.ClassType}, {Current.JsonTypeInfo.Type.Name}")]
     public struct WriteStack
     {
         /// <summary>
@@ -67,18 +67,18 @@ namespace System.Text.Json
         }
 
         /// <summary>
-        /// Initialize the state without delayed initialization of the JsonClassInfo.
+        /// Initialize the state without delayed initialization of the JsonTypeInfo.
         /// </summary>
         internal JsonConverter Initialize(Type type, JsonSerializerOptions options, bool supportContinuation)
         {
-            JsonClassInfo jsonClassInfo = options.GetOrAddClassForRootType(type);
-            return Initialize(jsonClassInfo, options, supportContinuation);
+            JsonTypeInfo jsonTypeInfo = options.GetOrAddClassForRootType(type);
+            return Initialize(jsonTypeInfo, options, supportContinuation);
         }
 
-        internal JsonConverter Initialize(JsonClassInfo jsonClassInfo, JsonSerializerOptions options, bool supportContinuation)
+        internal JsonConverter Initialize(JsonTypeInfo jsonTypeInfo, JsonSerializerOptions options, bool supportContinuation)
         {
-            Current.JsonClassInfo = jsonClassInfo;
-            Current.DeclaredJsonPropertyInfo = jsonClassInfo.PropertyInfoForClassInfo;
+            Current.JsonTypeInfo = jsonTypeInfo;
+            Current.DeclaredJsonPropertyInfo = jsonTypeInfo.PropertyInfoForTypeInfo;
             Current.NumberHandling = Current.DeclaredJsonPropertyInfo.NumberHandling;
 
             if (options.ReferenceHandlingStrategy != ReferenceHandlingStrategy.None)
@@ -89,7 +89,7 @@ namespace System.Text.Json
 
             SupportContinuation = supportContinuation;
 
-            return jsonClassInfo.PropertyInfoForClassInfo.ConverterBase;
+            return jsonTypeInfo.PropertyInfoForTypeInfo.ConverterBase;
         }
 
         internal void Push()
@@ -103,14 +103,14 @@ namespace System.Text.Json
                 }
                 else
                 {
-                    JsonClassInfo jsonClassInfo = Current.GetPolymorphicJsonPropertyInfo().RuntimeClassInfo;
+                    JsonTypeInfo jsonTypeInfo = Current.GetPolymorphicJsonPropertyInfo().RuntimeTypeInfo;
                     JsonNumberHandling? numberHandling = Current.NumberHandling;
 
                     AddCurrent();
                     Current.Reset();
 
-                    Current.JsonClassInfo = jsonClassInfo;
-                    Current.DeclaredJsonPropertyInfo = jsonClassInfo.PropertyInfoForClassInfo;
+                    Current.JsonTypeInfo = jsonTypeInfo;
+                    Current.DeclaredJsonPropertyInfo = jsonTypeInfo.PropertyInfoForTypeInfo;
                     // Allow number handling on property to win over handling on type.
                     Current.NumberHandling = numberHandling ?? Current.DeclaredJsonPropertyInfo.NumberHandling;
                 }

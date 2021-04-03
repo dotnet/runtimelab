@@ -8,7 +8,7 @@ using System.Text.Json.Serialization.Metadata;
 
 namespace System.Text.Json
 {
-    [DebuggerDisplay("ClassType.{JsonClassInfo.ClassType}, {JsonClassInfo.Type.Name}")]
+    [DebuggerDisplay("ClassType.{JsonTypeInfo.ClassType}, {JsonTypeInfo.Type.Name}")]
     internal struct WriteStackFrame
     {
         /// <summary>
@@ -20,8 +20,8 @@ namespace System.Text.Json
         /// The original JsonPropertyInfo that is not changed. It contains all properties.
         /// </summary>
         /// <remarks>
-        /// For objects, it is either the actual (real) JsonPropertyInfo or the <see cref="JsonClassInfo.PropertyInfoForClassInfo"/> for the class.
-        /// For collections, it is the <see cref="JsonClassInfo.PropertyInfoForClassInfo"/> for the class and current element.
+        /// For objects, it is either the actual (real) JsonPropertyInfo or the <see cref="JsonTypeInfo.PropertyInfoForTypeInfo"/> for the class.
+        /// For collections, it is the <see cref="JsonTypeInfo.PropertyInfoForTypeInfo"/> for the class and current element.
         /// </remarks>
         public JsonPropertyInfo? DeclaredJsonPropertyInfo;
 
@@ -33,7 +33,7 @@ namespace System.Text.Json
         /// <summary>
         /// The class (POCO or IEnumerable) that is being populated.
         /// </summary>
-        public JsonClassInfo JsonClassInfo;
+        public JsonTypeInfo JsonTypeInfo;
 
         /// <summary>
         /// Validation state for a class.
@@ -61,11 +61,11 @@ namespace System.Text.Json
         public MetadataPropertyName MetadataPropertyName;
 
         /// <summary>
-        /// The run-time JsonPropertyInfo that contains the ClassInfo and ConverterBase for polymorphic scenarios.
+        /// The run-time JsonPropertyInfo that contains the TypeInfo and ConverterBase for polymorphic scenarios.
         /// </summary>
         /// <remarks>
-        /// For objects, it is the <see cref="JsonClassInfo.PropertyInfoForClassInfo"/> for the class and current property.
-        /// For collections, it is the <see cref="JsonClassInfo.PropertyInfoForClassInfo"/> for the class and current element.
+        /// For objects, it is the <see cref="JsonTypeInfo.PropertyInfoForTypeInfo"/> for the class and current property.
+        /// For collections, it is the <see cref="JsonTypeInfo.PropertyInfoForTypeInfo"/> for the class and current element.
         /// </remarks>
         internal JsonPropertyInfo? PolymorphicJsonPropertyInfo;
 
@@ -111,8 +111,8 @@ namespace System.Text.Json
             // if the current element is the same type as the previous element.
             if (PolymorphicJsonPropertyInfo?.RuntimePropertyType != type)
             {
-                JsonClassInfo classInfo = options.GetOrAddClass(type);
-                PolymorphicJsonPropertyInfo = classInfo.PropertyInfoForClassInfo;
+                JsonTypeInfo typeInfo = options.GetOrAddClass(type);
+                PolymorphicJsonPropertyInfo = typeInfo.PropertyInfoForTypeInfo;
             }
 
             return PolymorphicJsonPropertyInfo.ConverterBase;
@@ -123,7 +123,7 @@ namespace System.Text.Json
             CollectionEnumerator = null;
             EnumeratorIndex = 0;
             IgnoreDictionaryKeyPolicy = false;
-            JsonClassInfo = null!;
+            JsonTypeInfo = null!;
             OriginalDepth = 0;
             ProcessedStartToken = false;
             ProcessedEndToken = false;

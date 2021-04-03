@@ -260,11 +260,11 @@ namespace System.Text.Json
                 throw new InvalidOperationException(SR.Format(
                     SR.NumberHandlingConverterMustBeBuiltIn,
                     jsonPropertyInfo.ConverterBase.GetType(),
-                    jsonPropertyInfo.IsForClassInfo ? jsonPropertyInfo.DeclaredPropertyType : memberInfo!.DeclaringType));
+                    jsonPropertyInfo.IsForTypeInfo ? jsonPropertyInfo.DeclaredPropertyType : memberInfo!.DeclaringType));
             }
 
             // This exception is only thrown for object properties.
-            Debug.Assert(!jsonPropertyInfo.IsForClassInfo && memberInfo != null);
+            Debug.Assert(!jsonPropertyInfo.IsForTypeInfo && memberInfo != null);
             throw new InvalidOperationException(SR.Format(
                 SR.NumberHandlingOnPropertyTypeMustBeNumberOrCollection,
                 memberInfo.Name,
@@ -288,7 +288,7 @@ namespace System.Text.Json
             state.Current.JsonPropertyName = propertyName.ToArray();
 
             NotSupportedException ex = new NotSupportedException(
-                SR.Format(SR.ObjectWithParameterizedCtorRefMetadataNotHonored, state.Current.JsonClassInfo.Type));
+                SR.Format(SR.ObjectWithParameterizedCtorRefMetadataNotHonored, state.Current.JsonTypeInfo.Type));
             ThrowNotSupportedException(state, reader, ex);
         }
 
@@ -347,7 +347,7 @@ namespace System.Text.Json
                 Type? propertyType = state.Current.JsonPropertyInfo?.RuntimePropertyType;
                 if (propertyType == null)
                 {
-                    propertyType = state.Current.JsonClassInfo?.Type;
+                    propertyType = state.Current.JsonTypeInfo?.Type;
                 }
 
                 message = SR.Format(SR.DeserializeUnableToConvertValue, propertyType);
@@ -436,7 +436,7 @@ namespace System.Text.Json
             Type? propertyType = state.Current.JsonPropertyInfo?.RuntimePropertyType;
             if (propertyType == null)
             {
-                propertyType = state.Current.JsonClassInfo.Type;
+                propertyType = state.Current.JsonTypeInfo.Type;
             }
 
             if (!message.Contains(propertyType.ToString()))
@@ -468,7 +468,7 @@ namespace System.Text.Json
             Type? propertyType = state.Current.DeclaredJsonPropertyInfo?.RuntimePropertyType;
             if (propertyType == null)
             {
-                propertyType = state.Current.JsonClassInfo.Type;
+                propertyType = state.Current.JsonTypeInfo.Type;
             }
 
             if (!message.Contains(propertyType.ToString()))
@@ -645,7 +645,7 @@ namespace System.Text.Json
             ref Utf8JsonReader reader,
             ref ReadStack state)
         {
-            if (state.Current.JsonClassInfo.PropertyInfoForClassInfo.ConverterBase.ConstructorIsParameterized)
+            if (state.Current.JsonTypeInfo.PropertyInfoForTypeInfo.ConverterBase.ConstructorIsParameterized)
             {
                 ThrowNotSupportedException_ObjectWithParameterizedCtorRefMetadataNotHonored(propertyName, ref reader, ref state);
             }

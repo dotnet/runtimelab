@@ -316,7 +316,7 @@ namespace System.Text.Json.SourceGeneration
                         ? "null"
                         : $"this.{memberTypeMetadata.FriendlyName}";
 
-                    string typeClassInfoNamedArg = $"classInfo: {memberTypeFriendlyName}";
+                    string typeTypeInfoNamedArg = $"typeInfo: {memberTypeFriendlyName}";
 
                     string jsonPropertyNameNamedArg = memberMetadata.JsonPropertyName != null
                         ? @$"jsonPropertyName: ""{memberMetadata.JsonPropertyName}"""
@@ -387,7 +387,7 @@ namespace System.Text.Json.SourceGeneration
                         clrPropertyName: ""{clrPropertyName}"",
                         memberType: System.Reflection.MemberTypes.{memberMetadata.MemberType},
                         declaringType: typeof({memberMetadata.DeclaringTypeCompilableName}),
-                        {typeClassInfoNamedArg},
+                        {typeTypeInfoNamedArg},
                         {converterNamedArg},
                         {getterNamedArg},
                         {setterNamedArg},
@@ -588,7 +588,7 @@ namespace {_generationNamespace}
                 string clrPropertyName,
                 System.Reflection.MemberTypes memberType,
                 System.Type declaringType,
-                JsonTypeInfo<TProperty> classInfo,
+                JsonTypeInfo<TProperty> typeInfo,
                 JsonConverter converter,
                 System.Func<object, TProperty> getter,
                 System.Action<object, TProperty> setter,
@@ -622,7 +622,7 @@ namespace {_generationNamespace}
                 jsonPropertyInfo.Get = getter;
                 jsonPropertyInfo.Set = setter;
                 jsonPropertyInfo.ConverterBase = converter ?? throw new System.NotSupportedException(""TODO: need custom converter here?"");
-                jsonPropertyInfo.RuntimeClassInfo = classInfo;
+                jsonPropertyInfo.RuntimeTypeInfo = typeInfo;
                 jsonPropertyInfo.DeclaredPropertyType = typeof(TProperty);
                 jsonPropertyInfo.DeclaringType = declaringType;
                 jsonPropertyInfo.IgnoreCondition = ignoreCondition;
@@ -633,7 +633,7 @@ namespace {_generationNamespace}
             return jsonPropertyInfo;
         }}";
 
-        private string GetGetClassInfoImplementation()
+        private string GetGetTypeInfoImplementation()
         {
             StringBuilder sb = new();
 
@@ -650,7 +650,7 @@ namespace {_generationNamespace}
 {{
     {JsonContextDeclarationSource}
     {{
-        public override JsonClassInfo GetJsonClassInfo(System.Type type)
+        public override JsonTypeInfo GetJsonTypeInfo(System.Type type)
         {{");
 
             // TODO: Make this Dictionary-lookup-based if _handledType.Count > 64.

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <TargetFrameworks>$(NetCoreAppCurrent);netstandard2.0;netcoreapp3.0;net461</TargetFrameworks>
@@ -162,8 +162,8 @@
     <Compile Include="System\Text\Json\Serialization\JsonSerializerOptions.Converters.cs" />
     <Compile Include="System\Text\Json\Serialization\JsonSerializerOptions.cs" />
     <Compile Include="System\Text\Json\Serialization\JsonStringEnumConverter.cs" />
-    <Compile Include="System\Text\Json\Serialization\Metadata\JsonClassInfo.cs" />
-    <Compile Include="System\Text\Json\Serialization\Metadata\JsonClassInfo.Cache.cs" />
+    <Compile Include="System\Text\Json\Serialization\Metadata\JsonTypeInfo.cs" />
+    <Compile Include="System\Text\Json\Serialization\Metadata\JsonTypeInfo.Cache.cs" />
     <Compile Include="System\Text\Json\Serialization\Metadata\JsonCollectionTypeInfoOfT.cs" />
     <Compile Include="System\Text\Json\Serialization\Metadata\JsonParameterInfo.cs" />
     <Compile Include="System\Text\Json\Serialization\Metadata\JsonParameterInfoOfT.cs" />
@@ -240,8 +240,7 @@
   <ItemGroup Condition="$(TargetFramework.StartsWith('netstandard')) or $(TargetFramework.StartsWith('net4'))">
     <Compile Include="System\Collections\Generic\StackExtensions.netstandard.cs" />
     <!-- Common or Common-branched source files -->
-    <Compile Include="$(CommonPath)System\Buffers\ArrayBufferWriter.cs"
-             Link="Common\System\Buffers\ArrayBufferWriter.cs" />
+    <Compile Include="$(CommonPath)System\Buffers\ArrayBufferWriter.cs" Link="Common\System\Buffers\ArrayBufferWriter.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == '$(NetCoreAppCurrent)' or
                         '$(TargetFramework)' == 'netcoreapp3.0'">

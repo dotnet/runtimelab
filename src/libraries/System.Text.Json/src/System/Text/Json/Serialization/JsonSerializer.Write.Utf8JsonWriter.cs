@@ -97,7 +97,7 @@ namespace System.Text.Json
 
             using (var output = new PooledByteBufferWriter(options.DefaultBufferSize))
             {
-                JsonConverter jsonConverter = jsonTypeInfo.PropertyInfoForClassInfo.ConverterBase;
+                JsonConverter jsonConverter = jsonTypeInfo.PropertyInfoForTypeInfo.ConverterBase;
                 bool success = WriteCore(jsonConverter, writer, value, ref state, options);
                 Debug.Assert(success);
             }

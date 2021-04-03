@@ -120,7 +120,7 @@ namespace System.Text.Json
 
             return DeserializeUsingMetadata<TValue?>(
                 json,
-                JsonHelpers.GetJsonClassInfo(jsonSerializerContext, typeof(TValue)));
+                JsonHelpers.GetJsonTypeInfo(jsonSerializerContext, typeof(TValue)));
         }
 
         /// <summary>
@@ -144,7 +144,7 @@ namespace System.Text.Json
 
             return DeserializeUsingMetadata<object?>(
                 json,
-                JsonHelpers.GetJsonClassInfo(jsonSerializerContext, type));
+                JsonHelpers.GetJsonTypeInfo(jsonSerializerContext, type));
         }
 
         /// <summary>
@@ -239,7 +239,7 @@ namespace System.Text.Json
                 options = JsonSerializerOptions.DefaultOptions;
             }
 
-            options.EnableConvertersAndClassInfoCreator();
+            options.EnableConvertersAndTypeInfoCreator();
 
             ReadStack state = default;
             state.Initialize(returnType, options, supportContinuation: false);
@@ -248,22 +248,22 @@ namespace System.Text.Json
             return Deserialize<TValue>(jsonConverter, json, options, ref state);
         }
 
-        private static TValue? DeserializeUsingMetadata<TValue>(string json, JsonClassInfo? jsonClassInfo)
+        private static TValue? DeserializeUsingMetadata<TValue>(string json, JsonTypeInfo? jsonTypeInfo)
         {
             // TODO: this would be when to fallback to regular warm-up code-paths.
             // For validation during development, we don't expect this to be null.
-            if (jsonClassInfo == null)
+            if (jsonTypeInfo == null)
             {
-                throw new ArgumentNullException(nameof(jsonClassInfo));
+                throw new ArgumentNullException(nameof(jsonTypeInfo));
             }
 
             ReadStack state = default;
-            state.Initialize(jsonClassInfo);
+            state.Initialize(jsonTypeInfo);
 
             return Deserialize<TValue>(
-                jsonClassInfo.PropertyInfoForClassInfo.ConverterBase,
+                jsonTypeInfo.PropertyInfoForTypeInfo.ConverterBase,
                 json.AsSpan(),
-                jsonClassInfo.Options,
+                jsonTypeInfo.Options,
                 ref state);
         }
 

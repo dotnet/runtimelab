@@ -19,16 +19,16 @@ namespace System.Text.Json.Serialization.Metadata
         public JsonCollectionTypeInfo(
             ConstructorDelegate createObjectFunc,
             JsonConverter<T> converter,
-            JsonClassInfo elementInfo,
+            JsonTypeInfo elementInfo,
             JsonSerializerOptions options) : base(typeof(T), options, ClassType.Enumerable)
         {
             ConverterBase = converter;
 
             ElementType = converter.ElementType;
-            ElementClassInfo = elementInfo;
+            ElementTypeInfo = elementInfo;
             CreateObject = createObjectFunc;
 
-            PropertyInfoForClassInfo = SourceGenCreatePropertyInfoForClassInfo<T>(Type, runtimeClassInfo: this, converter, Options);
+            PropertyInfoForTypeInfo = SourceGenCreatePropertyInfoForTypeInfo<T>(Type, runtimeTypeInfo: this, converter, Options);
         }
     }
 }
