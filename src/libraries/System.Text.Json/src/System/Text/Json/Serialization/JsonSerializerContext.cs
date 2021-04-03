@@ -1,6 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.Generic;
 using System.Text.Json.Serialization.Metadata;
 
 namespace System.Text.Json.Serialization
@@ -8,61 +9,44 @@ namespace System.Text.Json.Serialization
     /// <summary>
     /// todo
     /// </summary>
-    public partial class JsonSerializerContext : IDisposable
+    public abstract partial class JsonSerializerContext
     {
         internal readonly JsonSerializerOptions _options;
 
         /// <summary>
-        /// todo
+        /// Gets the runtime options of the context. Can be modified until the first serialization or deserialization
+        /// call using the context instances.
         /// </summary>
-        public JsonSerializerContext()
-        {
-            _options = JsonSerializerOptions.DefaultSourceGenOptions;
-        }
+        public JsonSerializerOptions Options => _options;
 
         /// <summary>
         /// todo
+        /// </summary>
+        protected JsonSerializerContext()
+        {
+            _options = new JsonSerializerOptions(JsonSerializerOptions.DefaultSourceGenOptions, this);
+        }
+
+        /// <summary>
+        /// TODO
         /// </summary>
         /// <param name="options"></param>
-        public JsonSerializerContext(JsonSerializerOptions options)
+        protected JsonSerializerContext(JsonSerializerOptions options)
         {
-            _options = options ?? throw new ArgumentNullException(nameof(options));
-        }
-
-        /// <summary>
-        /// todo
-        /// </summary>
-        public JsonSerializerOptions GetOptions()
-        {
-            return _options;
-        }
-
-        /// <summary>
-        /// todo
-        /// </summary>
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        /// <summary>
-        /// todo
-        /// </summary>
-        /// <param name="disposing"></param>
-        protected virtual void Dispose(bool disposing)
-        {
-            // todo: code-gen _options.RemoveMetadataForType(type)
-            // likely need a reference count mechanism to handle context that share the same types.
-            if (disposing)
-            {
-            }
+            _options = new JsonSerializerOptions(options ?? throw new ArgumentNullException(nameof(options)), this);
         }
 
         /// <summary>
         /// todo
         /// </summary>
         /// <param name="type"></param>
-        public virtual JsonClassInfo? GetJsonClassInfo(Type type) => throw new NotImplementedException();
+        public virtual JsonClassInfo GetJsonClassInfo(Type type) => throw new NotImplementedException();
+
+        internal IEnumerable<JsonClassInfo> GetAllJsonClassInfos() => GetAllJsonClassInfosImpl();
+
+        /// <summary>
+        /// Gets all the <see cref="JsonClassInfo"/> instances defined in this context.
+        /// </summary>
+        protected virtual IEnumerable<JsonClassInfo> GetAllJsonClassInfosImpl() => throw new NotImplementedException();
     }
 }

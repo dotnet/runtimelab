@@ -31,6 +31,10 @@ namespace System.Text.Json
         // Although this may be written by multiple threads, 'volatile' was not added since any local affinity is fine.
         private JsonClassInfo? _lastClass { get; set; }
 
+        private readonly Func<Type, JsonSerializerOptions, JsonClassInfo>? _classInfoCreationFunc = null!;
+
+        private readonly JsonSerializerContext? _context;
+
         // For any new option added, adding it to the options copied in the copy constructor below must be considered.
 
         private MemberAccessor? _memberAccessorStrategy;
@@ -52,8 +56,6 @@ namespace System.Text.Json
         private bool _includeFields;
         private bool _propertyNameCaseInsensitive;
         private bool _writeIndented;
-
-        private readonly Func<Type, JsonSerializerOptions, JsonClassInfo> _classInfoCreationFunc = null!;
 
         /// <summary>
         /// Constructs a new <see cref="JsonSerializerOptions"/> instance.
@@ -79,35 +81,9 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(options));
             }
 
-            _memberAccessorStrategy = options._memberAccessorStrategy;
-            _dictionaryKeyPolicy = options._dictionaryKeyPolicy;
-            _jsonPropertyNamingPolicy = options._jsonPropertyNamingPolicy;
-            _readCommentHandling = options._readCommentHandling;
-            _referenceHandler = options._referenceHandler;
-            _encoder = options._encoder;
-            _defaultIgnoreCondition = options._defaultIgnoreCondition;
-            _numberHandling = options._numberHandling;
-
-            _defaultBufferSize = options._defaultBufferSize;
-            _maxDepth = options._maxDepth;
-            _allowTrailingCommas = options._allowTrailingCommas;
-            _ignoreNullValues = options._ignoreNullValues;
-            _ignoreReadOnlyProperties = options._ignoreReadOnlyProperties;
-            _ignoreReadonlyFields = options._ignoreReadonlyFields;
-            _includeFields = options._includeFields;
-            _propertyNameCaseInsensitive = options._propertyNameCaseInsensitive;
-            _writeIndented = options._writeIndented;
-
-            Converters = new ConverterList(this, (ConverterList)options.Converters);
-            EffectiveMaxDepth = options.EffectiveMaxDepth;
-            ReferenceHandlingStrategy = options.ReferenceHandlingStrategy;
-
+            CopyOptions(options);
             _classInfoCreationFunc = options._classInfoCreationFunc;
-
-            // _classes is not copied as sharing the JsonClassInfo and JsonPropertyInfo caches can result in
-            // unnecessary references to type metadata, potentially hindering garbage collection on the source options.
-
-            // _haveTypesBeenCreated is not copied; it's okay to make changes to this options instance as (de)serialization has not occurred.
+            Converters = new ConverterList(this, (ConverterList)options.Converters);
         }
 
         /// <summary>
@@ -128,11 +104,17 @@ namespace System.Text.Json
         private JsonSerializerOptions(JsonSerializerDefaults defaults, bool dummy)
         {
             InitializeWithDefaults(defaults);
-            _classInfoCreationFunc = static (type, options) =>
-                throw new NotSupportedException(@$"Metadata for type {type} not provided to serializer - will not go down reflection-based code path.
-                                                   To workaround this, use an options instance instantiated with the default ctor or the ctor that takes
-                                                   web defaults. Alternatively, you can create the metadata by hand and pass that to the serializer.");
             Converters = new ConverterList(this);
+        }
+
+        internal JsonSerializerOptions(JsonSerializerOptions options, JsonSerializerContext context)
+        {
+            Debug.Assert(options != null);
+            Debug.Assert(context != null);
+            _context = context;
+            CopyOptions(options);
+            _classInfoCreationFunc = options._classInfoCreationFunc;
+            Converters = new ConverterList(this, (ConverterList)options.Converters);
         }
 
         private void InitializeWithDefaults(JsonSerializerDefaults defaults)
@@ -147,6 +129,38 @@ namespace System.Text.Json
             {
                 throw new ArgumentOutOfRangeException(nameof(defaults));
             }
+        }
+
+        private void CopyOptions(JsonSerializerOptions options)
+        {
+            Debug.Assert(options != null);
+
+            _memberAccessorStrategy = options._memberAccessorStrategy;
+            _dictionaryKeyPolicy = options._dictionaryKeyPolicy;
+            _jsonPropertyNamingPolicy = options._jsonPropertyNamingPolicy;
+            _readCommentHandling = options._readCommentHandling;
+            _referenceHandler = options._referenceHandler;
+            _encoder = options._encoder;
+            _defaultIgnoreCondition = options._defaultIgnoreCondition;
+            _numberHandling = options._numberHandling;
+
+            _defaultBufferSize = options._defaultBufferSize;
+            _maxDepth = options._maxDepth;
+            _allowTrailingCommas = options._allowTrailingCommas;
+            _ignoreNullValues = options._ignoreNullValues;
+            _ignoreReadOnlyProperties = options._ignoreReadOnlyProperties;
+            _ignoreReadonlyFields = options._ignoreReadonlyFields;
+            _includeFields = options._includeFields;
+            _propertyNameCaseInsensitive = options._propertyNameCaseInsensitive;
+            _writeIndented = options._writeIndented;
+
+            EffectiveMaxDepth = options.EffectiveMaxDepth;
+            ReferenceHandlingStrategy = options.ReferenceHandlingStrategy;
+
+            // _classes is not copied as sharing the JsonClassInfo and JsonPropertyInfo caches can result in
+            // unnecessary references to type metadata, potentially hindering garbage collection on the source options.
+
+            // _haveTypesBeenCreated is not copied; it's okay to make changes to this options instance as (de)serialization has not occurred.
         }
 
         /// <summary>
@@ -579,6 +593,11 @@ namespace System.Text.Json
             // https://github.com/dotnet/runtime/issues/32357
             if (!_classes.TryGetValue(type, out JsonClassInfo? result))
             {
+                if (_classInfoCreationFunc == null)
+                {
+                    throw new NotSupportedException(@$"Metadata for type {type} not provided to serializer - will not go down reflection-based code path.");
+                }
+
                 result = _classes.GetOrAdd(type, _classInfoCreationFunc(type, this));
             }
 
@@ -636,9 +655,9 @@ namespace System.Text.Json
             // The default options are hidden and thus should be immutable.
             Debug.Assert(this != DefaultOptions && this != DefaultSourceGenOptions);
 
-            if (_haveTypesBeenCreated)
+            if (_haveTypesBeenCreated || _context != null)
             {
-                ThrowHelper.ThrowInvalidOperationException_SerializerOptionsImmutable();
+                ThrowHelper.ThrowInvalidOperationException_SerializerOptionsImmutable(_context);
             }
         }
 

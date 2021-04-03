@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Converters;
+using System.Text.Json.Serialization.Metadata;
 
 namespace System.Text.Json
 {
@@ -15,6 +16,8 @@ namespace System.Text.Json
     /// </summary>
     public sealed partial class JsonSerializerOptions
     {
+        private bool _loadedContextTypeInfos;
+
         // The global list of built-in simple converters.
         private static Dictionary<Type, JsonConverter>? s_defaultSimpleConverters;
 
@@ -22,6 +25,7 @@ namespace System.Text.Json
         private static JsonConverter[]? s_defaultFactoryConverters;
 
         // The cached converters (custom or built-in).
+        // TODO: can we instantiate this lazily in GetConverter(Type) below?
         private readonly ConcurrentDictionary<Type, JsonConverter?> _converters = new ConcurrentDictionary<Type, JsonConverter?>();
 
         private static Dictionary<Type, JsonConverter> GetDefaultSimpleConverters()
@@ -152,7 +156,35 @@ namespace System.Text.Json
         /// </exception>
         public JsonConverter? GetConverter(Type typeToConvert)
         {
+            if (!_loadedContextTypeInfos)
+            {
+                IEnumerable<JsonClassInfo>? jsonClassInfos = _context?.GetAllJsonClassInfos();
+                if (jsonClassInfos != null)
+                {
+                    foreach (JsonClassInfo jsonClassInfo in jsonClassInfos)
+                    {
+                        if (!_converters.TryAdd(jsonClassInfo.Type, jsonClassInfo.ConverterBase))
+                        {
+                            throw new InvalidOperationException("Context returned invalid GetAllJsonClassInfos() implementation.");
+                        }
+                    }
+                }
+
+                _loadedContextTypeInfos = true;
+            }
+
             if (_converters.TryGetValue(typeToConvert, out JsonConverter? converter))
+            {
+                Debug.Assert(converter != null);
+                return converter;
+            }
+
+            if (_context != null)
+            {
+                throw new NotSupportedException("No converter for type was provided by context.");
+            }
+
+            if (_converters.TryGetValue(typeToConvert, out converter))
             {
                 Debug.Assert(converter != null);
                 return converter;

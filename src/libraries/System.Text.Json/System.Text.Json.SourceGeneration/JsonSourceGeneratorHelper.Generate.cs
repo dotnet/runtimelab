@@ -20,10 +20,14 @@ namespace System.Text.Json.SourceGeneration
 
         private const string RuntimeCustomConverterFetchingMethodName = "GetRuntimeProvidedCustomConverter";
 
+        private const string PropertyCreationMethodName = "CreateProperty";
+
         // Generation namespace for source generation code.
         private readonly string _generationNamespace;
 
         private const string JsonContextDeclarationSource = "internal partial class JsonContext : JsonSerializerContext";
+
+        private const string OptionsInstanceVariableName = "Options";
 
         /// <summary>
         /// Types that we have initiated serialization metadata generation for. A type may be discoverable in the object graph,
@@ -162,7 +166,7 @@ namespace System.Text.Json.SourceGeneration
             string typeCompilableName = typeMetadata.CompilableName;
             string typeFriendlyName = typeMetadata.FriendlyName;
 
-            string metadataInitSource = $@"_{typeFriendlyName} = new JsonValueInfo<{typeCompilableName}>(new {typeFriendlyName}Converter(), options);
+            string metadataInitSource = $@"_{typeFriendlyName} = new JsonValueInfo<{typeCompilableName}>(new {typeFriendlyName}Converter(), {OptionsInstanceVariableName});
                     _{typeFriendlyName}.NumberHandling = {GetNumberHandlingAsStr(typeMetadata.NumberHandling)};";
 
             return GenerateForType(typeMetadata, metadataInitSource);
@@ -187,7 +191,7 @@ namespace System.Text.Json.SourceGeneration
 
                             if (converter is JsonConverterFactory converterFactory)
                             {{
-                                actualConverter = converterFactory.CreateConverter(underlyingType, GetOptions());
+                                actualConverter = converterFactory.CreateConverter(underlyingType, {OptionsInstanceVariableName});
 
                                 if (actualConverter == null || actualConverter is JsonConverterFactory)
                                 {{
@@ -204,7 +208,7 @@ namespace System.Text.Json.SourceGeneration
                         }}
                     }}
 
-                    _{typeFriendlyName} = new JsonValueInfo<{typeCompilableName}>(converter, options);
+                    _{typeFriendlyName} = new JsonValueInfo<{typeCompilableName}>(converter, {OptionsInstanceVariableName});
                     _{typeFriendlyName}.NumberHandling = {GetNumberHandlingAsStr(typeMetadata.NumberHandling)};";
 
             return GenerateForType(typeMetadata, metadataInitSource);
@@ -225,7 +229,7 @@ namespace System.Text.Json.SourceGeneration
 
             string metadataInitSource = @$"_{typeFriendlyName} = new JsonValueInfo<{typeCompilableName}>(
                         new NullableConverter<{underlyingTypeCompilableName}>({underlyingConverterNamedArg}),
-                        options);
+                        {OptionsInstanceVariableName});
                     _{typeFriendlyName}.NumberHandling = {GetNumberHandlingAsStr(typeMetadata.NumberHandling)};
 ";
 
@@ -237,7 +241,7 @@ namespace System.Text.Json.SourceGeneration
             string typeCompilableName = typeMetadata.CompilableName;
             string typeFriendlyName = typeMetadata.FriendlyName;
 
-            string metadataInitSource = $@"_{typeFriendlyName} = new JsonValueInfo<{typeCompilableName}>(new EnumConverter<{typeCompilableName}>(options), options);
+            string metadataInitSource = $@"_{typeFriendlyName} = new JsonValueInfo<{typeCompilableName}>(new EnumConverter<{typeCompilableName}>({OptionsInstanceVariableName}), {OptionsInstanceVariableName});
                     _{typeFriendlyName}.NumberHandling = {GetNumberHandlingAsStr(typeMetadata.NumberHandling)};";
 
             return GenerateForType(typeMetadata, metadataInitSource);
@@ -293,7 +297,7 @@ namespace System.Text.Json.SourceGeneration
 
             StringBuilder sb = new();
 
-            sb.Append($@"JsonObjectInfo<{typeCompilableName}> objectInfo = new({createObjectFuncTypeArg}, this.GetOptions());
+            sb.Append($@"JsonObjectInfo<{typeCompilableName}> objectInfo = new({createObjectFuncTypeArg}, {OptionsInstanceVariableName});
                     objectInfo.NumberHandling = {GetNumberHandlingAsStr(typeMetadata.NumberHandling)};
                     _{typeFriendlyName} = objectInfo;
 ");
@@ -379,7 +383,7 @@ namespace System.Text.Json.SourceGeneration
                     string memberTypeCompilableName = memberTypeMetadata.CompilableName;
 
                     sb.Append($@"
-                    objectInfo.AddProperty(CreateProperty<{memberTypeCompilableName}>(
+                    objectInfo.AddProperty({PropertyCreationMethodName}<{memberTypeCompilableName}>(
                         clrPropertyName: ""{clrPropertyName}"",
                         memberType: System.Reflection.MemberTypes.{memberMetadata.MemberType},
                         declaringType: typeof({memberMetadata.DeclaringTypeCompilableName}),
@@ -433,8 +437,6 @@ namespace {_generationNamespace}
             {{
                 if (_{typeFriendlyName} == null)
                 {{
-                    JsonSerializerOptions options = GetOptions();
-
                     {WrapWithCheckForCustomConverterIfRequired(metadataInitSource, typeCompilableName, typeFriendlyName, GetNumberHandlingAsStr(typeMetadata.NumberHandling))}
                 }}
 
@@ -454,9 +456,9 @@ namespace {_generationNamespace}
             }
 
             return @$"JsonConverter customConverter;
-                    if (options.Converters.Count > 0 && (customConverter = {RuntimeCustomConverterFetchingMethodName}(typeof({typeCompilableName}), options)) != null)
+                    if ({OptionsInstanceVariableName}.Converters.Count > 0 && (customConverter = {RuntimeCustomConverterFetchingMethodName}(typeof({typeCompilableName}))) != null)
                     {{
-                        _{typeFriendlyName} = new JsonValueInfo<{typeCompilableName}>(customConverter, options);
+                        _{typeFriendlyName} = new JsonValueInfo<{typeCompilableName}>(customConverter, {OptionsInstanceVariableName});
                         _{typeFriendlyName}.NumberHandling = {numberHandlingNamedArg};
                     }}
                     else
@@ -495,9 +497,12 @@ namespace {_generationNamespace}
         {{{initializeMethodCallStatement}
         }}
 
-        public JsonContext(JsonSerializerOptions options) : base(options)
+        private JsonContext(JsonSerializerOptions options) : base(options)
         {{{initializeMethodCallStatement}
         }}
+
+        public static JsonContext From(JsonSerializerOptions options) => new JsonContext(options);
+
         {initializationSource}
 
         {GetFetchLogicForRuntimeSpecifiedCustomConverter()}
@@ -551,9 +556,9 @@ namespace {_generationNamespace}
                 return "";
             }
 
-            return @$"private static JsonConverter {RuntimeCustomConverterFetchingMethodName}(System.Type type, JsonSerializerOptions options)
+            return @$"private JsonConverter {RuntimeCustomConverterFetchingMethodName}(System.Type type)
         {{
-            System.Collections.Generic.IList<JsonConverter> converters = options.Converters;
+            System.Collections.Generic.IList<JsonConverter> converters = {OptionsInstanceVariableName}.Converters;
 
             for (int i = 0; i < converters.Count; i++)
             {{
@@ -563,7 +568,7 @@ namespace {_generationNamespace}
                 {{
                     if (converter is JsonConverterFactory factory)
                     {{
-                        converter = factory.CreateConverter(type, options);
+                        converter = factory.CreateConverter(type, {OptionsInstanceVariableName});
                         if (converter == null || converter is JsonConverterFactory)
                         {{
                             throw new System.InvalidOperationException($""The converter '{{factory.GetType()}}' cannot return null or a JsonConverterFactory instance."");
@@ -578,8 +583,8 @@ namespace {_generationNamespace}
         }}";
         }
 
-        private const string CreatePropertyImplementation =
-            @"public JsonPropertyInfo<TProperty> CreateProperty<TProperty>(
+        private static string CreatePropertyImplementation =
+            @$"public JsonPropertyInfo<TProperty> {PropertyCreationMethodName}<TProperty>(
                 string clrPropertyName,
                 System.Reflection.MemberTypes memberType,
                 System.Type declaringType,
@@ -592,29 +597,28 @@ namespace {_generationNamespace}
                 byte[] escapedNameSection,
                 JsonIgnoreCondition? ignoreCondition,
                 JsonNumberHandling? numberHandling)
-        {
-            JsonSerializerOptions options = GetOptions();
+        {{
             JsonPropertyInfo<TProperty> jsonPropertyInfo = JsonPropertyInfo<TProperty>.Create();
-            jsonPropertyInfo.Options = options;
+            jsonPropertyInfo.Options = {OptionsInstanceVariableName};
             // Property name settings.
-            // TODO: consider whether we need to examine options.Encoder here as well.
-            if (nameAsUtf8Bytes != null && options.PropertyNamingPolicy == null)
-            {
+            // TODO: consider whether we need to examine Options.Encoder here as well.
+            if (nameAsUtf8Bytes != null && Options.PropertyNamingPolicy == null)
+            {{
                 jsonPropertyInfo.NameAsString = jsonPropertyName ?? clrPropertyName;
                 jsonPropertyInfo.NameAsUtf8Bytes = nameAsUtf8Bytes;
                 jsonPropertyInfo.EscapedNameSection = escapedNameSection;
-            }
+            }}
             else
-            {
+            {{
                 jsonPropertyInfo.NameAsString = jsonPropertyName
-                    ?? options.PropertyNamingPolicy?.ConvertName(clrPropertyName)
-                    ?? (options.PropertyNamingPolicy == null
+                    ?? Options.PropertyNamingPolicy?.ConvertName(clrPropertyName)
+                    ?? (Options.PropertyNamingPolicy == null
                             ? null
                             : throw new System.InvalidOperationException(""TODO: PropertyNamingPolicy cannot return null.""));
                 // NameAsUtf8Bytes and EscapedNameSection will be set in CompleteInitialization() below.
-            }
+            }}
             if (ignoreCondition != JsonIgnoreCondition.Always)
-            {
+            {{
                 jsonPropertyInfo.Get = getter;
                 jsonPropertyInfo.Set = setter;
                 jsonPropertyInfo.ConverterBase = converter ?? throw new System.NotSupportedException(""TODO: need custom converter here?"");
@@ -624,10 +628,10 @@ namespace {_generationNamespace}
                 jsonPropertyInfo.IgnoreCondition = ignoreCondition;
                 jsonPropertyInfo.NumberHandling = numberHandling;
                 jsonPropertyInfo.MemberType = memberType;
-            }
+            }}
             jsonPropertyInfo.CompleteInitialization();
             return jsonPropertyInfo;
-        }";
+        }}";
 
         private string GetGetClassInfoImplementation()
         {
@@ -666,8 +670,23 @@ namespace {_generationNamespace}
             sb.Append(@$"
             return null!;
         }}
-    }}
-}}
+
+        // TODO: provide implementation here once we decide final shape.
+        protected override System.Collections.Generic.IEnumerable<JsonClassInfo> GetAllJsonClassInfosImpl()
+        {{");
+
+            foreach (TypeMetadata typeMetadata in _typesWithMetadataGenerated)
+            {
+                if (typeMetadata.ClassType != ClassType.TypeUnsupportedBySourceGen)
+                {
+                    sb.Append($@"yield return this.{typeMetadata.FriendlyName};");
+                }
+            }
+
+            sb.Append(@"
+        }
+    }
+}
 ");
 
             return sb.ToString();
