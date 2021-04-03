@@ -103,6 +103,8 @@ namespace System.Text.Json
                 options = JsonSerializerOptions.DefaultOptions;
             }
 
+            options.EnableConvertersAndClassInfoCreator();
+
             JsonWriterOptions writerOptions = options.GetWriterOptions();
 
             using (var bufferWriter = new PooledByteBufferWriter(options.DefaultBufferSize))

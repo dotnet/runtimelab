@@ -21,6 +21,8 @@ namespace System.Text.Json
         {
             Debug.Assert(writer != null);
 
+            options.EnableConvertersAndClassInfoCreator();
+
             //  We treat typeof(object) special and allow polymorphic behavior.
             if (inputType == JsonClassInfo.ObjectType && value != null)
             {
