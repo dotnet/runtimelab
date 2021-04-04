@@ -89,4 +89,19 @@ fi
     -DCORECLR_INCLUDE_DIR="${RepoRoot}src/coreclr/inc" \
     || exit 1
 
-cmake --build "build/$TargetArch" --config "$BuildType" --target objwriter -j 10 || exit 1
+# Get the number of available processors
+Platform="$(uname)"
+if [[ "$Platform" == "FreeBSD" ]]; then
+    NumProc=$(sysctl -n hw.ncpu)
+elif [[ "$Platform" == "NetBSD" || "$Platform" == "SunOS" ]]; then
+    NumProc=$(getconf NPROCESSORS_ONLN)
+elif [[ "$Platform" == "Darwin" ]]; then
+    NumProc=$(getconf _NPROCESSORS_ONLN)
+else
+    NumProc=$(nproc --all)
+fi
+
+MaxJobs=$((NumProc+1))
+
+echo "Executing cmake --build \"build/$TargetArch\" --config \"$BuildType\" --target objwriter -j \"$MaxJobs\""
+cmake --build "build/$TargetArch" --config "$BuildType" --target objwriter -j "$MaxJobs" || exit 1
