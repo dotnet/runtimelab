@@ -23,6 +23,8 @@ namespace ILCompiler.DependencyAnalysis
     /// </summary>
     internal class LLVMObjectWriter : IDisposable
     {
+        public static string GlobalSymbolSuffix = "___SYMBOL";
+
         private string GetBaseSymbolName(ISymbolNode symbol, NameMangler nameMangler, bool objectWriterUse = false)
         {
             if (symbol is LLVMMethodCodeNode || symbol is LLVMBlockRefNode)
@@ -84,7 +86,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public static LLVMValueRef AddOrReturnGlobalSymbol(LLVMModuleRef module, ISymbolNode symbol, NameMangler nameMangler)
         {
-            string symbolAddressGlobalName = symbol.GetMangledName(nameMangler) + "___SYMBOL";
+            string symbolAddressGlobalName = symbol.GetMangledName(nameMangler) + GlobalSymbolSuffix;
             LLVMValueRef symbolAddress;
             if (s_symbolValues.TryGetValue(symbolAddressGlobalName, out symbolAddress))
             {
@@ -94,7 +96,7 @@ namespace ILCompiler.DependencyAnalysis
             var intPtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0);
             symbolAddress = module.AddGlobalInAddressSpace(intPtrType, symbolAddressGlobalName, 0);
             symbolAddress.IsGlobalConstant = true;
-            symbolAddress.Linkage = LLVMLinkage.LLVMInternalLinkage;
+            symbolAddress.Linkage = LLVMLinkage.LLVMExternalLinkage;
             s_symbolValues.Add(symbolAddressGlobalName, symbolAddress);
             return symbolAddress;
         }
@@ -461,7 +463,7 @@ namespace ILCompiler.DependencyAnalysis
         
         public void EmitSymbolDef(LLVMValueRef realSymbol, string symbolIdentifier, int offsetFromSymbolName)
         {
-            string symbolAddressGlobalName = symbolIdentifier + "___SYMBOL";
+            string symbolAddressGlobalName = symbolIdentifier + GlobalSymbolSuffix;
             LLVMValueRef symbolAddress;
             var intType = LLVMTypeRef.Int32;
             if (s_symbolValues.TryGetValue(symbolAddressGlobalName, out symbolAddress))
