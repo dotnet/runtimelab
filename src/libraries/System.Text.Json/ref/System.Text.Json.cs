@@ -760,7 +760,7 @@ namespace System.Text.Json.Serialization.Metadata
     public sealed partial class JsonObjectInfo<T> : System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>
     {
         public JsonObjectInfo(System.Text.Json.JsonSerializerOptions options) { }
-        public void Initialize(System.Text.Json.Serialization.Metadata.JsonTypeInfo.ConstructorDelegate? createObjectFunc, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>.SerializeObjectDelegate? serializeObjectFunc, System.Text.Json.Serialization.Metadata.JsonPropertyInfo[] properties, JsonNumberHandling? numberHandling) { }
+        public void Initialize(System.Text.Json.Serialization.Metadata.JsonTypeInfo.ConstructorDelegate? createObjectFunc, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>.SerializeObjectDelegate? serializeObjectFunc, System.Func<System.Text.Json.Serialization.JsonSerializerContext, System.Text.Json.Serialization.Metadata.JsonPropertyInfo[]> propInitFunc, JsonNumberHandling? numberHandling) { }
     }
     public abstract partial class JsonPropertyInfo
     {

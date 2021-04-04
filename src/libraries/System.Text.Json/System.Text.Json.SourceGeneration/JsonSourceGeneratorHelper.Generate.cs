@@ -29,6 +29,8 @@ namespace System.Text.Json.SourceGeneration
 
         private const string OptionsInstanceVariableName = "Options";
 
+        private const string PropInitFuncVarName = "propInitFunc";
+
         /// <summary>
         /// Types that we have initiated serialization metadata generation for. A type may be discoverable in the object graph,
         /// but not reachable for serialization (e.g. it is [JsonIgnore]'d); thus we maintain a separate cache.
@@ -296,11 +298,6 @@ namespace System.Text.Json.SourceGeneration
                 : "createObjectFunc: null";
 
             List<PropertyMetadata>? properties = typeMetadata.PropertiesMetadata;
-            string propertyArrayInstantiationValue = properties == null
-                ? "System.Array.Empty<JsonPropertyInfo>()"
-                : $"new JsonPropertyInfo[{properties.Count}]";
-
-            const string propertiesVarName = "properties";
 
             StringBuilder sb = new();
 
@@ -308,8 +305,56 @@ namespace System.Text.Json.SourceGeneration
                     _{typeFriendlyName} = objectInfo;
 ");
 
+            bool containsOnlyPrimitives = typeMetadata.ContainsOnlyPrimitives;
+            string serializeFuncName = $"{typeFriendlyName}SerializeFunc";
+            string serializeFuncNamedArg = containsOnlyPrimitives
+                ? $"serializeObjectFunc: {serializeFuncName}"
+                : "serializeObjectFunc: null";
+
+            string propInitFuncVarName = $"{typeFriendlyName}{PropInitFuncVarName}";
+
             sb.Append($@"
-                    JsonPropertyInfo[] {propertiesVarName} = {propertyArrayInstantiationValue};
+                    objectInfo.Initialize(
+                        {createObjectFuncTypeArg},
+                        {serializeFuncNamedArg},
+                        {propInitFuncVarName},
+                        {GetNumberHandlingAsStr(typeMetadata.NumberHandling)});");
+
+            string metadataInitSource = sb.ToString();
+
+            string? propInitFuncSource = GeneratePropMetadataInitFunc(typeMetadata.IsValueType, propInitFuncVarName, properties);
+            string? serializeFuncSource = containsOnlyPrimitives
+                ? GenerateFastPathSerializationLogic(typeCompilableName, serializeFuncName, typeMetadata.CanBeNull, properties)
+                : null;
+
+            string additionalSource = $@"
+
+        {propInitFuncSource}
+
+        {serializeFuncSource}";
+
+            return GenerateForType(typeMetadata, metadataInitSource, additionalSource);
+        }
+
+        private string GeneratePropMetadataInitFunc(
+            bool declaringTypeIsValueType,
+            string propInitFuncVarName,
+            List<PropertyMetadata>? properties)
+        {
+            const string PropVarName = "properties";
+            const string JsonContextVarName = "jsonContext";
+
+            string propertyArrayInstantiationValue = properties == null
+                ? "System.Array.Empty<JsonPropertyInfo>()"
+                : $"new JsonPropertyInfo[{properties.Count}]";
+
+            StringBuilder sb = new();
+
+            sb.Append($@"private static JsonPropertyInfo[] {propInitFuncVarName}(JsonSerializerContext context)
+        {{
+            JsonContext {JsonContextVarName} = (JsonContext)context;
+
+            JsonPropertyInfo[] {PropVarName} = {propertyArrayInstantiationValue};
 ");
 
             if (properties != null)
@@ -326,7 +371,7 @@ namespace System.Text.Json.SourceGeneration
 
                     string memberTypeFriendlyName = memberTypeMetadata.ClassType == ClassType.TypeUnsupportedBySourceGen
                         ? "null"
-                        : $"this.{memberTypeMetadata.FriendlyName}";
+                        : $"{JsonContextVarName}.{memberTypeMetadata.FriendlyName}";
 
                     string typeTypeInfoNamedArg = $"typeInfo: {memberTypeFriendlyName}";
 
@@ -341,7 +386,7 @@ namespace System.Text.Json.SourceGeneration
                     string setterNamedArg;
                     if (memberMetadata.HasSetter)
                     {
-                        string propMutation = typeMetadata.IsValueType
+                        string propMutation = declaringTypeIsValueType
                             ? @$"{{ Unsafe.Unbox<{declaringTypeCompilableName}>(obj).{clrPropertyName} = value; }}"
                             : $@"{{ (({declaringTypeCompilableName})obj).{clrPropertyName} = value; }}";
 
@@ -364,8 +409,8 @@ namespace System.Text.Json.SourceGeneration
                         byte[] name = Encoding.UTF8.GetBytes(memberMetadata.JsonPropertyName ?? clrPropertyName);
                         string nameAsStr = string.Join(",", name.Select(b => $"{b}"));
                         // code points for " and : are 34 and 58.
-                        string nameSection =  name.Length > 0
-                            ?  @"34," + nameAsStr + @",34,58"
+                        string nameSection = name.Length > 0
+                            ? @"34," + nameAsStr + @",34,58"
                             : "34,34,58";
 
                         nameAsUtf8BytesNamedArg = "nameAsUtf8Bytes: new byte[] {" + nameAsStr + "}";
@@ -395,42 +440,28 @@ namespace System.Text.Json.SourceGeneration
                     string memberTypeCompilableName = memberTypeMetadata.CompilableName;
 
                     sb.Append($@"
-                    {propertiesVarName}[{i}] = {PropertyCreationMethodName}<{memberTypeCompilableName}>(
-                        clrPropertyName: ""{clrPropertyName}"",
-                        memberType: System.Reflection.MemberTypes.{memberMetadata.MemberType},
-                        declaringType: typeof({memberMetadata.DeclaringTypeCompilableName}),
-                        {typeTypeInfoNamedArg},
-                        {converterNamedArg},
-                        {getterNamedArg},
-                        {setterNamedArg},
-                        {jsonPropertyNameNamedArg},
-                        {nameAsUtf8BytesNamedArg},
-                        {escapedNameSectionNamedArg},
-                        {ignoreConditionNamedArg},
-                        numberHandling: {GetNumberHandlingAsStr(memberMetadata.NumberHandling)});
-                ");
+            {PropVarName}[{i}] = {JsonContextVarName}.{PropertyCreationMethodName}<{memberTypeCompilableName}>(
+                clrPropertyName: ""{clrPropertyName}"",
+                memberType: System.Reflection.MemberTypes.{memberMetadata.MemberType},
+                declaringType: typeof({memberMetadata.DeclaringTypeCompilableName}),
+                {typeTypeInfoNamedArg},
+                {converterNamedArg},
+                {getterNamedArg},
+                {setterNamedArg},
+                {jsonPropertyNameNamedArg},
+                {nameAsUtf8BytesNamedArg},
+                {escapedNameSectionNamedArg},
+                {ignoreConditionNamedArg},
+                numberHandling: {GetNumberHandlingAsStr(memberMetadata.NumberHandling)});
+            ");
                 }
             }
 
-            bool containsOnlyPrimitives = typeMetadata.ContainsOnlyPrimitives;
-            string serializeFuncName = $"{typeFriendlyName}SerializeFunc";
-            string serializeFuncNamedArg = containsOnlyPrimitives
-                ? $"serializeObjectFunc: {serializeFuncName}"
-                : "serializeObjectFunc: null";
+            sb.Append(@$"
+            return {PropVarName};
+        }}");
 
-            sb.Append($@"
-                    objectInfo.Initialize(
-                        {createObjectFuncTypeArg},
-                        {serializeFuncNamedArg},
-                        {propertiesVarName},
-                        {GetNumberHandlingAsStr(typeMetadata.NumberHandling)});");
-
-            string metadataInitSource = sb.ToString();
-            string? serializeFuncSource = containsOnlyPrimitives
-                ? GenerateFastPathSerializationLogic(typeCompilableName, serializeFuncName, typeMetadata.CanBeNull, properties)
-                : null;
-
-            return GenerateForType(typeMetadata, metadataInitSource, serializeFuncSource);
+            return sb.ToString();
 
             static bool ContainsNonAscii(string str)
             {
@@ -449,13 +480,11 @@ namespace System.Text.Json.SourceGeneration
             string typeCompilableName,
             string serializeFuncName,
             bool canBeNull,
-            List<PropertyMetadata> properties)
+            List<PropertyMetadata>? properties)
         {
             StringBuilder sb = new();
 
-            sb.Append(@$"
-
-        private void {serializeFuncName}(Utf8JsonWriter writer, {typeCompilableName} value, JsonSerializerOptions options)
+            sb.Append(@$"private void {serializeFuncName}(Utf8JsonWriter writer, {typeCompilableName} value, JsonSerializerOptions options)
         {{");
 
             if (canBeNull)
@@ -518,8 +547,7 @@ namespace System.Text.Json.SourceGeneration
 
             sb.Append(@"
             writer.WriteEndObject();
-        }
-");
+        }");
 
             return sb.ToString();
         }

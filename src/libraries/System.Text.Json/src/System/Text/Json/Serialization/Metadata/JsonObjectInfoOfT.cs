@@ -27,36 +27,22 @@ namespace System.Text.Json.Serialization.Metadata
         /// </summary>
         /// <param name="createObjectFunc"></param>
         /// <param name="serializeObjectFunc"></param>
-        /// <param name="properties"></param>
+        /// <param name="propInitFunc"></param>
         /// <param name="numberHandling"></param>
         public void Initialize(
             ConstructorDelegate? createObjectFunc,
             SerializeObjectDelegate? serializeObjectFunc,
-            JsonPropertyInfo[] properties,
+            Func<JsonSerializerContext, JsonPropertyInfo[]> propInitFunc,
             JsonNumberHandling? numberHandling)
         {
-            if (properties == null)
+            if (propInitFunc == null)
             {
-                throw new ArgumentNullException(nameof(properties));
+                throw new ArgumentNullException(nameof(propInitFunc));
             }
 
             CreateObject = createObjectFunc;
             SerializeObject = serializeObjectFunc;
             NumberHandling = numberHandling;
-
-            for (int i = 0; i < properties.Length; i++)
-            {
-                JsonPropertyInfo jsonPropertyInfo = properties[i];
-                if (jsonPropertyInfo == null)
-                {
-                    throw new InvalidOperationException("Cannot provide null JsonPropertyInfo.");
-                }
-
-                if (!JsonHelpers.TryAdd(PropertyCache!, jsonPropertyInfo.NameAsString, jsonPropertyInfo))
-                {
-                    ThrowHelper.ThrowInvalidOperationException_SerializerPropertyNameConflict(Type, jsonPropertyInfo);
-                }
-            }
 
             if (SerializeObject != null)
             {
@@ -68,7 +54,7 @@ namespace System.Text.Json.Serialization.Metadata
                     Options.ReferenceHandlingStrategy == ReferenceHandlingStrategy.None;
             }
 
-            CompleteObjectInitialization();
+            PropInitFunc = propInitFunc;
         }
     }
 }
