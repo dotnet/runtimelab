@@ -157,7 +157,6 @@ namespace System.Text.Json.Serialization.Metadata
             jsonPropertyInfo._converterIsExternalAndPolymorphic = !converter.IsInternalConverter && declaredPropertyType != converter.TypeToConvert;
             jsonPropertyInfo.PropertyTypeCanBeNull = declaredPropertyType.CanBeNull();
             jsonPropertyInfo._propertyTypeEqualsTypeToConvert = typeof(T) == declaredPropertyType;
-            // jsonPropertyInfo.DetermineNumberHandlingForTypeInfo(numberHandling); TODO: honor numberhandling
             return jsonPropertyInfo;
         }
 

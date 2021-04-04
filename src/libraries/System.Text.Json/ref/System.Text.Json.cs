@@ -581,7 +581,7 @@ namespace System.Text.Json.Serialization
         public System.Text.Json.JsonSerializerOptions Options { get { throw null; } }
         protected JsonSerializerContext() { }
         protected JsonSerializerContext(System.Text.Json.JsonSerializerOptions options) { }
-        public virtual System.Text.Json.Serialization.Metadata.JsonTypeInfo GetJsonTypeInfo(System.Type type) { throw null; }
+        public virtual System.Text.Json.Serialization.Metadata.JsonTypeInfo GetTypeInfo(System.Type type) { throw null; }
         public virtual System.Text.Json.Serialization.JsonConverter GetConverter(System.Type type) { throw null; }
     }
     public sealed partial class JsonStringEnumConverter : System.Text.Json.Serialization.JsonConverterFactory
@@ -774,9 +774,8 @@ namespace System.Text.Json.Serialization.Metadata
     }
     public sealed partial class JsonObjectInfo<T> : System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>
     {
-        public JsonObjectInfo(System.Text.Json.Serialization.Metadata.JsonTypeInfo.ConstructorDelegate? createObjectFunc, System.Text.Json.JsonSerializerOptions options) { }
-        public void AddProperty(System.Text.Json.Serialization.Metadata.JsonPropertyInfo jsonPropertyInfo) { throw null; }
-        public void CompleteInitialization() { }
+        public JsonObjectInfo(System.Text.Json.JsonSerializerOptions options) { }
+        public void Initialize(System.Text.Json.Serialization.Metadata.JsonTypeInfo.ConstructorDelegate? createObjectFunc, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>.SerializeObjectDelegate? serializeObjectFunc, System.Text.Json.Serialization.Metadata.JsonPropertyInfo[] properties, JsonNumberHandling? numberHandling) { }
     }
     public abstract partial class JsonPropertyInfo
     {
@@ -808,6 +807,8 @@ namespace System.Text.Json.Serialization.Metadata
     {
         internal JsonTypeInfo() { }
         public void RegisterToOptions() { }
+        public delegate void SerializeObjectDelegate(System.Text.Json.Utf8JsonWriter writer, T value, System.Text.Json.JsonSerializerOptions options);
+        public System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>.SerializeObjectDelegate? SerializeObject { get; } 
     }
     public sealed partial class JsonValueInfo<T> : System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>
     {
