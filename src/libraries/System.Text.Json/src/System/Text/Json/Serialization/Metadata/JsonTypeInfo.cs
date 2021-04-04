@@ -195,14 +195,6 @@ namespace System.Text.Json.Serialization.Metadata
             PropertyInfoForTypeInfo = null!;
             ConverterBase = null!;
 
-            if (classType == ClassType.Object)
-            {
-                PropertyCache = new Dictionary<string, JsonPropertyInfo>(
-                    Options.PropertyNameCaseInsensitive
-                        ? StringComparer.OrdinalIgnoreCase
-                        : StringComparer.Ordinal);
-            }
-
             ClassType = classType;
         }
 
@@ -406,6 +398,40 @@ namespace System.Text.Json.Serialization.Metadata
             }
 
             //_isInitialized = true;
+        }
+
+        internal Func<JsonSerializerContext, JsonPropertyInfo[]>? PropInitFunc;
+
+        internal void InitializeSerializePropCache()
+        {
+            JsonSerializerContext? context = Options._context;
+
+            Debug.Assert(context != null);
+            Debug.Assert(PropInitFunc != null);
+
+            PropertyCacheArray = PropInitFunc(context);
+        }
+
+        internal void InitializeDeserializePropCache()
+        {
+            if (PropertyCacheArray == null)
+            {
+                InitializeSerializePropCache();
+            }
+
+            PropertyCache = new Dictionary<string, JsonPropertyInfo>(Options.PropertyNameCaseInsensitive
+                ? StringComparer.OrdinalIgnoreCase
+                : StringComparer.Ordinal);
+
+            for (int i = 0; i < PropertyCacheArray!.Length; i++)
+            {
+                JsonPropertyInfo jsonPropertyInfo = PropertyCacheArray[i];
+
+                if (!JsonHelpers.TryAdd(PropertyCache!, jsonPropertyInfo.NameAsString, jsonPropertyInfo))
+                {
+                    ThrowHelper.ThrowInvalidOperationException_SerializerPropertyNameConflict(Type, jsonPropertyInfo);
+                }
+            }
         }
 
         private sealed class ParameterLookupKey
