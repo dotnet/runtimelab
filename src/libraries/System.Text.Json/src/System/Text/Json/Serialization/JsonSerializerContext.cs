@@ -24,7 +24,7 @@ namespace System.Text.Json.Serialization
         /// </summary>
         protected JsonSerializerContext()
         {
-            _options = new JsonSerializerOptions(JsonSerializerOptions.DefaultSourceGenOptions, this);
+            _options = new JsonSerializerOptions(JsonSerializerOptions.DefaultOptions, this);
         }
 
         /// <summary>
@@ -40,13 +40,15 @@ namespace System.Text.Json.Serialization
         /// todo
         /// </summary>
         /// <param name="type"></param>
-        public virtual JsonTypeInfo GetTypeInfo(Type type) => throw new NotImplementedException();
+        public abstract JsonTypeInfo GetTypeInfo(Type type);
 
         /// <summary>
         /// TODO
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        public virtual JsonConverter GetConverter(Type type) => throw new NotImplementedException();
+        public JsonConverter GetConverter(Type type)
+            => GetTypeInfo(type ?? throw new ArgumentNullException(nameof(type)))?.ConverterBase
+            ?? throw new InvalidOperationException("The derived context instance did not provide a valid implementation for 'GetTypeInfo'.");
     }
 }

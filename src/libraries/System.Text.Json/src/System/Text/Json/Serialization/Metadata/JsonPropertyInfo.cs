@@ -436,7 +436,7 @@ namespace System.Text.Json.Serialization.Metadata
                 }
                 else
                 {
-                    JsonConverter<object> converter = (JsonConverter<object>)Options.GetConverter(JsonTypeInfo.ObjectType)!;
+                    JsonConverter<object> converter = (JsonConverter<object>)Options.GetConverterInternal(JsonTypeInfo.ObjectType)!;
                     Debug.Assert(converter != null);
 
                     if (!converter.TryRead(ref reader, typeof(JsonElement), Options, ref state, out object? value))
@@ -454,7 +454,7 @@ namespace System.Text.Json.Serialization.Metadata
                 Debug.Assert(propValue is IDictionary<string, JsonElement>);
                 IDictionary<string, JsonElement> dictionaryJsonElement = (IDictionary<string, JsonElement>)propValue;
 
-                JsonConverter<JsonElement> converter = (JsonConverter<JsonElement>)Options.GetConverter(typeof(JsonElement))!;
+                JsonConverter<JsonElement> converter = (JsonConverter<JsonElement>)Options.GetConverterInternal(typeof(JsonElement))!;
                 Debug.Assert(converter != null);
 
                 if (!converter.TryRead(ref reader, typeof(JsonElement), Options, ref state, out JsonElement value))
@@ -482,7 +482,7 @@ namespace System.Text.Json.Serialization.Metadata
                 return true;
             }
 
-            JsonConverter<JsonElement> converter = (JsonConverter<JsonElement>)Options.GetConverter(typeof(JsonElement))!;
+            JsonConverter<JsonElement> converter = (JsonConverter<JsonElement>)Options.GetConverterInternal(typeof(JsonElement))!;
             Debug.Assert(converter != null);
             if (!converter.TryRead(ref reader, typeof(JsonElement), Options, ref state, out JsonElement jsonElement))
             {

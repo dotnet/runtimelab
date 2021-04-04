@@ -43,7 +43,7 @@ namespace System.Text.Json.Serialization.Converters
         internal override void WriteWithQuotes(Utf8JsonWriter writer, object value, JsonSerializerOptions options, ref WriteStack state)
         {
             Type runtimeType = value.GetType();
-            JsonConverter runtimeConverter = options.GetConverter(runtimeType)!;
+            JsonConverter runtimeConverter = options.GetConverterInternal(runtimeType)!;
             if (runtimeConverter == this)
             {
                 ThrowHelper.ThrowNotSupportedException_DictionaryKeyTypeNotSupported(runtimeType!, this);

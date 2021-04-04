@@ -21,10 +21,6 @@ namespace System.Text.Json
 
         internal static JsonSerializerOptions DefaultOptions => s_defaultOptions ??= new JsonSerializerOptions();
 
-        private static JsonSerializerOptions? s_defaultSourceGenOptions;
-
-        internal static JsonSerializerOptions DefaultSourceGenOptions => s_defaultSourceGenOptions ??= CreateForSizeOpts();
-
         private readonly ConcurrentDictionary<Type, JsonTypeInfo> _classes = new ConcurrentDictionary<Type, JsonTypeInfo>();
 
         private Func<Type, JsonSerializerOptions, JsonTypeInfo>? _typeInfoCreationFunc = null!;
@@ -90,33 +86,6 @@ namespace System.Text.Json
         /// <param name="defaults"> The <see cref="JsonSerializerDefaults"/> to reason about.</param>
         public JsonSerializerOptions(JsonSerializerDefaults defaults) : this()
         {
-            InitializeWithDefaults(defaults);
-        }
-
-        /// <summary>
-        /// TODO
-        /// </summary>
-        /// <returns></returns>
-        public static JsonSerializerOptions CreateForSizeOpts(JsonSerializerDefaults defaults = default) => new JsonSerializerOptions(defaults, false);
-
-        private JsonSerializerOptions(JsonSerializerDefaults defaults, bool dummy)
-        {
-            InitializeWithDefaults(defaults);
-            Converters = new ConverterList(this);
-        }
-
-        internal JsonSerializerOptions(JsonSerializerOptions options, JsonSerializerContext context)
-        {
-            Debug.Assert(options != null);
-            Debug.Assert(context != null);
-            _context = context;
-            CopyOptions(options);
-            _typeInfoCreationFunc = options._typeInfoCreationFunc;
-            Converters = new ConverterList(this, (ConverterList)options.Converters);
-        }
-
-        private void InitializeWithDefaults(JsonSerializerDefaults defaults)
-        {
             if (defaults == JsonSerializerDefaults.Web)
             {
                 _propertyNameCaseInsensitive = true;
@@ -127,6 +96,16 @@ namespace System.Text.Json
             {
                 throw new ArgumentOutOfRangeException(nameof(defaults));
             }
+        }
+
+        internal JsonSerializerOptions(JsonSerializerOptions options, JsonSerializerContext context)
+        {
+            Debug.Assert(options != null);
+            Debug.Assert(context != null);
+            _context = context;
+            CopyOptions(options);
+            _typeInfoCreationFunc = options._typeInfoCreationFunc;
+            Converters = new ConverterList(this, (ConverterList)options.Converters);
         }
 
         private void CopyOptions(JsonSerializerOptions options)
@@ -651,21 +630,12 @@ namespace System.Text.Json
         internal void VerifyMutable()
         {
             // The default options are hidden and thus should be immutable.
-            Debug.Assert(this != DefaultOptions && this != DefaultSourceGenOptions);
+            Debug.Assert(this != DefaultOptions);
 
             if (_haveTypesBeenCreated || _context != null)
             {
                 ThrowHelper.ThrowInvalidOperationException_SerializerOptionsImmutable(_context);
             }
-        }
-
-        /// <summary>
-        /// todo
-        /// </summary>
-        /// <returns>todo</returns>
-        public string GetTypesInDictionary()
-        {
-            return string.Join(",", _classes.Keys);
         }
     }
 }

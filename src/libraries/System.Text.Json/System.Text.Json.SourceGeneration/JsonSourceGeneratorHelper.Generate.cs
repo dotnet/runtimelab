@@ -477,8 +477,8 @@ namespace System.Text.Json.SourceGeneration
                 for (int i = 0; i < properties.Count; i++)
                 {
                     PropertyMetadata propertyMetadata = properties[i];
-                    string name = propertyMetadata.JsonPropertyName ?? propertyMetadata.ClrName;
                     Type propertyType = propertyMetadata.TypeMetadata.Type;
+                    string name = propertyMetadata.JsonPropertyName ?? propertyMetadata.ClrName;
                     string propertyNameArg = @$"""{name}""";
                     string propertyValueArg = $"value.{propertyMetadata.ClrName}";
                     string writeMethodArgs = $"{propertyNameArg}, {propertyValueArg}";
@@ -767,26 +767,6 @@ namespace {_generationNamespace}
             if (type == typeof({typeMetadata.Type.GetUniqueCompilableTypeName()}))
             {{
                 return this.{typeMetadata.FriendlyName};
-            }}
-");
-                }
-            }
-
-            sb.Append(@"
-            return null!;
-        }
-
-        public override JsonConverter GetConverter(System.Type type)
-        {");
-
-            foreach (TypeMetadata typeMetadata in _typesWithMetadataGenerated)
-            {
-                if (typeMetadata.ClassType != ClassType.TypeUnsupportedBySourceGen)
-                {
-                    sb.Append($@"
-            if (type == typeof({typeMetadata.Type.GetUniqueCompilableTypeName()}))
-            {{
-                return this.{typeMetadata.FriendlyName}.ConverterBase;
             }}
 ");
                 }
