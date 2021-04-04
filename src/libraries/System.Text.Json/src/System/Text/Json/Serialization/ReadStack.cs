@@ -14,7 +14,7 @@ namespace System.Text.Json
     /// todo
     /// </summary>
     [DebuggerDisplay("Path:{JsonPath()} Current: ClassType.{Current.JsonTypeInfo.ClassType}, {Current.JsonTypeInfo.Type.Name}")]
-    public struct ReadStack
+    internal struct ReadStack
     {
         internal static readonly char[] SpecialCharacters = { '.', ' ', '\'', '/', '"', '[', ']', '(', ')', '\t', '\n', '\r', '\f', '\b', '\\', '\u0085', '\u2028', '\u2029' };
 

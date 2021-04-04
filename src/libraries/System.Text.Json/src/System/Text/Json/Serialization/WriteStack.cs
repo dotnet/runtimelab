@@ -12,7 +12,7 @@ namespace System.Text.Json
     /// todo
     /// </summary>
     [DebuggerDisplay("Path:{PropertyPath()} Current: ClassType.{Current.JsonTypeInfo.ClassType}, {Current.JsonTypeInfo.Type.Name}")]
-    public struct WriteStack
+    internal struct WriteStack
     {
         /// <summary>
         /// The number of stack frames when the continuation started.

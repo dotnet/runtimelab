@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics.CodeAnalysis;
-using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 
 namespace System.Text.Json
@@ -51,7 +50,14 @@ namespace System.Text.Json
             {
                 using (var writer = new Utf8JsonWriter(output, options.GetWriterOptions()))
                 {
-                    WriteCore(jsonTypeInfo.PropertyInfoForTypeInfo.ConverterBase, writer, value, ref state, options);
+                    if (state.SourceGenUseFastPath)
+                    {
+                        jsonTypeInfo.SerializeObject!(writer, value, options);
+                    }
+                    else
+                    {
+                        WriteCore(jsonTypeInfo.PropertyInfoForTypeInfo.ConverterBase, writer, value, ref state, options);
+                    }
                 }
 
                 return output.WrittenMemory.Span.ToArray();

@@ -35,7 +35,6 @@ namespace System.Text.Json.SourceGeneration.Tests
             // A warning to the user is displayed with this detail at compile time.
             string json = JsonSerializer.Serialize(expected, JsonContext.Default.SystemTextJsonSourceGenerationTestsLocation);
             Location obj = JsonSerializer.Deserialize(json, JsonContext.Default.SystemTextJsonSourceGenerationTestsLocation);
-
             VerifyLocation(expected, obj);
         }
 
@@ -460,6 +459,29 @@ namespace System.Text.Json.SourceGeneration.Tests
             // We know metadata was generated for this type.
             JsonTypeInfo typeInfo = context.GetTypeInfo(typeof(HighLowTemps));
             Assert.True(typeInfo.Type == typeof(HighLowTemps));
+        }
+
+        [Fact]
+        public static void TestFastPathForSimplePocos()
+        {
+            JsonContext context = JsonContext.Default;
+
+            byte[] json = JsonSerializer.SerializeToUtf8Bytes(new HighLowTemps { High = 10, Low = -1 }, context.HighLowTemps);
+            HighLowTemps temps = JsonSerializer.Deserialize(json, context.HighLowTemps);
+            Assert.Equal(10, temps.High);
+            Assert.Equal(-1, temps.Low);
+        }
+
+        [Fact]
+        public static void TestFastPathForComplexPocos()
+        {
+            JsonContext context = JsonContext.Default;
+            IndexViewModel expected = CreateIndexViewModel();
+
+            byte[] json = JsonSerializer.SerializeToUtf8Bytes(expected, context.IndexViewModel);
+            IndexViewModel model = JsonSerializer.Deserialize(json, context.IndexViewModel);
+
+            VerifyIndexViewModel(expected, model);
         }
     }
 }
