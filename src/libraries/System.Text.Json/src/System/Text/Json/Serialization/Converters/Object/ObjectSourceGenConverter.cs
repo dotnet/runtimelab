@@ -19,7 +19,7 @@ namespace System.Text.Json.Serialization.Converters
             ref WriteStack state)
         {
             // SourceGenUseFastPath will not be true if JsonTypeInfo is not JsonTypeInfo<T>.
-            if (!state.SourceGenUseFastPath)
+            if (!state.SourceGenUseFastPath && !state.IsContinuation)
             {
                 return base.OnTryWrite(writer, value, options, ref state);
             }

@@ -1,10 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
 
 namespace System.Text.Json
 {
@@ -65,42 +62,6 @@ namespace System.Text.Json
             }
 
             Serialize<object?>(writer, value, inputType, options);
-        }
-
-
-        /// <summary>
-        /// todo
-        /// </summary>
-        /// <typeparam name="TValue"></typeparam>
-        /// <param name="writer"></param>
-        /// <param name="value"></param>
-        /// <param name="jsonTypeInfo"></param>
-        /// <param name="state"></param>
-        public static void Serialize<[DynamicallyAccessedMembers(MembersAccessedOnWrite)] TValue>(
-            Utf8JsonWriter writer,
-            TValue value,
-            JsonTypeInfo<TValue> jsonTypeInfo,
-            ref WriteStack state)
-        {
-            if (writer == null)
-            {
-                throw new ArgumentNullException(nameof(writer));
-            }
-
-            if (jsonTypeInfo == null)
-            {
-                throw new ArgumentNullException(nameof(jsonTypeInfo));
-            }
-
-            JsonSerializerOptions options = jsonTypeInfo.Options;
-            Debug.Assert(options != null);
-
-            using (var output = new PooledByteBufferWriter(options.DefaultBufferSize))
-            {
-                JsonConverter jsonConverter = jsonTypeInfo.PropertyInfoForTypeInfo.ConverterBase;
-                bool success = WriteCore(jsonConverter, writer, value, ref state, options);
-                Debug.Assert(success);
-            }
         }
 
         private static void Serialize<TValue>(Utf8JsonWriter writer, in TValue value, Type type, JsonSerializerOptions? options)
