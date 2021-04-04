@@ -114,7 +114,7 @@ namespace System.Text.Json
                 }
             }
 
-            converter ??= GetConverter(runtimePropertyType);
+            converter ??= GetConverterInternal(runtimePropertyType);
 
             if (converter == null)
             {
@@ -160,12 +160,23 @@ namespace System.Text.Json
         /// </exception>
         public JsonConverter? GetConverter(Type typeToConvert)
         {
+            // Root converters for backwards compat for users who new up JsonSerializerOptions and
+            // call GetConverter directly without first using dynamic overloads of the serializer.
+            InitializeDefaultConverters();
+            return GetConverterInternal(typeToConvert);
+        }
+
+        /// <summary>
+        /// Internal version of <see cref="GetConverter(Type)"/> that does not root default converters.
+        /// Default converters would already be rooted if a dynamic overload of the serializer was used.
+        /// </summary>
+        /// <returns></returns>
+        internal JsonConverter? GetConverterInternal(Type typeToConvert)
+        {
             if (_context != null)
             {
                 throw new NotSupportedException("This options instance is associated with a 'JsonSerializerContext'. To fetch a converter, call 'JsonSerializerContext.GetConverter'.");
             }
-
-            InitializeDefaultConverters();
 
             if (_converters.TryGetValue(typeToConvert, out JsonConverter? converter))
             {

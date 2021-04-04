@@ -16,7 +16,6 @@ using Xunit;
 [assembly: JsonSerializable(typeof(CampaignSummaryViewModel), CanBeDynamic = true)]
 [assembly: JsonSerializable(typeof(JsonSerializerSourceGeneratorTests.MyNestedClass))]
 [assembly: JsonSerializable(typeof(JsonSerializerSourceGeneratorTests.MyNestedClass.MyNestedNestedClass))]
-
 [assembly: JsonSerializable(typeof(object[]))]
 [assembly: JsonSerializable(typeof(string), CanBeDynamic = true)]
 

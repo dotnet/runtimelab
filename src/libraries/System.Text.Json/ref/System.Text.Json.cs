@@ -248,8 +248,6 @@ namespace System.Text.Json
         public System.Text.Json.Serialization.ReferenceHandler? ReferenceHandler { get { throw null; } set { } }
         public bool WriteIndented { get { throw null; } set { } }
         public System.Text.Json.Serialization.JsonConverter? GetConverter(System.Type typeToConvert) { throw null; }
-        public string GetTypesInDictionary() { throw null; }
-        public static System.Text.Json.JsonSerializerOptions CreateForSizeOpts(System.Text.Json.JsonSerializerDefaults defaults = default) { throw null; }
     }
     public enum JsonTokenType : byte
     {
@@ -568,8 +566,8 @@ namespace System.Text.Json.Serialization
         public System.Text.Json.JsonSerializerOptions Options { get { throw null; } }
         protected JsonSerializerContext() { }
         protected JsonSerializerContext(System.Text.Json.JsonSerializerOptions options) { }
-        public virtual System.Text.Json.Serialization.Metadata.JsonTypeInfo GetTypeInfo(System.Type type) { throw null; }
-        public virtual System.Text.Json.Serialization.JsonConverter GetConverter(System.Type type) { throw null; }
+        public abstract System.Text.Json.Serialization.Metadata.JsonTypeInfo GetTypeInfo(System.Type type);
+        public System.Text.Json.Serialization.JsonConverter GetConverter(System.Type type) { throw null; }
     }
     public sealed partial class JsonStringEnumConverter : System.Text.Json.Serialization.JsonConverterFactory
     {

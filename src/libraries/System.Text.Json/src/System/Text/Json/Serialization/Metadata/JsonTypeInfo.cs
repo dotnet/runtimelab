@@ -556,7 +556,7 @@ namespace System.Text.Json.Serialization.Metadata
                 if (typeof(IDictionary<string, object>).IsAssignableFrom(declaredPropertyType) ||
                     typeof(IDictionary<string, JsonElement>).IsAssignableFrom(declaredPropertyType))
                 {
-                    JsonConverter converter = Options.GetConverter(declaredPropertyType)!;
+                    JsonConverter converter = Options.GetConverterInternal(declaredPropertyType)!;
                     Debug.Assert(converter != null);
                 }
                 else
