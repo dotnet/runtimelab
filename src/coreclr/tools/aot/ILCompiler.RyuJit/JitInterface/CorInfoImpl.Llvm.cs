@@ -20,11 +20,6 @@ namespace Internal.JitInterface
             switch (node.Id)
             {
                 case ReadyToRunHelperId.GetGCStaticBase:
-                    if (target.Name.Contains("Bool"))
-                    {
-
-                    }
-
                     _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0, _this._compilation.NodeFactory.TypeGCStaticsSymbol(target)));
                     if (_this._compilation.HasLazyStaticConstructor(target))
                     {
