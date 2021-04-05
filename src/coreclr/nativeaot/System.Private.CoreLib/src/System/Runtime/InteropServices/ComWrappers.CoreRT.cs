@@ -409,6 +409,20 @@ namespace System.Runtime.InteropServices
             return s_globalInstanceForMarshalling.GetOrCreateComInterfaceForObject(instance, CreateComInterfaceFlags.None);
         }
 
+        internal static unsafe IntPtr ComInterfaceForObject(object instance, Guid targetIID)
+        {
+            IntPtr unknownPtr = ComInterfaceForObject(instance);
+            IntPtr comObjectInterface;
+            ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)unknownPtr);
+            int resultCode = wrapper->QueryInterface(in targetIID, out comObjectInterface);
+            if (resultCode != 0)
+            {
+                throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            }
+
+            return comObjectInterface;
+        }
+
         [UnmanagedCallersOnly]
         internal static unsafe int IUnknown_QueryInterface(IntPtr pThis, Guid* guid, IntPtr* ppObject)
         {

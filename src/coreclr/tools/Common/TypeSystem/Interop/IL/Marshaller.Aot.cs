@@ -871,8 +871,12 @@ namespace Internal.TypeSystem.Interop
         {
             ILEmitter emitter = _ilCodeStreams.Emitter;
 
-            var helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertManagedComInterfaceToNative");
+            MethodDesc helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertManagedComInterfaceToNative");
             LoadManagedValue(codeStream);
+            codeStream.Emit(ILOpcode.ldtoken, emitter.NewToken(this.ManagedParameterType));
+            MethodDesc getTypeFromHandleMethod =
+                Context.SystemModule.GetKnownType("System", "Type").GetKnownMethod("GetTypeFromHandle", null);
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(getTypeFromHandleMethod));
 
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
 
@@ -883,7 +887,7 @@ namespace Internal.TypeSystem.Interop
         {
             ILEmitter emitter = _ilCodeStreams.Emitter;
 
-            var helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertNativeComInterfaceToManaged");
+            MethodDesc helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertNativeComInterfaceToManaged");
             LoadNativeValue(codeStream);
 
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
