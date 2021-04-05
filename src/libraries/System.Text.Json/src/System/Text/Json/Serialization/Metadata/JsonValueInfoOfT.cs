@@ -7,18 +7,16 @@ namespace System.Text.Json.Serialization.Metadata
     /// todo
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public sealed class JsonValueInfo<T> : JsonTypeInfo<T>
+    internal sealed class JsonValueInfo<T> : JsonTypeInfo<T>
     {
         /// <summary>
         /// todo
         /// </summary>
-        /// <param name="converter"></param>
         /// <param name="options"></param>
-        public JsonValueInfo(
-            JsonConverter converter,
-            JsonSerializerOptions options) : base(typeof(T), options, ClassType.Value)
+        /// <param name="converter"></param>
+        public JsonValueInfo(JsonSerializerOptions options, JsonConverter converter) : base(typeof(T), options, ClassType.Value)
         {
-            ConverterBase = converter;
+            Converter = converter;
             PropertyInfoForTypeInfo = SourceGenCreatePropertyInfoForTypeInfo<T>(Type, runtimeTypeInfo: this, converter, Options);
         }
     }

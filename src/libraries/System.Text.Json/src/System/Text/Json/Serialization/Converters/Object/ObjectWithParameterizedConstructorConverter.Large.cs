@@ -4,6 +4,7 @@
 using System.Buffers;
 using System.Diagnostics;
 using System.Text.Json.Serialization.Metadata;
+using System.Text.Json.Serialization.Metadata.Internal;
 
 namespace System.Text.Json.Serialization.Converters
 {

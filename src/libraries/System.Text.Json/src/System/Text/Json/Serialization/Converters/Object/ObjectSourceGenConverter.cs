@@ -8,12 +8,16 @@ using System.Text.Json.Serialization.Metadata;
 namespace System.Text.Json.Serialization.Converters
 {
     /// <summary>
-    /// Implementation of <cref>JsonObjectConverter{T}</cref> that supports the deserialization
-    /// of JSON objects using parameterized constructors.
+    /// Implementation of <cref>JsonObjectConverter{T}</cref> for source-generated converters.
     /// </summary>
     internal sealed class ObjectSourceGenConverter<T> : ObjectDefaultConverter<T>
     {
-        internal override bool OnTryRead(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options, ref ReadStack state, [MaybeNullWhen(false)] out T value)
+        internal override bool OnTryRead(
+            ref Utf8JsonReader reader,
+            Type typeToConvert,
+            JsonSerializerOptions options,
+            ref ReadStack state,
+            [MaybeNullWhen(false)] out T value)
         {
             JsonTypeInfo jsonTypeInfo = state.Current.JsonTypeInfo;
             if (jsonTypeInfo.PropertyCache == null)

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <TargetFrameworks>$(NetCoreAppCurrent);netstandard2.0;netcoreapp3.0;net461</TargetFrameworks>
@@ -68,6 +68,8 @@
     <Compile Include="System\Text\Json\Serialization\Attributes\JsonPropertyNameAttribute.cs" />
     <Compile Include="System\Text\Json\Serialization\Converters\Object\ObjectSourceGenConverter.cs" />
     <Compile Include="System\Text\Json\Serialization\IgnoreReferenceResolver.cs" />
+    <Compile Include="System\Text\Json\Serialization\Metadata\MetadataServices.Collections.cs" />
+    <Compile Include="System\Text\Json\Serialization\Metadata\MetadataServices.cs" />
     <Compile Include="System\Text\Json\Serialization\ReferenceEqualsWrapper.cs" />
     <Compile Include="System\Text\Json\Serialization\ClassType.cs" />
     <Compile Include="System\Text\Json\Serialization\ConverterList.cs" />
@@ -174,8 +176,6 @@
     <Compile Include="System\Text\Json\Serialization\Metadata\JsonTypeInfoOfT.cs" />
     <Compile Include="System\Text\Json\Serialization\Metadata\JsonValueInfoOfT.cs" />
     <Compile Include="System\Text\Json\Serialization\MetadataPropertyName.cs" />
-    <Compile Include="System\Text\Json\Serialization\Metadata\KnownCollectionTypeInfos.cs" />
-    <Compile Include="System\Text\Json\Serialization\Metadata\KnownDictionaryTypeInfos.cs" />
     <Compile Include="System\Text\Json\Serialization\MemberAccessor.cs" />
     <Compile Include="System\Text\Json\Serialization\ParameterRef.cs" />
     <Compile Include="System\Text\Json\Serialization\PreserveReferenceHandler.cs" />

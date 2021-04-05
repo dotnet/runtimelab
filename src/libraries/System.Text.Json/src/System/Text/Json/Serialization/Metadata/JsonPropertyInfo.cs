@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 
-namespace System.Text.Json.Serialization.Metadata
+namespace System.Text.Json.Serialization.Metadata.Internal
 {
     /// <summary>
     /// todo
@@ -22,24 +22,26 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// TODO
         /// </summary>
-        public JsonIgnoreCondition? IgnoreCondition { get; set; }
+        internal JsonIgnoreCondition? IgnoreCondition { get; set; }
 
         /// <summary>
         /// TODO
         /// </summary>
-        public JsonNumberHandling? NumberHandling { get; set; }
+        internal JsonNumberHandling? NumberHandling { get; set; }
 
         /// <summary>
         /// TODO
         /// </summary>
-        public MemberTypes MemberType { get; set; } // TODO: with some refactoring, we should be able to remove this.
-
-        internal JsonPropertyInfo() { }
+        internal MemberTypes MemberType { get; set; } // TODO: with some refactoring, we should be able to remove this.
 
         /// <summary>
         /// todo
         /// </summary>
-        public abstract JsonConverter ConverterBase { get; set; }
+        internal abstract JsonConverter ConverterBase { get; set; }
+
+        internal JsonPropertyInfo()
+        {
+        }
 
         internal static JsonPropertyInfo GetPropertyPlaceholder()
         {
@@ -92,7 +94,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public Type DeclaredPropertyType { get; set; } = null!;
+        internal Type DeclaredPropertyType { get; set; } = null!;
 
         internal Type? RuntimePropertyType { get; set; }
 
@@ -403,23 +405,23 @@ namespace System.Text.Json.Serialization.Metadata
         /// the value specified in JsonPropertyNameAttribute,
         /// or the value returned from PropertyNamingPolicy(clrPropertyName).
         /// </summary>
-        public string NameAsString { get; set; } = null!;
+        internal string NameAsString { get; set; } = null!;
 
         /// <summary>
         /// Utf8 version of NameAsString.
         /// </summary>
-        public byte[] NameAsUtf8Bytes { get; set; } = null!;
+        internal byte[] NameAsUtf8Bytes { get; set; } = null!;
 
         /// <summary>
         /// The escaped name passed to the writer.
         /// </summary>
-        public byte[] EscapedNameSection { get; set; } = null!;
+        internal byte[] EscapedNameSection { get; set; } = null!;
 
         /// <summary>
         /// TODO
         /// </summary>
         // Options can be referenced here since all JsonPropertyInfos originate from a JsonTypeInfo that is cached on JsonSerializerOptions.
-        public JsonSerializerOptions Options { get; set; } = null!; // initialized in Init method
+        internal JsonSerializerOptions Options { get; set; } = null!; // initialized in Init method
 
         internal bool ReadJsonAndAddExtensionProperty(object obj, ref ReadStack state, ref Utf8JsonReader reader)
         {
@@ -498,14 +500,14 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// TODO
         /// </summary>
-        public Type DeclaringType { get; set; } = null!;
+        internal Type DeclaringType { get; set; } = null!;
 
         internal MemberInfo? MemberInfo { get; private set; }
 
         /// <summary>
         /// TODO
         /// </summary>
-        public JsonTypeInfo RuntimeTypeInfo
+        internal JsonTypeInfo RuntimeTypeInfo
         {
             get
             {
@@ -529,12 +531,12 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public bool ShouldSerialize { get; internal set; }
+        internal bool ShouldSerialize { get; set; }
 
         /// <summary>
         /// todo
         /// </summary>
-        public bool ShouldDeserialize { get; internal set; }
+        internal bool ShouldDeserialize { get; set; }
 
         internal bool IsIgnored { get; set; }
 

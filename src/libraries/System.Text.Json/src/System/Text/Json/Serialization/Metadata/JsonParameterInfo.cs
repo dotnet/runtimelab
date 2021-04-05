@@ -3,9 +3,8 @@
 
 using System.Diagnostics;
 using System.Reflection;
-using System.Text.Json.Serialization;
 
-namespace System.Text.Json.Serialization.Metadata
+namespace System.Text.Json.Serialization.Metadata.Internal
 {
     /// <summary>
     /// Holds relevant state about a method parameter, like the default value of

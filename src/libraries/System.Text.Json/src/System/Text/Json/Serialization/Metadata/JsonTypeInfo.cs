@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization.Metadata.Internal;
 
 namespace System.Text.Json.Serialization.Metadata
 {
@@ -20,21 +21,15 @@ namespace System.Text.Json.Serialization.Metadata
         //internal bool _isInitialized;
         // todo: add immutable checks in all setters like we do in JsonSerializerOptions
 
-        /// <summary>
-        /// todo
-        /// </summary>
-        /// <returns></returns>
-        public delegate object? ConstructorDelegate();
-
         internal delegate T ParameterizedConstructorDelegate<T>(object[] arguments);
 
         internal delegate T ParameterizedConstructorDelegate<T, TArg0, TArg1, TArg2, TArg3>(TArg0 arg0, TArg1 arg1, TArg2 arg2, TArg3 arg3);
 
-        private ConstructorDelegate? _createObject;
+        private MetadataServices.ConstructorDelegate? _createObject;
         /// <summary>
         /// todo
         /// </summary>
-        public ConstructorDelegate? CreateObject
+        internal MetadataServices.ConstructorDelegate? CreateObject
         {
             get
             {
@@ -66,12 +61,12 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public JsonConverter ConverterBase { get; internal set; }
+        public JsonConverter Converter { get; internal set; }
 
         /// <summary>
         /// TODO
         /// </summary>
-        public JsonNumberHandling? NumberHandling { get; set; }
+        internal JsonNumberHandling? NumberHandling { get; set; }
 
         /// <summary>
         /// When serializing objects with source-gen'd converters, indicates whether the
@@ -134,6 +129,12 @@ namespace System.Text.Json.Serialization.Metadata
 
                 return _keyTypeInfo;
             }
+            set
+            {
+                // Used with code-gen scenarios.
+                Debug.Assert(_keyTypeInfo == null);
+                _keyTypeInfo = value;
+            }
         }
 
         internal Type? KeyType { get; set; }
@@ -141,7 +142,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public JsonSerializerOptions Options { get; private set; }
+        internal JsonSerializerOptions Options { get; set; }
 
         /// <summary>
         /// todo
@@ -193,7 +194,20 @@ namespace System.Text.Json.Serialization.Metadata
 
             // todo: fix up nullability to avoid this.
             PropertyInfoForTypeInfo = null!;
-            ConverterBase = null!;
+            Converter = null!;
+
+            ClassType = classType;
+        }
+
+        internal JsonTypeInfo(Type type, ClassType classType)
+        {
+            Type = type;
+
+            Options = null!;
+
+            // todo: fix up nullability to avoid this.
+            PropertyInfoForTypeInfo = null!;
+            Converter = null!;
 
             ClassType = classType;
         }
@@ -210,7 +224,7 @@ namespace System.Text.Json.Serialization.Metadata
                 out Type runtimeType,
                 Options);
 
-            ConverterBase = converter;
+            Converter = converter;
             ClassType = converter.ClassType;
             JsonNumberHandling? typeNumberHandling = GetNumberHandlingForType(Type);
 

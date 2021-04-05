@@ -5,6 +5,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
+using System.Text.Json.Serialization.Metadata.Internal;
 
 namespace System.Text.Json
 {
