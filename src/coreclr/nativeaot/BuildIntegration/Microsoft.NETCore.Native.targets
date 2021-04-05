@@ -20,6 +20,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <NativeOutputPath Condition="'$(NativeOutputPath)' == ''">$(OutputPath)native\</NativeOutputPath>
     <NativeCompilationDuringPublish Condition="'$(NativeCompilationDuringPublish)' == ''">true</NativeCompilationDuringPublish>
     <IlcBuildTasksPath Condition="'$(IlcBuildTasksPath)' == ''">$(MSBuildThisFileDirectory)..\tools\netstandard\ILCompiler.Build.Tasks.dll</IlcBuildTasksPath>
+    <IlcHostPath Condition="'$(IlcPath)' != ''">$(IlcPath)</IlcHostPath>
     <TargetOS Condition="'$([MSBuild]::IsOSPlatform(Windows))' == 'true'">windows</TargetOS>
     <TargetOS Condition="'$([MSBuild]::IsOSPlatform(OSX))' == 'true'">OSX</TargetOS>
     <TargetOS Condition="'$(TargetOS)' == ''">$(OS)</TargetOS>
@@ -134,7 +135,6 @@ The .NET Foundation licenses this file to you under the MIT license.
   <Target Name="SetupProperties" DependsOnTargets="$(IlcSetupPropertiesDependsOn)" BeforeTargets="Publish">
     <PropertyGroup>
       <!-- Define paths used in build targets to point to the runtime-specific ILCompiler implementation -->
-      <IlcHostPath Condition="'$(IlcPath)' != ''">$(IlcPath)</IlcHostPath>
       <IlcHostPath Condition="'$(IlcPath)' == ''">$(IlcHostPackagePath)</IlcHostPath>
       <IlcPath Condition="'$(IlcPath)' == ''">$(RuntimePackagePath)</IlcPath>
     </PropertyGroup>
