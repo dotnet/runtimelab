@@ -134,9 +134,9 @@ The .NET Foundation licenses this file to you under the MIT license.
   <Target Name="SetupProperties" DependsOnTargets="$(IlcSetupPropertiesDependsOn)" BeforeTargets="Publish">
     <PropertyGroup>
       <!-- Define paths used in build targets to point to the runtime-specific ILCompiler implementation -->
+      <IlcHostPath Condition="'$(IlcPath)' != ''">$(IlcPath)</IlcHostPath>
+      <IlcHostPath Condition="'$(IlcPath)' == ''">$(IlcHostPackagePath)</IlcHostPath>
       <IlcPath Condition="'$(IlcPath)' == ''">$(RuntimePackagePath)</IlcPath>
-      <IlcBuildTasksPath>$(RuntimePackagePath)\tools\netstandard\ILCompiler.Build.Tasks.dll</IlcBuildTasksPath>
-      <!-- Set defaults for unspecified properties -->
     </PropertyGroup>
 
     <!-- If running from a package these values need to be set again with the resolved IlcPath -->
@@ -173,11 +173,13 @@ The .NET Foundation licenses this file to you under the MIT license.
     <ItemGroup>
      <!-- This builds the project with the ILC implementation in the identified runtime package to avoid resolving it again  -->
       <ProjectToBuild Include="$(MSBuildThisFileDirectory)BuildFrameworkNativeObjects.proj">
-          <AdditionalProperties>
+        <AdditionalProperties>
           IntermediateOutputPath=$(IntermediateOutputPath);
           FrameworkLibPath=$(FrameworkLibPath);
           FrameworkObjPath=$(FrameworkObjPath);
-          RuntimePackagePath=$(RuntimePackagePath)
+          RuntimePackagePath=$(RuntimePackagePath);
+          IlcHostPackagePath=$(IlcHostPackagePath);
+          PlatformTarget=$(PlatformTarget);
         </AdditionalProperties>
       </ProjectToBuild>
     </ItemGroup>
@@ -206,6 +208,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Include="-o:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename)$(IlcOutputFileExt)" />
       <IlcArg Include="@(IlcReference->'-r:%(Identity)')" />
       <IlcArg Include="@(MibcFile->'--mibc:%(Identity)')" />
+      <IlcArg Include="--targetarch:$(PlatformTarget)" />
       <IlcArg Condition="$(IlcGenerateMetadataLog) == 'true'" Include="--metadatalog:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).metadata.csv" />
       <IlcArg Condition="$(IlcMultiModule) == 'true'" Include="--multifile" />
       <IlcArg Condition="$(Optimize) == 'true'" Include="-O" />
@@ -253,7 +256,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <Message Text="Generating native code" Condition="$(_BuildingInCompatibleMode) != 'true'" Importance="high" />
     <Message Text="Generating compatible native code. To optimize for size or speed, visit https://aka.ms/OptimizeCoreRT" Condition="$(_BuildingInCompatibleMode) == 'true'" Importance="high" />
 
-    <Exec Command="&quot;$(IlcPath)\tools\ilc&quot; @&quot;$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).ilc.rsp&quot;" />
+    <Exec Command="&quot;$(IlcHostPath)\tools\ilc&quot; @&quot;$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).ilc.rsp&quot;" />
   </Target>
 
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Windows.props" Condition="'$(TargetOS)' == 'windows'" />
