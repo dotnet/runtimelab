@@ -4,6 +4,7 @@
 using System.Collections;
 using System.Diagnostics;
 using System.Text.Json.Serialization.Metadata;
+using System.Text.Json.Serialization.Metadata.Internal;
 
 namespace System.Text.Json.Serialization.Converters
 {
@@ -21,7 +22,7 @@ namespace System.Text.Json.Serialization.Converters
         protected override void CreateCollection(ref Utf8JsonReader reader, ref ReadStack state, JsonSerializerOptions options)
         {
             JsonTypeInfo typeInfo = state.Current.JsonTypeInfo;
-            JsonTypeInfo.ConstructorDelegate? constructorDelegate = typeInfo.CreateObject;
+            MetadataServices.ConstructorDelegate? constructorDelegate = typeInfo.CreateObject;
 
             if (constructorDelegate == null)
             {

@@ -40,7 +40,7 @@ namespace System.Text.Json.Serialization
         /// todo
         /// </summary>
         /// <param name="type"></param>
-        public abstract JsonTypeInfo GetTypeInfo(Type type);
+        public virtual JsonTypeInfo GetTypeInfo(Type type) => throw new NotImplementedException("The derived context instance did not provide a valid implementation for 'GetTypeInfo'.");
 
         /// <summary>
         /// TODO
@@ -48,7 +48,7 @@ namespace System.Text.Json.Serialization
         /// <param name="type"></param>
         /// <returns></returns>
         public JsonConverter GetConverter(Type type)
-            => GetTypeInfo(type ?? throw new ArgumentNullException(nameof(type)))?.ConverterBase
+            => GetTypeInfo(type ?? throw new ArgumentNullException(nameof(type)))?.Converter
             ?? throw new InvalidOperationException("The derived context instance did not provide a valid implementation for 'GetTypeInfo'.");
     }
 }

@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text.Json.Serialization.Metadata.Internal;
 
 namespace System.Text.Json.Serialization.Metadata
 {
@@ -143,7 +144,7 @@ namespace System.Text.Json.Serialization.Metadata
             JsonConverter converter,
             JsonSerializerOptions options)
         {
-            JsonPropertyInfo<T> jsonPropertyInfo = JsonPropertyInfo<T>.Create();
+            JsonPropertyInfo<T> jsonPropertyInfo = new JsonPropertyInfo<T>();
             jsonPropertyInfo.DeclaredPropertyType = declaredPropertyType;
             jsonPropertyInfo.RuntimePropertyType = declaredPropertyType;
             jsonPropertyInfo.ClassType = converter.ClassType;

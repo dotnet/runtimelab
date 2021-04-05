@@ -5,14 +5,14 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 
-namespace System.Text.Json.Serialization.Metadata
+namespace System.Text.Json.Serialization.Metadata.Internal
 {
     /// <summary>
     /// Represents a strongly-typed property to prevent boxing and to create a direct delegate to the getter\setter.
     /// </summary>
     /// <typeparamref name="T"/> is the <see cref="JsonConverter{T}.TypeToConvert"/> for either the property's converter,
     /// or a type's converter, if the current instance is a <see cref="JsonTypeInfo.PropertyInfoForTypeInfo"/>.
-    public sealed class JsonPropertyInfo<T> : JsonPropertyInfo
+    internal sealed class JsonPropertyInfo<T> : JsonPropertyInfo
     {
         /// <summary>
         /// todo
@@ -28,12 +28,6 @@ namespace System.Text.Json.Serialization.Metadata
         /// todo
         /// </summary>
         public JsonConverter<T> Converter { get; internal set; } = null!;
-
-        /// <summary>
-        /// TODO
-        /// </summary>
-        /// <returns></returns>
-        public static JsonPropertyInfo<T> Create() => new();
 
         internal override void Initialize(Type parentClassType,
             Type declaredPropertyType,
@@ -148,7 +142,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public override JsonConverter ConverterBase
+        internal override JsonConverter ConverterBase
         {
             get
             {

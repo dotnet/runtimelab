@@ -4,12 +4,13 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json.Serialization.Metadata;
+using System.Text.Json.Serialization.Metadata.Internal;
 
 namespace System.Text.Json
 {
     internal abstract class MemberAccessor
     {
-        public abstract JsonTypeInfo.ConstructorDelegate? CreateConstructor(Type classType);
+        public abstract MetadataServices.ConstructorDelegate? CreateConstructor(Type classType);
 
         public abstract JsonTypeInfo.ParameterizedConstructorDelegate<T>? CreateParameterizedConstructor<T>(ConstructorInfo constructor);
 

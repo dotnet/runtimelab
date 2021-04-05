@@ -4,7 +4,7 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Text.Json.Serialization.Metadata;
+using System.Text.Json.Serialization.Metadata.Internal;
 
 namespace System.Text.Json.Serialization.Converters
 {

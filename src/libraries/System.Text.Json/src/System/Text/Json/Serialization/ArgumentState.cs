@@ -2,10 +2,10 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
-using System.Text.Json.Serialization.Metadata;
+using System.Text.Json.Serialization.Metadata.Internal;
 
-using FoundProperties = System.ValueTuple<System.Text.Json.Serialization.Metadata.JsonPropertyInfo, System.Text.Json.JsonReaderState, long, byte[]?, string?>;
-using FoundPropertiesAsync = System.ValueTuple<System.Text.Json.Serialization.Metadata.JsonPropertyInfo, object?, string?>;
+using FoundProperties = System.ValueTuple<System.Text.Json.Serialization.Metadata.Internal.JsonPropertyInfo, System.Text.Json.JsonReaderState, long, byte[]?, string?>;
+using FoundPropertiesAsync = System.ValueTuple<System.Text.Json.Serialization.Metadata.Internal.JsonPropertyInfo, object?, string?>;
 
 namespace System.Text.Json
 {

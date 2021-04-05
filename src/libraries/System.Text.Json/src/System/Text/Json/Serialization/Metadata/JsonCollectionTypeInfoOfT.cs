@@ -1,33 +1,46 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Text.Json.Serialization.Metadata.Internal;
+
 namespace System.Text.Json.Serialization.Metadata
 {
     /// <summary>
     /// todo
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public sealed class JsonCollectionTypeInfo<T> : JsonTypeInfo<T>
+    internal sealed class JsonCollectionInfo<T> : JsonTypeInfo<T>
     {
-        /// <summary>
-        /// todo
-        /// </summary>
-        /// <param name="createObjectFunc"></param>
-        /// <param name="converter"></param>
-        /// <param name="elementInfo"></param>
-        /// <param name="options"></param>
-        public JsonCollectionTypeInfo(
-            ConstructorDelegate createObjectFunc,
+        public JsonCollectionInfo(
+            JsonSerializerOptions options,
+            MetadataServices.ConstructorDelegate createObjectFunc,
             JsonConverter<T> converter,
             JsonTypeInfo elementInfo,
-            JsonSerializerOptions options) : base(typeof(T), options, ClassType.Enumerable)
+            JsonNumberHandling? numberHandling) : base(typeof(T), options, ClassType.Enumerable)
         {
-            ConverterBase = converter;
-
+            Converter = converter;
             ElementType = converter.ElementType;
             ElementTypeInfo = elementInfo;
             CreateObject = createObjectFunc;
+            NumberHandling = numberHandling;
+            PropertyInfoForTypeInfo = SourceGenCreatePropertyInfoForTypeInfo<T>(Type, runtimeTypeInfo: this, converter, Options);
+        }
 
+        public JsonCollectionInfo(
+            JsonSerializerOptions options,
+            MetadataServices.ConstructorDelegate createObjectFunc,
+            JsonConverter<T> converter,
+            JsonTypeInfo keyInfo,
+            JsonTypeInfo elementInfo,
+            JsonNumberHandling? numberHandling) : base(typeof(T), options, ClassType.Dictionary)
+        {
+            Converter = converter;
+            KeyType = converter.KeyType;
+            KeyTypeInfo = keyInfo;
+            ElementType = converter.ElementType;
+            ElementTypeInfo = elementInfo;
+            CreateObject = createObjectFunc;
+            NumberHandling = numberHandling;
             PropertyInfoForTypeInfo = SourceGenCreatePropertyInfoForTypeInfo<T>(Type, runtimeTypeInfo: this, converter, Options);
         }
     }

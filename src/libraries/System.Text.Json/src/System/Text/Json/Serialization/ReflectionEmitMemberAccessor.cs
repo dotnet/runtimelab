@@ -8,12 +8,13 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text.Json.Serialization.Metadata;
+using System.Text.Json.Serialization.Metadata.Internal;
 
 namespace System.Text.Json.Serialization
 {
     internal sealed class ReflectionEmitMemberAccessor : MemberAccessor
     {
-        public override JsonTypeInfo.ConstructorDelegate? CreateConstructor(Type type)
+        public override MetadataServices.ConstructorDelegate? CreateConstructor(Type type)
         {
             Debug.Assert(type != null);
             ConstructorInfo? realMethod = type.GetConstructor(BindingFlags.Public | BindingFlags.Instance, binder: null, Type.EmptyTypes, modifiers: null);
@@ -53,7 +54,7 @@ namespace System.Text.Json.Serialization
 
             generator.Emit(OpCodes.Ret);
 
-            return (JsonTypeInfo.ConstructorDelegate)dynamicMethod.CreateDelegate(typeof(JsonTypeInfo.ConstructorDelegate));
+            return (MetadataServices.ConstructorDelegate)dynamicMethod.CreateDelegate(typeof(MetadataServices.ConstructorDelegate));
         }
 
         public override JsonTypeInfo.ParameterizedConstructorDelegate<T>? CreateParameterizedConstructor<T>(ConstructorInfo constructor) =>
