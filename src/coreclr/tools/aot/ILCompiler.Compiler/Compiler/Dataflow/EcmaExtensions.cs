@@ -67,7 +67,7 @@ namespace ILCompiler.Dataflow
         public static PropertyPseudoDesc GetPropertyForAccessor(this MethodDesc accessor)
         {
             var ecmaAccessor = (EcmaMethod)accessor.GetTypicalMethodDefinition();
-            var type = (EcmaType)accessor.OwningType;
+            var type = (EcmaType)accessor.OwningType.GetTypeDefinition();
             var reader = type.MetadataReader;
             var module = type.EcmaModule;
             foreach (var propertyHandle in reader.GetTypeDefinition(type.Handle).GetProperties())
