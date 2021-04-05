@@ -1,4 +1,7 @@
-﻿using System.Net.Sockets;
+﻿using System.Buffers;
+using System.Collections;
+using System.Collections.Generic;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,7 +28,7 @@ namespace System.Net.Http.LowLevel.Tests
             DefaultTestTimeout = 5000;
         }
 
-        private async Task RunSocketClientServer(Func<Socket, Task> clientFunc, Func<Socket, Task> serverFunc, int? millisecondsTimeout = null)
+        private async Task RunSocketClientServer(Func<EnhancedNetworkStream, Task> clientFunc, Func<EnhancedNetworkStream, Task> serverFunc, int? millisecondsTimeout = null)
         {
             using var listenSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
@@ -41,14 +44,17 @@ namespace System.Net.Http.LowLevel.Tests
 
             await RunClientServer(async () =>
             {
-                using Socket clientSocket = new Socket(listenSocket.AddressFamily, listenSocket.SocketType, listenSocket.ProtocolType);
+                using var clientSocket = new Socket(listenSocket.AddressFamily, listenSocket.SocketType, listenSocket.ProtocolType);
                 await clientSocket.ConnectAsync(listenSocket.LocalEndPoint!, token).ConfigureAwait(false);
-                await clientFunc(clientSocket).ConfigureAwait(false);
+
+                using var stream = new EnhancedNetworkStream(clientSocket, ownsSocket: true);
+                await clientFunc(stream).ConfigureAwait(false);
             },
             async () =>
             {
                 using Socket acceptSocket = await listenSocket.AcceptAsync().ConfigureAwait(false);
-                await serverFunc(acceptSocket).ConfigureAwait(false);
+                using var stream = new EnhancedNetworkStream(acceptSocket, ownsSocket: true);
+                await serverFunc(stream).ConfigureAwait(false);
             }, millisecondsTimeout + 11000).ConfigureAwait(false);
         }
     }
