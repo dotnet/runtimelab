@@ -5,7 +5,7 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
+using System.Text.Json.Serialization.SourceGeneration;
 
 namespace System.Text.Json
 {

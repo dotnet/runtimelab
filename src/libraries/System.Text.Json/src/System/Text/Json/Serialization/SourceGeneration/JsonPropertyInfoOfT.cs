@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 
-namespace System.Text.Json.Serialization.Metadata.Internal
+namespace System.Text.Json.Serialization.SourceGeneration
 {
     /// <summary>
     /// Represents a strongly-typed property to prevent boxing and to create a direct delegate to the getter\setter.

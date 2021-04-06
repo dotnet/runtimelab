@@ -3,8 +3,7 @@
 
 using System.Collections.Generic;
 using System.Reflection;
-using System.Text.Json.Serialization.Metadata;
-using System.Text.Json.Serialization.Metadata.Internal;
+using System.Text.Json.Serialization.SourceGeneration;
 
 namespace System.Text.Json
 {

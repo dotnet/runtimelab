@@ -6,7 +6,7 @@ using System.IO;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Text.Json.Serialization.Metadata;
+using System.Text.Json.Serialization.SourceGeneration;
 
 namespace System.Text.Json
 {

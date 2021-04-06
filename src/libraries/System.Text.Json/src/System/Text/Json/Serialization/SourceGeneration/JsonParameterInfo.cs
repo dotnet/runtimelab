@@ -4,7 +4,7 @@
 using System.Diagnostics;
 using System.Reflection;
 
-namespace System.Text.Json.Serialization.Metadata.Internal
+namespace System.Text.Json.Serialization.SourceGeneration
 {
     /// <summary>
     /// Holds relevant state about a method parameter, like the default value of

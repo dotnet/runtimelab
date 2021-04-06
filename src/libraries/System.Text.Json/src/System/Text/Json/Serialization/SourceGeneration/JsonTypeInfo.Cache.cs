@@ -6,9 +6,8 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text.Json.Serialization.Metadata.Internal;
 
-namespace System.Text.Json.Serialization.Metadata
+namespace System.Text.Json.Serialization.SourceGeneration
 {
     [DebuggerDisplay("ClassType.{ClassType}, {Type.Name}")]
     public partial class JsonTypeInfo
