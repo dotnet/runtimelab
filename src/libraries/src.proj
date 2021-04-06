@@ -5,8 +5,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectExclusions Include="$(MSBuildThisFileDirectory)Microsoft.Extensions.*\src\*.csproj" />
-
     <_allSrc Include="$(MSBuildThisFileDirectory)*\src\*.csproj"
              Exclude="@(ProjectExclusions)" />
     <NonNetCoreAppProject Include="$(MSBuildThisFileDirectory)*\gen\*.csproj"
