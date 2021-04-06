@@ -97,7 +97,8 @@ set "ExtraCMakeArgs=%~3"
     -DCORECLR_INCLUDE_DIR="%RepoRoot%src\coreclr\inc" ^
     || goto Error
 
-"%CMakePath%" --build "build\%Arch%" --config %BuildType% --target %Target% -j 10 || goto Error
+echo Executing "%CMakePath%" --build "build\%Arch%" --config %BuildType% --target %Target% -- -m
+"%CMakePath%" --build "build\%Arch%" --config %BuildType% --target %Target% -- -m || goto Error
 exit /b 0
 
 :Error

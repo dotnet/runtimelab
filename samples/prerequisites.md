@@ -28,10 +28,6 @@ Notes:
 - The `--installPath` option affects Build Tools installation only. Visual Studio Installer is always installed into
 the `%ProgramFiles(x86)%\Microsoft Visual Studio\Installer` directory.
 
-If you have no `vcruntime140.dll` library installed in your `%SystemRoot%\System32` directory, you also need to install Visual C++ 2019 Redistributable package, which ILCompiler depends on:
-- [vc_redist.x64.exe](https://aka.ms/vs/16/release/vc_redist.x64.exe) (for x64 machine)
-- [vc_redist.arm64.exe](https://aka.ms/vs/16/release/vc_redist.arm64.exe) (for ARM64 machine)
-
 # Fedora (31+)
 
 * Install `clang` and developer packages for libraries that .NET Core depends on:
