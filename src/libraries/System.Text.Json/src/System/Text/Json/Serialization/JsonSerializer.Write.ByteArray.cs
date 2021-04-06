@@ -2,7 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics.CodeAnalysis;
-using System.Text.Json.Serialization.Metadata;
+using System.Text.Json.Serialization.SourceGeneration;
 
 namespace System.Text.Json
 {

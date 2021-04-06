@@ -1,14 +1,14 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Collections.Generic;
-using System.Text.Json.Serialization.Metadata;
+using System.ComponentModel;
 
-namespace System.Text.Json.Serialization
+namespace System.Text.Json.Serialization.SourceGeneration
 {
     /// <summary>
     /// todo
     /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract partial class JsonSerializerContext
     {
         internal readonly JsonSerializerOptions _options;
@@ -41,14 +41,5 @@ namespace System.Text.Json.Serialization
         /// </summary>
         /// <param name="type"></param>
         public virtual JsonTypeInfo GetTypeInfo(Type type) => throw new NotImplementedException("The derived context instance did not provide a valid implementation for 'GetTypeInfo'.");
-
-        /// <summary>
-        /// TODO
-        /// </summary>
-        /// <param name="type"></param>
-        /// <returns></returns>
-        public JsonConverter GetConverter(Type type)
-            => GetTypeInfo(type ?? throw new ArgumentNullException(nameof(type)))?.Converter
-            ?? throw new InvalidOperationException("The derived context instance did not provide a valid implementation for 'GetTypeInfo'.");
     }
 }

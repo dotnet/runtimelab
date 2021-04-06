@@ -2,18 +2,19 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Text.Json.Serialization.Metadata.Internal;
 
-namespace System.Text.Json.Serialization.Metadata
+namespace System.Text.Json.Serialization.SourceGeneration
 {
     /// <summary>
     /// todo
     /// </summary>
     [DebuggerDisplay("ClassType.{ClassType}, {Type.Name}")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
     // todo: add JsonObjectInfo and JsonArrayInfo classes deriving from JsonTypeInfo
     // also add a sealed version of these for internal use (JsonObjectInfoInternal JsonTypeInfoInternal)
     public partial class JsonTypeInfo
@@ -147,7 +148,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// todo
         /// </summary>
-        public Type Type { get; private set; }
+        internal Type Type { get; private set; }
 
         /// <summary>
         /// The JsonPropertyInfo for this JsonTypeInfo. It is used to obtain the converter for the TypeInfo.

@@ -1,14 +1,15 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Text.Json.Serialization.Metadata.Internal;
+using System.ComponentModel;
 
-namespace System.Text.Json.Serialization.Metadata
+namespace System.Text.Json.Serialization.SourceGeneration
 {
     /// <summary>
     /// todo
     /// </summary>
     /// <typeparam name="T"></typeparam>
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class JsonTypeInfo<T> : JsonTypeInfo
     {
         internal JsonTypeInfo(Type type, JsonSerializerOptions options, ClassType classType) :

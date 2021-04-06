@@ -412,7 +412,7 @@ namespace System.Text.Json.SourceGeneration
                         : "ignoreCondition: null";
 
                     string nameAsUtf8BytesNamedArg;
-                    string escapedNameSectionNamedArg;
+                    string nameSectionNamedArg;
                     if (!ContainsNonAscii(clrPropertyName))
                     {
                         byte[] name = Encoding.UTF8.GetBytes(memberMetadata.JsonPropertyName ?? clrPropertyName);
@@ -423,12 +423,12 @@ namespace System.Text.Json.SourceGeneration
                             : "34,34,58";
 
                         nameAsUtf8BytesNamedArg = "nameAsUtf8Bytes: new byte[] {" + nameAsStr + "}";
-                        escapedNameSectionNamedArg = "escapedNameSection: new byte[] {" + nameSection + "}";
+                        nameSectionNamedArg = "nameSection: new byte[] {" + nameSection + "}";
                     }
                     else
                     {
                         nameAsUtf8BytesNamedArg = "nameAsUtf8Bytes: null";
-                        escapedNameSectionNamedArg = "escapedNameSection: null";
+                        nameSectionNamedArg = "nameSection: null";
                     }
 
                     string converterNamedArg;
@@ -451,18 +451,18 @@ namespace System.Text.Json.SourceGeneration
                     sb.Append($@"
             {PropVarName}[{i}] = MetadataServices.CreatePropertyInfo<{memberTypeCompilableName}>(
                 options,
-                clrPropertyName: ""{clrPropertyName}"",
                 memberType: System.Reflection.MemberTypes.{memberMetadata.MemberType},
                 declaringType: typeof({memberMetadata.DeclaringTypeCompilableName}),
                 {typeTypeInfoNamedArg},
                 {converterNamedArg},
                 {getterNamedArg},
                 {setterNamedArg},
+                {ignoreConditionNamedArg},
+                numberHandling: {GetNumberHandlingAsStr(memberMetadata.NumberHandling)},
+                clrPropertyName: ""{clrPropertyName}"",
                 {jsonPropertyNameNamedArg},
                 {nameAsUtf8BytesNamedArg},
-                {escapedNameSectionNamedArg},
-                {ignoreConditionNamedArg},
-                numberHandling: {GetNumberHandlingAsStr(memberMetadata.NumberHandling)});
+                {nameSectionNamedArg});
             ");
                 }
             }
@@ -626,7 +626,7 @@ namespace {_generationNamespace}
             StringBuilder sb = new();
             sb.Append(@$"using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
+using System.Text.Json.Serialization.SourceGeneration;
 
 namespace {_generationNamespace}
 {{
@@ -789,8 +789,7 @@ namespace {_generationNamespace}
             usingStatements.Add(FormatAsUsingStatement("System.Text.Json"));
             usingStatements.Add(FormatAsUsingStatement("System.Text.Json.Serialization"));
             usingStatements.Add(FormatAsUsingStatement("System.Text.Json.Serialization.Converters"));
-            usingStatements.Add(FormatAsUsingStatement("System.Text.Json.Serialization.Metadata"));
-            usingStatements.Add(FormatAsUsingStatement("System.Text.Json.Serialization.Metadata.Internal"));
+            usingStatements.Add(FormatAsUsingStatement("System.Text.Json.Serialization.SourceGeneration"));
 
             // Add imports to root type.
             usingStatements.Add(FormatAsUsingStatement(typeMetadata.Type.Namespace));

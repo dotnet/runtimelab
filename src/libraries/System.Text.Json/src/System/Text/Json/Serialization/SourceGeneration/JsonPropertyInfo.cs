@@ -2,15 +2,17 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Reflection;
 
-namespace System.Text.Json.Serialization.Metadata.Internal
+namespace System.Text.Json.Serialization.SourceGeneration
 {
     /// <summary>
     /// todo
     /// </summary>
     [DebuggerDisplay("MemberInfo={MemberInfo}")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class JsonPropertyInfo
     {
         internal static readonly JsonPropertyInfo s_missingProperty = GetPropertyPlaceholder();

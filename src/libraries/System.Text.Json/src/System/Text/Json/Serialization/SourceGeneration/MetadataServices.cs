@@ -1,14 +1,16 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.ComponentModel;
 using System.Reflection;
 using System.Text.Json.Serialization.Converters;
 
-namespace System.Text.Json.Serialization.Metadata.Internal
+namespace System.Text.Json.Serialization.SourceGeneration
 {
     /// <summary>
     /// TODO
     /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public static partial class MetadataServices
     {
         /// <summary>
@@ -32,18 +34,18 @@ namespace System.Text.Json.Serialization.Metadata.Internal
         /// <returns></returns>
         public static JsonPropertyInfo CreatePropertyInfo<T>(
             JsonSerializerOptions options,
-            string clrPropertyName,
             MemberTypes memberType,
             Type declaringType,
             JsonTypeInfo<T> typeInfo,
             JsonConverter converter,
             Func<object, T> getter,
             Action<object, T> setter,
+            JsonIgnoreCondition? ignoreCondition,
+            JsonNumberHandling? numberHandling,
+            string clrPropertyName,
             string jsonPropertyName,
             byte[] nameAsUtf8Bytes,
-            byte[] escapedNameSection,
-            JsonIgnoreCondition? ignoreCondition,
-            JsonNumberHandling? numberHandling)
+            byte[] nameSection)
         {
             JsonPropertyInfo<T> jsonPropertyInfo = new();
             jsonPropertyInfo.Options = options;
@@ -54,7 +56,7 @@ namespace System.Text.Json.Serialization.Metadata.Internal
             {
                 jsonPropertyInfo.NameAsString = jsonPropertyName ?? clrPropertyName;
                 jsonPropertyInfo.NameAsUtf8Bytes = nameAsUtf8Bytes;
-                jsonPropertyInfo.EscapedNameSection = escapedNameSection;
+                jsonPropertyInfo.EscapedNameSection = nameSection;
             }
             else
             {
