@@ -10,7 +10,8 @@
     <OSIdentifier Condition="'$(OSIdentifier)' == ''">linux</OSIdentifier>
 
     <RuntimeIlcPackageName>runtime.$(OSIdentifier)-$(PlatformTarget).Microsoft.DotNet.ILCompiler</RuntimeIlcPackageName>
-    <IlcHostArch Condition="'$(IlcHostArch)' == ''">$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant)</IlcHostArch>
+    <IlcHostArch Condition="'$(IlcHostArch)' == '' and ('$(PROCESSOR_ARCHITECTURE)' == 'ARM64' or '$(PROCESSOR_ARCHITEW6432)' == 'ARM64')">arm64</IlcHostArch>
+    <IlcHostArch Condition="'$(IlcHostArch)' == ''">x64</IlcHostArch>
     <IlcHostPackageName>runtime.$(OSIdentifier)-$(IlcHostArch).Microsoft.DotNet.ILCompiler</IlcHostPackageName>
     <IlcCalledViaPackage>true</IlcCalledViaPackage>
 
