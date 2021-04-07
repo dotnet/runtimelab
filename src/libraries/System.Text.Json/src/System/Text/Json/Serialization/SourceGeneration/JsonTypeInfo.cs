@@ -419,12 +419,10 @@ namespace System.Text.Json.Serialization.SourceGeneration
 
         internal void InitializeSerializePropCache()
         {
-            JsonSerializerContext? context = Options._context;
-
-            Debug.Assert(context != null);
             Debug.Assert(PropInitFunc != null);
+            Debug.Assert(Options._context != null);
 
-            PropertyCacheArray = PropInitFunc(context);
+            PropertyCacheArray = PropInitFunc(Options._context);
         }
 
         internal void InitializeDeserializePropCache()
@@ -597,7 +595,7 @@ namespace System.Text.Json.Serialization.SourceGeneration
                 if (typeof(IDictionary<string, object>).IsAssignableFrom(declaredPropertyType) ||
                     typeof(IDictionary<string, JsonElement>).IsAssignableFrom(declaredPropertyType))
                 {
-                    JsonConverter converter = Options.GetConverterInternal(declaredPropertyType)!;
+                    JsonConverter converter = Options.GetConverter(declaredPropertyType)!;
                     Debug.Assert(converter != null);
                 }
                 else
@@ -719,6 +717,7 @@ namespace System.Text.Json.Serialization.SourceGeneration
 
             return converter;
         }
+
         private static void ValidateType(Type type, Type? parentClassType, MemberInfo? memberInfo, JsonSerializerOptions options)
         {
             if (!options.TypeIsCached(type) && IsInvalidForSerialization(type))

@@ -558,6 +558,6 @@
     <value>The converter '{0}' cannot return an instance of JsonConverterFactory.</value>
   </data>
   <data name="SerializerContextOptionsImmutable" xml:space="preserve">
-    <value>Serializer options associated with a context cannot be changed once the context has been instantiated. To specify custom options, please use 'JsonContext.From'.</value>
+    <value>'JsonSerializerOptions' associated with a 'JsonSerializerOptions' cannot be changed once the context has been instantiated.</value>
   </data>
 </root>

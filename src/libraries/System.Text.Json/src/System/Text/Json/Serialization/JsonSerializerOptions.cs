@@ -25,7 +25,7 @@ namespace System.Text.Json
 
         private Func<Type, JsonSerializerOptions, JsonTypeInfo>? _typeInfoCreationFunc = null!;
 
-        internal readonly JsonSerializerContext? _context;
+        internal JsonSerializerContext? _context;
 
         // Simple LRU cache for the public (de)serialize entry points that avoid some lookups in _classes.
         // Although this may be written by multiple threads, 'volatile' was not added since any local affinity is fine.
@@ -75,43 +75,6 @@ namespace System.Text.Json
                 throw new ArgumentNullException(nameof(options));
             }
 
-            CopyOptions(options);
-            _typeInfoCreationFunc = options._typeInfoCreationFunc;
-            Converters = new ConverterList(this, (ConverterList)options.Converters);
-        }
-
-        /// <summary>
-        /// Constructs a new <see cref="JsonSerializerOptions"/> instance with a predefined set of options determined by the specified <see cref="JsonSerializerDefaults"/>.
-        /// </summary>
-        /// <param name="defaults"> The <see cref="JsonSerializerDefaults"/> to reason about.</param>
-        public JsonSerializerOptions(JsonSerializerDefaults defaults) : this()
-        {
-            if (defaults == JsonSerializerDefaults.Web)
-            {
-                _propertyNameCaseInsensitive = true;
-                _jsonPropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-                _numberHandling = JsonNumberHandling.AllowReadingFromString;
-            }
-            else if (defaults != JsonSerializerDefaults.General)
-            {
-                throw new ArgumentOutOfRangeException(nameof(defaults));
-            }
-        }
-
-        internal JsonSerializerOptions(JsonSerializerOptions options, JsonSerializerContext context)
-        {
-            Debug.Assert(options != null);
-            Debug.Assert(context != null);
-            _context = context;
-            CopyOptions(options);
-            _typeInfoCreationFunc = options._typeInfoCreationFunc;
-            Converters = new ConverterList(this, (ConverterList)options.Converters);
-        }
-
-        private void CopyOptions(JsonSerializerOptions options)
-        {
-            Debug.Assert(options != null);
-
             _memberAccessorStrategy = options._memberAccessorStrategy;
             _dictionaryKeyPolicy = options._dictionaryKeyPolicy;
             _jsonPropertyNamingPolicy = options._jsonPropertyNamingPolicy;
@@ -134,10 +97,55 @@ namespace System.Text.Json
             EffectiveMaxDepth = options.EffectiveMaxDepth;
             ReferenceHandlingStrategy = options.ReferenceHandlingStrategy;
 
+            _typeInfoCreationFunc = options._typeInfoCreationFunc;
+            Converters = new ConverterList(this, (ConverterList)options.Converters);
+
             // _classes is not copied as sharing the JsonTypeInfo and JsonPropertyInfo caches can result in
             // unnecessary references to type metadata, potentially hindering garbage collection on the source options.
 
             // _haveTypesBeenCreated is not copied; it's okay to make changes to this options instance as (de)serialization has not occurred.
+        }
+
+        /// <summary>
+        /// Constructs a new <see cref="JsonSerializerOptions"/> instance with a predefined set of options determined by the specified <see cref="JsonSerializerDefaults"/>.
+        /// </summary>
+        /// <param name="defaults"> The <see cref="JsonSerializerDefaults"/> to reason about.</param>
+        public JsonSerializerOptions(JsonSerializerDefaults defaults) : this()
+        {
+            if (defaults == JsonSerializerDefaults.Web)
+            {
+                _propertyNameCaseInsensitive = true;
+                _jsonPropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+                _numberHandling = JsonNumberHandling.AllowReadingFromString;
+            }
+            else if (defaults != JsonSerializerDefaults.General)
+            {
+                throw new ArgumentOutOfRangeException(nameof(defaults));
+            }
+        }
+
+        /// <summary>
+        /// TODO
+        /// </summary>
+        public void SetContext(JsonSerializerContext context)
+        {
+            if (context == null)
+            {
+                throw new ArgumentNullException(nameof(context));
+            }
+
+            if (_context != null)
+            {
+                throw new InvalidOperationException($"Options {this} is already associated with a context instance.");
+            }
+
+            if (context.Options != null)
+            {
+                throw new InvalidOperationException($"Context {context} is already associated with an options instance.");
+            }
+
+            _context = context;
+            context.Options = this;
         }
 
         /// <summary>
@@ -537,31 +545,6 @@ namespace System.Text.Json
             }
         }
 
-        internal void AddJsonTypeInfoToCompleteInitialization(JsonTypeInfo jsonTypeInfo)
-        {
-            // todo: for performance, consider not adding to internal dictionary.
-            // For compat, calling options.GetConverter() however would need to lazily populate
-            // the dictionary from the context(s) associated with the options class.
-
-            _classes.GetOrAdd(jsonTypeInfo.Type, jsonTypeInfo);
-
-            // TODO: should we verify mutable here?
-            // VerifyMutable();
-
-            // TODO: re: should we verify mutable here?
-            // OR: Should we make last jsonTypeInfo added wins:
-            // _classes[jsonTypeInfo.Type] = jsonTypeInfo;
-
-            // TODO: reason about what would happen if we change the code to the following.
-            // - Should multiple context instances be allowed to add metadata to a single options instance?
-            // - Should a single context instance add metadata for the same type to the options instance?
-            // - Is the existing behavior consistent with the dynamic serializer?
-            //if (!_classes.TryAdd(jsonTypeInfo.Type, jsonTypeInfo))
-            //{
-            //    throw new InvalidOperationException($"Metadata for type {jsonTypeInfo.Type} already provided to serializer - {_classes[jsonTypeInfo.Type]}.");
-            //}
-        }
-
         internal JsonTypeInfo GetOrAddClass(Type type)
         {
             _haveTypesBeenCreated = true;
@@ -570,15 +553,26 @@ namespace System.Text.Json
             // https://github.com/dotnet/runtime/issues/32357
             if (!_classes.TryGetValue(type, out JsonTypeInfo? result))
             {
-                if (_typeInfoCreationFunc == null)
-                {
-                    throw new NotSupportedException(@$"Metadata for type {type} not provided to serializer - will not go down reflection-based code path.");
-                }
-
-                result = _classes.GetOrAdd(type, _typeInfoCreationFunc(type, this));
+                result = _classes.GetOrAdd(type, GetClassFromContextOrCreate(type));
             }
 
             return result;
+        }
+
+        internal JsonTypeInfo GetClassFromContextOrCreate(Type type)
+        {
+            JsonTypeInfo? info = _context?.GetTypeInfo(type);
+            if (info != null)
+            {
+                return info;
+            }
+
+            if (_typeInfoCreationFunc == null)
+            {
+                throw new NotSupportedException(@$"Metadata for type {type} not provided to serializer - will not go down reflection-based code path.");
+            }
+
+            return _typeInfoCreationFunc(type, this);
         }
 
         /// <summary>
@@ -596,9 +590,6 @@ namespace System.Text.Json
 
             return jsonTypeInfo;
         }
-
-        // todo:
-        // internal bool HasCustomConverters => _converters.Count > 0;
 
         internal bool TypeIsCached(Type type)
         {

@@ -247,7 +247,8 @@ namespace System.Text.Json
         public System.Text.Json.JsonCommentHandling ReadCommentHandling { get { throw null; } set { } }
         public System.Text.Json.Serialization.ReferenceHandler? ReferenceHandler { get { throw null; } set { } }
         public bool WriteIndented { get { throw null; } set { } }
-        public System.Text.Json.Serialization.JsonConverter? GetConverter(System.Type typeToConvert) { throw null; }
+        public System.Text.Json.Serialization.JsonConverter GetConverter(System.Type typeToConvert) { throw null; }
+        public void SetContext(System.Text.Json.Serialization.SourceGeneration.JsonSerializerContext context) { }
     }
     public enum JsonTokenType : byte
     {
@@ -753,7 +754,6 @@ namespace System.Text.Json.Serialization.SourceGeneration
     public abstract partial class JsonTypeInfo<T> : System.Text.Json.Serialization.SourceGeneration.JsonTypeInfo
     {
         internal JsonTypeInfo() { }
-        public void RegisterToOptions() { }
         public System.Text.Json.Serialization.SourceGeneration.MetadataServices.SerializeObjectDelegate<T>? SerializeObject { get; }
     }
     [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Never)]
