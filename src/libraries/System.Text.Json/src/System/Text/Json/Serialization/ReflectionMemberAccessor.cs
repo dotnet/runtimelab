@@ -11,7 +11,7 @@ namespace System.Text.Json.Serialization
 {
     internal sealed class ReflectionMemberAccessor : MemberAccessor
     {
-        public override JsonTypeInfo.ConstructorDelegate? CreateConstructor(Type type)
+        public override MetadataServices.ConstructorDelegate? CreateConstructor(Type type)
         {
             Debug.Assert(type != null);
             ConstructorInfo? realMethod = type.GetConstructor(BindingFlags.Public | BindingFlags.Instance, binder: null, Type.EmptyTypes, modifiers: null);

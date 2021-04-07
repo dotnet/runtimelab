@@ -20,8 +20,6 @@ namespace System.Text.Json.SourceGeneration
 
         private const string RuntimeCustomConverterFetchingMethodName = "GetRuntimeProvidedCustomConverter";
 
-        private const string PropertyCreationMethodName = "CreateProperty";
-
         // Generation namespace for source generation code.
         private readonly string _generationNamespace;
 
@@ -659,8 +657,7 @@ namespace {_generationNamespace}
         {
             StringBuilder sb = new();
 
-            sb.Append(@"
-        private void Initialize()
+            sb.Append(@"private void Initialize()
         {");
 
             bool typesCanBeSerializedDynamically = false;
