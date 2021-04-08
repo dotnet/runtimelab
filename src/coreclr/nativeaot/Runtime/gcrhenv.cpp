@@ -1492,6 +1492,12 @@ bool GCToEEInterface::GetIntConfigValue(const char* privateKey, const char* publ
         return true;
     }
 
+    if (strcmp(privateKey, "GCHeapHardLimit") == 0)
+    {
+        *value = g_pRhConfig->GetGCHeapHardLimit();
+        return true;
+    }
+
     return false;
 }
 
