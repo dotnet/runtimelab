@@ -41,6 +41,7 @@ Function* _function;
 BlkToLlvmBlkVectorMap *_blkToLlvmBlkVectorMap;
 llvm::IRBuilder<>* _builder;
 std::unordered_map<unsigned int, Value*>* _sdsuMap;
+std::unordered_map<unsigned int, Value*>* _localsMap;
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void* thisPtr, const char* outputFileName, const char* triple, const char* dataLayout,
     const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*),
@@ -212,8 +213,27 @@ void importStoreInd(llvm::IRBuilder<>& builder, GenTree* node)
     builder.CreateCall(getOrCreateRhpAssignRef(), ArrayRef<Value*>{address, toStore});
 }
 
-Value* visitNode(llvm::IRBuilder<> &builder, GenTree* node)
+Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node);
+
+Value* storeLocalVar(llvm::IRBuilder<>& builder, GenTree* tree)
 {
+    if (tree->gtFlags & GTF_VAR_DEF)
+    {
+        Value*         valueRef = visitNode(builder, tree);
+        GenTreeLclVar* lclVar   = tree->AsLclVar();
+        LclVarDsc*     varDsc   = _compiler->lvaGetDesc(lclVar);
+
+        _localsMap->insert({lclVar->GetLclNum(), valueRef});
+        return valueRef;
+    }
+    else
+    {
+        failFunctionCompilation();
+    }
+}
+
+Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node)
+    {
     switch (node->OperGet())
     {
         case GT_ADD:
@@ -229,6 +249,9 @@ Value* visitNode(llvm::IRBuilder<> &builder, GenTree* node)
             break;
         case GT_RETURN:
             builder.CreateRetVoid();
+            break;
+        case GT_STORE_LCL_VAR:
+            return storeLocalVar(builder, node->gtGetOp1());
             break;
         case GT_STOREIND:
             importStoreInd(builder, node);
@@ -269,6 +292,7 @@ void Llvm::Compile(Compiler* pCompiler)
     _blkToLlvmBlkVectorMap = &blkToLlvmBlkVectorMap;
     std::unordered_map<unsigned int, Value*> sdsuMap;
     _sdsuMap = &sdsuMap;
+    _localsMap = new std::unordered_map<unsigned int, Value*>();
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
     _function = Function::Create(getFunctionTypeForMethod(_info), Function::ExternalLinkage, 0U, mangledName, _module); // TODO: ExternalLinkage forced as linked from old module
 
