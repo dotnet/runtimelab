@@ -24,6 +24,10 @@ SET procArch=%PROCESSOR_ARCHITEW6432%
 IF "%procArch%"=="" SET procArch=%PROCESSOR_ARCHITECTURE%
 
 SET vcEnvironment=%~1
+IF /I "%~1"=="x64" (
+    SET vcEnvironment=x86_amd64
+    IF /I "%procArch%"=="AMD64" SET vcEnvironment=amd64
+)
 IF /I "%~1"=="arm64" (
     SET vcEnvironment=x86_arm64
     IF /I "%procArch%"=="AMD64" SET vcEnvironment=amd64_arm64
