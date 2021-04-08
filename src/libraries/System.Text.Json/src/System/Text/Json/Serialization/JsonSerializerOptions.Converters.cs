@@ -28,12 +28,6 @@ namespace System.Text.Json
 
         internal void EnableConvertersAndTypeInfoCreator()
         {
-            InitializeDefaultConverters();
-            _typeInfoCreationFunc = static (type, options) => new JsonTypeInfo(type, options);
-        }
-
-        private void InitializeDefaultConverters()
-        {
             s_defaultSimpleConverters ??= GetDefaultSimpleConverters();
             s_defaultFactoryConverters ??= new JsonConverter[]
             {
@@ -47,6 +41,8 @@ namespace System.Text.Json
                 // Object should always be last since it converts any type.
                 new ObjectConverterFactory()
             };
+
+            _typeInfoCreationFunc = static (type, options) => new JsonTypeInfo(type, options);
         }
 
         private static Dictionary<Type, JsonConverter> GetDefaultSimpleConverters()
@@ -96,7 +92,7 @@ namespace System.Text.Json
         /// </remarks>
         public IList<JsonConverter> Converters { get; }
 
-        internal JsonConverter? DetermineConverter(Type? parentClassType, Type runtimePropertyType, MemberInfo? memberInfo)
+        internal JsonConverter DetermineConverter(Type? parentClassType, Type runtimePropertyType, MemberInfo? memberInfo)
         {
             JsonConverter? converter = null;
 
@@ -114,12 +110,8 @@ namespace System.Text.Json
                 }
             }
 
-            converter ??= GetConverterInternal(runtimePropertyType);
-
-            if (converter == null)
-            {
-                return null;
-            }
+            converter ??= GetConverter(runtimePropertyType);
+            Debug.Assert(converter != null);
 
             if (converter is JsonConverterFactory factory)
             {
@@ -158,24 +150,11 @@ namespace System.Text.Json
         /// Built in converters were included in the lookup, and there is no compatible <see cref="System.Text.Json.Serialization.JsonConverter"/>
         /// for <paramref name="typeToConvert"/> or its serializable members among them.
         /// </exception>
-        public JsonConverter? GetConverter(Type typeToConvert)
+        public JsonConverter GetConverter(Type typeToConvert)
         {
-            // Root converters for backwards compat for users who new up JsonSerializerOptions and
-            // call GetConverter directly without first using dynamic overloads of the serializer.
-            InitializeDefaultConverters();
-            return GetConverterInternal(typeToConvert);
-        }
-
-        /// <summary>
-        /// Internal version of <see cref="GetConverter(Type)"/> that does not root default converters.
-        /// Default converters would already be rooted if a dynamic overload of the serializer was used.
-        /// </summary>
-        /// <returns></returns>
-        internal JsonConverter? GetConverterInternal(Type typeToConvert)
-        {
-            if (_context != null)
+            if (typeToConvert == null)
             {
-                throw new NotSupportedException("This options instance is associated with a 'JsonSerializerContext'. To fetch a converter, call 'JsonSerializerContext.GetConverter'.");
+                throw new ArgumentNullException(nameof(typeToConvert));
             }
 
             if (_converters.TryGetValue(typeToConvert, out JsonConverter? converter))
@@ -184,21 +163,21 @@ namespace System.Text.Json
                 return converter;
             }
 
-            if (_converters.TryGetValue(typeToConvert, out converter))
-            {
-                Debug.Assert(converter != null);
-                return converter;
-            }
+            // Priority 1: If there is a JsonSerializerContext, fetch the converter from there.
+            converter = _context?.GetTypeInfo(typeToConvert)?.Converter;
 
             // Priority 2: Attempt to get custom converter added at runtime.
             // Currently there is not a way at runtime to override the [JsonConverter] when applied to a property.
-            foreach (JsonConverter item in Converters)
+            if (converter == null)
+            {
+                foreach (JsonConverter item in Converters)
             {
                 if (item.CanConvert(typeToConvert))
                 {
                     converter = item;
                     break;
                 }
+            }
             }
 
             // Priority 3: Attempt to get converter from [JsonConverter] on the type being converted.

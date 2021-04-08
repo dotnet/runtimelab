@@ -21,15 +21,6 @@ namespace System.Text.Json.Serialization.SourceGeneration
         { }
 
         /// <summary>
-        /// todo
-        /// </summary>
-        // TODO: remove this and perform this action based on Create methods/ctors on derived classes.
-        public void RegisterToOptions()
-        {
-            Options.AddJsonTypeInfoToCompleteInitialization(this);
-        }
-
-        /// <summary>
         /// TODO
         /// </summary>
         public MetadataServices.SerializeObjectDelegate<T>? SerializeObject { get; internal set; }

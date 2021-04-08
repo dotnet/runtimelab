@@ -29,6 +29,8 @@ namespace System.Text.Json.SourceGeneration
 
         private const string PropInitFuncVarName = "propInitFunc";
 
+        private const string VerifyOptionsSetMethodName = "VerifyOptionsSet";
+
         /// <summary>
         /// Types that we have initiated serialization metadata generation for. A type may be discoverable in the object graph,
         /// but not reachable for serialization (e.g. it is [JsonIgnore]'d); thus we maintain a separate cache.
@@ -578,6 +580,8 @@ namespace {_generationNamespace}
             {{
                 if (_{typeFriendlyName} == null)
                 {{
+                    {VerifyOptionsSetMethodName}();
+
                     {WrapWithCheckForCustomConverterIfRequired(metadataInitSource, typeCompilableName, typeFriendlyName, GetNumberHandlingAsStr(typeMetadata.NumberHandling))}
                 }}
 
@@ -615,12 +619,6 @@ namespace {_generationNamespace}
         // Base source generation context partial class.
         private string BaseJsonContextImplementation()
         {
-            bool typesCanBeSerializedDynamically = TryGetInitializationForDynamicallySerializableTypes(out string initializationSource);
-            string initializeMethodCallStatement = typesCanBeSerializedDynamically
-                ? @"
-            Initialize();"
-                : null;
-
             StringBuilder sb = new();
             sb.Append(@$"using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -631,59 +629,30 @@ namespace {_generationNamespace}
     {JsonContextDeclarationSource}
     {{
         private static JsonContext s_default;
-        public static JsonContext Default => s_default ??= new JsonContext();
+        public static JsonContext Default => s_default ??= new JsonContext(new JsonSerializerOptions());
 
-        private JsonContext()
-        {{{initializeMethodCallStatement}
+        public JsonContext()
+        {{
         }}
 
-        private JsonContext(JsonSerializerOptions options) : base(options)
-        {{{initializeMethodCallStatement}
+        public JsonContext(JsonSerializerOptions options) : base(options)
+        {{
         }}
-
-        public static JsonContext From(JsonSerializerOptions options) => new JsonContext(options);
-
-        {initializationSource}
 
         {GetFetchLogicForRuntimeSpecifiedCustomConverter()}
+
+        private void {VerifyOptionsSetMethodName}()
+        {{
+            if ({OptionsInstanceVariableName} == null)
+            {{
+                throw new System.InvalidOperationException(""The options instance for this context has not been set. Call 'JsonSerializerOptions.SetContext' to do so, or pass an options instance when creating a context."");
+            }}
+        }}
     }}
 }}
 ");
 
             return sb.ToString();
-        }
-
-        private bool TryGetInitializationForDynamicallySerializableTypes(out string source)
-        {
-            StringBuilder sb = new();
-
-            sb.Append(@"private void Initialize()
-        {");
-
-            bool typesCanBeSerializedDynamically = false;
-
-            foreach (TypeMetadata typeMetadata in _typesWithMetadataGenerated)
-            {
-                if (typeMetadata.ClassType != ClassType.TypeUnsupportedBySourceGen && typeMetadata.CanBeDynamic)
-                {
-                    sb.Append(@$"
-            this.{typeMetadata.FriendlyName}.RegisterToOptions();");
-
-                    typesCanBeSerializedDynamically = true;
-                }
-            }
-
-            sb.Append(@"
-        }");
-
-            if (typesCanBeSerializedDynamically)
-            {
-                source = sb.ToString();
-                return true;
-            }
-
-            source = "";
-            return false;
         }
 
         private string GetFetchLogicForRuntimeSpecifiedCustomConverter()
@@ -726,9 +695,13 @@ namespace {_generationNamespace}
 
             HashSet<string> usingStatements = new();
 
-            foreach (TypeMetadata typeMetadata in _typesWithMetadataGenerated)
+            List<TypeMetadata> rootTypeMetadata = new();
+
+            foreach ((Type, bool) typeInfo in _rootSerializableTypes.Values)
             {
-                usingStatements.UnionWith(GetUsingStatements(typeMetadata));
+                TypeMetadata metadata = _typeMetadataCache[typeInfo.Item1];
+                rootTypeMetadata.Add(metadata);
+                usingStatements.UnionWith(GetUsingStatements(metadata));
             }
 
             sb.Append(@$"{GetUsingStatementsString(usingStatements)}
@@ -741,7 +714,7 @@ namespace {_generationNamespace}
         {{");
 
             // TODO: Make this Dictionary-lookup-based if _handledType.Count > 64.
-            foreach (TypeMetadata typeMetadata in _typesWithMetadataGenerated)
+            foreach (TypeMetadata typeMetadata in rootTypeMetadata)
             {
                 if (typeMetadata.ClassType != ClassType.TypeUnsupportedBySourceGen)
                 {

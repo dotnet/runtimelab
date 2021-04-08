@@ -356,7 +356,7 @@ namespace System.Text.Json.SourceGeneration.Tests
             CampaignSummaryViewModel campaignSummary = CreateCampaignSummaryViewModel();
 
             JsonSerializerOptions options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-            JsonContext context = JsonContext.From(options);
+            JsonContext context = new(options);
 
             string json = JsonSerializer.Serialize(new object[] { index, campaignSummary }, context.ObjectArray);
             object[] arr = JsonSerializer.Deserialize(json, context.ObjectArray);
@@ -371,7 +371,7 @@ namespace System.Text.Json.SourceGeneration.Tests
         public static void SerializeObjectArray_SimpleTypes_WithCustomOptions()
         {
             JsonSerializerOptions options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-            JsonContext context = JsonContext.From(options);
+            JsonContext context = new JsonContext(options);
 
             string json = JsonSerializer.Serialize(new object[] { "Hello", "World" }, context);
             object[] arr = JsonSerializer.Deserialize<object[]>(json, context);
@@ -406,7 +406,7 @@ namespace System.Text.Json.SourceGeneration.Tests
         }
 
         [Fact]
-        public static void FromMethodClonesOptions()
+        public static void ConstructingFromOptionsKeepsReference()
         {
             JsonStringEnumConverter converter = new();
             JsonSerializerOptions options = new()
@@ -415,8 +415,8 @@ namespace System.Text.Json.SourceGeneration.Tests
                 Converters = { converter }
             };
 
-            JsonContext context = JsonContext.From(options);
-            Assert.NotSame(options, context.Options);
+            JsonContext context = new(options);
+            Assert.Same(options, context.Options);
             Assert.Equal(options.PropertyNameCaseInsensitive, context.Options.PropertyNameCaseInsensitive);
             Assert.Same(converter, context.Options.Converters[0]);
         }
@@ -433,11 +433,15 @@ namespace System.Text.Json.SourceGeneration.Tests
         {
             JsonContext context = JsonContext.Default;
             InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => context.Options.PropertyNameCaseInsensitive = true);
-            Assert.Contains("JsonContext.From", ex.ToString());
+            string exAsStr = ex.ToString();
+            Assert.Contains("JsonSerializerOptions", exAsStr);
+            Assert.Contains("JsonSerializerContext", exAsStr);
 
-            context = JsonContext.From(new JsonSerializerOptions());
+            context = new JsonContext(new JsonSerializerOptions());
             ex = Assert.Throws<InvalidOperationException>(() => context.Options.PropertyNameCaseInsensitive = true);
-            Assert.Contains("JsonContext.From", ex.ToString());
+            exAsStr = ex.ToString();
+            Assert.Contains("JsonSerializerOptions", exAsStr);
+            Assert.Contains("JsonSerializerContext", exAsStr);
         }
 
         [Fact]
@@ -473,6 +477,43 @@ namespace System.Text.Json.SourceGeneration.Tests
             IndexViewModel model = JsonSerializer.Deserialize(json, context.IndexViewModel);
 
             VerifyIndexViewModel(expected, model);
+        }
+
+        [Fact]
+        public static void JsonContext_AccessProp_BeforeOptionsSet_Invalid()
+        {
+            JsonContext context = new();
+            InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => context.HighLowTemps);
+            Assert.Contains("JsonSerializerOptions.SetContext", ex.ToString());
+
+            (new JsonSerializerOptions()).SetContext(context);
+            Assert.NotNull(context.HighLowTemps);
+        }
+
+        [Fact]
+        public static void AlreadyBoundContext()
+        {
+            // Bind the context.
+            JsonContext context = JsonContext.Default;
+
+            JsonSerializerOptions options = new();
+            Assert.Throws<InvalidOperationException>(() => options.SetContext(context));
+
+            // Bind the context again.
+            context = new JsonContext(new JsonSerializerOptions());
+
+            Assert.Throws<InvalidOperationException>(() => options.SetContext(context));
+        }
+
+        [Fact]
+        public static void AlreadyBoundOptions()
+        {
+            // Bind the options.
+            JsonSerializerOptions options = new();
+            JsonContext context = new JsonContext();
+            options.SetContext(context);
+
+            Assert.Throws<InvalidOperationException>(() => new JsonContext(options));
         }
     }
 }
