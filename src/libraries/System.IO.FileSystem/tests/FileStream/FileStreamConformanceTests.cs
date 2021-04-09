@@ -133,6 +133,34 @@ namespace System.IO.Tests
             byte[] allBytes = File.ReadAllBytes(filePath);
             Assert.Equal(writtenBytes.ToArray(), allBytes);
         }
+
+        [Theory]
+        [InlineData(FileAccess.Write)]
+        [InlineData(FileAccess.ReadWrite)] // FileAccess.Read does not allow for length manipulations
+        public async Task LengthIsNotCachedAfterHandleHasBeenExposed(FileAccess fileAccess)
+        {
+            using FileStream stream = (FileStream)await CreateStream(Array.Empty<byte>(), fileAccess);
+            using FileStream createdFromHandle = new FileStream(stream.SafeFileHandle, fileAccess);
+
+            Assert.Equal(0, stream.Length);
+            Assert.Equal(0, createdFromHandle.Length);
+
+            createdFromHandle.SetLength(1);
+            Assert.Equal(1, createdFromHandle.Length);
+            Assert.Equal(1, stream.Length);
+
+            createdFromHandle.SetLength(2);
+            Assert.Equal(2, createdFromHandle.Length);
+            Assert.Equal(2, stream.Length);
+
+            stream.SetLength(1);
+            Assert.Equal(1, stream.Length);
+            Assert.Equal(1, createdFromHandle.Length);
+
+            stream.SetLength(2);
+            Assert.Equal(2, stream.Length);
+            Assert.Equal(2, createdFromHandle.Length);
+        }
     }
 
     public class UnbufferedSyncFileStreamStandaloneConformanceTests : FileStreamStandaloneConformanceTests
@@ -148,7 +176,7 @@ namespace System.IO.Tests
     }
 
     [ActiveIssue("https://github.com/dotnet/runtime/issues/34583", TestPlatforms.Windows, TargetFrameworkMonikers.Netcoreapp, TestRuntimes.Mono)]
-    [PlatformSpecific(~TestPlatforms.Browser)] // copied from base class due to https://github.com/xunit/xunit/issues/2186
+    [SkipOnPlatform(TestPlatforms.Browser, "lots of operations aren't supported on browser")] // copied from StreamConformanceTests base class due to https://github.com/xunit/xunit/issues/2186
     public class UnbufferedAsyncFileStreamStandaloneConformanceTests : FileStreamStandaloneConformanceTests
     {
         protected override FileOptions Options => FileOptions.Asynchronous;
@@ -156,7 +184,7 @@ namespace System.IO.Tests
     }
 
     [ActiveIssue("https://github.com/dotnet/runtime/issues/34583", TestPlatforms.Windows, TargetFrameworkMonikers.Netcoreapp, TestRuntimes.Mono)]
-    [PlatformSpecific(~TestPlatforms.Browser)] // copied from base class due to https://github.com/xunit/xunit/issues/2186
+    [SkipOnPlatform(TestPlatforms.Browser, "lots of operations aren't supported on browser")] // copied from StreamConformanceTests base class due to https://github.com/xunit/xunit/issues/2186
     public class BufferedAsyncFileStreamStandaloneConformanceTests : FileStreamStandaloneConformanceTests
     {
         protected override FileOptions Options => FileOptions.Asynchronous;
