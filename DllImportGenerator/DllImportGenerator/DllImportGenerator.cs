@@ -158,7 +158,7 @@ namespace Microsoft.Interop
             // Create the DllImport declaration.
             var dllImport = stub.DllImportDeclaration.AddAttributeLists(
                 AttributeList(
-                    SingletonSeparatedList<AttributeSyntax>(dllImportAttr)));
+                    SingletonSeparatedList(dllImportAttr)));
 
             // Stub should have at least one containing type
             Debug.Assert(stub.StubContainingTypes.Any());
