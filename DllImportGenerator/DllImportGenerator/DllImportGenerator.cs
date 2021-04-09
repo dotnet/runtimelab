@@ -128,6 +128,20 @@ namespace Microsoft.Interop
             context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
         }
 
+        private SyntaxTokenList StripLeadingTriviaFromTokenList(SyntaxTokenList tokenList)
+        {
+            return tokenList.Replace(tokenList[0], tokenList[0].WithoutTrivia());
+        }
+
+        private TypeDeclarationSyntax CreateTypeDeclarationWithoutTrivia(TypeDeclarationSyntax typeDeclaration)
+        {
+            return TypeDeclaration(
+                typeDeclaration.Kind(),
+                typeDeclaration.Identifier)
+                .WithTypeParameterList(typeDeclaration.TypeParameterList)
+                .WithModifiers(typeDeclaration.Modifiers);
+        }
+
         private void PrintGeneratedSource(
             StringBuilder builder,
             MethodDeclarationSyntax userDeclaredMethod,
@@ -137,7 +151,7 @@ namespace Microsoft.Interop
             // Create stub function
             var stubMethod = MethodDeclaration(stub.StubReturnType, userDeclaredMethod.Identifier)
                 .AddAttributeLists(stub.AdditionalAttributes)
-                .WithModifiers(userDeclaredMethod.Modifiers)
+                .WithModifiers(StripLeadingTriviaFromTokenList(userDeclaredMethod.Modifiers))
                 .WithParameterList(ParameterList(SeparatedList(stub.StubParameters)))
                 .WithBody(stub.StubCode);
 
@@ -150,14 +164,14 @@ namespace Microsoft.Interop
             Debug.Assert(stub.StubContainingTypes.Any());
 
             // Add stub function and DllImport declaration to the first (innermost) containing
-            MemberDeclarationSyntax containingType = stub.StubContainingTypes.First()
+            MemberDeclarationSyntax containingType = CreateTypeDeclarationWithoutTrivia(stub.StubContainingTypes.First())
                 .AddMembers(stubMethod, dllImport);
 
             // Add type to the remaining containing types (skipping the first which was handled above)
             foreach (var typeDecl in stub.StubContainingTypes.Skip(1))
             {
-                containingType = typeDecl.WithMembers(
-                    SingletonList<MemberDeclarationSyntax>(containingType));
+                containingType = CreateTypeDeclarationWithoutTrivia(typeDecl)
+                    .WithMembers(SingletonList(containingType));
             }
 
             MemberDeclarationSyntax toPrint = containingType;
