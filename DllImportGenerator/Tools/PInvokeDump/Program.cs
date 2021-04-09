@@ -98,6 +98,12 @@ namespace DllImportGenerator.Tools
 
         public static Task<int> Main(string[] args)
         {
+            var excludeOption = new Option<string>(
+                "--exclude",
+                "Name of file to exclude",
+                ArgumentArity.ZeroOrMore);
+            excludeOption.AddAlias("-x");
+
             var rootCommand = new RootCommand
             {
                 new Option<FileInfo>(
@@ -113,12 +119,7 @@ namespace DllImportGenerator.Tools
                     new string[] { "--output-format", "-fmt" },
                     getDefaultValue: () => OutputFormat.Text,
                     "Output format"),
-                new Option<string>(
-                    new string[] { "--exclude", "-x"},
-                    "Name of file to exclude")
-                    {
-                        Argument = new Argument<string>() { Arity = ArgumentArity.ZeroOrMore }
-                    },
+                excludeOption,
                 new Option<bool>(
                     new string[] { "--quiet", "-q" },
                     getDefaultValue: () => false,
