@@ -35,13 +35,16 @@ static const char* (*_addCodeReloc)(void*, void*);
 static char* _outputFileName;
 static Function* _doNothingFunction;
 
-Compiler::Info _info;
-Compiler* _compiler;
-Function* _function;
-BlkToLlvmBlkVectorMap *_blkToLlvmBlkVectorMap;
-llvm::IRBuilder<>* _builder;
+Compiler::Info                            _info;
+Compiler*                                 _compiler;
+Function*                                 _function;
+BlkToLlvmBlkVectorMap*                    _blkToLlvmBlkVectorMap;
+llvm::IRBuilder<>*                        _builder;
 std::unordered_map<unsigned int, Value*>* _sdsuMap;
 std::unordered_map<unsigned int, Value*>* _localsMap;
+
+// forward declarations
+FunctionType* getFunctionTypeForMethod(Compiler::Info info);
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void* thisPtr, const char* outputFileName, const char* triple, const char* dataLayout,
     const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*),
@@ -88,10 +91,9 @@ void Llvm::llvmShutdown()
 //    Module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 }
 
-[[ noreturn ]] void failFunctionCompilation()
+[[noreturn]] void failFunctionCompilation()
 {
-    _function->dropAllReferences();
-    _function->eraseFromParent();
+    _function->deleteBody();
     fatal(CORJIT_SKIPPED);
 }
 
@@ -110,7 +112,6 @@ Value* getTreeIdValue(GenTree* op)
     return _sdsuMap->at(op->gtTreeID);
 }
 
-
 FunctionType* getFunctionTypeForMethod(Compiler::Info info)
 {
     if (info.compArgsCount != 0 || info.compRetType != TYP_VOID)
@@ -119,6 +120,39 @@ FunctionType* getFunctionTypeForMethod(Compiler::Info info)
     }
     // all functions have shadow stack as first arg (i8*)
     return FunctionType::get(Type::getVoidTy(_llvmContext), ArrayRef<Type*>(Type::getInt8PtrTy(_llvmContext)), false);
+}
+
+llvm::Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType) {
+    switch (corInfoType)
+    {
+        case CorInfoType::CORINFO_TYPE_VOID:
+            return Type::getVoidTy(_llvmContext);
+
+        case CorInfoType::CORINFO_TYPE_INT:
+            return Type::getInt32Ty(_llvmContext);
+
+        default:
+            failFunctionCompilation();
+    }
+}
+
+FunctionType* getFunctionTypeForMethodHandle(CORINFO_METHOD_HANDLE methodHandle)
+{
+    CORINFO_SIG_INFO sigInfo;
+    _compiler->eeGetMethodSig(methodHandle, &sigInfo);
+    llvm::Type* retLlvmType = getLlvmTypeForCorInfoType(sigInfo.retType);
+    std::vector<llvm::Type*> argVec(sigInfo.numArgs + 1);
+    CORINFO_ARG_LIST_HANDLE  sigArgs = sigInfo.args;
+    argVec[0]                        = Type::getInt8PtrTy(_llvmContext); // shadowstack arg
+
+    for (unsigned int i = 0; i < sigInfo.numArgs; i++, sigArgs = _info.compCompHnd->getArgNext(sigArgs))
+    {
+        CORINFO_CLASS_HANDLE clsHnd;
+        CorInfoTypeWithMod   corTypeWithMod = _info.compCompHnd->getArgType(&sigInfo, sigArgs, &clsHnd);
+        argVec[i + 1] = getLlvmTypeForCorInfoType(strip(corTypeWithMod));
+    }
+
+    return FunctionType::get(retLlvmType, ArrayRef<Type*>(argVec), false);
 }
 
 Value* getOrCreateExternalSymbol(const char* symbolName)
@@ -176,6 +210,11 @@ Value* buildAdd(llvm::IRBuilder<>& builder, GenTree* node, Value* op1, Value* op
     return mapTreeIdValue(node->gtTreeID, builder.CreateGEP(op1, op2));
 }
 
+FunctionType* getFunctionSignature(CORINFO_CONST_LOOKUP callTarget)
+{
+    return FunctionType::get(Type::getInt8PtrTy(_llvmContext), ArrayRef<Type*>(Type::getInt8PtrTy(_llvmContext)), false);
+}
+
 Value* buildCall(llvm::IRBuilder<>& builder, GenTree* node)
 {
     GenTreeCall* gtCall = node->AsCall();
@@ -193,6 +232,45 @@ Value* buildCall(llvm::IRBuilder<>& builder, GenTree* node)
             (*_addCodeReloc)(_thisPtr, gtCall->gtEntryPoint.handle);
             return mapTreeIdValue(node->gtTreeID, builder.CreateCall(llvmFunc, _function->getArg(0)));
         }
+    }
+    else if (gtCall->gtCallType == CT_USER_FUNC)
+    {
+        const char* symbolName = (*_getMangledSymbolName)(_thisPtr, gtCall->gtEntryPoint.handle);
+        //TODO: how to detect RuntimeImport ?
+        if(!strcmp(symbolName, "S_P_CoreLib_System_Runtime_RuntimeImports__MemoryBarrier") || !strcmp(symbolName, "S_P_CoreLib_System_Runtime_RuntimeImports__RhCollect"))
+        {
+            failFunctionCompilation();
+        }
+        (*_addCodeReloc)(_thisPtr, gtCall->gtEntryPoint.handle);
+        Function*   llvmFunc   = _module->getFunction(symbolName);
+        if (llvmFunc == nullptr)
+        {
+            CORINFO_SIG_INFO sigInfo;
+            _compiler->eeGetMethodSig(gtCall->gtCallMethHnd, &sigInfo);
+            CORINFO_ARG_LIST_HANDLE sigArgs = sigInfo.args;
+
+            // assume ExternalLinkage, if the function is defined in the clrjit module, then it is replaced and an extern added to the Ilc module
+            llvmFunc = Function::Create(getFunctionTypeForMethodHandle(gtCall->gtCallMethHnd), Function::ExternalLinkage, 0U, symbolName, _module);
+        }
+        std::vector<llvm::Value*> argVec;
+
+        // shadowstack arg first
+        argVec.push_back(_function->getArg(0));
+
+        // TODO Is Args() more appropriate than Operands() ?
+        // for (GenTreeCall::Use& arg : gtCall->Args())
+        for (GenTree* operand : gtCall->Operands())
+        {
+            // copied this logic from gtDispLIRNode
+            if (operand->IsArgPlaceHolderNode() || !operand->IsValue())
+            {
+                // Either of these situations may happen with calls.
+                continue;
+            }
+
+            argVec.push_back(getTreeIdValue(operand));
+        }
+        return mapTreeIdValue(node->gtTreeID, builder.CreateCall(llvmFunc, ArrayRef<Value*>(argVec)));
     }
     failFunctionCompilation();
 }
@@ -237,13 +315,20 @@ void importStoreInd(llvm::IRBuilder<>& builder, GenTree* node)
     builder.CreateCall(getOrCreateRhpAssignRef(), ArrayRef<Value*>{address, castIfNecessary(builder, toStore, Type::getInt8PtrTy(_llvmContext))});
 }
 
-Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node);
+Value* localVar(llvm::IRBuilder<>& builder, GenTree* tree)
+{
+    GenTreeLclVar* lclVar = tree->AsLclVar();
+    Value*         llvmRef = _localsMap->at(lclVar->GetLclNum());
+    mapTreeIdValue(tree->gtTreeID, llvmRef);
+    return llvmRef;
+}
 
 Value* storeLocalVar(llvm::IRBuilder<>& builder, GenTree* tree)
 {
     if (tree->gtFlags & GTF_VAR_DEF)
     {
-        Value*         valueRef = visitNode(builder, tree);
+        Value*         valueRef = getTreeIdValue(tree->gtGetOp1());
+        assert(valueRef != nullptr);
         GenTreeLclVar* lclVar   = tree->AsLclVar();
         LclVarDsc*     varDsc   = _compiler->lvaGetDesc(lclVar);
 
@@ -268,6 +353,8 @@ Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node)
             return buildCnsInt(builder, node);
         case GT_IL_OFFSET:
             break;
+        case GT_LCL_VAR:
+            return localVar(builder, node);
         case GT_NO_OP:
             emitDoNothingCall(builder);
             break;
@@ -275,7 +362,7 @@ Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node)
             builder.CreateRetVoid();
             break;
         case GT_STORE_LCL_VAR:
-            return storeLocalVar(builder, node->gtGetOp1());
+            return storeLocalVar(builder, node);
             break;
         case GT_STOREIND:
             importStoreInd(builder, node);
@@ -317,8 +404,13 @@ void Llvm::Compile(Compiler* pCompiler)
     std::unordered_map<unsigned int, Value*> sdsuMap;
     _sdsuMap = &sdsuMap;
     _localsMap = new std::unordered_map<unsigned int, Value*>();
-    const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
-    _function = Function::Create(getFunctionTypeForMethod(_info), Function::ExternalLinkage, 0U, mangledName, _module); // TODO: ExternalLinkage forced as linked from old module
+    const char *mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
+    _function    = _module->getFunction(mangledName);
+    if (_function == nullptr)
+    {
+        _function = Function::Create(getFunctionTypeForMethod(_info), Function::ExternalLinkage, 0U, mangledName,
+                                     _module); // TODO: ExternalLinkage forced as linked from old module
+    }
 
     BasicBlock* firstBb = pCompiler->fgFirstBB;
     llvm::IRBuilder<> builder(_llvmContext);
