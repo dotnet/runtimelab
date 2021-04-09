@@ -32,19 +32,6 @@ namespace System.Reflection.Runtime.Modules.NativeFormat
             }
         }
 
-        public sealed override string Name
-        {
-            get
-            {
-                QScopeDefinition scope = _assembly.Scope;
-                MetadataReader reader = scope.Reader;
-                string name = scope.ScopeDefinition.ModuleName.GetConstantStringValue(reader).Value;
-                if (name == null)
-                    return _assembly.GetName().Name + ".dll"; // Workaround for TFS 441076 - Module data not emitted for facade assemblies.
-                return name;
-            }
-        }
-
         public sealed override int MetadataToken
         {
             get
