@@ -232,7 +232,7 @@ void importStoreInd(llvm::IRBuilder<>& builder, GenTree* node)
         failFunctionCompilation();
     }
 
-    // dont think RhpAssignRef will ever reverse PInvoke, so probably ok not to store the shadow stack here
+    // RhpAssignRef will never reverse PInvoke, so do not need to store the shadow stack here
     builder.CreateCall(getOrCreateRhpAssignRef(), ArrayRef<Value*>{address, castIfNecessary(builder, toStore, Type::getInt8PtrTy(_llvmContext))});
 }
 
