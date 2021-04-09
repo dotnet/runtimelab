@@ -57,6 +57,10 @@ namespace Internal.JitInterface
             var node = (ISymbolNode)_this.HandleToObject((IntPtr)handle);
             Utf8StringBuilder sb = new Utf8StringBuilder();
             node.AppendMangledName(_this._compilation.NameMangler, sb);
+            if (node is FrozenStringNode)
+            {
+                sb.Append("___SYMBOL");
+            }
             return (byte*)_this.GetPin(sb.UnderlyingArray);
         }
 
