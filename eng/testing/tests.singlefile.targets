@@ -38,7 +38,7 @@
     <!-- xunit calls MakeGenericType to check if something is IEquatable -->
     <IlcArg Include="--feature:System.Reflection.IsTypeConstructionEagerlyValidated=false" />
 
-    <!-- Disable background GC because we have issues with it -->
+    <!-- Disable background GC because we have issues with it - https://github.com/dotnet/runtimelab/issues/940 -->
     <IlcArg Include="--runtimeopt:RH_DisableBGC=1" />
   </ItemGroup>
 
