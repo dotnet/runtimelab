@@ -25,8 +25,6 @@
     <PlatformTarget>$(TargetArchitecture)</PlatformTarget>
     <SelfContained>true</SelfContained>
     <NoWarn>$(NoWarn);IL9700;IL9701;IL1005</NoWarn>
-
-    <Optimize>false</Optimize>
   </PropertyGroup>
 
   <Import Project="$(IlcPath)\build\Microsoft.DotNet.ILCompiler.targets" Condition="'$(ClrNativeAot)' == 'true'" />
@@ -39,6 +37,9 @@
 
     <!-- xunit calls MakeGenericType to check if something is IEquatable -->
     <IlcArg Include="--feature:System.Reflection.IsTypeConstructionEagerlyValidated=false" />
+
+    <!-- Disable background GC because we have issues with it -->
+    <IlcArg Include="--runtimeopt:RH_DisableBGC=1" />
   </ItemGroup>
 
   <ItemGroup>
