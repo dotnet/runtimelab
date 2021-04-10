@@ -2,7 +2,6 @@
 
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
 
-    <!-- Part of workaround for lack of secondary build artifact import - https://github.com/Microsoft/msbuild/issues/2807 -->
     <!-- Define the name of the runtime specific compiler package to import -->
     <OSIdentifier Condition="$(RuntimeIdentifier.StartsWith('win'))">win</OSIdentifier>
     <OSIdentifier Condition="$(RuntimeIdentifier.StartsWith('osx'))">osx</OSIdentifier>
@@ -10,8 +9,14 @@
     <OSIdentifier Condition="'$(OSIdentifier)' == ''">linux</OSIdentifier>
 
     <RuntimeIlcPackageName>runtime.$(OSIdentifier)-$(PlatformTarget).Microsoft.DotNet.ILCompiler</RuntimeIlcPackageName>
-    <IlcHostArch Condition="'$(IlcHostArch)' == '' and ('$(PROCESSOR_ARCHITECTURE)' == 'ARM64' or '$(PROCESSOR_ARCHITEW6432)' == 'ARM64')">arm64</IlcHostArch>
-    <IlcHostArch Condition="'$(IlcHostArch)' == ''">x64</IlcHostArch>
+
+    <OSHostArch>$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant)</OSHostArch>
+    <!-- OSArchitecture does not report the true OS architecture for x86 and x64 processes running on Windows ARM64. -->
+    <!-- The following condition checks those cases. -->
+    <OSHostArch Condition="$([MSBuild]::IsOSPlatform('Windows')) and
+        ('$(PROCESSOR_ARCHITEW6432)' == 'ARM64' or Exists('$(SystemRoot)\System32\xtajit64.dll'))">arm64</OSHostArch>
+
+    <IlcHostArch Condition="'$(IlcHostArch)' == ''">$(OSHostArch)</IlcHostArch>
     <IlcHostPackageName>runtime.$(OSIdentifier)-$(IlcHostArch).Microsoft.DotNet.ILCompiler</IlcHostPackageName>
     <IlcCalledViaPackage>true</IlcCalledViaPackage>
 
@@ -26,7 +31,6 @@
 
   </PropertyGroup>
 
-  <!-- Part of workaround for lack of secondary build artifact import - https://github.com/Microsoft/msbuild/issues/2807 -->
   <!-- Locate the runtime package according to the current target runtime -->
   <Target Name="ImportRuntimeIlcPackageTarget" Condition="'$(BuildingFrameworkLibrary)' != 'true' AND $(IlcCalledViaPackage) == 'true'" DependsOnTargets="$(ImportRuntimeIlcPackageTargetDependsOn)" BeforeTargets="Publish">
     <!-- CoreRT SDK and Framework Assemblies need to be defined to avoid CoreCLR implementations being set as compiler inputs -->
