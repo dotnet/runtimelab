@@ -27,6 +27,11 @@ void Compiler::optInit()
     optLoopCount = 0;
     optLoopTable = nullptr;
 
+#ifdef DEBUG
+    loopAlignCandidates = 0;
+    loopsAligned        = 0;
+#endif
+
     /* Keep track of the number of calls and indirect calls made by this method */
     optCallCount         = 0;
     optIndirectCallCount = 0;
@@ -95,13 +100,12 @@ void Compiler::optSetBlockWeights()
             // If we are not using profile weight then we lower the weight
             // of blocks that do not dominate a return block
             //
-            if (firstBBdomsRets && (fgIsUsingProfileWeights() == false) && (domsRets == false))
+            if (firstBBdomsRets && !fgIsUsingProfileWeights() && !domsRets)
             {
 #if DEBUG
                 changed = true;
 #endif
-                block->modifyBBWeight(block->bbWeight / 2);
-                noway_assert(block->bbWeight);
+                block->inheritWeightPercentage(block, 50);
             }
         }
     }
@@ -215,43 +219,19 @@ void Compiler::optMarkLoopBlocks(BasicBlock* begBlk, BasicBlock* endBlk, bool ex
             {
                 noway_assert(curBlk->bbWeight > BB_ZERO_WEIGHT);
 
-                BasicBlock::weight_t weight;
+                if (!curBlk->hasProfileWeight())
+                {
+                    BasicBlock::weight_t scale = BB_LOOP_WEIGHT_SCALE;
 
-                if (curBlk->hasProfileWeight())
-                {
-                    // We have real profile weights, so we aren't going to change this blocks weight
-                    weight = curBlk->bbWeight;
-                }
-                else
-                {
-                    if (dominates)
+                    if (!dominates)
                     {
-                        weight = curBlk->bbWeight * BB_LOOP_WEIGHT_SCALE;
-                    }
-                    else
-                    {
-                        weight = curBlk->bbWeight * (BB_LOOP_WEIGHT_SCALE / 2);
+                        scale = scale / 2;
                     }
 
-                    //
-                    // The multiplication may have caused us to overflow
-                    //
-                    if (weight < curBlk->bbWeight)
-                    {
-                        // The multiplication caused us to overflow
-                        weight = BB_MAX_WEIGHT;
-                    }
-                    //
-                    //  Set the new weight
-                    //
-                    curBlk->modifyBBWeight(weight);
+                    curBlk->scaleBBWeight(scale);
                 }
-#ifdef DEBUG
-                if (verbose)
-                {
-                    printf("\n    " FMT_BB "(wt=%s)", curBlk->bbNum, refCntWtd2str(curBlk->getBBWeight(this)));
-                }
-#endif
+
+                JITDUMP("\n    " FMT_BB "(wt=" FMT_WT ")", curBlk->bbNum, curBlk->getBBWeight(this));
             }
         }
 
@@ -355,45 +335,24 @@ void Compiler::optUnmarkLoopBlocks(BasicBlock* begBlk, BasicBlock* endBlk)
         //
         if (!curBlk->isRunRarely() && fgReachable(curBlk, begBlk) && fgReachable(begBlk, curBlk))
         {
-            BasicBlock::weight_t weight = curBlk->bbWeight;
-
             // Don't unmark blocks that are set to BB_MAX_WEIGHT
             // Don't unmark blocks when we are using profile weights
             //
             if (!curBlk->isMaxBBWeight() && !curBlk->hasProfileWeight())
             {
+                BasicBlock::weight_t scale = 1.0f / BB_LOOP_WEIGHT_SCALE;
+
                 if (!fgDominate(curBlk, endBlk))
                 {
-                    weight *= 2;
-                }
-                else
-                {
-                    /* Merging of blocks can disturb the Dominates
-                       information (see RAID #46649) */
-                    if (weight < BB_LOOP_WEIGHT_SCALE)
-                    {
-                        weight *= 2;
-                    }
+                    scale *= 2;
                 }
 
-                // We can overflow here so check for it
-                if (weight < curBlk->bbWeight)
-                {
-                    weight = BB_MAX_WEIGHT;
-                }
-
-                assert(weight >= BB_LOOP_WEIGHT_SCALE);
-
-                curBlk->modifyBBWeight(weight / BB_LOOP_WEIGHT_SCALE);
+                curBlk->scaleBBWeight(scale);
             }
 
-#ifdef DEBUG
-            if (verbose)
-            {
-                printf("\n    " FMT_BB "(wt=%s)", curBlk->bbNum, refCntWtd2str(curBlk->getBBWeight(this)));
-            }
-#endif
+            JITDUMP("\n    " FMT_BB "(wt=" FMT_WT ")", curBlk->bbNum, curBlk->getBBWeight(this));
         }
+
         /* Stop if we've reached the last block in the loop */
 
         if (curBlk == endBlk)
@@ -2928,7 +2887,7 @@ bool Compiler::optCanonicalizeLoop(unsigned char loopInd)
                         newT->bbNum, topPredBlock->bbNum);
 
                 BasicBlock::weight_t newWeight = newT->getBBWeight(this) + topPredBlock->getBBWeight(this);
-                newT->setBBWeight(newWeight);
+                newT->setBBProfileWeight(newWeight);
             }
         }
     }
@@ -3844,8 +3803,14 @@ void Compiler::optUnrollLoops()
                         optLoopTable[lnum].lpFlags |= LPFLG_DONT_UNROLL;
                         goto DONE_LOOP;
                     }
+
                     // Block weight should no longer have the loop multiplier
-                    newBlock->modifyBBWeight(newBlock->bbWeight / BB_LOOP_WEIGHT_SCALE);
+                    //
+                    // Note this is not quite right, as we may not have upscaled by this amount
+                    // and we might not have upscaled at all, if we had profile data.
+                    //
+                    newBlock->scaleBBWeight(1.0f / BB_LOOP_WEIGHT_SCALE);
+
                     // Jump dests are set in a post-pass; make sure CloneBlockState hasn't tried to set them.
                     assert(newBlock->bbJumpDest == nullptr);
 

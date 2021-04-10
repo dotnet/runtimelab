@@ -85,7 +85,7 @@ namespace System
 
             }
         }
-        
+
         public static bool IsLineNumbersSupported => true;
 
         public static bool IsInContainer => GetIsInContainer();
@@ -237,9 +237,9 @@ namespace System
                               version & 0xFF);
         }
 
-        private static readonly Lazy<bool> _legacyFileStream = new Lazy<bool>(() => GetStaticNonPublicBooleanPropertyValue("System.IO.FileStreamHelpers", "UseLegacyStrategy"));
+        private static readonly Lazy<bool> _net5CompatFileStream = new Lazy<bool>(() => GetStaticNonPublicBooleanPropertyValue("System.IO.FileStreamHelpers", "UseNet5CompatStrategy"));
 
-        public static bool IsLegacyFileStreamEnabled => _legacyFileStream.Value;
+        public static bool IsNet5CompatFileStreamEnabled => _net5CompatFileStream.Value;
 
         private static bool GetIsInContainer()
         {
@@ -291,6 +291,13 @@ namespace System
 
             int ret = Interop.OpenSsl.OpenSslGetProtocolSupport((int)protocol);
             return ret == 1;
+        }
+
+        private static readonly Lazy<SslProtocols> s_androidSupportedSslProtocols = new Lazy<SslProtocols>(Interop.AndroidCrypto.SSLGetSupportedProtocols);
+        private static bool AndroidGetSslProtocolSupport(SslProtocols protocol)
+        {
+            Debug.Assert(IsAndroid);
+            return (protocol & s_androidSupportedSslProtocols.Value) == protocol;
         }
 
         private static bool GetTls10Support()
@@ -358,6 +365,14 @@ namespace System
             {
                 // [ActiveIssue("https://github.com/dotnet/runtime/issues/1979")]
                 return false;
+            }
+            else if (IsAndroid)
+            {
+#if NETFRAMEWORK
+                return false;
+#else
+                return AndroidGetSslProtocolSupport(SslProtocols.Tls13);
+#endif
             }
             else if (IsOpenSslSupported)
             {

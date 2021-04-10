@@ -23,12 +23,6 @@
     <Compile Include="System\Net\Http\Json\TranscodingReadStream.cs" />
     <Compile Include="System\Net\Http\Json\TranscodingWriteStream.cs" />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == '$(NetCoreAppCurrent)'">
-    <Reference Include="System.Text.Json" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' != '$(NetCoreAppCurrent)'">
-    <ProjectReference Include="$(LibrariesProjectRoot)System.Text.Json\src\System.Text.Json.csproj" />
-  </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0' and '$(TargetFramework)' != 'net461'">
     <Reference Include="System.Memory" />
     <Reference Include="System.Net.Mail" />
@@ -39,8 +33,6 @@
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' or
                         $(TargetFramework.StartsWith('net4'))">
-    <Compile Include="$(CoreLibSharedDir)System\Diagnostics\CodeAnalysis\DynamicallyAccessedMembersAttribute.cs" />
-    <Compile Include="$(CoreLibSharedDir)System\Diagnostics\CodeAnalysis\DynamicallyAccessedMemberTypes.cs" />
     <PackageReference Include="System.Buffers" Version="$(SystemBuffersVersion)" />
     <PackageReference Include="System.Memory" Version="$(SystemMemoryVersion)" />
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="$(SystemThreadingTasksExtensionsVersion)" />
@@ -49,4 +41,18 @@
   <ItemGroup Condition="$(TargetFramework.StartsWith('net4'))">
     <Reference Include="System.Net.Http" />
   </ItemGroup>
+
+  <!-- Application tfms (.NETCoreApp, .NETFramework) need to use the same or higher version of .NETStandard's dependencies. -->
+  <Choose>
+    <When Condition="'$(TargetFramework)' == '$(NetCoreAppCurrent)'">
+      <ItemGroup>
+        <Reference Include="System.Text.Json" />
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <ProjectReference Include="$(LibrariesProjectRoot)System.Text.Json\src\System.Text.Json.csproj" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
 </Project>
