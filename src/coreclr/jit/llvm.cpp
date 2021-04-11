@@ -43,9 +43,6 @@ llvm::IRBuilder<>*                        _builder;
 std::unordered_map<unsigned int, Value*>* _sdsuMap;
 std::unordered_map<unsigned int, Value*>* _localsMap;
 
-// forward declarations
-FunctionType* getFunctionTypeForMethod(Compiler::Info info);
-
 extern "C" DLLEXPORT void registerLlvmCallbacks(void* thisPtr, const char* outputFileName, const char* triple, const char* dataLayout,
     const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*),
     const char* (*getMangledSymbolNamePtr)(void*, void*),
@@ -110,16 +107,6 @@ Value* mapTreeIdValue(unsigned int treeId, Value* valueRef)
 Value* getTreeIdValue(GenTree* op)
 {
     return _sdsuMap->at(op->gtTreeID);
-}
-
-FunctionType* getFunctionTypeForMethod(Compiler::Info info)
-{
-    if (info.compArgsCount != 0 || info.compRetType != TYP_VOID)
-    {
-        fatal(CORJIT_SKIPPED);
-    }
-    // all functions have shadow stack as first arg (i8*)
-    return FunctionType::get(Type::getVoidTy(_llvmContext), ArrayRef<Type*>(Type::getInt8PtrTy(_llvmContext)), false);
 }
 
 llvm::Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType) {
@@ -408,7 +395,7 @@ void Llvm::Compile(Compiler* pCompiler)
     _function    = _module->getFunction(mangledName);
     if (_function == nullptr)
     {
-        _function = Function::Create(getFunctionTypeForMethod(_info), Function::ExternalLinkage, 0U, mangledName,
+        _function = Function::Create(getFunctionTypeForMethodHandle(_info.compMethodHnd), Function::ExternalLinkage, 0U, mangledName,
                                      _module); // TODO: ExternalLinkage forced as linked from old module
     }
 
