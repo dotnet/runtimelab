@@ -93,7 +93,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
   <ItemGroup Condition="$(IlcSystemModule) == ''">
     <AutoInitializedAssemblies Include="System.Private.CoreLib" />
-    <AutoInitializedAssemblies Include="System.Private.StackTraceMetadata" Condition="$(IlcDisableReflection) != 'true' or $(IlcGenerateStackTraceData) == 'true'"/>
+    <AutoInitializedAssemblies Include="System.Private.StackTraceMetadata" Condition="$(IlcDisableReflection) != 'true' or $(IlcGenerateStackTraceData) == 'true'" />
     <AutoInitializedAssemblies Include="System.Private.TypeLoader" />
     <AutoInitializedAssemblies Include="System.Private.Reflection.Execution" Condition="$(IlcDisableReflection) != 'true'" />
     <AutoInitializedAssemblies Include="System.Private.DisabledReflection" Condition="$(IlcDisableReflection) == 'true'" />
@@ -103,16 +103,12 @@ The .NET Foundation licenses this file to you under the MIT license.
 
   <ItemGroup>
     <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll" />
-  </ItemGroup>
-  <ItemGroup>
+
     <!-- Exclude System.IO.Compression.Native.dll -->
     <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\*.Native.dll" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(IlcPgoOptimize)' == 'true'">
-    <MibcFile Include="$(IlcPath)\mibc\*.mibc" />
-  </ItemGroup>
 
-  <ItemGroup>
+    <MibcFile Include="$(IlcPath)\mibc\*.mibc" Condition="'$(IlcPgoOptimize)' == 'true'" />
+
     <DefaultFrameworkAssemblies Include="@(FrameworkAssemblies)" />
     <DefaultFrameworkAssemblies Include="@(PrivateSdkAssemblies)" />
   </ItemGroup>
@@ -130,7 +126,6 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ItemGroup>
   </Target>
 
-  <!-- Part of workaround for lack of secondary build artifact import - https://github.com/Microsoft/msbuild/issues/2807 -->
   <!-- The properties below need to be defined only after we've found the correct runtime package reference -->
   <Target Name="SetupProperties" DependsOnTargets="$(IlcSetupPropertiesDependsOn)" BeforeTargets="Publish">
     <PropertyGroup>
@@ -142,16 +137,12 @@ The .NET Foundation licenses this file to you under the MIT license.
     <!-- If running from a package these values need to be set again with the resolved IlcPath -->
     <ItemGroup>
       <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll" />
-    </ItemGroup>
-    <ItemGroup>
+
       <!-- Exclude System.IO.Compression.Native.dll -->
       <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\*.Native.dll" />
-    </ItemGroup>
-    <ItemGroup Condition="'$(IlcPgoOptimize)' == 'true'">
-      <MibcFile Include="$(IlcPath)\mibc\*.mibc" />
-    </ItemGroup>
 
-    <ItemGroup>
+      <MibcFile Include="$(IlcPath)\mibc\*.mibc" Condition="'$(IlcPgoOptimize)' == 'true'" />
+
       <DefaultFrameworkAssemblies Include="@(FrameworkAssemblies)" />
       <DefaultFrameworkAssemblies Include="@(PrivateSdkAssemblies)" />
     </ItemGroup>
@@ -299,7 +290,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="/EXPORT:DotNetRuntimeDebugHeader,DATA" Condition="'$(TargetOS)' == 'windows' and '$(NativeDebugSymbols)' == 'true'" />
       <CustomLinkerArg Include="/LIBPATH:&quot;%(AdditionalNativeLibraryDirectories.Identity)&quot;" Condition="'$(TargetOS)' == 'windows' and '@(AdditionalNativeLibraryDirectories->Count())' &gt; 0" />
       <CustomLinkerArg Include="-exported_symbols_list &quot;$(ExportsFile)&quot;" Condition="'$(TargetOS)' == 'OSX' and $(ExportsFile) != ''" />
-      <CustomLinkerArg Include="-Wl,--version-script=$(ExportsFile)" Condition="'$(TargetOS)' != 'windows' and '$(TargetOS)' != 'OSX' and $(ExportsFile) != ''"/>
+      <CustomLinkerArg Include="-Wl,--version-script=$(ExportsFile)" Condition="'$(TargetOS)' != 'windows' and '$(TargetOS)' != 'OSX' and $(ExportsFile) != ''" />
       <CustomLinkerArg Condition="Exists('$(_Win32ResFile)')" Include="&quot;$(_Win32ResFile)&quot;" />
       <CustomLinkerArg Include="@(LinkerArg)" />
     </ItemGroup>
