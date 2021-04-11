@@ -33,7 +33,13 @@ namespace System.Reflection.Runtime.Modules
             }
         }
 
-        public abstract override string Name { get; }
+        public sealed override string Name
+        {
+            get
+            {
+                return "<Unknown>";
+            }
+        }
 
         public sealed override bool Equals(object obj)
         {
