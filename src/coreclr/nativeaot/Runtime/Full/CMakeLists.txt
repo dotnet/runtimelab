@@ -15,14 +15,14 @@ if (CLR_CMAKE_TARGET_WIN32)
     preprocess_files(RUNTIME_SOURCES_ARCH_ASM ${RUNTIME_SOURCES_ARCH_ASM})
     if (CMAKE_GENERATOR MATCHES "Visual Studio")
       # Replaces .asm files in RUNTIME_SOURCES_ARCH_ASM with the corresponding .obj files
-      compile_asm(TARGET Runtime ASM_FILES ${RUNTIME_SOURCES_ARCH_ASM} OUTPUT_OBJECTS RUNTIME_SOURCES_ARCH_ASM)
+      compile_asm(TARGET Runtime ASM_FILES ${RUNTIME_SOURCES_ARCH_ASM} OUTPUT_OBJECTS RUNTIME_ARCH_ASM_OBJECTS)
     endif()
   endif()
 endif (CLR_CMAKE_TARGET_WIN32)
 
-add_library(Runtime STATIC ${COMMON_RUNTIME_SOURCES} ${FULL_RUNTIME_SOURCES} ${RUNTIME_SOURCES_ARCH_ASM})
+add_library(Runtime STATIC ${COMMON_RUNTIME_SOURCES} ${FULL_RUNTIME_SOURCES} ${RUNTIME_SOURCES_ARCH_ASM} ${RUNTIME_ARCH_ASM_OBJECTS})
 
-add_library(Runtime.ServerGC STATIC ${COMMON_RUNTIME_SOURCES} ${FULL_RUNTIME_SOURCES} ${RUNTIME_SOURCES_ARCH_ASM} ${SERVER_GC_SOURCES})
+add_library(Runtime.ServerGC STATIC ${COMMON_RUNTIME_SOURCES} ${FULL_RUNTIME_SOURCES} ${RUNTIME_SOURCES_ARCH_ASM} ${SERVER_GC_SOURCES} ${RUNTIME_ARCH_ASM_OBJECTS})
 
 target_compile_definitions(Runtime.ServerGC PRIVATE -DFEATURE_SVR_GC)
 
@@ -61,7 +61,7 @@ set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/AsmOffsets.inc" PROPERT
 # Avoid a race condition by adding this target as a dependency for both libraries.
 add_custom_target(
   RuntimeAsmHelpers
-  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/AsmOffsets.inc" "${RUNTIME_SOURCES_ARCH_ASM}"
+  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/AsmOffsets.inc" "${RUNTIME_ARCH_ASM_OBJECTS}"
 )
 
 add_dependencies(Runtime RuntimeAsmHelpers)
