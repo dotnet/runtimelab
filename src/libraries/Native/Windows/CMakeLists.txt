@@ -49,9 +49,8 @@ string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 add_compile_options(/EHa)         # enable C++ EH (w/ SEH exceptions)
 add_compile_options(/Zp8)         # pack structs on 8-byte boundary
 add_compile_options(/Gy)          # separate functions for linker
-add_compile_options(/Zc:wchar_t-) # C++ language conformance: wchar_t is NOT the native type, but a typedef
 add_compile_options(/Zc:forScope) # C++ language conformance: enforce Standard C++ for scoping rules
-string(REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+string(REPLACE "/GR " " " CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 add_compile_options(/GR-)         # disable C++ RTTI
 add_compile_options(/FC)          # use full pathnames in diagnostics
 add_compile_options(/MP)          # Build with Multiple Processes (number of processes equal to the number of processors)
@@ -85,8 +84,6 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 # TODO Unification debt https://github.com/dotnet/runtimelab/issues/106
 # Link Time Code Generation requires exact C++ compiler and linker version match
 # add_compile_options($<$<CONFIG:RELEASE>:/GL>)
-# add_compile_options($<$<CONFIG:RELEASE>:/O1>)
-add_compile_options($<$<CONFIG:RELEASE>:/O2>)
 
 list(APPEND __LinkLibraries $<$<CONFIG:DEBUG>:libcmtd.lib>)
 list(APPEND __LinkLibraries $<$<CONFIG:RELEASE>:libcmt.lib>)
