@@ -35,7 +35,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
       <TargetTriple />
       <TargetTriple Condition="'$(CrossCompileArch)' != ''">$(CrossCompileArch)-linux-gnu</TargetTriple>
-      <TargetTriple Condition="'$(CrossCompileArch)' != '' and $(CrossCompileRid.Contains('-musl-'))">$(CrossCompileArch)-alpine-linux-musl</TargetTriple>
+      <TargetTriple Condition="'$(CrossCompileArch)' != '' and ($(CrossCompileRid.StartsWith('linux-musl')) or $(CrossCompileRid.StartsWith('alpine')))">$(CrossCompileArch)-alpine-linux-musl</TargetTriple>
     </PropertyGroup>
 
     <ItemGroup>
