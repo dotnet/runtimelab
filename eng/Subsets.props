@@ -298,13 +298,13 @@
     <When Condition="$(_subset.Contains('+packs.product+'))">
       <ItemGroup Condition="'$(PgoInstrument)' != 'true'">
         <SharedFrameworkProjectToBuild Condition="'$(BuildMonoAOTCrossCompilerOnly)' != 'true'" Include="$(InstallerProjectRoot)pkg\sfx\Microsoft.NETCore.App\Microsoft.NETCore.App.Ref.sfxproj" />
-        <SharedFrameworkProjectToBuild Condition="'$(RuntimeFlavor)' != 'Mono'" Include="$(InstallerProjectRoot)pkg\sfx\Microsoft.NETCore.App\Microsoft.NETCore.App.Host.sfxproj" />
+        <SharedFrameworkProjectToBuild Include="$(InstallerProjectRoot)pkg\sfx\Microsoft.NETCore.App\Microsoft.NETCore.App.Host.sfxproj" />
         <SharedFrameworkProjectToBuild Condition="'$(RuntimeFlavor)' != 'Mono'" Include="$(InstallerProjectRoot)pkg\sfx\Microsoft.NETCore.App\Microsoft.NETCore.App.Crossgen2.sfxproj" />
-        <SharedFrameworkProjectToBuild Condition="'$(RuntimeFlavor)' != 'Mono'" Include="$(InstallerProjectRoot)pkg\sfx\installers\dotnet-host.proj" />
-        <SharedFrameworkProjectToBuild Condition="'$(RuntimeFlavor)' != 'Mono'" Include="$(InstallerProjectRoot)pkg\sfx\installers\dotnet-hostfxr.proj" />
-        <SharedFrameworkProjectToBuild Condition="'$(RuntimeFlavor)' != 'Mono'" Include="$(InstallerProjectRoot)pkg\sfx\installers\dotnet-runtime-deps\*.proj" />
+        <SharedFrameworkProjectToBuild Include="$(InstallerProjectRoot)pkg\sfx\installers\dotnet-host.proj" />
+        <SharedFrameworkProjectToBuild Include="$(InstallerProjectRoot)pkg\sfx\installers\dotnet-hostfxr.proj" />
+        <SharedFrameworkProjectToBuild Include="$(InstallerProjectRoot)pkg\sfx\installers\dotnet-runtime-deps\*.proj" />
         <SharedFrameworkProjectToBuild Condition="'$(MonoCrossAOTTargetOS)' != ''" Include="$(InstallerProjectRoot)pkg\sfx\Microsoft.NETCore.App\monocrossaot.sfxproj" />
-        <SharedFrameworkProjectToBuild Condition="'$(RuntimeFlavor)' != 'Mono'" Include="$(InstallerProjectRoot)pkg\sfx\bundle\Microsoft.NETCore.App.Bundle.bundleproj" />
+        <SharedFrameworkProjectToBuild Include="$(InstallerProjectRoot)pkg\sfx\bundle\Microsoft.NETCore.App.Bundle.bundleproj" />
       </ItemGroup>
       <ItemGroup>
         <SharedFrameworkProjectToBuild Condition="'$(BuildMonoAOTCrossCompilerOnly)' != 'true'" Include="$(InstallerProjectRoot)pkg\sfx\Microsoft.NETCore.App\Microsoft.NETCore.App.Runtime.sfxproj" />
