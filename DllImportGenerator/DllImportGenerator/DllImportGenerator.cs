@@ -128,9 +128,14 @@ namespace Microsoft.Interop
             context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
         }
 
-        private SyntaxTokenList StripLeadingTriviaFromTokenList(SyntaxTokenList tokenList)
+        private SyntaxTokenList StripTriviaFromModifiers(SyntaxTokenList tokenList)
         {
-            return tokenList.Replace(tokenList[0], tokenList[0].WithoutTrivia());
+            SyntaxToken[] strippedTokens = new SyntaxToken[tokenList.Count];
+            for (int i = 0; i < tokenList.Count; i++)
+            {
+                strippedTokens[i] = tokenList[i].WithoutTrivia();
+            }
+            return new SyntaxTokenList(strippedTokens);
         }
 
         private TypeDeclarationSyntax CreateTypeDeclarationWithoutTrivia(TypeDeclarationSyntax typeDeclaration)
@@ -151,7 +156,7 @@ namespace Microsoft.Interop
             // Create stub function
             var stubMethod = MethodDeclaration(stub.StubReturnType, userDeclaredMethod.Identifier)
                 .AddAttributeLists(stub.AdditionalAttributes)
-                .WithModifiers(StripLeadingTriviaFromTokenList(userDeclaredMethod.Modifiers))
+                .WithModifiers(StripTriviaFromModifiers(userDeclaredMethod.Modifiers))
                 .WithParameterList(ParameterList(SeparatedList(stub.StubParameters)))
                 .WithBody(stub.StubCode);
 
