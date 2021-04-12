@@ -14,7 +14,7 @@
     <!-- OSArchitecture does not report the true OS architecture for x86 and x64 processes running on Windows ARM64. -->
     <!-- The following condition checks those cases. -->
     <OSHostArch Condition="$([MSBuild]::IsOSPlatform('Windows')) and
-        ('$(PROCESSOR_ARCHITEW6432)' == 'ARM64' or Exists('$(SystemRoot)\System32\xtajit64.dll'))">arm64</OSHostArch>
+        $([System.Environment]::GetEnvironmentVariable('PROCESSOR_ARCHITECTURE', EnvironmentVariableTarget.Machine)) == 'ARM64'">arm64</OSHostArch>
 
     <IlcHostArch Condition="'$(IlcHostArch)' == ''">$(OSHostArch)</IlcHostArch>
     <IlcHostPackageName>runtime.$(OSIdentifier)-$(IlcHostArch).Microsoft.DotNet.ILCompiler</IlcHostPackageName>
