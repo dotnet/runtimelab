@@ -1271,7 +1271,7 @@ namespace Internal.JitInterface
 
                 if (typeOrMethodContext is TypeDesc typeContext)
                 {
-                    Debug.Assert(typeContext.HasSameTypeDefinition(owningMethod.OwningType));
+                    Debug.Assert(typeContext.HasSameTypeDefinition(owningMethod.OwningType) || typeContext.IsArray);
                     typeInst = typeContext.Instantiation;
                 }
                 else
