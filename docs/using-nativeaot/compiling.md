@@ -68,7 +68,7 @@ Similarly, to target linux-arm64 on a Linux x64 host, in addition to the `Micros
 <PackageReference Include="Microsoft.DotNet.ILCompiler; runtime.linux-x64.Microsoft.DotNet.ILCompiler" Version="6.0.0-preview.4.21210.1" />
 ```
 
-You also need to specify the sysroot directory for Clang using the `SysRoot` property. For example, assuming you are using one of ARM64-targeting [Docker images](../workflow/building/coreclr/linux-instructions.md#Docker-Images) employed for cross-compilation by the Runtime repo, you may publish for linux-arm64 with the following command:
+You also need to specify the sysroot directory for Clang using the `SysRoot` property. For example, assuming you are using one of ARM64-targeting [Docker images](../workflow/building/coreclr/linux-instructions.md#Docker-Images) employed for cross-compilation by this repo, you may publish for linux-arm64 with the following command:
 ```bash
 > dotnet publish -r linux-arm64 -c Release -p:DisableUnsupportedError=true -p:CppCompilerAndLinker=clang-9 -p:SysRoot=/crossrootfs/arm64
 ```
