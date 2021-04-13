@@ -44,6 +44,7 @@ internal class ReflectionTest
         TestParameterAttributes.Run();
         TestPropertyAndEventAttributes.Run();
         TestNecessaryEETypeReflection.Run();
+        TestRuntimeLab929Regression.Run();
 
         //
         // Mostly functionality tests
@@ -1363,6 +1364,39 @@ internal class ReflectionTest
 #if !MULTIMODULE_BUILD
             Assert.Equal("mscorlib", Assembly.Load("mscorlib, PublicKeyToken=cccccccccccccccc").GetName().Name);
 #endif
+        }
+    }
+
+    class TestRuntimeLab929Regression
+    {
+        static Type s_atom = typeof(Atom);
+
+        class Atom { }
+
+        abstract class Declaring
+        {
+            public abstract Type DoTheGenericThing<T>();
+        }
+
+        class Defining : Declaring
+        {
+            public override Type DoTheGenericThing<T>() => typeof(T[,,,]);
+        }
+
+        class Gen<T>
+        {
+            private static Declaring s_declaring = new Defining();
+
+            public static Type GetTheThing() => s_declaring.DoTheGenericThing<T>();
+        }
+
+        public static void Run()
+        {
+            // We don't want the analysis to see what Gen is instantiated with
+            // so that we force it to make up an instantiation argument.
+            var t = (Type)typeof(Gen<>).MakeGenericType(s_atom).GetMethod("GetTheThing").Invoke(null, Array.Empty<object>());
+            Assert.Equal(typeof(Atom), t.GetElementType());
+            Assert.Equal(4, t.GetArrayRank());
         }
     }
 
