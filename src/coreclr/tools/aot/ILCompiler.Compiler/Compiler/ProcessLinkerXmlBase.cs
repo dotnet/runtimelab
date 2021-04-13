@@ -47,6 +47,11 @@ namespace ILCompiler
             return _reader.GetAttribute(attribute);
         }
 
+        protected bool IsEmpty()
+        {
+            return _reader.IsEmptyElement;
+        }
+
         private void ProcessAssemblies()
         {
             while (_reader.IsStartElement())

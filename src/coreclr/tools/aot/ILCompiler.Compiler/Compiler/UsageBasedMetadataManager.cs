@@ -797,7 +797,7 @@ namespace ILCompiler
             protected override void ProcessAttribute(TypeDesc type)
             {
                 string internalValue = GetAttribute("internal");
-                if (internalValue == "RemoveAttributeInstances")
+                if (internalValue == "RemoveAttributeInstances" && IsEmpty())
                 {
                     _removedAttributes.Add(type);
                 }
