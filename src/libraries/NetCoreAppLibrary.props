@@ -58,6 +58,7 @@
       System.Memory;
       System.Net.Http;
       System.Net.Http.Json;
+      System.Net.Http.Primitives;
       System.Net.HttpListener;
       System.Net.Mail;
       System.Net.NameResolution;
