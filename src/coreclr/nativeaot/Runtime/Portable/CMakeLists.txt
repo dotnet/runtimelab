@@ -28,4 +28,4 @@ add_custom_command(
    DEPENDS "${RUNTIME_DIR}/AsmOffsets.cpp" "${RUNTIME_DIR}/AsmOffsets.h"
 )
 
-install_static_library(PortableRuntime aotsdk)
+install_static_library(PortableRuntime aotsdk nativeaot)

@@ -4,6 +4,7 @@ add_component(alljits)
 add_component(runtime)
 add_component(paltests paltests_install)
 add_component(iltools)
+add_component(nativeaot)
 
 # Define coreclr_all as the fallback component and make every component depend on this component.
 # iltools should be a minimal subset, so don't add a dependency on coreclr_misc
