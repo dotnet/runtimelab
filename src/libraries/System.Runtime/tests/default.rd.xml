@@ -1,7 +1,9 @@
 <Directives>
   <Application>
     <Assembly Name="mscorlib" />
-    <Assembly Name="System.Threading.Overlapped" />
+    <Assembly Name="System.Threading.Overlapped">
+      <Type Name="System.Threading.Overlapped" Dynamic="Required All" />
+    </Assembly>
 
     <Assembly Name="System.Runtime.Tests">
       <Type Name="System.Tests.EnumTests">
