@@ -113,7 +113,7 @@ namespace ILCompiler
             if (method.OwningType.IsGenericDefinition || method.OwningType.ContainsSignatureVariables(treatGenericParameterLikeSignatureVariable: true))
             {
                 TypeDesc owningType = method.OwningType.GetTypeDefinition();
-                Instantiation inst = TypeExtensions.GetInstantiationThatMeetsConstraints(owningType.Instantiation, allowCanon: method.Instantiation.Length == 0);
+                Instantiation inst = TypeExtensions.GetInstantiationThatMeetsConstraints(owningType.Instantiation, allowCanon: false);
                 if (inst.IsNull)
                 {
                     return false;
