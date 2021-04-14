@@ -260,7 +260,7 @@ namespace System.Reflection.Tests
         }
 
         public static IEnumerable<object[]> Methods =>
-            Module.GetMethods().Select(m => new object[] { m });
+            typeof(ModuleTests).GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly).Select(m => new object[] { m });
 
         [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(Methods))]
@@ -289,7 +289,7 @@ namespace System.Reflection.Tests
         }
 
         public static IEnumerable<object[]> Fields =>
-            Module.GetFields().Select(f => new object[] { f });
+            typeof(ModuleTests).GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly).Select(f => new object[] { f });
 
         [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(Fields))]

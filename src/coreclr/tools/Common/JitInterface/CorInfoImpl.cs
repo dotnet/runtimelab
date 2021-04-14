@@ -599,7 +599,7 @@ namespace Internal.JitInterface
                 }
             }
 
-            if (found && memberFunctionVariant)
+            if (memberFunctionVariant)
             {
                 callConv = GetMemberFunctionCallingConventionVariant(callConv);
             }
@@ -610,6 +610,8 @@ namespace Internal.JitInterface
         private bool TryGetUnmanagedCallingConventionFromModOpt(MethodSignature signature, out CorInfoCallConvExtension callConv, out bool suppressGCTransition)
         {
             suppressGCTransition = false;
+            // Default to managed since in the modopt case we need to differentiate explicitly using a calling convention that matches the default
+            // and not specifying a calling convention at all and using the implicit default case in P/Invoke stub inlining.
             callConv = CorInfoCallConvExtension.Managed;
             if (!signature.HasEmbeddedSignatureData || signature.GetEmbeddedSignatureData() == null)
                 return false;
@@ -656,9 +658,10 @@ namespace Internal.JitInterface
                 }
             }
 
-            if (found && memberFunctionVariant)
+            if (memberFunctionVariant)
             {
-                callConv = GetMemberFunctionCallingConventionVariant(callConv);
+                callConv = GetMemberFunctionCallingConventionVariant(found ? callConv : (CorInfoCallConvExtension)PlatformDefaultUnmanagedCallingConvention());
+                found = true;
             }
 
             return found;
@@ -1584,8 +1587,7 @@ namespace Internal.JitInterface
 
         private bool isValueClass(CORINFO_CLASS_STRUCT_* cls)
         {
-            TypeDesc type = HandleToObject(cls);
-            return type.IsValueType || type.IsPointer || type.IsFunctionPointer;
+            return HandleToObject(cls).IsValueType;
         }
 
         private CorInfoInlineTypeCheck canInlineTypeCheck(CORINFO_CLASS_STRUCT_* cls, CorInfoInlineTypeCheckSource source)
@@ -1606,10 +1608,6 @@ namespace Internal.JitInterface
             // TODO: Support for verification (CORINFO_FLG_GENERIC_TYPE_VARIABLE)
 
             CorInfoFlag result = (CorInfoFlag)0;
-
-            // CoreCLR uses UIntPtr in place of pointers here
-            if (type.IsPointer || type.IsFunctionPointer)
-                type = _compilation.TypeSystemContext.GetWellKnownType(WellKnownType.UIntPtr);
 
             var metadataType = type as MetadataType;
 

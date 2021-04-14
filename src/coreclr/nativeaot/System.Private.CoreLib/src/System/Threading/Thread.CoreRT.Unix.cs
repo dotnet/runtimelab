@@ -148,8 +148,6 @@ namespace System.Threading
         }
 
         public void Interrupt() => WaitSubsystem.Interrupt(this);
-        internal static void UninterruptibleSleep0() => WaitSubsystem.UninterruptibleSleep0();
-        private static void SleepInternal(int millisecondsTimeout) => WaitSubsystem.Sleep(millisecondsTimeout);
 
         internal const bool ReentrantWaitsEnabled = false;
 

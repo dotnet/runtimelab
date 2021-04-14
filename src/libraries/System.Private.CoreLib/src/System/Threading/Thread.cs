@@ -334,6 +334,19 @@ namespace System.Threading
             }
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)] // Slow path method. Make sure that the caller frame does not pay for PInvoke overhead.
+        public static void Sleep(int millisecondsTimeout)
+        {
+            if (millisecondsTimeout < Timeout.Infinite)
+                throw new ArgumentOutOfRangeException(nameof(millisecondsTimeout), millisecondsTimeout, SR.ArgumentOutOfRange_NeedNonNegOrNegative1);
+            SleepInternal(millisecondsTimeout);
+        }
+
+#if !CORERT
+        /// <summary>Returns the operating system identifier for the current thread.</summary>
+        internal static ulong CurrentOSThreadId => GetCurrentOSThreadId();
+#endif
+
         public ExecutionContext? ExecutionContext => ExecutionContext.Capture();
 
         public string? Name
