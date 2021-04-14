@@ -14,6 +14,7 @@ using ObjectData = ILCompiler.DependencyAnalysis.ObjectNode.ObjectData;
 using LLVMSharp.Interop;
 using ILCompiler.DependencyAnalysis;
 using Internal.IL;
+using Internal.TypeSystem.Ecma;
 
 namespace ILCompiler.DependencyAnalysis
 {
@@ -78,18 +79,24 @@ namespace ILCompiler.DependencyAnalysis
                 ThrowHelper.ThrowInvalidProgramException();
             }
 
+            return AddOrReturnGlobalSymbol(module, symbol, nameMangler);
+        }
+
+        public static LLVMValueRef AddOrReturnGlobalSymbol(LLVMModuleRef module, ISymbolNode symbol, NameMangler nameMangler)
+        {
             string symbolAddressGlobalName = symbol.GetMangledName(nameMangler) + "___SYMBOL";
             LLVMValueRef symbolAddress;
             if (s_symbolValues.TryGetValue(symbolAddressGlobalName, out symbolAddress))
             {
                 return symbolAddress;
             }
+
             var intPtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0);
-            var myGlobal = module.AddGlobalInAddressSpace(intPtrType, symbolAddressGlobalName, 0);
-            myGlobal.IsGlobalConstant = true;
-            myGlobal.Linkage = LLVMLinkage.LLVMInternalLinkage;
-            s_symbolValues.Add(symbolAddressGlobalName, myGlobal);
-            return myGlobal;
+            symbolAddress = module.AddGlobalInAddressSpace(intPtrType, symbolAddressGlobalName, 0);
+            symbolAddress.IsGlobalConstant = true;
+            symbolAddress.Linkage = LLVMLinkage.LLVMInternalLinkage;
+            s_symbolValues.Add(symbolAddressGlobalName, symbolAddress);
+            return symbolAddress;
         }
 
         private static int GetNumericOffsetFromBaseSymbolValue(ISymbolNode symbol)
@@ -729,6 +736,12 @@ namespace ILCompiler.DependencyAnalysis
                         continue;
                     }
 
+                    if (node is ReadyToRunHelperNode readyToRunHelperNode)
+                    {
+                        objectWriter.GetCodeForReadyToRunHelper(compilation, readyToRunHelperNode, factory);
+                        continue;
+                    }
+
                     if (node is TentativeMethodNode tentativeMethodNode)
                     {
                         objectWriter.GetCodeForTentativeMethod(compilation, tentativeMethodNode, factory);
@@ -1027,6 +1040,91 @@ namespace ILCompiler.DependencyAnalysis
             else
             {
                 builder.BuildRetVoid();
+            }
+        }
+
+        private void GetCodeForReadyToRunHelper(LLVMCodegenCompilation compilation, ReadyToRunHelperNode node, NodeFactory factory)
+        {
+            LLVMBuilderRef builder = compilation.Module.Context.CreateBuilder();
+
+            LLVMValueRef helperFunc = Module.AddFunction(node.GetMangledName(factory.NameMangler), LLVMTypeRef.CreateFunction(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) /* shadow stack */}));
+
+            var helperBlock = helperFunc.AppendBasicBlock("readyToRunHelper");
+            builder.PositionAtEnd(helperBlock);
+            var importer = new ILImporter(builder, compilation, Module, helperFunc, null);
+
+            LLVMValueRef resVar;
+            switch (node.Id)
+            {
+                case ReadyToRunHelperId.GetNonGCStaticBase:
+                    {
+                        MetadataType target = (MetadataType)node.Target;
+                        
+                        var symbolNode = factory.TypeNonGCStaticsSymbol(target);
+                        LLVMValueRef addressOfAddress = GetSymbolValuePointer(Module, symbolNode, factory.NameMangler, false);
+                        LLVMValueRef ptr = builder.BuildLoad(addressOfAddress, "LoadAddressOfSymbolNode");
+
+                        if (compilation.HasLazyStaticConstructor(target))
+                        {
+                            importer.OutputCodeForTriggerCctor(target, ptr);
+                        }
+                        resVar = builder.BuildPointerCast(ptr, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
+                    }
+                    break;
+                case ReadyToRunHelperId.GetGCStaticBase:
+                    {
+                        MetadataType target = (MetadataType)node.Target;
+                        
+                        var symbolNode = factory.TypeGCStaticsSymbol(target);
+                        LLVMValueRef addressOfAddress = GetSymbolValuePointer(Module, symbolNode, factory.NameMangler, false);
+                        LLVMValueRef basePtrPtr = builder.BuildLoad(addressOfAddress, "LoadAddressOfSymbolNode");
+                        LLVMValueRef ptr = builder.BuildLoad(builder.BuildLoad(builder.BuildPointerCast(basePtrPtr, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "castBasePtrPtr"), "basePtr"), "base");
+                        
+                        if (compilation.HasLazyStaticConstructor(target))
+                        {
+                            var nonGcSymbolNode = factory.TypeNonGCStaticsSymbol(target);
+                            LLVMValueRef nonGcAddressOfAddress = GetSymbolValuePointer(Module, nonGcSymbolNode, factory.NameMangler, false);
+                            LLVMValueRef nonGcBase = builder.BuildLoad(nonGcAddressOfAddress, "LoadAddressOfSymbolNode");
+                        
+                            importer.OutputCodeForTriggerCctor(target, nonGcBase);
+                        }
+                        resVar = builder.BuildPointerCast(ptr, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
+                    }
+                    break;
+                case ReadyToRunHelperId.GetThreadStaticBase:
+                    {
+                        throw new NotImplementedException();
+                        // MetadataType target = (MetadataType)node.Target;
+                        //
+                        // if (compilation.HasLazyStaticConstructor(target))
+                        // {
+                        //     GenericLookupResult nonGcRegionLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
+                        //     var threadStaticBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcRegionLookup, ctx, "tsGep");
+                        //     importer.OutputCodeForTriggerCctor(target, threadStaticBase);
+                        // }
+                        // resVar = importer.OutputCodeForGetThreadStaticBaseForType(resVar).ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), builder);
+                    }
+
+                case ReadyToRunHelperId.DelegateCtor:
+                    {
+                        throw new NotImplementedException();
+                        // DelegateCreationInfo target = (DelegateCreationInfo)node.Target;
+                        // MethodDesc constructor = target.Constructor.Method;
+                        // var fatPtr = ILImporter.MakeFatPointer(builder, resVar, compilation);
+                        // importer.OutputCodeForDelegateCtorInit(builder, helperFunc, constructor, fatPtr);
+                    }
+
+                default:
+                    throw new NotImplementedException();
+            }
+
+            if (node.Id == ReadyToRunHelperId.DelegateCtor)
+            {
+                builder.BuildRetVoid();
+            }
+            else
+            {
+                builder.BuildRet(resVar);
             }
         }
 

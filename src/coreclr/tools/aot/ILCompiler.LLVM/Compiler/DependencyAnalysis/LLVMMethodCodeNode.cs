@@ -63,6 +63,13 @@ namespace ILCompiler.DependencyAnalysis
 
         public void SetCode(ObjectNode.ObjectData data, bool isFoldable)
         {
+            DependencyListEntry[] entries = new DependencyListEntry[data.Relocs.Length];
+            for (int i = 0; i < data.Relocs.Length; i++)
+            {
+                entries[i] = new DependencyListEntry(data.Relocs[i].Target, "ObjectData Reloc");
+            }
+
+            _dependencies = new DependencyList(entries);
         }
 
         public void InitializeFrameInfos(FrameInfo[] frameInfos)

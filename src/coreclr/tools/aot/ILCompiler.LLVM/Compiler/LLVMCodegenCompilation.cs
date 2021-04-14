@@ -68,7 +68,7 @@ namespace ILCompiler
 
             CorInfoImpl.Shutdown(); // writes the LLVM bitcode
 
-            Console.WriteLine($"RyuJIT compilation results, total methods {totalMethodCount} RyuJit Methods {ryuJitMethodCount} % {((decimal)ryuJitMethodCount * 100 / totalMethodCount):n4}");
+            Console.WriteLine($"RyuJIT compilation results, total methods {totalMethodCount} RyuJit Methods {ryuJitMethodCount} {((decimal)ryuJitMethodCount * 100 / totalMethodCount):n4}%");
         }
 
         protected override void ComputeDependencyNodeDependencies(List<DependencyNodeCore<NodeFactory>> obj)
@@ -128,7 +128,6 @@ namespace ILCompiler
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target, Module.DataLayout);
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
-                    methodCodeNodeNeedingCode.SetDependencies(new DependencyNodeCore<NodeFactory>.DependencyList()); // TODO: how to track - check RyuJITCompilation
                     // TODO: delete this external function when old module is gone
                     LLVMValueRef externFunc = Module.AddFunction(NodeFactory.NameMangler.GetMangledMethodName(method).ToString(), GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
                     externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
@@ -236,6 +235,11 @@ namespace ILCompiler
         public TypeDesc GetWellKnownType(WellKnownType wellKnownType)
         {
             return TypeSystemContext.GetWellKnownType(wellKnownType);
+        }
+
+        public override void AddOrReturnGlobalSymbol(ISortableSymbolNode gcStaticSymbol, NameMangler nameMangler)
+        {
+            LLVMObjectWriter.AddOrReturnGlobalSymbol(Module, gcStaticSymbol, nameMangler);
         }
     }
 }
