@@ -378,17 +378,6 @@ namespace System.Threading
 
         public void Interrupt() { throw new PlatformNotSupportedException(); }
 
-        internal static void UninterruptibleSleep0()
-        {
-            Interop.Kernel32.Sleep(0);
-        }
-
-        private static void SleepInternal(int millisecondsTimeout)
-        {
-            Debug.Assert(millisecondsTimeout >= -1);
-            Interop.Kernel32.Sleep((uint)millisecondsTimeout);
-        }
-
         //
         // Suppresses reentrant waits on the current thread, until a matching call to RestoreReentrantWaits.
         // This should be used by code that's expected to be called inside the STA message pump, so that it won't
