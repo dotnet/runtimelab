@@ -67,5 +67,5 @@ add_custom_target(
 add_dependencies(Runtime RuntimeAsmHelpers)
 add_dependencies(Runtime.ServerGC RuntimeAsmHelpers)
 
-install_static_library(Runtime aotsdk)
-install_static_library(Runtime.ServerGC aotsdk)
+install_static_library(Runtime aotsdk nativeaot)
+install_static_library(Runtime.ServerGC aotsdk nativeaot)

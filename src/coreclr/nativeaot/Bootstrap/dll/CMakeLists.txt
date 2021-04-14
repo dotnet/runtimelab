@@ -8,4 +8,4 @@ set(SOURCES
 
 add_library(bootstrapperdll STATIC ${SOURCES})
 
-install_static_library(bootstrapperdll aotsdk)
+install_static_library(bootstrapperdll aotsdk nativeaot)
