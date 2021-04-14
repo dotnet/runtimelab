@@ -177,7 +177,7 @@ namespace System
 
             static void Write(string source, ref Span<char> dest)
             {
-                source.AsSpan().CopyTo(dest);
+                source.CopyTo(dest);
                 dest = dest.Slice(source.Length);
             }
         }
