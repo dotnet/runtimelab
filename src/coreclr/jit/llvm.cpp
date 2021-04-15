@@ -204,13 +204,13 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
     }
     if (node->gtType == var_types::TYP_REF)
     {
-        //TODO: delete this check, just handling null ptr stores for now, other TYP_REFs include string constants which are not implemented
         ssize_t intCon = node->AsIntCon()->gtIconVal;
         if (node->IsIconHandle(GTF_ICON_STR_HDL))
         {
             const char* symbolName = (*_getMangledSymbolName)(_thisPtr, (void *)(node->AsIntCon()->IconValue()));
             return mapTreeIdValue(node->gtTreeID, builder.CreateLoad(getOrCreateExternalSymbol(symbolName)));
         }
+        //TODO: delete this check, just handling null ptr stores for now (and GTF_ICON_STR_HDL above)
         if (intCon != 0)
         {
             failFunctionCompilation();
