@@ -87,7 +87,7 @@ void Llvm::llvmShutdown()
 //    Module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 }
 
-void failFunctionCompilation()
+[[ noreturn ]] void failFunctionCompilation()
 {
     _function->dropAllReferences();
     _function->eraseFromParent();
@@ -120,6 +120,16 @@ FunctionType* getFunctionTypeForMethod(Compiler::Info info)
     return FunctionType::get(Type::getVoidTy(_llvmContext), ArrayRef<Type*>(Type::getInt8PtrTy(_llvmContext)), false);
 }
 
+Value* getOrCreateExternalSymbol(const char* symbolName)
+{
+    Value* symbol = _module->getGlobalVariable(symbolName);
+    if (symbol == nullptr)
+    {
+        symbol = new llvm::GlobalVariable(*_module, Type::getInt32PtrTy(_llvmContext), true, llvm::GlobalValue::LinkageTypes::ExternalLinkage, (llvm::Constant*)nullptr, symbolName);
+    }
+    return symbol;
+}
+
 Function* getOrCreateRhpAssignRef()
 {
     Function* llvmFunc = _module->getFunction("RhpAssignRef");
@@ -128,6 +138,22 @@ Function* getOrCreateRhpAssignRef()
         llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext), ArrayRef<Type*>{Type::getInt8PtrTy(_llvmContext), Type::getInt8PtrTy(_llvmContext)}, false), Function::ExternalLinkage, 0U, "RhpAssignRef", _module); // TODO: ExternalLinkage forced as linked from old module
     }
     return llvmFunc;
+}
+
+Value* castIfNecessary(llvm::IRBuilder<>& builder, Value* source, Type* valueType)
+{
+    Type* sourceType = source->getType();
+    if (sourceType == valueType)
+        return source;
+
+    Type::TypeID toStoreTypeID = sourceType->getTypeID();
+    Type::TypeID valueTypeKind = valueType->getTypeID();
+
+    if (toStoreTypeID == Type::TypeID::PointerTyID && valueTypeKind == Type::TypeID::PointerTyID)
+    {
+        return builder.CreatePointerCast(source, valueType, "CastPtr");
+    }
+    failFunctionCompilation();
 }
 
 void emitDoNothingCall(llvm::IRBuilder<>& builder)
@@ -160,18 +186,14 @@ Value* buildCall(llvm::IRBuilder<>& builder, GenTree* node)
             Function* llvmFunc = _module->getFunction(symbolName);
             if (llvmFunc == nullptr)
             {
-                llvmFunc = Function::Create(FunctionType::get(Type::getInt8PtrTy(_llvmContext), ArrayRef<Type*>(Type::getInt8PtrTy(_llvmContext)), false), Function::ExternalLinkage, 0U, symbolName, _module); // TODO: ExternalLinkage forced as linked from old module
+                llvmFunc = Function::Create(FunctionType::get(Type::getInt8PtrTy(_llvmContext), ArrayRef<Type*>(Type::getInt8PtrTy(_llvmContext)), false), Function::ExternalLinkage, 0U, symbolName, _module); // TODO: ExternalLinkage forced as defined in ILC module
             }
             // replacement for _info.compCompHnd->recordRelocation(nullptr, gtCall->gtEntryPoint.handle, IMAGE_REL_BASED_REL32);
             (*_addCodeReloc)(_thisPtr, gtCall->gtEntryPoint.handle);
             return mapTreeIdValue(node->gtTreeID, builder.CreateCall(llvmFunc, _function->getArg(0)));
         }
-        else failFunctionCompilation();
     }
-    else failFunctionCompilation();
-
-    // unreachable
-    fatal(CORJIT_SKIPPED);
+    failFunctionCompilation();
 }
 
 Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
@@ -182,8 +204,13 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
     }
     if (node->gtType == var_types::TYP_REF)
     {
-        //TODO: delete this check, just handling null ptr stores for now, other TYP_REFs include string constants which are not implemented
         ssize_t intCon = node->AsIntCon()->gtIconVal;
+        if (node->IsIconHandle(GTF_ICON_STR_HDL))
+        {
+            const char* symbolName = (*_getMangledSymbolName)(_thisPtr, (void *)(node->AsIntCon()->IconValue()));
+            return mapTreeIdValue(node->gtTreeID, builder.CreateLoad(getOrCreateExternalSymbol(symbolName)));
+        }
+        //TODO: delete this check, just handling null ptr stores for now (and GTF_ICON_STR_HDL above)
         if (intCon != 0)
         {
             failFunctionCompilation();
@@ -192,9 +219,6 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
         return mapTreeIdValue(node->gtTreeID, builder.CreateIntToPtr(builder.getInt32(intCon), Type::getInt8PtrTy(_llvmContext))); // TODO: wasm64
     }
     failFunctionCompilation();
-
-    // unreachable
-    fatal(CORJIT_SKIPPED);
 }
 
 void importStoreInd(llvm::IRBuilder<>& builder, GenTree* node)
@@ -209,7 +233,7 @@ void importStoreInd(llvm::IRBuilder<>& builder, GenTree* node)
     }
 
     // RhpAssignRef will never reverse PInvoke, so do not need to store the shadow stack here
-    builder.CreateCall(getOrCreateRhpAssignRef(), ArrayRef<Value*>{address, toStore});
+    builder.CreateCall(getOrCreateRhpAssignRef(), ArrayRef<Value*>{address, castIfNecessary(builder, toStore, Type::getInt8PtrTy(_llvmContext))});
 }
 
 Value* visitNode(llvm::IRBuilder<> &builder, GenTree* node)
