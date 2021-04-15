@@ -23,6 +23,26 @@ namespace System.Text.RegularExpressions.Tests
         internal static RegexOptions DFA = (RegexOptions)0x400;
 
         [Fact]
+        public void SRMPrefixBugFixTest()
+        {
+            var re1 = new Regex("(a|ba)c", DFA);
+            var match1 = re1.Match("bac");
+            Assert.True(match1.Success);
+            Assert.Equal(0, match1.Index);
+            Assert.Equal(3, match1.Length);
+            //---
+            var match2 = re1.Match("ac");
+            Assert.True(match2.Success);
+            Assert.Equal(0, match2.Index);
+            Assert.Equal(2, match2.Length);
+            //---
+            var match3 = re1.Match("baacd");
+            Assert.True(match3.Success);
+            Assert.Equal(2, match3.Index);
+            Assert.Equal(2, match3.Length);
+        }
+
+        [Fact]
         public void BasicSRMTestBorderAnchors()
         {
             var re1 = new Regex(@"\B x", DFA);
