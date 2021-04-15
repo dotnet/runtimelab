@@ -9,6 +9,8 @@ namespace Internal.JitInterface
 {
     public unsafe sealed partial class CorInfoImpl
     {
+        public static string GlobalSymbolSuffix = "___SYMBOL";
+
         [UnmanagedCallersOnly]
         public static void addCodeReloc(IntPtr thisHandle, void* handle)
         {
@@ -59,7 +61,7 @@ namespace Internal.JitInterface
             node.AppendMangledName(_this._compilation.NameMangler, sb);
             if (node is FrozenStringNode)
             {
-                sb.Append("___SYMBOL");
+                sb.Append(GlobalSymbolSuffix);
             }
             return (byte*)_this.GetPin(sb.UnderlyingArray);
         }

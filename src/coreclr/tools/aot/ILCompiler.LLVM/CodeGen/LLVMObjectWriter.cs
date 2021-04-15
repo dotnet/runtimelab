@@ -14,6 +14,7 @@ using ObjectData = ILCompiler.DependencyAnalysis.ObjectNode.ObjectData;
 using LLVMSharp.Interop;
 using ILCompiler.DependencyAnalysis;
 using Internal.IL;
+using Internal.JitInterface;
 using Internal.TypeSystem.Ecma;
 
 namespace ILCompiler.DependencyAnalysis
@@ -23,8 +24,6 @@ namespace ILCompiler.DependencyAnalysis
     /// </summary>
     internal class LLVMObjectWriter : IDisposable
     {
-        public static string GlobalSymbolSuffix = "___SYMBOL";
-
         private string GetBaseSymbolName(ISymbolNode symbol, NameMangler nameMangler, bool objectWriterUse = false)
         {
             if (symbol is LLVMMethodCodeNode || symbol is LLVMBlockRefNode)
@@ -86,7 +85,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public static LLVMValueRef AddOrReturnGlobalSymbol(LLVMModuleRef module, ISymbolNode symbol, NameMangler nameMangler)
         {
-            string symbolAddressGlobalName = symbol.GetMangledName(nameMangler) + GlobalSymbolSuffix;
+            string symbolAddressGlobalName = symbol.GetMangledName(nameMangler) + CorInfoImpl.GlobalSymbolSuffix;
             LLVMValueRef symbolAddress;
             if (s_symbolValues.TryGetValue(symbolAddressGlobalName, out symbolAddress))
             {
@@ -463,7 +462,7 @@ namespace ILCompiler.DependencyAnalysis
         
         public void EmitSymbolDef(LLVMValueRef realSymbol, string symbolIdentifier, int offsetFromSymbolName)
         {
-            string symbolAddressGlobalName = symbolIdentifier + GlobalSymbolSuffix;
+            string symbolAddressGlobalName = symbolIdentifier + CorInfoImpl.GlobalSymbolSuffix;
             LLVMValueRef symbolAddress;
             var intType = LLVMTypeRef.Int32;
             if (s_symbolValues.TryGetValue(symbolAddressGlobalName, out symbolAddress))
