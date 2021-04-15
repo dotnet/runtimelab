@@ -54,6 +54,7 @@ internal class ReflectionTest
         TestInstanceFields.Run();
         TestReflectionInvoke.Run();
 #if !CODEGEN_CPP
+        TypeConstructionTest.Run();
         TestThreadStaticFields.Run();
         TestByRefReturnInvoke.Run();
         TestAssemblyLoad.Run();
@@ -677,49 +678,49 @@ internal class ReflectionTest
         {
             Console.WriteLine(nameof(TestAttributeExpressions));
 
-            // We don't create EETypes for types referenced from typeof which makes
-            // getting their constructed version to fail at runtime because
-            // we place restrictions on on the ability of getting System.Type for
-            // constructed types.
-            //
-            // The workaround is to put some dataflow annotations on the Type-typed
-            // parameter/property/fields.
-            //
-            // This is testing that we get an actionable exception message.
-            //
-            // The reason why we don't create EETypes for these is size -
-            // and one wouldn't be able to do much with just the type anyway.
-            // We would need at least some methods and at that point we have reflectable
-            // methods and therefore an EEType.
-
-            try
-            {
-                typeof(Holder1).GetCustomAttribute<TypeAttribute>();
+            const string attr1expected = "ReflectionTest+TestAttributeExpressions+FirstNeverUsedType*[,]";
+            TypeAttribute attr1 = typeof(Holder1).GetCustomAttribute<TypeAttribute>();
+            if (attr1.SomeType.ToString() != attr1expected)
                 throw new Exception();
-            }
-            catch (Exception ex)
-            {
-                if (!ex.ToString().Contains("ReflectionTest+TestAttributeExpressions+FirstNeverUsedType*[,]"))
-                    throw;
-            }
 
+            // We don't expect to have an EEType because a mention of a type in the custom attribute
+            // blob is not a sufficient condition to create EETypes.
+            string exceptionString1 = "";
             try
             {
-                typeof(Holder2).GetCustomAttribute<TypeAttribute>();
+                _ = attr1.SomeType.TypeHandle;
             }
             catch (Exception ex)
             {
-                if (!ex.ToString().Contains("ReflectionTest+TestAttributeExpressions+Gen`1[ReflectionTest+TestAttributeExpressions+SecondNeverUsedType]"))
-                    throw;
+                exceptionString1 = ex.Message;
             }
+            if (!exceptionString1.Contains(attr1expected))
+                throw new Exception(exceptionString1);
+
+            const string attr2expected = "ReflectionTest+TestAttributeExpressions+Gen`1[ReflectionTest+TestAttributeExpressions+SecondNeverUsedType]";
+            TypeAttribute attr2 = typeof(Holder2).GetCustomAttribute<TypeAttribute>();
+            if (attr2.SomeType.ToString() != attr2expected)
+                throw new Exception();
+
+            // We don't expect to have an EEType because a mention of a type in the custom attribute
+            // blob is not a sufficient condition to create EETypes.
+            string exceptionString2 = "";
+            try
+            {
+                _ = attr2.SomeType.TypeHandle;
+            }
+            catch (Exception ex)
+            {
+                exceptionString2 = ex.Message;
+            }
+            if (!exceptionString2.Contains(attr2expected))
+                throw new Exception(exceptionString2);
 
             // Make sure we created EEType for the enum array.
 
             EnumArrayAttribute attr3 = typeof(Holder3).GetCustomAttribute<EnumArrayAttribute>();
             if (attr3.EnumArray[0] != 0)
                 throw new Exception();
-
-            // Unconstructed types don't have the problem with missing EETypes described above
 
             TypeAttribute attr4 = typeof(Holder4).GetCustomAttribute<TypeAttribute>();
             if (attr4.SomeType.ToString() != "ReflectionTest+TestAttributeExpressions+ThirdNeverUsedType")
@@ -1397,6 +1398,54 @@ internal class ReflectionTest
             var t = (Type)typeof(Gen<>).MakeGenericType(s_atom).GetMethod("GetTheThing").Invoke(null, Array.Empty<object>());
             Assert.Equal(typeof(Atom), t.GetElementType());
             Assert.Equal(4, t.GetArrayRank());
+        }
+    }
+
+    class TypeConstructionTest
+    {
+        struct Atom { }
+
+        class Gen<T> { }
+
+        static Type s_atom = typeof(Atom);
+
+        public static void Run()
+        {
+            string message1 = "";
+            try
+            {
+                typeof(Gen<>).MakeGenericType(s_atom);
+            }
+            catch (Exception ex)
+            {
+                message1 = ex.Message;
+            }
+            if (!message1.Contains("ReflectionTest.TypeConstructionTest.Gen<ReflectionTest.TypeConstructionTest.Atom>"))
+                throw new Exception();
+
+            string message2 = "";
+            try
+            {
+                s_atom.MakeArrayType();
+            }
+            catch (Exception ex)
+            {
+                message2 = ex.Message;
+            }
+            if (!message2.Contains("ReflectionTest.TypeConstructionTest.Atom[]"))
+                throw new Exception();
+
+            string message3 = "";
+            try
+            {
+                Array.CreateInstance(s_atom, 10);
+            }
+            catch (Exception ex)
+            {
+                message3 = ex.Message;
+            }
+            if (!message3.Contains("ReflectionTest.TypeConstructionTest.Atom[]"))
+                throw new Exception();
         }
     }
 
