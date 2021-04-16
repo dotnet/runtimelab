@@ -45,7 +45,7 @@ namespace ComWrappersTests
             ThrowIfNotEquals(expected ? 1 : 0, actual ? 1 : 0, message);
         }
 
-        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall)]
+        [DllImport("ComWrappersNative", CallingConvention = CallingConvention.StdCall)]
         static extern bool IsNULL(IComInterface foo);
 
         [DllImport("ComWrappersNative", CallingConvention = CallingConvention.StdCall)]
