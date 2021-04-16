@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Look for MULTIMODULE_BUILD #define for the more specific incompatible parts -->
+    <NativeAotMultimoduleIncompatible Condition="'$(Optimize)' == 'true'">true</NativeAotMultimoduleIncompatible>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="ComWrappers.cs" />
+
+    <Content Include="rd.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <PropertyGroup>
+    <NativeAotProjectLines>
+      <![CDATA[
+  <ItemGroup>
+    <RdXmlFile Include="rd.xml" />
+  </ItemGroup>
+      ]]>
+    </NativeAotProjectLines>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="CMakeLists.txt" />
+  </ItemGroup>
+</Project>
