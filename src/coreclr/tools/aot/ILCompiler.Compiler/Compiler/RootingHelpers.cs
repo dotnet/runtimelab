@@ -96,12 +96,7 @@ namespace ILCompiler
             // Make sure we're not putting something into the graph that will crash later.
             LibraryRootProvider.CheckCanGenerateMethod(method);
 
-            // Virtual methods should be rooted as if they were called virtually
-            if (method.IsVirtual)
-                rootProvider.RootVirtualMethodForReflection(method, reason);
-
-            if (!method.IsAbstract)
-                rootProvider.AddCompilationRoot(method, reason);
+            rootProvider.AddReflectionRoot(method, reason);
         }
 
         public static bool TryGetDependenciesForReflectedMethod(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, string reason)
@@ -149,46 +144,7 @@ namespace ILCompiler
                 return false;
             }
 
-            if (!TryGetDependenciesForReflectedType(ref dependencies, factory, method.OwningType, reason))
-            {
-                return false;
-            }
-
-            if (!MetadataManager.IsMethodSupportedInReflectionInvoke(method))
-            {
-                // TODO: do we need to drop a MethodMetadata node into the dependencies here?
-                return false;
-            }
-            else
-            {
-                if (method.IsVirtual)
-                {
-                    if (method.HasInstantiation)
-                    {
-                        dependencies.Add(factory.GVMDependencies(method), reason);
-                    }
-                    else
-                    {
-                        // Virtual method use is tracked on the slot defining method only.
-                        MethodDesc slotDefiningMethod = MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(method);
-                        if (!factory.VTable(slotDefiningMethod.OwningType).HasFixedSlots)
-                            dependencies.Add(factory.VirtualMethodUse(slotDefiningMethod), reason);
-                    }
-
-                    if (method.IsAbstract)
-                    {
-                        dependencies.Add(factory.ReflectableMethod(method), reason);
-                    }
-                }
-
-                if (!method.IsAbstract)
-                {
-                    dependencies.Add(factory.CanonicalEntrypoint(method), reason);
-                    if (method.HasInstantiation
-                        && method != method.GetCanonMethodTarget(CanonicalFormKind.Specific))
-                        dependencies.Add(factory.MethodGenericDictionary(method), reason);
-                }
-            }
+            dependencies.Add(factory.ReflectableMethod(method), reason);
 
             return true;
         }

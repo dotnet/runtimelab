@@ -59,7 +59,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public static void AddDependenciesDueToMethodCodePresence(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)
         {
-            factory.MetadataManager.GetDependenciesDueToReflectability(ref dependencies, factory, method, methodIL);
+            factory.MetadataManager.GetDependenciesDueToMethodCodePresence(ref dependencies, factory, method, methodIL);
 
             factory.InteropStubManager.AddDependeciesDueToPInvoke(ref dependencies, factory, method);
 

@@ -197,14 +197,7 @@ namespace ILCompiler
                 if ((pair.Value & MetadataCategory.RuntimeMapping) != 0)
                 {
                     MethodDesc method = pair.Key;
-
-                    // We need to root virtual methods as if they were called virtually.
-                    // This will possibly trigger the generation of other overrides too.
-                    if (method.IsVirtual)
-                        rootProvider.RootVirtualMethodForReflection(method, reason);
-
-                    if (!method.IsAbstract)
-                        rootProvider.AddCompilationRoot(pair.Key, reason);
+                    rootProvider.AddReflectionRoot(method, reason);
                 }
             }
 
