@@ -4315,7 +4315,7 @@ GenTree* Compiler::impIntrinsic(GenTree*                newobjThis,
                 if (opts.OptimizationEnabled() && impStackTop().val->OperIs(GT_RET_EXPR))
                 {
                     GenTreeCall* call = impStackTop().val->AsRetExpr()->gtInlineCandidate->AsCall();
-                    if (call->IsSpecialIntrinsic())
+                    if (call->gtCallMoreFlags & GTF_CALL_M_SPECIAL_INTRINSIC)
                     {
                         if (lookupNamedIntrinsic(call->gtCallMethHnd) == NI_System_Threading_Thread_get_CurrentThread)
                         {
@@ -8417,7 +8417,7 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
         // Mark call if it's one of the ones we will maybe treat as an intrinsic
         if (isSpecialIntrinsic)
         {
-            call->AsCall()->SetIsSpecialIntrinsic();
+            call->AsCall()->gtCallMoreFlags |= GTF_CALL_M_SPECIAL_INTRINSIC;
         }
     }
     assert(sig);
@@ -9279,7 +9279,7 @@ DONE_CALL:
                     {
                         spillStack = false;
                     }
-                    else if (callNode->IsSpecialIntrinsic())
+                    else if ((callNode->gtCallMoreFlags & GTF_CALL_M_SPECIAL_INTRINSIC) != 0)
                     {
                         spillStack = false;
                     }
@@ -21325,11 +21325,12 @@ void Compiler::considerGuardedDevirtualization(
 
     // See if there's a likely guess for the class.
     //
-    const unsigned       likelihoodThreshold = isInterface ? 25 : 30;
-    unsigned             likelihood          = 0;
-    unsigned             numberOfClasses     = 0;
+    const unsigned likelihoodThreshold = isInterface ? 25 : 30;
+    unsigned       likelihood          = 0;
+    unsigned       numberOfClasses     = 0;
+
     CORINFO_CLASS_HANDLE likelyClass =
-        info.compCompHnd->getLikelyClass(info.compMethodHnd, baseClass, ilOffset, &likelihood, &numberOfClasses);
+        getLikelyClass(fgPgoSchema, fgPgoSchemaCount, fgPgoData, ilOffset, &likelihood, &numberOfClasses);
 
     if (likelyClass == NO_CLASS_HANDLE)
     {
