@@ -9,17 +9,11 @@
 #define DLL_EXPORT extern "C" __declspec(dllexport)
 #else
 #include<errno.h>
-#define HANDLE size_t
 #define DLL_EXPORT extern "C" __attribute((visibility("default")))
 #endif
 
 #if !defined(__stdcall)
 #define __stdcall
-#endif
-
-#if (_MSC_VER >= 1400)         // Check MSC version
-#pragma warning(push)
-#pragma warning(disable: 4996) // Disable deprecation
 #endif
 
 DLL_EXPORT bool __stdcall IsNULL(void *a)
@@ -46,8 +40,4 @@ DLL_EXPORT void ReleaseComPointer()
 {
     capturedComObject->Release();
 }
-#endif
-
-#if (_MSC_VER >= 1400)         // Check MSC version
-#pragma warning(pop)           // Renable previous depreciations
 #endif
