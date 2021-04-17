@@ -78,13 +78,6 @@ bool RhInitializeFinalization();
 bool RhStartFinalizerThread();
 void RhEnableFinalization();
 
-// Simplified EEConfig -- It is just a static member, which statically initializes to the default values and
-// has no dynamic initialization.  Some settings may change at runtime, however.  (Example: gcstress is
-// enabled via a compiled-in call from a given managed module, not through snooping an environment setting.)
-//
-static EEConfig s_sDummyConfig;
-EEConfig* g_pConfig = &s_sDummyConfig;
-
 // A few settings are now backed by the cut-down version of Redhawk configuration values.
 static RhConfig g_sRhConfig;
 RhConfig * g_pRhConfig = &g_sRhConfig;
@@ -159,8 +152,6 @@ EEType g_FreeObjectEEType;
 // static
 bool RedhawkGCInterface::InitializeSubsystems()
 {
-    g_pConfig->Construct();
-
 #ifdef FEATURE_ETW
     MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_Context.IsEnabled = FALSE;
     MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_Context.IsEnabled = FALSE;
@@ -181,7 +172,7 @@ bool RedhawkGCInterface::InitializeSubsystems()
         return false;
 
 #ifdef FEATURE_SVR_GC
-    g_heap_type = (g_pRhConfig->GetUseServerGC() && PalGetProcessCpuCount() > 1) ? GC_HEAP_SVR : GC_HEAP_WKS;
+    g_heap_type = (g_pRhConfig->GetgcServer() && PalGetProcessCpuCount() > 1) ? GC_HEAP_SVR : GC_HEAP_WKS;
 #else
     g_heap_type = GC_HEAP_WKS;
 #endif
@@ -220,17 +211,11 @@ void* GcAllocInternal(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, Thread
     {
         uFlags |= GC_ALLOC_LARGE_OBJECT_HEAP;
 
-        size_t max_object_size;
 #ifdef HOST_64BIT
-        if (g_pConfig->GetGCAllowVeryLargeObjects())
-        {
-            max_object_size = (INT64_MAX - 7 - min_obj_size);
-        }
-        else
-    #endif // HOST_64BIT
-        {
-            max_object_size = (INT32_MAX - 7 - min_obj_size);
-        }
+        const size_t max_object_size = (INT64_MAX - 7 - min_obj_size);
+#else
+        const size_t max_object_size = (INT32_MAX - 7 - min_obj_size);
+#endif
 
         if (cbSize >= max_object_size)
             return NULL;
@@ -588,7 +573,6 @@ void RedhawkGCInterface::StressGc()
 COOP_PINVOKE_HELPER(void, RhpInitializeGcStress, ())
 {
     g_fGcStressStarted = UInt32_TRUE;
-    g_pConfig->SetGCStressLevel(EEConfig::GCSTRESS_INSTR_NGEN);   // this is the closest CLR equivalent to what we do.
 }
 #endif // FEATURE_GC_STRESS
 
@@ -1440,48 +1424,46 @@ bool GCToEEInterface::GetBooleanConfigValue(const char* privateKey, const char* 
         return true;
     }
 
-    if (strcmp(privateKey, "gcConcurrent") == 0)
-    {
-        *value = !g_pRhConfig->GetDisableBGC();
-        return true;
-    }
-
     if (strcmp(privateKey, "gcConservative") == 0)
     {
-        *value = g_pConfig->GetGCConservative();
+        *value = true;
         return true;
     }
 
-    return false;
+#ifdef UNICODE
+    size_t keyLength = strlen(privateKey) + 1;
+    TCHAR* pKey = (TCHAR*)_alloca(sizeof(TCHAR) * keyLength);
+    for (int i = 0; i < keyLength; i++)
+        pKey[i] = privateKey[i];
+#else
+    const TCHAR* pKey = privateKey;
+#endif
+
+    uint32_t uiValue;
+    if (!g_pRhConfig->ReadConfigValue(pKey, &uiValue))
+        return false;
+
+    *value = uiValue != 0;
+    return true;
 }
 
 bool GCToEEInterface::GetIntConfigValue(const char* privateKey, const char* publicKey, int64_t* value)
 {
-    if (strcmp(privateKey, "HeapVerify") == 0)
-    {
-        *value = g_pRhConfig->GetHeapVerify();
-        return true;
-    }
-
-    if (strcmp(privateKey, "GCgen0size") == 0)
-    {
-#if defined(USE_PORTABLE_HELPERS) && !defined(HOST_WASM)
-        // CORERT-TODO: remove this
-        //              https://github.com/dotnet/corert/issues/2033
-        *value = 100 * 1024 * 1024;
+#ifdef UNICODE
+    size_t keyLength = strlen(privateKey) + 1;
+    TCHAR* pKey = (TCHAR*)_alloca(sizeof(TCHAR) * keyLength);
+    for (int i = 0; i < keyLength; i++)
+        pKey[i] = privateKey[i];
 #else
-        *value = 0;
+    const TCHAR* pKey = privateKey;
 #endif
-        return true;
-    }
 
-    if (strcmp(privateKey, "GCHeapHardLimit") == 0)
-    {
-        *value = g_pRhConfig->GetGCHeapHardLimit();
-        return true;
-    }
+    uint32_t uiValue;
+    if (!g_pRhConfig->ReadConfigValue(pKey, &uiValue))
+        return false;
 
-    return false;
+    *value = uiValue;
+    return true;
 }
 
 bool GCToEEInterface::GetStringConfigValue(const char* privateKey, const char* publicKey, const char** value)
@@ -1489,6 +1471,7 @@ bool GCToEEInterface::GetStringConfigValue(const char* privateKey, const char* p
     UNREFERENCED_PARAMETER(privateKey);
     UNREFERENCED_PARAMETER(publicKey);
     UNREFERENCED_PARAMETER(value);
+
     return false;
 }
 
@@ -1534,9 +1517,6 @@ ProfilingScanContext::ProfilingScanContext(BOOL fProfilerPinnedParam)
     pHeapId = NULL;
     fProfilerPinned = fProfilerPinnedParam;
     pvEtwContext = NULL;
-#ifdef FEATURE_CONSERVATIVE_GC
-    // To not confuse GCScan::GcScanRoots
-    promotion = g_pConfig->GetGCConservative();
-#endif
+    promotion = true;
 }
 #endif // defined(FEATURE_EVENT_TRACE) && !defined(DACCESS_COMPILE)
