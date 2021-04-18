@@ -230,7 +230,7 @@ namespace Internal.IL.Stubs
 
         private void EmitPInvokeCall(PInvokeILCodeStreams ilCodeStreams)
         {
-            if (!_flags.PreserveSig && _targetMethod.Signature.ReturnType != _targetMethod.Context.GetWellKnownType(WellKnownType.Void))
+            if (!_flags.PreserveSig)
                 throw new NotSupportedException();
 
             ILEmitter emitter = ilCodeStreams.Emitter;
@@ -290,12 +290,6 @@ namespace Internal.IL.Stubs
                 fnptrLoadStream.EmitStLoc(vNativeFunctionPointer);
                 callsiteSetupCodeStream.EmitLdLoc(vNativeFunctionPointer);
                 callsiteSetupCodeStream.Emit(ILOpcode.calli, emitter.NewToken(nativeSig));
-                if (!_flags.PreserveSig)
-                {
-                    callsiteSetupCodeStream.Emit(ILOpcode.call, emitter.NewToken(
-                        InteropTypes.GetMarshal(context)
-                        .GetKnownMethod("ThrowExceptionForHR", null)));
-                }
             }
             else
             {
