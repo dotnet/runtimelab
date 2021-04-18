@@ -53,10 +53,10 @@ namespace System.Text.RegularExpressions.SRM
             {
                 case '\0':
                     return @"\0";
-                case '\a':
-                    return @"\a";
-                case '\b':
-                    return @"\b";
+                //case '\a':
+                //    return @"\a";
+                //case '\b':
+                //    return @"\b";
                 case '\t':
                     return @"\t";
                 case '\r':

@@ -27,10 +27,10 @@ namespace System.Text.RegularExpressions.Tests
         /// View the regex as a DFA in DGML format in VS.
         /// </summary>
         /// <param name="r"></param>
-        private static void ViewDGML(Regex r, int bound = 10, bool hideDerivatives = false, bool addDotStar = false, int maxLabelLength = 1000)
+        private static void ViewDGML(Regex regex, int bound = 10, bool hideDerivatives = false, bool addDotStar = false, int maxLabelLength = 1000)
         {
             System.IO.StreamWriter sw = new StreamWriter("C:/tmp/DFA.dgml");
-            WriteDGML(r, sw, bound, hideDerivatives, addDotStar, maxLabelLength);
+            SaveDGML(regex, sw, bound, hideDerivatives, addDotStar, maxLabelLength);
             sw.Close();
         }
 
@@ -38,10 +38,10 @@ namespace System.Text.RegularExpressions.Tests
         /// Save the regex as a DFA in DGML format in the textwriter.
         /// </summary>
         /// <param name="r"></param>
-        private static void WriteDGML(Regex r, TextWriter writer, int bound = 10, bool hideDerivatives = false, bool addDotStar = false, int maxLabelLength = 1000)
+        private static void SaveDGML(Regex regex, TextWriter writer, int bound = -1, bool hideDerivatives = false, bool addDotStar = false, int maxLabelLength = -1)
         {
-            MethodInfo saveDgml = r.GetType().GetMethod("SaveDGML", BindingFlags.NonPublic | BindingFlags.Instance);
-            saveDgml.Invoke(r, new object[] { writer, bound, hideDerivatives, addDotStar, maxLabelLength });
+            MethodInfo saveDgml = regex.GetType().GetMethod("SaveDGML", BindingFlags.NonPublic | BindingFlags.Instance);
+            saveDgml.Invoke(regex, new object[] { writer, bound, hideDerivatives, addDotStar, maxLabelLength });
         }
 
         [Fact]
@@ -49,19 +49,20 @@ namespace System.Text.RegularExpressions.Tests
         {
             StringWriter sw = new StringWriter();
             var re = new Regex(".*a+", DFA | RegexOptions.Singleline);
-            WriteDGML(re, sw);
+            SaveDGML(re, sw);
             string str = sw.ToString();
             Assert.StartsWith("<?xml version=\"1.0\" encoding=\"utf-8\"?>", str);
             Assert.Contains("DirectedGraph", str);
             Assert.Contains(".*a+", str);
         }
 
-        [Fact]
-        public void TestDGML()
+        //[Fact]
+        private void TestDGML()
         {
-            var re = new Regex("^a(_?a?_?a?_?)+$", DFA);
-            //var re = new Regex(@"\b[a-z]+nn\b", DFA);
-            ViewDGML(re, 20, false);
+            //var re = new Regex("^a(_?a?_?a?_?)+$", DFA);
+            //var re = new Regex(@"^\b[a-z]+(n|\n|@|_)n\b", DFA);
+            var re = new Regex(@"^[a-z]+", DFA | RegexOptions.Multiline);
+            ViewDGML(regex: re, addDotStar: true);
         }
 
         [Fact]

@@ -255,15 +255,15 @@ namespace System.Text.RegularExpressions.SRM
         {
             string res;
             if (i == CharKind.WordLetter)
-                res = "w";
+                res = @"\w";
             else if (i == CharKind.Start)
-                res = "A";
+                res = @"\A";
             else if (i == CharKind.Newline)
-                res = "n";
+                res = @"\n";
             else if (i == CharKind.NewLineZ)
-                res = "Z";
+                res = @"\Z";
             else if (i == CharKind.End)
-                res = "z";
+                res = @"\z";
             else
                 res = "";
             return res;

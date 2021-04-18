@@ -399,23 +399,23 @@ namespace System.Text.RegularExpressions.SRM
             //check if ranges represents a complement of a singleton
             if (ranges.Length == 2 && ranges[0].Item1 == 0 && ranges[1].Item2 == 0xFFFF &&
                 ranges[0].Item2 + 2 == ranges[1].Item1)
-                return "[^" + ((char)(ranges[0].Item2 + 1)) + "]";
+                return "[^" + (StringUtility.Escape((char)(ranges[0].Item2 + 1))) + "]";
 
             StringBuilder sb = new();
             for (int i = 0; i < ranges.Length; i++)
             {
                 if (ranges[i].Item1 == ranges[i].Item2)
-                    sb.Append((char)ranges[i].Item1);
+                    sb.Append(StringUtility.Escape((char)ranges[i].Item1));
                 else if (ranges[i].Item2 == ranges[i].Item1 + 1)
                 {
-                    sb.Append((char)ranges[i].Item1);
-                    sb.Append((char)ranges[i].Item2);
+                    sb.Append(StringUtility.Escape((char)ranges[i].Item1));
+                    sb.Append(StringUtility.Escape((char)ranges[i].Item2));
                 }
                 else
                 {
-                    sb.Append((char)ranges[i].Item1);
+                    sb.Append(StringUtility.Escape((char)ranges[i].Item1));
                     sb.Append('-');
-                    sb.Append((char)ranges[i].Item2);
+                    sb.Append(StringUtility.Escape((char)ranges[i].Item2));
                 }
             }
             if (ranges.Length > 1 || ranges[0].Item1 != ranges[0].Item2)

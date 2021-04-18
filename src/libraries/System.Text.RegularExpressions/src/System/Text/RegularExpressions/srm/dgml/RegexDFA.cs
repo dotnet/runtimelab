@@ -54,11 +54,11 @@ namespace System.Text.RegularExpressions.SRM.DGML
 
         public int InitialState => _q0.Id;
 
-        public string DescribeLabel(S lab) => _solver.PrettyPrint(lab);
+        public string DescribeLabel(S lab) => EncodeChars(_solver.PrettyPrint(lab));
 
         public string DescribeStartLabel() => "";
 
-        public string DescribeState(int state) => (_hideDerivatives ? state.ToString() : _states[state].ToString());
+        public string DescribeState(int state) => (_hideDerivatives ? state.ToString() : ViewState(_states[state]));
 
         public IEnumerable<int> GetStates() => _states.Keys;
 
@@ -68,6 +68,21 @@ namespace System.Text.RegularExpressions.SRM.DGML
         {
             foreach (var entry in _normalizedmoves)
                 yield return Move<S>.Create(entry.Key.Item1, entry.Key.Item2, entry.Value);
+        }
+
+        private static string EncodeChars(string s)
+        {
+            string s1 = SRM.StringUtility.Escape(s);
+            string s2 = s1.Replace("&", "&amp;").Replace("\"", "&quot;").Replace("<", "&lt;").Replace(">", "&gt;");
+            return s2;
+        }
+
+        private static string ViewState(State<S> state)
+        {
+            if (state.PrevCharKindId == CharKindId.None)
+                return EncodeChars(state.Node.ToString());
+            else
+                return string.Format("Prev:{0}&#13;{1}", state.PrevCharKindId, EncodeChars(state.Node.ToString()));
         }
     }
 }

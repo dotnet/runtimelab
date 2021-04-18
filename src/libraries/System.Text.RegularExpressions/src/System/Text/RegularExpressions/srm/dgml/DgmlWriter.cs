@@ -20,7 +20,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
         /// <summary>
         /// Write the automaton in dgml format into the textwriter.
         /// </summary>
-        public void Write<S>(int k, IAutomaton<S> fa, Func<S, string> describeS = null)
+        public void Write<S>(IAutomaton<S> fa, Func<S, string> describeS = null)
         {
             var nonEpsilonMoves = new Dictionary<Tuple<int, int>, List<S>>();
             var epsilonmoves = new List<Move<S>>();
@@ -53,7 +53,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
             _tw.WriteLine("<Node Id=\"init\" Label=\"{0}\" Stroke=\"white\" Background=\"white\"/>", " ");
             foreach (int state in fa.GetStates())
             {
-                _tw.WriteLine("<Node Id=\"{0}\" Label=\"{1}\" Category=\"State\" >", state, EncodeChars(fa.DescribeState(state)));
+                _tw.WriteLine("<Node Id=\"{0}\" Label=\"{1}\" Category=\"State\" >", state, fa.DescribeState(state));
                 if (state == fa.InitialState)
                     _tw.WriteLine("<Category Ref=\"InitialState\" />");
                 if (fa.IsFinalState(state))
@@ -62,19 +62,19 @@ namespace System.Text.RegularExpressions.SRM.DGML
             }
             _tw.WriteLine("</Nodes>");
             _tw.WriteLine("<Links>");
-            _tw.WriteLine("<Link Source=\"init\" Target=\"{0}\" Label=\"{1}\" Category=\"StartTransition\" />", fa.InitialState, EncodeChars(fa.DescribeStartLabel()));
+            _tw.WriteLine("<Link Source=\"init\" Target=\"{0}\" Label=\"{1}\" Category=\"StartTransition\" />", fa.InitialState, fa.DescribeStartLabel());
             foreach (var move in epsilonmoves)
                 _tw.WriteLine("<Link Source=\"{0}\" Target=\"{1}\" Category=\"EpsilonTransition\" />", move.SourceState, move.TargetState);
 
             foreach (var move in nonEpsilonMoves)
-                _tw.WriteLine(GetNonFinalRuleInfo(k, fa, move.Key.Item1, move.Key.Item2, move.Value, describeS));
+                _tw.WriteLine(GetNonFinalRuleInfo(fa, move.Key.Item1, move.Key.Item2, move.Value, describeS));
 
             _tw.WriteLine("</Links>");
             WriteCategoriesAndStyles();
             _tw.WriteLine("</DirectedGraph>");
         }
 
-        private string GetNonFinalRuleInfo<S>(int k, IAutomaton<S> aut, int source, int target, List<S> rules, Func<S, string> describeS = null)
+        private string GetNonFinalRuleInfo<S>(IAutomaton<S> aut, int source, int target, List<S> rules, Func<S, string> describeS = null)
         {
             if (describeS == null)
                 describeS = aut.DescribeLabel;
@@ -85,22 +85,13 @@ namespace System.Text.RegularExpressions.SRM.DGML
             {
                 lab += (lab == "" ? "" : ",\n ") + describeS(rules[i]);
             }
-            if (k >= 0 && lab.Length > k)
-                lab = lab.Substring(0, k) + "...";
-            lab = EncodeChars(lab);
-            if (lab.Length > _maxDgmlTransitionLabelLength)
+            var lab_length = lab.Length;
+            if (_maxDgmlTransitionLabelLength >= 0 && lab_length > _maxDgmlTransitionLabelLength)
             {
-                info += string.Format(" HiddenLabel = \"{0}\"", lab);
-                lab = "...";
+                info += string.Format(" FullLabel = \"{0}\"", lab);
+                lab = lab.Substring(0, _maxDgmlTransitionLabelLength) + "..";
             }
             return string.Format("<Link Source=\"{0}\" Target=\"{1}\" Label=\"{2}\" Category=\"NonepsilonTransition\" {3}/>", source, target, lab, info);
-        }
-
-        private static string EncodeChars(string s)
-        {
-            string s1 = SRM.StringUtility.Escape(s);
-            string s2 = s1.Replace("&", "&amp;").Replace("\"", "&quot;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\n", "&#13;");
-            return s2;
         }
 
         private void WriteCategoriesAndStyles()

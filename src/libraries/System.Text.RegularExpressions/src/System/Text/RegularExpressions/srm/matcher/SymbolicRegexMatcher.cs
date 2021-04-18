@@ -1416,7 +1416,7 @@ namespace System.Text.RegularExpressions.SRM
         {
             var graph = new DGML.RegexDFA<S>(this, bound, hideDerivatives, addDotStar);
             var dgml = new DGML.DgmlWriter(writer, maxLabelLength);
-            dgml.Write<S>(bound, graph, builder.solver.PrettyPrint);
+            dgml.Write<S>(graph, builder.solver.PrettyPrint);
         }
 
 #if UNSAFE
