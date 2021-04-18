@@ -114,6 +114,11 @@
           Include="$(CoreCLRArtifactsPath)x64/crossgen2/jitinterface_*"
           TargetDir="crossgen2/" />
 
+      <RunTimeDependencyCopyLocal
+          Condition="'$(TargetArchitecture)' != 'x64' and '$(TargetOS)' == 'windows'"
+          Include="$(CoreCLRArtifactsPath)x64/crossgen2/Microsoft.DiaSymReader.Native.amd64.dll"
+          TargetDir="crossgen2/" />
+
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetArchitecture)' == 'wasm'">
@@ -155,11 +160,15 @@
     </ItemGroup>
 
     <ItemGroup>
+      <NativeAotRuntimeExcludeFiles Include="$(LibrariesAllBinArtifactsPath)\*.Generators.*" />
+    </ItemGroup>
+
+    <ItemGroup>
       <RunTimeDependencyCopyLocal Include="$(CoreCLRArtifactsPath)ilc/**/*" TargetDir="nativeaot/tools/" />
       <RunTimeDependencyCopyLocal Include="$(CoreCLRArtifactsPath)aotsdk/**/*" TargetDir="nativeaot/sdk/" />
       <RunTimeDependencyCopyLocal Include="$(CoreCLRArtifactsPath)build/**/*" TargetDir="nativeaot/build/" />
       <RunTimeDependencyCopyLocal Include="$(TargetingPackPath)/*" TargetDir="nativeaot/framework/" />
-      <RunTimeDependencyCopyLocal Include="@(RuntimeCopyLocalItems)" TargetDir="nativeaot/framework/" />
+      <RunTimeDependencyCopyLocal Include="@(RuntimeCopyLocalItems)" Exclude="@(NativeAotRuntimeExcludeFiles)" TargetDir="nativeaot/framework/" />
     </ItemGroup>
 
     <Copy

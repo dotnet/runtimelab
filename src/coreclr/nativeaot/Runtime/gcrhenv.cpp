@@ -216,52 +216,35 @@ void* GcAllocInternal(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, Thread
 {
     ASSERT(!pThread->IsDoNotTriggerGcSet());
 
-    size_t max_object_size;
+    if (cbSize >= RH_LARGE_OBJECT_SIZE)
+    {
+        uFlags |= GC_ALLOC_LARGE_OBJECT_HEAP;
+
+        size_t max_object_size;
 #ifdef HOST_64BIT
-    if (g_pConfig->GetGCAllowVeryLargeObjects())
-    {
-        max_object_size = (INT64_MAX - 7 - min_obj_size);
-    }
-    else
-#endif // HOST_64BIT
-    {
-        max_object_size = (INT32_MAX - 7 - min_obj_size);
-    }
-
-    if (cbSize >= max_object_size)
-        return NULL;
-
-    const int MaxArrayLength = 0x7FEFFFFF;
-    const int MaxByteArrayLength = 0x7FFFFFC7;
-
-    // Impose limits on maximum array length in each dimension to allow efficient
-    // implementation of advanced range check elimination in future. We have to allow
-    // higher limit for array of bytes (or one byte structs) for backward compatibility.
-    // Keep in sync with Array.MaxArrayLength in BCL.
-    if (cbSize > MaxByteArrayLength /* note: comparing allocation size with element count */)
-    {
-        // Ensure the above if check covers the minimal interesting size
-        static_assert(MaxByteArrayLength < (uint64_t)MaxArrayLength * 2, "");
-
-        if (pEEType->IsArray())
+        if (g_pConfig->GetGCAllowVeryLargeObjects())
         {
-            if (pEEType->get_ComponentSize() != 1)
-            {
-                size_t elementCount = (cbSize - pEEType->get_BaseSize()) / pEEType->get_ComponentSize();
-                if (elementCount > MaxArrayLength)
-                    return NULL;
-            }
-            else
-            {
-                size_t elementCount = cbSize - pEEType->get_BaseSize();
-                if (elementCount > MaxByteArrayLength)
-                    return NULL;
-            }
+            max_object_size = (INT64_MAX - 7 - min_obj_size);
+        }
+        else
+    #endif // HOST_64BIT
+        {
+            max_object_size = (INT32_MAX - 7 - min_obj_size);
+        }
+
+        if (cbSize >= max_object_size)
+            return NULL;
+
+        // Impose limits on maximum array length to prevent corner case integer overflow bugs
+        // Keep in sync with Array.MaxLength in BCL.
+        if (pEEType->IsSzArray()) // multi-dimensional arrays are checked up-front
+        {
+            const int MaxArrayLength = 0x7FFFFFC7;
+            size_t elementCount = (cbSize - pEEType->get_BaseSize()) / pEEType->get_ComponentSize();
+            if (elementCount > MaxArrayLength)
+                return NULL;
         }
     }
-
-    if (cbSize >= RH_LARGE_OBJECT_SIZE)
-        uFlags |= GC_ALLOC_LARGE_OBJECT_HEAP;
 
     // Save the EEType for instrumentation purposes.
     RedhawkGCInterface::SetLastAllocEEType(pEEType);

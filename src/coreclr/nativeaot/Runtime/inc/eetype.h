@@ -220,6 +220,9 @@ public:
         return elementType == ElementType_Array || elementType == ElementType_SzArray;
     }
 
+    bool IsSzArray()
+        { return GetElementType() == ElementType_SzArray; }
+
     bool IsParameterizedType()
         { return (get_Kind() == ParameterizedEEType); }
 

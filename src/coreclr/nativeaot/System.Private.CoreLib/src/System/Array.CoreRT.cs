@@ -982,7 +982,7 @@ namespace System
                 int length = pLengths[i];
                 if (length < 0)
                     throw new OverflowException();
-                if (length > MaxArrayLength)
+                if (length > MaxLength)
                     maxArrayDimensionLengthOverflow = true;
                 totalLength = totalLength * (ulong)length;
                 if (totalLength > int.MaxValue)
