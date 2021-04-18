@@ -1,11 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#if MULTIMODULE_BUILD && !DEBUG
-// Some tests won't work if we're using optimizing codegen, but scanner doesn't run.
-// This currently happens in optimized multi-obj builds.
-#define OPTIMIZED_MODE_WITHOUT_SCANNER
-#endif
 
 using System;
 using System.Runtime.CompilerServices;
