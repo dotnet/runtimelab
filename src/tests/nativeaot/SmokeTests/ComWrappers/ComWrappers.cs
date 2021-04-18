@@ -12,8 +12,6 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
-// Name of namespace matches the name of the assembly on purpose to
-// ensure that we can handle this (mostly an issue for C++ code generation).
 namespace ComWrappersTests
 {
     internal class Program
