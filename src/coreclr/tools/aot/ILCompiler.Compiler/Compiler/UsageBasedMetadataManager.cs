@@ -136,9 +136,11 @@ namespace ILCompiler
         {
             MetadataCategory category = 0;
 
-            if (!IsReflectionBlocked(method) && !method.IsGenericMethodDefinition && !method.OwningType.IsGenericDefinition)
+            if (!IsReflectionBlocked(method))
             {
-                category = MetadataCategory.RuntimeMapping;
+                // Can't do mapping for uninstantiated things
+                if (!method.IsGenericMethodDefinition && !method.OwningType.IsGenericDefinition)
+                    category = MetadataCategory.RuntimeMapping;
 
                 if (_compilationModuleGroup.ContainsType(method.GetTypicalMethodDefinition().OwningType))
                     category |= MetadataCategory.Description;
@@ -569,6 +571,9 @@ namespace ILCompiler
 
             foreach (var method in GetReflectableMethods())
             {
+                if (method.IsGenericMethodDefinition || method.OwningType.IsGenericDefinition)
+                    continue;
+
                 if (!IsReflectionBlocked(method))
                 {
                     if ((reflectableTypes[method.OwningType] & MetadataCategory.RuntimeMapping) != 0)
