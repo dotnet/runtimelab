@@ -121,7 +121,7 @@ namespace ILCompiler
         {
             MetadataCategory category = 0;
 
-            if (!IsReflectionBlocked(field))
+            if (!IsReflectionBlocked(field) && !field.OwningType.IsGenericDefinition)
             {
                 category = MetadataCategory.RuntimeMapping;
 
@@ -136,7 +136,7 @@ namespace ILCompiler
         {
             MetadataCategory category = 0;
 
-            if (!IsReflectionBlocked(method))
+            if (!IsReflectionBlocked(method) && !method.IsGenericMethodDefinition && !method.OwningType.IsGenericDefinition)
             {
                 category = MetadataCategory.RuntimeMapping;
 
