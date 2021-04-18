@@ -11,6 +11,7 @@ namespace ComWrappersTests
 {
     internal class Program
     {
+        [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(IComInterface))]
         public static int Main(string[] args)
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
