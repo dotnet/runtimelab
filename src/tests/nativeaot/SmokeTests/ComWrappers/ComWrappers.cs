@@ -3,6 +3,7 @@
 
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -14,13 +15,9 @@ namespace ComWrappersTests
         [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(IComInterface))]
         public static int Main(string[] args)
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                TestComInteropNullPointers();
-                TestComInteropRegistrationRequired();
-                TestComInteropReleaseProcess();
-            }
-
+            TestComInteropNullPointers();
+            TestComInteropRegistrationRequired();
+            TestComInteropReleaseProcess();
             return 100;
         }
 

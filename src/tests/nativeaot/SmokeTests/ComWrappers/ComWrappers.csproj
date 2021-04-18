@@ -2,24 +2,11 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-
+    <CLRTestTargetUnsupported Condition="'$(TargetsWindows)' != 'true'">true</CLRTestTargetUnsupported>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="ComWrappers.cs" />
-
-    <Content Include="rd.xml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
-  <PropertyGroup>
-    <NativeAotProjectLines>
-      <![CDATA[
-  <ItemGroup>
-    <RdXmlFile Include="rd.xml" />
-  </ItemGroup>
-      ]]>
-    </NativeAotProjectLines>
-  </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="CMakeLists.txt" />
