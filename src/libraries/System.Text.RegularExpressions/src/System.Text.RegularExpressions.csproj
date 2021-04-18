@@ -10,6 +10,10 @@
     <Compile Include="System\Text\RegularExpressions\Regex.Match.SRM.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\BooleanClassifier.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\Classifier.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\dgml\DgmlWriter.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\dgml\IAutomaton.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\dgml\Move.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\dgml\RegexDFA.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\State.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexInfo.cs" />
     <Compile Include="System\Text\RegularExpressions\RegexCharClass.MappingTable.cs" />

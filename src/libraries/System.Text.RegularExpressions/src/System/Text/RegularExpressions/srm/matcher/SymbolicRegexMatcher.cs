@@ -144,7 +144,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// .*A start regex
         /// </summary>
-        private SymbolicRegexNode<S> A1;
+        internal SymbolicRegexNode<S> A1;
 
         private State<S>[] _Aq0 = new State<S>[6];
 
@@ -1410,6 +1410,13 @@ namespace System.Text.RegularExpressions.SRM
             while (i < k && !pred[input[i]])
                 i += 1;
             return (i == k ? -1 : i);
+        }
+
+        public void SaveDGML(TextWriter writer, int bound = 0, bool hideDerivatives = false, bool addDotStar = false, int maxLabelLength = 500)
+        {
+            var graph = new DGML.RegexDFA<S>(this, bound, hideDerivatives, addDotStar);
+            var dgml = new DGML.DgmlWriter(writer, maxLabelLength);
+            dgml.Write<S>(bound, graph, builder.solver.PrettyPrint);
         }
 
 #if UNSAFE

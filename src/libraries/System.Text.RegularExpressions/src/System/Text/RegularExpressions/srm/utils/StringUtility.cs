@@ -46,55 +46,32 @@ namespace System.Text.RegularExpressions.SRM
             if (code <= 255 && code > 126)
                 return string.Format("\\x{0:X}", code);
 
+            if (code >= 32 && code <= 126)
+                return c.ToString();
+
             switch (c)
             {
                 case '\0':
                     return @"\0";
-                //case '\a':
-                //    return @"\a";
-                //case '\b':
-                //    return @"\b";
-                //case '\t':
-                //    return @"\t";
-                //case '\r':
-                //    return @"\r";
-                //case '\v':
-                //    return @"\v";
-                //case '\f':
-                //    return @"\f";
+                case '\a':
+                    return @"\a";
+                case '\b':
+                    return @"\b";
+                case '\t':
+                    return @"\t";
+                case '\r':
+                    return @"\r";
+                case '\v':
+                    return @"\v";
+                case '\f':
+                    return @"\f";
                 case '\n':
                     return @"\n";
-                case '=':
-                    return "=";
-                case ';':
-                    return ";";
-                case '/':
-                    return "/";
-                case '!':
-                    return "!";
-                //case '>':
-                //    return ">";
-                //case '\"':
-                //    return "\\\"";
-                //case '\'':
-                //    return "\\\'";
-                //case ' ':
-                //    return " ";
-                //case '\\' :
-                //    return @"\\";
                 default:
                     if (code <= 15)
-                    {
                         return string.Format("\\x0{0:X}", code);
-                    }
-                    else if (!(((int)'a') <= code && code <= ((int)'z'))
-                         && !(((int)'A') <= code && code <= ((int)'Z'))
-                         && !(((int)'0') <= code && code <= ((int)'9')))
-                    {
-                        return string.Format("\\x{0:X}", code);
-                    }
                     else
-                        return c.ToString();
+                        return string.Format("\\x{0:X}", code);
             }
         }
 
@@ -126,46 +103,15 @@ namespace System.Text.RegularExpressions.SRM
 
         /// <summary>
         /// Makes an escaped string from a literal string s.
-        /// Appends '\"' at the start and end of the encoded string.
         /// </summary>
         public static string Escape(string s)
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append('"');
             foreach (char c in s)
-            {
                 sb.Append(Escape(c));
-            }
-            sb.Append('"');
             return sb.ToString();
         }
 
-        /// <summary>
-        /// Unescapes any escaped characters in in the input string.
-        /// (Same as System.Text.RegularExpressions.Regex.Unescape)
-        /// </summary>
-        public static string Unescape(string s)
-        {
-            return System.Text.RegularExpressions.Regex.Unescape(s);
-        }
         #endregion
-
-        internal static string SerializeStringToCharCodeSequence(string s)
-        {
-            if (string.IsNullOrEmpty(s))
-                return s;
-            var encodedChars = Array.ConvertAll(s.ToCharArray(), c => ((int)c).ToString());
-            var serialized = string.Join(",", encodedChars);
-            return serialized;
-        }
-
-        internal static string DeserializeStringFromCharCodeSequence(string s)
-        {
-            if (string.IsNullOrEmpty(s))
-                return s;
-            var encodedChars = s.Split(',');
-            var deserialized = new string(Array.ConvertAll(encodedChars, x => (char)(int.Parse(x))));
-            return deserialized;
-        }
     }
 }
