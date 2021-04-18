@@ -94,7 +94,10 @@ namespace Internal.IL.Stubs
                     Debug.Assert(i == parameterMetadataArray[parameterIndex].Index);
                     parameterMetadata = parameterMetadataArray[parameterIndex++];
                 }
-                TypeDesc parameterType = (i == 0) ? methodSig.ReturnType : methodSig[i - 1];  //first item is the return type
+
+                TypeDesc parameterType = (i == 0)
+                    ? flags.PreserveSig ? methodSig.ReturnType : targetMethod.Context.GetWellKnownType(WellKnownType.Int32) //first item is the return type
+                    : methodSig[i - 1];
                 marshallers[i] = Marshaller.CreateMarshaller(parameterType,
                                                     parameterIndex,
                                                     methodSig.GetEmbeddedSignatureData(),
@@ -229,7 +232,7 @@ namespace Internal.IL.Stubs
 
         private void EmitPInvokeCall(PInvokeILCodeStreams ilCodeStreams)
         {
-            if (!_flags.PreserveSig)
+            if (!_flags.PreserveSig && _targetMethod.Signature.ReturnType != _targetMethod.Context.GetWellKnownType(WellKnownType.Void))
                 throw new NotSupportedException();
 
             ILEmitter emitter = ilCodeStreams.Emitter;
@@ -300,6 +303,13 @@ namespace Internal.IL.Stubs
                     new PInvokeTargetNativeMethod(_targetMethod, nativeSig);
 
                 callsiteSetupCodeStream.Emit(ILOpcode.call, emitter.NewToken(nativeMethod));
+            }
+
+            if (!_flags.PreserveSig)
+            {
+                callsiteSetupCodeStream.Emit(ILOpcode.call, emitter.NewToken(
+                    InteropTypes.GetMarshal(context)
+                    .GetKnownMethod("ThrowExceptionForHR", null)));
             }
 
             // if the SetLastError flag is set in DllImport, call the PInvokeMarshal.SaveLastError
