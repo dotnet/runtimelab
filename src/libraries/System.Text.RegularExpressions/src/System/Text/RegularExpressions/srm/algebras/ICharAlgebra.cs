@@ -47,7 +47,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Convert a predicate into a set of characters.
         /// </summary>
-        BDD ConvertToCharSet(BDDAlgebra solver, PRED pred);
+        BDD ConvertToCharSet(ICharAlgebra<BDD> bddalg, PRED pred);
 
         /// <summary>
         /// Gets the underlying character set solver.
@@ -67,5 +67,10 @@ namespace System.Text.RegularExpressions.SRM
         /// Returns a partition of the full domain.
         /// </summary>
         PRED[] GetPartition();
+
+        /// <summary>
+        /// Pretty print the character predicate
+        /// </summary>
+        string PrettyPrint(PRED pred);
     }
 }

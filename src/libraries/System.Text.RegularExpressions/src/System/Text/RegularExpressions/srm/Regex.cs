@@ -14,7 +14,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// The unicode component includes the BDD algebra. It is being shared as a static member for efficiency.
         /// </summary>
-        private static readonly UnicodeCategoryTheory<BDD> s_unicode = new UnicodeCategoryTheory<BDD>(new CharSetSolver());
+        internal static readonly UnicodeCategoryTheory<BDD> s_unicode = new UnicodeCategoryTheory<BDD>(new CharSetSolver());
 
         internal const string _DFA_incompatible_with = "DFA option is incompatible with ";
 
@@ -64,13 +64,13 @@ namespace System.Text.RegularExpressions.SRM
         public static Regex Create(RegexNode rootNode, System.Text.RegularExpressions.RegexOptions options)
         {
             var regex = new Regex(rootNode, options);
-#if DEBUG
-            //test the serialization roundtrip
-            //effectively, all tests in DEBUG mode are run with deserialized matchers, not the original ones
-            StringBuilder sb = new();
-            regex.Serialize(sb);
-            regex = Regex.Deserialize(sb.ToString());
-#endif
+//#if DEBUG
+//            //test the serialization roundtrip
+//            //effectively, all tests in DEBUG mode are run with deserialized matchers, not the original ones
+//            StringBuilder sb = new();
+//            regex.Serialize(sb);
+//            regex = Regex.Deserialize(sb.ToString());
+//#endif
             return regex;
         }
 
@@ -119,6 +119,11 @@ namespace System.Text.RegularExpressions.SRM
             StringBuilder sb = new();
             Serialize(sb);
             return sb.ToString();
+        }
+
+        public void SaveDGML(TextWriter writer, int bound, bool hideDerivatives, bool addDotStar, int maxLabelLength)
+        {
+            _matcher.SaveDGML(writer, bound, hideDerivatives, addDotStar, maxLabelLength);
         }
     }
 }

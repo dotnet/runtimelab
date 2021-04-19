@@ -174,7 +174,7 @@ namespace System.Text.RegularExpressions.SRM
             return res;
         }
 
-        public BDD ConvertToCharSet(BDDAlgebra solver, BV pred)
+        public BDD ConvertToCharSet(ICharAlgebra<BDD> solver, BV pred)
         {
 #if DEBUG
             if (_partition == null)
@@ -204,5 +204,21 @@ namespace System.Text.RegularExpressions.SRM
         /// calls BV.Deserialize(s)
         /// </summary>
         public BV DeserializePredicate(string s) => BV.Deserialize(s);
+
+        /// <summary>
+        /// Pretty print the bitvector bv as the character set it represents.
+        /// </summary>
+        public string PrettyPrint(BV bv)
+        {
+            //accesses the shared BDD solver
+            var bddalgebra = System.Text.RegularExpressions.SRM.Regex.s_unicode.solver;
+
+            if (_partition == null || bddalgebra == null)
+                return "[" + bv.SerializeToString() + "]";
+
+            var bdd = ConvertToCharSet(bddalgebra, bv);
+            string str = bddalgebra.PrettyPrint(bdd);
+            return str;
+        }
     }
 }

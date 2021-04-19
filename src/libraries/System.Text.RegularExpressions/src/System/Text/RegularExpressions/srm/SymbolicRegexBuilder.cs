@@ -208,20 +208,10 @@ namespace System.Text.RegularExpressions.SRM
 
             //exclude epsilons from the concatenation
             for (int i = regexes.Length - 1; i >= 0; i--)
-            {
                 if (regexes[i] == this.nothing)
-                {
                     return this.nothing;
-                }
-                else if (sr.IsEpsilon)
-                {
-                    sr = regexes[i];
-                }
-                else if (!regexes[i].IsEpsilon)
-                {
+                else
                     sr = SymbolicRegexNode<S>.MkConcat(this, regexes[i], sr);
-                }
-            }
             return sr;
         }
 

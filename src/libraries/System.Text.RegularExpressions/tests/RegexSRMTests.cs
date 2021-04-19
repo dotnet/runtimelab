@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.IO;
 using Xunit;
 using Xunit.Abstractions;
 using System.Linq;
@@ -21,6 +22,48 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         internal static RegexOptions DFA = (RegexOptions)0x400;
+
+        /// <summary>
+        /// View the regex as a DFA in DGML format in VS.
+        /// </summary>
+        /// <param name="r"></param>
+        private static void ViewDGML(Regex regex, int bound = 10, bool hideDerivatives = false, bool addDotStar = false, int maxLabelLength = 1000)
+        {
+            System.IO.StreamWriter sw = new StreamWriter("C:/tmp/DFA.dgml");
+            SaveDGML(regex, sw, bound, hideDerivatives, addDotStar, maxLabelLength);
+            sw.Close();
+        }
+
+        /// <summary>
+        /// Save the regex as a DFA in DGML format in the textwriter.
+        /// </summary>
+        /// <param name="r"></param>
+        private static void SaveDGML(Regex regex, TextWriter writer, int bound = -1, bool hideDerivatives = false, bool addDotStar = false, int maxLabelLength = -1)
+        {
+            MethodInfo saveDgml = regex.GetType().GetMethod("SaveDGML", BindingFlags.NonPublic | BindingFlags.Instance);
+            saveDgml.Invoke(regex, new object[] { writer, bound, hideDerivatives, addDotStar, maxLabelLength });
+        }
+
+        [Fact]
+        public void TestDGMLGeneration()
+        {
+            StringWriter sw = new StringWriter();
+            var re = new Regex(".*a+", DFA | RegexOptions.Singleline);
+            SaveDGML(re, sw);
+            string str = sw.ToString();
+            Assert.StartsWith("<?xml version=\"1.0\" encoding=\"utf-8\"?>", str);
+            Assert.Contains("DirectedGraph", str);
+            Assert.Contains(".*a+", str);
+        }
+
+        //[Fact]
+        private void TestDGML()
+        {
+            //var re = new Regex("^a(_?a?_?a?_?)+$", DFA);
+            //var re = new Regex(@"^\b[a-z]+(n|\n|@|_)n\b", DFA);
+            var re = new Regex(@"^[a-z]+", DFA | RegexOptions.Multiline);
+            ViewDGML(regex: re, addDotStar: true);
+        }
 
         [Fact]
         public void SRMPrefixBugFixTest()

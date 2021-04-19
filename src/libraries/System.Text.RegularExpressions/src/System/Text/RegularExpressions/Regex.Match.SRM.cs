@@ -1,6 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 using System.Runtime.CompilerServices;
+using System.IO;
 
 namespace System.Text.RegularExpressions
 {
@@ -36,6 +37,22 @@ namespace System.Text.RegularExpressions
             }
             else
                 return System.Text.RegularExpressions.Match.Empty;
+        }
+
+        /// <summary>
+        /// Unwind the regex and save the resulting state graph in DGML
+        /// </summary>
+        /// <param name="bound">roughly the maximum number of states, 0 means no bound</param>
+        /// <param name="hideDerivatives">if true then hide derivatives in state labels</param>
+        /// <param name="addDotStar">if true then pretend that there is a .* at the beginning</param>
+        /// <param name="writer">dgml output is written here</param>
+        /// <param name="maxLabelLength">maximum length of labels in nodes anything over that length is indicated with ... </param>
+        internal void SaveDGML(TextWriter writer, int bound, bool hideDerivatives,  bool addDotStar, int maxLabelLength)
+        {
+            if (!_useSRM)
+                throw new NotSupportedException();
+
+            _srm.SaveDGML(writer, bound, hideDerivatives, addDotStar, maxLabelLength);
         }
     }
 }

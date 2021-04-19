@@ -6,6 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.IO;
 using System.Text;
 
 namespace System.Text.RegularExpressions.SRM
@@ -1213,7 +1214,7 @@ namespace System.Text.RegularExpressions.SRM
             }
             else
             {
-                if (this.kind != that.kind || this.info.Equals(that.info))
+                if (this.kind != that.kind || !this.info.Equals(that.info))
                     return false;
                 switch (this.kind)
                 {
@@ -1221,8 +1222,6 @@ namespace System.Text.RegularExpressions.SRM
                         return this.left.Equals(that.left) && this.right.Equals(that.right);
                     case SymbolicRegexKind.Singleton:
                         return object.Equals(this.set, that.set);
-                    //case SymbolicRegexKind.Sequence:
-                    //    return object.Equals(this.sequence, that.sequence);
                     case SymbolicRegexKind.Or:
                     case SymbolicRegexKind.And:
                         return this.alts.Equals(that.alts);
@@ -1286,8 +1285,12 @@ namespace System.Text.RegularExpressions.SRM
                     {
                         if (IsDotStar)
                             return ".*";
+                        else if (IsMaybe)
+                            return left.ToStringForLoop() + "?";
                         else if (IsStar)
                             return left.ToStringForLoop() + "*" + (IsLazy ? "?" : "");
+                        else if (IsPlus)
+                            return left.ToStringForLoop() + "+" + (IsLazy ? "?" : "");
                         else if (IsBoundedLoop)
                             return left.ToStringForLoop() + "{" + lower + "," + upper + "}" + (IsLazy ? "?" : "");
                         else
@@ -1298,9 +1301,9 @@ namespace System.Text.RegularExpressions.SRM
                 case SymbolicRegexKind.And:
                     return alts.ToString();
                 case SymbolicRegexKind.Concat:
-                    return "(" + left.ToString() + ")" + right.ToString();
+                    return left.ToString() + right.ToString();
                 case SymbolicRegexKind.Singleton:
-                    return builder.solver.SerializePredicate(set);
+                    return builder.solver.PrettyPrint(set);
                 default:
                     return "(TBD:if-then-else)";
             }

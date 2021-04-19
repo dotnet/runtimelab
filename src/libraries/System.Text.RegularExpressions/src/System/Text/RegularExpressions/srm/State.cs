@@ -100,7 +100,8 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
-        /// Compute the target state for the given input atom
+        /// Compute the target state for the given input atom.
+        /// If atom is False this means that this is \n and it is the last character of the input.
         /// </summary>
         /// <param name="atom">minterm corresponding to some input character or False corresponding to last \n</param>
         public State<S> Next(S atom)
@@ -130,7 +131,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Make a new state with given node and previous character context
         /// </summary>
-        public static State<S> MkState(SymbolicRegexNode<S> node, CharKindId prevCharKindId, bool reverse)
+        public static State<S> MkState(SymbolicRegexNode<S> node, CharKindId prevCharKindId, bool reverse = false)
         {
             State<S> s = new State<S>(node, prevCharKindId, reverse);
             State<S> state;
@@ -238,7 +239,9 @@ namespace System.Text.RegularExpressions.SRM
 
         public override int GetHashCode() => (PrevCharKind, Node).GetHashCode();
 
-        public override string ToString() => (DescribeCharKind(PrevCharKind), Node).ToString();
+        public override string ToString() =>
+            PrevCharKind == (uint)CharKindId.None ? Node.ToString() :
+             (DescribeCharKind(PrevCharKind) + ':' + Node.ToString());
 
         private static string DescribeCharKind(uint i)
         {
@@ -252,15 +255,15 @@ namespace System.Text.RegularExpressions.SRM
         {
             string res;
             if (i == CharKind.WordLetter)
-                res = "w";
+                res = @"\w";
             else if (i == CharKind.Start)
-                res = "A";
+                res = @"\A";
             else if (i == CharKind.Newline)
-                res = "n";
+                res = @"\n";
             else if (i == CharKind.NewLineZ)
-                res = "Z";
+                res = @"\Z";
             else if (i == CharKind.End)
-                res = "z";
+                res = @"\z";
             else
                 res = "";
             return res;

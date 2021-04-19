@@ -27,5 +27,7 @@ namespace System.Text.RegularExpressions.SRM
         public Match FindMatch(bool isMatch, string input, int startat = 0, int endat = -1);
 
         public void Serialize(StringBuilder sb);
+
+        public void SaveDGML(TextWriter writer, int bound, bool hideDerivatives, bool addDotStar, int maxLabelLength);
     }
 }

@@ -133,7 +133,7 @@ namespace System.Text.RegularExpressions.SRM
             return res;
         }
 
-        public BDD ConvertToCharSet(BDDAlgebra solver, ulong pred)
+        public BDD ConvertToCharSet(ICharAlgebra<BDD> solver, ulong pred)
         {
             if (_partition == null)
                 throw new NotImplementedException(nameof(ConvertToCharSet));
@@ -176,5 +176,21 @@ namespace System.Text.RegularExpressions.SRM
         #endregion
 
         public ulong MkCharPredicate(string name, ulong pred) => throw new NotImplementedException(nameof(MkCharPredicate));
+
+        /// <summary>
+        /// Pretty print the bitvector bv as the character set it represents.
+        /// </summary>
+        public string PrettyPrint(ulong bv)
+        {
+            //accesses the shared BDD solver
+            var bddalgebra = System.Text.RegularExpressions.SRM.Regex.s_unicode.solver;
+
+            if (_partition == null || bddalgebra == null)
+                return "[" + SerializePredicate(bv) + "]";
+
+            var bdd = ConvertToCharSet(bddalgebra, bv);
+            string str = bddalgebra.PrettyPrint(bdd);
+            return str;
+        }
     }
 }
