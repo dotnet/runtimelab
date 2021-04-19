@@ -36,7 +36,7 @@ Examples:
 
 ### Linking
 
-To statically link against a native library, you'll need to specify `<NativeLibrary>filename</NativeLibrary>` pointing to `.lib` file
+To statically link against a unmanaged library, you'll need to specify `<NativeLibrary>filename</NativeLibrary>` pointing to `.lib` file on Windows and `.a` file on Unix
 
 Examples:
 
@@ -44,8 +44,9 @@ Examples:
 <ItemGroup>
   <!-- Generate direct PInvokes for Dependency -->
   <DirectPInvoke Include="Dependency" />
-  <!-- Specify .lib file -->
-  <NativeLibrary Include="Dependency.lib" />
+  <!-- Specify library to link against -->
+  <NativeLibrary Include="Dependency.lib" Condition="$(RuntimeIdentifier.StartsWith('win'))" />
+  <NativeLibrary Include="Dependency.a" Condition="!$(RuntimeIdentifier.StartsWith('win'))" />
 </ItemGroup>
 ```
 
