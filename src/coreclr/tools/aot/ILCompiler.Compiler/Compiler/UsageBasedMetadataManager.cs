@@ -123,7 +123,9 @@ namespace ILCompiler
 
             if (!IsReflectionBlocked(field))
             {
-                category = MetadataCategory.RuntimeMapping;
+                // Can't do mapping for uninstantiated things
+                if (!field.OwningType.IsGenericDefinition)
+                    category = MetadataCategory.RuntimeMapping;
 
                 if (_compilationModuleGroup.ContainsType(field.GetTypicalFieldDefinition().OwningType))
                     category |= MetadataCategory.Description;
@@ -138,7 +140,9 @@ namespace ILCompiler
 
             if (!IsReflectionBlocked(method))
             {
-                category = MetadataCategory.RuntimeMapping;
+                // Can't do mapping for uninstantiated things
+                if (!method.IsGenericMethodDefinition && !method.OwningType.IsGenericDefinition)
+                    category = MetadataCategory.RuntimeMapping;
 
                 if (_compilationModuleGroup.ContainsType(method.GetTypicalMethodDefinition().OwningType))
                     category |= MetadataCategory.Description;
@@ -161,6 +165,8 @@ namespace ILCompiler
 
             return category;
         }
+
+        protected override bool AllMethodsCanBeReflectable => (_generationOptions & UsageBasedMetadataGenerationOptions.ReflectedMembersOnly) == 0;
 
         protected override void ComputeMetadata(NodeFactory factory,
             out byte[] metadataBlob,
@@ -315,25 +321,8 @@ namespace ILCompiler
 
         public override void GetDependenciesDueToLdToken(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
         {
-            // In order for the RuntimeMethodHandle data structure to be usable at runtime, ensure the method
-            // is generating metadata.
-            if ((GetMetadataCategory(method) & MetadataCategory.Description) == MetadataCategory.Description)
-            {
-                dependencies = dependencies ?? new DependencyList();
-                dependencies.Add(factory.MethodMetadata(method.GetTypicalMethodDefinition()), "LDTOKEN method");
-            }
-
-            // Since this is typically used for LINQ expressions, let's also make sure there's runnable code
-            // for this available, unless this is ldtoken of something we can't generate code for
-            // (ldtoken of an uninstantiated generic method - F# makes this).
-            if (!method.IsGenericMethodDefinition)
-            {
-                var deps = dependencies ?? new DependencyList();
-                RootingHelpers.TryRootMethod(
-                    new RootingServiceProvider(
-                        factory, (o, reason) => deps.Add((DependencyNodeCore<NodeFactory>)o, reason)), method, "LDTOKEN method");
-                dependencies = deps;
-            }
+            dependencies = dependencies ?? new DependencyList();
+            dependencies.Add(factory.ReflectableMethod(method), "LDTOKEN method");
         }
 
         public override bool ShouldConsiderLdTokenReferenceAConstruction(TypeDesc type)
@@ -389,6 +378,27 @@ namespace ILCompiler
             if (method.GetTypicalMethodDefinition() is Internal.TypeSystem.Ecma.EcmaMethod ecmaMethod)
             {
                 DynamicDependencyAttributeAlgorithm.AddDependenciesDueToDynamicDependencyAttribute(ref dependencies, factory, ecmaMethod);
+            }
+
+            // Presence of code might trigger the reflectability dependencies.
+            if ((_generationOptions & UsageBasedMetadataGenerationOptions.ReflectedMembersOnly) == 0)
+            {
+                GetDependenciesDueToReflectability(ref dependencies, factory, method);
+            }
+        }
+
+        public override void GetDependenciesDueToVirtualMethodReflectability(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
+        {
+            if ((_generationOptions & UsageBasedMetadataGenerationOptions.ReflectedMembersOnly) == 0)
+            {
+                // If we have a use of an abstract method, GetDependenciesDueToReflectability is not going to see the method
+                // as being used since there's no body. We inject a dependency on a new node that serves as a logical method body
+                // for the metadata manager. Metadata manager treats that node the same as a body.
+                if (method.IsAbstract && GetMetadataCategory(method) != 0)
+                {
+                    dependencies = dependencies ?? new DependencyList();
+                    dependencies.Add(factory.ReflectableMethod(method), "Abstract reflectable method");
+                }
             }
         }
 
@@ -561,8 +571,11 @@ namespace ILCompiler
                 reflectableMethods[methodWithMetadata] = MetadataCategory.Description;
             }
 
-            foreach (var method in GetCompiledMethods())
+            foreach (var method in GetReflectableMethods())
             {
+                if (method.IsGenericMethodDefinition || method.OwningType.IsGenericDefinition)
+                    continue;
+
                 if (!IsReflectionBlocked(method))
                 {
                     if ((reflectableTypes[method.OwningType] & MetadataCategory.RuntimeMapping) != 0)
@@ -841,5 +854,10 @@ namespace ILCompiler
         /// Scan IL for common reflection patterns to find additional compilation roots.
         /// </summary>
         ReflectionILScanning = 4,
+
+        /// <summary>
+        /// Only members that were seen as reflected on will be reflectable.
+        /// </summary>
+        ReflectedMembersOnly = 8,
     }
 }

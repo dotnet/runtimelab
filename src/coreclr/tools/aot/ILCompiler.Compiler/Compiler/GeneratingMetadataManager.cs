@@ -131,8 +131,14 @@ namespace ILCompiler
             }
 
             HashSet<MethodDesc> canonicalGenericMethods = new HashSet<MethodDesc>();
-            foreach (var method in GetCompiledMethods())
+            foreach (var method in GetReflectableMethods())
             {
+                if (method.IsGenericMethodDefinition || method.OwningType.IsGenericDefinition)
+                {
+                    // Generic definitions don't have runtime artifacts we would need to map to.
+                    continue;
+                }
+
                 if ((method.HasInstantiation && method.IsCanonicalMethod(CanonicalFormKind.Specific))
                     || (!method.HasInstantiation && method.GetCanonMethodTarget(CanonicalFormKind.Specific) != method))
                 {
@@ -204,38 +210,6 @@ namespace ILCompiler
             MethodDesc thunk = _typeSystemContext.GetDynamicInvokeThunk(lookupSig);
 
             return InstantiateCanonicalDynamicInvokeMethodForMethod(thunk, method);
-        }
-
-        protected sealed override void GetDependenciesDueToMethodCodePresence(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)
-        {
-            GetDependenciesDueToTemplateTypeLoader(ref dependencies, factory, method);
-            GetDependenciesDueToMethodCodePresenceInternal(ref dependencies, factory, method, methodIL);
-        }
-
-        protected virtual void GetDependenciesDueToMethodCodePresenceInternal(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)
-        {
-        }
-
-        protected virtual void GetDependenciesDueToTemplateTypeLoader(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
-        {
-            // TODO-SIZE: this is overly generous in the templates we create
-            if (_blockingPolicy is FullyBlockedMetadataBlockingPolicy)
-                return;
-
-            if (method.HasInstantiation)
-            {
-                GenericMethodsTemplateMap.GetTemplateMethodDependencies(ref dependencies, factory, method);
-            }
-            else
-            {
-                TypeDesc owningTemplateType = method.OwningType;
-
-                // Unboxing and Instantiating stubs use a different type as their template
-                if (factory.TypeSystemContext.IsSpecialUnboxingThunk(method))
-                    owningTemplateType = factory.TypeSystemContext.GetTargetOfSpecialUnboxingThunk(method).OwningType;
-
-                GenericTypesTemplateMap.GetTemplateTypeDependencies(ref dependencies, factory, owningTemplateType);
-            }
         }
 
         protected override void GetDependenciesDueToEETypePresence(ref DependencyList dependencies, NodeFactory factory, TypeDesc type)

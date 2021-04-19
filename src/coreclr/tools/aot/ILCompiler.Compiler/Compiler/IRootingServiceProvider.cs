@@ -12,10 +12,10 @@ namespace ILCompiler
     {
         void AddCompilationRoot(MethodDesc method, string reason, string exportName = null);
         void AddCompilationRoot(TypeDesc type, string reason);
+        void AddReflectionRoot(MethodDesc method, string reason);
         void RootThreadStaticBaseForType(TypeDesc type, string reason);
         void RootGCStaticBaseForType(TypeDesc type, string reason);
         void RootNonGCStaticBaseForType(TypeDesc type, string reason);
-        void RootVirtualMethodForReflection(MethodDesc method, string reason);
         void RootModuleMetadata(ModuleDesc module, string reason);
         void RootReadOnlyDataBlob(byte[] data, int alignment, string reason, string exportName);
         void RootDelegateMarshallingData(DefType type, string reason);

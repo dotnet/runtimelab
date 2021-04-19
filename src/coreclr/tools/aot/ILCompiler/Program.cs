@@ -54,6 +54,7 @@ namespace ILCompiler
         private bool _noMetadataBlocking;
         private bool _disableReflection;
         private bool _completeTypesMetadata;
+        private bool _reflectedOnly;
         private bool _scanReflection;
         private bool _methodBodyFolding;
         private bool _singleThreaded;
@@ -184,6 +185,7 @@ namespace ILCompiler
                 syntax.DefineOption("nometadatablocking", ref _noMetadataBlocking, "Ignore metadata blocking for internal implementation details");
                 syntax.DefineOption("disablereflection", ref _disableReflection, "Disable generation of reflection metadata");
                 syntax.DefineOption("completetypemetadata", ref _completeTypesMetadata, "Generate complete metadata for types");
+                syntax.DefineOption("reflectedonly", ref _reflectedOnly, "Generate metadata only for reflected members");
                 syntax.DefineOption("scanreflection", ref _scanReflection, "Scan IL for reflection patterns");
                 syntax.DefineOption("scan", ref _useScanner, "Use IL scanner to generate optimized code (implied by -O)");
                 syntax.DefineOption("noscan", ref _noScanner, "Do not use IL scanner to generate optimized code");
@@ -627,6 +629,8 @@ namespace ILCompiler
                     metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.CompleteTypesOnly;
                 if (_scanReflection)
                     metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.ReflectionILScanning;
+                if (_reflectedOnly)
+                    metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.ReflectedMembersOnly;
             }
             else
             {
