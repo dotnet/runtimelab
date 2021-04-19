@@ -34,6 +34,21 @@ Examples:
 </ItemGroup>
 ```
 
+### Linking
+
+To statically link against a native library, you'll need to specify `<NativeLibrary>filename</NativeLibrary>` pointing to `.lib` file
+
+Examples:
+
+```xml
+<ItemGroup>
+  <!-- Generate direct PInvokes for Dependency -->
+  <DirectPInvoke Include="Dependency" />
+  <!-- Specify .lib file -->
+  <NativeLibrary Include="Dependency.lib" />
+</ItemGroup>
+```
+
 ## Native Exports
 
 The native AOT compiler will export methods annotated with `UnmanagedCallersOnlyAttribute` and explicitly specified name as
