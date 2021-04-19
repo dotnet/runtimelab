@@ -33,6 +33,12 @@ namespace ILCompiler.DependencyAnalysis
             DependencyList dependencies = new DependencyList();
             factory.MetadataManager.GetDependenciesDueToReflectability(ref dependencies, factory, _method);
 
+            // No runtime artifacts needed if this is a generic definition
+            if (_method.IsGenericMethodDefinition || _method.OwningType.IsGenericDefinition)
+            {
+                return dependencies;
+            }
+
             MethodDesc canonMethod = _method.GetCanonMethodTarget(CanonicalFormKind.Specific);
             if (canonMethod != _method)
             {

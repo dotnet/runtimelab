@@ -133,6 +133,12 @@ namespace ILCompiler
             HashSet<MethodDesc> canonicalGenericMethods = new HashSet<MethodDesc>();
             foreach (var method in GetReflectableMethods())
             {
+                if (method.IsGenericMethodDefinition || method.OwningType.IsGenericDefinition)
+                {
+                    // Generic definitions don't have runtime artifacts we would need to map to.
+                    continue;
+                }
+
                 if ((method.HasInstantiation && method.IsCanonicalMethod(CanonicalFormKind.Specific))
                     || (!method.HasInstantiation && method.GetCanonMethodTarget(CanonicalFormKind.Specific) != method))
                 {
