@@ -121,9 +121,11 @@ namespace ILCompiler
         {
             MetadataCategory category = 0;
 
-            if (!IsReflectionBlocked(field) && !field.OwningType.IsGenericDefinition)
+            if (!IsReflectionBlocked(field))
             {
-                category = MetadataCategory.RuntimeMapping;
+                // Can't do mapping for uninstantiated things
+                if (!field.OwningType.IsGenericDefinition)
+                    category = MetadataCategory.RuntimeMapping;
 
                 if (_compilationModuleGroup.ContainsType(field.GetTypicalFieldDefinition().OwningType))
                     category |= MetadataCategory.Description;
