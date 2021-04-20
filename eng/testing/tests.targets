@@ -110,7 +110,8 @@
     <Exec Command="$(RunTestsCommand)"
           ContinueOnError="true"
           IgnoreExitCode="true"
-          IgnoreStandardErrorWarningFormat="true">
+          IgnoreStandardErrorWarningFormat="true"
+          EnvironmentVariables="HELIX_WORKITEM_PAYLOAD=;">
       <Output PropertyName="TestRunExitCode" TaskParameter="ExitCode" />
     </Exec>
 
