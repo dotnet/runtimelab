@@ -928,7 +928,7 @@ struct Native<T>
         [Fact]
         public async Task GenericNativeTypeWithGenericMemberInstantiatedWithBlittable_DoesNotReportDiagnostic()
         {
-            
+
             string source = @"
 using System.Runtime.InteropServices;
 
@@ -951,6 +951,34 @@ struct Native<T>
     public T Value { get; set; }
 }";
             await VerifyCS.VerifyAnalyzerAsync(source);
+        }
+
+        [Fact]
+        public async Task UninstantiatedGenericNativeType_ReportsDiagnostic()
+        {
+
+            string source = @"
+using System.Runtime.InteropServices;
+
+[{|#0:NativeMarshalling(typeof(Native<>))|}]
+struct S
+{
+    public string s;
+}
+
+struct Native<T>
+    where T : new()
+{
+    public Native(S s)
+    {
+        Value = new T();
+    }
+
+    public S ToManaged() => new S();
+
+    public T Value { get; set; }
+}";
+            await VerifyCS.VerifyAnalyzerAsync(source, VerifyCS.Diagnostic(NativeGenericTypeMustBeClosedRule).WithLocation(0).WithArguments("Native<>", "S"));
         }
 
         [Fact]

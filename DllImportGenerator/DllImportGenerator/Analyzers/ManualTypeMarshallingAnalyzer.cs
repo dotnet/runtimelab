@@ -144,6 +144,16 @@ namespace Microsoft.Interop.Analyzers
                 isEnabledByDefault: true,
                 description: GetResourceString(nameof(Resources.RefValuePropertyUnsupportedDescription)));
 
+        public readonly static DiagnosticDescriptor NativeGenericTypeMustBeClosedRule =
+            new DiagnosticDescriptor(
+                Ids.NativeGenericTypeMustBeClosed,
+                "GenericTypeMustBeClosed",
+                GetResourceString(nameof(Resources.NativeGenericTypeMustBeClosedMessage)),
+                Category,
+                DiagnosticSeverity.Error,
+                isEnabledByDefault: true,
+                description: GetResourceString(nameof(Resources.NativeGenericTypeMustBeClosedDescription)));
+
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => 
             ImmutableArray.Create(
                 BlittableTypeMustBeBlittableRule,
@@ -158,7 +168,8 @@ namespace Microsoft.Interop.Analyzers
                 GetPinnableReferenceShouldSupportAllocatingMarshallingFallbackRule,
                 StackallocMarshallingShouldSupportAllocatingMarshallingFallbackRule,
                 StackallocConstructorMustHaveStackBufferSizeConstantRule,
-                RefValuePropertyUnsupportedRule);
+                RefValuePropertyUnsupportedRule,
+                NativeGenericTypeMustBeClosedRule);
 
         public override void Initialize(AnalysisContext context)
         {
@@ -316,6 +327,12 @@ namespace Microsoft.Interop.Analyzers
                 if (nativeType is not INamedTypeSymbol marshalerType)
                 {
                     context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustHaveRequiredShapeRule, nativeMarshalerAttributeData.ApplicationSyntaxReference!.GetSyntax().GetLocation(), nativeType.ToDisplayString(), type.ToDisplayString()));
+                    return;
+                }
+
+                if (marshalerType.IsUnboundGenericType)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(NativeGenericTypeMustBeClosedRule, nativeMarshalerAttributeData.ApplicationSyntaxReference!.GetSyntax().GetLocation(), nativeType.ToDisplayString(), type.ToDisplayString()));
                     return;
                 }
 
