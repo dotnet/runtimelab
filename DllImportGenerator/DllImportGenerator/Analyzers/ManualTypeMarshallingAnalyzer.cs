@@ -9,7 +9,7 @@ using static Microsoft.Interop.Analyzers.AnalyzerDiagnostics;
 
 namespace Microsoft.Interop.Analyzers
 {
-    [DiagnosticAnalyzer(LanguageNames.CSharp)]
+    [DiagnosticAnalyzer(LanguageNames.CSharp, LanguageNames.VisualBasic)]
     public class ManualTypeMarshallingAnalyzer : DiagnosticAnalyzer
     {
         private const string Category = "Usage";
@@ -306,7 +306,10 @@ namespace Microsoft.Interop.Analyzers
 
                 if (!nativeType.IsValueType)
                 {
-                    context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustHaveRequiredShapeRule, GetSyntaxReferenceForDiagnostic(nativeType).GetSyntax().GetLocation(), nativeType.ToDisplayString(), type.ToDisplayString()));
+                    context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustHaveRequiredShapeRule,
+                                nativeType.Locations[0],
+                                nativeType.Locations.Skip(1),
+                                nativeType.ToDisplayString(), type.ToDisplayString()));
                     return;
                 }
 
@@ -333,7 +336,10 @@ namespace Microsoft.Interop.Analyzers
                         IFieldSymbol stackAllocSizeField = nativeType.GetMembers("StackBufferSize").OfType<IFieldSymbol>().FirstOrDefault();
                         if (stackAllocSizeField is null or { DeclaredAccessibility: not Accessibility.Public } or { IsConst: false } or { Type: not { SpecialType: SpecialType.System_Int32 } })
                         {
-                            context.ReportDiagnostic(Diagnostic.Create(StackallocConstructorMustHaveStackBufferSizeConstantRule, ctor.DeclaringSyntaxReferences[0].GetSyntax()!.GetLocation(), nativeType.ToDisplayString()));
+                            context.ReportDiagnostic(Diagnostic.Create(StackallocConstructorMustHaveStackBufferSizeConstantRule,
+                                ctor.Locations[0],
+                                ctor.Locations.Skip(1),
+                                nativeType.ToDisplayString()));
                         }
                     }
                 }
@@ -343,13 +349,19 @@ namespace Microsoft.Interop.Analyzers
                 // Validate that the native type has at least one marshalling method (either managed to native or native to managed)
                 if (!hasConstructor && !hasStackallocConstructor && !hasToManaged)
                 {
-                    context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustHaveRequiredShapeRule, GetSyntaxReferenceForDiagnostic(marshalerType).GetSyntax().GetLocation(), marshalerType.ToDisplayString(), type.ToDisplayString()));
+                    context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustHaveRequiredShapeRule,
+                        marshalerType.Locations[0],
+                        marshalerType.Locations.Skip(1),
+                        marshalerType.ToDisplayString(), type.ToDisplayString()));
                 }
 
                 // Validate that this type can support marshalling when stackalloc is not usable.
                 if (validateAllScenarioSupport && hasStackallocConstructor && !hasConstructor)
                 {
-                    context.ReportDiagnostic(Diagnostic.Create(StackallocMarshallingShouldSupportAllocatingMarshallingFallbackRule, GetSyntaxReferenceForDiagnostic(marshalerType).GetSyntax().GetLocation(), marshalerType.ToDisplayString()));
+                    context.ReportDiagnostic(Diagnostic.Create(StackallocMarshallingShouldSupportAllocatingMarshallingFallbackRule,
+                        marshalerType.Locations[0],
+                        marshalerType.Locations.Skip(1),
+                        marshalerType.ToDisplayString()));
                 }
 
                 IPropertySymbol? valueProperty = ManualTypeMarshallingHelper.FindValueProperty(nativeType);
@@ -357,7 +369,9 @@ namespace Microsoft.Interop.Analyzers
 
                 if (valuePropertyIsRefReturn)
                 {
-                    context.ReportDiagnostic(Diagnostic.Create(RefValuePropertyUnsupportedRule, GetSyntaxReferenceForDiagnostic(valueProperty!).GetSyntax().GetLocation(),
+                    context.ReportDiagnostic(Diagnostic.Create(RefValuePropertyUnsupportedRule,
+                        valueProperty!.Locations[0],
+                        valueProperty!.Locations.Skip(1),
                         marshalerType.ToDisplayString()));
                 }
 
@@ -371,11 +385,17 @@ namespace Microsoft.Interop.Analyzers
                     //  - a ToManaged method and a Value property setter
                     if ((hasConstructor || hasStackallocConstructor) && valueProperty.GetMethod is null)
                     {
-                        context.ReportDiagnostic(Diagnostic.Create(ValuePropertyMustHaveGetterRule, GetSyntaxReferenceForDiagnostic(valueProperty).GetSyntax().GetLocation(), marshalerType.ToDisplayString()));
+                        context.ReportDiagnostic(Diagnostic.Create(ValuePropertyMustHaveGetterRule,
+                            valueProperty.Locations[0],
+                            valueProperty.Locations.Skip(1), 
+                            marshalerType.ToDisplayString()));
                     }
                     if (hasToManaged && valueProperty.SetMethod is null)
                     {
-                        context.ReportDiagnostic(Diagnostic.Create(ValuePropertyMustHaveSetterRule, GetSyntaxReferenceForDiagnostic(valueProperty).GetSyntax().GetLocation(), marshalerType.ToDisplayString()));
+                        context.ReportDiagnostic(Diagnostic.Create(ValuePropertyMustHaveSetterRule,
+                            valueProperty.Locations[0],
+                            valueProperty.Locations.Skip(1),
+                            marshalerType.ToDisplayString()));
                     }
                 }
                 
@@ -383,8 +403,11 @@ namespace Microsoft.Interop.Analyzers
                 {
                     context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustBeBlittableRule,
                         valueProperty is not null
-                        ? GetSyntaxReferenceForDiagnostic(valueProperty).GetSyntax().GetLocation()
-                        : GetSyntaxReferenceForDiagnostic(nativeType).GetSyntax().GetLocation(),
+                            ? valueProperty.Locations[0]
+                            : nativeType.Locations[0],
+                        valueProperty is not null
+                            ? valueProperty.Locations.Skip(1)
+                            : nativeType.Locations.Skip(1),
                         nativeType.ToDisplayString(),
                         type.ToDisplayString()));
                 }
@@ -394,12 +417,16 @@ namespace Microsoft.Interop.Analyzers
                 {
                     if (!managedGetPinnableReferenceMethod.ReturnType.IsConsideredBlittable())
                     {
-                        context.ReportDiagnostic(Diagnostic.Create(GetPinnableReferenceReturnTypeBlittableRule, managedGetPinnableReferenceMethod.DeclaringSyntaxReferences[0].GetSyntax().GetLocation()));
+                        context.ReportDiagnostic(Diagnostic.Create(GetPinnableReferenceReturnTypeBlittableRule, 
+                            managedGetPinnableReferenceMethod.Locations[0],
+                            managedGetPinnableReferenceMethod.Locations.Skip(1)));
                     }
                     // Validate that our marshaler supports scenarios where GetPinnableReference cannot be used.
                     if (validateAllScenarioSupport && (!hasConstructor || valueProperty is { GetMethod: null }))
                     {
-                        context.ReportDiagnostic(Diagnostic.Create(GetPinnableReferenceShouldSupportAllocatingMarshallingFallbackRule, nativeMarshalerAttributeData.ApplicationSyntaxReference!.GetSyntax().GetLocation(), type.ToDisplayString()));
+                        context.ReportDiagnostic(Diagnostic.Create(GetPinnableReferenceShouldSupportAllocatingMarshallingFallbackRule, 
+                            nativeMarshalerAttributeData.ApplicationSyntaxReference!.GetSyntax().GetLocation(),
+                            type.ToDisplayString()));
                     }
                 }
 
@@ -419,24 +446,15 @@ namespace Microsoft.Interop.Analyzers
 
                         context.ReportDiagnostic(Diagnostic.Create(NativeTypeMustBePointerSizedRule,
                             valueProperty is not null
-                                ? GetSyntaxReferenceForDiagnostic(valueProperty).GetSyntax().GetLocation()
-                                : GetSyntaxReferenceForDiagnostic(nativeType).GetSyntax().GetLocation(),
+                                ? valueProperty.Locations[0]
+                                : nativeType.Locations[0],
+                            valueProperty is not null
+                                ? valueProperty.Locations.Skip(1)
+                                : nativeType.Locations.Skip(1),
                             valuePropertyIsRefReturn
                                 ? $"ref {nativeType.ToDisplayString()}"
                                 : nativeType.ToDisplayString(),
                             typeWithGetPinnableReference.ToDisplayString()));
-                    }
-                }
-
-                SyntaxReference GetSyntaxReferenceForDiagnostic(ISymbol targetSymbol)
-                {
-                    if (targetSymbol.DeclaringSyntaxReferences.IsEmpty)
-                    {
-                        return nativeMarshalerAttributeData.ApplicationSyntaxReference!;
-                    }
-                    else
-                    {
-                        return targetSymbol.DeclaringSyntaxReferences[0];
                     }
                 }
             }
