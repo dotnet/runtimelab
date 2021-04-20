@@ -160,15 +160,11 @@
     </ItemGroup>
 
     <ItemGroup>
-      <NativeAotRuntimeExcludeFiles Include="$(LibrariesAllBinArtifactsPath)\*.Generators.*" />
-    </ItemGroup>
-
-    <ItemGroup>
       <RunTimeDependencyCopyLocal Include="$(CoreCLRArtifactsPath)ilc/**/*" TargetDir="nativeaot/tools/" />
       <RunTimeDependencyCopyLocal Include="$(CoreCLRArtifactsPath)aotsdk/**/*" TargetDir="nativeaot/sdk/" />
       <RunTimeDependencyCopyLocal Include="$(CoreCLRArtifactsPath)build/**/*" TargetDir="nativeaot/build/" />
       <RunTimeDependencyCopyLocal Include="$(TargetingPackPath)/*" TargetDir="nativeaot/framework/" />
-      <RunTimeDependencyCopyLocal Include="@(RuntimeCopyLocalItems)" Exclude="@(NativeAotRuntimeExcludeFiles)" TargetDir="nativeaot/framework/" />
+      <RunTimeDependencyCopyLocal Include="@(RuntimeCopyLocalItems)" TargetDir="nativeaot/framework/" />
     </ItemGroup>
 
     <Copy
