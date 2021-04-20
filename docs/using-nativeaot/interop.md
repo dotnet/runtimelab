@@ -36,7 +36,7 @@ Examples:
 
 ### Linking
 
-To statically link against a unmanaged library, you'll need to specify `<NativeLibrary>filename</NativeLibrary>` pointing to `.lib` file on Windows and `.a` file on Unix
+To statically link against a unmanaged library, you'll need to specify `<NativeLibrary Include="filename" />` pointing to `.lib` file on Windows and `.a` file on Unix
 
 Examples:
 
