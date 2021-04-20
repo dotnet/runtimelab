@@ -103,6 +103,8 @@ namespace System
 
         public static bool IsInvokingStaticConstructorsSupported => !IsNativeAot;
 
+        public static bool IsMetadataUpdateSupported => !IsNativeAot;
+
         // System.Security.Cryptography.Xml.XmlDsigXsltTransform.GetOutput() relies on XslCompiledTransform which relies
         // heavily on Reflection.Emit
         public static bool IsXmlDsigXsltTransformSupported => !PlatformDetection.IsInAppContainer;
