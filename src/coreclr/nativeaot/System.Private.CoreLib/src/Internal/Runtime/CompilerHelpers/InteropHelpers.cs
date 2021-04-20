@@ -405,7 +405,7 @@ namespace Internal.Runtime.CompilerHelpers
             return PInvokeMarshal.GetCurrentCalleeDelegate<T>();
         }
 
-        public static IntPtr ConvertManagedComInterfaceToNative(object pUnk, Type convertToType)
+        public static IntPtr ConvertManagedComInterfaceToNative(object pUnk, Guid interfaceGuid)
         {
             if (pUnk == null)
             {
@@ -414,7 +414,6 @@ namespace Internal.Runtime.CompilerHelpers
 
 #if TARGET_WINDOWS
 #pragma warning disable CA1416
-            Guid interfaceGuid = convertToType.GUID;
             return ComWrappers.ComInterfaceForObject(pUnk, interfaceGuid);
 #pragma warning restore CA1416
 #else
