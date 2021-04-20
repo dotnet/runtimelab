@@ -884,7 +884,6 @@ namespace Internal.TypeSystem.Interop
 
             var guidValue = (string)guidAttributeValue.Value.FixedArguments[0].Value;
             var parts = guidValue.Split('-');
-            codeStream.Emit(ILOpcode.ldtoken, emitter.NewToken((EcmaType)this.ManagedParameterType));
             MetadataType guidType = Context.SystemModule.GetKnownType("System", "Guid");
             var int32Type = Context.GetWellKnownType(WellKnownType.Int32);
             var int16Type = Context.GetWellKnownType(WellKnownType.Int16);
