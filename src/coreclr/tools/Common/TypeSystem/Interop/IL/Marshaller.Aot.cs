@@ -3,6 +3,7 @@
 
 using System;
 using System.Buffers.Binary;
+using System.Memory;
 using System.Runtime.InteropServices;
 using Internal.IL.Stubs;
 using Internal.IL;
@@ -884,7 +885,7 @@ namespace Internal.TypeSystem.Interop
             }
 
             var guidValue = (string)guidAttributeValue.Value.FixedArguments[0].Value;
-            byte[] bytes = Guid.Parse(guidValue).ToByteArray();
+            Span<byte> bytes = Guid.Parse(guidValue).ToByteArray();
             codeStream.EmitLdc(BinaryPrimitives.ReadInt32LittleEndian(bytes));
             codeStream.EmitLdc(BinaryPrimitives.ReadInt16LittleEndian(bytes.Slice(4)));
             codeStream.EmitLdc(BinaryPrimitives.ReadInt16LittleEndian(bytes.Slice(6)));
