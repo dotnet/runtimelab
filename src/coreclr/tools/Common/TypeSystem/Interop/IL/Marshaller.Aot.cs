@@ -883,23 +883,17 @@ namespace Internal.TypeSystem.Interop
             }
 
             var guidValue = (string)guidAttributeValue.Value.FixedArguments[0].Value;
-            var parts = guidValue.Split('-');
+            byte[] bytes = Guid.Parse(guidValue);
+            codeStream.EmitLdc(BinaryPrimitives.ReadInt32LittleEndian(bytes));
+            codeStream.EmitLdc(BinaryPrimitives.ReadInt16LittleEndian(bytes.Slice(4)));
+            codeStream.EmitLdc(BinaryPrimitives.ReadInt16LittleEndian(bytes.Slice(6)));
+            for (int i = 8; i < 16; i++)
+                codeStream.EmitLdc(bytes[i]);
+
             MetadataType guidType = Context.SystemModule.GetKnownType("System", "Guid");
             var int32Type = Context.GetWellKnownType(WellKnownType.Int32);
             var int16Type = Context.GetWellKnownType(WellKnownType.Int16);
             var byteType = Context.GetWellKnownType(WellKnownType.Byte);
-            guidType.GetParameterlessConstructor();
-            int param1 = int.Parse(parts[0], System.Globalization.NumberStyles.HexNumber);
-            short param2 = short.Parse(parts[1], System.Globalization.NumberStyles.HexNumber);
-            short param3 = short.Parse(parts[2], System.Globalization.NumberStyles.HexNumber);
-            byte param4 = byte.Parse(parts[3].Substring(0, 2), System.Globalization.NumberStyles.HexNumber);
-            byte param5 = byte.Parse(parts[3].Substring(2), System.Globalization.NumberStyles.HexNumber);
-            byte param6 = byte.Parse(parts[4].Substring(0, 2), System.Globalization.NumberStyles.HexNumber);
-            byte param7 = byte.Parse(parts[4].Substring(2, 2), System.Globalization.NumberStyles.HexNumber);
-            byte param8 = byte.Parse(parts[4].Substring(4, 2), System.Globalization.NumberStyles.HexNumber);
-            byte param9 = byte.Parse(parts[4].Substring(6, 2), System.Globalization.NumberStyles.HexNumber);
-            byte param10 = byte.Parse(parts[4].Substring(8, 2), System.Globalization.NumberStyles.HexNumber);
-            byte param11 = byte.Parse(parts[4].Substring(10, 2), System.Globalization.NumberStyles.HexNumber);
             var sig = new MethodSignature(
                 MethodSignatureFlags.None,
                 genericParameterCount: 0,
@@ -907,17 +901,6 @@ namespace Internal.TypeSystem.Interop
                 parameters: new TypeDesc[] { int32Type, int16Type, int16Type, byteType, byteType, byteType, byteType, byteType, byteType, byteType, byteType });
             MethodDesc guidCtorHandleMethod =
                 guidType.GetKnownMethod(".ctor", sig);
-            codeStream.EmitLdc(param1);
-            codeStream.EmitLdc(param2);
-            codeStream.EmitLdc(param3);
-            codeStream.EmitLdc(param4);
-            codeStream.EmitLdc(param5);
-            codeStream.EmitLdc(param6);
-            codeStream.EmitLdc(param7);
-            codeStream.EmitLdc(param8);
-            codeStream.EmitLdc(param9);
-            codeStream.EmitLdc(param10);
-            codeStream.EmitLdc(param11);
             codeStream.Emit(ILOpcode.newobj,  emitter.NewToken(guidCtorHandleMethod));
 
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
