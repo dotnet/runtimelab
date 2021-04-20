@@ -58,6 +58,7 @@ popd
 echo ----- end %DATE% %TIME% ----- exit code %ERRORLEVEL% ----------------------------------------------------------
 :: The helix work item should not exit with non-zero if tests ran and produced results
 :: The special console runner for runtime returns 1 when tests fail
+echo HELIX_WORKITEM_PAYLOAD is %HELIX_WORKITEM_PAYLOAD%
 if %ERRORLEVEL%==1 (
   if not "%HELIX_WORKITEM_PAYLOAD%"=="" (
     exit /b 0
