@@ -191,12 +191,6 @@ namespace System.IO.Tests
         [PlatformSpecific(~TestPlatforms.Android)] // OOM on Android could be uncatchable & kill the test runner
         public unsafe void WriteChars_VeryLargeArray_DoesNotOverflow()
         {
-            if (RuntimeInformation.ProcessArchitecture == Architecture.S390x)
-            {
-                 // we run into the OOM killer on s390x
-                return;
-            }
-
             const nuint INPUT_LEN_IN_CHARS = 1_500_000_000;
             const nuint OUTPUT_LEN_IN_BYTES = 3_500_000_000; // overallocate
 
