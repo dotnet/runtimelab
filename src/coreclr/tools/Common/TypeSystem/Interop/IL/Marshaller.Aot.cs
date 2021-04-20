@@ -3,7 +3,6 @@
 
 using System;
 using System.Buffers.Binary;
-using System.Memory;
 using System.Runtime.InteropServices;
 using Internal.IL.Stubs;
 using Internal.IL;
