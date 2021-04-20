@@ -17,6 +17,7 @@ using ILCompiler.DependencyAnalysisFramework;
 
 using FlowAnnotations = ILCompiler.Dataflow.FlowAnnotations;
 using DependencyList = ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.DependencyList;
+using CombinedDependencyList = System.Collections.Generic.List<ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.CombinedDependencyListEntry>;
 using Debug = System.Diagnostics.Debug;
 using CustomAttributeValue = System.Reflection.Metadata.CustomAttributeValue<Internal.TypeSystem.TypeDesc>;
 using EcmaModule = Internal.TypeSystem.Ecma.EcmaModule;
@@ -384,6 +385,20 @@ namespace ILCompiler
             if ((_generationOptions & UsageBasedMetadataGenerationOptions.ReflectedMembersOnly) == 0)
             {
                 GetDependenciesDueToReflectability(ref dependencies, factory, method);
+            }
+        }
+
+        public override void GetConditionalDependenciesDueToMethodCodePresence(ref CombinedDependencyList dependencies, NodeFactory factory, MethodDesc method)
+        {
+            MethodDesc typicalMethod = method.GetTypicalMethodDefinition();
+
+            // Ensure methods with genericness have the same reflectability by injecting a conditional dependency.
+            if ((_generationOptions & UsageBasedMetadataGenerationOptions.ReflectedMembersOnly) != 0
+                && method != typicalMethod)
+            {
+                dependencies ??= new CombinedDependencyList();
+                dependencies.Add(new DependencyNodeCore<NodeFactory>.CombinedDependencyListEntry(
+                    factory.ReflectableMethod(method), factory.ReflectableMethod(typicalMethod), "Reflectability of methods is same across genericness"));
             }
         }
 
