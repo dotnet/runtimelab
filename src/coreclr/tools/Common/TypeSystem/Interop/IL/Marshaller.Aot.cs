@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using Internal.IL.Stubs;
 using Internal.IL;
