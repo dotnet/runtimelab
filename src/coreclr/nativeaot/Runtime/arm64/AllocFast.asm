@@ -75,7 +75,6 @@ RhpNewFast_RarePath
         ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         bl          RhpGcAlloc
 
-        ;; Set the new object's EEType pointer on success.
         cbz         x0, NewOutOfMemory
 
         POP_COOP_PINVOKE_FRAME
