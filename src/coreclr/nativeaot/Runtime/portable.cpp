@@ -37,7 +37,6 @@
 
 #if defined(USE_PORTABLE_HELPERS)
 EXTERN_C REDHAWK_API void* REDHAWK_CALLCONV RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame);
-EXTERN_C REDHAWK_API void* REDHAWK_CALLCONV RhpPublishObject(void* pObject, uintptr_t cbSize);
 
 struct gc_alloc_context
 {
@@ -78,10 +77,6 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFast, (EEType* pEEType))
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
     }
-    pObject->set_EEType(pEEType);
-
-    if (size >= RH_LARGE_OBJECT_SIZE)
-        RhpPublishObject(pObject, size);
 
     return pObject;
 }
@@ -101,10 +96,6 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFinalizable, (EEType* pEEType))
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
     }
-    pObject->set_EEType(pEEType);
-
-    if (size >= RH_LARGE_OBJECT_SIZE)
-        RhpPublishObject(pObject, size);
 
     return pObject;
 }
@@ -159,11 +150,6 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArray, (EEType * pArrayEEType, int numElement
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
     }
-    pObject->set_EEType(pArrayEEType);
-    pObject->InitArrayLength((uint32_t)numElements);
-
-    if (size >= RH_LARGE_OBJECT_SIZE)
-        RhpPublishObject(pObject, size);
 
     return pObject;
 }
@@ -234,10 +220,6 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFastAlign8, (EEType* pEEType))
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
     }
-    pObject->set_EEType(pEEType);
-
-    if (size >= RH_LARGE_OBJECT_SIZE)
-        RhpPublishObject(pObject, size);
 
     return pObject;
 }
@@ -282,10 +264,6 @@ COOP_PINVOKE_HELPER(Object*, RhpNewFastMisalign, (EEType* pEEType))
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
     }
-    pObject->set_EEType(pEEType);
-
-    if (size >= RH_LARGE_OBJECT_SIZE)
-        RhpPublishObject(pObject, size);
 
     return pObject;
 }
@@ -356,11 +334,6 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArrayAlign8, (EEType * pArrayEEType, int numE
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
     }
-    pObject->set_EEType(pArrayEEType);
-    pObject->InitArrayLength((uint32_t)numElements);
-
-    if (size >= RH_LARGE_OBJECT_SIZE)
-        RhpPublishObject(pObject, size);
 
     return pObject;
 }

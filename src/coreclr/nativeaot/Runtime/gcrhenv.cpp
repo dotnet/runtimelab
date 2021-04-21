@@ -212,9 +212,45 @@ bool RedhawkGCInterface::InitializeSubsystems()
 }
 #endif // !DACCESS_COMPILE
 
-void* GcAllocInternal(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, Thread* pThread)
+Object* GcAllocInternal(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, Thread* pThread)
 {
     ASSERT(!pThread->IsDoNotTriggerGcSet());
+
+    size_t cbSize = pEEType->get_BaseSize();
+
+    if (pEEType->get_ComponentSize() != 0)
+    {
+        // Impose limits on maximum array length to prevent corner case integer overflow bugs
+        // Keep in sync with Array.MaxLength in BCL.
+        if (pEEType->IsSzArray()) // multi-dimensional arrays are checked up-front
+        {
+            const int MaxArrayLength = 0x7FFFFFC7;
+            if (numElements > MaxArrayLength)
+                return NULL;
+        }
+
+#ifndef HOST_64BIT
+        // if the element count is <= 0x10000, no overflow is possible because the component size is
+        // <= 0xffff, and thus the product is <= 0xffff0000, and the base size is only ~12 bytes
+        if (numElements > 0x10000)
+        {
+            // Perform the size computation using 64-bit integeres to detect overflow
+            uint64_t size64 = (uint64_t)cbSize + ((uint64_t)numElements * (uint64_t)pArrayEEType->get_ComponentSize());
+            size64 = (size64 + (sizeof(uintptr_t) - 1)) & ~(sizeof(uintptr_t) - 1);
+
+            cbSize = (size_t)size64;
+            if (cbSize != size64)
+            {
+                return NULL;
+            }
+        }
+        else
+#endif // !HOST_64BIT
+        {
+            cbSize = cbSize + ((size_t)numElements * (size_t)pEEType->get_ComponentSize());
+            cbSize = ALIGN_UP(cbSize, sizeof(uintptr_t));
+        }
+    }
 
     if (cbSize >= RH_LARGE_OBJECT_SIZE)
     {
@@ -227,31 +263,37 @@ void* GcAllocInternal(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, Thread
             max_object_size = (INT64_MAX - 7 - min_obj_size);
         }
         else
-    #endif // HOST_64BIT
+#endif // HOST_64BIT
         {
             max_object_size = (INT32_MAX - 7 - min_obj_size);
         }
 
         if (cbSize >= max_object_size)
             return NULL;
-
-        // Impose limits on maximum array length to prevent corner case integer overflow bugs
-        // Keep in sync with Array.MaxLength in BCL.
-        if (pEEType->IsSzArray()) // multi-dimensional arrays are checked up-front
-        {
-            const int MaxArrayLength = 0x7FFFFFC7;
-            size_t elementCount = (cbSize - pEEType->get_BaseSize()) / pEEType->get_ComponentSize();
-            if (elementCount > MaxArrayLength)
-                return NULL;
-        }
     }
 
     // Save the EEType for instrumentation purposes.
     RedhawkGCInterface::SetLastAllocEEType(pEEType);
 
     Object * pObject = GCHeapUtilities::GetGCHeap()->Alloc(pThread->GetAllocContext(), cbSize, uFlags);
+    if (pObject == NULL)
+        return NULL;
 
-    // NOTE: we cannot call PublishObject here because the object isn't initialized!
+    pObject->set_EEType(pEEType);
+    if (pEEType->get_ComponentSize() != 0)
+    {
+        ASSERT(numElements == (uint32_t)numElements);
+        ((Array*)pObject)->InitArrayLength((uint32_t)numElements);
+    }
+
+    if (uFlags & GC_ALLOC_USER_OLD_HEAP)
+        GCHeapUtilities::GetGCHeap()->PublishObject((uint8_t*)pObject);
+
+#ifdef _DEBUG
+    // We assume that the allocation quantum is never big enough for LARGE_OBJECT_SIZE.
+    gc_alloc_context* acontext = pThread->GetAllocContext();
+    ASSERT(acontext->alloc_limit - acontext->alloc_ptr <= RH_LARGE_OBJECT_SIZE);
+#endif
 
     return pObject;
 }
@@ -259,27 +301,17 @@ void* GcAllocInternal(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, Thread
 // Allocate an object on the GC heap.
 //  pEEType         -  type of the object
 //  uFlags          -  GC type flags (see gc.h GC_ALLOC_*)
-//  cbSize          -  size in bytes of the final object
+//  numElements     -  number of array elements
 //  pTransitionFrame-  transition frame to make stack crawable
 // Returns a pointer to the object allocated or NULL on failure.
 
-COOP_PINVOKE_HELPER(void*, RhpGcAlloc, (EEType* pEEType, uint32_t uFlags, uintptr_t cbSize, void* pTransitionFrame))
+COOP_PINVOKE_HELPER(void*, RhpGcAlloc, (EEType* pEEType, uint32_t uFlags, uintptr_t numElements, void* pTransitionFrame))
 {
     Thread* pThread = ThreadStore::GetCurrentThread();
 
     pThread->SetCurrentThreadPInvokeTunnelForGcAlloc(pTransitionFrame);
 
-    return GcAllocInternal(pEEType, uFlags, cbSize, pThread);
-}
-
-
-// returns the object pointer for caller's convenience
-COOP_PINVOKE_HELPER(void*, RhpPublishObject, (void* pObject, uintptr_t cbSize))
-{
-    UNREFERENCED_PARAMETER(cbSize);
-    ASSERT(cbSize >= LARGE_OBJECT_SIZE);
-    GCHeapUtilities::GetGCHeap()->PublishObject((uint8_t*)pObject);
-    return pObject;
+    return GcAllocInternal(pEEType, uFlags, numElements, pThread);
 }
 
 // static
