@@ -259,7 +259,7 @@ namespace ILCompiler.Dataflow
 
             while (type != null)
             {
-                if (type is not EcmaType ecmaType)
+                if (type.GetTypeDefinition() is not EcmaType ecmaType)
                 {
                     yield break;
                 }
@@ -324,7 +324,7 @@ namespace ILCompiler.Dataflow
             
             while (type != null)
             {
-                if (type is not EcmaType ecmaType)
+                if (type.GetTypeDefinition() is not EcmaType ecmaType)
                 {
                     yield break;
                 }

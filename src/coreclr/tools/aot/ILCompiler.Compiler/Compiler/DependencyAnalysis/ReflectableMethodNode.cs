@@ -39,6 +39,15 @@ namespace ILCompiler.DependencyAnalysis
                 return dependencies;
             }
 
+            // Ensure we consistently apply reflectability to all methods sharing the same definition.
+            // Different instantiations of the method have a conditional dependency on the definition node that
+            // brings a ReflectableMethod of the instantiated method if it's necessary for it to be reflectable.
+            MethodDesc typicalMethod = _method.GetTypicalMethodDefinition();
+            if (typicalMethod != _method)
+            {
+                dependencies.Add(factory.ReflectableMethod(typicalMethod), "Definition of the reflectable method");
+            }
+
             MethodDesc canonMethod = _method.GetCanonMethodTarget(CanonicalFormKind.Specific);
             if (canonMethod != _method)
             {

@@ -10,6 +10,8 @@ using Internal.IL;
 using Internal.Text;
 using Internal.TypeSystem;
 
+using CombinedDependencyList = System.Collections.Generic.List<ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.CombinedDependencyListEntry>;
+
 namespace ILCompiler.DependencyAnalysis
 {
     [DebuggerTypeProxy(typeof(MethodCodeNodeDebugView))]
@@ -64,6 +66,15 @@ namespace ILCompiler.DependencyAnalysis
         }
         public int Offset => 0;
         public override bool IsShareable => _method is InstantiatedMethod || EETypeNode.IsTypeNodeShareable(_method.OwningType);
+
+        public override bool HasConditionalStaticDependencies => CodeBasedDependencyAlgorithm.HasConditionalDependenciesDueToMethodCodePresence(_method);
+
+        public override IEnumerable<CombinedDependencyListEntry> GetConditionalStaticDependencies(NodeFactory factory)
+        {
+            CombinedDependencyList dependencies = null;
+            CodeBasedDependencyAlgorithm.AddConditionalDependenciesDueToMethodCodePresence(ref dependencies, factory, _method);
+            return dependencies ?? (IEnumerable<CombinedDependencyListEntry>)Array.Empty<CombinedDependencyListEntry>();
+        }
 
         protected override DependencyList ComputeNonRelocationBasedDependencies(NodeFactory factory)
         {

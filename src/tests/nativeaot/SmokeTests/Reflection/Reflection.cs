@@ -8,6 +8,7 @@
 #endif
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Reflection;
@@ -45,6 +46,10 @@ internal class ReflectionTest
         TestPropertyAndEventAttributes.Run();
         TestNecessaryEETypeReflection.Run();
         TestRuntimeLab929Regression.Run();
+#if !REFLECTION_FROM_USAGE
+        TestNotReflectedIsNotReflectable.Run();
+        TestGenericInstantiationsAreEquallyReflectable.Run();
+#endif
 
         //
         // Mostly functionality tests
@@ -159,19 +164,7 @@ internal class ReflectionTest
             // Ensure things we reflect on are in the static callgraph
             if (string.Empty.Length > 0)
             {
-                new InvokeTests().ToString();
-                InvokeTests.GetHello(null);
                 InvokeTests.GetHelloGeneric<int>(0);
-                InvokeTests.GetHelloGeneric<string>(null);
-                InvokeTests.GetHelloPointer(null);
-                InvokeTests.GetHelloPointerToo(null);
-                InvokeTests.GetPointer(null, null);
-                string unused;
-                InvokeTests.GetHelloByRef(null, out unused);
-                unused.ToString();
-                new InvokeTestsGeneric<object>().GetHello(null);
-                new InvokeTestsGeneric<object>().GetHelloGeneric<object>(null);
-                new InvokeTestsGeneric<int>().GetHello(null);
                 new InvokeTestsGeneric<int>().GetHelloGeneric<double>(0);
             }
 
@@ -465,15 +458,6 @@ internal class ReflectionTest
         {
             Console.WriteLine(nameof(TestCreateDelegate));
 
-            // Ensure things we reflect on are in the static callgraph
-            if (string.Empty.Length > 0)
-            {
-                new Greeter(null).Greet();
-                GetHelloInstanceDelegate d = null;
-                Func<Greeter, string> d2 = d.Invoke;
-                d = d2.Invoke;
-            }
-
             TypeInfo ti = typeof(Greeter).GetTypeInfo();
             MethodInfo mi = ti.GetDeclaredMethod(nameof(Greeter.Greet));
             {
@@ -545,12 +529,6 @@ internal class ReflectionTest
         {
             Console.WriteLine(nameof(TestParameterAttributes));
 
-            // Ensure things we reflect on are in the static callgraph
-            if (string.Empty.Length > 0)
-            {
-                Method(null);
-            }
-
             MethodInfo method = typeof(TestParameterAttributes).GetMethod(nameof(Method));
 
             var attribute = method.GetParameters()[0].GetCustomAttribute<ParameterAttribute>();
@@ -610,13 +588,6 @@ internal class ReflectionTest
         public static void Run()
         {
             Console.WriteLine(nameof(TestPropertyAndEventAttributes));
-
-            // Ensure things we reflect on are in the static callgraph
-            if (string.Empty.Length > 0)
-            {
-                Property = 123;
-                Event += null;
-            }
 
             {
                 PropertyInfo property = typeof(TestPropertyAndEventAttributes).GetProperty(nameof(Property));
@@ -752,12 +723,6 @@ internal class ReflectionTest
         {
             Console.WriteLine(nameof(TestStringConstructor));
 
-            // Ensure things we reflect on are in the static callgraph
-            if (string.Empty.Length > 0)
-            {
-                new string(new char[] { }, 0, 0);
-            }
-
             ConstructorInfo ctor = typeof(string).GetConstructor(new Type[] { typeof(char[]), typeof(int), typeof(int) });
             object str = ctor.Invoke(new object[] { new char[] { 'a' }, 0, 1 });
             if ((string)str != "a")
@@ -823,10 +788,15 @@ internal class ReflectionTest
         delegate string ToStringDelegate(ref ByRefLike thisObj);
         delegate string ToStringDelegate<T>(ref ByRefLike<T> thisObj);
 
+#if !REFLECTION_FROM_USAGE
+        [DynamicDependency("ToString", typeof(ByRefLike))]
+        [DynamicDependency("ToString", typeof(ByRefLike<>))]
+#endif
         public static void Run()
         {
             Console.WriteLine(nameof(TestByRefLikeTypeMethod));
 
+#if REFLECTION_FROM_USAGE
             // Ensure things we reflect on are in the static callgraph
             if (string.Empty.Length > 0)
             {
@@ -837,6 +807,7 @@ internal class ReflectionTest
                 ToStringDelegate<object> s2 = null;
                 s2 = s2.Invoke;
             }
+#endif
 
             {
                 Type byRefLikeType = GetTestType(nameof(TestByRefLikeTypeMethod), nameof(ByRefLike));
@@ -919,16 +890,22 @@ internal class ReflectionTest
             }
         }
 
+#if !REFLECTION_FROM_USAGE
+        [DynamicDependency("Frob", typeof(IFoo))]
+        [DynamicDependency("Frob", typeof(IFoo<>))]
+#endif
         public static void Run()
         {
             Console.WriteLine(nameof(TestInterfaceMethod));
 
+#if REFLECTION_FROM_USAGE
             // Ensure things we reflect on are in the static callgraph
             if (string.Empty.Length > 0)
             {
                 ((IFoo)new Foo()).Frob(1);
                 ((IFoo<object>)new Foo<string>()).Frob();
             }
+#endif
 
             object result = InvokeTestMethod(typeof(IFoo), "Frob", new Foo(), 42);
             if ((string)result != "42")
@@ -953,16 +930,20 @@ internal class ReflectionTest
             }
         }
 
-
+#if !REFLECTION_FROM_USAGE
+        [DynamicDependency("CallMe", typeof(NeverUsedContainerType.UsedNestedType))]
+#endif
         public static void Run()
         {
             Console.WriteLine(nameof(TestContainment));
 
+#if REFLECTION_FROM_USAGE
             // Ensure things we reflect on are in the static callgraph
             if (string.Empty.Length > 0)
             {
                 NeverUsedContainerType.UsedNestedType.CallMe();
             }
+#endif
 
             Type neverUsedContainerType = GetTestType(nameof(TestContainment), nameof(NeverUsedContainerType));
             Type usedNestedType = neverUsedContainerType.GetNestedType(nameof(NeverUsedContainerType.UsedNestedType));
@@ -1071,11 +1052,6 @@ internal class ReflectionTest
             int* expected = (int*)0x1122334455667788;
             TestClassIntPointer tc = new TestClassIntPointer(expected);
 
-            if (string.Empty.Length > 0)
-            {
-                ((IntPtr)tc.RefReturningProp).ToString();
-            }
-
             PropertyInfo p = typeof(TestClassIntPointer).GetProperty(nameof(TestClassIntPointer.RefReturningProp));
             object rv = p.GetValue(tc);
             Assert.True(rv is Pointer);
@@ -1086,11 +1062,6 @@ internal class ReflectionTest
         public static unsafe void TestNullRefReturnOfPointer()
         {
             TestClassIntPointer tc = new TestClassIntPointer(null);
-
-            if (string.Empty.Length > 0)
-            {
-                ((IntPtr)tc.NullRefReturningProp).ToString();
-            }
 
             PropertyInfo p = typeof(TestClassIntPointer).GetProperty(nameof(TestClassIntPointer.NullRefReturningProp));
             Assert.NotNull(p);
@@ -1400,6 +1371,69 @@ internal class ReflectionTest
             Assert.Equal(4, t.GetArrayRank());
         }
     }
+
+#if !REFLECTION_FROM_USAGE
+    class TestNotReflectedIsNotReflectable
+    {
+        static Type s_type = typeof(TestNotReflectedIsNotReflectable);
+
+#if OPTIMIZED_MODE_WITHOUT_SCANNER
+        [MethodImpl(MethodImplOptions.NoInlining)]
+#endif
+        public static void IsCalledAndReflected()
+        {
+        }
+
+#if OPTIMIZED_MODE_WITHOUT_SCANNER
+        [MethodImpl(MethodImplOptions.NoInlining)]
+#endif
+        public static void IsCalledOnly()
+        {
+        }
+
+        public static void Run()
+        {
+            if (String.Empty.Length > 0)
+            {
+                // Call both, but reflect only on one. Only one should be reflectable.
+                IsCalledAndReflected();
+                IsCalledOnly();
+                typeof(TestNotReflectedIsNotReflectable).GetMethod(nameof(IsCalledAndReflected));
+            }
+
+            if (s_type.GetMethod(nameof(IsCalledAndReflected)) == null)
+                throw new Exception();
+
+            if (s_type.GetMethod(nameof(IsCalledOnly)) != null)
+                throw new Exception();
+        }
+    }
+
+    class TestGenericInstantiationsAreEquallyReflectable
+    {
+        static Type s_type = typeof(GenericType<>);
+
+        class GenericType<T>
+        {
+            public static Type Gimme() => typeof(T);
+        }
+
+        public static void Run()
+        {
+            if (String.Empty.Length > 0)
+            {
+                // Reflect over GenericType<object>, but also call GenericType<double>.
+                // Both should be equally reflectable.
+                GenericType<double>.Gimme();
+                typeof(GenericType<>).MakeGenericType(typeof(object)).GetMethod("Gimme");
+            }
+
+            var t = (Type)s_type.MakeGenericType(typeof(double)).GetMethod("Gimme").Invoke(null, Array.Empty<object>());
+            if (t != typeof(double))
+                throw new Exception();
+        }
+    }
+#endif
 
     class TypeConstructionTest
     {
