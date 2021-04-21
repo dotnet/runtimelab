@@ -2,12 +2,15 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using Internal.IL.Stubs;
 using Internal.IL;
 
 using Debug = System.Diagnostics.Debug;
 using ILLocalVariable = Internal.IL.Stubs.ILLocalVariable;
+using Internal.TypeSystem.Ecma;
+using System.Reflection.Metadata;
 
 namespace Internal.TypeSystem.Interop
 {
@@ -871,8 +874,35 @@ namespace Internal.TypeSystem.Interop
         {
             ILEmitter emitter = _ilCodeStreams.Emitter;
 
-            var helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertManagedComInterfaceToNative");
+            MethodDesc helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertManagedComInterfaceToNative");
             LoadManagedValue(codeStream);
+            CustomAttributeValue<TypeDesc>? guidAttributeValue = (this.ManagedParameterType as EcmaType)?
+                .GetDecodedCustomAttribute("System.Runtime.InteropServices", "GuidAttribute");
+            if (guidAttributeValue == null)
+            {
+                throw new NotSupportedException();
+            }
+
+            var guidValue = (string)guidAttributeValue.Value.FixedArguments[0].Value;
+            Span<byte> bytes = Guid.Parse(guidValue).ToByteArray();
+            codeStream.EmitLdc(BinaryPrimitives.ReadInt32LittleEndian(bytes));
+            codeStream.EmitLdc(BinaryPrimitives.ReadInt16LittleEndian(bytes.Slice(4)));
+            codeStream.EmitLdc(BinaryPrimitives.ReadInt16LittleEndian(bytes.Slice(6)));
+            for (int i = 8; i < 16; i++)
+                codeStream.EmitLdc(bytes[i]);
+
+            MetadataType guidType = Context.SystemModule.GetKnownType("System", "Guid");
+            var int32Type = Context.GetWellKnownType(WellKnownType.Int32);
+            var int16Type = Context.GetWellKnownType(WellKnownType.Int16);
+            var byteType = Context.GetWellKnownType(WellKnownType.Byte);
+            var sig = new MethodSignature(
+                MethodSignatureFlags.None,
+                genericParameterCount: 0,
+                returnType: Context.GetWellKnownType(WellKnownType.Void),
+                parameters: new TypeDesc[] { int32Type, int16Type, int16Type, byteType, byteType, byteType, byteType, byteType, byteType, byteType, byteType });
+            MethodDesc guidCtorHandleMethod =
+                guidType.GetKnownMethod(".ctor", sig);
+            codeStream.Emit(ILOpcode.newobj,  emitter.NewToken(guidCtorHandleMethod));
 
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
 
@@ -883,7 +913,7 @@ namespace Internal.TypeSystem.Interop
         {
             ILEmitter emitter = _ilCodeStreams.Emitter;
 
-            var helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertNativeComInterfaceToManaged");
+            MethodDesc helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertNativeComInterfaceToManaged");
             LoadNativeValue(codeStream);
 
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));

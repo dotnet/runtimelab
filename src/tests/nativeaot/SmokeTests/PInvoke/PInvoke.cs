@@ -209,9 +209,6 @@ namespace PInvokeTests
         [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall)]
         static extern bool IsNULL(SequentialStruct[] foo);
 
-        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall)]
-        static extern bool IsNULL(IComInterface foo);
-
         [StructLayout(LayoutKind.Sequential, CharSet= CharSet.Ansi, Pack = 4)]
         public unsafe struct InlineArrayStruct
         {
@@ -297,9 +294,6 @@ namespace PInvokeTests
             TestMarshalStructAPIs();
             TestForwardDelegateWithUnmanagedCallersOnly();
 
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                TestComInteropNullPointers();
-
             return 100;
         }
 
@@ -360,7 +354,7 @@ namespace PInvokeTests
 
             Foo[] arr_foo = null;
             ThrowIfNotEquals(true, IsNULL(arr_foo), "Blittable array null check failed");
-            
+
             arr_foo = new Foo[ArraySize];
             for (int i = 0; i < ArraySize; i++)
             {
@@ -801,7 +795,7 @@ namespace PInvokeTests
                 ssa[i].f1 = 0;
                 ssa[i].f1 = i;
                 ssa[i].f2 = i*i;
-                ssa[i].f3 = i.LowLevelToString(); 
+                ssa[i].f3 = i.LowLevelToString();
             }
             ThrowIfNotEquals(true, StructTest_Array(ssa, ssa.Length), "Array of struct marshalling failed");
 
@@ -1011,14 +1005,6 @@ namespace PInvokeTests
             Action a = Marshal.GetDelegateForFunctionPointer<Action>((IntPtr)(void*)(delegate* unmanaged<void>)&UnmanagedCallback);
             a();
         }
-
-        public static void TestComInteropNullPointers()
-        {
-            Console.WriteLine("Testing Marshal APIs for COM interfaces");
-            IComInterface comPointer = null;
-            var result = IsNULL(comPointer);
-            ThrowIfNotEquals(true, IsNULL(comPointer), "COM interface marshalling null check failed");
-        }
     }
 
     public class SafeMemoryHandle : SafeHandle //SafeHandle subclass
@@ -1046,14 +1032,6 @@ namespace PInvokeTests
             return ReleaseMemory(handle);
         }
     } //end of SafeMemoryHandle class
-
-    [ComImport]
-    [ComVisible(true)]
-    [Guid("D6DD68D1-86FD-4332-8666-9ABEDEA2D24C")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    public interface IComInterface
-    {
-    }
 
     public static class LowLevelExtensions
     {

@@ -20,7 +20,7 @@
 #if (_MSC_VER >= 1400)         // Check MSC version
 #pragma warning(push)
 #pragma warning(disable: 4996) // Disable deprecation
-#endif 
+#endif
 
 void* MemAlloc(long bytes)
 {
@@ -82,7 +82,7 @@ DLL_EXPORT int __stdcall CheckIncremental_Foo(Foo *array, int sz)
             return 1;
     }
     return 0;
-}  
+}
 
 DLL_EXPORT int __stdcall Inc(int *val)
 {
@@ -104,7 +104,7 @@ DLL_EXPORT int __stdcall VerifyByRefFoo(Foo *val)
     val->b++;
 
     return 0;
-}    
+}
 
 DLL_EXPORT bool __stdcall GetNextChar(short *value)
 {
@@ -129,7 +129,7 @@ int CompareUnicodeString(const unsigned short *val, const unsigned short *expect
         return 0;
     const unsigned short *p = val;
     const unsigned short *q = expected;
-    
+
     while (*p  && *q && *p == *q)
     {
         p++;
@@ -196,7 +196,7 @@ DLL_EXPORT int __stdcall VerifyAnsiStringArray(char **val)
 
 void ToUpper(char *val)
 {
-    if (val == NULL) 
+    if (val == NULL)
         return;
     char *p = val;
     while (*p != '\0')
@@ -236,7 +236,7 @@ DLL_EXPORT int __stdcall VerifyUnicodeStringOut(unsigned short **val)
     unsigned short expected[] = { 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', 0 };
     for (int i = 0; i < 12; i++)
         p[i] = expected[i];
-    
+
     *val = p;
     return 1;
 }
@@ -252,7 +252,7 @@ DLL_EXPORT int __stdcall VerifyUnicodeStringRef(unsigned short **val)
 
     if (!CompareUnicodeString(p, q))
         return 0;
-    
+
     MemFree(*val);
 
     p = (unsigned short*)MemAlloc(sizeof(unsigned short) * 13);
@@ -401,7 +401,7 @@ DLL_EXPORT int __stdcall VerifyUnicodeStringBuilderOut(unsigned short *val)
     unsigned short src[] = { 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', 0 };
     for (int i = 0; i < 12; i++)
         val[i] = src[i];
-    
+
     return 1;
 }
 
@@ -519,7 +519,7 @@ DLL_EXPORT bool __stdcall StructTest_Array(NativeSequentialStruct *nss, int leng
 {
     if (nss == NULL)
         return false;
-    
+
     char expected[16];
 
     for (int i = 0; i < 3; i++)
@@ -562,7 +562,7 @@ DLL_EXPORT bool __stdcall InlineArrayTest(inlineStruct* p, inlineUnicodeStruct *
             return false;
         p->inlineArray[i] = i + 1;
     }
-    
+
     if (CompareAnsiString(p->inlineString, "Hello") != 1)
        return false;
 
@@ -613,7 +613,7 @@ DLL_EXPORT bool __stdcall StructTest_Nested(NativeNestedStruct nns)
 {
     if (nns.a != 100)
         return false;
-    
+
     return StructTest_Explicit(nns.nes);
 }
 
@@ -624,9 +624,9 @@ DLL_EXPORT bool __stdcall VerifyAnsiCharArrayIn(char *a)
 
 DLL_EXPORT bool __stdcall VerifyAnsiCharArrayOut(char *a)
 {
-    if (a == NULL) 
+    if (a == NULL)
         return false;
-    
+
     CopyAnsiString(a, "Hello World!");
     return true;
 }

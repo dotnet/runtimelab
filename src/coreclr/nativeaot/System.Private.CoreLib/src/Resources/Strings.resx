@@ -3151,7 +3151,13 @@
   <data name="Argv_IncludeDoubleQuote" xml:space="preserve">
     <value>The argv[0] argument cannot include a double quote.</value>
   </data>
+  <data name="InvalidOperation_ResetGlobalComWrappersInstance" xml:space="preserve">
+    <value>Attempt to update previously set global instance.</value>
+  </data>
   <data name="ResourceManager_ReflectionNotAllowed" xml:space="preserve">
     <value>Use of ResourceManager for custom types is disabled. Set the MSBuild Property CustomResourceTypesSupport to true in order to enable it.</value>
+  </data>
+  <data name="InvalidOperation_ComInteropRequireComWrapperInstance" xml:space="preserve">
+    <value>COM Interop requires ComWrapper instance registered for marshalling.</value>
   </data>
 </root>
