@@ -34,27 +34,27 @@ class NativeComInterface: public IComInterface
     int _counter;
     int _value;
 public:
-    override HRESULT STDMETHODCALLTYPE DoWork(int param)
+    HRESULT STDMETHODCALLTYPE DoWork(int param) override
     {
         _value += param;
         return S_OK;
     }
 
-    override HRESULT STDMETHODCALLTYPE AddRef()
+    HRESULT STDMETHODCALLTYPE AddRef() override
     {
         _counter++;
         return S_OK;
     }
 
-    override HRESULT STDMETHODCALLTYPE Release()
+    HRESULT STDMETHODCALLTYPE Release() override
     {
         _counter--;
         return S_OK;
     }
 
-    override HRESULT STDMETHODCALLTYPE QueryInterface(
+    HRESULT STDMETHODCALLTYPE QueryInterface(
         ___in REFIID InterfaceId,
-        ___out PVOID* Interface)
+        ___out PVOID* Interface) override
     {
         if (InterfaceId == IID_IUnknown ||
             InterfaceId == IID_IComInterface)
