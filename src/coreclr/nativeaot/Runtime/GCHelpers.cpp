@@ -329,47 +329,7 @@ EXTERN_C REDHAWK_API int64_t __cdecl RhGetTotalAllocatedBytesPrecise()
     return allocated;
 }
 
-extern void* GcAllocInternal(EEType* pEEType, uint32_t uFlags, uintptr_t cbSize, Thread* pThread);
-
-static Array* AllocateNewArrayImpl(Thread* pThread, EEType* pArrayEEType, uint32_t numElements, uint32_t flags)
-{
-    size_t size;
-#ifndef HOST_64BIT
-    // if the element count is <= 0x10000, no overflow is possible because the component size is
-    // <= 0xffff, and thus the product is <= 0xffff0000, and the base size is only ~12 bytes
-    if (numElements > 0x10000)
-    {
-        // Perform the size computation using 64-bit integeres to detect overflow
-        uint64_t size64 = (uint64_t)pArrayEEType->get_BaseSize() + ((uint64_t)numElements * (uint64_t)pArrayEEType->get_ComponentSize());
-        size64 = (size64 + (sizeof(uintptr_t) - 1)) & ~(sizeof(uintptr_t) - 1);
-
-        size = (size_t)size64;
-        if (size != size64)
-        {
-            return NULL;
-        }
-    }
-    else
-#endif // !HOST_64BIT
-    {
-        size = (size_t)pArrayEEType->get_BaseSize() + ((size_t)numElements * (size_t)pArrayEEType->get_ComponentSize());
-        size = ALIGN_UP(size, sizeof(uintptr_t));
-    }
-
-    Array* pArray = (Array*)GcAllocInternal(pArrayEEType, flags, size, pThread);
-    if (pArray == NULL)
-    {
-        return NULL;
-    }
-
-    pArray->set_EEType(pArrayEEType);
-    pArray->InitArrayLength(numElements);
-
-    if (flags & GC_ALLOC_USER_OLD_HEAP)
-        GCHeapUtilities::GetGCHeap()->PublishObject((uint8_t*)pArray);
-
-    return pArray;
-}
+extern Object* GcAllocInternal(EEType* pEEType, uint32_t uFlags, uintptr_t cbSize, Thread* pThread);
 
 EXTERN_C REDHAWK_API void RhAllocateNewArray(EEType* pArrayEEType, uint32_t numElements, uint32_t flags, Array** pResult)
 {
@@ -380,25 +340,9 @@ EXTERN_C REDHAWK_API void RhAllocateNewArray(EEType* pArrayEEType, uint32_t numE
 
     ASSERT(!pThread->IsDoNotTriggerGcSet());
 
-    *pResult = AllocateNewArrayImpl(pThread, pArrayEEType, numElements, flags);
+    *pResult = (Array*)GcAllocInternal(pArrayEEType, flags, numElements, pThread);
 
     pThread->EnablePreemptiveMode();
-}
-
-static Object* AllocateNewObjectImpl(Thread* pThread, EEType* pEEType, uint32_t flags)
-{
-    Object* pObject = (Object*)GcAllocInternal(pEEType, flags, pEEType->get_BaseSize(), pThread);
-    if (pObject == NULL)
-    {
-        return NULL;
-    }
-
-    pObject->set_EEType(pEEType);
-
-    if (flags & GC_ALLOC_USER_OLD_HEAP)
-        GCHeapUtilities::GetGCHeap()->PublishObject((uint8_t*)pObject);
-
-    return pObject;
 }
 
 EXTERN_C REDHAWK_API void RhAllocateNewObject(EEType* pEEType, uint32_t flags, Object** pResult)
@@ -410,7 +354,7 @@ EXTERN_C REDHAWK_API void RhAllocateNewObject(EEType* pEEType, uint32_t flags, O
 
     ASSERT(!pThread->IsDoNotTriggerGcSet());
 
-    *pResult = AllocateNewObjectImpl(pThread, pEEType, flags);
+    *pResult = GcAllocInternal(pEEType, flags, 0, pThread);
 
     pThread->EnablePreemptiveMode();
 }

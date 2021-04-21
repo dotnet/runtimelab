@@ -65,25 +65,14 @@ NESTED_ENTRY RhpNewObject, _TEXT
         ;; Preserve the EEType in RSI
         mov         rsi, rcx
 
-        mov         r8d, [rsi + OFFSETOF__EEType__m_uBaseSize]      ; cbSize
+        xor         r8d, r8d        ; numElements
 
         ;; Call the rest of the allocation helper.
-        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
-        ;; Set the new object's EEType pointer on success.
         test        rax, rax
         jz          NewOutOfMemory
-        mov         [rax + OFFSETOF__Object__m_pEEType], rsi
-
-        ;; If the object is bigger than RH_LARGE_OBJECT_SIZE, we must publish it to the BGC
-        mov         edx, [rsi + OFFSETOF__EEType__m_uBaseSize]
-        cmp         rdx, RH_LARGE_OBJECT_SIZE
-        jb          New_SkipPublish
-        mov         rcx, rax            ;; rcx: object
-                                        ;; rdx: already contains object size
-        call        RhpPublishObject    ;; rax: this function returns the object that was passed-in
-New_SkipPublish:
 
         POP_COOP_PINVOKE_FRAME
         ret
@@ -217,7 +206,6 @@ NESTED_ENTRY RhpNewArrayRare, _TEXT
 
         ; rcx == EEType
         ; rdx == element count
-        ; r8 == array size
 
         PUSH_COOP_PINVOKE_FRAME r9
         END_PROLOGUE
@@ -226,33 +214,18 @@ NESTED_ENTRY RhpNewArrayRare, _TEXT
 
         ; Preserve the EEType in RSI
         mov         rsi, rcx
-        ; Preserve the element count in RBX
-        mov         rbx, rdx
-        ; Preserve the size in RDI
-        mov         rdi, r8
 
         ; passing EEType in rcx
+        mov         r8, rdx         ; numElements
         xor         rdx, rdx        ; uFlags
-        ; pasing size in r8
         ; pasing pTransitionFrame in r9
 
         ; Call the rest of the allocation helper.
-        ; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
+        ; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
-        ; Set the new object's EEType pointer and length on success.
         test        rax, rax
         jz          ArrayOutOfMemory
-        mov         [rax + OFFSETOF__Object__m_pEEType], rsi
-        mov         [rax + OFFSETOF__Array__m_Length], ebx
-
-        ;; If the object is bigger than RH_LARGE_OBJECT_SIZE, we must publish it to the BGC
-        cmp         rdi, RH_LARGE_OBJECT_SIZE
-        jb          NewArray_SkipPublish
-        mov         rcx, rax            ;; rcx: object
-        mov         rdx, rdi            ;; rdx: object size
-        call        RhpPublishObject    ;; rax: this function returns the object that was passed-in
-NewArray_SkipPublish:
 
         POP_COOP_PINVOKE_FRAME
         ret

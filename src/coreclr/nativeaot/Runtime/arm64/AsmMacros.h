@@ -94,7 +94,6 @@ OFFSETOF__Thread__m_alloc_context__alloc_limit      equ OFFSETOF__Thread__m_rgbA
 ;; IMPORTS
 ;;
     EXTERN RhpGcAlloc
-    EXTERN RhpPublishObject
     EXTERN RhExceptionHandling_FailedAllocation
     EXTERN RhDebugBreak
     EXTERN RhpWaitForSuspend2
