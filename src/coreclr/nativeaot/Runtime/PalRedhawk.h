@@ -705,8 +705,12 @@ REDHAWK_PALIMPORT int32_t __cdecl _stricmp(const char *string1, const char *stri
 
 #ifdef UNICODE
 #define _tcsicmp _wcsicmp
+#define _tcscat wcscat
+#define _tcslen wcslen
 #else
 #define _tcsicmp _stricmp
+#define _tcscat strcat
+#define _tcslen strlen
 #endif
 
 #if defined(HOST_X86) || defined(HOST_AMD64)
