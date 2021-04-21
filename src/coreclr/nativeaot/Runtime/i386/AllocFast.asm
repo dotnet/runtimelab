@@ -64,7 +64,6 @@ AllocFailed:
         ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
-        ;; Set the new object's EEType pointer on success.
         test        eax, eax
         jz          NewFast_OOM
 
@@ -111,7 +110,6 @@ FASTCALL_FUNC   RhpNewFinalizable, 4
         ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
-        ;; Set the new object's EEType pointer on success.
         test        eax, eax
         jz          NewFinalizable_OOM
 
@@ -214,7 +212,6 @@ StringAllocContextOverflow:
         ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
-        ; Set the new object's EEType pointer and length on success.
         test        eax, eax
         jz          StringOutOfMemoryWithFrame
 
@@ -345,7 +342,6 @@ ArrayAllocContextOverflow:
         ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
-        ; Set the new object's EEType pointer and length on success.
         test        eax, eax
         jz          ArrayOutOfMemoryWithFrame
 

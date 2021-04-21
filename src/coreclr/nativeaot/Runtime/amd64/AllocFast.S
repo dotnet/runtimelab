@@ -83,7 +83,6 @@ NESTED_ENTRY RhpNewObject, _TEXT, NoHandler
         // void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        C_FUNC(RhpGcAlloc)
 
-        // Set the new object's EEType pointer on success.
         test        rax, rax
         jz          LOCAL_LABEL(NewOutOfMemory)
 
@@ -290,7 +289,6 @@ NESTED_ENTRY RhpNewArrayRare, _TEXT, NoHandler
         // void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        C_FUNC(RhpGcAlloc)
 
-        // Set the new object's EEType pointer and length on success.
         test        rax, rax
         jz          LOCAL_LABEL(ArrayOutOfMemory)
 
@@ -312,4 +310,3 @@ LOCAL_LABEL(ArrayOutOfMemory):
         jmp         EXTERNAL_C_FUNC(RhExceptionHandling_FailedAllocation)
 
 NESTED_END RhpNewArrayRare, _TEXT
-

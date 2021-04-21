@@ -71,7 +71,6 @@ NESTED_ENTRY RhpNewObject, _TEXT
         ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
-        ;; Set the new object's EEType pointer on success.
         test        rax, rax
         jz          NewOutOfMemory
 
@@ -225,7 +224,6 @@ NESTED_ENTRY RhpNewArrayRare, _TEXT
         ; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
-        ; Set the new object's EEType pointer and length on success.
         test        rax, rax
         jz          ArrayOutOfMemory
 

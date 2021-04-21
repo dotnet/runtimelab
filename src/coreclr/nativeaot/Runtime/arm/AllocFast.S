@@ -76,7 +76,6 @@ NESTED_ENTRY RhpNewObject, _TEXT, NoHandler
         // void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         blx         C_FUNC(RhpGcAlloc)
 
-        // Set the new object's EEType pointer on success.
         cbz         r0, LOCAL_LABEL(NewOutOfMemory)
 
         POP_COOP_PINVOKE_FRAME

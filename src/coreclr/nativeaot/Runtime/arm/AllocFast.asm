@@ -81,7 +81,6 @@ AllocFailed
         ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         blx         RhpGcAlloc
 
-        ;; Set the new object's EEType pointer on success.
         cbz         r0, NewOutOfMemory
 
         POP_COOP_PINVOKE_FRAME
