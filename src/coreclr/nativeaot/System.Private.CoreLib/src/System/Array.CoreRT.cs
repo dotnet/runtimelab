@@ -1040,94 +1040,42 @@ namespace System
             return Length - 1;
         }
 
-        public unsafe object? GetValue(int index)
+        private unsafe nint GetFlattenedIndex(ReadOnlySpan<int> indices)
         {
+            // Checked by the caller
+            Debug.Assert(indices.Length == Rank);
+
             if (!IsSzArray)
             {
-                if (Rank != 1)
-                    throw new ArgumentException(SR.Arg_RankMultiDimNotSupported);
-
-                return GetValue(&index, 1);
+                ref int bounds = ref GetRawMultiDimArrayBounds();
+                nint flattenedIndex = 0;
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    int index = indices[i] - Unsafe.Add(ref bounds, indices.Length + i);
+                    int length = Unsafe.Add(ref bounds, i);
+                    if ((uint)index >= (uint)length)
+                        ThrowHelper.ThrowIndexOutOfRangeException();
+                    flattenedIndex = (length * flattenedIndex) + index;
+                }
+                Debug.Assert((nuint)flattenedIndex < (nuint)LongLength);
+                return flattenedIndex;
             }
-
-            if ((uint)index >= (uint)Length)
-                throw new IndexOutOfRangeException();
-
-            if (ElementEEType.IsPointer)
-                throw new NotSupportedException(SR.NotSupported_Type);
-
-            return GetValueWithFlattenedIndex_NoErrorCheck(index);
-        }
-
-        public unsafe object? GetValue(int index1, int index2)
-        {
-            if (Rank != 2)
-                throw new ArgumentException(SR.Arg_Need2DArray);
-
-            int* pIndices = stackalloc int[2];
-            pIndices[0] = index1;
-            pIndices[1] = index2;
-            return GetValue(pIndices, 2);
-        }
-
-        public unsafe object? GetValue(int index1, int index2, int index3)
-        {
-            if (Rank != 3)
-                throw new ArgumentException(SR.Arg_Need3DArray);
-
-            int* pIndices = stackalloc int[3];
-            pIndices[0] = index1;
-            pIndices[1] = index2;
-            pIndices[2] = index3;
-            return GetValue(pIndices, 3);
-        }
-
-        public unsafe object? GetValue(params int[] indices)
-        {
-            if (indices is null)
-                throw new ArgumentNullException(nameof(indices));
-
-            int length = indices.Length;
-
-            if (IsSzArray && length == 1)
-                return GetValue(indices[0]);
-
-            if (Rank != length)
-                throw new ArgumentException(SR.Arg_RankIndices);
-
-            Debug.Assert(length > 0);
-            fixed (int* pIndices = &indices[0])
-                return GetValue(pIndices, length);
-        }
-
-        private unsafe object? GetValue(int* pIndices, int rank)
-        {
-            Debug.Assert(Rank == rank);
-            Debug.Assert(!IsSzArray);
-
-            ref int bounds = ref GetRawMultiDimArrayBounds();
-
-            int flattenedIndex = 0;
-            for (int i = 0; i < rank; i++)
+            else
             {
-                int index = pIndices[i] - Unsafe.Add(ref bounds, rank + i);
-                int length = Unsafe.Add(ref bounds, i);
-                if ((uint)index >= (uint)length)
-                    throw new IndexOutOfRangeException();
-                flattenedIndex = (length * flattenedIndex) + index;
+                int index = indices[0];
+                if ((uint)index >= (uint)LongLength)
+                    ThrowHelper.ThrowIndexOutOfRangeException();
+                return index;
             }
+        }
 
-            if ((uint)flattenedIndex >= (uint)Length)
-                throw new IndexOutOfRangeException();
+        internal object? InternalGetValue(nint flattenedIndex)
+        {
+            Debug.Assert((nuint)flattenedIndex < (nuint)LongLength);
 
             if (ElementEEType.IsPointer)
                 throw new NotSupportedException(SR.NotSupported_Type);
 
-            return GetValueWithFlattenedIndex_NoErrorCheck(flattenedIndex);
-        }
-
-        private object? GetValueWithFlattenedIndex_NoErrorCheck(int flattenedIndex)
-        {
             ref byte element = ref Unsafe.AddByteOffset(ref GetRawArrayData(), (nuint)flattenedIndex * ElementSize);
 
             EETypePtr pElementEEType = ElementEEType;
@@ -1142,117 +1090,12 @@ namespace System
             }
         }
 
-        public unsafe void SetValue(object? value, int index)
+        private unsafe void InternalSetValue(object? value, nint flattenedIndex)
         {
-            if (!IsSzArray)
-            {
-                if (Rank != 1)
-                    throw new ArgumentException(SR.Arg_RankMultiDimNotSupported);
+            Debug.Assert((nuint)flattenedIndex < (nuint)LongLength);
 
-                SetValue(value, &index, 1);
-                return;
-            }
-
-            EETypePtr pElementEEType = ElementEEType;
-            if (pElementEEType.IsValueType)
-            {
-                if ((uint)index >= (uint)Length)
-                    throw new IndexOutOfRangeException();
-
-                // Unlike most callers of InvokeUtils.ChangeType(), Array.SetValue() does *not* permit conversion from a primitive to an Enum.
-                if (value != null && !(value.EETypePtr == pElementEEType) && pElementEEType.IsEnum)
-                    throw new InvalidCastException(SR.Format(SR.Arg_ObjObjEx, value.GetType(), Type.GetTypeFromHandle(new RuntimeTypeHandle(pElementEEType))));
-
-                value = InvokeUtils.CheckArgument(value, pElementEEType, InvokeUtils.CheckArgumentSemantics.ArraySet, binderBundle: null);
-                Debug.Assert(value == null || RuntimeImports.AreTypesAssignable(value.EETypePtr, pElementEEType));
-
-                ref byte element = ref Unsafe.AddByteOffset(ref GetRawArrayData(), (nuint)index * ElementSize);
-                RuntimeImports.RhUnbox(value, ref element, pElementEEType);
-            }
-            else if (pElementEEType.IsPointer)
-            {
+            if (ElementEEType.IsPointer)
                 throw new NotSupportedException(SR.NotSupported_Type);
-            }
-            else
-            {
-                object[] objArray = this as object[];
-                try
-                {
-                    objArray[index] = value;
-                }
-                catch (ArrayTypeMismatchException)
-                {
-                    throw new InvalidCastException(SR.InvalidCast_StoreArrayElement);
-                }
-            }
-        }
-
-        public unsafe void SetValue(object? value, int index1, int index2)
-        {
-            if (Rank != 2)
-                throw new ArgumentException(SR.Arg_Need2DArray);
-
-            int* pIndices = stackalloc int[2];
-            pIndices[0] = index1;
-            pIndices[1] = index2;
-            SetValue(value, pIndices, 2);
-        }
-
-        public unsafe void SetValue(object? value, int index1, int index2, int index3)
-        {
-            if (Rank != 3)
-                throw new ArgumentException(SR.Arg_Need3DArray);
-
-            int* pIndices = stackalloc int[3];
-            pIndices[0] = index1;
-            pIndices[1] = index2;
-            pIndices[2] = index3;
-            SetValue(value, pIndices, 3);
-        }
-
-        public unsafe void SetValue(object? value, params int[] indices)
-        {
-            if (indices is null)
-                throw new ArgumentNullException(nameof(indices));
-
-            int length = indices.Length;
-
-            if (IsSzArray && length == 1)
-            {
-                SetValue(value, indices[0]);
-                return;
-            }
-
-            if (Rank != length)
-                throw new ArgumentException(SR.Arg_RankIndices);
-
-            Debug.Assert(length > 0);
-            fixed (int* pIndices = &indices[0])
-            {
-                SetValue(value, pIndices, length);
-                return;
-            }
-        }
-
-        private unsafe void SetValue(object? value, int* pIndices, int rank)
-        {
-            Debug.Assert(Rank == rank);
-            Debug.Assert(!IsSzArray);
-
-            ref int bounds = ref GetRawMultiDimArrayBounds();
-
-            int flattenedIndex = 0;
-            for (int i = 0; i < rank; i++)
-            {
-                int index = pIndices[i] - Unsafe.Add(ref bounds, rank + i);
-                int length = Unsafe.Add(ref bounds, i);
-                if ((uint)index >= (uint)length)
-                    throw new IndexOutOfRangeException();
-                flattenedIndex = (length * flattenedIndex) + index;
-            }
-
-            if ((uint)flattenedIndex >= (uint)Length)
-                throw new IndexOutOfRangeException();
 
             ref byte element = ref Unsafe.AddByteOffset(ref GetRawArrayData(), (nuint)flattenedIndex * ElementSize);
 
@@ -1302,56 +1145,6 @@ namespace System
         internal bool IsValueOfElementType(object o)
         {
             return ElementEEType.Equals(o.EETypePtr);
-        }
-
-        public IEnumerator GetEnumerator()
-        {
-            return new ArrayEnumerator(this);
-        }
-
-        private sealed class ArrayEnumerator : IEnumerator, ICloneable
-        {
-            private Array _array;
-            private int _index;
-            private int _endIndex; // cache array length, since it's a little slow.
-
-            internal ArrayEnumerator(Array array)
-            {
-                _array = array;
-                _index = -1;
-                _endIndex = array.Length;
-            }
-
-            public bool MoveNext()
-            {
-                if (_index < _endIndex)
-                {
-                    _index++;
-                    return (_index < _endIndex);
-                }
-                return false;
-            }
-
-            public void Reset()
-            {
-                _index = -1;
-            }
-
-            public object Clone()
-            {
-                return MemberwiseClone();
-            }
-
-            public object Current
-            {
-                get
-                {
-                    if (_index < 0) throw new InvalidOperationException(SR.InvalidOperation_EnumNotStarted);
-                    if (_index >= _endIndex) throw new InvalidOperationException(SR.InvalidOperation_EnumEnded);
-                    if (_array.ElementEEType.IsPointer) throw new NotSupportedException(SR.NotSupported_Type);
-                    return _array.GetValueWithFlattenedIndex_NoErrorCheck(_index);
-                }
-            }
         }
 
         //
