@@ -251,22 +251,20 @@ Object* GcAllocInternal(EEType *pEEType, uint32_t uFlags, uintptr_t numElements,
             cbSize = ALIGN_UP(cbSize, sizeof(uintptr_t));
         }
     }
+    else
+    {
+        ASSERT(numElements == 0);
+    }
 
     if (cbSize >= RH_LARGE_OBJECT_SIZE)
     {
         uFlags |= GC_ALLOC_LARGE_OBJECT_HEAP;
 
-        size_t max_object_size;
 #ifdef HOST_64BIT
-        if (g_pConfig->GetGCAllowVeryLargeObjects())
-        {
-            max_object_size = (INT64_MAX - 7 - min_obj_size);
-        }
-        else
-#endif // HOST_64BIT
-        {
-            max_object_size = (INT32_MAX - 7 - min_obj_size);
-        }
+        const size_t max_object_size = (INT64_MAX - 7 - min_obj_size);
+#else
+        const size_t max_object_size = (INT32_MAX - 7 - min_obj_size);
+#endif
 
         if (cbSize >= max_object_size)
             return NULL;

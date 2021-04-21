@@ -36,7 +36,7 @@
 #include "GCMemoryHelpers.inl"
 
 #if defined(USE_PORTABLE_HELPERS)
-EXTERN_C REDHAWK_API void* REDHAWK_CALLCONV RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame);
+EXTERN_C REDHAWK_API void* REDHAWK_CALLCONV RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame);
 
 struct gc_alloc_context
 {
