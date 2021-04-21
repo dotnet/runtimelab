@@ -18,6 +18,8 @@ namespace ComWrappersTests
             TestComInteropNullPointers();
             TestComInteropRegistrationRequired();
             TestComInteropReleaseProcess();
+            TestComInteropCCWCreation();
+            TestRCWRoundTrip();
             return 100;
         }
 
@@ -41,6 +43,12 @@ namespace ComWrappersTests
 
         [DllImport("ComWrappersNative", CallingConvention = CallingConvention.StdCall)]
         static extern int CaptureComPointer(IComInterface foo);
+
+        [DllImport("ComWrappersNative", CallingConvention = CallingConvention.StdCall)]
+        static extern int RetreiveCapturedComPointer(out IComInterface foo);
+
+        [DllImport("ComWrappersNative", CallingConvention = CallingConvention.StdCall)]
+        static extern int BuildComPointer(out IComInterface foo);
 
         [DllImport("ComWrappersNative", CallingConvention = CallingConvention.StdCall)]
         static extern void ReleaseComPointer();
@@ -69,7 +77,7 @@ namespace ComWrappersTests
 
         public static void TestComInteropReleaseProcess()
         {
-            Console.WriteLine("Testing CCW release process");
+            Console.WriteLine("Testing RCW release process");
             ComWrappers wrapper = new SimpleComWrapper();
             ComWrappers.RegisterForMarshalling(wrapper);
             WeakReference comPointerHolder = CreateComReference();
@@ -83,6 +91,32 @@ namespace ComWrappersTests
             ThrowIfNotEquals(false, comPointerHolder.IsAlive, ".NET object should be disposed by then");
         }
 
+        public static void TestComInteropCCWCreation()
+        {
+            Console.WriteLine("Testing CCW release process");
+            ComWrappers wrapper = new SimpleComWrapper();
+            ComWrappers.RegisterForMarshalling(wrapper);
+            int result = BuildComPointer(out var comPointer);
+            ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
+            comPointer.DoWork(11);
+        }
+
+        public static void TestRCWRoundTrip()
+        {
+            Console.WriteLine("Testing CCW release process");
+            ComWrappers wrapper = new SimpleComWrapper();
+            ComWrappers.RegisterForMarshalling(wrapper);
+            var target = new ComObject();
+            int result = CaptureComPointer(target);
+            ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
+            result = RetreiveCapturedComPointer(out var ifPtr)
+            ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
+            if (ifPtr != target)
+            {
+                throw new Exception("RCW should round-trip");
+            }
+        }
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static WeakReference CreateComReference()
         {
@@ -90,7 +124,7 @@ namespace ComWrappersTests
             WeakReference comPointerHolder = new WeakReference(target);
 
             int result = CaptureComPointer(target);
-            ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave stragerly.");
+            ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
             ThrowIfNotEquals(11, target.TestResult, "Call to method should work");
 
             return comPointerHolder;
