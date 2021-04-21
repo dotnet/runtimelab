@@ -40,7 +40,6 @@ internal static class " + classname + @"
             sw.WriteLine(prefix);
 
             CreateUlongArray(sw);
-            //CreateStringArray(sw);
 
             sw.WriteLine(suffix);
             sw.Close();
@@ -121,35 +120,6 @@ internal static class " + classname + @"
                 }
             }
             return ignoreCase;
-        }
-
-        private static void CreateStringArray(StreamWriter sw)
-        {
-            sw.WriteLine("/// <summary>");
-            sw.WriteLine("/// Each string correponds to an equivalence class of characters when case is ignored.");
-            sw.WriteLine("/// </summary>");
-            sw.WriteLine("public static string[] ignorecase = new string[]{");
-            CharSetSolver solver = new CharSetSolver();
-
-            Dictionary<char, BDD> ignoreCase = ComputeIgnoreCaseDistionary(solver);
-
-            HashSet<BDD> done = new HashSet<BDD>();
-            foreach (var kv in ignoreCase)
-                if (done.Add(kv.Value))
-                {
-                    var ranges = solver.ToRanges(kv.Value);
-                    List<char> s = new List<char>();
-                    for (int i = 0; i < ranges.Length; i++)
-                    {
-                        var l = (int)ranges[i].Item1;
-                        var h = (int)ranges[i].Item2;
-                        for (int j = l; j <= h; j++)
-                            s.Add((char)j);
-                    }
-                    var str = StringUtility.Escape(new string(s.ToArray()));
-                    sw.WriteLine(@"{0},", str);
-                }
-            sw.WriteLine("};"); //end of array
         }
     };
 }

@@ -395,11 +395,164 @@ namespace System.Text.RegularExpressions.SRM
             if (pred.IsEmpty)
                 return "[]";
 
+            //check if pred is full, show this case with a dot
+            if (pred.IsFull)
+                return ".";
+
+            #region try to optimize representation involving common direct use of \d \w and \s to avoid blowup of ranges
+            if (SRM.Regex.s_unicode != null)
+            {
+                BDD digit = Regex.s_unicode.CategoryCondition(8);
+                if (pred == Regex.s_unicode.WordLetterCondition)
+                    return @"\w";
+                if (pred == Regex.s_unicode.WhiteSpaceCondition)
+                    return @"\s";
+                if (pred == digit)
+                    return @"\d";
+                if (pred == MkNot(Regex.s_unicode.WordLetterCondition))
+                    return @"\W";
+                if (pred == MkNot(Regex.s_unicode.WhiteSpaceCondition))
+                    return @"\S";
+                if (pred == MkNot(digit))
+                    return @"\D";
+            }
+            #endregion
+
             var ranges = ToRanges(pred);
+
+            if (IsSingletonRange(ranges))
+                return StringUtility.Escape((char)ranges[0].Item1);
+
+            #region if too many ranges try to optimize the representation using \d \w etc.
+            if (SRM.Regex.s_unicode != null && ranges.Length > 10)
+            {
+                BDD w = Regex.s_unicode.WordLetterCondition;
+                BDD W = MkNot(w);
+                BDD d = Regex.s_unicode.CategoryCondition(8);
+                BDD D = MkNot(d);
+                BDD s = Regex.s_unicode.WhiteSpaceCondition;
+                BDD S = MkNot(s);
+                BDD wD = MkAnd(w, D);
+                BDD SW = MkAnd(S, W);
+                //s, d, wD, SW are the 4 main large minterms
+                //note: s|SW = W, d|wD = w
+                //
+                // Venn Diagram: s and w do not overlap, and d is contained in w
+                // ------------------------------------------------
+                // |                                              |
+                // |              SW     ------------(w)--------  |
+                // |   --------          |                     |  |
+                // |   |      |          |        ----------   |  |
+                // |   |  s   |          |  wD    |        |   |  |
+                // |   |      |          |        |   d    |   |  |
+                // |   --------          |        |        |   |  |
+                // |                     |        ----------   |  |
+                // |                     -----------------------  |
+                // ------------------------------------------------
+                //
+                //-------------------------------------------------------------------
+                // singletons
+                //---
+                if (MkOr(s, pred) == s)
+                    return RepresentSetInPattern("[^\\S{0}]", MkAnd(s, MkNot(pred)));
+                //---
+                if (MkOr(d, pred) == d)
+                    return RepresentSetInPattern("[^\\D{0}]", MkAnd(d, MkNot(pred)));
+                //---
+                if (MkOr(wD, pred) == wD)
+                    return RepresentSetInPattern("[\\w-[\\d{0}]]", MkAnd(wD, MkNot(pred)));
+                //---
+                if (MkOr(SW, pred) == SW)
+                    return RepresentSetInPattern("[^\\s\\w{0}]", MkAnd(SW, MkNot(pred)));
+                //-------------------------------------------------------------------
+                // unions of two
+                // s|SW
+                if (MkOr(W, pred) == W)
+                {
+                    string repr1 = null;
+                    if (MkAnd(s, pred) == s)
+                        //pred contains all of \s and is contained in \W
+                        repr1 = RepresentSetInPattern("[\\s{0}]", MkAnd(S, pred));
+                    //the more common case is that pred is not \w and not some specific non-word character such as ':'
+                    string repr2 = RepresentSetInPattern("[^\\w{0}]", MkAnd(W, MkNot(pred)));
+                    if (repr1 != null && repr1.Length < repr2.Length)
+                        return repr1;
+                    else
+                        return repr2;
+                }
+                //---
+                // s|d
+                BDD s_or_d = MkOr(s, d);
+                if (pred == s_or_d)
+                    return "[\\s\\d]";
+                if (MkOr(s_or_d, pred) == s_or_d)
+                    return RepresentSetInPattern("[\\s\\d-[{0}]]", MkAnd(s_or_d, MkNot(pred)));
+                //---
+                // s|wD
+                BDD s_or_wD = MkOr(s, wD);
+                if (MkOr(s_or_wD, pred) == s_or_wD)
+                    return RepresentSetInPattern("[\\s\\w-[\\d{0}]]", MkAnd(s_or_wD, MkNot(pred)));
+                //---
+                // d|wD
+                if (MkOr(w, pred) == w)
+                    return RepresentSetInPattern("[^\\W{0}]", MkAnd(w, MkNot(pred)));
+                //---
+                // d|SW
+                BDD d_or_SW = MkOr(d, SW);
+                if (pred == d_or_SW)
+                    return "\\d|[^\\s\\w]";
+                if (MkOr(d_or_SW, pred) == d_or_SW)
+                    return RepresentSetInPattern("[\\d-[{0}]]|[^\\s\\w{1}]", MkAnd(d, MkNot(pred)), MkAnd(SW, MkNot(pred)));
+                // wD|SW = S&D
+                BDD SD = MkOr(wD, SW);
+                if (MkOr(SD, pred) == SD)
+                    return RepresentSetInPattern("[^\\s\\d{0}]", MkAnd(SD, MkNot(pred)));
+                //-------------------------------------------------------------------
+                //unions of three
+                // s|SW|wD = D
+                if (MkOr(D, pred) == D)
+                    return RepresentSetInPattern("[^\\d{0}]", MkAnd(D, MkNot(pred)));
+                // SW|wD|d = S
+                if (MkOr(S, pred) == S)
+                    return RepresentSetInPattern("[^\\s{0}]", MkAnd(S, MkNot(pred)));
+                // s|SW|d = complement of wD = W|d
+                BDD W_or_d = MkNot(wD);
+                if (MkOr(W_or_d, pred) == W_or_d)
+                    return RepresentSetInPattern("[\\W\\d-[{0}]]", MkAnd(W_or_d, MkNot(pred)));
+                // s|wD|d = s|w
+                BDD s_or_w = MkOr(s, w);
+                if (MkOr(s_or_w, pred) == s_or_w)
+                    return RepresentSetInPattern("[\\s\\w-[{0}]]", MkAnd(s_or_w, MkNot(pred)));
+                //-------------------------------------------------------------------
+                //touches all four minterms, typically happens as the fallback arc in .* extension
+            }
+            #endregion
+
+            return "[" + RepresentRanges(ranges) + "]";
+        }
+
+
+        private string RepresentSetInPattern(string pat, BDD set)
+        {
+            var str = (set.IsEmpty ? "" : RepresentRanges(ToRanges(set)));
+            var res = string.Format(pat, str);
+            return res;
+        }
+
+        private string RepresentSetInPattern(string pat, BDD set1, BDD set2)
+        {
+            var str1 = (set1.IsEmpty ? "" : RepresentRanges(ToRanges(set1)));
+            var str2 = (set2.IsEmpty ? "" : RepresentRanges(ToRanges(set2)));
+            var res = string.Format(pat, str1, str2);
+            return res;
+        }
+
+        private static string RepresentRanges(Tuple<uint, uint>[] ranges)
+        {
             //check if ranges represents a complement of a singleton
             if (ranges.Length == 2 && ranges[0].Item1 == 0 && ranges[1].Item2 == 0xFFFF &&
-                ranges[0].Item2 + 2 == ranges[1].Item1)
-                return "[^" + (StringUtility.Escape((char)(ranges[0].Item2 + 1))) + "]";
+                            ranges[0].Item2 + 2 == ranges[1].Item1)
+                return "^" + (StringUtility.Escape((char)(ranges[0].Item2 + 1)));
 
             StringBuilder sb = new();
             for (int i = 0; i < ranges.Length; i++)
@@ -418,10 +571,9 @@ namespace System.Text.RegularExpressions.SRM
                     sb.Append(StringUtility.Escape((char)ranges[i].Item2));
                 }
             }
-            if (ranges.Length > 1 || ranges[0].Item1 != ranges[0].Item2)
-                return "[" + sb.ToString() + "]";
-            else
-                return sb.ToString();
+            return sb.ToString();
         }
+
+        private static bool IsSingletonRange(Tuple<uint, uint>[] ranges) => ranges.Length == 1 && ranges[0].Item1 == ranges[0].Item2;
     }
 }

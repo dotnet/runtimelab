@@ -42,6 +42,11 @@ namespace System.Text.RegularExpressions.SRM.DGML
         int InitialState { get; }
 
         /// <summary>
+        /// The number of states of the automaton.
+        /// </summary>
+        int StateCount { get; }
+
+        /// <summary>
         /// Returns true iff the state is a final state.
         /// </summary>
         bool IsFinalState(int state);

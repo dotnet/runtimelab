@@ -40,23 +40,45 @@ namespace System.Text.RegularExpressions.SRM
                     return string.Format("\\u{0:X}", code);
             }
 
-            if (code > 255)
-                return ToUnicodeRepr(code);
-
-            if (code <= 255 && code > 126)
-                return string.Format("\\x{0:X}", code);
-
-            if (code >= 32 && code <= 126)
-                return c.ToString();
-
+            //special characters
             switch (c)
             {
+                case '.':
+                    return @"\.";
+                case '[':
+                    return @"\[";
+                case ']':
+                    return @"\]";
+                case '(':
+                    return @"\(";
+                case ')':
+                    return @"\)";
+                case '{':
+                    return @"\{";
+                case '}':
+                    return @"\}";
+                case '?':
+                    return @"\?";
+                case '+':
+                    return @"\+";
+                case '*':
+                    return @"\*";
+                case '|':
+                    return @"\|";
+                case '\\':
+                    return @"\\";
+                case '^':
+                    return @"\^";
+                case '$':
+                    return @"\$";
+                case '-':
+                    return @"\-";
+                case ':':
+                    return @"\:";
+                case '\"':
+                    return "\\\"";
                 case '\0':
                     return @"\0";
-                //case '\a':
-                //    return @"\a";
-                //case '\b':
-                //    return @"\b";
                 case '\t':
                     return @"\t";
                 case '\r':
@@ -68,11 +90,22 @@ namespace System.Text.RegularExpressions.SRM
                 case '\n':
                     return @"\n";
                 default:
-                    if (code <= 15)
-                        return string.Format("\\x0{0:X}", code);
-                    else
-                        return string.Format("\\x{0:X}", code);
+                    break;
             }
+
+            if (code > 255)
+                return ToUnicodeRepr(code);
+
+            if (code <= 255 && code > 126)
+                return string.Format("\\x{0:X}", code);
+
+            if (code >= 32 && code <= 126)
+                return c.ToString();
+
+            if (code <= 15)
+                return string.Format("\\x0{0:X}", code);
+            else
+                return string.Format("\\x{0:X}", code);
         }
 
         /// <summary>
