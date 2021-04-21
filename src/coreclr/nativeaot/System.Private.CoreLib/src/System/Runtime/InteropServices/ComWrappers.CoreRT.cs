@@ -152,6 +152,13 @@ namespace System.Runtime.InteropServices
             }
         }
 
+        internal unsafe struct IUnknownVftbl
+        {
+            public delegate* unmanaged<IntPtr, ref Guid, out IntPtr, int> QueryInterface;
+            public delegate* unmanaged<IntPtr, uint> AddRef;
+            public delegate* unmanaged<IntPtr, uint> Release;
+        }
+
         internal unsafe class NativeObjectWrapper
         {
             private IntPtr _externalComObject;
@@ -441,6 +448,16 @@ namespace System.Runtime.InteropServices
             fpQueryInterface = (IntPtr)(delegate* unmanaged<IntPtr, Guid*, IntPtr*, int>)&ComWrappers.IUnknown_QueryInterface;
             fpAddRef = (IntPtr)(delegate* unmanaged<IntPtr, uint>)&ComWrappers.IUnknown_AddRef;
             fpRelease = (IntPtr)(delegate* unmanaged<IntPtr, uint>)&ComWrappers.IUnknown_Release;
+        }
+
+        internal static IntPtr ComInterfaceForObject(object instance)
+        {
+            if (s_globalInstanceForMarshalling == null)
+            {
+                throw new InvalidOperationException(SR.InvalidOperation_ComInteropRequireComWrapperInstance);
+            }
+
+            return s_globalInstanceForMarshalling.GetOrCreateComInterfaceForObject(instance, CreateComInterfaceFlags.None);
         }
 
         internal static unsafe IntPtr ComInterfaceForObject(object instance, Guid targetIID)
