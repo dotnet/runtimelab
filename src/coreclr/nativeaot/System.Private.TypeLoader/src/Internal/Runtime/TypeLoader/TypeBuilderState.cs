@@ -929,7 +929,7 @@ namespace Internal.Runtime.TypeLoader
                 }
                 else if (TypeBeingBuilt is ArrayType)
                 {
-                    int basicArraySize = TypeBeingBuilt.BaseType.InstanceByteCountUnaligned.AsInt;
+                    int basicArraySize = 2 * IntPtr.Size; // EETypePtr + Length
                     if (TypeBeingBuilt.IsMdArray)
                     {
                         // MD Arrays are arranged like normal arrays, but they also have 2 int's per rank for the individual dimension loBounds and range.

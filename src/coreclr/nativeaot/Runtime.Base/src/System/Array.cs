@@ -3,6 +3,8 @@
 
 using System.Runtime.InteropServices;
 
+using Internal.Runtime.CompilerServices;
+
 namespace System
 {
     // CONTRACT with Runtime
@@ -11,21 +13,13 @@ namespace System
 
     public partial class Array
     {
-        // CS0649: Field '{blah}' is never assigned to, and will always have its default value
-#pragma warning disable 649
+        // CS0169: The field 'Array._numComponents' is never used
+#pragma warning disable 0169
         // This field should be the first field in Array as the runtime/compilers depend on it
         private int _numComponents;
 #pragma warning restore
 
-        public int Length
-        {
-            get
-            {
-                // NOTE: The compiler has assumptions about the implementation of this method.
-                // Changing the implementation here (or even deleting this) will NOT have the desired impact
-                return _numComponents;
-            }
-        }
+        public int Length => (int)Unsafe.As<RawArrayData>(this).Length;
     }
 
     // To accommodate class libraries that wish to implement generic interfaces on arrays, all class libraries

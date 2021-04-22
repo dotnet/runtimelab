@@ -36,6 +36,12 @@ namespace System
             get => Length;
         }
 
+        // This could return a length greater than int.MaxValue
+        internal nuint NativeLength
+        {
+            get => (nuint)Unsafe.As<RawData>(this).Count;
+        }
+
         public long LongLength
         {
             get
@@ -56,6 +62,20 @@ namespace System
             get => Rank;
         }
 
+        internal static unsafe void Clear(Array array)
+        {
+            if (array == null)
+                ThrowHelper.ThrowArgumentNullException(ExceptionArgument.array);
+
+            ref byte ptr = ref array.GetRawSzArrayData();
+            nuint byteLength = array.NativeLength * (nuint)(uint)array.GetElementSize() /* force zero-extension */;
+
+            if (RuntimeHelpers.ObjectHasReferences(array))
+                SpanHelpers.ClearWithReferences(ref Unsafe.As<byte, IntPtr>(ref ptr), byteLength / (uint)sizeof(IntPtr));
+            else
+                SpanHelpers.ClearWithoutReferences(ref ptr, byteLength);
+        }
+
         public static unsafe void Clear(Array array, int index, int length)
         {
             if (array == null)
@@ -63,7 +83,7 @@ namespace System
 
             int lowerBound = array.GetLowerBound(0);
             int elementSize = array.GetElementSize();
-            nuint numComponents = (nuint)(nint)Unsafe.As<RawData>(array).Count;
+            nuint numComponents = array.NativeLength;
 
             int offset = index - lowerBound;
 
