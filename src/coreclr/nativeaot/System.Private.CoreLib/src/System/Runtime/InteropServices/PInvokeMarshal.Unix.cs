@@ -12,14 +12,14 @@ namespace System.Runtime.InteropServices
     /// </summary>
     public partial class PInvokeMarshal
     {
-        public static void SaveLastWin32Error()
+        public static void SaveLastError()
         {
-            s_lastWin32Error = Interop.Sys.GetErrNo();
+            t_lastError = Interop.Sys.GetErrNo();
         }
 
-        public static void ClearLastWin32Error()
+        public static void ClearLastError()
         {
-            Interop.Sys.ClearErrNo();
+            Interop.Sys.SetErrNo(0);
         }
 
         #region String marshalling
