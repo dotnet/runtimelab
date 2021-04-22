@@ -6,16 +6,6 @@
 #include <pal_error_common.h>
 
 /**
- * Returns current errno
- */
-PALEXPORT int32_t SystemNative_GetErrNo(void);
-
-/**
- * Clears current errno
- */
-PALEXPORT void SystemNative_ClearErrNo(void);
-
-/**
  * Converts the given raw numeric value obtained via errno ->
  * GetLastWin32Error() to a standard numeric value defined by enum
  * Error above. If the value is not recognized, returns
