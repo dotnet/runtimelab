@@ -241,6 +241,8 @@ static const Entry s_sysNative[] =
     DllImportEntry(SystemNative_CreateAutoreleasePool)
     DllImportEntry(SystemNative_DrainAutoreleasePool)
     DllImportEntry(SystemNative_iOSSupportVersion)
+    DllImportEntry(SystemNative_GetErrNo)
+    DllImportEntry(SystemNative_SetErrNo)
     DllImportEntry(SystemNative_LoadLibrary)
     DllImportEntry(SystemNative_GetProcAddress)
     DllImportEntry(SystemNative_FreeLibrary)
@@ -249,8 +251,6 @@ static const Entry s_sysNative[] =
     DllImportEntry(SystemNative_Exit)
     DllImportEntry(SystemNative_Abort)
     DllImportEntry(SystemNative_GetEnviron)
-    DllImportEntry(SystemNative_GetErrNo)
-    DllImportEntry(SystemNative_ClearErrNo)
     DllImportEntry(SystemNative_RuntimeThread_CreateThread)
 };
 

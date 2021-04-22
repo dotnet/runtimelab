@@ -12,8 +12,8 @@ internal static partial class Interop
         [SuppressGCTransition]
         internal static extern int GetErrNo();
 
-        [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_ClearErrNo")]
+        [DllImport(Interop.Libraries.SystemNative, EntryPoint = "SystemNative_SetErrNo")]
         [SuppressGCTransition]
-        internal static extern void ClearErrNo();
+        internal static extern void SetErrNo(int errorCode);
     }
 }
