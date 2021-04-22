@@ -2,10 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Collections.Generic;
-using System.Threading;
+
 using Internal.Runtime.Augments;
-using System.Runtime.InteropServices;
 
 namespace Internal.Runtime.CompilerServices
 {
@@ -49,7 +47,19 @@ namespace Internal.Runtime.CompilerServices
 
             if (resolution == IntPtr.Zero)
             {
-                Environment.FailFast("GVM resolution failure");
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("Generic virtual method pointer lookup failure.");
+                sb.AppendLine();
+                sb.AppendLine("Declaring type: " + declaringType.LastResortToString);
+                sb.AppendLine("Target type: " + type.LastResortToString);
+                sb.AppendLine("Method name: " + methodNameAndSignature.Name);
+                sb.AppendLine("Instantiation:");
+                for (int i = 0; i < genericArguments.Length; i++)
+                {
+                    sb.AppendLine("  Argument " + i.LowLevelToString() + ": " + genericArguments[i].LastResortToString);
+                }
+
+                Environment.FailFast(sb.ToString());
             }
 
             return resolution;
