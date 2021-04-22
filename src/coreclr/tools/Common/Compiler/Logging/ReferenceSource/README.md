@@ -1,1 +1,1 @@
-Sources from the mono/linker repo at commit 8ee2557ccbaf9e4cf243f15b8cb95da4eddb18aa.
+Sources from the mono/linker repo at commit 6a82d56a9e95858005aca83891f2992edf665eb6.
