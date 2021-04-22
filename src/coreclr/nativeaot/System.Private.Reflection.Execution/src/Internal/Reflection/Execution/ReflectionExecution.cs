@@ -47,13 +47,13 @@ namespace Internal.Reflection.Execution
         internal static void Initialize()
         {
             // Initialize Reflection.Core's one and only ExecutionDomain.
-            ExecutionEnvironmentImplementation executionEnvironment = new ExecutionEnvironmentImplementation();
-            ReflectionDomainSetupImplementation setup = new ReflectionDomainSetupImplementation(executionEnvironment);
+            var executionEnvironment = new ExecutionEnvironmentImplementation();
+            var setup = new ReflectionDomainSetupImplementation();
             ReflectionCoreExecution.InitializeExecutionDomain(setup, executionEnvironment);
 
-            // Initialize our two communication with System.Private.CoreLib.
+            // Initialize our two-way communication with System.Private.CoreLib.
             ExecutionDomain executionDomain = ReflectionCoreExecution.ExecutionDomain;
-            ReflectionExecutionDomainCallbacksImplementation runtimeCallbacks = new ReflectionExecutionDomainCallbacksImplementation(executionDomain, executionEnvironment);
+            var runtimeCallbacks = new ReflectionExecutionDomainCallbacksImplementation(executionDomain, executionEnvironment);
             RuntimeAugments.Initialize(runtimeCallbacks);
 
             ExecutionEnvironment = executionEnvironment;

@@ -14,19 +14,12 @@ namespace Internal.Reflection.Execution
     //=========================================================================================================================
     internal sealed class ReflectionDomainSetupImplementation : ReflectionDomainSetup
     {
-        public ReflectionDomainSetupImplementation(ExecutionEnvironmentImplementation executionEnvironment)
+        public ReflectionDomainSetupImplementation()
         {
-            _executionEnvironment = executionEnvironment;
-            _assemblyBinder = AssemblyBinderImplementation.Instance;
         }
 
-        public sealed override AssemblyBinder AssemblyBinder
-        {
-            get
-            {
-                return _assemblyBinder;
-            }
-        }
+        // Obtain it lazily to avoid using RuntimeAugments.Callbacks before it is initialized
+        public sealed override AssemblyBinder AssemblyBinder => AssemblyBinderImplementation.Instance;
 
         public sealed override Exception CreateMissingMetadataException(TypeInfo pertainant)
         {
@@ -57,10 +50,9 @@ namespace Internal.Reflection.Execution
                         throw new PlatformNotSupportedException(SR.PlatformNotSupported_CannotInvokeDelegateCtor);
                 }
             }
+
             string pertainantString = MissingMetadataExceptionCreator.ComputeUsefulPertainantIfPossible(pertainant);
-            if (pertainantString == null)
-                pertainantString = "?";
-            return new MissingRuntimeArtifactException(SR.Format(resourceName, pertainantString));
+            return new MissingRuntimeArtifactException(SR.Format(resourceName, pertainantString ?? "?"));
         }
 
         public sealed override Exception CreateMissingArrayTypeException(Type elementType, bool isMultiDim, int rank)
@@ -72,8 +64,5 @@ namespace Internal.Reflection.Execution
         {
             return MissingMetadataExceptionCreator.CreateMissingConstructedGenericTypeException(genericTypeDefinition, genericTypeArguments);
         }
-
-        private AssemblyBinderImplementation _assemblyBinder;
-        private ExecutionEnvironmentImplementation _executionEnvironment;
     }
 }
