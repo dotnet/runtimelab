@@ -10,17 +10,19 @@ namespace System.Text.RegularExpressions.SRM.DGML
     {
         private int _maxDgmlTransitionLabelLength;
         private TextWriter _tw;
+        private bool _hideDerivatives;
 
-        internal DgmlWriter(TextWriter tw, int maxDgmlTransitionLabelLength = 500)
+        internal DgmlWriter(TextWriter tw, bool hideDerivatives, int maxDgmlTransitionLabelLength = 500)
         {
             _maxDgmlTransitionLabelLength = maxDgmlTransitionLabelLength;
             _tw = tw;
+            _hideDerivatives = hideDerivatives;
         }
 
         /// <summary>
         /// Write the automaton in dgml format into the textwriter.
         /// </summary>
-        public void Write<S>(IAutomaton<S> fa, Func<S, string> describeS = null)
+        public void Write<S>(IAutomaton<S> fa)
         {
             var nonEpsilonMoves = new Dictionary<Tuple<int, int>, List<S>>();
             var epsilonmoves = new List<Move<S>>();
@@ -50,15 +52,18 @@ namespace System.Text.RegularExpressions.SRM.DGML
             _tw.WriteLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
             _tw.WriteLine("<DirectedGraph xmlns=\"http://schemas.microsoft.com/vs/2009/dgml\" ZoomLevel=\"1.5\" GraphDirection=\"TopToBottom\" >");
             _tw.WriteLine("<Nodes>");
-            _tw.WriteLine("<Node Id=\"init\" Label=\"{0}\" Stroke=\"white\" Background=\"white\"/>", " ");
+            _tw.WriteLine("<Node Id=\"init\" Label=\" \" />");
             foreach (int state in fa.GetStates())
             {
-                _tw.WriteLine("<Node Id=\"{0}\" Label=\"{1}\" Category=\"State\" >", state, fa.DescribeState(state));
+                _tw.WriteLine("<Node Id=\"{0}\" Label=\"q{1}\" Category=\"State\" Group=\"{2}\">", state,
+                    state == fa.InitialState ? string.Format("{0} (|Q|={1})", state, fa.StateCount) : state.ToString(),
+                    _hideDerivatives ? "Collapsed" : "Expanded");
                 if (state == fa.InitialState)
                     _tw.WriteLine("<Category Ref=\"InitialState\" />");
                 if (fa.IsFinalState(state))
                     _tw.WriteLine("<Category Ref=\"FinalState\" />");
                 _tw.WriteLine("</Node>");
+                _tw.WriteLine("<Node Id=\"{0}info\" Label=\"{1}\" Category=\"StateInfo\"/>", state, fa.DescribeState(state));
             }
             _tw.WriteLine("</Nodes>");
             _tw.WriteLine("<Links>");
@@ -67,23 +72,22 @@ namespace System.Text.RegularExpressions.SRM.DGML
                 _tw.WriteLine("<Link Source=\"{0}\" Target=\"{1}\" Category=\"EpsilonTransition\" />", move.SourceState, move.TargetState);
 
             foreach (var move in nonEpsilonMoves)
-                _tw.WriteLine(GetNonFinalRuleInfo(fa, move.Key.Item1, move.Key.Item2, move.Value, describeS));
+                _tw.WriteLine(GetNonFinalRuleInfo(fa, move.Key.Item1, move.Key.Item2, move.Value));
 
+            foreach (int state in fa.GetStates())
+                _tw.WriteLine("<Link Source=\"{0}\" Target=\"{0}info\" Category=\"Contains\" />", state);
             _tw.WriteLine("</Links>");
             WriteCategoriesAndStyles();
             _tw.WriteLine("</DirectedGraph>");
         }
 
-        private string GetNonFinalRuleInfo<S>(IAutomaton<S> aut, int source, int target, List<S> rules, Func<S, string> describeS = null)
+        private string GetNonFinalRuleInfo<S>(IAutomaton<S> aut, int source, int target, List<S> rules)
         {
-            if (describeS == null)
-                describeS = aut.DescribeLabel;
-
             string lab = "";
             string info = "";
             for (int i = 0; i < rules.Count; i++)
             {
-                lab += (lab == "" ? "" : ",\n ") + describeS(rules[i]);
+                lab += (lab == "" ? "" : ",\n ") + aut.DescribeLabel(rules[i]);
             }
             var lab_length = lab.Length;
             if (_maxDgmlTransitionLabelLength >= 0 && lab_length > _maxDgmlTransitionLabelLength)
@@ -110,33 +114,37 @@ namespace System.Text.RegularExpressions.SRM.DGML
             _tw.WriteLine("<Styles>");
             _tw.WriteLine("<Style TargetType=\"Node\" GroupLabel=\"InitialState\" ValueLabel=\"True\">");
             _tw.WriteLine("<Condition Expression=\"HasCategory('InitialState')\" />");
-            _tw.WriteLine("<Setter Property=\"Background\" Value=\"white\" />");
+            _tw.WriteLine("<Setter Property=\"Background\" Value=\"lightgray\" />");
             _tw.WriteLine("<Setter Property=\"MinWidth\" Value=\"0\" />");
             _tw.WriteLine("</Style>");
             _tw.WriteLine("<Style TargetType=\"Node\" GroupLabel=\"FinalState\" ValueLabel=\"True\">");
             _tw.WriteLine("<Condition Expression=\"HasCategory('FinalState')\" />");
-            //tw.WriteLine("<Setter Property=\"Background\" Value=\"lightgreen\" />");
+            _tw.WriteLine("<Setter Property=\"Background\" Value=\"lightgreen\" />");
             _tw.WriteLine("<Setter Property=\"StrokeThickness\" Value=\"4\" />");
             //tw.WriteLine("<Setter Property=\"Background\" Value=\"white\" />");
             //tw.WriteLine("<Setter Property=\"MinWidth\" Value=\"0\" />");
             _tw.WriteLine("</Style>");
-            _tw.WriteLine("<Style TargetType=\"Node\" GroupLabel=\"SinkState\" ValueLabel=\"True\">");
-            _tw.WriteLine("<Condition Expression=\"HasCategory('SinkState')\" />");
-            _tw.WriteLine("<Setter Property=\"NodeRadius\" Value=\"0\" />");
-            _tw.WriteLine("</Style>");
-            _tw.WriteLine("<Style TargetType=\"Node\" GroupLabel=\"EpsilonState\" ValueLabel=\"True\">");
-            _tw.WriteLine("<Condition Expression=\"HasCategory('EpsilonState')\" />");
-            _tw.WriteLine("<Setter Property=\"Background\" Value=\"tomato\" />");
-            _tw.WriteLine("</Style>");
+            //_tw.WriteLine("<Style TargetType=\"Node\" GroupLabel=\"SinkState\" ValueLabel=\"True\">");
+            //_tw.WriteLine("<Condition Expression=\"HasCategory('SinkState')\" />");
+            //_tw.WriteLine("<Setter Property=\"NodeRadius\" Value=\"0\" />");
+            //_tw.WriteLine("</Style>");
+            //_tw.WriteLine("<Style TargetType=\"Node\" GroupLabel=\"EpsilonState\" ValueLabel=\"True\">");
+            //_tw.WriteLine("<Condition Expression=\"HasCategory('EpsilonState')\" />");
+            //_tw.WriteLine("<Setter Property=\"Background\" Value=\"tomato\" />");
+            //_tw.WriteLine("</Style>");
             _tw.WriteLine("<Style TargetType=\"Node\" GroupLabel=\"State\" ValueLabel=\"True\">");
             _tw.WriteLine("<Condition Expression=\"HasCategory('State')\" />");
             _tw.WriteLine("<Setter Property=\"Stroke\" Value=\"black\" />");
             _tw.WriteLine("<Setter Property=\"Background\" Value=\"white\" />");
             _tw.WriteLine("<Setter Property=\"MinWidth\" Value=\"0\" />");
+            _tw.WriteLine("<Setter Property=\"FontSize\" Value=\"12\" />");
+            _tw.WriteLine("<Setter Property=\"FontFamily\" Value=\"Arial\" />");
             _tw.WriteLine("</Style>");
             _tw.WriteLine("<Style TargetType=\"Link\" GroupLabel=\"NonepsilonTransition\" ValueLabel=\"True\">");
             _tw.WriteLine("<Condition Expression=\"HasCategory('NonepsilonTransition')\" />");
             _tw.WriteLine("<Setter Property=\"Stroke\" Value=\"black\" />");
+            _tw.WriteLine("<Setter Property=\"FontSize\" Value=\"18\" />");
+            _tw.WriteLine("<Setter Property=\"FontFamily\" Value=\"Arial\" />");
             _tw.WriteLine("</Style>");
             _tw.WriteLine("<Style TargetType=\"Link\" GroupLabel=\"StartTransition\" ValueLabel=\"True\">");
             _tw.WriteLine("<Condition Expression=\"HasCategory('StartTransition')\" />");
@@ -151,6 +159,11 @@ namespace System.Text.RegularExpressions.SRM.DGML
             _tw.WriteLine("<Condition Expression=\"HasCategory('FinalLabel')\" />");
             _tw.WriteLine("<Setter Property=\"Stroke\" Value=\"black\" />");
             _tw.WriteLine("<Setter Property=\"StrokeDashArray\" Value=\"8 8\" />");
+            _tw.WriteLine("</Style>");
+            _tw.WriteLine("<Style TargetType=\"Node\" GroupLabel=\"StateInfo\" ValueLabel=\"True\">");
+            _tw.WriteLine("<Setter Property=\"Stroke\" Value=\"white\" />");
+            _tw.WriteLine("<Setter Property=\"FontSize\" Value=\"18\" />");
+            _tw.WriteLine("<Setter Property=\"FontFamily\" Value=\"Arial\" />");
             _tw.WriteLine("</Style>");
             _tw.WriteLine("</Styles>");
         }

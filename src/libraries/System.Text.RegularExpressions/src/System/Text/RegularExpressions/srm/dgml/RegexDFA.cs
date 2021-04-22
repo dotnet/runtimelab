@@ -12,37 +12,41 @@ namespace System.Text.RegularExpressions.SRM.DGML
     internal class RegexDFA<S> : IAutomaton<S>
     {
         private State<S> _q0;
-        private Dictionary<int, State<S>> _states = new Dictionary<int, State<S>>();
+        private List<State<S>> _states = new List<State<S>>();
+        private Dictionary<State<S>, int> _stateId = new Dictionary<State<S>, int>();
         private Dictionary<Tuple<int, int>, S> _normalizedmoves = new Dictionary<Tuple<int, int>, S>();
         private ICharAlgebra<S> _solver;
-        private bool _hideDerivatives;
 
-        internal RegexDFA(SymbolicRegexMatcher<S> srm, int bound, bool hideDerivatives, bool addDotStar)
+        internal RegexDFA(SymbolicRegexMatcher<S> srm, int bound,  bool addDotStar)
         {
             _solver = srm.builder.solver;
-            _hideDerivatives = hideDerivatives;
             CharKindId startId = (srm.A.info.StartsWithSomeAnchor ? CharKindId.Start : CharKindId.None);
             _q0 = State<S>.MkState(addDotStar ? srm.A1 : srm.A, startId);
             var stack = new Stack<State<S>>();
             stack.Push(_q0);
-            _states[_q0.Id] = _q0;
+            _states.Add(_q0);
+            _stateId[_q0] = 0;
             var partition = _solver.GetPartition();
             //construct until the stack is empty or the bound has been reached
             while (stack.Count > 0 && (bound <= 0 || _states.Count < bound))
             {
                 var q = stack.Pop();
+                int qId = _stateId[q];
                 foreach (var c in partition)
                 {
                     var p = q.Next(c);
                     //check that p is not a dead-end
                     if (!p.IsNothing)
                     {
-                        if (!_states.ContainsKey(p.Id))
+                        int pId;
+                        if (!_stateId.TryGetValue(p, out pId))
                         {
                             stack.Push(p);
-                            _states[p.Id] = p;
+                            pId = _states.Count;
+                            _states.Add(p);
+                            _stateId[p] = pId;
                         }
-                        var qp = new Tuple<int, int>(q.Id, p.Id);
+                        var qp = new Tuple<int, int>(qId, pId);
                         if (_normalizedmoves.ContainsKey(qp))
                             _normalizedmoves[qp] = _solver.MkOr(_normalizedmoves[qp], c);
                         else
@@ -52,15 +56,17 @@ namespace System.Text.RegularExpressions.SRM.DGML
             }
         }
 
-        public int InitialState => _q0.Id;
+        public int InitialState => 0;
 
-        public string DescribeLabel(S lab) => EncodeChars(_solver.PrettyPrint(lab));
+        public int StateCount => _states.Count;
+
+        public string DescribeLabel(S lab) => HTMLEncodeChars(_solver.PrettyPrint(lab));
 
         public string DescribeStartLabel() => "";
 
-        public string DescribeState(int state) => (_hideDerivatives ? state.ToString() : ViewState(_states[state]));
+        public string DescribeState(int state) => ViewState(_states[state]);
 
-        public IEnumerable<int> GetStates() => _states.Keys;
+        public IEnumerable<int> GetStates() => Array.ConvertAll(_states.ToArray(), state => _stateId[state]);
 
         public bool IsFinalState(int state) => _states[state].IsNullable(0);
 
@@ -70,19 +76,14 @@ namespace System.Text.RegularExpressions.SRM.DGML
                 yield return Move<S>.Create(entry.Key.Item1, entry.Key.Item2, entry.Value);
         }
 
-        private static string EncodeChars(string s)
-        {
-            string s1 = SRM.StringUtility.Escape(s);
-            string s2 = s1.Replace("&", "&amp;").Replace("\"", "&quot;").Replace("<", "&lt;").Replace(">", "&gt;");
-            return s2;
-        }
+        private static string HTMLEncodeChars(string s) => s.Replace("&", "&amp;").Replace("\"", "&quot;").Replace("<", "&lt;").Replace(">", "&gt;");
 
         private static string ViewState(State<S> state)
         {
             if (state.PrevCharKindId == CharKindId.None)
-                return EncodeChars(state.Node.ToString());
+                return HTMLEncodeChars(state.Node.ToString());
             else
-                return string.Format("Prev:{0}&#13;{1}", state.PrevCharKindId, EncodeChars(state.Node.ToString()));
+                return string.Format("Last char: {0}&#13;{1}", state.PrevCharKindId, HTMLEncodeChars(state.Node.ToString()));
         }
     }
 }

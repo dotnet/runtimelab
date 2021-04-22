@@ -1291,6 +1291,8 @@ namespace System.Text.RegularExpressions.SRM
                             return left.ToStringForLoop() + "*" + (IsLazy ? "?" : "");
                         else if (IsPlus)
                             return left.ToStringForLoop() + "+" + (IsLazy ? "?" : "");
+                        else if (lower == 0 && upper == 0)
+                            return "()";
                         else if (IsBoundedLoop)
                             return left.ToStringForLoop() + "{" + lower + "," + upper + "}" + (IsLazy ? "?" : "");
                         else
