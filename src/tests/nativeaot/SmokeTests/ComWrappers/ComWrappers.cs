@@ -109,7 +109,7 @@ namespace ComWrappersTests
             var target = new ComObject();
             int result = CaptureComPointer(target);
             ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
-            result = RetreiveCapturedComPointer(out var ifPtr)
+            result = RetreiveCapturedComPointer(out var ifPtr);
             ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
             if (ifPtr != target)
             {

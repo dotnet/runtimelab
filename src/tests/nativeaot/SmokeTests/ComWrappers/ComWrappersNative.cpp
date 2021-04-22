@@ -40,21 +40,21 @@ public:
         return S_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE AddRef() override
+    ULONG STDMETHODCALLTYPE AddRef() override
     {
         _counter++;
         return S_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE Release() override
+    ULONG STDMETHODCALLTYPE Release() override
     {
         _counter--;
         return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
-        ___in REFIID InterfaceId,
-        ___out PVOID* Interface) override
+        REFIID InterfaceId,
+        PVOID* Interface) override
     {
         if (InterfaceId == IID_IUnknown ||
             InterfaceId == IID_IComInterface)
@@ -69,7 +69,7 @@ public:
             return E_NOINTERFACE;
         }
     }
-}
+};
 
 IComInterface* capturedComObject;
 DLL_EXPORT int __stdcall CaptureComPointer(IComInterface* pUnk)
@@ -80,13 +80,13 @@ DLL_EXPORT int __stdcall CaptureComPointer(IComInterface* pUnk)
 
 DLL_EXPORT int __stdcall RetreiveCapturedComPointer(IComInterface** ppUnk)
 {
-    ppUnk = capturedComObject;
+    *ppUnk = capturedComObject;
     return S_OK;
 }
 
 DLL_EXPORT int __stdcall BuildComPointer(IComInterface** ppUnk)
 {
-    ppUnk = new NativeComInterface();
+    *ppUnk = new NativeComInterface();
     return S_OK;
 }
 
