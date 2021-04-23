@@ -94,8 +94,9 @@ namespace ComWrappersTests
         public static void TestComInteropCCWCreation()
         {
             Console.WriteLine("Testing CCW release process");
-            ComWrappers wrapper = new SimpleComWrapper();
-            ComWrappers.RegisterForMarshalling(wrapper);
+            // Lines below was called in previous tests.
+            // ComWrappers wrapper = new SimpleComWrapper();
+            // ComWrappers.RegisterForMarshalling(wrapper);
             int result = BuildComPointer(out var comPointer);
             ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
             comPointer.DoWork(11);
@@ -104,8 +105,9 @@ namespace ComWrappersTests
         public static void TestRCWRoundTrip()
         {
             Console.WriteLine("Testing CCW release process");
-            ComWrappers wrapper = new SimpleComWrapper();
-            ComWrappers.RegisterForMarshalling(wrapper);
+            // Lines below was called in previous tests.
+            // ComWrappers wrapper = new SimpleComWrapper();
+            // ComWrappers.RegisterForMarshalling(wrapper);
             var target = new ComObject();
             int result = CaptureComPointer(target);
             ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
