@@ -44,8 +44,8 @@ namespace System.Text.RegularExpressions.Tests
             saveDgml.Invoke(regex, new object[] { writer, bound, hideDerivatives, addDotStar, maxLabelLength });
         }
 
-        [Fact]
-        public void TestDGMLGeneration()
+        //[Fact]
+        private void TestDGMLGeneration()
         {
             StringWriter sw = new StringWriter();
             var re = new Regex(".*a+", DFA | RegexOptions.Singleline);
@@ -57,24 +57,29 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         //[Fact]
-        private void TestDGML()
+        private void Test()
         {
-            var email = new Regex(@"^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,12}|[0-9]{1,3})(\]?)$", DFA | RegexOptions.Singleline);
-            var date = new Regex(@"\b\d{1,2}\/\d{1,2}\/\d{2,4}\b", DFA | RegexOptions.Singleline);
-            var ip = new Regex(@"(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])", DFA | RegexOptions.Singleline);
-            var uri = new Regex(@"[\w]+://[^/\s?#]+[^\s?#]+(?:\?[^\s#]*)?(?:#[^\s]*)?", DFA | RegexOptions.Singleline);
+            //var email = new Regex(@"^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,12}|[0-9]{1,3})(\]?)$", DFA | RegexOptions.Singleline);
+            //var date = new Regex(@"\b\d{1,2}\/\d{1,2}\/\d{2,4}\b", DFA | RegexOptions.Singleline);
+            //var ip = new Regex(@"(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])", DFA | RegexOptions.Singleline);
+            //var uri = new Regex(@"[\w]+://[^/\s?#]+[^\s?#]+(?:\?[^\s#]*)?(?:#[^\s]*)?", DFA | RegexOptions.Singleline);
+            //var nn = new Regex(@"\b\w+nn\b", DFA);
+            var ab = new Regex("abracadabra$", DFA | RegexOptions.Multiline | RegexOptions.IgnoreCase);
             //var re = new Regex("^a(_?a?_?a?_?)+$", DFA);
             //var re = new Regex(@"^\b[a-z]+(n|\n|@|_)n\b", DFA);
             //var re = new Regex(@"^[a-z]+", DFA | RegexOptions.Multiline);
             //var re = new Regex(@"(([a-z])+.)+[A-Z]([a-z])+", DFA | RegexOptions.Singleline);
-            ViewDGML(regex: email, name:"email");
-            ViewDGML(regex: email, addDotStar: true, name: "dots_email");
-            ViewDGML(regex: date, name:"date");
-            ViewDGML(regex: date, addDotStar: true, name: "dots_date");
-            ViewDGML(regex: ip, name:"ip");
-            ViewDGML(regex: ip, addDotStar: true, name: "dots_ip");
-            ViewDGML(regex: uri, name: "uri");
-            ViewDGML(regex: uri, addDotStar: true, name: "dots_uri");
+            //ViewDGML(regex: email, name:"email");
+            //ViewDGML(regex: email, addDotStar: true, name: "dots_email");
+            //ViewDGML(regex: date, name:"date");
+            //ViewDGML(regex: date, addDotStar: true, name: "dots_date");
+            //ViewDGML(regex: ip, name:"ip");
+            //ViewDGML(regex: ip, addDotStar: true, name: "dots_ip");
+            //ViewDGML(regex: uri, name: "uri");
+            //ViewDGML(regex: uri, addDotStar: true, name: "dots_uri");
+            ViewDGML(regex: ab, addDotStar: true); 
+            var match = ab.Match("abracadabraCAdabra\nabc");
+            Assert.True(match.Success);
         }
 
         [Fact]

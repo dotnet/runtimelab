@@ -56,9 +56,13 @@ namespace System.Text.RegularExpressions.SRM.DGML
             }
         }
 
+        public S[] Alphabet => _solver.GetPartition();
+
         public int InitialState => 0;
 
         public int StateCount => _states.Count;
+
+        public int TransitionCount => _normalizedmoves.Count;
 
         public string DescribeLabel(S lab) => HTMLEncodeChars(_solver.PrettyPrint(lab));
 
@@ -68,7 +72,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
 
         public IEnumerable<int> GetStates() => Array.ConvertAll(_states.ToArray(), state => _stateId[state]);
 
-        public bool IsFinalState(int state) => _states[state].IsNullable(0);
+        public bool IsFinalState(int state) => _states[state].IsNullable(CharKind.End);
 
         public IEnumerable<Move<S>> GetMoves()
         {

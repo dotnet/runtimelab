@@ -10,13 +10,13 @@ namespace System.Text.RegularExpressions.SRM.DGML
     {
         private int _maxDgmlTransitionLabelLength;
         private TextWriter _tw;
-        private bool _hideDerivatives;
+        private bool _hideStateInfo;
 
-        internal DgmlWriter(TextWriter tw, bool hideDerivatives, int maxDgmlTransitionLabelLength = 500)
+        internal DgmlWriter(TextWriter tw, bool hideStateInfo, int maxDgmlTransitionLabelLength = 500)
         {
             _maxDgmlTransitionLabelLength = maxDgmlTransitionLabelLength;
             _tw = tw;
-            _hideDerivatives = hideDerivatives;
+            _hideStateInfo = hideStateInfo;
         }
 
         /// <summary>
@@ -55,15 +55,14 @@ namespace System.Text.RegularExpressions.SRM.DGML
             _tw.WriteLine("<Node Id=\"init\" Label=\" \" />");
             foreach (int state in fa.GetStates())
             {
-                _tw.WriteLine("<Node Id=\"{0}\" Label=\"q{1}\" Category=\"State\" Group=\"{2}\">", state,
-                    state == fa.InitialState ? string.Format("{0} (|Q|={1})", state, fa.StateCount) : state.ToString(),
-                    _hideDerivatives ? "Collapsed" : "Expanded");
+                _tw.WriteLine("<Node Id=\"{0}\" Label=\"q{0}\" Category=\"State\" Group=\"{1}\">", state,
+                    _hideStateInfo ? "Collapsed" : "Expanded");
                 if (state == fa.InitialState)
                     _tw.WriteLine("<Category Ref=\"InitialState\" />");
                 if (fa.IsFinalState(state))
                     _tw.WriteLine("<Category Ref=\"FinalState\" />");
                 _tw.WriteLine("</Node>");
-                _tw.WriteLine("<Node Id=\"{0}info\" Label=\"{1}\" Category=\"StateInfo\"/>", state, fa.DescribeState(state));
+                _tw.WriteLine("<Node Id=\"{0}info\" Label=\"{1}\" Category=\"StateInfo\"/>", state, GetStateInfo(fa, state));
             }
             _tw.WriteLine("</Nodes>");
             _tw.WriteLine("<Links>");
@@ -79,6 +78,37 @@ namespace System.Text.RegularExpressions.SRM.DGML
             _tw.WriteLine("</Links>");
             WriteCategoriesAndStyles();
             _tw.WriteLine("</DirectedGraph>");
+        }
+
+        private static char DELTA_CAPITAL = '\u0394';
+        private static char SIGMA_CAPITAL = '\u03A3';
+
+
+        private static string GetStateInfo<S>(IAutomaton<S> fa, int state)
+        {
+            StringBuilder sb = new();
+            sb.Append(fa.DescribeState(state));
+            if (fa.InitialState == state)
+            {
+                sb.Append("&#13;");
+                sb.Append("|Q|=");
+                sb.Append(fa.StateCount);
+                sb.Append("&#13;");
+                sb.Append('|');
+                sb.Append(DELTA_CAPITAL);
+                sb.Append("|=");
+                sb.Append(fa.TransitionCount);
+                sb.Append("&#13;");
+                sb.Append(SIGMA_CAPITAL);
+                sb.Append('=');
+                for (int i=0; i< fa.Alphabet.Length; i++)
+                {
+                    if (i > 0)
+                        sb.Append(' ');
+                    sb.Append(fa.DescribeLabel(fa.Alphabet[i]));
+                }
+            }
+            return sb.ToString();
         }
 
         private string GetNonFinalRuleInfo<S>(IAutomaton<S> aut, int source, int target, List<S> rules)

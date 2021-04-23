@@ -48,6 +48,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         internal const uint Reverse = 0x80000000;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static uint From(CharKindId id)
         {
             switch (id)
@@ -85,12 +86,6 @@ namespace System.Text.RegularExpressions.SRM
         /// used to track is this state is a (PrevCharKind variant of) A1
         /// </summary>
         internal bool isInitialState;
-
-        private State(SymbolicRegexNode<S> node, uint prevCharKind)
-        {
-            Node = node;
-            PrevCharKind = prevCharKind;
-        }
 
         private State(SymbolicRegexNode<S> node, CharKindId prevCharKindId, bool reverse)
         {
@@ -162,67 +157,6 @@ namespace System.Text.RegularExpressions.SRM
             return Node.IsNullableFor(context);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsNullable(string input, int nextCharPos)
-        {
-            if (Node.info.StartsWithSomeAnchor)
-            {
-                uint nextCharKind = GetCharKind(input, nextCharPos);
-                // observe that context remains in reverse if the reverse bit is 1 in PrevCharKind
-                uint context = (nextCharKind << 4) | PrevCharKind;
-                return Node.IsNullableFor(context);
-            }
-            else
-                return Node.IsNullable;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private uint GetCharKind(string input, int i)
-        {
-            if (i == -1)
-                return CharKind.Start;
-            else if (i == input.Length)
-                return CharKind.End;
-            else
-            {
-                if (Node.builder.newLinePredicate.Equals(Node.builder.wordLetterPredicate))
-                {
-                    // both predicates being the same means that they are both False
-                    // the regex does not use any line anchors or word boundary anchors
-                    return 0;
-                }
-                else
-                {
-                    char nextChar = input[i];
-
-                    if (nextChar == '\n')
-                    {
-                        if (Node.builder.newLinePredicate.Equals(Node.builder.solver.False))
-                            return 0;
-                        else
-                        {
-                            if (i == input.Length - 1)
-                                return CharKind.NewLineZ;
-                            else
-                                return CharKind.Newline;
-                        }
-                    }
-                    else
-                    {
-                        if (Node.builder.wordLetterPredicate.Equals(Node.builder.solver.False))
-                            return 0;
-                        else
-                        {
-                            if (System.Text.RegularExpressions.RegexCharClass.IsWordChar(nextChar))
-                                return CharKind.WordLetter;
-                            else
-                                return 0;
-                        }
-                    }
-                }
-            }
-        }
-
         private static void ValidateCharKind(uint prevCharKind)
         {
             // ignore the Reverse flag
@@ -240,8 +174,8 @@ namespace System.Text.RegularExpressions.SRM
         public override int GetHashCode() => (PrevCharKind, Node).GetHashCode();
 
         public override string ToString() =>
-            PrevCharKind == (uint)CharKindId.None ? Node.ToString() :
-             (DescribeCharKind(PrevCharKind) + ':' + Node.ToString());
+            PrevCharKindId == (uint)CharKindId.None ? Node.ToString() :
+             ("Last char:" + DescribeCharKind(PrevCharKind) + ", " + Node.ToString());
 
         private static string DescribeCharKind(uint i)
         {
@@ -274,19 +208,6 @@ namespace System.Text.RegularExpressions.SRM
             string regex = Node.Serialize();
             string prev = DescribeCharKind(PrevCharKind);
             return prev + "," + regex;
-        }
-
-        internal static uint GetCharKindFromEncoding(char c)
-        {
-            switch (c)
-            {
-                case 'w': return CharKind.WordLetter;
-                case 'A': return CharKind.Start;
-                case 'n': return CharKind.Newline;
-                case 'Z': return CharKind.NewLineZ;
-                case 'z': return CharKind.End;
-                default: return 0;
-            }
         }
 
         internal static CharKindId GetCharKindIdFromEncoding(char c)
