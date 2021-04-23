@@ -909,7 +909,7 @@ namespace System
             nuint totalByteLength = eeType.ComponentSize * array.NativeLength;
             ref byte pStart = ref array.GetRawArrayData();
 
-            if (eeType.HasPointers)
+            if (!eeType.HasPointers)
             {
                 SpanHelpers.ClearWithoutReferences(ref pStart, totalByteLength);
             }
@@ -947,9 +947,14 @@ namespace System
             nuint byteLength = (uint)length * elementSize;
 
             if (eeType.HasPointers)
+            {
+                Debug.Assert(byteLength % (nuint)sizeof(IntPtr) == 0);
                 SpanHelpers.ClearWithReferences(ref Unsafe.As<byte, IntPtr>(ref ptr), byteLength / (uint)sizeof(IntPtr));
+            }
             else
+            {
                 SpanHelpers.ClearWithoutReferences(ref ptr, byteLength);
+            }
 
             // GC.KeepAlive(array) not required. pMT kept alive via `ptr`
         }
