@@ -68,7 +68,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
 
         public IEnumerable<int> GetStates() => Array.ConvertAll(_states.ToArray(), state => _stateId[state]);
 
-        public bool IsFinalState(int state) => _states[state].IsNullable(0);
+        public bool IsFinalState(int state) => _states[state].IsNullable(CharKind.End);
 
         public IEnumerable<Move<S>> GetMoves()
         {

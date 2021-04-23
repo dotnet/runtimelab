@@ -12,18 +12,23 @@ namespace System.Text.RegularExpressions.SRM
     /// </summary>
     internal class BooleanClassifier
     {
-        //stores first 64 chars of ASCII
-        private ulong _lower;
-        //stores next 64 chars of ASCII
-        private ulong _upper;
         //stores the remaining characters in a BDD
-        private BDD _bdd;
+        private BDD _nonascii;
+        //explcit array for ascii
+        private bool[] _ascii;
 
         private BooleanClassifier(ulong lower, ulong upper, BDD bdd)
         {
-            _lower = lower;
-            _upper = upper;
-            _bdd = bdd;
+            _ascii = new bool[128];
+            for (int i = 0; i < 128; i++)
+                _ascii[i] = i < 64 ? ((lower & ((ulong)1 << i)) != 0) : ((upper & ((ulong)1 << (i - 64))) != 0);
+            _nonascii = bdd;
+        }
+
+        private BooleanClassifier(bool[] ascii, BDD bdd)
+        {
+            _ascii = ascii;
+            _nonascii = bdd;
         }
 
         /// <summary>
@@ -34,30 +39,32 @@ namespace System.Text.RegularExpressions.SRM
         /// <returns></returns>
         internal static BooleanClassifier Create(CharSetSolver solver, BDD domain)
         {
-            ulong lower = 0;
-            ulong upper = 0;
-            for (int i = 0; i < 64; i++)
-                lower |= (domain.Contains(i) ? (ulong)1 << i : 0);
-            for (int i = 64; i < 128; i++)
-                upper |= (domain.Contains(i) ? (ulong)1 << (i - 64) : 0);
+            var ascii = new bool[128];
+            for (int i = 0; i < 128; i++)
+                ascii[i] = domain.Contains(i);
             //remove the ASCII characters from the domain if the domain is not everything
             BDD bdd = (domain.IsFull ? domain : solver.MkAnd(solver.nonascii, domain));
-            return new BooleanClassifier(lower, upper, bdd);
+            return new BooleanClassifier(ascii, bdd);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Contains(ushort c) =>
-            c < 64 ? ((_lower & ((ulong)1 << c)) != 0) : (c < 128 ? ((_upper & ((ulong)1 << (c - 64))) != 0) : _bdd.Contains(c));
+        public bool Contains(ushort c) => c < 128 ? _ascii[c] : _nonascii.Contains(c);
 
         #region Serialization
         public void Serialize(StringBuilder sb)
         {
+            ulong lower = 0;
+            for (int i = 0; i < 64; i++)
+                lower |= (_ascii[i] ? (ulong)1 << i : 0);
+            ulong upper = 0;
+            for (int i = 0; i < 64; i++)
+                upper |= (_ascii[i + 64] ? (ulong)1 << i : 0);
             //use comma to separate the elements, comma is not used in _bdd.Serialize
-            sb.Append(Base64.Encode(_lower));
+            sb.Append(Base64.Encode(lower));
             sb.Append(',');
-            sb.Append(Base64.Encode(_upper));
+            sb.Append(Base64.Encode(upper));
             sb.Append(',');
-            _bdd.Serialize(sb);
+            _nonascii.Serialize(sb);
         }
 
         public static BooleanClassifier Deserialize(string input, BDDAlgebra solver = null)

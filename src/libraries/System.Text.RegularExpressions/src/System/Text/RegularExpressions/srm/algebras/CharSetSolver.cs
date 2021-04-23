@@ -495,7 +495,7 @@ namespace System.Text.RegularExpressions.SRM
                 //---
                 // d|wD
                 if (MkOr(w, pred) == w)
-                    return RepresentSetInPattern("[^\\W{0}]", MkAnd(w, MkNot(pred)));
+                    return RepresentSetInPattern("[\\w-[{0}]]", MkAnd(w, MkNot(pred)));
                 //---
                 // d|SW
                 BDD d_or_SW = MkOr(d, SW);
@@ -528,7 +528,14 @@ namespace System.Text.RegularExpressions.SRM
             }
             #endregion
 
-            return "[" + RepresentRanges(ranges) + "]";
+            //rpresent either the ranges or its complemet,
+            //if the complement representation is more copmpact
+            string ranges_repr = "[" + RepresentRanges(ranges, false) + "]";
+            string ranges_compl_repr = "[^" + RepresentRanges(ToRanges(MkNot(pred)), false) + "]";
+            if (ranges_repr.Length <= ranges_compl_repr.Length)
+                return ranges_repr;
+            else
+                return ranges_compl_repr;
         }
 
 
@@ -547,12 +554,13 @@ namespace System.Text.RegularExpressions.SRM
             return res;
         }
 
-        private static string RepresentRanges(Tuple<uint, uint>[] ranges)
+        private static string RepresentRanges(Tuple<uint, uint>[] ranges, bool checkSingletonComlement = true)
         {
             //check if ranges represents a complement of a singleton
-            if (ranges.Length == 2 && ranges[0].Item1 == 0 && ranges[1].Item2 == 0xFFFF &&
-                            ranges[0].Item2 + 2 == ranges[1].Item1)
-                return "^" + (StringUtility.Escape((char)(ranges[0].Item2 + 1)));
+            if (checkSingletonComlement && ranges.Length == 2 &&
+                ranges[0].Item1 == 0 && ranges[1].Item2 == 0xFFFF &&
+                ranges[0].Item2 + 2 == ranges[1].Item1)
+                    return "^" + (StringUtility.Escape((char)(ranges[0].Item2 + 1)));
 
             StringBuilder sb = new();
             for (int i = 0; i < ranges.Length; i++)

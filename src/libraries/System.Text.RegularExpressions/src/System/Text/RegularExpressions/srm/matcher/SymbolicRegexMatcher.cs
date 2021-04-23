@@ -152,6 +152,8 @@ namespace System.Text.RegularExpressions.SRM
 
         private State<S>[] _Arq0 = new State<S>[6];
 
+        private CharKindId[] _asciiCharKindId = new CharKindId[128];
+
         /// <summary>
         /// Initialized to the next power of 2 that is at least the number of atoms
         /// </summary>
@@ -262,10 +264,10 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Constructs matcher for given symbolic regex
         /// </summary>
-        internal SymbolicRegexMatcher(SymbolicRegexNode<S> sr, CharSetSolver css, BDD[] minterms, System.Text.RegularExpressions.RegexOptions options)
+        internal SymbolicRegexMatcher(SymbolicRegexNode<S> sr, CharSetSolver css, BDD[] minterms, RegexOptions options)
         {
             if (sr.IsNullable)
-                throw new NotSupportedException( SRM.Regex._DFA_incompatible_with + "nullable regex (accepting the empty string)");
+                throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + "nullable regex (accepting the empty string)");
 
             this.Options = options;
             this.StartSetSizeLimit = 1;
@@ -314,6 +316,12 @@ namespace System.Text.RegularExpressions.SRM
             //new string(Array.ConvertAll(this.Ar_prefix_array, x => (char)css.GetMin(builder.solver.ConvertToCharSet(css, x))));
 
             //InitializeVectors();
+
+            if (A.info.ContainsSomeAnchor)
+                for (int i = 0; i < 128; i++)
+                    _asciiCharKindId[i] =
+                        i == 10 ? (builder.solver.MkAnd(GetAtom(i), builder.newLinePredicate).Equals(builder.solver.False) ? CharKindId.None : CharKindId.Newline)
+                                : (builder.solver.MkAnd(GetAtom(i), builder.wordLetterPredicate).Equals(builder.solver.False) ? CharKindId.None : CharKindId.WordLetter);
         }
 
         private void InitializeRegexes()
@@ -574,7 +582,7 @@ namespace System.Text.RegularExpressions.SRM
                 //over the initial prefix once it has been computed
                 q = Delta(input, i, q);
 
-                if (q.IsNullable(input, i+1))
+                if (q.IsNullable(GetCharKind(input, i+1)))
                 {
                     // stop here if q is not eager
                     if (q.Node.info.IsLazy)
@@ -624,14 +632,14 @@ namespace System.Text.RegularExpressions.SRM
             {
 #if DEBUG
                 //we reached the beginning of the input, thus the state q must be accepting
-                if (!q.IsNullable(input, i))
+                if (!q.IsNullable(GetCharKind(input, i)))
                     throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
 #endif
                 return 0;
             }
 
             int last_start = -1;
-            if (q.IsNullable(input, i))
+            if (q.IsNullable(GetCharKind(input, i)))
             {
                 // the whole prefix of Ar was in reverse a prefix of A
                 // for example when the pattern of A is concrete word such as "abc"
@@ -643,7 +651,7 @@ namespace System.Text.RegularExpressions.SRM
             {
                 q = Delta(input, i, q);
 
-                if (q.IsNullable(input, i-1))
+                if (q.IsNullable(GetCharKind(input, i-1)))
                 {
                     //earliest start point so far
                     //this must happen at some point
@@ -682,18 +690,18 @@ namespace System.Text.RegularExpressions.SRM
             // search for a match end position within input[i..k-1]
             while (i < k)
             {
-                if (this.A_prefix != string.Empty)
+                if (q.isInitialState)
                 {
-                    // ++++ the prefix optimization can be omitted without affecting correctness ++++
-                    // but this optimization has a major perfomance boost when a fixed prefix exists
-                    // .... in some cases in the order of 10x
-                    // TBD: checking correctness when anchors are used
-                    #region prefix optimization
-                    //stay in the initial state if the prefix does not match
-                    //thus advance the current position to the
-                    //first position where the prefix does match
-                    if (q.isInitialState)
+                    if (this.A_prefix != string.Empty)
                     {
+                        // ++++ the prefix optimization can be omitted without affecting correctness ++++
+                        // but this optimization has a major perfomance boost when a fixed prefix exists
+                        // .... in some cases in the order of 10x
+                        #region prefix optimization
+                        //stay in the initial state if the prefix does not match
+                        //thus advance the current position to the
+                        //first position where the prefix does match
+
                         i_q0_A1 = i;
                         i = input.IndexOf(this.A_prefix, i, comparison);
 
@@ -717,7 +725,7 @@ namespace System.Text.RegularExpressions.SRM
                             // skip the prefix
                             i = i + this.A_prefix.Length;
                             // here i points at the next character (the character immediately following the prefix)
-                            if (q.IsNullable(input, i))
+                            if (q.IsNullable(GetCharKind(input, i)))
                             {
                                 i_q0 = i_q0_A1;
                                 watchdog = GetWatchdog(q.Node);
@@ -732,34 +740,34 @@ namespace System.Text.RegularExpressions.SRM
                                 return k;
                             }
                         }
+                        #endregion
                     }
-                    #endregion
-                }
-                else if (q.isInitialState)
-                {
-                    // we are still in the initial state
-                    // find the first position i that matches with some character in the start set
-                    i = IndexOfStartset(input, i);
-
-                    if (i == -1)
+                    else
                     {
-                        // no match was found
-                        i_q0 = i_q0_A1;
-                        watchdog = -1;
-                        return k;
-                    }
+                        // we are still in the initial state, when the prefix is empty
+                        // find the first position i that matches with some character in the start set
+                        i = IndexOfStartset(input, i);
 
-                    i_q0_A1 = i;
-                    // the start state must be updated
-                    // to reflect the kind of the previous character
-                    // when anchors are not used, q will remain the same state
-                    q = _A1q0[(int)GetCharKindId(input, i - 1)];
+                        if (i == -1)
+                        {
+                            // no match was found
+                            i_q0 = i_q0_A1;
+                            watchdog = -1;
+                            return k;
+                        }
+
+                        i_q0_A1 = i;
+                        // the start state must be updated
+                        // to reflect the kind of the previous character
+                        // when anchors are not used, q will remain the same state
+                        q = _A1q0[(int)GetCharKindId(input, i - 1)];
+                    }
                 }
 
                 // make the transition based on input[i]
                 q = Delta(input, i, q);
 
-                if (q.IsNullable(input, i + 1))
+                if (q.IsNullable(GetCharKind(input, i + 1)))
                 {
                     i_q0 = i_q0_A1;
                     watchdog = GetWatchdog(q.Node);
@@ -780,58 +788,37 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private uint GetCharKind(string input, int i) => CharKind.From(GetCharKindId(input, i));
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private CharKindId GetCharKindId(string input, int i)
         {
             if (A.info.ContainsSomeAnchor)
             {
                 if (i == -1)
                     return CharKindId.Start;
-                else if (i == input.Length)
+
+                if (i == input.Length)
                     return CharKindId.End;
-                else
+
+                char nextChar = input[i];
+                if (nextChar == '\n')
                 {
-                    if (builder.newLinePredicate.Equals(builder.wordLetterPredicate))
-                    {
-                        // both predicates being the same means that they are both False
-                        // the regex does then not use any anchors that depend on \n
-                        return CharKindId.None;
-                    }
+                    if (builder.newLinePredicate.Equals(builder.solver.False))
+                        return 0;
                     else
                     {
-                        char nextChar = input[i];
-
-                        if (nextChar == '\n')
-                        {
-                            if (builder.newLinePredicate.Equals(builder.solver.False))
-                                return 0;
-                            else
-                            {
-                                if (i == input.Length - 1)
-                                    return CharKindId.NewLineZ;
-                                else
-                                    return CharKindId.Newline;
-                            }
-                        }
+                        if (i == input.Length - 1)
+                            return CharKindId.NewLineZ;
                         else
-                        {
-                            if (builder.wordLetterPredicate.Equals(builder.solver.False))
-                                return 0;
-                            else
-                            {
-                                S nextCharAtom = atoms[dt.Find(nextChar)];
-                                if (builder.solver.IsSatisfiable(builder.solver.MkAnd(builder.wordLetterPredicate, nextCharAtom)))
-                                    return CharKindId.WordLetter;
-                                else
-                                    return CharKindId.None;
-                                //TBD: alternative, should test if this makes any difference in efficiency
-                                // if (System.Text.RegularExpressions.RegexCharClass.IsWordChar(nextChar))
-                                //     return CharKindId.WordLetter;
-                                // else
-                                //     return CharKindId.None;
-                            }
-                        }
+                            return CharKindId.Newline;
                     }
                 }
+
+                if (nextChar < 128)
+                    return _asciiCharKindId[nextChar];
+                else
+                    return builder.solver.MkAnd(GetAtom(nextChar), builder.wordLetterPredicate).Equals(builder.solver.False) ? CharKindId.None : CharKindId.WordLetter;
             }
             else
             {
