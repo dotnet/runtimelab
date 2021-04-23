@@ -64,7 +64,7 @@ namespace System.Text.RegularExpressions.Tests
             //var ip = new Regex(@"(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])", DFA | RegexOptions.Singleline);
             //var uri = new Regex(@"[\w]+://[^/\s?#]+[^\s?#]+(?:\?[^\s#]*)?(?:#[^\s]*)?", DFA | RegexOptions.Singleline);
             //var nn = new Regex(@"\b\w+nn\b", DFA);
-            var ab = new Regex("abracadabra$", DFA | RegexOptions.Multiline);
+            var ab = new Regex("abracadabra$", DFA | RegexOptions.Multiline | RegexOptions.IgnoreCase);
             //var re = new Regex("^a(_?a?_?a?_?)+$", DFA);
             //var re = new Regex(@"^\b[a-z]+(n|\n|@|_)n\b", DFA);
             //var re = new Regex(@"^[a-z]+", DFA | RegexOptions.Multiline);
@@ -78,7 +78,7 @@ namespace System.Text.RegularExpressions.Tests
             //ViewDGML(regex: uri, name: "uri");
             //ViewDGML(regex: uri, addDotStar: true, name: "dots_uri");
             ViewDGML(regex: ab, addDotStar: true); 
-            var match = ab.Match("abracadabracadabra\nabc");
+            var match = ab.Match("abracadabraCAdabra\nabc");
             Assert.True(match.Success);
         }
 

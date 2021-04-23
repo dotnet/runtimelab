@@ -22,6 +22,11 @@ namespace System.Text.RegularExpressions.SRM.DGML
         IEnumerable<int> GetStates();
 
         /// <summary>
+        /// Returns the minterm partition of the alphabet.
+        /// </summary>
+        L[] Alphabet { get; }
+
+        /// <summary>
         /// Provides a description of the state for visualization purposes.
         /// </summary>
         string DescribeState(int state);
@@ -45,6 +50,11 @@ namespace System.Text.RegularExpressions.SRM.DGML
         /// The number of states of the automaton.
         /// </summary>
         int StateCount { get; }
+
+        /// <summary>
+        /// The number of transitions of the automaton.
+        /// </summary>
+        int TransitionCount { get; }
 
         /// <summary>
         /// Returns true iff the state is a final state.

@@ -56,9 +56,13 @@ namespace System.Text.RegularExpressions.SRM.DGML
             }
         }
 
+        public S[] Alphabet => _solver.GetPartition();
+
         public int InitialState => 0;
 
         public int StateCount => _states.Count;
+
+        public int TransitionCount => _normalizedmoves.Count;
 
         public string DescribeLabel(S lab) => HTMLEncodeChars(_solver.PrettyPrint(lab));
 
