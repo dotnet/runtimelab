@@ -2142,6 +2142,9 @@ namespace ILCompiler
 
             public void SetField(FieldDesc field, Value value)
             {
+                if (value is not ValueTypeValue)
+                    ThrowHelper.ThrowInvalidProgramException();
+
                 Debug.Assert(!field.IsStatic);
                 Debug.Assert(!field.FieldType.IsGCPointer);
                 int fieldOffset = field.Offset.AsInt;
