@@ -61,6 +61,19 @@ namespace System.Text.RegularExpressions.SRM
                 default: return 0;
             }
         }
+
+        internal static string PrettyPrint(CharKindId id)
+        {
+            switch (id)
+            {
+                case CharKindId.Start: return @"\A";
+                case CharKindId.End: return @"\z";
+                case CharKindId.WordLetter: return @"\w";
+                case CharKindId.Newline: return @"\n";
+                case CharKindId.NewLineZ: return @"\n\z";
+                default: return "";
+            }
+        }
     }
     /// <summary>
     /// Captures a state of a DFA explored during matching.
@@ -117,6 +130,9 @@ namespace System.Text.RegularExpressions.SRM
             uint context = (CharKind.From(nextCharKindId) << 4) | PrevCharKind;
             // compute the derivative of the node for the given context
             SymbolicRegexNode<S> derivative = Node.MkDerivative(atom, context);
+            //transitioning from the initial state with no prior input
+            if (PrevCharKindId == CharKindId.Start)
+                derivative = derivative.ReplaceStartAnchorByBottom();
             // nextCharKind will be the PrevCharKind of the target state
             // use an existing state instead if one exists already
             // otherwise create a new new id for it --- keep the reverse bit set

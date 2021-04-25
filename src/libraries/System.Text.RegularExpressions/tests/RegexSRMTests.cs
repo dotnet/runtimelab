@@ -27,21 +27,21 @@ namespace System.Text.RegularExpressions.Tests
         /// View the regex as a DFA in DGML format in VS.
         /// </summary>
         /// <param name="r"></param>
-        private static void ViewDGML(Regex regex, int bound = 500, bool hideDerivatives = false, bool addDotStar = false, string name = "DFA", int maxLabelLength = 50)
+        private static void ViewDGML(Regex regex, int bound = 500, bool hideStateInfo = true, bool addDotStar = false, bool inReverse = false, string name = "DFA", int maxLabelLength = 50)
         {
             StringWriter sw = new StringWriter();
-            SaveDGML(regex, sw, bound, hideDerivatives, addDotStar, maxLabelLength);
-            File.WriteAllText(string.Format("C:/tmp/dgml/{0}.dgml", name), sw.ToString());
+            SaveDGML(regex, sw, bound, hideStateInfo, addDotStar, inReverse, maxLabelLength);
+            File.WriteAllText(string.Format("C:/tmp/dgml/{0}.dgml", inReverse ? name + "r" : (addDotStar ? name + "1" : name)), sw.ToString());
         }
 
         /// <summary>
         /// Save the regex as a DFA in DGML format in the textwriter.
         /// </summary>
         /// <param name="r"></param>
-        private static void SaveDGML(Regex regex, TextWriter writer, int bound = -1, bool hideDerivatives = false, bool addDotStar = false, int maxLabelLength = -1)
+        private static void SaveDGML(Regex regex, TextWriter writer, int bound = -1, bool hideStateInfo = false, bool addDotStar = false, bool inReverse = false, int maxLabelLength = -1)
         {
             MethodInfo saveDgml = regex.GetType().GetMethod("SaveDGML", BindingFlags.NonPublic | BindingFlags.Instance);
-            saveDgml.Invoke(regex, new object[] { writer, bound, hideDerivatives, addDotStar, maxLabelLength });
+            saveDgml.Invoke(regex, new object[] { writer, bound, hideStateInfo, addDotStar, inReverse, maxLabelLength });
         }
 
         //[Fact]
@@ -59,27 +59,24 @@ namespace System.Text.RegularExpressions.Tests
         //[Fact]
         private void Test()
         {
-            //var email = new Regex(@"^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,12}|[0-9]{1,3})(\]?)$", DFA | RegexOptions.Singleline);
-            //var date = new Regex(@"\b\d{1,2}\/\d{1,2}\/\d{2,4}\b", DFA | RegexOptions.Singleline);
-            //var ip = new Regex(@"(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])", DFA | RegexOptions.Singleline);
-            //var uri = new Regex(@"[\w]+://[^/\s?#]+[^\s?#]+(?:\?[^\s#]*)?(?:#[^\s]*)?", DFA | RegexOptions.Singleline);
-            //var nn = new Regex(@"\b\w+nn\b", DFA);
-            var ab = new Regex("abracadabra$", DFA | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+            var re = new Regex(@"^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,12}|[0-9]{1,3})(\]?)$", DFA);
+            //var re = new Regex(@"\b\d{1,2}\/\d{1,2}\/\d{2,4}\b", DFA | RegexOptions.Singleline);
+            //var re = new Regex(@"(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])", DFA | RegexOptions.Singleline);
+            //var re = new Regex(@"[\w]+://[^/\s?#]+[^\s?#]+(?:\?[^\s#]*)?(?:#[^\s]*)?", DFA | RegexOptions.Singleline);
+            //var re = new Regex(@"\b\w+nn\b", DFA);
+            //var re = new Regex(@"abracadabra\z", DFA | RegexOptions.Multiline);
+            //var re = new Regex("^.{5}", DFA);
             //var re = new Regex("^a(_?a?_?a?_?)+$", DFA);
             //var re = new Regex(@"^\b[a-z]+(n|\n|@|_)n\b", DFA);
             //var re = new Regex(@"^[a-z]+", DFA | RegexOptions.Multiline);
             //var re = new Regex(@"(([a-z])+.)+[A-Z]([a-z])+", DFA | RegexOptions.Singleline);
-            //ViewDGML(regex: email, name:"email");
-            //ViewDGML(regex: email, addDotStar: true, name: "dots_email");
-            //ViewDGML(regex: date, name:"date");
-            //ViewDGML(regex: date, addDotStar: true, name: "dots_date");
-            //ViewDGML(regex: ip, name:"ip");
-            //ViewDGML(regex: ip, addDotStar: true, name: "dots_ip");
-            //ViewDGML(regex: uri, name: "uri");
-            //ViewDGML(regex: uri, addDotStar: true, name: "dots_uri");
-            ViewDGML(regex: ab, addDotStar: true); 
-            var match = ab.Match("abracadabraCAdabra\nabc");
-            Assert.True(match.Success);
+            //var re = new Regex("ab+c$", DFA);
+            ViewDGML(regex: re);
+            ViewDGML(regex: re, addDotStar: true);
+            ViewDGML(regex: re, inReverse: true);
+            //var match = re.Match("_.@[0.0.0.aaaaaaaaaa]");
+            var match = re.Match("xxxabbc");
+
         }
 
         [Fact]

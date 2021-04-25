@@ -12,82 +12,85 @@ namespace System.Text.RegularExpressions.SRM.DGML
     internal class RegexDFA<S> : IAutomaton<S>
     {
         private State<S> _q0;
-        private List<State<S>> _states = new List<State<S>>();
-        private Dictionary<State<S>, int> _stateId = new Dictionary<State<S>, int>();
-        private Dictionary<Tuple<int, int>, S> _normalizedmoves = new Dictionary<Tuple<int, int>, S>();
-        private ICharAlgebra<S> _solver;
+        private List<int> _states = new();
+        private HashSet<int> _stateSet = new();
+        private List<Move<S>> _moves = new();
+        private SymbolicRegexBuilder<S> _builder;
 
-        internal RegexDFA(SymbolicRegexMatcher<S> srm, int bound,  bool addDotStar)
+        internal RegexDFA(SymbolicRegexMatcher<S> srm, int bound,  bool addDotStar, bool inReverse)
         {
-            _solver = srm.builder.solver;
-            CharKindId startId = (srm.A.info.StartsWithSomeAnchor ? CharKindId.Start : CharKindId.None);
-            _q0 = State<S>.MkState(addDotStar ? srm.A1 : srm.A, startId);
+            _builder = srm.builder;
+            CharKindId startId = (inReverse ? (srm.Ar.info.StartsWithLineAnchor ? CharKindId.End : CharKindId.None)
+                                            : (srm.A.info.StartsWithLineAnchor ? CharKindId.Start : CharKindId.None));
+            //inReverse only matters if Ar contains some line anchor
+            _q0 = State<S>.MkState(inReverse ? srm.Ar : (addDotStar ? srm.A1 : srm.A), startId, srm.A.info.ContainsLineAnchor ? inReverse : false);
             var stack = new Stack<State<S>>();
             stack.Push(_q0);
-            _states.Add(_q0);
-            _stateId[_q0] = 0;
-            var partition = _solver.GetPartition();
-            //construct until the stack is empty or the bound has been reached
+            _states.Add(_q0.Id);
+            _stateSet.Add(_q0.Id);
+            var partition = _builder.solver.GetPartition();
+            Dictionary<Tuple<int, int>, S> normalizedmoves = new();
+            //unwind until the stack is empty or the bound has been reached
             while (stack.Count > 0 && (bound <= 0 || _states.Count < bound))
             {
                 var q = stack.Pop();
-                int qId = _stateId[q];
                 foreach (var c in partition)
                 {
                     var p = q.Next(c);
                     //check that p is not a dead-end
                     if (!p.IsNothing)
                     {
-                        int pId;
-                        if (!_stateId.TryGetValue(p, out pId))
+                        if (_stateSet.Add(p.Id))
                         {
                             stack.Push(p);
-                            pId = _states.Count;
-                            _states.Add(p);
-                            _stateId[p] = pId;
+                            _states.Add(p.Id);
                         }
-                        var qp = new Tuple<int, int>(qId, pId);
-                        if (_normalizedmoves.ContainsKey(qp))
-                            _normalizedmoves[qp] = _solver.MkOr(_normalizedmoves[qp], c);
+                        var qp = new Tuple<int, int>(q.Id, p.Id);
+                        if (normalizedmoves.ContainsKey(qp))
+                            normalizedmoves[qp] = _builder.solver.MkOr(normalizedmoves[qp], c);
                         else
-                            _normalizedmoves[qp] = c;
+                            normalizedmoves[qp] = c;
                     }
                 }
             }
+            foreach (var entry in normalizedmoves)
+                _moves.Add(Move<S>.Create(entry.Key.Item1, entry.Key.Item2, entry.Value));
         }
 
-        public S[] Alphabet => _solver.GetPartition();
+        public S[] Alphabet => _builder.solver.GetPartition();
 
-        public int InitialState => 0;
+        public int InitialState => _q0.Id;
 
         public int StateCount => _states.Count;
 
-        public int TransitionCount => _normalizedmoves.Count;
+        public int TransitionCount => _moves.Count;
 
-        public string DescribeLabel(S lab) => HTMLEncodeChars(_solver.PrettyPrint(lab));
+        public string DescribeLabel(S lab) => HTMLEncodeChars(_builder.solver.PrettyPrint(lab));
 
         public string DescribeStartLabel() => "";
 
-        public string DescribeState(int state) => ViewState(_states[state]);
+        public string DescribeState(int state) => ViewState(_builder.statearray[state]);
 
-        public IEnumerable<int> GetStates() => Array.ConvertAll(_states.ToArray(), state => _stateId[state]);
+        public IEnumerable<int> GetStates() => _states;
 
-        public bool IsFinalState(int state) => _states[state].IsNullable(CharKind.End);
+        public bool IsFinalState(int state) => _builder.statearray[state].IsNullable(_builder.statearray[state].IsReverse ? CharKind.Start : CharKind.End);
 
-        public IEnumerable<Move<S>> GetMoves()
-        {
-            foreach (var entry in _normalizedmoves)
-                yield return Move<S>.Create(entry.Key.Item1, entry.Key.Item2, entry.Value);
-        }
+        public IEnumerable<Move<S>> GetMoves() => _moves;
 
         private static string HTMLEncodeChars(string s) => s.Replace("&", "&amp;").Replace("\"", "&quot;").Replace("<", "&lt;").Replace(">", "&gt;");
 
-        private static string ViewState(State<S> state)
+        private const string REVERSE_SYMBOL = "&#x1F501;";
+
+        private string ViewState(State<S> state)
         {
-            if (state.PrevCharKindId == CharKindId.None)
-                return HTMLEncodeChars(state.Node.ToString());
-            else
-                return string.Format("Last char: {0}&#13;{1}", state.PrevCharKindId, HTMLEncodeChars(state.Node.ToString()));
+            string deriv = HTMLEncodeChars(state.Node.ToString());
+            string info = CharKind.PrettyPrint(state.PrevCharKindId);
+            string rev = state.IsReverse ? REVERSE_SYMBOL + "&#13;" : "";
+            if (info != string.Empty)
+                info = string.Format("Previous: {0}&#13;", info);
+            if (deriv == string.Empty)
+                deriv = "()";
+            return string.Format("{0}{1}{2}", rev, info, deriv);
         }
     }
 }
