@@ -152,13 +152,6 @@ namespace System.Runtime.InteropServices
             }
         }
 
-        internal unsafe struct IUnknownVftbl
-        {
-            public delegate* unmanaged<IntPtr, ref Guid, out IntPtr, int> QueryInterface;
-            public delegate* unmanaged<IntPtr, uint> AddRef;
-            public delegate* unmanaged<IntPtr, uint> Release;
-        }
-
         internal unsafe class NativeObjectWrapper
         {
             private IntPtr _externalComObject;
@@ -178,7 +171,7 @@ namespace System.Runtime.InteropServices
                 return ((delegate* unmanaged<IntPtr, uint>)IUnknownVtbl[2])(_externalComObject);
             }
 
-            private IntPtr* IUnknownVtbl => (IntPtr*)_externalComObject;
+            private IntPtr* IUnknownVtbl => (IntPtr*)((IntPtr*)_externalComObject)[0];
 
             ~NativeObjectWrapper()
             {
@@ -223,6 +216,12 @@ namespace System.Runtime.InteropServices
             ccwValue = _ccwTable.GetValue(instance, (c) =>
             {
                 ManagedObjectWrapper* value = CreateCCW(this, c, flags);
+                var dispatchesCount = value->UserDefinedCount;
+                if ((flags & CreateComInterfaceFlags.CallerDefinedIUnknown) == CreateComInterfaceFlags.None)
+                {
+                    dispatchesCount++;
+                }
+
                 return new ManagedObjectWrapperHolder(value);
             });
             return ccwValue.ComIp;
@@ -332,6 +331,18 @@ namespace System.Runtime.InteropServices
             return obj!;
         }
 
+        private unsafe ComInterfaceDispatch* TryGetComInterfaceDispatch(IntPtr comObject)
+        {
+            // If the first Vtable entry is part of the ManagedObjectWrapper IUnknown impl,
+            // we know how to interpret the IUnknown.
+            if (((IntPtr*)((IntPtr*)comObject)[0])[0] != ((IntPtr*)DefaultIUnknownVftblPtr)[0])
+            {
+                return null;
+            }
+
+            return (ComInterfaceDispatch*)comObject;
+        }
+
         /// <summary>
         /// Get the currently registered managed object or creates a new managed object and registers it.
         /// </summary>
@@ -345,7 +356,7 @@ namespace System.Runtime.InteropServices
         /// <remarks>
         /// If <paramref name="impl" /> is <c>null</c>, the global instance (if registered) will be used.
         /// </remarks>
-        private static bool TryGetOrCreateObjectForComInstanceInternal(
+        private static unsafe bool TryGetOrCreateObjectForComInstanceInternal(
             ComWrappers impl,
             IntPtr externalComObject,
             IntPtr innerMaybe,
@@ -359,7 +370,13 @@ namespace System.Runtime.InteropServices
             if (flags.HasFlag(CreateObjectFlags.Aggregation))
                 throw new NotImplementedException();
 
-            object? wrapperMaybeLocal = wrapperMaybe;
+            var comInterfaceDispatch = impl.TryGetComInterfaceDispatch(externalComObject);
+            if (comInterfaceDispatch != null)
+            {
+                retValue = ComInterfaceDispatch.GetInstance<object>(comInterfaceDispatch);
+                return true;
+            }
+
             retValue = impl.CreateObject(externalComObject, flags);
             if (retValue == null)
             {
@@ -481,7 +498,7 @@ namespace System.Runtime.InteropServices
                 throw new InvalidOperationException(SR.InvalidOperation_ComInteropRequireComWrapperInstance);
             }
 
-            return s_globalInstanceForMarshalling.CreateObject(externalComObject, CreateObjectFlags.None);
+            return s_globalInstanceForMarshalling.GetOrCreateObjectForComInstance(externalComObject, CreateObjectFlags.None);
         }
 
         [UnmanagedCallersOnly]
