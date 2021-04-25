@@ -216,12 +216,6 @@ namespace System.Runtime.InteropServices
             ccwValue = _ccwTable.GetValue(instance, (c) =>
             {
                 ManagedObjectWrapper* value = CreateCCW(this, c, flags);
-                var dispatchesCount = value->UserDefinedCount;
-                if ((flags & CreateComInterfaceFlags.CallerDefinedIUnknown) == CreateComInterfaceFlags.None)
-                {
-                    dispatchesCount++;
-                }
-
                 return new ManagedObjectWrapperHolder(value);
             });
             return ccwValue.ComIp;
@@ -370,11 +364,14 @@ namespace System.Runtime.InteropServices
             if (flags.HasFlag(CreateObjectFlags.Aggregation))
                 throw new NotImplementedException();
 
-            var comInterfaceDispatch = impl.TryGetComInterfaceDispatch(externalComObject);
-            if (comInterfaceDispatch != null)
+            if (!flags.HasFlag(CreateObjectFlags.UniqueInstance))
             {
-                retValue = ComInterfaceDispatch.GetInstance<object>(comInterfaceDispatch);
-                return true;
+                var comInterfaceDispatch = impl.TryGetComInterfaceDispatch(externalComObject);
+                if (comInterfaceDispatch != null)
+                {
+                    retValue = ComInterfaceDispatch.GetInstance<object>(comInterfaceDispatch);
+                    return true;
+                }
             }
 
             retValue = impl.CreateObject(externalComObject, flags);

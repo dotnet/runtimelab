@@ -22,6 +22,7 @@ namespace ComWrappersTests
             TestComInteropReleaseProcess();
             TestComInteropCCWCreation();
             TestRCWRoundTrip();
+            TestCCWUnique();
             return 100;
         }
 
@@ -50,10 +51,10 @@ namespace ComWrappersTests
         static extern int RetreiveCapturedComPointer(out IComInterface foo);
 
         [DllImport("ComWrappersNative", CallingConvention = CallingConvention.StdCall)]
-        static extern int BuildComPointer(out IComInterface foo);
+        static extern void ReleaseComPointer();
 
         [DllImport("ComWrappersNative", CallingConvention = CallingConvention.StdCall)]
-        static extern void ReleaseComPointer();
+        static extern int BuildComPointer(out IComInterface foo);
 
         public static void TestComInteropNullPointers()
         {
@@ -91,14 +92,6 @@ namespace ComWrappersTests
             ThrowIfNotEquals(false, comPointerHolder.IsAlive, ".NET object should be disposed by then");
         }
 
-        public static void TestComInteropCCWCreation()
-        {
-            Console.WriteLine("Testing CCW release process");
-            int result = BuildComPointer(out var comPointer);
-            ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
-            comPointer.DoWork(11);
-        }
-
         public static void TestRCWRoundTrip()
         {
             Console.WriteLine("Testing RCW round-trip process");
@@ -110,6 +103,27 @@ namespace ComWrappersTests
             if (ifPtr != target)
             {
                 throw new Exception("RCW should round-trip");
+            }
+        }
+
+        public static void TestComInteropCCWCreation()
+        {
+            Console.WriteLine("Testing CCW release process");
+            int result = BuildComPointer(out var comPointer);
+            ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
+            comPointer.DoWork(11);
+        }
+
+        public static void TestCCWUnique()
+        {
+            Console.WriteLine("Testing CCW uniqueness process");
+            ComWrappers wrapper = new SimpleComWrapper();
+            var target = new ComObject();
+            var comPtr = wrapper.GetOrCreateComInterfaceForObject(target, CreateComInterfaceFlags.None);
+            var ifPtr = wrapper.GetOrCreateObjectForComInstance(comPtr, CreateObjectFlags.UniqueInstance);
+            if (ifPtr == target)
+            {
+                throw new Exception("RCW should not round-trip for unique instances");
             }
         }
 
