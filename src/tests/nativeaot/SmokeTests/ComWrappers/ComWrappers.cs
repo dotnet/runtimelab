@@ -17,6 +17,8 @@ namespace ComWrappersTests
         {
             TestComInteropNullPointers();
             TestComInteropRegistrationRequired();
+            ComWrappers wrapper = new SimpleComWrapper();
+            ComWrappers.RegisterForMarshalling(wrapper);
             TestComInteropReleaseProcess();
             TestComInteropCCWCreation();
             TestRCWRoundTrip();
@@ -78,8 +80,6 @@ namespace ComWrappersTests
         public static void TestComInteropReleaseProcess()
         {
             Console.WriteLine("Testing RCW release process");
-            ComWrappers wrapper = new SimpleComWrapper();
-            ComWrappers.RegisterForMarshalling(wrapper);
             WeakReference comPointerHolder = CreateComReference();
 
             GC.Collect();
@@ -94,9 +94,6 @@ namespace ComWrappersTests
         public static void TestComInteropCCWCreation()
         {
             Console.WriteLine("Testing CCW release process");
-            // Lines below was called in previous tests.
-            // ComWrappers wrapper = new SimpleComWrapper();
-            // ComWrappers.RegisterForMarshalling(wrapper);
             int result = BuildComPointer(out var comPointer);
             ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
             comPointer.DoWork(11);
@@ -104,10 +101,7 @@ namespace ComWrappersTests
 
         public static void TestRCWRoundTrip()
         {
-            Console.WriteLine("Testing CCW release process");
-            // Lines below was called in previous tests.
-            // ComWrappers wrapper = new SimpleComWrapper();
-            // ComWrappers.RegisterForMarshalling(wrapper);
+            Console.WriteLine("Testing RCW round-trip process");
             var target = new ComObject();
             int result = CaptureComPointer(target);
             ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
@@ -152,6 +146,20 @@ namespace ComWrappersTests
         }
     }
 
+    class NativeComObjectWrapper: IComInterface
+    {
+        private IntPtr externalComObject;
+
+        public NativeComObjectWrapper(IntPtr externalComObject) => this.externalComObject = externalComObject;
+
+        public unsafe int DoWork(int param)
+        {
+            IntPtr* comDispatch = (IntPtr*)externalComObject;
+            IntPtr* vtbl = (IntPtr*)comDispatch[0];
+            return ((delegate* unmanaged<IntPtr, int, int>)vtbl[3])(externalComObject, param);
+        }
+    }
+
     internal unsafe class SimpleComWrapper : ComWrappers
     {
         static ComInterfaceEntry* wrapperEntry;
@@ -178,7 +186,7 @@ namespace ComWrappersTests
 
         protected override object CreateObject(IntPtr externalComObject, CreateObjectFlags flags)
         {
-            return null;
+            return new NativeComObjectWrapper(externalComObject);
         }
 
         protected override void ReleaseObjects(System.Collections.IEnumerable objects)

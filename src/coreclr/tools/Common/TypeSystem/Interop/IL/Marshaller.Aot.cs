@@ -913,9 +913,9 @@ namespace Internal.TypeSystem.Interop
         {
             ILEmitter emitter = _ilCodeStreams.Emitter;
 
-            MethodDesc helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertNativeComInterfaceToManaged");
             LoadNativeValue(codeStream);
 
+            MethodDesc helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertNativeComInterfaceToManaged");
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
 
             StoreManagedValue(codeStream);
@@ -923,7 +923,19 @@ namespace Internal.TypeSystem.Interop
 
         protected override void TransformNativeToManaged(ILCodeStream codeStream)
         {
-            throw new NotSupportedException();
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            ILCodeLabel lNull = emitter.NewCodeLabel();
+
+            LoadNativeValue(codeStream);
+            codeStream.Emit(ILOpcode.brfalse, lNull);
+
+            LoadNativeValue(codeStream);
+            MethodDesc helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertNativeComInterfaceToManaged");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreManagedValue(codeStream);
+
+            codeStream.EmitLabel(lNull);
         }
 
         protected override void TransformManagedToNative(ILCodeStream codeStream)

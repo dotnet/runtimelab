@@ -31,8 +31,8 @@ GUID IID_IComInterface = { 0x111e91ef, 0x1887, 0x4afd, { 0x81, 0xe3, 0x70, 0xcf,
 
 class NativeComInterface: public IComInterface
 {
-    int _counter;
-    int _value;
+    int _counter = 1;
+    int _value = 45;
 public:
     HRESULT STDMETHODCALLTYPE DoWork(int param) override
     {
