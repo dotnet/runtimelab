@@ -94,7 +94,10 @@ namespace Internal.IL.Stubs
                     Debug.Assert(i == parameterMetadataArray[parameterIndex].Index);
                     parameterMetadata = parameterMetadataArray[parameterIndex++];
                 }
-                TypeDesc parameterType = (i == 0) ? methodSig.ReturnType : methodSig[i - 1];  //first item is the return type
+
+                TypeDesc parameterType = (i == 0)
+                    ? methodSig.ReturnType //first item is the return type
+                    : methodSig[i - 1];
                 marshallers[i] = Marshaller.CreateMarshaller(parameterType,
                                                     parameterIndex,
                                                     methodSig.GetEmbeddedSignatureData(),
@@ -229,7 +232,7 @@ namespace Internal.IL.Stubs
 
         private void EmitPInvokeCall(PInvokeILCodeStreams ilCodeStreams)
         {
-            if (!_flags.PreserveSig)
+            if (!_flags.PreserveSig && _targetMethod.Signature.ReturnType != _targetMethod.Context.GetWellKnownType(WellKnownType.Void))
                 throw new NotSupportedException();
 
             ILEmitter emitter = ilCodeStreams.Emitter;
@@ -237,7 +240,7 @@ namespace Internal.IL.Stubs
             ILCodeStream callsiteSetupCodeStream = ilCodeStreams.CallsiteSetupCodeStream;
             TypeSystemContext context = _targetMethod.Context;
 
-            TypeDesc nativeReturnType = _marshallers[0].NativeParameterType;
+            TypeDesc nativeReturnType = _flags.PreserveSig ? _marshallers[0].NativeParameterType : context.GetWellKnownType(WellKnownType.Int32);
             TypeDesc[] nativeParameterTypes = new TypeDesc[_marshallers.Length - 1];
 
             // if the SetLastError flag is set in DllImport, clear the error code before doing P/Invoke 
@@ -300,6 +303,13 @@ namespace Internal.IL.Stubs
                     new PInvokeTargetNativeMethod(_targetMethod, nativeSig);
 
                 callsiteSetupCodeStream.Emit(ILOpcode.call, emitter.NewToken(nativeMethod));
+            }
+
+            if (!_flags.PreserveSig)
+            {
+                callsiteSetupCodeStream.Emit(ILOpcode.call, emitter.NewToken(
+                    InteropTypes.GetMarshal(context)
+                    .GetKnownMethod("ThrowExceptionForHR", null)));
             }
 
             // if the SetLastError flag is set in DllImport, call the PInvokeMarshal.SaveLastError

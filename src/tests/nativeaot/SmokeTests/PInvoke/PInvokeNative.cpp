@@ -671,6 +671,11 @@ DLL_EXPORT bool __stdcall RegisterCallbacks(Callbacks *callbacks)
     return callbacks->callback0() == 0 && callbacks->callback1() == 1 && callbacks->callback2() == 2;
 }
 
+DLL_EXPORT int __stdcall ValidateSuccessCall(int errorCode)
+{
+    return errorCode;
+}
+
 #if (_MSC_VER >= 1400)         // Check MSC version
 #pragma warning(pop)           // Renable previous depreciations
 #endif
