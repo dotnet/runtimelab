@@ -20,9 +20,11 @@ namespace ComWrappersTests
             ComWrappers wrapper = new SimpleComWrapper();
             ComWrappers.RegisterForMarshalling(wrapper);
             TestComInteropReleaseProcess();
-            TestComInteropCCWCreation();
             TestRCWRoundTrip();
-            TestCCWUnique();
+            TestRCWCached();
+
+            TestComInteropCCWCreation();
+            TestCCWNonRoundTripUnique();
             return 100;
         }
 
@@ -106,15 +108,20 @@ namespace ComWrappersTests
             }
         }
 
-        public static void TestComInteropCCWCreation()
+        public static void TestRCWCached()
         {
-            Console.WriteLine("Testing CCW release process");
-            int result = BuildComPointer(out var comPointer);
-            ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
-            comPointer.DoWork(11);
+            Console.WriteLine("Testing RCW cache process");
+            ComWrappers wrapper = new SimpleComWrapper();
+            var target = new ComObject();
+            var comPtr = wrapper.GetOrCreateComInterfaceForObject(target, CreateComInterfaceFlags.None);
+            var comPtr2 = wrapper.GetOrCreateComInterfaceForObject(target, CreateComInterfaceFlags.None);
+            if (comPtr != comPtr2)
+            {
+                throw new Exception("RCW should round-trip");
+            }
         }
 
-        public static void TestCCWUnique()
+        public static void TestRCWNonRoundTripUnique()
         {
             Console.WriteLine("Testing CCW uniqueness process");
             ComWrappers wrapper = new SimpleComWrapper();
@@ -125,6 +132,14 @@ namespace ComWrappersTests
             {
                 throw new Exception("RCW should not round-trip for unique instances");
             }
+        }
+
+        public static void TestComInteropCCWCreation()
+        {
+            Console.WriteLine("Testing CCW release process");
+            int result = BuildComPointer(out var comPointer);
+            ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
+            comPointer.DoWork(11);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
