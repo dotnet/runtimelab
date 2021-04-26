@@ -121,9 +121,9 @@ namespace System.Text.RegularExpressions.SRM
             return sb.ToString();
         }
 
-        public void SaveDGML(TextWriter writer, int bound, bool hideDerivatives, bool addDotStar, int maxLabelLength)
+        public void SaveDGML(TextWriter writer, int bound, bool hideStateInfo, bool addDotStar, bool inReverse, bool onlyDFAinfo, int maxLabelLength)
         {
-            _matcher.SaveDGML(writer, bound, hideDerivatives, addDotStar, maxLabelLength);
+            _matcher.SaveDGML(writer, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength);
         }
     }
 }

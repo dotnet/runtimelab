@@ -11,12 +11,14 @@ namespace System.Text.RegularExpressions.SRM.DGML
         private int _maxDgmlTransitionLabelLength;
         private TextWriter _tw;
         private bool _hideStateInfo;
+        private bool _onlyDFAinfo;
 
-        internal DgmlWriter(TextWriter tw, bool hideStateInfo, int maxDgmlTransitionLabelLength = 500)
+        internal DgmlWriter(TextWriter tw, bool hideStateInfo, int maxDgmlTransitionLabelLength = -1, bool onlyDFAinfo = false)
         {
             _maxDgmlTransitionLabelLength = maxDgmlTransitionLabelLength;
             _tw = tw;
             _hideStateInfo = hideStateInfo;
+            _onlyDFAinfo = onlyDFAinfo;
         }
 
         /// <summary>
@@ -52,62 +54,100 @@ namespace System.Text.RegularExpressions.SRM.DGML
             _tw.WriteLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
             _tw.WriteLine("<DirectedGraph xmlns=\"http://schemas.microsoft.com/vs/2009/dgml\" ZoomLevel=\"1.5\" GraphDirection=\"TopToBottom\" >");
             _tw.WriteLine("<Nodes>");
-            _tw.WriteLine("<Node Id=\"init\" Label=\" \" />");
-            foreach (int state in fa.GetStates())
+            _tw.WriteLine("<Node Id=\"dfa\" Label=\" \" Group=\"Collapsed\" Category=\"DFA\" DFAInfo=\"{0}\" />", GetDFAInfo(fa));
+            _tw.WriteLine("<Node Id=\"dfainfo\" Category=\"DFAInfo\" Label=\"{0}\"/>", GetDFAInfo(fa));
+            if (_onlyDFAinfo)
+                _tw.WriteLine("</Nodes>");
+            else
             {
-                _tw.WriteLine("<Node Id=\"{0}\" Label=\"q{0}\" Category=\"State\" Group=\"{1}\">", state,
-                    _hideStateInfo ? "Collapsed" : "Expanded");
-                if (state == fa.InitialState)
-                    _tw.WriteLine("<Category Ref=\"InitialState\" />");
-                if (fa.IsFinalState(state))
-                    _tw.WriteLine("<Category Ref=\"FinalState\" />");
-                _tw.WriteLine("</Node>");
-                _tw.WriteLine("<Node Id=\"{0}info\" Label=\"{1}\" Category=\"StateInfo\"/>", state, GetStateInfo(fa, state));
+                foreach (int state in fa.GetStates())
+                {
+                    _tw.WriteLine("<Node Id=\"{0}\" Label=\"{0}\" Category=\"State\" Group=\"{1}\" StateInfo=\"{2}\">", state,
+                        _hideStateInfo ? "Collapsed" : "Expanded", GetStateInfo(fa, state));
+                    if (state == fa.InitialState)
+                        _tw.WriteLine("<Category Ref=\"InitialState\" />");
+                    if (fa.IsFinalState(state))
+                        _tw.WriteLine("<Category Ref=\"FinalState\" />");
+                    _tw.WriteLine("</Node>");
+                    _tw.WriteLine("<Node Id=\"{0}info\" Label=\"{1}\" Category=\"StateInfo\"/>", state, GetStateInfo(fa, state));
+                }
+                _tw.WriteLine("</Nodes>");
+                _tw.WriteLine("<Links>");
+                _tw.WriteLine("<Link Source=\"dfa\" Target=\"{0}\" Label=\"{1}\" Category=\"StartTransition\" />", fa.InitialState, fa.DescribeStartLabel());
+                _tw.WriteLine("<Link Source=\"dfa\" Target=\"dfainfo\" Label=\"\" Category=\"Contains\" />");
+                foreach (var move in epsilonmoves)
+                    _tw.WriteLine("<Link Source=\"{0}\" Target=\"{1}\" Category=\"EpsilonTransition\" />", move.SourceState, move.TargetState);
+
+                foreach (var move in nonEpsilonMoves)
+                    _tw.WriteLine(GetNonFinalRuleInfo(fa, move.Key.Item1, move.Key.Item2, move.Value));
+
+                foreach (int state in fa.GetStates())
+                    _tw.WriteLine("<Link Source=\"{0}\" Target=\"{0}info\" Category=\"Contains\" />", state);
+                _tw.WriteLine("</Links>");
+                WriteCategoriesAndStyles();
             }
-            _tw.WriteLine("</Nodes>");
-            _tw.WriteLine("<Links>");
-            _tw.WriteLine("<Link Source=\"init\" Target=\"{0}\" Label=\"{1}\" Category=\"StartTransition\" />", fa.InitialState, fa.DescribeStartLabel());
-            foreach (var move in epsilonmoves)
-                _tw.WriteLine("<Link Source=\"{0}\" Target=\"{1}\" Category=\"EpsilonTransition\" />", move.SourceState, move.TargetState);
-
-            foreach (var move in nonEpsilonMoves)
-                _tw.WriteLine(GetNonFinalRuleInfo(fa, move.Key.Item1, move.Key.Item2, move.Value));
-
-            foreach (int state in fa.GetStates())
-                _tw.WriteLine("<Link Source=\"{0}\" Target=\"{0}info\" Category=\"Contains\" />", state);
-            _tw.WriteLine("</Links>");
-            WriteCategoriesAndStyles();
             _tw.WriteLine("</DirectedGraph>");
         }
 
-        private static char DELTA_CAPITAL = '\u0394';
-        private static char SIGMA_CAPITAL = '\u03A3';
+        private string GetDFAInfo<S>(IAutomaton<S> fa)
+        {
+            StringBuilder sb = new();
+            sb.Append("|Q|=");
+            sb.Append(fa.StateCount);
+            sb.Append("&#13;");
+            sb.Append('|');
+            sb.Append(DELTA_CAPITAL);
+            sb.Append("|=");
+            sb.Append(fa.TransitionCount);
+            sb.Append("&#13;");
+            sb.Append('|');
+            sb.Append(SIGMA_CAPITAL);
+            sb.Append("|=");
+            sb.Append(fa.Alphabet.Length);
+            sb.Append("&#13;");
+            sb.Append(SIGMA_CAPITAL);
+            sb.Append('=');
+            for (int i = 0; i < fa.Alphabet.Length; i++)
+            {
+                if (i > 0)
+                    sb.Append(',');
+                sb.Append(fa.DescribeLabel(fa.Alphabet[i]));
+            }
+            return sb.ToString();
+        }
 
+        private const string DELTA_CAPITAL = "&#x0394;";
+        private const string SIGMA_CAPITAL = "&#x03A3;";
 
         private static string GetStateInfo<S>(IAutomaton<S> fa, int state)
         {
             StringBuilder sb = new();
             sb.Append(fa.DescribeState(state));
-            if (fa.InitialState == state)
-            {
-                sb.Append("&#13;");
-                sb.Append("|Q|=");
-                sb.Append(fa.StateCount);
-                sb.Append("&#13;");
-                sb.Append('|');
-                sb.Append(DELTA_CAPITAL);
-                sb.Append("|=");
-                sb.Append(fa.TransitionCount);
-                sb.Append("&#13;");
-                sb.Append(SIGMA_CAPITAL);
-                sb.Append('=');
-                for (int i=0; i< fa.Alphabet.Length; i++)
-                {
-                    if (i > 0)
-                        sb.Append(' ');
-                    sb.Append(fa.DescribeLabel(fa.Alphabet[i]));
-                }
-            }
+            //if (fa.InitialState == state)
+            //{
+            //    sb.Append("&#13;");
+            //    sb.Append("|Q|=");
+            //    sb.Append(fa.StateCount);
+            //    sb.Append("&#13;");
+            //    sb.Append('|');
+            //    sb.Append(DELTA_CAPITAL);
+            //    sb.Append("|=");
+            //    sb.Append(fa.TransitionCount);
+            //    sb.Append("&#13;");
+            //    sb.Append('|');
+            //    sb.Append(SIGMA_CAPITAL);
+            //    sb.Append("|=");
+            //    sb.Append(fa.Alphabet.Length);
+            //    sb.Append("&#13;");
+            //    sb.Append(SIGMA_CAPITAL);
+            //    sb.Append('=');
+            //    for (int i=0; i< fa.Alphabet.Length; i++)
+            //    {
+            //        if (i > 0)
+            //            sb.Append(',');
+            //        sb.Append(fa.DescribeLabel(fa.Alphabet[i]));
+            //    }
+            //}
             return sb.ToString();
         }
 
@@ -131,6 +171,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
         private void WriteCategoriesAndStyles()
         {
             _tw.WriteLine("<Categories>");
+            _tw.WriteLine("<Category Id=\"DFA\" Label=\"DFA\" IsTag=\"True\" />");
             _tw.WriteLine("<Category Id=\"EpsilonTransition\" Label=\"Epsilon transition\" IsTag=\"True\" />");
             _tw.WriteLine("<Category Id=\"StartTransition\" Label=\"Initial transition\" IsTag=\"True\" />");
             _tw.WriteLine("<Category Id=\"FinalLabel\" Label=\"Final transition\" IsTag=\"True\" />");
@@ -191,6 +232,11 @@ namespace System.Text.RegularExpressions.SRM.DGML
             _tw.WriteLine("<Setter Property=\"StrokeDashArray\" Value=\"8 8\" />");
             _tw.WriteLine("</Style>");
             _tw.WriteLine("<Style TargetType=\"Node\" GroupLabel=\"StateInfo\" ValueLabel=\"True\">");
+            _tw.WriteLine("<Setter Property=\"Stroke\" Value=\"white\" />");
+            _tw.WriteLine("<Setter Property=\"FontSize\" Value=\"18\" />");
+            _tw.WriteLine("<Setter Property=\"FontFamily\" Value=\"Arial\" />");
+            _tw.WriteLine("</Style>");
+            _tw.WriteLine("<Style TargetType=\"Node\" GroupLabel=\"DFAInfo\" ValueLabel=\"True\">");
             _tw.WriteLine("<Setter Property=\"Stroke\" Value=\"white\" />");
             _tw.WriteLine("<Setter Property=\"FontSize\" Value=\"18\" />");
             _tw.WriteLine("<Setter Property=\"FontFamily\" Value=\"Arial\" />");

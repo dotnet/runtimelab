@@ -112,7 +112,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Reverse(A).
         /// </summary>
-        private SymbolicRegexNode<S> Ar;
+        internal SymbolicRegexNode<S> Ar;
 
         ///// <summary>
         ///// if nonempty then Ar has that fixed prefix of predicates
@@ -160,7 +160,7 @@ namespace System.Text.RegularExpressions.SRM
         private int K;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private State<S> GetState(int stateId)
+        internal State<S> GetState(int stateId)
         {
             // the builder maintains a mapping
             // from stateIds to states
@@ -650,6 +650,11 @@ namespace System.Text.RegularExpressions.SRM
             while (i >= match_start_boundary)
             {
                 q = Delta(input, i, q);
+
+                //reached a deadend state,
+                //thus the earliest match start point must have occurred already
+                if (q.IsNothing)
+                    break;
 
                 if (q.IsNullable(GetCharKind(input, i-1)))
                 {
@@ -1399,10 +1404,10 @@ namespace System.Text.RegularExpressions.SRM
             return (i == k ? -1 : i);
         }
 
-        public void SaveDGML(TextWriter writer, int bound = 0, bool hideDerivatives = false, bool addDotStar = false, int maxLabelLength = 500)
+        public void SaveDGML(TextWriter writer, int bound = 0, bool hideStateInfo = false, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, int maxLabelLength = 500)
         {
-            var graph = new DGML.RegexDFA<S>(this, bound, addDotStar);
-            var dgml = new DGML.DgmlWriter(writer, hideDerivatives, maxLabelLength);
+            var graph = new DGML.RegexDFA<S>(this, bound, addDotStar, inReverse);
+            var dgml = new DGML.DgmlWriter(writer, hideStateInfo, maxLabelLength, onlyDFAinfo);
             dgml.Write<S>(graph);
         }
 

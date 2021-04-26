@@ -1294,7 +1294,12 @@ namespace System.Text.RegularExpressions.SRM
                         else if (lower == 0 && upper == 0)
                             return "()";
                         else if (IsBoundedLoop)
-                            return left.ToStringForLoop() + "{" + lower + "," + upper + "}" + (IsLazy ? "?" : "");
+                        {
+                            if (lower == upper)
+                                return left.ToStringForLoop() + "{" + lower + "}" + (IsLazy ? "?" : "");
+                            else
+                                return left.ToStringForLoop() + "{" + lower + "," + upper + "}" + (IsLazy ? "?" : "");
+                        }
                         else
                             return left.ToStringForLoop() + "{" + lower + ",}" + (IsLazy ? "?" : "");
                     }
@@ -1981,6 +1986,50 @@ namespace System.Text.RegularExpressions.SRM
         {
             bool existsLoop = this.ExistsNode(node => (node.kind == SymbolicRegexKind.Loop));
             return existsLoop;
+        }
+
+        internal SymbolicRegexNode<S> ReplaceStartAnchorByBottom()
+        {
+            if (!info.ContainsLineAnchor)
+                return this;
+
+            switch (kind)
+            {
+                case SymbolicRegexKind.StartAnchor:
+                    return this.builder.nothing;
+
+                case SymbolicRegexKind.Epsilon:
+                case SymbolicRegexKind.WatchDog:
+                case SymbolicRegexKind.EndAnchor:
+                case SymbolicRegexKind.WBAnchor:
+                case SymbolicRegexKind.NWBAnchor:
+                case SymbolicRegexKind.EOLAnchor:
+                case SymbolicRegexKind.EndAnchorZ:
+                case SymbolicRegexKind.BOLAnchor:
+                case SymbolicRegexKind.Singleton:
+                    return this;
+                case SymbolicRegexKind.Loop:
+                    return MkLoop(builder, left.ReplaceStartAnchorByBottom(), lower, upper, IsLazy);
+
+                case SymbolicRegexKind.Concat:
+                    return MkConcat(builder, left.ReplaceStartAnchorByBottom(), right.ReplaceStartAnchorByBottom());
+                case SymbolicRegexKind.Or:
+                    {
+                        List<SymbolicRegexNode<S>> elems = new();
+                        foreach (var alt in alts)
+                            elems.Add(alt.ReplaceStartAnchorByBottom());
+                        return MkOr(builder, elems.ToArray());
+                    }
+                case SymbolicRegexKind.And:
+                    {
+                        List<SymbolicRegexNode<S>> elems = new();
+                        foreach (var alt in alts)
+                            elems.Add(alt.ReplaceStartAnchorByBottom());
+                        return MkAnd(builder, elems.ToArray());
+                    }
+                default: //if-then-else
+                        return MkIfThenElse(builder, iteCond.ReplaceStartAnchorByBottom(), left.ReplaceStartAnchorByBottom(), right.ReplaceStartAnchorByBottom());
+            }
         }
     }
 
