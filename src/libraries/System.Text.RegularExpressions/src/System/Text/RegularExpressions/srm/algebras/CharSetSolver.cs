@@ -489,8 +489,8 @@ namespace System.Text.RegularExpressions.SRM
                     return "[\\s\\d]";
                 if (MkOr(s_or_d, pred) == s_or_d)
                 {
-                    //check first if this is purely ascii range
-                    if (MkAnd(pred, nonasciiDigit).IsEmpty)
+                    //check first if this is purely ascii range for digits
+                    if (MkAnd(pred, s).Equals(s) && MkAnd(pred, nonasciiDigit).IsEmpty)
                         return string.Format("[\\s{0}]", RepresentRanges(ToRanges(MkAnd(pred, asciiDigit)), false));
                     else
                         return RepresentSetInPattern("[\\s\\d-[{0}]]", MkAnd(s_or_d, MkNot(pred)));
