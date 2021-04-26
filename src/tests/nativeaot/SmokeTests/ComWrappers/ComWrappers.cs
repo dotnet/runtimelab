@@ -24,7 +24,7 @@ namespace ComWrappersTests
             TestRCWCached();
 
             TestComInteropCCWCreation();
-            TestCCWNonRoundTripUnique();
+            TestRCWNonRoundTripUnique();
             return 100;
         }
 
