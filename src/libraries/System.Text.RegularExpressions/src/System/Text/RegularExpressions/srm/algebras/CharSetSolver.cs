@@ -430,6 +430,8 @@ namespace System.Text.RegularExpressions.SRM
                 BDD W = MkNot(w);
                 BDD d = Regex.s_unicode.CategoryCondition(8);
                 BDD D = MkNot(d);
+                BDD asciiDigit = MkCharSetFromRange('0', '9');
+                BDD nonasciiDigit = MkAnd(d, MkNot(asciiDigit));
                 BDD s = Regex.s_unicode.WhiteSpaceCondition;
                 BDD S = MkNot(s);
                 BDD wD = MkAnd(w, D);
@@ -486,7 +488,13 @@ namespace System.Text.RegularExpressions.SRM
                 if (pred == s_or_d)
                     return "[\\s\\d]";
                 if (MkOr(s_or_d, pred) == s_or_d)
-                    return RepresentSetInPattern("[\\s\\d-[{0}]]", MkAnd(s_or_d, MkNot(pred)));
+                {
+                    //check first if this is purely ascii range
+                    if (MkAnd(pred, nonasciiDigit).IsEmpty)
+                        return string.Format("[\\s{0}]", RepresentRanges(ToRanges(MkAnd(pred, asciiDigit)), false));
+                    else
+                        return RepresentSetInPattern("[\\s\\d-[{0}]]", MkAnd(s_or_d, MkNot(pred)));
+                }
                 //---
                 // s|wD
                 BDD s_or_wD = MkOr(s, wD);

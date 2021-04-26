@@ -27,10 +27,10 @@ namespace System.Text.RegularExpressions.Tests
         /// View the regex as a DFA in DGML format in VS.
         /// </summary>
         /// <param name="r"></param>
-        private static void ViewDGML(Regex regex, int bound = 500, bool hideStateInfo = true, bool addDotStar = false, bool inReverse = false, string name = "DFA", int maxLabelLength = 50)
+        private static void ViewDGML(Regex regex, int bound = -1, bool hideStateInfo = true, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, string name = "DFA", int maxLabelLength = 20)
         {
             StringWriter sw = new StringWriter();
-            SaveDGML(regex, sw, bound, hideStateInfo, addDotStar, inReverse, maxLabelLength);
+            SaveDGML(regex, sw, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength);
             File.WriteAllText(string.Format("C:/tmp/dgml/{0}.dgml", inReverse ? name + "r" : (addDotStar ? name + "1" : name)), sw.ToString());
         }
 
@@ -38,10 +38,10 @@ namespace System.Text.RegularExpressions.Tests
         /// Save the regex as a DFA in DGML format in the textwriter.
         /// </summary>
         /// <param name="r"></param>
-        private static void SaveDGML(Regex regex, TextWriter writer, int bound = -1, bool hideStateInfo = false, bool addDotStar = false, bool inReverse = false, int maxLabelLength = -1)
+        private static void SaveDGML(Regex regex, TextWriter writer, int bound = -1, bool hideStateInfo = false, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, int maxLabelLength = -1)
         {
             MethodInfo saveDgml = regex.GetType().GetMethod("SaveDGML", BindingFlags.NonPublic | BindingFlags.Instance);
-            saveDgml.Invoke(regex, new object[] { writer, bound, hideStateInfo, addDotStar, inReverse, maxLabelLength });
+            saveDgml.Invoke(regex, new object[] { writer, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength });
         }
 
         //[Fact]
@@ -59,7 +59,7 @@ namespace System.Text.RegularExpressions.Tests
         //[Fact]
         private void Test()
         {
-            var re = new Regex(@"^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,12}|[0-9]{1,3})(\]?)$", DFA);
+            //var re = new Regex(@"^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,12}|[0-9]{1,3})(\]?)$", DFA);
             //var re = new Regex(@"\b\d{1,2}\/\d{1,2}\/\d{2,4}\b", DFA | RegexOptions.Singleline);
             //var re = new Regex(@"(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])", DFA | RegexOptions.Singleline);
             //var re = new Regex(@"[\w]+://[^/\s?#]+[^\s?#]+(?:\?[^\s#]*)?(?:#[^\s]*)?", DFA | RegexOptions.Singleline);
@@ -71,12 +71,36 @@ namespace System.Text.RegularExpressions.Tests
             //var re = new Regex(@"^[a-z]+", DFA | RegexOptions.Multiline);
             //var re = new Regex(@"(([a-z])+.)+[A-Z]([a-z])+", DFA | RegexOptions.Singleline);
             //var re = new Regex("ab+c$", DFA);
-            ViewDGML(regex: re);
-            ViewDGML(regex: re, addDotStar: true);
-            ViewDGML(regex: re, inReverse: true);
+            //ViewDGML(regex: re);
+            //ViewDGML(regex: re, addDotStar: true);
+            //ViewDGML(regex: re, inReverse: true);
             //var match = re.Match("_.@[0.0.0.aaaaaaaaaa]");
-            var match = re.Match("xxxabbc");
-
+            string[] rawregexes = File.ReadAllLines("c:/tmp/VS19preview/cortana.txt");
+            HashSet<int> notsupported = new();
+            HashSet<string> set = new();
+            Regex QsizeMatcher = new Regex(@"\|Q\|=[0-9]+", DFA);
+            Regex DsizeMatcher = new Regex(@"\|&#x0394;\|=[0-9]+", DFA);
+            Regex AsizeMatcher = new Regex(@"\|&#x03A3;\|=[0-9]+", DFA);
+            Func<string, int> NrOfStates = (s) => int.Parse(QsizeMatcher.Match(s).Value.Substring(4));
+            Func<string, int> NrOfMoves = (s) => int.Parse(DsizeMatcher.Match(s).Value.Substring(11));
+            Func<string, int> NrOfSymbols = (s) => int.Parse(AsizeMatcher.Match(s).Value.Substring(11));
+            HashSet<int> stateSizes = new();
+            HashSet<int> moveSizes = new();
+            HashSet<int> alphSizes = new();
+            for (int i = 0; i < rawregexes.Length; i++)
+            {
+                var re = new Regex(rawregexes[i], DFA);
+                StringWriter sw = new StringWriter();
+                SaveDGML(re, sw, onlyDFAinfo: true);
+                ViewDGML(re);
+                int n = NrOfStates(sw.ToString());
+                int m = NrOfMoves(sw.ToString());
+                int k = NrOfSymbols(sw.ToString());
+                stateSizes.Add(n);
+                moveSizes.Add(m);
+                alphSizes.Add(k);
+            }
+            Console.WriteLine(stateSizes.Count);
         }
 
         [Fact]

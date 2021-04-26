@@ -11,12 +11,14 @@ namespace System.Text.RegularExpressions.SRM.DGML
         private int _maxDgmlTransitionLabelLength;
         private TextWriter _tw;
         private bool _hideStateInfo;
+        private bool _onlyDFAinfo;
 
-        internal DgmlWriter(TextWriter tw, bool hideStateInfo, int maxDgmlTransitionLabelLength = 500)
+        internal DgmlWriter(TextWriter tw, bool hideStateInfo, int maxDgmlTransitionLabelLength = -1, bool onlyDFAinfo = false)
         {
             _maxDgmlTransitionLabelLength = maxDgmlTransitionLabelLength;
             _tw = tw;
             _hideStateInfo = hideStateInfo;
+            _onlyDFAinfo = onlyDFAinfo;
         }
 
         /// <summary>
@@ -54,31 +56,36 @@ namespace System.Text.RegularExpressions.SRM.DGML
             _tw.WriteLine("<Nodes>");
             _tw.WriteLine("<Node Id=\"dfa\" Label=\" \" Group=\"Collapsed\" Category=\"DFA\" DFAInfo=\"{0}\" />", GetDFAInfo(fa));
             _tw.WriteLine("<Node Id=\"dfainfo\" Category=\"DFAInfo\" Label=\"{0}\"/>", GetDFAInfo(fa));
-            foreach (int state in fa.GetStates())
+            if (_onlyDFAinfo)
+                _tw.WriteLine("</Nodes>");
+            else
             {
-                _tw.WriteLine("<Node Id=\"{0}\" Label=\"{0}\" Category=\"State\" Group=\"{1}\" StateInfo=\"{2}\">", state,
-                    _hideStateInfo ? "Collapsed" : "Expanded", GetStateInfo(fa, state));
-                if (state == fa.InitialState)
-                    _tw.WriteLine("<Category Ref=\"InitialState\" />");
-                if (fa.IsFinalState(state))
-                    _tw.WriteLine("<Category Ref=\"FinalState\" />");
-                _tw.WriteLine("</Node>");
-                _tw.WriteLine("<Node Id=\"{0}info\" Label=\"{1}\" Category=\"StateInfo\"/>", state, GetStateInfo(fa, state));
+                foreach (int state in fa.GetStates())
+                {
+                    _tw.WriteLine("<Node Id=\"{0}\" Label=\"{0}\" Category=\"State\" Group=\"{1}\" StateInfo=\"{2}\">", state,
+                        _hideStateInfo ? "Collapsed" : "Expanded", GetStateInfo(fa, state));
+                    if (state == fa.InitialState)
+                        _tw.WriteLine("<Category Ref=\"InitialState\" />");
+                    if (fa.IsFinalState(state))
+                        _tw.WriteLine("<Category Ref=\"FinalState\" />");
+                    _tw.WriteLine("</Node>");
+                    _tw.WriteLine("<Node Id=\"{0}info\" Label=\"{1}\" Category=\"StateInfo\"/>", state, GetStateInfo(fa, state));
+                }
+                _tw.WriteLine("</Nodes>");
+                _tw.WriteLine("<Links>");
+                _tw.WriteLine("<Link Source=\"dfa\" Target=\"{0}\" Label=\"{1}\" Category=\"StartTransition\" />", fa.InitialState, fa.DescribeStartLabel());
+                _tw.WriteLine("<Link Source=\"dfa\" Target=\"dfainfo\" Label=\"\" Category=\"Contains\" />");
+                foreach (var move in epsilonmoves)
+                    _tw.WriteLine("<Link Source=\"{0}\" Target=\"{1}\" Category=\"EpsilonTransition\" />", move.SourceState, move.TargetState);
+
+                foreach (var move in nonEpsilonMoves)
+                    _tw.WriteLine(GetNonFinalRuleInfo(fa, move.Key.Item1, move.Key.Item2, move.Value));
+
+                foreach (int state in fa.GetStates())
+                    _tw.WriteLine("<Link Source=\"{0}\" Target=\"{0}info\" Category=\"Contains\" />", state);
+                _tw.WriteLine("</Links>");
+                WriteCategoriesAndStyles();
             }
-            _tw.WriteLine("</Nodes>");
-            _tw.WriteLine("<Links>");
-            _tw.WriteLine("<Link Source=\"dfa\" Target=\"{0}\" Label=\"{1}\" Category=\"StartTransition\" />", fa.InitialState, fa.DescribeStartLabel());
-            _tw.WriteLine("<Link Source=\"dfa\" Target=\"dfainfo\" Label=\"\" Category=\"Contains\" />");
-            foreach (var move in epsilonmoves)
-                _tw.WriteLine("<Link Source=\"{0}\" Target=\"{1}\" Category=\"EpsilonTransition\" />", move.SourceState, move.TargetState);
-
-            foreach (var move in nonEpsilonMoves)
-                _tw.WriteLine(GetNonFinalRuleInfo(fa, move.Key.Item1, move.Key.Item2, move.Value));
-
-            foreach (int state in fa.GetStates())
-                _tw.WriteLine("<Link Source=\"{0}\" Target=\"{0}info\" Category=\"Contains\" />", state);
-            _tw.WriteLine("</Links>");
-            WriteCategoriesAndStyles();
             _tw.WriteLine("</DirectedGraph>");
         }
 

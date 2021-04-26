@@ -1404,10 +1404,10 @@ namespace System.Text.RegularExpressions.SRM
             return (i == k ? -1 : i);
         }
 
-        public void SaveDGML(TextWriter writer, int bound = 0, bool hideStateInfo = false, bool addDotStar = false, bool inReverse = false, int maxLabelLength = 500)
+        public void SaveDGML(TextWriter writer, int bound = 0, bool hideStateInfo = false, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, int maxLabelLength = 500)
         {
             var graph = new DGML.RegexDFA<S>(this, bound, addDotStar, inReverse);
-            var dgml = new DGML.DgmlWriter(writer, hideStateInfo, maxLabelLength);
+            var dgml = new DGML.DgmlWriter(writer, hideStateInfo, maxLabelLength, onlyDFAinfo);
             dgml.Write<S>(graph);
         }
 
