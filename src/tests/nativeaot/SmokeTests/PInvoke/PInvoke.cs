@@ -1005,6 +1005,7 @@ namespace PInvokeTests
 
         private static void TestWithoutPreserveSig()
         {
+            Console.WriteLine("Testing with PreserveSig = false");
             ValidateSuccessCall(0);
 
             try
