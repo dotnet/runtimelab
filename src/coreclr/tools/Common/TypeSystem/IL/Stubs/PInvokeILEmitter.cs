@@ -96,7 +96,7 @@ namespace Internal.IL.Stubs
                 }
 
                 TypeDesc parameterType = (i == 0)
-                    ? flags.PreserveSig ? methodSig.ReturnType : targetMethod.Context.GetWellKnownType(WellKnownType.Int32) //first item is the return type
+                    ? methodSig.ReturnType //first item is the return type
                     : methodSig[i - 1];
                 marshallers[i] = Marshaller.CreateMarshaller(parameterType,
                                                     parameterIndex,
@@ -240,7 +240,7 @@ namespace Internal.IL.Stubs
             ILCodeStream callsiteSetupCodeStream = ilCodeStreams.CallsiteSetupCodeStream;
             TypeSystemContext context = _targetMethod.Context;
 
-            TypeDesc nativeReturnType = _marshallers[0].NativeParameterType;
+            TypeDesc nativeReturnType = _flags.PreserveSig ? _marshallers[0].NativeParameterType : context.GetWellKnownType(WellKnownType.Int32);
             TypeDesc[] nativeParameterTypes = new TypeDesc[_marshallers.Length - 1];
 
             // if the SetLastError flag is set in DllImport, clear the error code before doing P/Invoke 
