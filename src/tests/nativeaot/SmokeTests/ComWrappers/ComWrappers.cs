@@ -12,15 +12,17 @@ namespace ComWrappersTests
 {
     internal class Program
     {
+        static ComWrappers GlobalComWrappers;
+
         [DynamicDependency(DynamicallyAccessedMemberTypes.PublicMethods, typeof(IComInterface))]
         public static int Main(string[] args)
         {
             TestComInteropNullPointers();
             TestComInteropRegistrationRequired();
-            ComWrappers wrapper = new SimpleComWrapper();
-            ComWrappers.RegisterForMarshalling(wrapper);
+            GlobalComWrappers = new SimpleComWrapper();
+            ComWrappers.RegisterForMarshalling(GlobalComWrappers);
             TestComInteropReleaseProcess();
-            TestRCWRoundTrip();
+            TestRCWRoundTripRequireUnwrap();
             TestRCWCached();
 
             TestComInteropCCWCreation();
@@ -51,6 +53,9 @@ namespace ComWrappersTests
 
         [DllImport("ComWrappersNative", CallingConvention = CallingConvention.StdCall)]
         static extern int RetreiveCapturedComPointer(out IComInterface foo);
+
+        [DllImport("ComWrappersNative", EntryPoint="RetreiveCapturedComPointer", CallingConvention = CallingConvention.StdCall)]
+        static extern int RetreiveCapturedComPointerRaw(out IntPtr foo);
 
         [DllImport("ComWrappersNative", CallingConvention = CallingConvention.StdCall)]
         static extern void ReleaseComPointer();
@@ -94,15 +99,16 @@ namespace ComWrappersTests
             ThrowIfNotEquals(false, comPointerHolder.IsAlive, ".NET object should be disposed by then");
         }
 
-        public static void TestRCWRoundTrip()
+        public static void TestRCWRoundTripRequireUnwrap()
         {
             Console.WriteLine("Testing RCW round-trip process");
             var target = new ComObject();
             int result = CaptureComPointer(target);
             ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
-            result = RetreiveCapturedComPointer(out var ifPtr);
+            result = RetreiveCapturedComPointerRaw(out var comPtr);
+            var roundTripObject = GlobalComWrappers.GetOrCreateObjectForComInstance(comPtr, CreateObjectFlags.Unwrap);
             ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
-            if (ifPtr != target)
+            if (roundTripObject != target)
             {
                 throw new Exception("RCW should round-trip");
             }

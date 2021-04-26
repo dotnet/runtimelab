@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -18,6 +19,8 @@ namespace System.Runtime.InteropServices
         internal static Guid IID_IUnknown = new Guid(0x00000000, 0x0000, 0x0000, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
 
         private readonly ConditionalWeakTable<object, ManagedObjectWrapperHolder> _ccwTable = new ConditionalWeakTable<object, ManagedObjectWrapperHolder>();
+        private readonly Lock _lock = new Lock();
+        private readonly Dictionary<IntPtr, WeakReference> _rcwCache = new Dictionary<IntPtr, WeakReference>();
         private readonly ConditionalWeakTable<object, NativeObjectWrapper> _rcwTable = new ConditionalWeakTable<object, NativeObjectWrapper>();
 
         /// <summary>
@@ -364,13 +367,28 @@ namespace System.Runtime.InteropServices
             if (flags.HasFlag(CreateObjectFlags.Aggregation))
                 throw new NotImplementedException();
 
-            if (!flags.HasFlag(CreateObjectFlags.UniqueInstance))
+            if (flags.HasFlag(CreateObjectFlags.Unwrap))
             {
                 var comInterfaceDispatch = impl.TryGetComInterfaceDispatch(externalComObject);
                 if (comInterfaceDispatch != null)
                 {
                     retValue = ComInterfaceDispatch.GetInstance<object>(comInterfaceDispatch);
                     return true;
+                }
+            }
+
+            if (!flags.HasFlag(CreateObjectFlags.UniqueInstance))
+            {
+                using (LockHolder.Hold(impl._lock))
+                {
+                    if (impl._rcwCache.TryGetValue(externalComObject, out var weakReference))
+                    {
+                        if (weakReference.IsAlive)
+                        {
+                            retValue = weakReference.Target;
+                            return false;
+                        }
+                    }
                 }
             }
 
@@ -387,17 +405,24 @@ namespace System.Runtime.InteropServices
                 return true;
             }
 
-            NativeObjectWrapper wrapper;
-            if (impl._rcwTable.TryGetValue(retValue, out wrapper))
+            using (LockHolder.Hold(impl._lock))
             {
-                return true;
+                if (impl._rcwCache.TryGetValue(externalComObject, out var existingWeakReference))
+                {
+                    if (existingWeakReference.IsAlive)
+                    {
+                        retValue = existingWeakReference.Target;
+                    }
+                }
+                else
+                {
+                    NativeObjectWrapper wrapper = new NativeObjectWrapper(externalComObject);
+                    impl._rcwTable.Add(retValue, wrapper);
+                    impl._rcwCache.Add(externalComObject, new WeakReference(retValue));
+                }
             }
 
-            wrapper = impl._rcwTable.GetValue(retValue, (c) =>
-            {
-                return new NativeObjectWrapper(externalComObject);
-            });
-            wrapper.AddRef();
+            Marshal.AddRef(externalComObject);
             return true;
         }
 
