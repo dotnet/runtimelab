@@ -697,6 +697,9 @@ namespace System.Text.RegularExpressions.SRM
             {
                 if (q.isInitialState)
                 {
+                    //i_q0_A1 is the most recent position in the input when A1 is in the initial state
+                    i_q0_A1 = i;
+
                     if (this.A_prefix != string.Empty)
                     {
                         // ++++ the prefix optimization can be omitted without affecting correctness ++++
@@ -707,7 +710,6 @@ namespace System.Text.RegularExpressions.SRM
                         //thus advance the current position to the
                         //first position where the prefix does match
 
-                        i_q0_A1 = i;
                         i = input.IndexOf(this.A_prefix, i, comparison);
 
                         if (i == -1)
@@ -747,26 +749,26 @@ namespace System.Text.RegularExpressions.SRM
                         }
                         #endregion
                     }
-                    else
-                    {
-                        // we are still in the initial state, when the prefix is empty
-                        // find the first position i that matches with some character in the start set
-                        i = IndexOfStartset(input, i);
+                    //else
+                    //{
+                    //    // we are still in the initial state, when the prefix is empty
+                    //    // find the first position i that matches with some character in the start set
+                    //    i = IndexOfStartset(input, i);
 
-                        if (i == -1)
-                        {
-                            // no match was found
-                            i_q0 = i_q0_A1;
-                            watchdog = -1;
-                            return k;
-                        }
+                    //    if (i == -1)
+                    //    {
+                    //        // no match was found
+                    //        i_q0 = i_q0_A1;
+                    //        watchdog = -1;
+                    //        return k;
+                    //    }
 
-                        i_q0_A1 = i;
-                        // the start state must be updated
-                        // to reflect the kind of the previous character
-                        // when anchors are not used, q will remain the same state
-                        q = _A1q0[(int)GetCharKindId(input, i - 1)];
-                    }
+                    //    i_q0_A1 = i;
+                    //    // the start state must be updated
+                    //    // to reflect the kind of the previous character
+                    //    // when anchors are not used, q will remain the same state
+                    //    q = _A1q0[(int)GetCharKindId(input, i - 1)];
+                    //}
                 }
 
                 // make the transition based on input[i]
