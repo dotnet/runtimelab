@@ -236,6 +236,8 @@ namespace ILCompiler
                 {
                     type = type.GetTypeDefinition();
                 }
+                
+                dependencies ??= new DependencyList();
 
                 dependencies.Add(factory.MaximallyConstructableType(type), reason);
 
