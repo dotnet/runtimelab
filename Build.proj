@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.Build.Traversal">
+<Project Sdk="Microsoft.Build.Traversal"> 
 
   <PropertyGroup>
     <TraversalGlobalProperties Condition="'$(BuildAllConfigurations)' != 'true'">BuildTargetFramework=$([MSBuild]::ValueOrDefault('$(BuildTargetFramework)', '$(NetCoreAppCurrent)'))</TraversalGlobalProperties>
