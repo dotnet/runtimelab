@@ -98,7 +98,7 @@ namespace System.Runtime.InteropServices
         [SupportedOSPlatform("windows")]
         public static IntPtr GetIUnknownForObject(object o)
         {
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            return ComWrappers.ComInterfaceForObject(o);
         }
 
         [SupportedOSPlatform("windows")]
@@ -122,7 +122,7 @@ namespace System.Runtime.InteropServices
         [SupportedOSPlatform("windows")]
         public static object GetObjectForIUnknown(IntPtr pUnk)
         {
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            return ComWrappers.ComObjectForInterface(pUnk);
         }
 
         [SupportedOSPlatform("windows")]
