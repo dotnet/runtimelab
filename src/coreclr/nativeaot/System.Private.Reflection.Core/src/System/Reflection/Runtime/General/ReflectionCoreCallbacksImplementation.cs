@@ -235,6 +235,7 @@ namespace System.Reflection.Runtime.General
         }
 
         // V1 api: Creates closed delegates to instance methods only, relaxed signature checking disallowed.
+        [RequiresUnreferencedCode("The target method might be removed")]
         public sealed override Delegate CreateDelegate(Type type, object target, string method, bool ignoreCase, bool throwOnBindFailure)
         {
             if (type == null)
@@ -261,7 +262,7 @@ namespace System.Reflection.Runtime.General
         }
 
         // V1 api: Creates open delegates to static methods only, relaxed signature checking disallowed.
-        public sealed override Delegate CreateDelegate(Type type, Type target, string method, bool ignoreCase, bool throwOnBindFailure)
+        public sealed override Delegate CreateDelegate(Type type, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type target, string method, bool ignoreCase, bool throwOnBindFailure)
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
@@ -295,7 +296,7 @@ namespace System.Reflection.Runtime.General
         // Helper for the V1/V1.1 Delegate.CreateDelegate() api. These apis take method names rather than MethodInfo and only expect to create open static delegates
         // or closed instance delegates. For backward compatibility, they don't allow relaxed signature matching (which could make the choice of target method ambiguous.)
         //
-        private static RuntimeMethodInfo LookupMethodForCreateDelegate(RuntimeTypeInfo runtimeDelegateType, RuntimeTypeInfo containingType, string method, bool isStatic, bool ignoreCase)
+        private static RuntimeMethodInfo LookupMethodForCreateDelegate(RuntimeTypeInfo runtimeDelegateType, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] RuntimeTypeInfo containingType, string method, bool isStatic, bool ignoreCase)
         {
             Debug.Assert(runtimeDelegateType.IsDelegate);
 
