@@ -421,7 +421,7 @@ namespace System.Runtime.InteropServices
                     GCHandle comWrappersHandle = GCHandle.Alloc(impl, GCHandleType.Weak);
                     NativeObjectWrapper wrapper = new NativeObjectWrapper(
                         externalComObject,
-                        impl,
+                        comWrappersHandle,
                         proxyHandle);
                     impl._rcwTable.Add(retValue, wrapper);
                     impl._rcwCache.Add(externalComObject, proxyHandle);
