@@ -24,6 +24,7 @@ namespace ComWrappersTests
             TestComInteropReleaseProcess();
             TestRCWRoundTripRequireUnwrap();
             TestRCWCached();
+            TestRCWRoundTrip();
 
             TestComInteropCCWCreation();
             TestRCWNonRoundTripUnique();
@@ -111,6 +112,19 @@ namespace ComWrappersTests
             if (roundTripObject != target)
             {
                 throw new Exception("RCW should round-trip");
+            }
+        }
+
+        public static void TestRCWRoundTrip()
+        {
+            var target = new ComObject();
+            int result = CaptureComPointer(target);
+            ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
+            result = RetreiveCapturedComPointer(out var capturedObject);
+            ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
+            if (capturedObject != target)
+            {
+                throw new Exception("Should round-trip");
             }
         }
 

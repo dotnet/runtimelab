@@ -520,7 +520,7 @@ namespace System.Runtime.InteropServices
                 throw new InvalidOperationException(SR.InvalidOperation_ComInteropRequireComWrapperInstance);
             }
 
-            return s_globalInstanceForMarshalling.GetOrCreateObjectForComInstance(externalComObject, CreateObjectFlags.None);
+            return s_globalInstanceForMarshalling.GetOrCreateObjectForComInstance(externalComObject, CreateObjectFlags.Unwrap);
         }
 
         [UnmanagedCallersOnly]
