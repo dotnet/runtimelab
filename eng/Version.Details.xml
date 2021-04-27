@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Dependencies>
   <ProductDependencies>
-    <Dependency Name="Microsoft.NETCore.App" Version="6.0.0-alpha.1.20514.9">
+    <!-- This VS redist package is used as a way to get a non-shipping version number
+         when using a custom runtime version.  -->
+    <Dependency Name="VS.Redist.Common.NetCore.SharedFramework.x64.6.0" Version="6.0.0-preview.5.21226.5">
       <Uri>https://github.com/dotnet/runtime</Uri>
-      <Sha>d67cc2cceb4dc8ecd15f5b6663d93f79de3954fd</Sha>
+      <Sha>ac82799250fe42c8ba2941aef487aca94ecf04cc</Sha>
     </Dependency>
   </ProductDependencies>
   <ToolsetDependencies>
