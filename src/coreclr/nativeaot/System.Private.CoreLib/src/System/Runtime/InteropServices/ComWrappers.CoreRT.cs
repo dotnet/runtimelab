@@ -24,6 +24,14 @@ namespace System.Runtime.InteropServices
         private readonly Dictionary<IntPtr, GCHandle> _rcwCache = new Dictionary<IntPtr, GCHandle>();
         private readonly ConditionalWeakTable<object, NativeObjectWrapper> _rcwTable = new ConditionalWeakTable<object, NativeObjectWrapper>();
 
+        ~ComWrappers()
+        {
+            foreach (var item in _rcwCache)
+            {
+                item.Value.Free();
+            }
+        }
+
         /// <summary>
         /// ABI for function dispatch of a COM interface.
         /// </summary>
@@ -164,6 +172,7 @@ namespace System.Runtime.InteropServices
             public NativeObjectWrapper(IntPtr externalComObject, ComWrappers owner)
             {
                 _externalComObject = externalComObject;
+                Marshal.AddRef(externalComObject);
             }
 
             ~NativeObjectWrapper()
@@ -421,7 +430,6 @@ namespace System.Runtime.InteropServices
                 }
             }
 
-            Marshal.AddRef(externalComObject);
             return true;
         }
 
