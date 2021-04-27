@@ -24,14 +24,6 @@ namespace System.Runtime.InteropServices
         private readonly Dictionary<IntPtr, GCHandle> _rcwCache = new Dictionary<IntPtr, GCHandle>();
         private readonly ConditionalWeakTable<object, NativeObjectWrapper> _rcwTable = new ConditionalWeakTable<object, NativeObjectWrapper>();
 
-        ~ComWrappers()
-        {
-            foreach (var item in _rcwCache)
-            {
-                item.Value.Free();
-            }
-        }
-
         /// <summary>
         /// ABI for function dispatch of a COM interface.
         /// </summary>
