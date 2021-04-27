@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 using Internal.Runtime.CompilerServices;
 
@@ -20,7 +21,7 @@ namespace System.Runtime.InteropServices
 
         private readonly ConditionalWeakTable<object, ManagedObjectWrapperHolder> _ccwTable = new ConditionalWeakTable<object, ManagedObjectWrapperHolder>();
         private readonly Lock _lock = new Lock();
-        private readonly Dictionary<IntPtr, WeakReference> _rcwCache = new Dictionary<IntPtr, WeakReference>();
+        private readonly Dictionary<IntPtr, GCHandle> _rcwCache = new Dictionary<IntPtr, GCHandle>();
         private readonly ConditionalWeakTable<object, NativeObjectWrapper> _rcwTable = new ConditionalWeakTable<object, NativeObjectWrapper>();
 
         /// <summary>
@@ -158,27 +159,17 @@ namespace System.Runtime.InteropServices
         internal unsafe class NativeObjectWrapper
         {
             private IntPtr _externalComObject;
+            private ComWrappers _owner;
 
-            public NativeObjectWrapper(IntPtr externalComObject)
+            public NativeObjectWrapper(IntPtr externalComObject, ComWrappers owner)
             {
                 _externalComObject = externalComObject;
             }
 
-            public uint AddRef()
-            {
-                return ((delegate* unmanaged<IntPtr, uint>)IUnknownVtbl[1])(_externalComObject);
-            }
-
-            public uint Release()
-            {
-                return ((delegate* unmanaged<IntPtr, uint>)IUnknownVtbl[2])(_externalComObject);
-            }
-
-            private IntPtr* IUnknownVtbl => (IntPtr*)((IntPtr*)_externalComObject)[0];
-
             ~NativeObjectWrapper()
             {
-                Release();
+                _owner.RemoveComInterfaceFromCache(_externalComObject);
+                Marshal.Release(_externalComObject);
             }
         }
 
@@ -340,6 +331,14 @@ namespace System.Runtime.InteropServices
             return (ComInterfaceDispatch*)comObject;
         }
 
+        private void RemoveComInterfaceFromCache(IntPtr comObject)
+        {
+            if (this._rcwCache.TryGetValue(comObject, out var handle))
+            {
+                handle.Free();
+            }
+        }
+
         /// <summary>
         /// Get the currently registered managed object or creates a new managed object and registers it.
         /// </summary>
@@ -381,11 +380,11 @@ namespace System.Runtime.InteropServices
             {
                 using (LockHolder.Hold(impl._lock))
                 {
-                    if (impl._rcwCache.TryGetValue(externalComObject, out var weakReference))
+                    if (impl._rcwCache.TryGetValue(externalComObject, out var handle))
                     {
-                        if (weakReference.IsAlive)
+                        if (handle.IsAllocated)
                         {
-                            retValue = weakReference.Target;
+                            retValue = handle.Target;
                             return false;
                         }
                     }
@@ -407,18 +406,18 @@ namespace System.Runtime.InteropServices
 
             using (LockHolder.Hold(impl._lock))
             {
-                if (impl._rcwCache.TryGetValue(externalComObject, out var existingWeakReference))
+                if (impl._rcwCache.TryGetValue(externalComObject, out var existingHandle))
                 {
-                    if (existingWeakReference.IsAlive)
+                    if (existingHandle.IsAllocated)
                     {
-                        retValue = existingWeakReference.Target;
+                        retValue = existingHandle.Target;
                     }
                 }
                 else
                 {
-                    NativeObjectWrapper wrapper = new NativeObjectWrapper(externalComObject);
+                    NativeObjectWrapper wrapper = new NativeObjectWrapper(externalComObject, impl);
                     impl._rcwTable.Add(retValue, wrapper);
-                    impl._rcwCache.Add(externalComObject, new WeakReference(retValue));
+                    impl._rcwCache.Add(externalComObject, GCHandle.Alloc(retValue, GCHandleType.Weak));
                 }
             }
 
