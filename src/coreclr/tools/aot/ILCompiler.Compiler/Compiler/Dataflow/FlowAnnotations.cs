@@ -188,20 +188,28 @@ namespace ILCompiler.Dataflow
                 TypeDefinition typeDef = reader.GetTypeDefinition(ecmaType.Handle);
                 DynamicallyAccessedMemberTypes typeAnnotation = GetMemberTypesForDynamicallyAccessedMembersAttribute(reader, typeDef.GetCustomAttributes());
 
-                // Also inherit annotation from bases
-                TypeDesc baseType = key.BaseType;
-                while (baseType != null)
+                
+                try
                 {
-                    TypeDefinition baseTypeDef = reader.GetTypeDefinition(((EcmaType)baseType.GetTypeDefinition()).Handle);
-                    typeAnnotation |= GetMemberTypesForDynamicallyAccessedMembersAttribute(reader, baseTypeDef.GetCustomAttributes());
-                    baseType = baseType.BaseType;
-                }
+                    // Also inherit annotation from bases
+                    TypeDesc baseType = key.BaseType;
+                    while (baseType != null)
+                    {
+                        TypeDefinition baseTypeDef = reader.GetTypeDefinition(((EcmaType)baseType.GetTypeDefinition()).Handle);
+                        typeAnnotation |= GetMemberTypesForDynamicallyAccessedMembersAttribute(reader, baseTypeDef.GetCustomAttributes());
+                        baseType = baseType.BaseType;
+                    }
 
-                // And inherit them from interfaces
-                foreach (DefType runtimeInterface in key.RuntimeInterfaces)
+                    // And inherit them from interfaces
+                    foreach (DefType runtimeInterface in key.RuntimeInterfaces)
+                    {
+                        TypeDefinition interfaceTypeDef = reader.GetTypeDefinition(((EcmaType)runtimeInterface.GetTypeDefinition()).Handle);
+                        typeAnnotation |= GetMemberTypesForDynamicallyAccessedMembersAttribute(reader, interfaceTypeDef.GetCustomAttributes());
+                    }
+                }
+                catch (TypeSystemException)
                 {
-                    TypeDefinition interfaceTypeDef = reader.GetTypeDefinition(((EcmaType)runtimeInterface.GetTypeDefinition()).Handle);
-                    typeAnnotation |= GetMemberTypesForDynamicallyAccessedMembersAttribute(reader, interfaceTypeDef.GetCustomAttributes());
+                    // If the class hierarchy is not walkable, just stop collecting the annotations.
                 }
 
                 var annotatedFields = new ArrayBuilder<FieldAnnotation>();
