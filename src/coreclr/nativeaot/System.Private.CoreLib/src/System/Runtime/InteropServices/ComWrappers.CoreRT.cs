@@ -178,7 +178,7 @@ namespace System.Runtime.InteropServices
                 }
 
                 Marshal.Release(_externalComObject);
-                __comWrappersHandle.Free;
+                _comWrappersHandle.Free();
                 _proxyHandle.Free();
             }
         }
