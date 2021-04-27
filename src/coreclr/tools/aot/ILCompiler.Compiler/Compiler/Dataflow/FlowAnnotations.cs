@@ -104,6 +104,11 @@ namespace ILCompiler.Dataflow
             return DynamicallyAccessedMemberTypes.None;
         }
 
+        public DynamicallyAccessedMemberTypes GetTypeAnnotation(TypeDesc type)
+        {
+            return GetAnnotations(type.GetTypeDefinition()).TypeAnnotation;
+        }
+
         public DynamicallyAccessedMemberTypes GetGenericParameterAnnotation(GenericParameterDesc genericParameter)
         {
             if (genericParameter is not EcmaGenericParameter ecmaGenericParameter)
@@ -175,9 +180,29 @@ namespace ILCompiler.Dataflow
 
                 Debug.Assert(key.IsTypeDefinition);
                 if (key is not EcmaType ecmaType)
-                    return new TypeAnnotations(key, null, null, null);
+                    return new TypeAnnotations(key, DynamicallyAccessedMemberTypes.None, null, null, null);
 
                 MetadataReader reader = ecmaType.MetadataReader;
+
+                // class, interface, struct can have annotations
+                TypeDefinition typeDef = reader.GetTypeDefinition(ecmaType.Handle);
+                DynamicallyAccessedMemberTypes typeAnnotation = GetMemberTypesForDynamicallyAccessedMembersAttribute(reader, typeDef.GetCustomAttributes());
+
+                // Also inherit annotation from bases
+                TypeDesc baseType = key.BaseType;
+                while (baseType != null)
+                {
+                    TypeDefinition baseTypeDef = reader.GetTypeDefinition(((EcmaType)baseType.GetTypeDefinition()).Handle);
+                    typeAnnotation |= GetMemberTypesForDynamicallyAccessedMembersAttribute(reader, baseTypeDef.GetCustomAttributes());
+                    baseType = baseType.BaseType;
+                }
+
+                // And inherit them from interfaces
+                foreach (DefType runtimeInterface in key.RuntimeInterfaces)
+                {
+                    TypeDefinition interfaceTypeDef = reader.GetTypeDefinition(((EcmaType)runtimeInterface.GetTypeDefinition()).Handle);
+                    typeAnnotation |= GetMemberTypesForDynamicallyAccessedMembersAttribute(reader, interfaceTypeDef.GetCustomAttributes());
+                }
 
                 var annotatedFields = new ArrayBuilder<FieldAnnotation>();
 
@@ -446,7 +471,7 @@ namespace ILCompiler.Dataflow
                     }
                 }
 
-                return new TypeAnnotations(ecmaType, annotatedMethods.ToArray(), annotatedFields.ToArray(), typeGenericParameterAnnotations);
+                return new TypeAnnotations(ecmaType, typeAnnotation, annotatedMethods.ToArray(), annotatedFields.ToArray(), typeGenericParameterAnnotations);
             }
 
             private static bool ScanMethodBodyForFieldAccess(MethodIL body, bool write, out FieldDesc found)
@@ -536,6 +561,7 @@ namespace ILCompiler.Dataflow
         private class TypeAnnotations
         {
             public readonly TypeDesc Type;
+            public readonly DynamicallyAccessedMemberTypes TypeAnnotation;
             private readonly MethodAnnotations[] _annotatedMethods;
             private readonly FieldAnnotation[] _annotatedFields;
             private readonly DynamicallyAccessedMemberTypes[] _genericParameterAnnotations;
@@ -544,11 +570,12 @@ namespace ILCompiler.Dataflow
 
             public TypeAnnotations(
                 TypeDesc type,
+                DynamicallyAccessedMemberTypes typeAnnotations,
                 MethodAnnotations[] annotatedMethods,
                 FieldAnnotation[] annotatedFields,
                 DynamicallyAccessedMemberTypes[] genericParameterAnnotations)
-                => (Type, _annotatedMethods, _annotatedFields, _genericParameterAnnotations)
-                 = (type, annotatedMethods, annotatedFields, genericParameterAnnotations);
+                => (Type, TypeAnnotation, _annotatedMethods, _annotatedFields, _genericParameterAnnotations)
+                 = (type, typeAnnotations, annotatedMethods, annotatedFields, genericParameterAnnotations);
 
             public bool TryGetAnnotation(MethodDesc method, out MethodAnnotations annotations)
             {

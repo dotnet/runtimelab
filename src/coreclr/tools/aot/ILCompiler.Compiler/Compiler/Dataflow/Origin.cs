@@ -60,6 +60,18 @@ namespace ILCompiler.Dataflow
         public string GetDisplayName() => Field.GetDisplayName();
     }
 
+    class TypeOrigin : Origin
+    {
+        public MetadataType Type { get; }
+
+        public TypeOrigin(MetadataType type)
+        {
+            Type = type;
+        }
+
+        public string GetDisplayName() => Type.GetDisplayName();
+    }
+
     class GenericParameterOrigin : Origin
     {
         public GenericParameterDesc GenericParameter { get; }

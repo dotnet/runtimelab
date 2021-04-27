@@ -386,6 +386,17 @@ namespace ILCompiler
             // MetadataManagers can override this to provide additional dependencies caused by the emission of an EEType.
         }
 
+        public virtual void GetConditionalDependenciesDueToEETypePresence(ref CombinedDependencyList dependencies, NodeFactory factory, TypeDesc type)
+        {
+            // MetadataManagers can override this to provide additional dependencies caused by the presence of
+            // an EEType.
+        }
+
+        public virtual bool HasConditionalDependenciesDueToEETypePresence(TypeDesc type)
+        {
+            return false;
+        }
+
         /// <summary>
         /// This method is an extension point that can provide additional metadata-based dependencies to generated RuntimeMethodHandles.
         /// </summary>

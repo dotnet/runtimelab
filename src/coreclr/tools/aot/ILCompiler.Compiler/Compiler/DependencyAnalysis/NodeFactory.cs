@@ -297,6 +297,11 @@ namespace ILCompiler.DependencyAnalysis
                 return new ReflectableMethodNode(method);
             });
 
+            _objectGetTypeFlowDependencies = new NodeCache<MetadataType, ObjectGetTypeFlowDependenciesNode>(type =>
+            {
+                return new ObjectGetTypeFlowDependenciesNode(type);
+            });
+
             _shadowConcreteMethods = new NodeCache<MethodKey, IMethodNode>(methodKey =>
             {
                 MethodDesc canonMethod = methodKey.Method.GetCanonMethodTarget(CanonicalFormKind.Specific);
@@ -855,6 +860,12 @@ namespace ILCompiler.DependencyAnalysis
         public ReflectableMethodNode ReflectableMethod(MethodDesc method)
         {
             return _reflectableMethods.GetOrAdd(method);
+        }
+
+        private NodeCache<MetadataType, ObjectGetTypeFlowDependenciesNode> _objectGetTypeFlowDependencies;
+        internal ObjectGetTypeFlowDependenciesNode ObjectGetTypeFlowDependencies(MetadataType type)
+        {
+            return _objectGetTypeFlowDependencies.GetOrAdd(type);
         }
 
         private NodeCache<MethodDesc, DynamicInvokeTemplateNode> _dynamicInvokeTemplates;

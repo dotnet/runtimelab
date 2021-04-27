@@ -61,6 +61,7 @@ namespace ILCompiler.DependencyAnalysis
         internal readonly EETypeOptionalFieldsBuilder _optionalFieldsBuilder = new EETypeOptionalFieldsBuilder();
         internal readonly EETypeOptionalFieldsNode _optionalFieldsNode;
         protected bool? _mightHaveInterfaceDispatchMap;
+        private bool _hasConditionalDependenciesFromMetadataManager;
 
         public EETypeNode(NodeFactory factory, TypeDesc type)
         {
@@ -72,6 +73,7 @@ namespace ILCompiler.DependencyAnalysis
             Debug.Assert(!type.IsRuntimeDeterminedSubtype);
             _type = type;
             _optionalFieldsNode = new EETypeOptionalFieldsNode(this);
+            _hasConditionalDependenciesFromMetadataManager = factory.MetadataManager.HasConditionalDependenciesDueToEETypePresence(type);
 
             factory.TypeSystemContext.EnsureLoadableType(type);
         }
@@ -217,12 +219,14 @@ namespace ILCompiler.DependencyAnalysis
                 if (_type.RuntimeInterfaces.Length > 0)
                     return true;
 
-                return false;
+                return _hasConditionalDependenciesFromMetadataManager;
             }
         }
 
         public sealed override IEnumerable<CombinedDependencyListEntry> GetConditionalStaticDependencies(NodeFactory factory)
         {
+            List<CombinedDependencyListEntry> result = new List<CombinedDependencyListEntry>();
+
             IEETypeNode maximallyConstructableType = factory.MaximallyConstructableType(_type);
 
             if (maximallyConstructableType != this)
@@ -230,16 +234,16 @@ namespace ILCompiler.DependencyAnalysis
                 // EEType upgrading from necessary to constructed if some template instantation exists that matches up
                 if (CanonFormTypeMayExist)
                 {
-                    yield return new CombinedDependencyListEntry(maximallyConstructableType, factory.MaximallyConstructableType(_type.ConvertToCanonForm(CanonicalFormKind.Specific)), "Trigger full type generation if canonical form exists");
+                    result.Add(new CombinedDependencyListEntry(maximallyConstructableType, factory.MaximallyConstructableType(_type.ConvertToCanonForm(CanonicalFormKind.Specific)), "Trigger full type generation if canonical form exists"));
 
                     if (_type.Context.SupportsUniversalCanon)
-                        yield return new CombinedDependencyListEntry(maximallyConstructableType, factory.MaximallyConstructableType(_type.ConvertToCanonForm(CanonicalFormKind.Universal)), "Trigger full type generation if universal canonical form exists");
+                        result.Add(new CombinedDependencyListEntry(maximallyConstructableType, factory.MaximallyConstructableType(_type.ConvertToCanonForm(CanonicalFormKind.Universal)), "Trigger full type generation if universal canonical form exists"));
                 }
-                yield break;
+                return result;
             }
 
             if (!EmitVirtualSlotsAndInterfaces)
-                yield break;
+                return result;
 
             DefType defType = _type.GetClosestDefType();
 
@@ -283,7 +287,7 @@ namespace ILCompiler.DependencyAnalysis
                         IMethodNode implNode = canUseTentativeMethod ?
                             factory.TentativeMethodEntrypoint(canonImpl, impl.OwningType.IsValueType) :
                             factory.MethodEntrypoint(canonImpl, impl.OwningType.IsValueType);
-                        yield return new CombinedDependencyListEntry(implNode, factory.VirtualMethodUse(decl), "Virtual method");
+                        result.Add(new CombinedDependencyListEntry(implNode, factory.VirtualMethodUse(decl), "Virtual method"));
                     }
                 }
 
@@ -299,7 +303,7 @@ namespace ILCompiler.DependencyAnalysis
                         if (method.IsVirtual && !method.IsAbstract)
                         {
                             MethodDesc canonMethod = method.GetCanonMethodTarget(CanonicalFormKind.Specific);
-                            yield return new CombinedDependencyListEntry(factory.MethodEntrypoint(canonMethod), factory.VirtualMethodUse(method), "Default interface method");
+                            result.Add(new CombinedDependencyListEntry(factory.MethodEntrypoint(canonMethod), factory.VirtualMethodUse(method), "Default interface method"));
                         }
                     }
                 }
@@ -330,7 +334,7 @@ namespace ILCompiler.DependencyAnalysis
                         MethodDesc implMethod = defType.ResolveInterfaceMethodToVirtualMethodOnType(interfaceMethod);
                         if (implMethod != null)
                         {
-                            yield return new CombinedDependencyListEntry(factory.VirtualMethodUse(implMethod), factory.VirtualMethodUse(interfaceMethod), "Interface method");
+                            result.Add(new CombinedDependencyListEntry(factory.VirtualMethodUse(implMethod), factory.VirtualMethodUse(interfaceMethod), "Interface method"));
 
                             // If any of the implemented interfaces have variance, calls against compatible interface methods
                             // could result in interface methods of this type being used (e.g. IEnumerable<object>.GetEnumerator()
@@ -338,13 +342,17 @@ namespace ILCompiler.DependencyAnalysis
                             if (isVariantInterfaceImpl)
                             {
                                 MethodDesc typicalInterfaceMethod = interfaceMethod.GetTypicalMethodDefinition();
-                                yield return new CombinedDependencyListEntry(factory.VirtualMethodUse(implMethod), factory.VariantInterfaceMethodUse(typicalInterfaceMethod), "Interface method");
-                                yield return new CombinedDependencyListEntry(factory.VirtualMethodUse(interfaceMethod), factory.VariantInterfaceMethodUse(typicalInterfaceMethod), "Interface method");
+                                result.Add(new CombinedDependencyListEntry(factory.VirtualMethodUse(implMethod), factory.VariantInterfaceMethodUse(typicalInterfaceMethod), "Interface method"));
+                                result.Add(new CombinedDependencyListEntry(factory.VirtualMethodUse(interfaceMethod), factory.VariantInterfaceMethodUse(typicalInterfaceMethod), "Interface method"));
                             }
                         }
                     }
                 }
             }
+
+            factory.MetadataManager.GetConditionalDependenciesDueToEETypePresence(ref result, factory, _type);
+
+            return result;
         }
 
         public static bool IsTypeNodeShareable(TypeDesc type)
