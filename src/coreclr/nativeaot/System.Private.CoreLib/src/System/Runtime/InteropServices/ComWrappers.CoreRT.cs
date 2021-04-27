@@ -160,17 +160,20 @@ namespace System.Runtime.InteropServices
         {
             private IntPtr _externalComObject;
             private ComWrappers _owner;
+            private GCHandle _handle;
 
-            public NativeObjectWrapper(IntPtr externalComObject, ComWrappers owner)
+            public NativeObjectWrapper(IntPtr externalComObject, ComWrappers owner, GCHandle handle)
             {
                 _externalComObject = externalComObject;
+                _handle = handle;
                 Marshal.AddRef(externalComObject);
             }
 
             ~NativeObjectWrapper()
             {
-                _owner.RemoveComInterfaceFromCache(_externalComObject);
+                _owner._rcwCache.Remove(_externalComObject);
                 Marshal.Release(_externalComObject);
+                _handle.Free();
             }
         }
 
@@ -332,14 +335,6 @@ namespace System.Runtime.InteropServices
             return (ComInterfaceDispatch*)comObject;
         }
 
-        private void RemoveComInterfaceFromCache(IntPtr comObject)
-        {
-            if (this._rcwCache.TryGetValue(comObject, out var handle))
-            {
-                handle.Free();
-            }
-        }
-
         /// <summary>
         /// Get the currently registered managed object or creates a new managed object and registers it.
         /// </summary>
@@ -416,9 +411,10 @@ namespace System.Runtime.InteropServices
                 }
                 else
                 {
-                    NativeObjectWrapper wrapper = new NativeObjectWrapper(externalComObject, impl);
+                    GCHandle handle = GCHandle.Alloc(retValue, GCHandleType.Weak);
+                    NativeObjectWrapper wrapper = new NativeObjectWrapper(externalComObject, impl, handle);
                     impl._rcwTable.Add(retValue, wrapper);
-                    impl._rcwCache.Add(externalComObject, GCHandle.Alloc(retValue, GCHandleType.Weak));
+                    impl._rcwCache.Add(externalComObject, handle);
                 }
             }
 
