@@ -1,8 +1,4 @@
-ifeq ($(wildcard ../../.dotnet),)
-  $(info Downloading local dotnet...)
-endif
-
-DOTNET := $(shell bash init-tools.sh | tail -1)
+DOTNET := ../../dotnet.sh
 
 LIBRARIES_TESTS_CONFIG=Release
 CORECLR_TESTS_CONFIG=Release
@@ -21,7 +17,7 @@ ifeq ($(words $(wildcard ../../artifacts/bin/testhost/*-*-*-*)), 1)
 	LIBRARIES_TESTS_CONFIG := $(word 3,$(subst -, ,$(notdir $(wildcard ../../artifacts/bin/testhost/*-*-*-*))))
 endif
 
-MONO_PROJ=/p:CoreClrTestConfig=$(CORECLR_TESTS_CONFIG) /p:LibrariesTestConfig=$(LIBRARIES_TESTS_CONFIG) /p:Configuration=$(MONO_RUNTIME_CONFIG) ../mono.proj
+MONO_PROJ=/p:CoreClrTestConfig=$(CORECLR_TESTS_CONFIG) /p:LibrariesTestConfig=$(LIBRARIES_TESTS_CONFIG) /p:Configuration=$(MONO_RUNTIME_CONFIG) mono.proj
 
 # run sample using local .dotnet-mono
 # build it with .dotnet first in order to be able to use LLVM only for the actual sample
@@ -38,7 +34,7 @@ bcl corelib:
 
 # build runtime and copy to artifacts
 runtime:
-	../.././build.sh -c $(MONO_RUNTIME_CONFIG) -subset Mono.Runtime
+	../.././build.sh -c $(MONO_RUNTIME_CONFIG) -subset Mono.Runtime+Libs.Pretest
 
 # copy mono runtime bits from artifacts to $(DST)
 copy-runtime-files-to:
