@@ -159,21 +159,27 @@ namespace System.Runtime.InteropServices
         internal unsafe class NativeObjectWrapper
         {
             private IntPtr _externalComObject;
-            private ComWrappers _owner;
-            private GCHandle _handle;
+            private GCHandle _comWrappersHandle;
+            private GCHandle _proxyHandle;
 
-            public NativeObjectWrapper(IntPtr externalComObject, ComWrappers owner, GCHandle handle)
+            public NativeObjectWrapper(IntPtr externalComObject, GCHandle comWrappersHandle, GCHandle proxyHandle)
             {
                 _externalComObject = externalComObject;
-                _handle = handle;
+                _comWrappersHandle = comWrappersHandle;
+                _proxyHandle = proxyHandle;
                 Marshal.AddRef(externalComObject);
             }
 
             ~NativeObjectWrapper()
             {
-                _owner._rcwCache.Remove(_externalComObject);
+                if (_comWrappersHandle.IsAllocated)
+                {
+                    ((ComWrappers)_comWrappersHandle.Target)._rcwCache.Remove(_externalComObject);
+                }
+
                 Marshal.Release(_externalComObject);
-                _handle.Free();
+                __comWrappersHandle.Free;
+                _proxyHandle.Free();
             }
         }
 
@@ -411,10 +417,14 @@ namespace System.Runtime.InteropServices
                 }
                 else
                 {
-                    GCHandle handle = GCHandle.Alloc(retValue, GCHandleType.Weak);
-                    NativeObjectWrapper wrapper = new NativeObjectWrapper(externalComObject, impl, handle);
+                    GCHandle proxyHandle = GCHandle.Alloc(retValue, GCHandleType.Weak);
+                    GCHandle comWrappersHandle = GCHandle.Alloc(impl, GCHandleType.Weak);
+                    NativeObjectWrapper wrapper = new NativeObjectWrapper(
+                        externalComObject,
+                        impl,
+                        proxyHandle);
                     impl._rcwTable.Add(retValue, wrapper);
-                    impl._rcwCache.Add(externalComObject, handle);
+                    impl._rcwCache.Add(externalComObject, proxyHandle);
                 }
             }
 
