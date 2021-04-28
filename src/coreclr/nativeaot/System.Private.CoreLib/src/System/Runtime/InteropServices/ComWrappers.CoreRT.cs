@@ -173,8 +173,8 @@ namespace System.Runtime.InteropServices
             ~NativeObjectWrapper()
             {
                 _comWrappers.RemoveRCWFromCache(_externalComObject);
-                Marshal.Release(_externalComObject);
                 _proxyHandle.Free();
+                Marshal.Release(_externalComObject);
             }
         }
 
@@ -374,11 +374,8 @@ namespace System.Runtime.InteropServices
                 {
                     if (_rcwCache.TryGetValue(externalComObject, out var handle))
                     {
-                        if (handle.IsAllocated)
-                        {
-                            retValue = handle.Target;
-                            return false;
-                        }
+                        retValue = handle.Target;
+                        return false;
                     }
                 }
             }
@@ -400,10 +397,7 @@ namespace System.Runtime.InteropServices
             {
                 if (_rcwCache.TryGetValue(externalComObject, out var existingHandle))
                 {
-                    if (existingHandle.IsAllocated)
-                    {
-                        retValue = existingHandle.Target;
-                    }
+                    retValue = existingHandle.Target;
                 }
                 else
                 {
