@@ -160,13 +160,13 @@ namespace System.Runtime.InteropServices
         {
             private readonly IntPtr _externalComObject;
             private readonly ComWrappers _comWrappers;
-            public GCHandle ProxyHandle;
+            public GCHandle _proxyHandle;
 
             public NativeObjectWrapper(IntPtr externalComObject, ComWrappers comWrappers, object comProxy)
             {
                 _externalComObject = externalComObject;
                 _comWrappers = comWrappers;
-                ProxyHandle = GCHandle.Alloc(comProxy, GCHandleType.Weak);
+                _proxyHandle = GCHandle.Alloc(comProxy, GCHandleType.Weak);
                 Marshal.AddRef(externalComObject);
             }
 
