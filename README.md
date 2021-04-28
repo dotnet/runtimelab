@@ -1,37 +1,36 @@
-# Standalone Experiments
+# DllImport Generator
 
-This branch contains a template for standalone experiments, which means that experiments that are a library, which doesn't depend on runtime changes. This minimal template allows such experiments to avoid the overhead of having all the runtime, libraries and installer code.
+Work on this project can be tracked and discussed via the [official issue](https://github.com/dotnet/runtime/issues/43060) in `dotnet/runtime`. The [P/Invoke source generator proposal](https://github.com/dotnet/runtime/blob/main/docs/design/features/source-generator-pinvokes.md) contains additional details.
 
-## Create your experiment
+## Example
 
-1. Create a new branch from this branch and make sure the branch name follows the naming guidelines to get CI and Official Build support. The name should use the `feature/` prefix.
+The [Demo project](./DllImportGenerator/Demo) is designed to be immediately consumable by everyone. It demonstrates a simple use case where the marshalling code is generated and a native function call with only [blittable types](https://docs.microsoft.com/dotnet/framework/interop/blittable-and-non-blittable-types) is made. The project is configured to output the generated source to disk; the files can be found in the project's intermediate directory (`obj/<Configuration>/<TargetFramework>/generated`). A managed assembly with [native exports](./DllImportGenerator/TestAssets/NativeExports) is used in the P/Invoke scenario.
 
-2. Identify whether you need to consume new APIs or features from `dotnet/runtime` and need to be able to consume these on a faster cadence than using a daily SDK build:
-    - I don't need to depend on `dotnet/runtime`:
-        1. Update the `global.json` file:
-             - Specify the minimum required `dotnet` tool and SDK version that you need to build and run tests
-             - Remove the `runtimes` section under `tools`
-        2. Set `UseCustomRuntimeVersion` property to `false` in `Directory.Build.props`
-        3. Remove the `VS.Redist.Common.NetCore.SharedFramework.x64.6.0` dependency from `Version.Details.xml` and the corresponding property from `Version.props`
-    - I do need to depend on `dotnet/runtime`:
-        1. Set a DARC dependency from `dotnet/runtime` to your branch in this repository. For more information on how to do it, see [here](https://github.com/dotnet/arcade/blob/main/Documentation/Darc.md#darc)
+### Recommended scenarios:
 
+* Step into the `Demo` application and observe the generated code for the `Sum` functions.
+* Find the implementation of the `sumrefi` function and set a breakpoint. Run the debugger and explore the stack.
+* Add a new export in the `NativeExports` project and update the `Demo` application to call the new export.
+* Try the above scenarios when building in `Debug` or `Release`. Consider the differences.
 
-        > Note that if you want to run `dotnet test` in you test projects you will need to either first run `build.cmd/sh` or install the runtime version specified by `MicrosoftNETCoreAppVersion` property in `Versions.props` in your global dotnet install. If you run `build.cmd/sh` arcade infrastructure will make sure that the repo `dotnet` SDK found in `<RepoRoot>\.dotnet` folder, has this runtime installed. Then during the build of the test projects, we generate a `.runsettings` file that points to this `dotnet` SDK.
+## Designs
 
+- [Code generation pipeline](./designs/Pipeline.md)
+- [Struct Marshalling](./designs/StructMarshalling.md)
 
-> For both options above, you can choose whether your experiment needs arcade latest features, to do that, set the required DARC subscription from `dotnet/arcade` to this repository following these [instructions](https://github.com/dotnet/arcade/blob/main/Documentation/Darc.md#darc).
+## Workflow
 
-3. Set the right version for your library. In order to do that, set the following properties in `Versions.props`:
-    - `VersionPrefix`: the version prefix for the produced nuget package.
-    - `MajorVersion/MinorVersion/PatchVersion`: Properties that control file version.
-    - `PreReleaseVersionLabel`: this is the label that your package will contain when producing a non stable package. i.e: `MyExperiment.1.0.0-alpha-23432.1.nupkg`.
+This repo consumes new APIs from `dotnet/runtime` and is [configured](./global.json) to build against a custom runtime version. Either globally install the .NET runtime version specified by the [`MicrosoftNETCoreAppVersion` property](./eng/Versions.props) or run `build.cmd/sh` to have the Arcade infrastructure populate the `.dotnet` folder with the matching runtime version.
 
-4. Choose the right set of platforms for CI and Official Builds by tweaking `eng/pipelines/runtimelab.yml` file.
+All features of the [`dotnet` command line tool](https://docs.microsoft.com/dotnet/core/tools/) are supported for the respective project types (e.g. `build`, `run`, `test`). A consistent cross-platform inner dev loop with an IDE is available using [Visual Studio Code](https://code.visualstudio.com/) when appropriate .NET extensions are loaded.
 
-5. Rename `Experimental.sln`, `Experimental.csproj` and `Experimental.Tests.csproj` to your experiment name.
+On Windows, loading the [solution](./DllImportGenerator/DllImportGenerator.sln) in [Visual Studio](https://visualstudio.microsoft.com/) 2019 or later will enable the edit, build, debug inner dev loop. All features of Visual Studio are expected to operate correctly (e.g. Debugger, Test runner, Profiler).
 
-The package produced from your branch will be published to the the [`dotnet-experimental`](https://dev.azure.com/dnceng/public/_packaging?_a=feed&feed=dotnet-experimental) feed.
+Most of the above options have [official tutorials](https://docs.microsoft.com/dotnet/core/tutorials/). It is an aim of this project to follow canonical workflows that are intuitive to all developers.
+
+### Testing assets
+
+This project has no explicit native build system and should remain that way. The [`DNNE`](https://github.com/AaronRobinsonMSFT/DNNE/) project is used to create native exports that can be called from the P/Invokes during testing.
 
 ## .NET Foundation
 
