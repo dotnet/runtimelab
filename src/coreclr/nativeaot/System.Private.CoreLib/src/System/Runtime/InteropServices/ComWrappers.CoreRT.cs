@@ -158,8 +158,8 @@ namespace System.Runtime.InteropServices
 
         internal unsafe class NativeObjectWrapper
         {
-            private IntPtr _externalComObject;
-            private ComWrappers _comWrappers;
+            private readonly IntPtr _externalComObject;
+            private readonly ComWrappers _comWrappers;
             public GCHandle ProxyHandle;
 
             public NativeObjectWrapper(IntPtr externalComObject, ComWrappers comWrappers, object comProxy)
