@@ -914,7 +914,6 @@ namespace System.Tests
             }
         }
 
-        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/939" /* NativeAot */)]
         [Fact]
         [OuterLoop]
         private static void AllocateUninitializedArray()
@@ -969,7 +968,6 @@ namespace System.Tests
             }
         }
 
-        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/939" /* NativeAot */)]
         [Fact]
         [OuterLoop]
         private static void AllocateArray()
