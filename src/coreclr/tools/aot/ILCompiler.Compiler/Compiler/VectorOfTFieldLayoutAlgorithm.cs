@@ -62,10 +62,17 @@ namespace ILCompiler
             return false;
         }
 
+        private static bool IsSupportedElementType(TypeDesc type)
+        {
+            return type.IsPrimitiveNumeric
+                || type.Category == TypeFlags.IntPtr
+                || type.Category == TypeFlags.UIntPtr;
+        }
+
         public override ValueTypeShapeCharacteristics ComputeValueTypeShapeCharacteristics(DefType type)
         {
             if (type.Context.Target.Architecture == TargetArchitecture.ARM64 &&
-                            type.Instantiation[0].IsPrimitiveNumeric)
+                IsSupportedElementType(type.Instantiation[0]))
             {
                 return type.InstanceFieldSize.AsInt switch
                 {
