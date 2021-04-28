@@ -107,6 +107,7 @@
     </PropertyGroup>
 
     <!-- Invoke the run script with the test host as the runtime path. -->
+    <!-- We set HELIX_WORKITEM_PAYLOAD to an empty string to prevent the runner script from exiting with code 0 if there's failures -->
     <Exec Command="$(RunTestsCommand)"
           ContinueOnError="true"
           IgnoreExitCode="true"
