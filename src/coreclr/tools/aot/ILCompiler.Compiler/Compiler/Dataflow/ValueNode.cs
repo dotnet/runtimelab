@@ -70,6 +70,12 @@ namespace ILCompiler.Dataflow
         public ValueNodeKind Kind { get; protected set; }
 
         /// <summary>
+        /// The IL type of the value, represented as closely as possible, but not always exact.  It can be null, for
+        /// example, when the analysis is imprecise or operating on malformed IL.
+        /// </summary>
+        public TypeDesc StaticType { get; protected set; }
+
+        /// <summary>
         /// Allows the enumeration of the direct children of this node.  The ChildCollection struct returned here
         /// supports 'foreach' without allocation.
         /// </summary>
@@ -119,7 +125,10 @@ namespace ILCompiler.Dataflow
         protected abstract int NumChildren { get; }
         protected abstract ValueNode ChildAt(int index);
 
-        public abstract bool Equals(ValueNode other);
+        public virtual bool Equals(ValueNode other)
+        {
+            return other != null && this.Kind == other.Kind && this.StaticType == other.StaticType;
+        }
 
         public abstract override int GetHashCode();
 
@@ -420,6 +429,10 @@ namespace ILCompiler.Dataflow
                 case ValueNodeKind.Array:
                     ArrayValue av = (ArrayValue)node;
                     foundCycle = av.Size.DetectCycle(seenNodes, allNodesSeen);
+                    foreach (ValueBasicBlockPair pair in av.IndexValues.Values)
+                    {
+                        foundCycle |= pair.Value.DetectCycle(seenNodes, allNodesSeen);
+                    }
                     break;
 
                 default:
@@ -505,18 +518,14 @@ namespace ILCompiler.Dataflow
         private UnknownValue()
         {
             Kind = ValueNodeKind.Unknown;
+            StaticType = null;
         }
 
         public static UnknownValue Instance { get; } = new UnknownValue();
 
         public override bool Equals(ValueNode other)
         {
-            if (other == null)
-                return false;
-            if (this.Kind != other.Kind)
-                return false;
-
-            return true;
+            return base.Equals(other);
         }
 
         public override int GetHashCode()
@@ -537,16 +546,12 @@ namespace ILCompiler.Dataflow
         private NullValue()
         {
             Kind = ValueNodeKind.Null;
+            StaticType = null;
         }
 
         public override bool Equals(ValueNode other)
         {
-            if (other == null)
-                return false;
-            if (this.Kind != other.Kind)
-                return false;
-
-            return true;
+            return base.Equals(other);
         }
 
         public static NullValue Instance { get; } = new NullValue();
@@ -572,6 +577,10 @@ namespace ILCompiler.Dataflow
         public SystemTypeValue(TypeDesc typeRepresented)
         {
             Kind = ValueNodeKind.SystemType;
+
+            // Should be System.Type - but we don't have any use case where tracking it like that would matter
+            StaticType = null;
+
             TypeRepresented = typeRepresented;
         }
 
@@ -579,9 +588,7 @@ namespace ILCompiler.Dataflow
 
         public override bool Equals(ValueNode other)
         {
-            if (other == null)
-                return false;
-            if (this.Kind != other.Kind)
+            if (!base.Equals(other))
                 return false;
 
             return Equals(this.TypeRepresented, ((SystemTypeValue)other).TypeRepresented);
@@ -606,6 +613,10 @@ namespace ILCompiler.Dataflow
         public RuntimeTypeHandleValue(TypeDesc typeRepresented)
         {
             Kind = ValueNodeKind.RuntimeTypeHandle;
+
+            // Should be System.RuntimeTypeHandle, but we don't have a use case for it like that
+            StaticType = null;
+
             TypeRepresented = typeRepresented;
         }
 
@@ -613,9 +624,7 @@ namespace ILCompiler.Dataflow
 
         public override bool Equals(ValueNode other)
         {
-            if (other == null)
-                return false;
-            if (this.Kind != other.Kind)
+            if (!base.Equals(other))
                 return false;
 
             return Equals(this.TypeRepresented, ((RuntimeTypeHandleValue)other).TypeRepresented);
@@ -641,6 +650,10 @@ namespace ILCompiler.Dataflow
         public SystemTypeForGenericParameterValue(GenericParameterDesc genericParameter, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes)
         {
             Kind = ValueNodeKind.SystemTypeForGenericParameter;
+
+            // Should be System.Type, but we don't have a use case for it
+            StaticType = null;
+
             GenericParameter = genericParameter;
             DynamicallyAccessedMemberTypes = dynamicallyAccessedMemberTypes;
             SourceContext = new GenericParameterOrigin(genericParameter);
@@ -650,9 +663,7 @@ namespace ILCompiler.Dataflow
 
         public override bool Equals(ValueNode other)
         {
-            if (other == null)
-                return false;
-            if (this.Kind != other.Kind)
+            if (!base.Equals(other))
                 return false;
 
             var otherValue = (SystemTypeForGenericParameterValue)other;
@@ -678,6 +689,10 @@ namespace ILCompiler.Dataflow
         public RuntimeTypeHandleForGenericParameterValue(GenericParameterDesc genericParameter)
         {
             Kind = ValueNodeKind.RuntimeTypeHandleForGenericParameter;
+
+            // Should be System.RuntimeTypeHandle, but we don't have a use case for it
+            StaticType = null;
+
             GenericParameter = genericParameter;
         }
 
@@ -685,9 +700,7 @@ namespace ILCompiler.Dataflow
 
         public override bool Equals(ValueNode other)
         {
-            if (other == null)
-                return false;
-            if (this.Kind != other.Kind)
+            if (!base.Equals(other))
                 return false;
 
             return Equals(this.GenericParameter, ((RuntimeTypeHandleForGenericParameterValue)other).GenericParameter);
@@ -712,6 +725,10 @@ namespace ILCompiler.Dataflow
         public RuntimeMethodHandleValue(MethodDesc methodRepresented)
         {
             Kind = ValueNodeKind.RuntimeMethodHandle;
+
+            // Should be System.RuntimeMethodHandle, but we don't have a use case for it
+            StaticType = null;
+
             MethodRepresented = methodRepresented;
         }
 
@@ -719,9 +736,7 @@ namespace ILCompiler.Dataflow
 
         public override bool Equals(ValueNode other)
         {
-            if (other == null)
-                return false;
-            if (this.Kind != other.Kind)
+            if (!base.Equals(other))
                 return false;
 
             return Equals(this.MethodRepresented, ((RuntimeMethodHandleValue)other).MethodRepresented);
@@ -746,6 +761,10 @@ namespace ILCompiler.Dataflow
         public SystemReflectionMethodBaseValue(MethodDesc methodRepresented)
         {
             Kind = ValueNodeKind.SystemReflectionMethodBase;
+
+            // Should be System.Reflection.MethodBase, but we don't have a use case for it
+            StaticType = null;
+
             MethodRepresented = methodRepresented;
         }
 
@@ -753,9 +772,7 @@ namespace ILCompiler.Dataflow
 
         public override bool Equals(ValueNode other)
         {
-            if (other == null)
-                return false;
-            if (this.Kind != other.Kind)
+            if (!base.Equals(other))
                 return false;
 
             return Equals(this.MethodRepresented, ((SystemReflectionMethodBaseValue)other).MethodRepresented);
@@ -780,6 +797,10 @@ namespace ILCompiler.Dataflow
         public KnownStringValue(string contents)
         {
             Kind = ValueNodeKind.KnownString;
+
+            // Should be System.String, but we don't have a use case for it
+            StaticType = null;
+
             Contents = contents;
         }
 
@@ -787,9 +808,7 @@ namespace ILCompiler.Dataflow
 
         public override bool Equals(ValueNode other)
         {
-            if (other == null)
-                return false;
-            if (this.Kind != other.Kind)
+            if (!base.Equals(other))
                 return false;
 
             return this.Contents == ((KnownStringValue)other).Contents;
@@ -817,6 +836,15 @@ namespace ILCompiler.Dataflow
         /// The bitfield of dynamically accessed member types the node guarantees
         /// </summary>
         public DynamicallyAccessedMemberTypes DynamicallyAccessedMemberTypes { get; protected set; }
+
+        public override bool Equals(ValueNode other)
+        {
+            if (!base.Equals(other))
+                return false;
+            var otherValue = (LeafValueWithDynamicallyAccessedMemberNode)other;
+            return SourceContext == otherValue.SourceContext
+                && DynamicallyAccessedMemberTypes == otherValue.DynamicallyAccessedMemberTypes;
+        }
     }
 
     /// <summary>
@@ -827,6 +855,11 @@ namespace ILCompiler.Dataflow
         public MethodParameterValue(MethodDesc method, int parameterIndex, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes)
         {
             Kind = ValueNodeKind.MethodParameter;
+            StaticType = !method.Signature.IsStatic
+                ? (parameterIndex == 0
+                    ? method.OwningType
+                    : method.Signature[parameterIndex - 1])
+                : method.Signature[parameterIndex];
             ParameterIndex = parameterIndex;
             DynamicallyAccessedMemberTypes = dynamicallyAccessedMemberTypes;
             SourceContext = !method.Signature.IsStatic && parameterIndex == 0 ?
@@ -838,13 +871,11 @@ namespace ILCompiler.Dataflow
 
         public override bool Equals(ValueNode other)
         {
-            if (other == null)
-                return false;
-            if (this.Kind != other.Kind)
+            if (!base.Equals(other))
                 return false;
 
             var otherValue = (MethodParameterValue)other;
-            return this.ParameterIndex == otherValue.ParameterIndex && this.DynamicallyAccessedMemberTypes == otherValue.DynamicallyAccessedMemberTypes;
+            return this.ParameterIndex == otherValue.ParameterIndex;
         }
 
         public override int GetHashCode()
@@ -866,19 +897,17 @@ namespace ILCompiler.Dataflow
         public AnnotatedStringValue(Origin sourceContext, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes)
         {
             Kind = ValueNodeKind.AnnotatedString;
+
+            // Should be System.String, but we don't have a use case for it
+            StaticType = null;
+
             DynamicallyAccessedMemberTypes = dynamicallyAccessedMemberTypes;
             SourceContext = sourceContext;
         }
 
         public override bool Equals(ValueNode other)
         {
-            if (other == null)
-                return false;
-            if (this.Kind != other.Kind)
-                return false;
-
-            var otherValue = (AnnotatedStringValue)other;
-            return this.DynamicallyAccessedMemberTypes == otherValue.DynamicallyAccessedMemberTypes;
+            return base.Equals(other);
         }
 
         public override int GetHashCode()
@@ -900,19 +929,14 @@ namespace ILCompiler.Dataflow
         public MethodReturnValue(MethodDesc method, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes)
         {
             Kind = ValueNodeKind.MethodReturn;
+            StaticType = method.Signature.ReturnType;
             DynamicallyAccessedMemberTypes = dynamicallyAccessedMemberTypes;
             SourceContext = new MethodReturnOrigin(method);
         }
 
         public override bool Equals(ValueNode other)
         {
-            if (other == null)
-                return false;
-            if (this.Kind != other.Kind)
-                return false;
-
-            var otherValue = (MethodReturnValue)other;
-            return this.DynamicallyAccessedMemberTypes == otherValue.DynamicallyAccessedMemberTypes;
+            return base.Equals(other);
         }
 
         public override int GetHashCode()
@@ -937,6 +961,7 @@ namespace ILCompiler.Dataflow
         private MergePointValue(ValueNode one, ValueNode two)
         {
             Kind = ValueNodeKind.MergePoint;
+            StaticType = null;
             m_values = new ValueNodeHashSet();
 
             if (one.Kind == ValueNodeKind.MergePoint)
@@ -1022,9 +1047,7 @@ namespace ILCompiler.Dataflow
 
         public override bool Equals(ValueNode other)
         {
-            if (other == null)
-                return false;
-            if (this.Kind != other.Kind)
+            if (!base.Equals(other))
                 return false;
 
             MergePointValue otherMpv = (MergePointValue)other;
@@ -1066,6 +1089,10 @@ namespace ILCompiler.Dataflow
         {
             _resolver = resolver;
             Kind = ValueNodeKind.GetTypeFromString;
+
+            // Should be System.Type, but we don't have a use case for it
+            StaticType = null;
+
             AssemblyIdentity = assemblyIdentity;
             NameString = nameString;
         }
@@ -1129,9 +1156,7 @@ namespace ILCompiler.Dataflow
 
         public override bool Equals(ValueNode other)
         {
-            if (other == null)
-                return false;
-            if (this.Kind != other.Kind)
+            if (!base.Equals(other))
                 return false;
 
             GetTypeFromStringValue otherGtfs = (GetTypeFromStringValue)other;
@@ -1160,6 +1185,7 @@ namespace ILCompiler.Dataflow
         public LoadFieldValue(FieldDesc fieldToLoad, DynamicallyAccessedMemberTypes dynamicallyAccessedMemberTypes)
         {
             Kind = ValueNodeKind.LoadField;
+            StaticType = fieldToLoad.FieldType;
             Field = fieldToLoad;
             DynamicallyAccessedMemberTypes = dynamicallyAccessedMemberTypes;
             SourceContext = new FieldOrigin(fieldToLoad);
@@ -1169,16 +1195,11 @@ namespace ILCompiler.Dataflow
 
         public override bool Equals(ValueNode other)
         {
-            if (other == null)
-                return false;
-            if (this.Kind != other.Kind)
+            if (!base.Equals(other))
                 return false;
 
             LoadFieldValue otherLfv = (LoadFieldValue)other;
-            if (!Equals(this.Field, otherLfv.Field))
-                return false;
-
-            return this.DynamicallyAccessedMemberTypes == otherLfv.DynamicallyAccessedMemberTypes;
+            return Equals(this.Field, otherLfv.Field);
         }
 
         public override int GetHashCode()
@@ -1200,6 +1221,10 @@ namespace ILCompiler.Dataflow
         public ConstIntValue(int value)
         {
             Kind = ValueNodeKind.ConstInt;
+
+            // Should be System.Int32, but we don't have a usecase for it right now
+            StaticType = null;
+
             Value = value;
         }
 
@@ -1212,9 +1237,7 @@ namespace ILCompiler.Dataflow
 
         public override bool Equals(ValueNode other)
         {
-            if (other == null)
-                return false;
-            if (this.Kind != other.Kind)
+            if (!base.Equals(other))
                 return false;
 
             ConstIntValue otherCiv = (ConstIntValue)other;
@@ -1229,18 +1252,29 @@ namespace ILCompiler.Dataflow
 
     class ArrayValue : ValueNode
     {
-        protected override int NumChildren => 1;
+        protected override int NumChildren => 1 + IndexValues.Count;
 
         /// <summary>
         /// Constructs an array value of the given size
         /// </summary>
-        public ArrayValue(ValueNode size)
+        public ArrayValue(ValueNode size, TypeDesc elementType)
         {
             Kind = ValueNodeKind.Array;
+            // Should be System.Array (or similar), but we don't have a use case for it
+            StaticType = null;
             Size = size ?? UnknownValue.Instance;
+            ElementType = elementType;
+            IndexValues = new Dictionary<int, ValueBasicBlockPair>();
+        }
+        private ArrayValue(ValueNode size, TypeDesc elementType, Dictionary<int, ValueBasicBlockPair> indexValues)
+            : this(size, elementType)
+        {
+            IndexValues = indexValues;
         }
 
         public ValueNode Size { get; }
+        public TypeDesc ElementType { get; }
+        public Dictionary<int, ValueBasicBlockPair> IndexValues { get; }
 
         public override int GetHashCode()
         {
@@ -1249,29 +1283,39 @@ namespace ILCompiler.Dataflow
 
         public override bool Equals(ValueNode other)
         {
-            if (other == null)
-                return false;
-            if (this.Kind != other.Kind)
+            if (!base.Equals(other))
                 return false;
 
             ArrayValue otherArr = (ArrayValue)other;
-            return Size.Equals(otherArr.Size);
+            bool equals = Size.Equals(otherArr.Size);
+            equals &= IndexValues.Count == otherArr.IndexValues.Count;
+            if (!equals)
+                return false;
+            // If both sets T and O are the same size and "T intersect O" is empty, then T == O.
+            HashSet<KeyValuePair<int, ValueBasicBlockPair>> thisValueSet = new(IndexValues);
+            HashSet<KeyValuePair<int, ValueBasicBlockPair>> otherValueSet = new(otherArr.IndexValues);
+            thisValueSet.ExceptWith(otherValueSet);
+            return thisValueSet.Count == 0;
         }
 
         protected override string NodeToString()
         {
-            return ValueNodeDump.ValueNodeToString(this, Size);
+            // TODO: Use StringBuilder and remove Linq usage.
+            return $"(Array Size:{ValueNodeDump.ValueNodeToString(this, Size)}, Values:({string.Join(',', IndexValues.Select(v => $"({v.Key},{ValueNodeDump.ValueNodeToString(v.Value.Value)})"))})";
         }
 
         protected override IEnumerable<ValueNode> EvaluateUniqueValues()
         {
             foreach (var sizeConst in Size.UniqueValuesInternal)
-                yield return new ArrayValue(sizeConst);
+                yield return new ArrayValue(sizeConst, ElementType, IndexValues);
         }
 
         protected override ValueNode ChildAt(int index)
         {
             if (index == 0) return Size;
+            if (index - 1 <= IndexValues.Count)
+                return IndexValues.Values.ElementAt(index - 1).Value;
+
             throw new InvalidOperationException();
         }
     }
@@ -1354,5 +1398,11 @@ namespace ILCompiler.Dataflow
                 hashCode.Add(item);
             return hashCode.ToHashCode();
         }
+    }
+
+    public struct ValueBasicBlockPair
+    {
+        public ValueNode Value;
+        public int BasicBlockIndex;
     }
 }
