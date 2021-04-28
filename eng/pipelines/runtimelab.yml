@@ -103,6 +103,7 @@ stages:
       - windows_arm64
       - OSX_x64
       jobParameters:
+        timeoutInMinutes: 100
         isOfficialBuild: ${{ variables.isOfficialBuild }}
         timeoutInMinutes: 90
         testGroup: innerloop
