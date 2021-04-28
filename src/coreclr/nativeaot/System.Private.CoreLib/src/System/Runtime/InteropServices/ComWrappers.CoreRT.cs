@@ -159,26 +159,21 @@ namespace System.Runtime.InteropServices
         internal unsafe class NativeObjectWrapper
         {
             private IntPtr _externalComObject;
-            private GCHandle _comWrappersHandle;
+            private ComWrappers _comWrappers;
             private GCHandle _proxyHandle;
 
-            public NativeObjectWrapper(IntPtr externalComObject, GCHandle comWrappersHandle, GCHandle proxyHandle)
+            public NativeObjectWrapper(IntPtr externalComObject, ComWrappers comWrappers, GCHandle proxyHandle)
             {
                 _externalComObject = externalComObject;
-                _comWrappersHandle = comWrappersHandle;
+                _comWrappers = comWrappers;
                 _proxyHandle = proxyHandle;
                 Marshal.AddRef(externalComObject);
             }
 
             ~NativeObjectWrapper()
             {
-                if (_comWrappersHandle.IsAllocated)
-                {
-                    ((ComWrappers)_comWrappersHandle.Target)._rcwCache.Remove(_externalComObject);
-                }
-
+                _comWrappers._rcwCache.Remove(_externalComObject);
                 Marshal.Release(_externalComObject);
-                _comWrappersHandle.Free();
                 _proxyHandle.Free();
             }
         }
@@ -418,10 +413,9 @@ namespace System.Runtime.InteropServices
                 else
                 {
                     GCHandle proxyHandle = GCHandle.Alloc(retValue, GCHandleType.Weak);
-                    GCHandle comWrappersHandle = GCHandle.Alloc(impl, GCHandleType.Weak);
                     NativeObjectWrapper wrapper = new NativeObjectWrapper(
                         externalComObject,
-                        comWrappersHandle,
+                        impl,
                         proxyHandle);
                     impl._rcwTable.Add(retValue, wrapper);
                     impl._rcwCache.Add(externalComObject, proxyHandle);
