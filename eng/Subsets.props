@@ -50,7 +50,7 @@
   <PropertyGroup>
     <DefaultCoreClrSubsets>clr.native+linuxdac+clr.corelib+clr.tools+clr.nativecorelib+clr.packages</DefaultCoreClrSubsets>
 
-    <DefaultNativeAotSubsets>clr.jit+clr.alljits+nativeaot.tools+nativeaot.libs</DefaultNativeAotSubsets>
+    <DefaultNativeAotSubsets>clr.alljits+nativeaot.tools+nativeaot.libs</DefaultNativeAotSubsets>
 
     <DefaultMonoSubsets Condition="'$(MonoEnableLLVM)' == 'true' and '$(MonoLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
     <DefaultMonoSubsets Condition="'$(MonoAOTEnableLLVM)' == 'true' and '$(MonoAOTLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
