@@ -173,7 +173,11 @@ namespace System.Runtime.InteropServices
             ~NativeObjectWrapper()
             {
                 _comWrappers.RemoveRCWFromCache(_externalComObject);
-                _proxyHandle.Free();
+                if (_proxyHandle.IsAllocated)
+                {
+                    _proxyHandle.Free();
+                }
+
                 Marshal.Release(_externalComObject);
             }
         }
