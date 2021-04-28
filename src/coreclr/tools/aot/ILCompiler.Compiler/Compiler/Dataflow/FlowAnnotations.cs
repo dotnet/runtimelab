@@ -187,7 +187,6 @@ namespace ILCompiler.Dataflow
                 // class, interface, struct can have annotations
                 TypeDefinition typeDef = reader.GetTypeDefinition(ecmaType.Handle);
                 DynamicallyAccessedMemberTypes typeAnnotation = GetMemberTypesForDynamicallyAccessedMembersAttribute(reader, typeDef.GetCustomAttributes());
-
                 
                 try
                 {
@@ -249,9 +248,20 @@ namespace ILCompiler.Dataflow
 
                     DynamicallyAccessedMemberTypes methodMemberTypes =
                         GetMemberTypesForDynamicallyAccessedMembersAttribute(reader, reader.GetMethodDefinition(method.Handle).GetCustomAttributes());
+                    
+                    MethodSignature signature;
+                    try
+                    {
+                        signature = method.Signature;
+                    }
+                    catch (TypeSystemException)
+                    {
+                        // If we cannot resolve things in the signature, just move along.
+                        continue;
+                    }
 
                     int offset;
-                    if (!method.Signature.IsStatic)
+                    if (!signature.IsStatic)
                     {
                         offset = 1;
                     }
@@ -264,9 +274,9 @@ namespace ILCompiler.Dataflow
                     // treat that annotation as annotating the "this" parameter.
                     if (methodMemberTypes != DynamicallyAccessedMemberTypes.None)
                     {
-                        if (IsTypeInterestingForDataflow(method.OwningType) && !method.Signature.IsStatic)
+                        if (IsTypeInterestingForDataflow(method.OwningType) && !signature.IsStatic)
                         {
-                            paramAnnotations = new DynamicallyAccessedMemberTypes[method.Signature.Length + offset];
+                            paramAnnotations = new DynamicallyAccessedMemberTypes[signature.Length + offset];
                             paramAnnotations[0] = methodMemberTypes;
                         }
                         else
@@ -290,7 +300,7 @@ namespace ILCompiler.Dataflow
                         {
                             // this is the return parameter
                             returnAnnotation = GetMemberTypesForDynamicallyAccessedMembersAttribute(reader, parameter.GetCustomAttributes());
-                            if (returnAnnotation != DynamicallyAccessedMemberTypes.None && !IsTypeInterestingForDataflow(method.Signature.ReturnType))
+                            if (returnAnnotation != DynamicallyAccessedMemberTypes.None && !IsTypeInterestingForDataflow(signature.ReturnType))
                             {
                                 _logger.LogWarning(
                                     $"Return parameter of method '{method.GetDisplayName()}' has 'DynamicallyAccessedMembersAttribute', but that attribute can only be applied to parameters of type 'System.Type' or 'System.String'",
@@ -303,7 +313,7 @@ namespace ILCompiler.Dataflow
                             if (pa == DynamicallyAccessedMemberTypes.None)
                                 continue;
 
-                            if (!IsTypeInterestingForDataflow(method.Signature[parameter.SequenceNumber - 1]))
+                            if (!IsTypeInterestingForDataflow(signature[parameter.SequenceNumber - 1]))
                             {
                                 _logger.LogWarning(
                                     $"Parameter #{parameter.SequenceNumber} of method '{method.GetDisplayName()}' has 'DynamicallyAccessedMembersAttribute', but that attribute can only be applied to parameters of type 'System.Type' or 'System.String'",
@@ -313,7 +323,7 @@ namespace ILCompiler.Dataflow
 
                             if (paramAnnotations == null)
                             {
-                                paramAnnotations = new DynamicallyAccessedMemberTypes[method.Signature.Length + offset];
+                                paramAnnotations = new DynamicallyAccessedMemberTypes[signature.Length + offset];
                             }
                             paramAnnotations[parameter.SequenceNumber - 1 + offset] = pa;
                         }
