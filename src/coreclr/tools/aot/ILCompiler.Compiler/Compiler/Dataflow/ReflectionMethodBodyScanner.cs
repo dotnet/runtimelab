@@ -1230,7 +1230,7 @@ namespace ILCompiler.Dataflow
                             foreach (var valueNode in methodParams[0].UniqueValues())
                             {
                                 TypeDesc staticType = valueNode.StaticType;
-                                if (staticType is null || staticType.IsGenericParameter)
+                                if (staticType is null || (!staticType.IsDefType && !staticType.IsArray))
                                 {
                                     // We don’t know anything about the type GetType was called on. Track this as a usual “result of a method call without any annotations”
                                     methodReturnValue = MergePointValue.MergeValues(methodReturnValue, new MethodReturnValue(calledMethod, DynamicallyAccessedMemberTypes.None));
