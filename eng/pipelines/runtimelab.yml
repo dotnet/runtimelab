@@ -66,7 +66,7 @@ stages:
         - windows_x64
         - OSX_x64
         jobParameters:
-          timeoutInMinutes: 90
+          timeoutInMinutes: 100
           testGroup: innerloop
           buildArgs: -s nativeaot+libs+nativeaot.packages -lc release -rc debug
           extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
@@ -83,7 +83,7 @@ stages:
         - Linux_x64
         - windows_x64
         jobParameters:
-          timeoutInMinutes: 90
+          timeoutInMinutes: 100
           testGroup: innerloop
           buildArgs: -s nativeaot+libs+nativeaot.packages -lc release -rc checked
           extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
@@ -103,8 +103,8 @@ stages:
       - windows_arm64
       - OSX_x64
       jobParameters:
+        timeoutInMinutes: 100
         isOfficialBuild: ${{ variables.isOfficialBuild }}
-        timeoutInMinutes: 90
         testGroup: innerloop
         buildArgs: -s nativeaot.objwriter+nativeaot+libs+nativeaot.packages -c release
         extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
