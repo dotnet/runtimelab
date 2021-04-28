@@ -410,7 +410,7 @@ namespace System.Runtime.InteropServices
                         this,
                         retValue);
                     _rcwTable.Add(retValue, wrapper);
-                    _rcwCache.Add(externalComObject, wrapper.ProxyHandle);
+                    _rcwCache.Add(externalComObject, wrapper._proxyHandle);
                 }
             }
 
