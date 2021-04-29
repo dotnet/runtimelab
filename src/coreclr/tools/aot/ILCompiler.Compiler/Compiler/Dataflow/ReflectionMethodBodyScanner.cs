@@ -1232,7 +1232,7 @@ namespace ILCompiler.Dataflow
                                 TypeDesc staticType = valueNode.StaticType;
                                 if (staticType is null || (!staticType.IsDefType && !staticType.IsArray))
                                 {
-                                    // We don’t know anything about the type GetType was called on. Track this as a usual “result of a method call without any annotations”
+                                    // We don't know anything about the type GetType was called on. Track this as a usual "result of a method call without any annotations"
                                     methodReturnValue = MergePointValue.MergeValues(methodReturnValue, new MethodReturnValue(calledMethod, DynamicallyAccessedMemberTypes.None));
                                 }
                                 else if (staticType.IsSealed() || staticType.IsTypeOf("System", "Delegate"))
