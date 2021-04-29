@@ -33,6 +33,7 @@ namespace System.Net.Http.LowLevel
             Reset();
             _writeWaitTaskSource.Reset();
             _readWaitTaskSource.Reset();
+            ReadType = HttpReadType.None;
         }
 
         protected internal override async ValueTask DisposeAsync(int version)

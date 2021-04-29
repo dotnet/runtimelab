@@ -123,18 +123,20 @@ namespace System.Net.Http.LowLevel.Tests
             await RunMultiStreamTest(
                 async (client, uri) =>
                 {
-                    foreach ((var testIdx, var headers, var content, var trailingHeaders) in InterleavedData())
+                    foreach (var (testIdx, headers, content, trailingHeaders, isChunked) in InterleavedData())
                     {
                         await using ValueHttpRequest request = (await client.CreateNewRequestAsync(Version, HttpVersionPolicy.RequestVersionExact)).Value;
-                        await ClientSendHelperAsync(request, uri, testIdx, headers, content, trailingHeaders);
+                        await ClientSendHelperAsync(request, uri, testIdx, headers, content, trailingHeaders, isChunked);
                     }
                 },
                 async server =>
                 {
-                    foreach ((var testIdx, var headers, var content, var trailingHeaders) in InterleavedData())
+                    foreach (var (testIdx, headers, content, trailingHeaders, _) in InterleavedData())
                     {
                         await using HttpTestStream serverStream = await server.AcceptStreamAsync();
-                        HttpTestFullRequest request = await serverStream.ReceiveAndSendAsync();
+
+                        HttpTestFullRequest request = await serverStream.ReceiveAndSendAsync(200,
+                            new TestHeadersSink {{"Test-Index", new List<string> {testIdx.ToString(CultureInfo.InvariantCulture)}}});
                         Assert.True(request.Headers.Contains(headers));
                         Assert.Equal(string.Join("", content), request.Content);
 
@@ -146,10 +148,10 @@ namespace System.Net.Http.LowLevel.Tests
                 }, millisecondsTimeout: DefaultTestTimeout * 10);
         }
 
-        private async Task ClientSendHelperAsync(ValueHttpRequest client, Uri serverUri, int testIdx, TestHeadersSink requestHeaders, List<string> requestContent, TestHeadersSink? requestTrailingHeaders)
+        private async Task ClientSendHelperAsync(ValueHttpRequest client, Uri serverUri, int testIdx, TestHeadersSink requestHeaders, List<string> requestContent, TestHeadersSink? requestTrailingHeaders, bool isChunked = false)
         {
             long contentLength = requestContent.Sum(x => (long)x.Length);
-            client.ConfigureRequest(hasContentLength: true, hasTrailingHeaders: requestTrailingHeaders != null);
+            client.ConfigureRequest(hasContentLength: !isChunked, hasTrailingHeaders: requestTrailingHeaders != null);
             client.WriteRequestStart(HttpMethod.Post, serverUri);
             client.WriteHeader("Content-Length", contentLength.ToString(CultureInfo.InvariantCulture));
             client.WriteHeader("Test-Index", testIdx.ToString(CultureInfo.InvariantCulture));
@@ -166,64 +168,42 @@ namespace System.Net.Http.LowLevel.Tests
             }
 
             await client.CompleteRequestAsync();
+            Assert.True(await client.ReadToFinalResponseAsync());
+            await client.DrainAsync();
         }
 
-        public static IEnumerable<(int testidx, TestHeadersSink headers, List<string> content, TestHeadersSink? trailingHeaders)> InterleavedData()
+        public static IEnumerable<(int testidx, TestHeadersSink headers, List<string> content, TestHeadersSink? trailingHeaders, bool isChunked)> InterleavedData()
         {
-            IEnumerator<object[]> nonChunkedIter = NonChunkedData().GetEnumerator();
-            IEnumerator<object[]> chunkedIter = ChunkedData().GetEnumerator();
-            object[] nonChunked, chunked;
-            bool hasNonChunked, hasChunked;
-
-            hasNonChunked = nonChunkedIter.MoveNext();
-            hasChunked = chunkedIter.MoveNext();
-
-            int testIdx = 0;
-
-            while (hasNonChunked && hasChunked)
+            static IEnumerable<T> Combine<T>(IEnumerable<T> first, IEnumerable<T> second)
             {
-                nonChunked = nonChunkedIter.Current;
-                yield return (
-                    ++testIdx,
-                    (TestHeadersSink)nonChunked[1],
-                    (List<string>)nonChunked[2],
-                    (TestHeadersSink?)null
-                    );
-                hasNonChunked = nonChunkedIter.MoveNext();
+                IEnumerator<T> firstEnumerator = first.GetEnumerator();
+                IEnumerator<T> secondEnumerator = second.GetEnumerator();
 
-                chunked = chunkedIter.Current;
-                yield return (
-                    ++testIdx,
-                    (TestHeadersSink)chunked[1],
-                    (List<string>)chunked[2],
-                    (TestHeadersSink?)chunked[3]
-                    );
-                hasChunked = chunkedIter.MoveNext();
+                var hasFirst = firstEnumerator.MoveNext();
+                var hasSecond = secondEnumerator.MoveNext();
+                while (hasFirst || hasSecond)
+                {
+                    if (hasFirst)
+                    {
+                        yield return firstEnumerator.Current;
+                        hasFirst = firstEnumerator.MoveNext();
+                    }
+
+                    if (hasSecond)
+                    {
+                        yield return secondEnumerator.Current;
+                        hasSecond = secondEnumerator.MoveNext();
+                    }
+                }
             }
 
-            while (hasNonChunked)
-            {
-                nonChunked = nonChunkedIter.Current;
-                yield return (
-                    ++testIdx,
-                    (TestHeadersSink)nonChunked[1],
-                    (List<string>)nonChunked[2],
-                    (TestHeadersSink?)null
-                    );
-                hasNonChunked = nonChunkedIter.MoveNext();
-            }
+            var chunked = ChunkedData().Select(x => (headers: (TestHeadersSink)x[1], content: (List<string>)x[2],
+                trailing: (TestHeadersSink?)x[3], isChunked: true));
+            var nonChunked = NonChunkedData().Select(x => (headers: (TestHeadersSink)x[1],
+                content: (List<string>)x[2], trailing: (TestHeadersSink?)null, isChunked: false));
 
-            while (hasChunked)
-            {
-                chunked = chunkedIter.Current;
-                yield return (
-                    ++testIdx,
-                    (TestHeadersSink)chunked[1],
-                    (List<string>)chunked[2],
-                    (TestHeadersSink?)chunked[3]
-                    );
-                hasChunked = chunkedIter.MoveNext();
-            }
+            return Combine(nonChunked, chunked)
+                .Select((x, index) => (index, x.headers, x.content, x.trailing, x.isChunked));
         }
 
         public static IEnumerable<object[]> NonChunkedData()
@@ -390,7 +370,7 @@ namespace System.Net.Http.LowLevel.Tests
             {
                 return null;
             }
-            
+
             var properties = new ConnectionProperties();
             properties.Add(SslConnectionFactory.SslServerAuthenticationOptionsPropertyKey, new SslServerAuthenticationOptions
             {

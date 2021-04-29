@@ -136,11 +136,7 @@ namespace System.Net.Http.LowLevel
             if (stream == null) throw new ArgumentNullException(nameof(stream));
             if (version == null) throw new ArgumentNullException(nameof(version));
 
-            if (version == HttpPrimitiveVersion.Version10)
-            {
-                _closeConnection = true;
-            }
-            else if (version != HttpPrimitiveVersion.Version11)
+            if (version != HttpPrimitiveVersion.Version10 && version != HttpPrimitiveVersion.Version11)
             {
                 throw new ArgumentException($"{nameof(Http1Connection)} may only be used for HTTP/1.0 and HTTP/1.1.", nameof(version));
             }

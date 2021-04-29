@@ -35,7 +35,7 @@ namespace System.Net.Http.LowLevel.Tests
         {
             var memoryStream = new MemoryStream();
 
-            var contentStream = new HttpContentStream(request, ownsRequest: false);
+            var contentStream = new HttpContentStream(request, null, null, ownsRequest: false);
             await using (contentStream.ConfigureAwait(false))
             {
                 await contentStream.CopyToAsync(memoryStream).ConfigureAwait(false);
