@@ -909,18 +909,6 @@ namespace Internal.TypeSystem.Interop
             StoreNativeValue(codeStream);
         }
 
-        protected override void AllocAndTransformNativeToManaged(ILCodeStream codeStream)
-        {
-            ILEmitter emitter = _ilCodeStreams.Emitter;
-
-            LoadNativeValue(codeStream);
-
-            MethodDesc helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertNativeComInterfaceToManaged");
-            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
-
-            StoreManagedValue(codeStream);
-        }
-
         protected override void TransformNativeToManaged(ILCodeStream codeStream)
         {
             ILEmitter emitter = _ilCodeStreams.Emitter;
