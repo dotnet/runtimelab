@@ -306,6 +306,31 @@ namespace System.Net.Http.LowLevel.Tests
                     Assert.Equal(request.Version, version);
                 });
         }
+        
+        [Theory]
+        [InlineData("/")]
+        [InlineData("/path")]
+        [InlineData("/path?query&param")]
+        public async Task RequestProperty_Host(string path)
+        {
+            await RunClientTest(
+                async (client, serverUri) =>
+                {
+                    Uri uri = new (serverUri, path);
+                    HttpRequestMessage requestMessage = new(HttpMethod.Get,  uri)
+                    {
+                        
+                    };
+                    using HttpResponseMessage response = await client.SendAsync(requestMessage);
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                },
+                async server =>
+                {
+                    await using HttpTestStream stream = await server.AcceptStreamAsync();
+                    HttpTestFullRequest request = await stream.ReceiveAndSendAsync();
+                    Assert.Equal(request.PathAndQuery, path);
+                });
+        }
 
         internal virtual async Task RunClientTest(Func<HttpClient, Uri, Task> clientFunc,
             Func<HttpTestConnection, Task> serverFunc, int? millisecondsTimeout = null)

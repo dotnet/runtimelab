@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Net.Sockets;
+using System.Threading.Tasks;
 
 namespace System.Net.Http.LowLevel.Tests.Servers
 {
