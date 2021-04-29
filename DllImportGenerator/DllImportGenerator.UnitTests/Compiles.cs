@@ -122,6 +122,7 @@ namespace DllImportGenerator.UnitTests
             // Function pointers
             yield return new[] { CodeSnippets.BasicParametersAndModifiersUnsafe("delegate* unmanaged<void>") };
             yield return new[] { CodeSnippets.BasicParametersAndModifiersUnsafe("delegate* unmanaged<int, int>") };
+            yield return new[] { CodeSnippets.BasicParametersAndModifiersUnsafe("delegate* unmanaged[Stdcall]<int, int>") };
 
             // Structs
             yield return new[] { CodeSnippets.BlittableStructParametersAndModifiers };
