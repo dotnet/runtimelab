@@ -270,6 +270,7 @@ namespace System.Reflection.Tests
         public static IEnumerable<object[]> Methods =>
             typeof(ModuleTests).GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly).Select(m => new object[] { m });
 
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/901" /* NativeAot */)]
         [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(Methods))]
         public void ResolveMethod(MethodInfo t)
@@ -299,6 +300,7 @@ namespace System.Reflection.Tests
         public static IEnumerable<object[]> Fields =>
             typeof(ModuleTests).GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly).Select(f => new object[] { f });
 
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/901" /* NativeAot */)]
         [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(Fields))]
         public void ResolveField(FieldInfo t)

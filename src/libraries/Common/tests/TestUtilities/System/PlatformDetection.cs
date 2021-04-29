@@ -103,6 +103,8 @@ namespace System
 
         public static bool IsInvokingStaticConstructorsSupported => !IsNativeAot;
 
+        public static bool IsMetadataUpdateSupported => !IsNativeAot;
+
         // System.Security.Cryptography.Xml.XmlDsigXsltTransform.GetOutput() relies on XslCompiledTransform which relies
         // heavily on Reflection.Emit
         public static bool IsXmlDsigXsltTransformSupported => !PlatformDetection.IsInAppContainer;
@@ -269,7 +271,7 @@ namespace System
             int version = 0;
             try
             {
-                Type interopGlobalization = Type.GetType("Interop+Globalization");
+                Type interopGlobalization = Type.GetType("Interop+Globalization, System.Private.CoreLib");
                 if (interopGlobalization != null)
                 {
                     MethodInfo methodInfo = interopGlobalization.GetMethod("GetICUVersion", BindingFlags.NonPublic | BindingFlags.Static);

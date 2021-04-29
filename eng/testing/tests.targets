@@ -21,6 +21,10 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <TestSingleFile Condition="'$(ClrNativeAot)' == 'true'">true</TestSingleFile>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <ArchiveTestsAfterTargets>PrepareForRun</ArchiveTestsAfterTargets>
 
     <!-- For browser we need to hook up the target with DependsOnTargets in PublishTestAsSelfContained
@@ -103,10 +107,12 @@
     </PropertyGroup>
 
     <!-- Invoke the run script with the test host as the runtime path. -->
+    <!-- We set HELIX_WORKITEM_PAYLOAD to an empty string to prevent the runner script from exiting with code 0 if there's failures -->
     <Exec Command="$(RunTestsCommand)"
           ContinueOnError="true"
           IgnoreExitCode="true"
-          IgnoreStandardErrorWarningFormat="true">
+          IgnoreStandardErrorWarningFormat="true"
+          EnvironmentVariables="HELIX_WORKITEM_PAYLOAD=;">
       <Output PropertyName="TestRunExitCode" TaskParameter="ExitCode" />
     </Exec>
 
