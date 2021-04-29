@@ -376,7 +376,7 @@ namespace System.Runtime.InteropServices
             {
                 using (LockHolder.Hold(_lock))
                 {
-                    if (_rcwCache.TryGetValue(externalComObject, out var handle))
+                    if (_rcwCache.TryGetValue(externalComObject, out GCHandle handle))
                     {
                         retValue = handle.Target;
                         return false;
