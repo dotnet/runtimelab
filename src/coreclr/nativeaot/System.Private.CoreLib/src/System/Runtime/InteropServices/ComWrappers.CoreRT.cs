@@ -421,7 +421,7 @@ namespace System.Runtime.InteropServices
         {
             using (LockHolder.Hold(_lock))
             {
-                _rcwCache.Remove(_externalComObject);
+                _rcwCache.Remove(comPointer);
             }
         }
 
