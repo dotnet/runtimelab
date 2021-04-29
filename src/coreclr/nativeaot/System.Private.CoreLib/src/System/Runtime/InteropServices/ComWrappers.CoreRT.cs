@@ -166,8 +166,8 @@ namespace System.Runtime.InteropServices
             {
                 _externalComObject = externalComObject;
                 _comWrappers = comWrappers;
-                _proxyHandle = GCHandle.Alloc(comProxy, GCHandleType.Weak);
                 Marshal.AddRef(externalComObject);
+                _proxyHandle = GCHandle.Alloc(comProxy, GCHandleType.Weak);
             }
 
             ~NativeObjectWrapper()
