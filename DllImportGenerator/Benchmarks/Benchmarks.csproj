@@ -3,9 +3,11 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Configurations>Debug;Release;Release_Forwarders</Configurations>
+    <DllImportGenerator_GenerateForwarders Condition="'$(Configuration)' == 'Release_Forwarders'">true</DllImportGenerator_GenerateForwarders>
   </PropertyGroup>
 
   <ItemGroup>
