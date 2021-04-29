@@ -113,10 +113,15 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.PointerParameters<bool>() };
             yield return new[] { CodeSnippets.PointerParameters<IntPtr>() };
             yield return new[] { CodeSnippets.PointerParameters<UIntPtr>() };
+            yield return new[] { CodeSnippets.BasicParametersAndModifiersUnsafe("void*") };
 
             // Delegates
             yield return new[] { CodeSnippets.DelegateParametersAndModifiers };
             yield return new[] { CodeSnippets.DelegateMarshalAsParametersAndModifiers };
+
+            // Function pointers
+            yield return new[] { CodeSnippets.BasicParametersAndModifiersUnsafe("delegate* unmanaged<void>") };
+            yield return new[] { CodeSnippets.BasicParametersAndModifiersUnsafe("delegate* unmanaged<int, int>") };
 
             // Structs
             yield return new[] { CodeSnippets.BlittableStructParametersAndModifiers };
@@ -208,12 +213,12 @@ namespace DllImportGenerator.UnitTests
             var newCompDiags = newComp.GetDiagnostics();
             Assert.Empty(newCompDiags);
         }
-        
+
         public static IEnumerable<object[]> CodeSnippetsToCompileWithForwarder()
         {
             yield return new[] { CodeSnippets.UserDefinedEntryPoint };
             yield return new[] { CodeSnippets.AllSupportedDllImportNamedArguments };
-            
+
             // Parameter / return types (supported in DllImportGenerator)
             yield return new[] { CodeSnippets.BasicParametersAndModifiers<byte>() };
             // Parameter / return types (not supported in DllImportGenerator)
@@ -243,7 +248,7 @@ namespace DllImportGenerator.UnitTests
         {
             // SetLastError
             yield return new[] { CodeSnippets.AllSupportedDllImportNamedArguments };
-            
+
             // SafeHandle
             yield return new[] { CodeSnippets.BasicParametersAndModifiers("Microsoft.Win32.SafeHandles.SafeFileHandle") };
         }
