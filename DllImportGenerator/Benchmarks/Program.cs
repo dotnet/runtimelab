@@ -19,7 +19,8 @@ namespace Benchmarks
             var config = DefaultConfig.Instance
                 .AddJob(GetDefaultJob())
                 .AddJob(GetForwarderJob())
-                .AddDiagnoser(MemoryDiagnoser.Default);
+                .AddDiagnoser(MemoryDiagnoser.Default)
+                .WithOptions(ConfigOptions.KeepBenchmarkFiles);
 
             BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, config);
         }
@@ -44,6 +45,7 @@ namespace Benchmarks
                     new GenerateForwarderBuilder(settings),
                    new DotNetCliExecutor(settings.CustomDotNetCliPath)))
                 .WithId("Built-in")
+                .WithArguments(new []{ new MsBuildArgument("/p:DllImportGenerator_GenerateForwarders=true") })
                 .AsBaseline();
         }
     }
