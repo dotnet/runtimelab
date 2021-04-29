@@ -428,7 +428,13 @@ namespace Internal.Runtime.CompilerHelpers
                 return null;
             }
 
+#if TARGET_WINDOWS
+#pragma warning disable CA1416
+            return ComWrappers.ComObjectForInterface(pUnk);
+#pragma warning restore CA1416
+#else
             throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+#endif
         }
 
         internal static int AsAnyGetNativeSize(object o)

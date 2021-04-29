@@ -1,8 +1,10 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 using Internal.Runtime.CompilerServices;
 
@@ -18,6 +20,9 @@ namespace System.Runtime.InteropServices
         internal static Guid IID_IUnknown = new Guid(0x00000000, 0x0000, 0x0000, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
 
         private readonly ConditionalWeakTable<object, ManagedObjectWrapperHolder> _ccwTable = new ConditionalWeakTable<object, ManagedObjectWrapperHolder>();
+        private readonly Lock _lock = new Lock();
+        private readonly Dictionary<IntPtr, GCHandle> _rcwCache = new Dictionary<IntPtr, GCHandle>();
+        private readonly ConditionalWeakTable<object, NativeObjectWrapper> _rcwTable = new ConditionalWeakTable<object, NativeObjectWrapper>();
 
         /// <summary>
         /// ABI for function dispatch of a COM interface.
@@ -151,11 +156,30 @@ namespace System.Runtime.InteropServices
             }
         }
 
-        internal unsafe struct IUnknownVftbl
+        internal unsafe class NativeObjectWrapper
         {
-            public delegate* unmanaged<IntPtr, ref Guid, out IntPtr, int> QueryInterface;
-            public delegate* unmanaged<IntPtr, uint> AddRef;
-            public delegate* unmanaged<IntPtr, uint> Release;
+            private readonly IntPtr _externalComObject;
+            private readonly ComWrappers _comWrappers;
+            internal GCHandle _proxyHandle;
+
+            public NativeObjectWrapper(IntPtr externalComObject, ComWrappers comWrappers, object comProxy)
+            {
+                _externalComObject = externalComObject;
+                _comWrappers = comWrappers;
+                Marshal.AddRef(externalComObject);
+                _proxyHandle = GCHandle.Alloc(comProxy, GCHandleType.Weak);
+            }
+
+            ~NativeObjectWrapper()
+            {
+                _comWrappers.RemoveRCWFromCache(_externalComObject);
+                if (_proxyHandle.IsAllocated)
+                {
+                    _proxyHandle.Free();
+                }
+
+                Marshal.Release(_externalComObject);
+            }
         }
 
 #if false
@@ -194,15 +218,15 @@ namespace System.Runtime.InteropServices
 
             ccwValue = _ccwTable.GetValue(instance, (c) =>
             {
-                ManagedObjectWrapper* value = CreateCCW(this, c, flags);
+                ManagedObjectWrapper* value = CreateCCW(c, flags);
                 return new ManagedObjectWrapperHolder(value);
             });
             return ccwValue.ComIp;
         }
 
-        private static unsafe ManagedObjectWrapper* CreateCCW(ComWrappers impl, object instance, CreateComInterfaceFlags flags)
+        private unsafe ManagedObjectWrapper* CreateCCW(object instance, CreateComInterfaceFlags flags)
         {
-            ComInterfaceEntry* userDefined = impl.ComputeVtables(instance, flags, out int userDefinedCount);
+            ComInterfaceEntry* userDefined = ComputeVtables(instance, flags, out int userDefinedCount);
 
             // Maximum number of runtime supplied vtables.
             Span<IntPtr> runtimeDefinedVtable = stackalloc IntPtr[4];
@@ -255,7 +279,7 @@ namespace System.Runtime.InteropServices
         public object GetOrCreateObjectForComInstance(IntPtr externalComObject, CreateObjectFlags flags)
         {
             object? obj;
-            if (!TryGetOrCreateObjectForComInstanceInternal(this, externalComObject, IntPtr.Zero, flags, null, out obj))
+            if (!TryGetOrCreateObjectForComInstanceInternal(externalComObject, IntPtr.Zero, flags, null, out obj))
                 throw new ArgumentNullException(nameof(externalComObject));
 
             return obj!;
@@ -298,27 +322,34 @@ namespace System.Runtime.InteropServices
                 throw new ArgumentNullException(nameof(wrapper));
 
             object? obj;
-            if (!TryGetOrCreateObjectForComInstanceInternal(this, externalComObject, inner, flags, wrapper, out obj))
+            if (!TryGetOrCreateObjectForComInstanceInternal(externalComObject, inner, flags, wrapper, out obj))
                 throw new ArgumentNullException(nameof(externalComObject));
 
             return obj!;
         }
 
+        private unsafe ComInterfaceDispatch* TryGetComInterfaceDispatch(IntPtr comObject)
+        {
+            // If the first Vtable entry is part of the ManagedObjectWrapper IUnknown impl,
+            // we know how to interpret the IUnknown.
+            if (((IntPtr*)((IntPtr*)comObject)[0])[0] != ((IntPtr*)DefaultIUnknownVftblPtr)[0])
+            {
+                return null;
+            }
+
+            return (ComInterfaceDispatch*)comObject;
+        }
+
         /// <summary>
         /// Get the currently registered managed object or creates a new managed object and registers it.
         /// </summary>
-        /// <param name="impl">The <see cref="ComWrappers" /> implementation to use when creating the managed object.</param>
         /// <param name="externalComObject">Object to import for usage into the .NET runtime.</param>
         /// <param name="innerMaybe">The inner instance if aggregation is involved</param>
         /// <param name="flags">Flags used to describe the external object.</param>
         /// <param name="wrapperMaybe">The <see cref="object"/> to be used as the wrapper for the external object.</param>
         /// <param name="retValue">The managed object associated with the supplied external COM object or <c>null</c> if it could not be created.</param>
         /// <returns>Returns <c>true</c> if a managed object could be retrieved/created, <c>false</c> otherwise</returns>
-        /// <remarks>
-        /// If <paramref name="impl" /> is <c>null</c>, the global instance (if registered) will be used.
-        /// </remarks>
-        private static bool TryGetOrCreateObjectForComInstanceInternal(
-            ComWrappers impl,
+        private unsafe bool TryGetOrCreateObjectForComInstanceInternal(
             IntPtr externalComObject,
             IntPtr innerMaybe,
             CreateObjectFlags flags,
@@ -331,9 +362,67 @@ namespace System.Runtime.InteropServices
             if (flags.HasFlag(CreateObjectFlags.Aggregation))
                 throw new NotImplementedException();
 
-            object? wrapperMaybeLocal = wrapperMaybe;
-            retValue = null;
-            throw new NotImplementedException();
+            if (flags.HasFlag(CreateObjectFlags.Unwrap))
+            {
+                var comInterfaceDispatch = TryGetComInterfaceDispatch(externalComObject);
+                if (comInterfaceDispatch != null)
+                {
+                    retValue = ComInterfaceDispatch.GetInstance<object>(comInterfaceDispatch);
+                    return true;
+                }
+            }
+
+            if (!flags.HasFlag(CreateObjectFlags.UniqueInstance))
+            {
+                using (LockHolder.Hold(_lock))
+                {
+                    if (_rcwCache.TryGetValue(externalComObject, out GCHandle handle))
+                    {
+                        retValue = handle.Target;
+                        return false;
+                    }
+                }
+            }
+
+            retValue = CreateObject(externalComObject, flags);
+            if (retValue == null)
+            {
+                // If ComWrappers instance cannot create wrapper, we can do nothing here.
+                return false;
+            }
+
+            if (flags.HasFlag(CreateObjectFlags.UniqueInstance))
+            {
+                // No need to cache NativeObjectWrapper for unique instances. They are not cached.
+                return true;
+            }
+
+            using (LockHolder.Hold(_lock))
+            {
+                if (_rcwCache.TryGetValue(externalComObject, out var existingHandle))
+                {
+                    retValue = existingHandle.Target;
+                }
+                else
+                {
+                    NativeObjectWrapper wrapper = new NativeObjectWrapper(
+                        externalComObject,
+                        this,
+                        retValue);
+                    _rcwTable.Add(retValue, wrapper);
+                    _rcwCache.Add(externalComObject, wrapper._proxyHandle);
+                }
+            }
+
+            return true;
+        }
+
+        private void RemoveRCWFromCache(IntPtr comPointer)
+        {
+            using (LockHolder.Hold(_lock))
+            {
+                _rcwCache.Remove(comPointer);
+            }
         }
 
         /// <summary>
@@ -421,6 +510,16 @@ namespace System.Runtime.InteropServices
             }
 
             return comObjectInterface;
+        }
+
+        internal static object ComObjectForInterface(IntPtr externalComObject)
+        {
+            if (s_globalInstanceForMarshalling == null)
+            {
+                throw new InvalidOperationException(SR.InvalidOperation_ComInteropRequireComWrapperInstance);
+            }
+
+            return s_globalInstanceForMarshalling.GetOrCreateObjectForComInstance(externalComObject, CreateObjectFlags.Unwrap);
         }
 
         [UnmanagedCallersOnly]

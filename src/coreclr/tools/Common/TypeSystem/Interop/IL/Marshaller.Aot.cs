@@ -77,7 +77,7 @@ namespace Internal.TypeSystem.Interop
                     return new ComInterfaceMarshaller();
                 default:
                     // ensures we don't throw during create marshaller. We will throw NSE
-                    // during EmitIL which will be handled and an Exception method body 
+                    // during EmitIL which will be handled and an Exception method body
                     // will be emitted.
                     return new NotSupportedMarshaller();
             }
@@ -368,7 +368,7 @@ namespace Internal.TypeSystem.Interop
             // It generates the following code
             //if (ManagedArg.Field != null)
             //{
-            //          
+            //
             //  fixed (InlineArray* pUnsafe = &NativeArg.Field)
             //  {
             //        uint index = 0u;
@@ -477,7 +477,7 @@ namespace Internal.TypeSystem.Interop
             codeStream.EmitLdLoc(vLength);
             codeStream.Emit(ILOpcode.newarr, emitter.NewToken(managedElementType));
             codeStream.Emit(ILOpcode.stfld, emitter.NewToken(_managedField));
-            
+
 
             var vIndex = emitter.NewLocal(Context.GetWellKnownType(WellKnownType.Int32));
 
@@ -525,7 +525,7 @@ namespace Internal.TypeSystem.Interop
     {
         protected virtual bool IsAnsi
         {
-            get;    
+            get;
         }
 
         protected virtual MethodDesc GetManagedToNativeHelper()
@@ -909,21 +909,15 @@ namespace Internal.TypeSystem.Interop
             StoreNativeValue(codeStream);
         }
 
-        protected override void AllocAndTransformNativeToManaged(ILCodeStream codeStream)
+        protected override void TransformNativeToManaged(ILCodeStream codeStream)
         {
             ILEmitter emitter = _ilCodeStreams.Emitter;
 
-            MethodDesc helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertNativeComInterfaceToManaged");
             LoadNativeValue(codeStream);
-
+            MethodDesc helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertNativeComInterfaceToManaged");
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
 
             StoreManagedValue(codeStream);
-        }
-
-        protected override void TransformNativeToManaged(ILCodeStream codeStream)
-        {
-            throw new NotSupportedException();
         }
 
         protected override void TransformManagedToNative(ILCodeStream codeStream)
