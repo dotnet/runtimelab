@@ -160,7 +160,7 @@ namespace System.Runtime.InteropServices
         {
             private readonly IntPtr _externalComObject;
             private readonly ComWrappers _comWrappers;
-            public GCHandle _proxyHandle;
+            internal GCHandle _proxyHandle;
 
             public NativeObjectWrapper(IntPtr externalComObject, ComWrappers comWrappers, object comProxy)
             {
