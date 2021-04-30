@@ -190,6 +190,11 @@ namespace ILCompiler
             try
             {
                 PEReader peReader = OpenPEFile(filePath, out mappedViewAccessor);
+#if !READYTORUN
+                if ((peReader.PEHeaders.CorHeader.Flags & (CorFlags.ILLibrary | CorFlags.ILOnly)) == 0)
+                    throw new NotSupportedException($"Error: managed C++ is not supported: '{filePath}'");
+#endif
+
                 pdbReader = PortablePdbSymbolReader.TryOpenEmbedded(peReader, GetMetadataStringDecoder()) ?? OpenAssociatedSymbolFile(filePath, peReader);
 
                 EcmaModule module = EcmaModule.Create(this, peReader, containingAssembly: null, pdbReader);
