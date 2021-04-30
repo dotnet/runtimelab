@@ -1236,7 +1236,7 @@ namespace System.Runtime.InteropServices
 
         public static int GetHRForLastWin32Error()
         {
-            int dwLastError = GetLastWin32Error();
+            int dwLastError = GetLastPInvokeError();
             if ((dwLastError & 0x80000000) == 0x80000000)
             {
                 return dwLastError;
