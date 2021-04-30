@@ -137,6 +137,7 @@ if defined RunNativeAot (
   </Target>
 
   <Target Name="CreateNativeAotBuildProjectFile"
+    Condition="'$(_WillCLRTestProjectBuild)' == 'true'"
     Inputs="$(MSBuildProjectFullPath)"
     Outputs="$(OutputPath)\nativebuild.proj"
     BeforeTargets="Build">

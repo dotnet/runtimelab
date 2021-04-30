@@ -61,7 +61,8 @@
     <Error Condition="'$(DisableUnsupportedError)' != 'true' and '$(OS)' != 'Windows_NT' and $(RuntimeIdentifier.StartsWith('win'))"
       Text="Cross-OS native compilation is not supported. https://github.com/dotnet/corert/issues/5458" />
 
-    <Error Condition="'$(DisableUnsupportedError)' != 'true' and !$(RuntimeIdentifier.EndsWith('x64'))"
+    <Error Condition="'$(DisableUnsupportedError)' != 'true' and !($(RuntimeIdentifier.EndsWith('x64')) or
+      ($(RuntimeIdentifier.EndsWith('arm64')) and !$(RuntimeIdentifier.StartsWith('osx'))))"
       Text="Native compilation does not support targeting $(RuntimeIdentifier) yet. https://github.com/dotnet/corert/issues/4589" />
 
     <Error Condition="'$(DisableUnsupportedError)' != 'true' and !('$(IlcHostArch)' == 'x64' or '$(IlcHostArch)' == 'arm64')"
