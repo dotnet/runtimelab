@@ -192,7 +192,7 @@ namespace ILCompiler
                 PEReader peReader = OpenPEFile(filePath, out mappedViewAccessor);
 #if !READYTORUN
                 if (peReader.HasMetadata && (peReader.PEHeaders.CorHeader.Flags & (CorFlags.ILLibrary | CorFlags.ILOnly)) == 0)
-                    throw new NotSupportedException($"Error: managed C++ is not supported: '{filePath}'");
+                    throw new NotSupportedException($"Error: C++/CLI is not supported: '{filePath}'");
 #endif
 
                 pdbReader = PortablePdbSymbolReader.TryOpenEmbedded(peReader, GetMetadataStringDecoder()) ?? OpenAssociatedSymbolFile(filePath, peReader);
