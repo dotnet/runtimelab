@@ -413,6 +413,23 @@ partial class Test
 }}
 ";
 
+        /// <summary>
+        /// Declaration with parameters with MarshalAs.
+        /// </summary>
+        public static string MarshalAsParametersAndModifiersUnsafe(string typeName, UnmanagedType unmanagedType) => @$"
+using System.Runtime.InteropServices;
+partial class Test
+{{
+    [GeneratedDllImport(""DoesNotExist"")]
+    [return: MarshalAs(UnmanagedType.{unmanagedType})]
+    public static unsafe partial {typeName} Method(
+        [MarshalAs(UnmanagedType.{unmanagedType})] {typeName} p,
+        [MarshalAs(UnmanagedType.{unmanagedType})] in {typeName} pIn,
+        [MarshalAs(UnmanagedType.{unmanagedType})] ref {typeName} pRef,
+        [MarshalAs(UnmanagedType.{unmanagedType})] out {typeName} pOut);
+}}
+";
+
         public static string MarshalAsParametersAndModifiers<T>(UnmanagedType unmanagedType) => MarshalAsParametersAndModifiers(typeof(T).ToString(), unmanagedType);
 
         /// <summary>
