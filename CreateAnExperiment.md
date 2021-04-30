@@ -7,7 +7,7 @@ Experiments should be contained within a branch in the dotnet/runtimelab reposit
 - Pick a good name for your experiment and create branch for it in dotnet/runtimelab. Branch names should be prefixed with `feature/` in order to have official build support.
    - If the experiment is expected to require changes of .NET runtime itself, it should be branched off of [dotnet/runtimelab:runtime-main](https://github.com/dotnet/runtimelab/tree/runtime-main) that is a automatically maintained mirror of [dotnet/runtime:main](https://github.com/dotnet/runtime/tree/main).
    - Otherwise, the experiment should be branched off of [dotnet/runtimelab:standalone-template](https://github.com/dotnet/runtimelab/tree/standalone-template) to get CI and all publishing infrastructure for your experiment.
-- Submit a PR to update the [README.MD](https://github.com/dotnet/runtimelab/blob/main/README.md#active-experimental-projects) with the name of your branch and a brief description of the experiment. Example: [#19](https://github.com/dotnet/runtimelab/pull/19/files)
+- Submit a PR to update the [README.MD](https://github.com/dotnet/runtimelab/blob/docs/README.md#active-experimental-projects) with the name of your branch and a brief description of the experiment. Example: [#19](https://github.com/dotnet/runtimelab/pull/19/files)
 - Create label `area-<your experiment name>` for tagging issues. The label should use color `#d4c5f9`. 
 - Edit `README.MD` in your experiment branch to include details about the experiment. Example: [README.md](https://github.com/dotnet/runtimelab/blob/feature/NativeAOT/README.md).
 - If your experiment is branched from dotnet/runtime:
