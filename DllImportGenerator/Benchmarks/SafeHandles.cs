@@ -50,28 +50,23 @@ namespace Benchmarks
     public class SafeHandles
     {
         [Benchmark]
-        public bool ReturnSafeHandle()
+        public SafeHandle ReturnSafeHandle()
         {
-            using NativeExportsNE.NativeExportsSafeHandle handle = NativeExportsNE.AllocateHandle();
-            return handle.IsInvalid;
+            return NativeExportsNE.AllocateHandle();
         }
 
         [Benchmark]
-        public bool ByRefHandle()
+        public SafeHandle ByRefHandle()
         {
-            using NativeExportsNE.NativeExportsSafeHandle handleToDispose = NativeExportsNE.AllocateHandle();
-            NativeExportsNE.NativeExportsSafeHandle handle = handleToDispose;
+            NativeExportsNE.AllocateHandle(out NativeExportsNE.NativeExportsSafeHandle handle);
             NativeExportsNE.ModifyHandle(ref handle, newHandle: true);
-            using (handle)
-            {
-                return handleToDispose == handle;
-            }
+            return handle;
         }
 
         [Benchmark]
         public bool HandleByValue()
         {
-            using NativeExportsNE.NativeExportsSafeHandle handle = NativeExportsNE.AllocateHandle();
+            NativeExportsNE.NativeExportsSafeHandle handle = NativeExportsNE.AllocateHandle();
             return NativeExportsNE.IsHandleAlive(handle);
         }
     }
