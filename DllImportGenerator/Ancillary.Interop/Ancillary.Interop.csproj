@@ -7,7 +7,6 @@
     <RootNamespace>System.Runtime.InteropServices</RootNamespace>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <UseCustomRuntimeVersion>false</UseCustomRuntimeVersion>
   </PropertyGroup>
 
 </Project>
