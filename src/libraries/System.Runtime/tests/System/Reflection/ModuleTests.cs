@@ -206,6 +206,7 @@ namespace System.Reflection.Tests
         }
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/51912", typeof(PlatformDetection), nameof(PlatformDetection.IsBuiltWithAggressiveTrimming), nameof(PlatformDetection.IsBrowser))]
         public void GetMethod_AmbiguousMatch()
         {
             var ex = Assert.Throws<AmbiguousMatchException>(() => TestModule.GetMethod("TestMethodFoo"));
@@ -214,6 +215,7 @@ namespace System.Reflection.Tests
         }
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/51912", typeof(PlatformDetection), nameof(PlatformDetection.IsBuiltWithAggressiveTrimming), nameof(PlatformDetection.IsBrowser))]
         public void GetMethod()
         {
             var method = TestModule.GetMethod("TestMethodFoo", Type.EmptyTypes);
@@ -230,6 +232,7 @@ namespace System.Reflection.Tests
         }
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/51912", typeof(PlatformDetection), nameof(PlatformDetection.IsBuiltWithAggressiveTrimming), nameof(PlatformDetection.IsBrowser))]
         public void GetMethods()
         {
             var methodNames = TestModule.GetMethods().Select(m => m.Name).ToArray();
