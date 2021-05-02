@@ -28,6 +28,8 @@ namespace Internal.TypeSystem
         ByValArray = 0x1e,
         SysInt = 0x1f,
         SysUInt = 0x20,
+        AnsiBStr = 0x23,
+        TBStr = 0x24,
         Int = 0x1f,
         UInt = 0x20,
         Func = 0x26,

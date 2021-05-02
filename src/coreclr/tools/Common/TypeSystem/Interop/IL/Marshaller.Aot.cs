@@ -42,6 +42,8 @@ namespace Internal.TypeSystem.Interop
                     return new UTF8StringMarshaller();
                 case MarshallerKind.UnicodeString:
                     return new UnicodeStringMarshaller();
+                case MarshallerKind.BSTRString:
+                    return new BSTRStringMarshaller();
                 case MarshallerKind.SafeHandle:
                     return new SafeHandleMarshaller();
                 case MarshallerKind.UnicodeStringBuilder:
@@ -923,6 +925,31 @@ namespace Internal.TypeSystem.Interop
         protected override void TransformManagedToNative(ILCodeStream codeStream)
         {
             throw new NotSupportedException();
+        }
+    }
+
+    class BSTRStringMarshaller : Marshaller
+    {
+        protected override void TransformManagedToNative(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "StringToBstrBuffer");
+            LoadManagedValue(codeStream);
+
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreNativeValue(codeStream);
+        }
+
+        protected override void TransformNativeToManaged(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "BstrBufferToString");
+            LoadNativeValue(codeStream);
+
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreManagedValue(codeStream);
         }
     }
 }
