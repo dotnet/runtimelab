@@ -94,6 +94,7 @@ namespace Internal.TypeSystem.Interop
                 case MarshallerKind.CriticalHandle:
                     return context.GetWellKnownType(WellKnownType.IntPtr);
 
+                case MarshallerKind.BSTRString:
                 case MarshallerKind.UnicodeString:
                 case MarshallerKind.UnicodeStringBuilder:
                     return context.GetWellKnownType(WellKnownType.Char).MakePointerType();
@@ -540,6 +541,9 @@ namespace Internal.TypeSystem.Interop
                             elementMarshallerKind = MarshallerKind.UnicodeChar;
                             return MarshallerKind.ByValUnicodeString;
                         }
+
+                    case NativeTypeKind.TBStr:
+                        return MarshallerKind.BSTRString;
 
                     case NativeTypeKind.Default:
                         if (isAnsi)

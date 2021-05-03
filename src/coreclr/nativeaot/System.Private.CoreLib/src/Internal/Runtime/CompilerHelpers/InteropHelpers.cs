@@ -223,6 +223,14 @@ namespace Internal.Runtime.CompilerHelpers
             return PInvokeMarshal.AnsiCharToWideChar(nativeValue);
         }
 
+        internal static unsafe string BstrBufferToString(char* buffer)
+        {
+            if (buffer == null)
+                return null;
+
+            return Marshal.PtrToStringBSTR((IntPtr)buffer);
+        }
+
         internal static unsafe IntPtr ResolvePInvoke(MethodFixupCell* pCell)
         {
             if (pCell->Target != IntPtr.Zero)
