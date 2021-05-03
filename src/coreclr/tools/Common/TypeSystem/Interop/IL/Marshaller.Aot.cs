@@ -42,6 +42,8 @@ namespace Internal.TypeSystem.Interop
                     return new UTF8StringMarshaller();
                 case MarshallerKind.UnicodeString:
                     return new UnicodeStringMarshaller();
+                case MarshallerKind.AnsiBSTRString:
+                    return new AnsiBSTRStringMarshaller();
                 case MarshallerKind.BSTRString:
                     return new BSTRStringMarshaller();
                 case MarshallerKind.SafeHandle:
@@ -925,6 +927,39 @@ namespace Internal.TypeSystem.Interop
         protected override void TransformManagedToNative(ILCodeStream codeStream)
         {
             throw new NotSupportedException();
+        }
+    }
+
+    class AnsiBSTRStringMarshaller : Marshaller
+    {
+
+        internal override bool CleanupRequired => true;
+
+        internal override void EmitElementCleanup(ILCodeStream codeStream, ILEmitter emitter)
+        {
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "StringToAnsiBstrBuffer");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+        }
+        protected override void TransformManagedToNative(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadManagedValue(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "StringToAnsiBstrBuffer");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreNativeValue(codeStream);
+        }
+
+        protected override void TransformNativeToManaged(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadNativeValue(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "AnsiBstrBufferToString");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreManagedValue(codeStream);
         }
     }
 

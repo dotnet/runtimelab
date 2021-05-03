@@ -99,6 +99,7 @@ namespace Internal.TypeSystem.Interop
                 case MarshallerKind.UnicodeStringBuilder:
                     return context.GetWellKnownType(WellKnownType.Char).MakePointerType();
 
+                case MarshallerKind.AnsiBSTRString:
                 case MarshallerKind.AnsiString:
                 case MarshallerKind.AnsiStringBuilder:
                 case MarshallerKind.UTF8String:
@@ -544,6 +545,9 @@ namespace Internal.TypeSystem.Interop
 
                     case NativeTypeKind.TBStr:
                         return MarshallerKind.BSTRString;
+
+                    case NativeTypeKind.AnsiBStr:
+                        return MarshallerKind.AnsiBSTRString;
 
                     case NativeTypeKind.Default:
                         if (isAnsi)
