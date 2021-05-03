@@ -15,8 +15,7 @@ namespace Benchmarks
                     .WithCustomBuildConfiguration("Release_Forwarders")
                     .WithId("Built-in")
                     .AsBaseline())
-                .AddDiagnoser(MemoryDiagnoser.Default)
-                .WithOptions(ConfigOptions.KeepBenchmarkFiles);
+                .AddDiagnoser(MemoryDiagnoser.Default);
 
             BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, config);
         }
