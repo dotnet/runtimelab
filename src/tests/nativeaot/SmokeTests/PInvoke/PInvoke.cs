@@ -110,18 +110,6 @@ namespace PInvokeTests
         [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
         private static extern int VerifyAnsiStringBuilderOut([Out]StringBuilder sb);
 
-        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Unicode)]
-        private static extern int VerifyBSTRString([MarshalAs(UnmanagedType.TBStr)] string str);
-
-        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Unicode)]
-        private static extern int VerifyBSTRStringOut([Out, MarshalAs(UnmanagedType.TBStr)] out string str);
-
-        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Unicode)]
-        private static extern int VerifyBSTRStringRef([MarshalAs(UnmanagedType.TBStr)]ref string str);
-
-        [DllImport("PInvokeNative", EntryPoint = "VerifyBSTRStringRef", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Unicode)]
-        private static extern int VerifyBSTRStringInRef([In, MarshalAs(UnmanagedType.TBStr)]ref string str);
-
         [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall, EntryPoint = "SafeHandleTest")]
         public static extern bool HandleRefTest(HandleRef hr, Int64 hrValue);
 
@@ -439,15 +427,6 @@ namespace PInvokeTests
             ThrowIfNotEquals(1, VerifyUTF8String("Hello World"), "UTF8 String marshalling failed.");
             ThrowIfNotEquals(1, VerifyUTF8StringOut(out s), "Out UTF8 String marshalling failed");
             ThrowIfNotEquals("Hello World", s, "Out UTF8 String marshalling failed");
-
-            ThrowIfNotEquals(1, VerifyBSTRString("Hello World"), "BSTR String marshalling failed.");
-            ThrowIfNotEquals(1, VerifyBSTRStringOut(out s), "Out BSTR String marshalling failed");
-            ThrowIfNotEquals("Hello World", s, "Out BSTR String marshalling failed");
-            VerifyBSTRStringInRef(ref s);
-            ThrowIfNotEquals("Hello World", s, "In Ref BSTR String marshalling failed");
-
-            VerifyBSTRStringRef(ref s);
-            ThrowIfNotEquals("Hello World!", s, "Ref BSTR String marshalling failed");
         }
 
         private static void TestStringBuilder()

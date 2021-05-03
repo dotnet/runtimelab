@@ -138,24 +138,6 @@ int CompareUnicodeString(const unsigned short *val, const unsigned short *expect
     return *p == 0 && *q == 0;
 }
 
-int CompareBSTRString(const unsigned short *val, const unsigned short *expected)
-{
-    if (val == NULL && expected == NULL)
-        return 1;
-
-    if (val == NULL || expected == NULL)
-        return 0;
-    const unsigned short *p = val;
-    const unsigned short *q = expected;
-
-    while (*p  && *q && *p == *q)
-    {
-        p++;
-        q++;
-    }
-    return *p == 0 && *q == 0;
-}
-
 DLL_EXPORT int __stdcall VerifyAnsiString(char *val)
 {
     if (val == NULL)
@@ -280,63 +262,6 @@ DLL_EXPORT int __stdcall VerifyUnicodeStringRef(unsigned short **val)
     p[i++] = '!';
     p[i] = '\0';
     *val = p;
-    return 1;
-}
-
-DLL_EXPORT int __stdcall VerifyBSTRString(unsigned short *val)
-{
-    if (val == NULL)
-        return 0;
-
-    if (*((int*)val - 1) != 22)
-        return 0;
-
-    unsigned short expected[] = { 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', 0};
-
-    return CompareUnicodeString(val, expected);
-}
-
-DLL_EXPORT int __stdcall VerifyBSTRStringOut(unsigned short **val)
-{
-    if (val == NULL)
-        return 0;
-    unsigned short *p = (unsigned short *)MemAlloc(sizeof(unsigned short) * 14);
-    *(int*)p = 22;
-    unsigned short *target = (unsigned short *)((int*)p + 1);
-    unsigned short expected[] = { 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', 0 };
-    for (int i = 0; i < 12; i++)
-        target[i] = expected[i];
-
-    *val = target;
-    return 1;
-}
-
-DLL_EXPORT int __stdcall VerifyBSTRStringRef(unsigned short **val)
-{
-    if (val == NULL)
-        return 0;
-
-    if (*((int*)*val - 1) != 22)
-        return 0;
-
-    unsigned short expected[] = { 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', 0};
-    unsigned short *p = expected;
-    unsigned short *q = *val;
-
-    if (!CompareUnicodeString(p, q))
-        return 0;
-
-    MemFree(*val - 4);
-
-    p = (unsigned short*)MemAlloc(sizeof(unsigned short) * 15);
-    *(int*)p = 24;
-    unsigned short *target = (unsigned short *)((int*)p + 1);
-    int i;
-    for (i = 0; i < 11; i++)
-        target[i] = expected[i];
-    target[i++] = '!';
-    target[i] = '\0';
-    *val = target;
     return 1;
 }
 
