@@ -930,12 +930,20 @@ namespace Internal.TypeSystem.Interop
 
     class BSTRStringMarshaller : Marshaller
     {
+
+        internal override bool CleanupRequired => true;
+
+        internal override void EmitElementCleanup(ILCodeStream codeStream, ILEmitter emitter)
+        {
+            var helper = InteropTypes.GetMarshal(Context).GetKnownMethod("FreeBSTR", null);
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+        }
         protected override void TransformManagedToNative(ILCodeStream codeStream)
         {
             ILEmitter emitter = _ilCodeStreams.Emitter;
-            var helper = Context.GetHelperEntryPoint("InteropHelpers", "StringToBstrBuffer");
             LoadManagedValue(codeStream);
 
+            var helper = InteropTypes.GetMarshal(Context).GetKnownMethod("StringToBSTR", null);
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
 
             StoreNativeValue(codeStream);
@@ -944,9 +952,9 @@ namespace Internal.TypeSystem.Interop
         protected override void TransformNativeToManaged(ILCodeStream codeStream)
         {
             ILEmitter emitter = _ilCodeStreams.Emitter;
-            var helper = Context.GetHelperEntryPoint("InteropHelpers", "BstrBufferToString");
             LoadNativeValue(codeStream);
 
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "BstrBufferToString");
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
 
             StoreManagedValue(codeStream);
