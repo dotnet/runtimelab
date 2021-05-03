@@ -67,15 +67,12 @@ namespace Microsoft.Interop
                     // of an array as long as it is non-null, matching the behavior of the built-in interop system
                     // for single-dimensional zero-based arrays.
 
-                    // ref <elementType> <byRefIdentifier> = <managedIdentifer> == null ? ref Unsafe.NullRef<<elementType>>() : ref MemoryMarshal.GetArrayDataReference(<managedIdentifer>);
-                    var unsafeNullRef =
-                        InvocationExpression(
-                            MemberAccessExpression(
-                                SyntaxKind.SimpleMemberAccessExpression,
-                                ParseTypeName(TypeNames.System_Runtime_CompilerServices_Unsafe),
-                                GenericName(Identifier("NullRef"))
-                                .WithTypeArgumentList(TypeArgumentList(
-                                    SingletonSeparatedList(GetElementTypeSyntax(info))))));
+                    // ref <elementType> <byRefIdentifier> = <managedIdentifer> == null ? ref *(<elementType*)0 : ref MemoryMarshal.GetArrayDataReference(<managedIdentifer>);
+                    var nullRef =
+                        PrefixUnaryExpression(SyntaxKind.PointerIndirectionExpression,
+                            CastExpression(
+                                PointerType(GetElementTypeSyntax(info)),
+                                LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0))));
 
                     var getArrayDataReference =
                         InvocationExpression(
@@ -99,7 +96,7 @@ namespace Microsoft.Interop
                                             IdentifierName(managedIdentifer),
                                             LiteralExpression(
                                                 SyntaxKind.NullLiteralExpression)),
-                                        RefExpression(unsafeNullRef),
+                                        RefExpression(nullRef),
                                         RefExpression(getArrayDataReference)))))))));
                 }
                 if (context.CurrentStage == StubCodeContext.Stage.Pin)
