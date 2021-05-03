@@ -59,6 +59,14 @@ namespace Microsoft.Interop
                 string byRefIdentifier = $"__byref_{managedIdentifer}";
                 if (context.CurrentStage == StubCodeContext.Stage.Marshal)
                 {
+                    // [COMPAT] We use explicit byref calculations here instead of just using a fixed statement 
+                    // since a fixed statement converts a zero-length array to a null pointer.
+                    // Many native APIs, such as GDI+, ICU, etc. validate that an array parameter is non-null
+                    // even when the passed in array length is zero. To avoid breaking customers that want to move
+                    // to source-generated interop in subtle ways, we explicitly pass a reference to the 0-th element
+                    // of an array as long as it is non-null, matching the behavior of the built-in interop system
+                    // for single-dimensional zero-based arrays.
+
                     // ref <elementType> <byRefIdentifier> = <managedIdentifer> == null ? ref Unsafe.NullRef<<elementType>>() : ref MemoryMarshal.GetArrayDataReference(<managedIdentifer>);
                     var unsafeNullRef =
                         InvocationExpression(
@@ -96,7 +104,7 @@ namespace Microsoft.Interop
                 }
                 if (context.CurrentStage == StubCodeContext.Stage.Pin)
                 {
-                    // fixed (<nativeType> <nativeIdentifier> = &MemoryMarshal.GetArrayDataReference(<managedIdentifer>))
+                    // fixed (<nativeType> <nativeIdentifier> = &<byrefIdentifier>)
                     yield return FixedStatement(
                         VariableDeclaration(AsNativeType(info), SingletonSeparatedList(
                             VariableDeclarator(nativeIdentifier)
