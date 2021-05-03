@@ -81,7 +81,9 @@ namespace ILCompiler.DependencyAnalysis
             {
                 new DependencyListEntry(factory.MethodEntrypoint(method), "Dynamic invoke stub"),
                 new DependencyListEntry(factory.NativeLayout.PlacedSignatureVertex(factory.NativeLayout.MethodNameAndSignatureVertex(method)), "Dynamic invoke stub"),
-                new DependencyListEntry(factory.NecessaryTypeSymbol(method.OwningType), "Dynamic invoke stub containing type")
+                new DependencyListEntry(factory.NecessaryTypeSymbol(method.OwningType), "Dynamic invoke stub containing type"),
+                new DependencyListEntry(factory.NativeLayout.TemplateMethodLayout(method), "Template"),
+                new DependencyListEntry(factory.NativeLayout.TemplateMethodEntry(method), "Template"),
             };
         }
 
