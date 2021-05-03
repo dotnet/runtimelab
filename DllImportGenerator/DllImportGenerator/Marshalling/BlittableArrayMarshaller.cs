@@ -56,6 +56,44 @@ namespace Microsoft.Interop
             var (managedIdentifer, nativeIdentifier) = context.GetIdentifiers(info);
             if (!info.IsByRef && !info.IsManagedReturnPosition && context.PinningSupported)
             {
+                string byRefIdentifier = $"__byref_{managedIdentifer}";
+                if (context.CurrentStage == StubCodeContext.Stage.Marshal)
+                {
+                    // ref <elementType> <byRefIdentifier> = <managedIdentifer> == null ? ref Unsafe.NullRef<<elementType>>() : ref MemoryMarshal.GetArrayDataReference(<managedIdentifer>);
+                    var unsafeNullRef =
+                        InvocationExpression(
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                ParseTypeName(TypeNames.System_Runtime_CompilerServices_Unsafe),
+                                GenericName(Identifier("NullRef"))
+                                .WithTypeArgumentList(TypeArgumentList(
+                                    SingletonSeparatedList(GetElementTypeSyntax(info))))));
+
+                    var getArrayDataReference =
+                        InvocationExpression(
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                ParseTypeName(TypeNames.System_Runtime_InteropServices_MemoryMarshal),
+                                IdentifierName("GetArrayDataReference")),
+                            ArgumentList(SingletonSeparatedList(
+                                Argument(IdentifierName(managedIdentifer)))));
+
+                    yield return LocalDeclarationStatement(
+                        VariableDeclaration(
+                            RefType(GetElementTypeSyntax(info)))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(byRefIdentifier))
+                            .WithInitializer(EqualsValueClause(
+                                RefExpression(ParenthesizedExpression(
+                                    ConditionalExpression(
+                                        BinaryExpression(
+                                            SyntaxKind.EqualsExpression,
+                                            IdentifierName(managedIdentifer),
+                                            LiteralExpression(
+                                                SyntaxKind.NullLiteralExpression)),
+                                        RefExpression(unsafeNullRef),
+                                        RefExpression(getArrayDataReference)))))))));
+                }
                 if (context.CurrentStage == StubCodeContext.Stage.Pin)
                 {
                     // fixed (<nativeType> <nativeIdentifier> = &MemoryMarshal.GetArrayDataReference(<managedIdentifer>))
@@ -64,13 +102,7 @@ namespace Microsoft.Interop
                             VariableDeclarator(nativeIdentifier)
                                 .WithInitializer(EqualsValueClause(
                                     PrefixUnaryExpression(SyntaxKind.AddressOfExpression,
-                                        InvocationExpression(
-                                            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                                ParseTypeName(TypeNames.System_Runtime_InteropServices_MemoryMarshal),
-                                                IdentifierName("GetArrayDataReference")),
-                                                ArgumentList(
-                                                    SingletonSeparatedList(Argument(IdentifierName(managedIdentifer)))
-                                                ))))))),
+                                        IdentifierName(byRefIdentifier)))))),
                         EmptyStatement());
                 }
                 yield break;
