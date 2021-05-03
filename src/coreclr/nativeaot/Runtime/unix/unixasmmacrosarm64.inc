@@ -47,17 +47,17 @@ C_FUNC(\Name):
 
 .macro PREPARE_EXTERNAL_VAR Name, HelperReg
         adrp \HelperReg, C_FUNC(\Name)
-        add	\HelperReg, \HelperReg, :lo12:C_FUNC(\Name)
+        add  \HelperReg, \HelperReg, :lo12:C_FUNC(\Name)
 .endm
 
 .macro PREPARE_EXTERNAL_VAR_INDIRECT Name, HelperReg
         adrp \HelperReg, C_FUNC(\Name)
-        ldr	\HelperReg, [\HelperReg, :lo12:C_FUNC(\Name)]
+        ldr  \HelperReg, [\HelperReg, :lo12:C_FUNC(\Name)]
 .endm
 
 .macro PREPARE_EXTERNAL_VAR_INDIRECT_W Name, HelperReg
         adrp x\HelperReg, C_FUNC(\Name)
-        ldr	w\HelperReg, [x\HelperReg, :lo12:C_FUNC(\Name)]
+        ldr  w\HelperReg, [x\HelperReg, :lo12:C_FUNC(\Name)]
 .endm
 
 
@@ -188,12 +188,30 @@ C_FUNC(\Name):
 #define xip1 x17
 #define xpr x18
 
+// Loads the address of a thread-local variable into the target register,
+// which cannot be x0. Preserves all other registers.
 .macro INLINE_GET_TLS_VAR target, var
-    mrs	\target, tpidr_el0
-    add	\target, \target, #:tprel_hi12:\var, lsl #12
-    add	\target, \target, #:tprel_lo12_nc:\var
+    .ifc \target, x0
+        .error "target cannot be x0"
+    .endif
+
+    stp     x0, lr, [sp,#-0x10]!
+
+    // This sequence of instructions is recognized and potentially patched
+    // by the linker (GD->IE/LE relaxation).
+    adrp    x0, :tlsdesc:\var
+    ldr     \target, [x0, #:tlsdesc_lo12:\var]
+    add     x0, x0, :tlsdesc_lo12:\var
+.tlsdesccall \var
+    blr     \target
+    // End of the sequence
+
+    mrs     \target, tpidr_el0
+    add     \target, \target, x0
+    ldp     x0, lr, [sp],#0x10
 .endm
 
+// Inlined version of RhpGetThread. Target cannot be x0.
 .macro INLINE_GETTHREAD target
     INLINE_GET_TLS_VAR \target, tls_CurrentThread
 .endm
