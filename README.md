@@ -14,7 +14,6 @@ Currently, this repo contains the following experimental projects:
 - [FreeBSD](https://github.com/dotnet/runtimelab/tree/feature/FreeBSD) - Port of .NET runtime to FreeBSD
 - [s390x](https://github.com/dotnet/runtimelab/tree/feature/s390x) - Port of .NET runtime (Mono) to the s390x architecture
 - [NativeAOT-LLVM](https://github.com/dotnet/runtimelab/tree/feature/NativeAOT-LLVM) - LLVM generation for Native AOT compilation (including Web Assembly)
-- [NativeAOT-interpreter](https://github.com/dotnet/runtimelab/tree/feature/NativeAOT-interpreter) - Native AOT with interpreter to support runtime codegen
 - [ManagedQuic](https://github.com/dotnet/runtimelab/tree/feature/ManagedQuic) - Fully managed implementation of QUIC protocol
 - [LLHTTP](https://github.com/dotnet/runtimelab/tree/feature/LLHTTP2) - a  set of flexible, lower-level HTTP APIs.
 
