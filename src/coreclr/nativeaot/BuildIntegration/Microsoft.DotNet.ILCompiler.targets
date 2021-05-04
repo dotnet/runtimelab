@@ -8,7 +8,15 @@
     <OSIdentifier Condition="$(RuntimeIdentifier.StartsWith('linux-musl')) OR $(RuntimeIdentifier.StartsWith('alpine'))">linux-musl</OSIdentifier>
     <OSIdentifier Condition="'$(OSIdentifier)' == ''">linux</OSIdentifier>
 
-    <RuntimeIlcPackageName>runtime.$(OSIdentifier)-$(PlatformTarget).Microsoft.DotNet.ILCompiler</RuntimeIlcPackageName>
+    <!-- Determine TargetArchitecture from RuntimeIdentifier -->
+    <RidWithHyphen>$(RuntimeIdentifier)-</RidWithHyphen>
+    <TargetArchitecture Condition="$(RidWithHyphen.Contains('-x86-'))">x86</TargetArchitecture>
+    <TargetArchitecture Condition="$(RidWithHyphen.Contains('-x64-'))">x64</TargetArchitecture>
+    <TargetArchitecture Condition="$(RidWithHyphen.Contains('-arm-'))">arm</TargetArchitecture>
+    <TargetArchitecture Condition="$(RidWithHyphen.Contains('-arm64-'))">arm64</TargetArchitecture>
+    <TargetArchitecture Condition="'$(TargetArchitecture)' == ''">unknown</TargetArchitecture>
+
+    <RuntimeIlcPackageName>runtime.$(OSIdentifier)-$(TargetArchitecture).Microsoft.DotNet.ILCompiler</RuntimeIlcPackageName>
 
     <OSHostArch>$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant)</OSHostArch>
     <!-- OSArchitecture does not report the true OS architecture for x86 and x64 processes running on Windows ARM64. -->

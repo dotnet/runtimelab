@@ -69,7 +69,7 @@
       Text="Native compilation can run on x64 and arm64 hosts only." />
 
     <Error Condition="'$(IlcHostPackagePath)' == '' and '$(RuntimePackagePath)' != '' and ('$(IlcHostArch)' == 'x64' or '$(IlcHostArch)' == 'arm64')"
-      Text="Add a PackageReference for '$(IlcHostPackageName)' to allow cross-compilation for $(PlatformTarget)" />
+      Text="Add a PackageReference for '$(IlcHostPackageName)' to allow cross-compilation for $(TargetArchitecture)" />
 
     <!-- CoreRT SDK and Framework Assemblies need to be defined to avoid CoreCLR implementations being set as compiler inputs -->
     <Error Condition="'@(PrivateSdkAssemblies)' == ''" Text="The PrivateSdkAssemblies ItemGroup is required for _ComputeAssembliesToCompileToNative" />

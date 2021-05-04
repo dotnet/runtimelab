@@ -150,7 +150,7 @@ if defined RunNativeAot (
     <OutputType>Exe</OutputType>
     <OutputPath>%24(MSBuildProjectDirectory)\</OutputPath>
     <IntermediateOutputPath>%24(MSBuildProjectDirectory)\</IntermediateOutputPath>
-    <PlatformTarget>$(TargetArchitecture)</PlatformTarget>
+    <TargetArchitecture>$(TargetArchitecture)</TargetArchitecture>
     <Optimize>$(Optimize)</Optimize>
     <DebugSymbols>true</DebugSymbols>
     <NETCoreSdkVersion>$(NETCoreSdkVersion)</NETCoreSdkVersion>
