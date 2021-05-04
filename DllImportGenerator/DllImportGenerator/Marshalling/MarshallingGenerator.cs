@@ -239,7 +239,10 @@ namespace Microsoft.Interop
                     }
                     if (info.IsByRef && info.ManagedType.IsAbstract)
                     {
-                        throw new MarshallingNotSupportedException(info, context);
+                        throw new MarshallingNotSupportedException(info, context)
+                        {
+                            NotSupportedDetails = Resources.SafeHandleByRefMustBeConcrete
+                        };
                     }
                     return new SafeHandleMarshaller(options);
 
