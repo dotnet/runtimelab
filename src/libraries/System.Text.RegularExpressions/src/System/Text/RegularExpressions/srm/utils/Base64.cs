@@ -152,6 +152,24 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
+        /// Custom Base64 encoder for char[].
+        /// Calls Encode for each character code. Numbers are separated by '.'.
+        /// Appends the serialized output to sb.
+        /// </summary>
+        public static void Encode(char[] arr, StringBuilder sb)
+        {
+            if (arr.Length == 0)
+                return;
+
+            sb.Append(Encode(arr[0]));
+            for (int i = 1; i < arr.Length; i++)
+            {
+                sb.Append('.');
+                sb.Append(Encode(arr[i]));
+            }
+        }
+
+        /// <summary>
         /// Custom Base64 encoder for string.
         /// Calls Encode for each character code. Numbers are separated by '.'.
         /// Appends the serialized output to sb.
@@ -205,6 +223,17 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
+        /// Custom Base64 deserializer for char.
+        /// </summary>
+        public static char DecodeChar(string s)
+        {
+            uint res = 0;
+            for (int i = 0; i < s.Length; i++)
+                res = (res << 6) | s_customBase64decoding[s[i] & 0x7F];
+            return (char)res;
+        }
+
+        /// <summary>
         /// Custom Base64 deserializer for long.
         /// </summary>
         public static long DecodeInt64(string s)
@@ -247,5 +276,10 @@ namespace System.Text.RegularExpressions.SRM
         /// Custom Base64 deserializer for ulong[].
         /// </summary>
         public static ulong[] DecodeUInt64Array(string s) => (s == string.Empty ? Array.Empty<ulong>() : Array.ConvertAll(s.Split('.'), DecodeUInt64));
+
+        /// <summary>
+        /// Custom Base64 deserializer for char[].
+        /// </summary>
+        public static char[] DecodeCharArray(string s) => (s == string.Empty ? Array.Empty<char>() : Array.ConvertAll(s.Split('.'), DecodeChar));
     }
 }

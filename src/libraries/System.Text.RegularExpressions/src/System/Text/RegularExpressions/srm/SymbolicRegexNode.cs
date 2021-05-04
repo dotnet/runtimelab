@@ -259,6 +259,8 @@ namespace System.Text.RegularExpressions.SRM
 
         #endregion
 
+
+        private Dictionary<uint, bool> _nullability_cache;
         /// <summary>
         /// Relative nullability that takes into account the immediate character context
         /// in order to resolve nullability of anchors
@@ -269,60 +271,78 @@ namespace System.Text.RegularExpressions.SRM
         {
             if (!info.StartsWithSomeAnchor)
                 return IsNullable;
-            else
+            if (!info.CanBeNullable)
+                return false;
+
+            //initialize the nullability cache for this node
+            if (_nullability_cache == null)
+                _nullability_cache = new Dictionary<uint, bool>();
+
+            bool is_nullable;
+            if (!_nullability_cache.TryGetValue(context, out is_nullable))
             {
                 switch (kind)
                 {
                     case SymbolicRegexKind.Loop:
-                        return lower == 0 || left.IsNullableFor(context);
+                        is_nullable = lower == 0 || left.IsNullableFor(context);
+                        break;
                     case SymbolicRegexKind.Concat:
-                        return (left.IsNullableFor(context) && right.IsNullableFor(context));
+                        is_nullable = left.IsNullableFor(context) && right.IsNullableFor(context);
+                        break;
                     case SymbolicRegexKind.Or:
                     case SymbolicRegexKind.And:
-                        return alts.IsNullableFor(context);
+                        is_nullable = alts.IsNullableFor(context);
+                        break;
                     case SymbolicRegexKind.IfThenElse:
-                        return (iteCond.IsNullableFor(context) ? left.IsNullableFor(context) : right.IsNullableFor(context));
+                        is_nullable = (iteCond.IsNullableFor(context) ? left.IsNullableFor(context) : right.IsNullableFor(context));
+                        break;
                     case SymbolicRegexKind.StartAnchor:
                         {
                             if ((context & CharKind.Reverse) == 0)
-                                return (context & CharKind.Start) != 0;
+                                is_nullable = (context & CharKind.Start) != 0;
                             else
                                 // the roles of previous and next character info are switched
-                                return ((context >> 4) & CharKind.Start) != 0;
+                                is_nullable = ((context >> 4) & CharKind.Start) != 0;
+                            break;
                         }
                     case SymbolicRegexKind.BOLAnchor:
                         {
                             if ((context & CharKind.Reverse) == 0)
-                                return (context & (CharKind.Start | CharKind.Newline)) != 0;
+                                is_nullable = (context & (CharKind.Start | CharKind.Newline)) != 0;
                             else
                                 // the roles of previous and next character info are switched
-                                return ((context >> 4) & (CharKind.Start | CharKind.Newline)) != 0;
+                                is_nullable = ((context >> 4) & (CharKind.Start | CharKind.Newline)) != 0;
+                            break;
                         }
                     case SymbolicRegexKind.WBAnchor:
                         // test that prev char is word letter iff next is not not word letter
-                        return ((context & CharKind.WordLetter) ^ ((context >> 4) & CharKind.WordLetter)) != 0;
+                        is_nullable = ((context & CharKind.WordLetter) ^ ((context >> 4) & CharKind.WordLetter)) != 0;
+                        break;
                     case SymbolicRegexKind.NWBAnchor:
                         // test that prev char is word letter iff next is word letter
-                        return ((context & CharKind.WordLetter) ^ ((context >> 4) & CharKind.WordLetter)) == 0;
+                        is_nullable = ((context & CharKind.WordLetter) ^ ((context >> 4) & CharKind.WordLetter)) == 0;
+                        break;
                     case SymbolicRegexKind.EOLAnchor:
                         {
                             // End-Of-Line anchor is nullable when the next character is Newline or End
                             // note: at least one of the bits must be 1, but both could also be 1 in case of \Z
                             if ((context & CharKind.Reverse) == 0)
-                                return ((context >> 4) & (CharKind.Newline | CharKind.End)) != 0;
+                                is_nullable = ((context >> 4) & (CharKind.Newline | CharKind.End)) != 0;
                             else
                                 // the roles of previous and next character info are switched in reverse mode
-                                return (context & (CharKind.Newline | CharKind.End)) != 0;
+                                is_nullable = (context & (CharKind.Newline | CharKind.End)) != 0;
+                            break;
                         }
                     case SymbolicRegexKind.EndAnchorZ:
                         {
                             // \Z anchor is nullable when the next character is either the last Newline or End
                             // note: CharKind.NewLineZ == CharKind.Newline|CharKind.End
                             if ((context & CharKind.Reverse) == 0)
-                                return ((context >> 4) & CharKind.End) != 0;
+                                is_nullable = ((context >> 4) & CharKind.End) != 0;
                             else
                                 // the roles of previous and next character info are switched in reverse mode
-                                return (context & CharKind.End) != 0;
+                                is_nullable = (context & CharKind.End) != 0;
+                            break;
                         }
                     default:
                         {
@@ -332,13 +352,16 @@ namespace System.Text.RegularExpressions.SRM
 #endif
                             // \z anchor is nullable when the next character is End
                             if ((context & CharKind.Reverse) == 0)
-                                return (context >> 4) == CharKind.End;
+                                is_nullable = (context >> 4) == CharKind.End;
                             else
                                 // the roles of previous and next character info are switched in reverse mode
-                                return (context & 0xF) == CharKind.End;
+                                is_nullable = (context & 0xF) == CharKind.End;
+                            break;
                         }
                 }
+                _nullability_cache[context] = is_nullable;
             }
+            return is_nullable;
         }
 
         #region various properties
