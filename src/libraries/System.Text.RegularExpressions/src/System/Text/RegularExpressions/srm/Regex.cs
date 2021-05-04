@@ -66,7 +66,7 @@ namespace System.Text.RegularExpressions.SRM
             var regex = new Regex(rootNode, options);
 //#if DEBUG
 //            //test the serialization roundtrip
-//            //effectively, all tests in DEBUG mode are run with deserialized matchers, not the original ones
+//            //effectively, here all tests in DEBUG mode are run with deserialized matchers, not the original ones
 //            StringBuilder sb = new();
 //            regex.Serialize(sb);
 //            regex = Regex.Deserialize(sb.ToString());
@@ -97,7 +97,7 @@ namespace System.Text.RegularExpressions.SRM
             input.Split(s_top_level_separator);
             //trim also whitespace from entries -- this implies for example that \r is removed if present in line endings
             string[] fragments = input.Split(s_top_level_separator, StringSplitOptions.TrimEntries);
-            if (fragments.Length != 12)
+            if (fragments.Length != 13)
                 throw new ArgumentException($"{nameof(Regex.Deserialize)} error", nameof(input));
 
             try

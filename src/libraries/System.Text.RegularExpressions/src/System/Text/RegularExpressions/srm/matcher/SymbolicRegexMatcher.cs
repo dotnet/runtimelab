@@ -65,6 +65,16 @@ namespace System.Text.RegularExpressions.SRM
         private S A_startset;
 
         /// <summary>
+        /// maximum allowed size of A_startset_array
+        /// </summary>
+        private const int s_A_startset_array_max_size = 5;
+
+        /// <summary>
+        /// string of at most s_A_startset_array_max_size many characters
+        /// </summary>
+        private char[] A_startset_array;
+
+        /// <summary>
         /// Number of elements in A_StartSet
         /// </summary>
         private int A_StartSet_Size;
@@ -224,15 +234,18 @@ namespace System.Text.RegularExpressions.SRM
             sb.Append(Base64.Encode(A_StartSet_Size));
             sb.Append(Regex.s_top_level_separator);
             //------------ fragment 8 -----------
-            Base64.Encode(A_prefix, sb);
+            Base64.Encode(A_startset_array, sb);
             sb.Append(Regex.s_top_level_separator);
             //------------ fragment 9 -----------
-            sb.Append(A_fixedPrefix_ignoreCase);
+            Base64.Encode(A_prefix, sb);
             sb.Append(Regex.s_top_level_separator);
             //------------ fragment 10 -----------
-            Base64.Encode(Ar_prefix, sb);
+            sb.Append(A_fixedPrefix_ignoreCase);
             sb.Append(Regex.s_top_level_separator);
             //------------ fragment 11 -----------
+            Base64.Encode(Ar_prefix, sb);
+            sb.Append(Regex.s_top_level_separator);
+            //------------ fragment 12 -----------
             dt.Serialize(sb);
         }
 
@@ -253,10 +266,28 @@ namespace System.Text.RegularExpressions.SRM
             A_startset = builder.solver.DeserializePredicate(fragments[5]);
             A_StartSet = BooleanClassifier.Deserialize(fragments[6]);
             A_StartSet_Size = Base64.DecodeInt(fragments[7]);
-            A_prefix = Base64.DecodeString(fragments[8]);
-            A_fixedPrefix_ignoreCase = bool.Parse(fragments[9]);
-            Ar_prefix = Base64.DecodeString(fragments[10]);
-            dt = Classifier.Deserialize(fragments[11]);
+            A_startset_array = Base64.DecodeCharArray(fragments[8]);
+            A_prefix = Base64.DecodeString(fragments[9]);
+            A_fixedPrefix_ignoreCase = bool.Parse(fragments[10]);
+            Ar_prefix = Base64.DecodeString(fragments[11]);
+            dt = Classifier.Deserialize(fragments[12]);
+            if (A.info.ContainsSomeAnchor)
+            {
+                //line anchors are being used when builder.newLinePredicate is different from False
+                if (!builder.newLinePredicate.Equals(builder.solver.False))
+                    _asciiCharKindId[10] = CharKindId.Newline;
+                //word boundary is being used when builder.wordLetterPredicate is different from False
+                if (!builder.wordLetterPredicate.Equals(builder.solver.False))
+                {
+                    _asciiCharKindId['_'] = CharKindId.WordLetter;
+                    for (char i = '0'; i <= '9'; i++)
+                        _asciiCharKindId[i] = CharKindId.WordLetter;
+                    for (char i = 'A'; i <= 'Z'; i++)
+                        _asciiCharKindId[i] = CharKindId.WordLetter;
+                    for (char i = 'a'; i <= 'z'; i++)
+                        _asciiCharKindId[i] = CharKindId.WordLetter;
+                }
+            }
             InitializeRegexes();
         }
         #endregion
@@ -301,12 +332,18 @@ namespace System.Text.RegularExpressions.SRM
             A_startset = A.GetStartSet();
             this.A_StartSet_Size = (int)builder.solver.ComputeDomainSize(A_startset);
 
+
 #if DEBUG
             if (this.A_StartSet_Size == 0)
                 throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + "characterless regex");
 #endif
-
-            this.A_StartSet = BooleanClassifier.Create(css, builder.solver.ConvertToCharSet(css, A_startset));
+            var startbdd = builder.solver.ConvertToCharSet(css, A_startset);
+            this.A_StartSet = BooleanClassifier.Create(css, startbdd);
+            //store the start characters in the A_startset_array if there are not too many characters
+            if (this.A_StartSet_Size <= s_A_startset_array_max_size)
+                this.A_startset_array = new List<char>(css.GenerateAllCharacters(startbdd)).ToArray();
+            else
+                this.A_startset_array = Array.Empty<char>();
 
             //this.A_prefix_array = A.GetPrefix();
             this.A_prefix = A.GetFixedPrefix(css, out this.A_fixedPrefix_ignoreCase);
@@ -749,26 +786,26 @@ namespace System.Text.RegularExpressions.SRM
                         }
                         #endregion
                     }
-                    //else
-                    //{
-                    //    // we are still in the initial state, when the prefix is empty
-                    //    // find the first position i that matches with some character in the start set
-                    //    i = IndexOfStartset(input, i);
+                    else if (A_StartSet_Size <= s_A_startset_array_max_size)
+                    {
+                        // we are still in the initial state, when the prefix is empty
+                        // find the first position i that matches with some character in the start set
+                        i = IndexOfStartset(input, i);
 
-                    //    if (i == -1)
-                    //    {
-                    //        // no match was found
-                    //        i_q0 = i_q0_A1;
-                    //        watchdog = -1;
-                    //        return k;
-                    //    }
+                        if (i == -1)
+                        {
+                            // no match was found
+                            i_q0 = i_q0_A1;
+                            watchdog = -1;
+                            return k;
+                        }
 
-                    //    i_q0_A1 = i;
-                    //    // the start state must be updated
-                    //    // to reflect the kind of the previous character
-                    //    // when anchors are not used, q will remain the same state
-                    //    q = _A1q0[(int)GetCharKindId(input, i - 1)];
-                    //}
+                        i_q0_A1 = i;
+                        // the start state must be updated
+                        // to reflect the kind of the previous character
+                        // when anchors are not used, q will remain the same state
+                        q = _A1q0[(int)GetCharKindId(input, i - 1)];
+                    }
                 }
 
                 // make the transition based on input[i]
@@ -1305,25 +1342,13 @@ namespace System.Text.RegularExpressions.SRM
         #region Specialized IndexOf
         /// <summary>
         ///  Find first occurrence of startset element in input starting from index i.
+        ///  Startset here is assumed to consist of a few characters
         /// </summary>
         /// <param name="input">input string to search in</param>
         /// <param name="i">the start index in input to search from</param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private int IndexOfStartset(string input, int i)
-        {
-            int k = input.Length;
-            while (i < k)
-            {
-                if (A_StartSet.Contains(input[i]))
-                    break;
-                i++;
-            }
-            if (i == k)
-                return -1;
-            else
-                return i;
-        }
+        private int IndexOfStartset(string input, int i) => input.IndexOfAny(A_startset_array, i);
 
         /// <summary>
         ///  Find first occurrence of startset element in input starting from index i.
