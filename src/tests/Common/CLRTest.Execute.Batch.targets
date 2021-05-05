@@ -313,7 +313,7 @@ if defined RunCrossGen (
   call :ReleaseLock
 )
 if defined RunNativeAot (
-  if NOT "%CLRTestNoCleanup%" == "" (
+  if not defined CLRTestNoCleanup (
     IF EXIST native rmdir /s /q native
   )
 )
