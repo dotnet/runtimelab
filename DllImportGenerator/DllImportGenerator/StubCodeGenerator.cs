@@ -116,7 +116,7 @@ namespace Microsoft.Interop
         }
 
         public (BlockSyntax Code, MethodDeclarationSyntax? DllImport) GenerateSyntax(
-            ITargetDllImportNameGenerator targetNameGenerator,
+            ITargetDllImportNameStrategy targetNameGenerator,
             SemanticModel model,
             DllImportStub.GeneratedDllImportData targetDllImportData)
         {

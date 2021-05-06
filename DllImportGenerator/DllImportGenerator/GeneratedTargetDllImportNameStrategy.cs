@@ -8,7 +8,7 @@ using System.Text;
 
 namespace Microsoft.Interop
 {
-    interface ITargetDllImportNameGenerator
+    interface ITargetDllImportNameStrategy
     {
         public string GenerateDllImportEntryPointName(
             SemanticModel model,
@@ -20,7 +20,7 @@ namespace Microsoft.Interop
             );
     }
 
-    class TargetDllImportNameGenerator : ITargetDllImportNameGenerator
+    class GeneratedTargetDllImportNameStrategy : ITargetDllImportNameStrategy
     {
         struct TypeSymbolOrSyntax : IEquatable<TypeSymbolOrSyntax>
         {
@@ -235,7 +235,7 @@ namespace Microsoft.Interop
         }
     }
 
-    class ForwarderDllImportNameGenerator : ITargetDllImportNameGenerator
+    class ForwarderDllImportNameStrategy : ITargetDllImportNameStrategy
     {
         public string GenerateDllImportEntryPointName(SemanticModel model, IMethodSymbol method, DllImportStub.GeneratedDllImportData targetDllImportData, TypeSyntax returnType, TypeSyntax[] parameterTypes, out bool duplicateEntryPoint)
         {

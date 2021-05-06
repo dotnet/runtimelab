@@ -108,7 +108,7 @@ namespace Microsoft.Interop
         }
 
         public static DllImportStub Create(
-            ITargetDllImportNameGenerator targetNameGenerator,
+            ITargetDllImportNameStrategy targetNameGenerator,
             SemanticModel model,
             IMethodSymbol method,
             GeneratedDllImportData stubDllImportData,
