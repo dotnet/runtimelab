@@ -786,7 +786,7 @@ namespace System.Text.RegularExpressions.SRM
                         }
                         #endregion
                     }
-                    else if (A_StartSet_Size <= s_A_startset_array_max_size)
+                    else
                     {
                         // we are still in the initial state, when the prefix is empty
                         // find the first position i that matches with some character in the start set
@@ -1348,7 +1348,21 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="i">the start index in input to search from</param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private int IndexOfStartset(string input, int i) => input.IndexOfAny(A_startset_array, i);
+        private int IndexOfStartset(string input, int i)
+        {
+            if (A_StartSet_Size <= s_A_startset_array_max_size)
+                return input.IndexOfAny(A_startset_array, i);
+            else
+            {
+                for (int j = i; j < input.Length; j++)
+                {
+                    char c = input[j];
+                    if (A_StartSet.Contains(c))
+                        return j;
+                }
+            }
+            return -1;
+        }
 
         /// <summary>
         ///  Find first occurrence of startset element in input starting from index i.
