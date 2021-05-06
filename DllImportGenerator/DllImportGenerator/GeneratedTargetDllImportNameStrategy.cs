@@ -133,7 +133,7 @@ namespace Microsoft.Interop
             if (!emittedEntryPoints.TryGetValue(entryPoint, out var emittedEntryPointAttributeInfo))
             {
                 duplicateEntryPoint = false;
-                string name = method.Name + "__PInvoke__";
+                string name = GenerateEntryPointName(method, targetDllImportData);
                 emittedEntryPoints.Add(entryPoint, new List<(DllImportStub.GeneratedDllImportData, string)> { (targetDllImportData, name) });
                 return name;
             }
@@ -178,7 +178,7 @@ namespace Microsoft.Interop
                 {
                     attributeDataMatches &= targetDllImportData.ThrowOnUnmappableChar == info.data.ThrowOnUnmappableChar;
                 }
-                
+
                 if (attributeDataMatches)
                 {
                     duplicateEntryPoint = true;
@@ -186,9 +186,17 @@ namespace Microsoft.Interop
                 }
             }
 
+            string newEntryPointName = GenerateEntryPointName(method, targetDllImportData);
+            emittedEntryPointAttributeInfo.Add((targetDllImportData, newEntryPointName));
+            return newEntryPointName;
+        }
+
+        private static string GenerateEntryPointName(IMethodSymbol method, DllImportStub.GeneratedDllImportData targetDllImportData)
+        {
             // Generate a new entry-point name based on the method name and target DllImportAttibute info.
             StringBuilder builder = new StringBuilder(method.Name);
             builder.Append("__PInvoke__");
+            builder.Append(targetDllImportData.ModuleName.Replace('.', '_'));
             if (targetDllImportData.IsUserDefined.HasFlag(DllImportStub.DllImportMember.BestFitMapping)
                 && targetDllImportData.BestFitMapping)
             {
@@ -201,13 +209,13 @@ namespace Microsoft.Interop
             }
             if (targetDllImportData.IsUserDefined.HasFlag(DllImportStub.DllImportMember.CharSet))
             {
-                builder.Append("CallingConvention__");
+                builder.Append("CharSet__");
                 builder.Append(targetDllImportData.CharSet);
             }
             if (targetDllImportData.IsUserDefined.HasFlag(DllImportStub.DllImportMember.EntryPoint))
             {
-                builder.Append("CallingConvention__");
-                builder.Append(targetDllImportData.EntryPoint);
+                builder.Append("EntryPoint__");
+                builder.Append(targetDllImportData.EntryPoint.Replace('.', '_'));
             }
             if (targetDllImportData.IsUserDefined.HasFlag(DllImportStub.DllImportMember.ExactSpelling)
                 && targetDllImportData.ExactSpelling)
@@ -230,7 +238,6 @@ namespace Microsoft.Interop
                 builder.Append("ThrowOnUnmappableChar__");
             }
             string newEntryPointName = builder.ToString();
-            emittedEntryPointAttributeInfo.Add((targetDllImportData, newEntryPointName));
             return newEntryPointName;
         }
     }

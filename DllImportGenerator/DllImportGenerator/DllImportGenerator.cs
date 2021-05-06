@@ -342,7 +342,6 @@ namespace Microsoft.Interop
             if (!targetDllImportData.IsUserDefined.HasFlag(DllImportStub.DllImportMember.EntryPoint))
             {
                 targetDllImportData.EntryPoint = method.Name;
-                targetDllImportData.IsUserDefined |= DllImportStub.DllImportMember.EntryPoint;
             }
         }
 
@@ -354,6 +353,12 @@ namespace Microsoft.Interop
                     SyntaxKind.StringLiteralExpression,
                     Literal(targetDllImportData.ModuleName)))
             };
+
+            newAttributeArgs.Add(
+                AttributeArgument(
+                    NameEquals(nameof(DllImportAttribute.EntryPoint)),
+                    null,
+                    CreateStringExpressionSyntax(targetDllImportData.EntryPoint)));
 
             if (targetDllImportData.IsUserDefined.HasFlag(DllImportStub.DllImportMember.BestFitMapping))
             {
@@ -371,12 +376,6 @@ namespace Microsoft.Interop
             {
                 var name = NameEquals(nameof(DllImportAttribute.CharSet));
                 var value = CreateEnumExpressionSyntax(targetDllImportData.CharSet);
-                newAttributeArgs.Add(AttributeArgument(name, null, value));
-            }
-            if (targetDllImportData.IsUserDefined.HasFlag(DllImportStub.DllImportMember.EntryPoint))
-            {
-                var name = NameEquals(nameof(DllImportAttribute.EntryPoint));
-                var value = CreateStringExpressionSyntax(targetDllImportData.EntryPoint);
                 newAttributeArgs.Add(AttributeArgument(name, null, value));
             }
             if (targetDllImportData.IsUserDefined.HasFlag(DllImportStub.DllImportMember.ExactSpelling))
