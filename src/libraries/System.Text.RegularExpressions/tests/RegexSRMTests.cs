@@ -85,53 +85,75 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         //[Fact]
-        //public void Test()
-        //{
-        //var re = new Regex(@"^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,12}|[0-9]{1,3})(\]?)$", DFA);
-        //var re = new Regex(@"\b\d{1,2}\/\d{1,2}\/\d{2,4}\b", DFA | RegexOptions.Singleline);
-        //var re = new Regex(@"(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])", DFA | RegexOptions.Singleline);
-        //var re = new Regex(@"[\w]+://[^/\s?#]+[^\s?#]+(?:\?[^\s#]*)?(?:#[^\s]*)?", DFA | RegexOptions.Singleline);
-        //var re = new Regex(@"\b\w+nn\b", DFA);
-        //var re = new Regex(@"abracadabra\z", DFA | RegexOptions.Multiline);
-        //var re = new Regex("^.{5}", DFA);
-        //var re = new Regex("^a(_?a?_?a?_?)+$", DFA);
-        //var re = new Regex(@"^\b[a-z]+(n|\n|@|_)n\b", DFA);
-        //var re = new Regex(@"^[a-z]+", DFA | RegexOptions.Multiline);
-        //var re = new Regex(@"(([a-z])+.)+[A-Z]([a-z])+", DFA | RegexOptions.Singleline);
-        //var re = new Regex("ab+c$", DFA);
-        //ViewDGML(regex: re);
-        //ViewDGML(regex: re, addDotStar: true);
-        //ViewDGML(regex: re, inReverse: true);
-        //var match = re.Match("_.@[0.0.0.aaaaaaaaaa]");
-        //string[] rawregexes = File.ReadAllLines("c:/tmp/VS19preview/cortana.txt");
-        //HashSet<int> notsupported = new();
-        //HashSet<string> set = new();
-        //Regex QsizeMatcher = new Regex(@"\|Q\|=[0-9]+", DFA);
-        //Regex DsizeMatcher = new Regex(@"\|&#x0394;\|=[0-9]+", DFA);
-        //Regex AsizeMatcher = new Regex(@"\|&#x03A3;\|=[0-9]+", DFA);
-        //Func<string, int> NrOfStates = (s) => int.Parse(QsizeMatcher.Match(s).Value.Substring(4));
-        //Func<string, int> NrOfMoves = (s) => int.Parse(DsizeMatcher.Match(s).Value.Substring(11));
-        //Func<string, int> NrOfSymbols = (s) => int.Parse(AsizeMatcher.Match(s).Value.Substring(11));
-        //HashSet<int> stateSizes = new();
-        //HashSet<int> moveSizes = new();
-        //HashSet<int> alphSizes = new();
-        //for (int i = 0; i < rawregexes.Length; i++)
-        //{
-        //    var re = new Regex(rawregexes[i], DFA);
-        //    StringWriter sw = new StringWriter();
-        //    SaveDGML(re, sw, onlyDFAinfo: true);
-        //    ViewDGML(re);
-        //    int n = NrOfStates(sw.ToString());
-        //    int m = NrOfMoves(sw.ToString());
-        //    int k = NrOfSymbols(sw.ToString());
-        //    stateSizes.Add(n);
-        //    moveSizes.Add(m);
-        //    alphSizes.Add(k);
-        //}
-        //Console.WriteLine(stateSizes.Count);
-        //}
+        private void TestRun()
+        {
+            //var re = new Regex(@"^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,12}|[0-9]{1,3})(\]?)$", DFA);
+            //var re = new Regex(@"\b\d{1,2}\/\d{1,2}\/\d{2,4}\b", DFA | RegexOptions.Singleline);
+            //var re = new Regex(@"(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])", DFA | RegexOptions.Singleline);
+            //var re = new Regex(@"[\w]+://[^/\s?#]+[^\s?#]+(?:\?[^\s#]*)?(?:#[^\s]*)?", DFA | RegexOptions.Singleline);
+            //var re = new Regex(@"\b\w+nn\b", DFA);
+            //var re = new Regex(@"abracadabra\z", DFA | RegexOptions.Multiline);
+            //var re = new Regex("^.{5}", DFA);
+            //var re = new Regex("^a(_?a?_?a?_?)+$", DFA);
+            //var re = new Regex(@"^\b[a-z]+(n|\n|@|_)n\b", DFA);
+            //var re = new Regex(@"^[a-z]+", DFA | RegexOptions.Multiline);
+            //var re = new Regex(@"(([a-z])+.)+[A-Z]([a-z])+", DFA | RegexOptions.Singleline);
+            //var re = new Regex("ab+c$", DFA);
+            //ViewDGML(regex: re);
+            //ViewDGML(regex: re, addDotStar: true);
+            //ViewDGML(regex: re, inReverse: true);
+            //var match = re.Match("_.@[0.0.0.aaaaaaaaaa]");
+            //string[] rawregexes = File.ReadAllLines("c:/tmp/VS19preview/cortana.txt");
+            //HashSet<int> notsupported = new();
+            //HashSet<string> set = new();
+            //Regex QsizeMatcher = new Regex(@"\|Q\|=[0-9]+", DFA);
+            //Regex DsizeMatcher = new Regex(@"\|&#x0394;\|=[0-9]+", DFA);
+            //Regex AsizeMatcher = new Regex(@"\|&#x03A3;\|=[0-9]+", DFA);
+            //Func<string, int> NrOfStates = (s) => int.Parse(QsizeMatcher.Match(s).Value.Substring(4));
+            //Func<string, int> NrOfMoves = (s) => int.Parse(DsizeMatcher.Match(s).Value.Substring(11));
+            //Func<string, int> NrOfSymbols = (s) => int.Parse(AsizeMatcher.Match(s).Value.Substring(11));
+            //HashSet<int> stateSizes = new();
+            //HashSet<int> moveSizes = new();
+            //HashSet<int> alphSizes = new();
+            //for (int i = 0; i < rawregexes.Length; i++)
+            //{
+            //    var re = new Regex(rawregexes[i], DFA);
+            //    StringWriter sw = new StringWriter();
+            //    SaveDGML(re, sw, onlyDFAinfo: true);
+            //    ViewDGML(re);
+            //    int n = NrOfStates(sw.ToString());
+            //    int m = NrOfMoves(sw.ToString());
+            //    int k = NrOfSymbols(sw.ToString());
+            //    stateSizes.Add(n);
+            //    moveSizes.Add(m);
+            //    alphSizes.Add(k);
+            //}
+            //Console.WriteLine(stateSizes.Count);
+            //string rawregex = @"((decryptionKey|validationKey)=""[a-zA-Z0-9]+"")";
+            //string rawregex = @"(?<Part0>(\b(10|11|12|[1-9])\b))\s*(?<Part1>(:)\s*(?<Part2>([0-5][0-9]))){0,1}\s*(?<Part3>(\b([Tt]he day before yesterday|day before yesterday|[Tt]he day after tomorrow|day after tomorrow|[Yy]esterday|[Tt]oday|[Tt]ommorrow|[Tt]omorrow|[Tt]ommorow|[Tt]mrw)\b))";
+            //string rawregex = @"(?<Part0>(tonight))\s*(?<Part1>(at)){0,1}\s*(?<Part2>(midnight))";
+            string s = File.ReadAllText(@"c:\tmp\largesemirandom.txt");
+            string[] rawregexes = File.ReadAllLines(@"c:\tmp\someregexes.txt");
+            for (int i = 0; i < rawregexes.Length; i++)
+            {
+                var rawregex = rawregexes[i];
+                Regex re = new(rawregex, DFA);
+                Regex reC = new(rawregex, RegexOptions.Compiled);
+                //ViewDGML(re);
+                //warmup
+                re.Match(s);
+                //now measure the time
+                int t1 = System.Environment.TickCount;
+                var match1 = re.Match(s);
+                t1 = System.Environment.TickCount - t1;
+                int t2 = System.Environment.TickCount;
+                var match2 = reC.Match(s);
+                t2 = System.Environment.TickCount - t2;
+                File.AppendAllText(@"c:\tmp\vsoutput.txt", string.Format("\n--- Regex: {8}\n,DFA={0}ms, COMPILED={1}ms, ({3}/{6},at:{4}/{7}) match={2}({5})", t1, t2, match1.Value, match1.Success, match1.Success ? match1.Index : -1, match2.Value, match2.Success, match2.Success ? match2.Index : -1, rawregex));
+            }
+        }
 
-        [Fact]
+    [Fact]
         public void SRMPrefixBugFixTest()
         {
             var re1 = new Regex("(a|ba)c", DFA);
