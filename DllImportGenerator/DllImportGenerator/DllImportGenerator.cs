@@ -59,9 +59,11 @@ namespace Microsoft.Interop
             }
 
             var env = new StubEnvironment(context.Compilation, isSupported, targetFrameworkVersion, context.AnalyzerConfigOptions.GlobalOptions);
-            ITargetDllImportNameStrategy targetNameGenerator = env.Options.GenerateForwarders()
+
+            ITargetDllImportNameStrategy targetNameStrategy = env.Options.GenerateForwarders()
                 ? new ForwarderDllImportNameStrategy()
                 : new GeneratedTargetDllImportNameStrategy();
+
             var generatedDllImports = new StringBuilder();
             foreach (SyntaxReference synRef in synRec.Methods)
             {
@@ -118,7 +120,7 @@ namespace Microsoft.Interop
 
                 // Create the stub.
                 var dllImportStub = DllImportStub.Create(
-                    targetNameGenerator,
+                    targetNameStrategy,
                     sm,
                     methodSymbolInfo,
                     stubDllImportData!,

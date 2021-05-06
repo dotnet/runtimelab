@@ -49,7 +49,7 @@ namespace Microsoft.Interop
                 }
                 else
                 {
-                    return syntax!.GetHashCode() ^ 0x1;
+                    return syntax!.ToString().GetHashCode() ^ 0x1;
                 }
             }
 
@@ -88,7 +88,7 @@ namespace Microsoft.Interop
         {
             public override int GetHashCode()
             {
-                return SymbolEqualityComparer.Default.GetHashCode(ContainingType) ^ Parameters.GetHashCode() ^ ReturnValue.GetHashCode();
+                return SymbolEqualityComparer.Default.GetHashCode(ContainingType) ^ ReturnValue.GetHashCode();
             }
 
             public bool Equals(DllImportEntryPoint other)

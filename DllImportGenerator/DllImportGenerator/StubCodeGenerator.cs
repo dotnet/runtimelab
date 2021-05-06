@@ -125,7 +125,7 @@ namespace Microsoft.Interop
                 this.stubMethod,
                 targetDllImportData,
                 retMarshaller.Generator.AsNativeType(retMarshaller.TypeInfo),
-                paramMarshallers.Select(param => param.Generator.AsNativeType(param.TypeInfo)).ToArray(), out bool duplicateEntryPoint);
+                paramMarshallers.Select(param => param.Generator.AsParameter(param.TypeInfo).Type!).ToArray(), out bool duplicateEntryPoint);
             var setupStatements = new List<StatementSyntax>();
 
             if (retMarshaller.Generator.UsesNativeIdentifier(retMarshaller.TypeInfo, this))
