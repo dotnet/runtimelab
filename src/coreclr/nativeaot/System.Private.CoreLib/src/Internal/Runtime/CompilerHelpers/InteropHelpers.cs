@@ -242,7 +242,7 @@ namespace Internal.Runtime.CompilerHelpers
             fixed (char* pStr = s)
             {
                 int nativeLength = PInvokeMarshal.GetByteCount(pStr, stringLength);
-                byte* bstr = (byte*)Marshal.AllocBSTR(nativeLength);
+                byte* bstr = (byte*)Marshal.AllocBSTRByteLen((uint)nativeLength);
                 PInvokeMarshal.ConvertWideCharToMultiByte(pStr, stringLength, bstr, nativeLength, bestFit: false, throwOnUnmappableChar: false);
                 return bstr;
             }

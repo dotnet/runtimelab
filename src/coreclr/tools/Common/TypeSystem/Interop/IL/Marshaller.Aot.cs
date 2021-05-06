@@ -937,7 +937,7 @@ namespace Internal.TypeSystem.Interop
 
         internal override void EmitElementCleanup(ILCodeStream codeStream, ILEmitter emitter)
         {
-            var helper = Context.GetHelperEntryPoint("InteropHelpers", "StringToAnsiBstrBuffer");
+            var helper = InteropTypes.GetMarshal(Context).GetKnownMethod("FreeBSTR", null);
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
         }
         protected override void TransformManagedToNative(ILCodeStream codeStream)
