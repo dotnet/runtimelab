@@ -19,6 +19,7 @@ namespace Internal.TypeSystem
         U8 = 0xa,
         R4 = 0xb,
         R8 = 0xc,
+        BStr = 0x13,
         LPStr = 0x14,
         LPWStr = 0x15,
         LPTStr = 0x16,        // Ptr to OS preferred (SBCS/Unicode) string
