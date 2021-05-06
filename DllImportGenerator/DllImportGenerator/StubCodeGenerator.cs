@@ -115,9 +115,17 @@ namespace Microsoft.Interop
             }
         }
 
-        public (BlockSyntax Code, MethodDeclarationSyntax DllImport) GenerateSyntax()
+        public (BlockSyntax Code, MethodDeclarationSyntax? DllImport) GenerateSyntax(
+            ITargetDllImportNameGenerator targetNameGenerator,
+            SemanticModel model,
+            DllImportStub.GeneratedDllImportData targetDllImportData)
         {
-            string dllImportName = stubMethod.Name + "__PInvoke__";
+            string dllImportName = targetNameGenerator.GenerateDllImportEntryPointName(
+                model,
+                this.stubMethod,
+                targetDllImportData,
+                retMarshaller.Generator.AsNativeType(retMarshaller.TypeInfo),
+                paramMarshallers.Select(param => param.Generator.AsNativeType(param.TypeInfo)).ToArray(), out bool duplicateEntryPoint);
             var setupStatements = new List<StatementSyntax>();
 
             if (retMarshaller.Generator.UsesNativeIdentifier(retMarshaller.TypeInfo, this))
@@ -338,6 +346,11 @@ namespace Microsoft.Interop
 
             // Wrap all statements in an unsafe block
             var codeBlock = Block(UnsafeStatement(Block(allStatements)));
+
+            if (duplicateEntryPoint)
+            {
+                return (codeBlock, null);
+            }
 
             // Define P/Invoke declaration
             var dllImport = MethodDeclaration(retMarshaller.Generator.AsNativeType(retMarshaller.TypeInfo), dllImportName)

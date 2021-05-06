@@ -8,7 +8,7 @@ using System.Text;
 
 namespace Microsoft.Interop
 {
-    interface IStubDllImportNameGenerator
+    interface ITargetDllImportNameGenerator
     {
         public string GenerateDllImportEntryPointName(
             SemanticModel model,
@@ -20,7 +20,7 @@ namespace Microsoft.Interop
             );
     }
 
-    class StubDllImportNameGenerator
+    class TargetDllImportNameGenerator : ITargetDllImportNameGenerator
     {
         struct TypeSymbolOrSyntax : IEquatable<TypeSymbolOrSyntax>
         {
@@ -133,7 +133,7 @@ namespace Microsoft.Interop
             if (!emittedEntryPoints.TryGetValue(entryPoint, out var emittedEntryPointAttributeInfo))
             {
                 duplicateEntryPoint = false;
-                string name = method + "__PInvoke__";
+                string name = method.Name + "__PInvoke__";
                 emittedEntryPoints.Add(entryPoint, new List<(DllImportStub.GeneratedDllImportData, string)> { (targetDllImportData, name) });
                 return name;
             }
@@ -235,12 +235,12 @@ namespace Microsoft.Interop
         }
     }
 
-    class ForwarderDllImportNameGenerator : IStubDllImportNameGenerator
+    class ForwarderDllImportNameGenerator : ITargetDllImportNameGenerator
     {
         public string GenerateDllImportEntryPointName(SemanticModel model, IMethodSymbol method, DllImportStub.GeneratedDllImportData targetDllImportData, TypeSyntax returnType, TypeSyntax[] parameterTypes, out bool duplicateEntryPoint)
         {
             duplicateEntryPoint = false;
-            return method + "__PInvoke__";
+            return method.Name + "__PInvoke__";
         }
     }
 }

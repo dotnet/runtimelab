@@ -59,6 +59,9 @@ namespace Microsoft.Interop
             }
 
             var env = new StubEnvironment(context.Compilation, isSupported, targetFrameworkVersion, context.AnalyzerConfigOptions.GlobalOptions);
+            ITargetDllImportNameGenerator targetNameGenerator = env.Options.GenerateForwarders()
+                ? new ForwarderDllImportNameGenerator()
+                : new TargetDllImportNameGenerator();
             var generatedDllImports = new StringBuilder();
             foreach (SyntaxReference synRef in synRec.Methods)
             {
@@ -114,7 +117,15 @@ namespace Microsoft.Interop
                 }
 
                 // Create the stub.
-                var dllImportStub = DllImportStub.Create(methodSymbolInfo, stubDllImportData!, env, generatorDiagnostics, context.CancellationToken);
+                var dllImportStub = DllImportStub.Create(
+                    targetNameGenerator,
+                    sm,
+                    methodSymbolInfo,
+                    stubDllImportData!,
+                    targetDllImportData!,
+                    env,
+                    generatorDiagnostics,
+                    context.CancellationToken);
 
                 PrintGeneratedSource(generatedDllImports, methodSyntax, dllImportStub, dllImportAttr!);
             }
@@ -160,23 +171,27 @@ namespace Microsoft.Interop
                 .WithParameterList(ParameterList(SeparatedList(stub.StubParameters)))
                 .WithBody(stub.StubCode);
 
-            // Create the DllImport declaration.
-            var dllImport = stub.DllImportDeclaration.AddAttributeLists(
-                AttributeList(
-                    SingletonSeparatedList(dllImportAttr)));
-
             // Stub should have at least one containing type
             Debug.Assert(stub.StubContainingTypes.Any());
 
             // Add stub function and DllImport declaration to the first (innermost) containing
-            MemberDeclarationSyntax containingType = CreateTypeDeclarationWithoutTrivia(stub.StubContainingTypes.First())
-                .AddMembers(stubMethod, dllImport);
+            TypeDeclarationSyntax containingType = CreateTypeDeclarationWithoutTrivia(stub.StubContainingTypes.First())
+                .AddMembers(stubMethod);
+
+            if (stub.DllImportDeclaration is not null)
+            {
+                // Create the DllImport declaration.
+                var dllImport = stub.DllImportDeclaration.AddAttributeLists(
+                    AttributeList(
+                        SingletonSeparatedList(dllImportAttr)));
+                containingType = containingType.AddMembers(dllImport);
+            }
 
             // Add type to the remaining containing types (skipping the first which was handled above)
             foreach (var typeDecl in stub.StubContainingTypes.Skip(1))
             {
                 containingType = CreateTypeDeclarationWithoutTrivia(typeDecl)
-                    .WithMembers(SingletonList(containingType));
+                    .WithMembers(SingletonList<MemberDeclarationSyntax>(containingType));
             }
 
             MemberDeclarationSyntax toPrint = containingType;

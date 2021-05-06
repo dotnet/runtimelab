@@ -56,7 +56,7 @@ namespace Microsoft.Interop
 
         public BlockSyntax StubCode { get; init; }
 
-        public MethodDeclarationSyntax DllImportDeclaration { get; init; }
+        public MethodDeclarationSyntax? DllImportDeclaration { get; init; }
 
         public AttributeListSyntax[] AdditionalAttributes { get; init; }
 
@@ -108,8 +108,11 @@ namespace Microsoft.Interop
         }
 
         public static DllImportStub Create(
+            ITargetDllImportNameGenerator targetNameGenerator,
+            SemanticModel model,
             IMethodSymbol method,
-            GeneratedDllImportData dllImportData,
+            GeneratedDllImportData stubDllImportData,
+            GeneratedDllImportData targetDllImportData,
             StubEnvironment env,
             GeneratorDiagnostics diagnostics,
             CancellationToken token = default)
@@ -146,9 +149,9 @@ namespace Microsoft.Interop
 
             // Compute the current default string encoding value.
             var defaultEncoding = CharEncoding.Undefined;
-            if (dllImportData.IsUserDefined.HasFlag(DllImportMember.CharSet))
+            if (stubDllImportData.IsUserDefined.HasFlag(DllImportMember.CharSet))
             {
-                defaultEncoding = dllImportData.CharSet switch
+                defaultEncoding = stubDllImportData.CharSet switch
                 {
                     CharSet.Unicode => CharEncoding.Utf16,
                     CharSet.Auto => CharEncoding.PlatformDefined,
@@ -183,7 +186,7 @@ namespace Microsoft.Interop
             var managedRetTypeInfo = retTypeInfo;
             // Do not manually handle PreserveSig when generating forwarders.
             // We want the runtime to handle everything.
-            if (!dllImportData.PreserveSig && !env.Options.GenerateForwarders())
+            if (!stubDllImportData.PreserveSig && !env.Options.GenerateForwarders())
             {
                 // Create type info for native HRESULT return
                 retTypeInfo = TypePositionInfo.CreateForType(env.Compilation.GetSpecialType(SpecialType.System_Int32), NoMarshallingInfo.Instance);
@@ -209,8 +212,8 @@ namespace Microsoft.Interop
             }
 
             // Generate stub code
-            var stubGenerator = new StubCodeGenerator(method, dllImportData, paramsTypeInfo, retTypeInfo, diagnostics, env.Options);
-            var (code, dllImport) = stubGenerator.GenerateSyntax();
+            var stubGenerator = new StubCodeGenerator(method, stubDllImportData, paramsTypeInfo, retTypeInfo, diagnostics, env.Options);
+            var (code, dllImport) = stubGenerator.GenerateSyntax(targetNameGenerator, model, targetDllImportData);
 
             var additionalAttrs = new List<AttributeListSyntax>();
 
