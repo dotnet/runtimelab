@@ -543,6 +543,7 @@ namespace Internal.TypeSystem.Interop
                         }
 
                     case NativeTypeKind.TBStr:
+                    case NativeTypeKind.BStr:
                         return MarshallerKind.BSTRString;
 
                     case NativeTypeKind.Default:
