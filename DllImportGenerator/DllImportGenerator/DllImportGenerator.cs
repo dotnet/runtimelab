@@ -93,7 +93,12 @@ namespace Microsoft.Interop
                     continue;
 
                 // Process the GeneratedDllImport attribute
-                this.ProcessGeneratedDllImportAttribute(methodSymbolInfo, generatedDllImportAttr, context.AnalyzerConfigOptions.GlobalOptions.GenerateForwarders(), out var stubDllImportData, out var targetDllImportData);
+                this.ProcessGeneratedDllImportAttribute(
+                    methodSymbolInfo,
+                    generatedDllImportAttr,
+                    context.AnalyzerConfigOptions.GlobalOptions.GenerateForwarders(),
+                    out DllImportStub.GeneratedDllImportData? stubDllImportData,
+                    out DllImportStub.GeneratedDllImportData? targetDllImportData);
                 Debug.Assert((stubDllImportData is not null) && (targetDllImportData is not null));
                 AttributeSyntax dllImportAttr = this.CreateDllImportAttributeForTarget(targetDllImportData!);
 
