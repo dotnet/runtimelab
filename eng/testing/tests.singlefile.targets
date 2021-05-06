@@ -22,7 +22,6 @@
 
   <PropertyGroup Condition="'$(ClrNativeAot)' == 'true'">
     <IlcPath>$(TestNativeAotCompilerRootPath)</IlcPath>
-    <PlatformTarget>$(TargetArchitecture)</PlatformTarget>
     <SelfContained>true</SelfContained>
     <NoWarn>$(NoWarn);IL9700;IL9701;IL1005</NoWarn>
   </PropertyGroup>
