@@ -56,6 +56,13 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Contains(".*a+", str);
         }
 
+        //[Fact]
+        private void RegenerateUnicodeTables()
+        {
+            MethodInfo genUnicode = typeof(Regex).GetMethod("GenerateUnicodeTables", BindingFlags.NonPublic | BindingFlags.Static);
+            genUnicode.Invoke(null, new object[] { @"c:\tmp" });
+        }
+
         [Fact]
         public void TestWordBoundary()
         {
@@ -153,7 +160,7 @@ namespace System.Text.RegularExpressions.Tests
             }
         }
 
-    [Fact]
+        [Fact]
         public void SRMPrefixBugFixTest()
         {
             var re1 = new Regex("(a|ba)c", DFA);

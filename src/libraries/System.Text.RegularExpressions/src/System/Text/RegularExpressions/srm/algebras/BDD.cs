@@ -280,7 +280,7 @@ namespace System.Text.RegularExpressions.SRM
 
             //here we know that bdd is neither False nor True
             //but it could still be a MTBDD leaf if both children are null
-            var idmap = new Dictionary<BDD, int>();
+            var idmap = new Dictionary<BDD, long>();
             idmap[True] = 1;
             idmap[False] = 0;
 
@@ -294,8 +294,15 @@ namespace System.Text.RegularExpressions.SRM
                     //because True and False are excluded from TopSort()
                     res[i + 2] = -node.Ordinal;
                 else
+                {
+                    long v = (((long)node.Ordinal) << ordinal_shift) | (idmap[node.One] << one_node_shift) | (idmap[node.Zero] << zero_node_shift);
+#if DEBUG
+                    if (v < 0)
+                        throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
+#endif
                     //children ids are well-defined due to the topological order of nodes
-                    res[i + 2] = (node.Ordinal << ordinal_shift) | (idmap[node.One] << one_node_shift) | (idmap[node.Zero] << zero_node_shift);
+                    res[i + 2] = v;
+                }
             }
             return res;
         }

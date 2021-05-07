@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace System.Text.RegularExpressions.SRM
+namespace System.Text.RegularExpressions.SRM.Unicode
 {
     internal class IgnoreCaseTransformer
     {
@@ -18,7 +18,10 @@ namespace System.Text.RegularExpressions.SRM
         public IgnoreCaseTransformer(CharSetSolver charSetSolver)
         {
             this.solver = charSetSolver;
-            IgnoreCaseRel = charSetSolver.Deserialize(System.Text.RegularExpressions.SRM.Generated.IgnoreCaseRelation.ignorecase);
+            //IgnoreCaseRel = charSetSolver.Deserialize(System.Text.RegularExpressions.SRM.Unicode.IgnoreCaseRelation.ignorecase);
+            string str = System.Text.RegularExpressions.SRM.Unicode.IgnoreCaseRelation.s_IgnoreCaseBDD_repr;
+            IgnoreCaseRel = BDD.Deserialize(str, charSetSolver);
+            var str2 = IgnoreCaseRel.SerializeToString();
             domain = solver.ShiftRight(IgnoreCaseRel, 16);
         }
 

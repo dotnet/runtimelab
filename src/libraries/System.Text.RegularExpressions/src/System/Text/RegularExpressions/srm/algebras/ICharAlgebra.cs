@@ -55,15 +55,6 @@ namespace System.Text.RegularExpressions.SRM
         CharSetSolver CharSetProvider { get; }
 
         /// <summary>
-        /// If named definitions are possible,
-        /// makes a named definition of pred, as a unary relation symbol,
-        /// such that, for all x, name(x) holds iff body(x) holds. Returns the
-        /// atom name(x) that is equivalent to pred(x).
-        /// If named definitions are not supported, returns pred.
-        /// </summary>
-        PRED MkCharPredicate(string name, PRED pred);
-
-        /// <summary>
         /// Returns a partition of the full domain.
         /// </summary>
         PRED[] GetPartition();

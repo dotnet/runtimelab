@@ -5,9 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions.SRM.Generated;
 
-namespace System.Text.RegularExpressions.SRM
+namespace System.Text.RegularExpressions.SRM.Unicode
 {
     /// <summary>
     /// Maps unicode categories to correspoing character predicates.
@@ -108,9 +107,9 @@ namespace System.Text.RegularExpressions.SRM
         {
             if (object.Equals(catConditions[i], default(PRED))) //uninitialized
             {
-                catConditions[i] = solver.MkCharPredicate(
-                     UnicodeCategoryPredicateName(i),
-                     solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeBdd[i])));
+                BDD cat_i = BDD.Deserialize(UnicodeCategoryRanges.s_UnicodeCategoryBdd_repr[i], solver.CharSetProvider);
+                catConditions[i] =
+                     solver.ConvertFromCharSet(solver.CharSetProvider, cat_i);
 #if DEBUG
                 ValidateSerialization(catConditions[i]);
 #endif
@@ -123,8 +122,8 @@ namespace System.Text.RegularExpressions.SRM
             get {
                 if (object.Equals(whiteSpaceCondition, default(PRED)))
                 {
-                    whiteSpaceCondition = solver.MkCharPredicate("IsWhitespace",
-                                 solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeWhitespaceBdd)));
+                    var sBDD = BDD.Deserialize(UnicodeCategoryRanges.s_UnicodeWhitespaceBdd_repr, solver.CharSetProvider);
+                    whiteSpaceCondition = solver.ConvertFromCharSet(solver.CharSetProvider, sBDD);
 #if DEBUG
                     ValidateSerialization(whiteSpaceCondition);
 #endif
@@ -138,8 +137,8 @@ namespace System.Text.RegularExpressions.SRM
             get {
                 if (object.Equals(wordLetterCondition, default(PRED)))
                 {
-                    wordLetterCondition = solver.MkCharPredicate("IsWordletter",
-                                 solver.ConvertFromCharSet(solver.CharSetProvider, solver.CharSetProvider.DeserializeCompact(UnicodeCategoryRanges.UnicodeWordCharacterBdd)));
+                    var wBDD = BDD.Deserialize(UnicodeCategoryRanges.s_UnicodeWordCharacterBdd_repr, solver.CharSetProvider);
+                    wordLetterCondition = solver.ConvertFromCharSet(solver.CharSetProvider, wBDD);
 #if DEBUG
                     ValidateSerialization(wordLetterCondition);
 #endif

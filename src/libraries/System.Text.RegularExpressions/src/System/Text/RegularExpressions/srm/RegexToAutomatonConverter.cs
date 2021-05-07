@@ -15,7 +15,7 @@ namespace System.Text.RegularExpressions.SRM
     {
         private ICharAlgebra<S> solver;
 
-        internal UnicodeCategoryTheory<S> categorizer;
+        internal Unicode.UnicodeCategoryTheory<S> categorizer;
 
         internal SymbolicRegexBuilder<S> srBuilder;
 
@@ -34,7 +34,7 @@ namespace System.Text.RegularExpressions.SRM
         /// Constructs a regex to symbolic finite automata converter
         /// </summary>
         /// <param name="categorizer">maps unicode categories to corresponding character conditions</param>
-        public RegexToAutomatonConverter(UnicodeCategoryTheory<S> categorizer)
+        public RegexToAutomatonConverter(Unicode.UnicodeCategoryTheory<S> categorizer)
         {
             this.solver = categorizer.solver;
             this.categorizer = categorizer;

@@ -56,5 +56,17 @@ namespace System.Text.RegularExpressions
 
             _srm.SaveDGML(writer, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength);
         }
+
+#if DEBUG
+        /// <summary>
+        /// Generates two files IgnoreCaseRelation.cs and UnicodeCategoryRanges.cs for the namespace System.Text.RegularExpressions.SRM.Unicode
+        /// in the given directory path. Only avaliable in DEBUG mode.
+        /// </summary>
+        internal static void GenerateUnicodeTables(string path)
+        {
+            SRM.Unicode.IgnoreCaseRelationGenerator.Generate("System.Text.RegularExpressions.SRM.Unicode", "IgnoreCaseRelation", path);
+            SRM.Unicode.UnicodeCategoryRangesGenerator.Generate("System.Text.RegularExpressions.SRM.Unicode", "UnicodeCategoryRanges", path);
+        }
+#endif
     }
 }

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <TargetFrameworks>$(NetCoreAppCurrent)</TargetFrameworks>
@@ -73,7 +73,6 @@
     <Compile Include="System\Text\RegularExpressions\srm\algebras\BV.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\algebras\BV64Algebra.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\algebras\BVAlgebra.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\algebras\CharacterEncoding.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\algebras\CharSetSolver.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\algebras\IBooleanAlgebra.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\algebras\ICharAlgebra.cs" />
