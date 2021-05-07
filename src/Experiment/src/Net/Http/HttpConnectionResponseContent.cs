@@ -75,10 +75,10 @@ namespace System.Net.Http
         protected override void Dispose(bool disposing)
         {
             if (disposing)
-            {
-               _stream = null;
+            {  
+                _stream?.Dispose();
+                _stream = null;
             }
-
             base.Dispose(disposing);
         }
     }

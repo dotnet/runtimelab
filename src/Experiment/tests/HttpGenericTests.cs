@@ -125,7 +125,8 @@ namespace System.Net.Http.LowLevel.Tests
                 {
                     foreach (var (testIdx, headers, content, trailingHeaders, isChunked) in InterleavedData())
                     {
-                        await using ValueHttpRequest request = (await client.CreateNewRequestAsync(Version, HttpVersionPolicy.RequestVersionExact)).Value;
+                        await using ValueHttpRequest request = await client.CreateNewRequestAsync(Version, HttpVersionPolicy.RequestVersionExact) ??
+                                                               throw new Exception("Can't create request");
                         await ClientSendHelperAsync(request, uri, testIdx, headers, content, trailingHeaders, isChunked);
                     }
                 },

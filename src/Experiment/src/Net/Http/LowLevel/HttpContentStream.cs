@@ -10,14 +10,12 @@ namespace System.Net.Http.LowLevel
     /// </summary>
     public class HttpContentStream : Stream, IEnhancedStream
     {
-        private ValueHttpRequest _request;
+        protected internal ValueHttpRequest _request;
 
         private readonly bool _ownsRequest;
         private UnsafeSpanWrappingMemoryOwner? _spanReadWrapper, _spanWriteWrapper;
         private StreamState _readState;
         private bool _completed;
-        private readonly HttpResponseMessage? _responseMessage;
-        private readonly IHttpHeadersSink? _headerSink;
 
         /// <summary>
         /// The <see cref="ValueHttpRequest"/> being operated on.
@@ -49,15 +47,11 @@ namespace System.Net.Http.LowLevel
         /// Instantiates a new <see cref="HttpContentStream"/>.
         /// </summary>
         /// <param name="request">The <see cref="ValueHttpRequest"/> to operate on.</param>
-        /// <param name="responseMessage">The <see cref="HttpResponseMessage"/> associated with this stream.</param>
-        /// <param name="headerSink">The <see cref="IHttpHeadersSink"/> for extract http headers.</param>
         /// <param name="ownsRequest">If true, the <paramref name="request"/> will be disposed once the <see cref="HttpContentStream"/> is disposed.</param>
-        public HttpContentStream(ValueHttpRequest request, HttpResponseMessage? responseMessage, IHttpHeadersSink? headerSink, bool ownsRequest)
+        public HttpContentStream(ValueHttpRequest request, bool ownsRequest)
         {
             _request = request;
             _ownsRequest = ownsRequest;
-            _responseMessage = responseMessage;
-            _headerSink = headerSink;
         }
 
         /// <inheritdoc/>
@@ -80,7 +74,8 @@ namespace System.Net.Http.LowLevel
                     {
                         try
                         {
-                            await _request.CompleteRequestAsync().ConfigureAwait(false);
+                            // Drain. As we don't have connection factory we darin instead of close connection.
+                            // await _request.DrainAsync().ConfigureAwait(false);
                         }
                         catch (OperationCanceledException)
                         {
@@ -160,8 +155,6 @@ namespace System.Net.Http.LowLevel
                 {
                     if (!await _request.ReadToNextContentAsync(cancellationToken).ConfigureAwait(false))
                     {
-                        await ReadTrailingHeaders(cancellationToken).ConfigureAwait(false);
-
                         _readState = StreamState.EndOfStream;
                         return 0;
                     }
@@ -194,8 +187,6 @@ namespace System.Net.Http.LowLevel
                 {
                     if (!await _request.ReadToNextContentAsync(cancellationToken).ConfigureAwait(false))
                     {
-                        await ReadTrailingHeaders(cancellationToken).ConfigureAwait(false);
-
                         _readState = StreamState.EndOfStream;
                         return 0;
                     }
@@ -206,20 +197,6 @@ namespace System.Net.Http.LowLevel
             catch (Exception ex)
             {
                 throw new IOException(ex.Message, ex);
-            }
-        }
-
-        private async ValueTask ReadTrailingHeaders(CancellationToken cancellationToken)
-        {
-            if (_headerSink is null || _responseMessage is null)
-            {
-                return;
-            }
-
-            if (await _request.ReadToTrailingHeadersAsync(cancellationToken).ConfigureAwait(false))
-            {
-                await _request.ReadHeadersAsync(_headerSink, (_responseMessage, true), cancellationToken)
-                    .ConfigureAwait(false);
             }
         }
 

@@ -332,6 +332,60 @@ namespace System.Net.Http.LowLevel.Tests
                 });
         }
 
+        [Fact]
+        public async Task Send_Sequential()
+        {
+            const int runs = 5;
+            await RunClientTest(
+                async (client, serverUri) =>
+                {
+                    for (int i = 0; i < runs; i++)
+                    {
+                        HttpRequestMessage requestMessage = new(HttpMethod.Get, serverUri)
+                        {
+
+                        }; 
+                        using HttpResponseMessage response = await client.SendAsync(requestMessage);
+                        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                    }
+                },
+                async server => 
+                {
+                    for (int i = 0; i < runs; i++)
+                    {
+                        await using HttpTestStream stream = await server.AcceptStreamAsync();
+                        HttpTestFullRequest request = await stream.ReceiveAndSendAsync();
+                    }
+                });
+        }
+        
+        [Fact]
+        public async Task Send_Sequential_Read_Partial()
+        {
+            const int runs = 5;
+            await RunClientTest(
+                async (client, serverUri) =>
+                {
+                    for (int i = 0; i < runs; i++)
+                    {
+                        HttpRequestMessage requestMessage = new(HttpMethod.Get, serverUri);
+                        using HttpResponseMessage response = await client.SendAsync(requestMessage);
+                        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                        
+                        await using Stream stream = await response.Content.ReadAsStreamAsync();
+                        stream.ReadByte();
+                    }
+                },
+                async server => 
+                {
+                    for (int i = 0; i < runs; i++)
+                    {
+                        await using HttpTestStream stream = await server.AcceptStreamAsync();
+                        HttpTestFullRequest request = await stream.ReceiveAndSendChunkedAsync(200, null, "Some content".Select(x=>x.ToString()).ToArray() );
+                    }
+                });
+        }
+        
         internal virtual async Task RunClientTest(Func<HttpClient, Uri, Task> clientFunc,
             Func<HttpTestConnection, Task> serverFunc, int? millisecondsTimeout = null)
         {

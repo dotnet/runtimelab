@@ -34,7 +34,7 @@ namespace System.Net.Http
 
         protected override void Dispose(bool disposing)
         {
-            // Read what left.
+            Tools.BlockForResult(_connection.DisposeAsync());
             base.Dispose(disposing);
         }
 
@@ -109,11 +109,9 @@ namespace System.Net.Http
 
             if (request.Content is not null)
             {
-                await using HttpContentStream copyStream = new(httpRequest, null, null, false);
+                await using HttpContentStream copyStream = new(httpRequest, false);
                 await request.Content.CopyToAsync(copyStream, cancellationToken).ConfigureAwait(false);
             }
-
-            await httpRequest.CompleteRequestAsync(cancellationToken).ConfigureAwait(false);
 
             return httpRequest;
         }
@@ -136,7 +134,7 @@ namespace System.Net.Http
                     .ConfigureAwait(false);
             }
 
-            HttpContentStream httpStream = new(httpRequest, responseMessage, _headerSink, true);
+            PrimitiveHttpContentStream httpStream = new(httpRequest, responseMessage, _headerSink, true);
 
             content.SetStream(httpStream);
 
@@ -164,6 +162,7 @@ namespace System.Net.Http
 
             httpRequest = await PrepareRequest(httpRequest, request, cancellationToken).ConfigureAwait(false);
 
+            await httpRequest.CompleteRequestAsync(cancellationToken).ConfigureAwait(false);
             await httpRequest.ReadToFinalResponseAsync(cancellationToken).ConfigureAwait(false);
 
             HttpResponseMessage responseMessage =
