@@ -231,6 +231,31 @@ namespace Internal.Runtime.CompilerHelpers
             return Marshal.PtrToStringBSTR((IntPtr)buffer);
         }
 
+        internal static unsafe byte* StringToAnsiBstrBuffer(string s)
+        {
+            if (s is null)
+            {
+                return (byte*)IntPtr.Zero;
+            }
+
+            int stringLength = s.Length;
+            fixed (char* pStr = s)
+            {
+                int nativeLength = PInvokeMarshal.GetByteCount(pStr, stringLength);
+                byte* bstr = (byte*)Marshal.AllocBSTRByteLen((uint)nativeLength);
+                PInvokeMarshal.ConvertWideCharToMultiByte(pStr, stringLength, bstr, nativeLength, bestFit: false, throwOnUnmappableChar: false);
+                return bstr;
+            }
+        }
+
+        internal static unsafe string AnsiBstrBufferToString(byte* buffer)
+        {
+            if (buffer == null)
+                return null;
+
+            return Marshal.PtrToStringAnsi((IntPtr)buffer, (int)Marshal.SysStringByteLen((IntPtr)buffer));
+        }
+
         internal static unsafe IntPtr ResolvePInvoke(MethodFixupCell* pCell)
         {
             if (pCell->Target != IntPtr.Zero)
