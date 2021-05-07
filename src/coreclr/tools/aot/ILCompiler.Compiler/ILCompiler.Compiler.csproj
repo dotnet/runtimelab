@@ -225,6 +225,7 @@
     <Compile Include="Compiler\GenericRootProvider.cs" />
     <Compile Include="Compiler\HardwareIntrinsicHelpers.Aot.cs" />
     <Compile Include="Compiler\IInliningPolicy.cs" />
+    <Compile Include="Compiler\ILLinkDescriptorRootProvider.cs" />
     <Compile Include="Compiler\ManifestResourceBlockingPolicy.cs" />
     <Compile Include="Compiler\NoMetadataBlockingPolicy.cs" />
     <Compile Include="Compiler\DependencyAnalysis\FrozenObjectNode.cs" />

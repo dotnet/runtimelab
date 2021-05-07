@@ -8,6 +8,7 @@ using System.Text;
 using System.Xml;
 
 using Internal.TypeSystem;
+using Internal.TypeSystem.Ecma;
 
 namespace ILCompiler
 {
@@ -59,6 +60,8 @@ namespace ILCompiler
                 if (_reader.Name == "assembly")
                 {
                     string assemblyName = _reader.GetAttribute("fullname");
+                    if (assemblyName == null)
+                        throw new Exception("The \"fullname\" attribute is required on the \"assembly\" ILLink Directive.");
 
                     if (assemblyName == "*")
                         throw new NotSupportedException();
@@ -106,23 +109,53 @@ namespace ILCompiler
             return _context.ResolveAssembly(name);
         }
 
+        protected virtual void ProcessModuleMetadata(ModuleDesc assembly)
+        {
+        }
+
         private void ProcessAssembly(ModuleDesc assembly)
         {
+            ProcessModuleMetadata(assembly);
+            bool hasContent = false;
+            bool includeAllTypes = false;
+            var preserveAttribute = _reader.GetAttribute("preserve");
             while (_reader.IsStartElement())
             {
                 if (_reader.Name == "type")
                 {
                     ProcessType(assembly);
+                    hasContent = true;
                 }
                 else if (_reader.Name == "resource")
                 {
                     ProcessResource(assembly);
+                    hasContent = true;
                 }
 
                 _reader.Skip();
             }
 
             _reader.ReadEndElement();
+
+            if (preserveAttribute != null)
+            {
+                if (preserveAttribute != "all")
+                    throw new NotSupportedException($"\"{preserveAttribute}\" is not a supported value for the \"preserve\" attribute of the \"assembly\" ILLink Directive. Supported values are \"all\".");
+
+                includeAllTypes = true;
+            }
+            else
+            {
+                includeAllTypes = !hasContent;
+            }
+
+            if (includeAllTypes)
+            {
+                foreach (TypeDesc type in ((EcmaModule)assembly).GetAllTypes())
+                {
+                    ProcessType(assembly);
+                }
+            }
         }
 
         private void ProcessType(ModuleDesc assembly)
@@ -144,26 +177,42 @@ namespace ILCompiler
 
                 _reader.Read();
 
-                while (_reader.IsStartElement())
+                var preserveAttribute = _reader.GetAttribute("preserve");
+                if (preserveAttribute != null)
                 {
-                    if (_reader.Name == "method")
-                    {
-                        ProcessMethod(type);
-                    }
-                    else if (_reader.Name == "field")
-                    {
-                        ProcessField(type);
-                    }
-                    else if (_reader.Name == "attribute")
-                    {
-                        ProcessAttribute(type);
-                    }
+                    if (preserveAttribute != "all" && preserveAttribute != "nothing")
+                        throw new NotSupportedException($"\"{preserveAttribute}\" is not a supported value for the \"preserve\" attribute of the \"type\" ILLink Directive. Supported values are \"all\",\"nothing\".");
 
-                    _reader.Skip();
+                    ProcessType(type);
+                }
+
+                if (preserveAttribute == null || preserveAttribute != "nothing")
+                {
+                    while (_reader.IsStartElement())
+                    {
+                        if (_reader.Name == "method")
+                        {
+                            ProcessMethod(type);
+                        }
+                        else if (_reader.Name == "field")
+                        {
+                            ProcessField(type);
+                        }
+                        else if (_reader.Name == "attribute")
+                        {
+                            ProcessAttribute(type);
+                        }
+
+                        _reader.Skip();
+                    }
                 }
             }
 
             _reader.Skip();
+        }
+
+        protected virtual void ProcessType(TypeDesc type)
+        {
         }
 
         private void ProcessMethod(TypeDesc type)
