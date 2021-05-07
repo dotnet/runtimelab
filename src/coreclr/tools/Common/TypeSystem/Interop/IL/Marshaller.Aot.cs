@@ -878,37 +878,51 @@ namespace Internal.TypeSystem.Interop
         {
             ILEmitter emitter = _ilCodeStreams.Emitter;
 
-            MethodDesc helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertManagedComInterfaceToNative");
             LoadManagedValue(codeStream);
-            CustomAttributeValue<TypeDesc>? guidAttributeValue = (this.ManagedParameterType as EcmaType)?
-                .GetDecodedCustomAttribute("System.Runtime.InteropServices", "GuidAttribute");
-            if (guidAttributeValue == null)
+            var parameterType = this.ManagedParameterType;
+            if (parameterType.IsByRef)
             {
-                throw new NotSupportedException();
+                parameterType = ((ByRefType)this.ManagedParameterType).ParameterType;
             }
 
-            var guidValue = (string)guidAttributeValue.Value.FixedArguments[0].Value;
-            Span<byte> bytes = Guid.Parse(guidValue).ToByteArray();
-            codeStream.EmitLdc(BinaryPrimitives.ReadInt32LittleEndian(bytes));
-            codeStream.EmitLdc(BinaryPrimitives.ReadInt16LittleEndian(bytes.Slice(4)));
-            codeStream.EmitLdc(BinaryPrimitives.ReadInt16LittleEndian(bytes.Slice(6)));
-            for (int i = 8; i < 16; i++)
-                codeStream.EmitLdc(bytes[i]);
+            CustomAttributeValue<TypeDesc>? guidAttributeValue = (parameterType as EcmaType)?
+                .GetDecodedCustomAttribute("System.Runtime.InteropServices", "GuidAttribute");
+            if (guidAttributeValue != null)
+            {
+                var guidValue = (string)guidAttributeValue.Value.FixedArguments[0].Value;
+                Span<byte> bytes = Guid.Parse(guidValue).ToByteArray();
+                codeStream.EmitLdc(BinaryPrimitives.ReadInt32LittleEndian(bytes));
+                codeStream.EmitLdc(BinaryPrimitives.ReadInt16LittleEndian(bytes.Slice(4)));
+                codeStream.EmitLdc(BinaryPrimitives.ReadInt16LittleEndian(bytes.Slice(6)));
+                for (int i = 8; i < 16; i++)
+                    codeStream.EmitLdc(bytes[i]);
 
-            MetadataType guidType = Context.SystemModule.GetKnownType("System", "Guid");
-            var int32Type = Context.GetWellKnownType(WellKnownType.Int32);
-            var int16Type = Context.GetWellKnownType(WellKnownType.Int16);
-            var byteType = Context.GetWellKnownType(WellKnownType.Byte);
-            var sig = new MethodSignature(
-                MethodSignatureFlags.None,
-                genericParameterCount: 0,
-                returnType: Context.GetWellKnownType(WellKnownType.Void),
-                parameters: new TypeDesc[] { int32Type, int16Type, int16Type, byteType, byteType, byteType, byteType, byteType, byteType, byteType, byteType });
-            MethodDesc guidCtorHandleMethod =
-                guidType.GetKnownMethod(".ctor", sig);
-            codeStream.Emit(ILOpcode.newobj,  emitter.NewToken(guidCtorHandleMethod));
+                MetadataType guidType = Context.SystemModule.GetKnownType("System", "Guid");
+                var int32Type = Context.GetWellKnownType(WellKnownType.Int32);
+                var int16Type = Context.GetWellKnownType(WellKnownType.Int16);
+                var byteType = Context.GetWellKnownType(WellKnownType.Byte);
+                var sig = new MethodSignature(
+                    MethodSignatureFlags.None,
+                    genericParameterCount: 0,
+                    returnType: Context.GetWellKnownType(WellKnownType.Void),
+                    parameters: new TypeDesc[] { int32Type, int16Type, int16Type, byteType, byteType, byteType, byteType, byteType, byteType, byteType, byteType });
+                MethodDesc guidCtorHandleMethod =
+                    guidType.GetKnownMethod(".ctor", sig);
+                codeStream.Emit(ILOpcode.newobj, emitter.NewToken(guidCtorHandleMethod));
 
-            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+                MethodDesc helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertManagedComInterfaceToNative");
+                codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+            }
+            else
+            {
+                if (!parameterType.IsObject)
+                {
+                    throw new NotSupportedException();
+                }
+
+                MethodDesc helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertManagedComInterfaceToIUnknown");
+                codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+            }
 
             StoreNativeValue(codeStream);
         }

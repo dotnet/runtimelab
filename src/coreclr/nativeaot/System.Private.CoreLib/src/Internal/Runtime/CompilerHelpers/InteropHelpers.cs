@@ -454,6 +454,22 @@ namespace Internal.Runtime.CompilerHelpers
 #endif
         }
 
+        public static IntPtr ConvertManagedComInterfaceToIUnknown(object pUnk)
+        {
+            if (pUnk == null)
+            {
+                return IntPtr.Zero;
+            }
+
+#if TARGET_WINDOWS
+#pragma warning disable CA1416
+            return ComWrappers.ComInterfaceForObject(pUnk);
+#pragma warning restore CA1416
+#else
+            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+#endif
+        }
+
         public static object ConvertNativeComInterfaceToManaged(IntPtr pUnk)
         {
             if (pUnk == IntPtr.Zero)
