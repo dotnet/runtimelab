@@ -14,7 +14,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// The unicode component includes the BDD algebra. It is being shared as a static member for efficiency.
         /// </summary>
-        internal static readonly UnicodeCategoryTheory<BDD> s_unicode = new UnicodeCategoryTheory<BDD>(new CharSetSolver());
+        internal static readonly Unicode.UnicodeCategoryTheory<BDD> s_unicode = new(new CharSetSolver());
 
         internal const string _DFA_incompatible_with = "DFA option is incompatible with ";
 

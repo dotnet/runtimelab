@@ -123,31 +123,6 @@ namespace System.Text.RegularExpressions.SRM.DGML
         {
             StringBuilder sb = new();
             sb.Append(fa.DescribeState(state));
-            //if (fa.InitialState == state)
-            //{
-            //    sb.Append("&#13;");
-            //    sb.Append("|Q|=");
-            //    sb.Append(fa.StateCount);
-            //    sb.Append("&#13;");
-            //    sb.Append('|');
-            //    sb.Append(DELTA_CAPITAL);
-            //    sb.Append("|=");
-            //    sb.Append(fa.TransitionCount);
-            //    sb.Append("&#13;");
-            //    sb.Append('|');
-            //    sb.Append(SIGMA_CAPITAL);
-            //    sb.Append("|=");
-            //    sb.Append(fa.Alphabet.Length);
-            //    sb.Append("&#13;");
-            //    sb.Append(SIGMA_CAPITAL);
-            //    sb.Append('=');
-            //    for (int i=0; i< fa.Alphabet.Length; i++)
-            //    {
-            //        if (i > 0)
-            //            sb.Append(',');
-            //        sb.Append(fa.DescribeLabel(fa.Alphabet[i]));
-            //    }
-            //}
             return sb.ToString();
         }
 
