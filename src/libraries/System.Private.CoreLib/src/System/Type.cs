@@ -497,7 +497,9 @@ namespace System
             throw NotImplemented.ByDesign;
         }
 
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         public virtual Type MakeArrayType() => throw new NotSupportedException();
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         public virtual Type MakeArrayType(int rank) => throw new NotSupportedException();
         public virtual Type MakeByRefType() => throw new NotSupportedException();
         [RequiresDynamicCode("The native code for this instantiation might not be available at runtime.")]

@@ -5,6 +5,7 @@ using System.Runtime;
 using System.Threading;
 using System.Collections;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Reflection;
@@ -62,6 +63,7 @@ namespace System
             return EETypePtr.EETypePtrOf<Array>().ToPointer();
         }
 
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         public static Array CreateInstance(Type elementType, int length)
         {
             if (elementType is null)
@@ -70,6 +72,8 @@ namespace System
             return CreateSzArray(elementType, length);
         }
 
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+            Justification = "MDArrays of Rank != 1 can be created because they don't implement generic interfaces.")]
         public static unsafe Array CreateInstance(Type elementType, int length1, int length2)
         {
             if (elementType is null)
@@ -86,6 +90,8 @@ namespace System
             return NewMultiDimArray(arrayType.TypeHandle.ToEETypePtr(), pLengths, 2);
         }
 
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+            Justification = "MDArrays of Rank != 1 can be created because they don't implement generic interfaces.")]
         public static unsafe Array CreateInstance(Type elementType, int length1, int length2, int length3)
         {
             if (elementType is null)
@@ -105,6 +111,7 @@ namespace System
             return NewMultiDimArray(arrayType.TypeHandle.ToEETypePtr(), pLengths, 3);
         }
 
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         public static Array CreateInstance(Type elementType, params int[] lengths)
         {
             if (elementType is null)
@@ -133,6 +140,7 @@ namespace System
             }
         }
 
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         public static Array CreateInstance(Type elementType, int[] lengths, int[] lowerBounds)
         {
             if (elementType is null)
@@ -149,6 +157,7 @@ namespace System
             return CreateMultiDimArray(elementType, lengths, lowerBounds);
         }
 
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         private static Array CreateSzArray(Type elementType, int length)
         {
             // Though our callers already validated length once, this parameter is passed via arrays, so we must check it again
@@ -160,6 +169,7 @@ namespace System
             return RuntimeImports.RhNewArray(arrayType.TypeHandle.ToEETypePtr(), length);
         }
 
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         private static Array CreateMultiDimArray(Type elementType, int[] lengths, int[] lowerBounds)
         {
             Debug.Assert(lengths != null);
@@ -176,6 +186,7 @@ namespace System
             return RuntimeAugments.NewMultiDimArray(arrayType.TypeHandle, lengths, lowerBounds);
         }
 
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         private static Type GetArrayTypeFromElementType(Type elementType, bool multiDim, int rank)
         {
             elementType = elementType.UnderlyingSystemType;
