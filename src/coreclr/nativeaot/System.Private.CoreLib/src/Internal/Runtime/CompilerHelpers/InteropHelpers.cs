@@ -223,6 +223,16 @@ namespace Internal.Runtime.CompilerHelpers
             return PInvokeMarshal.AnsiCharToWideChar(nativeValue);
         }
 
+        internal static double DateTimeToOleDateTime(DateTime value)
+        {
+            return value.ToOADate();
+        }
+
+        internal static DateTime OleDateTimeToDateTime(double value)
+        {
+            return DateTime.FromOADate(value);
+        }
+
         internal static unsafe string BstrBufferToString(char* buffer)
         {
             if (buffer == null)

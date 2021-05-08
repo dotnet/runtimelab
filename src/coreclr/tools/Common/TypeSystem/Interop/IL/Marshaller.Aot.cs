@@ -79,6 +79,8 @@ namespace Internal.TypeSystem.Interop
                     return new AsAnyMarshaller(isAnsi: false);
                 case MarshallerKind.ComInterface:
                     return new ComInterfaceMarshaller();
+                case MarshallerKind.OleDateTime:
+                    return new OleDateTimeMarshaller();
                 default:
                     // ensures we don't throw during create marshaller. We will throw NSE
                     // during EmitIL which will be handled and an Exception method body
@@ -1004,6 +1006,31 @@ namespace Internal.TypeSystem.Interop
             LoadNativeValue(codeStream);
 
             var helper = Context.GetHelperEntryPoint("InteropHelpers", "BstrBufferToString");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreManagedValue(codeStream);
+        }
+    }
+
+    class OleDateTimeMarshaller : Marshaller
+    {
+        protected override void TransformManagedToNative(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadManagedValue(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "DateTimeToOleDateTime");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreNativeValue(codeStream);
+        }
+
+        protected override void TransformNativeToManaged(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadNativeValue(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "OleDateTimeToDateTime");
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
 
             StoreManagedValue(codeStream);
