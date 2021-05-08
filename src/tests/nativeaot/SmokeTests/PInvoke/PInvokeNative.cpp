@@ -676,6 +676,50 @@ DLL_EXPORT int __stdcall ValidateSuccessCall(int errorCode)
     return errorCode;
 }
 
+typedef struct Decimal {
+    unsigned short wReserved;
+    union {
+        struct {
+            unsigned char scale;
+            unsigned char sign;
+        } part;
+        unsigned short value;
+    } signscale;
+    unsigned long hi32;
+    union {
+        struct {
+            unsigned long lo32;
+            unsigned long mid32;
+        } part;
+        unsigned long long value;
+    } lo64;
+} Decimal;
+
+DLL_EXPORT bool __stdcall DecimalTest(Decimal value)
+{
+    if (value.hi32 != 100) {
+        return false;
+    }
+
+    if (value.lo64.part.lo32 != 100) {
+        return false;
+    }
+
+    if (value.lo64.part.mid32 != 100) {
+        return false;
+    }
+
+    if (value.signscale.part.sign != 128) {
+        return false;
+    }
+
+    if (value.signscale.part.scale != 1) {
+        return false;
+    }
+
+    return true;
+}
+
 #if (_MSC_VER >= 1400)         // Check MSC version
 #pragma warning(pop)           // Renable previous depreciations
 #endif
