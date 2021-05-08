@@ -4,6 +4,7 @@
 using System;
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -334,6 +335,8 @@ namespace System.Reflection
         // There are known store apps that cast the results of apis and expect the cast to work. The implementation of Attribute.GetCustomAttribute()
         // also relies on this (it performs an unsafe cast to Attribute[] and does not re-copy the array.)
         //==============================================================================================================================
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+            Justification = "Arrays of reference types are safe to create.")]
         private static IEnumerable<Attribute> Instantiate(this IEnumerable<CustomAttributeData> cads, Type actualElementType)
         {
             LowLevelList<Attribute> attributes = new LowLevelList<Attribute>();
