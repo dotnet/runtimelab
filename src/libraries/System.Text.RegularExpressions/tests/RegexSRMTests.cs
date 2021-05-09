@@ -44,8 +44,8 @@ namespace System.Text.RegularExpressions.Tests
             saveDgml.Invoke(regex, new object[] { writer, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength });
         }
 
-        //[Fact]
-        private void TestDGMLGeneration()
+        [Fact]
+        public void TestDGMLGeneration()
         {
             StringWriter sw = new StringWriter();
             var re = new Regex(".*a+", DFA | RegexOptions.Singleline);
@@ -91,72 +91,205 @@ namespace System.Text.RegularExpressions.Tests
             Assert.False(match3.Success);
         }
 
+        /*
+         * misc stuff:
+        //var re = new Regex(@"^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,12}|[0-9]{1,3})(\]?)$", DFA);
+        //var re = new Regex(@"\b\d{1,2}\/\d{1,2}\/\d{2,4}\b", DFA | RegexOptions.Singleline);
+        //var re = new Regex(@"(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])", DFA | RegexOptions.Singleline);
+        //var re = new Regex(@"[\w]+://[^/\s?#]+[^\s?#]+(?:\?[^\s#]*)?(?:#[^\s]*)?", DFA | RegexOptions.Singleline);
+        //var re = new Regex(@"\b\w+nn\b", DFA);
+        //var re = new Regex(@"abracadabra\z", DFA | RegexOptions.Multiline);
+        //var re = new Regex("^.{5}", DFA);
+        //var re = new Regex("^a(_?a?_?a?_?)+$", DFA);
+        //var re = new Regex(@"^\b[a-z]+(n|\n|@|_)n\b", DFA);
+        //var re = new Regex(@"^[a-z]+", DFA | RegexOptions.Multiline);
+        //var re = new Regex(@"(([a-z])+.)+[A-Z]([a-z])+", DFA | RegexOptions.Singleline);
+        //var re = new Regex("ab+c$", DFA);
+        //ViewDGML(regex: re);
+        //ViewDGML(regex: re, addDotStar: true);
+        //ViewDGML(regex: re, inReverse: true);
+        //var match = re.Match("_.@[0.0.0.aaaaaaaaaa]");
+        //string[] rawregexes = File.ReadAllLines("c:/tmp/VS19preview/cortana.txt");
+        //HashSet<int> notsupported = new();
+        //HashSet<string> set = new();
+        //Regex QsizeMatcher = new Regex(@"\|Q\|=[0-9]+", DFA);
+        //Regex DsizeMatcher = new Regex(@"\|&#x0394;\|=[0-9]+", DFA);
+        //Regex AsizeMatcher = new Regex(@"\|&#x03A3;\|=[0-9]+", DFA);
+        //Func<string, int> NrOfStates = (s) => int.Parse(QsizeMatcher.Match(s).Value.Substring(4));
+        //Func<string, int> NrOfMoves = (s) => int.Parse(DsizeMatcher.Match(s).Value.Substring(11));
+        //Func<string, int> NrOfSymbols = (s) => int.Parse(AsizeMatcher.Match(s).Value.Substring(11));
+        //HashSet<int> stateSizes = new();
+        //HashSet<int> moveSizes = new();
+        //HashSet<int> alphSizes = new();
+        //for (int i = 0; i < rawregexes.Length; i++)
+        //{
+        //    var re = new Regex(rawregexes[i], DFA);
+        //    StringWriter sw = new StringWriter();
+        //    SaveDGML(re, sw, onlyDFAinfo: true);
+        //    ViewDGML(re);
+        //    int n = NrOfStates(sw.ToString());
+        //    int m = NrOfMoves(sw.ToString());
+        //    int k = NrOfSymbols(sw.ToString());
+        //    stateSizes.Add(n);
+        //    moveSizes.Add(m);
+        //    alphSizes.Add(k);
+        //}
+        //Console.WriteLine(stateSizes.Count);
+        //string rawregex = @"((decryptionKey|validationKey)=""[a-zA-Z0-9]+"")";
+        //string rawregex = @"(?<Part0>(\b(10|11|12|[1-9])\b))\s*(?<Part1>(:)\s*(?<Part2>([0-5][0-9]))){0,1}\s*(?<Part3>(\b([Tt]he day before yesterday|day before yesterday|[Tt]he day after tomorrow|day after tomorrow|[Yy]esterday|[Tt]oday|[Tt]ommorrow|[Tt]omorrow|[Tt]ommorow|[Tt]mrw)\b))";
+        //string rawregex = @"(?<Part0>(tonight))\s*(?<Part1>(at)){0,1}\s*(?<Part2>(midnight))";
+        */
+
+        private const string inputfile = @"c:\tmp\vsinput.txt";
+        private const string outputfile = @"c:\tmp\vsoutput.txt";
+        private const string regexesfile = @"c:\tmp\vsregexes.txt";
+
+        /// <summary>
+        /// The intent is that this method is run in realease build for lightweight performance testing.
+        /// One can e.g. open the outputfile in emacs with AUTO-REVERT-ON in order to follow the progress in real time.
+        /// It will print timing info and match info for both DFA and Compiled option.
+        /// Place sample regexes in the regexesfile (one per line) and sample input in inputfile.
+        /// </summary>
         //[Fact]
-        private void TestRun()
+        private void TestRunPerformance()
         {
-            //var re = new Regex(@"^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,12}|[0-9]{1,3})(\]?)$", DFA);
-            //var re = new Regex(@"\b\d{1,2}\/\d{1,2}\/\d{2,4}\b", DFA | RegexOptions.Singleline);
-            //var re = new Regex(@"(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])", DFA | RegexOptions.Singleline);
-            //var re = new Regex(@"[\w]+://[^/\s?#]+[^\s?#]+(?:\?[^\s#]*)?(?:#[^\s]*)?", DFA | RegexOptions.Singleline);
-            //var re = new Regex(@"\b\w+nn\b", DFA);
-            //var re = new Regex(@"abracadabra\z", DFA | RegexOptions.Multiline);
-            //var re = new Regex("^.{5}", DFA);
-            //var re = new Regex("^a(_?a?_?a?_?)+$", DFA);
-            //var re = new Regex(@"^\b[a-z]+(n|\n|@|_)n\b", DFA);
-            //var re = new Regex(@"^[a-z]+", DFA | RegexOptions.Multiline);
-            //var re = new Regex(@"(([a-z])+.)+[A-Z]([a-z])+", DFA | RegexOptions.Singleline);
-            //var re = new Regex("ab+c$", DFA);
-            //ViewDGML(regex: re);
-            //ViewDGML(regex: re, addDotStar: true);
-            //ViewDGML(regex: re, inReverse: true);
-            //var match = re.Match("_.@[0.0.0.aaaaaaaaaa]");
-            //string[] rawregexes = File.ReadAllLines("c:/tmp/VS19preview/cortana.txt");
-            //HashSet<int> notsupported = new();
-            //HashSet<string> set = new();
-            //Regex QsizeMatcher = new Regex(@"\|Q\|=[0-9]+", DFA);
-            //Regex DsizeMatcher = new Regex(@"\|&#x0394;\|=[0-9]+", DFA);
-            //Regex AsizeMatcher = new Regex(@"\|&#x03A3;\|=[0-9]+", DFA);
-            //Func<string, int> NrOfStates = (s) => int.Parse(QsizeMatcher.Match(s).Value.Substring(4));
-            //Func<string, int> NrOfMoves = (s) => int.Parse(DsizeMatcher.Match(s).Value.Substring(11));
-            //Func<string, int> NrOfSymbols = (s) => int.Parse(AsizeMatcher.Match(s).Value.Substring(11));
-            //HashSet<int> stateSizes = new();
-            //HashSet<int> moveSizes = new();
-            //HashSet<int> alphSizes = new();
-            //for (int i = 0; i < rawregexes.Length; i++)
-            //{
-            //    var re = new Regex(rawregexes[i], DFA);
-            //    StringWriter sw = new StringWriter();
-            //    SaveDGML(re, sw, onlyDFAinfo: true);
-            //    ViewDGML(re);
-            //    int n = NrOfStates(sw.ToString());
-            //    int m = NrOfMoves(sw.ToString());
-            //    int k = NrOfSymbols(sw.ToString());
-            //    stateSizes.Add(n);
-            //    moveSizes.Add(m);
-            //    alphSizes.Add(k);
-            //}
-            //Console.WriteLine(stateSizes.Count);
-            //string rawregex = @"((decryptionKey|validationKey)=""[a-zA-Z0-9]+"")";
-            //string rawregex = @"(?<Part0>(\b(10|11|12|[1-9])\b))\s*(?<Part1>(:)\s*(?<Part2>([0-5][0-9]))){0,1}\s*(?<Part3>(\b([Tt]he day before yesterday|day before yesterday|[Tt]he day after tomorrow|day after tomorrow|[Yy]esterday|[Tt]oday|[Tt]ommorrow|[Tt]omorrow|[Tt]ommorow|[Tt]mrw)\b))";
-            //string rawregex = @"(?<Part0>(tonight))\s*(?<Part1>(at)){0,1}\s*(?<Part2>(midnight))";
-            string s = File.ReadAllText(@"c:\tmp\largesemirandom.txt");
-            string[] rawregexes = File.ReadAllLines(@"c:\tmp\someregexes.txt");
+            string input = File.ReadAllText(inputfile);
+            string[] rawregexes = File.ReadAllLines(regexesfile);
+            File.AppendAllText(outputfile, string.Format("\n========= date:{0} =========\n", System.DateTime.Now));
+            int totDFA = 0;
+            int totCOM = 0;
+            int tDFA = 0;
+            int tCOM = 0;
             for (int i = 0; i < rawregexes.Length; i++)
             {
                 var rawregex = rawregexes[i];
-                Regex re = new(rawregex, DFA);
-                Regex reC = new(rawregex, RegexOptions.Compiled);
-                //ViewDGML(re);
-                //warmup
-                re.Match(s);
-                //now measure the time
+                Regex re = new(rawregex, DFA, new TimeSpan(0, 0, 10));
+                Regex reC = new(rawregex, RegexOptions.Compiled, new TimeSpan(0,0,10));
+                File.AppendAllText(outputfile, string.Format("\n--- Regex:{0}\n", i));
+                //-------------------
+                //-- measure DFA
+                //-------------------
+                tDFA = MeasureMatchTime(re, "DFA", input);
+                //-------------------
+                //-- measure COMPILED
+                //-------------------
+                tCOM = MeasureMatchTime(reC, "COM", input);
+                //ignore the cases when one times out
+                if (tDFA >= 0 && tCOM >= 0)
+                {
+                    totDFA += tDFA;
+                    totCOM += tCOM;
+                }
+            }
+            File.AppendAllText(outputfile, string.Format("\ntotal time: DFA:{0}ms, COM:{1}ms\n", totDFA, totCOM));
+        }
+
+        private static int MeasureMatchTime(Regex re, string tag, string input)
+        {
+            File.AppendAllText(outputfile, tag + ": warmup:...");
+            try
+            {
+                int t0 = System.Environment.TickCount;
+                re.Match(input);
+                t0 = System.Environment.TickCount - t0;
+                File.AppendAllText(outputfile, string.Format("{0}ms, run:...", t0));
                 int t1 = System.Environment.TickCount;
-                var match1 = re.Match(s);
+                var match1 = re.Match(input);
                 t1 = System.Environment.TickCount - t1;
-                int t2 = System.Environment.TickCount;
-                var match2 = reC.Match(s);
-                t2 = System.Environment.TickCount - t2;
-                File.AppendAllText(@"c:\tmp\vsoutput.txt", string.Format("\n--- Regex: {8}\n,DFA={0}ms, COMPILED={1}ms, ({3}/{6},at:{4}/{7}) match={2}({5})", t1, t2, match1.Value, match1.Success, match1.Success ? match1.Index : -1, match2.Value, match2.Success, match2.Success ? match2.Index : -1, rawregex));
+                File.AppendAllText(outputfile, string.Format("{0}ms, Match:{1} (Index:{2} Length:{3})\n", t1, match1.Success, match1.Index, match1.Length));
+                return t1;
+            }
+            catch (TimeoutException)
+            {
+                File.AppendAllText(outputfile, " TIMEOUT\n");
+                return -1;
+            }
+            catch (Exception)
+            {
+                File.AppendAllText(outputfile, " ERROR\n");
+                return -1;
+            }
+        }
+
+        private static MethodInfo _Deserialize = typeof(Regex).GetMethod("Deserialize", BindingFlags.NonPublic | BindingFlags.Static);
+        private static Regex Deserialize(string s) => _Deserialize.Invoke(null, new object[] { s }) as Regex;
+
+        private static MethodInfo _Serialize = typeof(Regex).GetMethod("Serialize", BindingFlags.NonPublic | BindingFlags.Instance);
+        private static string Serialize(Regex r) => _Serialize.Invoke(r, null) as string;
+
+        private const string serializedout = @"c:\tmp\serialized.txt";
+        /// <summary>
+        /// Test serialization/deserialization and measure performance for all regexes in the regexesfile.
+        /// </summary>
+        //[Fact]
+        private void TestRunSerialization()
+        {
+            string[] rawregexes = File.ReadAllLines(regexesfile);
+            File.AppendAllText(outputfile, string.Format("\n========= TimeStamp:{0} =========\n", System.DateTime.Now));
+            int k = rawregexes.Length;
+            Regex[] rs = new Regex[k];
+            string[] ser = new string[k];
+            Regex[] drs = new Regex[k];
+            //construct
+            int totConstrTime = System.Environment.TickCount;
+            for (int i = 0; i < k; i++)
+                rs[i] = new Regex(rawregexes[i], DFA);
+            totConstrTime = System.Environment.TickCount - totConstrTime;
+            //serialize
+            int totSerTime = System.Environment.TickCount;
+            //repeat ten times
+            for (int j = 0; j < 10; j++)
+                for (int i = 0; i < k; i++)
+                    ser[i] = Serialize(rs[i]);
+            totSerTime = System.Environment.TickCount - totSerTime;
+            totSerTime = totSerTime / 10;
+            //save the serializations
+            File.WriteAllLines(serializedout, ser);
+            //deserialize
+            int totDeSerTime = System.Environment.TickCount;
+            //repeat ten times
+            for (int j = 0; j < 10; j++)
+                for (int i = 0; i < k; i++)
+                    drs[i] = Deserialize(ser[i]);
+            totDeSerTime = System.Environment.TickCount - totDeSerTime;
+            totDeSerTime = totDeSerTime / 10;
+            File.AppendAllText(outputfile, string.Format("\nconstr:{0}ms, serialization:{1}ms, deserialization:{2}ms\n", totConstrTime, totSerTime, totDeSerTime));
+        }
+
+        /// <summary>
+        /// Test serialization/deserialization of some sample regexes.
+        /// Verify correctness of all the deserialized regexes against the original ones.
+        /// Test also that serialization is idempotent.
+        /// </summary>
+        [Fact]
+        public void TestRegexSerialization()
+        {
+            string[] rawregexes = new string[] {@"\b\d\w+nn\b", "An+e", "^this", "(?i:Jaan$)", @"\p{Sm}+" };
+            int k = rawregexes.Length;
+            //DFA versions
+            var rs = Array.ConvertAll(rawregexes, s => new Regex(s, DFA));
+            //Compiled versions
+            var rsC = Array.ConvertAll(rawregexes, s => new Regex(s, RegexOptions.Compiled));
+            //serialize
+            var ser = Array.ConvertAll(rs, Serialize);
+            //deserialize
+            var drs = Array.ConvertAll(ser, Deserialize);
+            //repeat serialization on  the deserialized regexes
+            var ser2 = Array.ConvertAll(drs, Serialize);
+            //check idempotence
+            for (int i = 0; i < k; i++)
+                Assert.True(ser[i] == ser2[i], string.Format("idempotence of serialization of regex {0} fails", i));
+
+            string input = "this text contains math symbols +~<> and names like Ann and Anne and maku and jaan";
+            for (int i = 0; i < k; i++)
+            {
+                var match1 = rs[i].Match(input);
+                var match2 = drs[i].Match(input);
+                var matchExpected = rsC[i].Match(input);
+                Assert.Equal(matchExpected.Success, match1.Success);
+                Assert.Equal(matchExpected.Success, match2.Success);
+                Assert.Equal(matchExpected.Value, match1.Value);
+                Assert.Equal(matchExpected.Value, match2.Value);
             }
         }
 

@@ -85,9 +85,9 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public void Serialize(StringBuilder sb) => _matcher.Serialize(sb);
 
-        //the separator char could potentially also be \something other than '\n'
-        //it must not be a character used to serialize the fragments: 0-9A-Za-z/\+*()[].,;-^$?
-        internal const char s_top_level_separator = '\n';
+        //it must not be '\n' or a character used to serialize the fragments: 0-9A-Za-z/\+*()[].,-^$;?
+        //avoiding '\n' so that multiple serializations can be stored one per line in an ascii text file
+        internal const char s_top_level_separator = '#';
 
         /// <summary>
         /// Deserializes the matcher from the given input string created with Serialize.
@@ -95,8 +95,7 @@ namespace System.Text.RegularExpressions.SRM
         public static Regex Deserialize(string input)
         {
             input.Split(s_top_level_separator);
-            //trim also whitespace from entries -- this implies for example that \r is removed if present in line endings
-            string[] fragments = input.Split(s_top_level_separator, StringSplitOptions.TrimEntries);
+            string[] fragments = input.Split(s_top_level_separator);
             if (fragments.Length != 13)
                 throw new ArgumentException($"{nameof(Regex.Deserialize)} error", nameof(input));
 
