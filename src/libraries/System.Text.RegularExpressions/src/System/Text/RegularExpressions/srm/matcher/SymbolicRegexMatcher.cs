@@ -256,7 +256,8 @@ namespace System.Text.RegularExpressions.SRM
             dt.Serialize(sb);
             sb.Append(Regex.s_top_level_separator);
             //------------ fragemnt 13 -----------
-            sb.Append(_matchTimeout.ToString());
+            if (_checkTimeout)
+                sb.Append(_matchTimeout.ToString());
         }
 
         /// <summary>
@@ -281,7 +282,17 @@ namespace System.Text.RegularExpressions.SRM
             A_fixedPrefix_ignoreCase = bool.Parse(fragments[10]);
             Ar_prefix = Base64.DecodeString(fragments[11]);
             dt = Classifier.Deserialize(fragments[12]);
-            _matchTimeout = TimeSpan.Parse(fragments[13]);
+            string potentialTimeout = fragments[13].TrimEnd();
+            if (potentialTimeout == string.Empty)
+            {
+                _matchTimeout = System.Text.RegularExpressions.Regex.InfiniteMatchTimeout;
+                _checkTimeout = false;
+            }
+            else
+            {
+                _matchTimeout = TimeSpan.Parse(potentialTimeout);
+                _checkTimeout = true;
+            }
             if (A.info.ContainsSomeAnchor)
             {
                 //line anchors are being used when builder.newLinePredicate is different from False
@@ -312,6 +323,7 @@ namespace System.Text.RegularExpressions.SRM
                 throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + "nullable regex (accepting the empty string)");
 
             this._matchTimeout = matchTimeout;
+            this._checkTimeout = (System.Text.RegularExpressions.Regex.InfiniteMatchTimeout != _matchTimeout);
             this.Options = options;
             this.StartSetSizeLimit = 1;
             this.builder = sr.builder;
@@ -496,10 +508,9 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void CheckTimeout()
         {
-            if (Environment.TickCount > _timeoutOccursAt)
+            if (System.Environment.TickCount > _timeoutOccursAt)
                 throw new TimeoutException();
         }
 
@@ -512,12 +523,11 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public Match FindMatch(bool isMatch, string input, int startat = 0, int endat = -1)
         {
-            _checkTimeout = (System.Text.RegularExpressions.Regex.InfiniteMatchTimeout != _matchTimeout);
             if (_checkTimeout)
             {
                 // Using Environment.TickCount and not Stopwatch similar to the non-DFA case.
-                int _timeout = (int)(_matchTimeout.TotalMilliseconds + 0.5);
-                _timeoutOccursAt = Environment.TickCount + _timeout;
+                int timeout = (int)_matchTimeout.TotalMilliseconds;
+                _timeoutOccursAt = Environment.TickCount + timeout;
             }
 #if UNSAFE
             if ((Options & RegexOptions.Vectorize) != RegexOptions.None)
@@ -743,7 +753,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="i">start position</param>
         /// <param name="i_q0">last position the initial state of A1 was visited</param>
         /// <param name="k">input length or bounded input length</param>
-        /// <param name="watchdog">length of the match or -1</param>
+        /// <param name="watchdog">length of match when positive</param>
         private int FindFinalStatePosition(string input, int k, int i, out int i_q0, out int watchdog)
         {
             // get the correct start state of A1,
@@ -834,9 +844,6 @@ namespace System.Text.RegularExpressions.SRM
                     }
                 }
 
-                if (_checkTimeout)
-                    CheckTimeout();
-
                 // make the transition based on input[i]
                 q = Delta(input, i, q);
 
@@ -854,6 +861,9 @@ namespace System.Text.RegularExpressions.SRM
                 }
                 // continue from the next character
                 i += 1;
+
+                if (_checkTimeout)
+                    CheckTimeout();
             }
 
             i_q0 = i_q0_A1;
