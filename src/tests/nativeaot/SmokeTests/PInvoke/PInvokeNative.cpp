@@ -7,6 +7,7 @@
 #include <stdint.h>
 #ifdef TARGET_WINDOWS
 #include <windows.h>
+#include <wtypes.h>
 #define DLL_EXPORT extern "C" __declspec(dllexport)
 #else
 #include<errno.h>
@@ -677,55 +678,57 @@ DLL_EXPORT int __stdcall ValidateSuccessCall(int errorCode)
     return errorCode;
 }
 
-typedef struct Decimal {
+#ifndef DECIMAL_NEG // defined in wtypes.h
+typedef struct tagDEC {
     uint16_t wReserved;
     union {
         struct {
             uint8_t scale;
             uint8_t sign;
-        } part;
-        uint16_t value;
-    } signscale;
-    uint32_t hi32;
+        };
+        uint16_t signscale;
+    };
+    uint32_t Hi32;
     union {
         struct {
-            uint32_t lo32;
-            uint32_t mid32;
-        } part;
-        uint64_t value;
-    } lo64;
-} Decimal;
+            uint32_t Lo32;
+            uint32_t Mid32;
+        };
+        uint64_t Lo64;
+    };
+} DECIMAL;
+#endif
 
-DLL_EXPORT Decimal __stdcall DecimalTest(Decimal value)
+DLL_EXPORT DECIMAL __stdcall DecimalTest(DECIMAL value)
 {
-    Decimal zero;
-    memset(&zero, 0, sizeof(Decimal));
+    DECIMAL zero;
+    memset(&zero, 0, sizeof(DECIMAL));
 
-    if (value.lo64.part.lo32 != 100) {
+    if (value.Lo32 != 100) {
         return zero;
     }
 
-    if (value.lo64.part.mid32 != 101) {
+    if (value.Mid32 != 101) {
         return zero;
     }
 
-    if (value.hi32 != 102) {
+    if (value.Hi32 != 102) {
         return zero;
     }
 
-    if (value.signscale.part.sign != 0) {
+    if (value.sign != 0) {
         return zero;
     }
 
-    if (value.signscale.part.scale != 1) {
+    if (value.scale != 1) {
         return zero;
     }
 
-    value.signscale.part.sign = 128;
-    value.signscale.part.scale = 2;
-    value.lo64.part.lo32 = 99;
-    value.lo64.part.mid32 = 98;
-    value.hi32 = 97;
+    value.sign = 128;
+    value.scale = 2;
+    value.Lo32 = 99;
+    value.Mid32 = 98;
+    value.Hi32 = 97;
 
     return value;
 }
