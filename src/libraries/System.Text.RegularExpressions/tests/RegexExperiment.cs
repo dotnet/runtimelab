@@ -120,19 +120,15 @@ namespace System.Text.RegularExpressions.Tests
         private static int MeasureMatchTime(Regex re, string tag, string input)
         {
             File.AppendAllText(outputfile, tag + ": warmup:...");
-            Stopwatch sw = new Stopwatch();
             int t = 0;
             try
             {
-                sw.Start();
+                var sw = Stopwatch.StartNew();
                 re.Match(input);
-                t = (int)sw.ElapsedMilliseconds;
-                sw.Reset();
-                WriteOutput("{0}ms, run:...", t);
-                sw.Start();
+                WriteOutput("{0}ms, run:...", (int)sw.ElapsedMilliseconds);
+                sw = Stopwatch.StartNew();
                 var match1 = re.Match(input);
                 t = (int)sw.ElapsedMilliseconds;
-                sw.Reset();
                 WriteOutput("{0}ms, Match:{1} (Index:{2} Length:{3})\n", t, match1.Success, match1.Index, match1.Length);
                 return t;
             }
@@ -154,38 +150,33 @@ namespace System.Text.RegularExpressions.Tests
         //[Fact]
         private void TestRunSerialization()
         {
-            Stopwatch sw = new Stopwatch();
             string[] rawregexes = File.ReadAllLines(regexesfile);
             WriteOutput("\n========= TimeStamp:{0} =========\n", System.DateTime.Now);
             int k = rawregexes.Length;
-            Regex[] rs = new Regex[k];
-            string[] ser = new string[k];
-            Regex[] drs = new Regex[k];
             //construct
-            sw.Start();
-            for (int i = 0; i < k; i++)
-                rs[i] = new Regex(rawregexes[i], DFA);
+            var sw = Stopwatch.StartNew();
+            var rs = Array.ConvertAll(rawregexes, s => new Regex(s, DFA, new TimeSpan(0,0,1)));
             int totConstrTime = (int)sw.ElapsedMilliseconds;
-            sw.Reset();
-
+            //-------
             //serialize
-            sw.Start();
+            sw = Stopwatch.StartNew();
             //repeat ten times
-            for (int j = 0; j < 10; j++)
-                for (int i = 0; i < k; i++)
-                    ser[i] = Serialize(rs[i]);
+            var ser = Array.ConvertAll(rs, Serialize);
+            for (int j = 0; j < 9; j++)
+                ser = Array.ConvertAll(rs, Serialize);
             int totSerTime = (int)sw.ElapsedMilliseconds / 10;
-            sw.Reset();
+            //-------
             //save the serializations
             File.WriteAllLines(serializedout, ser);
+            //----------
             //deserialize
-            sw.Start();
+            sw = Stopwatch.StartNew();
             //repeat ten times
-            for (int j = 0; j < 10; j++)
-                for (int i = 0; i < k; i++)
-                    drs[i] = Deserialize(ser[i]);
+            var drs = Array.ConvertAll(ser, Deserialize);
+            for (int j = 0; j < 9; j++)
+                drs = Array.ConvertAll(ser, Deserialize);
             int totDeSerTime = (int)sw.ElapsedMilliseconds / 10;
-            sw.Reset();
+            //----------
             File.AppendAllText(outputfile, string.Format("\nconstr:{0}ms, serialization:{1}ms, deserialization:{2}ms\n", totConstrTime, totSerTime, totDeSerTime));
         }
 

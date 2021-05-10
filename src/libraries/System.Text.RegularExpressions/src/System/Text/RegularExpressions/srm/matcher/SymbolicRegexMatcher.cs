@@ -58,6 +58,10 @@ namespace System.Text.RegularExpressions.SRM
         /// Timeout for matching.
         /// </summary>
         private TimeSpan _matchTimeout;
+        /// <summary>
+        /// corresponding timeout in ms
+        /// </summary>
+        private int _timeout;
         private int _timeoutOccursAt;
         private bool _checkTimeout;
 
@@ -292,6 +296,8 @@ namespace System.Text.RegularExpressions.SRM
             {
                 _matchTimeout = TimeSpan.Parse(potentialTimeout);
                 _checkTimeout = true;
+                _timeout = (int)(_matchTimeout.TotalMilliseconds + 0.5); // Round up, so it will at least 1ms;
+                _timeoutChecksToSkip = TimeoutCheckFrequency;
             }
             if (A.info.ContainsSomeAnchor)
             {
@@ -322,8 +328,11 @@ namespace System.Text.RegularExpressions.SRM
             if (sr.IsNullable)
                 throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + "nullable regex (accepting the empty string)");
 
-            this._matchTimeout = matchTimeout;
-            this._checkTimeout = (System.Text.RegularExpressions.Regex.InfiniteMatchTimeout != _matchTimeout);
+            _matchTimeout = matchTimeout;
+            _checkTimeout = (System.Text.RegularExpressions.Regex.InfiniteMatchTimeout != _matchTimeout);
+            _timeout = (int)(matchTimeout.TotalMilliseconds + 0.5); // Round up, so it will at least 1ms;
+            _timeoutChecksToSkip = TimeoutCheckFrequency;
+
             this.Options = options;
             this.StartSetSizeLimit = 1;
             this.builder = sr.builder;
@@ -508,10 +517,34 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
-        private void CheckTimeout()
+        /// <summary>
+        /// The frequence is lower in DFA mode because timeout tests are performed much
+        /// less frequently here, once per transition, compared to non-DFA mode.
+        /// So, e.g., 5 here imples checking after every 5 transitions.
+        /// </summary>
+        private const int TimeoutCheckFrequency = 5;
+        private int _timeoutChecksToSkip;
+        /// <summary>
+        /// This code is identical to RegexRunner.DoCheckTimeout()
+        /// </summary>
+        private void DoCheckTimeout()
         {
-            if (System.Environment.TickCount > _timeoutOccursAt)
-                throw new TimeoutException();
+            if (--_timeoutChecksToSkip != 0)
+                return;
+
+            _timeoutChecksToSkip = TimeoutCheckFrequency;
+
+            int currentMillis = Environment.TickCount;
+
+            if (currentMillis < _timeoutOccursAt)
+                return;
+
+            if (0 > _timeoutOccursAt && 0 < currentMillis)
+                return;
+
+            //regex pattern is in general not available in srm and
+            //the input is not available here but could be passed as argument to DoCheckTimeout
+            throw new RegexMatchTimeoutException(string.Empty, string.Empty, _matchTimeout);
         }
 
         /// <summary>
@@ -526,7 +559,7 @@ namespace System.Text.RegularExpressions.SRM
             if (_checkTimeout)
             {
                 // Using Environment.TickCount and not Stopwatch similar to the non-DFA case.
-                int timeout = (int)_matchTimeout.TotalMilliseconds;
+                int timeout = (int)(_matchTimeout.TotalMilliseconds + 0.5);
                 _timeoutOccursAt = Environment.TickCount + timeout;
             }
 #if UNSAFE
@@ -863,7 +896,7 @@ namespace System.Text.RegularExpressions.SRM
                 i += 1;
 
                 if (_checkTimeout)
-                    CheckTimeout();
+                    DoCheckTimeout();
             }
 
             i_q0 = i_q0_A1;
