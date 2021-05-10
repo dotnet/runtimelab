@@ -12,7 +12,7 @@ namespace ILCompiler.DependencyAnalysis
 {
     public class InterfaceDispatchMapNode : ObjectNode, ISymbolDefinitionNode, ISortableSymbolNode
     {
-        private readonly TypeDesc _type;
+        TypeDesc _type;
 
         public InterfaceDispatchMapNode(NodeFactory factory, TypeDesc type)
         {
@@ -98,12 +98,11 @@ namespace ILCompiler.DependencyAnalysis
                 foreach (MethodDesc slotMethod in slots)
                 {
                     MethodDesc declMethod = slotMethod;
-
-                    if (declMethod.Signature.IsStatic || !declMethod.IsVirtual)
-                        continue;
-
                     if (interfaceOnDefinitionType != null)
                         declMethod = factory.TypeSystemContext.GetMethodForInstantiatedType(declMethod.GetTypicalMethodDefinition(), interfaceOnDefinitionType);
+
+                    if (declMethod.Signature.IsStatic)
+                        continue;
 
                     var implMethod = declType.GetTypeDefinition().ResolveInterfaceMethodToVirtualMethodOnType(declMethod);
                     if (implMethod != null)

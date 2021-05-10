@@ -55,8 +55,6 @@ public class BringUpTests
         TestLinqExpressions.Run();
 #endif
 
-        TestDefaultInterfaceMethods.Run();
-
         return result;
     }
 
@@ -118,7 +116,7 @@ public class BringUpTests
             ClassWithIFoo t = new ClassWithIFoo("Class");
             Func<int, string> d = t.DoFoo;
             if (d(987) != "Class987")
-                return false;
+                return false;       
         }
 
         Console.WriteLine("OK");
@@ -470,43 +468,5 @@ class TestLinqExpressions
             if (i != 123)
                 throw new Exception();
         }
-    }
-}
-
-class TestDefaultInterfaceMethods
-{
-    interface IFoo
-    {
-        int GetNumber() => 42;
-    }
-
-    interface IBar : IFoo
-    {
-        int IFoo.GetNumber() => 43;
-    }
-
-    class Foo : IFoo { }
-    class Bar : IBar { }
-
-    class Baz : IFoo
-    {
-        public int GetNumber() => 100;
-    }
-
-    public static void Run()
-    {
-        Console.WriteLine("Testing default interface methods...");
-
-        Func<int> a1 = ((IFoo)new Foo()).GetNumber;
-        if (a1() != 42)
-            throw new Exception();
-
-        Func<int> a2 = ((IFoo)new Bar()).GetNumber;
-        if (a2() != 43)
-            throw new Exception();
-
-        Func<int> a3 = ((IFoo)new Baz()).GetNumber;
-        if (a3() != 100)
-            throw new Exception();
     }
 }

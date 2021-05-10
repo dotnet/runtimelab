@@ -291,23 +291,6 @@ namespace ILCompiler.DependencyAnalysis
                     }
                 }
 
-                // Add conditional dependencies for interface methods with default implementations
-                if (defType.IsInterface)
-                {
-                    foreach (MethodDesc method in defType.GetAllMethods())
-                    {
-                        // Generic virtual methods are tracked by an orthogonal mechanism.
-                        if (method.HasInstantiation)
-                            continue;
-
-                        if (method.IsVirtual && !method.IsAbstract)
-                        {
-                            MethodDesc canonMethod = method.GetCanonMethodTarget(CanonicalFormKind.Specific);
-                            result.Add(new CombinedDependencyListEntry(factory.MethodEntrypoint(canonMethod), factory.VirtualMethodUse(method), "Default interface method"));
-                        }
-                    }
-                }
-
                 Debug.Assert(
                     _type == defType ||
                     ((System.Collections.IStructuralEquatable)defType.RuntimeInterfaces).Equals(_type.RuntimeInterfaces,
@@ -324,7 +307,7 @@ namespace ILCompiler.DependencyAnalysis
 
                     foreach (MethodDesc interfaceMethod in interfaceType.GetAllMethods())
                     {
-                        if (interfaceMethod.Signature.IsStatic || !interfaceMethod.IsVirtual)
+                        if (interfaceMethod.Signature.IsStatic)
                             continue;
 
                         // Generic virtual methods are tracked by an orthogonal mechanism.
@@ -777,28 +760,19 @@ namespace ILCompiler.DependencyAnalysis
                 {
                     MethodDesc canonImplMethod = implMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
 
-                    if (canonImplMethod != implMethod && implMethod.OwningType.IsInterface)
-                    {
-                        // We need an instantiating stub here. For now, pretend this was a reabstraction or that there's no default
-                        // implementation.
-                        objData.EmitZeroPointer();
-                    }
-                    else
-                    {
-                        // If the type we're generating now is abstract, and the implementation comes from an abstract type,
-                        // only use a tentative method entrypoint that can have its body replaced by a throwing stub
-                        // if no "hard" reference to that entrypoint exists in the program.
-                        // This helps us to eliminate method bodies for virtual methods on abstract types that are fully overriden
-                        // in the children of that abstract type.
-                        bool canUseTentativeEntrypoint = implType is MetadataType mdImplType && mdImplType.IsAbstract && !mdImplType.IsInterface
-                            && implMethod.OwningType is MetadataType mdImplMethodType && mdImplMethodType.IsAbstract
-                            && factory.CompilationModuleGroup.AllowVirtualMethodOnAbstractTypeOptimization(canonImplMethod);
+                    // If the type we're generating now is abstract, and the implementation comes from an abstract type,
+                    // only use a tentative method entrypoint that can have its body replaced by a throwing stub
+                    // if no "hard" reference to that entrypoint exists in the program.
+                    // This helps us to eliminate method bodies for virtual methods on abstract types that are fully overriden
+                    // in the children of that abstract type.
+                    bool canUseTentativeEntrypoint = implType is MetadataType mdImplType && mdImplType.IsAbstract && !mdImplType.IsInterface
+                        && implMethod.OwningType is MetadataType mdImplMethodType && mdImplMethodType.IsAbstract
+                        && factory.CompilationModuleGroup.AllowVirtualMethodOnAbstractTypeOptimization(canonImplMethod);
 
-                        IMethodNode implSymbol =  canUseTentativeEntrypoint ?
-                            factory.TentativeMethodEntrypoint(canonImplMethod, implMethod.OwningType.IsValueType) :
-                            factory.MethodEntrypoint(canonImplMethod, implMethod.OwningType.IsValueType);
-                        objData.EmitPointerReloc(implSymbol);
-                    }
+                    IMethodNode implSymbol =  canUseTentativeEntrypoint ?
+                        factory.TentativeMethodEntrypoint(canonImplMethod, implMethod.OwningType.IsValueType) :
+                        factory.MethodEntrypoint(canonImplMethod, implMethod.OwningType.IsValueType);
+                    objData.EmitPointerReloc(implSymbol);
                 }
                 else
                 {

@@ -1476,13 +1476,20 @@
         <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\diamondshape\diamondshape_d\*" />
         <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\diamondshape\diamondshape_r\*" />
         <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\genericmethods\genericmethods\*" />
+        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\methodimpl\methodimpl\*" />
+        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\reabstraction\reabstraction\*" />
         <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\sharedgenerics\non_virtual_calls_to_instance_methods\*" />
         <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\sharedgenerics\sharedgenerics_d\*" />
         <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\sharedgenerics\sharedgenerics_r\*" />
+        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\simple\simple\*" />
+        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\valuetypes\valuetypes\*" />
         <ExcludeList Include="$(XunitTestBinBase)/reflection\DefaultInterfaceMethods\Emit\*" />
         <ExcludeList Include="$(XunitTestBinBase)/reflection\DefaultInterfaceMethods\GetInterfaceMapConsumer\*" />
         <ExcludeList Include="$(XunitTestBinBase)/reflection\DefaultInterfaceMethods\InvokeConsumer\*" />
         <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\15241\genericcontext\*" />
+        <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\15650\interfacecctor\*" />
+        <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\15827\nonvirtualcall\*" />
+        <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\16064\methodimpl\*" />
         <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\16123\ambiguousconstraint\*" />
         <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\16354\notimplemented\*" />
         <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\16355\boring\*" />
@@ -1492,6 +1499,7 @@
         <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\22021\consumer\*" />
         <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\22386\debug3\*" />
         <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\22407\abstractcalls\*" />
+        <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\22728\debug15\*" />
 
         <!-- Covariant returns -->
         <!-- https://github.com/dotnet/runtimelab/issues/205 -->
