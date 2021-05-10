@@ -1297,6 +1297,9 @@ namespace Internal.JitInterface
             pResult->classFlags = getClassAttribsInternal(targetMethod.OwningType);
 
             pResult->methodFlags = getMethodAttribsInternal(targetMethod);
+
+            targetIsFatFunctionPointer |= (flags & CORINFO_CALLINFO_FLAGS.CORINFO_CALLINFO_CALLVIRT) != 0 && !(pResult->kind == CORINFO_CALL_KIND.CORINFO_CALL);
+
             Get_CORINFO_SIG_INFO(targetMethod, &pResult->sig, targetIsFatFunctionPointer);
 
             if ((flags & CORINFO_CALLINFO_FLAGS.CORINFO_CALLINFO_VERIFICATION) != 0)

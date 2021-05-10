@@ -307,7 +307,7 @@ namespace ILCompiler.DependencyAnalysis
 
                     foreach (MethodDesc interfaceMethod in interfaceType.GetAllMethods())
                     {
-                        if (interfaceMethod.Signature.IsStatic)
+                        if (interfaceMethod.Signature.IsStatic || !interfaceMethod.IsVirtual)
                             continue;
 
                         // Generic virtual methods are tracked by an orthogonal mechanism.
