@@ -993,6 +993,18 @@ internal class ReflectionTest
             public static unsafe ref ByRefLike ByRefLikeRefReturningMethod(ByRefLike* a) => ref *a;
         }
 
+        private sealed class TestClass2<T>
+        {
+            private T _value;
+
+            public TestClass2(T value) { _value = value; }
+
+#if OPTIMIZED_MODE_WITHOUT_SCANNER
+            [MethodImpl(MethodImplOptions.NoInlining)]
+#endif
+            public ref T RefReturningMethod(T someArgument) => ref _value;
+        }
+
         private sealed unsafe class TestClassIntPointer
         {
             private int* _value;
@@ -1031,6 +1043,10 @@ internal class ReflectionTest
             TestRefReturnInvoke(new BigStruct { X = 123, D = 456 }, (p, t) => p.GetGetMethod().Invoke(t, Array.Empty<object>()));
             TestRefReturnInvoke(new object(), (p, t) => p.GetGetMethod().Invoke(t, Array.Empty<object>()));
             TestRefReturnInvoke((object)null, (p, t) => p.GetGetMethod().Invoke(t, Array.Empty<object>()));
+
+            // Regression test
+            MethodInfo mi = typeof(TestClass2<string>).GetMethod(nameof(TestClass2<string>.RefReturningMethod));
+            mi.Invoke(new TestClass2<string>("Hello"), new object[] { "Hello" });
         }
 
         public static void TestRefReturnNullable()
