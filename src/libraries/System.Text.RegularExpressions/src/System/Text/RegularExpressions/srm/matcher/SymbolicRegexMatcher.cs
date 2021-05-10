@@ -58,6 +58,10 @@ namespace System.Text.RegularExpressions.SRM
         /// Timeout for matching.
         /// </summary>
         private TimeSpan _matchTimeout;
+        /// <summary>
+        /// corresponding timeout in ms
+        /// </summary>
+        private int _timeout;
         private int _timeoutOccursAt;
         private bool _checkTimeout;
 
@@ -256,7 +260,8 @@ namespace System.Text.RegularExpressions.SRM
             dt.Serialize(sb);
             sb.Append(Regex.s_top_level_separator);
             //------------ fragemnt 13 -----------
-            sb.Append(_matchTimeout.ToString());
+            if (_checkTimeout)
+                sb.Append(_matchTimeout.ToString());
         }
 
         /// <summary>
@@ -281,7 +286,19 @@ namespace System.Text.RegularExpressions.SRM
             A_fixedPrefix_ignoreCase = bool.Parse(fragments[10]);
             Ar_prefix = Base64.DecodeString(fragments[11]);
             dt = Classifier.Deserialize(fragments[12]);
-            _matchTimeout = TimeSpan.Parse(fragments[13]);
+            string potentialTimeout = fragments[13].TrimEnd();
+            if (potentialTimeout == string.Empty)
+            {
+                _matchTimeout = System.Text.RegularExpressions.Regex.InfiniteMatchTimeout;
+                _checkTimeout = false;
+            }
+            else
+            {
+                _matchTimeout = TimeSpan.Parse(potentialTimeout);
+                _checkTimeout = true;
+                _timeout = (int)(_matchTimeout.TotalMilliseconds + 0.5); // Round up, so it will at least 1ms;
+                _timeoutChecksToSkip = TimeoutCheckFrequency;
+            }
             if (A.info.ContainsSomeAnchor)
             {
                 //line anchors are being used when builder.newLinePredicate is different from False
@@ -311,7 +328,11 @@ namespace System.Text.RegularExpressions.SRM
             if (sr.IsNullable)
                 throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + "nullable regex (accepting the empty string)");
 
-            this._matchTimeout = matchTimeout;
+            _matchTimeout = matchTimeout;
+            _checkTimeout = (System.Text.RegularExpressions.Regex.InfiniteMatchTimeout != _matchTimeout);
+            _timeout = (int)(matchTimeout.TotalMilliseconds + 0.5); // Round up, so it will at least 1ms;
+            _timeoutChecksToSkip = TimeoutCheckFrequency;
+
             this.Options = options;
             this.StartSetSizeLimit = 1;
             this.builder = sr.builder;
@@ -496,11 +517,34 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void CheckTimeout()
+        /// <summary>
+        /// The frequence is lower in DFA mode because timeout tests are performed much
+        /// less frequently here, once per transition, compared to non-DFA mode.
+        /// So, e.g., 5 here imples checking after every 5 transitions.
+        /// </summary>
+        private const int TimeoutCheckFrequency = 5;
+        private int _timeoutChecksToSkip;
+        /// <summary>
+        /// This code is identical to RegexRunner.DoCheckTimeout()
+        /// </summary>
+        private void DoCheckTimeout()
         {
-            if (Environment.TickCount > _timeoutOccursAt)
-                throw new TimeoutException();
+            if (--_timeoutChecksToSkip != 0)
+                return;
+
+            _timeoutChecksToSkip = TimeoutCheckFrequency;
+
+            int currentMillis = Environment.TickCount;
+
+            if (currentMillis < _timeoutOccursAt)
+                return;
+
+            if (0 > _timeoutOccursAt && 0 < currentMillis)
+                return;
+
+            //regex pattern is in general not available in srm and
+            //the input is not available here but could be passed as argument to DoCheckTimeout
+            throw new RegexMatchTimeoutException(string.Empty, string.Empty, _matchTimeout);
         }
 
         /// <summary>
@@ -512,12 +556,11 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public Match FindMatch(bool isMatch, string input, int startat = 0, int endat = -1)
         {
-            _checkTimeout = (System.Text.RegularExpressions.Regex.InfiniteMatchTimeout != _matchTimeout);
             if (_checkTimeout)
             {
                 // Using Environment.TickCount and not Stopwatch similar to the non-DFA case.
-                int _timeout = (int)(_matchTimeout.TotalMilliseconds + 0.5);
-                _timeoutOccursAt = Environment.TickCount + _timeout;
+                int timeout = (int)(_matchTimeout.TotalMilliseconds + 0.5);
+                _timeoutOccursAt = Environment.TickCount + timeout;
             }
 #if UNSAFE
             if ((Options & RegexOptions.Vectorize) != RegexOptions.None)
@@ -743,7 +786,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="i">start position</param>
         /// <param name="i_q0">last position the initial state of A1 was visited</param>
         /// <param name="k">input length or bounded input length</param>
-        /// <param name="watchdog">length of the match or -1</param>
+        /// <param name="watchdog">length of match when positive</param>
         private int FindFinalStatePosition(string input, int k, int i, out int i_q0, out int watchdog)
         {
             // get the correct start state of A1,
@@ -834,9 +877,6 @@ namespace System.Text.RegularExpressions.SRM
                     }
                 }
 
-                if (_checkTimeout)
-                    CheckTimeout();
-
                 // make the transition based on input[i]
                 q = Delta(input, i, q);
 
@@ -854,6 +894,9 @@ namespace System.Text.RegularExpressions.SRM
                 }
                 // continue from the next character
                 i += 1;
+
+                if (_checkTimeout)
+                    DoCheckTimeout();
             }
 
             i_q0 = i_q0_A1;
