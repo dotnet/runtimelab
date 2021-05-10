@@ -57,7 +57,6 @@ namespace Internal.TypeSystem.Interop
                 case MarshallerKind.FunctionPointer:
                     return new DelegateMarshaller();
                 case MarshallerKind.Struct:
-                case MarshallerKind.Decimal:
                     return new StructMarshaller();
                 case MarshallerKind.ByValAnsiString:
                     return new ByValAnsiStringMarshaller();
@@ -80,6 +79,8 @@ namespace Internal.TypeSystem.Interop
                     return new AsAnyMarshaller(isAnsi: false);
                 case MarshallerKind.ComInterface:
                     return new ComInterfaceMarshaller();
+                case MarshallerKind.Decimal:
+                    return new DecimalMarshaller();
                 default:
                     // ensures we don't throw during create marshaller. We will throw NSE
                     // during EmitIL which will be handled and an Exception method body
@@ -1008,6 +1009,44 @@ namespace Internal.TypeSystem.Interop
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
 
             StoreManagedValue(codeStream);
+        }
+    }
+
+    class DecimalMarshaller : Marshaller
+    {
+        protected override void AllocManagedToNative(ILCodeStream codeStream)
+        {
+            LoadNativeAddr(codeStream);
+            codeStream.Emit(ILOpcode.initobj, _ilCodeStreams.Emitter.NewToken(NativeType));
+        }
+
+        protected override void TransformManagedToNative(ILCodeStream codeStream)
+        {
+            LoadManagedAddr(codeStream);
+            codeStream.Emit(ILOpcode.call, _ilCodeStreams.Emitter.NewToken(
+                Context.GetHelperEntryPoint("InteropHelpers", "ManagedToNativeDecimal")));
+            StoreNativeValue(codeStream);
+        }
+
+        protected override void TransformNativeToManaged(ILCodeStream codeStream)
+        {
+            LoadNativeAddr(codeStream);
+            codeStream.Emit(ILOpcode.call, _ilCodeStreams.Emitter.NewToken(
+                Context.GetHelperEntryPoint("InteropHelpers", "NativeToManagedDecimal")));
+            StoreManagedValue(codeStream);
+        }
+
+        protected override void EmitCleanupManaged(ILCodeStream codeStream)
+        {
+            // Only do cleanup if it is IN
+            if (!In)
+            {
+                return;
+            }
+
+            LoadNativeAddr(codeStream);
+            codeStream.Emit(ILOpcode.call, _ilCodeStreams.Emitter.NewToken(
+                InteropStateManager.GetStructMarshallingCleanupThunk(ManagedType)));
         }
     }
 }

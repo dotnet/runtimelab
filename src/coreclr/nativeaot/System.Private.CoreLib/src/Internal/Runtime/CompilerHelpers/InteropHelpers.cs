@@ -256,6 +256,33 @@ namespace Internal.Runtime.CompilerHelpers
             return Marshal.PtrToStringAnsi((IntPtr)buffer, (int)Marshal.SysStringByteLen((IntPtr)buffer));
         }
 
+        internal static unsafe decimal NativeToManagedDecimal(NativeDecimal* value)
+        {
+            byte* pValue = (byte*)value;
+
+            var signscale = *(ushort*)(pValue + 2);
+            var hi32 = *(uint*)(pValue + 4);
+            var lo64 = *(ulong*)(pValue + 8);
+
+            var sign = (byte)((signscale & 0xFF00) >> 8);
+            var scale = (byte)(signscale & 0xFF);
+            var mid32 = (int)((lo64 & 0xFFFFFFFF00000000) >> 32);
+            var lo32 = (int)(lo64 & 0xFFFFFFFF);
+
+            return new decimal(lo32, mid32, (int)hi32, sign != 0, scale);
+        }
+
+        internal static unsafe NativeDecimal ManagedToNativeDecimal(decimal* value)
+        {
+            byte* pValue = (byte*)value;
+
+            var signscale = *(ushort*)(pValue + 2);
+            var hi32 = *(uint*)(pValue + 4);
+            var lo64 = *(ulong*)(pValue + 8);
+
+            return new NativeDecimal { Hi32 = hi32, Lo64 = lo64, SignScale = signscale };
+        }
+
         internal static unsafe IntPtr ResolvePInvoke(MethodFixupCell* pCell)
         {
             if (pCell->Target != IntPtr.Zero)
@@ -555,6 +582,15 @@ namespace Internal.Runtime.CompilerHelpers
             public IntPtr MethodName;
             public ModuleFixupCell* Module;
             public CharSet CharSetMangling;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct NativeDecimal
+        {
+            public ushort Reserved;
+            public ushort SignScale;
+            public uint Hi32;
+            public ulong Lo64;
         }
     }
 }

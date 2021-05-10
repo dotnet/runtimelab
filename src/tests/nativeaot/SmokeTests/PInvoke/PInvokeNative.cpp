@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #ifdef TARGET_WINDOWS
 #include <windows.h>
 #define DLL_EXPORT extern "C" __declspec(dllexport)
@@ -677,47 +678,56 @@ DLL_EXPORT int __stdcall ValidateSuccessCall(int errorCode)
 }
 
 typedef struct Decimal {
-    unsigned short wReserved;
+    uint16_t wReserved;
     union {
         struct {
-            unsigned char scale;
-            unsigned char sign;
+            uint8_t scale;
+            uint8_t sign;
         } part;
-        unsigned short value;
+        uint16_t value;
     } signscale;
-    unsigned long hi32;
+    uint32_t hi32;
     union {
         struct {
-            unsigned long lo32;
-            unsigned long mid32;
+            uint32_t lo32;
+            uint32_t mid32;
         } part;
-        unsigned long long value;
+        uint64_t value;
     } lo64;
 } Decimal;
 
-DLL_EXPORT bool __stdcall DecimalTest(Decimal value)
+DLL_EXPORT Decimal __stdcall DecimalTest(Decimal value)
 {
-    if (value.hi32 != 100) {
-        return false;
-    }
+    Decimal zero;
+    memset(&zero, 0, sizeof(Decimal));
 
     if (value.lo64.part.lo32 != 100) {
-        return false;
+        return zero;
     }
 
-    if (value.lo64.part.mid32 != 100) {
-        return false;
+    if (value.lo64.part.mid32 != 101) {
+        return zero;
     }
 
-    if (value.signscale.part.sign != 128) {
-        return false;
+    if (value.hi32 != 102) {
+        return zero;
+    }
+
+    if (value.signscale.part.sign != 0) {
+        return zero;
     }
 
     if (value.signscale.part.scale != 1) {
-        return false;
+        return zero;
     }
 
-    return true;
+    value.signscale.part.sign = 128;
+    value.signscale.part.scale = 2;
+    value.lo64.part.lo32 = 99;
+    value.lo64.part.mid32 = 98;
+    value.hi32 = 97;
+
+    return value;
 }
 
 #if (_MSC_VER >= 1400)         // Check MSC version

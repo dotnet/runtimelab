@@ -276,7 +276,7 @@ namespace PInvokeTests
         static extern void ValidateSuccessCall(int errorCode);
 
         [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall)]
-        internal static extern bool DecimalTest(decimal value);
+        internal static extern decimal DecimalTest(decimal value);
 
         public static int Main(string[] args)
         {
@@ -1001,11 +1001,13 @@ namespace PInvokeTests
             ThrowIfNotEquals(4, cftf_size, "ClassForTestingFlowAnalysis marshalling Marshal API failed");
         }
 
-        private static void TestDecimal()
+        private unsafe static void TestDecimal()
         {
             Console.WriteLine("Testing Decimals");
-            var d = new decimal(100, 100, 100, true, 1);
-            ThrowIfNotEquals(true, DecimalTest(d), "Decimal marshalling failed.");
+            var d = new decimal(100, 101, 102, false, 1);
+            var ret = DecimalTest(d);
+            var expected = new decimal(99, 98, 97, true, 2);
+            ThrowIfNotEquals(ret, expected, "Decimal marshalling failed.");
         }
 
         [UnmanagedCallersOnly]
