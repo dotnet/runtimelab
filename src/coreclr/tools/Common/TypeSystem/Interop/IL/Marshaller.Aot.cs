@@ -81,6 +81,8 @@ namespace Internal.TypeSystem.Interop
                     return new ComInterfaceMarshaller();
                 case MarshallerKind.Decimal:
                     return new DecimalMarshaller();
+                case MarshallerKind.OleDateTime:
+                    return new OleDateTimeMarshaller();
                 default:
                     // ensures we don't throw during create marshaller. We will throw NSE
                     // during EmitIL which will be handled and an Exception method body
@@ -1014,12 +1016,6 @@ namespace Internal.TypeSystem.Interop
 
     class DecimalMarshaller : Marshaller
     {
-        protected override void AllocManagedToNative(ILCodeStream codeStream)
-        {
-            LoadNativeAddr(codeStream);
-            codeStream.Emit(ILOpcode.initobj, _ilCodeStreams.Emitter.NewToken(NativeType));
-        }
-
         protected override void TransformManagedToNative(ILCodeStream codeStream)
         {
             LoadManagedAddr(codeStream);
@@ -1035,18 +1031,30 @@ namespace Internal.TypeSystem.Interop
                 Context.GetHelperEntryPoint("InteropHelpers", "NativeToManagedDecimal")));
             StoreManagedValue(codeStream);
         }
+    }
 
-        protected override void EmitCleanupManaged(ILCodeStream codeStream)
+    class OleDateTimeMarshaller : Marshaller
+    {
+        protected override void TransformManagedToNative(ILCodeStream codeStream)
         {
-            // Only do cleanup if it is IN
-            if (!In)
-            {
-                return;
-            }
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadManagedValue(codeStream);
 
-            LoadNativeAddr(codeStream);
-            codeStream.Emit(ILOpcode.call, _ilCodeStreams.Emitter.NewToken(
-                InteropStateManager.GetStructMarshallingCleanupThunk(ManagedType)));
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "DateTimeToOleDateTime");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreNativeValue(codeStream);
+        }
+
+        protected override void TransformNativeToManaged(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadNativeValue(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "OleDateTimeToDateTime");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreManagedValue(codeStream);
         }
     }
 }
