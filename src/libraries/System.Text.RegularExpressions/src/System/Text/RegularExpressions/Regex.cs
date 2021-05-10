@@ -123,7 +123,7 @@ namespace System.Text.RegularExpressions
             _useSRM = (options & RegexOptions.DFA) != 0;
             if (_useSRM)
                 // remove the DFA flag because it is undefined in SRM
-                _srm = InitializeSRM(tree.Root, options & ~RegexOptions.DFA);
+                _srm = InitializeSRM(tree.Root, options & ~RegexOptions.DFA, matchTimeout);
 
             InitializeReferences();
         }
@@ -132,7 +132,7 @@ namespace System.Text.RegularExpressions
         /// Checks that the options are supported and creates a DFA matcher.
         /// The method throws NotSuppportedException if the regex uses constructs not compatible with the DFA option.
         /// </summary>
-        private static SRM.Regex InitializeSRM(RegexNode rootNode, RegexOptions options)
+        private static SRM.Regex InitializeSRM(RegexNode rootNode, RegexOptions options, TimeSpan matchTimeout)
         {
             // TBD: this could potentially be supported quite easily but is not of priority
             // it essentially affects how the iput string is being processed  -- characters are read backwards --
@@ -143,7 +143,7 @@ namespace System.Text.RegularExpressions
             if ((options & RegexOptions.ECMAScript) != 0)
                 throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + RegexOptions.ECMAScript);
 
-            return SRM.Regex.Create(rootNode, options);
+            return SRM.Regex.Create(rootNode, options, matchTimeout);
         }
 
         internal static void ValidatePattern(string pattern)

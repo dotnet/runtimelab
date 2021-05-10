@@ -57,6 +57,29 @@ namespace System.Text.RegularExpressions
             _srm.SaveDGML(writer, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength);
         }
 
+        internal string Serialize()
+        {
+            if (!_useSRM)
+                throw new NotSupportedException();
+
+            StringBuilder sb = new StringBuilder();
+            _srm.Serialize(sb);
+            return sb.ToString();
+        }
+
+        internal static Regex Deserialize(string s)
+        {
+            var srm = SRM.Regex.Deserialize(s);
+            Regex r = new(srm);
+            return r;
+        }
+
+        private Regex(SRM.Regex srm)
+        {
+            _useSRM = true;
+            _srm = srm;
+        }
+
 #if DEBUG
         /// <summary>
         /// Generates two files IgnoreCaseRelation.cs and UnicodeCategoryRanges.cs for the namespace System.Text.RegularExpressions.SRM.Unicode

@@ -196,7 +196,7 @@ namespace System.Text.RegularExpressions.SRM
                         }
                     case SymbolicRegexKind.WatchDog:
                         {
-                            sb.Append("#(" + node.lower + ")");
+                            sb.Append("W(" + node.lower + ")");
                             return;
                         }
                     case SymbolicRegexKind.WBAnchor:

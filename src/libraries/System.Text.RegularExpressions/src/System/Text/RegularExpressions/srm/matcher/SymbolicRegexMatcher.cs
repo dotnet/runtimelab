@@ -55,6 +55,13 @@ namespace System.Text.RegularExpressions.SRM
         internal System.Text.RegularExpressions.RegexOptions Options { get; set; }
 
         /// <summary>
+        /// Timeout for matching.
+        /// </summary>
+        private TimeSpan _matchTimeout;
+        private int _timeoutOccursAt;
+        private bool _checkTimeout;
+
+        /// <summary>
         /// Set of elements that matter as first element of A.
         /// </summary>
         internal BooleanClassifier A_StartSet;
@@ -247,6 +254,9 @@ namespace System.Text.RegularExpressions.SRM
             sb.Append(Regex.s_top_level_separator);
             //------------ fragment 12 -----------
             dt.Serialize(sb);
+            sb.Append(Regex.s_top_level_separator);
+            //------------ fragemnt 13 -----------
+            sb.Append(_matchTimeout.ToString());
         }
 
         /// <summary>
@@ -271,6 +281,7 @@ namespace System.Text.RegularExpressions.SRM
             A_fixedPrefix_ignoreCase = bool.Parse(fragments[10]);
             Ar_prefix = Base64.DecodeString(fragments[11]);
             dt = Classifier.Deserialize(fragments[12]);
+            _matchTimeout = TimeSpan.Parse(fragments[13]);
             if (A.info.ContainsSomeAnchor)
             {
                 //line anchors are being used when builder.newLinePredicate is different from False
@@ -295,11 +306,12 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Constructs matcher for given symbolic regex
         /// </summary>
-        internal SymbolicRegexMatcher(SymbolicRegexNode<S> sr, CharSetSolver css, BDD[] minterms, RegexOptions options)
+        internal SymbolicRegexMatcher(SymbolicRegexNode<S> sr, CharSetSolver css, BDD[] minterms, RegexOptions options, TimeSpan matchTimeout)
         {
             if (sr.IsNullable)
                 throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + "nullable regex (accepting the empty string)");
 
+            this._matchTimeout = matchTimeout;
             this.Options = options;
             this.StartSetSizeLimit = 1;
             this.builder = sr.builder;
@@ -484,6 +496,13 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void CheckTimeout()
+        {
+            if (Environment.TickCount > _timeoutOccursAt)
+                throw new TimeoutException();
+        }
+
         /// <summary>
         /// Generate all matches.
         /// <param name="isMatch">if true return null iff there exists a match</param>
@@ -493,6 +512,13 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public Match FindMatch(bool isMatch, string input, int startat = 0, int endat = -1)
         {
+            _checkTimeout = (System.Text.RegularExpressions.Regex.InfiniteMatchTimeout != _matchTimeout);
+            if (_checkTimeout)
+            {
+                // Using Environment.TickCount and not Stopwatch similar to the non-DFA case.
+                int _timeout = (int)(_matchTimeout.TotalMilliseconds + 0.5);
+                _timeoutOccursAt = Environment.TickCount + _timeout;
+            }
 #if UNSAFE
             if ((Options & RegexOptions.Vectorize) != RegexOptions.None)
             {
@@ -807,6 +833,9 @@ namespace System.Text.RegularExpressions.SRM
                         q = _A1q0[(int)GetCharKindId(input, i - 1)];
                     }
                 }
+
+                if (_checkTimeout)
+                    CheckTimeout();
 
                 // make the transition based on input[i]
                 q = Delta(input, i, q);

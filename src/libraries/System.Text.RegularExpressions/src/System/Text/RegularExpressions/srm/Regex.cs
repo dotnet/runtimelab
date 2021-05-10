@@ -20,7 +20,7 @@ namespace System.Text.RegularExpressions.SRM
 
         internal IMatcher _matcher;
 
-        private Regex(RegexNode rootNode, System.Text.RegularExpressions.RegexOptions options)
+        private Regex(RegexNode rootNode, System.Text.RegularExpressions.RegexOptions options, TimeSpan matchTimeout)
         {
             RegexToAutomatonConverter<BDD> converter = new RegexToAutomatonConverter<BDD>(s_unicode);
             CharSetSolver solver = (CharSetSolver)s_unicode.solver;
@@ -42,7 +42,7 @@ namespace System.Text.RegularExpressions.SRM
                 builderBV.newLinePredicate = algBV.ConvertFromCharSet(solver, converter.srBuilder.newLinePredicate);
                 //convert the BDD based AST to BV based AST
                 SymbolicRegexNode<BV> rootBV = converter.srBuilder.Transform(root, builderBV, bdd => builderBV.solver.ConvertFromCharSet(solver, bdd));
-                SymbolicRegexMatcher<BV> matcherBV = new(rootBV, solver, partition, options);
+                SymbolicRegexMatcher<BV> matcherBV = new(rootBV, solver, partition, options, matchTimeout);
                 _matcher = matcherBV;
             }
             else
@@ -56,14 +56,14 @@ namespace System.Text.RegularExpressions.SRM
                 builder64.newLinePredicate = alg64.ConvertFromCharSet(solver, converter.srBuilder.newLinePredicate);
                 //convert the BDD based AST to ulong based AST
                 SymbolicRegexNode<ulong> root64 = converter.srBuilder.Transform(root, builder64, bdd => builder64.solver.ConvertFromCharSet(solver, bdd));
-                SymbolicRegexMatcher<ulong> matcher64 = new(root64, solver, partition, options);
+                SymbolicRegexMatcher<ulong> matcher64 = new(root64, solver, partition, options, matchTimeout);
                 _matcher = matcher64;
             }
         }
 
-        public static Regex Create(RegexNode rootNode, System.Text.RegularExpressions.RegexOptions options)
+        public static Regex Create(RegexNode rootNode, System.Text.RegularExpressions.RegexOptions options, TimeSpan matchTimeout)
         {
-            var regex = new Regex(rootNode, options);
+            var regex = new Regex(rootNode, options, matchTimeout);
 //#if DEBUG
 //            //test the serialization roundtrip
 //            //effectively, here all tests in DEBUG mode are run with deserialized matchers, not the original ones
@@ -85,9 +85,9 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public void Serialize(StringBuilder sb) => _matcher.Serialize(sb);
 
-        //the separator char could potentially also be \something other than '\n'
-        //it must not be a character used to serialize the fragments: 0-9A-Za-z/\+*()[].,;-^$?
-        internal const char s_top_level_separator = '\n';
+        //it must not be '\n' or a character used to serialize the fragments: 0-9A-Za-z/\+*()[].,-^$;?
+        //avoiding '\n' so that multiple serializations can be stored one per line in an ascii text file
+        internal const char s_top_level_separator = '#';
 
         /// <summary>
         /// Deserializes the matcher from the given input string created with Serialize.
@@ -95,9 +95,8 @@ namespace System.Text.RegularExpressions.SRM
         public static Regex Deserialize(string input)
         {
             input.Split(s_top_level_separator);
-            //trim also whitespace from entries -- this implies for example that \r is removed if present in line endings
-            string[] fragments = input.Split(s_top_level_separator, StringSplitOptions.TrimEntries);
-            if (fragments.Length != 13)
+            string[] fragments = input.Split(s_top_level_separator);
+            if (fragments.Length != 14)
                 throw new ArgumentException($"{nameof(Regex.Deserialize)} error", nameof(input));
 
             try

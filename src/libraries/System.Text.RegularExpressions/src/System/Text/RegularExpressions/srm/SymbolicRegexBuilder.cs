@@ -884,9 +884,9 @@ namespace System.Text.RegularExpressions.SRM
                         return this.eolAnchor;
                         #endregion
                     }
-                case '#':
+                case 'W':
                     {
-                        #region end of sequence anchor
+                        #region end of sequence/watchdog anchor
                         int j = s.IndexOf(')', i + 2);
                         int length = int.Parse(s.Substring(i + 2, j - (i + 2)));
                         i_next = j + 1;
