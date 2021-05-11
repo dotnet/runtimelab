@@ -34,6 +34,7 @@ public class BringUpTest
         if (TestIterfaceCallOptimization() == Fail)
             return Fail;
 
+        TestDefaultInterfaceMethods.Run();
         TestVariantInterfaceOptimizations.Run();
 
         return Pass;
@@ -459,6 +460,65 @@ public class BringUpTest
     }
 
     #endregion
+
+    class TestDefaultInterfaceMethods
+    {
+        interface IFoo
+        {
+            int GetNumber() => 42;
+        }
+
+        interface IBar : IFoo
+        {
+            int IFoo.GetNumber() => 43;
+        }
+
+        class Foo : IFoo { }
+        class Bar : IBar { }
+
+        class Baz : IFoo
+        {
+            public int GetNumber() => 100;
+        }
+
+        interface IFoo<T>
+        {
+            Type GetInterfaceType() => typeof(IFoo<T>);
+        }
+
+        class Foo<T> : IFoo<T> { }
+
+        public static void Run()
+        {
+            Console.WriteLine("Testing default interface methods...");
+
+            if (((IFoo)new Foo()).GetNumber() != 42)
+                throw new Exception();
+
+            if (((IFoo)new Bar()).GetNumber() != 43)
+                throw new Exception();
+
+            if (((IFoo)new Baz()).GetNumber() != 100)
+                throw new Exception();
+
+            bool thrown = false;
+            try
+            {
+                ((IFoo<object>)new Foo<object>()).GetInterfaceType();
+            }
+            catch (EntryPointNotFoundException)
+            {
+                thrown = true;
+            }
+            if (!thrown)
+                throw new Exception();
+
+            if (((IFoo<int>)new Foo<int>()).GetInterfaceType() != typeof(IFoo<int>))
+            {
+                throw new Exception();
+            }
+        }
+    }
 
     class TestVariantInterfaceOptimizations
     {
