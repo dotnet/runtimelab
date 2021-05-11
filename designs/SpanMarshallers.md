@@ -55,7 +55,7 @@ Cons:
 
 An alternative option to fully inlining the stub would be to extend the model described in the [Struct Marshalling design doc](./StructMarshalling.md) to have custom support for collection-like types. By extending the model to be built with generic collection types in mind, many of the cons of the first approach would be resolved.
 
-Span marshalling would still be implemented with similar semantics as mentioned above in the Empty Spans section.Additional marshallers would still be provided as mentioned in the Additional proposed in-source marshallers section, but the `null` span marshaller would be able to be used in all cases, not just for empty spans.
+Span marshalling would still be implemented with similar semantics as mentioned above in the Empty Spans section. Additional marshallers would still be provided as mentioned in the Additional proposed in-source marshallers section, but the `null` span marshaller would be able to be used in all cases, not just for empty spans.
 
 ### Proposed extension to the custom type marshalling design
 
@@ -92,7 +92,7 @@ The `GenericCollectionMarshallerAttribute` attribute is applied to a generic mar
 
 #### Generic collection marshaller shape
 
-A generic collection marshaller would be required to have the following shape, in addition to the requirements for marshaler types used with the `NativeTypeMarshalllingAttribute`, excluding the constructors.
+A generic collection marshaller would be required to have the following shape, in addition to the requirements for marshaler types used with the `NativeTypeMarshallingAttribute`, excluding the constructors.
 
 ```csharp
 [GenericCollectionMarshaller]
@@ -104,7 +104,7 @@ public struct GenericCollectionMarshallerImpl<T, U, V,...>
     
     public const int StackBufferSize = /* */; // required if the span-based constructor is supplied.
 
-    // These method is required if marshalling from managed to native is supported.
+    // This method is required if marshalling from managed to native is supported.
     public TCollectionElement GetManagedValueAtIndex(int i);
     // This method is required if marshalling from native to managed is supported.
     public void SetManagedValueAtIndex(int i, TCollectionElement value);
@@ -121,7 +121,7 @@ public struct GenericCollectionMarshallerImpl<T, U, V,...>
 }
 ```
 
-The constructors now require an additional `int` parameter specifying the native size of the collection elements, represented as `TCollectionElement` above. As the elements may be marshalled to types with different native sizes than managed, this enables the author of the generic collection marshaller to not need to know how to marshal the elements of the collection, just the collection structure itself.
+The constructors now require an additional `int` parameter specifying the native size of a collection element. The collection element type is represented as `TCollectionElement` above, and can be any type the marshaller defines. As the elements may be marshalled to types with different native sizes than managed, this enables the author of the generic collection marshaller to not need to know how to marshal the elements of the collection, just the collection structure itself.
 
 The `GetManagedValueAtIndex` method and `Count` getter are used in the process of marshalling from managed to native. The generated code will iterate through `Count` elements (retrieved through `GetManagedValueAtIndex`) and assign their marshalled result to the address represented by `GetOffsetForNativeValueAtIndex` called with the same index. Then either the `Value` property getter will be called or the marshaller's `GetPinnableReference` method will be called, depending on if pinning is supported in the current scenario.
 
