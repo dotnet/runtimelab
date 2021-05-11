@@ -49,10 +49,6 @@ Cons:
 
 ## Design 2: "Out-line" default support with extensions to Native Type Marshalling
 
-<!--
-    Idea: Extend the StructMarshalling proposal with a design for a generic collection-based marshalling pattern. That will enable outlining the Span/ReadOnlySpan/array/etc. marshallers while enabling developers to enable marshalling any collection type they want without us adding types to the generator.
--->
-
 An alternative option to fully inlining the stub would be to extend the model described in the [Struct Marshalling design doc](./StructMarshalling.md) to have custom support for collection-like types. By extending the model to be built with generic collection types in mind, many of the cons of the first approach would be resolved.
 
 Span marshalling would still be implemented with similar semantics as mentioned above in the Empty Spans section. Additional marshallers would still be provided as mentioned in the Additional proposed in-source marshallers section, but the `null` span marshaller would be able to be used in all cases, not just for empty spans.
@@ -162,7 +158,7 @@ The `ElementIndirectionLevel` property is added to support supplying marshalling
 private static partial void Bar([MarshalUsing(CountParameterName = nameof(count)), MarshalUsing(ConstantElementCount = 10, ElementIndirectionLevel = 1), MarshalUsing(typeof(FooMarshaler), ElementIndirectionLevel = 2)] List<List<Foo>> foos, int count);
 ```
 
-Multiple `MarshalUsing` attributes can only be supplied on the same parameter or return value if the `ElementIndirectionLevel` property is set to distinct values.
+Multiple `MarshalUsing` attributes can only be supplied on the same parameter or return value if the `ElementIndirectionLevel` property is set to distinct values. One `MarshalUsing` attribute per parameter or return value can leave the `ElementIndirectionLevel` property unset. This attribute controls the marshalling of the collection object passed in as the parameter.
 
 Alternatively, the `MarshalUsingAttribute` could provide a `Type ElementNativeType { get; set; }` property instead of an `ElementIndrectionLevel` property and support specifying the native type of the element of the collection this way. However, this design would block support for marshalling collections of collections.
 
@@ -217,13 +213,13 @@ This design could also be applied to support the built-in array marshalling if i
 
 #### Possible extension to the above model: Optimized support for sequential collections of blittable types
 
-If both the managed and native representation of a collection is sequential and the contents are blittable, additional optimizations, such as optimized block copying, can be emitted. however the above design does not support the necessary APIs to enable these optimizations. This section proposes that the following members be added to the design above. A `IsSequentialCollection` boolean property should be added to the `GenericCollectionMarshaller` attribute to specify that the collection is sequential in both managed and native representations. Then an additional method should be added to the generic collection model:
+If both the managed and native representation of a collection is sequential and the contents are blittable, additional optimizations, such as optimized block copying, can be emitted. however the above design does not support the necessary APIs to enable these optimizations. This section proposes that the following members be added to the design above. An `IsContiguousCollection` boolean property should be added to the `GenericCollectionMarshaller` attribute to specify that the collection is sequential in both managed and native representations. Then an additional method should be added to the generic collection model:
 
 ```csharp
 public ref TCollectionElement GetOffsetForManagedValueAtIndex(int index);
 ```
 
-This function would be required when `IsSequentialCollection` is `true` and would replace the `Get/SetManagedValueAtIndex` methods. When the elements of the collection are blittable, the marshaller will emit a block copy of the range `MemoryMarshal.CreateSpan(GetOffsetForManagedValueAtIndex(0), Count)` to the destination `MemoryMarshal.CreateSpan(MemoryMarshal.Cast<byte, TCollectionElement>(GetOffsetForNativeValueAtIndex(0), Count))`.
+This function would be required when `IsContiguousCollection` is `true` and would replace the `Get/SetManagedValueAtIndex` methods. When the elements of the collection are blittable, the marshaller will emit a block copy of the range `MemoryMarshal.CreateSpan(GetOffsetForManagedValueAtIndex(0), Count)` to the destination `MemoryMarshal.CreateSpan(MemoryMarshal.Cast<byte, TCollectionElement>(GetOffsetForNativeValueAtIndex(0), Count))`.
 
 When `TCollectionElement` is not blittable, the marshaller will iterate from `0..Count-1` and marshal the elements individually, as specified in the process above when the `Get/SetManagedValueAtIndex` methods are present.
 
