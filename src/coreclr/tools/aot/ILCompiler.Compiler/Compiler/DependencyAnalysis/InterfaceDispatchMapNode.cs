@@ -7,6 +7,7 @@ using System.Diagnostics;
 
 using Internal.Text;
 using Internal.TypeSystem;
+using Internal.Runtime;
 
 namespace ILCompiler.DependencyAnalysis
 {
@@ -75,6 +76,9 @@ namespace ILCompiler.DependencyAnalysis
             if (!type.IsArray && !type.IsDefType)
                 return false;
 
+            if (type.IsInterface)
+                return false;
+
             TypeDesc declType = type.GetClosestDefType();
 
             for (int interfaceIndex = 0; interfaceIndex < declType.RuntimeInterfaces.Length; interfaceIndex++)
@@ -107,7 +111,15 @@ namespace ILCompiler.DependencyAnalysis
 
                     var implMethod = declType.GetTypeDefinition().ResolveInterfaceMethodToVirtualMethodOnType(declMethod);
                     if (implMethod != null)
+                    {
                         return true;
+                    }
+                    else
+                    {
+                        DefaultInterfaceMethodResolution result = declType.ResolveInterfaceMethodToDefaultImplementationOnType(slotMethod, out _);
+                        if (result != DefaultInterfaceMethodResolution.None)
+                            return true;
+                    }
                 }
             }
 
@@ -152,10 +164,50 @@ namespace ILCompiler.DependencyAnalysis
                         if (!implType.IsTypeDefinition)
                             targetMethod = factory.TypeSystemContext.GetMethodForInstantiatedType(implMethod.GetTypicalMethodDefinition(), (InstantiatedType)implType);
 
-                        builder.EmitShort(checked((short)interfaceIndex));
-                        builder.EmitShort(checked((short)(interfaceMethodSlot + (interfaceType.HasGenericDictionarySlot() ? 1 : 0))));
-                        builder.EmitShort(checked((short)VirtualMethodSlotHelper.GetVirtualMethodSlot(factory, targetMethod, declType)));
+                        builder.EmitShort((short)checked((ushort)interfaceIndex));
+                        builder.EmitShort((short)checked((ushort)(interfaceMethodSlot + (interfaceType.HasGenericDictionarySlot() ? 1 : 0))));
+                        builder.EmitShort((short)checked((ushort)VirtualMethodSlotHelper.GetVirtualMethodSlot(factory, targetMethod, declType)));
                         entryCount++;
+                    }
+                    else
+                    {
+                        // Is there a default implementation?
+
+                        // TODO: will need to separate these out somewhere so that they don't interfere with variant interface method
+                        // resolution (we don't want exact default implementations to override variant matches using the "old rules";
+                        // we need the "old rules" resolution to finish with no match found before default implementations are looked at).
+
+                        int? implSlot = null;
+
+                        DefaultInterfaceMethodResolution result = declType.ResolveInterfaceMethodToDefaultImplementationOnType(virtualSlots[interfaceMethodSlot], out MethodDesc defaultImpl);
+                        if (result == DefaultInterfaceMethodResolution.DefaultImplementation)
+                        {
+                            if (defaultImpl.GetCanonMethodTarget(CanonicalFormKind.Specific).IsCanonicalMethod(CanonicalFormKind.Any))
+                            {
+                                // We need an instantiating stub
+                                implSlot = SpecialDispatchMapSlot.Reabstraction;
+                            }
+                            else
+                            {
+                                implSlot = VirtualMethodSlotHelper.GetVirtualMethodSlot(factory, defaultImpl, declType, findDefaultInterfaceImpl: true);
+                            }
+                        }
+                        else if (result == DefaultInterfaceMethodResolution.Reabstraction)
+                        {
+                            implSlot = SpecialDispatchMapSlot.Reabstraction;
+                        }
+                        else if (result == DefaultInterfaceMethodResolution.Diamond)
+                        {
+                            implSlot = SpecialDispatchMapSlot.Diamond;
+                        }
+
+                        if (implSlot.HasValue)
+                        {
+                            builder.EmitShort((short)checked((ushort)interfaceIndex));
+                            builder.EmitShort((short)checked((ushort)(interfaceMethodSlot + (interfaceType.HasGenericDictionarySlot() ? 1 : 0))));
+                            builder.EmitShort((short)checked((ushort)implSlot.Value));
+                            entryCount++;
+                        }
                     }
                 }
             }

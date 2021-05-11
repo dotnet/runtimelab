@@ -42,6 +42,14 @@ namespace System.Runtime
                         // true virtual - need to get the slot from the target type in case it got overridden
                         targetMethod = pTgtType->GetVTableStartAddress()[implSlotNumber];
                     }
+                    else if (implSlotNumber == SpecialDispatchMapSlot.Reabstraction)
+                    {
+                        throw pTgtType->GetClasslibException(ExceptionIDs.EntrypointNotFound);
+                    }
+                    else if (implSlotNumber == SpecialDispatchMapSlot.Diamond)
+                    {
+                        throw pTgtType->GetClasslibException(ExceptionIDs.AmbiguousImplementation);
+                    }
                     else
                     {
                         // sealed virtual - need to get the slot form the implementing type, because

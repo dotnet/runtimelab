@@ -329,6 +329,17 @@ namespace ILCompiler.DependencyAnalysis
                                 result.Add(new CombinedDependencyListEntry(factory.VirtualMethodUse(interfaceMethod), factory.VariantInterfaceMethodUse(typicalInterfaceMethod), "Interface method"));
                             }
                         }
+                        else
+                        {
+                            // Is the implementation provided by a default interface method?
+                            // If so, add a dependency on the entrypoint directly since nobody else is going to do that
+                            // (interface types have an empty vtable, modulo their generic dictionary).
+                            var resolution = defType.ResolveInterfaceMethodToDefaultImplementationOnType(interfaceMethod, out implMethod);
+                            if (resolution == DefaultInterfaceMethodResolution.DefaultImplementation)
+                            {
+                                result.Add(new CombinedDependencyListEntry(factory.CanonicalEntrypoint(implMethod), factory.VirtualMethodUse(interfaceMethod), "Interface method"));
+                            }
+                        }
                     }
                 }
             }
@@ -732,6 +743,13 @@ namespace ILCompiler.DependencyAnalysis
             // It's only okay to touch the actual list of slots if we're in the final emission phase
             // or the vtable is not built lazily.
             if (relocsOnly && !declVTable.HasFixedSlots)
+                return;
+
+            // Inteface types don't place anything else in their physical vtable.
+            // Interfaces have logical slots for their methods but since they're all abstract, they would be zero.
+            // We place default implementations of interface methods into the vtable of the interface-implementing
+            // type, pretending there was an extra virtual slot.
+            if (_type.IsInterface)
                 return;
 
             // Actual vtable slots follow
