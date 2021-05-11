@@ -147,7 +147,10 @@ namespace ILCompiler
         /// </summary>
         public static bool CanMethodBeInSealedVTable(this MethodDesc method)
         {
-            // The sealed vtable optimization doesn't make sense for interfaces since the slots are not inherited by anyone.
+            // Methods on interfaces never go into sealed vtable
+            // We would hit this code path for default implementations of interface methods (they are newslot+final).
+            // Inteface types don't get physical slots, but they have logical slot numbers and that logic shouldn't
+            // attempt to place final+newslot methods differently.
             return method.IsFinal && method.IsNewSlot && !method.OwningType.IsInterface;
         }
 

@@ -89,6 +89,10 @@ namespace ILCompiler.DependencyAnalysis
 
             _sealedVTableEntries = new List<MethodDesc>();
 
+            // If this is an interface, we're done. They don't have any slots.
+            if (_type.IsInterface)
+                return true;
+
             IReadOnlyList<MethodDesc> virtualSlots = factory.VTable(declType).Slots;
 
             for (int i = 0; i < virtualSlots.Count; i++)
@@ -119,17 +123,30 @@ namespace ILCompiler.DependencyAnalysis
 
                     // Interface methods first implemented by a base type in the hierarchy will return null for the implMethod (runtime interface
                     // dispatch will walk the inheritance chain).
-                    if (implMethod != null && implMethod.CanMethodBeInSealedVTable() && !implMethod.OwningType.HasSameTypeDefinition(declType))
+                    if (implMethod != null)
                     {
-                        TypeDesc implType = declType;
-                        while (!implType.HasSameTypeDefinition(implMethod.OwningType))
-                            implType = implType.BaseType;
+                        if (implMethod.CanMethodBeInSealedVTable() && !implMethod.OwningType.HasSameTypeDefinition(declType))
+                        {
+                            TypeDesc implType = declType;
+                            while (!implType.HasSameTypeDefinition(implMethod.OwningType))
+                                implType = implType.BaseType;
 
-                        MethodDesc targetMethod = implMethod;
-                        if (!implType.IsTypeDefinition)
-                            targetMethod = factory.TypeSystemContext.GetMethodForInstantiatedType(implMethod.GetTypicalMethodDefinition(), (InstantiatedType)implType);
+                            MethodDesc targetMethod = implMethod;
+                            if (!implType.IsTypeDefinition)
+                                targetMethod = factory.TypeSystemContext.GetMethodForInstantiatedType(implMethod.GetTypicalMethodDefinition(), (InstantiatedType)implType);
 
-                        _sealedVTableEntries.Add(targetMethod);
+                            _sealedVTableEntries.Add(targetMethod);
+                        }
+                    }
+                    else
+                    {
+                        // If the interface method is provided by a default implementation, add the default implementation
+                        // to the sealed vtable.
+                        var resolution = declType.ResolveInterfaceMethodToDefaultImplementationOnType(virtualSlots[interfaceMethodSlot], out implMethod);
+                        if (resolution == DefaultInterfaceMethodResolution.DefaultImplementation)
+                        {
+                            _sealedVTableEntries.Add(implMethod);
+                        }
                     }
                 }
             }

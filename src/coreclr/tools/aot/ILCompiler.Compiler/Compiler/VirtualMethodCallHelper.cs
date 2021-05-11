@@ -15,9 +15,11 @@ namespace ILCompiler
         /// Given a virtual method decl, return its VTable slot if the method is used on its containing type.
         /// Return -1 if the virtual method is not used.
         /// </summary>
-        public static int GetVirtualMethodSlot(NodeFactory factory, MethodDesc method, TypeDesc implType, bool countDictionarySlots = true)
+        public static int GetVirtualMethodSlot(NodeFactory factory, MethodDesc method, TypeDesc implType, bool countDictionarySlots = true, bool findDefaultInterfaceImpl = false)
         {
-            if (method.CanMethodBeInSealedVTable())
+            Debug.Assert(!findDefaultInterfaceImpl || method.OwningType.IsInterface);
+
+            if (method.CanMethodBeInSealedVTable() || findDefaultInterfaceImpl)
             {
                 // If the method is a sealed newslot method, it will be put in the sealed vtable instead of the type's vtable. In this
                 // case, the slot index return should be the index in the sealed vtable, plus the total number of vtable slots.
