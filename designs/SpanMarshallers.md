@@ -18,7 +18,7 @@ When a `(ReadOnly)Span<T>` is marshalled from native to managed, we will allocat
 
 ### Empty spans
 
-Since `(ReadOnly)Span<T>` does not have a way to distinguish from an empty collection and a `null` collection, we will provide a dummy pointer for zero-length/`null` spans to match the behavior of zero-length arrays. We will also provide an in-source marshaller that enables marshalling an empty span as `null`.
+We have decided to match the managed semantics of `(ReadOnly)Span<T>` to provide the smoothest default experience for span users in interop. To assist developers who wish to transition from array parameters to span parameters, we will also provide an in-source marshaller that enables marshalling a span that wraps an empty array as a non-null pointer as an opt-in experience.
 
 ### Additional proposed in-source marshallers
 
