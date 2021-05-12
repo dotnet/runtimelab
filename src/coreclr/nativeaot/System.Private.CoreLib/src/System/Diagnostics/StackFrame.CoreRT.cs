@@ -138,7 +138,10 @@ namespace System.Diagnostics
         {
             if (_ipAddress != StackTraceHelper.SpecialIP.EdiSeparator)
             {
-                builder.Append(SR.StackTrace_AtWord);
+                // Passing a default string for "at" in case SR.UsingResourceKeys() is true
+                // as this is a special case and we don't want to have "Word_At" on stack traces.
+                string word_At = SR.GetResourceString(nameof(SR.Word_At), defaultString: "at");
+                builder.AppendFormat("   {0} ", word_At);
                 builder.AppendLine(DeveloperExperience.Default.CreateStackTraceString(_ipAddress, _needFileInfo));
             }
             if (_isLastFrameFromForeignExceptionStackTrace)
