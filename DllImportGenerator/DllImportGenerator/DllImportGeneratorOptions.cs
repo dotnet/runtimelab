@@ -7,11 +7,10 @@ namespace Microsoft.Interop
         public DllImportGeneratorOptions(AnalyzerConfigOptions options)
             : this(options.GenerateForwarders(), options.UseMarshalType())
         {
-
         }
     }
 
-    internal static class OptionsHelper
+    public static class OptionsHelper
     {
         public const string UseMarshalTypeOption = "build_property.DllImportGenerator_UseMarshalType";
         public const string GenerateForwardersOption = "build_property.DllImportGenerator_GenerateForwarders";

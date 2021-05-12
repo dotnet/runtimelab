@@ -8,6 +8,8 @@ namespace Microsoft.Interop
 {
     static class TypeNames
     {
+        public const string DllImportAttribute = "System.Runtime.InteropServices.DllImportAttribute";
+
         public const string GeneratedDllImportAttribute = "System.Runtime.InteropServices.GeneratedDllImportAttribute";
 
         public const string GeneratedMarshallingAttribute = "System.Runtime.InteropServices.GeneratedMarshallingAttribute";

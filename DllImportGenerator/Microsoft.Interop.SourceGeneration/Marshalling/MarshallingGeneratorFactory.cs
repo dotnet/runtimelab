@@ -7,8 +7,7 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
 {
-    public interface IMarshallingGeneratorFactory<TOptions>
-        where TOptions : InteropGenerationOptions
+    public interface IMarshallingGeneratorFactory
     {
         /// <summary>
         /// Create an <see cref="IMarshallingGenerator"/> instance for marshalling the supplied type in the given position.
@@ -18,11 +17,10 @@ namespace Microsoft.Interop
         /// <returns>A <see cref="IMarshallingGenerator"/> instance.</returns>
         public IMarshallingGenerator Create(
             TypePositionInfo info,
-            StubCodeContext context,
-            TOptions options);
+            StubCodeContext context);
     }
 
-    public class DefaultMarshallingGeneratorFactory<TOptions> : IMarshallingGeneratorFactory<TOptions>
+    public class DefaultMarshallingGeneratorFactory<TOptions> : IMarshallingGeneratorFactory
         where TOptions : InteropGenerationOptions
     {
         protected static readonly ByteBoolMarshaller ByteBool = new();
@@ -40,6 +38,12 @@ namespace Microsoft.Interop
         protected static readonly DelegateMarshaller Delegate = new();
         protected static readonly HResultExceptionMarshaller HResultException = new();
         protected static readonly SafeHandleMarshaller SafeHandle = new();
+        protected TOptions Options { get; }
+
+        public DefaultMarshallingGeneratorFactory(TOptions options)
+        {
+            this.Options = options;
+        }
 
         /// <summary>
         /// Create an <see cref="IMarshallingGenerator"/> instance for marshalling the supplied type in the given position.
@@ -49,10 +53,9 @@ namespace Microsoft.Interop
         /// <returns>A <see cref="IMarshallingGenerator"/> instance.</returns>
         public IMarshallingGenerator Create(
             TypePositionInfo info,
-            StubCodeContext context,
-            TOptions options)
+            StubCodeContext context)
         {
-            return ValidateByValueMarshalKind(context, info, CreateCore(info, context, options));
+            return ValidateByValueMarshalKind(context, info, CreateCore(info, context));
         }
 
         private IMarshallingGenerator ValidateByValueMarshalKind(StubCodeContext context, TypePositionInfo info, IMarshallingGenerator generator)
@@ -90,8 +93,7 @@ namespace Microsoft.Interop
         /// <returns>A <see cref="IMarshallingGenerator"/> instance.</returns>
         protected virtual IMarshallingGenerator CreateCore(
             TypePositionInfo info,
-            StubCodeContext context,
-            TOptions options)
+            StubCodeContext context)
         {
             switch (info)
             {
@@ -176,7 +178,7 @@ namespace Microsoft.Interop
                     return CreateStringMarshaller(info, context);
                     
                 case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType: ITypeSymbol elementType } }:
-                    return CreateArrayMarshaller(info, context, options, elementType);
+                    return CreateArrayMarshaller(info, context, Options, elementType);
 
                 case { ManagedType: { SpecialType: SpecialType.System_Void } }:
                     return Forwarder;
@@ -309,7 +311,7 @@ namespace Microsoft.Interop
                 else
                 {
                     var (managed, native) = context.GetIdentifiers(paramIndexInfo);
-                    string identifier = Create(paramIndexInfo, context, options).UsesNativeIdentifier(paramIndexInfo, context) ? native : managed;
+                    string identifier = Create(paramIndexInfo, context).UsesNativeIdentifier(paramIndexInfo, context) ? native : managed;
                     sizeParamIndexExpression = CastExpression(
                             PredefinedType(Token(SyntaxKind.IntKeyword)),
                             IdentifierName(identifier));
@@ -340,8 +342,7 @@ namespace Microsoft.Interop
 
             var elementMarshaller = Create(
                 TypePositionInfo.CreateForType(elementType, elementMarshallingInfo),
-                new ArrayMarshallingCodeContext(StubCodeContext.Stage.Setup, string.Empty, context, false),
-                options);
+                new ArrayMarshallingCodeContext(StubCodeContext.Stage.Setup, string.Empty, context, false));
             ExpressionSyntax numElementsExpression = LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0));
             if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
             {

@@ -8,9 +8,11 @@ namespace Microsoft.Interop
 {
     class GeneratedDllImportMarshallingGeneratorFactory : DefaultMarshallingGeneratorFactory<DllImportGeneratorOptions>
     {
-        protected override IMarshallingGenerator CreateCore(TypePositionInfo info, StubCodeContext context, DllImportGeneratorOptions options)
+        public GeneratedDllImportMarshallingGeneratorFactory(DllImportGeneratorOptions options) : base(options) { }
+
+        protected override IMarshallingGenerator CreateCore(TypePositionInfo info, StubCodeContext context)
         {
-            if (options.GenerateForwarders)
+            if (Options.GenerateForwarders)
             {
                 return Forwarder;
             }
@@ -22,7 +24,7 @@ namespace Microsoft.Interop
                 return HResultException;
             }
 
-            return base.CreateCore(info, context, options);
+            return base.CreateCore(info, context);
         }
     }
 }

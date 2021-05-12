@@ -34,10 +34,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="bin\Debug\netstandard2.0\\DllImportGenerator.dll" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="Microsoft.Interop.DllImportGenerator.props" Pack="true" PackagePath="build" />
   </ItemGroup>
@@ -61,7 +57,7 @@
     </EmbeddedResource>
   </ItemGroup>
 
-  <Target Name="IncludeProjectReferenceInPackage" BeforeTargets="Pack">
+  <Target Name="IncludeProjectReferenceInPackage" BeforeTargets="_GetPackageFiles">
     <MSBuild Projects="@(ProjectReference)" Targets="Build">
       <Output TaskParameter="TargetOutputs" ItemName="ProjectReferenceOutput" />
     </MSBuild>
