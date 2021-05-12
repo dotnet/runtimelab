@@ -49,7 +49,7 @@ namespace Microsoft.Interop
         };
 
         private readonly GeneratorDiagnostics diagnostics;
-        private readonly AnalyzerConfigOptions options;
+        private readonly DllImportGeneratorOptions options;
         private readonly IMethodSymbol stubMethod;
         private readonly DllImportStub.GeneratedDllImportData dllImportData;
         private readonly IEnumerable<TypePositionInfo> paramsTypeInfo;
@@ -62,7 +62,8 @@ namespace Microsoft.Interop
             IEnumerable<TypePositionInfo> paramsTypeInfo,
             TypePositionInfo retTypeInfo,
             GeneratorDiagnostics generatorDiagnostics,
-            AnalyzerConfigOptions options)
+            DllImportGeneratorOptions options,
+            IMarshallingGeneratorFactory<DllImportGeneratorOptions> generatorFactory)
         {
             Debug.Assert(retTypeInfo.IsNativeReturnPosition);
 
@@ -82,12 +83,12 @@ namespace Microsoft.Interop
             {
                 try
                 {
-                    return (p, MarshallingGenerators.Create(p, this, options));
+                    return (p, generatorFactory.Create(p, this, options));
                 }
                 catch (MarshallingNotSupportedException e)
                 {
                     this.diagnostics.ReportMarshallingNotSupported(this.stubMethod, p, e.NotSupportedDetails);
-                    return (p, MarshallingGenerators.Forwarder);
+                    return (p, new Forwarder());
                 }
             }
         }
@@ -179,7 +180,7 @@ namespace Microsoft.Interop
 
             // Do not manually handle SetLastError when generating forwarders.
             // We want the runtime to handle everything.
-            if (this.dllImportData.SetLastError && !options.GenerateForwarders())
+            if (this.dllImportData.SetLastError && !options.GenerateForwarders)
             {
                 // Declare variable for last error
                 setupStatements.Add(MarshallerHelpers.DeclareWithDefault(
@@ -254,7 +255,7 @@ namespace Microsoft.Interop
 
                     // Do not manually handle SetLastError when generating forwarders.
                     // We want the runtime to handle everything.
-                    if (this.dllImportData.SetLastError && !options.GenerateForwarders())
+                    if (this.dllImportData.SetLastError && !options.GenerateForwarders)
                     {
                         // Marshal.SetLastSystemError(0);
                         var clearLastError = ExpressionStatement(
@@ -319,7 +320,7 @@ namespace Microsoft.Interop
                 allStatements.AddRange(tryStatements);
             }
 
-            if (this.dllImportData.SetLastError && !options.GenerateForwarders())
+            if (this.dllImportData.SetLastError && !options.GenerateForwarders)
             {
                 // Marshal.SetLastPInvokeError(<lastError>);
                 allStatements.Add(ExpressionStatement(
@@ -496,7 +497,7 @@ namespace Microsoft.Interop
                                // https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.dllimportattribute.setlasterror
                                // If SetLastError=true (default is false), the P/Invoke stub gets/caches the last error after invoking the native function.
                                & ~DllImportStub.DllImportMember.SetLastError;
-            if (options.GenerateForwarders())
+            if (options.GenerateForwarders)
             {
                 membersToForward = DllImportStub.DllImportMember.All;
             }

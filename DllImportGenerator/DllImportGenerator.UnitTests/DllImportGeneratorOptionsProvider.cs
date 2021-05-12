@@ -42,11 +42,11 @@ namespace DllImportGenerator.UnitTests
             {
                 switch (key)
                 {
-                    case OptionsHelper.UseMarshalTypeOption:
+                    case DllImportGeneratorOptions.UseMarshalTypeOption:
                         value = _useMarshalType.ToString();
                         return true;
                     
-                    case OptionsHelper.GenerateForwardersOption:
+                    case DllImportGeneratorOptions.GenerateForwardersOption:
                         value = _generateForwarders.ToString();
                         return true;
                     

@@ -61,33 +61,6 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Marshalling an array from unmanaged to managed requires either the &apos;SizeParamIndex&apos; or &apos;SizeConst&apos; fields to be set on a &apos;MarshalAsAttribute&apos;..
-        /// </summary>
-        internal static string ArraySizeMustBeSpecified {
-            get {
-                return ResourceManager.GetString("ArraySizeMustBeSpecified", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The &apos;SizeParamIndex&apos; value in the &apos;MarshalAsAttribute&apos; is out of range..
-        /// </summary>
-        internal static string ArraySizeParamIndexOutOfRange {
-            get {
-                return ResourceManager.GetString("ArraySizeParamIndexOutOfRange", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The specified array size parameter for an array must be an integer type..
-        /// </summary>
-        internal static string ArraySizeParamTypeMustBeIntegral {
-            get {
-                return ResourceManager.GetString("ArraySizeParamTypeMustBeIntegral", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to A type marked with &apos;BlittableTypeAttribute&apos; must be blittable..
         /// </summary>
         internal static string BlittableTypeMustBeBlittableDescription {
@@ -313,51 +286,6 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The &apos;[In]&apos; attribute is not supported unless the &apos;[Out]&apos; attribute is also used. The behavior of the &apos;[In]&apos; attribute without the &apos;[Out]&apos; attribute is the same as the default behavior..
-        /// </summary>
-        internal static string InAttributeNotSupportedWithoutOut {
-            get {
-                return ResourceManager.GetString("InAttributeNotSupportedWithoutOut", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The &apos;[In]&apos; and &apos;[Out]&apos; attributes are unsupported on parameters passed by reference. Use the &apos;in&apos;, &apos;ref&apos;, or &apos;out&apos; keywords instead..
-        /// </summary>
-        internal static string InOutAttributeByRefNotSupported {
-            get {
-                return ResourceManager.GetString("InOutAttributeByRefNotSupported", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The provided &apos;[In]&apos; and &apos;[Out]&apos; attributes on this parameter are unsupported on this parameter..
-        /// </summary>
-        internal static string InOutAttributeMarshalerNotSupported {
-            get {
-                return ResourceManager.GetString("InOutAttributeMarshalerNotSupported", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Marshalling char with &apos;CharSet.{0}&apos; is not supported. Instead, manually convert the char type to the desired byte representation and pass to the source-generated P/Invoke..
-        /// </summary>
-        internal static string MarshallingCharAsSpecifiedCharSetNotSupported {
-            get {
-                return ResourceManager.GetString("MarshallingCharAsSpecifiedCharSetNotSupported", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Marshalling string or char without explicit marshalling information is not supported. Specify either &apos;GeneratedDllImportAttribute.CharSet&apos; or &apos;MarshalAsAttribute&apos;..
-        /// </summary>
-        internal static string MarshallingStringOrCharAsUndefinedNotSupported {
-            get {
-                return ResourceManager.GetString("MarshallingStringOrCharAsUndefinedNotSupported", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to The native type &apos;{0}&apos; must be a closed generic so the emitted code can use a specific instantiation..
         /// </summary>
         internal static string NativeGenericTypeMustBeClosedDescription {
@@ -444,24 +372,6 @@ namespace Microsoft.Interop {
         internal static string NativeTypeMustHaveRequiredShapeMessage {
             get {
                 return ResourceManager.GetString("NativeTypeMustHaveRequiredShapeMessage", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The &apos;[Out]&apos; attribute is only supported on array parameters..
-        /// </summary>
-        internal static string OutByValueNotSupportedDescription {
-            get {
-                return ResourceManager.GetString("OutByValueNotSupportedDescription", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The &apos;[Out]&apos; attribute is not supported on the &apos;{0}&apos; parameter..
-        /// </summary>
-        internal static string OutByValueNotSupportedMessage {
-            get {
-                return ResourceManager.GetString("OutByValueNotSupportedMessage", resourceCulture);
             }
         }
         

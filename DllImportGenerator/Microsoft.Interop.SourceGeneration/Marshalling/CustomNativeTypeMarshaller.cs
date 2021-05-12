@@ -8,7 +8,7 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
 {
-    class CustomNativeTypeMarshaller : IMarshallingGenerator
+    public sealed class CustomNativeTypeMarshaller : IMarshallingGenerator
     {
         private const string MarshalerLocalSuffix = "__marshaler";
         private readonly TypeSyntax _nativeTypeSyntax;

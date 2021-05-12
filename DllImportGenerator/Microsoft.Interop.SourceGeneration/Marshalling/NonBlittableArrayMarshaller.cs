@@ -8,7 +8,7 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
 {
-    internal class NonBlittableArrayMarshaller : ConditionalStackallocMarshallingGenerator
+    public sealed class NonBlittableArrayMarshaller : ConditionalStackallocMarshallingGenerator
     {
         /// <summary>
         /// Stack-alloc threshold set to 256 bytes to enable small arrays to be passed on the stack.

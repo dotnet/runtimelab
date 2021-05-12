@@ -12,7 +12,7 @@ namespace Microsoft.Interop
     /// <summary>
     /// Type used to pass on default marshalling details.
     /// </summary>
-    internal sealed record DefaultMarshallingInfo (
+    public sealed record DefaultMarshallingInfo (
         CharEncoding CharEncoding
     );
 
@@ -23,7 +23,7 @@ namespace Microsoft.Interop
     /// contents of the managed array.
     /// </summary>
     [Flags]
-    internal enum ByValueContentsMarshalKind
+    public enum ByValueContentsMarshalKind
     {
         /// <summary>
         /// Marshal contents from managed to native only.
@@ -48,7 +48,7 @@ namespace Microsoft.Interop
     /// <summary>
     /// Positional type information involved in unmanaged/managed scenarios.
     /// </summary>
-    internal sealed record TypePositionInfo
+    public sealed record TypePositionInfo
     {
         public const int UnsetIndex = int.MinValue;
         public const int ReturnIndex = UnsetIndex + 1;
@@ -82,7 +82,7 @@ namespace Microsoft.Interop
 
         public MarshallingInfo MarshallingAttributeInfo { get; init; }
 
-        public static TypePositionInfo CreateForParameter(IParameterSymbol paramSymbol, DefaultMarshallingInfo defaultInfo, Compilation compilation, GeneratorDiagnostics diagnostics, INamedTypeSymbol scopeSymbol)
+        public static TypePositionInfo CreateForParameter(IParameterSymbol paramSymbol, DefaultMarshallingInfo defaultInfo, Compilation compilation, IGeneratorDiagnostics diagnostics, INamedTypeSymbol scopeSymbol)
         {
             var marshallingInfo = GetMarshallingInfo(paramSymbol.Type, paramSymbol.GetAttributes(), defaultInfo, compilation, diagnostics, scopeSymbol);
             var typeInfo = new TypePositionInfo()
@@ -98,7 +98,7 @@ namespace Microsoft.Interop
             return typeInfo;
         }
 
-        public static TypePositionInfo CreateForType(ITypeSymbol type, IEnumerable<AttributeData> attributes, DefaultMarshallingInfo defaultInfo, Compilation compilation, GeneratorDiagnostics diagnostics, INamedTypeSymbol scopeSymbol)
+        public static TypePositionInfo CreateForType(ITypeSymbol type, IEnumerable<AttributeData> attributes, DefaultMarshallingInfo defaultInfo, Compilation compilation, IGeneratorDiagnostics diagnostics, INamedTypeSymbol scopeSymbol)
         {
             var marshallingInfo = GetMarshallingInfo(type, attributes, defaultInfo, compilation, diagnostics, scopeSymbol);
             var typeInfo = new TypePositionInfo()
@@ -127,7 +127,7 @@ namespace Microsoft.Interop
             return typeInfo;
         }
 
-        private static MarshallingInfo GetMarshallingInfo(ITypeSymbol type, IEnumerable<AttributeData> attributes, DefaultMarshallingInfo defaultInfo, Compilation compilation, GeneratorDiagnostics diagnostics, INamedTypeSymbol scopeSymbol)
+        private static MarshallingInfo GetMarshallingInfo(ITypeSymbol type, IEnumerable<AttributeData> attributes, DefaultMarshallingInfo defaultInfo, Compilation compilation, IGeneratorDiagnostics diagnostics, INamedTypeSymbol scopeSymbol)
         {
             // Look at attributes passed in - usage specific.
             foreach (var attrData in attributes)
@@ -183,7 +183,7 @@ namespace Microsoft.Interop
 
             return NoMarshallingInfo.Instance;
 
-            static MarshalAsInfo CreateMarshalAsInfo(ITypeSymbol type, AttributeData attrData, DefaultMarshallingInfo defaultInfo, Compilation compilation, GeneratorDiagnostics diagnostics, INamedTypeSymbol scopeSymbol)
+            static MarshalAsInfo CreateMarshalAsInfo(ITypeSymbol type, AttributeData attrData, DefaultMarshallingInfo defaultInfo, Compilation compilation, IGeneratorDiagnostics diagnostics, INamedTypeSymbol scopeSymbol)
             {
                 object unmanagedTypeObj = attrData.ConstructorArguments[0].Value!;
                 UnmanagedType unmanagedType = unmanagedTypeObj is short
@@ -307,7 +307,7 @@ namespace Microsoft.Interop
                     NativeTypePinnable: ManualTypeMarshallingHelper.FindGetPinnableReference(nativeType) is not null);
             }
 
-            static bool TryCreateTypeBasedMarshallingInfo(ITypeSymbol type, DefaultMarshallingInfo defaultInfo, Compilation compilation, GeneratorDiagnostics diagnostics, INamedTypeSymbol scopeSymbol, out MarshallingInfo marshallingInfo)
+            static bool TryCreateTypeBasedMarshallingInfo(ITypeSymbol type, DefaultMarshallingInfo defaultInfo, Compilation compilation, IGeneratorDiagnostics diagnostics, INamedTypeSymbol scopeSymbol, out MarshallingInfo marshallingInfo)
             {
                 var conversion = compilation.ClassifyCommonConversion(type, compilation.GetTypeByMetadataName(TypeNames.System_Runtime_InteropServices_SafeHandle)!);
                 if (conversion.Exists 

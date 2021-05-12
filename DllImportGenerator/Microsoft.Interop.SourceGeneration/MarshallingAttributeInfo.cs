@@ -10,11 +10,15 @@ namespace Microsoft.Interop
     // for C# 10 discriminated unions. Once discriminated unions are released,
     // these should be updated to be implemented as a discriminated union.
 
-    internal abstract record MarshallingInfo
+    public abstract record MarshallingInfo
     {
+        // Add a constructor that can only be called by derived types in the same assembly
+        // to enforce that this type cannot be extended by users of this library.
+        private protected MarshallingInfo()
+        {}
     }
 
-    internal sealed record NoMarshallingInfo : MarshallingInfo
+    public sealed record NoMarshallingInfo : MarshallingInfo
     {
         public static readonly MarshallingInfo Instance = new NoMarshallingInfo();
 
@@ -24,7 +28,7 @@ namespace Microsoft.Interop
     /// <summary>
     /// Character encoding enumeration.
     /// </summary>
-    internal enum CharEncoding
+    public enum CharEncoding
     {
         Undefined,
         Utf8,
@@ -36,20 +40,20 @@ namespace Microsoft.Interop
     /// <summary>
     /// Details that are required when scenario supports strings.
     /// </summary>
-    internal record MarshallingInfoStringSupport(
+    public record MarshallingInfoStringSupport(
         CharEncoding CharEncoding
     ) : MarshallingInfo;
 
     /// <summary>
     /// Simple User-application of System.Runtime.InteropServices.MarshalAsAttribute
     /// </summary>
-    internal record MarshalAsInfo(
+    public record MarshalAsInfo(
         UnmanagedType UnmanagedType,
         CharEncoding CharEncoding) : MarshallingInfoStringSupport(CharEncoding)
     {
     }
 
-    enum UnmanagedArrayType
+    public enum UnmanagedArrayType
     {
         LPArray = UnmanagedType.LPArray,
         ByValArray = UnmanagedType.ByValArray
@@ -58,7 +62,7 @@ namespace Microsoft.Interop
     /// <summary>
     /// User-applied System.Runtime.InteropServices.MarshalAsAttribute with array marshalling info
     /// </summary>
-    internal sealed record ArrayMarshalAsInfo(
+    public sealed record ArrayMarshalAsInfo(
         UnmanagedArrayType UnmanagedArrayType,
         int ArraySizeConst,
         short ArraySizeParamIndex,
@@ -73,10 +77,10 @@ namespace Microsoft.Interop
     /// or System.Runtime.InteropServices.GeneratedMarshallingAttribute on a blittable type
     /// in source in this compilation.
     /// </summary>
-    internal sealed record BlittableTypeAttributeInfo : MarshallingInfo;
+    public sealed record BlittableTypeAttributeInfo : MarshallingInfo;
 
     [Flags]
-    internal enum SupportedMarshallingMethods
+    public enum SupportedMarshallingMethods
     {
         ManagedToNative = 0x1,
         NativeToManaged = 0x2,
@@ -87,7 +91,7 @@ namespace Microsoft.Interop
     /// <summary>
     /// User-applied System.Runtime.InteropServices.NativeMarshallingAttribute
     /// </summary>
-    internal sealed record NativeMarshallingAttributeInfo(
+    public sealed record NativeMarshallingAttributeInfo(
         ITypeSymbol NativeMarshallingType,
         ITypeSymbol? ValuePropertyType,
         SupportedMarshallingMethods MarshallingMethods,
@@ -97,17 +101,17 @@ namespace Microsoft.Interop
     /// User-applied System.Runtime.InteropServices.GeneratedMarshallingAttribute
     /// on a non-blittable type in source in this compilation.
     /// </summary>
-    internal sealed record GeneratedNativeMarshallingAttributeInfo(
+    public sealed record GeneratedNativeMarshallingAttributeInfo(
         string NativeMarshallingFullyQualifiedTypeName) : MarshallingInfo;
 
     /// <summary>
     /// The type of the element is a SafeHandle-derived type with no marshalling attributes.
     /// </summary>
-    internal sealed record SafeHandleMarshallingInfo(bool AccessibleDefaultConstructor) : MarshallingInfo;
+    public sealed record SafeHandleMarshallingInfo(bool AccessibleDefaultConstructor) : MarshallingInfo;
 
 
     /// <summary>
     /// Default marshalling for arrays
     /// </summary>
-    internal sealed record ArrayMarshallingInfo(MarshallingInfo ElementMarshallingInfo) : MarshallingInfo;
+    public sealed record ArrayMarshallingInfo(MarshallingInfo ElementMarshallingInfo) : MarshallingInfo;
 }

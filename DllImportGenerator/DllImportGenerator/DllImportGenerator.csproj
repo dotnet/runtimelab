@@ -43,6 +43,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Microsoft.Interop.SourceGeneration\Microsoft.Interop.SourceGeneration.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Update="Resources.Designer.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
@@ -56,5 +60,15 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
+
+  <Target Name="IncludeProjectReferenceInPackage" BeforeTargets="Pack">
+    <MSBuild Projects="@(ProjectReference)" Targets="Build">
+      <Output TaskParameter="TargetOutputs" ItemName="ProjectReferenceOutput" />
+    </MSBuild>
+
+    <ItemGroup>
+      <None Include="@(ProjectReferenceOutput)" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    </ItemGroup>
+  </Target>
 
 </Project>

@@ -2,7 +2,7 @@
 
 namespace Microsoft.Interop
 {
-    internal abstract class StubCodeContext
+    public abstract class StubCodeContext
     {
         /// <summary>
         /// Code generation stage

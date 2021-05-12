@@ -1,13 +1,17 @@
-using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
 
 namespace Microsoft.Interop
 {
-    public static class OptionsHelper
+    record DllImportGeneratorOptions(bool GenerateForwarders, bool UseMarshalType) : InteropGenerationOptions(UseMarshalType)
+    {
+        public DllImportGeneratorOptions(AnalyzerConfigOptions options)
+            : this(options.GenerateForwarders(), options.UseMarshalType())
+        {
+
+        }
+    }
+
+    internal static class OptionsHelper
     {
         public const string UseMarshalTypeOption = "build_property.DllImportGenerator_UseMarshalType";
         public const string GenerateForwardersOption = "build_property.DllImportGenerator_GenerateForwarders";

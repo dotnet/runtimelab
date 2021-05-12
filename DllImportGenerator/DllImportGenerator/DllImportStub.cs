@@ -15,7 +15,7 @@ namespace Microsoft.Interop
         Compilation Compilation,
         bool SupportedTargetFramework,
         Version TargetFrameworkVersion,
-        AnalyzerConfigOptions Options);
+        DllImportGeneratorOptions Options);
 
     internal class DllImportStub
     {
@@ -181,7 +181,7 @@ namespace Microsoft.Interop
             var managedRetTypeInfo = retTypeInfo;
             // Do not manually handle PreserveSig when generating forwarders.
             // We want the runtime to handle everything.
-            if (!dllImportData.PreserveSig && !env.Options.GenerateForwarders())
+            if (!dllImportData.PreserveSig && !env.Options.GenerateForwarders)
             {
                 // Create type info for native HRESULT return
                 retTypeInfo = TypePositionInfo.CreateForType(env.Compilation.GetSpecialType(SpecialType.System_Int32), NoMarshallingInfo.Instance);
@@ -207,7 +207,7 @@ namespace Microsoft.Interop
             }
 
             // Generate stub code
-            var stubGenerator = new StubCodeGenerator(method, dllImportData, paramsTypeInfo, retTypeInfo, diagnostics, env.Options);
+            var stubGenerator = new StubCodeGenerator(method, dllImportData, paramsTypeInfo, retTypeInfo, diagnostics, env.Options, new GeneratedDllImportMarshallingGeneratorFactory());
             var code = stubGenerator.GenerateSyntax();
 
             var additionalAttrs = new List<AttributeListSyntax>();

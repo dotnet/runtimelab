@@ -1,51 +1,16 @@
-﻿using System;
+﻿using Microsoft.CodeAnalysis;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-
-using Microsoft.CodeAnalysis;
+using System.Text;
 
 namespace Microsoft.Interop
 {
-    internal static class DiagnosticExtensions
-    {
-        public static Diagnostic CreateDiagnostic(
-            this ISymbol symbol,
-            DiagnosticDescriptor descriptor,
-            params object[] args)
-        {
-            IEnumerable<Location> locationsInSource = symbol.Locations.Where(l => l.IsInSource);
-            if (!locationsInSource.Any())
-                return Diagnostic.Create(descriptor, Location.None, args);
-
-            return Diagnostic.Create(
-                descriptor,
-                location: locationsInSource.First(),
-                additionalLocations: locationsInSource.Skip(1),
-                messageArgs: args);
-        }
-
-        public static Diagnostic CreateDiagnostic(
-            this AttributeData attributeData,
-            DiagnosticDescriptor descriptor,
-            params object[] args)
-        {
-            SyntaxReference? syntaxReference = attributeData.ApplicationSyntaxReference;
-            Location location = syntaxReference is not null
-                ? syntaxReference.GetSyntax().GetLocation()
-                : Location.None;
-
-            return Diagnostic.Create(
-                descriptor,
-                location: location.IsInSource ? location : Location.None,
-                messageArgs: args);
-        }
-    }
 
     /// <summary>
     /// Class for reporting diagnostics in the DLL import generator
     /// </summary>
-    public class GeneratorDiagnostics
+    public class GeneratorDiagnostics : IGeneratorDiagnostics
     {
         public class Ids
         {
@@ -188,7 +153,7 @@ namespace Microsoft.Interop
         /// <param name="method">Method with the parameter/return</param>
         /// <param name="info">Type info for the parameter/return</param>
         /// <param name="notSupportedDetails">[Optional] Specific reason for lack of support</param>
-        internal void ReportMarshallingNotSupported(
+        public void ReportMarshallingNotSupported(
             IMethodSymbol method,
             TypePositionInfo info,
             string? notSupportedDetails)

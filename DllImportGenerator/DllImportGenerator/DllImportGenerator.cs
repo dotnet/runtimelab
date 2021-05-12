@@ -58,7 +58,7 @@ namespace Microsoft.Interop
                 generatorDiagnostics.ReportTargetFrameworkNotSupported(MinimumSupportedFrameworkVersion);
             }
 
-            var env = new StubEnvironment(context.Compilation, isSupported, targetFrameworkVersion, context.AnalyzerConfigOptions.GlobalOptions);
+            var env = new StubEnvironment(context.Compilation, isSupported, targetFrameworkVersion, new DllImportGeneratorOptions(context.AnalyzerConfigOptions.GlobalOptions));
             var generatedDllImports = new StringBuilder();
             foreach (SyntaxReference synRef in synRec.Methods)
             {
