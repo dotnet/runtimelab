@@ -353,7 +353,7 @@ namespace Internal.TypeSystem.Interop
                 {
                     if (nativeType == NativeTypeKind.Struct || nativeType == NativeTypeKind.Default)
                         return MarshallerKind.Decimal;
-                    else if (nativeType == NativeTypeKind.LPStruct && !isField && !isReturn)
+                    else if (nativeType == NativeTypeKind.LPStruct && !isField)
                         return MarshallerKind.BlittableStructPtr;
                     else
                         return MarshallerKind.Invalid;
@@ -362,7 +362,7 @@ namespace Internal.TypeSystem.Interop
                 {
                     if (nativeType == NativeTypeKind.Struct || nativeType == NativeTypeKind.Default)
                         return MarshallerKind.BlittableStruct;
-                    else if (nativeType == NativeTypeKind.LPStruct && !isField && !isReturn)
+                    else if (nativeType == NativeTypeKind.LPStruct && !isField)
                         return MarshallerKind.BlittableStructPtr;
                     else
                         return MarshallerKind.Invalid;

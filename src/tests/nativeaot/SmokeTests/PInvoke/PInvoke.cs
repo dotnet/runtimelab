@@ -275,6 +275,9 @@ namespace PInvokeTests
         [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall, PreserveSig = false)]
         static extern void ValidateSuccessCall(int errorCode);
 
+        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall)]
+        internal static extern decimal DecimalTest(decimal value);
+
         public static int Main(string[] args)
         {
             TestBlittableType();
@@ -297,6 +300,7 @@ namespace PInvokeTests
             TestMarshalStructAPIs();
             TestWithoutPreserveSig();
             TestForwardDelegateWithUnmanagedCallersOnly();
+            TestDecimal();
 
             return 100;
         }
@@ -995,6 +999,15 @@ namespace PInvokeTests
 
             int cftf_size = Marshal.SizeOf(typeof(ClassForTestingFlowAnalysis));
             ThrowIfNotEquals(4, cftf_size, "ClassForTestingFlowAnalysis marshalling Marshal API failed");
+        }
+
+        private unsafe static void TestDecimal()
+        {
+            Console.WriteLine("Testing Decimals");
+            var d = new decimal(100, 101, 102, false, 1);
+            var ret = DecimalTest(d);
+            var expected = new decimal(99, 98, 97, true, 2);
+            ThrowIfNotEquals(ret, expected, "Decimal marshalling failed.");
         }
 
         [UnmanagedCallersOnly]

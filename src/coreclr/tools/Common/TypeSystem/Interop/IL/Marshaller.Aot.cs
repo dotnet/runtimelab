@@ -57,6 +57,7 @@ namespace Internal.TypeSystem.Interop
                 case MarshallerKind.FunctionPointer:
                     return new DelegateMarshaller();
                 case MarshallerKind.Struct:
+                case MarshallerKind.Decimal:
                     return new StructMarshaller();
                 case MarshallerKind.ByValAnsiString:
                     return new ByValAnsiStringMarshaller();
