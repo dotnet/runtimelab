@@ -64,6 +64,12 @@ namespace Microsoft.Interop
         void ReportConfigurationNotSupported(
             AttributeData attributeData,
             string configurationName,
-            string? unsupportedValue = null);
+            string? unsupportedValue);
+    }
+
+    public static class IGeneratorDiagnosticsExtensions
+    {
+        public static void ReportConfigurationNotSupported(this IGeneratorDiagnostics diagnostics, AttributeData attributeData, string configurationName)
+            => diagnostics.ReportConfigurationNotSupported(attributeData, configurationName, null);
     }
 }
