@@ -11,15 +11,29 @@ namespace ILCompiler
 {
     public static class VirtualMethodSlotHelper
     {
+        public static int GetDefaultInterfaceMethodSlot(NodeFactory factory, MethodDesc method, TypeDesc implType, DefType interfaceOnDefinition, bool countDictionarySlots = true)
+        {
+            Debug.Assert(method.GetTypicalMethodDefinition().OwningType == interfaceOnDefinition.GetTypeDefinition());
+
+            // Ensure the sealed vtable is built before computing the slot
+            factory.SealedVTable(implType).BuildSealedVTableSlots(factory, relocsOnly: false /* GetVirtualMethodSlot is called in the final emission phase */);
+
+            int sealedVTableSlot = factory.SealedVTable(implType).ComputeDefaultInterfaceMethodSlot(method, interfaceOnDefinition);
+            if (sealedVTableSlot == -1)
+                return -1;
+
+            int numVTableSlots = GetNumberOfSlotsInCurrentType(factory, implType, countDictionarySlots);
+
+            return numVTableSlots + sealedVTableSlot;
+        }
+
         /// <summary>
         /// Given a virtual method decl, return its VTable slot if the method is used on its containing type.
         /// Return -1 if the virtual method is not used.
         /// </summary>
-        public static int GetVirtualMethodSlot(NodeFactory factory, MethodDesc method, TypeDesc implType, bool countDictionarySlots = true, bool findDefaultInterfaceImpl = false)
+        public static int GetVirtualMethodSlot(NodeFactory factory, MethodDesc method, TypeDesc implType, bool countDictionarySlots = true)
         {
-            Debug.Assert(!findDefaultInterfaceImpl || method.OwningType.IsInterface);
-
-            if (method.CanMethodBeInSealedVTable() || findDefaultInterfaceImpl)
+            if (method.CanMethodBeInSealedVTable())
             {
                 // If the method is a sealed newslot method, it will be put in the sealed vtable instead of the type's vtable. In this
                 // case, the slot index return should be the index in the sealed vtable, plus the total number of vtable slots.
@@ -35,22 +49,7 @@ namespace ILCompiler
                 if (sealedVTableSlot == -1)
                     return -1;
 
-                // Now compute the total number of vtable slots that would exist on the type
-                int baseSlots = GetNumberOfBaseSlots(factory, implType, countDictionarySlots);
-
-                // For types that have a generic dictionary, the introduced virtual method slots are
-                // prefixed with a pointer to the generic dictionary.
-                if (implType.HasGenericDictionarySlot() && countDictionarySlots)
-                    baseSlots++;
-
-                int numVTableSlots = baseSlots;
-                IReadOnlyList<MethodDesc> virtualSlots = factory.VTable(implType).Slots;
-                for (int slot = 0; slot < virtualSlots.Count; slot++)
-                {
-                    if (virtualSlots[slot].CanMethodBeInSealedVTable())
-                        continue;
-                    numVTableSlots++;
-                }
+                int numVTableSlots = GetNumberOfSlotsInCurrentType(factory, implType, countDictionarySlots);
 
                 return numVTableSlots + sealedVTableSlot;
             }
@@ -85,6 +84,28 @@ namespace ILCompiler
 
                 return methodSlot == -1 ? -1 : baseSlots + methodSlot - numSealedVTableEntries;
             }
+        }
+
+        private static int GetNumberOfSlotsInCurrentType(NodeFactory factory, TypeDesc implType, bool countDictionarySlots)
+        {
+            // Now compute the total number of vtable slots that would exist on the type
+            int baseSlots = GetNumberOfBaseSlots(factory, implType, countDictionarySlots);
+
+            // For types that have a generic dictionary, the introduced virtual method slots are
+            // prefixed with a pointer to the generic dictionary.
+            if (implType.HasGenericDictionarySlot() && countDictionarySlots)
+                baseSlots++;
+
+            int numVTableSlots = baseSlots;
+            IReadOnlyList<MethodDesc> virtualSlots = factory.VTable(implType).Slots;
+            for (int slot = 0; slot < virtualSlots.Count; slot++)
+            {
+                if (virtualSlots[slot].CanMethodBeInSealedVTable())
+                    continue;
+                numVTableSlots++;
+            }
+
+            return numVTableSlots;
         }
 
         private static int GetNumberOfBaseSlots(NodeFactory factory, TypeDesc owningType, bool countDictionarySlots)

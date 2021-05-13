@@ -36,6 +36,7 @@ public class BringUpTest
 
         TestDefaultInterfaceMethods.Run();
         TestVariantInterfaceOptimizations.Run();
+        TestSharedIntefaceMethods.Run();
 
         return Pass;
     }
@@ -501,22 +502,61 @@ public class BringUpTest
             if (((IFoo)new Baz()).GetNumber() != 100)
                 throw new Exception();
 
-            bool thrown = false;
-            try
-            {
-                ((IFoo<object>)new Foo<object>()).GetInterfaceType();
-            }
-            catch (EntryPointNotFoundException)
-            {
-                thrown = true;
-            }
-            if (!thrown)
+            if (((IFoo<object>)new Foo<object>()).GetInterfaceType() != typeof(IFoo<object>))
                 throw new Exception();
 
             if (((IFoo<int>)new Foo<int>()).GetInterfaceType() != typeof(IFoo<int>))
-            {
                 throw new Exception();
-            }
+        }
+    }
+
+    class TestSharedIntefaceMethods
+    {
+        interface IInnerValueGrabber
+        {
+            string GetInnerValue();
+        }
+
+        interface IFace<T> : IInnerValueGrabber
+        {
+            string GrabValue(T x) => $"'{GetInnerValue()}' over '{typeof(T)}' with '{x}'";
+        }
+
+        class Base<T> : IFace<T>, IInnerValueGrabber
+        {
+            public string InnerValue;
+
+            public string GetInnerValue() => InnerValue;
+        }
+
+        class Derived<T, U> : Base<T>, IFace<U> { }
+
+        struct Yadda : IFace<object>, IInnerValueGrabber
+        {
+            public string InnerValue;
+
+            public string GetInnerValue() => InnerValue;
+        }
+
+        class Atom1 { public override string ToString() => "The Atom1"; }
+        class Atom2 { public override string ToString() => "The Atom2"; }
+
+        public static void Run()
+        {
+            Console.WriteLine("Testing default interface methods and shared code...");
+
+            var x = new Derived<Atom1, Atom2>() { InnerValue = "My inner value" };
+            string r1 = ((IFace<Atom1>)x).GrabValue(new Atom1());
+            if (r1 != "'My inner value' over 'BringUpTest+TestSharedIntefaceMethods+Atom1' with 'The Atom1'")
+                throw new Exception();
+            string r2 = ((IFace<Atom2>)x).GrabValue(new Atom2());
+            if (r2 != "'My inner value' over 'BringUpTest+TestSharedIntefaceMethods+Atom2' with 'The Atom2'")
+                throw new Exception();
+
+            IFace<object> o = new Yadda() { InnerValue = "SomeString" };
+            string r3 = o.GrabValue("Hello there");
+            if (r3 != "'SomeString' over 'System.Object' with 'Hello there'")
+                throw new Exception();
         }
     }
 

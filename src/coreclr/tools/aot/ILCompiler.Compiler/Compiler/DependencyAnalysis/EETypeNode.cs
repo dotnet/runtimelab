@@ -299,8 +299,10 @@ namespace ILCompiler.DependencyAnalysis
                 // Add conditional dependencies for interface methods the type implements. For example, if the type T implements
                 // interface IFoo which has a method M1, add a dependency on T.M1 dependent on IFoo.M1 being called, since it's
                 // possible for any IFoo object to actually be an instance of T.
-                foreach (DefType interfaceType in defType.RuntimeInterfaces)
+                for (int interfaceIndex = 0; interfaceIndex < defType.RuntimeInterfaces.Length; interfaceIndex++)
                 {
+                    DefType interfaceType = defType.RuntimeInterfaces[interfaceIndex];
+
                     Debug.Assert(interfaceType.IsInterface);
 
                     bool isVariantInterfaceImpl = VariantInterfaceMethodUseNode.IsVariantInterfaceImplementation(factory, _type, interfaceType);
@@ -334,10 +336,24 @@ namespace ILCompiler.DependencyAnalysis
                             // Is the implementation provided by a default interface method?
                             // If so, add a dependency on the entrypoint directly since nobody else is going to do that
                             // (interface types have an empty vtable, modulo their generic dictionary).
-                            var resolution = defType.ResolveInterfaceMethodToDefaultImplementationOnType(interfaceMethod, out implMethod);
+                            TypeDesc interfaceOnDefinition = defType.GetTypeDefinition().RuntimeInterfaces[interfaceIndex];
+                            MethodDesc interfaceMethodDefinition = interfaceMethod;
+                            if (!interfaceType.IsTypeDefinition)
+                                interfaceMethodDefinition = factory.TypeSystemContext.GetMethodForInstantiatedType(interfaceMethod.GetTypicalMethodDefinition(), (InstantiatedType)interfaceOnDefinition);
+
+                            var resolution = defType.GetTypeDefinition().ResolveInterfaceMethodToDefaultImplementationOnType(interfaceMethodDefinition, out implMethod);
                             if (resolution == DefaultInterfaceMethodResolution.DefaultImplementation)
                             {
-                                result.Add(new CombinedDependencyListEntry(factory.CanonicalEntrypoint(implMethod), factory.VirtualMethodUse(interfaceMethod), "Interface method"));
+                                DefType providingInterfaceDefinitionType = (DefType)implMethod.OwningType;
+                                if (!interfaceType.IsTypeDefinition)
+                                    implMethod = implMethod.InstantiateSignature(defType.Instantiation, Instantiation.Empty);
+
+                                MethodDesc defaultIntfMethod = implMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
+                                if (defaultIntfMethod.IsCanonicalMethod(CanonicalFormKind.Any))
+                                {
+                                    defaultIntfMethod = factory.TypeSystemContext.GetDefaultInterfaceMethodImplementationThunk(defaultIntfMethod, _type.ConvertToCanonForm(CanonicalFormKind.Specific), providingInterfaceDefinitionType);
+                                }
+                                result.Add(new CombinedDependencyListEntry(factory.MethodEntrypoint(defaultIntfMethod), factory.VirtualMethodUse(interfaceMethod), "Interface method"));
                             }
                         }
                     }
