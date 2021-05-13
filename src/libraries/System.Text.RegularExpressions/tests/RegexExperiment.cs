@@ -13,10 +13,19 @@ namespace System.Text.RegularExpressions.Tests
     /// <summary>
     /// This class is to be ignored wrt unit tests.
     /// It contains temporary experimental code, such as lightweight profiling and debuggging locally.
+    /// The entry point is TestRun().
     /// </summary>
     public class RegexExperiment
     {
-        private const string tmpWorkingDir = @"c:\tmp\";
+        //[Fact]
+        //public void TestRun()
+        //{
+        //    //call the actual code from here
+        //    //TestRunSampleRegex();
+        //    TestRunPerformance();
+        //}
+
+        private const string tmpWorkingDir = @"c:\tmp\runtimelab\";
         /// <summary>
         /// Contains sample input text for regexes.
         /// </summary>
@@ -59,7 +68,6 @@ namespace System.Text.RegularExpressions.Tests
             saveDgml.Invoke(regex, new object[] { writer, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength });
         }
 
-        //[Fact]
         private void RegenerateUnicodeTables()
         {
             MethodInfo genUnicode = typeof(Regex).GetMethod("GenerateUnicodeTables", BindingFlags.NonPublic | BindingFlags.Static);
@@ -80,74 +88,94 @@ namespace System.Text.RegularExpressions.Tests
         /// <summary>
         /// The intent is that this method is run in realease build for lightweight performance testing.
         /// One can e.g. open the outputfile in emacs with AUTO-REVERT-ON in order to follow the progress in real time.
-        /// It will print timing info and match info for both DFA and Compiled option.
+        /// It will print timing info and match info for both DFA, Compiled option and None.
         /// Place sample regexes in the regexesfile (one per line) and sample input in inputfile.
+        /// It will essentially produce a csv file with the info:
+        /// regexnr, matchtime_DFA, result_DFA, matchtime_Compiled, result_Compiled, matchtime_None, result_None,
+        /// where result_.. is one of
+        ///   Yes(index,length)
+        ///   No
+        ///   TIMEOUT
+        ///   ERROR 
+        ///  and in the case of TIMEOUT or ERROR time is 10000 (the timeout limit of 10sec)
         /// </summary>
-        //[Fact]
         private void TestRunPerformance()
         {
             string input = File.ReadAllText(inputfile);
             string[] rawregexes = File.ReadAllLines(regexesfile);
-            WriteOutput("\n========= date:{0} =========\n", System.DateTime.Now);
-            int totDFA = 0;
-            int totCOM = 0;
-            int tDFA = 0;
-            int tCOM = 0;
             for (int i = 0; i < rawregexes.Length; i++)
-            {
-                var rawregex = rawregexes[i];
-                Regex re = new(rawregex, DFA, new TimeSpan(0, 0, 10));
-                Regex reC = new(rawregex, RegexOptions.Compiled, new TimeSpan(0, 0, 10));
-                WriteOutput("\n--- Regex:{0}\n", i);
-                //-------------------
-                //-- measure DFA
-                //-------------------
-                tDFA = MeasureMatchTime(re, "DFA", input);
-                //-------------------
-                //-- measure COMPILED
-                //-------------------
-                tCOM = MeasureMatchTime(reC, "COM", input);
-                //ignore the cases when one times out
-                if (tDFA >= 0 && tCOM >= 0)
-                {
-                    totDFA += tDFA;
-                    totCOM += tCOM;
-                }
-            }
-            WriteOutput("\ntotal time: DFA:{0}ms, COM:{1}ms\n", totDFA, totCOM);
+                TestRunRegex((i + 1).ToString(), rawregexes[i], input);
         }
 
-        private static int MeasureMatchTime(Regex re, string tag, string input)
+        private static long MeasureMatchTime(Regex re, string input, out Match match)
         {
-            File.AppendAllText(outputfile, tag + ": warmup:...");
-            int t = 0;
             try
             {
                 var sw = Stopwatch.StartNew();
-                re.Match(input);
-                WriteOutput("{0}ms, run:...", (int)sw.ElapsedMilliseconds);
-                sw = Stopwatch.StartNew();
-                var match1 = re.Match(input);
-                t = (int)sw.ElapsedMilliseconds;
-                WriteOutput("{0}ms, Match:{1} (Index:{2} Length:{3})\n", t, match1.Success, match1.Index, match1.Length);
-                return t;
+                match = re.Match(input);
+                return sw.ElapsedMilliseconds;
             }
             catch (TimeoutException)
             {
-                WriteOutput(" TIMEOUT\n");
+                match = Match.Empty;
                 return -1;
             }
             catch (Exception)
             {
-                WriteOutput(" ERROR\n");
-                return -1;
+                match = Match.Empty;
+                return -2;
             }
+        }
+
+        private void TestRunSampleRegex()
+        {
+            string rawregex = @"(?<Part0>(every\ week))\s*(?<Part1>(on)){0,1}\s*((?<Part2>(\b([Mm]ondays|[Tt]uesdays|[Ww]ednesdays|[Tt]hursdays|[Ff]ridays|[Ss]aturdays|[Ss]undays)\b))|(?<Part3>((\b([Mm]onday|[Tt]uesday|[Ww]ednesday|[Tt]hursday|[Ff]riday|[Ss]aturday|[Ss]unday)\b)|(\b([Mm]on|[Tt]ues|[Tt]ue|[Ww]ed|[Tt]hurs|[Tt]hur|[Tt]hu|[Ff]ri|[Ss]at|[Ss]un)\b))))";
+            string input = File.ReadAllText(inputfile);
+            TestRunRegex("sample", rawregex, input);
+        }
+
+        private void TestRunRegex(string name, string rawregex, string input)
+        {
+            Regex reC = new Regex(rawregex, RegexOptions.Compiled, new TimeSpan(0,0,10));
+            Regex reN = new Regex(rawregex, RegexOptions.None, new TimeSpan(0, 0, 10));
+            Regex reD = new Regex(rawregex, DFA, new TimeSpan(0, 0, 10));
+            input = input + "every week on mond I go there " + input + "every week on Tuesdays I go there";
+            Match mC;
+            Match mN;
+            Match mD;
+            long tC;
+            long tN;
+            long tD;   
+            WriteOutput("\n{0}", name);
+            //first call in each case is a warmup
+            //DFA
+            MeasureMatchTime(reD, input, out _);
+            tD = MeasureMatchTime(reD, input, out mD);
+            WriteMatchOutput(tD, mD);
+            //Compiled
+            MeasureMatchTime(reC, input, out _);
+            tC = MeasureMatchTime(reC, input, out mC);
+            WriteMatchOutput(tC, mC);
+            //None
+            MeasureMatchTime(reN, input, out _);
+            tN = MeasureMatchTime(reN, input, out mN);
+            WriteMatchOutput(tN, mN);
+        }
+        private void WriteMatchOutput(long t, Match m)
+        {
+            if (t == -1)
+                WriteOutput(",10000,TIMEOUT");
+            else if (t == -2)
+                WriteOutput(",10000,ERROR");
+            else if (m.Success)
+                WriteOutput(",{0},Yes({1}:{2})", t, m.Index, m.Length);
+            else 
+                WriteOutput(",{0},No", t);
         }
 
         /// <summary>
         /// Test serialization/deserialization and measure performance for all regexes in the regexesfile.
         /// </summary>
-        //[Fact]
         private void TestRunSerialization()
         {
             string[] rawregexes = File.ReadAllLines(regexesfile);
