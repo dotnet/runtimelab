@@ -20,27 +20,25 @@ namespace Microsoft.Interop
             StubCodeContext context);
     }
 
-    public class DefaultMarshallingGeneratorFactory<TOptions> : IMarshallingGeneratorFactory
-        where TOptions : InteropGenerationOptions
+    public sealed class DefaultMarshallingGeneratorFactory : IMarshallingGeneratorFactory
     {
-        protected static readonly ByteBoolMarshaller ByteBool = new();
-        protected static readonly WinBoolMarshaller WinBool = new();
-        protected static readonly VariantBoolMarshaller VariantBool = new();
+        private static readonly ByteBoolMarshaller ByteBool = new();
+        private static readonly WinBoolMarshaller WinBool = new();
+        private static readonly VariantBoolMarshaller VariantBool = new();
 
-        protected static readonly Utf16CharMarshaller Utf16Char = new();
-        protected static readonly Utf16StringMarshaller Utf16String = new();
-        protected static readonly Utf8StringMarshaller Utf8String = new();
-        protected static readonly AnsiStringMarshaller AnsiString = new AnsiStringMarshaller(Utf8String);
-        protected static readonly PlatformDefinedStringMarshaller PlatformDefinedString = new PlatformDefinedStringMarshaller(Utf16String, Utf8String);
+        private static readonly Utf16CharMarshaller Utf16Char = new();
+        private static readonly Utf16StringMarshaller Utf16String = new();
+        private static readonly Utf8StringMarshaller Utf8String = new();
+        private static readonly AnsiStringMarshaller AnsiString = new AnsiStringMarshaller(Utf8String);
+        private static readonly PlatformDefinedStringMarshaller PlatformDefinedString = new PlatformDefinedStringMarshaller(Utf16String, Utf8String);
 
-        protected static readonly Forwarder Forwarder = new();
-        protected static readonly BlittableMarshaller Blittable = new();
-        protected static readonly DelegateMarshaller Delegate = new();
-        protected static readonly HResultExceptionMarshaller HResultException = new();
-        protected static readonly SafeHandleMarshaller SafeHandle = new();
-        protected TOptions Options { get; }
+        private static readonly Forwarder Forwarder = new();
+        private static readonly BlittableMarshaller Blittable = new();
+        private static readonly DelegateMarshaller Delegate = new();
+        private static readonly SafeHandleMarshaller SafeHandle = new();
+        private InteropGenerationOptions Options { get; }
 
-        public DefaultMarshallingGeneratorFactory(TOptions options)
+        public DefaultMarshallingGeneratorFactory(InteropGenerationOptions options)
         {
             this.Options = options;
         }
@@ -91,7 +89,7 @@ namespace Microsoft.Interop
         /// <param name="info">Type details</param>
         /// <param name="context">Metadata about the stub the type is associated with</param>
         /// <returns>A <see cref="IMarshallingGenerator"/> instance.</returns>
-        protected virtual IMarshallingGenerator CreateCore(
+        private IMarshallingGenerator CreateCore(
             TypePositionInfo info,
             StubCodeContext context)
         {
@@ -178,7 +176,7 @@ namespace Microsoft.Interop
                     return CreateStringMarshaller(info, context);
                     
                 case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType: ITypeSymbol elementType } }:
-                    return CreateArrayMarshaller(info, context, Options, elementType);
+                    return CreateArrayMarshaller(info, context, elementType);
 
                 case { ManagedType: { SpecialType: SpecialType.System_Void } }:
                     return Forwarder;
@@ -276,7 +274,7 @@ namespace Microsoft.Interop
             throw new MarshallingNotSupportedException(info, context);
         }
         
-        private ExpressionSyntax GetNumElementsExpressionFromMarshallingInfo(TypePositionInfo info, StubCodeContext context, TOptions options)
+        private ExpressionSyntax GetNumElementsExpressionFromMarshallingInfo(TypePositionInfo info, StubCodeContext context)
         {
             ExpressionSyntax numElementsExpression;
             if (info.MarshallingAttributeInfo is not ArrayMarshalAsInfo marshalAsInfo)
@@ -330,7 +328,7 @@ namespace Microsoft.Interop
             return numElementsExpression;
         }
 
-        private IMarshallingGenerator CreateArrayMarshaller(TypePositionInfo info, StubCodeContext context, TOptions options, ITypeSymbol elementType)
+        private IMarshallingGenerator CreateArrayMarshaller(TypePositionInfo info, StubCodeContext context, ITypeSymbol elementType)
         {
             var elementMarshallingInfo = info.MarshallingAttributeInfo switch
             {
@@ -347,7 +345,7 @@ namespace Microsoft.Interop
             if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
             {
                 // In this case, we need a numElementsExpression supplied from metadata, so we'll calculate it here.
-                numElementsExpression = GetNumElementsExpressionFromMarshallingInfo(info, context, options);
+                numElementsExpression = GetNumElementsExpressionFromMarshallingInfo(info, context);
             }
             
             return elementMarshaller == Blittable

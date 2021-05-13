@@ -179,30 +179,43 @@ namespace Microsoft.Interop
             };
 
             var managedRetTypeInfo = retTypeInfo;
-            // Do not manually handle PreserveSig when generating forwarders.
-            // We want the runtime to handle everything.
-            if (!dllImportData.PreserveSig && !env.Options.GenerateForwarders)
+            IMarshallingGeneratorFactory generatorFactory;
+            if (env.Options.GenerateForwarders)
             {
-                // Create type info for native HRESULT return
-                retTypeInfo = TypePositionInfo.CreateForType(env.Compilation.GetSpecialType(SpecialType.System_Int32), NoMarshallingInfo.Instance);
-                retTypeInfo = retTypeInfo with
-                {
-                    NativeIndex = TypePositionInfo.ReturnIndex
-                };
+                generatorFactory = new ForwarderMarshallingGeneratorFactory();
+            }
+            else
+            {
+                generatorFactory = new DefaultMarshallingGeneratorFactory(new InteropGenerationOptions(env.Options.UseMarshalType));
 
-                // Create type info for native out param
-                if (!method.ReturnsVoid)
+                // Do not manually handle PreserveSig when generating forwarders.
+                // We want the runtime to handle everything.
+                if (!dllImportData.PreserveSig)
                 {
-                    // Transform the managed return type info into an out parameter and add it as the last param
-                    TypePositionInfo nativeOutInfo = managedRetTypeInfo with
+                    // Use a marshalling generator that supports the HRESULT return->exception marshalling.
+                    generatorFactory = new NoPreserveSigMarshallingGeneratorFactory(generatorFactory);
+
+                    // Create type info for native HRESULT return
+                    retTypeInfo = TypePositionInfo.CreateForType(env.Compilation.GetSpecialType(SpecialType.System_Int32), NoMarshallingInfo.Instance);
+                    retTypeInfo = retTypeInfo with
                     {
-                        InstanceIdentifier = PInvokeStubCodeGenerator.ReturnIdentifier,
-                        RefKind = RefKind.Out,
-                        RefKindSyntax = SyntaxKind.OutKeyword,
-                        ManagedIndex = TypePositionInfo.ReturnIndex,
-                        NativeIndex = paramsTypeInfo.Count
+                        NativeIndex = TypePositionInfo.ReturnIndex
                     };
-                    paramsTypeInfo.Add(nativeOutInfo);
+
+                    // Create type info for native out param
+                    if (!method.ReturnsVoid)
+                    {
+                        // Transform the managed return type info into an out parameter and add it as the last param
+                        TypePositionInfo nativeOutInfo = managedRetTypeInfo with
+                        {
+                            InstanceIdentifier = PInvokeStubCodeGenerator.ReturnIdentifier,
+                            RefKind = RefKind.Out,
+                            RefKindSyntax = SyntaxKind.OutKeyword,
+                            ManagedIndex = TypePositionInfo.ReturnIndex,
+                            NativeIndex = paramsTypeInfo.Count
+                        };
+                        paramsTypeInfo.Add(nativeOutInfo);
+                    }
                 }
             }
 
@@ -213,7 +226,7 @@ namespace Microsoft.Interop
                 retTypeInfo,
                 diagnostics,
                 dllImportData.SetLastError && !env.Options.GenerateForwarders,
-                new GeneratedDllImportMarshallingGeneratorFactory(env.Options));
+                generatorFactory);
             string stubTargetName = "__PInvoke__";
             var code = stubGenerator.GeneratePInvokeBody(IdentifierName(stubTargetName));
             code = code.AddStatements(CreateTargetFunctionAsLocalStatement(stubGenerator, env.Options, dllImportData, stubTargetName, method.Name));

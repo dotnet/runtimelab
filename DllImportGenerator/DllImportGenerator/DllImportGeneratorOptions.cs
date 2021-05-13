@@ -2,7 +2,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Microsoft.Interop
 {
-    record DllImportGeneratorOptions(bool GenerateForwarders, bool UseMarshalType) : InteropGenerationOptions(UseMarshalType)
+    record DllImportGeneratorOptions(bool GenerateForwarders, bool UseMarshalType)
     {
         public DllImportGeneratorOptions(AnalyzerConfigOptions options)
             : this(options.GenerateForwarders(), options.UseMarshalType())

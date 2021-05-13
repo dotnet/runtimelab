@@ -6,25 +6,25 @@ using System.Text;
 
 namespace Microsoft.Interop
 {
-    class GeneratedDllImportMarshallingGeneratorFactory : DefaultMarshallingGeneratorFactory<DllImportGeneratorOptions>
+    class NoPreserveSigMarshallingGeneratorFactory : IMarshallingGeneratorFactory
     {
-        public GeneratedDllImportMarshallingGeneratorFactory(DllImportGeneratorOptions options) : base(options) { }
+        private static readonly HResultExceptionMarshaller HResultException = new HResultExceptionMarshaller();
+        private readonly IMarshallingGeneratorFactory inner;
 
-        protected override IMarshallingGenerator CreateCore(TypePositionInfo info, StubCodeContext context)
+        public NoPreserveSigMarshallingGeneratorFactory(IMarshallingGeneratorFactory inner)
         {
-            if (Options.GenerateForwarders)
-            {
-                return Forwarder;
-            }
+            this.inner = inner;
+        }
 
+        public IMarshallingGenerator Create(TypePositionInfo info, StubCodeContext context)
+        {
             if (info.IsNativeReturnPosition && !info.IsManagedReturnPosition)
             {
                 // Use marshaller for native HRESULT return / exception throwing
                 System.Diagnostics.Debug.Assert(info.ManagedType.SpecialType == SpecialType.System_Int32);
                 return HResultException;
             }
-
-            return base.CreateCore(info, context);
+            return inner.Create(info, context);
         }
     }
 }
