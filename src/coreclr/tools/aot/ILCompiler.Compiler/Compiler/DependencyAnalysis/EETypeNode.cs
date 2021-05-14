@@ -299,9 +299,10 @@ namespace ILCompiler.DependencyAnalysis
                 // Add conditional dependencies for interface methods the type implements. For example, if the type T implements
                 // interface IFoo which has a method M1, add a dependency on T.M1 dependent on IFoo.M1 being called, since it's
                 // possible for any IFoo object to actually be an instance of T.
-                for (int interfaceIndex = 0; interfaceIndex < defType.RuntimeInterfaces.Length; interfaceIndex++)
+                DefType[] defTypeRuntimeInterfaces = defType.RuntimeInterfaces;
+                for (int interfaceIndex = 0; interfaceIndex < defTypeRuntimeInterfaces.Length; interfaceIndex++)
                 {
-                    DefType interfaceType = defType.RuntimeInterfaces[interfaceIndex];
+                    DefType interfaceType = defTypeRuntimeInterfaces[interfaceIndex];
 
                     Debug.Assert(interfaceType.IsInterface);
 

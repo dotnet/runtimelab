@@ -119,13 +119,16 @@ namespace ILCompiler.DependencyAnalysis
 
             TypeDesc declTypeDefinition = declType.GetTypeDefinition();
 
-            // Catch any runtime interface collapsing. We shouldn't have any
-            Debug.Assert(declType.RuntimeInterfaces.Length == declTypeDefinition.RuntimeInterfaces.Length);
+            DefType[] declTypeRuntimeInterfaces = declType.RuntimeInterfaces;
+            DefType[] declTypeDefinitionRuntimeInterfaces = declTypeDefinition.RuntimeInterfaces;
 
-            for (int interfaceIndex = 0; interfaceIndex < declType.RuntimeInterfaces.Length; interfaceIndex++)
+            // Catch any runtime interface collapsing. We shouldn't have any
+            Debug.Assert(declTypeRuntimeInterfaces.Length == declTypeDefinitionRuntimeInterfaces.Length);
+
+            for (int interfaceIndex = 0; interfaceIndex < declTypeRuntimeInterfaces.Length; interfaceIndex++)
             {
-                var interfaceType = declType.RuntimeInterfaces[interfaceIndex];
-                var interfaceDefinitionType = declTypeDefinition.RuntimeInterfaces[interfaceIndex];
+                var interfaceType = declTypeRuntimeInterfaces[interfaceIndex];
+                var interfaceDefinitionType = declTypeDefinitionRuntimeInterfaces[interfaceIndex];
 
                 virtualSlots = factory.VTable(interfaceType).Slots;
 
