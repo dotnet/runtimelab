@@ -179,6 +179,11 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.CustomStructMarshallingMarshalUsingParametersAndModifiers };
             yield return new[] { CodeSnippets.ArrayMarshallingWithCustomStructElement };
 
+            // Escaped C# keyword identifiers
+            yield return new[] { CodeSnippets.ByValueParameterWithName("Method", "@event") };
+            yield return new[] { CodeSnippets.ByValueParameterWithName("Method", "@var") };
+            yield return new[] { CodeSnippets.ByValueParameterWithName("@params", "i") };
+
             // Generics
             yield return new[] { CodeSnippets.MaybeBlittableGenericTypeParametersAndModifiers<byte>() };
             yield return new[] { CodeSnippets.MaybeBlittableGenericTypeParametersAndModifiers<sbyte>() };
@@ -297,6 +302,27 @@ namespace DllImportGenerator.UnitTests
                 Assert.Equal("CS0117", diag.Id);
                 Assert.StartsWith("'Marshal' does not contain a definition for ", diag.GetMessage());
             });
+        }
+
+        public static IEnumerable<object[]> CodeSnippetsToCompileMultipleSources()
+        {
+            yield return new object[] { new[] { CodeSnippets.BasicParametersAndModifiers<int>(), CodeSnippets.MarshalAsParametersAndModifiers<bool>(UnmanagedType.Bool) } };
+            yield return new object[] { new[] { CodeSnippets.BasicParametersAndModifiersWithCharSet<int>(CharSet.Unicode), CodeSnippets.MarshalAsParametersAndModifiers<bool>(UnmanagedType.Bool) } };
+            yield return new object[] { new[] { CodeSnippets.BasicParameterByValue("int[]"), CodeSnippets.BasicParameterWithByRefModifier("ref", "int") } };
+        }
+
+        [Theory]
+        [MemberData(nameof(CodeSnippetsToCompileMultipleSources))]
+        public async Task ValidateSnippetsWithMultipleSources(string[] sources)
+        {
+            Compilation comp = await TestUtils.CreateCompilation(sources);
+            TestUtils.AssertPreSourceGeneratorCompilation(comp);
+
+            var newComp = TestUtils.RunGenerators(comp, out var generatorDiags, new Microsoft.Interop.DllImportGenerator());
+            Assert.Empty(generatorDiags);
+
+            var newCompDiags = newComp.GetDiagnostics();
+            Assert.Empty(newCompDiags);
         }
     }
 }
