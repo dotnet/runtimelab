@@ -129,12 +129,12 @@ namespace System.Text.RegularExpressions.Tests
 
         private void TestRunSampleRegex()
         {
-            string rawregex = @"(?<Part0>(every\ week))\s*(?<Part1>(on)){0,1}\s*((?<Part2>(\b([Mm]ondays|[Tt]uesdays|[Ww]ednesdays|[Tt]hursdays|[Ff]ridays|[Ss]aturdays|[Ss]undays)\b))|(?<Part3>((\b([Mm]onday|[Tt]uesday|[Ww]ednesday|[Tt]hursday|[Ff]riday|[Ss]aturday|[Ss]unday)\b)|(\b([Mm]on|[Tt]ues|[Tt]ue|[Ww]ed|[Tt]hurs|[Tt]hur|[Tt]hu|[Ff]ri|[Ss]at|[Ss]un)\b))))";
+            string rawregex = @"^[a-z]+\-[a-z]+$";
             string input = File.ReadAllText(inputfile);
-            TestRunRegex("sample", rawregex, input);
+            TestRunRegex("sample", rawregex, input, true, true);
         }
 
-        private void TestRunRegex(string name, string rawregex, string input)
+        private void TestRunRegex(string name, string rawregex, string input, bool viewDGML = false, bool dotStar = false)
         {
             Regex reC = new Regex(rawregex, RegexOptions.Compiled, new TimeSpan(0,0,10));
             Regex reN = new Regex(rawregex, RegexOptions.None, new TimeSpan(0, 0, 10));
@@ -145,7 +145,9 @@ namespace System.Text.RegularExpressions.Tests
             Match mD;
             long tC;
             long tN;
-            long tD;   
+            long tD;
+            if (viewDGML)
+                ViewDGML(reD, addDotStar: dotStar);
             WriteOutput("\n{0}", name);
             //first call in each case is a warmup
             //DFA
@@ -207,6 +209,5 @@ namespace System.Text.RegularExpressions.Tests
             //----------
             File.AppendAllText(outputfile, string.Format("\nconstr:{0}ms, serialization:{1}ms, deserialization:{2}ms\n", totConstrTime, totSerTime, totDeSerTime));
         }
-
     }
 }

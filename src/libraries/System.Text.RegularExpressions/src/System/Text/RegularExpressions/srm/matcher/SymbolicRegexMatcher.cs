@@ -409,7 +409,7 @@ namespace System.Text.RegularExpressions.SRM
             // create initial states for A, A1 and Ar
             if (!A.info.ContainsSomeAnchor)
             {
-                // only the default previous character kind is going to be used for all initial states
+                // only the default previous character kind None(0) is ever going to be used for all initial states
                 _Aq0[(int)CharKindId.None] = State<S>.MkState(A, CharKindId.None, false);
                 _A1q0[(int)CharKindId.None] = State<S>.MkState(A1, CharKindId.None, false);
                 // _A1q0[0] is recognized as special initial state,
@@ -420,18 +420,27 @@ namespace System.Text.RegularExpressions.SRM
             }
             else
             {
-                for (int i=0; i < 6; i++)
+                for (int i = 0; i < 6; i++)
                 {
-                    _Aq0[i] = State<S>.MkState(A, (CharKindId)i, false);
-                    _A1q0[i] = State<S>.MkState(A1, (CharKindId)i, false);
-                    // each _A1q0[i] is recognized as special initial state,
-                    // this information is used for search optimization based on start set and prefix of A
+                    var kind = (CharKindId)i;
+                    if (kind == CharKindId.Start)
+                    {
+                        _Aq0[i] = State<S>.MkState(A, kind, false);
+                        _A1q0[i] = State<S>.MkState(A1, kind, false);
+                    }
+                    else
+                    {
+                        _Aq0[i] = State<S>.MkState(A.ReplaceStartAnchorByBottom(), kind, false);
+                        _A1q0[i] = State<S>.MkState(A1.ReplaceStartAnchorByBottom(), kind, false);
+                    }
+                    //don't create reverse-mode states unless some line-anchor is used somewhere
+                    //boundary anchors \b and \B are commutative and thus preserved in reverse
+                    _Arq0[i] = State<S>.MkState(Ar, kind, A.info.ContainsLineAnchor ? true : false);
+                    //used to detect if initial state was reentered, then startset can be triggered
+                    //but observe that the behavior from the state may ultimately depend on the previous
+                    //input char e.g. possibly causing nullability of \b or \B or of a start-of-line anchor,
+                    //in that sense there can be several "versions" (not more than 6) of the initial state
                     _A1q0[i].isInitialState = true;
-                    // mark states of Ar in reverse only if line anchors are used somewhere
-                    // this effects the semantics of nulllability of line anchors as the
-                    // character kind order is then relevant (prev vs next character kind)
-                    // not marking states in reverse utilizes exiting state space better
-                    _Arq0[i] = State<S>.MkState(Ar, (CharKindId)i, A.info.ContainsLineAnchor ? true : false);
                 }
             }
         }
@@ -793,6 +802,16 @@ namespace System.Text.RegularExpressions.SRM
             // which in general depends on the previous character kind in the input
             CharKindId prevCharKindId = GetCharKindId(input, i - 1);
             State<S> q = _A1q0[(int)prevCharKindId];
+
+            if (q.IsNothing)
+            {
+                //if q is nothing then it is a deadend from the beginning
+                //this happens for example when the original regex started with start anchor and prevCharKindId is not Start
+                i_q0 = i;
+                watchdog = -1;
+                return k;
+            }
+
             int i_q0_A1 = i;
             // use Ordinal/OrdinalIgnoreCase to avoid culture dependent semantics of IndexOf
             StringComparison comparison = (this.A_fixedPrefix_ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
@@ -849,7 +868,6 @@ namespace System.Text.RegularExpressions.SRM
                             {
                                 // no match was found
                                 i_q0 = i_q0_A1;
-                                watchdog = -1;
                                 return k;
                             }
                         }
@@ -865,7 +883,6 @@ namespace System.Text.RegularExpressions.SRM
                         {
                             // no match was found
                             i_q0 = i_q0_A1;
-                            watchdog = -1;
                             return k;
                         }
 
@@ -874,6 +891,11 @@ namespace System.Text.RegularExpressions.SRM
                         // to reflect the kind of the previous character
                         // when anchors are not used, q will remain the same state
                         q = _A1q0[(int)GetCharKindId(input, i - 1)];
+                        if (q.IsNothing)
+                        {
+                            i_q0 = i_q0_A1;
+                            return k;
+                        }
                     }
                 }
 
