@@ -13,26 +13,34 @@ namespace Microsoft.Interop
 {
     static class TypeSymbolExtensions
     {
-        public static bool HasOnlyBlittableFields(this ITypeSymbol type)
+#pragma warning disable RS1024 // Compare symbols correctly. We are using the correct comparer, but the analyzer doesn't see it correctly.
+        public static bool HasOnlyBlittableFields(this ITypeSymbol type) => HasOnlyBlittableFields(type, new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default));
+#pragma warning restore RS1024 // Compare symbols correctly
+
+        private static bool HasOnlyBlittableFields(this ITypeSymbol type, HashSet<ITypeSymbol> seenTypes)
         {
+            if (seenTypes.Contains(type))
+            {
+                // A recursive struct type isn't blittable.
+                // It's also illegal in C#, but I believe that source generators run
+                // before that is detected, so we check here to avoid a stack overflow.
+                return false;
+            }
+            seenTypes.Add(type);
             foreach (var field in type.GetMembers().OfType<IFieldSymbol>())
             {
                 bool? fieldBlittable = field switch
                 {
-                    { IsStatic : true } => null,
-                    { Type : { IsReferenceType : true }} => false,
-                    { Type : IPointerTypeSymbol ptr } => IsConsideredBlittable(ptr.PointedAtType),
-                    { Type : IFunctionPointerTypeSymbol } => true,
-                    not { Type : { SpecialType : SpecialType.None }} => IsSpecialTypeBlittable(field.Type.SpecialType),
+                    { IsStatic: true } => null,
+                    { Type: { IsReferenceType: true } } => false,
+                    { Type: IPointerTypeSymbol ptr } => IsConsideredBlittable(ptr.PointedAtType),
+                    { Type: IFunctionPointerTypeSymbol } => true,
+                    not { Type: { SpecialType: SpecialType.None } } => IsSpecialTypeBlittable(field.Type.SpecialType),
                     // Assume that type parameters that can be blittable are blittable.
                     // We'll re-evaluate blittability for generic fields of generic types at instantation time.
-                    { Type : ITypeParameterSymbol } => true,
-                    { Type : { IsValueType : false }} => false,
-                    // A recursive struct type isn't blittable.
-                    // It's also illegal in C#, but I believe that source generators run
-                    // before that is detected, so we check here to avoid a stack overflow.
-                    // [TODO]: Handle mutual recursion.
-                    _ => !SymbolEqualityComparer.Default.Equals(field.Type, type) && IsConsideredBlittable(field.Type)
+                    { Type: ITypeParameterSymbol } => true,
+                    { Type: { IsValueType: false } } => false,
+                    _ => IsConsideredBlittable(field.Type, seenTypes)
                 };
 
                 if (fieldBlittable is false)
@@ -62,7 +70,11 @@ namespace Microsoft.Interop
             _ => false
          };
 
-        public static bool IsConsideredBlittable(this ITypeSymbol type)
+#pragma warning disable RS1024 // Compare symbols correctly. We are using the correct comparer, but the analyzer doesn't see it correctly.
+        public static bool IsConsideredBlittable(this ITypeSymbol type) => IsConsideredBlittable(type, new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default));
+#pragma warning restore RS1024 // Compare symbols correctly
+
+        private static bool IsConsideredBlittable(this ITypeSymbol type, HashSet<ITypeSymbol> seenTypes)
         {
             if (type.SpecialType != SpecialType.None)
             {
@@ -79,14 +91,14 @@ namespace Microsoft.Interop
                 return false;
             }
 
-            if (type is IPointerTypeSymbol { PointedAtType: ITypeSymbol pointedAtType })
+            if (type is IPointerTypeSymbol)
             {
-                return pointedAtType.IsConsideredBlittable();
+                return true;
             }
 
             if (type is INamedTypeSymbol { TypeKind: TypeKind.Enum, EnumUnderlyingType: ITypeSymbol underlyingType })
             {
-                return underlyingType!.IsConsideredBlittable();
+                return underlyingType!.IsConsideredBlittable(seenTypes);
             }
 
             bool hasNativeMarshallingAttribute = false;
@@ -107,7 +119,7 @@ namespace Microsoft.Interop
                         // since we are guaranteed that if a type has generic fields,
                         // they will be present in the contract assembly to ensure
                         // that recursive structs can be identified at build time.
-                        return generic.HasOnlyBlittableFields();
+                        return generic.HasOnlyBlittableFields(seenTypes);
                     }
                     return true;
                 }
@@ -126,7 +138,16 @@ namespace Microsoft.Interop
                 // The struct type has generated marshalling via a source generator.
                 // We can't guarantee that we can see the results of the struct source generator,
                 // so we re-calculate if the type is blittable here.
-                return type.HasOnlyBlittableFields();
+                return type.HasOnlyBlittableFields(seenTypes);
+            }
+
+            if (type is INamedTypeSymbol namedType
+                && namedType.DeclaringSyntaxReferences.Length != 0
+                && !namedType.IsExposedOutsideOfCurrentCompilation())
+            {
+                // If a type is declared in the current compilation and not exposed outside of it,
+                // we will allow it to be considered blittable if its fields are considered blittable.
+                return type.HasOnlyBlittableFields(seenTypes);
             }
             return false;
         }
@@ -164,6 +185,20 @@ namespace Microsoft.Interop
                 or SpecialType.System_UIntPtr => true,
                 _ => false
             };
+        }
+
+        public static bool IsExposedOutsideOfCurrentCompilation(this INamedTypeSymbol type)
+        {
+            for (; type is not null; type = type.ContainingType)
+            {
+                Accessibility accessibility = type.DeclaredAccessibility;
+
+                if (accessibility is Accessibility.Internal or Accessibility.ProtectedAndInternal or Accessibility.Private or Accessibility.Friend or Accessibility.ProtectedAndFriend)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 }
