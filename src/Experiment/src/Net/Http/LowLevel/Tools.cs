@@ -49,6 +49,12 @@ namespace System.Net.Http.LowLevel
             return task.IsCompleted ? task.GetAwaiter().GetResult() : task.AsTask().GetAwaiter().GetResult();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T BlockForResult<T>(Task<T> task)
+        {
+            return task.GetAwaiter().GetResult();
+        }
+        
         internal static void BlockForResult(Task task)
         {
             throw new NotImplementedException();
