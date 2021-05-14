@@ -29,26 +29,30 @@ namespace Microsoft.Interop
             seenTypes.Add(type);
             foreach (var field in type.GetMembers().OfType<IFieldSymbol>())
             {
-                bool? fieldBlittable = field switch
+                if (!field.IsStatic)
                 {
-                    { IsStatic: true } => null,
-                    { Type: { IsReferenceType: true } } => false,
-                    { Type: IPointerTypeSymbol ptr } => IsConsideredBlittable(ptr.PointedAtType),
-                    { Type: IFunctionPointerTypeSymbol } => true,
-                    not { Type: { SpecialType: SpecialType.None } } => IsSpecialTypeBlittable(field.Type.SpecialType),
-                    // Assume that type parameters that can be blittable are blittable.
-                    // We'll re-evaluate blittability for generic fields of generic types at instantation time.
-                    { Type: ITypeParameterSymbol } => true,
-                    { Type: { IsValueType: false } } => false,
-                    _ => IsConsideredBlittable(field.Type, seenTypes)
-                };
+                    bool fieldBlittable = field switch
+                    {
+                        { Type: { IsReferenceType: true } } => false,
+                        { Type: IPointerTypeSymbol ptr } => IsConsideredBlittable(ptr.PointedAtType),
+                        { Type: IFunctionPointerTypeSymbol } => true,
+                        not { Type: { SpecialType: SpecialType.None } } => IsSpecialTypeBlittable(field.Type.SpecialType),
+                        // Assume that type parameters that can be blittable are blittable.
+                        // We'll re-evaluate blittability for generic fields of generic types at instantation time.
+                        { Type: ITypeParameterSymbol } => true,
+                        { Type: { IsValueType: false } } => false,
+                        _ => IsConsideredBlittable(field.Type, seenTypes)
+                    };
 
-                if (fieldBlittable is false)
-                {
-                    return false;
+                    if (!fieldBlittable)
+                    {
+                        seenTypes.Remove(type);
+                        return false;
+                    }
                 }
             }
 
+            seenTypes.Remove(type);
             return true;
         }
 
@@ -98,7 +102,7 @@ namespace Microsoft.Interop
 
             if (type is INamedTypeSymbol { TypeKind: TypeKind.Enum, EnumUnderlyingType: ITypeSymbol underlyingType })
             {
-                return underlyingType!.IsConsideredBlittable(seenTypes);
+                return underlyingType.IsConsideredBlittable(seenTypes);
             }
 
             bool hasNativeMarshallingAttribute = false;
