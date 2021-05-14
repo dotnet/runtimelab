@@ -85,7 +85,7 @@ namespace Microsoft.Interop
                 return IsSpecialTypeBlittable(type.SpecialType);
             }
 
-            if (type.TypeKind == TypeKind.FunctionPointer)
+            if (type.TypeKind is TypeKind.FunctionPointer or TypeKind.Pointer)
             {
                 return true;
             }
@@ -93,11 +93,6 @@ namespace Microsoft.Interop
             if (!type.IsValueType || type.IsReferenceType)
             {
                 return false;
-            }
-
-            if (type is IPointerTypeSymbol)
-            {
-                return true;
             }
 
             if (type is INamedTypeSymbol { TypeKind: TypeKind.Enum, EnumUnderlyingType: ITypeSymbol underlyingType })
