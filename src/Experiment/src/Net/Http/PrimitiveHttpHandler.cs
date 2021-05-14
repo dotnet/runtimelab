@@ -125,20 +125,37 @@ namespace System.Net.Http
                 Version = httpRequest.Version ?? throw new HttpRequestException("SR.SOME_MESSAGE_VERSION_IS_MISSING")
             };
 
-            HttpConnectionResponseContent content = new();
-            responseMessage.Content = content;
 
-            if (await httpRequest.ReadToHeadersAsync(cancellationToken).ConfigureAwait(false))
+            if (request.Method == HttpMethod.Head
+                || (httpRequest.StatusCode is >= HttpStatusCode.Continue and < HttpStatusCode.OK 
+                    or HttpStatusCode.NoContent 
+                    or HttpStatusCode.NotModified)
+            ) // https://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.3
             {
-                await httpRequest.ReadHeadersAsync(_headerSink, (responseMessage, false), cancellationToken)
-                    .ConfigureAwait(false);
+                await ReadHeaders(httpRequest, responseMessage, cancellationToken).ConfigureAwait(false);
+                // Drain the request and return it to connection.
+                await httpRequest.DisposeAsync();
+            }
+            else
+            {   
+                PrimitiveHttpContentStream httpStream = new(httpRequest, responseMessage, _headerSink, true);
+                responseMessage.Content = new HttpConnectionResponseContent(httpStream);
+                await ReadHeaders(httpRequest, responseMessage, cancellationToken).ConfigureAwait(false);
             }
 
-            PrimitiveHttpContentStream httpStream = new(httpRequest, responseMessage, _headerSink, true);
+            
 
-            content.SetStream(httpStream);
 
             return responseMessage;
+
+            static async ValueTask ReadHeaders(ValueHttpRequest request, HttpResponseMessage responseMessage, CancellationToken cancellationToken)
+            {
+                if (await request.ReadToHeadersAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    await request.ReadHeadersAsync(_headerSink, (responseMessage, false), cancellationToken)
+                        .ConfigureAwait(false);
+                }
+            }
         }
 
 

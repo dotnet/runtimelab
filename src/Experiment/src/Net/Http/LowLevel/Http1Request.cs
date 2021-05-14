@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
@@ -12,7 +12,7 @@ namespace System.Net.Http.LowLevel
         private readonly ResettableValueTaskSource<ValueHttpRequest?> _writeWaitTaskSource = new();
         private readonly ResettableValueTaskSource<int> _readWaitTaskSource = new();
         private volatile bool _waitForRead;
-
+        private bool _mustNotHaveResponse;
         private Http1Connection _connection;
 
         private IntrusiveLinkedNodeHeader<Http1Request> _listHeader;
@@ -34,6 +34,7 @@ namespace System.Net.Http.LowLevel
             _writeWaitTaskSource.Reset();
             _readWaitTaskSource.Reset();
             ReadType = HttpReadType.None;
+            _mustNotHaveResponse = false;
         }
 
         protected internal override async ValueTask DisposeAsync(int version)
@@ -53,7 +54,7 @@ namespace System.Net.Http.LowLevel
                 {
                     // TODO: if we are the active writer and are mid-request, kill the connection.
 
-                    if (ReadType != HttpReadType.EndOfStream)
+                    if (!_mustNotHaveResponse && ReadType != HttpReadType.EndOfStream)
                     {
                         while (await ReadAsync(version).ConfigureAwait(false) != HttpReadType.EndOfStream)
                         {
@@ -98,6 +99,9 @@ namespace System.Net.Http.LowLevel
         protected internal override void WriteRequestStart(int version, ReadOnlySpan<byte> method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery)
         {
             ThrowIfDisposed(version);
+            // Should we expect response?
+            if (method.Length == 4 && method[0] == (byte)'H')
+                _mustNotHaveResponse = true;
             _connection.WriteRequestStart(method, authority, pathAndQuery);
         }
 

@@ -10,20 +10,18 @@ namespace System.Net.Http
 {
     internal sealed class HttpConnectionResponseContent : HttpContent
     {
-        private Stream? _stream;
+        private Stream _stream;
         private bool _consumedStream; // separate from _stream so that Dispose can drain _stream
 
-        public void SetStream(Stream stream)
+        internal HttpConnectionResponseContent(Stream stream)
         {
             Debug.Assert(stream.CanRead);
-            Debug.Assert(!_consumedStream);
-
             _stream = stream;
         }
 
         private Stream ConsumeStream()
         {
-            if (_consumedStream || _stream == null)
+            if (_consumedStream)
             {
                 throw new InvalidOperationException("SR.net_http_content_stream_already_read");
             }
@@ -76,8 +74,7 @@ namespace System.Net.Http
         {
             if (disposing)
             {  
-                _stream?.Dispose();
-                _stream = null;
+                _stream.Dispose();
             }
             base.Dispose(disposing);
         }

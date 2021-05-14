@@ -306,7 +306,7 @@ namespace System.Net.Http.LowLevel.Tests
                     Assert.Equal(request.Version, version);
                 });
         }
-        
+
         [Theory]
         [InlineData("/")]
         [InlineData("/path")]

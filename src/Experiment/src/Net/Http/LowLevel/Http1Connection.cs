@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Buffers;
@@ -989,8 +989,6 @@ namespace System.Net.Http.LowLevel
                         // only hit when caller didn't read content (just called ReadAsync() again)
                         _drainContentBuffer ??= ArrayPool<byte>.Shared.Rent(8192);
 
-                        _readState = ReadState.OnContentReceived;
-
 #pragma warning disable CA2012 // Use ValueTasks correctly
                         _readBytesAwaitable = ReadContentAsync(_drainContentBuffer, _readToken).ConfigureAwait(false).GetAwaiter();
 #pragma warning restore CA2012 // Use ValueTasks correctly
@@ -1008,6 +1006,9 @@ namespace System.Net.Http.LowLevel
                         try
                         {
                             readBytes = _readBytesAwaitable.GetResult();
+
+                            if(readBytes == 0)
+                                _readState = ReadState.OnContentReceived;
                         }
                         catch
                         {
