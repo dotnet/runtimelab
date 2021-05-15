@@ -8144,6 +8144,7 @@ void Compiler::fgValueNumberTree(GenTree* tree)
                 // Are we dereferencing the method table slot of some newly allocated object?
                 //
                 bool wasNewobj = false;
+#if 0 // TODO: https://github.com/dotnet/runtimelab/issues/1128
                 if ((oper == GT_IND) && (addr->TypeGet() == TYP_REF) && (tree->TypeGet() == TYP_I_IMPL))
                 {
                     VNFuncApp  funcApp;
@@ -8156,6 +8157,7 @@ void Compiler::fgValueNumberTree(GenTree* tree)
                         wasNewobj = true;
                     }
                 }
+#endif
 
                 if (!wasNewobj)
                 {
