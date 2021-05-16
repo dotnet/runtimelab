@@ -407,6 +407,10 @@ namespace ILCompiler
 
             public override bool IsEffectivelySealed(TypeDesc type)
             {
+                // Valuetypes are sealed by design
+                if (type.IsValueType)
+                    return true;
+
                 // If we know we scanned a type that derives from this one, this for sure can't be reported as sealed.
                 TypeDesc canonType = type.ConvertToCanonForm(CanonicalFormKind.Specific);
                 if (_unsealedTypes.Contains(canonType))
