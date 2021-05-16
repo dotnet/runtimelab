@@ -132,14 +132,17 @@ namespace ILCompiler.DependencyAnalysis
             int entryCount = 0;
 
             TypeDesc declType = _type.GetClosestDefType();
+            TypeDesc declTypeDefinition = declType.GetTypeDefinition();
+            DefType[] declTypeRuntimeInterfaces = declType.RuntimeInterfaces;
+            DefType[] declTypeDefinitionRuntimeInterfaces = declTypeDefinition.RuntimeInterfaces;
 
             // Catch any runtime interface collapsing. We shouldn't have any
-            Debug.Assert(declType.RuntimeInterfaces.Length == declType.GetTypeDefinition().RuntimeInterfaces.Length);
+            Debug.Assert(declTypeRuntimeInterfaces.Length == declTypeDefinitionRuntimeInterfaces.Length);
 
-            for (int interfaceIndex = 0; interfaceIndex < declType.RuntimeInterfaces.Length; interfaceIndex++)
+            for (int interfaceIndex = 0; interfaceIndex < declTypeRuntimeInterfaces.Length; interfaceIndex++)
             {
-                var interfaceType = declType.RuntimeInterfaces[interfaceIndex];
-                var interfaceDefinitionType = declType.GetTypeDefinition().RuntimeInterfaces[interfaceIndex];
+                var interfaceType = declTypeRuntimeInterfaces[interfaceIndex];
+                var interfaceDefinitionType = declTypeDefinitionRuntimeInterfaces[interfaceIndex];
                 Debug.Assert(interfaceType.IsInterface);
 
                 IReadOnlyList<MethodDesc> virtualSlots = factory.VTable(interfaceType).Slots;
@@ -150,7 +153,7 @@ namespace ILCompiler.DependencyAnalysis
                     if(!interfaceType.IsTypeDefinition)
                         declMethod = factory.TypeSystemContext.GetMethodForInstantiatedType(declMethod.GetTypicalMethodDefinition(), (InstantiatedType)interfaceDefinitionType);
 
-                    var implMethod = declType.GetTypeDefinition().ResolveInterfaceMethodToVirtualMethodOnType(declMethod);
+                    var implMethod = declTypeDefinition.ResolveInterfaceMethodToVirtualMethodOnType(declMethod);
 
                     // Interface methods first implemented by a base type in the hierarchy will return null for the implMethod (runtime interface
                     // dispatch will walk the inheritance chain).
@@ -179,18 +182,14 @@ namespace ILCompiler.DependencyAnalysis
 
                         int? implSlot = null;
 
-                        DefaultInterfaceMethodResolution result = declType.ResolveInterfaceMethodToDefaultImplementationOnType(virtualSlots[interfaceMethodSlot], out MethodDesc defaultImpl);
+                        DefaultInterfaceMethodResolution result = declTypeDefinition.ResolveInterfaceMethodToDefaultImplementationOnType(declMethod, out implMethod);
                         if (result == DefaultInterfaceMethodResolution.DefaultImplementation)
                         {
-                            if (defaultImpl.GetCanonMethodTarget(CanonicalFormKind.Specific).IsCanonicalMethod(CanonicalFormKind.Any))
-                            {
-                                // We need an instantiating stub
-                                implSlot = SpecialDispatchMapSlot.Reabstraction;
-                            }
-                            else
-                            {
-                                implSlot = VirtualMethodSlotHelper.GetVirtualMethodSlot(factory, defaultImpl, declType, findDefaultInterfaceImpl: true);
-                            }
+                            DefType providingInterfaceDefinitionType = (DefType)implMethod.OwningType;
+                            if (interfaceType != interfaceDefinitionType)
+                                implMethod = implMethod.InstantiateSignature(declType.Instantiation, Instantiation.Empty);
+
+                            implSlot = VirtualMethodSlotHelper.GetDefaultInterfaceMethodSlot(factory, implMethod, declType, providingInterfaceDefinitionType);
                         }
                         else if (result == DefaultInterfaceMethodResolution.Reabstraction)
                         {
