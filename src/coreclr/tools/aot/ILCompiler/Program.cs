@@ -739,12 +739,14 @@ namespace ILCompiler
                 // This could be a command line switch if we really wanted to.
                 builder.UseGenericDictionaryLayoutProvider(scanResults.GetDictionaryLayoutInfo());
 
-                // If we feed any outputs of the scanner into the compilation, it's essential
-                // we use scanner's devirtualization manager. It prevents optimizing codegens
-                // from accidentally devirtualizing cases that can never happen at runtime
-                // (e.g. devirtualizing a method on a type that never gets allocated).
+                // If we have a scanner, we can drive devirtualization using the information
+                // we collected at scanning time (effectively sealing unsealed types if possible).
+                // This could be a command line switch if we really wanted to.
                 builder.UseDevirtualizationManager(scanResults.GetDevirtualizationManager());
 
+                // If we use the scanner's result, we need to consult it to drive inlining.
+                // This prevents e.g. devirtualizing and inlining methods on types that were
+                // never actually allocated.
                 builder.UseInliningPolicy(scanResults.GetInliningPolicy());
             }
 
