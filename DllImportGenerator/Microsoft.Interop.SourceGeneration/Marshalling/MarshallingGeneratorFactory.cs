@@ -5,9 +5,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-namespace Microsoft.Interop
+namespace Microsoft.Interop.SourceGeneration
 {
-    public interface IMarshallingGeneratorFactory
+    internal interface IMarshallingGeneratorFactory
     {
         /// <summary>
         /// Create an <see cref="IMarshallingGenerator"/> instance for marshalling the supplied type in the given position.
@@ -20,7 +20,7 @@ namespace Microsoft.Interop
             StubCodeContext context);
     }
 
-    public sealed class DefaultMarshallingGeneratorFactory : IMarshallingGeneratorFactory
+    internal sealed class DefaultMarshallingGeneratorFactory : IMarshallingGeneratorFactory
     {
         private static readonly ByteBoolMarshaller ByteBool = new();
         private static readonly WinBoolMarshaller WinBool = new();

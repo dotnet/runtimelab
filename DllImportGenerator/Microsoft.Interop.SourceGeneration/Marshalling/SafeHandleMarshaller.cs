@@ -6,9 +6,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-namespace Microsoft.Interop
+namespace Microsoft.Interop.SourceGeneration
 {
-    public sealed class SafeHandleMarshaller : IMarshallingGenerator
+    internal sealed class SafeHandleMarshaller : IMarshallingGenerator
     {
         private static readonly TypeSyntax NativeType = ParseTypeName("global::System.IntPtr");
 

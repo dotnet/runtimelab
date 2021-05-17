@@ -5,11 +5,11 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-using static Microsoft.Interop.MarshallerHelpers;
+using static Microsoft.Interop.SourceGeneration.MarshallerHelpers;
 
-namespace Microsoft.Interop
+namespace Microsoft.Interop.SourceGeneration
 {
-    public sealed class AnsiStringMarshaller : ConditionalStackallocMarshallingGenerator
+    internal sealed class AnsiStringMarshaller : ConditionalStackallocMarshallingGenerator
     {
         private static readonly TypeSyntax NativeType = PointerType(PredefinedType(Token(SyntaxKind.ByteKeyword)));
 

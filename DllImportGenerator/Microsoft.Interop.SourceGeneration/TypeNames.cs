@@ -4,7 +4,7 @@ using System.Text;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.Interop;
 
-namespace Microsoft.Interop
+namespace Microsoft.Interop.SourceGeneration
 {
     static class TypeNames
     {

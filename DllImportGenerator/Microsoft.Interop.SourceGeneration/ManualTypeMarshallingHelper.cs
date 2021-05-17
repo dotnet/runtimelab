@@ -2,9 +2,9 @@
 using System.Linq;
 using Microsoft.CodeAnalysis;
 
-namespace Microsoft.Interop
+namespace Microsoft.Interop.SourceGeneration
 {
-    public static class ManualTypeMarshallingHelper
+    internal static class ManualTypeMarshallingHelper
     {
         public const string ValuePropertyName = "Value";
         public const string GetPinnableReferenceName = "GetPinnableReference";

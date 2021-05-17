@@ -3,9 +3,9 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-namespace Microsoft.Interop
+namespace Microsoft.Interop.SourceGeneration
 {
-    public static class MarshallerHelpers
+    internal static class MarshallerHelpers
     {
         public static readonly ExpressionSyntax IsWindows = InvocationExpression(
                                                         MemberAccessExpression(

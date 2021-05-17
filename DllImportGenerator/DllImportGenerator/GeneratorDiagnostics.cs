@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.Interop.SourceGeneration;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -6,11 +7,10 @@ using System.Text;
 
 namespace Microsoft.Interop
 {
-
     /// <summary>
     /// Class for reporting diagnostics in the DLL import generator
     /// </summary>
-    public class GeneratorDiagnostics : IGeneratorDiagnostics
+    internal class GeneratorDiagnostics : IGeneratorDiagnostics
     {
         public class Ids
         {

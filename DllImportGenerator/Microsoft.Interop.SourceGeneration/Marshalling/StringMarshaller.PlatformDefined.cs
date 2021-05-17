@@ -6,11 +6,11 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-using static Microsoft.Interop.MarshallerHelpers;
+using static Microsoft.Interop.SourceGeneration.MarshallerHelpers;
 
-namespace Microsoft.Interop
+namespace Microsoft.Interop.SourceGeneration
 {
-    public sealed class PlatformDefinedStringMarshaller : ConditionalStackallocMarshallingGenerator
+    internal sealed class PlatformDefinedStringMarshaller : ConditionalStackallocMarshallingGenerator
     {
         private static readonly TypeSyntax NativeType = PointerType(PredefinedType(Token(SyntaxKind.VoidKeyword)));
 

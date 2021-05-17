@@ -6,9 +6,9 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-namespace Microsoft.Interop
+namespace Microsoft.Interop.SourceGeneration
 {
-    public sealed class CustomNativeTypeMarshaller : IMarshallingGenerator
+    internal sealed class CustomNativeTypeMarshaller : IMarshallingGenerator
     {
         private const string MarshalerLocalSuffix = "__marshaler";
         private readonly TypeSyntax _nativeTypeSyntax;

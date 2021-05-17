@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace Microsoft.Interop
+namespace Microsoft.Interop.SourceGeneration
 {
-    public abstract class StubCodeContext
+    internal abstract class StubCodeContext
     {
         /// <summary>
         /// Code generation stage

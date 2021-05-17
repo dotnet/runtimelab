@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Microsoft.Interop
+namespace Microsoft.Interop.SourceGeneration
 {
-    public record InteropGenerationOptions(bool UseMarshalType);
+    internal record InteropGenerationOptions(bool UseMarshalType);
 }

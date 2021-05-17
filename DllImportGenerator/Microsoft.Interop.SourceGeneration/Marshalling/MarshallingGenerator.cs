@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace Microsoft.Interop
+namespace Microsoft.Interop.SourceGeneration
 {
     /// <summary>
     /// Interface for generation of marshalling code for P/Invoke stubs
     /// </summary>
-    public interface IMarshallingGenerator
+    internal interface IMarshallingGenerator
     {
         /// <summary>
         /// Get the native type syntax for <paramref name="info"/>
@@ -71,7 +71,7 @@ namespace Microsoft.Interop
     /// <summary>
     /// Exception used to indicate marshalling isn't supported.
     /// </summary>
-    public sealed class MarshallingNotSupportedException : Exception
+    internal sealed class MarshallingNotSupportedException : Exception
     {
         /// <summary>
         /// Construct a new <see cref="MarshallingNotSupportedException"/> instance.
