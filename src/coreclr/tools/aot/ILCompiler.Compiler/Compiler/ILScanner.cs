@@ -412,6 +412,11 @@ namespace ILCompiler
                 if (_unsealedTypes.Contains(canonType))
                     return false;
 
+                // Don't report __Canon as sealed or it can cause trouble
+                // (E.g. RyuJIT might think it's okay to omit array element type checks for __Canon[].)
+                if (type.IsCanonicalDefinitionType(CanonicalFormKind.Any))
+                    return false;
+
                 if (type is MetadataType metadataType)
                 {
                     // Due to how the compiler is structured, we might see "constructed" EETypes for things
