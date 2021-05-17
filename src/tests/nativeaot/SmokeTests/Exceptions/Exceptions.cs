@@ -30,6 +30,7 @@ public class BringUpTest
         }
 
         int counter = 0;
+        AppDomain.CurrentDomain.UnhandledException += UnhandledExceptionEventHandler;
 
         try
         {
@@ -149,8 +150,24 @@ public class BringUpTest
             return Fail;
         }
 
-        return Pass;
+        throw new Exception("UnhandledException");
+
+        return Fail;
     }
+
+    static void UnhandledExceptionEventHandler(object sender, UnhandledExceptionEventArgs e)
+    {
+        Console.WriteLine("Exception triggered UnhandledExceptionHandler");
+        if (e.ExceptionObject is Exception ex && ex.Message == "UnhandledException")
+        {
+            Environment.Exit(Pass);
+        }
+
+        Console.WriteLine("Unexpected exception!");
+
+        Environment.Exit(Fail);
+    }
+
     static void CreateSomeGarbage()
     {
         for (int i = 0; i < 100; i++)

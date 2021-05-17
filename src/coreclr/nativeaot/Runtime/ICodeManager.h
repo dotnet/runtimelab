@@ -106,6 +106,7 @@ enum class ClasslibFunctionId
     // unused = 4,
     GetSystemArrayEEType = 5,
     OnFirstChanceException = 6,
+    OnUnhandledException = 7,
 };
 
 enum class AssociatedDataFlags : unsigned char

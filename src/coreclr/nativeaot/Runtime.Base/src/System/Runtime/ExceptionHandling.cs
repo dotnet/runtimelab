@@ -223,6 +223,26 @@ namespace System.Runtime
             }
         }
 
+        private static void OnUnhandledExceptionViaClassLib(object exception)
+        {
+            IntPtr pOnUnhandledExceptionFunction =
+                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType((IntPtr)exception.EEType, ClassLibFunctionId.OnUnhandledException);
+
+            if (pOnUnhandledExceptionFunction == IntPtr.Zero)
+            {
+                return;
+            }
+
+            try
+            {
+                ((delegate*<object, void>)pOnUnhandledExceptionFunction)(exception);
+            }
+            catch when (true)
+            {
+                // disallow all exceptions leaking out of callbacks
+            }
+        }
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static unsafe void UnhandledExceptionFailFastViaClasslib(
             RhFailFastReason reason, object unhandledException, IntPtr classlibAddress, ref ExInfo exInfo)
@@ -698,6 +718,8 @@ namespace System.Runtime
 
             if (pCatchHandler == null)
             {
+                OnUnhandledExceptionViaClassLib(exceptionObj);
+
                 UnhandledExceptionFailFastViaClasslib(
                     RhFailFastReason.PN_UnhandledException,
                     exceptionObj,
