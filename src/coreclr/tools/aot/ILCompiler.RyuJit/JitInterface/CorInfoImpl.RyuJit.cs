@@ -1062,7 +1062,7 @@ namespace Internal.JitInterface
 
             if (directCall && targetMethod.IsAbstract)
             {
-                ThrowHelper.ThrowInvalidProgramException(ExceptionStringID.InvalidProgramCallAbstractMethod);
+                ThrowHelper.ThrowBadImageFormatException();
             }
 
             if (directCall && !allowInstParam && targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific).RequiresInstArg())
