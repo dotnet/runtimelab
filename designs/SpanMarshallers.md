@@ -47,11 +47,11 @@ Cons:
 - The MarshalAs attributes will continue to fail to work on spans used in non-source-generated DllImports, so this would be the first instance of enabling the "old" MarshalAs model on a new type in the generated DllImports, which may or may not be undesirable.
   - The existing "native type marshalling" support cannot support marshalling collections of an unknown (at marshaller authoring time) non-blittable element type and cannot specify an element count for collections during unmarshalling.
 
-## Design 2: "Out-line" default support with extensions to Native Type Marshalling
+## Design 2: "Out-line" default support with extensions to Native Type Marshalling for Contiguous Collections
 
 An alternative option to fully inlining the stub would be to extend the model described in the [Struct Marshalling design doc](./StructMarshalling.md) to have custom support for collection-like types. By extending the model to be built with generic collection types in mind, many of the cons of the first approach would be resolved.
 
-Span marshalling would still be implemented with similar semantics as mentioned above in the Empty Spans section. Additional marshallers would still be provided as mentioned in the Additional proposed in-source marshallers section, but the `null` span marshaller would be able to be used in all cases, not just for empty spans.
+Span marshalling would still be implemented with similar semantics as mentioned above in the Empty Spans section. Additional marshallers would still be provided as mentioned in the Additional proposed in-source marshallers section, but the non-`null` span marshaller and the no-alloc span marshaller would be able to be used in all cases, not just for empty spans.
 
 ### Proposed extension to the custom type marshalling design
 
@@ -100,30 +100,26 @@ public struct GenericCollectionMarshallerImpl<T, U, V,...>
     
     public const int StackBufferSize = /* */; // required if the span-based constructor is supplied.
 
-    // This method is required if marshalling from managed to native is supported.
-    public TCollectionElement GetManagedValueAtIndex(int i);
-    // This method is required if marshalling from native to managed is supported.
-    public void SetManagedValueAtIndex(int i, TCollectionElement value);
+    public Span<TCollectionElement> ManagedValues { get; }
 
-    // The getter is required if marshalling from managed to native is supported.
-    // The setter is required if marshalling from native to managed is supported.
-    public int Count { get; set; }
+    // Required only when unmarshalling is supported.
+    public void SetUnmarshalledCollectionLength(int length);
+
+    public IntPtr Value { get; set; }
+
+    public unsafe Span<byte> NativeValueStorage { get; }
 
     // The requirements on the Value property are the same as when used with `NativeTypeMarshallingAttribute`.
     // The property is required with the generic collection marshalling.
     public TNative Value { get; set; }
-
-    public ref byte GetOffsetForNativeValueAtIndex(int index);
 }
 ```
 
 The constructors now require an additional `int` parameter specifying the native size of a collection element. The collection element type is represented as `TCollectionElement` above, and can be any type the marshaller defines. As the elements may be marshalled to types with different native sizes than managed, this enables the author of the generic collection marshaller to not need to know how to marshal the elements of the collection, just the collection structure itself.
 
-The `GetManagedValueAtIndex` method and `Count` getter are used in the process of marshalling from managed to native. The generated code will iterate through `Count` elements (retrieved through `GetManagedValueAtIndex`) and assign their marshalled result to the address represented by `GetOffsetForNativeValueAtIndex` called with the same index. Then either the `Value` property getter will be called or the marshaller's `GetPinnableReference` method will be called, depending on if pinning is supported in the current scenario.
+When the elements of the collection are blittable, the marshaller will emit a block copy of the span `ManagedValues` to the destination `NativeValueStorage`. When the elements are not blittable, the marshaller will emit a loop that will marshal the elements of the managed span one at a time and store them in the `NativeValueStorage` span.
 
-The `SetManagedValueAtIndex` method and the `Count` setter are used in the process of marshalling from native to managed. The `Count` property will be set to the number of elements that the native collection contains, and the `Value` property will be assigned the result value from native code. Then the stub will iterate through the native collection `Count` times, calling `GetOffsetForNativeValueAtIndex` to get the offset of the native value and calling `SetManagedValueAtIndex` to set the unmarshalled managed value at that index.
-
-This design enables marshalling generic collections without requiring the owner of the collection type to know how to marshal every element in the collection.
+This would enable similar performance metrics as the current support for arrays as well as Design 1's support for the span types when the element type is blittable.
 
 #### Providing additional data for collection marshalling
 
@@ -137,17 +133,17 @@ public class MarshalUsingAttribute : Attribute
 {
 +    public MarshalUsingAttribute() {}
      public MarshalUsingAttribute(Type nativeType) {}
-+    public string CountParameterName { get; set; }
++    public string CountElementName { get; set; }
 +    public int ConstantElementCount { get; set; }
 +    public int ElementIndirectionLevel { get; set; }
 +    public const string ReturnsCountValue = "return-value";
 }
 ```
 
-The `MarshalUsingAttribute` will now provide a `CountParameterName` property that will point to a parameter whose value will hold the number of native collection elements, or to the return value if the value of `CountParameterName` is `ReturnsCountValue`. The `ConstantElementCount` property allows users to provide a constant collection length.
+The `MarshalUsingAttribute` will now provide a `CountElementName` property that will point to a parameter (or a field in a struct-marshalling context) whose value will hold the number of native collection elements, or to the return value if the value of `CountElementName` is `ReturnsCountValue`. The `ConstantElementCount` property allows users to provide a constant collection length.
 
 > Open Question:
-> Should combining `CountParameterName` and `ConstantElementCount` in the same attribute be allowed?
+> Should combining `CountElementName` and `ConstantElementCount` in the same attribute be allowed?
 > With the `MarshalAs` marshalling, `SizeParamIndex` and `SizeConst` can be combined and the resulting size will be `paramValue(SizeParamIndex) + SizeConst`.
 
 To support supplying information about collection element counts, a parameterless constructor is added to the `MarshalUsingAttribute` type. The default constructor specifies that the code generator should use the information in the attribute but use the default marshalling rules for the type.
@@ -181,21 +177,16 @@ public ref struct SpanMarshaler<T>
        nativeElementSize = nativeSizeOfElements;
     }
 
-    public T GetManagedValueAtIndex(int i) => managedCollection[i];
-    public void SetManagedValueAtIndex(int i, T value) => managedCollection[i] = value;
+    public Span<T> ManagedValues => managedCollection;
 
-    public int Count
+    public void SetUnmarshalledCollectionLength(int length)
     {
-       get => managedCollection.Length;
-       set
-       {
-           managedCollection = new T[value];
-       }
+       managedCollection = new T[value];
     }
 
     public IntPtr Value { get; set; }
 
-    public unsafe ref byte GetOffsetForNativeValueAtIndex(int index) => ref *(byte*)(Value + index * nativeElementSize);
+    public unsafe Span<byte> NativeValueStorage => MemoryMarshal.CreateSpan(ref *(byte*)(Value), Length);
 
     public Span<T> ToManaged() => managedCollection;
 
@@ -211,19 +202,45 @@ public ref struct SpanMarshaler<T>
 
 This design could also be applied to support the built-in array marshalling if it is desired to move that marshalling out of the stub and into shared code.
 
-#### Possible extension to the above model: Optimized support for sequential collections of blittable types
+#### Future extension to the above model: Non-contiguous collection support
 
-If both the managed and native representation of a collection is sequential and the contents are blittable, additional optimizations, such as optimized block copying, can be emitted. however the above design does not support the necessary APIs to enable these optimizations. This section proposes that the following members be added to the design above. An `IsContiguousCollection` boolean property should be added to the `GenericCollectionMarshaller` attribute to specify that the collection is sequential in both managed and native representations. Then an additional method should be added to the generic collection model:
+If a managed or native representation of a collection has a non-contiguous element layout, then developers currently will need to convert to or from array/span types at the interop boundary. This section proposes an API that would enable developers to convert directly between a managed and native non-contiguous collection layout as part of marshalling.
 
-```csharp
-public ref TCollectionElement GetOffsetForManagedValueAtIndex(int index);
+An `IsContiguousCollection` boolean property could be added to the `GenericCollectionMarshaller` attribute, with a default value of `true`. When the value is `false`, that would specify that the collection is noncontiguous in either managed or native representations. Then additional methods should be added to the generic collection model, and some methods would be removed:
+
+```diff
+- [GenericCollectionMarshaller]
++ [GenericCollectionMarshaller(IsContiguousCollection = false)]
+public struct GenericCollectionMarshallerImpl<T, U, V,...>
+{
+    // these constructors are required if marshalling from managed to native is supported.
+    public GenericCollectionMarshallerImpl(GenericCollection<T, U, V, ...> collection, int nativeSizeOfElements);
+    public GenericCollectionMarshallerImpl(GenericCollection<T, U, V, ...> collection, Span<byte> stackSpace, int nativeSizeOfElements); // optional
+    
+    public const int StackBufferSize = /* */; // required if the span-based constructor is supplied.
+
+-    public Span<TCollectionElement> ManagedValues { get; }
+
+-    public void SetUnmarshalledCollectionLength(int length);
+
+    public IntPtr Value { get; set; }
+
+-    public unsafe Span<byte> NativeValueStorage { get; }
+
+    // The requirements on the Value property are the same as when used with `NativeTypeMarshallingAttribute`.
+    // The property is required with the generic collection marshalling.
+    public TNative Value { get; set; }
+
++    public ref byte GetOffsetForNativeValueAtIndex(int index);
++    public TCollectionElement GetManagedValueAtIndex(int index);
++    public TCollectionElement SetManagedValueAtIndex(int index);
++    public int Count { get; set; }
+}
 ```
 
-This function would be required when `IsContiguousCollection` is `true` and would replace the `Get/SetManagedValueAtIndex` methods. When the elements of the collection are blittable, the marshaller will emit a block copy of the range `MemoryMarshal.CreateSpan(GetOffsetForManagedValueAtIndex(0), Count)` to the destination `MemoryMarshal.CreateSpan(MemoryMarshal.Cast<byte, TCollectionElement>(GetOffsetForNativeValueAtIndex(0), Count))`.
+The `GetManagedValueAtIndex` method and `Count` getter are used in the process of marshalling from managed to native. The generated code will iterate through `Count` elements (retrieved through `GetManagedValueAtIndex`) and assign their marshalled result to the address represented by `GetOffsetForNativeValueAtIndex` called with the same index. Then either the `Value` property getter will be called or the marshaller's `GetPinnableReference` method will be called, depending on if pinning is supported in the current scenario.
 
-When `TCollectionElement` is not blittable, the marshaller will iterate from `0..Count-1` and marshal the elements individually, as specified in the process above when the `Get/SetManagedValueAtIndex` methods are present.
-
-This would enable similar performance metrics as the current support for arrays as well as Design 1's support for the span types when the element type is blittable.
+The `SetManagedValueAtIndex` method and the `Count` setter are used in the process of marshalling from native to managed. The `Count` property will be set to the number of elements that the native collection contains, and the `Value` property will be assigned the result value from native code. Then the stub will iterate through the native collection `Count` times, calling `GetOffsetForNativeValueAtIndex` to get the offset of the native value and calling `SetManagedValueAtIndex` to set the unmarshalled managed value at that index.
 
 ### Pros/Cons of Design 2
 
@@ -241,3 +258,5 @@ Cons:
 - Introduces more complexity in the marshalling type model.
   - It may be worth describing the required members (other than constructors) in interfaces just to simplify the mental load of which members are required for which scenarios.
     - A set of interfaces (one for managed-to-native members, one for native-to-managed members, and one for the sequential-specific members) could replace the `GenericCollectionMarshaller` attribute.
+- The base proposal only supports contiguous collections.
+  - The feeling at time of writing is that we are okay asking developers to convert to/from arrays or spans at the interop boundary.
