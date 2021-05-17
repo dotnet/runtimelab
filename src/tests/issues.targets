@@ -1018,6 +1018,9 @@
         <ExcludeList Include="$(XunitTestBinBase)/baseservices/compilerservices/RuntimeWrappedException/RuntimeWrappedException/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/155: Wrapping non-exception throws</Issue>
         </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/baseservices/exceptions/stackoverflow/stackoverflowtester/stackoverflowtester/*">
+            <Issue>Specific to CoreCLR</Issue>
+        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/baseservices/threading/coverage/OSThreadId/osthreadid/*">
             <Issue>Accessing a reflection blocked internal detail</Issue>
         </ExcludeList>
@@ -1138,6 +1141,9 @@
         <ExcludeList Include="$(XunitTestBinBase)/Interop/PInvoke/NativeCallManagedComVisible/**/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/155: COM</Issue>
         </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/Interop/PInvoke/SafeHandles/SafeHandleTests/SafeHandleTests/*">
+            <Issue>https://github.com/dotnet/runtimelab/issues/168</Issue>
+        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/Interop/PInvoke/SizeParamIndex/**/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/167</Issue>
         </ExcludeList>
@@ -1146,6 +1152,9 @@
         </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/Interop/PInvoke/Variant/VariantTest/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/155: VARIANT marshalling</Issue>
+        </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/Interop/StringMarshalling/BSTR/BSTRTest/*">
+            <Issue>https://github.com/dotnet/runtimelab/issues/167</Issue>
         </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/Interop/StringMarshalling/VBByRefStr/VBByRefStrTest/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/179</Issue>
@@ -1276,6 +1285,12 @@
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Performance/CodeQuality/Burgers/Burgers/*">
             <Issue>Multimodule incompatible (GVM)</Issue>
         </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/JIT/Performance/CodeQuality/Serialization/Deserialize/*">
+            <Issue>Needs xunit.performance</Issue>
+        </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/JIT/Performance/CodeQuality/Serialization/Serialize/*">
+            <Issue>Needs xunit.performance</Issue>
+        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Regression/CLR-x86-JIT/V1-M12-Beta2/b68872/b68872/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/188</Issue>
         </ExcludeList>
@@ -1374,6 +1389,9 @@
         </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/reflection/Modifiers/modifiers/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/201</Issue>
+        </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/reflection/RefEmit/EmittingIgnoresAccessChecksToAttributeIsRespected\EmittingIgnoresAccessChecksToAttributeIsRespected/*">
+            <Issue>https://github.com/dotnet/runtimelab/issues/155: Ref emit</Issue>
         </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/reflection/SetValue/TrySetReadonlyStaticField/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/200</Issue>
