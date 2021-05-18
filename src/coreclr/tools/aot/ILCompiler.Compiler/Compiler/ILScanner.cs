@@ -438,6 +438,8 @@ namespace ILCompiler
 
                 return base.IsEffectivelySealed(method);
             }
+
+            public override bool CanConstructType(TypeDesc type) => _constructedTypes.Contains(type);
         }
 
         private class ScannedInliningPolicy : IInliningPolicy
