@@ -25,7 +25,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharedTypes", "TestAssets\S
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TestAssets", "TestAssets", "{C7134A89-8852-4FBE-B426-EFE007C4A819}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Benchmarks", "Benchmarks\Benchmarks.csproj", "{0914590B-C47A-4754-A7BE-E4CD843A92E4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Benchmarks", "Benchmarks\Benchmarks.csproj", "{0914590B-C47A-4754-A7BE-E4CD843A92E4}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DllImportGenerator.Vsix", "DllImportGenerator.Vsix\DllImportGenerator.Vsix.csproj", "{F9215CDD-7B47-4C17-9166-0BE5066CA6BB}"
 EndProject
