@@ -407,21 +407,14 @@ namespace ILCompiler
 
             public override bool IsEffectivelySealed(TypeDesc type)
             {
-                // Valuetypes are sealed by design
-                if (type.IsValueType)
-                    return true;
-
                 // If we know we scanned a type that derives from this one, this for sure can't be reported as sealed.
                 TypeDesc canonType = type.ConvertToCanonForm(CanonicalFormKind.Specific);
                 if (_unsealedTypes.Contains(canonType))
                     return false;
 
-                // We don't want to report types that never got allocated as sealed because that would allow
-                // the codegen to do direct calls to the type's methods. That can potentially lead to codegen
-                // generating calls to methods we never scanned (consider a sealed type that never got allocated
-                // with a virtual method that can be devirtualized because the type is sealed).
-                // Codegen looking at code we didn't scan is never okay.
-                if (!_constructedTypes.Contains(canonType))
+                // Don't report __Canon as sealed or it can cause trouble
+                // (E.g. RyuJIT might think it's okay to omit array element type checks for __Canon[].)
+                if (type.IsCanonicalDefinitionType(CanonicalFormKind.Any))
                     return false;
 
                 if (type is MetadataType metadataType)
