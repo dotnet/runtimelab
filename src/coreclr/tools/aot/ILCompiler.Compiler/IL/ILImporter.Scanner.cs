@@ -497,7 +497,7 @@ namespace Internal.IL
 
             if (directCall && targetMethod.IsAbstract)
             {
-                ThrowHelper.ThrowInvalidProgramException(ExceptionStringID.InvalidProgramCallAbstractMethod);
+                ThrowHelper.ThrowBadImageFormatException();
             }
 
             bool allowInstParam = opcode != ILOpcode.ldvirtftn && opcode != ILOpcode.ldftn;
