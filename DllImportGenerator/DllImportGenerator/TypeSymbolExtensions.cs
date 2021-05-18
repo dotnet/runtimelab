@@ -13,9 +13,7 @@ namespace Microsoft.Interop
 {
     static class TypeSymbolExtensions
     {
-#pragma warning disable RS1024 // Compare symbols correctly. We are using the correct comparer, but the analyzer doesn't see it correctly.
         public static bool HasOnlyBlittableFields(this ITypeSymbol type) => HasOnlyBlittableFields(type, new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default));
-#pragma warning restore RS1024 // Compare symbols correctly
 
         private static bool HasOnlyBlittableFields(this ITypeSymbol type, HashSet<ITypeSymbol> seenTypes)
         {
@@ -74,9 +72,7 @@ namespace Microsoft.Interop
             _ => false
          };
 
-#pragma warning disable RS1024 // Compare symbols correctly. We are using the correct comparer, but the analyzer doesn't see it correctly.
         public static bool IsConsideredBlittable(this ITypeSymbol type) => IsConsideredBlittable(type, new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default));
-#pragma warning restore RS1024 // Compare symbols correctly
 
         private static bool IsConsideredBlittable(this ITypeSymbol type, HashSet<ITypeSymbol> seenTypes)
         {
