@@ -96,6 +96,11 @@ namespace ILCompiler
             return _inliningPolicy.CanInline(caller, callee);
         }
 
+        public bool CanConstructType(TypeDesc type)
+        {
+            return _devirtualizationManager.CanConstructType(type);
+        }
+
         public DelegateCreationInfo GetDelegateCtor(TypeDesc delegateType, MethodDesc target, bool followVirtualDispatch)
         {
             // If we're creating a delegate to a virtual method that cannot be overriden, devirtualize.
