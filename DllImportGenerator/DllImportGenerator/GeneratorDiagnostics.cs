@@ -10,7 +10,7 @@ namespace Microsoft.Interop
     /// <summary>
     /// Class for reporting diagnostics in the DLL import generator
     /// </summary>
-    internal class GeneratorDiagnostics : IGeneratorDiagnostics
+    public class GeneratorDiagnostics : IGeneratorDiagnostics
     {
         public class Ids
         {
@@ -153,7 +153,7 @@ namespace Microsoft.Interop
         /// <param name="method">Method with the parameter/return</param>
         /// <param name="info">Type info for the parameter/return</param>
         /// <param name="notSupportedDetails">[Optional] Specific reason for lack of support</param>
-        public void ReportMarshallingNotSupported(
+        void IGeneratorDiagnostics.ReportMarshallingNotSupported(
             IMethodSymbol method,
             TypePositionInfo info,
             string? notSupportedDetails)

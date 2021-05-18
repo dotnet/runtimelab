@@ -23,7 +23,6 @@
       <SubType>Designer</SubType>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <Generator>ResXFileCodeGenerator</Generator>
-      <TypeName>Microsoft.Interop.SourceGenerationResources</TypeName>
     </EmbeddedResource>
     <Compile Update="@(Compile)" Pack="true" />
     <EmbeddedResource Update="@(EmbeddedResource)" Pack="true" />

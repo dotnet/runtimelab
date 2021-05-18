@@ -28,8 +28,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="../Microsoft.Interop.SourceGeneration/**/*.cs"
-      Link="Microsoft.Interop.SourceGeneration/%(RecursiveDir)%(FileName)%(Extension)" />
+    <Compile Include="../Microsoft.Interop.SourceGeneration/**/*.cs" Link="Microsoft.Interop.SourceGeneration/%(RecursiveDir)%(FileName)%(Extension)" />
+    <EmbeddedResource Include="../Microsoft.Interop.SourceGeneration/Resources.resx" Link="Microsoft.Interop.SourceGeneration/Resources.resx"
+                      LogicalName="Microsoft.Interop.SourceGeneration.Resources.resources" />
   </ItemGroup>
 
   <ItemGroup>
@@ -44,6 +45,7 @@
     <EmbeddedResource Update="Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <LogicalName>Microsoft.Interop.Resources.resources</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
 </Project>
