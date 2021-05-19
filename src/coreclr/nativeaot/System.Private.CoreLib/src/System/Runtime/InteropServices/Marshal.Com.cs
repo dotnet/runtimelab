@@ -103,15 +103,35 @@ namespace System.Runtime.InteropServices
         }
 
         [SupportedOSPlatform("windows")]
-        public static void GetNativeVariantForObject(object? obj, IntPtr pDstNativeVariant)
+        public static unsafe void GetNativeVariantForObject(object? obj, IntPtr pDstNativeVariant)
         {
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            Variant* data = (Variant*)pDstNativeVariant;
+            if (obj == null)
+            {
+                data->SetAsNULL();
+                return;
+            }
+
+            if (obj is byte)
+            {
+                data->VariantType = VarEnum.VT_UI1;
+            }
+            else if (obj is int)
+            {
+                data->VariantType = VarEnum.VT_I4;
+            }
+            else if (obj is string)
+            {
+                data->VariantType = VarEnum.VT_BSTR;
+            }
+
+            data->CopyFromIndirect(obj);
         }
 
         [SupportedOSPlatform("windows")]
         public static void GetNativeVariantForObject<T>(T? obj, IntPtr pDstNativeVariant)
         {
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            GetNativeVariantForObject((object?)obj, pDstNativeVariant);
         }
 
         [SupportedOSPlatform("windows")]
@@ -127,9 +147,15 @@ namespace System.Runtime.InteropServices
         }
 
         [SupportedOSPlatform("windows")]
-        public static object? GetObjectForNativeVariant(IntPtr pSrcNativeVariant)
+        public static unsafe object? GetObjectForNativeVariant(IntPtr pSrcNativeVariant)
         {
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            if (pSrcNativeVariant == IntPtr.Zero)
+            {
+                return null;
+            }
+
+            Variant* data = (Variant*)pSrcNativeVariant;
+            return data->ToObject();
         }
 
         [return: MaybeNull]

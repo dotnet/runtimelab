@@ -162,6 +162,9 @@ namespace Internal.TypeSystem.Interop
                 case MarshallerKind.ComInterface:
                     return context.GetWellKnownType(WellKnownType.IntPtr);
 
+                case MarshallerKind.Variant:
+                    return InteropTypes.GetVariant(context);
+
                 case MarshallerKind.Unknown:
                 default:
                     throw new NotSupportedException();
@@ -566,7 +569,7 @@ namespace Internal.TypeSystem.Interop
                     || nativeType == NativeTypeKind.IUnknown)
                     return MarshallerKind.ComInterface;
                 else
-                    return MarshallerKind.Invalid;
+                    return MarshallerKind.Variant;
             }
             else if (InteropTypes.IsStringBuilder(context, type))
             {

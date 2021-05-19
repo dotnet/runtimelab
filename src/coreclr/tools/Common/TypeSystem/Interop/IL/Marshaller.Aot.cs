@@ -82,6 +82,8 @@ namespace Internal.TypeSystem.Interop
                     return new ComInterfaceMarshaller();
                 case MarshallerKind.OleDateTime:
                     return new OleDateTimeMarshaller();
+                case MarshallerKind.Variant:
+                    return new VariantMarshaller();
                 default:
                     // ensures we don't throw during create marshaller. We will throw NSE
                     // during EmitIL which will be handled and an Exception method body
@@ -1035,6 +1037,51 @@ namespace Internal.TypeSystem.Interop
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
 
             StoreManagedValue(codeStream);
+        }
+    }
+
+    class VariantMarshaller : Marshaller
+    {
+        protected override void AllocManagedToNative(ILCodeStream codeStream)
+        {
+            LoadNativeAddr(codeStream);
+            codeStream.Emit(ILOpcode.initobj, _ilCodeStreams.Emitter.NewToken(NativeType));
+        }
+
+        protected override void TransformManagedToNative(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+
+            LoadManagedValue(codeStream);
+            LoadNativeAddr(codeStream);
+
+            var helper = InteropTypes.GetMarshal(Context).GetKnownMethod("GetNativeVariantForObject", null);
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+        }
+
+        protected override void TransformNativeToManaged(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+
+            LoadNativeAddr(codeStream);
+
+            var helper = InteropTypes.GetMarshal(Context).GetKnownMethod("GetNativeVariantForObject", null);
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreManagedValue(codeStream);
+        }
+
+        protected override void EmitCleanupManaged(ILCodeStream codeStream)
+        {
+            // Only do cleanup if it is IN
+            if (!In)
+            {
+                return;
+            }
+
+            LoadNativeAddr(codeStream);
+            codeStream.Emit(ILOpcode.call, _ilCodeStreams.Emitter.NewToken(
+                InteropStateManager.GetStructMarshallingCleanupThunk(ManagedType)));
         }
     }
 }
