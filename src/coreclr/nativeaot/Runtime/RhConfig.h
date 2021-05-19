@@ -52,7 +52,7 @@ public:
         uint32_t uiValue;                               \
         m_uiConfigValues[RCV_##_name] = ReadConfigValue(_T(#_name), &uiValue) ? uiValue : defaultVal; \
         m_uiConfigValuesRead |= 1 << RCV_##_name;       \
-        return uiValue;                                 \
+        return m_uiConfigValues[RCV_##_name];           \
     }
 
 

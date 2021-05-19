@@ -840,15 +840,15 @@ void GCToEEInterface::GcStartWork(int condemned, int /*max_gen*/)
     RestrictedCallouts::InvokeGcCallouts(GCRC_StartCollection, condemned);
 }
 
+void GCToEEInterface::BeforeGcScanRoots(int condemned, bool is_bgc, bool is_concurrent)
+{
+}
+
 // EE can perform post stack scanning action, while the user threads are still suspended
 void GCToEEInterface::AfterGcScanRoots(int condemned, int /*max_gen*/, ScanContext* /*sc*/)
 {
     // Invoke any registered callouts for the end of the mark phase.
     RestrictedCallouts::InvokeGcCallouts(GCRC_AfterMarkPhase, condemned);
-}
-
-void GCToEEInterface::GcBeforeBGCSweepWork()
-{
 }
 
 void GCToEEInterface::GcDone(int condemned)
@@ -1443,6 +1443,11 @@ void GCToEEInterface::UpdateGCEventStatus(int currentPublicLevel, int currentPub
     UNREFERENCED_PARAMETER(currentPrivateLevel);
     UNREFERENCED_PARAMETER(currentPrivateKeywords);
     // TODO: Linux LTTng
+}
+
+uint32_t GCToEEInterface::GetCurrentProcessCpuCount()
+{
+    return PalGetProcessCpuCount();
 }
 
 MethodTable* GCToEEInterface::GetFreeObjectMethodTable()

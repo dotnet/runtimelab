@@ -16,6 +16,9 @@
 #include "holder.h"
 #include "HardwareExceptions.h"
 
+#define _T(s) s
+#include "RhConfig.h"
+
 #include <unistd.h>
 #include <sched.h>
 #include <sys/mman.h>
@@ -367,6 +370,47 @@ void ConfigureSignals()
     signal(SIGPIPE, SIG_IGN);
 }
 
+extern bool GetCpuLimit(uint32_t* val);
+
+void InitializeCurrentProcessCpuCount()
+{
+    uint32_t count;
+
+    // If the configuration value has been set, it takes precedence. Otherwise, take into account
+    // process affinity and CPU quota limit.
+
+    uint32_t configValue = g_pRhConfig->GetPROCESSOR_COUNT();
+    const unsigned int MAX_PROCESSOR_COUNT = 0xffff;
+
+    if (0 < configValue && configValue <= MAX_PROCESSOR_COUNT)
+    {
+        count = configValue;
+    }
+    else
+    {
+#if HAVE_SCHED_GETAFFINITY
+
+        cpu_set_t cpuSet;
+        int st = sched_getaffinity(getpid(), sizeof(cpu_set_t), &cpuSet);
+        if (st != 0)
+        {
+            _ASSERTE(!"sched_getaffinity failed");
+        }
+
+        count = CPU_COUNT(&cpuSet);
+#else // HAVE_SCHED_GETAFFINITY
+        count = GCToOSInterface::GetTotalProcessorCount();
+#endif // HAVE_SCHED_GETAFFINITY
+
+        uint32_t cpuLimit;
+        if (GetCpuLimit(&cpuLimit) && cpuLimit < count)
+            count = cpuLimit;
+    }
+
+    _ASSERTE(count > 0);
+    g_RhNumberOfProcessors = count;
+}
+
 // The Redhawk PAL must be initialized before any of its exports can be called. Returns true for a successful
 // initialization and false on failure.
 REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalInit()
@@ -385,8 +429,7 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalInit()
         return false;
     }
 
-    // Use the same adjustment for current processor count as GC
-    g_RhNumberOfProcessors = GCToOSInterface::GetCurrentProcessCpuCount();
+    InitializeCurrentProcessCpuCount();
 
     return true;
 }
