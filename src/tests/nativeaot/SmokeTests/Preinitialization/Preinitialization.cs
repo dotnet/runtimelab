@@ -25,6 +25,7 @@ internal class Program
         TestCctorCycle.Run();
         TestReferenceTypeAllocation.Run();
         TestReferenceTypeWithGCPointerAllocation.Run();
+        TestReferenceTypeWithReadonlyNullGCPointerAllocation.Run();
         TestRelationalOperators.Run();
         TestTryFinally.Run();
         TestTryCatch.Run();
@@ -34,6 +35,8 @@ internal class Program
         TestInitFromOtherClass.Run();
         TestInitFromOtherClassDouble.Run();
         TestDelegateToOtherClass.Run();
+        TestLotsOfBackwardsBranches.Run();
+        TestDrawCircle.Run();
 #else
         Console.WriteLine("Preinitialization is disabled in multimodule builds for now. Skipping test.");
 #endif
@@ -176,6 +179,7 @@ class TestArray
     static MyValueType[] s_valueTypeArray;
     static int s_byteArrayCount;
     static MyEnum[] s_enumArray;
+    static byte s_byteArrayFirstElement;
 
     static TestArray()
     {
@@ -193,6 +197,8 @@ class TestArray
         };
 
         s_enumArray = new MyEnum[2] { MyEnum.One, MyEnum.Two };
+
+        s_byteArrayFirstElement = s_byteArray[0];
     }
 
     public static void Run()
@@ -213,6 +219,8 @@ class TestArray
         Assert.AreEqual(s_enumArray.Length, 2);
         Assert.AreEqual((int)s_enumArray[0], (int)MyEnum.One);
         Assert.AreEqual((int)s_enumArray[1], (int)MyEnum.Two);
+
+        Assert.AreEqual(s_byteArrayFirstElement, 1);
     }
 }
 
@@ -333,6 +341,27 @@ class TestReferenceTypeWithGCPointerAllocation
     {
         Assert.IsLazyInitialized(typeof(TestReferenceTypeWithGCPointerAllocation));
         Assert.AreSame("hi", s_referenceType.StringValue);
+    }
+}
+
+class TestReferenceTypeWithReadonlyNullGCPointerAllocation
+{
+    class ReferenceType
+    {
+        public readonly string StringValue;
+
+        public ReferenceType(string stringvalue)
+        {
+            StringValue = stringvalue;
+        }
+    }
+
+    static ReferenceType s_referenceType = new ReferenceType(null);
+
+    public static void Run()
+    {
+        Assert.IsPreinitialized(typeof(TestReferenceTypeWithReadonlyNullGCPointerAllocation));
+        Assert.AreSame(null, s_referenceType.StringValue);
     }
 }
 
@@ -638,6 +667,92 @@ class TestDelegateToOtherClass
         Assert.AreSame(YetAnotherClass.s_otherclass, s_getCookieIndirected.Target);
         Assert.AreSame(typeof(string), s_getStringTypeIndirected());
         Assert.AreSame(YetAnotherClass.s_otherString, s_getStringTypeIndirected.Target);
+    }
+}
+
+class TestLotsOfBackwardsBranches
+{
+    class TypeWithLotsOfBackwardsBranches
+    {
+        public static readonly int Sum;
+
+        static TypeWithLotsOfBackwardsBranches()
+        {
+            int sum = 0;
+            for (int i = 0; i < int.MaxValue / 2; i++)
+                sum += i;
+            Sum = sum;
+        }
+    }
+
+    class TypeWithSomeBackwardsBranches
+    {
+        public static readonly int Sum;
+
+        static TypeWithSomeBackwardsBranches()
+        {
+            int sum = 0;
+            for (int i = 0; i < 100; i++)
+                sum += i;
+            Sum = sum;
+        }
+    }
+
+    public static void Run()
+    {
+        Assert.IsLazyInitialized(typeof(TypeWithLotsOfBackwardsBranches));
+        Assert.AreEqual(-1610612735, TypeWithLotsOfBackwardsBranches.Sum);
+
+        Assert.IsPreinitialized(typeof(TypeWithSomeBackwardsBranches));
+        Assert.AreEqual(4950, TypeWithSomeBackwardsBranches.Sum);
+    }
+}
+
+class TestDrawCircle
+{
+    static class CircleHolder
+    {
+        public static readonly byte[] s_bytes;
+
+        static CircleHolder()
+        {
+            s_bytes = ComputeCircleBytes();
+        }
+    }
+
+    private static byte[] ComputeCircleBytes()
+    {
+        const int Width = 16;
+
+        byte[] bytes = new byte[Width * Width];
+        for (int i = 0; i < bytes.Length; i++)
+        {
+            int x = i % Width;
+            int y = i / Width;
+
+            x -= Width / 2;
+            y -= Width / 2;
+
+            if (x * x + y * y < (Width / 2) * (Width / 2))
+                bytes[i] = (byte)'*';
+        }
+
+        return bytes;
+    }
+
+    public static void Run()
+    {
+        Assert.IsPreinitialized(typeof(CircleHolder));
+
+        byte[] expected = ComputeCircleBytes();
+        byte[] actual = CircleHolder.s_bytes;
+
+        Assert.AreEqual(expected.Length, actual.Length);
+
+        for (int i = 0; i < expected.Length; i++)
+        {
+            Assert.AreEqual(expected[i], actual[i]);
+        }
     }
 }
 
