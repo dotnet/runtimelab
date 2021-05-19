@@ -8,13 +8,11 @@ internal static partial class Interop
 {
     internal static partial class AndroidCrypto
     {
-        // NativeAOT TODO - this entrypoint doesn't exist outside Android, but we're trying to statically bind to it because it's in CryptoNative
-        //[DllImport(Interop.Libraries.CryptoNative, EntryPoint = "AndroidCryptoNative_SSLGetSupportedProtocols")]
-        internal static SslProtocols SSLGetSupportedProtocols() => throw new System.NotSupportedException();
+        [DllImport(Interop.Libraries.AndroidCryptoNative, EntryPoint = "AndroidCryptoNative_SSLGetSupportedProtocols")]
+        internal static extern SslProtocols SSLGetSupportedProtocols();
 
-        // NativeAOT TODO - this entrypoint doesn't exist outside Android, but we're trying to statically bind to it because it's in CryptoNative
-        //[DllImport(Libraries.CryptoNative, EntryPoint = "AndroidCryptoNative_SSLSupportsApplicationProtocolsConfiguration")]
-        //[return:MarshalAs(UnmanagedType.U1)]
-        internal static bool SSLSupportsApplicationProtocolsConfiguration() => throw new System.NotSupportedException();
+        [DllImport(Libraries.AndroidCryptoNative, EntryPoint = "AndroidCryptoNative_SSLSupportsApplicationProtocolsConfiguration")]
+        [return:MarshalAs(UnmanagedType.U1)]
+        internal static extern bool SSLSupportsApplicationProtocolsConfiguration();
     }
 }
