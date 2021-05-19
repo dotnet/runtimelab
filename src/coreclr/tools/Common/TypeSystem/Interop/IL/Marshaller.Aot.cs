@@ -1079,9 +1079,11 @@ namespace Internal.TypeSystem.Interop
                 return;
             }
 
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+
             LoadNativeAddr(codeStream);
-            codeStream.Emit(ILOpcode.call, _ilCodeStreams.Emitter.NewToken(
-                InteropStateManager.GetStructMarshallingCleanupThunk(ManagedType)));
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "CleanupVariant");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
         }
     }
 }
