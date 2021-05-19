@@ -82,7 +82,8 @@ namespace ILCompiler
             try
             {
                 preinit = new TypePreinit(type, compilationGroup, ilProvider);
-                status = preinit.TryScanMethod(type.GetStaticConstructor(), null, null, out _);
+                int instructions = 0;
+                status = preinit.TryScanMethod(type.GetStaticConstructor(), null, null, ref instructions, out _);
             }
             catch (TypeSystemException ex)
             {
@@ -101,7 +102,7 @@ namespace ILCompiler
             return new PreinitializationInfo(type, status.FailureReason);
         }
 
-        private Status TryScanMethod(MethodDesc method, Value[] parameters, Stack<MethodDesc> recursionProtect, out Value returnValue)
+        private Status TryScanMethod(MethodDesc method, Value[] parameters, Stack<MethodDesc> recursionProtect, ref int instructionCounter, out Value returnValue)
         {
             MethodIL methodIL = _ilProvider.GetMethodIL(method);
             if (methodIL == null)
@@ -110,10 +111,10 @@ namespace ILCompiler
                 return Status.Fail(method, "Extern method");
             }
 
-            return TryScanMethod(methodIL, parameters, recursionProtect, out returnValue);
+            return TryScanMethod(methodIL, parameters, recursionProtect, ref instructionCounter, out returnValue);
         }
 
-        private Status TryScanMethod(MethodIL methodIL, Value[] parameters, Stack<MethodDesc> recursionProtect, out Value returnValue)
+        private Status TryScanMethod(MethodIL methodIL, Value[] parameters, Stack<MethodDesc> recursionProtect, ref int instructionCounter, out Value returnValue)
         {
             returnValue = default;
 
@@ -160,6 +161,11 @@ namespace ILCompiler
 
             while (reader.HasNext)
             {
+                if (instructionCounter == 100000)
+                    return Status.Fail(methodIL.OwningMethod, "Instruction limit");
+
+                instructionCounter++;
+
                 ILOpcode opcode = reader.ReadILOpcode();
                 switch (opcode)
                 {
@@ -334,7 +340,7 @@ namespace ILCompiler
                                 TypePreinit nestedPreinit = new TypePreinit((MetadataType)field.OwningType, _compilationGroup, _ilProvider);
                                 recursionProtect ??= new Stack<MethodDesc>();
                                 recursionProtect.Push(methodIL.OwningMethod);
-                                Status status = nestedPreinit.TryScanMethod(field.OwningType.GetStaticConstructor(), null, recursionProtect, out Value _);
+                                Status status = nestedPreinit.TryScanMethod(field.OwningType.GetStaticConstructor(), null, recursionProtect, ref instructionCounter, out Value _);
                                 if (!status.IsSuccessful)
                                 {
                                     return Status.Fail(methodIL.OwningMethod, opcode, "Nested cctor failed to preinit");
@@ -414,7 +420,7 @@ namespace ILCompiler
                             {
                                 recursionProtect ??= new Stack<MethodDesc>();
                                 recursionProtect.Push(methodIL.OwningMethod);
-                                Status callResult = TryScanMethod(method, methodParams, recursionProtect, out retVal);
+                                Status callResult = TryScanMethod(method, methodParams, recursionProtect, ref instructionCounter, out retVal);
                                 if (!callResult.IsSuccessful)
                                 {
                                     recursionProtect.Pop();
@@ -516,12 +522,41 @@ namespace ILCompiler
                                 {
                                     // We don't want to end up with GC pointers in the frozen region
                                     // because write barriers can't handle that.
-                                    return Status.Fail(methodIL.OwningMethod, opcode, "GC pointers");
+
+                                    // We can make an exception for readonly fields.
+                                    bool allGcPointersAreReadonly = true;
+                                    TypeDesc currentType = owningType;
+                                    do
+                                    {
+                                        foreach (FieldDesc field in currentType.GetFields())
+                                        {
+                                            if (field.IsStatic)
+                                                continue;
+
+                                            TypeDesc fieldType = field.FieldType;
+                                            if (fieldType.IsGCPointer)
+                                            {
+                                                if (!field.IsInitOnly)
+                                                {
+                                                    allGcPointersAreReadonly = false;
+                                                    break;
+                                                }
+                                            }
+                                            else if (fieldType.IsValueType && ((DefType)fieldType).ContainsGCPointers)
+                                            {
+                                                allGcPointersAreReadonly = false;
+                                                break;
+                                            }
+                                        }
+                                    } while (allGcPointersAreReadonly && (currentType = currentType.BaseType) != null && !currentType.IsValueType);
+
+                                    if (!allGcPointersAreReadonly)
+                                        return Status.Fail(methodIL.OwningMethod, opcode, "GC pointers");
                                 }
 
                                 recursionProtect ??= new Stack<MethodDesc>();
                                 recursionProtect.Push(methodIL.OwningMethod);
-                                Status ctorCallResult = TryScanMethod(ctor, ctorParameters, recursionProtect, out _);
+                                Status ctorCallResult = TryScanMethod(ctor, ctorParameters, recursionProtect, ref instructionCounter, out _);
                                 if (!ctorCallResult.IsSuccessful)
                                 {
                                     recursionProtect.Pop();
@@ -539,14 +574,18 @@ namespace ILCompiler
                         {
                             FieldDesc field = (FieldDesc)methodIL.GetObject(reader.ReadILToken());
 
-                            if (field.FieldType.IsGCPointer
-                                || field.IsStatic)
+                            if (field.IsStatic)
                             {
-                                return Status.Fail(methodIL.OwningMethod, opcode, "Reference field");
+                                return Status.Fail(methodIL.OwningMethod, opcode, "Static field with stfld");
                             }
 
                             Value value = stack.PopIntoLocation(field.FieldType);
                             StackEntry instance = stack.Pop();
+
+                            if (field.FieldType.IsGCPointer && value != null)
+                            {
+                                return Status.Fail(methodIL.OwningMethod, opcode, "Reference field");
+                            }
 
                             var settableInstance = instance.Value as IHasInstanceFields;
                             if (settableInstance == null)
@@ -968,12 +1007,6 @@ namespace ILCompiler
 
                             if (branchTaken)
                             {
-                                // Don't allow backwards branches so that we don't have to worry about infinite loops
-                                if (target < reader.Offset)
-                                {
-                                    return Status.Fail(methodIL.OwningMethod, opcode, "Backwards branch");
-                                }
-
                                 reader.Seek(target);
                             }
                         }
@@ -1107,9 +1140,12 @@ namespace ILCompiler
                     case ILOpcode.mul:
                     case ILOpcode.and:
                     case ILOpcode.div:
+                    case ILOpcode.div_un:
                     case ILOpcode.rem:
+                    case ILOpcode.rem_un:
                         {
-                            bool isDivRem = opcode == ILOpcode.div || opcode == ILOpcode.rem;
+                            bool isDivRem = opcode == ILOpcode.div || opcode == ILOpcode.div_un
+                                || opcode == ILOpcode.rem || opcode == ILOpcode.rem_un;
 
                             StackEntry value2 = stack.Pop();
                             StackEntry value1 = stack.Pop();
@@ -1127,7 +1163,9 @@ namespace ILCompiler
                                     ILOpcode.and => value1.Value.AsInt32() & value2.Value.AsInt32(),
                                     ILOpcode.mul => value1.Value.AsInt32() * value2.Value.AsInt32(),
                                     ILOpcode.div => value1.Value.AsInt32() / value2.Value.AsInt32(),
+                                    ILOpcode.div_un => (int)((uint)value1.Value.AsInt32() / (uint)value2.Value.AsInt32()),
                                     ILOpcode.rem => value1.Value.AsInt32() % value2.Value.AsInt32(),
+                                    ILOpcode.rem_un => (int)((uint)value1.Value.AsInt32() % (uint)value2.Value.AsInt32()),
                                     _ => throw new NotImplementedException(), // unreachable
                                 };
 
@@ -1146,7 +1184,9 @@ namespace ILCompiler
                                     ILOpcode.and => value1.Value.AsInt64() & value2.Value.AsInt64(),
                                     ILOpcode.mul => value1.Value.AsInt64() * value2.Value.AsInt64(),
                                     ILOpcode.div => value1.Value.AsInt64() / value2.Value.AsInt64(),
+                                    ILOpcode.div_un => (long)((ulong)value1.Value.AsInt64() / (ulong)value2.Value.AsInt64()),
                                     ILOpcode.rem => value1.Value.AsInt64() % value2.Value.AsInt64(),
+                                    ILOpcode.rem_un => (long)((ulong)value1.Value.AsInt64() % (ulong)value2.Value.AsInt64()),
                                     _ => throw new NotImplementedException(), // unreachable
                                 };
 
@@ -1157,7 +1197,7 @@ namespace ILCompiler
                                 if (isDivRem && value2.Value.AsDouble() == 0)
                                     return Status.Fail(methodIL.OwningMethod, opcode, "Division by zero");
 
-                                if (opcode == ILOpcode.or || opcode == ILOpcode.shl || opcode == ILOpcode.and)
+                                if (opcode == ILOpcode.or || opcode == ILOpcode.shl || opcode == ILOpcode.and || opcode == ILOpcode.div_un || opcode == ILOpcode.rem_un)
                                     ThrowHelper.ThrowInvalidProgramException();
 
                                 double result = opcode switch
@@ -1248,6 +1288,63 @@ namespace ILCompiler
                             {
                                 ThrowHelper.ThrowInvalidProgramException();
                             }
+                        }
+                        break;
+
+                    case ILOpcode.ldelem:
+                    case ILOpcode.ldelem_i:
+                    case ILOpcode.ldelem_i1:
+                    case ILOpcode.ldelem_u1:
+                    case ILOpcode.ldelem_i2:
+                    case ILOpcode.ldelem_u2:
+                    case ILOpcode.ldelem_i4:
+                    case ILOpcode.ldelem_u4:
+                    case ILOpcode.ldelem_i8:
+                    case ILOpcode.ldelem_r4:
+                    case ILOpcode.ldelem_r8:
+                        {
+                            TypeDesc elementType = opcode switch
+                            {
+                                ILOpcode.ldelem_i => context.GetWellKnownType(WellKnownType.IntPtr),
+                                ILOpcode.ldelem_i1 => context.GetWellKnownType(WellKnownType.SByte),
+                                ILOpcode.ldelem_u1 => context.GetWellKnownType(WellKnownType.Byte),
+                                ILOpcode.ldelem_i2 => context.GetWellKnownType(WellKnownType.Int16),
+                                ILOpcode.ldelem_u2 => context.GetWellKnownType(WellKnownType.UInt16),
+                                ILOpcode.ldelem_i4 => context.GetWellKnownType(WellKnownType.Int32),
+                                ILOpcode.ldelem_u4 => context.GetWellKnownType(WellKnownType.UInt32),
+                                ILOpcode.ldelem_i8 => context.GetWellKnownType(WellKnownType.Int64),
+                                ILOpcode.ldelem_r4 => context.GetWellKnownType(WellKnownType.Single),
+                                ILOpcode.ldelem_r8 => context.GetWellKnownType(WellKnownType.Double),
+                                _ => (TypeDesc)methodIL.GetObject(reader.ReadILToken()),
+                            };
+
+                            if (elementType.IsGCPointer)
+                            {
+                                return Status.Fail(methodIL.OwningMethod, opcode);
+                            }
+
+                            if (!stack.TryPopIntValue(out int index))
+                            {
+                                ThrowHelper.ThrowInvalidProgramException();
+                            }
+
+                            StackEntry array = stack.Pop();
+                            if (array.Value is ArrayInstance arrayInstance)
+                            {
+                                if (!arrayInstance.TryLoadElement(index, out Value value))
+                                    return Status.Fail(methodIL.OwningMethod, opcode, "Out of range access");
+
+                                stack.PushFromLocation(elementType, value);
+                            }
+                            else if (array.Value == null)
+                            {
+                                return Status.Fail(methodIL.OwningMethod, opcode, "Null array");
+                            }
+                            else
+                            {
+                                ThrowHelper.ThrowInvalidProgramException();
+                            }
+
                         }
                         break;
 
@@ -1978,6 +2075,20 @@ namespace ILCompiler
                 return true;
             }
 
+            public bool TryLoadElement(int index, out Value value)
+            {
+                if ((uint)index > (uint)Length)
+                {
+                    value = null;
+                    return false;
+                }
+
+                ValueTypeValue result = new ValueTypeValue(((ArrayType)Type).ElementType);
+                Array.Copy(_data, index * _elementSize, result.InstanceBytes, 0, _elementSize);
+                value = result;
+                return true;
+            }
+
             public override void WriteFieldData(ref ObjectDataBuilder builder, FieldDesc field, NodeFactory factory)
             {
                 builder.EmitPointerReloc(factory.SerializedFrozenObject(field, this));
@@ -2143,7 +2254,15 @@ namespace ILCompiler
             public void SetField(FieldDesc field, Value value)
             {
                 Debug.Assert(!field.IsStatic);
-                Debug.Assert(!field.FieldType.IsGCPointer);
+
+                if (field.FieldType.IsGCPointer)
+                {
+                    // Allow setting reference type fields to null. Since this is the only value we can
+                    // write, this is a no-op since reference type fields are always null
+                    Debug.Assert(value == null);
+                    return;
+                }
+                
                 int fieldOffset = field.Offset.AsInt;
                 int fieldSize = field.FieldType.GetElementSize().AsInt;
                 if (fieldOffset + fieldSize > _instanceBytes.Length - _offset)

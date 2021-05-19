@@ -1377,7 +1377,7 @@ namespace System
 
         private sealed class ArrayEnumerator : ArrayEnumeratorBase, IEnumerator<T>
         {
-            private T[] _array;
+            private readonly T[] _array;
 
             // Passing -1 for endIndex so that MoveNext always returns false without mutating _index
             internal static readonly ArrayEnumerator Empty = new ArrayEnumerator(null, -1);
