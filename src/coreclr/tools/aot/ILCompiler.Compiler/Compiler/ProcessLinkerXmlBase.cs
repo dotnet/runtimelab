@@ -107,8 +107,9 @@ namespace ILCompiler
             return _context.ResolveAssembly(name);
         }
 
-        protected virtual bool ProcessAssembly(ModuleDesc assembly)
+        protected virtual (bool hasContent, string preserveAttribute) ProcessAssembly(ModuleDesc assembly)
         {
+            var preserveAttribute = _reader.GetAttribute("preserve");
             bool hasContent = false;
             while (_reader.IsStartElement())
             {
@@ -127,7 +128,7 @@ namespace ILCompiler
             }
 
             _reader.ReadEndElement();
-            return hasContent;
+            return (hasContent, preserveAttribute);
         }
 
         protected void ProcessType(ModuleDesc assembly)

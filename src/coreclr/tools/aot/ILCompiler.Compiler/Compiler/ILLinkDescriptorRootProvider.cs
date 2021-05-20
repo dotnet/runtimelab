@@ -49,12 +49,11 @@ namespace ILCompiler
                 _rootProvider = rootProvider;
             }
 
-            protected override bool ProcessAssembly(ModuleDesc assembly)
+            protected override (bool hasContent, string preserveAttribute) ProcessAssembly(ModuleDesc assembly)
             {
                 _rootProvider.RootModuleMetadata(assembly, "ILLink.Descriptors.xml root");
                 bool includeAllTypes = false;
-                var preserveAttribute = _reader.GetAttribute("preserve");
-                var hasContent = base.ProcessAssembly(assembly);
+                var (hasContent, preserveAttribute) = base.ProcessAssembly(assembly);
 
                 if (preserveAttribute != null)
                 {
@@ -76,7 +75,7 @@ namespace ILCompiler
                     }
                 }
 
-                return hasContent;
+                return (hasContent, preserveAttribute);
             }
 
             protected override void ProcessType(TypeDesc type, string preserveAttribute)
