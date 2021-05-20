@@ -186,7 +186,7 @@ namespace ILCompiler
                 syntax.DefineOption("waitfordebugger", ref waitForDebugger, "Pause to give opportunity to attach debugger");
                 syntax.DefineOptionList("codegenopt", ref _codegenOptions, "Define a codegen option");
                 syntax.DefineOptionList("rdxml", ref _rdXmlFilePaths, "RD.XML file(s) for compilation");
-                syntax.DefineOptionList("x", ref _illinkDescriptorsFilePaths, "ILLink descriptor file(s) for compilation");
+                syntax.DefineOptionList("linkdescriptor", ref _illinkDescriptorsFilePaths, "ILLink descriptor file(s) for compilation");
                 syntax.DefineOption("map", ref _mapFileName, "Generate a map file");
                 syntax.DefineOption("metadatalog", ref _metadataLogFileName, "Generate a metadata log file");
                 syntax.DefineOption("nometadatablocking", ref _noMetadataBlocking, "Ignore metadata blocking for internal implementation details");
@@ -567,7 +567,7 @@ namespace ILCompiler
 
                 foreach (var illinkDescriptorFilePath in _illinkDescriptorsFilePaths)
                 {
-                    compilationRoots.Add(new ILLinkDescriptorRootProvider(typeSystemContext, illinkDescriptorFilePath));
+                    compilationRoots.Add(new ILLinkDescriptorRootProvider(typeSystemContext, illinkDescriptorFilePath, _featureSwitches));
                 }
             }
 

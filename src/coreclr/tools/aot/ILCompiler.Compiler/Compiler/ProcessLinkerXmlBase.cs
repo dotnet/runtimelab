@@ -17,9 +17,9 @@ namespace ILCompiler
     /// </summary>
     internal abstract class ProcessLinkerXmlBase
     {
-        private readonly XmlReader _reader;
         private readonly ModuleDesc _owningModule;
         private readonly IReadOnlyDictionary<string, bool> _featureSwitchValues;
+        protected readonly XmlReader _reader;
         protected readonly TypeSystemContext _context;
 
         public ProcessLinkerXmlBase(TypeSystemContext context, XmlReader reader, ModuleDesc owningModule, IReadOnlyDictionary<string, bool> featureSwitchValues)
@@ -60,8 +60,6 @@ namespace ILCompiler
                 if (_reader.Name == "assembly")
                 {
                     string assemblyName = _reader.GetAttribute("fullname");
-                    if (assemblyName == null)
-                        throw new Exception("The \"fullname\" attribute is required on the \"assembly\" ILLink Directive.");
 
                     if (assemblyName == "*")
                         throw new NotSupportedException();
@@ -109,16 +107,9 @@ namespace ILCompiler
             return _context.ResolveAssembly(name);
         }
 
-        protected virtual void ProcessModuleMetadata(ModuleDesc assembly)
+        protected virtual bool ProcessAssembly(ModuleDesc assembly)
         {
-        }
-
-        private void ProcessAssembly(ModuleDesc assembly)
-        {
-            ProcessModuleMetadata(assembly);
             bool hasContent = false;
-            bool includeAllTypes = false;
-            var preserveAttribute = _reader.GetAttribute("preserve");
             while (_reader.IsStartElement())
             {
                 if (_reader.Name == "type")
@@ -136,29 +127,10 @@ namespace ILCompiler
             }
 
             _reader.ReadEndElement();
-
-            if (preserveAttribute != null)
-            {
-                if (preserveAttribute != "all")
-                    throw new NotSupportedException($"\"{preserveAttribute}\" is not a supported value for the \"preserve\" attribute of the \"assembly\" ILLink Directive. Supported values are \"all\".");
-
-                includeAllTypes = true;
-            }
-            else
-            {
-                includeAllTypes = !hasContent;
-            }
-
-            if (includeAllTypes)
-            {
-                foreach (TypeDesc type in ((EcmaModule)assembly).GetAllTypes())
-                {
-                    ProcessType(assembly);
-                }
-            }
+            return hasContent;
         }
 
-        private void ProcessType(ModuleDesc assembly)
+        protected void ProcessType(ModuleDesc assembly)
         {
             if (ShouldProcessElement())
             {
@@ -178,41 +150,31 @@ namespace ILCompiler
                 _reader.Read();
 
                 var preserveAttribute = _reader.GetAttribute("preserve");
-                if (preserveAttribute != null)
-                {
-                    if (preserveAttribute != "all" && preserveAttribute != "nothing")
-                        throw new NotSupportedException($"\"{preserveAttribute}\" is not a supported value for the \"preserve\" attribute of the \"type\" ILLink Directive. Supported values are \"all\",\"nothing\".");
-
-                    ProcessType(type);
-                }
-
-                if (preserveAttribute == null || preserveAttribute != "nothing")
-                {
-                    while (_reader.IsStartElement())
-                    {
-                        if (_reader.Name == "method")
-                        {
-                            ProcessMethod(type);
-                        }
-                        else if (_reader.Name == "field")
-                        {
-                            ProcessField(type);
-                        }
-                        else if (_reader.Name == "attribute")
-                        {
-                            ProcessAttribute(type);
-                        }
-
-                        _reader.Skip();
-                    }
-                }
+                ProcessType(type, preserveAttribute);
             }
 
             _reader.Skip();
         }
 
-        protected virtual void ProcessType(TypeDesc type)
+        protected virtual void ProcessType(TypeDesc type, string preserveAttribute)
         {
+            while (_reader.IsStartElement())
+            {
+                if (_reader.Name == "method")
+                {
+                    ProcessMethod(type);
+                }
+                else if (_reader.Name == "field")
+                {
+                    ProcessField(type);
+                }
+                else if (_reader.Name == "attribute")
+                {
+                    ProcessAttribute(type);
+                }
+
+                _reader.Skip();
+            }
         }
 
         private void ProcessMethod(TypeDesc type)

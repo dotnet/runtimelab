@@ -23,17 +23,19 @@ namespace ILCompiler
     {
         private TypeSystemContext _context;
         private string _rdXmlFileName;
+        private IReadOnlyDictionary<string, bool> _featureSwitchValues;
 
-        public ILLinkDescriptorRootProvider(TypeSystemContext context, string rdXmlFileName)
+        public ILLinkDescriptorRootProvider(TypeSystemContext context, string rdXmlFileName, IReadOnlyDictionary<string, bool> featureSwitchValues)
         {
             _context = context;
             _rdXmlFileName = rdXmlFileName;
+            _featureSwitchValues = featureSwitchValues;
         }
 
         public void AddCompilationRoots(IRootingServiceProvider rootProvider)
         {
             var xmlReader = new XmlTextReader(_rdXmlFileName);
-            var processor = new ILLinkDescriptorProcessor(_context, xmlReader, rootProvider);
+            var processor = new ILLinkDescriptorProcessor(_context, xmlReader, rootProvider, _featureSwitchValues);
             processor.ProcessXml();
         }
 
@@ -41,23 +43,59 @@ namespace ILCompiler
         {
             private IRootingServiceProvider _rootProvider;
 
-            internal ILLinkDescriptorProcessor(TypeSystemContext context, XmlReader reader, IRootingServiceProvider rootProvider)
-                : base(context, reader, null, ImmutableDictionary.CreateBuilder<string, bool>().ToImmutable())
+            internal ILLinkDescriptorProcessor(TypeSystemContext context, XmlReader reader, IRootingServiceProvider rootProvider, IReadOnlyDictionary<string, bool> featureSwitchValues)
+                : base(context, reader, null, featureSwitchValues)
             {
                 _rootProvider = rootProvider;
             }
 
-            protected override void ProcessModuleMetadata(ModuleDesc assembly)
+            protected override bool ProcessAssembly(ModuleDesc assembly)
             {
                 _rootProvider.RootModuleMetadata(assembly, "ILLink.Descriptors.xml root");
+                bool includeAllTypes = false;
+                var preserveAttribute = _reader.GetAttribute("preserve");
+                var hasContent = base.ProcessAssembly(assembly);
+
+                if (preserveAttribute != null)
+                {
+                    if (preserveAttribute != "all")
+                        throw new NotSupportedException($"\"{preserveAttribute}\" is not a supported value for the \"preserve\" attribute of the \"assembly\" ILLink Directive. Supported values are \"all\".");
+
+                    includeAllTypes = true;
+                }
+                else
+                {
+                    includeAllTypes = !hasContent;
+                }
+
+                if (includeAllTypes)
+                {
+                    foreach (TypeDesc type in ((EcmaModule)assembly).GetAllTypes())
+                    {
+                        ProcessType(assembly);
+                    }
+                }
+
+                return hasContent;
             }
 
-            protected override void ProcessType(TypeDesc type)
+            protected override void ProcessType(TypeDesc type, string preserveAttribute)
             {
-                RootingHelpers.TryRootType(_rootProvider, type, "ILLink.Descriptors.xml root");
-                if (type is DefType defType)
+                if (preserveAttribute != null)
                 {
-                    _rootProvider.RootStructMarshallingData(defType, "ILLink.Descriptors.xml root");
+                    if (preserveAttribute != "all" && preserveAttribute != "nothing")
+                        throw new NotSupportedException($"\"{preserveAttribute}\" is not a supported value for the \"preserve\" attribute of the \"type\" ILLink Directive. Supported values are \"all\",\"nothing\".");
+
+                    RootingHelpers.TryRootType(_rootProvider, type, "ILLink.Descriptors.xml root");
+                    if (type is DefType defType)
+                    {
+                        _rootProvider.RootStructMarshallingData(defType, "ILLink.Descriptors.xml root");
+                    }
+                }
+
+                if (preserveAttribute == null || preserveAttribute != "nothing")
+                {
+                    base.ProcessType(type, preserveAttribute);
                 }
             }
         }
