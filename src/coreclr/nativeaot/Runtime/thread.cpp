@@ -367,8 +367,20 @@ bool Thread::IsCurrentThread()
     return m_threadId.IsCurrentThread();
 }
 
+void Thread::Detach()
+{
+    // Thread::Destroy is called when the thread's "home" fiber dies.  We mark the thread as "detached" here
+    // so that we can validate, in our DLL_THREAD_DETACH handler, that the thread was already destroyed at that
+    // point.
+    SetDetached();
+
+    RedhawkGCInterface::ReleaseAllocContext(GetAllocContext());
+}
+
 void Thread::Destroy()
 {
+    ASSERT(IsDetached());
+
     if (m_hPalThread != INVALID_HANDLE_VALUE)
         PalCloseHandle(m_hPalThread);
 
@@ -394,12 +406,10 @@ void Thread::Destroy()
         delete[] m_pThreadLocalModuleStatics;
     }
 
-    RedhawkGCInterface::ReleaseAllocContext(GetAllocContext());
-
-    // Thread::Destroy is called when the thread's "home" fiber dies.  We mark the thread as "detached" here
-    // so that we can validate, in our DLL_THREAD_DETACH handler, that the thread was already destroyed at that
-    // point.
-    SetDetached();
+#ifdef STRESS_LOG
+    ThreadStressLog* ptsl = reinterpret_cast<ThreadStressLog*>(GetThreadStressLog());
+    StressLog::ThreadDetach(ptsl);
+#endif // STRESS_LOG
 }
 
 #ifdef HOST_WASM

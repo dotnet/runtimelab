@@ -156,8 +156,8 @@ private:
 
 public:
 
-
-    void Destroy();
+    void Detach(); // First phase of thread destructor, executed with thread store lock taken
+    void Destroy(); // Second phase of thread destructor, executed without thread store lock taken
 
     bool                IsInitialized();
 
