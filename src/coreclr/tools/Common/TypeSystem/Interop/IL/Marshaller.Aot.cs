@@ -84,6 +84,8 @@ namespace Internal.TypeSystem.Interop
                     return new OleDateTimeMarshaller();
                 case MarshallerKind.Variant:
                     return new VariantMarshaller();
+                case MarshallerKind.VariantBool:
+                    return new VariantBoolMarshaller();
                 default:
                     // ensures we don't throw during create marshaller. We will throw NSE
                     // during EmitIL which will be handled and an Exception method body
@@ -1065,7 +1067,7 @@ namespace Internal.TypeSystem.Interop
 
             LoadNativeAddr(codeStream);
 
-            var helper = InteropTypes.GetMarshal(Context).GetKnownMethod("GetNativeVariantForObject", null);
+            var helper = InteropTypes.GetMarshal(Context).GetKnownMethod("GetObjectForNativeVariant", null);
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
 
             StoreManagedValue(codeStream);
@@ -1084,6 +1086,27 @@ namespace Internal.TypeSystem.Interop
             LoadNativeAddr(codeStream);
             var helper = Context.GetHelperEntryPoint("InteropHelpers", "CleanupVariant");
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+        }
+    }
+
+    class VariantBoolMarshaller : Marshaller
+    {
+        protected override void AllocAndTransformManagedToNative(ILCodeStream codeStream)
+        {
+            LoadManagedValue(codeStream);
+            codeStream.EmitLdc(0);
+            codeStream.Emit(ILOpcode.ceq);
+            codeStream.Emit(ILOpcode.neg);
+            StoreNativeValue(codeStream);
+        }
+
+        protected override void AllocAndTransformNativeToManaged(ILCodeStream codeStream)
+        {
+            LoadNativeValue(codeStream);
+            codeStream.Emit(ILOpcode.neg);
+            codeStream.EmitLdc(0);
+            codeStream.Emit(ILOpcode.ceq);
+            StoreManagedValue(codeStream);
         }
     }
 }

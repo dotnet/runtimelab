@@ -19,6 +19,7 @@ namespace Internal.TypeSystem.Interop
         BlittableArray,
         Bool,   // 4 byte bool
         CBool,  // 1 byte bool
+        VariantBool,  // Variant bool
         Enum,
         AnsiChar,  // Marshal char (Unicode 16bits) for byte (Ansi 8bits)
         UnicodeChar,

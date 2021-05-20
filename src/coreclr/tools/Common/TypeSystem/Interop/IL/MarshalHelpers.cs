@@ -257,6 +257,9 @@ namespace Internal.TypeSystem.Interop
                             case NativeTypeKind.I1:
                                 return MarshallerKind.CBool;
 
+                            case NativeTypeKind.VariantBool:
+                                return MarshallerKind.VariantBool;
+
                             default:
                                 return MarshallerKind.Invalid;
                         }

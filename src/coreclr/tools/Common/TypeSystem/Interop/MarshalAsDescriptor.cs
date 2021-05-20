@@ -33,6 +33,7 @@ namespace Internal.TypeSystem
         SysUInt = 0x20,
         AnsiBStr = 0x23,
         TBStr = 0x24,
+        VariantBool = 0x25,
         Func = 0x26,
         AsAny = 0x28,
         Array = 0x2a,

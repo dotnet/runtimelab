@@ -108,24 +108,94 @@ namespace System.Runtime.InteropServices
             Variant* data = (Variant*)pDstNativeVariant;
             if (obj == null)
             {
-                data->SetAsNULL();
+                data->VariantType = VarEnum.VT_EMPTY;
                 return;
             }
 
-            if (obj is byte)
+            if (obj is bool flag)
             {
-                data->VariantType = VarEnum.VT_UI1;
+                data->AsBool = flag;
             }
-            else if (obj is int)
+            else if (obj is byte b)
             {
-                data->VariantType = VarEnum.VT_I4;
+                data->AsUi1 = b;
             }
-            else if (obj is string)
+            else if (obj is sbyte sb)
             {
-                data->VariantType = VarEnum.VT_BSTR;
+                data->AsI1 = sb;
             }
-
-            data->CopyFromIndirect(obj);
+            else if (obj is short s)
+            {
+                data->AsI2 = s;
+            }
+            else if (obj is ushort us)
+            {
+                data->AsUi2 = us;
+            }
+            else if (obj is int i)
+            {
+                data->AsI4 = i;
+            }
+            else if (obj is uint ui)
+            {
+                data->AsUi4 = ui;
+            }
+            else if (obj is long l)
+            {
+                data->AsI8 = l;
+            }
+            else if (obj is ulong ul)
+            {
+                data->AsUi8 = ul;
+            }
+            else if (obj is float f)
+            {
+                data->AsR4 = f;
+            }
+            else if (obj is double d)
+            {
+                data->AsR8 = d;
+            }
+            else if (obj is DateTime date)
+            {
+                data->AsDate = date;
+            }
+            else if (obj is decimal dec)
+            {
+                data->AsDecimal = dec;
+            }
+            else if (obj is char c)
+            {
+                data->AsUi2 = c;
+            }
+            else if (obj is string str)
+            {
+                data->AsBstr = str;
+            }
+            else if (obj is BStrWrapper strWrapper)
+            {
+                data->AsBstr = strWrapper.WrappedObject;
+            }
+            else if (obj is CurrencyWrapper currWrapper)
+            {
+                data->AsCy = currWrapper.WrappedObject;
+            }
+            else if (obj is UnknownWrapper unkWrapper)
+            {
+                data->AsUnknown = unkWrapper.WrappedObject;
+            }
+            else if (obj is DBNull)
+            {
+                data->SetAsNULL();
+            }
+            else if (obj is System.Reflection.Missing)
+            {
+                data->AsError = -2147352572 /*DISP_E_PARAMNOTFOUND*/;
+            }
+            else
+            {
+                data->AsDispatch = obj;
+            }
         }
 
         [SupportedOSPlatform("windows")]
@@ -155,6 +225,7 @@ namespace System.Runtime.InteropServices
             }
 
             Variant* data = (Variant*)pSrcNativeVariant;
+
             return data->ToObject();
         }
 
