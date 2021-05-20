@@ -1153,9 +1153,6 @@
         <ExcludeList Include="$(XunitTestBinBase)/Interop/PInvoke/Variant/VariantTest/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/155: VARIANT marshalling</Issue>
         </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/Interop/StringMarshalling/BSTR/BSTRTest/*">
-            <Issue>https://github.com/dotnet/runtimelab/issues/167</Issue>
-        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/Interop/StringMarshalling/VBByRefStr/VBByRefStrTest/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/179</Issue>
         </ExcludeList>
