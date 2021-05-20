@@ -165,16 +165,14 @@ void ThreadStore::DetachCurrentThread()
         return;
     }
 
-#ifdef STRESS_LOG
-    ThreadStressLog * ptsl = reinterpret_cast<ThreadStressLog *>(
-        pDetachingThread->GetThreadStressLog());
-    StressLog::ThreadDetach(ptsl);
-#endif // STRESS_LOG
+    {
+        ThreadStore* pTS = GetThreadStore();
+        ReaderWriterLock::WriteHolder write(&pTS->m_Lock);
+        ASSERT(rh::std::count(pTS->m_ThreadList.Begin(), pTS->m_ThreadList.End(), pDetachingThread) == 1);
+        pTS->m_ThreadList.RemoveFirst(pDetachingThread);
+        pDetachingThread->Detach();
+    }
 
-    ThreadStore* pTS = GetThreadStore();
-    ReaderWriterLock::WriteHolder write(&pTS->m_Lock);
-    ASSERT(rh::std::count(pTS->m_ThreadList.Begin(), pTS->m_ThreadList.End(), pDetachingThread) == 1);
-    pTS->m_ThreadList.RemoveFirst(pDetachingThread);
     pDetachingThread->Destroy();
 }
 
