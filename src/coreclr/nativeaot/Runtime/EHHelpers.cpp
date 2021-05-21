@@ -532,6 +532,10 @@ int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
         return EXCEPTION_CONTINUE_EXECUTION;
     }
 
+    // The client may have told us to continue to search for custom handlers,
+    // but in general we consider any form of hardware exception within the runtime itself a fatal error.
+    // Note this includes the managed code within the runtime.
+    if(!g_ContinueSearchOnUnhandledRuntimeException)
     {
         static uint8_t *s_pbRuntimeModuleLower = NULL;
         static uint8_t *s_pbRuntimeModuleUpper = NULL;
@@ -553,10 +557,7 @@ int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
             PalGetModuleBounds(hRuntimeModule, &s_pbRuntimeModuleLower, &s_pbRuntimeModuleUpper);
         }
 
-        // The client may have told us to continue to search for custom handlers,
-        // but in general we consider any form of hardware exception within the runtime itself a fatal error.
-        // Note this includes the managed code within the runtime.
-        if (!g_ContinueSearchOnUnhandledRuntimeException && ((uint8_t*)faultingIP >= s_pbRuntimeModuleLower) && ((uint8_t*)faultingIP < s_pbRuntimeModuleUpper))
+        if (((uint8_t*)faultingIP >= s_pbRuntimeModuleLower) && ((uint8_t*)faultingIP < s_pbRuntimeModuleUpper))
         {
             ASSERT_UNCONDITIONALLY("Hardware exception raised inside the runtime.");
             PalRaiseFailFastException(pExPtrs->ExceptionRecord, pExPtrs->ContextRecord, 0);
