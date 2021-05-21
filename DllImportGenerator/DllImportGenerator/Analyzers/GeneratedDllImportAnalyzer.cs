@@ -74,10 +74,7 @@ namespace Microsoft.Interop.Analyzers
                 foreach (var reference in methodSymbol.DeclaringSyntaxReferences)
                 {
                     var syntax = reference.GetSyntax(context.CancellationToken);
-                    if (syntax is not MethodDeclarationSyntax methodSyntax)
-                        continue;
-
-                    if (!methodSyntax.Modifiers.Any(SyntaxKind.PartialKeyword))
+                    if (syntax is MethodDeclarationSyntax methodSyntax && !methodSyntax.Modifiers.Any(SyntaxKind.PartialKeyword))
                     {
                         // Must be marked partial
                         context.ReportDiagnostic(methodSymbol.CreateDiagnostic(GeneratedDllImportMissingModifiers, methodSymbol.Name));
@@ -90,10 +87,7 @@ namespace Microsoft.Interop.Analyzers
                     foreach (var reference in typeSymbol.DeclaringSyntaxReferences)
                     {
                         var syntax = reference.GetSyntax(context.CancellationToken);
-                        if (syntax is not TypeDeclarationSyntax typeSyntax)
-                            continue;
-
-                        if (!typeSyntax.Modifiers.Any(SyntaxKind.PartialKeyword))
+                        if (syntax is TypeDeclarationSyntax typeSyntax && !typeSyntax.Modifiers.Any(SyntaxKind.PartialKeyword))
                         {
                             // Must be marked partial
                             context.ReportDiagnostic(typeSymbol.CreateDiagnostic(GeneratedDllImportContainingTypeMissingModifiers, typeSymbol.Name));
