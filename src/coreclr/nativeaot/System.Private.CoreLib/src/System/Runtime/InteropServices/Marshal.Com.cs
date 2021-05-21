@@ -12,6 +12,9 @@ namespace System.Runtime.InteropServices
 {
     public static partial class Marshal
     {
+        private static readonly Guid IID_IDispatch = new Guid("00020400-0000-0000-C000-000000000046");
+        private const int DISP_E_PARAMNOTFOUND = unchecked((int)0x80020004);
+
         public static int GetHRForException(Exception? e)
         {
             return PInvokeMarshal.GetHRForException(e);
@@ -69,7 +72,17 @@ namespace System.Runtime.InteropServices
         [SupportedOSPlatform("windows")]
         public static IntPtr GetComInterfaceForObject(object o, Type T)
         {
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            if (o is null)
+            {
+                throw new ArgumentNullException(nameof(o));
+            }
+
+            if (T is null)
+            {
+                throw new ArgumentNullException(nameof(T));
+            }
+
+            return ComWrappers.ComInterfaceForObject(o, new Guid(T.GetCustomAttribute<GuidAttribute>().Value));
         }
 
         [SupportedOSPlatform("windows")]
@@ -81,7 +94,7 @@ namespace System.Runtime.InteropServices
         [SupportedOSPlatform("windows")]
         public static IntPtr GetComInterfaceForObject<T, TInterface>([DisallowNull] T o)
         {
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            return GetComInterfaceForObject(o!, typeof(T));
         }
 
         [SupportedOSPlatform("windows")]
@@ -93,7 +106,12 @@ namespace System.Runtime.InteropServices
         [SupportedOSPlatform("windows")]
         public static IntPtr GetIDispatchForObject(object o)
         {
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            if (o is null)
+            {
+                throw new ArgumentNullException(nameof(o));
+            }
+
+            return ComWrappers.ComInterfaceForObject(o, IID_IDispatch);
         }
 
         [SupportedOSPlatform("windows")]
@@ -190,7 +208,7 @@ namespace System.Runtime.InteropServices
             }
             else if (obj is System.Reflection.Missing)
             {
-                data->AsError = -2147352572 /*DISP_E_PARAMNOTFOUND*/;
+                data->AsError = DISP_E_PARAMNOTFOUND;
             }
             else
             {
