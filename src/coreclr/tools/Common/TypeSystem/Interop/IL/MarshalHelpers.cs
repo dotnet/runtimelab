@@ -63,6 +63,9 @@ namespace Internal.TypeSystem.Interop
                 case MarshallerKind.CBool:
                         return context.GetWellKnownType(WellKnownType.Byte);
 
+                case MarshallerKind.VariantBool:
+                    return context.GetWellKnownType(WellKnownType.Int16);
+
                 case MarshallerKind.Enum:
                 case MarshallerKind.BlittableStruct:
                 case MarshallerKind.Decimal:
@@ -164,6 +167,9 @@ namespace Internal.TypeSystem.Interop
 
                 case MarshallerKind.Variant:
                     return InteropTypes.GetVariant(context);
+
+                case MarshallerKind.OleCurrency:
+                    return context.GetWellKnownType(WellKnownType.Int64);
 
                 case MarshallerKind.Unknown:
                 default:
@@ -361,6 +367,8 @@ namespace Internal.TypeSystem.Interop
                         return MarshallerKind.Decimal;
                     else if (nativeType == NativeTypeKind.LPStruct && !isField)
                         return MarshallerKind.BlittableStructPtr;
+                    else if (nativeType == NativeTypeKind.Currency)
+                        return MarshallerKind.OleCurrency;
                     else
                         return MarshallerKind.Invalid;
                 }

@@ -44,6 +44,7 @@ namespace Internal.TypeSystem.Interop
         Object,
         OleDateTime,
         Decimal,
+        OleCurrency,
         Guid,
         Struct,
         BlittableStruct,
@@ -1412,13 +1413,40 @@ namespace Internal.TypeSystem.Interop
 
     class BooleanMarshaller : Marshaller
     {
+        private int _trueValue;
+        private int _falseValue;
+        public BooleanMarshaller(int trueValue = 1, int falseValue = 0)
+        {
+            _trueValue = trueValue;
+            _falseValue = falseValue;
+        }
+
         protected override void AllocAndTransformManagedToNative(ILCodeStream codeStream)
         {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            ILCodeLabel pLoadFalseLabel = emitter.NewCodeLabel();
+            ILCodeLabel pDoneLabel = emitter.NewCodeLabel();
+
             LoadManagedValue(codeStream);
-            codeStream.EmitLdc(0);
-            codeStream.Emit(ILOpcode.ceq);
-            codeStream.EmitLdc(0);
-            codeStream.Emit(ILOpcode.ceq);
+            if (_trueValue == 1 && _falseValue == 0)
+            {
+                codeStream.EmitLdc(0);
+                codeStream.Emit(ILOpcode.ceq);
+                codeStream.EmitLdc(0);
+                codeStream.Emit(ILOpcode.ceq);
+            }
+            else
+            {
+                codeStream.Emit(ILOpcode.brfalse, pLoadFalseLabel);
+                codeStream.EmitLdc(_trueValue);
+                codeStream.Emit(ILOpcode.br, pDoneLabel);
+
+                codeStream.EmitLabel(pLoadFalseLabel);
+                codeStream.EmitLdc(_falseValue);
+
+                codeStream.EmitLabel(pDoneLabel);
+            }
+
             StoreNativeValue(codeStream);
         }
 

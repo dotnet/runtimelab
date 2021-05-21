@@ -36,6 +36,8 @@ namespace Internal.TypeSystem.Interop
                 case MarshallerKind.Bool:
                 case MarshallerKind.CBool:
                     return new BooleanMarshaller();
+                case MarshallerKind.VariantBool:
+                    return new BooleanMarshaller((short)-1, 0);
                 case MarshallerKind.AnsiString:
                     return new AnsiStringMarshaller();
                 case MarshallerKind.UTF8String:
@@ -82,10 +84,10 @@ namespace Internal.TypeSystem.Interop
                     return new ComInterfaceMarshaller();
                 case MarshallerKind.OleDateTime:
                     return new OleDateTimeMarshaller();
+                case MarshallerKind.OleCurrency:
+                    return new OleCurrencyMarshaller();
                 case MarshallerKind.Variant:
                     return new VariantMarshaller();
-                case MarshallerKind.VariantBool:
-                    return new VariantBoolMarshaller();
                 default:
                     // ensures we don't throw during create marshaller. We will throw NSE
                     // during EmitIL which will be handled and an Exception method body
@@ -1042,6 +1044,31 @@ namespace Internal.TypeSystem.Interop
         }
     }
 
+    class OleCurrencyMarshaller : Marshaller
+    {
+        protected override void TransformManagedToNative(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadManagedValue(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "DecimalToOleCurrency");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreNativeValue(codeStream);
+        }
+
+        protected override void TransformNativeToManaged(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadNativeValue(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "OleCurrencyToDecimal");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreManagedValue(codeStream);
+        }
+    }
+
     class VariantMarshaller : Marshaller
     {
         protected override void AllocManagedToNative(ILCodeStream codeStream)
@@ -1086,27 +1113,6 @@ namespace Internal.TypeSystem.Interop
             LoadNativeAddr(codeStream);
             var helper = Context.GetHelperEntryPoint("InteropHelpers", "CleanupVariant");
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
-        }
-    }
-
-    class VariantBoolMarshaller : Marshaller
-    {
-        protected override void AllocAndTransformManagedToNative(ILCodeStream codeStream)
-        {
-            LoadManagedValue(codeStream);
-            codeStream.EmitLdc(0);
-            codeStream.Emit(ILOpcode.ceq);
-            codeStream.Emit(ILOpcode.neg);
-            StoreNativeValue(codeStream);
-        }
-
-        protected override void AllocAndTransformNativeToManaged(ILCodeStream codeStream)
-        {
-            LoadNativeValue(codeStream);
-            codeStream.Emit(ILOpcode.neg);
-            codeStream.EmitLdc(0);
-            codeStream.Emit(ILOpcode.ceq);
-            StoreManagedValue(codeStream);
         }
     }
 }

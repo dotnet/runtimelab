@@ -19,6 +19,7 @@ namespace Internal.TypeSystem
         U8 = 0xa,
         R4 = 0xb,
         R8 = 0xc,
+        Currency = 0xf,
         BStr = 0x13,
         LPStr = 0x14,
         LPWStr = 0x15,
