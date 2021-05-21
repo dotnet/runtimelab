@@ -202,6 +202,19 @@ namespace System.Runtime.InteropServices
             {
                 data->AsUnknown = unkWrapper.WrappedObject;
             }
+            else if (obj is DispatchWrapper dispWrapper)
+            {
+                data->AsDispatch = dispWrapper.WrappedObject;
+            }
+            else if (obj is ErrorWrapper errWrapper)
+            {
+                data->AsError = errWrapper.WrappedObject;
+            }
+            else if (obj is VariantWrapper variantWrapper)
+            {
+                // Do not want to implement that yet.
+                throw new NotSupportedException();
+            }
             else if (obj is DBNull)
             {
                 data->SetAsNULL();
@@ -212,7 +225,20 @@ namespace System.Runtime.InteropServices
             }
             else
             {
-                data->AsDispatch = obj;
+                var type = obj.GetType();
+                if (type.IsValueType)
+                {
+                    throw new NotSupportedException();
+                }
+                else if (type.IsArray)
+                {
+                    // SAFEARRAY impementation goes here.
+                    throw new NotSupportedException();
+                }
+                else
+                {
+                    data->AsDispatch = obj;
+                }
             }
         }
 
