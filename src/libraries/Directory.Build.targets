@@ -15,8 +15,10 @@
     <NetCoreAppCurrentBuildSettings>$(NetCoreAppCurrent)-$(TargetOS)-$(Configuration)-$(TargetArchitecture)</NetCoreAppCurrentBuildSettings>
     <NativeBinDir>$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'native', '$(NetCoreAppCurrentBuildSettings)'))</NativeBinDir>
     <NetCoreAppCurrentTestHostPath>$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'testhost', '$(NetCoreAppCurrentBuildSettings)'))</NetCoreAppCurrentTestHostPath>
+    <TestNativeAotCompilerRootPath>$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'testaotc', '$(NetCoreAppCurrentBuildSettings)'))</TestNativeAotCompilerRootPath>
     <NetCoreAppCurrentTestHostSharedFrameworkPath>$([MSBuild]::NormalizeDirectory('$(NetCoreAppCurrentTestHostPath)', 'shared', '$(MicrosoftNetCoreAppFrameworkName)', '$(ProductVersion)'))</NetCoreAppCurrentTestHostSharedFrameworkPath>
-    
+    <NetCoreAppCurrentTestHostSharedFrameworkPath Condition="'$(ClrNativeAot)' == 'true'">$([MSBuild]::NormalizeDirectory('$(TestNativeAotCompilerRootPath)', 'framework'))</NetCoreAppCurrentTestHostSharedFrameworkPath>
+
     <TargetsForTfmSpecificContentInPackage Condition="'$(IsPackable)' == 'true'">$(TargetsForTfmSpecificContentInPackage);LibIntellisenseDocs</TargetsForTfmSpecificContentInPackage>
     <SymbolPackageOutputPath>$(PackageOutputPath)</SymbolPackageOutputPath>
 
