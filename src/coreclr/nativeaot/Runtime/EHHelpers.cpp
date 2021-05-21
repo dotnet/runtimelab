@@ -449,16 +449,14 @@ int32_t __stdcall RhpHardwareExceptionHandler(uintptr_t faultCode, uintptr_t fau
 
 #else // TARGET_UNIX
 
-static bool g_ContinueSearchOnUnhandledRuntimeException = false;
+static bool g_ContinueOnFatalErrors = false;
 
 // Set the runtime to continue search when encountering an unhandled runtime exception. Once done it is forever.
 // Continuing the search allows any vectored exception handlers or SEH installed by the client to take effect.
 // Any client that does so is expected to handle stack overflows.
-EXTERN_C bool RhpContinueSearchOnUnhandledRuntimeException()
+EXTERN_C void RhpContinueOnFatalErrors()
 {
-    bool prev = g_ContinueSearchOnUnhandledRuntimeException;
-    g_ContinueSearchOnUnhandledRuntimeException = true;
-    return prev;
+    g_ContinueOnFatalErrors = true;
 }
 
 int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
@@ -489,7 +487,7 @@ int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
         }
         else if (faultCode == STATUS_STACK_OVERFLOW)
         {
-            if(g_ContinueSearchOnUnhandledRuntimeException)
+            if (g_ContinueOnFatalErrors)
             {
                 // The client is responsible for the handling.
                 return EXCEPTION_CONTINUE_SEARCH;
@@ -535,7 +533,7 @@ int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
     // The client may have told us to continue to search for custom handlers,
     // but in general we consider any form of hardware exception within the runtime itself a fatal error.
     // Note this includes the managed code within the runtime.
-    if(!g_ContinueSearchOnUnhandledRuntimeException)
+    if (!g_ContinueOnFatalErrors)
     {
         static uint8_t *s_pbRuntimeModuleLower = NULL;
         static uint8_t *s_pbRuntimeModuleUpper = NULL;
