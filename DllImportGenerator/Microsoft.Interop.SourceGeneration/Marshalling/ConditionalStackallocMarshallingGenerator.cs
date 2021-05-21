@@ -4,9 +4,9 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-namespace Microsoft.Interop.SourceGeneration
+namespace Microsoft.Interop
 {
-    internal abstract class ConditionalStackallocMarshallingGenerator : IMarshallingGenerator
+    public abstract class ConditionalStackallocMarshallingGenerator : IMarshallingGenerator
     {
         protected static string GetAllocationMarkerIdentifier(string managedIdentifier) => $"{managedIdentifier}__allocated";
 

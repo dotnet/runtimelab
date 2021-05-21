@@ -4,11 +4,11 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-using static Microsoft.Interop.SourceGeneration.MarshallerHelpers;
+using static Microsoft.Interop.MarshallerHelpers;
 
-namespace Microsoft.Interop.SourceGeneration
+namespace Microsoft.Interop
 {
-    internal sealed class Utf16StringMarshaller : ConditionalStackallocMarshallingGenerator
+    public sealed class Utf16StringMarshaller : ConditionalStackallocMarshallingGenerator
     {
         // [Compat] Equivalent of MAX_PATH on Windows to match built-in system
         // The assumption is file paths are the most common case for marshalling strings,

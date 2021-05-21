@@ -9,9 +9,9 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Microsoft.Interop.SourceGeneration
+namespace Microsoft.Interop
 {
-    internal static class TypeSymbolExtensions
+    public static class TypeSymbolExtensions
     {
         public static bool HasOnlyBlittableFields(this ITypeSymbol type) => HasOnlyBlittableFields(type, new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default));
 

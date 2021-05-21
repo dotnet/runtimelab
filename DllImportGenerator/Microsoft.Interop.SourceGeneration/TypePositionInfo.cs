@@ -7,12 +7,12 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-namespace Microsoft.Interop.SourceGeneration
+namespace Microsoft.Interop
 {
     /// <summary>
     /// Type used to pass on default marshalling details.
     /// </summary>
-    internal sealed record DefaultMarshallingInfo (
+    public sealed record DefaultMarshallingInfo (
         CharEncoding CharEncoding
     );
 
@@ -23,7 +23,7 @@ namespace Microsoft.Interop.SourceGeneration
     /// contents of the managed array.
     /// </summary>
     [Flags]
-    internal enum ByValueContentsMarshalKind
+    public enum ByValueContentsMarshalKind
     {
         /// <summary>
         /// Marshal contents from managed to native only.
@@ -48,7 +48,7 @@ namespace Microsoft.Interop.SourceGeneration
     /// <summary>
     /// Positional type information involved in unmanaged/managed scenarios.
     /// </summary>
-    internal sealed record TypePositionInfo
+    public sealed record TypePositionInfo
     {
         public const int UnsetIndex = int.MinValue;
         public const int ReturnIndex = UnsetIndex + 1;

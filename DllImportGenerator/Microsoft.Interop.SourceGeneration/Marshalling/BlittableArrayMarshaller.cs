@@ -5,9 +5,9 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-namespace Microsoft.Interop.SourceGeneration
+namespace Microsoft.Interop
 {
-    internal sealed class BlittableArrayMarshaller : ConditionalStackallocMarshallingGenerator
+    public sealed class BlittableArrayMarshaller : ConditionalStackallocMarshallingGenerator
     {
         /// <summary>
         /// Stack-alloc threshold set to 256 bytes to enable small arrays to be passed on the stack.

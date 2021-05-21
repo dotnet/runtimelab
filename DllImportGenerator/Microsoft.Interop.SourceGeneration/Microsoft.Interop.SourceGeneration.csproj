@@ -2,15 +2,13 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <Packable>false</Packable>
     <Nullable>enable</Nullable>
-    <RootNamespace>Microsoft.Interop.SourceGeneration</RootNamespace>
-    <IncludeBuildOutput>false</IncludeBuildOutput>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <NoPackageAnalysis>true</NoPackageAnalysis>
+    <RootNamespace>Microsoft.Interop</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis" Version="$(CompilerPlatformVersion)" />
+    <PackageReference Include="Microsoft.CodeAnalysis" Version="$(CompilerPlatformVersion)" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,13 +17,13 @@
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
     </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Update="Resources.resx">
       <SubType>Designer</SubType>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <Generator>ResXFileCodeGenerator</Generator>
-      <TypeName>Microsoft.Interop.SourceGenerationResources</TypeName>
     </EmbeddedResource>
-    <Compile Update="@(Compile)" Pack="true" />
-    <EmbeddedResource Update="@(EmbeddedResource)" Pack="true" />
   </ItemGroup>
 </Project>

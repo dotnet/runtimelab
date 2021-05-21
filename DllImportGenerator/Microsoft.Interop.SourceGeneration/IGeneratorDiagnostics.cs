@@ -5,9 +5,9 @@ using System.Linq;
 
 using Microsoft.CodeAnalysis;
 
-namespace Microsoft.Interop.SourceGeneration
+namespace Microsoft.Interop
 {
-    internal static class DiagnosticExtensions
+    public static class DiagnosticExtensions
     {
         public static Diagnostic CreateDiagnostic(
             this ISymbol symbol,
@@ -42,7 +42,7 @@ namespace Microsoft.Interop.SourceGeneration
         }
     }
 
-    internal interface IGeneratorDiagnostics
+    public interface IGeneratorDiagnostics
     {
         /// <summary>
         /// Report diagnostic for marshalling of a parameter/return that is not supported
@@ -67,7 +67,7 @@ namespace Microsoft.Interop.SourceGeneration
             string? unsupportedValue);
     }
 
-    internal static class IGeneratorDiagnosticsExtensions
+    public static class IGeneratorDiagnosticsExtensions
     {
         public static void ReportConfigurationNotSupported(this IGeneratorDiagnostics diagnostics, AttributeData attributeData, string configurationName)
             => diagnostics.ReportConfigurationNotSupported(attributeData, configurationName, null);
