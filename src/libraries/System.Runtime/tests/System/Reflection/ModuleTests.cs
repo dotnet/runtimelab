@@ -306,6 +306,7 @@ namespace System.Reflection.Tests
         [ActiveIssue("https://github.com/dotnet/runtimelab/issues/901" /* NativeAot */)]
         [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsMetadataTokenSupported))]
         [MemberData(nameof(Fields))]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/52072", TestPlatforms.iOS | TestPlatforms.tvOS | TestPlatforms.MacCatalyst)]
         public void ResolveField(FieldInfo t)
         {
             Assert.Equal(t, Module.ResolveField(t.MetadataToken));
