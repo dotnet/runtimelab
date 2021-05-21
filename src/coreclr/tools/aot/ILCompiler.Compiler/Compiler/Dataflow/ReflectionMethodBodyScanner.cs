@@ -97,7 +97,7 @@ namespace ILCompiler.Dataflow
                 var requiredMemberTypes = scanner._flowAnnotations.GetReturnParameterAnnotation(method);
                 if (requiredMemberTypes != 0)
                 {
-                    var targetContext = new MethodOrigin(method);
+                    var targetContext = new MethodReturnOrigin(method);
                     var reflectionContext = new ReflectionPatternContext(scanner._logger, scanner.ShouldEnableReflectionPatternReporting(method), method, targetContext);
                     reflectionContext.AnalyzingPattern();
                     scanner.RequireDynamicallyAccessedMembers(ref reflectionContext, requiredMemberTypes, scanner.MethodReturnValue, targetContext);

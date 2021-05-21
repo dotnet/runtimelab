@@ -618,6 +618,39 @@ namespace ILCompiler
             return true;
         }
 
+        public override void NoteOverridingMethod(MethodDesc baseMethod, MethodDesc overridingMethod)
+        {
+            // We validate that the various dataflow/Requires* annotations are consistent across virtual method overrides
+
+            bool baseMethodRequiresUnreferencedCode = baseMethod.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresUnreferencedCodeAttribute");
+            bool overridingMethodRequiresUnreferencedCode = overridingMethod.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresUnreferencedCodeAttribute");
+
+            bool baseMethodRequiresDynamicCode = baseMethod.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresDynamicCodeAttribute");
+            bool overridingMethodRequiresDynamicCode = overridingMethod.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresDynamicCodeAttribute");
+
+            bool baseMethodRequiresDataflow = FlowAnnotations.RequiresDataflowAnalysis(baseMethod);
+            bool overridingMethodRequiresDataflow = FlowAnnotations.RequiresDataflowAnalysis(overridingMethod);
+
+            if (baseMethodRequiresUnreferencedCode != overridingMethodRequiresUnreferencedCode)
+            {
+                Logger.LogWarning(
+                    $"Presence of 'RequiresUnreferencedCodeAttribute' on method '{overridingMethod.GetDisplayName()}' doesn't match overridden method '{baseMethod.GetDisplayName()}'. " +
+                    $"All overridden methods must have 'RequiresUnreferencedCodeAttribute'.", 2046, overridingMethod, MessageSubCategory.TrimAnalysis);
+            }
+
+            if (baseMethodRequiresDynamicCode != overridingMethodRequiresDynamicCode)
+            {
+                Logger.LogWarning(
+                    $"Presence of 'RequiresDynamicCodeAttribute' on method '{overridingMethod.GetDisplayName()}' doesn't match overridden method '{baseMethod.GetDisplayName()}'. " +
+                    $"All overridden methods must have 'RequiresDynamicCodeAttribute'.", 2046, overridingMethod, MessageSubCategory.AotAnalysis);
+            }
+
+            if (baseMethodRequiresDataflow || overridingMethodRequiresDataflow)
+            {
+                FlowAnnotations.ValidateMethodAnnotationsAreSame(overridingMethod, baseMethod);
+            }
+        }
+
         public MetadataManager ToAnalysisBasedMetadataManager()
         {
             var reflectableTypes = ReflectableEntityBuilder<TypeDesc>.Create();

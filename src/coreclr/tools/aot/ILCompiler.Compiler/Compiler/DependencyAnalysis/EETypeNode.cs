@@ -289,6 +289,11 @@ namespace ILCompiler.DependencyAnalysis
                             factory.MethodEntrypoint(canonImpl, impl.OwningType.IsValueType);
                         result.Add(new CombinedDependencyListEntry(implNode, factory.VirtualMethodUse(decl), "Virtual method"));
                     }
+
+                    if (impl.OwningType == defType)
+                    {
+                        factory.MetadataManager.NoteOverridingMethod(decl, impl);
+                    }
                 }
 
                 Debug.Assert(
@@ -331,6 +336,8 @@ namespace ILCompiler.DependencyAnalysis
                                 result.Add(new CombinedDependencyListEntry(factory.VirtualMethodUse(implMethod), factory.VariantInterfaceMethodUse(typicalInterfaceMethod), "Interface method"));
                                 result.Add(new CombinedDependencyListEntry(factory.VirtualMethodUse(interfaceMethod), factory.VariantInterfaceMethodUse(typicalInterfaceMethod), "Interface method"));
                             }
+
+                            factory.MetadataManager.NoteOverridingMethod(interfaceMethod, implMethod);
                         }
                         else
                         {
@@ -355,6 +362,8 @@ namespace ILCompiler.DependencyAnalysis
                                     defaultIntfMethod = factory.TypeSystemContext.GetDefaultInterfaceMethodImplementationThunk(defaultIntfMethod, _type.ConvertToCanonForm(CanonicalFormKind.Specific), providingInterfaceDefinitionType);
                                 }
                                 result.Add(new CombinedDependencyListEntry(factory.MethodEntrypoint(defaultIntfMethod), factory.VirtualMethodUse(interfaceMethod), "Interface method"));
+
+                                factory.MetadataManager.NoteOverridingMethod(interfaceMethod, implMethod);
                             }
                         }
                     }
