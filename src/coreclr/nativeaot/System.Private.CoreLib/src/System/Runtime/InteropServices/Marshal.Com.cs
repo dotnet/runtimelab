@@ -208,7 +208,7 @@ namespace System.Runtime.InteropServices
             }
             else if (obj is ErrorWrapper errWrapper)
             {
-                data->AsError = errWrapper.WrappedObject;
+                data->AsError = errWrapper.ErrorCode;
             }
             else if (obj is VariantWrapper variantWrapper)
             {
