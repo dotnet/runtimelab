@@ -233,6 +233,16 @@ namespace Internal.Runtime.CompilerHelpers
             return DateTime.FromOADate(value);
         }
 
+        internal static long DecimalToOleCurrency(decimal value)
+        {
+            return decimal.ToOACurrency(value);
+        }
+
+        internal static decimal OleCurrencyToDecimal(long value)
+        {
+            return decimal.FromOACurrency(value);
+        }
+
         internal static unsafe string BstrBufferToString(char* buffer)
         {
             if (buffer == null)
