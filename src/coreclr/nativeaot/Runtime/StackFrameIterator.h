@@ -137,9 +137,11 @@ private:
         // This is a state returned by Next() which indicates that we just unwound a reverse pinvoke method
         UnwoundReversePInvoke = 0x20,
 
+        IgnoreExCollide = 0x40,
+
         GcStackWalkFlags = (CollapseFunclets | RemapHardwareFaultsToSafePoint),
         EHStackWalkFlags = ApplyReturnAddressAdjustment,
-        StackTraceStackWalkFlags = GcStackWalkFlags
+        StackTraceStackWalkFlags = GcStackWalkFlags | IgnoreExCollide
     };
 
     struct PreservedRegPtrs

@@ -1845,7 +1845,7 @@ COOP_PINVOKE_HELPER(Boolean, RhpSfiNext, (StackFrameIterator* pThis, uint32_t* p
     if (isValid)
         pThis->CalculateCurrentMethodState();
 
-    if (pThis->m_dwFlags & StackFrameIterator::ExCollide)
+    if ((pThis->m_dwFlags & (StackFrameIterator::ExCollide | StackFrameIterator::IgnoreExCollide)) == StackFrameIterator::ExCollide)
     {
         ASSERT(pCurExInfo->m_idxCurClause != MaxTryRegionIdx);
         *puExCollideClauseIdx = pCurExInfo->m_idxCurClause;
