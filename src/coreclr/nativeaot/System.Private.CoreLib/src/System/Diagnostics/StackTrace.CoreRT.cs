@@ -1,11 +1,10 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.Runtime;
 using System.Text;
-using System.Reflection;
 
+using Internal.DeveloperExperience;
 using Internal.Diagnostics;
 
 namespace System.Diagnostics
@@ -35,9 +34,34 @@ namespace System.Diagnostics
             IntPtr[] stackTrace = new IntPtr[frameCount];
             int trueFrameCount = RuntimeImports.RhGetCurrentThreadStackTrace(stackTrace);
             Debug.Assert(trueFrameCount == frameCount);
+            skipFrames += CalculateFramesToSkip(stackTrace, trueFrameCount);
             InitializeForIpAddressArray(stackTrace, skipFrames, frameCount, needFileInfo);
         }
 #endif
+
+        /// <summary>
+        /// Tries to to find the offset to the frame requesting the stack trace
+        /// </summary>
+        internal static int CalculateFramesToSkip(IntPtr[] stackTrace, int iNumFrames)
+        {
+            const string PackageName = "System.Diagnostics";
+
+            var devExp = DeveloperExperience.Default;
+            bool hadMatch = false;
+            for (int i = 0; i < iNumFrames; i++)
+            {
+                bool match = devExp.CreateStackTraceString(stackTrace[i], false).StartsWith(PackageName, StringComparison.Ordinal);
+                if (hadMatch && !match)
+                {
+                    return i;
+                }
+
+                hadMatch = match;
+            }
+
+            return 0;
+        }
+
         /// <summary>
         /// Initialize the stack trace based on a given exception and initial frame index.
         /// </summary>

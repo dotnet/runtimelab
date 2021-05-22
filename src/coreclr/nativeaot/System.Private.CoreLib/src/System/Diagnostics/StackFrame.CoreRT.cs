@@ -1,9 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-
-using System;
-using System.Reflection;
 using System.Runtime;
 using System.Text;
 
@@ -85,9 +82,11 @@ namespace System.Diagnostics
         /// </summary>
         private IntPtr LocateIpAddressForStackFrame(int frameIndex)
         {
-            IntPtr[] frameArray = new IntPtr[frameIndex + 1];
+            IntPtr[] frameArray = new IntPtr[frameIndex + 6];
             int returnedFrameCount = RuntimeImports.RhGetCurrentThreadStackTrace(frameArray);
             int realFrameCount = (returnedFrameCount >= 0 ? returnedFrameCount : frameArray.Length);
+
+            frameIndex += StackTrace.CalculateFramesToSkip(frameArray, realFrameCount);
             if (frameIndex < realFrameCount)
             {
                 return frameArray[frameIndex];
