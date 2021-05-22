@@ -1845,20 +1845,27 @@ COOP_PINVOKE_HELPER(Boolean, RhpSfiNext, (StackFrameIterator* pThis, uint32_t* p
     if (isValid)
         pThis->CalculateCurrentMethodState();
 
-    if ((pThis->m_dwFlags & (StackFrameIterator::ExCollide | StackFrameIterator::IgnoreExCollide)) == StackFrameIterator::ExCollide)
+    if (puExCollideClauseIdx)
     {
-        ASSERT(pCurExInfo->m_idxCurClause != MaxTryRegionIdx);
-        *puExCollideClauseIdx = pCurExInfo->m_idxCurClause;
-        pCurExInfo->m_kind = (ExKind)(pCurExInfo->m_kind | EK_SupersededFlag);
-    }
-    else
-    {
-        *puExCollideClauseIdx = MaxTryRegionIdx;
+        if (pThis->m_dwFlags & StackFrameIterator::ExCollide)
+        {
+            ASSERT(pCurExInfo->m_idxCurClause != MaxTryRegionIdx);
+            *puExCollideClauseIdx = pCurExInfo->m_idxCurClause;
+            pCurExInfo->m_kind = (ExKind)(pCurExInfo->m_kind | EK_SupersededFlag);
+        }
+        else
+        {
+            *puExCollideClauseIdx = MaxTryRegionIdx;
+        }
     }
 
-    *pfUnwoundReversePInvoke = (pThis->m_dwFlags & StackFrameIterator::UnwoundReversePInvoke)
-                                    ? Boolean_true
-                                    : Boolean_false;
+    if (pfUnwoundReversePInvoke)
+    {
+        *pfUnwoundReversePInvoke = (pThis->m_dwFlags & StackFrameIterator::UnwoundReversePInvoke)
+                                        ? Boolean_true
+                                        : Boolean_false;
+    }
+
     return isValid;
 }
 

@@ -683,7 +683,7 @@ namespace System.Runtime
             OnFirstChanceExceptionViaClassLib(exceptionObj);
             DebuggerNotify.BeginFirstPass(exceptionObj, frameIter.OriginalControlPC, frameIter.SP);
 
-            for (; isValid; isValid = frameIter.Next(out startIdx, out unwoundReversePInvoke))
+            for (; isValid; isValid = frameIter.Next(&startIdx, &unwoundReversePInvoke))
             {
                 // For GC stackwalking, we'll happily walk across native code blocks, but for EH dispatch, we
                 // disallow dispatching exceptions across native code.
@@ -748,7 +748,7 @@ namespace System.Runtime
             exInfo._passNumber = 2;
             startIdx = MaxTryRegionIdx;
             isValid = frameIter.Init(exInfo._pExContext, (exInfo._kind & ExKind.InstructionFaultFlag) != 0);
-            for (; isValid && ((byte*)frameIter.SP <= (byte*)handlingFrameSP); isValid = frameIter.Next(out startIdx))
+            for (; isValid && ((byte*)frameIter.SP <= (byte*)handlingFrameSP); isValid = frameIter.Next(&startIdx))
             {
                 Debug.Assert(isValid, "second-pass EH unwind failed unexpectedly");
                 DebugScanCallFrame(exInfo._passNumber, frameIter.ControlPC, frameIter.SP);
