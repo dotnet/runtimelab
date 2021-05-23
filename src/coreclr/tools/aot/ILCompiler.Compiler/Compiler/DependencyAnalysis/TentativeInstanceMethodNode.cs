@@ -38,7 +38,7 @@ namespace ILCompiler.DependencyAnalysis
         protected override ISymbolNode GetTarget(NodeFactory factory)
         {
             // If the class library doesn't provide this helper, the optimization is disabled.
-            MethodDesc helper = factory.TypeSystemContext.GetOptionalHelperEntryPoint("ThrowHelpers", "ThrowInstanceBodyRemoved");
+            MethodDesc helper = factory.InstanceMethodRemovedHelper;
             return helper == null ? RealBody: factory.MethodEntrypoint(helper);
         }
 
