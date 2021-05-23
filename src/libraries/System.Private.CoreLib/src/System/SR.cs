@@ -16,6 +16,7 @@ namespace System
         private static List<string>? _currentlyLoading;
         private static int _infinitelyRecursingCount;
         private static bool _resourceManagerInited;
+        private static bool _resourceManagerInitFailed;
 
         private static string InternalGetResourceString(string key)
         {
@@ -49,6 +50,11 @@ namespace System
             {
                 Monitor.Enter(_lock, ref lockTaken);
 
+                if (_resourceManagerInitFailed)
+                {  //test to see if this is the reason linux_musl test is failing
+                    return key;
+                }
+
                 // Are we recursively looking up the same resource?  Note - our backout code will set
                 // the ResourceHelper's currentlyLoading stack to null if an exception occurs.
                 if (_currentlyLoading != null && _currentlyLoading.Count > 0 && _currentlyLoading.LastIndexOf(key) != -1)
@@ -71,11 +77,13 @@ namespace System
                 // between the Push and Pop calls below.
                 if (!_resourceManagerInited)
                 {
+                    _resourceManagerInitFailed = true;
                     RuntimeHelpers.RunClassConstructor(typeof(ResourceManager).TypeHandle);
                     RuntimeHelpers.RunClassConstructor(typeof(ResourceReader).TypeHandle);
                     RuntimeHelpers.RunClassConstructor(typeof(RuntimeResourceSet).TypeHandle);
                     RuntimeHelpers.RunClassConstructor(typeof(BinaryReader).TypeHandle);
                     _resourceManagerInited = true;
+                    _resourceManagerInitFailed = false;
                 }
 
                 _currentlyLoading.Add(key); // Push

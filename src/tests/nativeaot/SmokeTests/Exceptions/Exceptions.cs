@@ -211,7 +211,9 @@ public class BringUpTest
 
     static bool FilterWithStackTrace(Exception e)
     {
-        Console.WriteLine("Test Stacktrace with exception on stack:\n{0}", new StackTrace(0, true));
+        var stackTrace = new StackTrace(0, true);
+        Console.WriteLine("Test Stacktrace with exception on stack:");
+        Console.WriteLine(stackTrace);
         return e.Message == "Testing filter";
     }
 
