@@ -937,6 +937,22 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
+        private MethodDesc _instanceMethodRemovedHelper;
+        public MethodDesc InstanceMethodRemovedHelper
+        {
+            get
+            {
+                if (_instanceMethodRemovedHelper == null)
+                {
+                    // This helper is optional, but it's fine for this cache to be ineffective if that happens.
+                    // Those scenarios are rare and typically deal with small compilations.
+                    _instanceMethodRemovedHelper = TypeSystemContext.GetOptionalHelperEntryPoint("ThrowHelpers", "ThrowInstanceBodyRemoved");
+                }
+
+                return _instanceMethodRemovedHelper;
+            }
+        }
+
         private NodeCache<MethodDesc, VirtualMethodUseNode> _virtMethods;
 
         public DependencyNodeCore<NodeFactory> VirtualMethodUse(MethodDesc decl)
