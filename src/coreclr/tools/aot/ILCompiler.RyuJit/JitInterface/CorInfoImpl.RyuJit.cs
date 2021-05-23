@@ -1591,7 +1591,9 @@ namespace Internal.JitInterface
         private bool convertPInvokeCalliToCall(ref CORINFO_RESOLVED_TOKEN pResolvedToken, bool mustConvert)
         {
             var methodIL = (MethodIL)HandleToObject((IntPtr)pResolvedToken.tokenScope);
-            if (methodIL.OwningMethod.IsPInvoke)
+
+            // Suppress recursive expansion of calli in marshaling stubs
+            if (methodIL is Internal.IL.Stubs.PInvokeILStubMethodIL)
                 return false;
 
             MethodSignature signature = (MethodSignature)methodIL.GetObject((int)pResolvedToken.token);

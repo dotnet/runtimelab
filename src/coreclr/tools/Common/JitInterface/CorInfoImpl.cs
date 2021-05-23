@@ -653,7 +653,7 @@ namespace Internal.JitInterface
 
             bool found = false;
             bool memberFunctionVariant = false;
-            foreach (DefType defType in CallConvHelper.EnumerateCallConvsFromAttribute(attributeWithCallConvsArray))
+            foreach (DefType defType in attributeWithCallConvsArray.EnumerateCallConvsFromAttribute())
             {
                 if (defType.Name == "CallConvMemberFunction")
                 {
