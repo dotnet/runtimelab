@@ -1845,7 +1845,7 @@ COOP_PINVOKE_HELPER(Boolean, RhpSfiNext, (StackFrameIterator* pThis, uint32_t* p
     if (isValid)
         pThis->CalculateCurrentMethodState();
 
-    if (puExCollideClauseIdx)
+    if (puExCollideClauseIdx != NULL)
     {
         if (pThis->m_dwFlags & StackFrameIterator::ExCollide)
         {
@@ -1859,7 +1859,7 @@ COOP_PINVOKE_HELPER(Boolean, RhpSfiNext, (StackFrameIterator* pThis, uint32_t* p
         }
     }
 
-    if (pfUnwoundReversePInvoke)
+    if (pfUnwoundReversePInvoke != NULL)
     {
         *pfUnwoundReversePInvoke = (pThis->m_dwFlags & StackFrameIterator::UnwoundReversePInvoke)
                                         ? Boolean_true
