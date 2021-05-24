@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -257,7 +258,7 @@ namespace System.Runtime.InteropServices
             }
 
             mow->Target = RuntimeImports.RhHandleAlloc(instance, GCHandleType.Normal);
-            mow->RefCount = 0;
+            mow->RefCount = 1;
             mow->UserDefinedCount = userDefinedCount;
             mow->UserDefined = userDefined;
             mow->Flags = flags;
@@ -504,9 +505,11 @@ namespace System.Runtime.InteropServices
             IntPtr comObjectInterface;
             ManagedObjectWrapper* wrapper = ComInterfaceDispatch.ToManagedObjectWrapper((ComInterfaceDispatch*)unknownPtr);
             int resultCode = wrapper->QueryInterface(in targetIID, out comObjectInterface);
+            // We no longer need IUnknownPtr, release reference
+            Marshal.Release(unknownPtr);
             if (resultCode != 0)
             {
-                throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+                throw new InvalidCastException();
             }
 
             return comObjectInterface;
