@@ -201,12 +201,12 @@ namespace ILCompiler.DependencyAnalysis
                 {
                     if (currentType == _type || (currentType is MetadataType mdType && mdType.IsAbstract))
                     {
-                        foreach (var method in currentType.GetAllMethods())
+                        foreach (var method in currentType.GetAllVirtualMethods())
                         {
                             // Abstract methods don't have a body associated with it so there's no conditional
                             // dependency to add.
                             // Generic virtual methods are tracked by an orthogonal mechanism.
-                            if (method.IsVirtual && !method.IsAbstract && !method.HasInstantiation)
+                            if (!method.IsAbstract && !method.HasInstantiation)
                                 return true;
                         }
                     }
@@ -308,11 +308,8 @@ namespace ILCompiler.DependencyAnalysis
 
                     bool isVariantInterfaceImpl = VariantInterfaceMethodUseNode.IsVariantInterfaceImplementation(factory, _type, interfaceType);
 
-                    foreach (MethodDesc interfaceMethod in interfaceType.GetAllMethods())
+                    foreach (MethodDesc interfaceMethod in interfaceType.GetAllVirtualMethods())
                     {
-                        if (interfaceMethod.Signature.IsStatic || !interfaceMethod.IsVirtual)
-                            continue;
-
                         // Generic virtual methods are tracked by an orthogonal mechanism.
                         if (interfaceMethod.HasInstantiation)
                             continue;
@@ -1100,9 +1097,9 @@ namespace ILCompiler.DependencyAnalysis
         {
             if (factory.TypeSystemContext.SupportsUniversalCanon)
             {
-                foreach (MethodDesc method in type.GetMethods())
+                foreach (MethodDesc method in type.GetVirtualMethods())
                 {
-                    if (!method.IsVirtual || !method.HasInstantiation)
+                    if (!method.HasInstantiation)
                         continue;
 
                     if (method.IsAbstract)

@@ -3,6 +3,7 @@
 
 using System.Diagnostics;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 using Internal.TypeSystem;
 using Internal.IL;
@@ -107,23 +108,34 @@ namespace ILCompiler
 
         protected override IEnumerable<MethodDesc> GetAllMethods(TypeDesc type)
         {
+            return GetAllMethods(type, virtualOnly: false);
+        }
+
+        protected override IEnumerable<MethodDesc> GetAllVirtualMethods(TypeDesc type)
+        {
+            return GetAllMethods(type, virtualOnly: true);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private IEnumerable<MethodDesc> GetAllMethods(TypeDesc type, bool virtualOnly)
+        {
             if (type.IsDelegate)
             {
-                return GetAllMethodsForDelegate(type);
+                return GetAllMethodsForDelegate(type, virtualOnly);
             }
             else if (type.IsEnum)
             {
-                return GetAllMethodsForEnum(type);
+                return GetAllMethodsForEnum(type, virtualOnly);
             }
             else if (type.IsValueType)
             {
-                return GetAllMethodsForValueType(type);
+                return GetAllMethodsForValueType(type, virtualOnly);
             }
 
-            return type.GetMethods();
+            return virtualOnly ? type.GetVirtualMethods() : type.GetMethods();
         }
 
-        protected virtual IEnumerable<MethodDesc> GetAllMethodsForDelegate(TypeDesc type)
+        protected virtual IEnumerable<MethodDesc> GetAllMethodsForDelegate(TypeDesc type, bool virtualOnly)
         {
             // Inject the synthetic methods that support the implementation of the delegate.
             InstantiatedType instantiatedType = type as InstantiatedType;
@@ -131,17 +143,24 @@ namespace ILCompiler
             {
                 DelegateInfo info = GetDelegateInfo(type.GetTypeDefinition());
                 foreach (MethodDesc syntheticMethod in info.Methods)
-                    yield return GetMethodForInstantiatedType(syntheticMethod, instantiatedType);
+                {
+                    if (!virtualOnly || syntheticMethod.IsVirtual)
+                        yield return GetMethodForInstantiatedType(syntheticMethod, instantiatedType);
+                }
             }
             else
             {
                 DelegateInfo info = GetDelegateInfo(type);
                 foreach (MethodDesc syntheticMethod in info.Methods)
-                    yield return syntheticMethod;
+                {
+                    if (!virtualOnly || syntheticMethod.IsVirtual)
+                        yield return syntheticMethod;
+                }
             }
 
             // Append all the methods defined in metadata
-            foreach (var m in type.GetMethods())
+            IEnumerable<MethodDesc> metadataMethods = virtualOnly ? type.GetVirtualMethods() : type.GetMethods();
+            foreach (var m in metadataMethods)
                 yield return m;
         }
 
