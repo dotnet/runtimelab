@@ -752,21 +752,16 @@ namespace Internal.Runtime.Augments
             return new RuntimeTypeHandle(theT);
         }
 
-        //
-        // Useful helper for finding .pdb's. (This design is admittedly tied to the single-module design of Project N.)
-        //
-        public static unsafe string TryGetFullPathToMainApplication()
-        {
-            delegate* <string> functionAnywhereInsideMergedApp = &TryGetFullPathToMainApplication;
-            return TryGetFullPathToApplicationModule((IntPtr)functionAnywhereInsideMergedApp);
-        }
-
         /// <summary>
         /// Locate the file path for a given native application module.
         /// </summary>
         /// <param name="ip">Address inside the module</param>
-        public static unsafe string TryGetFullPathToApplicationModule(IntPtr ip)
+        /// <param name="moduleBase">Module base address</param>
+        public static unsafe string TryGetFullPathToApplicationModule(IntPtr ip, out IntPtr moduleBase)
         {
+            moduleBase = RuntimeImports.RhGetOSModuleFromPointer(ip);
+            if (moduleBase == IntPtr.Zero)
+                return null;
 #if TARGET_UNIX
             // RhGetModuleFileName on Unix calls dladdr that accepts any ip. Avoid the redundant lookup
             // and pass the ip into RhGetModuleFileName directly. Also, older versions of Musl have a bug
@@ -775,26 +770,12 @@ namespace Internal.Runtime.Augments
             int numUtf8Chars = RuntimeImports.RhGetModuleFileName(ip, out pModuleNameUtf8);
             string modulePath = System.Text.Encoding.UTF8.GetString(pModuleNameUtf8, numUtf8Chars);
 #else // TARGET_UNIX
-            IntPtr moduleBase = RuntimeImports.RhGetOSModuleFromPointer(ip);
             char* pModuleName;
             int numChars = RuntimeImports.RhGetModuleFileName(moduleBase, out pModuleName);
             string modulePath = new string(pModuleName, 0, numChars);
 #endif // TARGET_UNIX
             return modulePath;
         }
-
-        //
-        // Useful helper for getting RVA's to pass to DiaSymReader.
-        //
-        public static int ConvertIpToRva(IntPtr ip)
-        {
-            unsafe
-            {
-                IntPtr moduleBase = RuntimeImports.RhGetOSModuleFromPointer(ip);
-                return (int)(ip.ToInt64() - moduleBase.ToInt64());
-            }
-        }
-
 
         public static IntPtr GetRuntimeTypeHandleRawValue(RuntimeTypeHandle runtimeTypeHandle)
         {
@@ -1068,11 +1049,6 @@ namespace Internal.Runtime.Augments
 
                 RuntimeImports.RhDisableConservativeReportingRegion(pRegionDesc);
             }
-        }
-
-        public static bool FileExists(string path)
-        {
-            return Internal.IO.File.Exists(path);
         }
 
         public static string GetLastResortString(RuntimeTypeHandle typeHandle)

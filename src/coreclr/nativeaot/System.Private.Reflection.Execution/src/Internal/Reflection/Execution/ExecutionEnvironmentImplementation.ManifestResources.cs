@@ -63,13 +63,6 @@ namespace Internal.Reflection.Execution
                 }
             }
 
-            // Fall back to checking in the app directory in case it was a linked resource
-#if ENABLE_WINRT
-            Stream resultFromFile = ReadFileFromAppDirectory(name);
-            if (resultFromFile != null)
-                return resultFromFile;
-#endif // ENABLE_WINRT
-
             return null;
         }
 
@@ -145,26 +138,6 @@ namespace Internal.Reflection.Execution
                 }
                 return s_extractedResourceDictionary;
             }
-        }
-
-        /// <summary>
-        /// Reads linked resources from the app directory
-        /// </summary>
-        private Stream ReadFileFromAppDirectory(string name)
-        {
-#if ENABLE_WINRT
-            if (WinRTInterop.Callbacks.IsAppxModel())
-                return (Stream)WinRTInterop.Callbacks.ReadFileIntoStream(name);
-#endif // ENABLE_WINRT
-
-            string pathToRunningExe = RuntimeAugments.TryGetFullPathToMainApplication();
-            string directoryContainingRunningExe = Path.GetDirectoryName(pathToRunningExe);
-            string fullName = Path.Combine(directoryContainingRunningExe, name);
-
-            if (RuntimeAugments.FileExists(fullName))
-                return new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read);
-            else
-                return null;
         }
 
         /// <summary>
