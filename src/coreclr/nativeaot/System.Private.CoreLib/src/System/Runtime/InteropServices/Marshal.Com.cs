@@ -82,7 +82,7 @@ namespace System.Runtime.InteropServices
                 throw new ArgumentNullException(nameof(T));
             }
 
-            return ComWrappers.ComInterfaceForObject(o, new Guid(T.GetCustomAttribute<GuidAttribute>().Value));
+            return ComWrappers.ComInterfaceForObject(o, T.GUID);
         }
 
         [SupportedOSPlatform("windows")]
