@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Runtime;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 using Internal.DeveloperExperience;
@@ -71,6 +72,7 @@ namespace System.Diagnostics
         /// <summary>
         /// Internal stack frame initialization based on frame index within the stack of the current thread.
         /// </summary>
+        [MethodImplAttribute(MethodImplOptions.NoInlining)]
         private void BuildStackFrame(int frameIndex, bool needFileInfo)
         {
             IntPtr ipAddress = LocateIpAddressForStackFrame(frameIndex);
@@ -80,13 +82,19 @@ namespace System.Diagnostics
         /// <summary>
         /// Locate IP address corresponding to a given frame. Ignore .NET Native-specific rethrow markers.
         /// </summary>
+        [MethodImplAttribute(MethodImplOptions.NoInlining)]
         private IntPtr LocateIpAddressForStackFrame(int frameIndex)
         {
-            IntPtr[] frameArray = new IntPtr[frameIndex + 6];
+            const int SystemDiagnosticsStackDepth = 3;
+
+            frameIndex += SystemDiagnosticsStackDepth;
+            IntPtr[] frameArray = new IntPtr[frameIndex + 2];
             int returnedFrameCount = RuntimeImports.RhGetCurrentThreadStackTrace(frameArray);
             int realFrameCount = (returnedFrameCount >= 0 ? returnedFrameCount : frameArray.Length);
-
-            frameIndex += StackTrace.CalculateFramesToSkip(frameArray, realFrameCount);
+            if (realFrameCount > 0 && StackTrace.IsRhGetCurrentThreadStackTraceFrame(frameArray[0]))
+            {
+                frameIndex++;
+            }
             if (frameIndex < realFrameCount)
             {
                 return frameArray[frameIndex];

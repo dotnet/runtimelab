@@ -212,8 +212,8 @@ public class BringUpTest
     static bool FilterWithStackTrace(Exception e)
     {
         var stackTrace = new StackTrace(0, true);
-        Console.WriteLine($"Test Stacktrace with exception on stack: {stackTrace.FrameCount}");
-
+        Console.WriteLine("Test Stacktrace with exception on stack:");
+        Console.WriteLine(stackTrace);
         return e.Message == "Testing filter";
     }
 
