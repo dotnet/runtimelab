@@ -87,13 +87,9 @@ namespace System.Diagnostics
             const int SystemDiagnosticsStackDepth = 3;
 
             frameIndex += SystemDiagnosticsStackDepth;
-            IntPtr[] frameArray = new IntPtr[frameIndex + 2];
+            IntPtr[] frameArray = new IntPtr[frameIndex + 1];
             int returnedFrameCount = RuntimeImports.RhGetCurrentThreadStackTrace(frameArray);
             int realFrameCount = (returnedFrameCount >= 0 ? returnedFrameCount : frameArray.Length);
-            if (realFrameCount > 0 && StackTrace.IsRhGetCurrentThreadStackTraceFrame(frameArray[0]))
-            {
-                frameIndex++;
-            }
             if (frameIndex < realFrameCount)
             {
                 return frameArray[frameIndex];

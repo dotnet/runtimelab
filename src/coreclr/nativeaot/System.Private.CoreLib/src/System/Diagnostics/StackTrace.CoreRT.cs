@@ -5,8 +5,6 @@ using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Text;
 
-using Internal.DeveloperExperience;
-
 namespace System.Diagnostics
 {
     public partial class StackTrace
@@ -37,21 +35,9 @@ namespace System.Diagnostics
             IntPtr[] stackTrace = new IntPtr[frameCount];
             int trueFrameCount = RuntimeImports.RhGetCurrentThreadStackTrace(stackTrace);
             Debug.Assert(trueFrameCount == frameCount);
-            if (trueFrameCount > 0 && IsRhGetCurrentThreadStackTraceFrame(stackTrace[0]))
-            {
-                skipFrames++;
-            }
             InitializeForIpAddressArray(stackTrace, skipFrames + SystemDiagnosticsStackDepth, frameCount, needFileInfo);
         }
 #endif
-
-        /// <summary>
-        /// Checks if ipAddress is for RhGetCurrentThreadStackTrace frame
-        /// </summary>
-        internal static bool IsRhGetCurrentThreadStackTraceFrame(IntPtr ipAddress)
-        {
-            return DeveloperExperience.Default.CreateStackTraceString(ipAddress, false).StartsWith("System.Runtime.RuntimeExports.RhGetCurrentThreadStackTrace(IntPtr[])", StringComparison.Ordinal);
-        }
 
         /// <summary>
         /// Initialize the stack trace based on a given exception and initial frame index.
