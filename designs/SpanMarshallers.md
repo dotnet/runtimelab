@@ -165,7 +165,7 @@ private static partial void Bar([MarshalUsing(typeof(ListAsArrayMarshaller<List<
 
 Multiple `MarshalUsing` attributes can only be supplied on the same parameter or return value if the `ElementIndirectionLevel` property is set to distinct values. One `MarshalUsing` attribute per parameter or return value can leave the `ElementIndirectionLevel` property unset. This attribute controls the marshalling of the collection object passed in as the parameter. The sequence of managed types for `ElementIndirectionLevel` is based on the elements of the `ManagedValues` span on the collection marshaller of the previous indirection level. For example, for the marshalling info for `ElementIndirectionLevel = 1` above, the managed type is the type of the following C# expression: `ListAsArrayMarshaller<List<Foo>>.ManagedValues[0]`.
 
-Alternatively, the `MarshalUsingAttribute` could provide a `Type ElementNativeType { get; set; }` property instead of an `ElementIndrectionLevel` property and support specifying the native type of the element of the collection this way. However, this design would block support for marshalling collections of collections.
+Alternatively, the `MarshalUsingAttribute` could provide a `Type ElementNativeType { get; set; }` property instead of an `ElementIndirectionLevel` property and support specifying the native type of the element of the collection this way. However, this design would block support for marshalling collections of collections.
 
 #### Example: Using generic collection marshalling for spans
 
