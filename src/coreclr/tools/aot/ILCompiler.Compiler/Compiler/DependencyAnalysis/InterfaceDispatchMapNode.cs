@@ -97,14 +97,13 @@ namespace ILCompiler.DependencyAnalysis
                 if (vtableSlice.HasFixedSlots)
                     slots = vtableSlice.Slots;
                 else
-                    slots = interfaceType.GetAllMethods();
+                    slots = interfaceType.GetAllVirtualMethods();
 
                 foreach (MethodDesc slotMethod in slots)
                 {
                     MethodDesc declMethod = slotMethod;
 
-                    if (declMethod.Signature.IsStatic || !declMethod.IsVirtual)
-                        continue;
+                    Debug.Assert(!declMethod.Signature.IsStatic && declMethod.IsVirtual);
 
                     if (interfaceOnDefinitionType != null)
                         declMethod = factory.TypeSystemContext.GetMethodForInstantiatedType(declMethod.GetTypicalMethodDefinition(), interfaceOnDefinitionType);

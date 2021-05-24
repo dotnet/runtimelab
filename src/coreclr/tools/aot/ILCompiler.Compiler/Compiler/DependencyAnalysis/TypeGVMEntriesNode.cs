@@ -94,9 +94,11 @@ namespace ILCompiler.DependencyAnalysis
             //
             foreach (var iface in type.RuntimeInterfaces)
             {
-                foreach (var method in iface.GetMethods())
+                foreach (var method in iface.GetVirtualMethods())
                 {
-                    if (!method.HasInstantiation || method.Signature.IsStatic)
+                    Debug.Assert(!method.Signature.IsStatic);
+
+                    if (!method.HasInstantiation)
                         continue;
 
                     MethodDesc slotDecl = type.ResolveInterfaceMethodTarget(method);
@@ -127,9 +129,11 @@ namespace ILCompiler.DependencyAnalysis
         {
             foreach (var iface in _associatedType.RuntimeInterfaces)
             {
-                foreach (var method in iface.GetMethods())
+                foreach (var method in iface.GetVirtualMethods())
                 {
-                    if (!method.HasInstantiation || method.Signature.IsStatic)
+                    Debug.Assert(!method.Signature.IsStatic);
+
+                    if (!method.HasInstantiation)
                         continue;
 
                     MethodDesc slotDecl = _associatedType.ResolveInterfaceMethodTarget(method);
