@@ -29,7 +29,7 @@ namespace Internal.IL.Stubs
 
         private PInvokeILEmitter(MethodDesc targetMethod, PInvokeILEmitterConfiguration pinvokeILEmitterConfiguration, InteropStateManager interopStateManager)
         {
-            Debug.Assert(targetMethod.IsPInvoke || targetMethod is DelegateMarshallingMethodThunk);
+            Debug.Assert(targetMethod.IsPInvoke || targetMethod is DelegateMarshallingMethodThunk || targetMethod is CalliMarshallingMethodThunk);
             _targetMethod = targetMethod;
             _pInvokeILEmitterConfiguration = pinvokeILEmitterConfiguration;
             _pInvokeMetadata = targetMethod.GetPInvokeMethodMetadata();
@@ -46,7 +46,6 @@ namespace Internal.IL.Stubs
             }
             else
             {
-                Debug.Assert(_targetMethod.IsPInvoke);
                 _flags = _pInvokeMetadata.Flags;
             }
             _marshallers = InitializeMarshallers(targetMethod, interopStateManager, _flags);
@@ -416,7 +415,7 @@ namespace Internal.IL.Stubs
 
         private bool IsStubRequired()
         {
-            Debug.Assert(_targetMethod.IsPInvoke || _targetMethod is DelegateMarshallingMethodThunk);
+            Debug.Assert(_targetMethod.IsPInvoke || _targetMethod is DelegateMarshallingMethodThunk || _targetMethod is CalliMarshallingMethodThunk);
 
             if (_targetMethod is DelegateMarshallingMethodThunk)
             {

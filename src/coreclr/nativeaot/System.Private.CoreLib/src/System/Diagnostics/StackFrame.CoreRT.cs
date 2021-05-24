@@ -8,7 +8,6 @@ using System.Runtime;
 using System.Text;
 
 using Internal.DeveloperExperience;
-using Internal.Diagnostics;
 
 namespace System.Diagnostics
 {
@@ -47,7 +46,7 @@ namespace System.Diagnostics
             _ipAddress = ipAddress;
             _needFileInfo = needFileInfo;
 
-            if (_ipAddress == StackTraceHelper.SpecialIP.EdiSeparator)
+            if (_ipAddress == Exception.EdiSeparator)
             {
                 _isLastFrameFromForeignExceptionStackTrace = true;
             }
@@ -136,7 +135,7 @@ namespace System.Diagnostics
         /// </summary>
         internal void AppendToStackTrace(StringBuilder builder)
         {
-            if (_ipAddress != StackTraceHelper.SpecialIP.EdiSeparator)
+            if (_ipAddress != Exception.EdiSeparator)
             {
                 // Passing a default string for "at" in case SR.UsingResourceKeys() is true
                 // as this is a special case and we don't want to have "Word_At" on stack traces.
