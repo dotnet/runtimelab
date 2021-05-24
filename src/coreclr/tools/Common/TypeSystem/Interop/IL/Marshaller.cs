@@ -1414,11 +1414,9 @@ namespace Internal.TypeSystem.Interop
     class BooleanMarshaller : Marshaller
     {
         private int _trueValue;
-        private int _falseValue;
-        public BooleanMarshaller(int trueValue = 1, int falseValue = 0)
+        public BooleanMarshaller(int trueValue = 1)
         {
             _trueValue = trueValue;
-            _falseValue = falseValue;
         }
 
         protected override void AllocAndTransformManagedToNative(ILCodeStream codeStream)
@@ -1428,7 +1426,7 @@ namespace Internal.TypeSystem.Interop
             ILCodeLabel pDoneLabel = emitter.NewCodeLabel();
 
             LoadManagedValue(codeStream);
-            if (_trueValue == 1 && _falseValue == 0)
+            if (_trueValue == 1)
             {
                 codeStream.EmitLdc(0);
                 codeStream.Emit(ILOpcode.ceq);
@@ -1442,7 +1440,7 @@ namespace Internal.TypeSystem.Interop
                 codeStream.Emit(ILOpcode.br, pDoneLabel);
 
                 codeStream.EmitLabel(pLoadFalseLabel);
-                codeStream.EmitLdc(_falseValue);
+                codeStream.EmitLdc(0);
 
                 codeStream.EmitLabel(pDoneLabel);
             }

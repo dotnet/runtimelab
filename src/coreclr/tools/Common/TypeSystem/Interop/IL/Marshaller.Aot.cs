@@ -37,7 +37,7 @@ namespace Internal.TypeSystem.Interop
                 case MarshallerKind.CBool:
                     return new BooleanMarshaller();
                 case MarshallerKind.VariantBool:
-                    return new BooleanMarshaller((short)-1, 0);
+                    return new BooleanMarshaller((short)-1);
                 case MarshallerKind.AnsiString:
                     return new AnsiStringMarshaller();
                 case MarshallerKind.UTF8String:
