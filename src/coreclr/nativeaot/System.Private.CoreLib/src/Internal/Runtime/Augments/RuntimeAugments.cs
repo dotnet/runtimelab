@@ -755,25 +755,27 @@ namespace Internal.Runtime.Augments
         //
         // Useful helper for finding .pdb's. (This design is admittedly tied to the single-module design of Project N.)
         //
-        public static string TryGetFullPathToMainApplication()
+        public static unsafe string TryGetFullPathToMainApplication()
         {
-            Func<string> delegateToAnythingInsideMergedApp = TryGetFullPathToMainApplication;
-            IntPtr ipToAnywhereInsideMergedApp = delegateToAnythingInsideMergedApp.GetFunctionPointer(out RuntimeTypeHandle _, out bool _, out bool _);
-            IntPtr moduleBase = RuntimeImports.RhGetOSModuleFromPointer(ipToAnywhereInsideMergedApp);
-            return TryGetFullPathToApplicationModule(moduleBase);
+            delegate* <string> functionAnywhereInsideMergedApp = &TryGetFullPathToMainApplication;
+            return TryGetFullPathToApplicationModule((IntPtr)functionAnywhereInsideMergedApp);
         }
 
         /// <summary>
         /// Locate the file path for a given native application module.
         /// </summary>
-        /// <param name="moduleBase">Module base address</param>
-        public static unsafe string TryGetFullPathToApplicationModule(IntPtr moduleBase)
+        /// <param name="ip">Address inside the module</param>
+        public static unsafe string TryGetFullPathToApplicationModule(IntPtr ip)
         {
 #if TARGET_UNIX
+            // RhGetModuleFileName on Unix calls dladdr that accepts any ip. Avoid the redundant lookup
+            // and pass the ip into RhGetModuleFileName directly. Also, older versions of Musl have a bug
+            // that leads to crash with the redundant lookup.
             byte* pModuleNameUtf8;
-            int numUtf8Chars = RuntimeImports.RhGetModuleFileName(moduleBase, out pModuleNameUtf8);
+            int numUtf8Chars = RuntimeImports.RhGetModuleFileName(ip, out pModuleNameUtf8);
             string modulePath = System.Text.Encoding.UTF8.GetString(pModuleNameUtf8, numUtf8Chars);
 #else // TARGET_UNIX
+            IntPtr moduleBase = RuntimeImports.RhGetOSModuleFromPointer(ip);
             char* pModuleName;
             int numChars = RuntimeImports.RhGetModuleFileName(moduleBase, out pModuleName);
             string modulePath = new string(pModuleName, 0, numChars);

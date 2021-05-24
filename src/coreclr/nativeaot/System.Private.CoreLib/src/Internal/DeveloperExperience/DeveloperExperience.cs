@@ -73,8 +73,7 @@ namespace Internal.DeveloperExperience
             }
 
             // If we don't have precise information, try to map it at least back to the right module.
-            IntPtr moduleBase = RuntimeImports.RhGetOSModuleFromPointer(ip);
-            string moduleFullFileName = RuntimeAugments.TryGetFullPathToApplicationModule(moduleBase);
+            string moduleFullFileName = RuntimeAugments.TryGetFullPathToApplicationModule(ip);
 
             // Without any callbacks or the ability to map ip correctly we better admit that we don't know
             if (string.IsNullOrEmpty(moduleFullFileName))
