@@ -9,8 +9,6 @@ using System.Runtime.InteropServices;
 
 using MethodBase = System.Reflection.MethodBase;
 
-using Internal.Diagnostics;
-
 namespace System
 {
     public partial class Exception
@@ -28,7 +26,6 @@ namespace System
 
         private IDictionary CreateDataContainer() => new ListDictionaryInternal();
 
-        private string SerializationStackTraceString => StackTrace;
         private string SerializationWatsonBuckets => null;
 
         private string CreateSourceName() => HasBeenThrown ? "<unknown>" : null;
@@ -47,29 +44,6 @@ namespace System
         // To maintain compatibility across runtimes, if this object was deserialized, it will store its stack trace as a string
         private string? _stackTraceString;
         private string? _remoteStackTraceString;
-
-        // Returns the stack trace as a string.  If no stack trace is
-        // available, null is returned.
-        public virtual string? StackTrace
-        {
-            get
-            {
-                string? stackTraceString = _stackTraceString;
-                string? remoteStackTraceString = _remoteStackTraceString;
-
-                // if no stack trace, try to get one
-                if (stackTraceString != null)
-                {
-                    return remoteStackTraceString + stackTraceString;
-                }
-                if (!HasBeenThrown)
-                {
-                    return remoteStackTraceString;
-                }
-
-                return remoteStackTraceString + StackTraceHelper.FormatStackTrace(GetStackIPs(), true);
-            }
-        }
 
         internal IntPtr[] GetStackIPs()
         {
@@ -90,6 +64,8 @@ namespace System
         // most nested call to least.) May also include a few "special" IP's from the SpecialIP class:
         private IntPtr[] _corDbgStackTrace;
         private int _idxFirstFreeStackTraceEntry;
+
+        internal static IntPtr EdiSeparator => (IntPtr)1;  // Marks a boundary where an ExceptionDispatchInfo rethrew an exception.
 
         private void AppendStackIP(IntPtr IP, bool isFirstRethrowFrame)
         {
@@ -122,13 +98,7 @@ namespace System
             _corDbgStackTrace = newArray;
         }
 
-        private bool HasBeenThrown
-        {
-            get
-            {
-                return _idxFirstFreeStackTraceEntry != 0;
-            }
-        }
+        private bool HasBeenThrown => _idxFirstFreeStackTraceEntry != 0;
 
         private enum RhEHFrameType
         {
@@ -157,7 +127,7 @@ namespace System
                 // 1. Don't clear if we're rethrowing with `throw;`.
                 // 2. Don't clear if we're throwing through ExceptionDispatchInfo.
                 //    This is done through invoking RestoreDispatchState which sets the last frame to EdiSeparator followed by throwing normally using `throw ex;`.
-                if (!isFirstRethrowFrame && isFirstFrame && ex._idxFirstFreeStackTraceEntry > 0 && ex._corDbgStackTrace[ex._idxFirstFreeStackTraceEntry - 1] != StackTraceHelper.SpecialIP.EdiSeparator)
+                if (!isFirstRethrowFrame && isFirstFrame && ex._idxFirstFreeStackTraceEntry > 0 && ex._corDbgStackTrace[ex._idxFirstFreeStackTraceEntry - 1] != EdiSeparator)
                     ex._idxFirstFreeStackTraceEntry = 0;
 
                 // If out of memory, avoid any calls that may allocate.  Otherwise, they may fail
@@ -217,7 +187,7 @@ namespace System
                 stackTrace = newStackTrace;
                 while (stackTrace[idxFirstFreeStackTraceEntry] != (IntPtr)0)
                     idxFirstFreeStackTraceEntry++;
-                stackTrace[idxFirstFreeStackTraceEntry++] = StackTraceHelper.SpecialIP.EdiSeparator;
+                stackTrace[idxFirstFreeStackTraceEntry++] = EdiSeparator;
             }
 
             // Since EDI can be created at various points during exception dispatch (e.g. at various frames on the stack) for the same exception instance,

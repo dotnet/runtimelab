@@ -6,7 +6,6 @@ using System.Runtime.CompilerServices;
 using System.Text;
 
 using Internal.DeveloperExperience;
-using Internal.Diagnostics;
 
 namespace System.Diagnostics
 {
@@ -75,7 +74,7 @@ namespace System.Diagnostics
             int outputFrameCount = 0;
             for (int frameIndex = 0; frameIndex < frameCount; frameIndex++)
             {
-                if (ipAddresses[frameIndex + skipFrames] != StackTraceHelper.SpecialIP.EdiSeparator)
+                if (ipAddresses[frameIndex + skipFrames] != Exception.EdiSeparator)
                 {
                     outputFrameCount++;
                 }
@@ -88,7 +87,7 @@ namespace System.Diagnostics
                 for (int frameIndex = 0; frameIndex < frameCount; frameIndex++)
                 {
                     IntPtr ipAddress = ipAddresses[frameIndex + skipFrames];
-                    if (ipAddress != StackTraceHelper.SpecialIP.EdiSeparator)
+                    if (ipAddress != Exception.EdiSeparator)
                     {
                         _stackFrames[outputFrameIndex++] = new StackFrame(ipAddress, needFileInfo);
                     }
