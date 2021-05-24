@@ -40,16 +40,19 @@ namespace System
             return handle._ptr == _ptr;
         }
 
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public RuntimeFieldHandle GetRuntimeFieldHandleFromMetadataToken(int fieldToken)
         {
             throw new PlatformNotSupportedException();
         }
 
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public RuntimeMethodHandle GetRuntimeMethodHandleFromMetadataToken(int methodToken)
         {
             throw new PlatformNotSupportedException();
         }
 
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public RuntimeTypeHandle GetRuntimeTypeHandleFromMetadataToken(int typeToken)
         {
             throw new PlatformNotSupportedException();
@@ -73,31 +76,37 @@ namespace System
             return !left.Equals(right);
         }
 
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public RuntimeFieldHandle ResolveFieldHandle(int fieldToken)
         {
             throw new PlatformNotSupportedException();
         }
 
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public RuntimeFieldHandle ResolveFieldHandle(int fieldToken, RuntimeTypeHandle[] typeInstantiationContext, RuntimeTypeHandle[] methodInstantiationContext)
         {
             throw new PlatformNotSupportedException();
         }
 
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public RuntimeMethodHandle ResolveMethodHandle(int methodToken)
         {
             throw new PlatformNotSupportedException();
         }
 
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public RuntimeMethodHandle ResolveMethodHandle(int methodToken, RuntimeTypeHandle[] typeInstantiationContext, RuntimeTypeHandle[] methodInstantiationContext)
         {
             throw new PlatformNotSupportedException();
         }
 
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public RuntimeTypeHandle ResolveTypeHandle(int typeToken)
         {
             throw new PlatformNotSupportedException();
         }
 
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public RuntimeTypeHandle ResolveTypeHandle(int typeToken, RuntimeTypeHandle[] typeInstantiationContext, RuntimeTypeHandle[] methodInstantiationContext)
         {
             throw new PlatformNotSupportedException();
