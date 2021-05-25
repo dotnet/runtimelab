@@ -105,7 +105,7 @@ namespace Internal.TypeSystem.Interop
             }
             Debug.Assert(marshalAs != null && marshalAs.SizeConst.HasValue);
 
-            // if SizeConst is not specified, we will default to 1. 
+            // if SizeConst is not specified, we will default to 1.
             // the marshaller will throw appropriate exception
             uint size = 1;
             if (marshalAs.SizeConst.HasValue)
@@ -130,26 +130,6 @@ namespace Internal.TypeSystem.Interop
 
             ILCodeStream codeStream = emitter.NewCodeStream();
             codeStream.Emit(ILOpcode.ldstr, emitter.NewToken(message));
-            codeStream.Emit(ILOpcode.newobj, emitter.NewToken(exceptionCtor));
-            codeStream.Emit(ILOpcode.throw_);
-
-            return new PInvokeILStubMethodIL((ILStubMethodIL)emitter.Link(method), isStubRequired: true);
-        }
-
-        public static MethodIL EmitExceptionBody(Exception exception, MethodDesc method)
-        {
-            ILEmitter emitter = new ILEmitter();
-
-            TypeSystemContext context = method.Context;
-            MethodSignature ctorSignature = new MethodSignature(0, 0, context.GetWellKnownType(WellKnownType.Void),
-                new TypeDesc[] { context.GetWellKnownType(WellKnownType.String) });
-            Type exceptionType = exception.GetType();
-            MethodDesc exceptionCtor = method.Context.SystemModule
-                .GetKnownType(exceptionType.Namespace, exceptionType.Name)
-                .GetKnownMethod(".ctor", ctorSignature);
-
-            ILCodeStream codeStream = emitter.NewCodeStream();
-            codeStream.Emit(ILOpcode.ldstr, emitter.NewToken(exception.Message));
             codeStream.Emit(ILOpcode.newobj, emitter.NewToken(exceptionCtor));
             codeStream.Emit(ILOpcode.throw_);
 
