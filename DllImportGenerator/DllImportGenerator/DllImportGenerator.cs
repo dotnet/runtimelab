@@ -351,6 +351,13 @@ namespace Microsoft.Interop
                     return false;
                 }
             }
+
+            // Filter out methods with no attributes early.
+            if (methodSyntax.AttributeLists.Count == 0)
+            {
+                return false;
+            }
+
             return true;
         }
     }
