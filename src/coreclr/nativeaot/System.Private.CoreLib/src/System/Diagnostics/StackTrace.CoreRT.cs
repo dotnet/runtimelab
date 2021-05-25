@@ -9,18 +9,6 @@ namespace System.Diagnostics
 {
     public partial class StackTrace
     {
-        /// <summary>
-        /// Construct a stack trace based on a subset of a precomputed array of IP addresses.
-        /// </summary>
-        /// <param name="ipAddresses">Array of IP addresses to use as the stack trace</param>
-        /// <param name="startIndex">Starting index in the array to use</param>
-        /// <param name="endIndex">Ending index in the array (one plus the last element)</param>
-        /// <param name="needFileInfo">True when source file / line information is requested</param>
-        internal StackTrace(IntPtr[] ipAddresses, int startIndex, int endIndex, bool needFileInfo)
-        {
-            InitializeForIpAddressArray(ipAddresses, startIndex, endIndex, needFileInfo);
-        }
-
 #if !TARGET_WASM
         /// <summary>
         /// Initialize the stack trace based on current thread and given initial frame index.

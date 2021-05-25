@@ -65,29 +65,8 @@ namespace System
 
         public static string StackTrace
         {
-            // Disable inlining to have predictable stack frame to skip
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            get
-            {
-                // RhGetCurrentThreadStackTrace returns the number of frames(cFrames) added to input buffer.
-                // It returns a negative value, -cFrames which is the required array size, if the buffer is too small.
-                // Initial array length is deliberately chosen to be 0 so that we reallocate to exactly the right size
-                // for StackFrameHelper.FormatStackTrace call. If we want to do this optimistically with one call change
-                // FormatStackTrace to accept an explicit length.
-                IntPtr[] frameIPs = Array.Empty<IntPtr>();
-                int cFrames = RuntimeImports.RhGetCurrentThreadStackTrace(frameIPs);
-                if (cFrames < 0)
-                {
-                    frameIPs = new IntPtr[-cFrames];
-                    cFrames = RuntimeImports.RhGetCurrentThreadStackTrace(frameIPs);
-                    if (cFrames < 0)
-                    {
-                        return "";
-                    }
-                }
-
-                return new StackTrace(frameIPs, 0, frameIPs.Length, true).ToString(System.Diagnostics.StackTrace.TraceFormat.Normal);
-            }
+            [MethodImpl(MethodImplOptions.NoInlining)] // Prevent inlining from affecting where the stacktrace starts
+            get => new StackTrace(true).ToString(System.Diagnostics.StackTrace.TraceFormat.Normal);
         }
 
         public static int TickCount => (int)TickCount64;
