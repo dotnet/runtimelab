@@ -247,12 +247,12 @@ namespace Internal.TypeSystem.Interop
 
         protected override void TransformNativeToManaged(ILCodeStream codeStream)
         {
-            throw new InvalidProgramException();
+            ThrowHelper.ThrowMarshalDirectiveException();
         }
 
         protected override void TransformManagedToNative(ILCodeStream codeStream)
         {
-            throw new InvalidProgramException();
+            ThrowHelper.ThrowMarshalDirectiveException();
         }
 
         protected override void EmitCleanupManaged(ILCodeStream codeStream)
