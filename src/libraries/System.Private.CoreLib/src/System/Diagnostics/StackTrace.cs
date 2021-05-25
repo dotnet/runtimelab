@@ -30,7 +30,7 @@ namespace System.Diagnostics
         /// <summary>
         /// Constructs a stack trace from the current location.
         /// </summary>
-        [MethodImplAttribute(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+        [MethodImplAttribute(MethodImplOptions.NoInlining)]
         public StackTrace()
         {
             InitializeForCurrentThread(METHODS_TO_SKIP, false);
@@ -39,7 +39,7 @@ namespace System.Diagnostics
         /// <summary>
         /// Constructs a stack trace from the current location.
         /// </summary>
-        [MethodImplAttribute(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+        [MethodImplAttribute(MethodImplOptions.NoInlining)]
         public StackTrace(bool fNeedFileInfo)
         {
             InitializeForCurrentThread(METHODS_TO_SKIP, fNeedFileInfo);
@@ -49,7 +49,7 @@ namespace System.Diagnostics
         /// Constructs a stack trace from the current location, in a caller's
         /// frame
         /// </summary>
-        [MethodImplAttribute(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+        [MethodImplAttribute(MethodImplOptions.NoInlining)]
         public StackTrace(int skipFrames)
         {
             if (skipFrames < 0)
@@ -63,7 +63,7 @@ namespace System.Diagnostics
         /// Constructs a stack trace from the current location, in a caller's
         /// frame
         /// </summary>
-        [MethodImplAttribute(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+        [MethodImplAttribute(MethodImplOptions.NoInlining)]
         public StackTrace(int skipFrames, bool fNeedFileInfo)
         {
             if (skipFrames < 0)

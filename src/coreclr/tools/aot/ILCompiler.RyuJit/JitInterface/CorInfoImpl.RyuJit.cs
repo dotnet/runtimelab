@@ -571,8 +571,22 @@ namespace Internal.JitInterface
 
         private bool canTailCall(CORINFO_METHOD_STRUCT_* callerHnd, CORINFO_METHOD_STRUCT_* declaredCalleeHnd, CORINFO_METHOD_STRUCT_* exactCalleeHnd, bool fIsTailPrefix)
         {
-            // No restrictions on tailcalls
-            return true;
+            // Assume we can tail call unless proved otherwise
+            bool result = true;
+
+            if (!fIsTailPrefix)
+            {
+                MethodDesc caller = HandleToObject(callerHnd);
+
+                if (caller.IsNoInlining)
+                {
+                    // Do not tailcall from methods that are marked as noinline (people often use no-inline
+                    // to mean "I want to always see this method in stacktrace")
+                    result = false;
+                }
+            }
+
+            return result;
         }
 
         private InfoAccessType constructStringLiteral(CORINFO_MODULE_STRUCT_* module, mdToken metaTok, ref void* ppValue)
