@@ -486,6 +486,16 @@ namespace ILCompiler
             // Single method mode?
             MethodDesc singleMethod = CheckAndParseSingleMethodModeArguments(typeSystemContext);
 
+            List<KeyValuePair<string, bool>> featureSwitches = new List<KeyValuePair<string, bool>>();
+            foreach (var switchPair in _featureSwitches)
+            {
+                string[] switchAndValue = switchPair.Split('=');
+                if (switchAndValue.Length != 2
+                    || !bool.TryParse(switchAndValue[1], out bool switchValue))
+                    throw new CommandLineException($"Unexpected feature switch pair '{switchPair}'");
+                featureSwitches.Add(new KeyValuePair<string, bool>(switchAndValue[0], switchValue));
+            }
+
             CompilationModuleGroup compilationGroup;
             List<ICompilationRootProvider> compilationRoots = new List<ICompilationRootProvider>();
             if (singleMethod != null)
@@ -567,7 +577,7 @@ namespace ILCompiler
 
                 foreach (var illinkDescriptorFilePath in _illinkDescriptorsFilePaths)
                 {
-                    compilationRoots.Add(new ILLinkDescriptorRootProvider(typeSystemContext, illinkDescriptorFilePath, _featureSwitches));
+                    compilationRoots.Add(new ILLinkDescriptorRootProvider(typeSystemContext, illinkDescriptorFilePath, new Dictionary<string, bool>(featureSwitches)));
                 }
             }
 
@@ -612,15 +622,6 @@ namespace ILCompiler
 
             ILProvider ilProvider = new CoreRTILProvider();
 
-            List<KeyValuePair<string, bool>> featureSwitches = new List<KeyValuePair<string, bool>>();
-            foreach (var switchPair in _featureSwitches)
-            {
-                string[] switchAndValue = switchPair.Split('=');
-                if (switchAndValue.Length != 2
-                    || !bool.TryParse(switchAndValue[1], out bool switchValue))
-                    throw new CommandLineException($"Unexpected feature switch pair '{switchPair}'");
-                featureSwitches.Add(new KeyValuePair<string, bool>(switchAndValue[0], switchValue));
-            }
             ilProvider = new FeatureSwitchManager(ilProvider, featureSwitches);
 
             var logger = new Logger(Console.Out, _isVerbose, ProcessWarningCodes(_suppressedWarnings), _singleWarn, _singleWarnEnabledAssemblies, _singleWarnDisabledAssemblies);
