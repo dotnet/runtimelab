@@ -307,11 +307,11 @@ namespace System.Runtime
         public static unsafe int RhGetCurrentThreadStackTrace(IntPtr[] outputBuffer)
         {
             fixed (IntPtr* pOutputBuffer = outputBuffer)
-                return RhpGetCurrentThreadStackTrace(pOutputBuffer, (uint)((outputBuffer != null) ? outputBuffer.Length : 0));
+                return RhpGetCurrentThreadStackTrace(pOutputBuffer, (uint)((outputBuffer != null) ? outputBuffer.Length : 0), new UIntPtr(&pOutputBuffer));
         }
 
         [DllImport(Redhawk.BaseName, CallingConvention = CallingConvention.Cdecl)]
-        private static extern unsafe int RhpGetCurrentThreadStackTrace(IntPtr* pOutputBuffer, uint outputBufferLength);
+        private static extern unsafe int RhpGetCurrentThreadStackTrace(IntPtr* pOutputBuffer, uint outputBufferLength, UIntPtr addressInCurrentFrame);
 
         // Worker for RhGetCurrentThreadStackTrace.  RhGetCurrentThreadStackTrace just allocates a transition
         // frame that will be used to seed the stack trace and this method does all the real work.
@@ -326,7 +326,7 @@ namespace System.Runtime
         // library's objects the caller understands (we support multiple class libraries with multiple root
         // System.Object types).
         [UnmanagedCallersOnly(EntryPoint = "RhpCalculateStackTraceWorker", CallConvs = new Type[] { typeof(CallConvCdecl) })]
-        private static unsafe int RhpCalculateStackTraceWorker(IntPtr* pOutputBuffer, uint outputBufferLength)
+        private static unsafe int RhpCalculateStackTraceWorker(IntPtr* pOutputBuffer, uint outputBufferLength, UIntPtr addressInCurrentFrame)
         {
             uint nFrames = 0;
             bool success = true;
@@ -339,6 +339,9 @@ namespace System.Runtime
             // Note that the while loop will skip RhGetCurrentThreadStackTrace frame
             while (frameIter.Next())
             {
+                if ((void*)frameIter.SP < (void*)addressInCurrentFrame)
+                    continue;
+
                 if (nFrames < outputBufferLength)
                     pOutputBuffer[nFrames] = new IntPtr(frameIter.ControlPC);
                 else

@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Diagnostics;
 using System.Text;
 
 public class BringUpTest
@@ -93,7 +94,7 @@ public class BringUpTest
         {
             throw new Exception("Testing filter");
         }
-        catch (Exception e) when (e.Message == "Testing filter" && counter++ > 0)
+        catch (Exception e) when (FilterWithStackTrace(e) && counter++ > 0)
         {
             Console.WriteLine("Exception caught via filter!");
             if (e.Message != "Testing filter")
@@ -206,6 +207,14 @@ public class BringUpTest
             Console.WriteLine("Executing finally in {0}", s);
             finallyCounter++;
         }
+    }
+
+    static bool FilterWithStackTrace(Exception e)
+    {
+        var stackTrace = new StackTrace(0, true);
+        Console.WriteLine("Test Stacktrace with exception on stack:");
+        Console.WriteLine(stackTrace);
+        return e.Message == "Testing filter";
     }
 
     static bool FilterWithGC()
