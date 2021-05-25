@@ -132,10 +132,9 @@ namespace DllImportGenerator.UnitTests
         }
 
         private static GeneratorDriver CreateDriver(Compilation c, AnalyzerConfigOptionsProvider? options, IIncrementalGenerator[] generators)
-            => CSharpGeneratorDriver.Create(generators);
-            // => CSharpGeneratorDriver.Create(
-            //     ImmutableArray.Create(generators),
-            //     parseOptions: (CSharpParseOptions)c.SyntaxTrees.First().Options,
-            //     optionsProvider: options);
+            => CSharpGeneratorDriver.Create(
+                ImmutableArray.Create(generators.Select(gen => GeneratorDriver.WrapGenerator(gen)).ToArray()),
+                parseOptions: (CSharpParseOptions)c.SyntaxTrees.First().Options,
+                optionsProvider: options);
     }
 }
