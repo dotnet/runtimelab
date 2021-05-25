@@ -93,7 +93,7 @@ namespace Microsoft.Interop
         /// <returns>Managed and native identifiers</returns>
         public virtual (string managed, string native) GetIdentifiers(TypePositionInfo info)
         {
-            return (info.InstanceIdentifier, $"__{info.InstanceIdentifier}{GeneratedNativeIdentifierSuffix}");
+            return (info.InstanceIdentifier, $"__{info.InstanceIdentifier.TrimStart('@')}{GeneratedNativeIdentifierSuffix}");
         }
 
         public abstract TypePositionInfo? GetTypePositionInfoForManagedIndex(int index);
