@@ -53,6 +53,9 @@ namespace Internal.Reflection.Execution
                 }
             }
 
+            [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2080:UnrecognizedReflectionPattern",
+                Justification = "We won're remove interfaces used in constraints")]
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
             public override Type[] GetInterfaces()
             {
                 Type[] interfaces = _underlyingType.GetInterfaces();
@@ -138,33 +141,56 @@ namespace Internal.Reflection.Execution
             public override Assembly Assembly { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
             public override string AssemblyQualifiedName { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
             public override string FullName { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
             public override ConstructorInfo[] GetConstructors(BindingFlags bindingAttr) { Debug.Assert(false); throw NotImplemented.ByDesign; }
             public override object[] GetCustomAttributes(bool inherit) { Debug.Assert(false); throw NotImplemented.ByDesign; }
             public override object[] GetCustomAttributes(Type attributeType, bool inherit) { Debug.Assert(false); throw NotImplemented.ByDesign; }
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicEvents | DynamicallyAccessedMemberTypes.NonPublicEvents)]
             public override EventInfo GetEvent(string name, BindingFlags bindingAttr) { Debug.Assert(false); throw NotImplemented.ByDesign; }
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicEvents | DynamicallyAccessedMemberTypes.NonPublicEvents)]
             public override EventInfo[] GetEvents(BindingFlags bindingAttr) { Debug.Assert(false); throw NotImplemented.ByDesign; }
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)]
             public override FieldInfo GetField(string name, BindingFlags bindingAttr) { Debug.Assert(false); throw NotImplemented.ByDesign; }
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)]
             public override FieldInfo[] GetFields(BindingFlags bindingAttr) { Debug.Assert(false); throw NotImplemented.ByDesign; }
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+            [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
             public override Type GetInterface(string name, bool ignoreCase) { Debug.Assert(false); throw NotImplemented.ByDesign; }
+            [DynamicallyAccessedMembers(GetAllMembers)]
             public override MemberInfo[] GetMembers(BindingFlags bindingAttr) { Debug.Assert(false); throw NotImplemented.ByDesign; }
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods)]
             public override MethodInfo[] GetMethods(BindingFlags bindingAttr) { Debug.Assert(false); throw NotImplemented.ByDesign; }
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicNestedTypes | DynamicallyAccessedMemberTypes.NonPublicNestedTypes)]
             public override Type GetNestedType(string name, BindingFlags bindingAttr) { Debug.Assert(false); throw NotImplemented.ByDesign; }
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicNestedTypes | DynamicallyAccessedMemberTypes.NonPublicNestedTypes)]
             public override Type[] GetNestedTypes(BindingFlags bindingAttr) { Debug.Assert(false); throw NotImplemented.ByDesign; }
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
             public override PropertyInfo[] GetProperties(BindingFlags bindingAttr) { Debug.Assert(false); throw NotImplemented.ByDesign; }
             public override bool IsDefined(Type attributeType, bool inherit) { Debug.Assert(false); throw NotImplemented.ByDesign; }
             public override Guid GUID { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
             public override object InvokeMember(string name, BindingFlags invokeAttr, Binder binder, object target, object[] args, ParameterModifier[] modifiers, CultureInfo culture, string[] namedParameters) { Debug.Assert(false); throw NotImplemented.ByDesign; }
             public override Module Module { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
             public override string Namespace { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
             public override string Name { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
             public override Type UnderlyingSystemType { get { Debug.Assert(false); throw NotImplemented.ByDesign; } }
 
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
             protected override ConstructorInfo GetConstructorImpl(BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers) { Debug.Assert(false); throw NotImplemented.ByDesign; }
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods)]
             protected override MethodInfo GetMethodImpl(string name, BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers) { Debug.Assert(false); throw NotImplemented.ByDesign; }
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
             protected override PropertyInfo GetPropertyImpl(string name, BindingFlags bindingAttr, Binder binder, Type returnType, Type[] types, ParameterModifier[] modifiers) { Debug.Assert(false); throw NotImplemented.ByDesign; }
             protected override bool IsCOMObjectImpl() { Debug.Assert(false); throw NotImplemented.ByDesign; }
             protected override bool IsPrimitiveImpl() { Debug.Assert(false); throw NotImplemented.ByDesign; }
             protected override bool HasElementTypeImpl() { Debug.Assert(false); throw NotImplemented.ByDesign; }
+
+            internal const DynamicallyAccessedMemberTypes GetAllMembers = DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields |
+                DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods |
+                DynamicallyAccessedMemberTypes.PublicEvents | DynamicallyAccessedMemberTypes.NonPublicEvents |
+                DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties |
+                DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors |
+                DynamicallyAccessedMemberTypes.PublicNestedTypes | DynamicallyAccessedMemberTypes.NonPublicNestedTypes;
         }
 
         private static Type Instantiate(this Type type, SigTypeContext context)

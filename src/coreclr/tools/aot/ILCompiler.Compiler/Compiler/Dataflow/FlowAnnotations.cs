@@ -20,10 +20,12 @@ namespace ILCompiler.Dataflow
     public class FlowAnnotations
     {
         private readonly TypeAnnotationsHashtable _hashtable;
-        
+        private readonly Logger _logger;
+
         public FlowAnnotations(Logger logger, ILProvider ilProvider)
         {
             _hashtable = new TypeAnnotationsHashtable(logger, ilProvider);
+            _logger = logger;
         }
 
         public bool RequiresDataflowAnalysis(MethodDesc method)
@@ -566,6 +568,9 @@ namespace ILCompiler.Dataflow
                         return true;
                 }
 
+                if (metadataType.Name == "IReflect" && metadataType.Namespace == "System.Reflection")
+                    return true;
+
                 do
                 {
                     if (metadataType.Name == "Type" && metadataType.Namespace == "System")
@@ -573,6 +578,129 @@ namespace ILCompiler.Dataflow
                 } while ((metadataType = metadataType.MetadataBaseType) != null);
 
                 return false;
+            }
+        }
+
+        internal void ValidateMethodAnnotationsAreSame(MethodDesc method, MethodDesc baseMethod)
+        {
+            method = method.GetTypicalMethodDefinition();
+            baseMethod = baseMethod.GetTypicalMethodDefinition();
+
+            GetAnnotations(method.OwningType).TryGetAnnotation(method, out var methodAnnotations);
+            GetAnnotations(baseMethod.OwningType).TryGetAnnotation(baseMethod, out var baseMethodAnnotations);
+
+            if (methodAnnotations.ReturnParameterAnnotation != baseMethodAnnotations.ReturnParameterAnnotation)
+                LogValidationWarning(method.Signature.ReturnType, baseMethod, method);
+
+            if (methodAnnotations.ParameterAnnotations != null || baseMethodAnnotations.ParameterAnnotations != null)
+            {
+                if (methodAnnotations.ParameterAnnotations == null)
+                    ValidateMethodParametersHaveNoAnnotations(ref baseMethodAnnotations, method, baseMethod, method);
+                else if (baseMethodAnnotations.ParameterAnnotations == null)
+                    ValidateMethodParametersHaveNoAnnotations(ref methodAnnotations, method, baseMethod, method);
+                else
+                {
+                    if (methodAnnotations.ParameterAnnotations.Length != baseMethodAnnotations.ParameterAnnotations.Length)
+                        return;
+
+                    for (int parameterIndex = 0; parameterIndex < methodAnnotations.ParameterAnnotations.Length; parameterIndex++)
+                    {
+                        if (methodAnnotations.ParameterAnnotations[parameterIndex] != baseMethodAnnotations.ParameterAnnotations[parameterIndex])
+                            LogValidationWarning(
+                                DiagnosticUtilities.GetMethodParameterFromIndex(method, parameterIndex),
+                                DiagnosticUtilities.GetMethodParameterFromIndex(baseMethod, parameterIndex),
+                                method);
+                    }
+                }
+            }
+
+            if (methodAnnotations.GenericParameterAnnotations != null || baseMethodAnnotations.GenericParameterAnnotations != null)
+            {
+                if (methodAnnotations.GenericParameterAnnotations == null)
+                    ValidateMethodGenericParametersHaveNoAnnotations(ref baseMethodAnnotations, method, baseMethod, method);
+                else if (baseMethodAnnotations.GenericParameterAnnotations == null)
+                    ValidateMethodGenericParametersHaveNoAnnotations(ref methodAnnotations, method, baseMethod, method);
+                else
+                {
+                    if (methodAnnotations.GenericParameterAnnotations.Length != baseMethodAnnotations.GenericParameterAnnotations.Length)
+                        return;
+
+                    for (int genericParameterIndex = 0; genericParameterIndex < methodAnnotations.GenericParameterAnnotations.Length; genericParameterIndex++)
+                    {
+                        if (methodAnnotations.GenericParameterAnnotations[genericParameterIndex] != baseMethodAnnotations.GenericParameterAnnotations[genericParameterIndex])
+                        {
+                            LogValidationWarning(
+                                method.Instantiation[genericParameterIndex],
+                                baseMethod.Instantiation[genericParameterIndex],
+                                method);
+                        }
+                    }
+                }
+            }
+        }
+
+        void ValidateMethodParametersHaveNoAnnotations(ref MethodAnnotations methodAnnotations, MethodDesc method, MethodDesc baseMethod, MethodDesc origin)
+        {
+            for (int parameterIndex = 0; parameterIndex < methodAnnotations.ParameterAnnotations.Length; parameterIndex++)
+            {
+                var annotation = methodAnnotations.ParameterAnnotations[parameterIndex];
+                if (annotation != DynamicallyAccessedMemberTypes.None)
+                    LogValidationWarning(
+                        parameterIndex,
+                        baseMethod,
+                        origin);
+            }
+        }
+
+        void ValidateMethodGenericParametersHaveNoAnnotations(ref MethodAnnotations methodAnnotations, MethodDesc method, MethodDesc baseMethod, MethodDesc origin)
+        {
+            for (int genericParameterIndex = 0; genericParameterIndex < methodAnnotations.GenericParameterAnnotations.Length; genericParameterIndex++)
+            {
+                if (methodAnnotations.GenericParameterAnnotations[genericParameterIndex] != DynamicallyAccessedMemberTypes.None)
+                {
+                    LogValidationWarning(
+                        method.Instantiation[genericParameterIndex],
+                        baseMethod.Instantiation[genericParameterIndex],
+                        origin);
+                }
+            }
+        }
+
+        void LogValidationWarning(object provider, object baseProvider, MethodDesc origin)
+        {
+            switch (provider)
+            {
+                case int parameterNumber:
+                    _logger.LogWarning(
+                        $"'DynamicallyAccessedMemberTypes' in 'DynamicallyAccessedMembersAttribute' on the parameter #{parameterNumber} of method '{DiagnosticUtilities.GetMethodSignatureDisplayName(origin)}' " +
+                        $"don't match overridden parameter #{parameterNumber} of method '{DiagnosticUtilities.GetMethodSignatureDisplayName((MethodDesc)baseProvider)}'. " +
+                        $"All overridden members must have the same 'DynamicallyAccessedMembersAttribute' usage.",
+                        2092, origin, subcategory: MessageSubCategory.TrimAnalysis);
+                    break;
+                case GenericParameterDesc genericParameterOverride:
+                    _logger.LogWarning(
+                        $"'DynamicallyAccessedMemberTypes' in 'DynamicallyAccessedMembersAttribute' on the generic parameter '{genericParameterOverride.Name}' of '{DiagnosticUtilities.GetGenericParameterDeclaringMemberDisplayName(new GenericParameterOrigin(genericParameterOverride))}' " +
+                        $"don't match overridden generic parameter '{((GenericParameterDesc)baseProvider).Name}' of '{DiagnosticUtilities.GetGenericParameterDeclaringMemberDisplayName(new GenericParameterOrigin((GenericParameterDesc)baseProvider))}'. " +
+                        $"All overridden members must have the same 'DynamicallyAccessedMembersAttribute' usage.",
+                        2095, origin, subcategory: MessageSubCategory.TrimAnalysis);
+                    break;
+                case TypeDesc methodReturnType:
+                    _logger.LogWarning(
+                        $"'DynamicallyAccessedMemberTypes' in 'DynamicallyAccessedMembersAttribute' on the return value of method '{DiagnosticUtilities.GetMethodSignatureDisplayName(origin)}' " +
+                        $"don't match overridden return value of method '{DiagnosticUtilities.GetMethodSignatureDisplayName((MethodDesc)baseProvider)}'. " +
+                        $"All overridden members must have the same 'DynamicallyAccessedMembersAttribute' usage.",
+                        2093, origin, subcategory: MessageSubCategory.TrimAnalysis);
+                    break;
+                // No fields - it's not possible to have a virtual field and override it
+                case MethodDesc methodDefinition:
+                    _logger.LogWarning(
+                        $"'DynamicallyAccessedMemberTypes' in 'DynamicallyAccessedMembersAttribute' on the implicit 'this' parameter of method '{DiagnosticUtilities.GetMethodSignatureDisplayName(methodDefinition)}' " +
+                        $"don't match overridden implicit 'this' parameter of method '{DiagnosticUtilities.GetMethodSignatureDisplayName((MethodDesc)baseProvider)}'. " +
+                        $"All overridden members must have the same 'DynamicallyAccessedMembersAttribute' usage.",
+                        2094, origin, subcategory: MessageSubCategory.TrimAnalysis);
+                    break;
+                default:
+                    throw new NotImplementedException($"Unsupported provider type{provider.GetType()}");
             }
         }
 

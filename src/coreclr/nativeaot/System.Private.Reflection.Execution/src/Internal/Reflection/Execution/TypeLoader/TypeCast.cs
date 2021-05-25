@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Collections.Generic;
 using Debug = System.Diagnostics.Debug;
@@ -21,6 +22,8 @@ namespace Internal.Reflection.Execution
     // This is not a general purpose type comparison facility. It is limited to what constraint validation needs.
     internal static partial class ConstraintValidator
     {
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+            Justification = "Looking at interface list is safe because we wouldn't remove reflection-visible interface from a reflection-visible type")]
         private static bool ImplementsInterface(Type pObjType, Type pTargetType)
         {
             Debug.Assert(!pTargetType.IsArray, "did not expect array type");

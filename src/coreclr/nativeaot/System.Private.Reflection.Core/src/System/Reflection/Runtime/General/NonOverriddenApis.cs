@@ -147,6 +147,7 @@ namespace System.Reflection.Runtime.TypeInfos
     internal abstract partial class RuntimeTypeInfo
     {
 #if DEBUG
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
         public sealed override Type[] FindInterfaces(TypeFilter filter, object filterCriteria) => base.FindInterfaces(filter, filterCriteria);
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         public sealed override MemberInfo[] FindMembers(MemberTypes memberType, BindingFlags bindingAttr, MemberFilter filter, object filterCriteria) => base.FindMembers(memberType, bindingAttr, filter, filterCriteria);

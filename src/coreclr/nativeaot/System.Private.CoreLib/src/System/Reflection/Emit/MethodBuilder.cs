@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace System.Reflection.Emit
 {
     public sealed class MethodBuilder : MethodInfo
@@ -208,6 +210,7 @@ namespace System.Reflection.Emit
             return default;
         }
 
+        [RequiresDynamicCode("The native code for this instantiation might not be available at runtime.")]
         public override MethodInfo MakeGenericMethod(params Type[] typeArguments)
         {
             return default;

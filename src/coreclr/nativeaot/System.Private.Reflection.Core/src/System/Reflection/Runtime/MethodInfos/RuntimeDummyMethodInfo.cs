@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection.Runtime.ParameterInfos;
 using System.Reflection.Runtime.TypeInfos;
 using Internal.Reflection.Core.Execution;
@@ -20,6 +21,7 @@ namespace System.Reflection.Runtime.MethodInfos
         public sealed override string ToString() => string.Empty;
 
         public sealed override MethodInfo GetGenericMethodDefinition() { throw NotImplemented.ByDesign; }
+        [RequiresDynamicCode("The native code for this instantiation might not be available at runtime.")]
         public sealed override MethodInfo MakeGenericMethod(params Type[] typeArguments) { throw NotImplemented.ByDesign; }
         public sealed override MethodAttributes Attributes { get { throw NotImplemented.ByDesign; } }
         public sealed override Type ReflectedType { get { throw NotImplemented.ByDesign; } }

@@ -78,11 +78,17 @@ namespace System.Reflection.Runtime.Modules
         public sealed override bool IsResource() { throw new PlatformNotSupportedException(); }
         public sealed override void GetPEKind(out PortableExecutableKinds peKind, out ImageFileMachine machine) { throw new PlatformNotSupportedException(); }
         public sealed override int MDStreamVersion { get { throw new PlatformNotSupportedException(); } }
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public sealed override FieldInfo ResolveField(int metadataToken, Type[] genericTypeArguments, Type[] genericMethodArguments) { throw new PlatformNotSupportedException(); }
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public sealed override MemberInfo ResolveMember(int metadataToken, Type[] genericTypeArguments, Type[] genericMethodArguments) { throw new PlatformNotSupportedException(); }
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public sealed override MethodBase ResolveMethod(int metadataToken, Type[] genericTypeArguments, Type[] genericMethodArguments) { throw new PlatformNotSupportedException(); }
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public sealed override byte[] ResolveSignature(int metadataToken) { throw new PlatformNotSupportedException(); }
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public sealed override string ResolveString(int metadataToken) { throw new PlatformNotSupportedException(); }
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public sealed override Type ResolveType(int metadataToken, Type[] genericTypeArguments, Type[] genericMethodArguments) { throw new PlatformNotSupportedException(); }
 
         protected sealed override ModuleHandle GetModuleHandleImpl() => new ModuleHandle(this);

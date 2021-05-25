@@ -4,6 +4,7 @@
 using System;
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Reflection.Runtime.General;
 using System.Reflection.Runtime.TypeInfos;
@@ -121,6 +122,7 @@ namespace System.Reflection.Runtime.MethodInfos
             }
         }
 
+        [RequiresDynamicCode("The native code for this instantiation might not be available at runtime.")]
         public sealed override MethodInfo MakeGenericMethod(params Type[] typeArguments)
         {
             throw new InvalidOperationException(SR.Format(SR.Arg_NotGenericMethodDefinition, this));
