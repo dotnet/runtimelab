@@ -1,127 +1,27 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
+using Microsoft.CodeAnalysis.Diagnostics;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
 {
     [Generator]
-    public class DllImportGenerator : ISourceGenerator
+    public class DllImportGenerator : IIncrementalGenerator
     {
         private const string GeneratedDllImport = nameof(GeneratedDllImport);
         private const string GeneratedDllImportAttribute = nameof(GeneratedDllImportAttribute);
 
         private static readonly Version MinimumSupportedFrameworkVersion = new Version(5, 0);
-
-        public void Execute(GeneratorExecutionContext context)
-        {
-            if (context.SyntaxContextReceiver is not SyntaxContextReceiver synRec
-                || !synRec.Methods.Any())
-            {
-                return;
-            }
-
-            INamedTypeSymbol? lcidConversionAttrType = context.Compilation.GetTypeByMetadataName(TypeNames.LCIDConversionAttribute);
-
-            // Fire the start/stop pair for source generation
-            using var _ = Diagnostics.Events.SourceGenerationStartStop(synRec.Methods.Count);
-
-            // Store a mapping between SyntaxTree and SemanticModel.
-            // SemanticModels cache results and since we could be looking at
-            // method declarations in the same SyntaxTree we want to benefit from
-            // this caching.
-            var syntaxToModel = new Dictionary<SyntaxTree, SemanticModel>();
-
-            var generatorDiagnostics = new GeneratorDiagnostics(context);
-
-            bool isSupported = IsSupportedTargetFramework(context.Compilation, out Version targetFrameworkVersion);
-            if (!isSupported)
-            {
-                // We don't return early here, letting the source generation continue.
-                // This allows a user to copy generated source and use it as a starting point
-                // for manual marshalling if desired.
-                generatorDiagnostics.ReportTargetFrameworkNotSupported(MinimumSupportedFrameworkVersion);
-            }
-
-            var env = new StubEnvironment(context.Compilation, isSupported, targetFrameworkVersion, context.AnalyzerConfigOptions.GlobalOptions);
-            var generatedDllImports = new StringBuilder();
-            foreach (SyntaxReference synRef in synRec.Methods)
-            {
-                var methodSyntax = (MethodDeclarationSyntax)synRef.GetSyntax(context.CancellationToken);
-
-                // Get the model for the method.
-                if (!syntaxToModel.TryGetValue(methodSyntax.SyntaxTree, out SemanticModel sm))
-                {
-                    sm = context.Compilation.GetSemanticModel(methodSyntax.SyntaxTree, ignoreAccessibility: true);
-                    syntaxToModel.Add(methodSyntax.SyntaxTree, sm);
-                }
-
-                // Process the method syntax and get its SymbolInfo.
-                var methodSymbolInfo = sm.GetDeclaredSymbol(methodSyntax, context.CancellationToken)!;
-
-                // Get any attributes of interest on the method
-                AttributeData? generatedDllImportAttr = null;
-                AttributeData? lcidConversionAttr = null;
-                foreach (var attr in methodSymbolInfo.GetAttributes())
-                {
-                    if (attr.AttributeClass is not null
-                        && attr.AttributeClass.ToDisplayString() == TypeNames.GeneratedDllImportAttribute)
-                    {
-                        generatedDllImportAttr = attr;
-                    }
-                    else if (lcidConversionAttrType != null && SymbolEqualityComparer.Default.Equals(attr.AttributeClass, lcidConversionAttrType))
-                    {
-                        lcidConversionAttr = attr;
-                    }
-                }
-
-                if (generatedDllImportAttr == null)
-                    continue;
-
-                // Process the GeneratedDllImport attribute
-                DllImportStub.GeneratedDllImportData stubDllImportData = this.ProcessGeneratedDllImportAttribute(generatedDllImportAttr);
-                Debug.Assert(stubDllImportData is not null);
-
-                if (stubDllImportData!.IsUserDefined.HasFlag(DllImportStub.DllImportMember.BestFitMapping))
-                {
-                    generatorDiagnostics.ReportConfigurationNotSupported(generatedDllImportAttr, nameof(DllImportStub.GeneratedDllImportData.BestFitMapping));
-                }
-
-                if (stubDllImportData!.IsUserDefined.HasFlag(DllImportStub.DllImportMember.ThrowOnUnmappableChar))
-                {
-                    generatorDiagnostics.ReportConfigurationNotSupported(generatedDllImportAttr, nameof(DllImportStub.GeneratedDllImportData.ThrowOnUnmappableChar));
-                }
-
-                if (lcidConversionAttr != null)
-                {
-                    // Using LCIDConversion with GeneratedDllImport is not supported
-                    generatorDiagnostics.ReportConfigurationNotSupported(lcidConversionAttr, nameof(TypeNames.LCIDConversionAttribute));
-                }
-
-                // Create the stub.
-                var dllImportStub = DllImportStub.Create(methodSymbolInfo, stubDllImportData!, env, generatorDiagnostics, context.CancellationToken);
-
-                PrintGeneratedSource(generatedDllImports, methodSyntax, dllImportStub);
-            }
-
-            Debug.WriteLine(generatedDllImports.ToString()); // [TODO] Find some way to emit this for debugging - logs?
-            context.AddSource("DllImportGenerator.g.cs", SourceText.From(generatedDllImports.ToString(), Encoding.UTF8));
-        }
-
-        public void Initialize(GeneratorInitializationContext context)
-        {
-            context.RegisterForSyntaxNotifications(() => new SyntaxContextReceiver());
-        }
-
         private SyntaxTokenList StripTriviaFromModifiers(SyntaxTokenList tokenList)
         {
             SyntaxToken[] strippedTokens = new SyntaxToken[tokenList.Count];
@@ -141,8 +41,7 @@ namespace Microsoft.Interop
                 .WithModifiers(typeDeclaration.Modifiers);
         }
 
-        private void PrintGeneratedSource(
-            StringBuilder builder,
+        private MemberDeclarationSyntax PrintGeneratedSource(
             MethodDeclarationSyntax userDeclaredMethod,
             DllImportStub stub)
         {
@@ -176,7 +75,7 @@ namespace Microsoft.Interop
                     .AddMembers(toPrint);
             }
 
-            builder.AppendLine(toPrint.NormalizeWhitespace().ToString());
+            return toPrint;
         }
 
         private static bool IsSupportedTargetFramework(Compilation compilation, out Version version)
@@ -257,58 +156,202 @@ namespace Microsoft.Interop
             return stubDllImportData;
         }
 
-
-        private class SyntaxContextReceiver : ISyntaxContextReceiver
+        private sealed record SyntaxSymbolPair(MethodDeclarationSyntax Syntax, IMethodSymbol Symbol)
         {
-            public ICollection<SyntaxReference> Methods { get; } = new List<SyntaxReference>();
-
-            public void OnVisitSyntaxNode(GeneratorSyntaxContext context)
+            public bool Equals(SyntaxSymbolPair other)
             {
-                SyntaxNode syntaxNode = context.Node;
+                return Syntax.IsEquivalentTo(other.Syntax)
+                && SymbolEqualityComparer.Default.Equals(Symbol, other.Symbol);
+            }
 
-                // We only support C# method declarations.
-                if (syntaxNode.Language != LanguageNames.CSharp
-                    || !syntaxNode.IsKind(SyntaxKind.MethodDeclaration))
+            public override int GetHashCode()
+            {
+                return (Syntax.ToFullString().GetHashCode(), SymbolEqualityComparer.Default.GetHashCode(Symbol)).GetHashCode();
+            }
+        }
+
+        public void Initialize(IncrementalGeneratorInitializationContext context)
+        {
+            context.RegisterExecutionPipeline(
+                context => 
                 {
-                    return;
-                }
+                    var methodsToGenerate = context.Sources.Syntax
+                        .Transform(
+                            static node => ShouldVisitNode(node),
+                            static context => 
+                                new SyntaxSymbolPair(
+                                    (MethodDeclarationSyntax)context.Node,
+                                    (IMethodSymbol)context.SemanticModel.GetDeclaredSymbol(context.Node)!))
+                        .Filter(
+                            static modelData => modelData.Symbol.IsStatic && modelData.Symbol.GetAttributes().Any(
+                                static attribute => attribute.AttributeClass?.ToDisplayString() == TypeNames.GeneratedDllImportAttribute)
+                        );
 
-                var methodSyntax = (MethodDeclarationSyntax)syntaxNode;
-
-                // Verify the method has no generic types or defined implementation
-                // and is marked static and partial.
-                if (!(methodSyntax.TypeParameterList is null)
-                    || !(methodSyntax.Body is null)
-                    || !methodSyntax.Modifiers.Any(SyntaxKind.StaticKeyword)
-                    || !methodSyntax.Modifiers.Any(SyntaxKind.PartialKeyword))
-                {
-                    return;
-                }
-
-                // Verify that the types the method is declared in are marked partial.
-                for (SyntaxNode? parentNode = methodSyntax.Parent; parentNode is TypeDeclarationSyntax typeDecl; parentNode = parentNode.Parent)
-                {
-                    if (!typeDecl.Modifiers.Any(SyntaxKind.PartialKeyword))
-                    {
-                        return;
-                    }
-                }
-
-                // Check if the method is marked with the GeneratedDllImport attribute.
-                foreach (AttributeListSyntax listSyntax in methodSyntax.AttributeLists)
-                {
-                    foreach (AttributeSyntax attrSyntax in listSyntax.Attributes)
-                    {
-                        SymbolInfo info = context.SemanticModel.GetSymbolInfo(attrSyntax);
-                        if (info.Symbol is IMethodSymbol attrConstructor
-                            && attrConstructor.ContainingType.ToDisplayString() == TypeNames.GeneratedDllImportAttribute)
+                    var compilationAndTargetFramework = context.Sources.Compilation
+                        .Transform(compilation =>
                         {
-                            this.Methods.Add(syntaxNode.GetReference());
-                            return;
-                        }
-                    }
+                            bool isSupported = IsSupportedTargetFramework(compilation, out Version targetFrameworkVersion);
+                            return (compilation, isSupported, targetFrameworkVersion);
+                        });
+
+                    compilationAndTargetFramework.GenerateSource(
+                        static (context, data) =>
+                        {
+                            if (!data.isSupported)
+                            {
+                                // We don't block source generation when the TFM is unsupported.
+                                // This allows a user to copy generated source and use it as a starting point
+                                // for manual marshalling if desired.
+                                context.ReportDiagnostic(
+                                    Diagnostic.Create(
+                                        GeneratorDiagnostics.TargetFrameworkNotSupported,
+                                        Location.None,
+                                        data.targetFrameworkVersion.ToString(2)));
+                            }
+                        });
+
+                    var stubEnvironment = compilationAndTargetFramework
+                        .Join(context.Sources.AnalyzerConfigOptions)
+                        .Transform(
+                            data =>
+                                new StubEnvironment(
+                                    data.Item1.compilation,
+                                    data.Item1.isSupported,
+                                    data.Item1.targetFrameworkVersion,
+                                    data.Item2.Single().GlobalOptions)
+                        );
+
+                    methodsToGenerate
+                        .Join(stubEnvironment)
+                        .Transform(data => new
+                        {
+                            Syntax = data.Item1.Syntax,
+                            Symbol = data.Item1.Symbol,
+                            Environment = data.Item2.Single()
+                        })
+                        .Transform(
+                            data => GenerateSource(data.Syntax, data.Symbol, data.Environment)
+                        )
+                        .WithComparer(new GeneratedSourceComparer())
+                        .BatchTransform(static generatedSources =>
+                        {
+                            StringBuilder source = new StringBuilder();
+                            ImmutableArray<Diagnostic>.Builder diagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
+                            foreach (var generated in generatedSources)
+                            {
+                                source.AppendLine(generated.Item1.NormalizeWhitespace().ToFullString());
+                                diagnostics.AddRange(generated.Item2);
+                            }
+                            return (source: source.ToString(), diagnostics: diagnostics.ToImmutable());
+                        })
+                        .GenerateSource(
+                            static (context, data) =>
+                            {
+                                foreach (var diagnostic in data.diagnostics)
+                                {
+                                    context.ReportDiagnostic(diagnostic);
+                                }
+
+                                context.AddSource("GeneratedDllImports.g.cs", data.source);
+                            }
+                        );
+                }
+            );
+        }
+
+        private class GeneratedSourceComparer : IEqualityComparer<(MemberDeclarationSyntax, ImmutableArray<Diagnostic>)>
+        {
+            public bool Equals((MemberDeclarationSyntax, ImmutableArray<Diagnostic>) x, (MemberDeclarationSyntax, ImmutableArray<Diagnostic>) y)
+            {
+                return x.Item1.IsEquivalentTo(y.Item1)
+                && x.Item2.SequenceEqual(y.Item2);
+            }
+
+            public int GetHashCode((MemberDeclarationSyntax, ImmutableArray<Diagnostic>) obj)
+            {
+                return (obj.Item1.ToFullString(), obj.Item2.Aggregate(0, (hash, diagnostic) => (hash,  diagnostic).GetHashCode())).GetHashCode();
+            }
+        }
+
+        private (MemberDeclarationSyntax, ImmutableArray<Diagnostic>) GenerateSource(MethodDeclarationSyntax syntax, IMethodSymbol symbol, StubEnvironment environment)
+        {
+            INamedTypeSymbol? lcidConversionAttrType = environment.Compilation.GetTypeByMetadataName(TypeNames.LCIDConversionAttribute);
+            // Get any attributes of interest on the method
+            AttributeData? generatedDllImportAttr = null;
+            AttributeData? lcidConversionAttr = null;
+            foreach (var attr in symbol.GetAttributes())
+            {
+                if (attr.AttributeClass is not null
+                    && attr.AttributeClass.ToDisplayString() == TypeNames.GeneratedDllImportAttribute)
+                {
+                    generatedDllImportAttr = attr;
+                }
+                else if (lcidConversionAttrType != null && SymbolEqualityComparer.Default.Equals(attr.AttributeClass, lcidConversionAttrType))
+                {
+                    lcidConversionAttr = attr;
                 }
             }
+
+            Debug.Assert(generatedDllImportAttr is not null);
+            
+            var generatorDiagnostics = new GeneratorDiagnostics();
+
+            // Process the GeneratedDllImport attribute
+            DllImportStub.GeneratedDllImportData stubDllImportData = this.ProcessGeneratedDllImportAttribute(generatedDllImportAttr!);
+            Debug.Assert(stubDllImportData is not null);
+
+            if (stubDllImportData!.IsUserDefined.HasFlag(DllImportStub.DllImportMember.BestFitMapping))
+            {
+                generatorDiagnostics.ReportConfigurationNotSupported(generatedDllImportAttr!, nameof(DllImportStub.GeneratedDllImportData.BestFitMapping));
+            }
+
+            if (stubDllImportData!.IsUserDefined.HasFlag(DllImportStub.DllImportMember.ThrowOnUnmappableChar))
+            {
+                generatorDiagnostics.ReportConfigurationNotSupported(generatedDllImportAttr!, nameof(DllImportStub.GeneratedDllImportData.ThrowOnUnmappableChar));
+            }
+
+            if (lcidConversionAttr != null)
+            {
+                // Using LCIDConversion with GeneratedDllImport is not supported
+                generatorDiagnostics.ReportConfigurationNotSupported(lcidConversionAttr, nameof(TypeNames.LCIDConversionAttribute));
+            }
+
+            // Create the stub.
+            var dllImportStub = DllImportStub.Create(symbol, stubDllImportData!, environment, generatorDiagnostics);
+
+            return (PrintGeneratedSource(syntax, dllImportStub), generatorDiagnostics.Diagnostics.ToImmutableArray());
+        }
+
+        private static bool ShouldVisitNode(SyntaxNode syntaxNode)
+        { 
+            // We only support C# method declarations.
+            if (syntaxNode.Language != LanguageNames.CSharp
+                || !syntaxNode.IsKind(SyntaxKind.MethodDeclaration))
+            {
+                return false;
+            }
+
+            var methodSyntax = (MethodDeclarationSyntax)syntaxNode;
+
+            // Verify the method has no generic types or defined implementation
+            // and is marked static and partial.
+            if (!(methodSyntax.TypeParameterList is null)
+                || !(methodSyntax.Body is null)
+                || !methodSyntax.Modifiers.Any(SyntaxKind.StaticKeyword)
+                || !methodSyntax.Modifiers.Any(SyntaxKind.PartialKeyword))
+            {
+                return false;
+            }
+
+            // Verify that the types the method is declared in are marked partial.
+            for (SyntaxNode? parentNode = methodSyntax.Parent; parentNode is TypeDeclarationSyntax typeDecl; parentNode = parentNode.Parent)
+            {
+                if (!typeDecl.Modifiers.Any(SyntaxKind.PartialKeyword))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 }

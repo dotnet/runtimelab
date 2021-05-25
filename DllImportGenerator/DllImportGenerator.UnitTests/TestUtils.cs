@@ -112,7 +112,7 @@ namespace DllImportGenerator.UnitTests
         /// <param name="diagnostics">Resulting diagnostics</param>
         /// <param name="generators">Source generator instances</param>
         /// <returns>The resulting compilation</returns>
-        public static Compilation RunGenerators(Compilation comp, out ImmutableArray<Diagnostic> diagnostics, params ISourceGenerator[] generators)
+        public static Compilation RunGenerators(Compilation comp, out ImmutableArray<Diagnostic> diagnostics, params IIncrementalGenerator[] generators)
         {
             CreateDriver(comp, null, generators).RunGeneratorsAndUpdateCompilation(comp, out var d, out diagnostics);
             return d;
@@ -125,16 +125,17 @@ namespace DllImportGenerator.UnitTests
         /// <param name="diagnostics">Resulting diagnostics</param>
         /// <param name="generators">Source generator instances</param>
         /// <returns>The resulting compilation</returns>
-        public static Compilation RunGenerators(Compilation comp, AnalyzerConfigOptionsProvider options, out ImmutableArray<Diagnostic> diagnostics, params ISourceGenerator[] generators)
+        public static Compilation RunGenerators(Compilation comp, AnalyzerConfigOptionsProvider options, out ImmutableArray<Diagnostic> diagnostics, params IIncrementalGenerator[] generators)
         {
             CreateDriver(comp, options, generators).RunGeneratorsAndUpdateCompilation(comp, out var d, out diagnostics);
             return d;
         }
 
-        private static GeneratorDriver CreateDriver(Compilation c, AnalyzerConfigOptionsProvider? options, ISourceGenerator[] generators)
-            => CSharpGeneratorDriver.Create(
-                ImmutableArray.Create(generators),
-                parseOptions: (CSharpParseOptions)c.SyntaxTrees.First().Options,
-                optionsProvider: options);
+        private static GeneratorDriver CreateDriver(Compilation c, AnalyzerConfigOptionsProvider? options, IIncrementalGenerator[] generators)
+            => CSharpGeneratorDriver.Create(generators);
+            // => CSharpGeneratorDriver.Create(
+            //     ImmutableArray.Create(generators),
+            //     parseOptions: (CSharpParseOptions)c.SyntaxTrees.First().Options,
+            //     optionsProvider: options);
     }
 }

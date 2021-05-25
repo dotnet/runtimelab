@@ -147,12 +147,9 @@ namespace Microsoft.Interop
                 isEnabledByDefault: true,
                 description: GetResourceString(nameof(Resources.TargetFrameworkNotSupportedDescription)));
 
-        private readonly GeneratorExecutionContext context;
+        private readonly List<Diagnostic> diagnostics = new List<Diagnostic>();
 
-        public GeneratorDiagnostics(GeneratorExecutionContext context)
-        {
-            this.context = context;
-        }
+        public IReadOnlyList<Diagnostic> Diagnostics => diagnostics;
 
         /// <summary>
         /// Report diagnostic for configuration that is not supported by the DLL import source generator
@@ -167,14 +164,14 @@ namespace Microsoft.Interop
         {
             if (unsupportedValue == null)
             {
-                this.context.ReportDiagnostic(
+                diagnostics.Add(
                     attributeData.CreateDiagnostic(
                         GeneratorDiagnostics.ConfigurationNotSupported,
                         configurationName));
             }
             else
             {
-                this.context.ReportDiagnostic(
+                diagnostics.Add(
                     attributeData.CreateDiagnostic(
                         GeneratorDiagnostics.ConfigurationValueNotSupported,
                         unsupportedValue,
@@ -198,7 +195,7 @@ namespace Microsoft.Interop
                 // Report the specific not-supported reason.
                 if (info.IsManagedReturnPosition)
                 {
-                    this.context.ReportDiagnostic(
+                    diagnostics.Add(
                         method.CreateDiagnostic(
                             GeneratorDiagnostics.ReturnTypeNotSupportedWithDetails,
                             notSupportedDetails!,
@@ -208,7 +205,7 @@ namespace Microsoft.Interop
                 {
                     Debug.Assert(info.ManagedIndex <= method.Parameters.Length);
                     IParameterSymbol paramSymbol = method.Parameters[info.ManagedIndex];
-                    this.context.ReportDiagnostic(
+                    diagnostics.Add(
                         paramSymbol.CreateDiagnostic(
                             GeneratorDiagnostics.ParameterTypeNotSupportedWithDetails,
                             notSupportedDetails!,
@@ -222,7 +219,7 @@ namespace Microsoft.Interop
                 // than when there is no attribute and the type itself is not supported.
                 if (info.IsManagedReturnPosition)
                 {
-                    this.context.ReportDiagnostic(
+                    diagnostics.Add(
                         method.CreateDiagnostic(
                             GeneratorDiagnostics.ReturnConfigurationNotSupported,
                             nameof(System.Runtime.InteropServices.MarshalAsAttribute),
@@ -232,7 +229,7 @@ namespace Microsoft.Interop
                 {
                     Debug.Assert(info.ManagedIndex <= method.Parameters.Length);
                     IParameterSymbol paramSymbol = method.Parameters[info.ManagedIndex];
-                    this.context.ReportDiagnostic(
+                    diagnostics.Add(
                         paramSymbol.CreateDiagnostic(
                             GeneratorDiagnostics.ParameterConfigurationNotSupported,
                             nameof(System.Runtime.InteropServices.MarshalAsAttribute),
@@ -244,7 +241,7 @@ namespace Microsoft.Interop
                 // Report that the type is not supported
                 if (info.IsManagedReturnPosition)
                 {
-                    this.context.ReportDiagnostic(
+                    diagnostics.Add(
                         method.CreateDiagnostic(
                             GeneratorDiagnostics.ReturnTypeNotSupported,
                             method.ReturnType.ToDisplayString(),
@@ -254,7 +251,7 @@ namespace Microsoft.Interop
                 {
                     Debug.Assert(info.ManagedIndex <= method.Parameters.Length);
                     IParameterSymbol paramSymbol = method.Parameters[info.ManagedIndex];
-                    this.context.ReportDiagnostic(
+                    diagnostics.Add(
                         paramSymbol.CreateDiagnostic(
                             GeneratorDiagnostics.ParameterTypeNotSupported,
                             paramSymbol.Type.ToDisplayString(),
@@ -269,7 +266,7 @@ namespace Microsoft.Interop
         /// <param name="minimumSupportedVersion">Minimum supported version of .NET</param>
         public void ReportTargetFrameworkNotSupported(Version minimumSupportedVersion)
         {
-            this.context.ReportDiagnostic(
+            diagnostics.Add(
                 Diagnostic.Create(
                     TargetFrameworkNotSupported,
                     Location.None,

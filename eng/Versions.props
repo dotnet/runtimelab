@@ -19,7 +19,7 @@
     <XUnitVersion>2.4.1</XUnitVersion>
     <XUnitRunnerVisualStudioVersion>2.4.3</XUnitRunnerVisualStudioVersion>
     <!-- Roslyn dependencies -->
-    <CompilerPlatformVersion>3.10.0-3.21229.26</CompilerPlatformVersion>
+    <CompilerPlatformVersion>3.10.0-dev.21275.2</CompilerPlatformVersion>
     <CompilerPlatformTestingVersion>1.0.1-beta1.20478.1</CompilerPlatformTestingVersion>
     <MicrosoftCodeAnalysisAnalyzersVersion>3.3.3-beta1.21268.3</MicrosoftCodeAnalysisAnalyzersVersion>
     <!-- Package dependencies -->
