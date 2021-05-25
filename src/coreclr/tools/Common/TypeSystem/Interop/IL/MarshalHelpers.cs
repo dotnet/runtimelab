@@ -794,6 +794,11 @@ namespace Internal.TypeSystem.Interop
                         return MarshallerKind.UnicodeString;
                     case NativeTypeKind.LPUTF8Str:
                         return MarshallerKind.UTF8String;
+                    case NativeTypeKind.BStr:
+                    case NativeTypeKind.TBStr:
+                        return MarshallerKind.BSTRString;
+                    case NativeTypeKind.AnsiBStr:
+                        return MarshallerKind.AnsiBSTRString;
                     default:
                         return MarshallerKind.Invalid;
                 }
