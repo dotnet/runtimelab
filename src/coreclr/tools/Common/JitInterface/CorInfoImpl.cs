@@ -3671,10 +3671,12 @@ namespace Internal.JitInterface
                     {
                         foreach (TypeSystemEntityOrUnknown typeVal in typeArray)
                         {
-                            IntPtr ptrVal = IntPtr.Zero;
+                            IntPtr ptrVal;
 
                             if (typeVal.AsType != null && (typeFilter == null || typeFilter(typeVal.AsType)))
+                            {
                                 ptrVal = (IntPtr)objectToHandle(typeVal.AsType);
+                            }
                             else
                             {
                                 // The "Unknown types are the values from 1-33

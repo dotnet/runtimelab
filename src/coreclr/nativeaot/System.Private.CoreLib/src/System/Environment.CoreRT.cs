@@ -63,12 +63,6 @@ namespace System
 #endif
         }
 
-        public static string StackTrace
-        {
-            [MethodImpl(MethodImplOptions.NoInlining)] // Prevent inlining from affecting where the stacktrace starts
-            get => new StackTrace(true).ToString(System.Diagnostics.StackTrace.TraceFormat.Normal);
-        }
-
         public static int TickCount => (int)TickCount64;
 
         public static string[] GetCommandLineArgs() => (string[])s_commandLineArgs.Clone();
