@@ -23,24 +23,66 @@ namespace System.Text.RegularExpressions.Tests
 
         internal static RegexOptions DFA = (RegexOptions)0x400;
 
-        //for some reason the following two tests always fail as part of a larger test run and claim that timeout exception never occurs
-        //while they succeed individually, perhaps a bug in the unit testing framework
-        //thus commenting them out as unit tests
-        //[Fact]
-        //public void TestSRMTimeout() => TestSRMTimeout_(new Regex(@"a.{20}", DFA, new TimeSpan(0, 0, 0, 0, 1)));
-        //[Fact]
-        //public void TestSRMTimeoutAfterDeser() => TestSRMTimeout_(Deserialize(Serialize(new Regex(@"a.{20}", DFA, new TimeSpan(0, 0, 0, 0, 1)))));
+        [Fact]
+        public void TestAltOrderIndependence()
+        {
+            string rawregex = @"(the)\s*(0?[1-9]|[12][0-9]|3[01])";
+            var re = new Regex(rawregex, DFA);
+            var reC = new Regex(rawregex, RegexOptions.Compiled);
+            var input = "it is the 10:00 time";
+            var re_match = re.Match(input);
+            var reC_match = reC.Match(input);
+            Assert.Equal(reC_match.Index, re_match.Index);
+            Assert.Equal(reC_match.Value, re_match.Value);
+            Assert.Equal("the 1", re_match.Value);
+            //----
+            //equivalent regex as DFA
+            string rawregex_alt = @"(the)\s*([12][0-9]|3[01]|0?[1-9])";
+            var re_alt = new Regex(rawregex_alt, DFA);
+            var re_alt_match = re_alt.Match(input);
+            Assert.Equal(re_match.Index, re_alt_match.Index);
+            Assert.Equal(re_match.Value, re_alt_match.Value);
+            //not equivalent as non-DFA because the match will be "the 10"
+            var re_altC = new Regex(rawregex_alt, RegexOptions.Compiled);
+            var re_altC_match = re_altC.Match(input);
+            Assert.Equal("the 10", re_altC_match.Value);
+        }
 
+        [Fact]
+        public void TestSRMTermination()
+        {
+            string input = " 123456789 123456789 123456789 123456789 123456789";
+            for (int i = 0; i < 12; i++)
+                input = input + input;
+            //the input has 2^12 * 50 = 204800 characters
+            string rawregex = @"[\\/]?[^\\/]*?(heythere|hej)[^\\/]*?$";
+            Regex reC = new Regex(rawregex, RegexOptions.Compiled, new TimeSpan(0, 0, 1));
+            Regex re = new Regex(rawregex, DFA, new TimeSpan(0, 0, 0, 0, 100));
+            //it takes over 4min with backtracking, so 1sec times out for sure
+            Assert.Throws<RegexMatchTimeoutException>(() => { reC.Match(input); });
+            //DFA needs less than 100ms
+            Assert.False(re.Match(input).Success);
+        }
+
+        /// <summary>
+        /// Test that timeout is being checked in DFA mode.
+        /// </summary>
+        [Fact]
+        public void TestSRMTimeout() => TestSRMTimeout_(new Regex(@"a.{20}$", DFA, new TimeSpan(0, 0, 0, 0, 10)));
+
+        /// <summary>
+        /// Test that serialization preserves timeout information.
+        /// </summary>
+        [Fact]
+        public void TestSRMTimeoutAfterDeser() => TestSRMTimeout_(Deserialize(Serialize(new Regex(@"a.{20}$", DFA, new TimeSpan(0, 0, 0, 0, 10)))));
 
         private void TestSRMTimeout_(Regex re)
         {
             Random rnd = new Random(0);
             byte[] buffer = new byte[1000000];
             rnd.NextBytes(buffer);
-            //random 1MB string with a lot of a's
-            string input = new String(Array.ConvertAll(buffer, b => b < 10 ? 'a' : (char)b));
-            Type timeoutExceptionType = typeof(TimeoutException);
-            Assert.Throws(timeoutExceptionType, () => { re.Match(input); });
+            string input = new String(Array.ConvertAll(buffer, b => b < 200 ? 'a' : (char)b));
+            Assert.Throws<RegexMatchTimeoutException>(() => { re.Match(input); });
         }
 
         /// <summary>
