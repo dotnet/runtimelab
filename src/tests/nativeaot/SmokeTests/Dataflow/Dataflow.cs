@@ -15,6 +15,7 @@ class Program
     {
         TestReturnValue.Run();
         TestGetMethodEventFieldPropertyConstructor.Run();
+        TestGetInterface.Run();
         TestInGenericCode.Run();
         TestAttributeDataflow.Run();
         TestGenericDataflow.Run();
@@ -98,6 +99,23 @@ class Program
         }
     }
 
+    class TestGetInterface
+    {
+        interface INeverUsedInterface
+        {
+        }
+
+        class UsedType : INeverUsedInterface
+        {
+        }
+
+        public static void Run()
+        {
+            typeof(UsedType).GetInterfaces();
+            Assert.Equal(1, typeof(UsedType).CountInterfaces());
+        }
+    }
+
     class TestInGenericCode
     {
         class MyGenericType<T>
@@ -166,6 +184,9 @@ class Program
         [RequiresNonPublicMethods(typeof(Type1WithNonPublicKept), AlsoNeeded = typeof(Type2WithAllKept), AndAlsoNeeded = typeof(Type3WithPublicKept))]
         public static void Run()
         {
+            // Make it so that the analysis believes the Run method needs metadata. We wouldn't look at the attributes otherwise.
+            typeof(TestAttributeDataflow).GetMethod(nameof(Run));
+
             Assert.Equal(0, typeof(Type1WithNonPublicKept).CountPublicMethods());
             Assert.Equal(1, typeof(Type1WithNonPublicKept).CountMethods());
 
@@ -562,6 +583,10 @@ static class Helpers
         Justification = "That's the point")]
     public static int CountProperties(this Type t)
         => t.GetProperties(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly).Length;
+    [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+        Justification = "That's the point")]
+    public static int CountInterfaces(this Type t)
+        => t.GetInterfaces().Length;
 
     [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
         Justification = "That's the point")]
