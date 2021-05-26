@@ -59,6 +59,7 @@ internal class ReflectionTest
         TestInstanceFields.Run();
         TestReflectionInvoke.Run();
         TestDefaultInterfaceInvoke.Run();
+        TestCovariantReturnInvoke.Run();
 #if !CODEGEN_CPP
         TypeConstructionTest.Run();
         TestThreadStaticFields.Run();
@@ -317,6 +318,43 @@ internal class ReflectionTest
                 if (result != "IBar::Format(abc)")
                     throw new Exception();
             }
+        }
+    }
+
+    class TestCovariantReturnInvoke
+    {
+        interface IFoo
+        {
+        }
+        class Foo : IFoo
+        {
+            public readonly string State;
+            public Foo(string state) => State = state;
+        }
+        class Base
+        {
+            public virtual IFoo GetFoo() => throw new NotImplementedException();
+        }
+        class Derived : Base
+        {
+            public override Foo GetFoo() => new Foo("Derived");
+        }
+        class SuperDerived : Derived
+        {
+            public override Foo GetFoo() => new Foo("SuperDerived");
+        }
+
+        public static void Run()
+        {
+            Console.WriteLine(nameof(TestCovariantReturnInvoke));
+
+            MethodInfo mi = typeof(Base).GetMethod(nameof(Base.GetFoo));
+
+            if (((Foo)mi.Invoke(new Derived(), Array.Empty<object>())).State != "Derived")
+                throw new Exception();
+
+            if (((Foo)mi.Invoke(new SuperDerived(), Array.Empty<object>())).State != "SuperDerived")
+                throw new Exception();
         }
     }
 

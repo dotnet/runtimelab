@@ -37,6 +37,7 @@ public class BringUpTest
         TestDefaultInterfaceMethods.Run();
         TestVariantInterfaceOptimizations.Run();
         TestSharedIntefaceMethods.Run();
+        TestCovariantReturns.Run();
 
         return Pass;
     }
@@ -557,6 +558,105 @@ public class BringUpTest
             string r3 = o.GrabValue("Hello there");
             if (r3 != "'SomeString' over 'System.Object' with 'Hello there'")
                 throw new Exception();
+        }
+    }
+
+    class TestCovariantReturns
+    {
+        interface IFoo
+        {
+        }
+
+        class Foo : IFoo
+        {
+            public readonly string State;
+            public Foo(string state) => State = state;
+        }
+
+        class Base
+        {
+            public virtual IFoo GetFoo() => throw new NotImplementedException();
+        }
+
+        class Derived : Base
+        {
+            public override Foo GetFoo() => new Foo("Derived");
+        }
+
+        class SuperDerived : Derived
+        {
+            public override Foo GetFoo() => new Foo("SuperDerived");
+        }
+
+        class BaseWithUnusedVirtual
+        {
+            public virtual IFoo GetFoo() => throw new NotImplementedException();
+        }
+
+        class DerivedWithOverridenUnusedVirtual : BaseWithUnusedVirtual
+        {
+            public override Foo GetFoo() => new Foo("DerivedWithOverridenUnusedVirtual");
+        }
+
+        class SuperDerivedWithOverridenUnusedVirtual : DerivedWithOverridenUnusedVirtual
+        {
+            public override Foo GetFoo() => new Foo("SuperDerivedWithOverridenUnusedVirtual");
+        }
+
+        interface IInterfaceWithCovariantReturn
+        {
+            IFoo GetFoo();
+        }
+
+        class ClassImplementingInterface : IInterfaceWithCovariantReturn
+        {
+            public virtual IFoo GetFoo() => throw new NotImplementedException();
+        }
+
+        class DerivedClassImplementingInterface : ClassImplementingInterface
+        {
+            public override Foo GetFoo() => new Foo("DerivedClassImplementingInterface");
+        }
+
+        public static void Run()
+        {
+            Console.WriteLine("Testing covariant returns...");
+
+            {
+                Base b = new Derived();
+                if (((Foo)b.GetFoo()).State != "Derived")
+                    throw new Exception();
+            }
+
+            {
+                Base b = new SuperDerived();
+                if (((Foo)b.GetFoo()).State != "SuperDerived")
+                    throw new Exception();
+            }
+
+            {
+                Derived d = new SuperDerived();
+                if (d.GetFoo().State != "SuperDerived")
+                    throw new Exception();
+            }
+
+            {
+                DerivedWithOverridenUnusedVirtual b = new DerivedWithOverridenUnusedVirtual();
+                if (b.GetFoo().State != "DerivedWithOverridenUnusedVirtual")
+                    throw new Exception();
+            }
+
+            {
+                DerivedWithOverridenUnusedVirtual b = new SuperDerivedWithOverridenUnusedVirtual();
+                if (b.GetFoo().State != "SuperDerivedWithOverridenUnusedVirtual")
+                    throw new Exception();
+            }
+
+            {
+                IInterfaceWithCovariantReturn i = new DerivedClassImplementingInterface();
+                if (((Foo)i.GetFoo()).State != "DerivedClassImplementingInterface")
+                    throw new Exception();
+            }
         }
     }
 
