@@ -105,7 +105,7 @@ namespace Internal.TypeSystem.Interop
             }
             Debug.Assert(marshalAs != null && marshalAs.SizeConst.HasValue);
 
-            // if SizeConst is not specified, we will default to 1. 
+            // if SizeConst is not specified, we will default to 1.
             // the marshaller will throw appropriate exception
             uint size = 1;
             if (marshalAs.SizeConst.HasValue)

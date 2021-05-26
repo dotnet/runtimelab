@@ -434,9 +434,6 @@ namespace Internal.TypeSystem.Interop
                 {
                     case NativeTypeKind.Array:
                         {
-                            if (isField || isReturn)
-                                return MarshallerKind.Invalid;
-
                             var arrayType = (ArrayType)type;
 
                             elementMarshallerKind = GetArrayElementMarshallerKind(

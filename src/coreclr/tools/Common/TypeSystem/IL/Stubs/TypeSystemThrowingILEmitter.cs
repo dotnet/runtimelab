@@ -66,6 +66,10 @@ namespace Internal.IL.Stubs
             {
                 helper = context.GetHelperEntryPoint("ThrowHelpers", "ThrowBadImageFormatException");
             }
+            else if (exceptionType == typeof(TypeSystemException.MarshalDirectiveException))
+            {
+                helper = context.GetHelperEntryPoint("ThrowHelpers", "ThrowMarshalDirectiveException");
+            }
             else
             {
                 throw new NotImplementedException();
