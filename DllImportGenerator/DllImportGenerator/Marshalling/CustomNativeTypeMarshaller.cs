@@ -38,6 +38,12 @@ namespace Microsoft.Interop
             _marshalerTypePinnable = false;
         }
 
+        protected string GetMarshallerIdentifier(TypePositionInfo info, StubCodeContext context)
+        {
+            var (_, nativeIdentifier) = context.GetIdentifiers(info);
+            return _useValueProperty ? nativeIdentifier + MarshalerLocalSuffix  : nativeIdentifier;
+        }
+
         public TypeSyntax AsNativeType(TypePositionInfo info)
         {
             return _nativeTypeSyntax;
@@ -74,7 +80,7 @@ namespace Microsoft.Interop
         public IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context)
         {
             (string managedIdentifier, string nativeIdentifier) = context.GetIdentifiers(info);
-            string marshalerIdentifier = _useValueProperty ? nativeIdentifier + MarshalerLocalSuffix  : nativeIdentifier;
+            string marshalerIdentifier = GetMarshallerIdentifier(info, context);
             if (!info.IsManagedReturnPosition 
                 && !info.IsByRef 
                 && context.PinningSupported 
@@ -160,6 +166,7 @@ namespace Microsoft.Interop
                                                                 _nativeLocalTypeSyntax,
                                                                 IdentifierName(ManualTypeMarshallingHelper.StackBufferSizeFieldName)))
                                                     })))));
+                            arguments.AddRange(GenerateAdditionalNativeTypeConstructorArguments(info, context));
                         }
 
                         // <marshalerIdentifier> = new <_nativeLocalType>(<arguments>);
@@ -169,6 +176,11 @@ namespace Microsoft.Interop
                                 IdentifierName(marshalerIdentifier),
                                 ObjectCreationExpression(_nativeLocalTypeSyntax)
                                     .WithArgumentList(ArgumentList(SeparatedList(arguments)))));
+
+                        foreach (var statement in GenerateIntermediateMarshallingStatements(info, context))
+                        {
+                            yield return statement;
+                        }
 
                         bool skipValueProperty = _marshalerTypePinnable && (!info.IsByRef || info.RefKind == RefKind.In);
 
@@ -219,6 +231,11 @@ namespace Microsoft.Interop
                                     IdentifierName(nativeIdentifier)));
                         }
 
+                        foreach (var statement in GenerateIntermediateUnmarshallingStatements(info, context))
+                        {
+                            yield return statement;
+                        }
+
                         // <managedIdentifier> = <marshalerIdentifier>.ToManaged();
                         yield return ExpressionStatement(
                             AssignmentExpression(
@@ -245,6 +262,21 @@ namespace Microsoft.Interop
                 default:
                     break;
             }
+        }
+
+        protected virtual IEnumerable<ArgumentSyntax> GenerateAdditionalNativeTypeConstructorArguments(TypePositionInfo info, StubCodeContext context)
+        {
+            return Array.Empty<ArgumentSyntax>();
+        }
+
+        protected virtual IEnumerable<StatementSyntax> GenerateIntermediateMarshallingStatements(TypePositionInfo info, StubCodeContext context)
+        {
+            return Array.Empty<StatementSyntax>();
+        }
+
+        protected virtual IEnumerable<StatementSyntax> GenerateIntermediateUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
+        {
+            return Array.Empty<StatementSyntax>();
         }
 
         public bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context)
