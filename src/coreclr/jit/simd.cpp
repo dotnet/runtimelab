@@ -1909,7 +1909,7 @@ GenTree* Compiler::impSIMDIntrinsic(OPCODE                opcode,
 #error Unsupported platform
 #endif // !TARGET_XARCH && !TARGET_ARM64
 
-    if (!IsBaselineSimdIsaSupported())
+    if (!compOpportunisticallyDependsOn(minimumIsa) || !JitConfig.EnableHWIntrinsic())
     {
         // The user disabled support for the baseline ISA so
         // don't emit any SIMD intrinsics as they all require
