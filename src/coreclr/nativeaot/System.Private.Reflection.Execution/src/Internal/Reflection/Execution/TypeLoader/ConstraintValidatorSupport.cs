@@ -155,6 +155,8 @@ namespace Internal.Reflection.Execution
             public override FieldInfo[] GetFields(BindingFlags bindingAttr) { Debug.Assert(false); throw NotImplemented.ByDesign; }
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
             [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+            [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2063:UnrecognizedReflectionPattern",
+                Justification = "Linker doesn't recognize always throwing method. https://github.com/mono/linker/issues/2025")]
             public override Type GetInterface(string name, bool ignoreCase) { Debug.Assert(false); throw NotImplemented.ByDesign; }
             [DynamicallyAccessedMembers(GetAllMembers)]
             public override MemberInfo[] GetMembers(BindingFlags bindingAttr) { Debug.Assert(false); throw NotImplemented.ByDesign; }

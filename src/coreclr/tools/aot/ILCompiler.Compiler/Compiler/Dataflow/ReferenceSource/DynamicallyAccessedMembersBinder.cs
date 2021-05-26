@@ -10,12 +10,19 @@ using Mono.Cecil;
 
 namespace Mono.Linker
 {
+	// Temporary workaround - should be removed once linker can be upgraded to build against
+	// high enough version of the framework which has this enum value.
+	internal static class DynamicallyAccessedMemberTypesOverlay
+	{
+		public const DynamicallyAccessedMemberTypes Interfaces = (DynamicallyAccessedMemberTypes) 0x2000;
+	}
+
 	internal static class DynamicallyAccessedMembersBinder
 	{
-		// Returns the members of the type bound by memberTypes. For MemberTypes.All, this returns a single null result.
-		// This sentinel value allows callers to handle the case where MemberTypes.All conceptually binds to the entire type
-		// including all recursive nested members.	
-		public static IEnumerable<IMemberDefinition> GetDynamicallyAccessedMembers (this TypeDefinition typeDefinition, LinkContext context, DynamicallyAccessedMemberTypes memberTypes)
+		// Returns the members of the type bound by memberTypes. For DynamicallyAccessedMemberTypes.All, this returns a single null result.
+		// This sentinel value allows callers to handle the case where DynamicallyAccessedMemberTypes.All conceptually binds to the entire type
+		// including all recursive nested members.
+		public static IEnumerable<IMetadataTokenProvider> GetDynamicallyAccessedMembers (this TypeDefinition typeDefinition, LinkContext context, DynamicallyAccessedMemberTypes memberTypes)
 		{
 			if (memberTypes == DynamicallyAccessedMemberTypes.All) {
 				yield return null;
@@ -86,6 +93,11 @@ namespace Mono.Linker
 				foreach (var e in typeDefinition.GetEventsOnTypeHierarchy (context, filter: null, bindingFlags: BindingFlags.Public))
 					yield return e;
 			}
+
+			if (memberTypes.HasFlag (DynamicallyAccessedMemberTypesOverlay.Interfaces)) {
+				foreach (var i in typeDefinition.GetAllInterfaceImplementations (context))
+					yield return i;
+			}
 		}
 
 		public static IEnumerable<MethodDefinition> GetConstructorsOnType (this TypeDefinition type, Func<MethodDefinition, bool> filter, BindingFlags? bindingFlags = null)
@@ -148,7 +160,7 @@ namespace Mono.Linker
 					yield return method;
 				}
 
-				type = context.TryResolveTypeDefinition (type.BaseType);
+				type = context.TryResolve (type.BaseType);
 				onBaseType = true;
 			}
 		}
@@ -184,7 +196,7 @@ namespace Mono.Linker
 					yield return field;
 				}
 
-				type = context.TryResolveTypeDefinition (type.BaseType);
+				type = context.TryResolve (type.BaseType);
 				onBaseType = true;
 			}
 		}
@@ -249,7 +261,7 @@ namespace Mono.Linker
 					yield return property;
 				}
 
-				type = context.TryResolveTypeDefinition (type.BaseType);
+				type = context.TryResolve (type.BaseType);
 				onBaseType = true;
 			}
 		}
@@ -294,8 +306,25 @@ namespace Mono.Linker
 					yield return @event;
 				}
 
-				type = context.TryResolveTypeDefinition (type.BaseType);
+				type = context.TryResolve (type.BaseType);
 				onBaseType = true;
+			}
+		}
+
+		public static IEnumerable<InterfaceImplementation> GetAllInterfaceImplementations (this TypeDefinition type, LinkContext context)
+		{
+			while (type != null) {
+				foreach (var i in type.Interfaces) {
+					yield return i;
+
+					TypeDefinition interfaceType = context.TryResolve (i.InterfaceType);
+					if (interfaceType != null) {
+						foreach (var innerInterface in interfaceType.GetAllInterfaceImplementations (context))
+							yield return innerInterface;
+					}
+				}
+
+				type = context.TryResolve (type.BaseType);
 			}
 		}
 	}

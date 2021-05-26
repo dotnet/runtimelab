@@ -347,6 +347,7 @@ namespace ILCompiler.Dataflow
             Type_GetNestedTypes,
             Type_GetMember,
             Type_GetMembers,
+            Type_GetInterface,
             Type_get_AssemblyQualifiedName,
             Type_get_UnderlyingSystemType,
             Type_get_BaseType,
@@ -588,6 +589,15 @@ namespace ILCompiler.Dataflow
                     && calledMethod.Signature.Length == 1
                     && !calledMethod.Signature.IsStatic
                     => IntrinsicId.Type_GetMembers,
+
+                // System.Type.GetInterface (string)
+                // System.Type.GetInterface (string, bool)
+                "GetInterface" when calledMethod.IsDeclaredOnType("System", "Type")
+                    && calledMethod.HasParameterOfType(0, "System", "String")
+                    && !calledMethod.Signature.IsStatic
+                    && (calledMethod.Signature.Length == 1 ||
+                    (calledMethod.Signature.Length == 2 && calledMethod.Signature[1].IsWellKnownType(WellKnownType.Boolean)))
+                    => IntrinsicId.Type_GetInterface,
 
                 // System.Type.AssemblyQualifiedName
                 "get_AssemblyQualifiedName" when calledMethod.IsDeclaredOnType("System", "Type")
@@ -1229,6 +1239,21 @@ namespace ILCompiler.Dataflow
                         {
                             foreach (var valueNode in methodParams[0].UniqueValues())
                             {
+                                // Note that valueNode can be statically typed in IL as some generic argument type.
+                                // For example:
+                                //   void Method<T>(T instance) { instance.GetType().... }
+                                // Currently this case will end up with null StaticType - since there's no typedef for the generic argument type.
+                                // But it could be that T is annotated with for example PublicMethods:
+                                //   void Method<[DAM(PublicMethods)] T>(T instance) { instance.GetType().GetMethod("Test"); }
+                                // In this case it's in theory possible to handle it, by treating the T basically as a base class
+                                // for the actual type of "instance". But the analysis for this would be pretty complicated (as the marking
+                                // has to happen on the callsite, which doesn't know that GetType() will be used...).
+                                // For now we're intentionally ignoring this case - it will produce a warning.
+                                // The counter example is:
+                                //   Method<Base>(new Derived);
+                                // In this case to get correct results, trimmer would have to mark all public methods on Derived. Which
+                                // currently it won't do.
+
                                 TypeDesc staticType = valueNode.StaticType;
                                 if (staticType is null || (!staticType.IsDefType && !staticType.IsArray))
                                 {
@@ -1832,6 +1857,30 @@ namespace ILCompiler.Dataflow
                         break;
 
                     //
+                    // GetInterface (String)
+                    // GetInterface (String, bool)
+                    //
+                    case IntrinsicId.Type_GetInterface:
+                        {
+                            reflectionContext.AnalyzingPattern();
+                            foreach (var value in methodParams[0].UniqueValues())
+                            {
+                                // For now no support for marking a single interface by name. We would have to correctly support
+                                // mangled names for generics to do that correctly. Simply mark all interfaces on the type for now.
+                                // Require Interfaces annotation
+                                RequireDynamicallyAccessedMembers(ref reflectionContext, DynamicallyAccessedMemberTypes.Interfaces, value, new MethodOrigin(calledMethod));
+                                // Interfaces is transitive, so the return values will always have at least Interfaces annotation
+                                DynamicallyAccessedMemberTypes returnMemberTypes = DynamicallyAccessedMemberTypes.Interfaces;
+                                // Propagate All annotation across the call - All is a superset of Interfaces
+                                if (value is LeafValueWithDynamicallyAccessedMemberNode annotatedNode
+                                    && annotatedNode.DynamicallyAccessedMemberTypes == DynamicallyAccessedMemberTypes.All)
+                                    returnMemberTypes = DynamicallyAccessedMemberTypes.All;
+                                methodReturnValue = MergePointValue.MergeValues(methodReturnValue, new MethodReturnValue(calledMethod, returnMemberTypes));
+                            }
+                        }
+                        break;
+
+                    //
                     // System.Activator
                     // 
                     // static CreateInstance (System.Type type)
@@ -2352,17 +2401,17 @@ namespace ILCompiler.Dataflow
                 {
                     if (!valueWithDynamicallyAccessedMember.DynamicallyAccessedMemberTypes.HasFlag(requiredMemberTypes))
                     {
-                        string missingMemberTypes = $"'{nameof(DynamicallyAccessedMemberTypes.All)}'";
+                        string missingMemberTypes = $"'{nameof(DynamicallyAccessedMemberTypes)}.{nameof(DynamicallyAccessedMemberTypes.All)}'";
                         if (requiredMemberTypes != DynamicallyAccessedMemberTypes.All)
                         {
                             var missingMemberTypesList = Enum.GetValues(typeof(DynamicallyAccessedMemberTypes))
                                 .Cast<DynamicallyAccessedMemberTypes>()
                                 .Where(damt => (requiredMemberTypes & ~valueWithDynamicallyAccessedMember.DynamicallyAccessedMemberTypes & damt) == damt && damt != DynamicallyAccessedMemberTypes.None)
-                                .Select(damt => damt.ToString()).ToList();
+                                .ToList();
 
-                            if (missingMemberTypesList.Contains(nameof(DynamicallyAccessedMemberTypes.PublicConstructors)) &&
-                                missingMemberTypesList.SingleOrDefault(x => x == nameof(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)) is var ppc &&
-                                ppc != null)
+                            if (missingMemberTypesList.Contains(DynamicallyAccessedMemberTypes.PublicConstructors) &&
+                                missingMemberTypesList.SingleOrDefault(x => x == DynamicallyAccessedMemberTypes.PublicParameterlessConstructor) is var ppc &&
+                                ppc != DynamicallyAccessedMemberTypes.None)
                                 missingMemberTypesList.Remove(ppc);
 
                             missingMemberTypes = string.Join(", ", missingMemberTypesList.Select(mmt => $"'DynamicallyAccessedMemberTypes.{mmt}'"));
