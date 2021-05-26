@@ -25,17 +25,23 @@ namespace System.Text.RegularExpressions.Tests
         //    TestRunPerformance();
         //}
 
-        private const string tmpWorkingDir = @"c:\tmp\runtimelab\";
+
+        private const string experimentDirectory = @"\\maku1\experiments\";
+
         /// <summary>
-        /// Contains sample input text for regexes.
+        /// Temporary local output directory for experiment results.
         /// </summary>
-        private const string inputfile = tmpWorkingDir + "vsinput.txt";
+        private const string tmpWorkingDir = @"c:\tmp\runtimelab\";
         /// <summary>
         /// Works as a console.
         /// </summary>
         private const string outputfile = tmpWorkingDir + "vsoutput.txt";
         /// <summary>
-        /// Contains regexes, one per line.
+        /// Local input file.
+        /// </summary>
+        private const string inputfile = tmpWorkingDir + "vsinput.txt";
+        /// <summary>
+        /// Local regexes file.
         /// </summary>
         private const string regexesfile = tmpWorkingDir + "vsregexes.txt";
         /// <summary>
@@ -101,8 +107,34 @@ namespace System.Text.RegularExpressions.Tests
         /// </summary>
         private void TestRunPerformance()
         {
-            string input = File.ReadAllText(inputfile);
-            string[] rawregexes = File.ReadAllLines(regexesfile);
+            var dirs = Directory.GetDirectories(experimentDirectory);
+            if (dirs.Length == 0)
+            {
+                WriteOutput("\nExperiments directory is empty");
+                return;
+            }
+            DirectoryInfo experimentDI = Directory.GetParent(dirs[0]);
+            DirectoryInfo[] experiments =
+                Array.FindAll(experimentDI.GetDirectories(),
+                             di => ((di.Attributes & FileAttributes.Hidden) != (FileAttributes.Hidden)) &&
+                                   Array.Exists(di.GetFiles(), f => f.Name.Equals("regexes.txt")) &&
+                                   Array.Exists(di.GetFiles(), f => f.Name.Equals("input.txt")));
+            if (experiments.Length == 0)
+            {
+                WriteOutput("\nExperiments directory has no indiviual experiment subdirectories containing files 'regexes.txt' and 'input.txt'.");
+                return;
+            }
+            for (int i = 0; i < experiments.Length; i++)
+            {
+                string input = File.ReadAllText(experiments[i].FullName + "\\input.txt");
+                string[] rawregexes = File.ReadAllLines(experiments[i].FullName + "\\regexes.txt");
+                TestRunPerformance(experiments[i].Name, input, rawregexes);
+            }
+        }
+
+        private void TestRunPerformance(string name, string input, string[] rawregexes)
+        {
+            WriteOutput("\n---------- {0} ----------", name);
             for (int i = 0; i < rawregexes.Length; i++)
                 TestRunRegex((i + 1).ToString(), rawregexes[i], input);
         }
@@ -115,7 +147,7 @@ namespace System.Text.RegularExpressions.Tests
                 match = re.Match(input);
                 return sw.ElapsedMilliseconds;
             }
-            catch (TimeoutException)
+            catch (RegexMatchTimeoutException)
             {
                 match = Match.Empty;
                 return -1;
@@ -136,10 +168,9 @@ namespace System.Text.RegularExpressions.Tests
 
         private void TestRunRegex(string name, string rawregex, string input, bool viewDGML = false, bool dotStar = false)
         {
-            Regex reC = new Regex(rawregex, RegexOptions.Compiled, new TimeSpan(0,0,10));
+            Regex reC = new Regex(rawregex, RegexOptions.Compiled, new TimeSpan(0, 0, 10));
             Regex reN = new Regex(rawregex, RegexOptions.None, new TimeSpan(0, 0, 10));
             Regex reD = new Regex(rawregex, DFA, new TimeSpan(0, 0, 10));
-            input = input + "every week on mond I go there " + input + "every week on Tuesdays I go there";
             Match mC;
             Match mN;
             Match mD;

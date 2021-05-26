@@ -1762,7 +1762,7 @@ namespace System.Text.RegularExpressions.SRM
             #endregion
         }
 
-        internal const int maxPrefixLength = 5;
+        internal const int maxPrefixLength = 20;
         internal S[] GetPrefix()
         {
             return GetPrefixSequence(ImmutableList<S>.Empty, maxPrefixLength).ToArray();
@@ -1808,67 +1808,6 @@ namespace System.Text.RegularExpressions.SRM
                             return pref;
                         }
                 }
-            }
-        }
-
-        ///// <summary>
-        ///// If this node starts with a loop other than star or plus then
-        ///// returns the nonnegative id of the associated counter else returns -1
-        ///// </summary>
-        //public int CounterId
-        //{
-        //    get
-        //    {
-        //        if (this.kind == SymbolicRegexKind.Loop && !this.IsStar && !this.IsPlus)
-        //            return this.builder.GetCounterId(this);
-        //        else if (this.kind == SymbolicRegexKind.Concat)
-        //            return left.CounterId;
-        //        else
-        //            return -1;
-        //    }
-        //}
-
-        //0 means value is not computed,
-        //-1 means this is not a sequence of singletons
-        //1 means it is a sequence of singletons
-        internal int sequenceOfSingletons_count;
-
-        internal bool IsSequenceOfSingletons
-        {
-            get
-            {
-                if (sequenceOfSingletons_count == 0)
-                {
-                    var node = this;
-                    int k = 1;
-                    while (node.kind == SymbolicRegexKind.Concat && node.left.kind == SymbolicRegexKind.Singleton)
-                    {
-                        node = node.right;
-                        k += 1;
-                    }
-                    if (node.kind == SymbolicRegexKind.Singleton)
-                    {
-                        node.sequenceOfSingletons_count = 1;
-                        node = this;
-                        while (node.kind == SymbolicRegexKind.Concat)
-                        {
-                            node.sequenceOfSingletons_count = k;
-                            node = node.right;
-                            k = k - 1;
-                        }
-                    }
-                    else
-                    {
-                        node.sequenceOfSingletons_count = -1;
-                        node = this;
-                        while (node.kind == SymbolicRegexKind.Concat && node.left.kind == SymbolicRegexKind.Singleton)
-                        {
-                            node.sequenceOfSingletons_count = -1;
-                            node = node.right;
-                        }
-                    }
-                }
-                return sequenceOfSingletons_count > 0;
             }
         }
 
@@ -1967,38 +1906,6 @@ namespace System.Text.RegularExpressions.SRM
             get
             {
                 return (this.kind == SymbolicRegexKind.Loop && this.upper < int.MaxValue);
-            }
-        }
-
-        /// <summary>
-        /// Returns true if the match-end of this regex can be determined with a
-        /// single pass from the start.
-        /// </summary>
-        public bool IsSinglePass
-        {
-            get
-            {
-                if (this.IsSequenceOfSingletons)
-                    return true;
-                else
-                {
-                    switch (kind)
-                    {
-                        case SymbolicRegexKind.Or:
-                            {
-                                foreach (var member in alts)
-                                    if (!member.IsSinglePass)
-                                        return false;
-                                return true;
-                            }
-                        case SymbolicRegexKind.Concat:
-                            {
-                                return left.IsSinglePass && right.IsSinglePass;
-                            }
-                        default:
-                            return false;
-                    }
-                }
             }
         }
 

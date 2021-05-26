@@ -605,8 +605,6 @@ namespace System.Text.RegularExpressions.SRM
             //initial start position in the input is i = 0
             int i = startat;
 
-            bool AisSingleSeq = A.IsSequenceOfSingletons;
-
             int i_q0_A1;
             int watchdog;
             i = FindFinalStatePosition(input, k, i, out i_q0_A1, out watchdog);
@@ -631,26 +629,8 @@ namespace System.Text.RegularExpressions.SRM
                 }
                 else
                 {
-                    ////If A is lazy then there is no need to maximize length of end-position
-                    //if (AisLazy)
-                    //{
-                    //    if (AisSingleSeq)
-                    //        i_start = i - A.sequenceOfSingletons_count + 1;
-                    //    else
-                    //        i_start = FindStartPosition(input, i, i_q0_A1);
-                    //    i_end = i;
-                    //}
-                    if (AisSingleSeq)
-                    {
-                        // TBD: this case should be covered by watchdog
-                        i_start = i - A.sequenceOfSingletons_count + 1;
-                        i_end = i;
-                    }
-                    else
-                    {
-                        i_start = FindStartPosition(input, i, i_q0_A1);
-                        i_end = FindEndPosition(input, k, i_start);
-                    }
+                    i_start = FindStartPosition(input, i, i_q0_A1);
+                    i_end = FindEndPosition(input, k, i_start);
                 }
 
                 return new Match(i_start, i_end + 1 - i_start);
