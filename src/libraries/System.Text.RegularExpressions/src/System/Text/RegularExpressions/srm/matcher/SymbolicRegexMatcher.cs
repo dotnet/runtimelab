@@ -8,6 +8,7 @@ using System.Numerics;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.IO;
+using System.Globalization;
 
 namespace System.Text.RegularExpressions.SRM
 {
@@ -94,6 +95,11 @@ namespace System.Text.RegularExpressions.SRM
         /// if nonempty then A has that fixed prefix
         /// </summary>
         private string A_prefix;
+
+        /// <summary>
+        /// non-null when A_prefix is nonempty
+        /// </summary>
+        private RegexBoyerMoore A_prefixBM;
 
         ///// <summary>
         ///// if nonempty then A has that fixed prefix
@@ -317,6 +323,7 @@ namespace System.Text.RegularExpressions.SRM
                 }
             }
             InitializeRegexes();
+            InitializePrefixBoyerMoore();
         }
         #endregion
 
@@ -378,20 +385,28 @@ namespace System.Text.RegularExpressions.SRM
             else
                 this.A_startset_array = Array.Empty<char>();
 
-            //this.A_prefix_array = A.GetPrefix();
             this.A_prefix = A.GetFixedPrefix(css, out this.A_fixedPrefix_ignoreCase);
-            //this.A_prefixUTF8 = System.Text.UnicodeEncoding.UTF8.GetBytes(this.A_prefix);
-            //this.Ar_prefix_array = Ar.GetPrefix();
             this.Ar_prefix = Ar.GetFixedPrefix(css, out _);
-            //new string(Array.ConvertAll(this.Ar_prefix_array, x => (char)css.GetMin(builder.solver.ConvertToCharSet(css, x))));
 
-            //InitializeVectors();
+            InitializePrefixBoyerMoore();
 
             if (A.info.ContainsSomeAnchor)
                 for (int i = 0; i < 128; i++)
                     _asciiCharKindId[i] =
                         i == 10 ? (builder.solver.MkAnd(GetAtom(i), builder.newLinePredicate).Equals(builder.solver.False) ? CharKindId.None : CharKindId.Newline)
                                 : (builder.solver.MkAnd(GetAtom(i), builder.wordLetterPredicate).Equals(builder.solver.False) ? CharKindId.None : CharKindId.WordLetter);
+        }
+
+        private void InitializePrefixBoyerMoore()
+        {
+            if (this.A_prefix != string.Empty && this.A_prefix.Length <= RegexBoyerMoore.MaxLimit)
+            {
+                string prefix = this.A_prefix;
+                // RegexBoyerMoore expects the prefix to be lower case when case is ignored
+                if (this.A_fixedPrefix_ignoreCase)
+                    prefix = CultureInfo.InvariantCulture.TextInfo.ToLower(this.A_prefix);
+                this.A_prefixBM = new RegexBoyerMoore(prefix, this.A_fixedPrefix_ignoreCase, false, CultureInfo.InvariantCulture);
+            }
         }
 
         private void InitializeRegexes()
@@ -805,7 +820,7 @@ namespace System.Text.RegularExpressions.SRM
                     //i_q0_A1 is the most recent position in the input when A1 is in the initial state
                     i_q0_A1 = i;
 
-                    if (this.A_prefix != string.Empty)
+                    if (this.A_prefixBM != null)
                     {
                         // ++++ the prefix optimization can be omitted without affecting correctness ++++
                         // but this optimization has a major perfomance boost when a fixed prefix exists
@@ -815,7 +830,7 @@ namespace System.Text.RegularExpressions.SRM
                         //thus advance the current position to the
                         //first position where the prefix does match
 
-                        i = input.IndexOf(this.A_prefix, i, comparison);
+                        i = A_prefixBM.Scan(input, i, 0, input.Length);
 
                         if (i == -1)
                         {

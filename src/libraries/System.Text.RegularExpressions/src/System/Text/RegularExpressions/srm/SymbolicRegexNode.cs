@@ -1650,30 +1650,6 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         internal string GetFixedPrefix(CharSetSolver css, out bool ignoreCase)
         {
-            var pref = GetFixedPrefix_(css, out ignoreCase);
-            int i = pref.IndexOf('I');
-            int k = pref.IndexOf('K');
-            if (ignoreCase && (i != -1 || k != -1))
-            {
-                //eliminate I and K to avoid possible semantic discrepancy with later search
-                //due to \u0130 (capital I with dot above, İ,  in regex same as i modulo ignore case)
-                //due to \u212A (Kelvin sign, in regex same as k under ignore case)
-                //but these do not match with string.IndexOf modulo ignore case
-                if (k == -1)
-                    return pref.Substring(0, i);
-                else if (i == -1)
-                    return pref.Substring(0, k);
-                else
-                    return pref.Substring(0, (i < k ? i : k));
-            }
-            else
-            {
-                return pref;
-            }
-        }
-
-        private string GetFixedPrefix_(CharSetSolver css, out bool ignoreCase)
-        {
             #region compute fixedPrefix
             S[] prefix = GetPrefix();
             if (prefix.Length == 0)
@@ -1715,15 +1691,6 @@ namespace System.Text.RegularExpressions.SRM
                     }
                     else
                     {
-                        List<char> elems = new List<char>();
-                        //extract prefix of singletons
-                        for (int i = 0; i < bdds.Length; i++)
-                        {
-                            if (css.IsSingleton(bdds[i]))
-                                elems.Add((char)bdds[i].GetMin());
-                            else
-                                break;
-                        }
                         List<char> elemsI = new List<char>();
                         //extract prefix up-to-ignoring-case
                         for (int i = 0; i < bdds1.Length; i++)
@@ -1733,19 +1700,7 @@ namespace System.Text.RegularExpressions.SRM
                             else
                                 elemsI.Add((char)bdds1[i].GetMin());
                         }
-                        //TBD: these heuristics should be evaluated more
-                        #region different cases of fixed prefix
-                        if (elemsI.Count > elems.Count)
-                        {
-                            ignoreCase = true;
-                            return new string(elemsI.ToArray());
-                        }
-                        else if (elems.Count > 0)
-                        {
-                            ignoreCase = false;
-                            return new string(elems.ToArray());
-                        }
-                        else if (elemsI.Count > 0)
+                        if (elemsI.Count > 0)
                         {
                             ignoreCase = true;
                             return new string(elemsI.ToArray());
@@ -1755,14 +1710,13 @@ namespace System.Text.RegularExpressions.SRM
                             ignoreCase = false;
                             return string.Empty;
                         }
-                        #endregion
                     }
                 }
             }
             #endregion
         }
 
-        internal const int maxPrefixLength = 20;
+        internal const int maxPrefixLength = RegexBoyerMoore.MaxLimit;
         internal S[] GetPrefix()
         {
             return GetPrefixSequence(ImmutableList<S>.Empty, maxPrefixLength).ToArray();
