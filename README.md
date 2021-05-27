@@ -4,7 +4,7 @@ This branch contains the System.Net.Http.Lowlevel package.
 
 > Note: This library is an experiment and should not be used in production code. Furthermore it is intended to rapidly evolve its API through the .NET 7 timeframe.
 
-This implements LLHTTP, a high-performance HTTP API that puts the caller in full control over requests as outlined in the [Flexible HTTP proposal](https://github.com/dotnet/designs/blob/main/proposed/flexible-http.md).
+This implements LLHTTP, a high-performance HTTP API that puts the caller in full control over requests as outlined in the [Flexible HTTP proposal](https://github.com/dotnet/designs/blob/main/accepted/2021/flexible-http.md).
 
 This package targets the following usages:
 
