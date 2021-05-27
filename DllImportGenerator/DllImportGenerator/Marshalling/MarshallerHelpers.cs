@@ -73,6 +73,17 @@ namespace Microsoft.Interop
             };
         }
 
+        public static TypeSyntax GetCompatibleGenericTypeParameterSyntax(this TypeSyntax type)
+        {
+            TypeSyntax spanElementTypeSyntax = type;
+            if (spanElementTypeSyntax is PointerTypeSyntax)
+            {
+                // Pointers cannot be passed to generics, so use IntPtr for this case.
+                spanElementTypeSyntax = ParseTypeName("System.IntPtr");
+            }
+            return spanElementTypeSyntax;
+        }
+
         public static class StringMarshaller
         {
             public static ExpressionSyntax AllocationExpression(CharEncoding encoding, string managedIdentifier)

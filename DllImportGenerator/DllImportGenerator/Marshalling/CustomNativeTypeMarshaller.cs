@@ -10,7 +10,7 @@ namespace Microsoft.Interop
 {
     class CustomNativeTypeMarshaller : IMarshallingGenerator
     {
-        private const string MarshalerLocalSuffix = "__marshaler";
+        internal const string MarshalerLocalSuffix = "__marshaler";
         private readonly TypeSyntax _nativeTypeSyntax;
         private readonly TypeSyntax _nativeLocalTypeSyntax;
         private readonly SupportedMarshallingMethods _marshallingMethods;
@@ -219,6 +219,11 @@ namespace Microsoft.Interop
                 case StubCodeContext.Stage.Unmarshal:
                     if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
                     {
+                        foreach (var statement in GeneratePreUnmarshallingStatements(info, context))
+                        {
+                            yield return statement;
+                        }
+
                         if (_useValueProperty)
                         {
                             // <marshalerIdentifier>.Value = <nativeIdentifier>;
@@ -270,6 +275,11 @@ namespace Microsoft.Interop
         }
 
         protected virtual IEnumerable<StatementSyntax> GenerateIntermediateMarshallingStatements(TypePositionInfo info, StubCodeContext context)
+        {
+            return Array.Empty<StatementSyntax>();
+        }
+
+        protected virtual IEnumerable<StatementSyntax> GeneratePreUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
         {
             return Array.Empty<StatementSyntax>();
         }

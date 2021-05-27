@@ -65,6 +65,18 @@ namespace Microsoft.Interop
                                     IdentifierName("NativeValueStorage")))))));
         }
 
+        protected override IEnumerable<StatementSyntax> GeneratePreUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
+        {
+            string marshalerIdentifier = GetMarshallerIdentifier(info, context);
+            yield return ExpressionStatement(
+                InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(marshalerIdentifier),
+                        IdentifierName("SetUnmarshalledCollectionLength")))
+                .AddArgumentListArguments(Argument(numElementsExpression)));
+        }
+
         protected override IEnumerable<StatementSyntax> GenerateIntermediateUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
         {
             string marshalerIdentifier = GetMarshallerIdentifier(info, context);
