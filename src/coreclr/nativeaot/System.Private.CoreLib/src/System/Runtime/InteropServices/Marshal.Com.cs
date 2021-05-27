@@ -134,115 +134,95 @@ namespace System.Runtime.InteropServices
                 return;
             }
 
-            if (obj is bool flag)
+            switch (obj)
             {
-                data->AsBool = flag;
-            }
-            else if (obj is byte b)
-            {
-                data->AsUi1 = b;
-            }
-            else if (obj is sbyte sb)
-            {
-                data->AsI1 = sb;
-            }
-            else if (obj is short s)
-            {
-                data->AsI2 = s;
-            }
-            else if (obj is ushort us)
-            {
-                data->AsUi2 = us;
-            }
-            else if (obj is int i)
-            {
-                data->AsI4 = i;
-            }
-            else if (obj is uint ui)
-            {
-                data->AsUi4 = ui;
-            }
-            else if (obj is long l)
-            {
-                data->AsI8 = l;
-            }
-            else if (obj is ulong ul)
-            {
-                data->AsUi8 = ul;
-            }
-            else if (obj is float f)
-            {
-                data->AsR4 = f;
-            }
-            else if (obj is double d)
-            {
-                data->AsR8 = d;
-            }
-            else if (obj is DateTime date)
-            {
-                data->AsDate = date;
-            }
-            else if (obj is decimal dec)
-            {
-                data->AsDecimal = dec;
-            }
-            else if (obj is char c)
-            {
-                data->AsUi2 = c;
-            }
-            else if (obj is string str)
-            {
-                data->AsBstr = str;
-            }
-            else if (obj is BStrWrapper strWrapper)
-            {
-                data->AsBstr = strWrapper.WrappedObject;
-            }
-            else if (obj is CurrencyWrapper currWrapper)
-            {
-                data->AsCy = currWrapper.WrappedObject;
-            }
-            else if (obj is UnknownWrapper unkWrapper)
-            {
-                data->AsUnknown = unkWrapper.WrappedObject;
-            }
-            else if (obj is DispatchWrapper dispWrapper)
-            {
-                data->AsDispatch = dispWrapper.WrappedObject;
-            }
-            else if (obj is ErrorWrapper errWrapper)
-            {
-                data->AsError = errWrapper.ErrorCode;
-            }
-            else if (obj is VariantWrapper variantWrapper)
-            {
-                // Do not want to implement that yet.
-                throw new NotSupportedException();
-            }
-            else if (obj is DBNull)
-            {
-                data->SetAsNULL();
-            }
-            else if (obj is System.Reflection.Missing)
-            {
-                data->AsError = DISP_E_PARAMNOTFOUND;
-            }
-            else
-            {
-                var type = obj.GetType();
-                if (type.IsValueType)
-                {
+                // Int and String most used types.
+                case int value:
+                    data->AsI4 = value;
+                    break;
+                case string value:
+                    data->AsBstr = value;
+                    break;
+
+                case bool value:
+                    data->AsBool = value;
+                    break;
+                case byte value:
+                    data->AsUi1 = value;
+                    break;
+                case sbyte value:
+                    data->AsI1 = value;
+                    break;
+                case short value:
+                    data->AsI2 = value;
+                    break;
+                case ushort value:
+                    data->AsUi2 = value;
+                    break;
+                case uint value:
+                    data->AsUi4 = value;
+                    break;
+                case long value:
+                    data->AsI8 = value;
+                    break;
+                case ulong value:
+                    data->AsUi8 = value;
+                    break;
+                case float value:
+                    data->AsR4 = value;
+                    break;
+                case double value:
+                    data->AsR8 = value;
+                    break;
+                case DateTime value:
+                    data->AsDate = value;
+                    break;
+                case decimal value:
+                    data->AsDecimal = value;
+                    break;
+                case char value:
+                    data->AsUi2 = value;
+                    break;
+                case BStrWrapper value:
+                    data->AsBstr = value.WrappedObject;
+                    break;
+                case CurrencyWrapper value:
+                    data->AsCy = value.WrappedObject;
+                    break;
+                case UnknownWrapper value:
+                    data->AsUnknown = value.WrappedObject;
+                    break;
+                case DispatchWrapper value:
+                    data->AsDispatch = value.WrappedObject;
+                    break;
+                case ErrorWrapper value:
+                    data->AsError = value.WrappedObject;
+                    break;
+                case VariantWrapper value:
+                    // Do not want to implement that yet.
                     throw new NotSupportedException();
-                }
-                else if (type.IsArray)
-                {
-                    // SAFEARRAY implementation goes here.
-                    throw new NotSupportedException();
-                }
-                else
-                {
-                    data->AsDispatch = obj;
-                }
+                case DBNull value:
+                    data->SetAsNULL();
+                    break;
+                case System.Reflection.Missing value:
+                    data->AsError = DISP_E_PARAMNOTFOUND;
+                    break;
+                default:
+                    var type = obj.GetType();
+                    if (type.IsValueType)
+                    {
+                        throw new NotSupportedException();
+                    }
+                    else if (type.IsArray)
+                    {
+                        // SAFEARRAY implementation goes here.
+                        throw new NotSupportedException();
+                    }
+                    else
+                    {
+                        data->AsDispatch = obj;
+                    }
+                    break;
             }
         }
 
