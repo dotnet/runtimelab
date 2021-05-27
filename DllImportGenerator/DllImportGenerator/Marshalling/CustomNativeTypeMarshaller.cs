@@ -38,7 +38,7 @@ namespace Microsoft.Interop
             _marshalerTypePinnable = false;
         }
 
-        protected string GetMarshallerIdentifier(TypePositionInfo info, StubCodeContext context)
+        public string GetMarshallerIdentifier(TypePositionInfo info, StubCodeContext context)
         {
             var (_, nativeIdentifier) = context.GetIdentifiers(info);
             return _useValueProperty ? nativeIdentifier + MarshalerLocalSuffix  : nativeIdentifier;
@@ -77,7 +77,7 @@ namespace Microsoft.Interop
             return Argument(IdentifierName(identifier));
         }
 
-        public IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context)
+        public virtual IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context)
         {
             (string managedIdentifier, string nativeIdentifier) = context.GetIdentifiers(info);
             string marshalerIdentifier = GetMarshallerIdentifier(info, context);
@@ -269,27 +269,27 @@ namespace Microsoft.Interop
             }
         }
 
-        protected virtual IEnumerable<ArgumentSyntax> GenerateAdditionalNativeTypeConstructorArguments(TypePositionInfo info, StubCodeContext context)
+        public virtual IEnumerable<ArgumentSyntax> GenerateAdditionalNativeTypeConstructorArguments(TypePositionInfo info, StubCodeContext context)
         {
             return Array.Empty<ArgumentSyntax>();
         }
 
-        protected virtual IEnumerable<StatementSyntax> GenerateIntermediateMarshallingStatements(TypePositionInfo info, StubCodeContext context)
+        public virtual IEnumerable<StatementSyntax> GenerateIntermediateMarshallingStatements(TypePositionInfo info, StubCodeContext context)
         {
             return Array.Empty<StatementSyntax>();
         }
 
-        protected virtual IEnumerable<StatementSyntax> GeneratePreUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
+        public virtual IEnumerable<StatementSyntax> GeneratePreUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
         {
             return Array.Empty<StatementSyntax>();
         }
 
-        protected virtual IEnumerable<StatementSyntax> GenerateIntermediateUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
+        public virtual IEnumerable<StatementSyntax> GenerateIntermediateUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
         {
             return Array.Empty<StatementSyntax>();
         }
 
-        public bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context)
+        public virtual bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context)
         {
             if (info.IsManagedReturnPosition || info.IsByRef && info.RefKind != RefKind.In)
             {
@@ -309,6 +309,6 @@ namespace Microsoft.Interop
             return true;
         }
         
-        public bool SupportsByValueMarshalKind(ByValueContentsMarshalKind marshalKind, StubCodeContext context) => false;
+        public virtual bool SupportsByValueMarshalKind(ByValueContentsMarshalKind marshalKind, StubCodeContext context) => false;
     }
 }

@@ -27,7 +27,7 @@ namespace Microsoft.Interop
             this.numElementsExpression = numElementsExpression;
         }
 
-        protected override IEnumerable<ArgumentSyntax> GenerateAdditionalNativeTypeConstructorArguments(TypePositionInfo info, StubCodeContext context)
+        public override IEnumerable<ArgumentSyntax> GenerateAdditionalNativeTypeConstructorArguments(TypePositionInfo info, StubCodeContext context)
         {
             yield return Argument(SizeOfExpression(elementMarshaller.AsNativeType(elementInfo)));
         }
@@ -64,7 +64,7 @@ namespace Microsoft.Interop
                                             }))))))))));
         }
 
-        internal StatementSyntax GenerateContentsMarshallingStatement(TypePositionInfo info, StubCodeContext context, bool useManagedSpanForLength)
+        private StatementSyntax GenerateContentsMarshallingStatement(TypePositionInfo info, StubCodeContext context, bool useManagedSpanForLength)
         {
             string marshalerIdentifier = GetMarshallerIdentifier(info, context);
             string nativeSpanIdentifier = GetNativeSpanIdentifier(info, context);
@@ -88,12 +88,12 @@ namespace Microsoft.Interop
                                         elementSubContext)))));
         }
 
-        protected override IEnumerable<StatementSyntax> GenerateIntermediateMarshallingStatements(TypePositionInfo info, StubCodeContext context)
+        public override IEnumerable<StatementSyntax> GenerateIntermediateMarshallingStatements(TypePositionInfo info, StubCodeContext context)
         {
             yield return GenerateContentsMarshallingStatement(info, context, useManagedSpanForLength: true);
         }
 
-        protected override IEnumerable<StatementSyntax> GeneratePreUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
+        public override IEnumerable<StatementSyntax> GeneratePreUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
         {
             string marshalerIdentifier = GetMarshallerIdentifier(info, context);
             yield return ExpressionStatement(
@@ -105,7 +105,7 @@ namespace Microsoft.Interop
                 .AddArgumentListArguments(Argument(numElementsExpression)));
         }
 
-        protected override IEnumerable<StatementSyntax> GenerateIntermediateUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
+        public override IEnumerable<StatementSyntax> GenerateIntermediateUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
         {
             yield return GenerateContentsMarshallingStatement(info, context, useManagedSpanForLength: false);
         }

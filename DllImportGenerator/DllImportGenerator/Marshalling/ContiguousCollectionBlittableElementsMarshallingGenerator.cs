@@ -23,12 +23,12 @@ namespace Microsoft.Interop
             this.numElementsExpression = numElementsExpression;
         }
 
-        protected override IEnumerable<ArgumentSyntax> GenerateAdditionalNativeTypeConstructorArguments(TypePositionInfo info, StubCodeContext context)
+        public override IEnumerable<ArgumentSyntax> GenerateAdditionalNativeTypeConstructorArguments(TypePositionInfo info, StubCodeContext context)
         {
             yield return Argument(SizeOfExpression(elementType.AsTypeSyntax()));
         }
 
-        protected override IEnumerable<StatementSyntax> GenerateIntermediateMarshallingStatements(TypePositionInfo info, StubCodeContext context)
+        public override IEnumerable<StatementSyntax> GenerateIntermediateMarshallingStatements(TypePositionInfo info, StubCodeContext context)
         {
             string marshalerIdentifier = GetMarshallerIdentifier(info, context);
             // <marshalerIdentifier>.ManagedValues.CopyTo(MemoryMarshal.Cast<byte, <elementType>>(<marshalerIdentifier.NativeValueStorage));
@@ -65,7 +65,7 @@ namespace Microsoft.Interop
                                     IdentifierName("NativeValueStorage")))))));
         }
 
-        protected override IEnumerable<StatementSyntax> GeneratePreUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
+        public override IEnumerable<StatementSyntax> GeneratePreUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
         {
             string marshalerIdentifier = GetMarshallerIdentifier(info, context);
             yield return ExpressionStatement(
@@ -77,7 +77,7 @@ namespace Microsoft.Interop
                 .AddArgumentListArguments(Argument(numElementsExpression)));
         }
 
-        protected override IEnumerable<StatementSyntax> GenerateIntermediateUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
+        public override IEnumerable<StatementSyntax> GenerateIntermediateUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
         {
             string marshalerIdentifier = GetMarshallerIdentifier(info, context);
             // MemoryMarshal.Cast<byte, <elementType>>(<marshalerIdentifier.NativeValueStorage).CopyTo(<marshalerIdentifier>.ManagedValues);
