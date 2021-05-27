@@ -56,6 +56,12 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
+        public override bool ShouldSkipEmittingObjectNode(NodeFactory factory)
+        {
+            BuildSealedVTableSlots(factory, relocsOnly: false);
+            return NumSealedVTableEntries == 0;
+        }
+
         /// <summary>
         /// Returns the slot of a method in the sealed vtable, or -1 if not found. This API should only be called after 
         /// successfully building the sealed vtable slots.

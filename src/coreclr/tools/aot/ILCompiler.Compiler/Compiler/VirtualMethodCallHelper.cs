@@ -15,10 +15,12 @@ namespace ILCompiler
         {
             Debug.Assert(method.GetTypicalMethodDefinition().OwningType == interfaceOnDefinition.GetTypeDefinition());
 
-            // Ensure the sealed vtable is built before computing the slot
-            factory.SealedVTable(implType).BuildSealedVTableSlots(factory, relocsOnly: false /* GetVirtualMethodSlot is called in the final emission phase */);
+            SealedVTableNode sealedVTable = factory.SealedVTable(implType);
 
-            int sealedVTableSlot = factory.SealedVTable(implType).ComputeDefaultInterfaceMethodSlot(method, interfaceOnDefinition);
+            // Ensure the sealed vtable is built before computing the slot
+            sealedVTable.BuildSealedVTableSlots(factory, relocsOnly: false /* GetVirtualMethodSlot is called in the final emission phase */);
+
+            int sealedVTableSlot = sealedVTable.ComputeDefaultInterfaceMethodSlot(method, interfaceOnDefinition);
             if (sealedVTableSlot == -1)
                 return -1;
 
@@ -42,10 +44,12 @@ namespace ILCompiler
                 // does not get any sealed vtable entries
                 Debug.Assert(!implType.IsArrayTypeWithoutGenericInterfaces());
 
-                // Ensure the sealed vtable is built before computing the slot
-                factory.SealedVTable(implType).BuildSealedVTableSlots(factory, relocsOnly: false /* GetVirtualMethodSlot is called in the final emission phase */);
+                SealedVTableNode sealedVTable = factory.SealedVTable(implType);
 
-                int sealedVTableSlot = factory.SealedVTable(implType).ComputeSealedVTableSlot(method);
+                // Ensure the sealed vtable is built before computing the slot
+                sealedVTable.BuildSealedVTableSlots(factory, relocsOnly: false /* GetVirtualMethodSlot is called in the final emission phase */);
+
+                int sealedVTableSlot = sealedVTable.ComputeSealedVTableSlot(method);
                 if (sealedVTableSlot == -1)
                     return -1;
 
