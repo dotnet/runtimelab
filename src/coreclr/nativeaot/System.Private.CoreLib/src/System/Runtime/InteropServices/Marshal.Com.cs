@@ -122,6 +122,11 @@ namespace System.Runtime.InteropServices
         [SupportedOSPlatform("windows")]
         public static unsafe void GetNativeVariantForObject(object? obj, IntPtr pDstNativeVariant)
         {
+            if (pDstNativeVariant == IntPtr.Zero)
+            {
+                throw new ArgumentNullException(nameof(pDstNativeVariant));
+            }
+
             Variant* data = (Variant*)pDstNativeVariant;
             if (obj == null)
             {
@@ -231,7 +236,7 @@ namespace System.Runtime.InteropServices
                 }
                 else if (type.IsArray)
                 {
-                    // SAFEARRAY impementation goes here.
+                    // SAFEARRAY implementation goes here.
                     throw new NotSupportedException();
                 }
                 else
@@ -264,12 +269,46 @@ namespace System.Runtime.InteropServices
         {
             if (pSrcNativeVariant == IntPtr.Zero)
             {
-                return null;
+                throw new ArgumentNullException(nameof(pSrcNativeVariant));
             }
 
             Variant* data = (Variant*)pSrcNativeVariant;
 
-            return data->ToObject();
+            if (data->IsEmpty)
+            {
+                return null;
+            }
+
+            switch (data->VariantType)
+            {
+                case VarEnum.VT_NULL:
+                    return DBNull.Value;
+
+                case VarEnum.VT_I1: return data->AsI1;
+                case VarEnum.VT_I2: return data->AsI2;
+                case VarEnum.VT_I4: return data->AsI4;
+                case VarEnum.VT_I8: return data->AsI8;
+                case VarEnum.VT_UI1: return data->AsUi1;
+                case VarEnum.VT_UI2: return data->AsUi2;
+                case VarEnum.VT_UI4: return data->AsUi4;
+                case VarEnum.VT_UI8: return data->AsUi8;
+                case VarEnum.VT_INT: return data->AsInt;
+                case VarEnum.VT_UINT: return data->AsUint;
+                case VarEnum.VT_BOOL: return data->AsBool;
+                case VarEnum.VT_ERROR: return data->AsError;
+                case VarEnum.VT_R4: return data->AsR4;
+                case VarEnum.VT_R8: return data->AsR8;
+                case VarEnum.VT_DECIMAL: return data->AsDecimal;
+                case VarEnum.VT_CY: return data->AsCy;
+                case VarEnum.VT_DATE: return data->AsDate;
+                case VarEnum.VT_BSTR: return data->AsBstr;
+                case VarEnum.VT_UNKNOWN: return data->AsUnknown;
+                case VarEnum.VT_DISPATCH: return data->AsDispatch;
+
+                default:
+                    // Other VARIANT types not supported yet.
+                    throw new NotSupportedException();
+            }
         }
 
         [return: MaybeNull]

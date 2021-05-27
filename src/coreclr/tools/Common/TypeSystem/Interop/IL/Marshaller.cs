@@ -1438,9 +1438,6 @@ namespace Internal.TypeSystem.Interop
                 codeStream.Emit(ILOpcode.brfalse, pLoadFalseLabel);
                 codeStream.EmitLdc(_trueValue);
                 codeStream.Emit(ILOpcode.br, pDoneLabel);
-#if DEBUG
-                codeStream.Emit(ILOpcode.pop);   // keep the simple stack level calculator happy
-#endif // DEBUG
 
                 codeStream.EmitLabel(pLoadFalseLabel);
                 codeStream.EmitLdc(0);
