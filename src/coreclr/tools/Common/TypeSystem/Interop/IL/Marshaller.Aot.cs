@@ -1079,6 +1079,11 @@ namespace Internal.TypeSystem.Interop
 
         protected override void TransformManagedToNative(ILCodeStream codeStream)
         {
+            if (this.MarshalDirection == MarshalDirection.Reverse)
+            {
+                throw new NotSupportedException();
+            }
+
             ILEmitter emitter = _ilCodeStreams.Emitter;
 
             LoadManagedValue(codeStream);
@@ -1090,6 +1095,11 @@ namespace Internal.TypeSystem.Interop
 
         protected override void TransformNativeToManaged(ILCodeStream codeStream)
         {
+            if (this.MarshalDirection == MarshalDirection.Reverse)
+            {
+                throw new NotSupportedException();
+            }
+
             ILEmitter emitter = _ilCodeStreams.Emitter;
 
             LoadNativeAddr(codeStream);
