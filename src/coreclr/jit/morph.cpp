@@ -6009,11 +6009,14 @@ GenTree* Compiler::fgMorphField(GenTree* tree, MorphAddrContext* mac)
     // if this field belongs to simd struct, translate it to simd intrinsic.
     if (mac == nullptr)
     {
-        GenTree* newTree = fgMorphFieldToSimdGetElement(tree);
-        if (newTree != tree)
+        if (IsBaselineSimdIsaSupported())
         {
-            newTree = fgMorphSmpOp(newTree);
-            return newTree;
+            GenTree* newTree = fgMorphFieldToSimdGetElement(tree);
+            if (newTree != tree)
+            {
+                newTree = fgMorphSmpOp(newTree);
+                return newTree;
+            }
         }
     }
     else if ((objRef != nullptr) && (objRef->OperGet() == GT_ADDR) && varTypeIsSIMD(objRef->gtGetOp1()))
@@ -12039,7 +12042,7 @@ GenTree* Compiler::fgMorphFieldToSimdGetElement(GenTree* tree)
     unsigned    simdSize        = 0;
     GenTree*    simdStructNode  = getSIMDStructFromField(tree, &simdBaseJitType, &index, &simdSize);
 
-    if ((simdStructNode != nullptr) && IsBaselineSimdIsaSupported())
+    if (simdStructNode != nullptr)
     {
         var_types simdBaseType = JitType2PreciseVarType(simdBaseJitType);
         GenTree*  op2          = gtNewIconNode(index, TYP_INT);
@@ -12076,7 +12079,7 @@ GenTree* Compiler::fgMorphFieldAssignToSimdSetElement(GenTree* tree)
     unsigned    simdSize        = 0;
     GenTree*    simdStructNode  = getSIMDStructFromField(tree->gtGetOp1(), &simdBaseJitType, &index, &simdSize);
 
-    if ((simdStructNode != nullptr) && IsBaselineSimdIsaSupported())
+    if (simdStructNode != nullptr)
     {
         var_types simdType     = simdStructNode->gtType;
         var_types simdBaseType = JitType2PreciseVarType(simdBaseJitType);
@@ -12238,6 +12241,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac)
             op2 = tree->AsOp()->gtOp2;
 
 #ifdef FEATURE_SIMD
+            if (IsBaselineSimdIsaSupported())
             {
                 // We should check whether op2 should be assigned to a SIMD field or not.
                 // If it is, we should tranlate the tree to simd intrinsic.
