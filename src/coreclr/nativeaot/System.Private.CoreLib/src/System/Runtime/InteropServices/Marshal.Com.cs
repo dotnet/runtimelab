@@ -12,7 +12,6 @@ namespace System.Runtime.InteropServices
 {
     public static partial class Marshal
     {
-        private static readonly Guid IID_IDispatch = new Guid("00020400-0000-0000-C000-000000000046");
         private const int DISP_E_PARAMNOTFOUND = unchecked((int)0x80020004);
 
         public static int GetHRForException(Exception? e)
@@ -111,7 +110,7 @@ namespace System.Runtime.InteropServices
                 throw new ArgumentNullException(nameof(o));
             }
 
-            return ComWrappers.ComInterfaceForObject(o, IID_IDispatch);
+            return ComWrappers.ComInterfaceForObject(o, new Guid(0x00020400, 0x0000, 0x0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46) /* IID_IDispatch */);
         }
 
         [SupportedOSPlatform("windows")]
