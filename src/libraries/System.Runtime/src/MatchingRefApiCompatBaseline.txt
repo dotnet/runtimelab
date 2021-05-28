@@ -17,6 +17,14 @@ MembersMustExist : Member 'public System.Runtime.Serialization.DeserializationTo
 MembersMustExist : Member 'public void System.Runtime.Serialization.SerializationInfo.ThrowIfDeserializationInProgress()' does not exist in the reference but it does exist in the implementation.
 MembersMustExist : Member 'public void System.Runtime.Serialization.SerializationInfo.ThrowIfDeserializationInProgress(System.String, System.Int32)' does not exist in the reference but it does exist in the implementation.
 MembersMustExist : Member 'public void System.Runtime.Serialization.SerializationInfo.UpdateValue(System.String, System.Object, System.Type)' does not exist in the reference but it does exist in the implementation.
+# These are now virtual in the implementation, which should be ok.
+CannotMakeMemberAbstract : Member 'public System.Boolean System.IO.FileSystemInfo.Exists' is abstract in the reference but is not abstract in the implementation.
+CannotMakeMemberAbstract : Member 'public System.String System.IO.FileSystemInfo.Name' is abstract in the reference but is not abstract in the implementation.
+CannotMakeMemberAbstract : Member 'public System.Boolean System.IO.FileSystemInfo.Exists.get()' is abstract in the reference but is not abstract in the implementation.
+CannotMakeMemberAbstract : Member 'public System.String System.IO.FileSystemInfo.Name.get()' is abstract in the reference but is not abstract in the implementation.
+# C# generates backing fields for fixed buffers as public.
+TypesMustExist : Type 'System.IO.Enumeration.FileSystemEntry.<_fileNameBuffer>e__FixedBuffer' does not exist in the reference but it does exist in the implementation.
+
 CannotRemoveAttribute : Attribute 'System.Diagnostics.DebuggerGuidedStepThroughAttribute' exists on 'System.Activator.CreateInstance<T>()' in the implementation but not the reference.
 CannotRemoveAttribute : Attribute 'System.Diagnostics.DebuggerGuidedStepThroughAttribute' exists on 'System.Delegate.DynamicInvoke(System.Object[])' in the implementation but not the reference.
 CannotRemoveAttribute : Attribute 'System.Diagnostics.DebuggerGuidedStepThroughAttribute' exists on 'System.Delegate.DynamicInvokeImpl(System.Object[])' in the implementation but not the reference.
@@ -34,4 +42,3 @@ MembersMustExist : Member 'public System.Reflection.AssemblyName System.Reflecti
 MembersMustExist : Member 'public System.Reflection.ParameterInfo[] System.Reflection.MethodBase.GetParametersNoCopy()' does not exist in the reference but it does exist in the implementation.
 MembersMustExist : Member 'public System.Reflection.MethodBase System.Reflection.MethodBase.MetadataDefinitionMethod.get()' does not exist in the reference but it does exist in the implementation.
 MembersMustExist : Member 'public System.Int32 System.Reflection.MethodInfo.GenericParameterCount.get()' does not exist in the reference but it does exist in the implementation.
-Total Issues: 18
