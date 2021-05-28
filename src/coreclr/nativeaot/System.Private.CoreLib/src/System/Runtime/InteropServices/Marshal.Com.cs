@@ -207,24 +207,78 @@ namespace System.Runtime.InteropServices
                 case System.Reflection.Missing value:
                     data->AsError = DISP_E_PARAMNOTFOUND;
                     break;
-                case Enum value:
-                    data->AsI8 = (long)Convert.ToInt32(value);
+                case IConvertible value:
+                    switch (value->GetTypeCode())
+                    {
+                        case TypeCode.Empty:
+                            data->VariantType = VarEnum.VT_EMPTY;
+                            break;
+                        case TypeCode.Object:
+                            data->AsUnknown = value;
+                            break;
+                        case TypeCode.DBNull:
+                            data->SetAsNULL();
+                            break;
+                        case TypeCode.Boolean:
+                            data->AsBool = value.ToBoolean();
+                            break;
+                        case TypeCode.Char:
+                            data->AsUi2 = value.ToChar();
+                            break;
+                        case TypeCode.SByte:
+                            data->AsI1 = value.ToSByte();
+                            break;
+                        case TypeCode.Byte:
+                            data->AsUi1 = value.ToByte();
+                            break;
+                        case TypeCode.Int16:
+                            data->AsI2 = value.ToInt16();
+                            break;
+                        case TypeCode.UInt16:
+                            data->AsUi2 = value.ToUInt16();
+                            break;
+                        case TypeCode.Int32:
+                            data->AsI4 = value.ToInt32();
+                            break;
+                        case TypeCode.UInt32:
+                            data->AsUi4 = value.ToUInt32();
+                            break;
+                        case TypeCode.Int64:
+                            data->AsI8 = value.ToInt64();
+                            break;
+                        case TypeCode.UInt64:
+                            data->AsUi8 = value.ToUInt64();
+                            break;
+                        case TypeCode.Single:
+                            data->AsR4 = value.ToSingle();
+                            break;
+                        case TypeCode.Double:
+                            data->AsR8 = value.ToDouble();
+                            break;
+                        case TypeCode.Decimal:
+                            data->AsDecimal = value.ToDecimal();
+                            break;
+                        case TypeCode.DateTime:
+                            data->AsDate = value.ToDateTime();
+                            break;
+                        case TypeCode.String:
+                            data->AsBstr = value.ToString();
+                            break;
+                        default:
+                            throw new NotSupportedException();
+                    } 
                     break;
+                case CriticalHandle:
+                    throw new ArgumentException();
+                case SafeHandle:
+                    throw new ArgumentException();
+                case Array:
+                    // SAFEARRAY implementation goes here.
+                    throw new NotSupportedException();
+                case ValueType:
+                    throw new NotSupportedException();
                 default:
-                    var type = obj.GetType();
-                    if (type.IsValueType)
-                    {
-                        throw new NotSupportedException();
-                    }
-                    else if (type.IsArray)
-                    {
-                        // SAFEARRAY implementation goes here.
-                        throw new NotSupportedException();
-                    }
-                    else
-                    {
-                        data->AsDispatch = obj;
-                    }
+                    data->AsDispatch = obj;
                     break;
             }
         }
