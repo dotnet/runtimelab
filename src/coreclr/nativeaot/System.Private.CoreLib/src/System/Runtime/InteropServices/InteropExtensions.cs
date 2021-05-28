@@ -95,16 +95,6 @@ namespace System.Runtime.InteropServices
             return handle.ToEETypePtr().IsInterface;
         }
 
-        public static bool IsPrimitive(this RuntimeTypeHandle handle)
-        {
-            return handle.ToEETypePtr().IsPrimitive;
-        }
-
-        public static bool IsDelegate(this RuntimeTypeHandle handle)
-        {
-            return InteropExtensions.AreTypesAssignable(handle, typeof(Delegate).TypeHandle);
-        }
-
         public static bool AreTypesAssignable(RuntimeTypeHandle sourceType, RuntimeTypeHandle targetType)
         {
             return RuntimeImports.AreTypesAssignable(sourceType.ToEETypePtr(), targetType.ToEETypePtr());
@@ -113,11 +103,6 @@ namespace System.Runtime.InteropServices
         public static RuntimeTypeHandle GetTypeHandle(this object target)
         {
             return new RuntimeTypeHandle(target.EETypePtr);
-        }
-
-        public static object RuntimeNewObject(RuntimeTypeHandle typeHnd)
-        {
-            return RuntimeImports.RhNewObject(typeHnd.ToEETypePtr());
         }
     }
 }

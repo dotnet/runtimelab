@@ -3697,7 +3697,8 @@ namespace Internal.JitInterface
             instrumentationData = msInstrumentationData.ToArray();
         }
 
-        private HRESULT getPgoInstrumentationResults(CORINFO_METHOD_STRUCT_* ftnHnd, ref PgoInstrumentationSchema* pSchema, ref uint countSchemaItems, byte** pInstrumentationData)
+        private HRESULT getPgoInstrumentationResults(CORINFO_METHOD_STRUCT_* ftnHnd, ref PgoInstrumentationSchema* pSchema, ref uint countSchemaItems, byte** pInstrumentationData, 
+            ref PgoSource pPgoSource)
         {
             MethodDesc methodDesc = HandleToObject(ftnHnd);
 
@@ -3728,6 +3729,7 @@ namespace Internal.JitInterface
             pSchema = pgoResults.pSchema;
             countSchemaItems = pgoResults.countSchemaItems;
             *pInstrumentationData = pgoResults.pInstrumentationData;
+            pPgoSource = PgoSource.Static;
             return pgoResults.hr;
         }
 
