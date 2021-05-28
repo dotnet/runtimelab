@@ -369,9 +369,9 @@ namespace Microsoft.Interop
             {
                 SizeAndParamIndexInfo(int size, SizeAndParamIndexInfo.UnspecifiedData) => GetConstSizeExpression(size),
                 ConstSizeCountInfo(int size) => GetConstSizeExpression(size),
-                SizeAndParamIndexInfo(SizeAndParamIndexInfo.UnspecifiedData, int paramIndex) => CheckedExpression(SyntaxKind.CheckedExpression, GetExpressionForParamIndex(paramIndex)),
-                SizeAndParamIndexInfo(int size, int paramIndex) => CheckedExpression(SyntaxKind.CheckedExpression, BinaryExpression(SyntaxKind.AddExpression, GetConstSizeExpression(size), GetExpressionForParamIndex(paramIndex))),
-                CountElementCountInfo(string elementName) => throw new NotImplementedException(),
+                SizeAndParamIndexInfo(SizeAndParamIndexInfo.UnspecifiedData, int paramIndex) => CheckedExpression(SyntaxKind.CheckedExpression, GetExpressionForParam(context.GetTypePositionInfoForManagedIndex(paramIndex))),
+                SizeAndParamIndexInfo(int size, int paramIndex) => CheckedExpression(SyntaxKind.CheckedExpression, BinaryExpression(SyntaxKind.AddExpression, GetConstSizeExpression(size), GetExpressionForParam(context.GetTypePositionInfoForManagedIndex(paramIndex)))),
+                CountElementCountInfo(TypePositionInfo elementInfo) => CheckedExpression(SyntaxKind.CheckedExpression, GetExpressionForParam(elementInfo)),
                 _ => throw new MarshallingNotSupportedException(info, context)
                 {
                     NotSupportedDetails = Resources.ArraySizeMustBeSpecified
@@ -383,17 +383,16 @@ namespace Microsoft.Interop
                 return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(size));
             }
 
-            ExpressionSyntax GetExpressionForParamIndex(int index)
+            ExpressionSyntax GetExpressionForParam(TypePositionInfo? paramInfo)
             {
-                TypePositionInfo? paramIndexInfo = context.GetTypePositionInfoForManagedIndex(index);
-                if (paramIndexInfo is null)
+                if (paramInfo is null)
                 {
                     throw new MarshallingNotSupportedException(info, context)
                     {
                         NotSupportedDetails = Resources.ArraySizeParamIndexOutOfRange
                     };
                 }
-                else if (!paramIndexInfo.ManagedType.IsIntegralType())
+                else if (!paramInfo.ManagedType.IsIntegralType())
                 {
                     throw new MarshallingNotSupportedException(info, context)
                     {
@@ -402,8 +401,8 @@ namespace Microsoft.Interop
                 }
                 else
                 {
-                    var (managed, native) = context.GetIdentifiers(paramIndexInfo);
-                    string identifier = Create(paramIndexInfo, context, options).UsesNativeIdentifier(paramIndexInfo, context) ? native : managed;
+                    var (managed, native) = context.GetIdentifiers(paramInfo);
+                    string identifier = Create(paramInfo, context, options).UsesNativeIdentifier(paramInfo, context) ? native : managed;
                     return CastExpression(
                             PredefinedType(Token(SyntaxKind.IntKeyword)),
                             IdentifierName(identifier));

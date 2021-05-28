@@ -23,8 +23,18 @@ namespace Microsoft.Interop
                         && !m.IsStatic);
         }
 
-        public static bool IsManagedToNativeConstructor(IMethodSymbol ctor, ITypeSymbol managedType)
+        public static bool IsManagedToNativeConstructor(
+            IMethodSymbol ctor,
+            ITypeSymbol managedType,
+            ITypeSymbol int32,
+            bool isCollectionMarshaller)
         {
+            if (isCollectionMarshaller)
+            {
+                return ctor.Parameters.Length == 2
+                && SymbolEqualityComparer.Default.Equals(managedType, ctor.Parameters[0].Type)
+                && SymbolEqualityComparer.Default.Equals(int32, ctor.Parameters[1].Type);
+            }
             return ctor.Parameters.Length == 1
                 && SymbolEqualityComparer.Default.Equals(managedType, ctor.Parameters[0].Type);
         }
@@ -32,8 +42,17 @@ namespace Microsoft.Interop
         public static bool IsStackallocConstructor(
             IMethodSymbol ctor,
             ITypeSymbol managedType,
-            ITypeSymbol spanOfByte)
+            ITypeSymbol spanOfByte,
+            ITypeSymbol int32,
+            bool isCollectionMarshaller)
         {
+            if (isCollectionMarshaller)
+            {
+                return ctor.Parameters.Length == 3
+                && SymbolEqualityComparer.Default.Equals(managedType, ctor.Parameters[0].Type)
+                && SymbolEqualityComparer.Default.Equals(spanOfByte, ctor.Parameters[1].Type)
+                && SymbolEqualityComparer.Default.Equals(int32, ctor.Parameters[2].Type);
+            }
             return ctor.Parameters.Length == 2
                 && SymbolEqualityComparer.Default.Equals(managedType, ctor.Parameters[0].Type)
                 && SymbolEqualityComparer.Default.Equals(spanOfByte, ctor.Parameters[1].Type);

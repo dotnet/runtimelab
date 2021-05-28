@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 using Microsoft.CodeAnalysis;
@@ -82,9 +83,9 @@ namespace Microsoft.Interop
 
         public MarshallingInfo MarshallingAttributeInfo { get; init; }
 
-        public static TypePositionInfo CreateForParameter(IParameterSymbol paramSymbol, DefaultMarshallingInfo defaultInfo, Compilation compilation, GeneratorDiagnostics diagnostics, INamedTypeSymbol scopeSymbol)
+        public static TypePositionInfo CreateForParameter(IParameterSymbol paramSymbol, DefaultMarshallingInfo defaultInfo, Compilation compilation, GeneratorDiagnostics diagnostics, IMethodSymbol methodSymbol)
         {
-            var marshallingInfo = GetMarshallingInfo(paramSymbol.Type, paramSymbol.GetAttributes(), defaultInfo, compilation, diagnostics, scopeSymbol);
+            var marshallingInfo = GetMarshallingInfo(paramSymbol.Type, paramSymbol.GetAttributes(), defaultInfo, compilation, diagnostics, methodSymbol);
             var typeInfo = new TypePositionInfo()
             {
                 ManagedType = paramSymbol.Type,
@@ -98,9 +99,9 @@ namespace Microsoft.Interop
             return typeInfo;
         }
 
-        public static TypePositionInfo CreateForType(ITypeSymbol type, IEnumerable<AttributeData> attributes, DefaultMarshallingInfo defaultInfo, Compilation compilation, GeneratorDiagnostics diagnostics, INamedTypeSymbol scopeSymbol)
+        public static TypePositionInfo CreateForType(ITypeSymbol type, IEnumerable<AttributeData> attributes, DefaultMarshallingInfo defaultInfo, Compilation compilation, GeneratorDiagnostics diagnostics, ISymbol symbol)
         {
-            var marshallingInfo = GetMarshallingInfo(type, attributes, defaultInfo, compilation, diagnostics, scopeSymbol);
+            var marshallingInfo = GetMarshallingInfo(type, attributes, defaultInfo, compilation, diagnostics, symbol);
             var typeInfo = new TypePositionInfo()
             {
                 ManagedType = type,
@@ -127,21 +128,28 @@ namespace Microsoft.Interop
             return typeInfo;
         }
 
-        private static MarshallingInfo GetMarshallingInfo(ITypeSymbol type, IEnumerable<AttributeData> attributes, DefaultMarshallingInfo defaultInfo, Compilation compilation, GeneratorDiagnostics diagnostics, INamedTypeSymbol scopeSymbol, int indirectionLevel = 0)
+        private static MarshallingInfo GetMarshallingInfo(ITypeSymbol type, IEnumerable<AttributeData> attributes, DefaultMarshallingInfo defaultInfo, Compilation compilation, GeneratorDiagnostics diagnostics, ISymbol contextSymbol, int indirectionLevel = 0)
         {
+            CountInfo parsedCountInfo = NoCountInfo.Instance;
             // Look at attributes passed in - usage specific.
             foreach (var attrData in attributes)
             {
                 INamedTypeSymbol attributeClass = attrData.AttributeClass!;
 
-                if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.System_Runtime_InteropServices_MarshalAsAttribute), attributeClass))
+                if (indirectionLevel == 0
+                    && SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.System_Runtime_InteropServices_MarshalAsAttribute), attributeClass))
                 {
                     // https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.marshalasattribute
-                    return CreateMarshalAsInfo(type, attrData, defaultInfo, compilation, diagnostics, scopeSymbol, indirectionLevel);
+                    return CreateMarshalAsInfo(type, attrData, defaultInfo, compilation, indirectionLevel);
                 }
-                else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.MarshalUsingAttribute), attributeClass))
+                else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.MarshalUsingAttribute), attributeClass)
+                    && AttributeAppliesToCurrentIndirectionLevel(attrData, indirectionLevel))
                 {
-                    return CreateNativeMarshallingInfo(type, compilation, attrData, useDefaultMarshalling: false, indirectionLevel);
+                    parsedCountInfo = CreateCountInfo(attrData);
+                    if (attrData.ConstructorArguments.Length != 0)
+                    {
+                        return CreateNativeMarshallingInfo(type, compilation, attrData, isMarshalUsingAttribute: true, indirectionLevel, parsedCountInfo);
+                    }
                 }
             }
 
@@ -162,7 +170,7 @@ namespace Microsoft.Interop
                 }
                 else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.NativeMarshallingAttribute), attributeClass))
                 {
-                    return CreateNativeMarshallingInfo(type, compilation, attrData, useDefaultMarshalling: true, indirectionLevel);
+                    return CreateNativeMarshallingInfo(type, compilation, attrData, isMarshalUsingAttribute: false, indirectionLevel, parsedCountInfo);
                 }
                 else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.GeneratedMarshallingAttribute), attributeClass))
                 {
@@ -172,7 +180,14 @@ namespace Microsoft.Interop
 
             // If the type doesn't have custom attributes that dictate marshalling,
             // then consider the type itself.
-            if (TryCreateTypeBasedMarshallingInfo(type, defaultInfo, compilation, diagnostics, scopeSymbol, out MarshallingInfo infoMaybe, indirectionLevel))
+            if (TryCreateTypeBasedMarshallingInfo(
+                type,
+                defaultInfo,
+                compilation,
+                diagnostics,
+                contextSymbol.ContainingType,
+                indirectionLevel,
+                out MarshallingInfo infoMaybe))
             {
                 return infoMaybe;
             }
@@ -188,13 +203,11 @@ namespace Microsoft.Interop
 
             return NoMarshallingInfo.Instance;
 
-            static MarshallingInfo CreateMarshalAsInfo(
+            MarshallingInfo CreateMarshalAsInfo(
                 ITypeSymbol type,
                 AttributeData attrData,
                 DefaultMarshallingInfo defaultInfo,
                 Compilation compilation,
-                GeneratorDiagnostics diagnostics,
-                INamedTypeSymbol scopeSymbol,
                 int indirectionLevel)
             {
                 object unmanagedTypeObj = attrData.ConstructorArguments[0].Value!;
@@ -269,7 +282,7 @@ namespace Microsoft.Interop
                 }
                 else
                 {
-                    elementMarshallingInfo = GetMarshallingInfo(elementType, Array.Empty<AttributeData>(), defaultInfo, compilation, diagnostics, scopeSymbol, indirectionLevel++);
+                    elementMarshallingInfo = GetMarshallingInfo(elementType, Array.Empty<AttributeData>(), defaultInfo, compilation, diagnostics, contextSymbol, indirectionLevel++);
                 }
 
                 INamedTypeSymbol? arrayMarshaller;
@@ -300,38 +313,97 @@ namespace Microsoft.Interop
                     ElementMarshallingInfo: elementMarshallingInfo);
             }
 
-            static NativeMarshallingAttributeInfo CreateNativeMarshallingInfo(ITypeSymbol type, Compilation compilation, AttributeData attrData, bool useDefaultMarshalling, int indirectionLevel)
+            CountInfo CreateCountInfo(AttributeData marshalUsingData)
             {
+                int? constSize = null;
+                string? elementName = null;
+                foreach (var arg in marshalUsingData.NamedArguments)
+                {
+                    if (arg.Key == "ConstantElementCount")
+                    {
+                        constSize = (int)arg.Value.Value!;
+                    }
+                    else if (arg.Key == "CountElementName")
+                    {
+                        if (arg.Value.Value is null)
+                        {
+                            diagnostics.ReportConfigurationNotSupported(marshalUsingData, "CountElementName", "null");
+                            return NoCountInfo.Instance;
+                        }
+                        elementName = (string)arg.Value.Value!;
+                    }
+                }
+
+                if (constSize is not null && elementName is not null)
+                {
+                    diagnostics.ReportConfigurationNotSupported(marshalUsingData, "ConstantElementCount and CountElementName combined");
+                }
+                else if (constSize is not null)
+                {
+                    return new ConstSizeCountInfo(constSize.Value);
+                }
+                else if (elementName is not null)
+                {
+                    TypePositionInfo? elementInfo = CreateForElementName(compilation, diagnostics, defaultInfo, contextSymbol, elementName);
+                    if (elementInfo is null)
+                    {
+                        diagnostics.ReportConfigurationNotSupported(marshalUsingData, "CountElementName", elementName);
+                        return NoCountInfo.Instance;
+                    }
+                    return new CountElementCountInfo(elementInfo);
+                }
+
+                return NoCountInfo.Instance;
+            }
+
+            static NativeMarshallingAttributeInfo CreateNativeMarshallingInfo(ITypeSymbol type, Compilation compilation, AttributeData attrData, bool isMarshalUsingAttribute, int indirectionLevel, CountInfo parsedCountInfo)
+            {
+                SupportedMarshallingMethods methods = SupportedMarshallingMethods.None;
+
+                if (!isMarshalUsingAttribute && ManualTypeMarshallingHelper.FindGetPinnableReference(type) is not null)
+                {
+                    methods |= SupportedMarshallingMethods.Pinning;
+                }
+
                 ITypeSymbol spanOfByte = compilation.GetTypeByMetadataName(TypeNames.System_Span_Metadata)!.Construct(compilation.GetSpecialType(SpecialType.System_Byte));
+                ITypeSymbol int32 = compilation.GetSpecialType(SpecialType.System_Int32);
+
                 INamedTypeSymbol nativeType = (INamedTypeSymbol)attrData.ConstructorArguments[0].Value!;
-                SupportedMarshallingMethods methods = 0;
+
+                ITypeSymbol contiguousCollectionMarshalerAttribute = compilation.GetTypeByMetadataName(TypeNames.GenericContiguousCollectionMarshallerAttribute)!;
+
+                bool isContiguousCollectionMarshaller = nativeType.GetAttributes().Any(attr => SymbolEqualityComparer.Default.Equals(attr.AttributeClass, contiguousCollectionMarshalerAttribute));
                 IPropertySymbol? valueProperty = ManualTypeMarshallingHelper.FindValueProperty(nativeType);
+
+                bool hasInt32Constructor = false;
                 foreach (var ctor in nativeType.Constructors)
                 {
-                    if (ManualTypeMarshallingHelper.IsManagedToNativeConstructor(ctor, type)
+                    if (ManualTypeMarshallingHelper.IsManagedToNativeConstructor(ctor, type, int32, isCollectionMarshaller: true)
                         && (valueProperty is null or { GetMethod: not null }))
                     {
                         methods |= SupportedMarshallingMethods.ManagedToNative;
                     }
-                    else if (ManualTypeMarshallingHelper.IsStackallocConstructor(ctor, type, spanOfByte)
+                    else if (ManualTypeMarshallingHelper.IsStackallocConstructor(ctor, type, spanOfByte, int32, isCollectionMarshaller: true)
                         && (valueProperty is null or { GetMethod: not null }))
                     {
                         methods |= SupportedMarshallingMethods.ManagedToNativeStackalloc;
                     }
+                    else if (ctor.Parameters.Length == 1 && SymbolEqualityComparer.Default.Equals(ctor.Parameters[0], int32))
+                    {
+                        hasInt32Constructor = true;
+                    }
                 }
 
-                if (ManualTypeMarshallingHelper.HasToManagedMethod(nativeType, type)
+                // The constructor that takes only the native element size is required for collection marshallers
+                // in the native-to-managed scenario.
+                if ((!isContiguousCollectionMarshaller || hasInt32Constructor)
+                    && ManualTypeMarshallingHelper.HasToManagedMethod(nativeType, type)
                     && (valueProperty is null or { SetMethod: not null }))
                 {
                     methods |= SupportedMarshallingMethods.NativeToManaged;
                 }
 
-                if (useDefaultMarshalling && ManualTypeMarshallingHelper.FindGetPinnableReference(type) is not null)
-                {
-                    methods |= SupportedMarshallingMethods.Pinning;
-                }
-
-                if (methods == 0)
+                if (methods == SupportedMarshallingMethods.None)
                 {
                     // TODO: Diagnostic since no marshalling methods are supported.
                 }
@@ -341,10 +413,17 @@ namespace Microsoft.Interop
                     valueProperty?.Type,
                     methods,
                     NativeTypePinnable: ManualTypeMarshallingHelper.FindGetPinnableReference(nativeType) is not null,
-                    UseDefaultMarshalling: useDefaultMarshalling);
+                    UseDefaultMarshalling: !isMarshalUsingAttribute);
             }
 
-            static bool TryCreateTypeBasedMarshallingInfo(ITypeSymbol type, DefaultMarshallingInfo defaultInfo, Compilation compilation, GeneratorDiagnostics diagnostics, INamedTypeSymbol scopeSymbol, out MarshallingInfo marshallingInfo, int indirectionLevel)
+            static bool TryCreateTypeBasedMarshallingInfo(
+                ITypeSymbol type,
+                DefaultMarshallingInfo defaultInfo,
+                Compilation compilation,
+                GeneratorDiagnostics diagnostics,
+                INamedTypeSymbol scopeSymbol,
+                int indirectionLevel,
+                out MarshallingInfo marshallingInfo)
             {
                 var conversion = compilation.ClassifyCommonConversion(type, compilation.GetTypeByMetadataName(TypeNames.System_Runtime_InteropServices_SafeHandle)!);
                 if (conversion.Exists 
@@ -411,6 +490,55 @@ namespace Microsoft.Interop
                 marshallingInfo = NoMarshallingInfo.Instance;
                 return false;
             }
+        }
+
+        private static TypePositionInfo? CreateForElementName(Compilation compilation, GeneratorDiagnostics diagnostics, DefaultMarshallingInfo defaultInfo, ISymbol context, string elementName)
+        {
+            if (context is IMethodSymbol method)
+            {
+                if (elementName == CountElementCountInfo.ReturnValueElementName)
+                {
+                    return CreateForType(
+                        method.ReturnType,
+                        method.GetReturnTypeAttributes(),
+                        defaultInfo,
+                        compilation,
+                        diagnostics,
+                        method) with
+                    {
+                        ManagedIndex = ReturnIndex
+                    };
+                }
+
+                foreach (var param in method.Parameters)
+                {
+                    if (param.Name == elementName)
+                    {
+                        return CreateForParameter(param, defaultInfo, compilation, diagnostics, method);
+                    }
+                }
+            }
+            else if (context is INamedTypeSymbol _)
+            {
+                // TODO: Handle when we create a struct marshalling generator
+                // Do we want to support CountElementName pointing to only fields, or properties as well?
+                // If only fields, how do we handle properties with generated backing fields?
+            }
+
+            return null;
+        }
+
+        private static bool AttributeAppliesToCurrentIndirectionLevel(AttributeData attrData, int indirectionLevel)
+        {
+            int elementIndirectionLevel = 0;
+            foreach (var arg in attrData.NamedArguments)
+            {
+                if (arg.Key == "ElementIndirectionLevel")
+                {
+                    elementIndirectionLevel = (int)arg.Value.Value!;
+                }
+            }
+            return elementIndirectionLevel == indirectionLevel;
         }
 
         private static ByValueContentsMarshalKind GetByValueContentsMarshalKind(IEnumerable<AttributeData> attributes, Compilation compilation)

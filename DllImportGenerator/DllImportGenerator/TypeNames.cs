@@ -17,6 +17,8 @@ namespace Microsoft.Interop
 
         public const string MarshalUsingAttribute = "System.Runtime.InteropServices.MarshalUsingAttribute";
 
+        public const string GenericContiguousCollectionMarshallerAttribute = "System.Runtime.InteropServices.GenericContiguousCollectionMarshallerAttribute";
+
         public const string LCIDConversionAttribute = "System.Runtime.InteropServices.LCIDConversionAttribute";
 
         public const string System_Span_Metadata = "System.Span`1";

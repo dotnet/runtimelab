@@ -59,6 +59,7 @@ namespace Microsoft.Interop
     [Flags]
     internal enum SupportedMarshallingMethods
     {
+        None = 0,
         ManagedToNative = 0x1,
         NativeToManaged = 0x2,
         ManagedToNativeStackalloc = 0x4,
@@ -77,7 +78,10 @@ namespace Microsoft.Interop
 
     internal sealed record ConstSizeCountInfo(int Size) : CountInfo;
 
-    internal sealed record CountElementCountInfo(string parameterName) : CountInfo;
+    internal sealed record CountElementCountInfo(TypePositionInfo ElementInfo) : CountInfo
+    {
+        public const string ReturnValueElementName = "return-value";
+    }
 
     internal sealed record SizeAndParamIndexInfo(int ConstSize, int ParamIndex) : CountInfo
     {

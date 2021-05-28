@@ -94,17 +94,13 @@ namespace Microsoft.Interop
 
         public override (string managed, string native) GetIdentifiers(TypePositionInfo info)
         {
-            if (info.IsManagedReturnPosition && !info.IsNativeReturnPosition)
+            if (info.IsManagedReturnPosition)
             {
                 return (ReturnIdentifier, ReturnNativeIdentifier);
             }
             else if (!info.IsManagedReturnPosition && info.IsNativeReturnPosition)
             {
                 return (InvokeReturnIdentifier, InvokeReturnIdentifier);
-            }
-            else if (info.IsManagedReturnPosition && info.IsNativeReturnPosition)
-            {
-                return (ReturnIdentifier, ReturnNativeIdentifier);
             }
             else
             {

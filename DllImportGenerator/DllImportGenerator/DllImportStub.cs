@@ -162,7 +162,7 @@ namespace Microsoft.Interop
             for (int i = 0; i < method.Parameters.Length; i++)
             {
                 var param = method.Parameters[i];
-                var typeInfo = TypePositionInfo.CreateForParameter(param, defaultInfo, env.Compilation, diagnostics, method.ContainingType);
+                var typeInfo = TypePositionInfo.CreateForParameter(param, defaultInfo, env.Compilation, diagnostics, method);
                 typeInfo = typeInfo with 
                 {
                     ManagedIndex = i,
@@ -171,7 +171,7 @@ namespace Microsoft.Interop
                 paramsTypeInfo.Add(typeInfo);
             }
 
-            TypePositionInfo retTypeInfo = TypePositionInfo.CreateForType(method.ReturnType, method.GetReturnTypeAttributes(), defaultInfo, env.Compilation, diagnostics, method.ContainingType);
+            TypePositionInfo retTypeInfo = TypePositionInfo.CreateForType(method.ReturnType, method.GetReturnTypeAttributes(), defaultInfo, env.Compilation, diagnostics, method);
             retTypeInfo = retTypeInfo with
             {
                 ManagedIndex = TypePositionInfo.ReturnIndex,

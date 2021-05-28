@@ -25,11 +25,33 @@ namespace System.Runtime.InteropServices
     [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field)]
     public class MarshalUsingAttribute : Attribute
     {
+        public MarshalUsingAttribute()
+        {
+            CountElementName = null!;
+        }
+
         public MarshalUsingAttribute(Type nativeType)
+            :this()
         {
             NativeType = nativeType;
         }
 
-        public Type NativeType { get; }
+        public Type? NativeType { get; }
+
+        public string CountElementName { get; set; }
+
+        public int ConstantElementCount { get; set; }
+
+        public int ElementIndirectionLevel { get; set; }
+
+        public const string ReturnsCountValue = "return-value";
+    }
+
+    [AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class)]
+    public sealed class GenericContiguousCollectionMarshallerAttribute : Attribute
+    {
+        public GenericContiguousCollectionMarshallerAttribute()
+        {
+        }
     }
 }
