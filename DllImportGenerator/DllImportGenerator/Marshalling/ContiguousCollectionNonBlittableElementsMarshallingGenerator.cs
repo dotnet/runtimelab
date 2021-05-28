@@ -142,6 +142,11 @@ namespace Microsoft.Interop
             yield return GenerateContentsMarshallingStatement(info, context, useManagedSpanForLength: false);
         }
 
+        public override IEnumerable<StatementSyntax> GenerateIntermediateCleanupStatements(TypePositionInfo info, StubCodeContext context)
+        {
+            yield return GenerateContentsMarshallingStatement(info, context, useManagedSpanForLength: false);
+        }
+
         /// <summary>
         /// Rewrite assignment expressions to the native identifier to cast to IntPtr.
         /// This handles the case where the native type of a non-blittable managed type is a pointer,

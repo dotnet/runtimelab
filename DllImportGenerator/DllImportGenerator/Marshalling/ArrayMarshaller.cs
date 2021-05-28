@@ -149,6 +149,11 @@ namespace Microsoft.Interop
             return innerCollectionMarshaller.GenerateIntermediateUnmarshallingStatements(info, context);
         }
 
+        public override IEnumerable<StatementSyntax> GenerateIntermediateCleanupStatements(TypePositionInfo info, StubCodeContext context)
+        {
+            return innerCollectionMarshaller.GenerateIntermediateCleanupStatements(info, context);
+        }
+
         public override bool SupportsByValueMarshalKind(ByValueContentsMarshalKind marshalKind, StubCodeContext context)
         {
             return !(blittable && context.PinningSupported) && marshalKind.HasFlag(ByValueContentsMarshalKind.Out);

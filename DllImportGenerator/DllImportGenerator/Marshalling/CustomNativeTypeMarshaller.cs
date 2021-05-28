@@ -256,6 +256,10 @@ namespace Microsoft.Interop
                 case StubCodeContext.Stage.Cleanup:
                     if (info.RefKind != RefKind.Out && _hasFreeNative)
                     {
+                        foreach (var statement in GenerateIntermediateCleanupStatements(info, context))
+                        {
+                            yield return statement;
+                        }
                         // <marshalerIdentifier>.FreeNative();
                         yield return ExpressionStatement(
                             InvocationExpression(
@@ -286,6 +290,11 @@ namespace Microsoft.Interop
         }
 
         public virtual IEnumerable<StatementSyntax> GenerateIntermediateUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
+        {
+            return Array.Empty<StatementSyntax>();
+        }
+
+        public virtual IEnumerable<StatementSyntax> GenerateIntermediateCleanupStatements(TypePositionInfo info, StubCodeContext context)
         {
             return Array.Empty<StatementSyntax>();
         }
