@@ -59,7 +59,7 @@ namespace Microsoft.Interop
         {
             var (managed, _) = parentContext.GetIdentifiers(info);
             return (
-                $"{managed}{CustomNativeTypeMarshaller.MarshalerLocalSuffix}.ManagedValues[{indexerIdentifier}]",
+                $"{MarshallerHelpers.GetMarshallerIdentifier(info, parentContext)}.ManagedValues[{indexerIdentifier}]",
                 $"{nativeSpanIdentifier}[{indexerIdentifier}]"
             );
         }

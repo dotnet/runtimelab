@@ -10,7 +10,6 @@ namespace Microsoft.Interop
 {
     class CustomNativeTypeMarshaller : IMarshallingGenerator
     {
-        internal const string MarshalerLocalSuffix = "__marshaler";
         private readonly TypeSyntax _nativeTypeSyntax;
         private readonly TypeSyntax _nativeLocalTypeSyntax;
         private readonly SupportedMarshallingMethods _marshallingMethods;
@@ -40,8 +39,9 @@ namespace Microsoft.Interop
 
         public string GetMarshallerIdentifier(TypePositionInfo info, StubCodeContext context)
         {
-            var (_, nativeIdentifier) = context.GetIdentifiers(info);
-            return _useValueProperty ? nativeIdentifier + MarshalerLocalSuffix  : nativeIdentifier;
+            return _useValueProperty
+                ? MarshallerHelpers.GetMarshallerIdentifier(info, context)
+                : context.GetIdentifiers(info).native;
         }
 
         public TypeSyntax AsNativeType(TypePositionInfo info)
@@ -166,8 +166,9 @@ namespace Microsoft.Interop
                                                                 _nativeLocalTypeSyntax,
                                                                 IdentifierName(ManualTypeMarshallingHelper.StackBufferSizeFieldName)))
                                                     })))));
-                            arguments.AddRange(GenerateAdditionalNativeTypeConstructorArguments(info, context));
                         }
+
+                        arguments.AddRange(GenerateAdditionalNativeTypeConstructorArguments(info, context));
 
                         // <marshalerIdentifier> = new <_nativeLocalType>(<arguments>);
                         yield return ExpressionStatement(

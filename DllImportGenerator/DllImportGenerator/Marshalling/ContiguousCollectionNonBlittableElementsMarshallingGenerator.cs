@@ -37,13 +37,14 @@ namespace Microsoft.Interop
             return context.GetIdentifiers(info).managed + "__nativeSpan";
         }
 
-        private LocalDeclarationStatementSyntax GenerateNativeSpanDeclaration(string nativeSpanIdentifier)
-        {
+        private LocalDeclarationStatementSyntax GenerateNativeSpanDeclaration(TypePositionInfo info, StubCodeContext context)
+        {            
+            string nativeSpanIdentifier = GetNativeSpanIdentifier(info, context);
             return LocalDeclarationStatement(VariableDeclaration(
                 GenericName(
                     Identifier(TypeNames.System_Span),
                     TypeArgumentList(
-                        SingletonSeparatedList<TypeSyntax>(PredefinedType(Token(SyntaxKind.ByteKeyword))))
+                        SingletonSeparatedList(elementMarshaller.AsNativeType(elementInfo).GetCompatibleGenericTypeParameterSyntax()))
                 ),
                 SingletonSeparatedList(
                     VariableDeclarator(Identifier(nativeSpanIdentifier))
@@ -51,7 +52,7 @@ namespace Microsoft.Interop
                         InvocationExpression(
                             MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
-                                IdentifierName("MemoryMarshal"),
+                                ParseTypeName(TypeNames.System_Runtime_InteropServices_MemoryMarshal),
                                 GenericName(
                                     Identifier("Cast"))
                                 .WithTypeArgumentList(
@@ -60,8 +61,12 @@ namespace Microsoft.Interop
                                             new []
                                             {
                                                 PredefinedType(Token(SyntaxKind.ByteKeyword)),
-                                                elementMarshaller.AsNativeType(elementInfo)
-                                            }))))))))));
+                                                elementMarshaller.AsNativeType(elementInfo).GetCompatibleGenericTypeParameterSyntax()
+                                            })))))
+                        .AddArgumentListArguments(
+                            Argument(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                IdentifierName(GetMarshallerIdentifier(info, context)),
+                                IdentifierName("NativeValueStorage")))))))));
         }
 
         private StatementSyntax GenerateContentsMarshallingStatement(TypePositionInfo info, StubCodeContext context, bool useManagedSpanForLength)
@@ -78,14 +83,24 @@ namespace Microsoft.Interop
                 ? $"{marshalerIdentifier}.ManagedValues"
                 : nativeSpanIdentifier;
 
+            TypePositionInfo localElementInfo = elementInfo with { InstanceIdentifier = info.InstanceIdentifier, RefKind = info.ByValueContentsMarshalKind.GetRefKindForByValueContentsKind() };
+
+            StatementSyntax marshallingStatement = Block(
+                List(elementMarshaller.Generate(
+                    localElementInfo,
+                    elementSubContext)));
+
+            if (elementMarshaller.AsNativeType(elementInfo) is PointerTypeSyntax)
+            {
+                PointerNativeTypeAssignmentRewriter rewriter = new(elementSubContext.GetIdentifiers(localElementInfo).native);
+                marshallingStatement = (StatementSyntax)rewriter.Visit(marshallingStatement);
+            }
+
             // Iterate through the elements of the native collection to unmarshal them
             return Block(
-                GenerateNativeSpanDeclaration(GetNativeSpanIdentifier(info, context)),
+                GenerateNativeSpanDeclaration(info, context),
                 MarshallerHelpers.GetForLoop(collectionIdentifierForLength, IndexerIdentifier)
-                                .WithStatement(Block(
-                                    List(elementMarshaller.Generate(
-                                        elementInfo,
-                                        elementSubContext)))));
+                                .WithStatement(marshallingStatement));
         }
 
         public override IEnumerable<StatementSyntax> GenerateIntermediateMarshallingStatements(TypePositionInfo info, StubCodeContext context)
@@ -108,6 +123,32 @@ namespace Microsoft.Interop
         public override IEnumerable<StatementSyntax> GenerateIntermediateUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
         {
             yield return GenerateContentsMarshallingStatement(info, context, useManagedSpanForLength: false);
+        }
+
+        /// <summary>
+        /// Rewrite assignment expressions to the native identifier to cast to IntPtr.
+        /// This handles the case where the native type of a non-blittable managed type is a pointer,
+        /// which are unsupported in generic type parameters.
+        /// </summary>
+        private class PointerNativeTypeAssignmentRewriter : CSharpSyntaxRewriter
+        {
+            private readonly string nativeIdentifier;
+
+            public PointerNativeTypeAssignmentRewriter(string nativeIdentifier)
+            {
+                this.nativeIdentifier = nativeIdentifier;
+            }
+
+            public override SyntaxNode VisitAssignmentExpression(AssignmentExpressionSyntax node)
+            {
+                if (node.Left.ToString() == nativeIdentifier)
+                {
+                    return node.WithRight(
+                        CastExpression(ParseTypeName("System.IntPtr"), node.Right));
+                }
+
+                return node;
+            }
         }
     }
 }

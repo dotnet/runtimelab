@@ -45,7 +45,7 @@ namespace Microsoft.Interop
                         InvocationExpression(
                             MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
-                                IdentifierName("MemoryMarshal"),
+                                ParseTypeName(TypeNames.System_Runtime_InteropServices_MemoryMarshal),
                                 GenericName(
                                     Identifier("Cast"))
                                 .WithTypeArgumentList(
@@ -87,7 +87,7 @@ namespace Microsoft.Interop
                         InvocationExpression(
                                 MemberAccessExpression(
                                     SyntaxKind.SimpleMemberAccessExpression,
-                                    IdentifierName("MemoryMarshal"),
+                                    ParseTypeName(TypeNames.System_Runtime_InteropServices_MemoryMarshal),
                                     GenericName(
                                         Identifier("Cast"))
                                     .WithTypeArgumentList(

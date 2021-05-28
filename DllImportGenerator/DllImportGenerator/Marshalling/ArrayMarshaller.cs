@@ -10,9 +10,8 @@ namespace Microsoft.Interop
 {
     internal class ArrayMarshaller : CustomNativeTypeMarshaller
     {
-        private CustomNativeTypeMarshaller innerCollectionMarshaller;
-
-        private bool blittable;
+        private readonly CustomNativeTypeMarshaller innerCollectionMarshaller;
+        private readonly bool blittable;
 
         public ArrayMarshaller(
             ContiguousCollectionBlittableElementsMarshallingGenerator innerCollectionMarshaller,
@@ -29,7 +28,7 @@ namespace Microsoft.Interop
             : base(marshallingInfo)
         {
             this.innerCollectionMarshaller = innerCollectionMarshaller;
-            blittable = true;
+            blittable = false;
         }
 
         private bool UseCustomPinningPath(TypePositionInfo info, StubCodeContext context)
@@ -47,7 +46,10 @@ namespace Microsoft.Interop
             if (context.CurrentStage == StubCodeContext.Stage.Unmarshal
                 && info.ByValueContentsMarshalKind.HasFlag(ByValueContentsMarshalKind.Out))
             {
-                return GenerateByValueOutUnmarshalling();
+                // For [Out] by value unmarshalling, we emit custom code that only copies the elements.
+                // We do not call SetUnmarshalledCollectionLength since that creates a new
+                // array, and we want to fill the original one.
+                return innerCollectionMarshaller.GenerateIntermediateUnmarshallingStatements(info, context);
             }
 
             return innerCollectionMarshaller.Generate(info, context);
@@ -107,33 +109,18 @@ namespace Microsoft.Interop
                             VariableDeclarator(nativeIdentifier)
                                 .WithInitializer(EqualsValueClause(
                                     PrefixUnaryExpression(SyntaxKind.AddressOfExpression,
-                                        IdentifierName(byRefIdentifier)))))),
+                                    InvocationExpression(
+                                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                            ParseTypeName(TypeNames.System_Runtime_CompilerServices_Unsafe),
+                                            GenericName("As").AddTypeArgumentListArguments(
+                                                arrayElementType,
+                                                PredefinedType(Token(SyntaxKind.ByteKeyword)))))
+                                    .AddArgumentListArguments(
+                                        Argument(IdentifierName(byRefIdentifier))
+                                            .WithRefKindKeyword(Token(SyntaxKind.RefKeyword)))))))),
                         EmptyStatement());
                 }
                 yield break;
-            }
-            
-            IEnumerable<StatementSyntax> GenerateByValueOutUnmarshalling()
-            {
-                var (managedIdentifer, nativeIdentifier) = context.GetIdentifiers(info);
-                // For [Out] by value unmarshalling, we emit custom code that only assigns the
-                // Value property and copy the elements.
-                // We do not call SetUnmarshalledCollectionLength since that creates a new
-                // array, and we want to fill the original one.
-                string marshalerIdentifier = innerCollectionMarshaller.GetMarshallerIdentifier(info, context);
-                // <marshalerIdentifier>.Value = <nativeIdentifier>;
-                yield return ExpressionStatement(
-                    AssignmentExpression(
-                        SyntaxKind.SimpleAssignmentExpression,
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            IdentifierName(marshalerIdentifier),
-                            IdentifierName(ManualTypeMarshallingHelper.ValuePropertyName)),
-                        IdentifierName(nativeIdentifier)));
-
-                foreach (var statement in innerCollectionMarshaller.GenerateIntermediateUnmarshallingStatements(info, context))
-                {
-                    yield return statement;
-                }
             }
         }
 
