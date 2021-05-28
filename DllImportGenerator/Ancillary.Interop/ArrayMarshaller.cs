@@ -10,6 +10,12 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
         private readonly int sizeOfNativeElement;
         private IntPtr allocatedMemory;
 
+        public ArrayMarshaller(int sizeOfNativeElement)
+            :this()
+        {
+            this.sizeOfNativeElement = sizeOfNativeElement;
+        }
+
         public ArrayMarshaller(T[]? managed, int sizeOfNativeElement)
         {
             allocatedMemory = default;
@@ -25,7 +31,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
             // Always allocate at least one byte when the array is zero-length.
             int spaceToAllocate = Math.Max(managed.Length * sizeOfNativeElement, 1);
             allocatedMemory = Marshal.AllocCoTaskMem(spaceToAllocate);
-            NativeValueStorage = new Span<byte>((void*)allocatedMemory, managed.Length);
+            NativeValueStorage = new Span<byte>((void*)allocatedMemory, spaceToAllocate);
         }
 
         public ArrayMarshaller(T[]? managed, Span<byte> stackSpace, int sizeOfNativeElement)
@@ -48,7 +54,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
             else
             {
                 allocatedMemory = Marshal.AllocCoTaskMem(spaceToAllocate);
-                NativeValueStorage = new Span<byte>((void*)allocatedMemory, managed.Length);
+                NativeValueStorage = new Span<byte>((void*)allocatedMemory, spaceToAllocate);
             }
         }
 
@@ -109,6 +115,12 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
         private readonly int sizeOfNativeElement;
         private IntPtr allocatedMemory;
 
+        public PtrArrayMarshaller(int sizeOfNativeElement)
+            : this()
+        {
+            this.sizeOfNativeElement = sizeOfNativeElement;
+        }
+
         public PtrArrayMarshaller(T*[]? managed, int sizeOfNativeElement)
         {
             allocatedMemory = default;
@@ -124,7 +136,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
             // Always allocate at least one byte when the array is zero-length.
             int spaceToAllocate = Math.Max(managed.Length * sizeOfNativeElement, 1);
             allocatedMemory = Marshal.AllocCoTaskMem(spaceToAllocate);
-            NativeValueStorage = new Span<byte>((void*)allocatedMemory, managed.Length);
+            NativeValueStorage = new Span<byte>((void*)allocatedMemory, spaceToAllocate);
         }
 
         public PtrArrayMarshaller(T*[]? managed, Span<byte> stackSpace, int sizeOfNativeElement)
@@ -147,7 +159,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
             else
             {
                 allocatedMemory = Marshal.AllocCoTaskMem(spaceToAllocate);
-                NativeValueStorage = new Span<byte>((void*)allocatedMemory, managed.Length);
+                NativeValueStorage = new Span<byte>((void*)allocatedMemory, spaceToAllocate);
             }
         }
 

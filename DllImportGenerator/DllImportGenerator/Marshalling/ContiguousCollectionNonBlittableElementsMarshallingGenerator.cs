@@ -27,9 +27,14 @@ namespace Microsoft.Interop
             this.numElementsExpression = numElementsExpression;
         }
 
+        private ExpressionSyntax GenerateSizeOfElementExpression()
+        {
+            return SizeOfExpression(elementMarshaller.AsNativeType(elementInfo));
+        }
+
         public override IEnumerable<ArgumentSyntax> GenerateAdditionalNativeTypeConstructorArguments(TypePositionInfo info, StubCodeContext context)
         {
-            yield return Argument(SizeOfExpression(elementMarshaller.AsNativeType(elementInfo)));
+            yield return Argument(GenerateSizeOfElementExpression());
         }
 
         private string GetNativeSpanIdentifier(TypePositionInfo info, StubCodeContext context)
@@ -83,7 +88,13 @@ namespace Microsoft.Interop
                 ? $"{marshalerIdentifier}.ManagedValues"
                 : nativeSpanIdentifier;
 
-            TypePositionInfo localElementInfo = elementInfo with { InstanceIdentifier = info.InstanceIdentifier, RefKind = info.ByValueContentsMarshalKind.GetRefKindForByValueContentsKind() };
+            TypePositionInfo localElementInfo = elementInfo with
+            {
+                InstanceIdentifier = info.InstanceIdentifier,
+                RefKind = info.IsByRef ? info.RefKind : info.ByValueContentsMarshalKind.GetRefKindForByValueContentsKind(),
+                ManagedIndex = info.ManagedIndex,
+                NativeIndex = info.NativeIndex
+            };
 
             StatementSyntax marshallingStatement = Block(
                 List(elementMarshaller.Generate(
@@ -111,6 +122,12 @@ namespace Microsoft.Interop
         public override IEnumerable<StatementSyntax> GeneratePreUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
         {
             string marshalerIdentifier = GetMarshallerIdentifier(info, context);
+            if (info.RefKind == RefKind.Out || info.IsManagedReturnPosition)
+            {
+                yield return ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                    IdentifierName(marshalerIdentifier),
+                    ImplicitObjectCreationExpression().AddArgumentListArguments(Argument(GenerateSizeOfElementExpression()))));
+            }
             yield return ExpressionStatement(
                 InvocationExpression(
                     MemberAccessExpression(

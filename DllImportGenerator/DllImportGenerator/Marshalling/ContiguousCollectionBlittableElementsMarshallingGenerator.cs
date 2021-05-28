@@ -22,9 +22,14 @@ namespace Microsoft.Interop
             this.numElementsExpression = numElementsExpression;
         }
 
+        private ExpressionSyntax GenerateSizeOfElementExpression()
+        {
+            return SizeOfExpression(elementType.AsTypeSyntax());
+        }
+
         public override IEnumerable<ArgumentSyntax> GenerateAdditionalNativeTypeConstructorArguments(TypePositionInfo info, StubCodeContext context)
         {
-            yield return Argument(SizeOfExpression(elementType.AsTypeSyntax()));
+            yield return Argument(GenerateSizeOfElementExpression());
         }
 
         public override IEnumerable<StatementSyntax> GenerateIntermediateMarshallingStatements(TypePositionInfo info, StubCodeContext context)
@@ -67,6 +72,13 @@ namespace Microsoft.Interop
         public override IEnumerable<StatementSyntax> GeneratePreUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
         {
             string marshalerIdentifier = GetMarshallerIdentifier(info, context);
+            if (info.RefKind == RefKind.Out || info.IsManagedReturnPosition)
+            {
+                yield return ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                    IdentifierName(marshalerIdentifier),
+                    ImplicitObjectCreationExpression()
+                    .AddArgumentListArguments(Argument(GenerateSizeOfElementExpression()))));
+            }
             yield return ExpressionStatement(
                 InvocationExpression(
                     MemberAccessExpression(
