@@ -196,7 +196,7 @@ namespace System.Runtime.InteropServices
                     data->AsDispatch = value.WrappedObject;
                     break;
                 case ErrorWrapper value:
-                    data->AsError = value.WrappedObject;
+                    data->AsError = value.ErrorCode;
                     break;
                 case VariantWrapper value:
                     // Do not want to implement that yet.
