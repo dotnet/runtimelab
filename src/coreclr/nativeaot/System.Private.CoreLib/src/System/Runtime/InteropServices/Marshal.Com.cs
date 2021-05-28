@@ -208,7 +208,7 @@ namespace System.Runtime.InteropServices
                     data->AsError = DISP_E_PARAMNOTFOUND;
                     break;
                 case IConvertible value:
-                    switch (value->GetTypeCode())
+                    switch (value.GetTypeCode())
                     {
                         case TypeCode.Empty:
                             data->VariantType = VarEnum.VT_EMPTY;
