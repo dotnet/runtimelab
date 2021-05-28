@@ -43,29 +43,10 @@ namespace Microsoft.Interop
     /// <summary>
     /// Simple User-application of System.Runtime.InteropServices.MarshalAsAttribute
     /// </summary>
-    internal record MarshalAsInfo(
+    internal sealed record MarshalAsInfo(
         UnmanagedType UnmanagedType,
         CharEncoding CharEncoding) : MarshallingInfoStringSupport(CharEncoding)
     {
-    }
-
-    enum UnmanagedArrayType
-    {
-        LPArray = UnmanagedType.LPArray,
-        ByValArray = UnmanagedType.ByValArray
-    }
-
-    /// <summary>
-    /// User-applied System.Runtime.InteropServices.MarshalAsAttribute with array marshalling info
-    /// </summary>
-    internal sealed record ArrayMarshalAsInfo(
-        UnmanagedArrayType UnmanagedArrayType,
-        int ArraySizeConst,
-        short ArraySizeParamIndex,
-        CharEncoding CharEncoding,
-        MarshallingInfo ElementMarshallingInfo) : MarshalAsInfo((UnmanagedType)UnmanagedArrayType, CharEncoding)
-    {        
-        public const short UnspecifiedData = -1;
     }
 
     /// <summary>
@@ -82,16 +63,38 @@ namespace Microsoft.Interop
         NativeToManaged = 0x2,
         ManagedToNativeStackalloc = 0x4,
         Pinning = 0x8,
+        All = -1
+    }
+
+    internal abstract record CountInfo;
+
+    internal sealed record NoCountInfo : CountInfo
+    {
+        public static readonly NoCountInfo Instance = new NoCountInfo();
+
+        private NoCountInfo() { }
+    }
+
+    internal sealed record ConstSizeCountInfo(int Size) : CountInfo;
+
+    internal sealed record CountElementCountInfo(string parameterName) : CountInfo;
+
+    internal sealed record SizeAndParamIndexInfo(int ConstSize, int ParamIndex) : CountInfo
+    {
+        public const int UnspecifiedData = -1;
+
+        public static readonly SizeAndParamIndexInfo Unspecified = new(UnspecifiedData, UnspecifiedData);
     }
 
     /// <summary>
     /// User-applied System.Runtime.InteropServices.NativeMarshallingAttribute
     /// </summary>
-    internal sealed record NativeMarshallingAttributeInfo(
+    internal record NativeMarshallingAttributeInfo(
         ITypeSymbol NativeMarshallingType,
         ITypeSymbol? ValuePropertyType,
         SupportedMarshallingMethods MarshallingMethods,
-        bool NativeTypePinnable) : MarshallingInfo;
+        bool NativeTypePinnable,
+        bool UseDefaultMarshalling) : MarshallingInfo;
 
     /// <summary>
     /// User-applied System.Runtime.InteropServices.GeneratedMarshallingAttribute
@@ -105,9 +108,22 @@ namespace Microsoft.Interop
     /// </summary>
     internal sealed record SafeHandleMarshallingInfo(bool AccessibleDefaultConstructor) : MarshallingInfo;
 
-
     /// <summary>
-    /// Default marshalling for arrays
-    /// </summary>
-    internal sealed record ArrayMarshallingInfo(MarshallingInfo ElementMarshallingInfo) : MarshallingInfo;
+    /// User-applied System.Runtime.InteropServices.NativeMarshalllingAttribute
+    /// with a contiguous collection marshaller
+    internal sealed record NativeContiguousCollectionMarshallingInfo(
+        ITypeSymbol NativeMarshallingType,
+        ITypeSymbol? ValuePropertyType,
+        SupportedMarshallingMethods MarshallingMethods,
+        bool NativeTypePinnable,
+        bool UseDefaultMarshalling,
+        CountInfo ElementCountInfo,
+        ITypeSymbol ElementType,
+        MarshallingInfo ElementMarshallingInfo) : NativeMarshallingAttributeInfo(
+            NativeMarshallingType,
+            ValuePropertyType,
+            MarshallingMethods,
+            NativeTypePinnable,
+            UseDefaultMarshalling
+        );
 }

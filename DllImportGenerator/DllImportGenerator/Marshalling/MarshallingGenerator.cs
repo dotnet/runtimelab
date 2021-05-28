@@ -250,7 +250,7 @@ namespace Microsoft.Interop
                 // Must go before the cases that do not explicitly check for marshalling info to support
                 // the user overridding the default marshalling rules with a MarshalUsing attribute.
                 case { MarshallingAttributeInfo: NativeMarshallingAttributeInfo marshalInfo }:
-                    return CreateCustomNativeTypeMarshaller(info, context, marshalInfo);
+                    return CreateCustomNativeTypeMarshaller(info, context, marshalInfo, options);
 
                 case { MarshallingAttributeInfo: BlittableTypeAttributeInfo }:
                     return Blittable;
@@ -266,9 +266,6 @@ namespace Microsoft.Interop
 
                 case { ManagedType: { SpecialType: SpecialType.System_String } }:
                     return CreateStringMarshaller(info, context);
-                    
-                case { ManagedType: IArrayTypeSymbol { IsSZArray: true, ElementType: ITypeSymbol elementType } }:
-                    return CreateArrayMarshaller(info, context, options, elementType);
 
                 case { ManagedType: { SpecialType: SpecialType.System_Void } }:
                     return Forwarder;
@@ -366,24 +363,29 @@ namespace Microsoft.Interop
             throw new MarshallingNotSupportedException(info, context);
         }
         
-        private static ExpressionSyntax GetNumElementsExpressionFromMarshallingInfo(TypePositionInfo info, StubCodeContext context, AnalyzerConfigOptions options)
+        private static ExpressionSyntax GetNumElementsExpressionFromMarshallingInfo(TypePositionInfo info, CountInfo count, StubCodeContext context, AnalyzerConfigOptions options)
         {
-            ExpressionSyntax numElementsExpression;
-            if (info.MarshallingAttributeInfo is not ArrayMarshalAsInfo marshalAsInfo)
+            return count switch
             {
-                throw new MarshallingNotSupportedException(info, context)
+                SizeAndParamIndexInfo(int size, SizeAndParamIndexInfo.UnspecifiedData) => GetConstSizeExpression(size),
+                ConstSizeCountInfo(int size) => GetConstSizeExpression(size),
+                SizeAndParamIndexInfo(SizeAndParamIndexInfo.UnspecifiedData, int paramIndex) => CheckedExpression(SyntaxKind.CheckedExpression, GetExpressionForParamIndex(paramIndex)),
+                SizeAndParamIndexInfo(int size, int paramIndex) => CheckedExpression(SyntaxKind.CheckedExpression, BinaryExpression(SyntaxKind.AddExpression, GetConstSizeExpression(size), GetExpressionForParamIndex(paramIndex))),
+                CountElementCountInfo(string elementName) => throw new NotImplementedException(),
+                _ => throw new MarshallingNotSupportedException(info, context)
                 {
                     NotSupportedDetails = Resources.ArraySizeMustBeSpecified
-                };
+                },
+            };
+
+            static LiteralExpressionSyntax GetConstSizeExpression(int size)
+            {
+                return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(size));
             }
 
-            LiteralExpressionSyntax? constSizeExpression = marshalAsInfo.ArraySizeConst != ArrayMarshalAsInfo.UnspecifiedData
-                ? LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(marshalAsInfo.ArraySizeConst))
-                : null;
-            ExpressionSyntax? sizeParamIndexExpression = null;
-            if (marshalAsInfo.ArraySizeParamIndex != ArrayMarshalAsInfo.UnspecifiedData)
+            ExpressionSyntax GetExpressionForParamIndex(int index)
             {
-                TypePositionInfo? paramIndexInfo = context.GetTypePositionInfoForManagedIndex(marshalAsInfo.ArraySizeParamIndex);
+                TypePositionInfo? paramIndexInfo = context.GetTypePositionInfoForManagedIndex(index);
                 if (paramIndexInfo is null)
                 {
                     throw new MarshallingNotSupportedException(info, context)
@@ -402,51 +404,14 @@ namespace Microsoft.Interop
                 {
                     var (managed, native) = context.GetIdentifiers(paramIndexInfo);
                     string identifier = Create(paramIndexInfo, context, options).UsesNativeIdentifier(paramIndexInfo, context) ? native : managed;
-                    sizeParamIndexExpression = CastExpression(
+                    return CastExpression(
                             PredefinedType(Token(SyntaxKind.IntKeyword)),
                             IdentifierName(identifier));
                 }
             }
-            numElementsExpression = (constSizeExpression, sizeParamIndexExpression) switch
-            {
-                (null, null) => throw new MarshallingNotSupportedException(info, context)
-                {
-                    NotSupportedDetails = Resources.ArraySizeMustBeSpecified
-                },
-                (not null, null) => constSizeExpression!,
-                (null, not null) => CheckedExpression(SyntaxKind.CheckedExpression, sizeParamIndexExpression!),
-                (not null, not null) => CheckedExpression(SyntaxKind.CheckedExpression, BinaryExpression(SyntaxKind.AddExpression, constSizeExpression!, sizeParamIndexExpression!))
-            };
-            return numElementsExpression;
         }
 
-        private static IMarshallingGenerator CreateArrayMarshaller(TypePositionInfo info, StubCodeContext context, AnalyzerConfigOptions options, ITypeSymbol elementType)
-        {
-            var elementMarshallingInfo = info.MarshallingAttributeInfo switch
-            {
-                ArrayMarshalAsInfo(UnmanagedType.LPArray, _) marshalAs => marshalAs.ElementMarshallingInfo,
-                ArrayMarshallingInfo marshalInfo => marshalInfo.ElementMarshallingInfo,
-                NoMarshallingInfo _ => NoMarshallingInfo.Instance,
-                _ => throw new MarshallingNotSupportedException(info, context)
-            };
-
-            var elementMarshaller = Create(
-                TypePositionInfo.CreateForType(elementType, elementMarshallingInfo),
-                new ArrayMarshallingCodeContext(StubCodeContext.Stage.Setup, string.Empty, context, false),
-                options);
-            ExpressionSyntax numElementsExpression = LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0));
-            if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
-            {
-                // In this case, we need a numElementsExpression supplied from metadata, so we'll calculate it here.
-                numElementsExpression = GetNumElementsExpressionFromMarshallingInfo(info, context, options);
-            }
-            
-            return elementMarshaller == Blittable
-                ? new BlittableArrayMarshaller(numElementsExpression)
-                : new NonBlittableArrayMarshaller(elementMarshaller, numElementsExpression);
-        }
-
-        private static IMarshallingGenerator CreateCustomNativeTypeMarshaller(TypePositionInfo info, StubCodeContext context, NativeMarshallingAttributeInfo marshalInfo)
+        private static IMarshallingGenerator CreateCustomNativeTypeMarshaller(TypePositionInfo info, StubCodeContext context, NativeMarshallingAttributeInfo marshalInfo, AnalyzerConfigOptions options)
         {
             if (marshalInfo.ValuePropertyType is not null && !context.CanUseAdditionalTemporaryState)
             {
@@ -504,8 +469,43 @@ namespace Microsoft.Interop
                     NotSupportedDetails = string.Format(Resources.CustomTypeMarshallingManagedToNativeUnsupported, marshalInfo.NativeMarshallingType.ToDisplayString())
                 };
             }
+
+            if (marshalInfo is NativeContiguousCollectionMarshallingInfo collectionMarshallingInfo)
+            {
+                return CreateNativeCollectionMarshaller(info, context, collectionMarshallingInfo, options);
+            }
             
             return new CustomNativeTypeMarshaller(marshalInfo);
+        }
+
+        private static IMarshallingGenerator CreateNativeCollectionMarshaller(TypePositionInfo info, StubCodeContext context, NativeContiguousCollectionMarshallingInfo collectionMarshallingInfo, AnalyzerConfigOptions options)
+        {
+            var elementInfo = TypePositionInfo.CreateForType(collectionMarshallingInfo.ElementType, collectionMarshallingInfo.ElementMarshallingInfo);
+            var elementMarshaller = Create(
+                elementInfo,
+                new ContiguousCollectionElementMarshallingCodeContext(StubCodeContext.Stage.Setup, string.Empty, string.Empty, context),
+                options);
+            ExpressionSyntax numElementsExpression = LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0));
+            if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
+            {
+                // In this case, we need a numElementsExpression supplied from metadata, so we'll calculate it here.
+                numElementsExpression = GetNumElementsExpressionFromMarshallingInfo(info, collectionMarshallingInfo.ElementCountInfo, context, options);
+            }
+
+            if (collectionMarshallingInfo.UseDefaultMarshalling && info.ManagedType is IArrayTypeSymbol { IsSZArray: true })
+            {
+                if (elementMarshaller == Blittable)
+                {
+                    return new ArrayMarshaller(new ContiguousCollectionBlittableElementsMarshallingGenerator(collectionMarshallingInfo, numElementsExpression), collectionMarshallingInfo);
+                }
+                return new ArrayMarshaller(new ContiguousCollectionNonBlittableElementsMarshallingGenerator(collectionMarshallingInfo, elementMarshaller, elementInfo, numElementsExpression), collectionMarshallingInfo);
+            }
+
+            if (elementMarshaller == Blittable)
+            {
+                return new ContiguousCollectionBlittableElementsMarshallingGenerator(collectionMarshallingInfo, numElementsExpression);
+            }
+            return new ContiguousCollectionNonBlittableElementsMarshallingGenerator(collectionMarshallingInfo, elementMarshaller, elementInfo, numElementsExpression);
         }
     }
 }

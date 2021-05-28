@@ -16,7 +16,7 @@ namespace Microsoft.Interop
 
         public ArrayMarshaller(
             ContiguousCollectionBlittableElementsMarshallingGenerator innerCollectionMarshaller,
-            NativeMarshallingAttributeInfo marshallingInfo)
+            NativeContiguousCollectionMarshallingInfo marshallingInfo)
             : base(marshallingInfo)
         {
             this.innerCollectionMarshaller = innerCollectionMarshaller;
@@ -25,7 +25,7 @@ namespace Microsoft.Interop
 
         public ArrayMarshaller(
             ContiguousCollectionNonBlittableElementsMarshallingGenerator innerCollectionMarshaller,
-            NativeMarshallingAttributeInfo marshallingInfo)
+            NativeContiguousCollectionMarshallingInfo marshallingInfo)
             : base(marshallingInfo)
         {
             this.innerCollectionMarshaller = innerCollectionMarshaller;

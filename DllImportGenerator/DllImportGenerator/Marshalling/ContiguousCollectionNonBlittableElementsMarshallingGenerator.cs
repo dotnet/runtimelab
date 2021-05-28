@@ -16,7 +16,7 @@ namespace Microsoft.Interop
         private readonly ExpressionSyntax numElementsExpression;
 
         public ContiguousCollectionNonBlittableElementsMarshallingGenerator(
-            NativeMarshallingAttributeInfo marshallingInfo,
+            NativeContiguousCollectionMarshallingInfo marshallingInfo,
             IMarshallingGenerator elementMarshaller,
             TypePositionInfo elementInfo,
             ExpressionSyntax numElementsExpression)

@@ -14,12 +14,11 @@ namespace Microsoft.Interop
         private readonly ExpressionSyntax numElementsExpression;
 
         public ContiguousCollectionBlittableElementsMarshallingGenerator(
-            NativeMarshallingAttributeInfo marshallingInfo,
-            ITypeSymbol elementType,
+            NativeContiguousCollectionMarshallingInfo marshallingInfo,
             ExpressionSyntax numElementsExpression)
             :base(marshallingInfo)
         {
-            this.elementType = elementType;
+            this.elementType = marshallingInfo.ElementType;
             this.numElementsExpression = numElementsExpression;
         }
 
