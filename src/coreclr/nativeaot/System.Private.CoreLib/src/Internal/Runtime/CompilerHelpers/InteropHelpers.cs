@@ -559,7 +559,7 @@ namespace Internal.Runtime.CompilerHelpers
             Marshal.DestroyStructure(address, o.GetType());
         }
 
-        internal static unsafe object? OleVariantToObject(IntPtr pSrcNativeVariant)
+        internal static unsafe object? VariantToObject(IntPtr pSrcNativeVariant)
         {
             if (pSrcNativeVariant == IntPtr.Zero)
             {
@@ -575,7 +575,7 @@ namespace Internal.Runtime.CompilerHelpers
 #endif
         }
 
-        internal static unsafe void ConvertObjectToOleVariant(object? obj, IntPtr pDstNativeVariant)
+        internal static unsafe void ConvertObjectToVariant(object? obj, IntPtr pDstNativeVariant)
         {
 #if TARGET_WINDOWS
 #pragma warning disable CA1416
