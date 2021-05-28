@@ -148,7 +148,7 @@ namespace Microsoft.Interop
                     parsedCountInfo = CreateCountInfo(attrData);
                     if (attrData.ConstructorArguments.Length != 0)
                     {
-                        return CreateNativeMarshallingInfo(type, compilation, attrData, isMarshalUsingAttribute: true, indirectionLevel, parsedCountInfo);
+                        return CreateNativeMarshallingInfo(type, compilation, diagnostics, attrData, isMarshalUsingAttribute: true, indirectionLevel, parsedCountInfo);
                     }
                 }
             }
@@ -170,7 +170,7 @@ namespace Microsoft.Interop
                 }
                 else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.NativeMarshallingAttribute), attributeClass))
                 {
-                    return CreateNativeMarshallingInfo(type, compilation, attrData, isMarshalUsingAttribute: false, indirectionLevel, parsedCountInfo);
+                    return CreateNativeMarshallingInfo(type, compilation, diagnostics, attrData, isMarshalUsingAttribute: false, indirectionLevel, parsedCountInfo);
                 }
                 else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.GeneratedMarshallingAttribute), attributeClass))
                 {
@@ -356,7 +356,7 @@ namespace Microsoft.Interop
                 return NoCountInfo.Instance;
             }
 
-            static NativeMarshallingAttributeInfo CreateNativeMarshallingInfo(ITypeSymbol type, Compilation compilation, AttributeData attrData, bool isMarshalUsingAttribute, int indirectionLevel, CountInfo parsedCountInfo)
+            static MarshallingInfo CreateNativeMarshallingInfo(ITypeSymbol type, Compilation compilation, GeneratorDiagnostics diagnostics, AttributeData attrData, bool isMarshalUsingAttribute, int indirectionLevel, CountInfo parsedCountInfo)
             {
                 SupportedMarshallingMethods methods = SupportedMarshallingMethods.None;
 
@@ -369,6 +369,32 @@ namespace Microsoft.Interop
                 ITypeSymbol int32 = compilation.GetSpecialType(SpecialType.System_Int32);
 
                 INamedTypeSymbol nativeType = (INamedTypeSymbol)attrData.ConstructorArguments[0].Value!;
+
+                if (nativeType.IsUnboundGenericType)
+                {
+                    if (isMarshalUsingAttribute)
+                    {
+                        diagnostics.ReportConfigurationNotSupported(attrData, "Native Type", nativeType.ToDisplayString());
+                        return NoMarshallingInfo.Instance;
+                    }
+                    else if (type is INamedTypeSymbol namedType)
+                    {
+                        if (namedType.Arity != nativeType.Arity)
+                        {
+                            diagnostics.ReportConfigurationNotSupported(attrData, "Native Type", nativeType.ToDisplayString());
+                            return NoMarshallingInfo.Instance;
+                        }
+                        else
+                        {
+                            nativeType = nativeType.Construct(namedType.TypeParameters.ToArray());
+                        }
+                    }
+                    else
+                    {
+                        diagnostics.ReportConfigurationNotSupported(attrData, "Native Type", nativeType.ToDisplayString());
+                        return NoMarshallingInfo.Instance;
+                    }    
+                }
 
                 ITypeSymbol contiguousCollectionMarshalerAttribute = compilation.GetTypeByMetadataName(TypeNames.GenericContiguousCollectionMarshallerAttribute)!;
 
