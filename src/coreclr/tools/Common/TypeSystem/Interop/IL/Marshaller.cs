@@ -19,6 +19,7 @@ namespace Internal.TypeSystem.Interop
         BlittableArray,
         Bool,   // 4 byte bool
         CBool,  // 1 byte bool
+        VariantBool,  // Variant bool
         Enum,
         AnsiChar,  // Marshal char (Unicode 16bits) for byte (Ansi 8bits)
         UnicodeChar,
@@ -43,6 +44,7 @@ namespace Internal.TypeSystem.Interop
         Object,
         OleDateTime,
         Decimal,
+        OleCurrency,
         Guid,
         Struct,
         BlittableStruct,
@@ -1411,13 +1413,38 @@ namespace Internal.TypeSystem.Interop
 
     class BooleanMarshaller : Marshaller
     {
+        private int _trueValue;
+        public BooleanMarshaller(int trueValue = 1)
+        {
+            _trueValue = trueValue;
+        }
+
         protected override void AllocAndTransformManagedToNative(ILCodeStream codeStream)
         {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            ILCodeLabel pLoadFalseLabel = emitter.NewCodeLabel();
+            ILCodeLabel pDoneLabel = emitter.NewCodeLabel();
+
             LoadManagedValue(codeStream);
-            codeStream.EmitLdc(0);
-            codeStream.Emit(ILOpcode.ceq);
-            codeStream.EmitLdc(0);
-            codeStream.Emit(ILOpcode.ceq);
+            if (_trueValue == 1)
+            {
+                codeStream.EmitLdc(0);
+                codeStream.Emit(ILOpcode.ceq);
+                codeStream.EmitLdc(0);
+                codeStream.Emit(ILOpcode.ceq);
+            }
+            else
+            {
+                codeStream.Emit(ILOpcode.brfalse, pLoadFalseLabel);
+                codeStream.EmitLdc(_trueValue);
+                codeStream.Emit(ILOpcode.br, pDoneLabel);
+
+                codeStream.EmitLabel(pLoadFalseLabel);
+                codeStream.EmitLdc(0);
+
+                codeStream.EmitLabel(pDoneLabel);
+            }
+
             StoreNativeValue(codeStream);
         }
 

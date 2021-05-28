@@ -36,6 +36,8 @@ namespace Internal.TypeSystem.Interop
                 case MarshallerKind.Bool:
                 case MarshallerKind.CBool:
                     return new BooleanMarshaller();
+                case MarshallerKind.VariantBool:
+                    return new BooleanMarshaller((short)-1);
                 case MarshallerKind.AnsiString:
                     return new AnsiStringMarshaller();
                 case MarshallerKind.UTF8String:
@@ -82,6 +84,10 @@ namespace Internal.TypeSystem.Interop
                     return new ComInterfaceMarshaller();
                 case MarshallerKind.OleDateTime:
                     return new OleDateTimeMarshaller();
+                case MarshallerKind.OleCurrency:
+                    return new OleCurrencyMarshaller();
+                case MarshallerKind.Variant:
+                    return new VariantMarshaller();
                 default:
                     // ensures we don't throw during create marshaller. We will throw NSE
                     // during EmitIL which will be handled and an Exception method body
@@ -1035,6 +1041,88 @@ namespace Internal.TypeSystem.Interop
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
 
             StoreManagedValue(codeStream);
+        }
+    }
+
+    class OleCurrencyMarshaller : Marshaller
+    {
+        protected override void TransformManagedToNative(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadManagedValue(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "DecimalToOleCurrency");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreNativeValue(codeStream);
+        }
+
+        protected override void TransformNativeToManaged(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadNativeValue(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "OleCurrencyToDecimal");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreManagedValue(codeStream);
+        }
+    }
+
+    class VariantMarshaller : Marshaller
+    {
+        protected override void AllocManagedToNative(ILCodeStream codeStream)
+        {
+            LoadNativeAddr(codeStream);
+            codeStream.Emit(ILOpcode.initobj, _ilCodeStreams.Emitter.NewToken(NativeType));
+        }
+
+        protected override void TransformManagedToNative(ILCodeStream codeStream)
+        {
+            if (this.MarshalDirection == MarshalDirection.Reverse)
+            {
+                throw new NotSupportedException();
+            }
+
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+
+            LoadManagedValue(codeStream);
+            LoadNativeAddr(codeStream);
+
+            var helper = InteropTypes.GetMarshal(Context).GetKnownMethod("GetNativeVariantForObject", null);
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+        }
+
+        protected override void TransformNativeToManaged(ILCodeStream codeStream)
+        {
+            if (this.MarshalDirection == MarshalDirection.Reverse)
+            {
+                throw new NotSupportedException();
+            }
+
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+
+            LoadNativeAddr(codeStream);
+
+            var helper = InteropTypes.GetMarshal(Context).GetKnownMethod("GetObjectForNativeVariant", null);
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreManagedValue(codeStream);
+        }
+
+        protected override void EmitCleanupManaged(ILCodeStream codeStream)
+        {
+            // Only do cleanup if it is IN
+            if (!In)
+            {
+                return;
+            }
+
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+
+            LoadNativeAddr(codeStream);
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "CleanupVariant");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
         }
     }
 }

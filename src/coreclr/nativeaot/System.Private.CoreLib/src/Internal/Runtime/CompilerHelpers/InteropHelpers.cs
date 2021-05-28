@@ -233,6 +233,16 @@ namespace Internal.Runtime.CompilerHelpers
             return DateTime.FromOADate(value);
         }
 
+        internal static long DecimalToOleCurrency(decimal value)
+        {
+            return decimal.ToOACurrency(value);
+        }
+
+        internal static decimal OleCurrencyToDecimal(long value)
+        {
+            return decimal.FromOACurrency(value);
+        }
+
         internal static unsafe string BstrBufferToString(char* buffer)
         {
             if (buffer == null)
@@ -547,6 +557,18 @@ namespace Internal.Runtime.CompilerHelpers
             }
 
             Marshal.DestroyStructure(address, o.GetType());
+        }
+
+        internal static unsafe void CleanupVariant(IntPtr pDstNativeVariant)
+        {
+#if TARGET_WINDOWS
+#pragma warning disable CA1416
+            Variant* data = (Variant*)pDstNativeVariant;
+            data->Clear();
+#pragma warning restore CA1416
+#else
+            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+#endif
         }
 
         [StructLayout(LayoutKind.Sequential)]
