@@ -207,6 +207,9 @@ namespace System.Runtime.InteropServices
                 case System.Reflection.Missing value:
                     data->AsError = DISP_E_PARAMNOTFOUND;
                     break;
+                case Enum value:
+                    data->AsI8 = (long)Convert.ToInt32(value);
+                    break;
                 default:
                     var type = obj.GetType();
                     if (type.IsValueType)
