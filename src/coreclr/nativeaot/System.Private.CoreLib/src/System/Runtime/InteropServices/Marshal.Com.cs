@@ -276,7 +276,7 @@ namespace System.Runtime.InteropServices
                     // SAFEARRAY implementation goes here.
                     throw new NotSupportedException();
                 case ValueType:
-                    throw new NotSupportedException();
+                    throw new NotSupportedException("VT_RECORD");
                 default:
                     data->AsDispatch = obj;
                     break;
