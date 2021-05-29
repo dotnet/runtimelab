@@ -87,9 +87,5 @@ foreach(CONFIG IN LISTS CMAKE_CONFIGURATION_TYPES)
     set_property(SOURCE ${RUNTIME_SOURCES_ARCH_ASM} PROPERTY COMPILE_DEFINITIONS_${CONFIG} ${ASM_DEFINITIONS_${CONFIG}})
 endforeach()
 
-# Install the static Runtime library
-install (TARGETS Runtime Runtime.ServerGC DESTINATION aotsdk)
-if(WIN32)
-    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/Runtime.dir/$<CONFIG>/Runtime.pdb DESTINATION aotsdk)
-    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/Runtime.ServerGC.dir/$<CONFIG>/Runtime.ServerGC.pdb DESTINATION aotsdk)
-endif()
+install_static_library(Runtime aotsdk)
+install_static_library(Runtime.ServerGC aotsdk)
