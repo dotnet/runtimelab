@@ -1089,7 +1089,7 @@ namespace Internal.TypeSystem.Interop
             LoadManagedValue(codeStream);
             LoadNativeAddr(codeStream);
 
-            var helper = InteropTypes.GetMarshal(Context).GetKnownMethod("GetNativeVariantForObject", null);
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertObjectToVariant");
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
         }
 
@@ -1104,7 +1104,7 @@ namespace Internal.TypeSystem.Interop
 
             LoadNativeAddr(codeStream);
 
-            var helper = InteropTypes.GetMarshal(Context).GetKnownMethod("GetObjectForNativeVariant", null);
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "VariantToObject");
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
 
             StoreManagedValue(codeStream);

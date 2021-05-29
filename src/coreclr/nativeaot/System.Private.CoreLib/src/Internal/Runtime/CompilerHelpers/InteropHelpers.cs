@@ -559,6 +559,33 @@ namespace Internal.Runtime.CompilerHelpers
             Marshal.DestroyStructure(address, o.GetType());
         }
 
+        internal static unsafe object? VariantToObject(IntPtr pSrcNativeVariant)
+        {
+            if (pSrcNativeVariant == IntPtr.Zero)
+            {
+                return null;
+            }
+
+#if TARGET_WINDOWS
+#pragma warning disable CA1416
+            return Marshal.GetObjectForNativeVariant(pSrcNativeVariant);
+#pragma warning restore CA1416
+#else
+            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+#endif
+        }
+
+        internal static unsafe void ConvertObjectToVariant(object? obj, IntPtr pDstNativeVariant)
+        {
+#if TARGET_WINDOWS
+#pragma warning disable CA1416
+            Marshal.GetNativeVariantForObject(obj, pDstNativeVariant);
+#pragma warning restore CA1416
+#else
+            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+#endif
+        }
+
         internal static unsafe void CleanupVariant(IntPtr pDstNativeVariant)
         {
 #if TARGET_WINDOWS
