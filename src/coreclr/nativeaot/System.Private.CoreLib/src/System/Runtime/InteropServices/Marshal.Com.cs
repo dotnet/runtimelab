@@ -274,7 +274,7 @@ namespace System.Runtime.InteropServices
                     throw new ArgumentException();
                 case Array:
                     // SAFEARRAY implementation goes here.
-                    throw new NotSupportedException();
+                    throw new NotSupportedException("VT_ARRAY");
                 case ValueType:
                     throw new NotSupportedException("VT_RECORD");
                 default:
