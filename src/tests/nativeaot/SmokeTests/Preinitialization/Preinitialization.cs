@@ -18,6 +18,7 @@ internal class Program
         TestPointers.Run();
         TestConstants.Run();
         TestArray.Run();
+        TestArrayOutOfRange.Run();
         TestMdArray.Run();
         TestSimpleObject.Run();
         TestFinalizableObject.Run();
@@ -37,6 +38,7 @@ internal class Program
         TestDelegateToOtherClass.Run();
         TestLotsOfBackwardsBranches.Run();
         TestDrawCircle.Run();
+        TestValueTypeDup.Run();
 #else
         Console.WriteLine("Preinitialization is disabled in multimodule builds for now. Skipping test.");
 #endif
@@ -221,6 +223,37 @@ class TestArray
         Assert.AreEqual((int)s_enumArray[1], (int)MyEnum.Two);
 
         Assert.AreEqual(s_byteArrayFirstElement, 1);
+    }
+}
+
+class TestArrayOutOfRange
+{
+    class OutOfRange
+    {
+        public static byte[] s_byteArray;
+
+        static OutOfRange()
+        {
+            s_byteArray = new byte[2];
+            s_byteArray[2] = 1;
+        }
+    }
+
+    public static void Run()
+    {
+        Assert.IsLazyInitialized(typeof(OutOfRange));
+
+        bool thrown = false;
+        try
+        {
+            OutOfRange.s_byteArray[0] = 1;
+        }
+        catch (TypeInitializationException)
+        {
+            thrown = true;
+        }
+
+        Assert.True(thrown);
     }
 }
 
@@ -753,6 +786,34 @@ class TestDrawCircle
         {
             Assert.AreEqual(expected[i], actual[i]);
         }
+    }
+}
+
+class TestValueTypeDup
+{
+    class Dup
+    {
+        public static byte[] s_bytes;
+
+        static Dup()
+        {
+            var bytes = new byte[2];
+            int i = 0;
+            while (i < 2)
+            {
+                bytes[i++] = 42;
+            }
+            s_bytes = bytes;
+        }
+    }
+
+    public static void Run()
+    {
+        Assert.IsPreinitialized(typeof(Dup));
+
+        Assert.AreEqual(2, Dup.s_bytes.Length);
+        Assert.AreEqual(42, Dup.s_bytes[0]);
+        Assert.AreEqual(42, Dup.s_bytes[1]);
     }
 }
 
