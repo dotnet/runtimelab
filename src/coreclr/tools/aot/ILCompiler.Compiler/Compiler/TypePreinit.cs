@@ -1528,22 +1528,22 @@ namespace ILCompiler
                         Push(StackValueKind.Int32, ValueTypeValue.FromInt32(value.AsInt16())); break;
                     case TypeFlags.Int32:
                     case TypeFlags.UInt32:
-                        Push(StackValueKind.Int32, value); break;
+                        Push(StackValueKind.Int32, value.Clone()); break;
                     case TypeFlags.Int64:
                     case TypeFlags.UInt64:
-                        Push(StackValueKind.Int64, value); break;
+                        Push(StackValueKind.Int64, value.Clone()); break;
                     case TypeFlags.IntPtr:
                     case TypeFlags.UIntPtr:
                     case TypeFlags.Pointer:
                     case TypeFlags.FunctionPointer:
-                        Push(StackValueKind.NativeInt, value); break;
+                        Push(StackValueKind.NativeInt, value.Clone()); break;
                     case TypeFlags.Single:
                         Push(StackValueKind.Float, ValueTypeValue.FromDouble(value.AsSingle())); break;
                     case TypeFlags.Double:
-                        Push(StackValueKind.Float, value); break;
+                        Push(StackValueKind.Float, value.Clone()); break;
                     case TypeFlags.ValueType:
                     case TypeFlags.Nullable:
-                        Push(StackValueKind.ValueType, value); break;
+                        Push(StackValueKind.ValueType, value.Clone()); break;
                     case TypeFlags.Class:
                     case TypeFlags.Interface:
                     case TypeFlags.Array:
@@ -1759,6 +1759,7 @@ namespace ILCompiler
             public virtual long AsInt64() => ThrowInvalidProgram<long>();
             public virtual float AsSingle() => ThrowInvalidProgram<float>();
             public virtual double AsDouble() => ThrowInvalidProgram<double>();
+            public virtual Value Clone() => ThrowInvalidProgram<Value>();
         }
 
         private abstract class BaseValueTypeValue : Value
@@ -1782,6 +1783,11 @@ namespace ILCompiler
             private ValueTypeValue(byte[] bytes)
             {
                 InstanceBytes = bytes;
+            }
+
+            public override Value Clone()
+            {
+                return new ValueTypeValue((byte[])InstanceBytes.Clone());
             }
 
             public override bool TryCreateByRef(out Value value)
@@ -2067,7 +2073,7 @@ namespace ILCompiler
                 if (!(value is ValueTypeValue valueToStore))
                     return false;
 
-                if ((uint)index > (uint)Length)
+                if ((uint)index >= (uint)Length)
                     return false;
 
                 Debug.Assert(valueToStore.InstanceBytes.Length == _elementSize);
