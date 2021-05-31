@@ -1231,13 +1231,10 @@ namespace Internal.IL
             TriggerCctor((MetadataType)helperNode.Method.OwningType, staticBaseValueRef, helperNode.Method.Name);
         }
 
-        internal LLVMValueRef OutputCodeForTriggerCctorWithThreadStatic(TypeDesc type)
+        internal LLVMValueRef OutputCodeForTriggerCctorWithThreadStatic(MetadataType type)
         {
-            IMethodNode helperNode = (IMethodNode)_compilation.NodeFactory.HelperEntrypoint(HelperEntrypoint.EnsureClassConstructorRunAndReturnNonGCStaticBase);
-            MetadataType owningType = (MetadataType)helperNode.Method.OwningType;
-            //TODO : this seems to call into the cctor if the cctor itself accesses static fields. e.g. SR.  Try a test with an ++ in the cctor
-            bool needsCctorCheck = owningType.IsBeforeFieldInit || (!owningType.IsBeforeFieldInit && owningType != type /* TODO: check the operands for this != */);
-            TriggerCctorWithThreadStaticStorage((MetadataType)type, needsCctorCheck, out ExpressionEntry returnExp);
+            bool needsCctorCheck = type.IsBeforeFieldInit && _compilation.HasLazyStaticConstructor(type); // TODO is this helpful for the helper method : || (!type.IsBeforeFieldInit && owningType != type);  For IL->LLVM, this is triggered at https://github.com/dotnet/runtimelab/blob/4632bfd7ef02878b387d878a121c35698eaa9af9/src/libraries/System.Private.CoreLib/src/System/Diagnostics/Tracing/EventSource.cs#L2678
+            TriggerCctorWithThreadStaticStorage(type, needsCctorCheck, out ExpressionEntry returnExp);
             return returnExp.ValueAsType(returnExp.Type, _builder);
         }
 
