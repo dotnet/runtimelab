@@ -605,15 +605,16 @@ namespace ILCompiler
             builder.UseCompilationUnitPrefix(compilationUnitPrefix);
 
             if (_mibcFilePaths.Count > 0)
+            {
+                // TODO : LLVM, this cast will fail if profile data is ever passed
                 ((RyuJitCompilationBuilder)builder).UseProfileData(_mibcFilePaths);
+            }
 
             PInvokeILEmitterConfiguration pinvokePolicy;
             if (_isLlvmCodegen)
                 pinvokePolicy = new DirectPInvokePolicy();
             else
                 pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target, _directPInvokes, _directPInvokeLists);
-
-            PInvokeILEmitterConfiguration pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target, _directPInvokes, _directPInvokeLists);
 
             ILProvider ilProvider = new CoreRTILProvider();
 

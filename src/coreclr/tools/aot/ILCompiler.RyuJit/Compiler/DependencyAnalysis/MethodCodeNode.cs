@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
-
+using ILCompiler.DependencyAnalysisFramework;
 using Internal.IL;
 using Internal.Text;
 using Internal.TypeSystem;
@@ -21,14 +21,15 @@ namespace ILCompiler.DependencyAnalysis
         void InitializeDebugEHClauseInfos(DebugEHClauseInfo[] debugEhClauseInfos);
         void InitializeGCInfo(byte[] gcInfo);
         void InitializeEHInfo(ObjectNode.ObjectData ehInfo);
+        void InitializeDebugInfo(MethodDebugInformation debugInfo);
+        void InitializeLocalTypes(TypeDesc[] localTypes);
         void InitializeDebugLocInfos(DebugLocInfo[] debugLocInfos);
         void InitializeDebugVarInfos(DebugVarInfo[] debugVarInfos);
         void InitializeNonRelocationDependencies(DependencyNodeCore<NodeFactory>.DependencyList additionalDependencies);
-        void InitializeIsStateMachineMoveNextMethod(bool debugInfoIsStateMachineMoveNextMethod);
     }
 
     [DebuggerTypeProxy(typeof(MethodCodeNodeDebugView))]
-    public class MethodCodeNode : ObjectNode, IMethodBodyNode, INodeWithCodeInfo, INodeWithDebugInfo, ISymbolDefinitionNode, ISpecialUnboxThunkNode
+    public class MethodCodeNode : ObjectNode, IMethodBodyNode, INodeWithCodeInfo, INodeWithDebugInfo, ISymbolDefinitionNode, ISpecialUnboxThunkNode, IMethodCodeNode
     {
         private MethodDesc _method;
         private ObjectData _methodCode;
@@ -277,7 +278,7 @@ namespace ILCompiler.DependencyAnalysis
                     sequencePoints[offset] = (sequencePoint.Document, sequencePoint.LineNumber);
                 }
             }
-            catch (BadImageFormatException)
+            catch (TypeSystemException.BadImageFormatException)
             {
                 // Roslyn had a bug where it was generating bad sequence points:
                 // https://github.com/dotnet/roslyn/issues/20118

@@ -38,7 +38,7 @@ namespace ILCompiler
             IInliningPolicy inliningPolicy,
             DevirtualizationManager devirtualizationManager,
             InstructionSetSupport instructionSetSupport)
-            : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy, instructionSetSupport, 0)
+            : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy, instructionSetSupport, null /* ProfileDataManager */, RyuJitCompilationOptions.SingleThreadedCompilation)
         {
             NodeFactory = nodeFactory;
             LLVMModuleRef m = LLVMModuleRef.CreateWithName(options.ModuleName);

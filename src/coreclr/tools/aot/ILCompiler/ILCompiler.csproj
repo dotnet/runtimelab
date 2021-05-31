@@ -12,7 +12,6 @@
     <OutputPath>$(RuntimeBinDir)ilc</OutputPath>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
     <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
-    <RuntimeIdentifiers>linux-x64;win-x64;osx-x64</RuntimeIdentifiers>
     <Configurations>Debug;Release;Checked</Configurations>
     <UseAppHost>true</UseAppHost>
     <ServerGarbageCollection>true</ServerGarbageCollection>
@@ -20,24 +19,24 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <ILCompilerRuntimeIdentifier Condition="'$(TargetsWindows)' == 'true'">win-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
-    <ILCompilerRuntimeIdentifier Condition="'$(TargetsLinux)' == 'true'">linux-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
-    <ILCompilerRuntimeIdentifier Condition="'$(TargetsOSX)' == 'true'">osx-$(TargetArchitecture)</ILCompilerRuntimeIdentifier>
     <!-- TODO: get the right platform if building wasm on Linux/OSX is required -->
     <ILCompilerRuntimeIdentifier Condition="'$(TargetsBrowser)' == 'true'">win-x64</ILCompilerRuntimeIdentifier>
-  </PropertyGroup>
-
-  <PropertyGroup>
     <SelfContained>true</SelfContained>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <RuntimeIdentifier>$(ILCompilerRuntimeIdentifier)</RuntimeIdentifier>
+    <RuntimeIdentifier>$(__DistroRid)</RuntimeIdentifier>
+
+    <!-- DistroRid is injected through environment variables in build scripts. Provide reasonable default
+         when the build is invoked directly, e.g. building inside Visual Studio -->
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' and '$(TargetsWindows)' == 'true'">win-$(TargetArchitecture)</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' and '$(TargetsLinux)' == 'true'">linux-$(TargetArchitecture)</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' and '$(TargetsOSX)' == 'true'">osx-$(TargetArchitecture)</RuntimeIdentifier>
   </PropertyGroup>
 
   <PropertyGroup>
-    <ILCompilerVersion>6.0.0-preview.2.21122.4</ILCompilerVersion>
+    <ILCompilerVersion>6.0.0-preview.3.21155.4</ILCompilerVersion>
 
-    <ObjWriterArtifactPath Condition="'$(TargetsWindows)' == 'true'">$(ArtifactsDir)llvm\build\bin\RelWithDebInfo\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
-    <ObjWriterArtifactPath Condition="'$(TargetsWindows)' != 'true'">$(ArtifactsDir)llvm\build\lib\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
+    <ObjWriterArtifactPath Condition="'$(TargetsWindows)' == 'true'">$(ArtifactsDir)llvm\build\$(TargetArchitecture)\bin\Release\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
+    <ObjWriterArtifactPath Condition="'$(TargetsWindows)' != 'true'">$(ArtifactsDir)llvm\build\$(TargetArchitecture)\lib\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
 
     <!-- CoreDisTools are used in debugging visualizers. -->
     <IncludeCoreDisTools Condition="'$(Configuration)' != 'Release'">true</IncludeCoreDisTools>
@@ -45,26 +44,24 @@
 
   <Import Project="$(RepositoryEngineeringDir)coredistools.targets" Condition="'$(DotNetBuildFromSource)' != 'true' and '$(IncludeCoreDisTools)' == 'true'" />
 
-  <ItemGroup Condition="'$(TargetArchitecture)' != 'arm64' and '$(TargetArchitecture)' != 'wasm'">
-    <PackageReference Condition="!Exists('$(ObjWriterArtifactPath)')" Include="Microsoft.DotNet.ILCompiler">
-      <Version>$(ILCompilerVersion)</Version>
-    </PackageReference>
+  <ItemGroup Condition="Exists('$(ObjWriterArtifactPath)')">
+    <Content Include="$(ObjWriterArtifactPath)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+      <Pack>false</Pack>
+    </Content>
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetArchitecture)' != 'arm64' and '$(TargetArchitecture)' != 'wasm'">
-    <Content Condition="Exists('$(ObjWriterArtifactPath)')" Include="$(ObjWriterArtifactPath)">
+  <ItemGroup Condition="!Exists('$(ObjWriterArtifactPath)') and '$(TargetArchitecture)' != 'wasm'">
+    <PackageReference Include="Microsoft.DotNet.ILCompiler">
+      <Version>$(ILCompilerVersion)</Version>
+    </PackageReference>
+
+    <Content Include="$(NuGetPackageRoot)runtime.$(RuntimeIdentifier).microsoft.dotnet.ilcompiler\$(ILCompilerVersion)\tools\$(LibPrefix)objwriter$(LibSuffix)" Condition="'$(TargetArchitecture)' != 'wasm'">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
     </Content>
-
-    <Content Condition="!Exists('$(ObjWriterArtifactPath)')"
-      Include="$(NuGetPackageRoot)runtime.$(ILCompilerRuntimeIdentifier).microsoft.dotnet.ilcompiler\$(ILCompilerVersion)\tools\$(LibPrefix)objwriter$(LibSuffix)">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Visible>false</Visible>
-      <Pack>false</Pack>
-    </Content>
-
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetArchitecture)' != 'wasm'">
