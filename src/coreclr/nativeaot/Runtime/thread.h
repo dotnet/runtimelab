@@ -87,6 +87,7 @@ struct ThreadBuffer
     uint64_t                  m_uPalThreadIdForLogging;               // @TODO: likely debug-only
     EEThreadId              m_threadId;
     PTR_VOID                m_pThreadStressLog;                     // pointer to head of thread's StressLogChunks
+    uint32_t                m_canntAlloc;
 #ifdef FEATURE_GC_STRESS
     uint32_t                  m_uRand;                                // current per-thread random number
 #endif // FEATURE_GC_STRESS
@@ -191,10 +192,9 @@ public:
     void                GetStackBounds(PTR_VOID * ppStackLow, PTR_VOID * ppStackHigh);
 
     PTR_UInt8           AllocateThreadLocalStorageForDynamicType(uint32_t uTlsTypeOffset, uint32_t tlsStorageSize, uint32_t numTlsCells);
-    // mrt100 Debugger (dac) has dependencies on the GetThreadLocalStorageForDynamicType method.
+
     PTR_UInt8           GetThreadLocalStorageForDynamicType(uint32_t uTlsTypeOffset);
     PTR_UInt8           GetThreadLocalStorage(uint32_t uTlsIndex, uint32_t uTlsStartOffset);
-    PTR_UInt8           GetTEB();
 
     void                PushExInfo(ExInfo * pExInfo);
     void                ValidateExInfoPop(ExInfo * pExInfo, void * limitSP);
@@ -210,6 +210,9 @@ public:
 #ifndef DACCESS_COMPILE
     void                SetThreadStressLog(void * ptsl);
 #endif // DACCESS_COMPILE
+    void                EnterCantAllocRegion();
+    void                LeaveCanntAllocRegion();
+    bool                IsInCantAllocStressLogRegion();
 #ifdef FEATURE_GC_STRESS
     void                SetRandomSeed(uint32_t seed);
     uint32_t              NextRand();

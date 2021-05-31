@@ -200,25 +200,6 @@ void * Thread::GetCurrentThreadPInvokeReturnAddress()
 }
 #endif // !DACCESS_COMPILE
 
-
-
-PTR_UInt8 Thread::GetTEB()
-{
-    return m_pTEB;
-}
-
-#ifndef DACCESS_COMPILE
-void Thread::SetThreadStressLog(void * ptsl)
-{
-    m_pThreadStressLog = ptsl;
-}
-#endif // DACCESS_COMPILE
-
-PTR_VOID Thread::GetThreadStressLog() const
-{
-    return m_pThreadStressLog;
-}
-
 #if defined(FEATURE_GC_STRESS) & !defined(DACCESS_COMPILE)
 void Thread::SetRandomSeed(uint32_t seed)
 {
@@ -655,7 +636,12 @@ bool Thread::Hijack()
 
     // requires THREAD_SUSPEND_RESUME / THREAD_GET_CONTEXT / THREAD_SET_CONTEXT permissions
 
-    return PalHijack(m_hPalThread, HijackCallback, this) == 0;
+    Thread* pCurrentThread = ThreadStore::GetCurrentThread();
+    pCurrentThread->EnterCantAllocRegion();
+    uint32_t result = PalHijack(m_hPalThread, HijackCallback, this);
+    pCurrentThread->LeaveCanntAllocRegion();
+    return result == 0;
+
 }
 
 UInt32_BOOL Thread::HijackCallback(HANDLE /*hThread*/, PAL_LIMITED_CONTEXT* pThreadContext, void* pCallbackContext)
