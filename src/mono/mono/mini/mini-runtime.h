@@ -57,12 +57,15 @@ typedef struct {
 	GHashTable *method_rgctx_hash;
 	/* Maps gpointer -> InterpMethod */
 	GHashTable *interp_method_pointer_hash;
+	/* Protected by 'jit_code_hash_lock' */
+	MonoInternalHashTable jit_code_hash;
+	mono_mutex_t    jit_code_hash_lock;
 } MonoJitMemoryManager;
 
 static inline MonoJitMemoryManager*
 get_default_jit_mm (void)
 {
-	return (MonoJitMemoryManager*)(mono_domain_ambient_memory_manager (mono_get_root_domain ()))->runtime_info;
+	return (MonoJitMemoryManager*)(mono_mem_manager_get_ambient ())->runtime_info;
 }
 
 // FIXME: Review uses and change them to a more specific mem manager
@@ -75,12 +78,13 @@ get_default_mem_manager (void)
 static inline MonoJitMemoryManager*
 jit_mm_for_method (MonoMethod *method)
 {
-	/*
-	 * Some places might not look up the correct memory manager because of generic instances/generic sharing etc.
-	 * So use the same memory manager everywhere, this is not a problem since we don't support unloading yet.
-	 */
-	//return (MonoJitMemoryManager*)m_method_get_mem_manager (method)->runtime_info;
-	return get_default_jit_mm ();
+	return (MonoJitMemoryManager*)m_method_get_mem_manager (method)->runtime_info;
+}
+
+static inline MonoJitMemoryManager*
+jit_mm_for_class (MonoClass *klass)
+{
+	return (MonoJitMemoryManager*)m_class_get_mem_manager (klass)->runtime_info;
 }
 
 static inline void
@@ -93,6 +97,18 @@ static inline void
 jit_mm_unlock (MonoJitMemoryManager *jit_mm)
 {
 	mono_mem_manager_unlock (jit_mm->mem_manager);
+}
+
+static inline void
+jit_code_hash_lock (MonoJitMemoryManager *jit_mm)
+{
+	mono_locks_os_acquire(&(jit_mm)->jit_code_hash_lock, DomainJitCodeHashLock);
+}
+
+static inline void
+jit_code_hash_unlock (MonoJitMemoryManager *jit_mm)
+{
+	mono_locks_os_release(&(jit_mm)->jit_code_hash_lock, DomainJitCodeHashLock);
 }
 
 /*
@@ -508,7 +524,6 @@ MONO_API void
 mono_install_ftnptr_eh_callback (MonoFtnPtrEHCallback callback);
 
 void      mini_jit_init                    (void);
-void      mini_jit_cleanup                 (void);
 void      mono_disable_optimizations       (guint32 opts);
 void      mono_set_optimizations           (guint32 opts);
 void      mono_precompile_assemblies        (void);
@@ -519,7 +534,9 @@ MonoLMF * mono_get_lmf                      (void);
 void      mono_set_lmf                      (MonoLMF *lmf);
 void      mono_push_lmf                     (MonoLMFExt *ext);
 void      mono_pop_lmf                      (MonoLMF *lmf);
-MONO_API void      mono_jit_set_domain      (MonoDomain *domain);
+
+MONO_API MONO_RT_EXTERNAL_ONLY void
+mono_jit_set_domain      (MonoDomain *domain);
 
 gboolean  mono_method_same_domain           (MonoJitInfo *caller, MonoJitInfo *callee);
 gpointer  mono_create_ftnptr                (gpointer addr);
@@ -534,6 +551,7 @@ MonoJumpInfo *mono_patch_info_list_prepend  (MonoJumpInfo *list, int ip, MonoJum
 MonoJumpInfoToken* mono_jump_info_token_new (MonoMemPool *mp, MonoImage *image, guint32 token);
 MonoJumpInfoToken* mono_jump_info_token_new2 (MonoMemPool *mp, MonoImage *image, guint32 token, MonoGenericContext *context);
 gpointer  mono_resolve_patch_target         (MonoMethod *method, guint8 *code, MonoJumpInfo *patch_info, gboolean run_cctors, MonoError *error);
+gpointer  mono_resolve_patch_target_ext     (MonoMemoryManager *mem_manager, MonoMethod *method, guint8 *code, MonoJumpInfo *patch_info, gboolean run_cctors, MonoError *error);
 void mini_register_jump_site                (MonoMethod *method, gpointer ip);
 void mini_patch_jump_sites                  (MonoMethod *method, gpointer addr);
 void mini_patch_llvm_jit_callees            (MonoMethod *method, gpointer addr);
@@ -592,13 +610,7 @@ void
 mono_runtime_install_custom_handlers_usage (void);
 
 void
-mono_runtime_cleanup_handlers (void);
-
-void
 mono_runtime_setup_stat_profiler (void);
-
-void
-mono_runtime_shutdown_stat_profiler (void);
 
 void
 mono_runtime_posix_install_handlers (void);
@@ -611,9 +623,6 @@ mono_cross_helpers_run (void);
 
 void
 mono_init_native_crash_info (void);
-
-void
-mono_cleanup_native_crash_info (void);
 
 void
 mono_dump_native_crash_info (const char *signal, MonoContext *mctx, MONO_SIG_HANDLER_INFO_TYPE *info);

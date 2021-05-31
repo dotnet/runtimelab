@@ -27,8 +27,6 @@
 #include "RuntimeInstance.h"
 #include "rhbinder.h"
 
-#include "DebugFuncEval.h"
-
 // warning C4061: enumerator '{blah}' in switch of enum '{blarg}' is not explicitly handled by a case label
 #pragma warning(disable:4061)
 
@@ -1578,19 +1576,8 @@ void StackFrameIterator::PrepareToYieldFrame()
 
     ASSERT(m_pInstance->FindCodeManagerByAddress(m_ControlPC));
 
-    bool atDebuggerHijackSite = (this->m_ControlPC == (PTR_VOID)(TADDR)DebugFuncEval::GetMostRecentFuncEvalHijackInstructionPointer());
-
-    if (atDebuggerHijackSite)
-    {
-        FAILFAST_OR_DAC_FAIL_MSG(m_pConservativeStackRangeLowerBound != NULL,
-            "Debugger hijack unwind is missing the required conservative range from a preceding transition thunk.");
-    }
-
     if (m_dwFlags & ApplyReturnAddressAdjustment)
     {
-        FAILFAST_OR_DAC_FAIL_MSG(!atDebuggerHijackSite,
-            "EH stack walk is attempting to propagate an exception across a debugger hijack site.");
-
         m_ControlPC = AdjustReturnAddressBackward(m_ControlPC);
     }
 
@@ -1620,44 +1607,8 @@ void StackFrameIterator::PrepareToYieldFrame()
         CalculateCurrentMethodState();
         ASSERT(IsValid());
 
-        if (!atDebuggerHijackSite)
-        {
-            uintptr_t rawUpperBound = GetCodeManager()->GetConservativeUpperBoundForOutgoingArgs(&m_methodInfo, &m_RegDisplay);
-            m_pConservativeStackRangeUpperBound = (PTR_UIntNative)rawUpperBound;
-        }
-        else
-        {
-            // Debugger hijack points differ from all other unwind cases in that they are not
-            // guaranteed to be GC safe points, which implies that regular GC reporting will not
-            // protect the GC references that the function was using (in registers and/or in local
-            // stack slots) at the time of the hijack.
-            //
-            // GC references held in registers at the time of the hijack are reported by the
-            // debugger and therefore do not need to be handled here.  (The debugger does this by
-            // conservatively reporting the entire CONTEXT record which lists the full register
-            // set that was observed when the thread was stopped at the hijack point.)
-            //
-            // This code is therefore only responsible for reporting the GC references that were
-            // stored on the stack at the time of the hijack.  Conceptually, this is done by
-            // conservatively reporting the entire stack frame.  Since debugger hijack unwind
-            // always occurs via a UniversalTransitionThunk, the conservative lower bound
-            // published by the thunk can be used as a workable lower bound for the entire stack
-            // frame.
-            //
-            // Computing a workable upper bound is more difficult, especially because the stack
-            // frame of a funclet can contain FP-relative locals which reside arbitrarily far up
-            // the stack compared to the current SP.  The top of the thread's stack is currently
-            // used as an extremely conservative upper bound as away to cover all cases without
-            // introducing more stack walker complexity.
-
-            PTR_VOID pStackLow;
-            PTR_VOID pStackHigh;
-#ifndef DACCESS_COMPILE
-            m_pThread->GetStackBounds(&pStackLow, &pStackHigh);
-#endif
-            m_pConservativeStackRangeUpperBound = (PTR_UIntNative)pStackHigh;
-            m_ShouldSkipRegularGcReporting = true;
-        }
+        uintptr_t rawUpperBound = GetCodeManager()->GetConservativeUpperBoundForOutgoingArgs(&m_methodInfo, &m_RegDisplay);
+        m_pConservativeStackRangeUpperBound = (PTR_UIntNative)rawUpperBound;
 
         ASSERT(m_pConservativeStackRangeLowerBound != NULL);
         ASSERT(m_pConservativeStackRangeUpperBound != NULL);

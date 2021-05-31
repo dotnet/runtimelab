@@ -24,8 +24,10 @@ namespace System
         public static bool IsMonoRuntime => Type.GetType("Mono.RuntimeStructs") != null;
         public static bool IsNotMonoRuntime => !IsMonoRuntime;
         public static bool IsMonoInterpreter => GetIsRunningOnMonoInterpreter();
+        public static bool IsNativeAot => !IsReflectionEmitSupported;
         public static bool IsFreeBSD => RuntimeInformation.IsOSPlatform(OSPlatform.Create("FREEBSD"));
         public static bool IsNetBSD => RuntimeInformation.IsOSPlatform(OSPlatform.Create("NETBSD"));
+        public static bool IsAndroid => RuntimeInformation.IsOSPlatform(OSPlatform.Create("ANDROID"));
         public static bool IsiOS => RuntimeInformation.IsOSPlatform(OSPlatform.Create("IOS"));
         public static bool IstvOS => RuntimeInformation.IsOSPlatform(OSPlatform.Create("TVOS"));
         public static bool IsMacCatalyst => RuntimeInformation.IsOSPlatform(OSPlatform.Create("MACCATALYST"));
@@ -33,6 +35,7 @@ namespace System
         public static bool IsSolaris => RuntimeInformation.IsOSPlatform(OSPlatform.Create("SOLARIS"));
         public static bool IsBrowser => RuntimeInformation.IsOSPlatform(OSPlatform.Create("BROWSER"));
         public static bool IsNotBrowser => !IsBrowser;
+        public static bool IsNotMobile => IsNotBrowser && !IsMacCatalyst && !IsiOS && !IstvOS && !IsAndroid;
         public static bool IsNotNetFramework => !IsNetFramework;
 
         public static bool IsArmProcess => RuntimeInformation.ProcessArchitecture == Architecture.Arm;
@@ -41,20 +44,23 @@ namespace System
         public static bool IsNotArm64Process => !IsArm64Process;
         public static bool IsArmOrArm64Process => IsArmProcess || IsArm64Process;
         public static bool IsNotArmNorArm64Process => !IsArmOrArm64Process;
-        public static bool IsArgIteratorSupported => IsMonoRuntime || (IsWindows && IsNotArmProcess);
+        public static bool IsArgIteratorSupported => IsMonoRuntime || (IsWindows && IsNotArmProcess && !IsNativeAot);
         public static bool IsArgIteratorNotSupported => !IsArgIteratorSupported;
         public static bool Is32BitProcess => IntPtr.Size == 4;
         public static bool Is64BitProcess => IntPtr.Size == 8;
         public static bool IsNotWindows => !IsWindows;
 
         public static bool IsThreadingSupported => !IsBrowser;
-        public static bool IsBinaryFormatterSupported => !IsBrowser;
+        public static bool IsBinaryFormatterSupported => !IsBrowser && !IsNativeAot;
 
         public static bool IsSpeedOptimized => !IsSizeOptimized;
         public static bool IsSizeOptimized => IsBrowser || IsAndroid || IsiOS || IstvOS;
 
         public static bool IsBrowserDomSupported => GetIsBrowserDomSupported();
         public static bool IsNotBrowserDomSupported => !IsBrowserDomSupported;
+
+        public static bool IsUsingLimitedCultures => !IsNotMobile;
+        public static bool IsNotUsingLimitedCultures => IsNotMobile;
 
         // Please make sure that you have the libgdiplus dependency installed.
         // For details, see https://docs.microsoft.com/dotnet/core/install/dependencies?pivots=os-macos&tabs=netcore31#libgdiplus
@@ -81,8 +87,10 @@ namespace System
             }
         }
 
+        public static bool IsLineNumbersSupported => !IsNativeAot;
+
         public static bool IsInContainer => GetIsInContainer();
-        public static bool SupportsComInterop => IsWindows && IsNotMonoRuntime; // matches definitions in clr.featuredefines.props
+        public static bool SupportsComInterop => IsWindows && IsNotMonoRuntime && !IsNativeAot; // matches definitions in clr.featuredefines.props
         public static bool SupportsSsl3 => GetSsl3Support();
         public static bool SupportsSsl2 => IsWindows && !PlatformDetection.IsWindows10Version1607OrGreater;
 
@@ -92,7 +100,7 @@ namespace System
         public static bool IsReflectionEmitSupported => true;
 #endif
 
-        public static bool IsInvokingStaticConstructorsSupported => true;
+        public static bool IsInvokingStaticConstructorsSupported => !IsNativeAot;
 
         // System.Security.Cryptography.Xml.XmlDsigXsltTransform.GetOutput() relies on XslCompiledTransform which relies
         // heavily on Reflection.Emit
@@ -101,6 +109,10 @@ namespace System
         public static bool IsPreciseGcSupported => !IsMonoRuntime;
 
         public static bool IsNotIntMaxValueArrayIndexSupported => s_largeArrayIsNotSupported.Value;
+
+        public static bool IsAssemblyLoadingSupported => !IsNativeAot;
+        public static bool IsMethodBodySupported => !IsNativeAot;
+        public static bool IsDebuggerTypeProxyAttributeSupported => !IsNativeAot;
 
         private static volatile Tuple<bool> s_lazyNonZeroLowerBoundArraySupported;
         public static bool IsNonZeroLowerBoundArraySupported
@@ -124,18 +136,59 @@ namespace System
             }
         }
 
+        private static volatile Tuple<bool> s_lazyMetadataTokensSupported;
+        public static bool IsMetadataTokenSupported
+        {
+            get
+            {
+                if (s_lazyMetadataTokensSupported == null)
+                {
+                    bool metadataTokensSupported = false;
+                    try
+                    {
+                        _ = typeof(PlatformDetection).MetadataToken;
+                        metadataTokensSupported = true;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                    }
+                    s_lazyMetadataTokensSupported = Tuple.Create<bool>(metadataTokensSupported);
+                }
+                return s_lazyMetadataTokensSupported.Item1;
+            }
+        }
+
         public static bool IsDomainJoinedMachine => !Environment.MachineName.Equals(Environment.UserDomainName, StringComparison.OrdinalIgnoreCase);
         public static bool IsNotDomainJoinedMachine => !IsDomainJoinedMachine;
+
+        public static bool IsOpenSslSupported => IsLinux || IsFreeBSD || Isillumos || IsSolaris;
 
         // Windows - Schannel supports alpn from win8.1/2012 R2 and higher.
         // Linux - OpenSsl supports alpn from openssl 1.0.2 and higher.
         // OSX - SecureTransport doesn't expose alpn APIs. TODO https://github.com/dotnet/runtime/issues/27727
-        public static bool IsOpenSslSupported => IsLinux || IsFreeBSD || Isillumos || IsSolaris;
+        // Android - Platform supports alpn from API level 29 and higher
+        private static Lazy<bool> s_supportsAlpn = new Lazy<bool>(GetAlpnSupport);
+        private static bool GetAlpnSupport()
+        {
+            if (IsWindows && !IsWindows7 && !IsNetFramework)
+            {
+                return true;
+            }
 
-        public static bool SupportsAlpn => (IsWindows && !IsWindows7) ||
-            (IsOpenSslSupported &&
-            (OpenSslVersion.Major >= 1 && (OpenSslVersion.Minor >= 1 || OpenSslVersion.Build >= 2)));
+            if (IsOpenSslSupported)
+            {
+                return OpenSslVersion.Major >= 1 && (OpenSslVersion.Minor >= 1 || OpenSslVersion.Build >= 2);
+            }
 
+            if (IsAndroid)
+            {
+                return Interop.AndroidCrypto.SSLSupportsApplicationProtocolsConfiguration();
+            }
+
+            return false;
+        }
+
+        public static bool SupportsAlpn => s_supportsAlpn.Value;
         public static bool SupportsClientAlpn => SupportsAlpn || IsOSX || IsMacCatalyst || IsiOS || IstvOS;
 
         private static Lazy<bool> s_supportsTls10 = new Lazy<bool>(GetTls10Support);
@@ -182,14 +235,14 @@ namespace System
             }
         }
 
-        private static readonly Lazy<bool> m_isInvariant = new Lazy<bool>(GetIsInvariantGlobalization);
+        private static readonly Lazy<bool> m_isInvariant = new Lazy<bool>(() => GetStaticNonPublicBooleanPropertyValue("System.Globalization.GlobalizationMode", "Invariant"));
 
-        private static bool GetIsInvariantGlobalization()
+        private static bool GetStaticNonPublicBooleanPropertyValue(string typeName, string propertyName)
         {
-            Type globalizationMode = Type.GetType("System.Globalization.GlobalizationMode");
+            Type globalizationMode = Type.GetType(typeName);
             if (globalizationMode != null)
             {
-                MethodInfo methodInfo = globalizationMode.GetProperty("Invariant", BindingFlags.NonPublic | BindingFlags.Static)?.GetMethod;
+                MethodInfo methodInfo = globalizationMode.GetProperty(propertyName, BindingFlags.NonPublic | BindingFlags.Static)?.GetMethod;
                 if (methodInfo != null)
                 {
                     return (bool)methodInfo.Invoke(null, null);
@@ -229,6 +282,10 @@ namespace System
                               (version >> 8) & 0xFF,
                               version & 0xFF);
         }
+
+        private static readonly Lazy<bool> _net5CompatFileStream = new Lazy<bool>(() => GetStaticNonPublicBooleanPropertyValue("System.IO.FileStreamHelpers", "UseNet5CompatStrategy"));
+
+        public static bool IsNet5CompatFileStreamEnabled => _net5CompatFileStream.Value;
 
         private static bool GetIsInContainer()
         {
@@ -280,6 +337,13 @@ namespace System
 
             int ret = Interop.OpenSsl.OpenSslGetProtocolSupport((int)protocol);
             return ret == 1;
+        }
+
+        private static readonly Lazy<SslProtocols> s_androidSupportedSslProtocols = new Lazy<SslProtocols>(Interop.AndroidCrypto.SSLGetSupportedProtocols);
+        private static bool AndroidGetSslProtocolSupport(SslProtocols protocol)
+        {
+            Debug.Assert(IsAndroid);
+            return (protocol & s_androidSupportedSslProtocols.Value) == protocol;
         }
 
         private static bool GetTls10Support()
@@ -347,6 +411,14 @@ namespace System
             {
                 // [ActiveIssue("https://github.com/dotnet/runtime/issues/1979")]
                 return false;
+            }
+            else if (IsAndroid)
+            {
+#if NETFRAMEWORK
+                return false;
+#else
+                return AndroidGetSslProtocolSupport(SslProtocols.Tls13);
+#endif
             }
             else if (IsOpenSslSupported)
             {

@@ -315,6 +315,14 @@
   <data name="Arg_MustBeChar" xml:space="preserve">
     <value>Object must be of type Char.</value>
   </data>
+  <data name="Arg_MustBeDateOnly" xml:space="preserve">
+    <value>Object must be of type DateOnly.</value>
+    <comment>{Locked="DateOnly"}</comment>
+  </data>
+  <data name="Arg_MustBeTimeOnly" xml:space="preserve">
+    <value>Object must be of type TimeOnly.</value>
+    <comment>{Locked="TimeOnly"}</comment>
+  </data>
   <data name="Arg_MustBeDateTime" xml:space="preserve">
     <value>Object must be of type DateTime.</value>
   </data>
@@ -455,6 +463,9 @@
   </data>
   <data name="Arg_RankMultiDimNotSupported" xml:space="preserve">
     <value>Only single dimensional arrays are supported for the requested action.</value>
+  </data>
+  <data name="Rank_MustMatch" xml:space="preserve">
+    <value>The specified arrays must have the same number of dimensions.</value>
   </data>
   <data name="Arg_RanksAndBounds" xml:space="preserve">
     <value>Number of lengths and lowerBounds must match.</value>
@@ -666,6 +677,10 @@
   <data name="Argument_InvalidDateTimeStyles" xml:space="preserve">
     <value>An undefined DateTimeStyles value is being used.</value>
   </data>
+  <data name="Argument_InvalidDateStyles" xml:space="preserve">
+    <value>The only allowed values for the styles are AllowWhiteSpaces, AllowTrailingWhite, AllowLeadingWhite, and AllowInnerWhite.</value>
+    <comment>{Locked="AllowWhiteSpaces, AllowTrailingWhite, AllowLeadingWhite, and AllowInnerWhite"}</comment>
+  </data>
   <data name="Argument_InvalidDigitSubstitution" xml:space="preserve">
     <value>The DigitSubstitution property must be of a valid member of the DigitShapes enumeration. Valid entries include Context, NativeNational or None.</value>
   </data>
@@ -785,6 +800,9 @@
   </data>
   <data name="Argument_OutOfOrderDateTimes" xml:space="preserve">
     <value>The DateStart property must come before the DateEnd property.</value>
+  </data>
+  <data name="ArgumentOutOfRange_ArrayLB" xml:space="preserve">
+    <value>Number was less than the array's lower bound in the first dimension.</value>
   </data>
   <data name="ArgumentOutOfRange_HugeArrayNotSupported" xml:space="preserve">
     <value>Arrays larger than 2GB are not supported.</value>
@@ -939,6 +957,9 @@
   <data name="ArgumentOutOfRange_DateTimeBadTicks" xml:space="preserve">
     <value>Ticks must be between DateTime.MinValue.Ticks and DateTime.MaxValue.Ticks.</value>
   </data>
+  <data name="ArgumentOutOfRange_TimeOnlyBadTicks" xml:space="preserve">
+    <value>Ticks must be between 0 and and TimeOnly.MaxValue.Ticks.</value>
+  </data>
   <data name="ArgumentOutOfRange_DateTimeBadYears" xml:space="preserve">
     <value>Years value must be between +/-10000.</value>
   </data>
@@ -1022,6 +1043,10 @@
   </data>
   <data name="ArgumentOutOfRange_Month" xml:space="preserve">
     <value>Month must be between one and twelve.</value>
+  </data>
+  <data name="ArgumentOutOfRange_DayNumber" xml:space="preserve">
+    <value>Day number must be between 0 and DateOnly.MaxValue.DayNumber.</value>
+    <comment>{Locked="DateOnly.MaxValue.DayNumber"}</comment>
   </data>
   <data name="ArgumentOutOfRange_MonthParam" xml:space="preserve">
     <value>The Month parameter must be in the range 1 through 12.</value>
@@ -1130,6 +1155,9 @@
   </data>
   <data name="Exception_EndOfInnerExceptionStack" xml:space="preserve">
     <value>--- End of inner exception stack trace ---</value>
+  </data>
+  <data name="Exception_EndStackTraceFromPreviousThrow" xml:space="preserve">
+    <value>--- End of stack trace from previous location ---</value>
   </data>
   <data name="Exception_WasThrown" xml:space="preserve">
     <value>Exception of type '{0}' was thrown.</value>
@@ -1593,6 +1621,12 @@
   <data name="Arg_EnumValueNotFound" xml:space="preserve">
     <value>Requested value '{0}' was not found.</value>
   </data>
+  <data name="Arg_LongerThanDestArray" xml:space="preserve">
+    <value>Destination array was not long enough. Check the destination index, length, and the array's lower bounds.</value>
+  </data>
+  <data name="Arg_LongerThanSrcArray" xml:space="preserve">
+    <value>Source array was not long enough. Check the source index, length, and the array's lower bounds.</value>
+  </data>
   <data name="Argument_StringZeroLength" xml:space="preserve">
     <value>String cannot be of zero length.</value>
   </data>
@@ -1691,6 +1725,17 @@
   </data>
   <data name="Format_BadDateTime" xml:space="preserve">
     <value>String '{0}' was not recognized as a valid DateTime.</value>
+  </data>
+  <data name="Format_BadDateOnly" xml:space="preserve">
+    <value>String '{0}' was not recognized as a valid DateOnly.</value>
+    <comment>{Locked="DateOnly"}</comment>
+  </data>
+  <data name="Format_BadTimeOnly" xml:space="preserve">
+    <value>String '{0}' was not recognized as a valid TimeOnly.</value>
+    <comment>{Locked="TimeOnly"}</comment>
+  </data>
+  <data name="Format_DateTimeOnlyContainsNoneDateParts" xml:space="preserve">
+    <value>String '{0}' contains parts which are not specific to the {1}.</value>
   </data>
   <data name="Format_BadDateTimeCalendar" xml:space="preserve">
     <value>The DateTime represented by the string '{0}' is not supported in calendar '{1}'.</value>
@@ -1809,6 +1854,9 @@
   </data>
   <data name="Task_ContinueWith_NotOnAnything" xml:space="preserve">
     <value>The specified TaskContinuationOptions excluded all continuation kinds.</value>
+  </data>
+  <data name="Task_InvalidTimerTimeSpan" xml:space="preserve">
+    <value>The value needs to translate in milliseconds to -1 (signifying an infinite timeout), 0, or a positive integer less than or equal to the maximum allowed timer duration.</value>
   </data>
   <data name="Task_RunSynchronously_AlreadyStarted" xml:space="preserve">
     <value>RunSynchronously may not be called on a task that was already started.</value>
@@ -3103,7 +3151,13 @@
   <data name="Argv_IncludeDoubleQuote" xml:space="preserve">
     <value>The argv[0] argument cannot include a double quote.</value>
   </data>
+  <data name="InvalidOperation_ResetGlobalComWrappersInstance" xml:space="preserve">
+    <value>Attempt to update previously set global instance.</value>
+  </data>
   <data name="ResourceManager_ReflectionNotAllowed" xml:space="preserve">
     <value>Use of ResourceManager for custom types is disabled. Set the MSBuild Property CustomResourceTypesSupport to true in order to enable it.</value>
+  </data>
+  <data name="InvalidOperation_ComInteropRequireComWrapperInstance" xml:space="preserve">
+    <value>COM Interop requires ComWrapper instance registered for marshalling.</value>
   </data>
 </root>

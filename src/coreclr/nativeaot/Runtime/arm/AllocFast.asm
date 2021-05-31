@@ -76,26 +76,13 @@ AllocFailed
         ;; Preserve the EEType in r5.
         mov         r5, r0
 
-        ldr         r2, [r0, #OFFSETOF__EEType__m_uBaseSize]    ; cbSize
+        mov         r2, #0              ; numElements
 
-        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         blx         RhpGcAlloc
 
-        ;; Set the new object's EEType pointer on success.
         cbz         r0, NewOutOfMemory
-        str         r5, [r0, #OFFSETOF__Object__m_pEEType]
 
-        ;; If the object is bigger than RH_LARGE_OBJECT_SIZE, we must publish it to the BGC
-        ldr         r1, [r5, #OFFSETOF__EEType__m_uBaseSize]
-        movw        r2, #(RH_LARGE_OBJECT_SIZE & 0xFFFF)
-        movt        r2, #(RH_LARGE_OBJECT_SIZE >> 16)
-        cmp         r1, r2
-        blo         New_SkipPublish
-                                        ;; r0: already contains object
-                                        ;; r1: already contains object size
-        bl          RhpPublishObject
-                                        ;; r0: function returned the passed-in object
-New_SkipPublish
         POP_COOP_PINVOKE_FRAME
         EPILOG_RETURN
 
@@ -267,7 +254,6 @@ ArrayOutOfMemoryFinal
 ;; Allocate one dimensional, zero based array (SZARRAY) using the slow path that calls a runtime helper.
 ;;  r0 == EEType
 ;;  r1 == element count
-;;  r2 == array size + Thread::m_alloc_context::alloc_ptr
 ;;  r3 == Thread
         NESTED_ENTRY RhpNewArrayRare
 
@@ -277,34 +263,17 @@ ArrayOutOfMemoryFinal
 
         PUSH_COOP_PINVOKE_FRAME r3
 
-        ; Preserve the EEType in r5 and element count in r6.
+        ; Preserve the EEType in r5.
         mov         r5, r0
-        mov         r6, r1
 
-        mov         r7, r2          ; Save array size in r7
-
+        mov         r2, r1          ; numElements
         mov         r1, #0          ; uFlags
 
-        ; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
+        ; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         blx         RhpGcAlloc
 
         ; Test for failure (NULL return).
         cbz         r0, ArrayOutOfMemory
-
-        ; Success, set the array's type and element count in the new object.
-        str         r5, [r0, #OFFSETOF__Object__m_pEEType]
-        str         r6, [r0, #OFFSETOF__Array__m_Length]
-
-        ;; If the object is bigger than RH_LARGE_OBJECT_SIZE, we must publish it to the BGC
-        movw        r2, #(RH_LARGE_OBJECT_SIZE & 0xFFFF)
-        movt        r2, #(RH_LARGE_OBJECT_SIZE >> 16)
-        cmp         r7, r2
-        blo         NewArray_SkipPublish
-                                        ;; r0: already contains object
-        mov         r1, r7              ;; r1: object size
-        bl          RhpPublishObject
-                                        ;; r0: function returned the passed-in object
-NewArray_SkipPublish
 
         POP_COOP_PINVOKE_FRAME
         EPILOG_RETURN
@@ -516,33 +485,17 @@ BoxAlloc8Failed
         adds        r2, r4
         bcs         Array8SizeOverflow
 
-        ; Preserve the EEType in r5 and element count in r6.
+        ; Preserve the EEType in r5.
         mov         r5, r0
-        mov         r6, r1
-        mov         r7, r2                  ; Save array size in r7
 
+        mov         r2, r1                  ; numElements
         mov         r1, #GC_ALLOC_ALIGN8    ; uFlags
 
-        ; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
+        ; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         blx         RhpGcAlloc
 
         ; Test for failure (NULL return).
         cbz         r0, Array8OutOfMemory
-
-        ; Success, set the array's type and element count in the new object.
-        str         r5, [r0, #OFFSETOF__Object__m_pEEType]
-        str         r6, [r0, #OFFSETOF__Array__m_Length]
-
-        ;; If the object is bigger than RH_LARGE_OBJECT_SIZE, we must publish it to the BGC
-        movw        r2, #(RH_LARGE_OBJECT_SIZE & 0xFFFF)
-        movt        r2, #(RH_LARGE_OBJECT_SIZE >> 16)
-        cmp         r7, r2
-        blo         NewArray8_SkipPublish
-                                        ;; r0: already contains object
-        mov         r1, r7              ;; r1: object size
-        bl          RhpPublishObject
-                                        ;; r0: function returned the passed-in object
-NewArray8_SkipPublish
 
         POP_COOP_PINVOKE_FRAME
         EPILOG_RETURN

@@ -6,27 +6,7 @@
 #include "pal_eckey.h"
 #include "pal_jni.h"
 #include "pal_utilities.h"
-
-
-#define INIT_LOCALS(name, ...) \
-    enum { __VA_ARGS__, count_##name }; \
-    jobject name[count_##name] = { 0 } \
-
-#define RELEASE_LOCALS_ENV(name, releaseFn) \
-do { \
-    for (int i = 0; i < count_##name; ++i) \
-    { \
-        releaseFn(env, name[i]); \
-    } \
-} while(0)
-
-#define RELEASE_LOCALS(name, releaseFn) \
-do { \
-    for (int i = 0; i < count_##name; ++i) \
-    { \
-        releaseFn(name[i]); \
-    } \
-} while(0)
+#include "pal_misc.h"
 
 int32_t AndroidCryptoNative_GetECKeyParameters(const EC_KEY* key,
                                         int32_t includePrivate,
@@ -60,10 +40,10 @@ int32_t AndroidCryptoNative_GetECKeyParameters(const EC_KEY* key,
 
     // Success; assign variables
     *qx = ToGRef(env, xBn);
-    *cbQx = CryptoNative_GetBigNumBytes(*qx);
+    *cbQx = AndroidCryptoNative_GetBigNumBytes(*qx);
     xBn = NULL;
     *qy = ToGRef(env, yBn);
-    *cbQy = CryptoNative_GetBigNumBytes(*qy);
+    *cbQy = AndroidCryptoNative_GetBigNumBytes(*qy);
     yBn = NULL;
     if (*cbQx == FAIL || *cbQy == FAIL)
         goto error;
@@ -84,7 +64,7 @@ int32_t AndroidCryptoNative_GetECKeyParameters(const EC_KEY* key,
         (*env)->DeleteLocalRef(env, privateKey);
 
         *d = ToGRef(env, dBn);
-        *cbD = CryptoNative_GetBigNumBytes(*d);
+        *cbD = AndroidCryptoNative_GetBigNumBytes(*d);
         if (*cbD == FAIL)
             goto error;
     }
@@ -205,7 +185,7 @@ int32_t AndroidCryptoNative_GetECCurveParameters(const EC_KEY* key,
         bn[SEED] = (*env)->NewObject(env, g_bigNumClass, g_bigNumCtorWithSign, 1, loc[seedArray]);
 
         *seed = ToGRef(env, bn[SEED]);
-        *cbSeed = CryptoNative_GetBigNumBytes(*seed);
+        *cbSeed = AndroidCryptoNative_GetBigNumBytes(*seed);
     }
     else
     {
@@ -215,19 +195,19 @@ int32_t AndroidCryptoNative_GetECCurveParameters(const EC_KEY* key,
 
     // Success; assign variables
     *gx = ToGRef(env, bn[X]);
-    *cbGx = CryptoNative_GetBigNumBytes(*gx);
+    *cbGx = AndroidCryptoNative_GetBigNumBytes(*gx);
     *gy = ToGRef(env, bn[Y]);
-    *cbGy = CryptoNative_GetBigNumBytes(*gy);
+    *cbGy = AndroidCryptoNative_GetBigNumBytes(*gy);
     *p = ToGRef(env, bn[P]);
-    *cbP = CryptoNative_GetBigNumBytes(*p);
+    *cbP = AndroidCryptoNative_GetBigNumBytes(*p);
     *a = ToGRef(env, bn[A]);
-    *cbA = CryptoNative_GetBigNumBytes(*a);
+    *cbA = AndroidCryptoNative_GetBigNumBytes(*a);
     *b = ToGRef(env, bn[B]);
-    *cbB = CryptoNative_GetBigNumBytes(*b);
+    *cbB = AndroidCryptoNative_GetBigNumBytes(*b);
     *order = ToGRef(env, bn[ORDER]);
-    *cbOrder = CryptoNative_GetBigNumBytes(*order);
+    *cbOrder = AndroidCryptoNative_GetBigNumBytes(*order);
     *cofactor = ToGRef(env, bn[COFACTOR]);
-    *cbCofactor = CryptoNative_GetBigNumBytes(*cofactor);
+    *cbCofactor = AndroidCryptoNative_GetBigNumBytes(*cofactor);
 
     rc = SUCCESS;
 
@@ -260,10 +240,12 @@ error:
     ReleaseGRef(env, *seed);
     *p = *a = *b = *gx = *gy = *order = *cofactor = *seed = NULL;
 
-    RELEASE_LOCALS_ENV(loc, ReleaseLRef);
+    // Clear local BigInteger instances. On success, these are converted to global
+    // references for the out variables, so the local release is only on error.
     RELEASE_LOCALS_ENV(bn, ReleaseLRef);
 
 exit:
+    RELEASE_LOCALS_ENV(loc, ReleaseLRef);
     return rc;
 }
 
@@ -280,8 +262,8 @@ static jobject AndroidCryptoNative_CreateKeyPairFromCurveParameters(
     // Create the public and private key specs.
     if (qx && qy)
     {
-        bn[QX] = CryptoNative_BigNumFromBinary(qx, qxLength);
-        bn[QY] = CryptoNative_BigNumFromBinary(qy, qyLength);
+        bn[QX] = AndroidCryptoNative_BigNumFromBinary(qx, qxLength);
+        bn[QY] = AndroidCryptoNative_BigNumFromBinary(qy, qyLength);
         if (!bn[QX] || !bn[QY])
             goto error;
 
@@ -292,7 +274,7 @@ static jobject AndroidCryptoNative_CreateKeyPairFromCurveParameters(
         // Set private key (optional)
         if (d && dLength)
         {
-            bn[D] = CryptoNative_BigNumFromBinary(d, dLength);
+            bn[D] = AndroidCryptoNative_BigNumFromBinary(d, dLength);
             if (!bn[D])
                 goto error;
 
@@ -303,7 +285,7 @@ static jobject AndroidCryptoNative_CreateKeyPairFromCurveParameters(
     // re-derive the public key from d.
     else if (qx == NULL && qy == NULL && qxLength == 0 && qyLength == 0 && d && dLength > 0)
     {
-        bn[D] = CryptoNative_BigNumFromBinary(d, dLength);
+        bn[D] = AndroidCryptoNative_BigNumFromBinary(d, dLength);
         if (!bn[D])
             goto error;
 
@@ -330,23 +312,25 @@ static jobject AndroidCryptoNative_CreateKeyPairFromCurveParameters(
         loc[privateKey] = (*env)->CallObjectMethod(env, loc[keyFactory], g_KeyFactoryGenPrivateMethod, loc[privKeySpec]);
         ON_EXCEPTION_PRINT_AND_GOTO(error);
     }
-    keyPair = (*env)->NewObject(env, g_keyPairClass, g_keyPairCtor, loc[publicKey], loc[privateKey]);
+    keyPair = AndroidCryptoNative_CreateKeyPair(env, loc[publicKey], loc[privateKey]);
 
     goto cleanup;
 
 error:
-    if (loc[privateKey])
+    if (loc[privateKey] && (*env)->IsInstanceOf(env, loc[privateKey], g_DestroyableClass))
     {
         // Destroy the private key data.
         (*env)->CallVoidMethod(env, loc[privateKey], g_destroy);
-        CheckJNIExceptions(env); // The destroy call might throw an exception. Clear the exception state.
+        (void)TryClearJNIExceptions(env); // The destroy call might throw an exception. Clear the exception state.
     }
 
 cleanup:
-    RELEASE_LOCALS(bn, CryptoNative_BigNumDestroy);
+    RELEASE_LOCALS_ENV(bn, ReleaseLRef);
     RELEASE_LOCALS_ENV(loc, ReleaseLRef);
-    return ToGRef(env, keyPair);
+    return keyPair;
 }
+
+#define CURVE_NOT_SUPPORTED -1
 
 int32_t AndroidCryptoNative_EcKeyCreateByKeyParameters(EC_KEY** key,
                                                 const char* oid,
@@ -372,7 +356,7 @@ int32_t AndroidCryptoNative_EcKeyCreateByKeyParameters(EC_KEY** key,
     *key = AndroidCryptoNative_EcKeyCreateByOid(oid);
     if (*key == NULL)
     {
-        return FAIL;
+        return CURVE_NOT_SUPPORTED;
     }
 
     // Release the reference to the generated key pair. We're going to make our own with the explicit keys.
@@ -460,7 +444,7 @@ EC_KEY* AndroidCryptoNative_EcKeyCreateByExplicitParameters(ECCurveType curveTyp
         return NULL;
     }
 
-    bn[P] = CryptoNative_BigNumFromBinary(p, pLength);
+    bn[P] = AndroidCryptoNative_BigNumFromBinary(p, pLength);
 
     // At this point we should use 'goto error' since we allocated objects or memory
 
@@ -496,8 +480,8 @@ EC_KEY* AndroidCryptoNative_EcKeyCreateByExplicitParameters(ECCurveType curveTyp
         ON_EXCEPTION_PRINT_AND_GOTO(error);
     }
 
-    bn[A] = CryptoNative_BigNumFromBinary(a, aLength);
-    bn[B] = CryptoNative_BigNumFromBinary(b, bLength);
+    bn[A] = AndroidCryptoNative_BigNumFromBinary(a, aLength);
+    bn[B] = AndroidCryptoNative_BigNumFromBinary(b, bLength);
 
     if (seed && seedLength > 0)
     {
@@ -511,15 +495,15 @@ EC_KEY* AndroidCryptoNative_EcKeyCreateByExplicitParameters(ECCurveType curveTyp
     }
 
     // Set generator, order and cofactor
-    bn[GX] = CryptoNative_BigNumFromBinary(gx, gxLength);
-    bn[GY] = CryptoNative_BigNumFromBinary(gy, gyLength);
+    bn[GX] = AndroidCryptoNative_BigNumFromBinary(gx, gxLength);
+    bn[GY] = AndroidCryptoNative_BigNumFromBinary(gy, gyLength);
     loc[G] = (*env)->NewObject(env, g_ECPointClass, g_ECPointCtor, bn[GX], bn[GY]);
 
-    bn[ORDER] = CryptoNative_BigNumFromBinary(order, orderLength);
+    bn[ORDER] = AndroidCryptoNative_BigNumFromBinary(order, orderLength);
 
     // Java ECC doesn't support BigInteger-based cofactor. It uses positive 32-bit integers.
     // So, convert the cofactor to a positive 32-bit integer with overflow protection.
-    bn[COFACTOR] = CryptoNative_BigNumFromBinary(cofactor, cofactorLength);
+    bn[COFACTOR] = AndroidCryptoNative_BigNumFromBinary(cofactor, cofactorLength);
     int cofactorInt = ConvertBigIntegerToPositiveInt32(env, bn[COFACTOR]);
 
     if (cofactorInt == -1)
@@ -528,7 +512,7 @@ EC_KEY* AndroidCryptoNative_EcKeyCreateByExplicitParameters(ECCurveType curveTyp
         goto error;
     }
 
-    loc[paramSpec] = (*env)->NewObject(env, g_ECParameterSpecClass, g_ECParameterSpecCtor, loc[group], loc[G], bn[ORDER], bn[COFACTOR]);
+    loc[paramSpec] = (*env)->NewObject(env, g_ECParameterSpecClass, g_ECParameterSpecCtor, loc[group], loc[G], bn[ORDER], cofactorInt);
 
     if ((qx && qy) || d)
     {
@@ -562,7 +546,7 @@ EC_KEY* AndroidCryptoNative_EcKeyCreateByExplicitParameters(ECCurveType curveTyp
     keyInfo = AndroidCryptoNative_NewEcKey(AddGRef(env, loc[paramSpec]), keyPair);
 
 error:
-    RELEASE_LOCALS(bn, CryptoNative_BigNumDestroy);
+    RELEASE_LOCALS_ENV(bn, ReleaseLRef);
     RELEASE_LOCALS_ENV(loc, ReleaseLRef);
     return keyInfo;
 }

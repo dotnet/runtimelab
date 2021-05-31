@@ -20,7 +20,6 @@
 // NOTE: the values MUST be in hex notation WITHOUT the 0x prefix
 
 //        32-bit,64-bit, constant symbol
-ASM_CONST( 14c08, 14c08, RH_LARGE_OBJECT_SIZE)
 ASM_CONST(   400,   800, CLUMP_SIZE)
 ASM_CONST(     a,     b, LOG2_CLUMP_SIZE)
 

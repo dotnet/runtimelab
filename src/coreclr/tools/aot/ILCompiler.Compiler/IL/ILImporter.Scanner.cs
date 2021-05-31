@@ -355,13 +355,7 @@ namespace Internal.IL
                     }
                     else
                     {
-                        MethodDesc ctor = method.Instantiation[0].GetDefaultConstructor();
-                        if (ctor == null)
-                        {
-                            MetadataType activatorType = _compilation.TypeSystemContext.SystemModule.GetKnownType("System", "Activator");
-                            MetadataType classWithMissingCtor = activatorType.GetKnownNestedType("ClassWithMissingConstructor");
-                            ctor = classWithMissingCtor.GetParameterlessConstructor();
-                        }
+                        MethodDesc ctor = Compilation.GetConstructorForCreateInstanceIntrinsic(method.Instantiation[0]);
                         _dependencies.Add(_factory.CanonicalEntrypoint(ctor), reason);
                     }
 
@@ -1054,6 +1048,14 @@ namespace Internal.IL
                 case ILOpcode.sub_ovf:
                 case ILOpcode.sub_ovf_un:
                     _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Overflow), "_ovf");
+                    break;
+
+                case ILOpcode.div:
+                case ILOpcode.div_un:
+                case ILOpcode.rem:
+                case ILOpcode.rem_un:
+                    // Required for ARM64
+                    _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ThrowDivZero), "_divbyzero");
                     break;
             }
         }

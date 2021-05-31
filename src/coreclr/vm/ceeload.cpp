@@ -220,6 +220,14 @@ void Module::UpdateNewlyAddedTypes()
     DWORD countExportedTypesAfterProfilerUpdate = GetMDImport()->GetCountWithTokenKind(mdtExportedType);
     DWORD countCustomAttributeCount = GetMDImport()->GetCountWithTokenKind(mdtCustomAttribute);
 
+    if (m_dwTypeCount == countTypesAfterProfilerUpdate
+        && m_dwExportedTypeCount == countExportedTypesAfterProfilerUpdate
+        && m_dwCustomAttributeCount == countCustomAttributeCount)
+    {
+        // The profiler added no new types, do not create the in memory hashes
+        return;
+    }
+
     // R2R pre-computes an export table and tries to avoid populating a class hash at runtime. However the profiler can
     // still add new types on the fly by calling here. If that occurs we fallback to the slower path of creating the
     // in memory hashtable as usual.
@@ -280,6 +288,7 @@ void Module::NotifyProfilerLoadFinished(HRESULT hr)
             m_dwCustomAttributeCount = GetMDImport()->GetCountWithTokenKind(mdtCustomAttribute);
         }
 
+        BOOL profilerCallbackHappened = FALSE;
         // Notify the profiler, this may cause metadata to be updated
         {
             BEGIN_PIN_PROFILER(CORProfilerTrackModuleLoads());
@@ -292,13 +301,15 @@ void Module::NotifyProfilerLoadFinished(HRESULT hr)
                     g_profControlBlock.pProfInterface->ModuleAttachedToAssembly((ModuleID) this,
                                                                                 (AssemblyID)m_pAssembly);
                 }
+
+                profilerCallbackHappened = TRUE;
             }
             END_PIN_PROFILER();
         }
 
         // If there are more types than before, add these new types to the
         // assembly
-        if (!IsResource())
+        if (profilerCallbackHappened && !IsResource())
         {
             UpdateNewlyAddedTypes();
         }
@@ -11844,7 +11855,7 @@ HRESULT Module::WriteMethodProfileDataLogFile(bool cleanup)
     {
         if (GetAssembly()->IsInstrumented() && (m_pProfilingBlobTable != NULL) && (m_tokenProfileData != NULL))
         {
-            ProfileEmitter * pEmitter = new ProfileEmitter();
+            NewHolder<ProfileEmitter> pEmitter(new ProfileEmitter());
 
             // Get this ahead of time - metadata access may be logged, which will
             // take the m_tokenProfileData->crst, which we take a couple lines below
@@ -12509,7 +12520,7 @@ void ReflectionModule::Initialize(AllocMemTracker *pamTracker, LPCWSTR szName)
 
     Module::Initialize(pamTracker);
 
-    IfFailThrow(CreateICeeGen(IID_ICeeGen, (void **)&m_pCeeFileGen));
+    IfFailThrow(CreateICeeGen(IID_ICeeGenInternal, (void **)&m_pCeeFileGen));
 
     // Collectible modules should try to limit the growth of their associate IL section, as common scenarios for collectible
     // modules include single type modules
@@ -13832,4 +13843,3 @@ void EEConfig::DebugCheckAndForceIBCFailure(BitForMask bitForMask)
     }
 }
 #endif // defined(_DEBUG) && !defined(DACCESS_COMPILE)
-

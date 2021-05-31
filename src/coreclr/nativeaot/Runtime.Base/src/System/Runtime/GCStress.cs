@@ -8,9 +8,7 @@ namespace System.Runtime
 {
     internal class GCStress
     {
-        // ProjectX TODO:  delete the RuntimeExport attribute. The RuntimeExport version is
-        // only used in MDIL mode where it's called in the managed bootstrapping code.
-        [RuntimeExport("RhGcStress_Initialize")]
+        [UnmanagedCallersOnly(EntryPoint = "RhGcStress_Initialize", CallConvs = new Type[] { typeof(CallConvCdecl) })]
         public static void Initialize()
         {
 #if FEATURE_GC_STRESS
@@ -39,12 +37,6 @@ namespace System.Runtime
 #endif // FEATURE_GC_STRESS
         }
 
-        [UnmanagedCallersOnly(EntryPoint = "RhGcStress_Initialize2", CallConvs = new Type[] { typeof(CallConvCdecl) })]
-        internal static void Initialize2()
-        {
-            Initialize();
-        }
-
         [System.Diagnostics.Conditional("FEATURE_GC_STRESS")]
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void TriggerGC()
@@ -55,7 +47,6 @@ namespace System.Runtime
 #endif
         }
 
-#if FEATURE_GC_STRESS
         ~GCStress()
         {
             // drop the first element
@@ -65,15 +56,15 @@ namespace System.Runtime
             Tail.Next = new GCStress();
             Tail = Tail.Next;
         }
-#endif // FEATURE_GC_STRESS
 
 #if FEATURE_GC_STRESS
         internal static bool Initialized { get; private set; }
+#endif // FEATURE_GC_STRESS
+
         private static GCStress Head;
         private static GCStress Tail;
 
         private GCStress Next;
-#endif // FEATURE_GC_STRESS
 
         private GCStress()
         {

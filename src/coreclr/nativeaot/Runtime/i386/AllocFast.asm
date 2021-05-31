@@ -45,8 +45,6 @@ FASTCALL_FUNC   RhpNewFast, 4
 AllocFailed:
 
         ;;
-        ;; SLOW PATH, call RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
-        ;;
         ;; ecx: EEType pointer
         ;;
         push        ebp
@@ -59,26 +57,15 @@ AllocFailed:
 
         ;; Push alloc helper arguments
         push        edx                                             ; transition frame
-        push        dword ptr [ecx + OFFSETOF__EEType__m_uBaseSize] ; Size
+        push        0                                               ; numElements
         xor         edx, edx                                        ; Flags
         ;; Passing EEType in ecx
 
-        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
-        ;; Set the new object's EEType pointer on success.
         test        eax, eax
         jz          NewFast_OOM
-        mov         [eax + OFFSETOF__Object__m_pEEType], esi
-
-        ;; If the object is bigger than RH_LARGE_OBJECT_SIZE, we must publish it to the BGC
-        mov         edx, [esi + OFFSETOF__EEType__m_uBaseSize]
-        cmp         edx, RH_LARGE_OBJECT_SIZE
-        jb          NewFast_SkipPublish
-        mov         ecx, eax            ;; ecx: object
-                                        ;; edx: already contains object size
-        call        RhpPublishObject    ;; eax: this function returns the object that was passed-in
-NewFast_SkipPublish:
 
         POP_COOP_PINVOKE_FRAME
 
@@ -116,26 +103,15 @@ FASTCALL_FUNC   RhpNewFinalizable, 4
 
         ;; Push alloc helper arguments
         push        edx                                             ; transition frame
-        push        dword ptr [ecx + OFFSETOF__EEType__m_uBaseSize] ; Size
+        push        0                                               ; numElements
         mov         edx, GC_ALLOC_FINALIZE                          ; Flags
         ;; Passing EEType in ecx
 
-        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
-        ;; Set the new object's EEType pointer on success.
         test        eax, eax
         jz          NewFinalizable_OOM
-        mov         [eax + OFFSETOF__Object__m_pEEType], esi
-
-        ;; If the object is bigger than RH_LARGE_OBJECT_SIZE, we must publish it to the BGC
-        mov         edx, [esi + OFFSETOF__EEType__m_uBaseSize]
-        cmp         edx, RH_LARGE_OBJECT_SIZE
-        jb          NewFinalizable_SkipPublish
-        mov         ecx, eax            ;; ecx: object
-                                        ;; edx: already contains object size
-        call        RhpPublishObject    ;; eax: this function returns the object that was passed-in
-NewFinalizable_SkipPublish:
 
         POP_COOP_PINVOKE_FRAME
 
@@ -224,37 +200,20 @@ StringAllocContextOverflow:
 
         PUSH_COOP_PINVOKE_FRAME edx
 
-        ; Preserve the string size in edi
-        mov         edi, ecx
-
         ; Get the EEType and put it in ecx.
         mov         ecx, dword ptr [ebp - 8]
 
         ; Push alloc helper arguments (thread, size, flags, EEType).
         push        edx                                             ; transition frame
-        push        edi                                             ; Size
+        push        [ebp - 4]                                       ; numElements
         xor         edx, edx                                        ; Flags
         ;; Passing EEType in ecx
 
-        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
-        ; Set the new object's EEType pointer and length on success.
         test        eax, eax
         jz          StringOutOfMemoryWithFrame
-
-        mov         ecx, [ebp - 8]
-        mov         edx, [ebp - 4]
-        mov         [eax + OFFSETOF__Object__m_pEEType], ecx
-        mov         [eax + OFFSETOF__String__m_Length], edx
-
-        ;; If the object is bigger than RH_LARGE_OBJECT_SIZE, we must publish it to the BGC
-        cmp         edi, RH_LARGE_OBJECT_SIZE
-        jb          NewString_SkipPublish
-        mov         ecx, eax            ;; ecx: object
-        mov         edx, edi            ;; edx: object size
-        call        RhpPublishObject    ;; eax: this function returns the object that was passed-in
-NewString_SkipPublish:
 
         POP_COOP_PINVOKE_FRAME
         add         esp, 8          ; pop ecx / edx
@@ -371,37 +330,20 @@ ArrayAllocContextOverflow:
 
         PUSH_COOP_PINVOKE_FRAME edx
 
-        ; Preserve the array size in edi
-        mov         edi, ecx
-
         ; Get the EEType and put it in ecx.
         mov         ecx, dword ptr [ebp - 8]
 
         ; Push alloc helper arguments (thread, size, flags, EEType).
         push        edx                                             ; transition frame
-        push        edi                                             ; Size
+        push        [ebp - 4]                                       ; numElements
         xor         edx, edx                                        ; Flags
         ;; Passing EEType in ecx
 
-        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
-        ; Set the new object's EEType pointer and length on success.
         test        eax, eax
         jz          ArrayOutOfMemoryWithFrame
-
-        mov         ecx, [ebp - 8]
-        mov         edx, [ebp - 4]
-        mov         [eax + OFFSETOF__Object__m_pEEType], ecx
-        mov         [eax + OFFSETOF__Array__m_Length], edx
-
-        ;; If the object is bigger than RH_LARGE_OBJECT_SIZE, we must publish it to the BGC
-        cmp         edi, RH_LARGE_OBJECT_SIZE
-        jb          NewArray_SkipPublish
-        mov         ecx, eax            ;; ecx: object
-        mov         edx, edi            ;; edx: object size
-        call        RhpPublishObject    ;; eax: this function returns the object that was passed-in
-NewArray_SkipPublish:
 
         POP_COOP_PINVOKE_FRAME
         add         esp, 8          ; pop ecx / edx

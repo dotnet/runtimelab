@@ -119,9 +119,6 @@
     <Compile Include="..\..\Runtime.Base\src\System\Diagnostics\Debug.cs">
       <Link>System\Diagnostics\Debug.cs</Link>
     </Compile>
-    <Compile Include="..\..\Runtime.Base\src\System\Diagnostics\Eval.cs">
-      <Link>System\Diagnostics\Eval.cs</Link>
-    </Compile>
     <Compile Include="..\..\Runtime.Base\src\System\Exception.cs">
       <Link>System\Exception.cs</Link>
     </Compile>

@@ -435,7 +435,7 @@ int ObjectWriter::EmitSymbolRef(const char *SymbolName,
   case RelocType::IMAGE_REL_BASED_RELPTR32:
     Size = 4;
     IsPCRel = true;
-    Delta += 4; // size of C# (int) type is always 4 bytes
+    Delta += 4;
     break;
   case RelocType::IMAGE_REL_BASED_THUMB_MOV32: {
     const unsigned Offset = GetDFSize();
@@ -609,8 +609,8 @@ void ObjectWriter::EmitVarDefRange(const MCSymbol *Fn,
 
 // Maps an ICorDebugInfo register number to the corresponding CodeView
 // register number
-CVRegNum ObjectWriter::GetCVRegNum(ICorDebugInfo::RegNum RegNum) {
-  static const CVRegNum CvRegMapAmd64[] = {
+CVRegNum ObjectWriter::GetCVRegNum(unsigned RegNum) {
+  static const CVRegNum CVRegMapAmd64[] = {
     CV_AMD64_RAX, CV_AMD64_RCX, CV_AMD64_RDX, CV_AMD64_RBX,
     CV_AMD64_RSP, CV_AMD64_RBP, CV_AMD64_RSI, CV_AMD64_RDI,
     CV_AMD64_R8, CV_AMD64_R9, CV_AMD64_R10, CV_AMD64_R11,
@@ -625,8 +625,8 @@ CVRegNum ObjectWriter::GetCVRegNum(ICorDebugInfo::RegNum RegNum) {
     }
     break;
   case Triple::x86_64:
-    if (RegNum < sizeof(CvRegMapAmd64) / sizeof(CvRegMapAmd64[0])) {
-      return CvRegMapAmd64[RegNum];
+    if (RegNum < sizeof(CVRegMapAmd64) / sizeof(CVRegMapAmd64[0])) {
+      return CVRegMapAmd64[RegNum];
     }
     break;
   case Triple::arm:

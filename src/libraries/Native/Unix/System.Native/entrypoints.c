@@ -12,6 +12,7 @@
 #include "pal_errno.h"
 #include "pal_interfaceaddresses.h"
 #include "pal_io.h"
+#include "pal_iossupportversion.h"
 #include "pal_log.h"
 #include "pal_memory.h"
 #include "pal_mount.h"
@@ -118,9 +119,7 @@ static const Entry s_sysNative[] =
     DllImportEntry(SystemNative_ReadEvents)
     DllImportEntry(SystemNative_CreateNetworkChangeListenerSocket)
     DllImportEntry(SystemNative_CloseNetworkChangeListenerSocket)
-    DllImportEntry(SystemNative_PlatformSupportsGetAddrInfoAsync)
     DllImportEntry(SystemNative_GetHostEntryForName)
-    DllImportEntry(SystemNative_GetHostEntryForNameAsync)
     DllImportEntry(SystemNative_FreeHostEntry)
     DllImportEntry(SystemNative_GetNameInfo)
     DllImportEntry(SystemNative_GetDomainName)
@@ -222,6 +221,7 @@ static const Entry s_sysNative[] =
     DllImportEntry(SystemNative_SNPrintF)
     DllImportEntry(SystemNative_Sysctl)
     DllImportEntry(SystemNative_MapTcpState)
+    DllImportEntry(SystemNative_LowLevelMonitor_Create)
     DllImportEntry(SystemNative_LowLevelMonitor_Destroy)
     DllImportEntry(SystemNative_LowLevelMonitor_Acquire)
     DllImportEntry(SystemNative_LowLevelMonitor_Release)
@@ -238,9 +238,9 @@ static const Entry s_sysNative[] =
     DllImportEntry(SystemNative_SetEUid)
     DllImportEntry(SystemNative_GetGroupList)
     DllImportEntry(SystemNative_GetUid)
-    DllImportEntry(SystemNative_LowLevelMonitor_Create)
     DllImportEntry(SystemNative_CreateAutoreleasePool)
     DllImportEntry(SystemNative_DrainAutoreleasePool)
+    DllImportEntry(SystemNative_iOSSupportVersion)
     DllImportEntry(SystemNative_LoadLibrary)
     DllImportEntry(SystemNative_GetProcAddress)
     DllImportEntry(SystemNative_FreeLibrary)
@@ -251,7 +251,6 @@ static const Entry s_sysNative[] =
     DllImportEntry(SystemNative_GetEnviron)
     DllImportEntry(SystemNative_GetErrNo)
     DllImportEntry(SystemNative_ClearErrNo)
-    DllImportEntry(SystemNative_LowLevelMonitor_TimedWait)
     DllImportEntry(SystemNative_RuntimeThread_CreateThread)
 };
 

@@ -269,13 +269,13 @@ namespace System.Reflection.Emit
             return default;
         }
 
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        [DynamicallyAccessedMembers(GetAllMembers)]
         public override MemberInfo[] GetMember(string name, MemberTypes type, BindingFlags bindingAttr)
         {
             return default;
         }
 
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        [DynamicallyAccessedMembers(GetAllMembers)]
         public override MemberInfo[] GetMembers(BindingFlags bindingAttr)
         {
             return default;
@@ -333,12 +333,12 @@ namespace System.Reflection.Emit
             return default;
         }
 
-        public override bool IsAssignableFrom(TypeInfo typeInfo)
+        public override bool IsAssignableFrom([NotNullWhen(true)] TypeInfo? typeInfo)
         {
             return default;
         }
 
-        public override bool IsAssignableFrom(Type c)
+        public override bool IsAssignableFrom([NotNullWhen(true)] Type? c)
         {
             return default;
         }

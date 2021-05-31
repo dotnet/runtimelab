@@ -34,6 +34,22 @@ Examples:
 </ItemGroup>
 ```
 
+### Linking
+
+To statically link against a unmanaged library, you'll need to specify `<NativeLibrary Include="filename" />` pointing to `.lib` file on Windows and `.a` file on Unix
+
+Examples:
+
+```xml
+<ItemGroup>
+  <!-- Generate direct PInvokes for Dependency -->
+  <DirectPInvoke Include="Dependency" />
+  <!-- Specify library to link against -->
+  <NativeLibrary Include="Dependency.lib" Condition="$(RuntimeIdentifier.StartsWith('win'))" />
+  <NativeLibrary Include="Dependency.a" Condition="!$(RuntimeIdentifier.StartsWith('win'))" />
+</ItemGroup>
+```
+
 ## Native Exports
 
 The native AOT compiler will export methods annotated with `UnmanagedCallersOnlyAttribute` and explicitly specified name as

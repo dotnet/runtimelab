@@ -49,22 +49,39 @@
 
     <!-- Fail with descriptive error message for common mistake. -->
     <Error Condition="$([MSBuild]::VersionLessThan('$(NETCoreSdkVersion)', '5.0.0'))" Text=".NET SDK 5+ is required for native compilation." />
-    <Error Condition="'$(RuntimeIdentifier)' == ''" Text="RuntimeIdentifier is required for native compilation. Try running dotnet publish with the -r option value specified." />
+    <Error Condition="'$(RuntimeIdentifier)' == ''"
+      Text="RuntimeIdentifier is required for native compilation. Try running dotnet publish with the -r option value specified." />
     <Error Condition="'$(GeneratePackageOnBuild)' == 'true'" Text="GeneratePackageOnBuild is not supported for native compilation." />
     <Error Condition="'$(OutputType)' != 'Library' and '$(NativeLib)' != ''" Text="NativeLib requires OutputType=Library." />
 
     <!-- Fail with descriptive error message for common unsupported cases. -->
-    <Error Condition="'$(DisableUnsupportedError)' != 'true' and '$(OS)' == 'Windows_NT' and !$(RuntimeIdentifier.StartsWith('win')) and !$(RuntimeIdentifier.EndsWith('wasm'))" Text="Cross-compilation is not supported yet. https://github.com/dotnet/corert/issues/5458" />
-    <Error Condition="'$(DisableUnsupportedError)' != 'true' and '$(OS)' != 'Windows_NT' and $(RuntimeIdentifier.StartsWith('win')) and !$(RuntimeIdentifier.EndsWith('wasm'))" Text="Cross-compilation is not supported yet. https://github.com/dotnet/corert/issues/5458" />
-    <Error Condition="'$(DisableUnsupportedError)' != 'true' and !$(RuntimeIdentifier.EndsWith('x64')) and !$(RuntimeIdentifier.EndsWith('wasm'))" Text="$(RuntimeIdentifier) not supported yet. https://github.com/dotnet/corert/issues/4589" />
+    <Error Condition="'$(DisableUnsupportedError)' != 'true' and '$(OS)' == 'Windows_NT' and !$(RuntimeIdentifier.StartsWith('win')) and !$(RuntimeIdentifier.EndsWith('wasm'))"
+      Text="Cross-OS native compilation is not supported. https://github.com/dotnet/corert/issues/5458" />
+
+    <Error Condition="'$(DisableUnsupportedError)' != 'true' and '$(OS)' != 'Windows_NT' and $(RuntimeIdentifier.StartsWith('win')) and !$(RuntimeIdentifier.EndsWith('wasm'))"
+      Text="Cross-OS native compilation is not supported. https://github.com/dotnet/corert/issues/5458" />
+
+    <Error Condition="'$(DisableUnsupportedError)' != 'true' and !$(RuntimeIdentifier.EndsWith('x64')) and !$(RuntimeIdentifier.EndsWith('wasm'))"
+      Text="Native compilation does not support targeting $(RuntimeIdentifier) yet. https://github.com/dotnet/corert/issues/4589" />
+
+    <Error Condition="'$(DisableUnsupportedError)' != 'true' and !('$(IlcHostArch)' == 'x64' or '$(IlcHostArch)' == 'arm64')"
+      Text="Native compilation can run on x64 and arm64 hosts only." />
+
+    <Error Condition="'$(IlcHostPackagePath)' == '' and '$(RuntimePackagePath)' != '' and ('$(IlcHostArch)' == 'x64' or '$(IlcHostArch)' == 'arm64')"
+      Text="Add a PackageReference for '$(IlcHostPackageName)' to allow cross-compilation for $(PlatformTarget)" />
 
     <!-- CoreRT SDK and Framework Assemblies need to be defined to avoid CoreCLR implementations being set as compiler inputs -->
     <Error Condition="'@(PrivateSdkAssemblies)' == ''" Text="The PrivateSdkAssemblies ItemGroup is required for _ComputeAssembliesToCompileToNative" />
     <Error Condition="'@(FrameworkAssemblies)' == ''" Text="The FrameworkAssemblies ItemGroup is required for _ComputeAssembliesToCompileToNative" />
 
-    <ComputeManagedAssembliesToCompileToNative Assemblies="@(ResolvedAssembliesToPublish);@(_ResolvedCopyLocalPublishAssets)"
-    DotNetAppHostExecutableName="$(_DotNetAppHostExecutableName)" DotNetHostFxrLibraryName="$(_DotNetHostFxrLibraryName)" DotNetHostPolicyLibraryName="$(_DotNetHostPolicyLibraryName)"
-    SdkAssemblies="@(PrivateSdkAssemblies)" FrameworkAssemblies="@(FrameworkAssemblies)">
+    <ComputeManagedAssembliesToCompileToNative
+      Assemblies="@(ResolvedAssembliesToPublish);@(_ResolvedCopyLocalPublishAssets)"
+      DotNetAppHostExecutableName="$(_DotNetAppHostExecutableName)"
+      DotNetHostFxrLibraryName="$(_DotNetHostFxrLibraryName)"
+      DotNetHostPolicyLibraryName="$(_DotNetHostPolicyLibraryName)"
+      SdkAssemblies="@(PrivateSdkAssemblies)"
+      FrameworkAssemblies="@(FrameworkAssemblies)">
+
       <Output TaskParameter="ManagedAssemblies" ItemName="_ManagedResolvedAssembliesToPublish" />
       <Output TaskParameter="AssembliesToSkipPublish" ItemName="_AssembliesToSkipPublish" />
     </ComputeManagedAssembliesToCompileToNative>
@@ -73,7 +90,7 @@
 
   <Target Name="CopyNativeBinary" AfterTargets="Publish">
     <!-- override apphost with binary we generated during native compilation -->
-    <Delete Files="$(PublishDir)\$(TargetName)$(NativeBinaryExt)"/>
+    <Delete Files="$(PublishDir)\$(TargetName)$(NativeBinaryExt)" />
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName)$(NativeBinaryExt)" DestinationFolder="$(PublishDir)" />
 
     <Delete Files="$(PublishDir)\$(TargetName).js" Condition="'$(Platform)'=='wasm'"/>
@@ -86,7 +103,7 @@
 
   <Target Name="CopyNativePdb" Condition="'$(DebugType)' != 'None' and '$(TargetOS)' == 'windows' and '$(NativeLib)' != 'Static'" AfterTargets="Publish">
     <!-- dotnet CLI produces managed debug symbols - substitute with those we generated during native compilation -->
-    <Delete Files="$(PublishDir)\$(TargetName).pdb"/>
+    <Delete Files="$(PublishDir)\$(TargetName).pdb" />
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName).pdb" DestinationFolder="$(PublishDir)" />
   </Target>
 

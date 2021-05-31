@@ -410,10 +410,7 @@ namespace ILCompiler.Dataflow
 
                     case ILOpcode.ldtoken:
                         object obj = methodBody.GetObject(reader.ReadILToken());
-                        if (obj is TypeDesc type)
-                            ScanLdtoken(methodBody, type, currentStack);
-                        else
-                            PushUnknown(currentStack);
+                        ScanLdtoken(methodBody, obj, currentStack);
                         break;
 
                     case ILOpcode.ldind_i:
@@ -762,17 +759,29 @@ namespace ILCompiler.Dataflow
             }
         }
 
-        private static void ScanLdtoken(MethodIL methodBody, TypeDesc type, Stack<StackSlot> currentStack)
+        private static void ScanLdtoken(MethodIL methodBody, object operand, Stack<StackSlot> currentStack)
         {
-            if (type.IsGenericParameter)
+            if (operand is TypeDesc type)
             {
-                StackSlot slot = new StackSlot(new RuntimeTypeHandleForGenericParameterValue((GenericParameterDesc)type));
+                if (type.IsGenericParameter)
+                {
+                    StackSlot slot = new StackSlot(new RuntimeTypeHandleForGenericParameterValue((GenericParameterDesc)type));
+                    currentStack.Push(slot);
+                }
+                else
+                {
+                    StackSlot slot = new StackSlot(new RuntimeTypeHandleValue(type));
+                    currentStack.Push(slot);
+                }
+            }
+            else if (operand is MethodDesc method)
+            {
+                StackSlot slot = new StackSlot(new RuntimeMethodHandleValue(method));
                 currentStack.Push(slot);
             }
             else
             {
-                StackSlot slot = new StackSlot(new RuntimeTypeHandleValue(type));
-                currentStack.Push(slot);
+                PushUnknown(currentStack);
             }
         }
 

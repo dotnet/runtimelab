@@ -242,7 +242,16 @@ namespace ILCompiler.Metadata
             {
                 var namespaceDefinition = HandleNamespaceDefinition(entity.Module, entity.Namespace);
                 record.NamespaceDefinition = namespaceDefinition;
-                namespaceDefinition.TypeDefinitions.Add(record);
+
+                if (entity.IsModuleType)
+                {
+                    // These don't get added to the global namespace.
+                    // Instead, they have a dedicated field on the scope record.
+                }
+                else
+                {
+                    namespaceDefinition.TypeDefinitions.Add(record);
+                }
             }
 
             record.Name = HandleString(entity.Name);

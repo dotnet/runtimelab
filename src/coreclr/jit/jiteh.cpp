@@ -2219,7 +2219,7 @@ bool Compiler::fgNormalizeEHCase1()
             newHndStart->bbCodeOffs    = handlerStart->bbCodeOffs;
             newHndStart->bbCodeOffsEnd = newHndStart->bbCodeOffs; // code size = 0. TODO: use BAD_IL_OFFSET instead?
             newHndStart->inheritWeight(handlerStart);
-            newHndStart->bbFlags |= (BBF_DONT_REMOVE | BBF_INTERNAL | BBF_HAS_LABEL);
+            newHndStart->bbFlags |= (BBF_DONT_REMOVE | BBF_INTERNAL);
             modified = true;
 
 #ifdef DEBUG
@@ -2381,7 +2381,7 @@ bool Compiler::fgNormalizeEHCase2()
 
                         // Note that we don't need to clear any flags on the old try start, since it is still a 'try'
                         // start.
-                        newTryStart->bbFlags |= (BBF_TRY_BEG | BBF_DONT_REMOVE | BBF_INTERNAL | BBF_HAS_LABEL);
+                        newTryStart->bbFlags |= (BBF_TRY_BEG | BBF_DONT_REMOVE | BBF_INTERNAL);
 
                         // Now we need to split any flow edges targetting the old try begin block between the old
                         // and new block. Note that if we are handling a multiply-nested 'try', we may have already
@@ -3090,10 +3090,8 @@ void Compiler::fgVerifyHandlerTab()
 
         assert(HBtab->ebdTryBeg->bbFlags & BBF_TRY_BEG);
         assert(HBtab->ebdTryBeg->bbFlags & BBF_DONT_REMOVE);
-        assert(HBtab->ebdTryBeg->bbFlags & BBF_HAS_LABEL);
 
         assert(HBtab->ebdHndBeg->bbFlags & BBF_DONT_REMOVE);
-        assert(HBtab->ebdHndBeg->bbFlags & BBF_HAS_LABEL);
 
         assert((HBtab->ebdTryBeg->bbFlags & BBF_REMOVED) == 0);
         assert((HBtab->ebdTryLast->bbFlags & BBF_REMOVED) == 0);
@@ -4418,7 +4416,7 @@ void Compiler::fgExtendEHRegionBefore(BasicBlock* block)
             }
 #endif // DEBUG
             HBtab->ebdTryBeg = bPrev;
-            bPrev->bbFlags |= BBF_TRY_BEG | BBF_DONT_REMOVE | BBF_HAS_LABEL;
+            bPrev->bbFlags |= BBF_TRY_BEG | BBF_DONT_REMOVE;
 
             // clear the TryBeg flag unless it begins another try region
             if (!bbIsTryBeg(block))
@@ -4441,7 +4439,7 @@ void Compiler::fgExtendEHRegionBefore(BasicBlock* block)
             block->bbRefs--;
 
             HBtab->ebdHndBeg = bPrev;
-            bPrev->bbFlags |= BBF_DONT_REMOVE | BBF_HAS_LABEL;
+            bPrev->bbFlags |= BBF_DONT_REMOVE;
 
 #if defined(FEATURE_EH_FUNCLETS)
             if (fgFuncletsCreated)
@@ -4490,7 +4488,7 @@ void Compiler::fgExtendEHRegionBefore(BasicBlock* block)
             block->bbRefs--;
 
             HBtab->ebdFilter = bPrev;
-            bPrev->bbFlags |= BBF_DONT_REMOVE | BBF_HAS_LABEL;
+            bPrev->bbFlags |= BBF_DONT_REMOVE;
 
 #if defined(FEATURE_EH_FUNCLETS)
             if (fgFuncletsCreated)

@@ -189,7 +189,7 @@ namespace System.Reflection.Runtime.TypeInfos
         public sealed override Type GetInterface(string name, bool ignoreCase)
         {
             if (name == null)
-                throw new ArgumentNullException(nameof(name));
+                throw new ArgumentNullException("fullname" /* Yep, CoreCLR names this different than the ref assembly */);
 
             string simpleName;
             string ns;

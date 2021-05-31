@@ -1,5 +1,7 @@
 project(System.IO.Compression.Native)
 
+include(../../../../../eng/native/functions.cmake)
+
 if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
     message(FATAL_ERROR "Binary directory isn't being correctly set before calling Cmake. Tree must be built in separate directory from source.")
 endif()
@@ -10,7 +12,7 @@ if (GEN_SHARED_LIB)
     include (GenerateExportHeader)
 endif()
 
-if($ENV{__BuildArch} STREQUAL x86 OR $ENV{__BuildArch} STREQUAL x64)
+if(${CLR_CMAKE_HOST_ARCH} STREQUAL x86 OR ${CLR_CMAKE_HOST_ARCH} STREQUAL x64)
     set(NATIVECOMPRESSION_SOURCES
         zlib-intel/adler32.c
         zlib-intel/compress.c
@@ -122,7 +124,4 @@ if (GEN_SHARED_LIB)
     install (FILES $<TARGET_PDB_FILE:System.IO.Compression.Native> DESTINATION .)
 endif()
 
-install (TARGETS System.IO.Compression.Native-Static DESTINATION ${STATIC_LIB_DESTINATION})
-if(WIN32)
-    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/System.IO.Compression.Native-Static.dir/$<CONFIG>/System.IO.Compression.Native-Static.pdb DESTINATION ${STATIC_LIB_DESTINATION})
-endif()
+install_static_library(System.IO.Compression.Native-Static ${STATIC_LIB_DESTINATION} System.IO.Compression.Native-Static)

@@ -568,8 +568,6 @@ struct _MonoInternalThread {
 	 * longer */
 	MonoLongLivedThreadData *longlived;
 	MonoBoolean threadpool_thread;
-	MonoBoolean thread_interrupt_requested;
-	int stack_size;
 	guint8	apartment_state;
 	gint32 managed_id;
 	guint32 small_id;
@@ -682,7 +680,7 @@ MonoMethod *
 mono_get_delegate_end_invoke_checked (MonoClass *klass, MonoError *error);
 
 void
-mono_runtime_free_method    (MonoDomain *domain, MonoMethod *method);
+mono_runtime_free_method    (MonoMethod *method);
 
 void
 mono_install_callbacks      (MonoRuntimeCallbacks *cbs);
@@ -693,6 +691,7 @@ mono_get_runtime_callbacks (void);
 void
 mono_install_eh_callbacks (MonoRuntimeExceptionHandlingCallbacks *cbs);
 
+MONO_COMPONENT_API
 MonoRuntimeExceptionHandlingCallbacks *
 mono_get_eh_callbacks (void);
 
@@ -707,9 +706,6 @@ mono_raise_exception_with_context (MonoException *ex, MonoContext *ctx);
 
 void
 mono_type_initialization_init (void);
-
-void
-mono_type_initialization_cleanup (void);
 
 int
 mono_thread_kill           (MonoInternalThread *thread, int signal);
@@ -1597,7 +1593,7 @@ gboolean
 mono_runtime_class_init_full (MonoVTable *vtable, MonoError *error);
 
 void
-mono_method_clear_object (MonoDomain *domain, MonoMethod *method);
+mono_method_clear_object (MonoMethod *method);
 
 gsize*
 mono_class_compute_bitmap (MonoClass *klass, gsize *bitmap, int size, int offset, int *max_set, gboolean static_fields);
@@ -1800,6 +1796,7 @@ mono_string_from_utf32_checked (const mono_unichar4 *data, MonoError *error);
 char*
 mono_ldstr_utf8 (MonoImage *image, guint32 idx, MonoError *error);
 
+MONO_COMPONENT_API
 char*
 mono_utf16_to_utf8 (const mono_unichar2 *s, gsize slength, MonoError *error);
 
@@ -2075,7 +2072,7 @@ mono_gc_wbarrier_value_copy_internal (void* dest, const void* src, int count, Mo
 void
 mono_gc_wbarrier_object_copy_internal (MonoObject* obj, MonoObject *src);
 
-char *
+MONO_COMPONENT_API char *
 mono_runtime_get_managed_cmd_line (void);
 
 char *

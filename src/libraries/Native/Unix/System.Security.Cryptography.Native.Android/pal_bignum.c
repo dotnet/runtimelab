@@ -3,18 +3,7 @@
 
 #include "pal_bignum.h"
 
-jobject CryptoNative_BigNumFromBinary(uint8_t* bytes, int32_t len)
-{
-    // return new BigInteger(bytes)
-    JNIEnv* env = GetJNIEnv();
-    jbyteArray buffArray = (*env)->NewByteArray(env, len);
-    (*env)->SetByteArrayRegion(env, buffArray, 0, len, (jbyte*)bytes);
-    jobject bigNum = (*env)->NewObject(env, g_bigNumClass, g_bigNumCtorWithSign, 1, buffArray);
-    (*env)->DeleteLocalRef(env, buffArray);
-    return CheckJNIExceptions(env) ? FAIL : ToGRef(env, bigNum);
-}
-
-int32_t CryptoNative_BigNumToBinary(jobject bignum, uint8_t* output)
+int32_t AndroidCryptoNative_BigNumToBinary(jobject bignum, uint8_t* output)
 {
     // bigNum.toByteArray()
     JNIEnv* env = GetJNIEnv();
@@ -36,7 +25,7 @@ int32_t CryptoNative_BigNumToBinary(jobject bignum, uint8_t* output)
     return CheckJNIExceptions(env) ? FAIL : (int32_t)bytesLen;
 }
 
-int32_t CryptoNative_GetBigNumBytes(jobject bignum)
+int32_t AndroidCryptoNative_GetBigNumBytes(jobject bignum)
 {
     // bigNum.bitlength();
     // round up to the nearest byte
@@ -45,7 +34,18 @@ int32_t CryptoNative_GetBigNumBytes(jobject bignum)
     return CheckJNIExceptions(env) ? FAIL : (int32_t)bytesLen;
 }
 
-int32_t CryptoNative_GetBigNumBytesIncludingPaddingByteForSign(jobject bignum)
+jobject AndroidCryptoNative_BigNumFromBinary(uint8_t* bytes, int32_t len)
+{
+    // return new BigInteger(bytes)
+    JNIEnv* env = GetJNIEnv();
+    jbyteArray buffArray = (*env)->NewByteArray(env, len);
+    (*env)->SetByteArrayRegion(env, buffArray, 0, len, (jbyte*)bytes);
+    jobject bigNum = (*env)->NewObject(env, g_bigNumClass, g_bigNumCtorWithSign, 1, buffArray);
+    (*env)->DeleteLocalRef(env, buffArray);
+    return CheckJNIExceptions(env) ? FAIL : bigNum;
+}
+
+int32_t AndroidCryptoNative_GetBigNumBytesIncludingPaddingByteForSign(jobject bignum)
 {
     // Use the array here to get the leading zero byte if it exists.
     // bigNum.toByteArray().length();
@@ -54,9 +54,4 @@ int32_t CryptoNative_GetBigNumBytesIncludingPaddingByteForSign(jobject bignum)
     jsize bytesLen = (*env)->GetArrayLength(env, bytes);
     (*env)->DeleteLocalRef(env, bytes);
     return CheckJNIExceptions(env) ? FAIL : (int32_t)bytesLen;
-}
-
-void CryptoNative_BigNumDestroy(jobject bignum)
-{
-    ReleaseGRef(GetJNIEnv(), bignum);
 }

@@ -3,8 +3,6 @@
 #ifndef __GCENV_H__
 #define __GCENV_H__
 
-#define FEATURE_PREMORTEM_FINALIZATION
-
 #ifdef _MSC_VER
 #pragma warning( disable: 4189 )  // 'hp': local variable is initialized but not referenced -- common in GC
 #pragma warning( disable: 4127 )  // conditional expression is constant -- common in GC
@@ -112,71 +110,11 @@ public:
     uint32_t ContainsPointers() { return ((EEType*)this)->HasReferenceFields(); }
     uint32_t ContainsPointersOrCollectible() { return ((EEType*)this)->HasReferenceFields(); }
     UInt32_BOOL HasComponentSize() const { return TRUE; }
-#ifdef FEATURE_PREMORTEM_FINALIZATION
     UInt32_BOOL HasFinalizer() { return ((EEType*)this)->HasFinalizer(); }
     UInt32_BOOL HasCriticalFinalizer() { return FALSE; }
-#endif // FEATURE_PREMORTEM_FINALIZATION
-#ifdef FEATURE_STRUCTALIGN
-#ifdef FEATURE_BARTOK
-    uint32_t GetRequiredAlignment() const { return ((EEType*)this)->get_BaseAlignment(); }
-#else // FEATURE_BARTOK
-    uint32_t GetRequiredAlignment() const { return sizeof(void*); }
-#endif // FEATURE_BARTOK
-#endif // FEATURE_STRUCTALIGN
     bool IsValueType() { return ((EEType*)this)->get_IsValueType(); }
     UInt32_BOOL SanityCheck() { return ((EEType*)this)->Validate(); }
 };
-
-class EEConfig
-{
-    uint8_t m_gcStressMode;
-
-public:
-    enum HeapVerifyFlags {
-        HEAPVERIFY_NONE             = 0,
-        HEAPVERIFY_GC               = 1,   // Verify the heap at beginning and end of GC
-        HEAPVERIFY_BARRIERCHECK     = 2,   // Verify the brick table
-        HEAPVERIFY_SYNCBLK          = 4,   // Verify sync block scanning
-
-        // the following options can be used to mitigate some of the overhead introduced
-        // by heap verification.  some options might cause heap verifiction to be less
-        // effective depending on the scenario.
-
-        HEAPVERIFY_NO_RANGE_CHECKS  = 0x10,   // Excludes checking if an OBJECTREF is within the bounds of the managed heap
-        HEAPVERIFY_NO_MEM_FILL      = 0x20,   // Excludes filling unused segment portions with fill pattern
-        HEAPVERIFY_POST_GC_ONLY     = 0x40,   // Performs heap verification post-GCs only (instead of before and after each GC)
-        HEAPVERIFY_DEEP_ON_COMPACT  = 0x80    // Performs deep object verfication only on compacting GCs.
-    };
-
-    enum  GCStressFlags {
-        GCSTRESS_NONE               = 0,
-        GCSTRESS_ALLOC              = 1,    // GC on all allocs and 'easy' places
-        GCSTRESS_TRANSITION         = 2,    // GC on transitions to preemtive GC
-        GCSTRESS_INSTR_JIT          = 4,    // GC on every allowable JITed instr
-        GCSTRESS_INSTR_NGEN         = 8,    // GC on every allowable NGEN instr
-        GCSTRESS_UNIQUE             = 16,   // GC only on a unique stack trace
-    };
-
-    // This is treated like a constructor--it is not allowed to fail.  We have it like this because we don't
-    // have a CRT to run a static constructor for us.  For now, at least, we don't want to do any heavy-weight
-    // snooping of the environment to control any of these settings, so don't add any code like that here.
-    void Construct()
-    {
-        m_gcStressMode = GCSTRESS_NONE;
-    }
-
-    GCStressFlags GetGCStressLevel()        const { return (GCStressFlags) m_gcStressMode; }
-    void    SetGCStressLevel(int val)             { m_gcStressMode = (uint8_t) val;}
-
-    bool    GetGCAllowVeryLargeObjects ()   const { return true; }
-
-    // We need conservative GC enabled for some edge cases around ICastable support. This doesn't have much
-    // impact, it just makes the GC slightly more flexible in dealing with interior references (e.g. we can
-    // conservatively report an interior reference inside a GC free object or in the non-valid tail of the
-    // heap).
-    bool    GetGCConservative()             const { return true; }
-};
-extern EEConfig* g_pConfig;
 
 EXTERN_C uint32_t _tls_index;
 inline uint16_t GetClrInstanceId()

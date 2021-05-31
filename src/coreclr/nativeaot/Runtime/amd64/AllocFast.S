@@ -77,27 +77,14 @@ NESTED_ENTRY RhpNewObject, _TEXT, NoHandler
         // Preserve the EEType in RBX
         mov         rbx, rdi
 
-        mov         edx, [rdi + OFFSETOF__EEType__m_uBaseSize]      // cbSize
+        xor         edx, edx    // numElements
 
         // Call the rest of the allocation helper.
-        // void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
+        // void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        C_FUNC(RhpGcAlloc)
 
-        // Set the new object's EEType pointer on success.
         test        rax, rax
         jz          LOCAL_LABEL(NewOutOfMemory)
-        mov         [rax + OFFSETOF__Object__m_pEEType], rbx
-
-        // If the object is bigger than RH_LARGE_OBJECT_SIZE, we must publish it to the BGC
-        mov         esi, [rbx + OFFSETOF__EEType__m_uBaseSize]
-.att_syntax
-        cmp         $RH_LARGE_OBJECT_SIZE, %rsi
-.intel_syntax noprefix
-        jb          LOCAL_LABEL(New_SkipPublish)
-        mov         rdi, rax            // rdi: object
-                                        // rsi: already contains object size
-        call        C_FUNC(RhpPublishObject) // rax: this function returns the object that was passed-in
-LOCAL_LABEL(New_SkipPublish):
 
         .cfi_remember_state
         POP_COOP_PINVOKE_FRAME
@@ -283,7 +270,6 @@ NESTED_ENTRY RhpNewArrayRare, _TEXT, NoHandler
 
         // rdi == EEType
         // rsi == element count
-        // rdx == array size
 
         PUSH_COOP_PINVOKE_FRAME rcx
         END_PROLOGUE
@@ -292,35 +278,19 @@ NESTED_ENTRY RhpNewArrayRare, _TEXT, NoHandler
 
         // Preserve the EEType in RBX
         mov         rbx, rdi
-        // Preserve the element count in R12
-        mov         r12, rsi
-        // Preserve the size in R13
-        mov         r13, rdx
+
+        mov         rdx, rsi        // numElements
 
         // passing EEType in rdi
         xor         rsi, rsi        // uFlags
-        // pasing size in rdx
         // pasing pTransitionFrame in rcx
 
         // Call the rest of the allocation helper.
-        // void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
+        // void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        C_FUNC(RhpGcAlloc)
 
-        // Set the new object's EEType pointer and length on success.
         test        rax, rax
         jz          LOCAL_LABEL(ArrayOutOfMemory)
-        mov         [rax + OFFSETOF__Object__m_pEEType], rbx
-        mov         [rax + OFFSETOF__Array__m_Length], r12d
-
-        // If the object is bigger than RH_LARGE_OBJECT_SIZE, we must publish it to the BGC
-.att_syntax
-        cmp         $RH_LARGE_OBJECT_SIZE, %r13
-.intel_syntax noprefix
-        jb          LOCAL_LABEL(NewArray_SkipPublish)
-        mov         rdi, rax            // rcx: object
-        mov         rsi, r13            // rdx: object size
-        call        C_FUNC(RhpPublishObject) // rax: this function returns the object that was passed-in
-LOCAL_LABEL(NewArray_SkipPublish):
 
         .cfi_remember_state
         POP_COOP_PINVOKE_FRAME
@@ -340,4 +310,3 @@ LOCAL_LABEL(ArrayOutOfMemory):
         jmp         EXTERNAL_C_FUNC(RhExceptionHandling_FailedAllocation)
 
 NESTED_END RhpNewArrayRare, _TEXT
-

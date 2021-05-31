@@ -46,7 +46,7 @@ namespace System
             return true;
         }
 
-        public override sealed bool Equals(object? obj)
+        public override sealed bool Equals([NotNullWhen(true)] object? obj)
         {
             if (obj == null)
                 return false;

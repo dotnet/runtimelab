@@ -113,7 +113,7 @@ namespace ILCompiler.DependencyAnalysis
                     // Make a new list in case we need to abort.
                     var caDependencies = factory.MetadataManager.GetDependenciesForCustomAttribute(factory, constructor, decodedValue) ?? new DependencyList();
 
-                    caDependencies.Add(factory.CanonicalEntrypoint(constructor), "Attribute constructor");
+                    caDependencies.Add(factory.ReflectableMethod(constructor), "Attribute constructor");
                     caDependencies.Add(factory.ConstructedTypeSymbol(constructor.OwningType), "Attribute type");
 
                     if (AddDependenciesFromCustomAttributeBlob(caDependencies, factory, constructor.OwningType, decodedValue))
@@ -197,8 +197,7 @@ namespace ILCompiler.DependencyAnalysis
                             setterMethod = factory.TypeSystemContext.GetMethodForInstantiatedType(setterMethod, (InstantiatedType)attributeType);
                         }
 
-                        // TODO: what if the setter is virtual/abstract?
-                        dependencies.Add(factory.CanonicalEntrypoint(setterMethod), "Custom attribute blob");
+                        dependencies.Add(factory.ReflectableMethod(setterMethod), "Custom attribute blob");
                     }
 
                     return true;

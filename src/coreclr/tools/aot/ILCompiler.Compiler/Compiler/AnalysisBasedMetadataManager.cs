@@ -12,6 +12,7 @@ using ILCompiler.DependencyAnalysis;
 using Debug = System.Diagnostics.Debug;
 using EcmaModule = Internal.TypeSystem.Ecma.EcmaModule;
 using CustomAttributeHandle = System.Reflection.Metadata.CustomAttributeHandle;
+using ExportedTypeHandle = System.Reflection.Metadata.ExportedTypeHandle;
 
 namespace ILCompiler
 {
@@ -196,14 +197,7 @@ namespace ILCompiler
                 if ((pair.Value & MetadataCategory.RuntimeMapping) != 0)
                 {
                     MethodDesc method = pair.Key;
-
-                    // We need to root virtual methods as if they were called virtually.
-                    // This will possibly trigger the generation of other overrides too.
-                    if (method.IsVirtual)
-                        rootProvider.RootVirtualMethodForReflection(method, reason);
-
-                    if (!method.IsAbstract)
-                        rootProvider.AddCompilationRoot(pair.Key, reason);
+                    rootProvider.AddReflectionRoot(method, reason);
                 }
             }
 
@@ -258,6 +252,25 @@ namespace ILCompiler
             public bool GeneratesMetadata(EcmaModule module, CustomAttributeHandle caHandle)
             {
                 return _parent._reflectableAttributes.Contains(new ReflectableCustomAttribute(module, caHandle));
+            }
+
+            public bool GeneratesMetadata(EcmaModule module, ExportedTypeHandle exportedTypeHandle)
+            {
+                try
+                {
+                    // We'll possibly need to do something else here if we ever use this MetadataManager
+                    // with compilation modes that generate multiple metadata blobs.
+                    // (Multi-module or .NET Native style shared library.)
+                    // We are currently missing type forwarders pointing to the other blobs.
+                    var targetType = (MetadataType)module.GetObject(exportedTypeHandle);
+                    return GeneratesMetadata(targetType);
+                }
+                catch (TypeSystemException)
+                {
+                    // No harm in generating a forwarder that didn't resolve.
+                    // We'll get matching behavior at runtime.
+                    return true;
+                }
             }
 
             public bool IsBlocked(MetadataType typeDef)

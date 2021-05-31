@@ -183,14 +183,6 @@ namespace System.Runtime.InteropServices
             }
         }
 
-        internal static Exception GetExceptionForHRInternal(int errorCode, IntPtr errorInfo)
-        {
-            return new COMException()
-            {
-                HResult = errorCode
-            };
-        }
-
         private static void PrelinkCore(MethodInfo m)
         {
             // Note: This method is effectively a no-op in ahead-of-time compilation scenarios. In CoreCLR and Desktop, this will pre-generate

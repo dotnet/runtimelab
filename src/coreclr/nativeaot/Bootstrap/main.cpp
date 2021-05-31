@@ -125,8 +125,6 @@ static const pfn c_classlibFunctions[] = {
     nullptr, // &CheckStaticClassConstruction,
     &GetSystemArrayEEType,
     &OnFirstChanceException,
-    nullptr, // &DebugFuncEvalHelper,
-    nullptr, // &DebugFuncEvalAbortHelper,
 };
 
 #ifndef _countof
@@ -227,12 +225,27 @@ static int InitializeRuntime()
 }
 
 #ifndef CORERT_DLL
+
+#ifdef ENSURE_PRIMARY_STACK_SIZE
+__attribute__((noinline, optnone))
+static void EnsureStackSize(int stackSize)
+{
+    volatile char* s = (char*)_alloca(stackSize);
+    *s = 0;
+}
+#endif // ENSURE_PRIMARY_STACK_SIZE
+
 #if defined(_WIN32)
 int __cdecl wmain(int argc, wchar_t* argv[])
 #else
 int main(int argc, char* argv[])
 #endif
 {
+#ifdef ENSURE_PRIMARY_STACK_SIZE
+    // TODO: https://github.com/dotnet/runtimelab/issues/791
+    EnsureStackSize(1536 * 1024);
+#endif
+
     int initval = InitializeRuntime();
     if (initval != 0)
         return initval;

@@ -27,24 +27,14 @@ namespace ILCompiler.DependencyAnalysis
             return new ExternSymbolNode(NonGCStaticsNode.GetMangledName(type, factory.NameMangler));
         }
 
-        public override ISortableSymbolNode ImportedThreadStaticOffsetNode(NodeFactory factory, MetadataType type)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override ISortableSymbolNode ImportedThreadStaticIndexNode(NodeFactory factory, MetadataType type)
-        {
-            throw new NotImplementedException();
-        }
-
         public override ISortableSymbolNode ImportedTypeDictionaryNode(NodeFactory factory, TypeDesc type)
         {
-            return new ImportedTypeGenericDictionaryNode(factory, type);
+            throw new NotImplementedException();
         }
 
         public override ISortableSymbolNode ImportedMethodDictionaryNode(NodeFactory factory, MethodDesc method)
         {
-            return new ImportedMethodGenericDictionaryNode(factory, method);
+            throw new NotImplementedException();
         }
 
         public override IMethodNode ImportedMethodCodeNode(NodeFactory factory, MethodDesc method, bool unboxingStub)

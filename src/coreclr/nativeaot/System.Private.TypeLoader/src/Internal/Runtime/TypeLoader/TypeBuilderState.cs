@@ -65,12 +65,12 @@ namespace Internal.Runtime.TypeLoader
             }
             public int GetVTableSlotInTargetType(int vtableSlotInTemplateType)
             {
-                Debug.Assert(vtableSlotInTemplateType < _slotMap.Length);
+                Debug.Assert((uint)vtableSlotInTemplateType < (uint)_slotMap.Length);
                 return _slotMap[vtableSlotInTemplateType];
             }
             public bool IsDictionarySlot(int vtableSlotInTemplateType, out IntPtr dictionaryPtrValue)
             {
-                Debug.Assert(vtableSlotInTemplateType < _dictionarySlots.Length);
+                Debug.Assert((uint)vtableSlotInTemplateType < (uint)_dictionarySlots.Length);
                 dictionaryPtrValue = _dictionarySlots[vtableSlotInTemplateType];
                 return _dictionarySlots[vtableSlotInTemplateType] != IntPtr.Zero;
             }

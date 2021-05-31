@@ -41,8 +41,6 @@ namespace System.Runtime
         // unused = 4,
         GetSystemArrayEEType = 5,
         OnFirstChance = 6,
-        DebugFuncEvalHelper = 7,
-        DebugFuncEvalAbortHelper = 8,
     }
 
     internal static class InternalCalls

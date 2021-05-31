@@ -89,14 +89,13 @@ namespace System.Diagnostics
         }
 
 #if !TARGET_WASM
-        internal string ToString(TraceFormat traceFormat)
+        internal void ToString(TraceFormat traceFormat, StringBuilder builder)
         {
             if (_stackFrames == null)
             {
-                return "";
+                return;
             }
 
-            StringBuilder builder = new StringBuilder();
             foreach (StackFrame frame in _stackFrames)
             {
                 frame.AppendToStackTrace(builder);
@@ -104,8 +103,6 @@ namespace System.Diagnostics
 
             if (traceFormat == TraceFormat.Normal && builder.Length >= Environment.NewLine.Length)
                 builder.Length -= Environment.NewLine.Length;
-
-            return builder.ToString();
         }
 #endif
     }

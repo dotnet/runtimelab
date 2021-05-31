@@ -329,9 +329,6 @@ namespace System.Threading
             return JoinInternal(millisecondsTimeout);
         }
 
-        [MethodImpl(MethodImplOptions.NoInlining)] // Slow path method. Make sure that the caller frame does not pay for PInvoke overhead.
-        public static void Sleep(int millisecondsTimeout) => SleepInternal(VerifyTimeoutMilliseconds(millisecondsTimeout));
-
         /// <summary>
         /// Max value to be passed into <see cref="SpinWait(int)"/> for optimal delaying. Currently, the value comes from
         /// defaults in CoreCLR's Thread::InitializeYieldProcessorNormalized(). This value is supposed to be normalized to be

@@ -106,8 +106,6 @@ enum class ClasslibFunctionId
     // unused = 4,
     GetSystemArrayEEType = 5,
     OnFirstChanceException = 6,
-    DebugFuncEvalHelper = 7,
-    DebugFuncEvalAbortHelper = 8,
 };
 
 enum class AssociatedDataFlags : unsigned char

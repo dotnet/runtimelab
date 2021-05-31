@@ -68,6 +68,12 @@ namespace System.Reflection.Runtime.FieldInfos
                     CustomAttributeTypedArgument offsetArgument = new CustomAttributeTypedArgument(typeof(int), offset);
                     yield return new RuntimePseudoCustomAttributeData(typeof(FieldOffsetAttribute), new CustomAttributeTypedArgument[] { offsetArgument }, null);
                 }
+
+                FieldAttributes attributes = Attributes;
+                if (0 != (attributes & FieldAttributes.NotSerialized))
+                {
+                    yield return new RuntimePseudoCustomAttributeData(typeof(NonSerializedAttribute), null, null);
+                }
             }
         }
 

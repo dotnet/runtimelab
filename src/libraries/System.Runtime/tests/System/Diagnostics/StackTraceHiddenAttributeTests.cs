@@ -17,6 +17,7 @@ namespace System.Tests
 
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/851" /* NativeAot */)]
         public void MethodHidden_ExceptionStackTrace()
         {
             string stacktrace = null;
@@ -49,6 +50,7 @@ namespace System.Tests
 
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/851" /* NativeAot */)]
         public void MethodHidden_EnvironmentStackTrace()
         {
             string stacktrace = GetStackTraceMethodA();
@@ -69,6 +71,7 @@ namespace System.Tests
 
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/851" /* NativeAot */)]
         public void ConstructorHidden_EnvironmentStackTrace()
         {
             Assert.Contains(nameof(NotHiddenConstructor), new NotHiddenConstructor().StackTrace);
@@ -94,6 +97,7 @@ namespace System.Tests
 
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/851" /* NativeAot */)]
         public void ClassHidden_EnvironmentStackTrace()
         {
             string stacktrace = HiddenClass.GetStackTraceMethodA();
@@ -117,6 +121,7 @@ namespace System.Tests
 
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/851" /* NativeAot */)]
         public void StructHidden_EnvironmentStackTrace()
         {
             string stacktrace = new HiddenStruct().GetStackTraceMethodA();

@@ -114,6 +114,28 @@ namespace Internal.IL
 
             switch (owningType.Name)
             {
+                case "Activator":
+                    {
+                        TypeSystemContext context = owningType.Context;
+                        if (methodName == "CreateInstance" && method.Signature.Length == 0 && method.HasInstantiation
+                            && method.Instantiation[0] is TypeDesc activatedType
+                            && activatedType != context.UniversalCanonType
+                            && activatedType.IsValueType
+                            && activatedType.GetParameterlessConstructor() == null)
+                        {
+                            ILEmitter emit = new ILEmitter();
+                            ILCodeStream codeStream = emit.NewCodeStream();
+
+                            var t = emit.NewLocal(context.GetSignatureVariable(0, method: true));
+                            codeStream.EmitLdLoca(t);
+                            codeStream.Emit(ILOpcode.initobj, emit.NewToken(context.GetSignatureVariable(0, method: true)));
+                            codeStream.EmitLdLoc(t);
+                            codeStream.Emit(ILOpcode.ret);
+
+                            return new InstantiatedMethodIL(method, emit.Link(method.GetMethodDefinition()));
+                        }
+                    }
+                    break;
                 case "RuntimeHelpers":
                     {
                         if (owningType.Namespace == "System.Runtime.CompilerServices")

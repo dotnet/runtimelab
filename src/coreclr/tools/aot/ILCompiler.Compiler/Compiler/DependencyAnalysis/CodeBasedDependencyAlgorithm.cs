@@ -10,6 +10,7 @@ using ILCompiler.DependencyAnalysisFramework;
 using ILCompiler.DependencyAnalysis;
 
 using DependencyList=ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.DependencyList;
+using CombinedDependencyList=System.Collections.Generic.List<ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.CombinedDependencyListEntry>;
 using DependencyListEntry=ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.DependencyListEntry;
 
 namespace ILCompiler.DependencyAnalysis
@@ -59,7 +60,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public static void AddDependenciesDueToMethodCodePresence(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)
         {
-            factory.MetadataManager.GetDependenciesDueToReflectability(ref dependencies, factory, method, methodIL);
+            factory.MetadataManager.GetDependenciesDueToMethodCodePresence(ref dependencies, factory, method, methodIL);
 
             factory.InteropStubManager.AddDependeciesDueToPInvoke(ref dependencies, factory, method);
 
@@ -104,6 +105,17 @@ namespace ILCompiler.DependencyAnalysis
                     }
                 }
             }
+        }
+
+        public static bool HasConditionalDependenciesDueToMethodCodePresence(MethodDesc method)
+        {
+            // NICE: would be nice if the metadata managed could decide this but we don't have a way to get at it
+            return method.HasInstantiation || method.OwningType.HasInstantiation;
+        }
+
+        public static void AddConditionalDependenciesDueToMethodCodePresence(ref CombinedDependencyList dependencies, NodeFactory factory, MethodDesc method)
+        {
+            factory.MetadataManager.GetConditionalDependenciesDueToMethodCodePresence(ref dependencies, factory, method);
         }
     }
 }

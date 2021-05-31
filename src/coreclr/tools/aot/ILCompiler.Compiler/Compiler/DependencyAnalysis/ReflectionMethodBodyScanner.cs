@@ -69,13 +69,13 @@ namespace ILCompiler.DependencyAnalysis
                 return false;
 
             // Resolve type in the assembly
-            type = referenceModule.GetType(typeNamespace.ToString(), typeName.ToString(), false);
+            type = referenceModule.GetType(typeNamespace.ToString(), typeName.ToString(), NotFoundBehavior.ReturnNull);
             
             // If it didn't resolve and wasn't assembly-qualified, we also try core library
             if (type == null && assemblyName.Length == 0)
             {
                 referenceModule = context.SystemModule;
-                type = referenceModule.GetType(typeNamespace.ToString(), typeName.ToString(), false);
+                type = referenceModule.GetType(typeNamespace.ToString(), typeName.ToString(), NotFoundBehavior.ReturnNull);
             }
             
             return type != null;

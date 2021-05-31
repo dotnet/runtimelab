@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <time.h>
+#include <sys/time.h>
 
 #if defined(TARGET_OSX)
 // So we can use the declaration of pthread_cond_timedwait_relative_np
@@ -169,13 +170,25 @@ int32_t SystemNative_LowLevelMonitor_TimedWait(LowLevelMonitor *monitor, int32_t
 #if HAVE_CLOCK_GETTIME_NSEC_NP
     timeoutTimeSpec.tv_sec = timeoutMilliseconds / 1000;
     timeoutTimeSpec.tv_nsec = (timeoutMilliseconds % 1000) * 1000 * 1000;
+
     error = pthread_cond_timedwait_relative_np(&monitor->Condition, &monitor->Mutex, &timeoutTimeSpec);
 #else
+#if HAVE_PTHREAD_CONDATTR_SETCLOCK && HAVE_CLOCK_MONOTONIC
     error = clock_gettime(CLOCK_MONOTONIC, &timeoutTimeSpec);
     assert(error == 0);
+#else
+    struct timeval tv;
+
+    error = gettimeofday(&tv, NULL);
+    assert(error == 0);
+
+    timeoutTimeSpec.tv_sec = tv.tv_sec;
+    timeoutTimeSpec.tv_nsec = tv.tv_usec * 1000;
+#endif
     uint64_t nanoseconds = (uint64_t)timeoutMilliseconds * 1000 * 1000 + (uint64_t)timeoutTimeSpec.tv_nsec;
     timeoutTimeSpec.tv_sec += nanoseconds / (1000 * 1000 * 1000);
     timeoutTimeSpec.tv_nsec = nanoseconds % (1000 * 1000 * 1000);
+
     error = pthread_cond_timedwait(&monitor->Condition, &monitor->Mutex, &timeoutTimeSpec);
 #endif
     assert(error == 0 || error == ETIMEDOUT);
@@ -216,6 +229,14 @@ int32_t SystemNative_RuntimeThread_CreateThread(uintptr_t stackSize, void *(*sta
 
     error = pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
     assert(error == 0);
+
+#ifdef ENSURE_PRIMARY_STACK_SIZE
+    // TODO: https://github.com/dotnet/runtimelab/issues/791
+    if (stackSize == 0)
+    {
+        stackSize = 1536 * 1024;
+    }
+#endif
 
     if (stackSize > 0)
     {

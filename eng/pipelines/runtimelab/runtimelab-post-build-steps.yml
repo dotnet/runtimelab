@@ -10,6 +10,7 @@ parameters:
   uploadIntermediateArtifacts: false
 
 steps:
+- ${{ if ne(parameters.archType, 'arm64') }}:
   # Build coreclr native test output
   - ${{ if and(eq(parameters.osGroup, 'windows'), ne(parameters.archType, 'wasm')) }}:
     - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} /p:NativeAotMultimodule=true /p:SmokeTestsOnly=${{ parameters.smokeTestsOnly }}
@@ -40,8 +41,8 @@ steps:
     - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests nativeaotmultimodule $(buildConfigUpper) ${{ parameters.archType }}
       displayName: Run tests in multifile mode
 
-    # Upload unsigned artifacts
-  - ${{ if eq(parameters.uploadIntermediateArtifacts, true) }}:
-    - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
-      parameters:
-        name: ${{ parameters.platform }}
+# Upload unsigned artifacts
+- ${{ if eq(parameters.uploadIntermediateArtifacts, true) }}:
+  - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
+    parameters:
+      name: ${{ parameters.platform }}

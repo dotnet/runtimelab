@@ -10,12 +10,12 @@ namespace System
 {
     // Eagerly preallocate instance of out of memory exception to avoid infinite recursion once we run out of memory
     [EagerStaticClassConstruction]
-    internal class PreallocatedOutOfMemoryException
+    internal static class PreallocatedOutOfMemoryException
     {
         public static readonly OutOfMemoryException Instance = new OutOfMemoryException();
     }
 
-    internal class RuntimeExceptionHelpers
+    internal static class RuntimeExceptionHelpers
     {
         //------------------------------------------------------------------------------------------------------------
         // @TODO: this function is related to throwing exceptions out of Rtm. If we did not have to throw

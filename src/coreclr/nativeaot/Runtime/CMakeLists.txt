@@ -6,8 +6,6 @@ set(COMMON_RUNTIME_SOURCES
     CachedInterfaceDispatch.cpp
     Crst.cpp
     DebugEventSource.cpp
-    DebugFuncEval.cpp
-    DebuggerHook.cpp
     DebugHeader.cpp
     eetype.cpp
     EHHelpers.cpp
@@ -234,7 +232,7 @@ add_definitions(-DFEATURE_BASICFREEZE)
 add_definitions(-DFEATURE_CONSERVATIVE_GC)
 add_definitions(-DFEATURE_CUSTOM_IMPORTS)
 add_definitions(-DFEATURE_DYNAMIC_CODE)
-add_compile_options($<$<OR:$<CONFIG:Debug>,$<CONFIG:Checked>>:-DFEATURE_GC_STRESS>)
+add_compile_definitions($<$<OR:$<CONFIG:Debug>,$<CONFIG:Checked>>:FEATURE_GC_STRESS>)
 add_definitions(-DFEATURE_REDHAWK)
 add_definitions(-DVERIFY_HEAP)
 add_definitions(-DCORERT)
