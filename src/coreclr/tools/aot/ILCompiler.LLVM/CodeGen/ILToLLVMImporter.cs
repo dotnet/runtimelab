@@ -440,20 +440,9 @@ namespace Internal.IL
             _builder.PositionAtEnd(block0);
         }
 
-        private LLVMValueRef CreateLLVMFunction(string mangledName, MethodSignature signature, bool hasHiddenParameter)
-        {
-            return Module.AddFunction(mangledName, LLVMCodegenCompilation.GetLLVMSignatureForMethod(signature, hasHiddenParameter));
-        }
-
         private LLVMValueRef GetOrCreateLLVMFunction(string mangledName, MethodSignature signature, bool hasHiddenParam)
         {
-            LLVMValueRef llvmFunction = Module.GetNamedFunction(mangledName);
-
-            if(llvmFunction.Handle == IntPtr.Zero)
-            {
-                return CreateLLVMFunction(mangledName, signature, hasHiddenParam);
-            }
-            return llvmFunction;
+            return GetOrCreateLLVMFunction(Module, mangledName, signature, hasHiddenParam);
         }
 
         private LLVMValueRef GetOrCreateLLVMFunction(string mangledName, LLVMTypeRef functionType)

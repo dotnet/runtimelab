@@ -202,5 +202,21 @@ namespace Internal.IL
             funcletBuilder.BuildRetVoid();
             funcletBuilder.Dispose();
         }
+
+        private static LLVMValueRef CreateLLVMFunction(LLVMModuleRef module, string mangledName, MethodSignature signature, bool hasHiddenParameter)
+        {
+            return module.AddFunction(mangledName, LLVMCodegenCompilation.GetLLVMSignatureForMethod(signature, hasHiddenParameter));
+        }
+
+        internal static LLVMValueRef GetOrCreateLLVMFunction(LLVMModuleRef module, string mangledName, MethodSignature signature, bool hasHiddenParam)
+        {
+            LLVMValueRef llvmFunction = module.GetNamedFunction(mangledName);
+
+            if (llvmFunction.Handle == IntPtr.Zero)
+            {
+                return CreateLLVMFunction(module, mangledName, signature, hasHiddenParam);
+            }
+            return llvmFunction;
+        }
     }
 }

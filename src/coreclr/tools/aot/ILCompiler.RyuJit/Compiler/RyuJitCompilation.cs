@@ -193,6 +193,7 @@ namespace ILCompiler
 
         public virtual void AddOrReturnGlobalSymbol(ISortableSymbolNode gcStaticSymbol, NameMangler nameMangler)
         {
+            throw new NotImplementedException("only called from clrjit for LLVM, what is a better way to do this?");
         }
     }
 

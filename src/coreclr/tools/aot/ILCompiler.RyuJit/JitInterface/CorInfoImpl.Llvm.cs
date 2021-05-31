@@ -89,7 +89,6 @@ namespace Internal.JitInterface
                 );
         }
 
-
         void AddOrReturnGlobalSymbol(ISortableSymbolNode gcStaticSymbol, NameMangler nameMangler)
         {
             _compilation.AddOrReturnGlobalSymbol(gcStaticSymbol, nameMangler);

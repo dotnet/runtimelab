@@ -1073,39 +1073,36 @@ namespace ILCompiler.DependencyAnalysis
                         resVar = builder.BuildPointerCast(ptr, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
                     }
                     break;
+
                 case ReadyToRunHelperId.GetGCStaticBase:
                     {
                         MetadataType target = (MetadataType)node.Target;
-                        
-                        var symbolNode = factory.TypeGCStaticsSymbol(target);
-                        LLVMValueRef addressOfAddress = GetSymbolValuePointer(Module, symbolNode, factory.NameMangler, false);
-                        LLVMValueRef basePtrPtr = builder.BuildLoad(addressOfAddress, "LoadAddressOfSymbolNode");
-                        LLVMValueRef ptr = builder.BuildLoad(builder.BuildLoad(builder.BuildPointerCast(basePtrPtr, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "castBasePtrPtr"), "basePtr"), "base");
-                        
+
                         if (compilation.HasLazyStaticConstructor(target))
                         {
                             var nonGcSymbolNode = factory.TypeNonGCStaticsSymbol(target);
                             LLVMValueRef nonGcAddressOfAddress = GetSymbolValuePointer(Module, nonGcSymbolNode, factory.NameMangler, false);
                             LLVMValueRef nonGcBase = builder.BuildLoad(nonGcAddressOfAddress, "LoadAddressOfSymbolNode");
-                        
+
                             importer.OutputCodeForTriggerCctor(target, nonGcBase);
                         }
+
+                        var symbolNode = factory.TypeGCStaticsSymbol(target);
+                        LLVMValueRef addressOfAddress = GetSymbolValuePointer(Module, symbolNode, factory.NameMangler, false);
+                        LLVMValueRef basePtrPtr = builder.BuildLoad(addressOfAddress, "LoadAddressOfSymbolNode");
+                        LLVMValueRef ptr = builder.BuildLoad(builder.BuildLoad(builder.BuildPointerCast(basePtrPtr, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "castBasePtrPtr"), "basePtr"), "base");
+                        
                         resVar = builder.BuildPointerCast(ptr, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
                     }
                     break;
+
                 case ReadyToRunHelperId.GetThreadStaticBase:
                     {
-                        throw new NotImplementedException();
-                        // MetadataType target = (MetadataType)node.Target;
-                        //
-                        // if (compilation.HasLazyStaticConstructor(target))
-                        // {
-                        //     GenericLookupResult nonGcRegionLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
-                        //     var threadStaticBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcRegionLookup, ctx, "tsGep");
-                        //     importer.OutputCodeForTriggerCctor(target, threadStaticBase);
-                        // }
-                        // resVar = importer.OutputCodeForGetThreadStaticBaseForType(resVar).ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), builder);
+                        MetadataType target = (MetadataType)node.Target;
+
+                        resVar = importer.OutputCodeForTriggerCctorWithThreadStatic(target);
                     }
+                    break;
 
                 case ReadyToRunHelperId.DelegateCtor:
                     {
@@ -1134,12 +1131,14 @@ namespace ILCompiler.DependencyAnalysis
         {
             LLVMBuilderRef builder = compilation.Module.Context.CreateBuilder();
             MethodDesc method = node.Method;
-            LLVMValueRef tentativeStub = Module.AddFunction(node.GetMangledName(factory.NameMangler), LLVMCodegenCompilation.GetLLVMSignatureForMethod(method.Signature, method.RequiresInstArg()));
+            string mangledName = node.GetMangledName(factory.NameMangler);
+            LLVMValueRef tentativeStub = ILImporter.GetOrCreateLLVMFunction(Module, mangledName, method.Signature, method.RequiresInstArg());
+
             LLVMBasicBlockRef block = tentativeStub.AppendBasicBlock("tentativeStub");
             builder.PositionAtEnd(block);
             MethodDesc helperMethod = factory.TypeSystemContext.GetOptionalHelperEntryPoint("ThrowHelpers", "ThrowBodyRemoved");
-            string mangledName = compilation.NodeFactory.MethodEntrypoint(helperMethod).GetMangledName(compilation.NameMangler);
-            LLVMValueRef fn = Module.GetNamedFunction(mangledName);
+            string helperMangledName = compilation.NodeFactory.MethodEntrypoint(helperMethod).GetMangledName(compilation.NameMangler);
+            LLVMValueRef fn = Module.GetNamedFunction(helperMangledName);
             builder.BuildCall(fn, new LLVMValueRef[] { tentativeStub.GetParam(0) }, string.Empty);
             builder.BuildUnreachable();
         }
@@ -1230,6 +1229,16 @@ namespace Internal.IL
         {
             IMethodNode helperNode = (IMethodNode)_compilation.NodeFactory.HelperEntrypoint(HelperEntrypoint.EnsureClassConstructorRunAndReturnNonGCStaticBase);
             TriggerCctor((MetadataType)helperNode.Method.OwningType, staticBaseValueRef, helperNode.Method.Name);
+        }
+
+        internal LLVMValueRef OutputCodeForTriggerCctorWithThreadStatic(TypeDesc type)
+        {
+            IMethodNode helperNode = (IMethodNode)_compilation.NodeFactory.HelperEntrypoint(HelperEntrypoint.EnsureClassConstructorRunAndReturnNonGCStaticBase);
+            MetadataType owningType = (MetadataType)helperNode.Method.OwningType;
+            //TODO : this seems to call into the cctor if the cctor itself accesses static fields. e.g. SR.  Try a test with an ++ in the cctor
+            bool needsCctorCheck = owningType.IsBeforeFieldInit || (!owningType.IsBeforeFieldInit && owningType != type /* TODO: check the operands for this != */);
+            TriggerCctorWithThreadStaticStorage((MetadataType)type, needsCctorCheck, out ExpressionEntry returnExp);
+            return returnExp.ValueAsType(returnExp.Type, _builder);
         }
 
         public void OutputCodeForDelegateCtorInit(LLVMBuilderRef builder, LLVMValueRef helperFunc,

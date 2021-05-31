@@ -240,6 +240,7 @@ llvm::Value* buildUserFuncCall(GenTreeCall* gtCall, llvm::IRBuilder<>& builder)
     {
         failFunctionCompilation();
     }
+
     (*_addCodeReloc)(_thisPtr, gtCall->gtEntryPoint.handle);
     Function* llvmFunc = _module->getFunction(symbolName);
     if (llvmFunc == nullptr)
@@ -328,8 +329,16 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
 
 Type*  getLLVMTypeForVarType(var_types type)
 {
+    // TODO: ill out with missing type mappings and when all code done via clrjit, default should fail with useful message
     switch (type)
     {
+        case var_types::TYP_BOOL:
+        case var_types::TYP_BYTE:
+        case var_types::TYP_UBYTE:
+            return Type::getInt8Ty(_llvmContext);
+        case var_types::TYP_SHORT:
+        case var_types::TYP_USHORT:
+            return Type::getInt16Ty(_llvmContext);
         case var_types::TYP_INT:
             return Type::getInt32Ty(_llvmContext);
         default:
@@ -344,7 +353,7 @@ Value* castToPointerToVarType(llvm::IRBuilder<>& builder, Value* address, var_ty
 
 void castingStore(llvm::IRBuilder<>& builder, Value* toStore, Value* address, var_types type)
 {
-    builder.CreateStore(toStore, castToPointerToVarType(builder, address, type));
+    builder.CreateStore(castIfNecessary(builder, toStore, getLLVMTypeForVarType(type)), castToPointerToVarType(builder, address, type));
 }
 
 void importStoreInd(llvm::IRBuilder<>& builder, GenTree* node)
@@ -360,7 +369,7 @@ void importStoreInd(llvm::IRBuilder<>& builder, GenTree* node)
     }
     else
     {
-        castingStore(builder, toStore, address, node->AsOp()->gtOp2->gtType);
+        castingStore(builder, toStore, address, node->gtType);
     }
 }
 

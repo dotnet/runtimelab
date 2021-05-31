@@ -127,10 +127,6 @@ namespace ILCompiler
                     !method.RequiresInstArg() &&
                     sig.IsStatic) // speed up
                 {
-                    if (NodeFactory.NameMangler.GetMangledMethodName(method).ToString().Contains("SpecialIP"))
-                    {
-
-                    }
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target, Module.DataLayout);
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
