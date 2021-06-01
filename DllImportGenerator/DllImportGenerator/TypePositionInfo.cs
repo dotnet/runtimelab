@@ -140,15 +140,20 @@ namespace Microsoft.Interop
                     && SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.System_Runtime_InteropServices_MarshalAsAttribute), attributeClass))
                 {
                     // https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.marshalasattribute
-                    return CreateMarshalAsInfo(type, attrData, defaultInfo, compilation, indirectionLevel);
+                    return CreateMarshalAsInfo(type, attrData, defaultInfo, compilation);
                 }
                 else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.MarshalUsingAttribute), attributeClass)
                     && AttributeAppliesToCurrentIndirectionLevel(attrData, indirectionLevel))
                 {
+                    if (parsedCountInfo != NoCountInfo.Instance)
+                    {
+                        diagnostics.ReportConfigurationNotSupported(attrData, "Duplicate Count Info");
+                        return NoMarshallingInfo.Instance;
+                    }
                     parsedCountInfo = CreateCountInfo(attrData);
                     if (attrData.ConstructorArguments.Length != 0)
                     {
-                        return CreateNativeMarshallingInfo(type, compilation, diagnostics, attrData, isMarshalUsingAttribute: true, indirectionLevel, parsedCountInfo);
+                        return CreateNativeMarshallingInfo(type, attrData, isMarshalUsingAttribute: true, indirectionLevel, parsedCountInfo);
                     }
                 }
             }
@@ -170,7 +175,7 @@ namespace Microsoft.Interop
                 }
                 else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.NativeMarshallingAttribute), attributeClass))
                 {
-                    return CreateNativeMarshallingInfo(type, compilation, diagnostics, attrData, isMarshalUsingAttribute: false, indirectionLevel, parsedCountInfo);
+                    return CreateNativeMarshallingInfo(type, attrData, isMarshalUsingAttribute: false, indirectionLevel, parsedCountInfo);
                 }
                 else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.GeneratedMarshallingAttribute), attributeClass))
                 {
@@ -207,8 +212,7 @@ namespace Microsoft.Interop
                 ITypeSymbol type,
                 AttributeData attrData,
                 DefaultMarshallingInfo defaultInfo,
-                Compilation compilation,
-                int indirectionLevel)
+                Compilation compilation)
             {
                 object unmanagedTypeObj = attrData.ConstructorArguments[0].Value!;
                 UnmanagedType unmanagedType = unmanagedTypeObj is short
@@ -282,7 +286,8 @@ namespace Microsoft.Interop
                 }
                 else
                 {
-                    elementMarshallingInfo = GetMarshallingInfo(elementType, Array.Empty<AttributeData>(), defaultInfo, compilation, diagnostics, contextSymbol, indirectionLevel++);
+                    // Indirection level does not matter since we don't pass down attributes to be inspected.
+                    elementMarshallingInfo = GetMarshallingInfo(elementType, Array.Empty<AttributeData>(), defaultInfo, compilation, diagnostics, contextSymbol, 0);
                 }
 
                 INamedTypeSymbol? arrayMarshaller;
@@ -356,7 +361,7 @@ namespace Microsoft.Interop
                 return NoCountInfo.Instance;
             }
 
-            static MarshallingInfo CreateNativeMarshallingInfo(ITypeSymbol type, Compilation compilation, GeneratorDiagnostics diagnostics, AttributeData attrData, bool isMarshalUsingAttribute, int indirectionLevel, CountInfo parsedCountInfo)
+            MarshallingInfo CreateNativeMarshallingInfo(ITypeSymbol type, AttributeData attrData, bool isMarshalUsingAttribute, int indirectionLevel, CountInfo parsedCountInfo)
             {
                 SupportedMarshallingMethods methods = SupportedMarshallingMethods.None;
 
@@ -434,6 +439,25 @@ namespace Microsoft.Interop
                     // TODO: Diagnostic since no marshalling methods are supported.
                 }
 
+                if (isContiguousCollectionMarshaller)
+                {
+                    if (!ManualTypeMarshallingHelper.TryGetElementTypeFromContiguousCollectionMarshaller(nativeType, out ITypeSymbol elementType))
+                    {
+                        diagnostics.ReportConfigurationNotSupported(attrData, "Native Type", nativeType.ToDisplayString());
+                        return NoMarshallingInfo.Instance;
+                    }
+
+                    return new NativeContiguousCollectionMarshallingInfo(
+                        nativeType,
+                        valueProperty?.Type,
+                        methods,
+                        NativeTypePinnable: ManualTypeMarshallingHelper.FindGetPinnableReference(nativeType) is not null,
+                        UseDefaultMarshalling: !isMarshalUsingAttribute,
+                        parsedCountInfo,
+                        elementType,
+                        GetMarshallingInfo(elementType, attributes, defaultInfo, compilation, diagnostics, contextSymbol, indirectionLevel + 1));
+                }
+
                 return new NativeMarshallingAttributeInfo(
                     nativeType,
                     valueProperty?.Type,
@@ -493,8 +517,8 @@ namespace Microsoft.Interop
                     }
 
                     marshallingInfo = new  NativeContiguousCollectionMarshallingInfo(
-                        NativeMarshallingType: arrayMarshaller!,
-                        ValuePropertyType: ManualTypeMarshallingHelper.FindValueProperty(arrayMarshaller!)?.Type,
+                        NativeMarshallingType: arrayMarshaller,
+                        ValuePropertyType: ManualTypeMarshallingHelper.FindValueProperty(arrayMarshaller)?.Type,
                         MarshallingMethods: ~SupportedMarshallingMethods.Pinning,
                         NativeTypePinnable: true,
                         UseDefaultMarshalling: true,

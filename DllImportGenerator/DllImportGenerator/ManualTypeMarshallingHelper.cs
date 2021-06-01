@@ -1,4 +1,5 @@
 
+using System;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 
@@ -11,6 +12,7 @@ namespace Microsoft.Interop
         public const string StackBufferSizeFieldName = "StackBufferSize";
         public const string ToManagedMethodName = "ToManaged";
         public const string FreeNativeMethodName = "FreeNative";
+        public const string ManagedValuesPropertyName = "ManagedValues";
 
         public static bool HasToManagedMethod(ITypeSymbol nativeType, ITypeSymbol managedType)
         {
@@ -84,5 +86,28 @@ namespace Microsoft.Interop
                 .Any(m => m is { Parameters: { Length: 0 } } and
                     ({ ReturnType: { SpecialType: SpecialType.System_Void } }));
         }
+
+        public static IPropertySymbol? FindManagedValuesProperty(ITypeSymbol type)
+        {
+            return type
+                .GetMembers(ManagedValuesPropertyName)
+                .OfType<IPropertySymbol>()
+                .FirstOrDefault(p => !p.IsStatic);
+        }
+
+        public static bool TryGetElementTypeFromContiguousCollectionMarshaller(ITypeSymbol type, out ITypeSymbol elementType)
+        {
+            IPropertySymbol? managedValuesProperty = FindManagedValuesProperty(type);
+
+            if (managedValuesProperty is null)
+            {
+                elementType = null!;
+                return false;
+            }
+
+            elementType = ((INamedTypeSymbol)managedValuesProperty.Type).TypeArguments[0];
+            return true;
+        }
+
     }
 }

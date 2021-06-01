@@ -22,7 +22,7 @@ namespace System.Runtime.InteropServices
         public Type NativeType { get; }
     }
 
-    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field)]
+    [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field, AllowMultiple = true)]
     public class MarshalUsingAttribute : Attribute
     {
         public MarshalUsingAttribute()
