@@ -48,8 +48,7 @@ namespace System.Collections.Generic
     {
         public override int Compare(T x, T y)
         {
-            // CORERT-TODO: EnumComparer<T>
-            throw new NotImplementedException();
+            return ComparerHelpers.EnumOnlyCompare(x, y);
         }
     }
 }

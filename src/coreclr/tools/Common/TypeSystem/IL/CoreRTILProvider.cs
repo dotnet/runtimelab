@@ -154,6 +154,57 @@ namespace Internal.IL
                             return ComparerIntrinsics.EmitEqualityComparerCreate(method);
                     }
                     break;
+                case "ComparerHelpers":
+                    {
+                        if (owningType.Namespace != "Internal.IntrinsicSupport")
+                            return null;
+
+                        if (methodName == "EnumOnlyCompare")
+                        {
+                            //calls CompareTo for underlyingType to avoid boxing
+
+                            TypeDesc elementType = method.Instantiation[0];
+                            if (!elementType.IsEnum)
+                                return null;
+
+                            ILOpcode convInstruction;
+                            int typeSize = ((DefType)elementType).InstanceFieldSize.AsInt;
+                            if (typeSize <= 4)
+                            {
+                                convInstruction = ILOpcode.conv_i4;
+                            }
+                            else
+                            {
+                                Debug.Assert(typeSize == 8);
+                                convInstruction = ILOpcode.conv_i8;
+                            }
+
+                            TypeDesc underlyingType = elementType.UnderlyingType;
+                            TypeDesc returnType = method.Context.GetWellKnownType(WellKnownType.Int32);
+                            MethodDesc underlyingCompareToMethode = underlyingType.GetKnownMethod("CompareTo",
+                                new MethodSignature(
+                                    MethodSignatureFlags.None,
+                                    genericParameterCount: 0,
+                                    returnType: returnType,
+                                    parameters: new TypeDesc[] {underlyingType}));
+
+                            ILEmitter emitter = new ILEmitter();
+                            var codeStream = emitter.NewCodeStream();
+                            var local = emitter.NewLocal(underlyingType);
+
+                            codeStream.EmitLdArg(0);
+                            codeStream.Emit(convInstruction);
+                            codeStream.EmitStLoc(local);
+                            codeStream.EmitLdLoca(local);
+                            codeStream.EmitLdArg(1);
+                            codeStream.Emit(convInstruction);
+                            codeStream.Emit(ILOpcode.call, emitter.NewToken(underlyingCompareToMethode));
+                            codeStream.Emit(ILOpcode.ret);
+
+                            return emitter.Link(method);
+                        }
+                    }
+                    break;
                 case "EqualityComparerHelpers":
                     {
                         if (owningType.Namespace != "Internal.IntrinsicSupport")
