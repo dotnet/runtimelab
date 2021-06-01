@@ -639,7 +639,7 @@ bool Thread::Hijack()
     Thread* pCurrentThread = ThreadStore::GetCurrentThread();
     pCurrentThread->EnterCantAllocRegion();
     uint32_t result = PalHijack(m_hPalThread, HijackCallback, this);
-    pCurrentThread->LeaveCanntAllocRegion();
+    pCurrentThread->LeaveCantAllocRegion();
     return result == 0;
 
 }

@@ -44,15 +44,15 @@ inline PTR_VOID Thread::GetThreadStressLog() const
 
 inline void Thread::EnterCantAllocRegion()
 {
-    m_canntAlloc++;
+    m_cantAlloc++;
 }
 
-inline void Thread::LeaveCanntAllocRegion()
+inline void Thread::LeaveCantAllocRegion()
 {
-    m_canntAlloc--;
+    m_cantAlloc--;
 }
 
 inline bool Thread::IsInCantAllocStressLogRegion()
 {
-    return m_canntAlloc != 0;
+    return m_cantAlloc != 0;
 }
