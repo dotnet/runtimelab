@@ -512,7 +512,7 @@ struct MyStruct
     private short s;
 }";
 
-        public static string ArrayParametersAndModifiers(string elementType) => $@"
+        public static string MarshalAsArrayParametersAndModifiers(string elementType) => $@"
 using System.Runtime.InteropServices;
 partial class Test
 {{
@@ -528,9 +528,9 @@ partial class Test
         );
 }}";
 
-        public static string ArrayParametersAndModifiers<T>() => ArrayParametersAndModifiers(typeof(T).ToString());
+        public static string MarshalAsArrayParametersAndModifiers<T>() => MarshalAsArrayParametersAndModifiers(typeof(T).ToString());
 
-        public static string ArrayParameterWithSizeParam(string sizeParamType, bool isByRef) => $@"
+        public static string MarshalAsArrayParameterWithSizeParam(string sizeParamType, bool isByRef) => $@"
 using System.Runtime.InteropServices;
 partial class Test
 {{
@@ -541,10 +541,10 @@ partial class Test
         );
 }}";
 
-        public static string ArrayParameterWithSizeParam<T>(bool isByRef) => ArrayParameterWithSizeParam(typeof(T).ToString(), isByRef);
+        public static string MarshalAsArrayParameterWithSizeParam<T>(bool isByRef) => MarshalAsArrayParameterWithSizeParam(typeof(T).ToString(), isByRef);
 
 
-        public static string ArrayParameterWithNestedMarshalInfo(string elementType, UnmanagedType nestedMarshalInfo) => $@"
+        public static string MarshalAsArrayParameterWithNestedMarshalInfo(string elementType, UnmanagedType nestedMarshalInfo) => $@"
 using System.Runtime.InteropServices;
 partial class Test
 {{
@@ -554,7 +554,7 @@ partial class Test
         );
 }}";
 
-        public static string ArrayParameterWithNestedMarshalInfo<T>(UnmanagedType nestedMarshalType) => ArrayParameterWithNestedMarshalInfo(typeof(T).ToString(), nestedMarshalType);
+        public static string MarshalAsArrayParameterWithNestedMarshalInfo<T>(UnmanagedType nestedMarshalType) => MarshalAsArrayParameterWithNestedMarshalInfo(typeof(T).ToString(), nestedMarshalType);
         
         public static string ArrayPreserveSigFalse(string elementType) => $@"
 using System.Runtime.InteropServices;
@@ -915,7 +915,7 @@ struct Native
 }
 ";
 
-        public static string ArrayMarshallingWithCustomStructElementWithValueProperty => ArrayParametersAndModifiers("IntStructWrapper") + @"
+        public static string ArrayMarshallingWithCustomStructElementWithValueProperty => MarshalAsArrayParametersAndModifiers("IntStructWrapper") + @"
 [NativeMarshalling(typeof(IntStructWrapperNative))]
 public struct IntStructWrapper
 {
@@ -935,7 +935,7 @@ public struct IntStructWrapperNative
 }
 ";
 
-        public static string ArrayMarshallingWithCustomStructElement => ArrayParametersAndModifiers("IntStructWrapper") + @"
+        public static string ArrayMarshallingWithCustomStructElement => MarshalAsArrayParametersAndModifiers("IntStructWrapper") + @"
 [NativeMarshalling(typeof(IntStructWrapperNative))]
 public struct IntStructWrapper
 {
@@ -1083,5 +1083,87 @@ struct RecursiveStruct2
     RecursiveStruct1 s;
     int i;
 }";
+
+        public static string CollectionByValue(string elementType) => BasicParameterByValue($"TestCollection<{elementType}>") + @"
+[NativeMarshalling(typeof(Marshaller<>))]
+class TestCollection<T> {}
+
+[GenericCollectionMarshaller]
+struct Marshaller<T>
+{
+    public Marshaller(TestCollection<T> managed, int nativeElementSize) {}
+    public System.Span<T> ManagedValues { get; }
+    public System.Span<byte> NativeValueStorage { get; }
+    public IntPtr Value { get; }
+}
+";
+
+        public static string CollectionByValue<T>() => CollectionByValue(typeof(T).ToString());
+
+        public static string MarshalUsingCollectionCountInfoParametersAndModifiers(string collectionType) => $@"
+using System.Runtime.InteropServices;
+partial class Test
+{{
+    [GeneratedDllImport(""DoesNotExist"")]
+    [return:MarshalUsing(ConstantElementCount=10)]
+    public static partial {collectionType} Method(
+        {collectionType} p,
+        in {collectionType} pIn,
+        int pRefSize,
+        [MarshalUsing(CountElementName = nameof(pRefSize))] ref {collectionType} pRef,
+        [MarshalUsing(CountElementName = nameof(pOutSize))] out {collectionType} pOut,
+        out int pOutSize
+        );
+}}";
+
+        public static string MarshalUsingCollectionCountInfoParametersAndModifiers<T>() => MarshalUsingCollectionCountInfoParametersAndModifiers(typeof(T).ToString());
+
+        public static string CustomCollectionDefaultMarshallerParametersAndModifiers(string elementType) => MarshalUsingCollectionCountInfoParametersAndModifiers($"TestCollection<{elementType}>") + @"
+
+[NativeMarshalling(typeof(Marshaller<>))]
+class TestCollection<T> {}
+
+[GenericCollectionMarshaller]
+struct Marshaller<T>
+{
+    public Marshaller(TestCollection<T> managed, int nativeElementSize) {}
+    public System.Span<T> ManagedValues { get; }
+    public System.Span<byte> NativeValueStorage { get; }
+    public IntPtr Value { get; set; }
+    public TestCollection<T> ToManaged() => throw null;
+}";
+
+        public static string CustomCollectionDefaultMarshallerParametersAndModifiers<T>() => CustomCollectionDefaultMarshallerParametersAndModifiers(typeof(T).ToString());
+
+        public static string MarshalUsingCollectionParametersAndModifiers(string collectionType, string marshallerType) => $@"
+using System.Runtime.InteropServices;
+partial class Test
+{{
+    [GeneratedDllImport(""DoesNotExist"")]
+    [return:MarshalUsing(typeof({marshallerType}), ConstantElementCount=10)]
+    public static partial {collectionType} Method(
+        [MarshalUsing(typeof({marshallerType})] {collectionType} p,
+        [MarshalUsing(typeof({marshallerType})] in {collectionType} pIn,
+        int pRefSize,
+        [MarshalUsing(typeof({marshallerType}), CountElementName = nameof(pRefSize))] ref {collectionType} pRef,
+        [MarshalUsing(typeof({marshallerType}), CountElementName = nameof(pOutSize))] out {collectionType} pOut,
+        out int pOutSize
+        );
+}}";
+
+        public static string CustomCollectionCustomMarshallerParametersAndModifiers(string elementType) => MarshalUsingCollectionParametersAndModifiers($"TestCollection<{elementType}>", $"Marshaller<{elementType}>") + @"
+class TestCollection<T> {}
+
+[GenericCollectionMarshaller]
+struct Marshaller<T>
+{
+    public Marshaller(TestCollection<T> managed, int nativeElementSize) {}
+    public System.Span<T> ManagedValues { get; }
+    public System.Span<byte> NativeValueStorage { get; }
+    public IntPtr Value { get; set; }
+    public TestCollection<T> ToManaged() => throw null;
+}";
+
+        public static string CustomCollectionCustomMarshallerParametersAndModifiers<T>() => CustomCollectionCustomMarshallerParametersAndModifiers(typeof(T).ToString());
     }
 }

@@ -191,6 +191,7 @@ namespace Microsoft.Interop
                 compilation,
                 diagnostics,
                 contextSymbol.ContainingType,
+                parsedCountInfo,
                 indirectionLevel,
                 out MarshallingInfo infoMaybe))
             {
@@ -472,6 +473,7 @@ namespace Microsoft.Interop
                 Compilation compilation,
                 GeneratorDiagnostics diagnostics,
                 INamedTypeSymbol scopeSymbol,
+                CountInfo parsedCountInfo,
                 int indirectionLevel,
                 out MarshallingInfo marshallingInfo)
             {
@@ -522,7 +524,7 @@ namespace Microsoft.Interop
                         MarshallingMethods: ~SupportedMarshallingMethods.Pinning,
                         NativeTypePinnable: true,
                         UseDefaultMarshalling: true,
-                        ElementCountInfo: NoCountInfo.Instance,
+                        ElementCountInfo: parsedCountInfo,
                         ElementType: elementType,
                         ElementMarshallingInfo: GetMarshallingInfo(elementType, Array.Empty<AttributeData>(), defaultInfo, compilation, diagnostics, scopeSymbol, indirectionLevel + 1));
                     return true;

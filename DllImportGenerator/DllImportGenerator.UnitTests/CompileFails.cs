@@ -79,9 +79,9 @@ namespace DllImportGenerator.UnitTests
             yield return new object[] { CodeSnippets.BasicParametersAndModifiers<UIntPtr[]>(), 3, 0 };
 
             // Array with non-integer size param
-            yield return new object[] { CodeSnippets.ArrayParameterWithSizeParam<float>(isByRef: false), 1, 0 };
-            yield return new object[] { CodeSnippets.ArrayParameterWithSizeParam<double>(isByRef: false), 1, 0 };
-            yield return new object[] { CodeSnippets.ArrayParameterWithSizeParam<bool>(isByRef: false), 1, 0 };
+            yield return new object[] { CodeSnippets.MarshalAsArrayParameterWithSizeParam<float>(isByRef: false), 1, 0 };
+            yield return new object[] { CodeSnippets.MarshalAsArrayParameterWithSizeParam<double>(isByRef: false), 1, 0 };
+            yield return new object[] { CodeSnippets.MarshalAsArrayParameterWithSizeParam<bool>(isByRef: false), 1, 0 };
 
             // Custom type marshalling with invalid members
             yield return new object[] { CodeSnippets.CustomStructMarshallingByRefValueProperty, 3, 0 };
