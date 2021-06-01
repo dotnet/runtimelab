@@ -28,7 +28,7 @@ namespace System.Reflection.Runtime.General
             protected sealed override string Factory(RuntimeTypeHandleKey key)
             {
                 uint count = s_counter++;
-                return "$BlockedFromReflection_" + count.ToString() + "_" + Guid.NewGuid().ToString().Substring(0, 8);
+                return $"$BlockedFromReflection_{count}_{Guid.NewGuid().ToString().Substring(0, 8)}";
             }
 
             private static uint s_counter;
