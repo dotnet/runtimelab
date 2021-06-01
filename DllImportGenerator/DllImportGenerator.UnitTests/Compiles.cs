@@ -258,6 +258,7 @@ namespace DllImportGenerator.UnitTests
             yield return new[] { CodeSnippets.CustomCollectionCustomMarshallerParametersAndModifiers<IntPtr>() };
             yield return new[] { CodeSnippets.CustomCollectionCustomMarshallerParametersAndModifiers<UIntPtr>() };
             yield return new[] { CodeSnippets.CustomCollectionCustomMarshallerReturnValueLength<int>() };
+            yield return new[] { CodeSnippets.GenericCollectionWithCustomElementMarshalling };
         }
 
         [Theory]

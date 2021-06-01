@@ -71,7 +71,7 @@ namespace Microsoft.Interop
                         .AddArgumentListArguments(
                             Argument(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                                 IdentifierName(GetMarshallerIdentifier(info, context)),
-                                IdentifierName("NativeValueStorage")))))))));
+                                IdentifierName(ManualTypeMarshallingHelper.NativeValueStoragePropertyName)))))))));
         }
 
         private StatementSyntax GenerateContentsMarshallingStatement(TypePositionInfo info, StubCodeContext context, bool useManagedSpanForLength)
@@ -85,7 +85,7 @@ namespace Microsoft.Interop
                 context);
 
             string collectionIdentifierForLength = useManagedSpanForLength
-                ? $"{marshalerIdentifier}.ManagedValues"
+                ? $"{marshalerIdentifier}.{ManualTypeMarshallingHelper.ManagedValuesPropertyName}"
                 : nativeSpanIdentifier;
 
             TypePositionInfo localElementInfo = elementInfo with
@@ -133,7 +133,7 @@ namespace Microsoft.Interop
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         IdentifierName(marshalerIdentifier),
-                        IdentifierName("SetUnmarshalledCollectionLength")))
+                        IdentifierName(ManualTypeMarshallingHelper.SetUnmarshalledCollectionLengthMethodName)))
                 .AddArgumentListArguments(Argument(numElementsExpression)));
         }
 
@@ -166,7 +166,7 @@ namespace Microsoft.Interop
                 if (node.Left.ToString() == nativeIdentifier)
                 {
                     return node.WithRight(
-                        CastExpression(ParseTypeName("System.IntPtr"), node.Right));
+                        CastExpression(MarshallerHelpers.SystemIntPtrType, node.Right));
                 }
 
                 return node;

@@ -13,6 +13,7 @@ namespace Microsoft.Interop
         public const string ToManagedMethodName = "ToManaged";
         public const string FreeNativeMethodName = "FreeNative";
         public const string ManagedValuesPropertyName = "ManagedValues";
+        public const string NativeValueStoragePropertyName = "NativeValueStorage";
         public const string SetUnmarshalledCollectionLengthMethodName = "SetUnmarshalledCollectionLength";
 
         public static bool HasToManagedMethod(ITypeSymbol nativeType, ITypeSymbol managedType)
@@ -90,7 +91,7 @@ namespace Microsoft.Interop
             return type
                 .GetMembers(ManagedValuesPropertyName)
                 .OfType<IPropertySymbol>()
-                .FirstOrDefault(p => !p.IsStatic);
+                .FirstOrDefault(p => p is { IsStatic: false, GetMethod: not null, ReturnsByRef: false, ReturnsByRefReadonly: false });
         }
 
         public static bool TryGetElementTypeFromContiguousCollectionMarshaller(ITypeSymbol type, out ITypeSymbol elementType)
@@ -117,6 +118,15 @@ namespace Microsoft.Interop
                         Parameters: { Length: 1 },
                         ReturnType: { SpecialType: SpecialType.System_Void }
                     } && m.Parameters[0].Type.SpecialType == SpecialType.System_Int32);
+        }
+
+        public static bool HasNativeValueStorageProperty(ITypeSymbol type, ITypeSymbol spanOfByte)
+        {
+            return type
+                .GetMembers(NativeValueStoragePropertyName)
+                .OfType<IPropertySymbol>()
+                .Any(p => p is {IsStatic: false, GetMethod: not null, ReturnsByRef: false, ReturnsByRefReadonly: false } 
+                    && SymbolEqualityComparer.Default.Equals(p.Type, spanOfByte));
         }
     }
 }

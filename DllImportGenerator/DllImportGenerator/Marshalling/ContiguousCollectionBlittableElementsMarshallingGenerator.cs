@@ -43,7 +43,7 @@ namespace Microsoft.Interop
                         MemberAccessExpression(
                             SyntaxKind.SimpleMemberAccessExpression,
                             IdentifierName(marshalerIdentifier),
-                            IdentifierName("ManagedValues")),
+                            IdentifierName(ManualTypeMarshallingHelper.ManagedValuesPropertyName)),
                         IdentifierName("CopyTo")))
                 .AddArgumentListArguments(
                     Argument(
@@ -66,7 +66,7 @@ namespace Microsoft.Interop
                                 MemberAccessExpression(
                                     SyntaxKind.SimpleMemberAccessExpression,
                                     IdentifierName(marshalerIdentifier),
-                                    IdentifierName("NativeValueStorage")))))));
+                                    IdentifierName(ManualTypeMarshallingHelper.NativeValueStoragePropertyName)))))));
         }
 
         public override IEnumerable<StatementSyntax> GeneratePreUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
@@ -84,7 +84,7 @@ namespace Microsoft.Interop
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         IdentifierName(marshalerIdentifier),
-                        IdentifierName("SetUnmarshalledCollectionLength")))
+                        IdentifierName(ManualTypeMarshallingHelper.SetUnmarshalledCollectionLengthMethodName)))
                 .AddArgumentListArguments(Argument(numElementsExpression)));
         }
 
@@ -115,14 +115,14 @@ namespace Microsoft.Interop
                                     MemberAccessExpression(
                                         SyntaxKind.SimpleMemberAccessExpression,
                                         IdentifierName(marshalerIdentifier),
-                                        IdentifierName("NativeValueStorage")))),
+                                        IdentifierName(ManualTypeMarshallingHelper.NativeValueStoragePropertyName)))),
                         IdentifierName("CopyTo")))
                 .AddArgumentListArguments(
                     Argument(
                         MemberAccessExpression(
                             SyntaxKind.SimpleMemberAccessExpression,
                             IdentifierName(marshalerIdentifier),
-                            IdentifierName("ManagedValues")))));
+                            IdentifierName(ManualTypeMarshallingHelper.ManagedValuesPropertyName)))));
         }
     }
 }

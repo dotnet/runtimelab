@@ -1187,7 +1187,7 @@ partial class Test
 
         public static string MarshalUsingArrayParameterWithSizeParam<T>(bool isByRef) => MarshalUsingArrayParameterWithSizeParam(typeof(T).ToString(), isByRef);
 
-        public static string MarshalUsingCollectionWithConstantAndElementCount = $@"
+        public static string MarshalUsingCollectionWithConstantAndElementCount => $@"
 using System.Runtime.InteropServices;
 partial class Test
 {{
@@ -1198,7 +1198,7 @@ partial class Test
         );
 }}";
 
-        public static string MarshalUsingCollectionWithNullElementName = $@"
+        public static string MarshalUsingCollectionWithNullElementName => $@"
 using System.Runtime.InteropServices;
 partial class Test
 {{
@@ -1209,7 +1209,7 @@ partial class Test
         );
 }}";
 
-        public static string GenericCollectionMarshallingArityMismatch = BasicParameterByValue("TestCollection<int>") + @"
+        public static string GenericCollectionMarshallingArityMismatch => BasicParameterByValue("TestCollection<int>") + @"
 [NativeMarshalling(typeof(Marshaller<,>))]
 class TestCollection<T> {}
 
@@ -1222,5 +1222,31 @@ ref struct Marshaller<T, U>
     public System.IntPtr Value { get; }
     public TestCollection<T> ToManaged() => throw null;
 }";
+
+        public static string GenericCollectionWithCustomElementMarshalling => @"
+
+using System.Runtime.InteropServices;
+partial class Test
+{
+    [GeneratedDllImport(""DoesNotExist"")]
+    [return:MarshalUsing(ConstantElementCount=10)]
+    [return:MarshalUsing(typeof(IntWrapper), ElementIndirectionLevel = 1)]
+    public static partial TestCollection<int> Method(
+        [MarshalUsing(typeof(IntWrapper), ElementIndirectionLevel = 1)] TestCollection<int> p,
+        [MarshalUsing(typeof(IntWrapper), ElementIndirectionLevel = 1)] in TestCollection<int> pIn,
+        int pRefSize,
+        [MarshalUsing(CountElementName = ""pRefSize""), MarshalUsing(typeof(IntWrapper), ElementIndirectionLevel = 1)] ref TestCollection<int> pRef,
+        [MarshalUsing(CountElementName = ""pOutSize"")][MarshalUsing(typeof(IntWrapper), ElementIndirectionLevel = 1)] out TestCollection<int> pOut,
+        out int pOutSize
+        );
+}
+
+struct IntWrapper
+{
+    public IntWrapper(int i){}
+    public int ToManaged() => throw null;
+}
+
+" + CustomCollectionWithMarshaller(enableDefaultMarshalling: true);
     }
 }

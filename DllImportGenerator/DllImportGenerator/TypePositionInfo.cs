@@ -443,6 +443,12 @@ namespace Microsoft.Interop
 
                 if (isContiguousCollectionMarshaller)
                 {
+                    if (!ManualTypeMarshallingHelper.HasNativeValueStorageProperty(nativeType, spanOfByte))
+                    {
+                        diagnostics.ReportConfigurationNotSupported(attrData, "Native Type", nativeType.ToDisplayString());
+                        return NoMarshallingInfo.Instance;
+                    }
+
                     if (!ManualTypeMarshallingHelper.TryGetElementTypeFromContiguousCollectionMarshaller(nativeType, out ITypeSymbol elementType))
                     {
                         diagnostics.ReportConfigurationNotSupported(attrData, "Native Type", nativeType.ToDisplayString());
