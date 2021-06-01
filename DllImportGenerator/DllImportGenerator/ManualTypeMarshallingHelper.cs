@@ -13,6 +13,7 @@ namespace Microsoft.Interop
         public const string ToManagedMethodName = "ToManaged";
         public const string FreeNativeMethodName = "FreeNative";
         public const string ManagedValuesPropertyName = "ManagedValues";
+        public const string SetUnmarshalledCollectionLengthMethodName = "SetUnmarshalledCollectionLength";
 
         public static bool HasToManagedMethod(ITypeSymbol nativeType, ITypeSymbol managedType)
         {
@@ -28,14 +29,13 @@ namespace Microsoft.Interop
         public static bool IsManagedToNativeConstructor(
             IMethodSymbol ctor,
             ITypeSymbol managedType,
-            ITypeSymbol int32,
             bool isCollectionMarshaller)
         {
             if (isCollectionMarshaller)
             {
                 return ctor.Parameters.Length == 2
                 && SymbolEqualityComparer.Default.Equals(managedType, ctor.Parameters[0].Type)
-                && SymbolEqualityComparer.Default.Equals(int32, ctor.Parameters[1].Type);
+                && ctor.Parameters[1].Type.SpecialType == SpecialType.System_Int32;
             }
             return ctor.Parameters.Length == 1
                 && SymbolEqualityComparer.Default.Equals(managedType, ctor.Parameters[0].Type);
@@ -45,7 +45,6 @@ namespace Microsoft.Interop
             IMethodSymbol ctor,
             ITypeSymbol managedType,
             ITypeSymbol spanOfByte,
-            ITypeSymbol int32,
             bool isCollectionMarshaller)
         {
             if (isCollectionMarshaller)
@@ -53,7 +52,7 @@ namespace Microsoft.Interop
                 return ctor.Parameters.Length == 3
                 && SymbolEqualityComparer.Default.Equals(managedType, ctor.Parameters[0].Type)
                 && SymbolEqualityComparer.Default.Equals(spanOfByte, ctor.Parameters[1].Type)
-                && SymbolEqualityComparer.Default.Equals(int32, ctor.Parameters[2].Type);
+                && ctor.Parameters[2].Type.SpecialType == SpecialType.System_Int32;
             }
             return ctor.Parameters.Length == 2
                 && SymbolEqualityComparer.Default.Equals(managedType, ctor.Parameters[0].Type)
@@ -83,8 +82,7 @@ namespace Microsoft.Interop
         {
             return type.GetMembers(FreeNativeMethodName)
                 .OfType<IMethodSymbol>()
-                .Any(m => m is { Parameters: { Length: 0 } } and
-                    ({ ReturnType: { SpecialType: SpecialType.System_Void } }));
+                .Any(m => m is { IsStatic: false, Parameters: { Length: 0 }, ReturnType: { SpecialType: SpecialType.System_Void } });
         }
 
         public static IPropertySymbol? FindManagedValuesProperty(ITypeSymbol type)
@@ -109,5 +107,16 @@ namespace Microsoft.Interop
             return true;
         }
 
+        public static bool HasSetUnmarshalledCollectionLengthMethod(ITypeSymbol type)
+        {
+            return type.GetMembers(SetUnmarshalledCollectionLengthMethodName)
+                .OfType<IMethodSymbol>()
+                .Any(m => m is
+                    {
+                        IsStatic: false,
+                        Parameters: { Length: 1 },
+                        ReturnType: { SpecialType: SpecialType.System_Void }
+                    } && m.Parameters[0].Type.SpecialType == SpecialType.System_Int32);
+        }
     }
 }

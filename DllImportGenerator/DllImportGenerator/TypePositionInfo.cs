@@ -372,7 +372,6 @@ namespace Microsoft.Interop
                 }
 
                 ITypeSymbol spanOfByte = compilation.GetTypeByMetadataName(TypeNames.System_Span_Metadata)!.Construct(compilation.GetSpecialType(SpecialType.System_Byte));
-                ITypeSymbol int32 = compilation.GetSpecialType(SpecialType.System_Int32);
 
                 INamedTypeSymbol nativeType = (INamedTypeSymbol)attrData.ConstructorArguments[0].Value!;
 
@@ -392,7 +391,7 @@ namespace Microsoft.Interop
                         }
                         else
                         {
-                            nativeType = nativeType.Construct(namedType.TypeParameters.ToArray());
+                            nativeType = nativeType.ConstructedFrom.Construct(namedType.TypeArguments.ToArray());
                         }
                     }
                     else
@@ -410,17 +409,17 @@ namespace Microsoft.Interop
                 bool hasInt32Constructor = false;
                 foreach (var ctor in nativeType.Constructors)
                 {
-                    if (ManualTypeMarshallingHelper.IsManagedToNativeConstructor(ctor, type, int32, isCollectionMarshaller: true)
+                    if (ManualTypeMarshallingHelper.IsManagedToNativeConstructor(ctor, type, isCollectionMarshaller: isContiguousCollectionMarshaller)
                         && (valueProperty is null or { GetMethod: not null }))
                     {
                         methods |= SupportedMarshallingMethods.ManagedToNative;
                     }
-                    else if (ManualTypeMarshallingHelper.IsStackallocConstructor(ctor, type, spanOfByte, int32, isCollectionMarshaller: true)
+                    else if (ManualTypeMarshallingHelper.IsStackallocConstructor(ctor, type, spanOfByte, isCollectionMarshaller: isContiguousCollectionMarshaller)
                         && (valueProperty is null or { GetMethod: not null }))
                     {
                         methods |= SupportedMarshallingMethods.ManagedToNativeStackalloc;
                     }
-                    else if (ctor.Parameters.Length == 1 && SymbolEqualityComparer.Default.Equals(ctor.Parameters[0], int32))
+                    else if (ctor.Parameters.Length == 1 && ctor.Parameters[0].Type.SpecialType == SpecialType.System_Int32)
                     {
                         hasInt32Constructor = true;
                     }
@@ -428,7 +427,8 @@ namespace Microsoft.Interop
 
                 // The constructor that takes only the native element size is required for collection marshallers
                 // in the native-to-managed scenario.
-                if ((!isContiguousCollectionMarshaller || hasInt32Constructor)
+                if ((!isContiguousCollectionMarshaller
+                        || (hasInt32Constructor && ManualTypeMarshallingHelper.HasSetUnmarshalledCollectionLengthMethod(nativeType)))
                     && ManualTypeMarshallingHelper.HasToManagedMethod(nativeType, type)
                     && (valueProperty is null or { SetMethod: not null }))
                 {
@@ -437,7 +437,8 @@ namespace Microsoft.Interop
 
                 if (methods == SupportedMarshallingMethods.None)
                 {
-                    // TODO: Diagnostic since no marshalling methods are supported.
+                    diagnostics.ReportConfigurationNotSupported(attrData, "Native Type", nativeType.ToDisplayString());
+                    return NoMarshallingInfo.Instance;
                 }
 
                 if (isContiguousCollectionMarshaller)

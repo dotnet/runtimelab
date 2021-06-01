@@ -1088,13 +1088,13 @@ struct RecursiveStruct2
 [NativeMarshalling(typeof(Marshaller<>))]
 class TestCollection<T> {}
 
-[GenericCollectionMarshaller]
-struct Marshaller<T>
+[GenericContiguousCollectionMarshaller]
+ref struct Marshaller<T>
 {
-    public Marshaller(TestCollection<T> managed, int nativeElementSize) {}
+    public Marshaller(TestCollection<T> managed, int nativeElementSize) : this() {}
     public System.Span<T> ManagedValues { get; }
     public System.Span<byte> NativeValueStorage { get; }
-    public IntPtr Value { get; }
+    public System.IntPtr Value { get; }
 }
 ";
 
@@ -1110,28 +1110,33 @@ partial class Test
         {collectionType} p,
         in {collectionType} pIn,
         int pRefSize,
-        [MarshalUsing(CountElementName = nameof(pRefSize))] ref {collectionType} pRef,
-        [MarshalUsing(CountElementName = nameof(pOutSize))] out {collectionType} pOut,
+        [MarshalUsing(CountElementName = ""pRefSize"")] ref {collectionType} pRef,
+        [MarshalUsing(CountElementName = ""pOutSize"")] out {collectionType} pOut,
         out int pOutSize
         );
 }}";
+        
+        public static string CustomCollectionWithMarshaller(bool enableDefaultMarshalling)
+        {
+            string nativeMarshallingAttribute = enableDefaultMarshalling ? "[NativeMarshalling(typeof(Marshaller<>))]" : string.Empty;
+            return nativeMarshallingAttribute + @"class TestCollection<T> {}
+
+[GenericContiguousCollectionMarshaller]
+ref struct Marshaller<T>
+{
+    public Marshaller(int nativeElementSize) : this() {}
+    public Marshaller(TestCollection<T> managed, int nativeElementSize) : this() {}
+    public System.Span<T> ManagedValues { get; }
+    public System.Span<byte> NativeValueStorage { get; }
+    public System.IntPtr Value { get; set; }
+    public void SetUnmarshalledCollectionLength(int length) {}
+    public TestCollection<T> ToManaged() => throw null;
+}";
+        }
 
         public static string MarshalUsingCollectionCountInfoParametersAndModifiers<T>() => MarshalUsingCollectionCountInfoParametersAndModifiers(typeof(T).ToString());
 
-        public static string CustomCollectionDefaultMarshallerParametersAndModifiers(string elementType) => MarshalUsingCollectionCountInfoParametersAndModifiers($"TestCollection<{elementType}>") + @"
-
-[NativeMarshalling(typeof(Marshaller<>))]
-class TestCollection<T> {}
-
-[GenericCollectionMarshaller]
-struct Marshaller<T>
-{
-    public Marshaller(TestCollection<T> managed, int nativeElementSize) {}
-    public System.Span<T> ManagedValues { get; }
-    public System.Span<byte> NativeValueStorage { get; }
-    public IntPtr Value { get; set; }
-    public TestCollection<T> ToManaged() => throw null;
-}";
+        public static string CustomCollectionDefaultMarshallerParametersAndModifiers(string elementType) => MarshalUsingCollectionCountInfoParametersAndModifiers($"TestCollection<{elementType}>") + CustomCollectionWithMarshaller(enableDefaultMarshalling: true);
 
         public static string CustomCollectionDefaultMarshallerParametersAndModifiers<T>() => CustomCollectionDefaultMarshallerParametersAndModifiers(typeof(T).ToString());
 
@@ -1142,28 +1147,80 @@ partial class Test
     [GeneratedDllImport(""DoesNotExist"")]
     [return:MarshalUsing(typeof({marshallerType}), ConstantElementCount=10)]
     public static partial {collectionType} Method(
-        [MarshalUsing(typeof({marshallerType})] {collectionType} p,
-        [MarshalUsing(typeof({marshallerType})] in {collectionType} pIn,
+        [MarshalUsing(typeof({marshallerType}))] {collectionType} p,
+        [MarshalUsing(typeof({marshallerType}))] in {collectionType} pIn,
         int pRefSize,
-        [MarshalUsing(typeof({marshallerType}), CountElementName = nameof(pRefSize))] ref {collectionType} pRef,
-        [MarshalUsing(typeof({marshallerType}), CountElementName = nameof(pOutSize))] out {collectionType} pOut,
+        [MarshalUsing(typeof({marshallerType}), CountElementName = ""pRefSize"")] ref {collectionType} pRef,
+        [MarshalUsing(typeof({marshallerType}), CountElementName = ""pOutSize"")] out {collectionType} pOut,
         out int pOutSize
         );
 }}";
 
-        public static string CustomCollectionCustomMarshallerParametersAndModifiers(string elementType) => MarshalUsingCollectionParametersAndModifiers($"TestCollection<{elementType}>", $"Marshaller<{elementType}>") + @"
-class TestCollection<T> {}
-
-[GenericCollectionMarshaller]
-struct Marshaller<T>
-{
-    public Marshaller(TestCollection<T> managed, int nativeElementSize) {}
-    public System.Span<T> ManagedValues { get; }
-    public System.Span<byte> NativeValueStorage { get; }
-    public IntPtr Value { get; set; }
-    public TestCollection<T> ToManaged() => throw null;
-}";
+        public static string CustomCollectionCustomMarshallerParametersAndModifiers(string elementType) => MarshalUsingCollectionParametersAndModifiers($"TestCollection<{elementType}>", $"Marshaller<{elementType}>") + CustomCollectionWithMarshaller(enableDefaultMarshalling: false);
 
         public static string CustomCollectionCustomMarshallerParametersAndModifiers<T>() => CustomCollectionCustomMarshallerParametersAndModifiers(typeof(T).ToString());
+
+        public static string MarshalUsingCollectionReturnValueLength(string collectionType, string marshallerType) => $@"
+using System.Runtime.InteropServices;
+partial class Test
+{{
+    [GeneratedDllImport(""DoesNotExist"")]
+    public static partial int Method(
+        [MarshalUsing(typeof({marshallerType}), CountElementName = MarshalUsingAttribute.ReturnsCountValue)] out {collectionType} pOut
+        );
+}}";
+
+        public static string CustomCollectionCustomMarshallerReturnValueLength(string elementType) => MarshalUsingCollectionReturnValueLength($"TestCollection<{elementType}>", $"Marshaller<{elementType}>") + CustomCollectionWithMarshaller(enableDefaultMarshalling: false);
+
+        public static string CustomCollectionCustomMarshallerReturnValueLength<T>() => CustomCollectionCustomMarshallerReturnValueLength(typeof(T).ToString());
+
+        public static string MarshalUsingArrayParameterWithSizeParam(string sizeParamType, bool isByRef) => $@"
+using System.Runtime.InteropServices;
+partial class Test
+{{
+    [GeneratedDllImport(""DoesNotExist"")]
+    public static partial void Method(
+        {(isByRef ? "ref" : "")} {sizeParamType} pRefSize,
+        [MarshalUsing(CountElementName = ""pRefSize"")] ref int[] pRef
+        );
+}}";
+
+        public static string MarshalUsingArrayParameterWithSizeParam<T>(bool isByRef) => MarshalUsingArrayParameterWithSizeParam(typeof(T).ToString(), isByRef);
+
+        public static string MarshalUsingCollectionWithConstantAndElementCount = $@"
+using System.Runtime.InteropServices;
+partial class Test
+{{
+    [GeneratedDllImport(""DoesNotExist"")]
+    public static partial void Method(
+        int pRefSize,
+        [MarshalUsing(ConstantElementCount = 10, CountElementName = ""pRefSize"")] ref int[] pRef
+        );
+}}";
+
+        public static string MarshalUsingCollectionWithNullElementName = $@"
+using System.Runtime.InteropServices;
+partial class Test
+{{
+    [GeneratedDllImport(""DoesNotExist"")]
+    public static partial void Method(
+        int pRefSize,
+        [MarshalUsing(CountElementName = null)] ref int[] pRef
+        );
+}}";
+
+        public static string GenericCollectionMarshallingArityMismatch = BasicParameterByValue("TestCollection<int>") + @"
+[NativeMarshalling(typeof(Marshaller<,>))]
+class TestCollection<T> {}
+
+[GenericContiguousCollectionMarshaller]
+ref struct Marshaller<T, U>
+{
+    public Marshaller(TestCollection<T> managed, int nativeElementSize) : this() {}
+    public System.Span<T> ManagedValues { get; }
+    public System.Span<byte> NativeValueStorage { get; }
+    public System.IntPtr Value { get; }
+    public TestCollection<T> ToManaged() => throw null;
+}";
     }
 }
