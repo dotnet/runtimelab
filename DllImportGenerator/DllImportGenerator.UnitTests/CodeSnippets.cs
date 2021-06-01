@@ -1090,22 +1090,5 @@ struct RecursiveStruct2
     RecursiveStruct1 s;
     int i;
 }";
-        public static string ARRR => @"
-unsafe struct RecursiveStruct2
-{
-#pragma warning disable CS0649
-#pragma warning disable CS0169
-    public void* k;
-}
-
-partial class Foo
-{
-    [System.Runtime.InteropServices.GeneratedDllImport(""DoesNotExist"")]
-    public static partial RecursiveStruct2 Method(
-        RecursiveStruct2 p,
-        in RecursiveStruct2 pIn,
-        out RecursiveStruct2 pOut);
-}
-";
     }
 }
