@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Runtime.InteropServices;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -10,12 +7,6 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
 {
-    /// <summary>
-    /// Type used to pass on default marshalling details.
-    /// </summary>
-    internal sealed record DefaultMarshallingInfo (
-        CharEncoding CharEncoding
-    );
 
     /// <summary>
     /// Describes how to marshal the contents of a value in comparison to the value itself.
@@ -83,9 +74,8 @@ namespace Microsoft.Interop
 
         public MarshallingInfo MarshallingAttributeInfo { get; init; }
 
-        public static TypePositionInfo CreateForParameter(IParameterSymbol paramSymbol, MarshallingAttributeInfoParser attributeParser, Compilation compilation)
+        public static TypePositionInfo CreateForParameter(IParameterSymbol paramSymbol, MarshallingInfo marshallingInfo, Compilation compilation)
         {
-            var marshallingInfo = attributeParser.ParseMarshallingInfo(paramSymbol.Type, paramSymbol.GetAttributes());
             var typeInfo = new TypePositionInfo()
             {
                 ManagedType = paramSymbol.Type,

@@ -1292,5 +1292,37 @@ partial class Test
     public static partial int[] Method();
 }
 ";
+
+        public static string RecursiveCountElementNameOnReturnValue => @"
+using System.Runtime.InteropServices;
+partial class Test
+{
+    [GeneratedDllImport(""DoesNotExist"")]
+    [return:MarshalUsing(CountElementName=MarshalUsingAttribute.ReturnsCountValue)]
+    public static partial int[] Method();
+}
+";
+
+        public static string RecursiveCountElementNameOnParameter => @"
+using System.Runtime.InteropServices;
+partial class Test
+{
+    [GeneratedDllImport(""DoesNotExist"")]
+    public static partial void Method(
+        [MarshalUsing(CountElementName=""arr"")] ref int[] arr
+    );
+}
+";
+        public static string MutuallyRecursiveCountElementNameOnParameter => @"
+using System.Runtime.InteropServices;
+partial class Test
+{
+    [GeneratedDllImport(""DoesNotExist"")]
+    public static partial void Method(
+        [MarshalUsing(CountElementName=""arr2"")] ref int[] arr,
+        [MarshalUsing(CountElementName=""arr"")] ref int[] arr2
+    );
+}
+";
     }
 }
