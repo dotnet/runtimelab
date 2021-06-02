@@ -641,6 +641,7 @@ namespace Microsoft.Interop
             ref int maxIndirectionLevelUsed,
             out MarshallingInfo marshallingInfo)
         {
+            // Check for an implicit SafeHandle conversion.
             var conversion = compilation.ClassifyCommonConversion(type, compilation.GetTypeByMetadataName(TypeNames.System_Runtime_InteropServices_SafeHandle)!);
             if (conversion.Exists
                 && conversion.IsImplicit
