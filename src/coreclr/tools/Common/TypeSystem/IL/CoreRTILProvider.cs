@@ -167,21 +167,9 @@ namespace Internal.IL
                             if (!elementType.IsEnum)
                                 return null;
 
-                            ILOpcode convInstruction;
-                            int typeSize = ((DefType)elementType).InstanceFieldSize.AsInt;
-                            if (typeSize <= 4)
-                            {
-                                convInstruction = ILOpcode.conv_i4;
-                            }
-                            else
-                            {
-                                Debug.Assert(typeSize == 8);
-                                convInstruction = ILOpcode.conv_i8;
-                            }
-
                             TypeDesc underlyingType = elementType.UnderlyingType;
                             TypeDesc returnType = method.Context.GetWellKnownType(WellKnownType.Int32);
-                            MethodDesc underlyingCompareToMethode = underlyingType.GetKnownMethod("CompareTo",
+                            MethodDesc underlyingCompareToMethod = underlyingType.GetKnownMethod("CompareTo",
                                 new MethodSignature(
                                     MethodSignatureFlags.None,
                                     genericParameterCount: 0,
@@ -190,15 +178,10 @@ namespace Internal.IL
 
                             ILEmitter emitter = new ILEmitter();
                             var codeStream = emitter.NewCodeStream();
-                            var local = emitter.NewLocal(underlyingType);
 
-                            codeStream.EmitLdArg(0);
-                            codeStream.Emit(convInstruction);
-                            codeStream.EmitStLoc(local);
-                            codeStream.EmitLdLoca(local);
+                            codeStream.EmitLdArga(0);
                             codeStream.EmitLdArg(1);
-                            codeStream.Emit(convInstruction);
-                            codeStream.Emit(ILOpcode.call, emitter.NewToken(underlyingCompareToMethode));
+                            codeStream.Emit(ILOpcode.call, emitter.NewToken(underlyingCompareToMethod));
                             codeStream.Emit(ILOpcode.ret);
 
                             return emitter.Link(method);
