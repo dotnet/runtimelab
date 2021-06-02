@@ -117,6 +117,10 @@ namespace DllImportGenerator.UnitTests
 
             // Generic collection marshaller has different arity than collection.
             yield return new object[] { CodeSnippets.GenericCollectionMarshallingArityMismatch, 2, 0 };
+
+            yield return new object[] { CodeSnippets.MarshalAsAndMarshalUsingOnReturnValue, 2, 0 };
+            yield return new object[] { CodeSnippets.GenericCollectionWithCustomElementMarshallingDuplicateElementIndirectionLevel, 2, 0 };
+            yield return new object[] { CodeSnippets.GenericCollectionWithCustomElementMarshallingUnusedElementIndirectionLevel, 2, 0 };
         }
 
         [Theory]

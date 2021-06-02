@@ -1224,7 +1224,6 @@ ref struct Marshaller<T, U>
 }";
 
         public static string GenericCollectionWithCustomElementMarshalling => @"
-
 using System.Runtime.InteropServices;
 partial class Test
 {
@@ -1248,5 +1247,50 @@ struct IntWrapper
 }
 
 " + CustomCollectionWithMarshaller(enableDefaultMarshalling: true);
+
+        public static string GenericCollectionWithCustomElementMarshallingDuplicateElementIndirectionLevel => @"
+using System.Runtime.InteropServices;
+partial class Test
+{
+    [GeneratedDllImport(""DoesNotExist"")]
+    public static partial void Method(
+        [MarshalUsing(typeof(IntWrapper), ElementIndirectionLevel = 1)] [MarshalUsing(typeof(IntWrapper), ElementIndirectionLevel = 1)] TestCollection<int> p);
+}
+
+struct IntWrapper
+{
+    public IntWrapper(int i){}
+    public int ToManaged() => throw null;
+}
+
+" + CustomCollectionWithMarshaller(enableDefaultMarshalling: true);
+
+        public static string GenericCollectionWithCustomElementMarshallingUnusedElementIndirectionLevel => @"
+using System.Runtime.InteropServices;
+partial class Test
+{
+    [GeneratedDllImport(""DoesNotExist"")]
+    public static partial void Method(
+        [MarshalUsing(typeof(IntWrapper), ElementIndirectionLevel = 2)] TestCollection<int> p);
+}
+
+struct IntWrapper
+{
+    public IntWrapper(int i){}
+    public int ToManaged() => throw null;
+}
+
+" + CustomCollectionWithMarshaller(enableDefaultMarshalling: true);
+
+        public static string MarshalAsAndMarshalUsingOnReturnValue => @"
+using System.Runtime.InteropServices;
+partial class Test
+{
+    [GeneratedDllImport(""DoesNotExist"")]
+    [return:MarshalUsing(ConstantElementCount=10)]
+    [return:MarshalAs(UnmanagedType.LPArray, SizeConst=10)]
+    public static partial int[] Method();
+}
+";
     }
 }
