@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -134,11 +135,9 @@ namespace Microsoft.Interop
             CurrentStage = parentContext.CurrentStage;
         }
 
-        public override bool PinningSupported => parentContext.PinningSupported;
+        public override bool SingleFrameSpansNativeContext => parentContext.SingleFrameSpansNativeContext;
 
-        public override bool StackSpaceUsable => parentContext.StackSpaceUsable;
-
-        public override bool CanUseAdditionalTemporaryState => parentContext.CanUseAdditionalTemporaryState;
+        public override bool AdditionalTemporaryStateLivesAcrossStages => parentContext.AdditionalTemporaryStateLivesAcrossStages;
 
         public override TypePositionInfo? GetTypePositionInfoForManagedIndex(int index)
         {
@@ -192,7 +191,16 @@ namespace Microsoft.Interop
         public IEnumerable<StatementSyntax> GenerateCleanupStatements(TypePositionInfo info, StubCodeContext context)
         {
             var subContext = new CustomNativeTypeWithValuePropertyStubContext(context);
-            return innerMarshaller.GenerateCleanupStatements(info, subContext);
+
+            if (!context.AdditionalTemporaryStateLivesAcrossStages)
+            {
+                yield return GenerateValuePropertyAssignment(info, context, subContext);
+            }
+
+            foreach (var statement in innerMarshaller.GenerateCleanupStatements(info, subContext))
+            {
+                yield return statement;
+            }
         }
 
         public IEnumerable<StatementSyntax> GenerateMarshalStatements(TypePositionInfo info, StubCodeContext context, IEnumerable<ArgumentSyntax> nativeTypeConstructorArguments)
@@ -213,18 +221,23 @@ namespace Microsoft.Interop
                         IdentifierName(ManualTypeMarshallingHelper.ValuePropertyName))));
         }
 
-        public IEnumerable<StatementSyntax> GenerateUnmarshalStatements(TypePositionInfo info, StubCodeContext context)
+        private StatementSyntax GenerateValuePropertyAssignment(TypePositionInfo info, StubCodeContext context, CustomNativeTypeWithValuePropertyStubContext subContext)
         {
-            var subContext = new CustomNativeTypeWithValuePropertyStubContext(context);
-
             // <marshalerIdentifier>.Value = <nativeIdentifier>;
-            yield return ExpressionStatement(
+            return ExpressionStatement(
                 AssignmentExpression(
                     SyntaxKind.SimpleAssignmentExpression,
                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                         IdentifierName(subContext.GetIdentifiers(info).native),
                         IdentifierName(ManualTypeMarshallingHelper.ValuePropertyName)),
                     IdentifierName(context.GetIdentifiers(info).native)));
+        }
+
+        public IEnumerable<StatementSyntax> GenerateUnmarshalStatements(TypePositionInfo info, StubCodeContext context)
+        {
+            var subContext = new CustomNativeTypeWithValuePropertyStubContext(context);
+
+            yield return GenerateValuePropertyAssignment(info, context, subContext);
 
             foreach (var statement in innerMarshaller.GenerateUnmarshalStatements(info, subContext))
             {
@@ -317,12 +330,12 @@ namespace Microsoft.Interop
 
         private static bool StackAllocOptimizationValid(TypePositionInfo info, StubCodeContext context)
         {
-            return context.StackSpaceUsable && context.PinningSupported && (!info.IsByRef || info.RefKind == RefKind.In);
+            return context.SingleFrameSpansNativeContext && (!info.IsByRef || info.RefKind == RefKind.In);
         }
 
         private static string GetStackAllocPointerIdentifier(TypePositionInfo info, StubCodeContext context)
         {
-            return $"{context.GetIdentifiers(info).managed}__stackptr";
+            return context.GetAdditionalIdentifier(info, "stackptr");
         }
 
         public IEnumerable<StatementSyntax> GeneratePinStatements(TypePositionInfo info, StubCodeContext context)
@@ -454,7 +467,7 @@ namespace Microsoft.Interop
 
         private bool CanPinMarshaller(TypePositionInfo info, StubCodeContext context)
         {
-            return context.PinningSupported && !info.IsManagedReturnPosition && !info.IsByRef || info.RefKind == RefKind.In;
+            return context.SingleFrameSpansNativeContext && !info.IsManagedReturnPosition && !info.IsByRef || info.RefKind == RefKind.In;
         }
 
         public ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context)
@@ -470,7 +483,17 @@ namespace Microsoft.Interop
         public IEnumerable<StatementSyntax> GenerateCleanupStatements(TypePositionInfo info, StubCodeContext context)
         {
             var subContext = new CustomNativeTypeWithValuePropertyStubContext(context);
-            return innerMarshaller.GenerateCleanupStatements(info, subContext);
+
+            if (!CanPinMarshaller(info, context) && !context.AdditionalTemporaryStateLivesAcrossStages)
+            {
+                // <marshalerIdentifier>.Value = <nativeIdentifier>;
+                yield return GenerateValuePropertyAssignment(info, context, subContext);
+            }
+
+            foreach (var statement in innerMarshaller.GenerateCleanupStatements(info, subContext))
+            {
+                yield return statement;
+            }
         }
 
         public IEnumerable<StatementSyntax> GenerateMarshalStatements(TypePositionInfo info, StubCodeContext context, IEnumerable<ArgumentSyntax> nativeTypeConstructorArguments)
@@ -529,6 +552,18 @@ namespace Microsoft.Interop
             }
         }
 
+        private StatementSyntax GenerateValuePropertyAssignment(TypePositionInfo info, StubCodeContext context, CustomNativeTypeWithValuePropertyStubContext subContext)
+        {
+            // <marshalerIdentifier>.Value = <nativeIdentifier>;
+            return ExpressionStatement(
+                AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(subContext.GetIdentifiers(info).native),
+                        IdentifierName(ManualTypeMarshallingHelper.ValuePropertyName)),
+                    IdentifierName(context.GetIdentifiers(info).native)));
+        }
+
         public IEnumerable<StatementSyntax> GenerateUnmarshalStatements(TypePositionInfo info, StubCodeContext context)
         {
             var subContext = new CustomNativeTypeWithValuePropertyStubContext(context);
@@ -536,13 +571,7 @@ namespace Microsoft.Interop
             if (!CanPinMarshaller(info, context))
             {
                 // <marshalerIdentifier>.Value = <nativeIdentifier>;
-                yield return ExpressionStatement(
-                    AssignmentExpression(
-                        SyntaxKind.SimpleAssignmentExpression,
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            IdentifierName(subContext.GetIdentifiers(info).native),
-                            IdentifierName(ManualTypeMarshallingHelper.ValuePropertyName)),
-                        IdentifierName(context.GetIdentifiers(info).native)));
+                yield return GenerateValuePropertyAssignment(info, context, subContext);
             }
 
             foreach (var statement in innerMarshaller.GenerateUnmarshalStatements(info, subContext))
@@ -594,7 +623,18 @@ namespace Microsoft.Interop
 
         public IEnumerable<StatementSyntax> GenerateCleanupStatements(TypePositionInfo info, StubCodeContext context)
         {
-            return innerMarshaller.GenerateCleanupStatements(info, context);
+            if (!context.AdditionalTemporaryStateLivesAcrossStages)
+            {
+                foreach (var statement in GenerateUnmarshallerCollectionInitialization(info, context))
+                {
+                    yield return statement;    
+                }
+            }
+
+            foreach (var statement in innerMarshaller.GenerateUnmarshalStatements(info, context))
+            {
+                yield return statement;
+            }
         }
 
         public IEnumerable<StatementSyntax> GenerateMarshalStatements(TypePositionInfo info, StubCodeContext context, IEnumerable<ArgumentSyntax> nativeTypeConstructorArguments)
@@ -612,7 +652,7 @@ namespace Microsoft.Interop
             return innerMarshaller.GenerateSetupStatements(info, context);
         }
 
-        public IEnumerable<StatementSyntax> GenerateUnmarshalStatements(TypePositionInfo info, StubCodeContext context)
+        private IEnumerable<StatementSyntax> GenerateUnmarshallerCollectionInitialization(TypePositionInfo info, StubCodeContext context)
         {
             string marshalerIdentifier = MarshallerHelpers.GetMarshallerIdentifier(info, context);
             if (info.RefKind == RefKind.Out || info.IsManagedReturnPosition)
@@ -631,6 +671,14 @@ namespace Microsoft.Interop
                             IdentifierName(marshalerIdentifier),
                             IdentifierName(ManualTypeMarshallingHelper.SetUnmarshalledCollectionLengthMethodName)))
                     .AddArgumentListArguments(Argument(numElementsExpression)));
+            }
+        }
+
+        public IEnumerable<StatementSyntax> GenerateUnmarshalStatements(TypePositionInfo info, StubCodeContext context)
+        {
+            foreach (var statement in GenerateUnmarshallerCollectionInitialization(info, context))
+            {
+                yield return statement;    
             }
 
             foreach (var statement in innerMarshaller.GenerateUnmarshalStatements(info, context))
@@ -816,7 +864,7 @@ namespace Microsoft.Interop
 
         private string GetNativeSpanIdentifier(TypePositionInfo info, StubCodeContext context)
         {
-            return context.GetIdentifiers(info).managed + "__nativeSpan";
+            return context.GetAdditionalIdentifier(info, "nativeSpan");
         }
 
         private LocalDeclarationStatementSyntax GenerateNativeSpanDeclaration(TypePositionInfo info, StubCodeContext context)
@@ -856,6 +904,11 @@ namespace Microsoft.Interop
         {
             string nativeIdentifier = context.GetIdentifiers(info).native;
             string nativeSpanIdentifier = GetNativeSpanIdentifier(info, context);
+            var elementSetupSubContext = new ContiguousCollectionElementMarshallingCodeContext(
+                StubCodeContext.Stage.Setup,
+                IndexerIdentifier,
+                nativeSpanIdentifier,
+                context);
             var elementSubContext = new ContiguousCollectionElementMarshallingCodeContext(
                 context.CurrentStage,
                 IndexerIdentifier,
@@ -875,9 +928,8 @@ namespace Microsoft.Interop
             };
 
             StatementSyntax marshallingStatement = Block(
-                List(elementMarshaller.Generate(
-                    localElementInfo,
-                    elementSubContext)));
+                List(elementMarshaller.Generate(localElementInfo, elementSetupSubContext)
+                    .Concat(elementMarshaller.Generate(localElementInfo, elementSubContext))));
 
             if (elementMarshaller.AsNativeType(elementInfo) is PointerTypeSyntax)
             {

@@ -13,11 +13,7 @@ namespace Microsoft.Interop
 {
     internal sealed class StubCodeGenerator : StubCodeContext
     {
-        public override bool PinningSupported => true;
-
-        public override bool StackSpaceUsable => true;
-
-        public override bool CanUseAdditionalTemporaryState => true;
+        public override bool SingleFrameSpansNativeContext => true;
 
         /// <summary>
         /// Identifier for managed return value
