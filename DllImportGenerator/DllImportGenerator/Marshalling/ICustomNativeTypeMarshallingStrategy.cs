@@ -927,21 +927,27 @@ namespace Microsoft.Interop
                 NativeIndex = info.NativeIndex
             };
 
-            StatementSyntax marshallingStatement = Block(
-                List(elementMarshaller.Generate(localElementInfo, elementSetupSubContext)
-                    .Concat(elementMarshaller.Generate(localElementInfo, elementSubContext))));
+            List<StatementSyntax> elementStatements = elementMarshaller.Generate(localElementInfo, elementSubContext).ToList();
 
-            if (elementMarshaller.AsNativeType(elementInfo) is PointerTypeSyntax)
+            if (elementStatements.Count != 0)
             {
-                PointerNativeTypeAssignmentRewriter rewriter = new(elementSubContext.GetIdentifiers(localElementInfo).native);
-                marshallingStatement = (StatementSyntax)rewriter.Visit(marshallingStatement);
-            }
+                StatementSyntax marshallingStatement = Block(
+                    List(elementMarshaller.Generate(localElementInfo, elementSetupSubContext)
+                        .Concat(elementStatements)));
 
-            // Iterate through the elements of the native collection to unmarshal them
-            return Block(
-                GenerateNativeSpanDeclaration(info, context),
-                MarshallerHelpers.GetForLoop(collectionIdentifierForLength, IndexerIdentifier)
-                                .WithStatement(marshallingStatement));
+                if (elementMarshaller.AsNativeType(elementInfo) is PointerTypeSyntax elementNativeType)
+                {
+                    PointerNativeTypeAssignmentRewriter rewriter = new(elementSubContext.GetIdentifiers(localElementInfo).native, elementNativeType);
+                    marshallingStatement = (StatementSyntax)rewriter.Visit(marshallingStatement);
+                }
+
+                // Iterate through the elements of the native collection to unmarshal them
+                return Block(
+                    GenerateNativeSpanDeclaration(info, context),
+                    MarshallerHelpers.GetForLoop(collectionIdentifierForLength, IndexerIdentifier)
+                                    .WithStatement(marshallingStatement));
+            }
+            return EmptyStatement();
         }
 
         public ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context)
@@ -1016,10 +1022,12 @@ namespace Microsoft.Interop
         private class PointerNativeTypeAssignmentRewriter : CSharpSyntaxRewriter
         {
             private readonly string nativeIdentifier;
+            private readonly PointerTypeSyntax nativeType;
 
-            public PointerNativeTypeAssignmentRewriter(string nativeIdentifier)
+            public PointerNativeTypeAssignmentRewriter(string nativeIdentifier, PointerTypeSyntax nativeType)
             {
                 this.nativeIdentifier = nativeIdentifier;
+                this.nativeType = nativeType;
             }
 
             public override SyntaxNode VisitAssignmentExpression(AssignmentExpressionSyntax node)
@@ -1028,6 +1036,10 @@ namespace Microsoft.Interop
                 {
                     return node.WithRight(
                         CastExpression(MarshallerHelpers.SystemIntPtrType, node.Right));
+                }
+                if (node.Right.ToString() == nativeIdentifier)
+                {
+                    return node.WithRight(CastExpression(nativeType, node.Right));
                 }
 
                 return node;

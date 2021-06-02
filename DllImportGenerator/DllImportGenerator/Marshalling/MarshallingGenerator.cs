@@ -449,14 +449,6 @@ namespace Microsoft.Interop
 
         private static void ValidateCustomNativeTypeMarshallingSupported(TypePositionInfo info, StubCodeContext context, NativeMarshallingAttributeInfo marshalInfo)
         {
-            if (marshalInfo.ValuePropertyType is not null && !context.AdditionalTemporaryStateLivesAcrossStages)
-            {
-                throw new MarshallingNotSupportedException(info, context)
-                {
-                    NotSupportedDetails = Resources.ValuePropertyMarshallingRequiresAdditionalState
-                };
-            }
-
             // The marshalling method for this type doesn't support marshalling from native to managed,
             // but our scenario requires marshalling from native to managed.
             if ((info.RefKind == RefKind.Ref || info.RefKind == RefKind.Out || info.IsManagedReturnPosition)

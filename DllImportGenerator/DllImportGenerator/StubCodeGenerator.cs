@@ -15,6 +15,8 @@ namespace Microsoft.Interop
     {
         public override bool SingleFrameSpansNativeContext => true;
 
+        public override bool AdditionalTemporaryStateLivesAcrossStages => true;
+
         /// <summary>
         /// Identifier for managed return value
         /// </summary>
