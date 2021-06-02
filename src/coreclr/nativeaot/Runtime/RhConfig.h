@@ -42,7 +42,7 @@ private:
 
 public:
 
-    bool ReadConfigValue(_In_z_ const TCHAR* wszName, uint32_t* pValue);
+    bool ReadConfigValue(_In_z_ const TCHAR* wszName, uint32_t* pValue, bool decimal = false);
 
 #define DEFINE_VALUE_ACCESSOR(_name, defaultVal)        \
     uint32_t Get##_name()                                 \

@@ -379,10 +379,11 @@ void InitializeCurrentProcessCpuCount()
     // If the configuration value has been set, it takes precedence. Otherwise, take into account
     // process affinity and CPU quota limit.
 
-    uint32_t configValue = g_pRhConfig->GetPROCESSOR_COUNT();
     const unsigned int MAX_PROCESSOR_COUNT = 0xffff;
+    uint32_t configValue;
 
-    if (0 < configValue && configValue <= MAX_PROCESSOR_COUNT)
+    if (g_pRhConfig->ReadConfigValue(_T("PROCESSOR_COUNT"), &configValue, true /* decimal */) &&
+        0 < configValue && configValue <= MAX_PROCESSOR_COUNT)
     {
         count = configValue;
     }
