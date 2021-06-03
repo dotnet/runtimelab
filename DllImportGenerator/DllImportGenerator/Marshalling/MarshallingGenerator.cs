@@ -392,21 +392,37 @@ namespace Microsoft.Interop
                         NotSupportedDetails = Resources.ArraySizeParamIndexOutOfRange
                     };
                 }
-                else if (!paramInfo.ManagedType.IsIntegralType())
-                {
-                    throw new MarshallingNotSupportedException(info, context)
-                    {
-                        NotSupportedDetails = Resources.ArraySizeParamTypeMustBeIntegral
-                    };
-                }
+                //else if (!paramInfo.ManagedType.IsIntegralType())
+                //{
+                //    throw new MarshallingNotSupportedException(info, context)
+                //    {
+                //        NotSupportedDetails = Resources.ArraySizeParamTypeMustBeIntegral
+                //    };
+                //}
                 else
                 {
-                    var (managed, native) = context.GetIdentifiers(paramInfo);
-                    string identifier = Create(paramInfo, context, options).UsesNativeIdentifier(paramInfo, context) ? native : managed;
                     return CastExpression(
                             PredefinedType(Token(SyntaxKind.IntKeyword)),
-                            IdentifierName(identifier));
+                            ParenthesizedExpression(GetIndexedNumElementsExpression(context, paramInfo.InstanceIdentifier)));
                 }
+            }
+
+            static ExpressionSyntax GetIndexedNumElementsExpression(StubCodeContext context, string identifier)
+            {
+                Stack<string> indexerStack = new();
+                while (context is ContiguousCollectionElementMarshallingCodeContext collectionContext)
+                {
+                    indexerStack.Push(collectionContext.IndexerIdentifier);
+                    context = collectionContext.ParentContext;
+                }
+
+                ExpressionSyntax indexedNumElements = IdentifierName(identifier);
+                while (indexerStack.Count > 0)
+                {
+                    indexedNumElements = ElementAccessExpression(indexedNumElements).AddArgumentListArguments(Argument(IdentifierName(indexerStack.Pop())));
+                }
+
+                return indexedNumElements;
             }
         }
 

@@ -53,6 +53,7 @@ namespace Microsoft.Interop
         private readonly IEnumerable<TypePositionInfo> paramsTypeInfo;
         private readonly List<(TypePositionInfo TypeInfo, IMarshallingGenerator Generator)> paramMarshallers;
         private readonly (TypePositionInfo TypeInfo, IMarshallingGenerator Generator) retMarshaller;
+        private readonly List<(TypePositionInfo TypeInfo, IMarshallingGenerator Generator)> sortedMarshallers;
 
         public StubCodeGenerator(
             IMethodSymbol stubMethod,
@@ -76,6 +77,15 @@ namespace Microsoft.Interop
             // Get marshaller for return
             this.retMarshaller = CreateGenerator(retTypeInfo);
 
+            List<(TypePositionInfo TypeInfo, IMarshallingGenerator Generator)> allMarshallers = new(this.paramMarshallers);
+            allMarshallers.Add(retMarshaller);
+
+            this.sortedMarshallers = MarshallerHelpers.GetTopologicallySortedElements(
+                allMarshallers,
+                static m => GetInfoIndex(m.TypeInfo),
+                static m => GetInfoDependencies(m.TypeInfo))
+                .ToList();
+
             (TypePositionInfo info, IMarshallingGenerator gen) CreateGenerator(TypePositionInfo p)
             {
                 try
@@ -87,6 +97,22 @@ namespace Microsoft.Interop
                     this.diagnostics.ReportMarshallingNotSupported(this.stubMethod, p, e.NotSupportedDetails);
                     return (p, MarshallingGenerators.Forwarder);
                 }
+            }
+
+            static IEnumerable<int> GetInfoDependencies(TypePositionInfo info)
+            {
+                // A parameter without a managed index cannot have any dependencies.
+                if (info.ManagedIndex == TypePositionInfo.UnsetIndex)
+                {
+                    return Array.Empty<int>();
+                }
+                return MarshallerHelpers.GetDependentElementsOfMarshallingInfo(info.MarshallingAttributeInfo)
+                    .Select(static info => GetInfoIndex(info)).ToList();
+            }
+
+            static int GetInfoIndex(TypePositionInfo info)
+            {
+                return info.IsManagedReturnPosition ? 0 : info.ManagedIndex + 1;
             }
         }
 
@@ -202,42 +228,56 @@ namespace Microsoft.Interop
                 int initialCount = statements.Count;
                 this.CurrentStage = stage;
 
-                if (!invokeReturnsVoid && (stage is Stage.Setup or Stage.Unmarshal or Stage.GuaranteedUnmarshal or Stage.Cleanup))
+                if (!invokeReturnsVoid && (stage is Stage.Setup or Stage.Cleanup))
                 {
                     // Handle setup and unmarshalling for return
                     var retStatements = retMarshaller.Generator.Generate(retMarshaller.TypeInfo, this);
                     statements.AddRange(retStatements);
                 }
 
-                // Generate code for each parameter for the current stage
-                foreach (var marshaller in paramMarshallers)
+                if (stage is Stage.Unmarshal or Stage.GuaranteedUnmarshal)
                 {
-                    if (stage == Stage.Invoke)
-                    {
-                        // Get arguments for invocation
-                        ArgumentSyntax argSyntax = marshaller.Generator.AsArgument(marshaller.TypeInfo, this);
-                        invoke = invoke.AddArgumentListArguments(argSyntax);
-                    }
-                    else
-                    {
-                        var generatedStatements = marshaller.Generator.Generate(marshaller.TypeInfo, this);
-                        if (stage == Stage.Pin)
-                        {
-                            // Collect all the fixed statements. These will be used in the Invoke stage.
-                            foreach (var statement in generatedStatements)
-                            {
-                                if (statement is not FixedStatementSyntax fixedStatement)
-                                    continue;
+                    // For Unmarshal and GuaranteedUnmarshal stages, use the topologically sorted
+                    // marshaller list to generate the marshalling statements
 
-                                fixedStatements.Add(fixedStatement);
-                            }
+                    foreach (var marshaller in sortedMarshallers)
+                    {
+                        statements.AddRange(marshaller.Generator.Generate(marshaller.TypeInfo, this));
+                    }
+                }
+                else
+                {
+                    // Generate code for each parameter for the current stage
+                    foreach (var marshaller in paramMarshallers)
+                    {
+                        if (stage == Stage.Invoke)
+                        {
+                            // Get arguments for invocation
+                            ArgumentSyntax argSyntax = marshaller.Generator.AsArgument(marshaller.TypeInfo, this);
+                            invoke = invoke.AddArgumentListArguments(argSyntax);
                         }
                         else
                         {
-                            statements.AddRange(generatedStatements);
+                            var generatedStatements = marshaller.Generator.Generate(marshaller.TypeInfo, this);
+                            if (stage == Stage.Pin)
+                            {
+                                // Collect all the fixed statements. These will be used in the Invoke stage.
+                                foreach (var statement in generatedStatements)
+                                {
+                                    if (statement is not FixedStatementSyntax fixedStatement)
+                                        continue;
+
+                                    fixedStatements.Add(fixedStatement);
+                                }
+                            }
+                            else
+                            {
+                                statements.AddRange(generatedStatements);
+                            }
                         }
                     }
                 }
+
 
                 if (stage == Stage.Invoke)
                 {

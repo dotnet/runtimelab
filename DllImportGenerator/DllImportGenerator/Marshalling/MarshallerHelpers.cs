@@ -1,6 +1,8 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System;
+using System.Collections.Generic;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
@@ -88,12 +90,141 @@ namespace Microsoft.Interop
 
         public static string GetMarshallerIdentifier(TypePositionInfo info, StubCodeContext context)
         {
-            return context.GetAdditionalIdentifier(info, "marshaler");
+            return context.GetAdditionalIdentifier(info, "marshaller");
         }
 
         public static string GetNativeSpanIdentifier(TypePositionInfo info, StubCodeContext context)
         {
             return context.GetAdditionalIdentifier(info, "nativeSpan");
+        }
+
+        /// <summary>
+        /// Generate a topologically sorted collection of elements.
+        /// </summary>
+        /// <typeparam name="T">The type of element.</typeparam>
+        /// <param name="elements">The initial collection of elements.</param>
+        /// <param name="indexFn">A function to create an element index value. This value must be non-negative and the maximum value is recommended to be close to <c><paramref name="elements"/>.Length</c> for best performance.</param>
+        /// <param name="getDependentIndicesFn">A function to resolve the dependencies of a given item in the <paramref name="elements"/> collection as index values that would be returned by <paramref name="indexFn"/>.</param>
+        /// <returns>A topologically sorted collection of the elemens of the <paramref name="elements"/> collection.</returns>
+        public static IEnumerable<T> GetTopologicallySortedElements<T>(
+            ICollection<T> elements,
+            Func<T, int> indexFn,
+            Func<T, IEnumerable<int>> getDependentIndicesFn)
+        {
+            int highestManagedIndex = -1;
+            foreach (var element in elements)
+            {
+                highestManagedIndex = Math.Max(indexFn(element), highestManagedIndex);
+            }
+
+            T[] elementByElementIndex = new T[highestManagedIndex + 1];
+            foreach (var element in elements)
+            {
+                elementByElementIndex[indexFn(element)] = element;
+            }
+
+            bool[][] edgeMap = new bool[highestManagedIndex + 1][];
+            for (int i = 0; i < edgeMap.Length; i++)
+            {
+                edgeMap[i] = new bool[highestManagedIndex + 1];
+            }
+
+            foreach (var element in elements)
+            {
+                int elementIndex = indexFn(element);
+                foreach (var dependentElementIndex in getDependentIndicesFn(element))
+                {
+                    // Add an edge from an element to one that depends on it.
+                    edgeMap[dependentElementIndex][elementIndex] = true;
+                }
+            }
+
+            // Now that we have initialized our map of edges and we have our list of nodes,
+            // we'll use Khan's algorithm to calculate a topological sort of the elements.
+
+            // L is the sorted list
+            List<T> L = new List<T>(edgeMap.Length);
+            // S is the set of elements with no incoming edges (no dependencies on it)
+            List<T> S = new List<T>(edgeMap.Length);
+
+            // Initialize S
+            for (int elementIndex = 0; elementIndex <= highestManagedIndex; elementIndex++)
+            {
+                if (elementByElementIndex[elementIndex] is null)
+                {
+                    continue;
+                }
+                bool anyIncomingEdges = false;
+                for (int j = 0; j < edgeMap.Length; j++)
+                {
+                    anyIncomingEdges |= edgeMap[j][elementIndex];
+                }
+                if (!anyIncomingEdges)
+                {
+                    S.Add(elementByElementIndex[elementIndex]);
+                }
+            }
+
+            while (S.Count != 0)
+            {
+                // Remove element from S
+                T element = S[S.Count - 1];
+                S.RemoveAt(S.Count - 1);
+                // Add element to L
+                L.Add(element);
+                // For each node m that element points to
+                for (int i = 0; i < edgeMap.Length; i++)
+                {
+                    int elementIndex = indexFn(element);
+                    if (!edgeMap[elementIndex][i])
+                    {
+                        continue;
+                    }
+                    // Remove the edge from element to m
+                    edgeMap[elementIndex][i] = false;
+                    // If m does not have any incoming edges, add to S
+                    bool anyIncomingEdges = false;
+                    for (int j = 0; j < edgeMap.Length; j++)
+                    {
+                        anyIncomingEdges |= edgeMap[j][i];
+                    }
+                    if (!anyIncomingEdges)
+                    {
+                        S.Add(elementByElementIndex[i]);
+                    }
+                }
+            }
+
+            // If we have edges left, then we have a cycle.
+            for (int i = 0; i < edgeMap.Length; i++)
+            {
+                for (int j = 0; j < edgeMap.Length; j++)
+                {
+                    if (edgeMap[i][j])
+                    {
+                        throw new InvalidOperationException();
+                    }
+                }
+            }
+
+            // If we make it here, we have a topologically sorted list.
+            return L;
+        }
+
+        public static IEnumerable<TypePositionInfo> GetDependentElementsOfMarshallingInfo(
+            MarshallingInfo elementMarshallingInfo)
+        {
+            if (elementMarshallingInfo is NativeContiguousCollectionMarshallingInfo nestedCollection)
+            {
+                if (nestedCollection.ElementCountInfo is CountElementCountInfo { ElementInfo: TypePositionInfo nestedCountElement })
+                {
+                    yield return nestedCountElement;
+                }
+                foreach (var nestedElements in GetDependentElementsOfMarshallingInfo(nestedCollection.ElementMarshallingInfo))
+                {
+                    yield return nestedElements;
+                }
+            }
         }
 
         public static class StringMarshaller

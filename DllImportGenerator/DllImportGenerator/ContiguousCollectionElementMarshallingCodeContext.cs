@@ -13,7 +13,6 @@ namespace Microsoft.Interop
     internal sealed class ContiguousCollectionElementMarshallingCodeContext : StubCodeContext
     {
         private readonly string nativeSpanIdentifier;
-        private readonly StubCodeContext parentContext;
 
         public override bool SingleFrameSpansNativeContext => false;
 
@@ -36,7 +35,7 @@ namespace Microsoft.Interop
             CurrentStage = currentStage;
             IndexerIdentifier = CalculateIndexerIdentifierBasedOnParentContext(parentContext);
             this.nativeSpanIdentifier = nativeSpanIdentifier;
-            this.parentContext = parentContext;
+            ParentContext = parentContext;
         }
 
         /// <summary>
@@ -46,7 +45,7 @@ namespace Microsoft.Interop
         /// <returns>Managed and native identifiers</returns>
         public override (string managed, string native) GetIdentifiers(TypePositionInfo info)
         {
-            var (_, native) = parentContext.GetIdentifiers(info);
+            var (_, native) = ParentContext!.GetIdentifiers(info);
             return (
                 $"{native}.ManagedValues[{IndexerIdentifier}]",
                 $"{nativeSpanIdentifier}[{IndexerIdentifier}]"
@@ -64,13 +63,16 @@ namespace Microsoft.Interop
             return null;
         }
 
-        private static string CalculateIndexerIdentifierBasedOnParentContext(StubCodeContext parentContext)
+        private static string CalculateIndexerIdentifierBasedOnParentContext(StubCodeContext? parentContext)
         {
             int i = 0;
-            while (parentContext is ContiguousCollectionElementMarshallingCodeContext collectionContext)
+            while (parentContext is StubCodeContext context)
             {
-                i++;
-                parentContext = collectionContext.parentContext;
+                if (context is ContiguousCollectionElementMarshallingCodeContext)
+                {
+                    i++;
+                }
+                parentContext = context.ParentContext;
             }
 
             // Follow a progression of indexers of the following form:

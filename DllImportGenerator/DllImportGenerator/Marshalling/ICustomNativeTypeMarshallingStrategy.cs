@@ -127,26 +127,24 @@ namespace Microsoft.Interop
     /// </summary>
     internal class CustomNativeTypeWithValuePropertyStubContext : StubCodeContext
     {
-        private readonly StubCodeContext parentContext;
-
         public CustomNativeTypeWithValuePropertyStubContext(StubCodeContext parentContext)
         {
-            this.parentContext = parentContext;
+            ParentContext = parentContext;
             CurrentStage = parentContext.CurrentStage;
         }
 
-        public override bool SingleFrameSpansNativeContext => parentContext.SingleFrameSpansNativeContext;
+        public override bool SingleFrameSpansNativeContext => ParentContext!.SingleFrameSpansNativeContext;
 
-        public override bool AdditionalTemporaryStateLivesAcrossStages => parentContext.AdditionalTemporaryStateLivesAcrossStages;
+        public override bool AdditionalTemporaryStateLivesAcrossStages => ParentContext!.AdditionalTemporaryStateLivesAcrossStages;
 
         public override TypePositionInfo? GetTypePositionInfoForManagedIndex(int index)
         {
-            return parentContext.GetTypePositionInfoForManagedIndex(index);
+            return ParentContext!.GetTypePositionInfoForManagedIndex(index);
         }
 
         public override (string managed, string native) GetIdentifiers(TypePositionInfo info)
         {
-            return (parentContext.GetIdentifiers(info).managed, MarshallerHelpers.GetMarshallerIdentifier(info, parentContext));
+            return (ParentContext!.GetIdentifiers(info).managed, MarshallerHelpers.GetMarshallerIdentifier(info, ParentContext));
         }
     }
 

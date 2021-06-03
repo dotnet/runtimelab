@@ -371,11 +371,12 @@ namespace Microsoft.Interop
                     };
                 }
 
-                foreach (var param in method.Parameters)
+                for (int i = 0; i < method.Parameters.Length; i++)
                 {
+                    IParameterSymbol param = method.Parameters[i];
                     if (param.Name == elementName)
                     {
-                        return TypePositionInfo.CreateForParameter(param, ParseMarshallingInfo(param.Type, param.GetAttributes(), inspectedElements), compilation);
+                        return TypePositionInfo.CreateForParameter(param, ParseMarshallingInfo(param.Type, param.GetAttributes(), inspectedElements), compilation) with { ManagedIndex = i };
                     }
                 }
             }
