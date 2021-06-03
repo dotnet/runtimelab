@@ -254,7 +254,7 @@ namespace Microsoft.Interop
                     }
                     break;
                 case StubCodeContext.Stage.Cleanup:
-                    if (info.RefKind != RefKind.Out && _hasFreeNative)
+                    if (_hasFreeNative)
                     {
                         foreach (var statement in GenerateIntermediateCleanupStatements(info, context))
                         {
