@@ -254,12 +254,12 @@ namespace Microsoft.Interop
                     }
                     break;
                 case StubCodeContext.Stage.Cleanup:
+                    foreach (var statement in GenerateIntermediateCleanupStatements(info, context))
+                    {
+                        yield return statement;
+                    }
                     if (_hasFreeNative)
                     {
-                        foreach (var statement in GenerateIntermediateCleanupStatements(info, context))
-                        {
-                            yield return statement;
-                        }
                         // <marshalerIdentifier>.FreeNative();
                         yield return ExpressionStatement(
                             InvocationExpression(
